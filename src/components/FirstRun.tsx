@@ -4,6 +4,7 @@ import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../store';
 import { applyFontFamily, applyFontSize, applyTheme } from '../lib/theme';
 import { DEFAULT_FONT_SIZE, type Config } from '../types/ipc';
+import { resolveUser, userLabel, type NotionUser } from '../lib/notionUser';
 
 /**
  * What a new machine sees: the dependency list, and the four values only the user
@@ -31,12 +32,6 @@ export interface Environment {
   tools: ToolCheck[];
 }
 
-interface NotionUser {
-  id: string;
-  name: string;
-  email: string | null;
-}
-
 /** What the database says about itself (mirror of setup.rs::DetectedSchema). */
 interface DetectedSchema {
   title_property: string;
@@ -58,7 +53,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const [databaseId, setDatabaseId] = useState('');
   const [root, setRoot] = useState('~/worktrees');
   const [users, setUsers] = useState<NotionUser[] | null>(null);
-  const [userId, setUserId] = useState('');
+  const [who, setWho] = useState('');
   const [template, setTemplate] = useState('');
   const [detected, setDetected] = useState<DetectedSchema | null>(null);
   const [busy, setBusy] = useState<'users' | 'detect' | 'save' | null>(null);
@@ -78,7 +73,11 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     try {
       const list = await invoke<NotionUser[]>('list_notion_users', { token: token.trim() });
       setUsers(list);
-      if (list.length === 0) setError('The token works, but the integration sees no people.');
+      if (list.length === 0) {
+        // The integration needs the "read user information" capability; without it
+        // the call succeeds and returns nobody, which reads as a broken picker.
+        setError('The token works, but no people came back — the integration needs the user-information capability.');
+      }
     } catch (e) {
       setUsers(null);
       setError(`Notion rejected the token: ${String(e)}`);
@@ -113,7 +112,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
       await invoke('write_initial_config', {
         token: token.trim(),
         databaseId: databaseId.trim(),
-        userId: userId,
+        userId: whoMatch.kind === 'user' || whoMatch.kind === 'raw' ? whoMatch.id : '',
         worktreeRoot: root.trim(),
         templatePageId: template.trim() || null,
       });
@@ -131,6 +130,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     }
   };
 
+  const whoMatch = resolveUser(who, users ?? []);
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
   const canSave = !!token.trim() && !!databaseId.trim() && !!root.trim() && busy === null;
 
@@ -269,30 +269,36 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
           </label>
 
           <label className="firstrun-field">
-            <span className="firstrun-label">You, in Notion</span>
+            <span className="firstrun-label">You, in Notion <span className="firstrun-optional">optional</span></span>
             <div className="firstrun-row">
-              <select
+              {/* A filterable input, not a dropdown: a workspace has hundreds of
+                  people, and a pasted id still has to work when the list fails. */}
+              <input
                 className="firstrun-input"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                disabled={!users}
-              >
-                <option value="">
-                  {users ? 'Everyone (no assignee filter)' : 'Enter the token first'}
-                </option>
-                {(users ?? []).map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}{u.email ? ` · ${u.email}` : ''}
-                  </option>
-                ))}
-              </select>
+                list="groove-notion-users"
+                placeholder={users ? 'Type your name, or paste a user id' : 'Enter the token first'}
+                value={who}
+                onChange={(e) => setWho(e.target.value)}
+              />
+              <datalist id="groove-notion-users">
+                {(users ?? []).map((u) => <option key={u.id} value={userLabel(u)} />)}
+              </datalist>
               <button className="btn-secondary" onClick={loadUsers} disabled={!token.trim() || busy !== null}>
                 {busy === 'users' ? <Loader2 size={11} className="spin" /> : null}
                 {users ? 'reload' : 'check token'}
               </button>
             </div>
             <span className="firstrun-hint">
-              Used to show only your tasks, and to assign the ones you file. Leave unset to see the
+              {whoMatch.kind === 'user' && (
+                <>Matched <strong>{whoMatch.user.name}</strong> · <code>{whoMatch.id}</code>. </>
+              )}
+              {whoMatch.kind === 'raw' && (
+                <>Using <code>{whoMatch.id}</code> as-is — it is not in this workspace's people, so
+                  check it is a USER id and not a page id. </>
+              )}
+              {whoMatch.kind === 'unknown' && <>No match yet — keep typing, or paste a user id. </>}
+              {users && <>{users.length} people found. </>}
+              Used to show only your tasks and to assign the ones you file. Leave empty to see the
               whole database.
             </span>
           </label>

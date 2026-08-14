@@ -103,9 +103,10 @@ reads everything else off the database:
    comes back empty.
 2. **Task database id** — open the database as a full page; the id is the last path
    segment before `?v=`.
-3. **You, in Notion** — picked from the workspace's people once the token is
-   accepted. Used to show only your tasks and to assign the ones you file. Leave it
-   unset to see the whole database.
+3. **You, in Notion** — type your name once the token is accepted; the field filters
+   the workspace's people. Pasting a user id works too, but check it is a *user* id:
+   a Notion page id has the same shape, and filtering on one silently matches no
+   tasks. Leave it empty to see the whole database.
 4. **Worktree root** — the directory Groove owns. Point it at an empty directory
    unless you already use the layout below.
 

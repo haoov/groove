@@ -122,6 +122,31 @@ mod tests {
     }
 
     #[test]
+    fn keeps_people_and_drops_bots() {
+        let page = serde_json::json!({
+            "results": [
+                { "type": "bot", "id": "b1", "name": "Gitlab" },
+                { "type": "person", "id": "p1", "name": "Arthur Le Roux",
+                  "person": { "email": "aleroux@example.com" } },
+                { "type": "person", "id": "p2", "name": "No Email" },
+                { "type": "person", "name": "No Id At All" },
+            ],
+            "has_more": false
+        });
+        let people = people_from_page(&page);
+        assert_eq!(people.len(), 2, "the bot and the id-less entry are dropped");
+        assert_eq!(people[0].name, "Arthur Le Roux");
+        assert_eq!(people[0].email.as_deref(), Some("aleroux@example.com"));
+        assert_eq!(people[1].email, None, "a person without an email is still a person");
+    }
+
+    #[test]
+    fn an_empty_or_broken_page_yields_nobody() {
+        assert!(people_from_page(&serde_json::json!({ "results": [] })).is_empty());
+        assert!(people_from_page(&serde_json::json!({})).is_empty());
+    }
+
+    #[test]
     fn a_missing_tool_is_reported_with_its_purpose() {
         let t = check("definitely-not-a-real-binary-xyz", "Nothing at all", false);
         assert!(t.path.is_none());
@@ -139,25 +164,62 @@ pub struct NotionUser {
     pub email: Option<String>,
 }
 
+/// The people on one page of `/v1/users`.
+///
+/// Bots share the endpoint and are dropped: only a person can be assigned a task.
+/// They are dropped AFTER the page is fetched, which is why the page size cannot
+/// double as a people limit — a workspace with many integrations spends its first
+/// hundred slots on them.
+fn people_from_page(body: &serde_json::Value) -> Vec<NotionUser> {
+    body["results"]
+        .as_array()
+        .map(|users| {
+            users
+                .iter()
+                .filter(|u| u["type"].as_str() == Some("person"))
+                .filter_map(|u| {
+                    Some(NotionUser {
+                        id: u["id"].as_str()?.to_string(),
+                        name: u["name"].as_str().unwrap_or("(unnamed)").to_string(),
+                        email: u["person"]["email"].as_str().map(|s| s.to_string()),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Every page is followed, because a real workspace has more than one.
+///
+/// Notion caps a page at 100 entries and reports `has_more` — fetching only the
+/// first page silently hid everyone after roughly the letter J in a workspace of
+/// 100+ users, which looked like "I am not in the list".
+const MAX_USER_PAGES: usize = 30;
+
 #[tauri::command]
 pub async fn list_notion_users(token: String) -> Result<Vec<NotionUser>, String> {
-    let body = notion_get(&token, "v1/users?page_size=100")
-        .await
-        .map_err(|e| e.to_string())?;
-    let mut out = vec![];
-    for u in body["results"].as_array().cloned().unwrap_or_default() {
-        // Bots are not assignees; only people can own a task.
-        if u["type"].as_str() != Some("person") {
-            continue;
+    let mut out: Vec<NotionUser> = vec![];
+    let mut cursor: Option<String> = None;
+
+    for _ in 0..MAX_USER_PAGES {
+        let path = match &cursor {
+            Some(c) => format!("v1/users?page_size=100&start_cursor={c}"),
+            None => "v1/users?page_size=100".to_string(),
+        };
+        let body = notion_get(&token, &path).await.map_err(|e| e.to_string())?;
+        out.extend(people_from_page(&body));
+
+        if body["has_more"].as_bool() != Some(true) {
+            break;
         }
-        let Some(id) = u["id"].as_str() else { continue };
-        out.push(NotionUser {
-            id: id.to_string(),
-            name: u["name"].as_str().unwrap_or("(unnamed)").to_string(),
-            email: u["person"]["email"].as_str().map(|s| s.to_string()),
-        });
+        match body["next_cursor"].as_str() {
+            Some(next) => cursor = Some(next.to_string()),
+            // `has_more` without a cursor would loop forever.
+            None => break,
+        }
     }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
+
+    out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok(out)
 }
 
