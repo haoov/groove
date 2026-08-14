@@ -1,0 +1,349 @@
+/* Platform Workbench — Component styles "Pure Zed"
+   Flat cool-gray chrome · single sky-blue accent · no brand gradients/glows.
+   Class names are stable contracts with the React tree; only the visual layer changes. */
+
+/* ── SVG icon helpers ─────────────────────────────────────────────────────── */
+
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ── App shell ────────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ── Activity rail ────────────────────────────────────────────────────────── */
+.activity-rail {
+  width: 2.75rem;            /* 44px */
+  flex-shrink: 0;
+  background: var(--gl-background-color-overlap);
+  border-right: 1px solid var(--gl-border-color-default);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  width: 100%;
+}
+.rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  border-radius: var(--gl-border-radius-medium);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.rail-btn:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
+.rail-btn.active { color: var(--gl-color-blue-300); background: var(--gl-color-blue-100); }
+.rail-btn-bottom { margin-top: auto; }
+.rail-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 100px;
+  background: var(--gl-color-orange-400);
+  color: var(--gl-background-color-overlap);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.header {
+  height: var(--wb-header-height);
+  background: var(--gl-background-color-overlap);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  flex-shrink: 0;
+  gap: var(--space-3);
+  position: relative;
+  z-index: 50;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.header-logo svg {
+  color: var(--gl-text-color-subtle);
+}
+
+.header-back {
+  background: none;
+  border: none;
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  padding: 2px 4px;
+  border-radius: var(--gl-border-radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.header-back:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
+.header-back.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
+
+.header-right { display: flex; align-items: center; gap: var(--space-2); }
+
+/* ── Custom window controls (frameless window) ────────────────────────────── */
+.window-controls { display: flex; align-items: center; gap: 2px; margin-left: var(--space-1); }
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gl-text-color-subtle);
+  border-radius: var(--gl-border-radius-base);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.win-btn:hover { background: rgba(var(--gl-elevate), 0.08); color: var(--gl-text-color-default); }
+.win-btn-close:hover { background: var(--gl-color-red-400); color: #fff; }
+
+/* ── Frameless resize grips (overlay the window edges/corners) ────────────── */
+.resize-grip { position: fixed; z-index: 1000; }
+.resize-grip-n { top: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
+.resize-grip-s { bottom: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
+.resize-grip-e { top: 0; right: 0; bottom: 0; width: 4px; cursor: ew-resize; }
+.resize-grip-w { top: 0; left: 0; bottom: 0; width: 4px; cursor: ew-resize; }
+.resize-grip-nw { top: 0; left: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
+.resize-grip-ne { top: 0; right: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
+.resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
+.resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
+
+.btn-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;              /* match the settings gear + window controls */
+  background: transparent;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-sync:hover:not(:disabled) {
+  color: var(--gl-text-color-default);
+  background: var(--gl-hover-overlay);
+}
+.btn-sync:disabled { opacity: 0.55; cursor: default; }
+
+.header-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.header-settings-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.btn-sync-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: wb-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── StatusBar ────────────────────────────────────────────────────────────── */
+
+.statusbar {
+  height: var(--wb-statusbar-height);
+  background: var(--gl-background-color-overlap);
+  border-top: 1px solid var(--gl-border-color-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.statusbar-left, .statusbar-right { display: flex; align-items: center; gap: var(--space-3); }
+
+.statusbar-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  background: var(--gl-text-color-disabled);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.statusbar-dot.active {
+  background: var(--gl-color-green-400);
+}
+
+.statusbar-task { display: flex; align-items: center; color: var(--gl-text-color-subtle); font-family: var(--font-mono); }
+.statusbar-idle { color: var(--gl-text-color-disabled); }
+
+.statusbar-dot.dirty { background: var(--gl-color-orange-400); }
+.statusbar-dot.clean { background: var(--gl-color-green-400); }
+
+.statusbar-repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  transition: color 0.12s;
+}
+.statusbar-repo:hover { color: var(--gl-text-color-default); }
+.statusbar-repo.gone { color: var(--wb-warn); }
+.statusbar-repo-dirty { color: var(--gl-color-orange-400); }
+.statusbar-repo-ahead { color: var(--gl-color-blue-400); }
+.statusbar-repo-behind { color: var(--gl-color-red-400); }
+.statusbar-error {
+  color: var(--gl-color-red-400);
+  font-weight: 500;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.statusbar-error:hover { text-decoration: underline; }
+.statusbar-syncing { color: var(--gl-color-orange-400); }
+.statusbar-ok { color: var(--gl-text-color-disabled); font-family: var(--font-mono); }
+
+/* ── Approvals badge — the human (peach) half of the duet ─────────────────────
+   Lives in the header beside the notification bell: both answer "what is waiting
+   for me?", and a parked agent write was easy to miss down in the status bar.  */
+.header-approvals {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  background: color-mix(in srgb, var(--wb-annotation-human) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wb-annotation-human) 40%, transparent);
+  border-radius: 999px;
+  color: var(--wb-annotation-human);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.header-approvals:hover {
+  background: color-mix(in srgb, var(--wb-annotation-human) 28%, transparent);
+  border-color: color-mix(in srgb, var(--wb-annotation-human) 60%, transparent);
+}
+/* Deferred queue: keep gently pulsing so "your turn" is never lost. */
+.header-approvals.deferred { animation: wb-approvals-pulse 2.4s ease-in-out infinite; }
+@keyframes wb-approvals-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--wb-annotation-human) 40%, transparent); }
+  50%      { border-color: color-mix(in srgb, var(--wb-annotation-human) 85%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-approvals.deferred { animation: none; }
+}
+
+/* ── Dock toggles (bottom-right, Zed-style). Agent = the blue half. ───────── */
+.statusbar-docks { display: inline-flex; align-items: center; gap: 2px; }
+.statusbar-dock-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.statusbar-dock-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+.statusbar-dock-btn.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.08); }
+

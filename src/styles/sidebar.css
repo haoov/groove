@@ -1,0 +1,1028 @@
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+.sidebar-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  /* Takes focus as a fallback so the panel shortcut can close it (see index.tsx). */
+  outline: none;
+  width: 100%;
+  height: 100%;
+  background: var(--gl-background-color-overlap);
+  border-right: 1px solid var(--gl-border-color-default);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Reused by the per-repo section close-confirm (sidebar/index.tsx RepoSection) */
+.repo-chip-confirm-yes, .repo-chip-confirm-no {
+  font-size: var(--gl-font-size-xs);
+  padding: 2px 10px;
+  border-radius: var(--gl-border-radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-default);
+  transition: background 0.12s, border-color 0.12s;
+}
+.repo-chip-confirm-yes { border-color: var(--gl-color-red-400); color: var(--gl-color-red-400); }
+.repo-chip-confirm-yes:hover { background: var(--gl-color-red-100); }
+.repo-chip-confirm-no:hover { background: var(--gl-background-color-hover); }
+
+/* Per-repo git status stat colors (shared by diff + sidebar repo headers) */
+.repo-stat-modified { color: var(--gl-color-orange-400); }
+.repo-stat-staged   { color: var(--gl-color-green-400); }
+.repo-stat-ahead    { color: var(--gl-color-blue-400); }
+.repo-stat-behind   { color: var(--gl-color-red-400); }
+
+/* ── Remote branch gone banner ────────────────────────────────────────────── */
+.remote-gone-banner {
+  margin: var(--space-3);
+  background: var(--gl-color-orange-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.remote-gone-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--wb-warn);
+}
+.remote-gone-body {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  line-height: 1.5;
+  margin: 0;
+}
+.remote-gone-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 40%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--wb-warn);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  align-self: flex-start;
+}
+.remote-gone-close-btn:hover {
+  background: color-mix(in srgb, var(--ctp-peach) 24%, transparent);
+  border-color: color-mix(in srgb, var(--ctp-peach) 60%, transparent);
+}
+
+.sidebar-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+
+.sidebar-empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--gl-text-color-disabled);
+  font-size: var(--gl-font-size-xs);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Files tab */
+.files-list { display: flex; flex-direction: column; padding: var(--space-1) 0; }
+
+/* Keyboard-navigable list (file tree / changed files): the cursor row gets a
+   full-row background (no left-border accent — see project rule). When the list
+   itself is focused the cursor reads as an accent; otherwise it stays subtle. */
+.nav-list { outline: none; }
+.nav-list:focus { outline: none; }
+.nav-list .file-item.nav-selected,
+.nav-list .file-tree-dir.nav-selected,
+.nav-list .changed-file.nav-selected {
+  border: 1px solid var(--gl-border-color-default);
+}
+.nav-list:focus-within .file-item.nav-selected,
+.nav-list:focus-within .file-tree-dir.nav-selected,
+.nav-list:focus-within .changed-file.nav-selected {
+  border: 1px solid var(--gl-color-blue-300);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  background: none;
+  border: none;
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+.file-item:hover {
+  background: rgba(var(--gl-elevate), 0.04);
+  color: var(--gl-text-color-default);
+}
+.file-item-modified { color: var(--gl-color-orange-400); }
+.file-icon { flex-shrink: 0; display: inline-flex; align-items: center;}
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: var(--gl-font-size-sm); flex: 1; }
+.file-dot-modified { width: 6px; height: 6px; border-radius: 50%; background: var(--gl-color-orange-400); flex-shrink: 0; }
+
+/* ── Files panel: pinned fuzzy search bar over the tree / results ──────────── */
+.files-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Both the tree and the result list scroll under the pinned search bar. Use
+   block flow (not the base flex column) so rows keep their height and overflow
+   scrolls — a height-constrained flex column would shrink/overlap the rows. */
+.files-panel > .files-list { display: block; flex: 1; min-height: 0; overflow-y: auto; }
+
+.file-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  flex-shrink: 0;
+}
+.file-search-icon { color: var(--gl-text-color-muted); flex-shrink: 0; }
+.file-search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+}
+.file-search-input::placeholder { color: var(--gl-text-color-disabled); }
+.file-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+.file-search-clear:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
+
+/* Name/content search-mode toggle. */
+.file-search-modes { display: inline-flex; gap: 1px; flex-shrink: 0; }
+.file-search-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+.file-search-mode:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
+.file-search-mode.active { color: var(--gl-text-color-strong); background: var(--gl-color-blue-100); }
+
+/* Per-file match count in content-search results. */
+.file-search-count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-muted);
+  background: var(--gl-background-color-strong);
+  border-radius: 8px;
+}
+.file-search-results .file-item { position: relative; }
+
+/* Result rows: name then a muted, truncated directory. */
+.file-search-results .file-name { flex: 0 1 auto; }
+.file-search-dir {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+}
+/* The cursor row reads as accent even though the input (not the list) is focused. */
+.file-search-results .file-item.nav-selected {
+	border: 1px solid var(--gl-text-color-default);
+}
+
+/* Diff base selector + refresh (top of the Changes sub-tab). The segmented
+   control mirrors the per-tab view toggle's visual language. */
+.diff-mode-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-2) 0;
+}
+.diff-mode-seg {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 2px;
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  min-width: 0;
+}
+.diff-mode-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  padding: 3px 4px;
+  cursor: pointer;
+  min-width: 0;
+  transition: color 0.12s, background 0.12s;
+}
+.diff-mode-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diff-mode-btn:hover { color: var(--gl-text-color-subtle); }
+.diff-mode-btn.active {
+  color: var(--gl-color-blue-300);
+  background: var(--gl-color-blue-100);
+}
+.diff-mode-refresh {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 7px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.diff-mode-refresh:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+/* "Review all changes" entry in the sidebar Changes sub-tab. */
+/* Changes toolbar: "Review all changes" + "Stage all" + "Discard all". */
+.git-changes-toolbar { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2); }
+.git-stage-all {
+  flex-shrink: 0;
+  padding: 5px var(--space-3);
+  background: var(--gl-color-blue-100);
+  border: 1px solid var(--gl-accent-border);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-color-blue-300);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.git-stage-all:hover { background: var(--gl-color-blue-200); border-color: var(--gl-focus-border); }
+.git-discard-all {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 7px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.git-discard-all:hover { color: var(--gl-color-red-400); border-color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
+
+/* Flat changed-files list (Diff mode) */
+.changed-file {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 4px var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--gl-text-color-subtle);
+  overflow: hidden;
+  transition: background 0.1s, color 0.1s;
+}
+.changed-file:hover { background: rgba(var(--gl-elevate), 0.04); color: var(--gl-text-color-default); }
+.changed-file-name { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); white-space: nowrap; flex-shrink: 0; }
+.changed-file-dir { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.changed-file .file-tree-stats { margin-left: auto; flex-shrink: 0; }
+.changed-file-status { width: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.changed-file-status.st-A { color: var(--gl-color-green-400); }
+.changed-file-status.st-M { color: var(--wb-warn); }
+.changed-file-status.st-D { color: var(--gl-color-red-400); }
+
+/* Per-file stage/unstage checkbox (sits after the +/- stats). */
+.changed-file-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
+.changed-file-row .changed-file { flex: 1; min-width: 0; width: auto; }
+.changed-file-checkbox {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--gl-color-blue-400);
+  opacity: 0.5;
+  transition: opacity 0.12s;
+}
+.changed-file-row:hover .changed-file-checkbox,
+.changed-file-checkbox:checked { opacity: 1; }
+
+.changed-file-discard {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.changed-file-row:hover .changed-file-discard { opacity: 0.7; }
+.changed-file-discard:hover { opacity: 1; color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
+
+/* File tree directory rows */
+.file-tree-dir {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 3px var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gl-text-color-default);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-mono);
+  text-align: left;
+  user-select: none;
+  transition: color 0.1s, background 0.1s;
+}
+.file-tree-dir:hover { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.03); }
+/* GIT tab — sub-tabs (Changes · Commits · Forge) */
+.git-tab { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.git-subtabs {
+  display: flex;
+  height: var(--wb-modebar-height);
+  gap: 2px;
+  background: var(--gl-background-color-default);
+  border-bottom: 1px solid var(--gl-border-color-default);
+}
+.git-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.git-subtab:hover { color: var(--gl-text-color-default); }
+.git-subtab.active {
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-overlap);
+  border-bottom-color: transparent;
+  margin-bottom: -1px;
+}
+.git-subtab-badge {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 100px;
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-subtle);
+}
+.git-subtab.active .git-subtab-badge { background: var(--gl-background-color-overlap); color: var(--gl-text-color-default); }
+.git-subcontent { flex: 1; min-height: 0; overflow-y: auto; background: var(--gl-background-color-overlap); }
+
+/* GIT — docked commit composer (Zed-style): flush auto-grow input + a single
+   context-aware primary split button with inline status chips. */
+.git-commit-panel {
+  flex-shrink: 0;
+  border-top: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-overlap);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.12s;
+}
+/* The textarea is borderless by design, so signal focus on the panel edge. */
+.git-commit-panel:focus-within {
+  border-top-color: var(--gl-focus-border);
+}
+.git-commit-textarea {
+  width: 100%;
+  resize: none;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--gl-background-color-default);
+  border: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  line-height: 1.45;
+  padding: var(--space-2) var(--space-3);
+  transition: background 0.12s;
+}
+.git-commit-textarea:focus { outline: none; }
+.git-commit-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--gl-background-color-default);
+}
+.git-commit-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+  padding-left: 2px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--gl-font-size-xs);
+}
+.git-commit-clean { color: var(--gl-text-color-disabled); font-family: var(--font-ui); }
+
+/* Split action button (Commit ▾) */
+.git-split { position: relative; display: flex; flex-shrink: 0; }
+.git-split-main,
+.git-split-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--gl-color-blue-100);
+  border: 1px solid var(--gl-accent-border);
+  color: var(--gl-color-blue-300);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s, opacity 0.12s;
+}
+.git-split-main {
+  padding: 5px var(--space-2) 5px var(--space-3);
+  border-radius: var(--gl-border-radius-base) 0 0 var(--gl-border-radius-base);
+  border-right: none;
+  min-width: 96px;
+}
+.git-split-toggle {
+  padding: 5px 5px;
+  border-radius: 0 var(--gl-border-radius-base) var(--gl-border-radius-base) 0;
+}
+.git-split-main:hover:not(:disabled),
+.git-split-toggle:hover:not(:disabled) {
+  background: var(--gl-color-blue-200);
+  border-color: var(--gl-focus-border);
+}
+.git-split-main:disabled {
+  background: var(--gl-background-color-strong);
+  border-color: var(--gl-border-color-default);
+  color: var(--gl-text-color-disabled);
+  cursor: not-allowed;
+}
+.git-split-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.git-split-item:disabled:hover { background: none; color: var(--gl-text-color-subtle); }
+
+.git-split-backdrop { position: fixed; inset: 0; z-index: 40; }
+.git-split-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  z-index: 41;
+  min-width: 180px;
+  padding: var(--space-1);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.git-split-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  padding: var(--space-2);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.git-split-item:hover { background: var(--gl-color-blue-100); color: var(--gl-text-color-default); }
+.git-split-item.active { color: var(--gl-color-blue-300); }
+
+/* GIT → Forge */
+.forge { padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+
+/* Compact selectable MR rows — details live in the MR overview tab. */
+.forge-mr-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--gl-border-radius-base);
+  padding: 5px var(--space-2);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.forge-mr-row:hover {
+  background: rgba(var(--gl-elevate), 0.04);
+  border-color: var(--gl-border-color-default);
+}
+.forge-mr-num {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-blue-300);
+  background: var(--gl-color-blue-100);
+  padding: 1px 6px;
+  border-radius: var(--gl-border-radius-sm);
+  flex-shrink: 0;
+}
+.forge-mr-repo {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.forge-mr-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.forge-mr-unresolved {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-orange-400);
+}
+
+.forge-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.forge-state-open   { color: var(--gl-color-green-400); }
+.forge-state-merged { color: var(--gl-color-purple-400); }
+.forge-state-closed { color: var(--gl-color-red-400); }
+
+/* CI / pipeline status pill */
+.forge-ci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  text-decoration: none;
+  text-transform: capitalize;
+}
+.forge-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.forge-ci-ok   { color: var(--gl-color-green-400); }
+.forge-ci-ok   .forge-ci-dot { background: var(--gl-color-green-400); }
+.forge-ci-fail { color: var(--gl-color-red-400); }
+.forge-ci-fail .forge-ci-dot { background: var(--gl-color-red-400); }
+.forge-ci-run  { color: var(--gl-color-orange-400); }
+.forge-ci-run  .forge-ci-dot { background: var(--gl-color-orange-400); animation: wb-pulse 1.4s ease-in-out infinite; }
+.forge-ci-idle { color: var(--gl-text-color-disabled); }
+.forge-ci-idle .forge-ci-dot { background: var(--gl-text-color-disabled); }
+.forge-ci:hover { text-decoration: underline; }
+
+.file-tree-arrow { flex-shrink: 0; display: inline-flex; align-items: center; width: 18px; color: var(--gl-text-color-default); }
+
+/* Inline +/- diff counts in the diff-mode file tree */
+.file-tree-stats {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+}
+.file-tree-stats .diff-add { color: var(--gl-color-green-400); }
+.file-tree-stats .diff-del { color: var(--gl-color-red-400); }
+
+/* Commits tab */
+/* `.git-subcontent` is the scroller (as for every other sub-tab), so the filter
+   sticks to its top instead of introducing a second scrollbar. */
+.commits-tab { display: flex; flex-direction: column; }
+.commits-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-background-color-overlap);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  flex-shrink: 0;
+}
+.commits-search-icon { color: var(--gl-text-color-muted); flex-shrink: 0; }
+.commits-search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+.commits-search-input::placeholder { color: var(--gl-text-color-disabled); }
+.commits-search-clear {
+  display: inline-flex;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+.commits-search-clear:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+
+/* The end marker doubles as the lazy-load trigger: seeing it fetches the next
+   page, so it must sit inside the scroll container. */
+.commits-end {
+  padding: var(--space-3);
+  text-align: center;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+}
+
+.commits-list { display: flex; flex-direction: column; }
+.commit-item {
+  /* Button reset: rows open the commit's diff tab. */
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+.commit-item:hover { background: rgba(var(--gl-elevate), 0.04); }
+/* Upstream base history: dimmed, so the task's own work reads at a glance. */
+.commit-item.base .commit-msg { color: var(--gl-text-color-disabled); }
+.commit-item.base .commit-sha {
+  color: var(--gl-text-color-disabled);
+  background: rgba(var(--gl-elevate), 0.05);
+}
+.commit-base-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3);
+  color: var(--gl-text-color-disabled);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.commit-base-divider::before,
+.commit-base-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--gl-border-color-default);
+}
+.commit-msg {
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.commit-meta { display: flex; align-items: center; gap: var(--space-2); }
+.commit-icon { color: var(--gl-text-color-disabled); flex-shrink: 0; display: inline-flex; align-items: center; }
+
+.commit-sha {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-blue-300);
+  background: var(--gl-color-blue-100);
+  padding: 1px 6px;
+  border-radius: var(--gl-border-radius-sm);
+}
+.commit-author { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+
+/* Annotations tab */
+/* Flat list — cleaner, styled like the commit list (no bordered cards) */
+.annotations-list { display: flex; flex-direction: column; }
+.annotation-item {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.1s;
+}
+.annotation-item:hover { background: rgba(var(--gl-elevate), 0.025); }
+
+/* MR thread item stays a card (used in the Forge section) */
+.mr-thread-item {
+  background: var(--gl-background-color-subtle);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+.mr-thread-item:hover { background: var(--gl-background-color-strong); }
+/* Open vs resolved is carried by the status dot in the header row and by the
+   dimming here — no border accent (see the notification rows for the same rule). */
+.mr-thread-item.mr-thread-resolved { opacity: 0.5; }
+
+/* Comment prose. Markdown-rendered, so it needs real block spacing rather than
+   the inline span it used to be. */
+.mr-thread-body { font-size: var(--gl-font-size-sm); line-height: 1.6; color: var(--gl-text-color-default); }
+.mr-thread-body > :first-child { margin-top: 0; }
+.mr-thread-body > :last-child { margin-bottom: 0; }
+.mr-thread-body pre {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-subtle);
+  border-radius: var(--gl-border-radius-base);
+  overflow-x: auto;
+}
+.mr-thread-body code { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); }
+.mr-thread-reply { display: flex; flex-direction: column; gap: 3px; }
+
+/* The location line is a button: it opens the file at the annotated line. */
+.annotation-loc {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.annotation-loc:disabled { cursor: default; }
+.annotation-loc:not(:disabled):hover .annotation-file { color: var(--gl-text-color-default); }
+.annotation-loc:not(:disabled):hover .annotation-line { filter: brightness(1.2); }
+.annotation-icon { flex-shrink: 0; display: inline-flex; }
+.annotation-file { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.annotation-line { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-color-blue-400); background: var(--gl-color-blue-100); padding: 0 5px; border-radius: var(--gl-border-radius-sm); flex-shrink: 0; }
+.annotation-author-dot { font-size: var(--gl-font-size-xs); flex-shrink: 0; margin-left: auto; }
+.thread-loc-author { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-subtle); font-weight: 600; flex-shrink: 0; margin-right: 2px; }
+.annotation-content { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); line-height: 1.55; word-break: break-word; }
+.annotation-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+.annotation-resolve {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--gl-color-green-400);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+.annotation-resolve:hover { opacity: 1; }
+.annotation-actions { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.annotation-delete { color: var(--gl-text-color-disabled); }
+.annotation-delete:hover { color: var(--wb-warn, var(--gl-color-red-400)); }
+.annotation-confirm { color: var(--gl-color-red-400); font-weight: 600; }
+/* Notes are markdown: keep block spacing tight inside a sidebar row. */
+.annotation-content > .markdown-body > *:first-child { margin-top: 0; }
+.annotation-content > .markdown-body > *:last-child { margin-bottom: 0; }
+.annotation-content .nb-p { margin: 0 0 4px; }
+.annotation-content .nb-code { margin: 4px 0; font-size: var(--gl-font-size-xs); }
+.annotation-content ul, .annotation-content ol { margin: 2px 0 4px; padding-left: 18px; }
+
+/* ── MR Threads (in annotations tab) ──────────────────────────────────────── */
+.mr-threads-section { border-top: 1px solid var(--gl-border-color-default); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.mr-threads-header { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; gap: 6px; padding: var(--space-1) 0; }
+.mr-threads-link { color: var(--gl-color-blue-400); text-decoration: none; margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; font-family: var(--font-mono); }
+.mr-threads-link:hover { text-decoration: underline; }
+/* mr-thread-item base is defined above alongside annotation-item */
+.mr-thread-author { font-size: var(--gl-font-size-xs); font-weight: 600; color: var(--gl-text-color-subtle); flex-shrink: 0; }
+.mr-thread-body { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.mr-thread-replies-toggle {
+  background: none; border: none; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-xs);
+  cursor: pointer; padding: 0; transition: color 0.12s;
+}
+.mr-thread-replies-toggle:hover { color: var(--gl-text-color-default); }
+.mr-thread-resolve-confirm { display: flex; align-items: center; gap: var(--space-2); }
+.mr-thread-resolve-prompt { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+.mr-thread-resolve-cancel {
+  background: none; border: none; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-xs);
+  cursor: pointer; padding: 0; transition: color 0.12s; line-height: 1;
+}
+.mr-thread-resolve-cancel:hover { color: var(--gl-color-red-400); }
+.mr-thread-resolve-error { font-size: var(--gl-font-size-xs); color: var(--gl-color-red-400); line-height: 1.4; word-break: break-word; }
+.mr-thread-replies { border-top: 1px solid var(--gl-border-color-subtle); padding-top: var(--space-2); margin-top: 2px; display: flex; flex-direction: column; gap: 5px; }
+.mr-thread-reply { display: flex; gap: var(--space-2); align-items: baseline; }
+.mr-thread-reply .mr-thread-author { color: var(--gl-text-color-disabled); }
+.mr-thread-reply .mr-thread-body { flex: 1; font-size: var(--gl-font-size-xs); }
+
+/* ── Repo picker (pinned to top of sidebar) ───────────────────────────────── */
+.repo-picker {
+  position: relative;
+  flex-shrink: 0;
+  background: var(--gl-background-color-overlap);
+}
+.repo-picker-trigger {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: var(--space-2) var(--space-2);
+  background: var(--gl-background-color-overlap);
+  border: none;
+  border-bottom: 1px solid var(--gl-border-color-strong);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.repo-picker-trigger:hover { background: var(--gl-background-color-strong); border-color: var(--gl-border-color-strong); }
+.repo-picker-trigger.empty { align-items: center; flex-direction: row; justify-content: center; gap: 6px; color: var(--gl-text-color-subtle); }
+.repo-picker-row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+.repo-picker-row-branch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: calc(7px + var(--space-2));
+  min-width: 0;
+  color: var(--gl-color-blue-300);
+}
+.repo-picker-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; text-align: left; }
+.repo-picker-branch {
+  font-family: var(--font-mono); font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-blue-300); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  min-width: 0;
+}
+.repo-picker-caret { margin-left: auto; color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.repo-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--gl-text-color-disabled); }
+.repo-chip-dot.clean { background: var(--gl-color-green-400); }
+.repo-chip-dot.dirty { background: var(--gl-color-orange-400); }
+.repo-chip-dot.gone  { background: var(--gl-color-red-400); }
+
+/* Dropdown menu */
+.repo-picker-backdrop { position: fixed; inset: 0; z-index: 40; }
+.repo-picker-menu {
+  position: absolute;
+  top: calc(100% - var(--space-1));
+  left: var(--space-2);
+  right: var(--space-2);
+  z-index: 41;
+  padding: var(--space-1);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.repo-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  padding: 6px var(--space-2);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.repo-picker-item:hover { background: var(--gl-color-blue-100); color: var(--gl-text-color-default); }
+.repo-picker-item.active { background: var(--gl-color-blue-100); }
+.repo-picker-item.active .repo-picker-item-name { color: var(--gl-color-blue-300); }
+.repo-picker-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+.repo-picker-item-branch {
+  font-family: var(--font-mono); font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;
+}
+.repo-picker-item-stats {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0;
+  font-family: var(--font-mono); font-size: var(--gl-font-size-xs); font-weight: 500;
+}
+.repo-picker-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 1px; border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled); flex-shrink: 0; opacity: 0;
+  transition: color 0.12s, background 0.12s, opacity 0.12s;
+}
+.repo-picker-item:hover .repo-picker-close { opacity: 1; }
+.repo-picker-close:hover { color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
+
+.repo-picker-confirm {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px var(--space-2);
+  background: var(--gl-color-red-100);
+  border-radius: var(--gl-border-radius-sm);
+}
+.repo-picker-confirm-text { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); margin-right: auto; }
+
+.repo-picker-add {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; text-align: left;
+  background: none; border: none;
+  border-top: 1px solid var(--gl-border-color-subtle);
+  margin-top: 2px; padding: 6px var(--space-2);
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui); font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.repo-picker-add:hover { color: var(--gl-text-color-default); background: var(--gl-color-blue-100); }
+
+/* The docked footer banner reuses .remote-gone-banner; trim its top margin. */
+.sidebar-footer-banner { margin-top: var(--space-2); }
+
+
+/* "All changes" as the first row of the changed-files list: same shape as a file
+   row so j/k walks through it, with the repo's totals instead of one file's. It
+   replaced a toolbar button — one place to look, and reachable by keyboard. */
+.changed-file-all { border-bottom: 1px solid var(--gl-border-color-subtle); }
+.changed-file-all .changed-file-name { color: var(--gl-text-color-default); font-weight: 500; }
+.changed-file-all-icon { color: var(--gl-color-blue-300); flex-shrink: 0; }

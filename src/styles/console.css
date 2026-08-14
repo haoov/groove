@@ -1,0 +1,122 @@
+/* ── Agent pane ────────────────────────────────────────────────────────────────
+   A full-height column between the work and the session dock. It used to be a
+   floating card centred over the editor, which is exactly what you do not want
+   from something you keep reading: it covered the code and had nowhere to grow.
+   Colour carries the state, as everywhere else: grey nothing, blue working,
+   amber wants you.                                                             */
+
+.agent-pane {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--gl-background-color-subtle);
+  border-left: 1px solid var(--gl-border-color-default);
+  font-family: var(--font-ui);
+}
+
+/* Maximized: the column takes the PANE area only.
+   The panel column (files / git / annotations) and the session dock stay put —
+   maximizing means "give me all the room the editor panes had", not "cover the
+   navigation". So only `.workspace-main` steps aside, and `.app-main` stops
+   flexing so it shrinks to its sidebar instead of splitting the space.
+   Nothing is unmounted, so terminals and scroll positions survive the round trip.
+   Keyed off `:has()` rather than a class from React on purpose — the rule then
+   derives from whether a maximized pane is actually RENDERED, so hiding the work
+   while the agent is closed is impossible by construction. */
+.agent-pane.maximized { flex: 1; width: auto; }
+.app-body:has(.agent-pane.maximized) .app-main { flex: 0 0 auto; }
+.app-body:has(.agent-pane.maximized) .workspace-main { display: none; }
+
+.agent-pane-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-panel-header-bg);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  flex-shrink: 0;
+  font-size: var(--gl-font-size-sm);
+}
+
+.console-target {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  flex-shrink: 0;
+}
+.console-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+
+/* State dot, shared with anything else that reports agent state. */
+.pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--gl-text-color-disabled);
+}
+.pill-dot.working { background: var(--gl-color-blue-400); animation: pill-pulse 1.4s ease-in-out infinite; }
+.pill-dot.waiting { background: var(--wb-warn); }
+@keyframes pill-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* A flex column, because the host element the registry hands us (.pty-pane) is
+   `flex: 1` and brings its own padding and terminal-matched background. */
+.console-term {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--gl-background-color-overlap);
+}
+.console-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+}
+
+/* Canned asks live BELOW the terminal — the conversation is the main thing. */
+.console-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-overlap);
+  flex-shrink: 0;
+}
+.console-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-subtle);
+  background: none;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.console-action:hover:not(:disabled) {
+  color: var(--gl-text-color-default);
+  border-color: var(--gl-color-blue-300);
+}
+.console-action:disabled { opacity: 0.5; cursor: default; }

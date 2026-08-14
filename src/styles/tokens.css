@@ -1,0 +1,192 @@
+/* Platform Workbench — Design Tokens v8 · multi-theme
+   Three layers:
+     1. --ctp-*  raw palette  — defined PER THEME in styles/themes/*.css, never consumed
+                  directly by components; only referenced by the semantic tokens below.
+     2. --gl-* / --wb-*  semantic tokens  — stable names consumed across the CSS + CM themes.
+                  Tints/borders/states derive from the palette via color-mix() so they retint
+                  automatically when the palette swaps.
+     3. polarity tokens (--gl-elevate, shadows, scrollbar, selection-text, …) — also defined
+                  per theme so light themes flip the light-on-dark assumptions.
+   This file holds the theme-AGNOSTIC semantic layer + all non-color structural tokens.
+   The palette + polarity defaults live in the theme files (frappe is the no-attribute default). */
+
+:root {
+  /* ── Polarity fallback (frappe/dark). Theme files override per data-theme. ──── */
+  --gl-elevate: 255, 255, 255;   /* elevation-tint channel: white on dark, black on light */
+
+  /* ── Backgrounds — layered by elevation ─────────────────────────────────────
+     Chrome sinks toward Crust; floats (modals/menus/popovers) rise to Surface0. */
+  --gl-background-color-overlap:  var(--ctp-crust);    /* deepest chrome: header, statusbar, sidebar, gutters */
+  --gl-background-color-mantle:   var(--ctp-mantle);   /* slightly above Crust: diff file headers */
+  --gl-background-color-default:  var(--ctp-base);     /* main canvas: editor, diff, board */
+  --gl-background-color-subtle:   var(--ctp-surface0); /* panels, raised sections on the canvas */
+  --gl-background-color-strong:   var(--ctp-surface1); /* cards, inputs, hovered rows */
+  --gl-background-color-raised:   var(--ctp-surface0); /* floats: modals, palettes, popovers, menus */
+  --gl-background-color-float-inset: var(--ctp-base);  /* recessed items/inputs inside a float */
+  --gl-background-color-hover:    var(--ctp-surface2); /* hover-lighten for cards/buttons on strong/subtle */
+
+  /* ── Borders / hairlines ────────────────────────────────────────────────── */
+  --gl-border-color-default: var(--ctp-surface1);
+  --gl-border-color-subtle:  rgba(var(--gl-elevate), 0.05);
+  --gl-border-color-strong:  var(--ctp-surface2); /* crisp 1px edge on floats */
+
+  /* ── Text — legibility tiers ─────────────────────────────────────────────── */
+  --gl-text-color-default:  var(--ctp-text);      /* body */
+  --gl-text-color-strong:   var(--ctp-subtext1);  /* emphasized secondary */
+  --gl-text-color-subtle:   var(--ctp-subtext0);  /* secondary */
+  --gl-text-color-muted:    var(--ctp-overlay2);  /* eyebrows / section labels — must still read */
+  --gl-text-color-disabled: var(--ctp-overlay0);  /* genuinely disabled controls only */
+  --gl-color-dim:           var(--ctp-surface2);  /* indent guides, hairlines */
+
+  /* ── Interactive / Accent — primary blue ────────────────────────────────── */
+  --gl-text-color-link: var(--ctp-blue);
+  --gl-color-blue-300:  var(--ctp-lavender); /* hover text / emphasis */
+  --gl-color-blue-400:  var(--ctp-blue);     /* primary bright: icons, links, active */
+  --gl-color-blue-500:  color-mix(in srgb, var(--ctp-blue) 86%, black);  /* mid fill — button base */
+  --gl-color-blue-600:  color-mix(in srgb, var(--ctp-blue) 72%, black);  /* deep fill — active/pressed */
+  --gl-color-blue-200:  color-mix(in srgb, var(--ctp-blue) 22%, transparent);
+  --gl-color-blue-100:  color-mix(in srgb, var(--ctp-blue) 16%, transparent); /* tinted surface */
+  --gl-color-blue-50:   color-mix(in srgb, var(--ctp-blue)  9%, transparent);
+
+  /* accent borders — selected/hover/focus rings on inputs, cards, repo rows */
+  --gl-accent-border-subtle: color-mix(in srgb, var(--ctp-blue) 25%, transparent);
+  --gl-accent-border:        color-mix(in srgb, var(--ctp-blue) 45%, transparent);
+  --gl-focus-border:         color-mix(in srgb, var(--ctp-blue) 70%, transparent);
+
+  /* ── Brand (used sparingly for identity) ────────────────────────────────── */
+  --gl-brand-orange:        var(--ctp-peach);
+  --gl-brand-orange-strong: var(--ctp-red);
+  --gl-brand-purple:        var(--ctp-mauve);
+
+  /* ── Semantic Status — one hue per meaning, each a 400 (solid) + 100 (tint) ── */
+  --gl-color-green-400:    var(--ctp-green);
+  --gl-color-green-500:    color-mix(in srgb, var(--ctp-green) 86%, black);
+  --gl-color-green-100:    color-mix(in srgb, var(--ctp-green) 16%, transparent);
+
+  --gl-color-red-400:      var(--ctp-red);
+  --gl-color-red-500:      color-mix(in srgb, var(--ctp-red) 86%, black);
+  --gl-color-red-100:      color-mix(in srgb, var(--ctp-red) 16%, transparent);
+  --gl-color-maroon-400:   var(--ctp-maroon);          /* softer danger / destructive hover */
+
+  --gl-color-orange-400:   var(--ctp-peach);
+  --gl-color-orange-100:   color-mix(in srgb, var(--ctp-peach) 16%, transparent);
+
+  --gl-color-yellow-400:   var(--ctp-yellow);
+  --gl-color-yellow-100:   color-mix(in srgb, var(--ctp-yellow) 16%, transparent);
+
+  --gl-color-purple-400:   var(--ctp-mauve);
+  --gl-color-purple-100:   color-mix(in srgb, var(--ctp-mauve) 16%, transparent);
+
+  --gl-color-sky-400:      var(--ctp-sky);             /* info / secondary links */
+  --gl-color-sky-100:      color-mix(in srgb, var(--ctp-sky) 16%, transparent);
+  --gl-color-sapphire-400: var(--ctp-sapphire);
+
+  --gl-color-teal-400:     var(--ctp-teal);            /* neutral-positive: branch/mono chips */
+  --gl-color-teal-100:     color-mix(in srgb, var(--ctp-teal) 16%, transparent);
+
+  --gl-color-pink-400:     var(--ctp-pink);            /* reserved emphasis / 3rd actor */
+  --gl-color-pink-100:     color-mix(in srgb, var(--ctp-pink) 16%, transparent);
+
+  /* ── Diff — green/red ───────────────────────────────────────────────────── */
+  --gl-diff-add-bg:    color-mix(in srgb, var(--ctp-green) 13%, transparent);
+  --gl-diff-add-edge:  color-mix(in srgb, var(--ctp-green) 78%, black);
+  --gl-diff-add-text:  var(--ctp-green);
+  --gl-diff-del-bg:    color-mix(in srgb, var(--ctp-red) 15%, transparent);
+  --gl-diff-del-edge:  color-mix(in srgb, var(--ctp-red) 80%, black);
+  --gl-diff-del-text:  var(--ctp-red);
+  --gl-diff-hunk-bg:   color-mix(in srgb, var(--ctp-blue) 12%, transparent);
+  --gl-diff-hunk-text: var(--ctp-blue);
+
+  /* ── Editor selection + search match (shared by both CM editors) ─────────── */
+  --gl-selection-bg:           color-mix(in srgb, var(--ctp-blue) 22%, transparent);
+  --gl-selection-focus-bg:     color-mix(in srgb, var(--ctp-blue) 30%, transparent);
+  --gl-selection-match-bg:     color-mix(in srgb, var(--ctp-blue) 18%, transparent);
+  --gl-selection-strong:       color-mix(in srgb, var(--ctp-blue) 30%, transparent); /* ::selection */
+  --gl-selection-text:         #fff; /* per-theme: light themes use dark text */
+  --gl-search-match-bg:        color-mix(in srgb, var(--ctp-yellow) 25%, transparent); /* distinct from blue */
+  --gl-search-match-border:    color-mix(in srgb, var(--ctp-yellow) 55%, transparent);
+  --gl-search-match-active-bg: color-mix(in srgb, var(--ctp-yellow) 50%, transparent);
+
+  /* ── CodeMirror chrome accents ───────────────────────────────────────────── */
+  --cm-active-line-bg:       color-mix(in srgb, var(--ctp-blue) 7%, transparent);
+  --cm-indent-marker:        color-mix(in srgb, var(--ctp-surface2) 65%, transparent);
+  --cm-indent-marker-active: color-mix(in srgb, var(--ctp-blue) 55%, transparent);
+
+  /* ── Annotation Layer (peach = human, blue = agent, mauve reserved 3rd actor) ─ */
+  --wb-annotation-human: var(--ctp-peach);
+  --wb-annotation-agent: var(--ctp-blue);
+  --wb-annotation-third: var(--ctp-mauve);
+
+  /* ── Misc status ────────────────────────────────────────────────────────── */
+  --wb-warn: var(--ctp-yellow);
+
+  /* ── Terminal (xterm) — resolved to concrete hex at runtime; ANSI hues come
+     from the palette, the black/white ramp is polarity-tuned in the theme files. */
+  --term-bg:           var(--ctp-base);
+  --term-fg:           var(--ctp-text);
+  --term-cursor:       var(--ctp-blue);
+  --term-selection:    var(--ctp-surface2);
+  --term-black:        var(--ctp-surface1);
+  --term-bright-black: var(--ctp-surface2);
+  --term-white:        var(--ctp-subtext1);
+  --term-bright-white: var(--ctp-text);
+
+  /* ── Overlays / chrome tints (polarity-aware via --gl-elevate) ───────────── */
+  --gl-backdrop:           rgba(8, 7, 11, 0.55); /* modal scrim — theme files may soften */
+  --gl-panel-header-bg:    rgba(0, 0, 0, 0.14);  /* modal header/footer recess */
+  --gl-kbd-bg:             rgba(var(--gl-elevate), 0.07);
+  --gl-hover-overlay:      rgba(var(--gl-elevate), 0.06);
+  --gl-inset-highlight:    rgba(var(--gl-elevate), 0.04);
+  --scrollbar-thumb:       rgba(var(--gl-elevate), 0.10);
+  --scrollbar-thumb-hover: rgba(var(--gl-elevate), 0.20);
+
+  /* ── Elevation / focus ───────────────────────────────────────────────────
+     Crisp, low-blur depth: floats read as cards defined by their 1px border
+     with a tight shadow beneath — not a large diffuse cloud. */
+  --glow-accent:    0 0 0 1px var(--gl-color-blue-400);
+  --glow-accent-sm: 0 0 0 1px color-mix(in srgb, var(--ctp-blue) 55%, transparent);
+  --ring-accent:    0 0 0 2px color-mix(in srgb, var(--ctp-blue) 35%, transparent);
+  --shadow-float:   0 4px 12px rgba(0, 0, 0, 0.30);
+  --shadow-modal:   0 12px 32px rgba(0, 0, 0, 0.42), 0 0 0 1px var(--gl-inset-highlight) inset;
+  --shadow-card:    0 1px 2px rgba(0, 0, 0, 0.22);
+
+  /* ── Spacing scale ──────────────────────────────────────────────────────── */
+  --space-1: 0.25rem;  /*  4px */
+  --space-2: 0.5rem;   /*  8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+
+  /* ── Border radius ──────────────────────────────────────────────────────── */
+  --gl-border-radius-sm:     0.1875rem; /*  3px — chips, dots */
+  --gl-border-radius-base:   0.25rem;   /*  4px — controls, badges */
+  --gl-border-radius-medium: 0.375rem;  /*  6px — cards, inputs */
+  --gl-border-radius-large:  0.5rem;    /*  8px — modals */
+
+  /* ── Font sizes (base = 14px; change one to rescale everything) ─────────── */
+  --font-size-base:  14px;
+  --gl-font-size-xs: calc(var(--font-size-base) - 3px); /* 11 */
+  --gl-font-size-sm: calc(var(--font-size-base) - 1px); /* 13 */
+  --gl-font-size-md: var(--font-size-base);             /* 14 */
+  --gl-font-size-lg: calc(var(--font-size-base) + 2px); /* 16 */
+  --gl-font-size-xl: calc(var(--font-size-base) + 4px); /* 18 */
+
+  /* ── Typography ─────────────────────────────────────────────────────────── */
+  /* Family names must match what fontconfig reports, NOT the vendor's marketing
+     name: the Nerd Font build installs as 'JetBrainsMono Nerd Font' (no space),
+     so 'JetBrains Mono' silently matched nothing and fell through to FiraCode.
+     Check with `fc-list : family` before changing these. Overridable at runtime
+     from Settings, which sets --font-mono on :root (lib/theme.ts). */
+  --font-ui:      'JetBrainsMono Nerd Font', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:    'JetBrainsMono Nerd Font Mono', 'FiraCode Nerd Font Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --font-display: 'JetBrains Mono', ui-monospace, monospace; /* brand / tracked labels */
+
+  /* ── Layout dimensions ──────────────────────────────────────────────────── */
+  --wb-sidebar-width:        17rem;      /* 272px */
+  --wb-header-height:        2.375rem;   /* 38px — app title bar */
+  --wb-modebar-height:       2.25rem;    /* 36px — content-column bands: modebar, tabstrip, agent/git subtabs */
+  --wb-statusbar-height:     1.75rem;   /* 28px */
+  --wb-modal-width:          min(64rem, 92vw);  /* roomy; never wider than the window */
+  --wb-tooltip-width:        20rem;      /* 320px */
+}

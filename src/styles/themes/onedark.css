@@ -1,0 +1,30 @@
+/* One Dark (Atom) — dark.  Atom One Dark palette mapped onto the palette slots.
+   Slot names stay catppuccin-flavoured; values hold One Dark's nearest hue. */
+:root[data-theme='onedark'] {
+  --ctp-rosewater: #e06c75;
+  --ctp-flamingo:  #be5046;
+  --ctp-pink:      #c678dd;
+  --ctp-mauve:     #c678dd;
+  --ctp-red:       #e06c75;
+  --ctp-maroon:    #be5046;
+  --ctp-peach:     #d19a66;
+  --ctp-yellow:    #e5c07b;
+  --ctp-green:     #98c379;
+  --ctp-teal:      #56b6c2;
+  --ctp-sky:       #56b6c2;
+  --ctp-sapphire:  #56b6c2;
+  --ctp-blue:      #61afef;
+  --ctp-lavender:  #7dbbf3;
+  --ctp-text:      #abb2bf;
+  --ctp-subtext1:  #9da5b4;
+  --ctp-subtext0:  #828997;
+  --ctp-overlay2:  #6f7787;
+  --ctp-overlay1:  #5c6370;
+  --ctp-overlay0:  #4b5263;
+  --ctp-surface2:  #3e4451;
+  --ctp-surface1:  #353b45;
+  --ctp-surface0:  #2c313c;
+  --ctp-base:      #282c34;
+  --ctp-mantle:    #24272e;
+  --ctp-crust:     #21252b;
+}

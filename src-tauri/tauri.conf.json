@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Groove",
+  "version": "1.0.0",
+  "identifier": "com.haoov.groove",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Groove",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Task-centric desktop engineering workspace",
+    "longDescription": "Groove holds a task, its git worktrees, its diff, its merge request and a Claude Code agent in one window. Tasks come from Notion; worktrees live under a root you choose. Needs git and Claude Code at runtime.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "git"
+        ]
+      }
+    },
+    "category": "Development"
+  },
+  "mainBinaryName": "groove"
+}

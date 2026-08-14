@@ -1,0 +1,33 @@
+[package]
+name = "groove"
+version = "1.0.0"
+description = "Groove — task-centric desktop engineering workspace"
+authors = ["Raphael Sabbah"]
+edition = "2021"
+
+[lib]
+name = "groove_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri       = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tokio       = { version = "1", features = ["full"] }
+sqlx        = { version = "0.7", features = ["sqlite", "runtime-tokio", "migrate"] }
+reqwest     = { version = "0.12", features = ["json", "rustls-tls"] }
+git2        = "0.18"
+notify      = "6"
+portable-pty = "0.8"
+uuid        = { version = "1", features = ["v4", "v5"] }
+chrono      = { version = "0.4", features = ["serde"] }
+axum        = "0.7"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+anyhow      = "1"
+async-trait = "0.1"
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
