@@ -12,7 +12,7 @@ import { vim, Vim } from '@replit/codemirror-vim';
 import { setupVimSearch } from '../lib/cm/vimSetup';
 import { viewBasics } from '../lib/cm/basics';
 import { invoke } from '@tauri-apps/api/core';
-import { useStore } from '../store';
+import { useStore, type GrepHighlight } from '../store';
 import { cmLangFor } from '../lib/cmLang';
 import { catppuccinHighlight, cmChromeTheme, editorTheme } from '../lib/cm/theme';
 import type { Annotation, MrThread, Mr, BlameLine } from '../types/ipc';
@@ -84,11 +84,9 @@ function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
 
 // ── Grep match highlight (content-search preview) ─────────────────────────────
 
-const setGrepQuery = StateEffect.define<string | null>();
+const setGrepQuery = StateEffect.define<GrepHighlight | null>();
 
-// The query lives in a lightweight field; the decorations are built by a view
-// plugin scanning only the visible viewport (not the whole doc on every keystroke).
-const grepQueryField = StateField.define<string | null>({
+const grepQueryField = StateField.define<GrepHighlight | null>({
   create() { return null; },
   update(prev, tr) {
     for (const e of tr.effects) if (e.is(setGrepQuery)) return e.value;
@@ -96,18 +94,22 @@ const grepQueryField = StateField.define<string | null>({
   },
 });
 
-function buildGrepDecos(view: EditorView, query: string): DecorationSet {
+/**
+ * Mark the hits on ONE line: the row the search cursor is on.
+ *
+ * Marking every occurrence in the file meant the match you had selected looked
+ * exactly like the twenty you had not, which is the opposite of what walking the
+ * result list is for. A line also needs no viewport scan.
+ */
+function buildGrepDecos(view: EditorView, h: GrepHighlight): DecorationSet {
   const b = new RangeSetBuilder<Decoration>();
-  const needle = query.toLowerCase();
-  if (needle.length < 2) return b.finish();
-  for (const { from, to } of view.visibleRanges) {
-    const hay = view.state.sliceDoc(from, to).toLowerCase();
-    let i = hay.indexOf(needle);
-    let guard = 0;
-    while (i !== -1 && guard++ < 5000) {
-      b.add(from + i, from + i + needle.length, Decoration.mark({ class: 'cm-grep-match' }));
-      i = hay.indexOf(needle, i + needle.length);
-    }
+  const needle = h.query.toLowerCase();
+  const doc = view.state.doc;
+  if (needle.length < 2 || h.line < 1 || h.line > doc.lines) return b.finish();
+  const line = doc.line(h.line);
+  const hay = line.text.toLowerCase();
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) {
+    b.add(line.from + i, line.from + i + needle.length, Decoration.mark({ class: 'cm-grep-match' }));
   }
   return b.finish();
 }
@@ -122,7 +124,8 @@ const grepPlugin = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       const q = update.state.field(grepQueryField);
       const queryChanged = update.transactions.some((tr) => tr.effects.some((e) => e.is(setGrepQuery)));
-      if (queryChanged || update.docChanged || update.viewportChanged) {
+      // No viewport dependency: one line is marked, wherever it is.
+      if (queryChanged || update.docChanged) {
         this.decorations = q ? buildGrepDecos(update.view, q) : Decoration.none;
       }
     }

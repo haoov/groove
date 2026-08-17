@@ -42,53 +42,6 @@
 .repo-stat-ahead    { color: var(--gl-color-blue-400); }
 .repo-stat-behind   { color: var(--gl-color-red-400); }
 
-/* ── Remote branch gone banner ────────────────────────────────────────────── */
-.remote-gone-banner {
-  margin: var(--space-3);
-  background: var(--gl-color-orange-100);
-  border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
-  border-radius: var(--gl-border-radius-medium);
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex-shrink: 0;
-}
-.remote-gone-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  color: var(--wb-warn);
-}
-.remote-gone-body {
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-subtle);
-  line-height: 1.5;
-  margin: 0;
-}
-.remote-gone-close-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ctp-peach) 40%, transparent);
-  border-radius: var(--gl-border-radius-base);
-  color: var(--wb-warn);
-  font-size: var(--gl-font-size-xs);
-  font-family: var(--font-ui);
-  font-weight: 500;
-  padding: 5px 9px;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-  align-self: flex-start;
-}
-.remote-gone-close-btn:hover {
-  background: color-mix(in srgb, var(--ctp-peach) 24%, transparent);
-  border-color: color-mix(in srgb, var(--ctp-peach) 60%, transparent);
-}
-
 .sidebar-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 
 .sidebar-empty {
@@ -937,7 +890,6 @@
 .repo-chip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--gl-text-color-disabled); }
 .repo-chip-dot.clean { background: var(--gl-color-green-400); }
 .repo-chip-dot.dirty { background: var(--gl-color-orange-400); }
-.repo-chip-dot.gone  { background: var(--gl-color-red-400); }
 
 /* Dropdown menu */
 .repo-picker-backdrop { position: fixed; inset: 0; z-index: 40; }
@@ -1015,8 +967,57 @@
   transition: color 0.12s, background 0.12s;
 }
 .repo-picker-add:hover { color: var(--gl-text-color-default); background: var(--gl-color-blue-100); }
+/* ── Warning banner in the git footer ─────────────────────────────────────────
+   Used by the rebase-conflict prompt. (It began as a "remote branch deleted"
+   banner, which was removed: a deleted remote branch is the normal state after a
+   merge.) */
+.git-warn-banner {
+  margin: var(--space-3);
+  background: var(--gl-color-orange-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.git-warn-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--wb-warn);
+}
+.git-warn-body {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  line-height: 1.5;
+  margin: 0;
+}
+.git-warn-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 40%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--wb-warn);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  align-self: flex-start;
+}
+.git-warn-close-btn:hover {
+  background: color-mix(in srgb, var(--ctp-peach) 24%, transparent);
+  border-color: color-mix(in srgb, var(--ctp-peach) 60%, transparent);
+}
 
-/* The docked footer banner reuses .remote-gone-banner; trim its top margin. */
+
 .sidebar-footer-banner { margin-top: var(--space-2); }
 
 
@@ -1026,3 +1027,38 @@
 .changed-file-all { border-bottom: 1px solid var(--gl-border-color-subtle); }
 .changed-file-all .changed-file-name { color: var(--gl-text-color-default); font-weight: 500; }
 .changed-file-all-icon { color: var(--gl-color-blue-300); flex-shrink: 0; }
+
+/* ── Grep results, VS Code style ───────────────────────────────────────────────
+   The file is a header and its hits are indented under it, so every match is its
+   own row: walking the list previews each one at its own line. */
+.grep-file { font-weight: 500; }
+.grep-collapse {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gl-text-color-muted);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.grep-collapse:hover { color: var(--gl-text-color-default); }
+.grep-match {
+  /* Indented past the header's chevron + icon so the grouping reads at a glance. */
+  padding-left: calc(var(--space-3) + 22px);
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+.grep-match-line {
+  min-width: 3ch;
+  text-align: right;
+  color: var(--gl-text-color-disabled);
+  flex-shrink: 0;
+}
+/* One line each: a wrapped hit would break the row rhythm the cursor moves over. */
+.grep-match-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

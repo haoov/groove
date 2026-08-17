@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, TextSearch, X } from 'lucide-react';
+import { Search, TextSearch, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { useSession, useStore } from '../../store';
 import { useListNav } from '../../hooks/useListNav';
 import { guessLang } from '../../lib/lang';
@@ -16,7 +16,25 @@ const GREP_DEBOUNCE_MS = 160;
 const MAX_RESULTS = 50;
 
 type SearchMode = 'name' | 'text';
-interface GrepFile { file: string; count: number; firstLine: number }
+/** One file's matches. The list is rendered VS Code style — the file as a header
+ *  with its hits indented under it — so every match is individually reachable
+ *  instead of only the first one in each file. */
+interface GrepFile { file: string; matches: SearchMatch[] }
+
+/** The flattened list the keyboard walks: a file header, then its matches. */
+type GrepRow =
+  | { kind: 'file'; file: GrepFile }
+  | { kind: 'match'; file: GrepFile; match: SearchMatch };
+
+function grepRows(files: GrepFile[], collapsed: Set<string>): GrepRow[] {
+  const rows: GrepRow[] = [];
+  for (const file of files) {
+    rows.push({ kind: 'file', file });
+    if (collapsed.has(file.file)) continue;
+    for (const match of file.matches) rows.push({ kind: 'match', file, match });
+  }
+  return rows;
+}
 
 function splitPath(path: string): { name: string; dir: string } {
   const idx = path.lastIndexOf('/');
@@ -71,6 +89,9 @@ export function FilesTab({
   const [mode, setMode] = useState<SearchMode>('name');
   const [grepFiles, setGrepFiles] = useState<GrepFile[]>([]);
   const [grepLoading, setGrepLoading] = useState(false);
+  // Collapsed file groups, by path. Reset on a new query.
+  const [grepCollapsed, setGrepCollapsed] = useState<Set<string>>(new Set());
+  const rows = useMemo(() => grepRows(grepFiles, grepCollapsed), [grepFiles, grepCollapsed]);
 
   const wt = repoId ? worktreeForRepo(repoId) : undefined;
   const wtPath = wt?.path;
@@ -202,12 +223,13 @@ export function FilesTab({
   }, [files, query]);
   const searching = query.trim().length > 0;
   // Rows currently shown, per mode — drives navigation + Enter.
-  const activeCount = mode === 'text' ? grepFiles.length : results.length;
+  const activeCount = mode === 'text' ? rows.length : results.length;
   const clampedSel = Math.min(selectedIdx, Math.max(0, activeCount - 1));
 
   // ── Content search (grep) ─────────────────────────────────────────────────
-  // Runs when in text mode; groups matches per file and drives the editor's
-  // match highlight (grepHighlight) so previews show the hits.
+  // Runs when in text mode and groups the matches per file. The editor's highlight
+  // is NOT set here: it marks the row the cursor is on, so it follows the selection
+  // (previewGrep / commitGrep) rather than the query.
   useEffect(() => {
     if (mode !== 'text') { setGrepFiles([]); return; }
     const q = query.trim();
@@ -215,18 +237,17 @@ export function FilesTab({
     setGrepLoading(true);
     let cancelled = false;
     const t = window.setTimeout(() => {
-      // Highlight only once the debounce fires — not on every keystroke.
-      setGrepHighlight(q);
       invoke<SearchMatch[]>('search_files', { query: q, worktreePath: wtPath, caseSensitive: false, maxResults: 300 })
         .then((matches) => {
           if (cancelled) return;
-          const byFile = new Map<string, { count: number; firstLine: number }>();
+          // Insertion order is the ripgrep order, which is already sorted by path.
+          const byFile = new Map<string, SearchMatch[]>();
           for (const m of matches) {
             const e = byFile.get(m.file);
-            if (e) e.count++;
-            else byFile.set(m.file, { count: 1, firstLine: m.line });
+            if (e) e.push(m);
+            else byFile.set(m.file, [m]);
           }
-          setGrepFiles([...byFile.entries()].map(([file, v]) => ({ file, count: v.count, firstLine: v.firstLine })));
+          setGrepFiles([...byFile.entries()].map(([file, ms]) => ({ file, matches: ms })));
         })
         .catch(() => { if (!cancelled) setGrepFiles([]); })
         .finally(() => { if (!cancelled) setGrepLoading(false); });
@@ -246,33 +267,39 @@ export function FilesTab({
     }, PREVIEW_DEBOUNCE_MS);
   }, [repoId, openTab, openTabKeys]);
 
-  // Preview the highlighted grep result at its first match line (matches are
-  // highlighted in the editor via grepHighlight).
-  const previewGrep = useCallback((g: GrepFile) => {
+  // Preview a grep hit at ITS line — a file header previews its first match, so
+  // walking the list lands on the matching word either way, and that one match is
+  // what the editor marks.
+  const previewGrep = useCallback((file: string, line: number) => {
     if (!repoId) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
       debounceRef.current = null;
-      openTab({ repoId, filePath: g.file, view: 'edit', cursorLine: g.firstLine, preview: true });
+      setGrepHighlight({ query: query.trim(), line });
+      openTab({ repoId, filePath: file, view: 'edit', cursorLine: line, preview: true });
     }, PREVIEW_DEBOUNCE_MS);
-  }, [repoId, openTab]);
+  }, [repoId, openTab, query, setGrepHighlight]);
+
+  /** The line a row should open at. */
+  const rowLine = (r: GrepRow) => (r.kind === 'match' ? r.match.line : r.file.matches[0]?.line ?? 0);
 
   // New query → cursor to top.
-  useEffect(() => { setSelectedIdx(0); }, [query]);
+  useEffect(() => { setSelectedIdx(0); setGrepCollapsed(new Set()); }, [query]);
   // Preview whatever is highlighted (debounced), per mode.
   useEffect(() => {
     if (!searching) return;
     if (mode === 'text') {
-      const g = grepFiles[Math.min(selectedIdx, grepFiles.length - 1)];
-      if (g) previewGrep(g);
+      const r = rows[Math.min(selectedIdx, rows.length - 1)];
+      if (r) previewGrep(r.file.file, rowLine(r));
     } else if (results.length) {
       previewPath(results[Math.min(selectedIdx, results.length - 1)].f);
     }
-  }, [searching, mode, selectedIdx, results, grepFiles, previewPath, previewGrep]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searching, mode, selectedIdx, results, rows, previewPath, previewGrep]);
   // Keep the cursor row visible.
   useEffect(() => {
     resultsRef.current?.querySelector('.nav-selected')?.scrollIntoView({ block: 'nearest' });
-  }, [clampedSel, results, grepFiles]);
+  }, [clampedSel, results, rows]);
 
   const endSearch = useCallback(() => {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
@@ -296,20 +323,25 @@ export function FilesTab({
     endSearch();
   }, [repoId, openTab, commitPreview, discardPreview, openTabKeys, activePaneId, endSearch]);
 
-  // Commit a grep result: open it as a real tab at the match line. The match
-  // highlight (grepHighlight) is kept so the opened file shows the hits.
-  const commitGrep = useCallback((g: GrepFile) => {
+  // Commit a grep result: open it as a real tab at the match line. The highlight is
+  // kept — and re-set, because `endSearch` clears the query this reads — so the match
+  // you chose is still marked in the tab you land in.
+  const commitGrep = useCallback((file: string, line: number) => {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
     if (!repoId) return;
     discardPreview(activePaneId);
-    openTab({ repoId, filePath: g.file, view: 'edit', cursorLine: g.firstLine });
+    setGrepHighlight({ query: query.trim(), line });
+    openTab({ repoId, filePath: file, view: 'edit', cursorLine: line });
     endSearch();
-  }, [repoId, openTab, discardPreview, activePaneId, endSearch]);
+  }, [repoId, openTab, discardPreview, activePaneId, endSearch, query, setGrepHighlight]);
 
   const commitSelected = useCallback(() => {
-    if (mode === 'text') { const g = grepFiles[clampedSel]; if (g) commitGrep(g); }
-    else { const r = results[clampedSel]; if (r) commitPath(r.f); }
-  }, [mode, grepFiles, results, clampedSel, commitGrep, commitPath]);
+    if (mode === 'text') {
+      const row = rows[clampedSel];
+      if (row) commitGrep(row.file.file, rowLine(row));
+    } else { const r = results[clampedSel]; if (r) commitPath(r.f); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, rows, results, clampedSel, commitGrep, commitPath]);
 
   const cancelSearch = useCallback(() => {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
@@ -471,21 +503,59 @@ export function FilesTab({
           ) : grepFiles.length === 0 ? (
             <div className="sidebar-empty">No matches</div>
           ) : (
-            grepFiles.map((g, i) => {
-              const { name, dir } = splitPath(g.file);
+            rows.map((row, i) => {
+              const selected = i === clampedSel ? 'nav-selected' : '';
+              if (row.kind === 'file') {
+                const { name, dir } = splitPath(row.file.file);
+                const collapsed = grepCollapsed.has(row.file.file);
+                const n = row.file.matches.length;
+                return (
+                  <button
+                    key={row.file.file}
+                    className={`file-item grep-file ${selected}`}
+                    title={`${row.file.file} — ${n} match${n === 1 ? '' : 'es'}`}
+                    tabIndex={-1}
+                    onMouseEnter={() => setSelectedIdx(i)}
+                    onClick={(e) => {
+                      // The chevron collapses; the row itself opens the first match,
+                      // which is what it did before the grouping.
+                      if ((e.target as HTMLElement).closest('.grep-collapse')) return;
+                      commitGrep(row.file.file, rowLine(row));
+                    }}
+                  >
+                    <span
+                      className="grep-collapse"
+                      role="presentation"
+                      onClick={() => setGrepCollapsed((prev) => {
+                        const next = new Set(prev);
+                        next.has(row.file.file) ? next.delete(row.file.file) : next.add(row.file.file);
+                        return next;
+                      })}
+                    >
+                      {collapsed ? <ChevronRight size={12} strokeWidth={2} /> : <ChevronDown size={12} strokeWidth={2} />}
+                    </span>
+                    <span className="file-icon"><FileTypeIcon name={name} /></span>
+                    <span className="file-name">{name}</span>
+                    {dir && <span className="file-search-dir">{dir}</span>}
+                    <span className="file-search-count">{n}</span>
+                  </button>
+                );
+              }
               return (
                 <button
-                  key={g.file}
-                  className={`file-item ${i === clampedSel ? 'nav-selected' : ''}`}
-                  title={`${g.file} — ${g.count} match${g.count === 1 ? '' : 'es'}`}
+                  key={`${row.file.file}:${row.match.line}`}
+                  className={`file-item grep-match ${selected}`}
+                  title={`${row.file.file}:${row.match.line}`}
                   tabIndex={-1}
                   onMouseEnter={() => setSelectedIdx(i)}
-                  onClick={() => commitGrep(g)}
+                  onClick={() => commitGrep(row.file.file, row.match.line)}
                 >
-                  <span className="file-icon"><FileTypeIcon name={name} /></span>
-                  <span className="file-name">{name}</span>
-                  {dir && <span className="file-search-dir">{dir}</span>}
-                  <span className="file-search-count">{g.count}</span>
+                  <span className="grep-match-line">{row.match.line}</span>
+                  {/* The matched text is highlighted, so the eye lands on the hit
+                      rather than the middle of a long line. */}
+                  <span className="grep-match-text">
+                    <Highlighted text={row.match.content.trim()} ranges={matchRanges(query, row.match.content.trim())} />
+                  </span>
                 </button>
               );
             })
