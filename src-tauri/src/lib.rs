@@ -14,6 +14,7 @@ mod mcp_server;
 mod migrate_identity;
 mod mr_manager;
 mod ops;
+mod pty_trace;
 mod task_manager;
 
 use tauri::Manager;
@@ -43,6 +44,7 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+            pty_trace::init(&data_dir);
             let handle = app.handle().clone();
 
             // Spin up the async init inside Tauri's tokio runtime, then block the
@@ -79,6 +81,7 @@ pub fn run() {
             task_manager::get_config,
             task_manager::check_environment,
             task_manager::detect_database,
+            task_manager::start_auth_session,
             task_manager::list_notion_users,
             task_manager::write_initial_config,
             task_manager::get_task_body_markdown,
@@ -154,6 +157,8 @@ pub fn run() {
             agent_manager::stop_agent_session,
             agent_manager::resolve_confirmation,
             agent_manager::write_pty,
+            pty_trace::trace_pty,
+            pty_trace::pty_trace_on,
             agent_manager::resize_pty,
             // clipboard
             clipboard::copy_to_clipboard,
