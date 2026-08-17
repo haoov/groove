@@ -50,3 +50,21 @@
 .pty-pane .xterm-viewport,
 .pty-pane .xterm-screen { background: transparent !important; }
 .pty-pane .xterm-viewport { overflow-y: auto !important; }
+
+/* "Allowing all" — deliberately the only warm-coloured thing in the header, and a
+   button rather than a label, because the way out has to be where the news is. */
+.console-trusted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 1px var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 45%, transparent);
+  border-radius: 100px;
+  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
+  color: var(--wb-warn);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.console-trusted:hover { background: color-mix(in srgb, var(--ctp-peach) 24%, transparent); }

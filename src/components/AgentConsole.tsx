@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Play, X } from 'lucide-react';
+import { Loader2, Play, ShieldOff, X } from 'lucide-react';
 import { useStore, useSession } from '../store';
 import { ensureAgentSession, sendToAgent } from '../lib/agentSend';
 import { actionsFor } from '../lib/prompts';
@@ -33,6 +33,8 @@ export function AgentConsole() {
   const activeTask = useSession((s) => s.activeTask);
   const ptySessions = useSession((s) => s.ptySessions);
   const kind = useSession((s) => s.kind);
+  const autoApprove = useSession((s) => s.autoApprove);
+  const setAutoApprove = useSession((s) => s.setAutoApprove);
   const repos = useSession((s) => s.activeRepos);
   const mrs = useSession((s) => s.mrs);
   const open = useStore((s) => s.consoleOpen);
@@ -133,6 +135,18 @@ export function AgentConsole() {
           <span className={`pill-dot ${state}`} />
           <span className="console-target">{activeTask.short_id}</span>
           <span className="console-status">{statusText(activity, !!agentPty, starting)}</span>
+          {/* Approving blind is not a state to discover later: while it is on, it is
+              on screen, and one click ends it. */}
+          {autoApprove && (
+            <button
+              className="console-trusted"
+              onClick={() => setAutoApprove(false)}
+              title="Every request from this session is approved automatically — click to start asking again"
+            >
+              <ShieldOff size={11} strokeWidth={2} />
+              allowing all
+            </button>
+          )}
           <button
             className="dock-close"
             onClick={() => setOpen(false)}

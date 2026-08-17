@@ -15,6 +15,14 @@ import type { CommandId, Keymap } from '../lib/keybindings';
 
 // ─── The app store's own contract ────────────────────────────────────────────
 
+/** A content-search hit the editor should mark: the needle, and the 1-based line it
+ *  was found on. The line is what keeps the preview to the selected row's match
+ *  rather than every occurrence in the file. */
+export interface GrepHighlight {
+  query: string;
+  line: number;
+}
+
 export interface AppState {
   // ── Navigation ────────────────────────────────────────────────────────────
   view: AppView;
@@ -86,16 +94,20 @@ export interface AppState {
   requestFileSearchFocus: (mode?: 'name' | 'text') => void;
 
   // ── Grep match highlight ────────────────────────────────────────────────────
-  // The active content-search query, highlighted in the editor while previewing
-  // search results (set by the Files panel's text-search mode). Null = off.
-  grepHighlight: string | null;
-  setGrepHighlight: (q: string | null) => void;
+  // The ONE match the Files panel's text-search cursor sits on, highlighted in the
+  // editor preview. Null = off.
+  grepHighlight: GrepHighlight | null;
+  setGrepHighlight: (h: GrepHighlight | null) => void;
 
   // ── Terminal focus ──────────────────────────────────────────────────────────
   // Bumped by the terminal keybinding to pull DOM focus into the active terminal
   // (read by PtyTabBody). A nonce, so repeat presses re-fire.
   terminalFocusReq: number | null;
   requestTerminalFocus: () => void;
+  /** The bottom terminal dock on Home. A workspace has panes for this; Home does
+   *  not, so the shell lives app-level there — like the agent console. */
+  terminalConsoleOpen: boolean;
+  setTerminalConsoleOpen: (v: boolean) => void;
 
   // ── Agent activity + console ────────────────────────────────────────────────
   /** What each agent is doing, keyed by TASK short id. Reported by Claude Code
@@ -318,6 +330,15 @@ export interface SessionState {
    *  Lives on the session so it survives switching tabs/panes and coming back. */
   expandedDiffFiles: Set<string>;
 
+  /**
+   * Approve this session's agent write ops without asking.
+   *
+   * In memory only and per session: it dies with the session and is never written
+   * to the config, because "stop asking" is a decision about the next hour of work,
+   * not a preference. The agent console shows a badge while it is on.
+   */
+  autoApprove: boolean;
+
   /** Show the per-line author gutter in the editor and diff views. */
   blameOn: boolean;
   /** Blame per file, keyed `${repoId}/${path}`. Cleared with the diff cache, since
@@ -383,6 +404,7 @@ export interface SessionActions {
   setDiffHunks: (key: string, hunks: Hunk[]) => void;
   /** Toggle a file's expanded state in the "All changes" review. */
   toggleDiffFile: (key: string) => void;
+  setAutoApprove: (v: boolean) => void;
   setBlameOn: (v: boolean) => void;
   setBlame: (key: string, lines: BlameLine[]) => void;
   /** Replace the log. `hasMore` is false when git returned fewer than requested. */

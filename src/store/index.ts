@@ -206,11 +206,14 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Grep match highlight
   grepHighlight: null,
-  setGrepHighlight: (q) => set({ grepHighlight: q && q.length >= 2 ? q : null }),
+  // Under two characters is not a search worth painting — it would mark half the file.
+  setGrepHighlight: (h) => set({ grepHighlight: h && h.query.length >= 2 ? h : null }),
 
   // Terminal focus
   terminalFocusReq: null,
   requestTerminalFocus: () => set((s) => ({ terminalFocusReq: (s.terminalFocusReq ?? 0) + 1 })),
+  terminalConsoleOpen: false,
+  setTerminalConsoleOpen: (v) => set({ terminalConsoleOpen: v }),
 
   // Agent activity + console
   agentActivity: {},
@@ -433,6 +436,7 @@ function makeSessionActions(id: string): SessionActions {
         if (next.has(key)) next.delete(key); else next.add(key);
         return { expandedDiffFiles: next };
       }),
+    setAutoApprove: (v) => upd(() => ({ autoApprove: v })),
     setBlameOn: (v) => upd(() => ({ blameOn: v })),
     setBlame: (key, lines) => upd((s) => ({ blameByFile: { ...s.blameByFile, [key]: lines } })),
     setCommits: (c, hasMore) =>
