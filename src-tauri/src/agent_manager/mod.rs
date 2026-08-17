@@ -96,6 +96,20 @@ fn session_exists(cwd: &str, uuid: &str) -> bool {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/// Tell the child what terminal it is talking to.
+///
+/// The front end is xterm.js, so this is the truth and never the launcher's idea of
+/// it: a desktop launch has no `TERM` at all, and a program with no terminfo cannot
+/// move the cursor. zsh then redraws its line by appending — the syntax highlighter
+/// rewrites the character it just inserted instead of overwriting it, so the first
+/// keystroke of every command appeared twice and everything after it drifted a
+/// column. Inheriting `TERM` is just as wrong: a shell told it is inside tmux
+/// writes sequences xterm.js does not implement.
+fn describe_terminal(cmd: &mut portable_pty::CommandBuilder) {
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+}
+
 /// Expand a leading `~` to $HOME. portable_pty does not run a shell so `~` is
 /// never expanded and chdir("~/…") fails with ENOENT, exiting the child immediately.
 pub(crate) fn expand_tilde(path: &str) -> String {
@@ -127,7 +141,6 @@ pub(crate) fn resolve_claude_bin() -> String {
     // Last resort: let the OS resolve it from PATH (works when PATH is inherited)
     "claude".to_string()
 }
-
 
 /// The worktree root (from config, tilde-expanded), falling back to $HOME if it
 /// isn't a directory. Used as the cwd for the agent and for terminals that have
@@ -243,6 +256,24 @@ fn hook_settings(task_id: &str) -> String {
     .to_string()
 }
 
+/// A shell for the setup screen's sign-in, for the user to run the login in.
+///
+/// A shell rather than `<tool> auth login` itself: a self-hosted GitLab needs
+/// `--hostname`, and there is no way to ask for every flag a forge CLI accepts. So
+/// the modal names the command and the user runs it, with edits.
+///
+/// Not tied to a task — it exists before any task does. The session row uses a
+/// synthetic id so the reaper cleans it up like any other PTY when the shell exits.
+pub(crate) async fn start_login_pty(
+    app: &tauri::AppHandle,
+    cwd: &str,
+    agent_state: &State,
+    pool: &SqlitePool,
+) -> anyhow::Result<String> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    start_pty_session(app, "__auth__", cwd, "auth", &shell, &[], agent_state, pool).await
+}
+
 #[tauri::command]
 pub async fn start_terminal_session(
     app: tauri::AppHandle,
@@ -277,9 +308,12 @@ async fn start_pty_session(
 ) -> anyhow::Result<String> {
     let pty_system = portable_pty::native_pty_system();
     let pair = pty_system
+        // The conventional default. The frontend resizes to the real geometry as
+        // soon as the host attaches; until then a shell that wraps at 80 is far
+        // less wrong than one that wraps at 120.
         .openpty(portable_pty::PtySize {
             rows: 24,
-            cols: 120,
+            cols: 80,
             pixel_width: 0,
             pixel_height: 0,
         })
@@ -290,6 +324,7 @@ async fn start_pty_session(
         cmd.arg(arg);
     }
     cmd.cwd(worktree_path);
+    describe_terminal(&mut cmd);
 
     // Write ops block on a human approval that can be deferred indefinitely (Esc
     // parks it in the queue for later review), so the agent's MCP call must be
@@ -351,6 +386,7 @@ async fn start_pty_session(
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
                     let data: Vec<u8> = buf[..n].to_vec();
+                    crate::pty_trace::record("pty<<", &sid_clone, &data);
                     let _ = app_clone.emit(
                         crate::events::PTY_OUTPUT,
                         serde_json::json!({
@@ -452,6 +488,8 @@ pub async fn write_pty(
         })
         .ok_or_else(|| format!("session {session_id} not found"))?;
 
+    crate::pty_trace::record("pty>>", &session_id, &data);
+
     // The write can block (PTY buffer full); do it off the async runtime, locking
     // the std Mutex inside the blocking closure rather than across the .await.
     tokio::task::spawn_blocking(move || {
@@ -504,3 +542,18 @@ pub async fn resolve_confirmation(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A PTY child with no TERM cannot move its cursor, and zsh's line redraw then
+    // duplicated the first character of every command. The value has to be one
+    // xterm.js actually implements, and it has to be SET rather than inherited.
+    #[test]
+    fn pty_children_are_told_they_are_an_xterm() {
+        let mut cmd = portable_pty::CommandBuilder::new("zsh");
+        describe_terminal(&mut cmd);
+        assert_eq!(cmd.get_env("TERM").unwrap(), "xterm-256color");
+        assert_eq!(cmd.get_env("COLORTERM").unwrap(), "truecolor");
+    }
+}
