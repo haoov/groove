@@ -59,6 +59,8 @@
 }
 
 /* The feed pane. `.notif-list` styling is shared with the toast stack. */
+/* Only a focus target (see SessionDock) — the feed inside owns the scrolling. */
+.dock-feed { flex: 1; min-height: 0; display: flex; flex-direction: column; outline: none; }
 .dock-notifs { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
 .dock-notifs-actions {
   display: flex;
@@ -103,12 +105,13 @@
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid var(--gl-border-color-subtle);
+  transition: background 0.1s;
 }
-.dock-row:hover { background: rgba(var(--gl-elevate), 0.04); }
-/* The keyboard cursor is drawn ONLY while the list holds focus. Styling it
-   unconditionally left a highlight sitting under wherever the mouse last was. */
-.dock-list:focus-within .dock-row.cursor { background: rgba(var(--gl-elevate), 0.07); }
-.dock-row.active { background: var(--gl-color-blue-100); }
+/* One background in this list, and it marks the keyboard cursor — the commit list's
+   hover tint, moved onto focus. A row painted for the active session as well left
+   two highlights arguing about which row the keys would act on, so the active one
+   is named by its title's weight instead. */
+.dock-list:focus-within .dock-row.cursor { background: rgba(var(--gl-elevate), 0.04); }
 .dock-row.active .dock-row-title { color: var(--gl-text-color-default); font-weight: 500; }
 
 .dock-row-main {

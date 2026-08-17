@@ -72,11 +72,12 @@ export function SessionDock() {
     [sessionOrder, sessions],
   );
 
-  // Alt+S: take keyboard focus, starting on the session you are already in so
-  // Enter is a no-op rather than a jump.
+  // Take keyboard focus, starting on the session you are already in so Enter is a
+  // no-op rather than a jump. Which TAB to show is the caller's call (the two
+  // shortcuts want different ones), so this only moves focus — into whichever list
+  // is on screen, since both shortcuts also need a second press to close the dock.
   useEffect(() => {
     if (!focusNonce) return;
-    setNotificationsOpen(false);
     const at = rows.findIndex((s) => s.id === activeSessionId);
     setCursor(at >= 0 ? at : 0);
     listRef.current?.focus();
@@ -151,7 +152,11 @@ export function SessionDock() {
         </div>
 
         {showNotifications ? (
-          <NotificationFeed />
+          // Focusable, because the notification shortcut closes the dock on a second
+          // press — which it can only know from focus being in here.
+          <div className="dock-feed" ref={listRef} tabIndex={-1}>
+            <NotificationFeed />
+          </div>
         ) : (
           <div
             className="dock-list"
