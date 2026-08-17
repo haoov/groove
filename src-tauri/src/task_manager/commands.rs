@@ -456,6 +456,64 @@ async fn finish_task_impl(
     )
     .await?;
 
+    tear_down_task(app, short_id, done_status, task_state, pool).await
+}
+
+/// A task the user is deleting outright, not finishing.
+///
+/// Notion has no hard delete through the API: a page goes to the workspace's trash,
+/// where Notion keeps it for thirty days and the user can restore it. So this is as
+/// destructive as the app can be, and no more — the local teardown is the same one
+/// `finish_task` runs, because "this task is over" means the same thing on disk
+/// either way.
+#[tauri::command]
+pub async fn delete_task(
+    app: tauri::AppHandle,
+    short_id: String,
+    task_state: tauri::State<'_, State>,
+    pool: tauri::State<'_, SqlitePool>,
+) -> Result<(), String> {
+    delete_task_impl(&app, &short_id, &task_state, &pool)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn delete_task_impl(
+    app: &tauri::AppHandle,
+    short_id: &str,
+    task_state: &State,
+    pool: &SqlitePool,
+) -> anyhow::Result<()> {
+    let cfg = ensure_config(app, task_state)?;
+
+    // Trash the page BEFORE any local teardown: a failure here leaves the whole
+    // workspace intact, the same order `finish_task` uses.
+    let task = crate::db::load::task(pool, short_id).await?;
+    if task.notion_page_id.is_empty() {
+        return Err(anyhow::anyhow!(
+            "{short_id} is an explorer session — discard it instead of deleting"
+        ));
+    }
+    notion_patch(
+        &cfg.notion.token,
+        &format!("v1/pages/{}", task.notion_page_id),
+        &serde_json::json!({ "in_trash": true }),
+    )
+    .await?;
+
+    tear_down_task(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
+}
+
+/// Close a task locally: its worktrees, its rows, the active-task pointer, and the
+/// event the UI closes the session on. Shared by finishing and deleting, which
+/// differ only in what they did to the Notion page first.
+async fn tear_down_task(
+    app: &tauri::AppHandle,
+    short_id: &str,
+    done_status: &str,
+    task_state: &State,
+    pool: &SqlitePool,
+) -> anyhow::Result<()> {
     crate::git_engine::cleanup_task_worktrees(short_id, pool).await?;
     delete_task_rows(short_id, pool).await?;
 

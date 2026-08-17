@@ -100,6 +100,7 @@ pub fn run() {
             task_manager::list_fonts,
             task_manager::set_theme,
             task_manager::finish_task,
+            task_manager::delete_task,
             // git_engine
             git_engine::register_repo,
             git_engine::list_main_repos,

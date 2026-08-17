@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X } from 'lucide-react';
 import { useStore, useSession } from '../../store';
 import type { Mr } from '../../types/ipc';
 import { MrBadge, RepoRow } from './parts';
@@ -16,7 +16,10 @@ export function TaskOverview() {
   const [allMrs, setAllMrs] = useState<Mr[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
-  const [confirmFinish, setConfirmFinish] = useState(false);
+  /** Which ending is awaiting confirmation. Finishing marks the task Done;
+   *  deleting sends the Notion page to the trash. Both then tear the local
+   *  workspace down, so they share one banner and one busy flag. */
+  const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
   /** Bumped after a Notion write so the panel and hours re-read the page. */
   const [hoursLogged, setHoursLogged] = useState('');
@@ -47,15 +50,19 @@ export function TaskOverview() {
     return () => { cancelled = true; };
   }, [activeWorktrees]);
 
-  const handleFinish = async () => {
-    if (!activeTask) return;
+  // No success path to handle: both commands emit task_finished, which closes the
+  // session — this component goes with it.
+  const handleEnd = async () => {
+    if (!activeTask || !ending) return;
     setFinishing(true);
     try {
-      await invoke('finish_task', { shortId: activeTask.short_id });
+      await invoke(ending === 'delete' ? 'delete_task' : 'finish_task', {
+        shortId: activeTask.short_id,
+      });
     } catch (e) {
       setLastError(String(e));
       setFinishing(false);
-      setConfirmFinish(false);
+      setEnding(null);
     }
   };
 
@@ -69,14 +76,25 @@ export function TaskOverview() {
           <span className="overview-eyebrow">
             <span className="overview-task-id">{activeTask.short_id}</span>
           </span>
-          <button
-            className="finish-task-btn"
-            onClick={() => setConfirmFinish(true)}
-            disabled={finishing}
-          >
-            <CheckCircle2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-            Finish task
-          </button>
+          <div className="overview-header-actions">
+            <button
+              className="finish-task-btn"
+              onClick={() => setEnding('finish')}
+              disabled={finishing}
+            >
+              <CheckCircle2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Finish task
+            </button>
+            <button
+              className="finish-task-btn delete-task-btn"
+              onClick={() => setEnding('delete')}
+              disabled={finishing}
+              title="Send the Notion page to the trash and close the task here"
+            >
+              <Trash2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Delete task
+            </button>
+          </div>
         </div>
         <h2 className="overview-title">{activeTask.title}</h2>
 
@@ -96,30 +114,32 @@ export function TaskOverview() {
         />
       </div>
 
-      {/* Finish confirmation banner */}
-      {confirmFinish && (
-        <div className="finish-confirm-banner">
+      {/* One banner for both endings — the local half is identical, so only the
+          sentence about Notion changes. */}
+      {ending && (
+        <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
           <div className="finish-confirm-icon">
             <AlertTriangle size={14} strokeWidth={2} />
           </div>
           <div className="finish-confirm-body">
-            <strong>Finish &ldquo;{activeTask.title}&rdquo;?</strong>
+            <strong>
+              {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
+            </strong>
             <p>
-              This will remove all local worktrees, delete task data from the local database,
-              and mark the task as Done in Notion.
+              This will remove all local worktrees and delete task data from the local
+              database.{' '}
+              {ending === 'delete'
+                ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
+                : 'The task is marked Done in Notion.'}
             </p>
           </div>
           <div className="finish-confirm-actions">
-            <button
-              className="finish-confirm-ok"
-              onClick={handleFinish}
-              disabled={finishing}
-            >
-              {finishing ? 'Finishing…' : 'Confirm'}
+            <button className="finish-confirm-ok" onClick={handleEnd} disabled={finishing}>
+              {finishing ? 'Working…' : 'Confirm'}
             </button>
             <button
               className="finish-confirm-cancel"
-              onClick={() => setConfirmFinish(false)}
+              onClick={() => setEnding(null)}
               disabled={finishing}
             >
               <X size={12} strokeWidth={2} />

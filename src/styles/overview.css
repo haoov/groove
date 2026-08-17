@@ -53,6 +53,24 @@
 }
 .finish-task-btn:disabled { opacity: 0.5; cursor: default; }
 
+/* Both endings sit together. The destructive one keeps its neighbour's shape — it
+   is the same kind of action — and says so in red. */
+.overview-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.delete-task-btn {
+  background: var(--gl-color-red-100);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 35%, transparent);
+  color: var(--gl-color-red-400);
+}
+.delete-task-btn:hover {
+  background: color-mix(in srgb, var(--gl-color-red-400) 20%, transparent);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 55%, transparent);
+}
+
 /* ── Finish confirmation banner ───────────────────────────────────────────── */
 .finish-confirm-banner {
   display: flex;
@@ -63,6 +81,20 @@
   border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
   border-radius: var(--gl-border-radius-medium);
   padding: var(--space-3) var(--space-4);
+}
+/* Deleting reads red, so the banner cannot be mistaken for the Done one. */
+.finish-confirm-banner.destructive {
+  background: var(--gl-color-red-100);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 35%, transparent);
+}
+.finish-confirm-banner.destructive .finish-confirm-icon { color: var(--gl-color-red-400); }
+.finish-confirm-banner.destructive .finish-confirm-ok {
+  background: color-mix(in srgb, var(--gl-color-red-400) 16%, transparent);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 40%, transparent);
+  color: var(--gl-color-red-400);
+}
+.finish-confirm-banner.destructive .finish-confirm-ok:hover {
+  background: color-mix(in srgb, var(--gl-color-red-400) 26%, transparent);
 }
 .finish-confirm-icon {
   color: var(--wb-warn);
