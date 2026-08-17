@@ -21,6 +21,7 @@ import { ResizeHandles } from './components/ResizeHandles';
 import { SettingsModal } from './components/SettingsModal';
 import { Toasts } from './components/Toasts';
 import { AgentConsole } from './components/AgentConsole';
+import { TerminalConsole } from './components/TerminalConsole';
 import { applyTheme, applyFontSize, applyFontFamily } from './lib/theme';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from './types/ipc';
 
@@ -161,6 +162,13 @@ export default function App() {
             app-level: sessions and their agents exist on Home too. */}
         <SessionDock />
       </div>
+      {/* A shell on Home, addressing the desk. In a workspace the panes own the
+          terminals, so this is not mounted there. */}
+      {view !== 'workspace' && deskId && (
+        <SessionIdContext.Provider value={deskId}>
+          <TerminalConsole />
+        </SessionIdContext.Provider>
+      )}
       <StatusBar />
 
       {/* Overlays */}

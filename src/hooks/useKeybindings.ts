@@ -41,14 +41,15 @@ export function runCommand(id: CommandId): boolean {
       st.setView('home');
       return true;
     case 'view.notifications':
-      // The feed is the dock's second tab, so this shows it — and a second press
-      // puts the dock back on the session list rather than hiding the dock.
-      if (st.dockOpen && st.notificationsOpen) {
-        st.setNotificationsOpen(false);
+      // The feed is the dock's second tab, so the same 3-state as the session list
+      // it shares that dock with: closed → open+focus; open elsewhere → focus;
+      // focused → close.
+      if (st.dockOpen && st.notificationsOpen && isDockFocused()) {
+        st.setDockOpen(false);
         return true;
       }
-      st.setDockOpen(true);
       st.setNotificationsOpen(true);
+      st.requestDockFocus();
       return true;
     case 'editor.toggleVim':
       st.setVimMode(!st.vimMode);
@@ -124,8 +125,15 @@ export function runCommand(id: CommandId): boolean {
       st.requestConsoleFocus();
       return true;
     case 'workspace.toggleTerminal':
+      // On Home the terminal is an app-level dock (there are no panes to put one
+      // in), so the same chord toggles that instead of navigating away.
+      if (!inWorkspace) {
+        const showing = st.terminalConsoleOpen;
+        st.setTerminalConsoleOpen(!showing);
+        if (!showing) st.requestTerminalFocus();
+        return true;
+      }
       if (!sess) return false;
-      st.setView('workspace');
       toggleTerminal();
       return true;
 
@@ -178,13 +186,16 @@ export function runCommand(id: CommandId): boolean {
     }
 
     case 'session.switcher':
-      // Same 3-state: focused on the dock means you are done with it.
-      if (st.dockOpen && isDockFocused()) {
+      // Same 3-state: focused on the dock means you are done with it. Only while the
+      // session list is the visible tab, though — from the feed this switches back
+      // to the sessions rather than closing the dock out from under you.
+      if (st.dockOpen && !st.notificationsOpen && isDockFocused()) {
         st.setDockOpen(false);
         return true;
       }
       // Not gated on a session: with none open it shows the empty state, which
       // is a clearer answer than a key that silently does nothing.
+      st.setNotificationsOpen(false);
       st.requestDockFocus();
       return true;
 

@@ -40,7 +40,9 @@ export function ActivityRail() {
         <button
           className={`rail-btn ${!inWorkspace ? 'active' : ''}`}
           onClick={() => setView('home')}
-          title="Home"
+          title={reviewCount > 0
+            ? `Home — ${reviewCount} review${reviewCount === 1 ? '' : 's'} waiting on you`
+            : 'Home'}
         >
           <LayoutGrid size={18} strokeWidth={1.75} />
           {reviewCount > 0 && <span className="rail-badge">{reviewCount}</span>}
