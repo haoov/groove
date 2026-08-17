@@ -1,6 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { ensureHost } from './terminalHost';
+import { ensureHost, fitAndSync } from './terminalHost';
 
 /**
  * Show a PTY's terminal inside `containerRef`.
@@ -23,18 +22,12 @@ export function useAttachedHost(
     const host = ensureHost(ptySessionId);
     container.appendChild(host.el);
 
-    // Two frames: one for the container to lay out, one for xterm to measure it.
     let raf1 = 0;
     let raf2 = 0;
+    // Two frames: one for the container to lay out, one for xterm to measure it.
     const refit = () => {
       raf1 = requestAnimationFrame(() => {
-        raf2 = requestAnimationFrame(() => {
-          try {
-            host.fit.fit();
-            const { rows, cols } = host.term;
-            invoke('resize_pty', { sessionId: ptySessionId, rows, cols }).catch(() => {});
-          } catch { /* detached */ }
-        });
+        raf2 = requestAnimationFrame(() => fitAndSync(ptySessionId));
       });
     };
     refit();

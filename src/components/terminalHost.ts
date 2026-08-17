@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store';
 import { DEFAULT_FONT_SIZE } from '../types/ipc';
 import { registerPtyHandler, unregisterPtyHandler } from '../hooks/useIpc';
+import { tracePty } from '../lib/ptyTrace';
 import '@xterm/xterm/css/xterm.css';
 
 /**
@@ -131,21 +132,70 @@ function attachClipboard(term: Terminal) {
   });
 }
 
+/** Below this, a measurement is layout noise rather than a terminal. */
+const MIN_COLS = 20;
+const MIN_ROWS = 4;
+
+/** The size each PTY was last told, so a fit that changes nothing costs no IPC. */
+const syncedSize = new Map<string, { cols: number; rows: number }>();
+
+/**
+ * Resize a terminal and its shell together — or resize neither.
+ *
+ * `fit()` on its own is a bug, not a shortcut: it calls `term.resize`, which
+ * REWRAPS the buffer and recomputes where the cursor sits. A shell that hears no
+ * SIGWINCH keeps the old geometry, so its next redraw addresses a row that has
+ * moved, and the line accumulates the characters it meant to overwrite. A prompt
+ * long enough to wrap makes it happen on the very first keystroke.
+ *
+ * So the size is measured, checked, and applied to both sides here, and `fit()` is
+ * called nowhere else.
+ */
+export function fitAndSync(sessionId: string) {
+  const host = hosts.get(sessionId);
+  const container = host?.el.parentElement;
+  // Hidden panes and inactive sessions stay mounted at `display: none`, which
+  // measures 0×0; fitting to that would rewrap every line for nothing.
+  if (!host || !container || container.clientWidth < 2 || container.clientHeight < 2) return;
+
+  let dims: { cols?: number; rows?: number } | undefined;
+  try {
+    dims = host.fit.proposeDimensions();
+  } catch {
+    return; // detached — it refits when it is next shown
+  }
+  const { cols, rows } = dims ?? {};
+  if (!cols || !rows || cols < MIN_COLS || rows < MIN_ROWS) return;
+
+  const last = syncedSize.get(sessionId);
+  if (last?.cols === cols && last.rows === rows) return;
+  syncedSize.set(sessionId, { cols, rows });
+
+  host.term.resize(cols, rows);
+  invoke('resize_pty', { sessionId, rows, cols }).catch((e) => {
+    // Leaving the shell on a stale size is the corruption above, so this must not
+    // be swallowed: drop the record so the next fit tries again.
+    syncedSize.delete(sessionId);
+    console.warn('resize_pty failed', e);
+  });
+}
+
 /**
  * Change a metric-affecting option and make xterm redraw from scratch.
  *
  * A new size or family changes the cell box, and xterm caches glyph widths: after
- * only `fit()` the rows keep the OLD metrics, which paints characters at the wrong
- * offsets — a glyph can appear twice, most visibly at the start of a line. The
- * explicit `refresh` of every row is what discards that.
+ * only a resize the rows keep the OLD metrics, which paints characters at the
+ * wrong offsets — a glyph can appear twice, most visibly at the start of a line.
+ * Dropping the glyph cache and repainting every row is what discards that.
  */
-function reflow(host: TermHost, opts: { fontSize?: number; fontFamily?: string }) {
+function reflow(sessionId: string, host: TermHost, opts: { fontSize?: number; fontFamily?: string }) {
   if (opts.fontSize !== undefined) host.term.options.fontSize = opts.fontSize;
   if (opts.fontFamily !== undefined) host.term.options.fontFamily = opts.fontFamily;
-  try {
-    host.fit.fit();
-    host.term.refresh(0, host.term.rows - 1);
-  } catch { /* detached — it refits when it is next shown */ }
+  // New metrics mean a new column count, so the shell has to hear about it.
+  syncedSize.delete(sessionId);
+  fitAndSync(sessionId);
+  host.term.clearTextureAtlas();
+  host.term.refresh(0, host.term.rows - 1);
 }
 
 export function ensureHost(sessionId: string): TermHost {
@@ -170,12 +220,14 @@ export function ensureHost(sessionId: string): TermHost {
 
   term.onData((data) => {
     const bytes = Array.from(new TextEncoder().encode(data));
+    tracePty('js>>', sessionId, bytes);
     invoke('write_pty', { sessionId, data: bytes }).catch(console.error);
   });
 
   // Registered for the SESSION lifetime (not a component's): output keeps
   // flowing into the terminal's buffer even while no tab displays it.
   registerPtyHandler(sessionId, (bytes: number[]) => {
+    tracePty('js<<', sessionId, bytes);
     term.write(new Uint8Array(bytes));
   });
 
@@ -189,6 +241,7 @@ export function disposeHost(sessionId: string) {
   const host = hosts.get(sessionId);
   if (!host) return;
   hosts.delete(sessionId);
+  syncedSize.delete(sessionId);
   unregisterPtyHandler(sessionId);
   host.el.remove();
   try { host.term.dispose(); } catch { /* already disposed */ }
@@ -218,11 +271,11 @@ useStore.subscribe((state) => {
   if (font !== lastFont) {
     lastFont = font;
     const size = (font ?? DEFAULT_FONT_SIZE) + 1;
-    for (const h of hosts.values()) reflow(h, { fontSize: size });
+    for (const [id, h] of hosts) reflow(id, h, { fontSize: size });
   }
   if (family !== lastFamily) {
     lastFamily = family;
     const stack = termFontFamily();
-    for (const h of hosts.values()) reflow(h, { fontFamily: stack });
+    for (const [id, h] of hosts) reflow(id, h, { fontFamily: stack });
   }
 });

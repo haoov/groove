@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { RotateCcw } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../store';
-import { ensureHost, focusHost } from './terminalHost';
+import { fitAndSync, focusHost } from './terminalHost';
 import { useAttachedHost } from './useAttachedHost';
 
 /**
@@ -79,11 +79,12 @@ export function PtyTabBody({
     focusHost(sessionId);
   }, [terminalFocusReq, isActive, sessionId]);
 
-  // Refit when this tab becomes visible again (display:none → flex).
+  // Refit when this tab becomes visible again (display:none → flex): it measured
+  // 0×0 while hidden, so its size is whatever it had when it was last shown.
   useEffect(() => {
     if (!isActive || !sessionId) return;
-    const host = ensureHost(sessionId);
-    requestAnimationFrame(() => { try { host.fit.fit(); } catch { /* ignore */ } });
+    const id = requestAnimationFrame(() => fitAndSync(sessionId));
+    return () => cancelAnimationFrame(id);
   }, [isActive, sessionId]);
 
   if (!sessionId) {
