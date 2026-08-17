@@ -129,7 +129,6 @@ export interface WorktreeStatus {
   staged: number;
   ahead: number;
   behind: number;
-  remote_branch_gone: boolean;
 }
 
 export interface CommitEntry {

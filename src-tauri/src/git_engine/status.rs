@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
-use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
-use std::time::{Duration, Instant};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorktreeStatus {
@@ -11,31 +8,6 @@ pub struct WorktreeStatus {
     pub staged: usize,
     pub ahead: i64,
     pub behind: i64,
-    pub remote_branch_gone: bool,
-}
-
-/// Cache of the `remote_branch_gone` ls-remote (network) result per (path, branch),
-/// so repeated status refreshes during agent edit bursts don't hammer the network.
-type RemoteGoneCache = HashMap<(String, String), (Instant, bool)>;
-static REMOTE_GONE_CACHE: LazyLock<Mutex<RemoteGoneCache>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
-const REMOTE_GONE_TTL: Duration = Duration::from_secs(60);
-
-fn cached_remote_gone(path: &str, branch: &str) -> Option<bool> {
-    let guard = REMOTE_GONE_CACHE.lock().ok()?;
-    let (ts, val) = guard.get(&(path.to_string(), branch.to_string()))?;
-    if ts.elapsed() < REMOTE_GONE_TTL {
-        Some(*val)
-    } else {
-        None
-    }
-}
-
-fn store_remote_gone(path: &str, branch: &str, val: bool) {
-    if let Ok(mut guard) = REMOTE_GONE_CACHE.lock() {
-        guard.insert((path.to_string(), branch.to_string()), (Instant::now(), val));
-    }
 }
 
 #[tauri::command]
@@ -109,37 +81,5 @@ pub async fn get_worktree_status(
         (ahead, 0)
     };
 
-    let remote_branch_gone = if let Some(cached) = cached_remote_gone(&wt.path, &wt.branch) {
-        cached
-    } else {
-        let branch = wt.branch.clone();
-        let path_for_remote = wt.path.clone();
-        let val = tokio::task::spawn_blocking(move || {
-            // Only flag gone if git has ever seen this branch on remote
-            let remote_ref = format!("refs/remotes/origin/{branch}");
-            let was_pushed = std::process::Command::new("git")
-                .args(["rev-parse", "--verify", &remote_ref])
-                .current_dir(&path_for_remote)
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false);
-
-            if !was_pushed {
-                return false;
-            }
-
-            std::process::Command::new("git")
-                .args(["ls-remote", "--heads", "origin", &branch])
-                .current_dir(&path_for_remote)
-                .output()
-                .map(|out| out.status.success() && out.stdout.is_empty())
-                .unwrap_or(false)
-        })
-        .await
-        .unwrap_or(false);
-        store_remote_gone(&wt.path, &wt.branch, val);
-        val
-    };
-
-    Ok(WorktreeStatus { worktree_id, modified, staged, ahead, behind, remote_branch_gone })
+    Ok(WorktreeStatus { worktree_id, modified, staged, ahead, behind })
 }

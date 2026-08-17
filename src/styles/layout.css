@@ -277,7 +277,6 @@
   transition: color 0.12s;
 }
 .statusbar-repo:hover { color: var(--gl-text-color-default); }
-.statusbar-repo.gone { color: var(--wb-warn); }
 .statusbar-repo-dirty { color: var(--gl-color-orange-400); }
 .statusbar-repo-ahead { color: var(--gl-color-blue-400); }
 .statusbar-repo-behind { color: var(--gl-color-red-400); }

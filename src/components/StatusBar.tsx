@@ -41,14 +41,13 @@ export function StatusBar() {
           const wt = activeWorktreeFor(activeWorktrees, repo.id);
           const st = wt ? worktreeStatus[wt.id] : undefined;
           const dirty = st ? st.modified + st.staged : 0;
-          const gone = st?.remote_branch_gone ?? false;
           const title = st
-            ? `${repo.project}: ${st.modified} modified, ${st.staged} staged, ↑${st.ahead} ↓${st.behind}${gone ? ' · remote branch gone' : ''}`
+            ? `${repo.project}: ${st.modified} modified, ${st.staged} staged, ↑${st.ahead} ↓${st.behind}`
             : repo.project;
           return (
             <button
               key={repo.id}
-              className={`statusbar-repo ${gone ? 'gone' : ''}`}
+              className="statusbar-repo"
               title={title}
               onClick={() => setActiveRepoId(repo.id)}
             >

@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Plus, X, AlertTriangle, GitBranch, ChevronDown } from 'lucide-react';
+import { Plus, X, GitBranch, ChevronDown } from 'lucide-react';
 import type { Repo, Worktree, WorktreeStatus } from '../../types/ipc';
 
 function dotState(st: WorktreeStatus | undefined): string {
-  if (st?.remote_branch_gone) return 'gone';
   if (st && st.modified + st.staged > 0) return 'dirty';
   if (st) return 'clean';
   return 'idle';
@@ -80,7 +79,6 @@ export function RepoSwitcher({
               const dirty = st ? st.modified + st.staged : 0;
               const ahead = st?.ahead ?? 0;
               const behind = st?.behind ?? 0;
-              const gone = st?.remote_branch_gone ?? false;
 
               if (confirmId === repo.id) {
                 return (
@@ -110,7 +108,6 @@ export function RepoSwitcher({
                     {dirty > 0 && <span className="repo-stat-modified">~{dirty}</span>}
                     {ahead > 0 && <span className="repo-stat-ahead">↑{ahead}</span>}
                     {behind > 0 && <span className="repo-stat-behind">↓{behind}</span>}
-                    {gone && <AlertTriangle size={11} strokeWidth={2} style={{ color: 'var(--wb-warn)' }} />}
                   </span>
                   {wt && (
                     <span
