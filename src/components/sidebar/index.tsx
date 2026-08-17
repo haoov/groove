@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { AlertTriangle, Trash2, RotateCcw, RefreshCw } from 'lucide-react';
+import { RotateCcw, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../store';
 import { DIFF_MODES } from '../diffModes';
 import type { CommitEntry } from '../../types/ipc';
@@ -403,21 +403,12 @@ export function Sidebar() {
 
       <div className="sidebar-content">{renderContent()}</div>
 
-      {/* Docked footer for the active repo: commit composer, or a close prompt
-          when its remote branch is gone. Always visible, regardless of tab. */}
+      {/* Docked footer for the active repo: the commit composer, whatever tab is
+          showing. A "remote branch deleted" banner used to pre-empt it, but a
+          deleted remote branch is the NORMAL state after a merge — the name is free
+          to reuse, and git already refuses a second worktree on one branch. */}
       {activeWt && (
-        activeStatus?.remote_branch_gone ? (
-          <div className="remote-gone-banner sidebar-footer-banner">
-            <div className="remote-gone-header">
-              <AlertTriangle size={12} strokeWidth={2} style={{ color: 'var(--wb-warn)', flexShrink: 0 }} />
-              <span>Remote branch deleted</span>
-            </div>
-            <button className="remote-gone-close-btn" onClick={() => closeRepo(activeWt.id)}>
-              <Trash2 size={11} strokeWidth={1.75} style={{ marginRight: 5 }} />
-              Close worktree
-            </button>
-          </div>
-        ) : (
+        <>
           <GitCommitPanel
             key={activeWt.id}
             status={activeStatus}
@@ -428,7 +419,7 @@ export function Sidebar() {
             onCommit={makeCommit(activeWt.id)}
             onAction={makeGitAction(activeWt.id)}
           />
-        )
+        </>
       )}
     </aside>
   );

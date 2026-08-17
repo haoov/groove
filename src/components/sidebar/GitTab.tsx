@@ -351,19 +351,19 @@ export function GitCommitPanel({
   return (
     <div className="git-commit-panel">
       {conflict && (
-        <div className="remote-gone-banner sidebar-footer-banner">
-          <div className="remote-gone-header">
+        <div className="git-warn-banner sidebar-footer-banner">
+          <div className="git-warn-header">
             <AlertTriangle size={12} strokeWidth={2} style={{ color: 'var(--wb-warn)', flexShrink: 0 }} />
             <span>Rebase conflict — {conflict.files.length} file{conflict.files.length === 1 ? '' : 's'}</span>
           </div>
-          <div className="remote-gone-body">
+          <div className="git-warn-body">
             {conflict.files.map((f) => <div key={f}>{f}</div>)}
           </div>
           {rebaseError && <div className="mr-thread-resolve-error">{rebaseError}</div>}
-          <button className="remote-gone-close-btn" onClick={() => runRebaseAction('rebase_continue')}>
+          <button className="git-warn-close-btn" onClick={() => runRebaseAction('rebase_continue')}>
             Continue rebase
           </button>
-          <button className="remote-gone-close-btn" onClick={() => runRebaseAction('rebase_abort')}>
+          <button className="git-warn-close-btn" onClick={() => runRebaseAction('rebase_abort')}>
             Abort rebase
           </button>
         </div>

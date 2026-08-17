@@ -37,8 +37,8 @@ function paneFor(s: SessionState, kind: string, requested?: string): string {
   return fallback?.id ?? pane?.id ?? s.activePaneId;
 }
 
-/** Commits fetched per page. One `git log` call, so the page can be generous. */
-export const COMMIT_PAGE = 60;
+/** Commits fetched per page, and per scroll to the end of the list. */
+export const COMMIT_PAGE = 20;
 
 let paneSeq = 1;
 export const newPaneId = () => `pane-${++paneSeq}`;
@@ -71,6 +71,7 @@ export function sessionDefaults(): Omit<SessionState, 'id' | 'kind' | 'title' | 
     diffMode: 'vs-main',
     diffNonce: 0,
     expandedDiffFiles: new Set<string>(),
+    autoApprove: false,
     blameOn: false,
     blameByFile: {},
     worktreeStatus: {},
