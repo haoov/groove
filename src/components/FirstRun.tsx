@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../store';
+import { AuthModal } from './AuthModal';
 import { applyFontFamily, applyFontSize, applyTheme } from '../lib/theme';
 import { DEFAULT_FONT_SIZE, type Config } from '../types/ipc';
 import { resolveUser, userLabel, type NotionUser } from '../lib/notionUser';
@@ -22,6 +23,8 @@ export interface ToolCheck {
   path: string | null;
   purpose: string;
   required: boolean;
+  /** For the forge CLIs: logged in or not. Null when absent or not applicable. */
+  authed: boolean | null;
 }
 
 /** Shared with Settings, which shows the same check after setup. */
@@ -56,6 +59,8 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const [who, setWho] = useState('');
   const [template, setTemplate] = useState('');
   const [detected, setDetected] = useState<DetectedSchema | null>(null);
+  /** Which forge CLI is being signed in, if any. */
+  const [authing, setAuthing] = useState<'glab' | 'gh' | null>(null);
   const [busy, setBusy] = useState<'users' | 'detect' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,6 +141,12 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
 
   return (
     <div className="firstrun">
+      {authing && (
+        <AuthModal
+          tool={authing}
+          onDone={() => { setAuthing(null); loadEnv(); }}
+        />
+      )}
       <div className="firstrun-card">
         <h1 className="firstrun-title">Set up Groove</h1>
         <p className="firstrun-lead">
@@ -165,14 +176,34 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
             <p className="firstrun-note">Checking…</p>
           ) : (
             <ul className="firstrun-tools">
-              {env.tools.map((t) => (
-                <li key={t.name} className={t.path ? 'ok' : t.required ? 'missing' : 'optional'}>
-                  {t.path ? <Check size={12} strokeWidth={2.5} /> : <AlertTriangle size={12} strokeWidth={2} />}
-                  <code>{t.name}</code>
-                  <span className="firstrun-tool-purpose">{t.purpose}</span>
-                  {!t.path && <span className="firstrun-tool-tag">{t.required ? 'required' : 'optional'}</span>}
-                </li>
-              ))}
+              {env.tools.map((t) => {
+                // Installed but not logged in is its own state: the tool is there,
+                // and every MR feature still fails until the CLI has credentials.
+                const needsAuth = !!t.path && t.authed === false;
+                const cls = !t.path ? (t.required ? 'missing' : 'optional') : needsAuth ? 'optional' : 'ok';
+                return (
+                  <li key={t.name} className={cls}>
+                    {t.path && !needsAuth
+                      ? <Check size={12} strokeWidth={2.5} />
+                      : <AlertTriangle size={12} strokeWidth={2} />}
+                    <code>{t.name}</code>
+                    <span className="firstrun-tool-purpose">
+                      {needsAuth ? 'installed, but not signed in' : t.purpose}
+                    </span>
+                    {needsAuth && (t.name === 'glab' || t.name === 'gh') ? (
+                      <button
+                        className="firstrun-signin"
+                        onClick={() => setAuthing(t.name as 'glab' | 'gh')}
+                        title={`Run ${t.name} auth login here`}
+                      >
+                        sign in
+                      </button>
+                    ) : (
+                      !t.path && <span className="firstrun-tool-tag">{t.required ? 'required' : 'optional'}</span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
           {missingRequired.length > 0 && (

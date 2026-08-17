@@ -168,3 +168,17 @@
   letter-spacing: 0.06em;
   color: var(--gl-text-color-disabled);
 }
+
+/* Offered on the row that reports the problem, so the fix is where the news is. */
+.firstrun-signin {
+  margin-left: auto;
+  padding: 1px var(--space-2);
+  background: color-mix(in srgb, var(--gl-color-blue-400) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-color-blue-300);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.firstrun-signin:hover { background: color-mix(in srgb, var(--gl-color-blue-400) 24%, transparent); }

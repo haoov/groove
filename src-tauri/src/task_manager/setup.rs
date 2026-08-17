@@ -5,6 +5,7 @@
 //! missing tool through a failed action.
 
 use serde::Serialize;
+use sqlx::SqlitePool;
 
 use super::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
 use super::notion::notion_get;
@@ -19,6 +20,12 @@ pub struct ToolCheck {
     pub purpose: String,
     /// False = a feature degrades; true = the app cannot work.
     pub required: bool,
+    /// For tools that hold their own credentials: whether they are logged in.
+    /// `None` when the tool is absent or has nothing to authenticate.
+    ///
+    /// Installed-but-not-logged-in is the state worth naming: every MR feature
+    /// fails, and the CLI's own error ("not logged in") only appears once you try.
+    pub authed: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -48,7 +55,25 @@ fn check(name: &str, purpose: &str, required: bool) -> ToolCheck {
         path: which(name),
         purpose: purpose.to_string(),
         required,
+        authed: None,
     }
+}
+
+/// `<tool> auth status` — exit code only, which is all the CLIs promise.
+async fn forge_authed(tool: &str) -> Option<bool> {
+    which(tool)?;
+    let tool = tool.to_string();
+    let ok = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(&tool)
+            .args(["auth", "status"])
+            .env("NO_COLOR", "1")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    })
+    .await
+    .unwrap_or(false);
+    Some(ok)
 }
 
 /// One clipboard tool is enough, so they are reported as a group: the app writes to
@@ -81,6 +106,14 @@ pub async fn check_environment(app: tauri::AppHandle) -> Result<Environment, Str
     let claude = crate::agent_manager::resolve_claude_bin();
     let claude_path = if claude.contains('/') { Some(claude) } else { which("claude") };
 
+    // Both auth checks at once: each shells out, and a serial pair is a visible
+    // pause on a screen whose whole job is to answer "is this machine ready?".
+    let (glab_auth, gh_auth) = futures_util::future::join(forge_authed("glab"), forge_authed("gh")).await;
+    let mut glab = check("glab", "GitLab merge requests, threads, CI status", false);
+    glab.authed = glab_auth;
+    let mut gh = check("gh", "GitHub pull requests, threads, CI status", false);
+    gh.authed = gh_auth;
+
     let mut tools = vec![
         check("git", "Everything: worktrees, diffs, commits", true),
         ToolCheck {
@@ -88,6 +121,7 @@ pub async fn check_environment(app: tauri::AppHandle) -> Result<Environment, Str
             path: claude_path,
             purpose: "The agent console and the MCP tools (Claude Code)".into(),
             required: true,
+            authed: None,
         },
         // Claude Code reports what the agent is doing by POSTing to the app from a
         // hook, and the hook command is a curl. Without it the agent still works,
@@ -95,8 +129,8 @@ pub async fn check_environment(app: tauri::AppHandle) -> Result<Environment, Str
         check("curl", "Agent status (waiting / working / idle) in the dock", false),
         // One CLI per forge, each owning its own auth. Only the forges you actually
         // have repos on matter, so both are optional.
-        check("glab", "GitLab merge requests, threads, CI status", false),
-        check("gh", "GitHub pull requests, threads, CI status", false),
+        glab,
+        gh,
         check("notify-send", "Desktop notifications when the window is unfocused", false),
     ];
     tools.extend(clipboard_tools());
@@ -153,6 +187,24 @@ mod tests {
         assert!(!t.required);
         assert_eq!(t.purpose, "Nothing at all");
     }
+}
+
+/// A shell for the setup screen's sign-in.
+///
+/// Both CLIs authenticate interactively — a device code to copy, a browser to open, a
+/// token to paste — so there is nothing to automate here. The user gets a real shell
+/// rather than the login command itself, because the command is not always the same
+/// one: a self-hosted GitLab needs `glab auth login --hostname <host>`.
+#[tauri::command]
+pub async fn start_auth_session(
+    app: tauri::AppHandle,
+    agent_state: tauri::State<'_, crate::agent_manager::State>,
+    pool: tauri::State<'_, SqlitePool>,
+) -> Result<String, String> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    crate::agent_manager::start_login_pty(&app, &home, &agent_state, &pool)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// The Notion workspace's people, so a new user can pick themselves instead of

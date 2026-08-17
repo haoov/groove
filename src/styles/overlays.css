@@ -1277,3 +1277,39 @@ button.wizard-repo-item.selected {
   display: flex;
   justify-content: flex-end;
 }
+
+/* The escape hatch under the approve/deny row: quieter than the primary action,
+   and it says what it does rather than "don't ask again". */
+.confirm-trust {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px dashed color-mix(in srgb, var(--ctp-peach) 40%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--wb-warn);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.confirm-trust:hover { background: color-mix(in srgb, var(--ctp-peach) 12%, transparent); }
+.confirm-trust:disabled { opacity: 0.5; cursor: default; }
+
+/* The login terminal. `gh auth login` asks four questions and prints a device code
+   with instructions around it, so this is sized to hold the whole exchange without
+   scrolling — a login you have to scroll is a login you mistrust. */
+.wizard-modal.auth-modal { width: 900px; }
+.auth-modal .auth-term {
+  /* NOT `flex: 1`, which `.console-term` sets: its 0 basis collapses to nothing in a
+     modal that takes its height from its content, and the terminal disappeared. */
+  flex: 0 1 auto;
+  height: clamp(360px, 62vh, 680px);
+  margin: 0 var(--space-5);
+  padding: var(--space-2);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+}
