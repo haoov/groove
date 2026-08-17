@@ -6,9 +6,9 @@ import { matchRanges, Highlighted } from '../lib/match';
 
 /**
  * Shared repo selection for the task-open wizard and the add-repo modal.
- * The repo pool is whatever lives under `<worktree_root>/MAIN/**` (scanned by
+ * The repo pool is whatever lives under `<worktree_root>/main/**` (scanned by
  * the backend) — no config list. New repos arrive by cloning a git URL into
- * MAIN via `CloneRepoForm`.
+ * the pool via `CloneRepoForm`.
  */
 export function useRepoPicker(opts?: {
   onSelect?: (repo: Repo) => void;
@@ -66,7 +66,7 @@ export function useRepoPicker(opts?: {
   };
 }
 
-/** Fuzzy-searchable list of the MAIN repos (rows disabled while registering). */
+/** Fuzzy-searchable list of the pooled repos (rows disabled while registering). */
 export function RepoPickerList({
   repos, isSelected, isPending, onToggle, onConfirm,
 }: {
@@ -155,7 +155,7 @@ export function RepoPickerList({
   );
 }
 
-/** Clone a new repo into MAIN by URL — it lands at MAIN/<group>/<project>. */
+/** Clone a new repo by URL — it lands at main/<host>/<group>/<project>. */
 export function CloneRepoForm({ onCloned }: { onCloned: (repo: MainRepo) => void }) {
   const [showForm, setShowForm] = useState(false);
   const [url, setUrl] = useState('');
@@ -191,7 +191,7 @@ export function CloneRepoForm({ onCloned }: { onCloned: (repo: MainRepo) => void
   return (
     <div className="wizard-add-form">
       <p className="wizard-add-hint">
-        Paste a git URL — it clones under <code>MAIN/&lt;group&gt;/&lt;project&gt;</code> and joins the list.
+        Paste a git URL — it clones under <code>main/&lt;host&gt;/&lt;group&gt;/&lt;project&gt;</code> and joins the list.
       </p>
       <div className="wizard-input-row">
         <input

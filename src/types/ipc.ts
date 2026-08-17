@@ -322,7 +322,7 @@ export interface ReviewMr {
   draft: boolean;
   web_url: string;
   updated_at: string;
-  /** MAIN clone path when the project is already cloned locally. */
+  /** Pool clone path when the project is already cloned locally. */
   local_path: string | null;
   /** Already approved (by anyone) but not merged. */
   approved: boolean;
@@ -334,11 +334,11 @@ export interface ReviewedFile {
   file_path: string;
 }
 
-/** A clone under `<worktree_root>/MAIN` — the repo pool the pickers list. */
+/** A clone under `<worktree_root>/main` — the repo pool the pickers list. */
 export interface MainRepo {
   url: string;
   local_path: string;
-  /** Path relative to MAIN, e.g. "DevOps/mayo". */
+  /** Path relative to the pool, e.g. "gitlab.example.com/devops/mayo". */
   slug: string;
 }
 

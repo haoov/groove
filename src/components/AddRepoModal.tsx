@@ -130,8 +130,8 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
           {addable.length === 0 ? (
             <p className="wizard-empty">
               {mainRepos.length === 0
-                ? 'No repos under MAIN yet — clone one below.'
-                : 'All MAIN repos are already on this task. Clone a new one below.'}
+                ? 'No repos in the pool yet — clone one below.'
+                : 'Every pooled repo is already on this task. Clone a new one below.'}
             </p>
           ) : (
             <RepoPickerList

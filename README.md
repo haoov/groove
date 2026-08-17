@@ -126,16 +126,27 @@ screen prints the exact path.
 
 ```
 <worktree_root>/
-├── MAIN/                       # the clone pool, fetched and fast-forwarded for you
-│   └── <group>/<project>/      # e.g. wiremind/platform/some-service
-├── TASKS2-1234/                # one directory per open task
-│   ├── some-service/           # a git worktree on branch TASKS2-1234
-│   └── another-service/
-└── explorer-3/                 # scratch sessions, detached
+├── main/                             # the clone pool, fetched and fast-forwarded for you
+│   ├── gitlab.example.com/
+│   │   └── <group>/<project>/        # e.g. wiremind/platform/some-service
+│   └── github.com/
+│       └── <owner>/<project>/
+└── worktrees/
+    ├── TASKS2-1234/                  # one directory per open task
+    │   ├── some-service/             # a git worktree on branch TASKS2-1234
+    │   └── another-service/
+    └── explorer-3/                   # scratch sessions, detached
 ```
 
-Repos are discovered on disk: anything under `MAIN/` is offered when you add a repo
+The forge host is a directory of its own, so two instances can hold the same group
+and project name, and the pool says where each clone came from.
+
+Repos are discovered on disk: anything under `main/` is offered when you add a repo
 to a task. Cloning something new is done from the app (`Alt+Shift+R`).
+
+An older root — `MAIN/` beside a task directory per task — is moved into this shape
+once, on first launch, with the git worktree links repaired and the recorded paths
+updated.
 
 ### Notion property names are detected, not configured
 

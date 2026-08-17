@@ -138,7 +138,6 @@ pub(crate) async fn provision_worktrees_impl(
     default_branch: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<Vec<Worktree>> {
-    let worktree_root = resolve_worktree_root();
     let mut created = vec![];
 
     for spec in branches {
@@ -149,9 +148,7 @@ pub(crate) async fn provision_worktrees_impl(
             .clone()
             .unwrap_or_else(|| default_branch.to_string());
 
-        let wt_path = worktree_root
-            .join(task_id)
-            .join(&repo.project);
+        let wt_path = task_dir(task_id).join(&repo.project);
 
         std::fs::create_dir_all(&wt_path)?;
 
@@ -228,13 +225,12 @@ pub(crate) async fn provision_explorer_worktrees_impl(
     repo_ids: &[String],
     pool: &SqlitePool,
 ) -> anyhow::Result<Vec<Worktree>> {
-    let worktree_root = resolve_worktree_root();
     let mut created = vec![];
 
     for repo_id in repo_ids {
         let repo = crate::db::load::repo(pool, repo_id).await?;
 
-        let wt_path = worktree_root.join(task_id).join(&repo.project);
+        let wt_path = task_dir(task_id).join(&repo.project);
         std::fs::create_dir_all(&wt_path)?;
 
         let default_branch = refresh_main_clone(&repo.local_path, &repo.project, task_id).await;
@@ -307,7 +303,7 @@ pub(crate) async fn provision_review_worktree(
     // registered worktree" instead of simply recreating it.
     let _ = super::run_git(&repo.local_path, &["worktree", "prune"]).await;
 
-    let wt_path = resolve_worktree_root().join(task_id).join(&repo.project);
+    let wt_path = task_dir(task_id).join(&repo.project);
     std::fs::create_dir_all(&wt_path)?;
     let wt_path_str = wt_path.to_string_lossy().to_string();
 
@@ -417,10 +413,27 @@ pub fn resolve_worktree_root() -> PathBuf {
     PathBuf::from(home).join("worktrees")
 }
 
-/// Where the primary clones live: `<worktree_root>/MAIN/<group>/<project>`.
-/// This directory IS the repo pool — the pickers list it, `clone_repo` fills it.
-pub(super) fn main_root() -> PathBuf {
-    resolve_worktree_root().join("MAIN")
+/// Where the primary clones live. This directory IS the repo pool — the pickers
+/// list it, `clone_repo` fills it.
+pub(crate) fn main_root() -> PathBuf {
+    resolve_worktree_root().join("main")
+}
+
+/// A clone's place in the pool: `<root>/main/<host>/<group>/<project>`.
+///
+/// The host is a level of its own, so two forges — or two GitLab instances — can
+/// hold the same group and project without colliding, and the pool says where a
+/// repo came from without anyone opening its remote.
+pub(super) fn repo_dir(host: &str, group_path: &str, project: &str) -> PathBuf {
+    main_root().join(host).join(group_path).join(project)
+}
+
+/// Every worktree of one task: `<root>/worktrees/<task or explorer id>`.
+///
+/// A sibling of the clone pool rather than the root itself, which used to collect a
+/// directory per task anyone had ever opened, beside MAIN.
+pub(crate) fn task_dir(task_id: &str) -> PathBuf {
+    resolve_worktree_root().join("worktrees").join(task_id)
 }
 
 /// Delete a stray local branch literally named `HEAD` — it makes every `HEAD`
@@ -535,15 +548,15 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, task_id: &str) ->
     Some(default_branch)
 }
 
-/// All git clones under MAIN (searched a few levels deep so nested group paths
-/// work; never descends INTO a repo). Missing MAIN → empty list.
+/// All git clones in the pool (searched a few levels deep, since a host level sits
+/// above group paths that nest; never descends INTO a repo). No pool → empty list.
 #[tauri::command]
 pub async fn list_main_repos() -> Result<Vec<super::types::MainRepo>, String> {
     let root = main_root();
     // Walk on a blocking thread — it's pure filesystem.
     let found: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
         fn walk(dir: &std::path::Path, depth: u32, acc: &mut Vec<PathBuf>) {
-            if depth > 4 {
+            if depth > 6 {
                 return;
             }
             let Ok(entries) = std::fs::read_dir(dir) else { return };
@@ -584,12 +597,12 @@ pub async fn list_main_repos() -> Result<Vec<super::types::MainRepo>, String> {
     Ok(repos)
 }
 
-/// Clone a repo into `MAIN/<group_path>/<project>` and return it. The clone can
+/// Clone a repo into the pool and return it. The clone can
 /// be slow — it runs off the async runtime; the UI shows a pending state.
 #[tauri::command]
 pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
-    let (_host, group_path, project) = parse_git_url(&url).map_err(|e| e.to_string())?;
-    let dest = main_root().join(&group_path).join(&project);
+    let (host, group_path, project) = parse_git_url(&url).map_err(|e| e.to_string())?;
+    let dest = repo_dir(&host, &group_path, &project);
     if dest.exists() {
         return Err(format!("{} already exists", dest.display()));
     }
@@ -606,7 +619,7 @@ pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
     Ok(super::types::MainRepo {
         url,
         local_path: dest_str,
-        slug: format!("{group_path}/{project}"),
+        slug: format!("{host}/{group_path}/{project}"),
     })
 }
 
@@ -640,9 +653,9 @@ pub async fn cleanup_task_worktrees(task_id: &str, pool: &SqlitePool) -> anyhow:
         .await;
     }
 
-    let task_dir = resolve_worktree_root().join(task_id);
+    let dir = task_dir(task_id);
     let _ = tokio::task::spawn_blocking(move || {
-        let _ = std::fs::remove_dir_all(&task_dir);
+        let _ = std::fs::remove_dir_all(&dir);
     })
     .await;
 

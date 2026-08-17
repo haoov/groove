@@ -2,6 +2,7 @@ mod base_ref;
 mod blame;
 mod commits;
 mod diff;
+pub(crate) mod migrate_layout;
 mod ops;
 mod parse;
 mod status;

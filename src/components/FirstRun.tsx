@@ -346,9 +346,9 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
               onChange={(e) => setRoot(e.target.value)}
             />
             <span className="firstrun-hint">
-              Created if missing. Clones live in <code>&lt;root&gt;/MAIN/&lt;group&gt;/&lt;repo&gt;</code> and each
-              task gets <code>&lt;root&gt;/&lt;TASK-ID&gt;/&lt;repo&gt;</code>. Point it at an empty directory unless you
-              already use this layout.
+              Created if missing. Clones live in <code>&lt;root&gt;/main/&lt;host&gt;/&lt;group&gt;/&lt;repo&gt;</code> and
+              each task gets <code>&lt;root&gt;/worktrees/&lt;TASK-ID&gt;/&lt;repo&gt;</code>. Point it at an empty
+              directory unless you already use this layout.
             </span>
           </label>
         </section>

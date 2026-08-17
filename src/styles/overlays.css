@@ -438,7 +438,7 @@
   margin-bottom: var(--space-3);
 }
 
-/* Fuzzy filter over the MAIN repo pool (pinned above the list). */
+/* Fuzzy filter over the clone pool (pinned above the list). */
 .wizard-repo-pool { display: flex; flex-direction: column; min-height: 0; }
 .wizard-repo-pool .wizard-repo-list { max-height: 300px; overflow-y: auto; }
 .wizard-repo-search {

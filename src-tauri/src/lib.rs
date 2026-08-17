@@ -204,6 +204,13 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 
+    // The worktree root's shape changed once; move an older one into place before
+    // anything reads a path out of it. Needs the config, which nothing has asked
+    // for yet at this point — a first run has none, and nothing to migrate either.
+    if task_manager::ensure_config(&handle, &task_state).is_ok() {
+        git_engine::migrate_layout::run(&git_engine::resolve_worktree_root(), &pool).await;
+    }
+
     // Re-emit any confirmations that survived a crash
     let pool_c = pool.clone();
     let handle_c = handle.clone();

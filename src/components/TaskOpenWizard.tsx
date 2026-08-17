@@ -27,7 +27,7 @@ export function TaskOpenWizard() {
     onError: (msg) => setError(msg),
   });
 
-  // Scan MAIN when the wizard opens.
+  // Scan the clone pool when the wizard opens.
   useEffect(() => {
     if (!wizardTask) return;
     loadRepos();
@@ -100,7 +100,7 @@ export function TaskOpenWizard() {
             <p className="wizard-desc">Select the repositories needed for this task.</p>
 
             {mainRepos.length === 0 ? (
-              <p className="wizard-empty">No repos under MAIN yet — clone one below.</p>
+              <p className="wizard-empty">No repos in the pool yet — clone one below.</p>
             ) : (
               <RepoPickerList
                 repos={mainRepos}

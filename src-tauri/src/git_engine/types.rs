@@ -78,11 +78,11 @@ pub struct BranchSpec {
     pub branch_name: Option<String>, // None → derive from task short_id
 }
 
-/// A clone living under `<worktree_root>/MAIN` — the repo pool the pickers list.
+/// A clone living under `<worktree_root>/main` — the repo pool the pickers list.
 #[derive(Debug, Clone, Serialize)]
 pub struct MainRepo {
     pub url: String,
     pub local_path: String,
-    /// Path relative to MAIN, e.g. "DevOps/mayo" — the picker's display name.
+    /// Path relative to the pool, host first — the picker's display name.
     pub slug: String,
 }

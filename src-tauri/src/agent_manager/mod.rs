@@ -67,9 +67,7 @@ pub fn task_session_uuid(task_id: &str) -> String {
 /// approach. Read-only now — honored as a fallback so existing conversations
 /// keep resuming, but never written.
 fn legacy_session_id_file(task_id: &str) -> std::path::PathBuf {
-    crate::git_engine::resolve_worktree_root()
-        .join(task_id)
-        .join(".agent_session_id")
+    crate::git_engine::task_dir(task_id).join(".agent_session_id")
 }
 
 fn load_legacy_session_id(task_id: &str) -> Option<String> {

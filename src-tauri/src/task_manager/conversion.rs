@@ -248,8 +248,7 @@ pub async fn create_task_from_explorer_impl(
 
     let now = chrono::Utc::now().timestamp();
     let new_branch = super::derive_branch(&short_id);
-    let worktree_root = crate::git_engine::resolve_worktree_root();
-    let task_dir = worktree_root.join(&short_id);
+    let task_dir = crate::git_engine::task_dir(&short_id);
 
     let (branched, branch_warnings) =
         promote_worktrees(req.explorer_id, &task_dir, &new_branch, pool).await?;
@@ -257,7 +256,7 @@ pub async fn create_task_from_explorer_impl(
     repoint_rows(&req, &short_id, &notion_page_id, now, &new_branch, &branched, pool).await?;
 
     handoff_agent_session(req.explorer_id, &task_dir);
-    cleanup_explorer_dir(&worktree_root.join(req.explorer_id));
+    cleanup_explorer_dir(&crate::git_engine::task_dir(req.explorer_id));
 
     Ok(serde_json::json!({
         "short_id": short_id,
