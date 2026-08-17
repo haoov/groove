@@ -26,7 +26,12 @@
    derives from whether a maximized pane is actually RENDERED, so hiding the work
    while the agent is closed is impossible by construction. */
 .agent-pane.maximized { flex: 1; width: auto; }
-.app-body:has(.agent-pane.maximized) .app-main { flex: 0 0 auto; }
+/* The pane area goes; the panel column stays and the agent takes the room. Every
+   level between .app-main and the panel has to be content-sized for the panel's
+   width to reach up here — SessionWorkspaces does the two it sets inline — and
+   shrinkable, so a narrow window still resolves (see .session-dock). */
+.app-body:has(.agent-pane.maximized) .app-main { flex: 0 1 auto; }
+.app-body:has(.agent-pane.maximized) .workspace { flex: 0 1 auto; }
 .app-body:has(.agent-pane.maximized) .workspace-main { display: none; }
 
 .agent-pane-head {

@@ -12,6 +12,13 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
   const allSessions = useStore((s) => s.sessionOrder);
   const activeSessionId = useStore((s) => s.activeSessionId);
+  // A maximized agent hides the pane area (styles/console.css), leaving this column
+  // holding nothing but the panel — so it has to be as wide as the panel and no
+  // wider. `flex: 1` cannot express that: its zero basis, with min-width 0, gives
+  // the panel's own width nothing to travel up through, and the column resolved to
+  // nothing instead. Content-sized in that mode, and still shrinkable.
+  const agentMaximized = useStore((s) => s.agentMaximized);
+  const grow = agentMaximized ? ('0 1 auto' as const) : 1;
   // The desk is not a workspace: mounting one would build an editor, sidebar and
   // overview for a session that has no repos and is never focused.
   const deskId = useDeskId();
@@ -22,7 +29,7 @@ export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
   return (
     <div
       className="session-workspaces"
-      style={{ display: hidden ? 'none' : 'flex', flex: 1, minWidth: 0, minHeight: 0 }}
+      style={{ display: hidden ? 'none' : 'flex', flex: grow, minWidth: 0, minHeight: 0 }}
     >
       {sessionOrder.map((id) => {
         const active = id === activeSessionId;
@@ -30,7 +37,7 @@ export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
           <div
             key={id}
             className="session-host"
-            style={{ display: active ? 'flex' : 'none', flex: 1, minWidth: 0, minHeight: 0 }}
+            style={{ display: active ? 'flex' : 'none', flex: grow, minWidth: 0, minHeight: 0 }}
           >
             <SessionIdContext.Provider value={id}>
               {/* Every kind (task / explorer / review) is a full workspace over
