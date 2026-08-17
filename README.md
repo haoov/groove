@@ -39,7 +39,9 @@ commits, its annotations, its MR. The agent reads all of that and proposes actio
 
 **Approvals.** Anything the agent does that leaves the machine or rewrites history
 stops for you first — `git` commit, push, pull, rebase, discard; MR create, update,
-close; and every Notion write. Nothing in that list happens without a click.
+close; and every Notion write. Nothing in that list happens without a click, unless
+you tell one session to allow everything: that is offered in the dialog, scoped to
+that session, gone when it closes, and shown in the agent's header while it is on.
 
 **Annotations.** Notes pinned to a line, on your side, whether or not an MR exists
 yet. The agent can leave them too, and its comments are marked `[claude]`.
@@ -59,6 +61,9 @@ to replace your editor.
 | **curl** | Agent status (waiting / working / idle) in the dock. |
 | **glab**, authenticated | GitLab merge requests, threads, CI status. |
 | **gh**, authenticated | GitHub pull requests, threads, CI status. |
+
+The setup screen reports whether each forge CLI is signed in, and offers to run
+`glab auth login` / `gh auth login` in a terminal inside the app.
 | **wl-clipboard** / **xclip** / **xsel** | Copying out of the terminal panes. |
 | **libnotify** (`notify-send`) | Desktop notifications while the window is unfocused. |
 
@@ -211,7 +216,8 @@ character you type, so non-QWERTY layouts keep working.
 
 Panels are three-state: the shortcut opens, then focuses, then closes. Lists take
 `j`/`k` and `Enter`. Terminals live in one dock at the bottom — splitting it gives
-another terminal, side by side.
+another terminal, side by side — and on Home the same chord opens a shell there,
+where the agent console also lives.
 
 ---
 
