@@ -20,6 +20,7 @@ export function WorkspaceLayout() {
     Math.round(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, window.innerWidth * SIDEBAR_DEFAULT_PCT)))
   );
 
+  const wrapRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const startX = useRef(0);
   const startSize = useRef(0);
@@ -47,7 +48,9 @@ export function WorkspaceLayout() {
   const startSidebarDrag = (e: React.MouseEvent) => {
     dragging.current = true;
     startX.current = e.clientX;
-    startSize.current = sidebarWidth;
+    // The rendered width, not the stored one: in a window too narrow for every
+    // column this has been shrunk, and dragging from the stored value would jump.
+    startSize.current = wrapRef.current?.getBoundingClientRect().width ?? sidebarWidth;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
@@ -57,7 +60,7 @@ export function WorkspaceLayout() {
     <div className="workspace">
       {!collapsed && (
         <>
-          <div className="sidebar-wrapper" style={{ width: sidebarWidth }}>
+          <div className="sidebar-wrapper" ref={wrapRef} style={{ width: sidebarWidth, minWidth: SIDEBAR_MIN }}>
             <Sidebar />
           </div>
           <div className="resize-handle" onMouseDown={startSidebarDrag} />

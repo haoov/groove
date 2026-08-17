@@ -61,6 +61,7 @@ export function SessionDock() {
   });
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
 
   // The desk is excluded: it is not a session you opened, it cannot be closed,
   // and it is reached through the console on Home. Its agent still reports through
@@ -104,7 +105,9 @@ export function SessionDock() {
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    const startWidth = width;
+    // The rendered width, not the stored one: in a window too narrow for every
+    // column this has been shrunk, and dragging from the stored value would jump.
+    const startWidth = asideRef.current?.getBoundingClientRect().width ?? width;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
       // Dragging LEFT widens: the handle is on the dock's inner edge.
@@ -129,7 +132,7 @@ export function SessionDock() {
   return (
     <>
       <div className="resize-handle" onMouseDown={startDrag} />
-      <aside className="session-dock" style={{ width }}>
+      <aside className="session-dock" ref={asideRef} style={{ width, minWidth: MIN_WIDTH }}>
         <div className="dock-head">
           <button
             className={`dock-tab ${showNotifications ? '' : 'on'}`}

@@ -3,7 +3,8 @@
 .sidebar-wrapper {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  /* Yields before the panes do — see .session-dock. */
+  flex-shrink: 1;
   overflow: hidden;
 }
 

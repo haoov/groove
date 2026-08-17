@@ -53,6 +53,7 @@ export function AgentConsole() {
     return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : DEFAULT_WIDTH;
   });
   const termRef = useRef<HTMLDivElement>(null);
+  const paneRef = useRef<HTMLElement>(null);
 
   const agentPty = ptySessions.find((p) => p.ptyType === 'agent')?.sessionId ?? null;
   const visible = !!activeTask && open;
@@ -88,7 +89,9 @@ export function AgentConsole() {
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    const startWidth = width;
+    // The rendered width, not the stored one: in a window too narrow for every
+    // column this has been shrunk, and dragging from the stored value would jump.
+    const startWidth = paneRef.current?.getBoundingClientRect().width ?? width;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
       // The handle is on the pane's inner edge, so dragging left widens it.
@@ -128,8 +131,9 @@ export function AgentConsole() {
       {/* Maximized, the width and its handle are meaningless — it takes the body. */}
       {!maximized && <div className="resize-handle" onMouseDown={startDrag} />}
       <aside
+        ref={paneRef}
         className={`agent-pane ${maximized ? 'maximized' : ''}`}
-        style={maximized ? undefined : { width }}
+        style={maximized ? undefined : { width, minWidth: MIN_WIDTH }}
       >
         <div className="agent-pane-head">
           <span className={`pill-dot ${state}`} />

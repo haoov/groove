@@ -252,7 +252,14 @@
 .diff-cm-host { position: relative; }
 
 .diff-cm-editor .cm-editor { display: block; }
+/* No scroller of its own: the editor grows to its full height and the pane around it
+   does the scrolling, so several files read as one document. */
 .diff-cm-editor .cm-scroller { overflow: visible !important; }
+/* Which also means it cannot scroll SIDEWAYS — so the 80-column floor in editor.css
+   put the right-hand side of every diff out of reach in a pane narrower than that,
+   and opening the panel or the session dock was enough to do it. Wrap at whatever
+   width the pane has instead: tighter than 80 columns beats unreachable. */
+.diff-cm-editor .cm-content { min-width: 0; }
 
 /* Gutter widths */
 .diff-cm-editor .cm-comment-gutter { width: 26px; }

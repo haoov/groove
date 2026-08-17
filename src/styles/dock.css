@@ -5,7 +5,11 @@
    it, and shows on Home as well as in a workspace.                             */
 
 .session-dock {
-  flex-shrink: 0;
+  /* Shrinkable, with its floor set inline from the same constant the drag uses. The
+     work area is `flex: 1 1 0%`, so a zero basis keeps it out of the shrinking and
+     the chrome absorbs a window too narrow for everything — the alternative was a
+     pane squeezed to nothing whenever this and the agent column were both open. */
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
