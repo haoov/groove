@@ -1,6 +1,8 @@
+import { useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import {
-  AlertTriangle, Bell, Bot, Check, CheckCircle2, FileText, GitBranch, GitPullRequest, Info, Plug,
-  StickyNote, X, type LucideIcon,
+  AlertTriangle, Bell, Bot, Check, CheckCircle2, Copy, Expand, FileText, GitBranch,
+  GitPullRequest, Info, Plug, StickyNote, X, type LucideIcon,
 } from 'lucide-react';
 import { goToSession } from '../lib/goToSession';
 import { useStore } from '../store';
@@ -44,11 +46,14 @@ function relativeTime(at: number): string {
 
 /** One entry, shared by the toast stack and the panel so they can't drift. */
 export function NotificationRow({
-  n, variant, onDismiss,
+  n, variant, onDismiss, onExpand,
 }: {
   n: AppNotification;
   variant: 'toast' | 'feed';
   onDismiss?: () => void;
+  /** Offered in the feed: the detail is clamped to three lines there, and an error
+   *  is exactly the kind of message whose last line matters. */
+  onExpand?: () => void;
 }) {
   const KindIcon = KIND_ICON[n.kind];
   const SourceIcon = SOURCE_ICON[n.source ?? 'app'];
@@ -94,6 +99,15 @@ export function NotificationRow({
           <span className="notif-time">{relativeTime(n.at)}</span>
         </div>
       </div>
+      {onExpand && (
+        <button
+          className="notif-expand"
+          title="Show in full"
+          onClick={(e) => { e.stopPropagation(); onExpand(); }}
+        >
+          <Expand size={12} strokeWidth={2.25} />
+        </button>
+      )}
       {unread && (
         <button
           className="notif-seen"
@@ -121,6 +135,9 @@ export function NotificationFeed() {
   const all = useStore((s) => s.notifications);
   const clear = useStore((s) => s.clearNotifications);
   const markAllRead = useStore((s) => s.markNotificationsRead);
+  // A snapshot, not an id: the point is to read a message that is no longer
+  // changing, and clearing the feed behind the modal must not empty it.
+  const [expanded, setExpanded] = useState<AppNotification | null>(null);
   // Successes are ephemeral: they flash past as a toast and belong to neither the
   // history nor the count. Filtering in one place keeps the two in agreement.
   const notifications = all.filter((n) => !n.ephemeral);
@@ -138,9 +155,74 @@ export function NotificationFeed() {
         <p className="dock-empty">Nothing to report.</p>
       ) : (
         <div className="notif-list">
-          {notifications.map((n) => <NotificationRow key={n.id} n={n} variant="feed" />)}
+          {notifications.map((n) => (
+            <NotificationRow
+              key={n.id}
+              n={n}
+              variant="feed"
+              onExpand={() => {
+                useStore.getState().markNotificationRead(n.id);
+                setExpanded(n);
+              }}
+            />
+          ))}
         </div>
       )}
+      {expanded && <NotificationModal n={expanded} onClose={() => setExpanded(null)} />}
+    </div>
+  );
+}
+
+/**
+ * One notification, in full.
+ *
+ * The feed clamps a detail to three lines, which is fine for "pushed 3 commits" and
+ * useless for a git or forge error — the line that says what went wrong is usually
+ * the last one. So this shows the whole thing, selectable, and offers it to the
+ * clipboard: an error's next stop is a search box or a colleague.
+ */
+function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => void }) {
+  const KindIcon = KIND_ICON[n.kind];
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    // Through the backend, like the terminals: WebKitGTK has no clipboard API
+    // outside a secure context (see components/terminalHost.ts).
+    invoke('copy_to_clipboard', { text: [n.title, n.detail ?? ''].join('\n\n').trim() })
+      .then(() => setCopied(true))
+      .catch((e) => useStore.getState().setLastError(String(e)));
+  };
+
+  return (
+    <div className="wizard-overlay" onClick={onClose}>
+      <div className={`wizard-modal notif-modal notif--${n.kind}`} onClick={(e) => e.stopPropagation()}>
+        <div className="wizard-header">
+          <div className="wizard-title">
+            <KindIcon className="notif-icon" size={15} strokeWidth={2} />
+            {n.title}
+          </div>
+          <div className="wizard-subtitle notif-modal-meta">
+            <span>{n.source ?? 'app'}</span>
+            {n.taskId && <span className="notif-chip">{n.taskId}</span>}
+            {n.repo && <span className="notif-chip repo">{n.repo}</span>}
+            <span className="notif-time">{relativeTime(n.at)}</span>
+            {n.count > 1 && <span className="notif-count">×{n.count}</span>}
+          </div>
+          <button className="wizard-close" onClick={onClose}>×</button>
+        </div>
+        {n.detail
+          ? <pre className="notif-modal-detail">{n.detail}</pre>
+          : <p className="notif-modal-empty">No further detail was reported.</p>}
+        <div className="wizard-footer">
+          <button className="btn-secondary" onClick={copy}>
+            {copied
+              ? <><Check size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copied</>
+              : <><Copy size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copy</>}
+          </button>
+          <span className="composer-spacer" />
+          <button className="btn-primary" onClick={onClose}>Close</button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -948,6 +948,57 @@ button.wizard-repo-item.selected {
 }
 .notif-seen:hover { color: var(--gl-color-green-400); background: var(--gl-background-color-hover); }
 
+/* Same shape as the seen and dismiss buttons — appears on hover, so a quiet feed
+   stays quiet. */
+.notif-expand {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+}
+.notif:hover .notif-expand, .notif-expand:focus-visible { opacity: 1; }
+.notif-expand:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+
+/* ── One notification, in full ─────────────────────────────────────────────── */
+.notif-modal { width: 720px; }
+.notif-modal .wizard-title { display: flex; align-items: center; gap: var(--space-2); }
+.notif-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+/* The message as it was reported: wrapped, never truncated, and scrolled once it
+   outgrows the modal — a stack trace is the case that matters here. */
+.notif-modal-detail {
+  margin: 0 var(--space-5);
+  padding: var(--space-3);
+  max-height: min(56vh, 520px);
+  overflow: auto;
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  line-height: 1.5;
+  color: var(--gl-text-color-subtle);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.notif-modal-empty {
+  margin: 0 var(--space-5);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+}
+
 /* The icon alone carries the kind — no border accent (see the app's badge
    language: colour goes on the mark, not on an edge). */
 .notif--success   .notif-icon { color: var(--gl-color-green-400); }
