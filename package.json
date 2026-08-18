@@ -36,6 +36,7 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@xterm/addon-fit": "^0.10",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^5",
     "codemirror": "^6.0.2",
     "lucide-react": "^1.17.0",

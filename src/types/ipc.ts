@@ -427,7 +427,9 @@ export interface WorktreeClosedEvent {
 
 export interface PtyOutputEvent {
   session_id: string;
-  data: number[];
+  /** The chunk, base64. A JSON array of numbers cost four characters per byte and
+   *  a parse per byte on the UI thread — see the reader in agent_manager. */
+  b64: string;
 }
 
 export interface PtyExitEvent {

@@ -1,5 +1,6 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { WebglAddon } from '@xterm/addon-webgl';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store';
 import { DEFAULT_FONT_SIZE } from '../types/ipc';
@@ -132,6 +133,32 @@ function attachClipboard(term: Terminal) {
   });
 }
 
+/**
+ * Draw on the GPU where the machine allows it.
+ *
+ * xterm's default renderer builds DOM for what it paints, which is the slowest part
+ * of a terminal an agent is streaming into — it redraws its whole screen as it
+ * thinks. The WebGL renderer draws from one texture atlas instead.
+ *
+ * Must be loaded AFTER `open`, and it can fail for reasons that are the machine's
+ * rather than ours: no WebGL2, a driver that refuses, a context lost later on. Every
+ * one of those falls back to the DOM renderer, which is what this app shipped with,
+ * so the terminal is never worse off for having tried.
+ */
+function attachGpuRenderer(term: Terminal) {
+  try {
+    const gpu = new WebglAddon();
+    gpu.onContextLoss(() => {
+      // Nothing to retry against: the addon disposes itself and xterm reverts.
+      console.warn('terminal: WebGL context lost, falling back to the DOM renderer');
+      gpu.dispose();
+    });
+    term.loadAddon(gpu);
+  } catch (e) {
+    console.warn('terminal: no WebGL renderer, using the DOM one', e);
+  }
+}
+
 /** Below this, a measurement is layout noise rather than a terminal. */
 const MIN_COLS = 20;
 const MIN_ROWS = 4;
@@ -216,6 +243,7 @@ export function ensureHost(sessionId: string): TermHost {
   const el = document.createElement('div');
   el.className = 'pty-pane';
   term.open(el);
+  attachGpuRenderer(term);
   attachClipboard(term);
 
   term.onData((data) => {
@@ -226,9 +254,9 @@ export function ensureHost(sessionId: string): TermHost {
 
   // Registered for the SESSION lifetime (not a component's): output keeps
   // flowing into the terminal's buffer even while no tab displays it.
-  registerPtyHandler(sessionId, (bytes: number[]) => {
+  registerPtyHandler(sessionId, (bytes: Uint8Array) => {
     tracePty('js<<', sessionId, bytes);
-    term.write(new Uint8Array(bytes));
+    term.write(bytes);
   });
 
   const host: TermHost = { term, fit, el };

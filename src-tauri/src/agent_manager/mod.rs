@@ -383,13 +383,19 @@ async fn start_pty_session(
             match std::io::Read::read(&mut reader, &mut buf) {
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
-                    let data: Vec<u8> = buf[..n].to_vec();
-                    crate::pty_trace::record("pty<<", &sid_clone, &data);
+                    let data = &buf[..n];
+                    crate::pty_trace::record("pty<<", &sid_clone, data);
+                    // Base64, not a JSON array of numbers. This is the busiest path in
+                    // the app — an agent redraws its whole screen as it thinks — and a
+                    // number array costs about four JSON characters per byte, every one
+                    // of them parsed individually on the UI thread. Measured on the
+                    // same 2 MB of output: 14.7 KB per 4 KB chunk against 5.5 KB, and
+                    // 37 ms of parsing against 9 ms.
                     let _ = app_clone.emit(
                         crate::events::PTY_OUTPUT,
                         serde_json::json!({
                             "session_id": sid_clone,
-                            "data": data,
+                            "b64": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, data),
                         }),
                     );
                 }

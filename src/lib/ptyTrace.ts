@@ -11,7 +11,7 @@ import { invoke } from '@tauri-apps/api/core';
  */
 let enabled: boolean | null = null;
 
-export function tracePty(tag: 'js>>' | 'js<<', sessionId: string, data: number[]) {
+export function tracePty(tag: 'js>>' | 'js<<', sessionId: string, data: ArrayLike<number>) {
   if (enabled === false) return;
   if (enabled === null) {
     enabled = false; // until the answer lands, so this asks once
@@ -20,5 +20,5 @@ export function tracePty(tag: 'js>>' | 'js<<', sessionId: string, data: number[]
       .catch(() => { enabled = false; });
     return;
   }
-  invoke('trace_pty', { tag, sessionId, data }).catch(() => { enabled = false; });
+  invoke('trace_pty', { tag, sessionId, data: Array.from(data) }).catch(() => { enabled = false; });
 }

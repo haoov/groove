@@ -50,14 +50,22 @@ function startWatchers(taskId: string) {
 
 // Global PTY output handlers keyed by session_id — registered by terminalHost
 // for the lifetime of each PTY session (not per-component).
-const ptyOutputHandlers = new Map<string, (data: number[]) => void>();
+const ptyOutputHandlers = new Map<string, (data: Uint8Array) => void>();
 // Output that arrived before an xterm handler registered, buffered per session so
 // the first bytes of a fast-starting PTY aren't lost. Capped to avoid unbounded
 // growth if a handler never mounts.
 const MAX_PTY_BUFFER_CHUNKS = 256;
-const ptyOutputBuffers = new Map<string, number[][]>();
+const ptyOutputBuffers = new Map<string, Uint8Array[]>();
 
-export function registerPtyHandler(sessionId: string, handler: (data: number[]) => void) {
+/** Base64 to bytes, once, on the way to xterm. */
+function decodeChunk(b64: string): Uint8Array {
+  const text = atob(b64);
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return bytes;
+}
+
+export function registerPtyHandler(sessionId: string, handler: (data: Uint8Array) => void) {
   ptyOutputHandlers.set(sessionId, handler);
   // Flush anything that arrived before the handler mounted, in arrival order.
   const buffered = ptyOutputBuffers.get(sessionId);
@@ -397,14 +405,15 @@ export function useIpc() {
       // that arrives before the handler registers.
       track(
         await listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) => {
+          const data = decodeChunk(payload.b64);
           const handler = ptyOutputHandlers.get(payload.session_id);
           if (handler) {
-            handler(payload.data);
+            handler(data);
             return;
           }
           let buf = ptyOutputBuffers.get(payload.session_id);
           if (!buf) { buf = []; ptyOutputBuffers.set(payload.session_id, buf); }
-          buf.push(payload.data);
+          buf.push(data);
           if (buf.length > MAX_PTY_BUFFER_CHUNKS) buf.shift();
         })
       );
