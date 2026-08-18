@@ -339,53 +339,85 @@ pub struct ReviewMr {
     pub approved: bool,
 }
 
-/// glab usernames are stable for a run — resolve once.
-static GITLAB_USERNAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+/// glab usernames are stable for a run, and differ per instance: the same person is
+/// one login on gitlab.com and another on a company's GitLab. Keyed by host, so a
+/// second instance is not answered with the first one's name.
+static GITLAB_USERNAMES: std::sync::Mutex<Vec<(String, String)>> = std::sync::Mutex::new(Vec::new());
+
+fn cached_username(host: &str) -> Option<String> {
+    let cache = GITLAB_USERNAMES.lock().ok()?;
+    cache.iter().find(|(h, _)| h == host).map(|(_, u)| u.clone())
+}
+
+fn cache_username(host: &str, username: &str) {
+    if let Ok(mut cache) = GITLAB_USERNAMES.lock() {
+        cache.push((host.to_string(), username.to_string()));
+    }
+}
 
 /// Open MRs and PRs where the current user is a requested reviewer.
 ///
-/// Both forges are queried and the results merged, newest first. One forge failing
-/// (CLI missing, not logged in, no repos of that kind) must not blank the other, so
-/// each half is best-effort and only a total failure surfaces.
+/// Every forge host in the pool is asked, and each query runs inside a clone that
+/// belongs to THAT host: both CLIs read the instance out of the repository they run
+/// in, so one shared working directory silently asked the wrong one — `glab` in a
+/// GitHub clone answers for gitlab.com, as a different user, with no error. Which
+/// half of the pool sorted first was all that stood between that and working.
+///
+/// Asking per host also means a self-managed GitLab and gitlab.com both report,
+/// rather than whichever happened to come first.
+///
+/// One host failing (CLI missing, not logged in) must not blank the others, so each
+/// is best-effort and only a total failure surfaces.
 #[tauri::command]
 pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     let main_repos = crate::git_engine::list_main_repos().await.map_err(|e| e.to_string())?;
-    let cwd = main_repos
-        .first()
-        .map(|r| r.local_path.clone())
-        .ok_or_else(|| "no repos under MAIN — clone one first".to_string())?;
 
-    // MAIN folder names don't mirror forge group paths — match by origin URL.
+    // Pool directory names do not mirror forge group paths — match by origin URL.
+    let mut clone_by_host: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
     let mut clone_by_project: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
     for r in &main_repos {
-        if let Ok((_, group, project)) = crate::git_engine::parse_git_url(&r.url) {
-            clone_by_project.insert(format!("{group}/{project}"), r.local_path.clone());
+        if let Ok((host, group, project)) = crate::git_engine::parse_git_url(&r.url) {
+            clone_by_host.entry(host.clone()).or_insert_with(|| r.local_path.clone());
+            clone_by_project.insert(format!("{host}/{group}/{project}"), r.local_path.clone());
         }
     }
+    if clone_by_host.is_empty() {
+        return Err("no repos in the pool — clone one first".to_string());
+    }
 
-    let (gitlab, github) = futures_util::future::join(
-        list_gitlab_reviews(&cwd, &clone_by_project),
-        list_github_reviews(&cwd, &clone_by_project),
-    )
+    let results = futures_util::future::join_all(clone_by_host.iter().map(|(host, cwd)| {
+        let clones = &clone_by_project;
+        async move {
+            // Same rule as platform::make_client, so the queue and the MR views
+            // cannot disagree about which forge a host is.
+            let mrs = if host.contains("github") {
+                list_github_reviews(host, cwd, clones).await
+            } else {
+                list_gitlab_reviews(host, cwd, clones).await
+            };
+            (host.clone(), mrs)
+        }
+    }))
     .await;
 
     let mut out = vec![];
     let mut errors = vec![];
-    for (name, result) in [("GitLab", gitlab), ("GitHub", github)] {
+    for (host, result) in results {
         match result {
             Ok(mut mrs) => out.append(&mut mrs),
             // No CLI for that forge means no repos on it — not something to report.
             Err(e) if super::platform::is_cli_missing(&e) => {
-                tracing::debug!("{name} review queue skipped: {e}");
+                tracing::debug!("{host} review queue skipped: {e}");
             }
-            Err(e) => errors.push(format!("{name}: {e}")),
+            Err(e) => errors.push(format!("{host}: {e}")),
         }
     }
     if out.is_empty() && !errors.is_empty() {
         return Err(errors.join(" · "));
     }
-    // Most recently touched first, across both forges.
+    // Most recently touched first, across every host.
     out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(out)
 }
@@ -393,6 +425,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
 /// Open PRs where the user is a requested reviewer. `reviewDecision` rides along in
 /// the same query, so approval needs no extra call.
 async fn list_github_reviews(
+    host: &str,
     cwd: &str,
     clone_by_project: &std::collections::HashMap<String, String>,
 ) -> anyhow::Result<Vec<ReviewMr>> {
@@ -402,7 +435,7 @@ async fn list_github_reviews(
         .filter_map(|pr| {
             let project_full = pr["repository"]["nameWithOwner"].as_str()?.to_string();
             Some(ReviewMr {
-                local_path: clone_by_project.get(&project_full).cloned(),
+                local_path: clone_by_project.get(&format!("{host}/{project_full}")).cloned(),
                 iid: pr["number"].as_u64()?,
                 title: pr["title"].as_str().unwrap_or("").to_string(),
                 author: pr["author"]["login"].as_str().unwrap_or("").to_string(),
@@ -420,13 +453,14 @@ async fn list_github_reviews(
 }
 
 async fn list_gitlab_reviews(
+    host: &str,
     cwd: &str,
     clone_by_project: &std::collections::HashMap<String, String>,
 ) -> anyhow::Result<Vec<ReviewMr>> {
     let cwd = cwd.to_string();
 
-    let username = match GITLAB_USERNAME.get() {
-        Some(u) => u.clone(),
+    let username = match cached_username(host) {
+        Some(u) => u,
         None => {
             let out = super::gitlab::glab_run(cwd.clone(), vec!["api".into(), "user".into()]).await?;
             let v: serde_json::Value = serde_json::from_str(&out)?;
@@ -434,7 +468,7 @@ async fn list_gitlab_reviews(
                 .as_str()
                 .ok_or_else(|| anyhow::anyhow!("no username in `glab api user` response"))?
                 .to_string();
-            let _ = GITLAB_USERNAME.set(u.clone());
+            cache_username(host, &u);
             u
         }
     };
@@ -453,7 +487,7 @@ async fn list_gitlab_reviews(
             continue;
         }
         result.push(ReviewMr {
-            local_path: clone_by_project.get(&project_full).cloned(),
+            local_path: clone_by_project.get(&format!("{host}/{project_full}")).cloned(),
             iid: item["iid"].as_u64().unwrap_or(0),
             title: item["title"].as_str().unwrap_or("").to_string(),
             author: item["author"]["username"]
