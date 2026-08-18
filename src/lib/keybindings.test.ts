@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS, assignBinding, defaultKeymap, loadKeymap, saveKeymap, type Keymap } from './keybindings';
-import { chordLabel, chordMatches, normalizeKey, type Chord } from './keys';
+import { chordLabel, chordMatches, isTypingCharacter, normalizeKey, type Chord } from './keys';
 
 // The keymap is the one piece of state that survives upgrades: a stored map from an
 // older version is merged over new defaults. Every bug here has been the same
@@ -166,5 +166,33 @@ describe('chord model', () => {
     expect(chordLabel({ key: ';', ctrl: true })).toBe('Ctrl+;');
     expect(chordLabel({ key: 'tab', alt: true })).toBe('Alt+Tab');
     expect(chordLabel({ key: 'arrowup' })).toBe('↑');
+  });
+});
+
+// The keymap listens in the capture phase, ahead of whatever has focus. On an
+// international layout that is where characters go missing: the reported case was
+// `´` then space, which is how you type a bare apostrophe there.
+describe('isTypingCharacter', () => {
+  const ev = (o: Partial<KeyboardEvent> & { altGraph?: boolean }) =>
+    ({ getModifierState: (m: string) => m === 'AltGraph' && !!o.altGraph, ...o }) as KeyboardEvent;
+
+  it('lets a dead key and everything it composes through', () => {
+    expect(isTypingCharacter(ev({ key: 'Dead' }))).toBe(true);
+    // `´` then space, and `´` then e: the second keydown is mid-composition.
+    expect(isTypingCharacter(ev({ key: ' ', isComposing: true }))).toBe(true);
+    expect(isTypingCharacter(ev({ key: 'e', isComposing: true }))).toBe(true);
+  });
+
+  it('lets an AltGr character through, however the browser reports it', () => {
+    // Reported as Alt on some engines, as Ctrl+Alt on others.
+    expect(isTypingCharacter(ev({ key: '@', altKey: true, altGraph: true }))).toBe(true);
+    expect(isTypingCharacter(ev({ key: '@', altKey: true, ctrlKey: true, altGraph: true }))).toBe(true);
+  });
+
+  it('leaves real chords alone', () => {
+    expect(isTypingCharacter(ev({ key: 'n', altKey: true }))).toBe(false);
+    expect(isTypingCharacter(ev({ key: 'k', ctrlKey: true }))).toBe(false);
+    expect(isTypingCharacter(ev({ key: ' ' }))).toBe(false);
+    expect(isTypingCharacter(ev({ key: "'" }))).toBe(false);
   });
 });

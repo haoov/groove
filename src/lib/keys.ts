@@ -53,6 +53,29 @@ export function isModifierOnly(e: KeyboardEvent): boolean {
   return e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'AltGraph';
 }
 
+/**
+ * True when a keystroke is producing a CHARACTER rather than asking for a command.
+ * It belongs to whatever has focus, and no shortcut may take it.
+ *
+ * Both cases are invisible on a US layout and constant on an international one:
+ *
+ * - A dead key composing. `´` then `e` is one `é`, and `´` then space is one `'`;
+ *   every keydown in between carries `isComposing`, and the first one arrives as
+ *   the key `Dead`. Cancelling any of them loses the character.
+ * - AltGr held. It is how those layouts type `´ @ € ~`, and browsers report it as
+ *   Alt — or as Ctrl+Alt — so an `Alt+<letter>` binding matches a letter the user
+ *   was typing and swallows it. AltGr is a character modifier, not a command one,
+ *   which is why no binding may use it.
+ */
+export function isTypingCharacter(e: KeyboardEvent): boolean {
+  return (
+    e.isComposing ||
+    e.key === 'Dead' ||
+    e.key === 'Unidentified' ||
+    e.getModifierState('AltGraph')
+  );
+}
+
 export function chordMatches(e: KeyboardEvent, c: Chord): boolean {
   return (
     normalizeKey(e.key) === c.key &&

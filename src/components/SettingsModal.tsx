@@ -4,7 +4,7 @@ import { X, Check, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useStore } from '../store';
 import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, type ThemeName } from '../types/ipc';
 import { COMMANDS, type CommandId } from '../lib/keybindings';
-import { chordFromEvent, chordLabel, isModifierOnly } from '../lib/keys';
+import { chordFromEvent, chordLabel, isModifierOnly, isTypingCharacter } from '../lib/keys';
 import type { Environment } from './FirstRun';
 
 const FONT_MIN = 10;
@@ -71,6 +71,9 @@ export function SettingsModal() {
       e.preventDefault();
       e.stopPropagation();
       if (isModifierOnly(e)) return; // wait for the actual key
+      // A dead key or an AltGr character is not a chord, and recording one would
+      // bind a shortcut to a keystroke the user cannot press without typing.
+      if (isTypingCharacter(e)) return;
       if (e.key === 'Escape') { setCapturing(null); return; } // cancel
       setBinding(capturing, [chordFromEvent(e)]);
       setCapturing(null);

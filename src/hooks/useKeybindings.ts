@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useStore, sessionActions, type GitSubTab, type SidebarTab } from '../store';
 import { toggleTerminal } from '../lib/panes';
 import { COMMANDS, type CommandId } from '../lib/keybindings';
-import { chordMatches, isModifierOnly } from '../lib/keys';
+import { chordMatches, isModifierOnly, isTypingCharacter } from '../lib/keys';
 
 /** True when DOM focus is inside the panel column. */
 function isSidebarFocused(): boolean {
@@ -254,7 +254,9 @@ export function runCommand(id: CommandId): boolean {
 export function useKeybindings() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isModifierOnly(e)) return;
+      // Capture phase runs before the focused element, so a keystroke that is
+      // spelling a character has to be let through here or it never arrives.
+      if (isModifierOnly(e) || isTypingCharacter(e)) return;
       const st = useStore.getState();
       if (st.capturingKey) return; // Settings is rebinding — let it grab the keystroke.
       const { keymap } = st;
