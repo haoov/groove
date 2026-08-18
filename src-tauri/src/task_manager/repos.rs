@@ -15,11 +15,22 @@ use tauri::Manager;
 use crate::db::schema::Repo;
 use crate::git_engine::MainRepo;
 
-/// Pick the repo an agent meant from the clones under MAIN.
+/// Every name a slug answers to: itself, and each run of trailing segments. So
+/// `gitlab.example.com/wiremind/devops/foo` is named by that, by
+/// `wiremind/devops/foo`, by `devops/foo`, and by `foo`.
 ///
-/// Exact slug first (`wiremind/devops/foo`), then the project name (`foo`). A name
-/// matching several slugs is an error rather than a guess: attaching the wrong
-/// repo provisions a worktree and a branch under it.
+/// The host is a segment like any other, which is what keeps the forge path — the
+/// name a person or an agent actually knows — working now that the pool puts the
+/// host in front of it.
+fn names_of(slug: &str) -> impl Iterator<Item = &str> {
+    std::iter::once(slug).chain(slug.match_indices('/').map(|(i, _)| &slug[i + 1..]))
+}
+
+/// Pick the repo an agent meant from the clones in the pool.
+///
+/// The whole slug first, then any name it answers to. A name matching several slugs
+/// is an error rather than a guess: attaching the wrong repo provisions a worktree
+/// and a branch under it.
 fn resolve<'a>(name: &str, available: &'a [MainRepo]) -> anyhow::Result<&'a MainRepo> {
     let wanted = name.trim().trim_matches('/');
     if wanted.is_empty() {
@@ -31,14 +42,14 @@ fn resolve<'a>(name: &str, available: &'a [MainRepo]) -> anyhow::Result<&'a Main
         return Ok(hit);
     }
 
-    let by_project: Vec<&MainRepo> = available
+    let matched: Vec<&MainRepo> = available
         .iter()
-        .filter(|r| eq(project_of(&r.slug), wanted))
+        .filter(|r| names_of(&r.slug).any(|n| eq(n, wanted)))
         .collect();
-    match by_project.as_slice() {
+    match matched.as_slice() {
         [one] => Ok(one),
         [] => anyhow::bail!(
-            "no repo named '{wanted}' is cloned under MAIN. Available: {}. \
+            "no repo named '{wanted}' is cloned in the pool. Available: {}. \
              Ask the user to clone it first — this tool cannot clone.",
             slug_list(available)
         ),
@@ -47,11 +58,6 @@ fn resolve<'a>(name: &str, available: &'a [MainRepo]) -> anyhow::Result<&'a Main
             many.iter().map(|r| r.slug.as_str()).collect::<Vec<_>>().join(", ")
         ),
     }
-}
-
-/// Last path segment of a slug — the project name (`wiremind/devops/foo` → `foo`).
-fn project_of(slug: &str) -> &str {
-    slug.rsplit('/').next().unwrap_or(slug)
 }
 
 fn slug_list(repos: &[MainRepo]) -> String {
@@ -179,28 +185,46 @@ pub async fn add_repo_impl(
 mod tests {
     use super::*;
 
+    /// `slug` is what the pool reports: host first (see git_engine::list_main_repos).
     fn main_repo(slug: &str) -> MainRepo {
+        let (host, path) = slug.split_once('/').unwrap();
         MainRepo {
-            url: format!("git@gitlab.com:{slug}.git"),
-            local_path: format!("/home/u/MAIN/{slug}"),
+            url: format!("git@{host}:{path}.git"),
+            local_path: format!("/home/u/worktrees/main/{slug}"),
             slug: slug.to_string(),
         }
     }
 
     fn fixture() -> Vec<MainRepo> {
         vec![
-            main_repo("wiremind/devops/gitlab-ci-common"),
-            main_repo("wiremind/devops/testack-deploy"),
-            main_repo("wiremind/platform/testack-deploy"),
-            main_repo("wiremind/platform/wiremind-helm-charts"),
+            main_repo("gitlab.example.com/wiremind/devops/gitlab-ci-common"),
+            main_repo("gitlab.example.com/wiremind/devops/testack-deploy"),
+            main_repo("gitlab.example.com/wiremind/platform/testack-deploy"),
+            main_repo("github.com/wiremind/wiremind-helm-charts"),
         ]
     }
 
     #[test]
     fn exact_slug_wins() {
         let repos = fixture();
-        let hit = resolve("wiremind/platform/testack-deploy", &repos).unwrap();
-        assert_eq!(hit.slug, "wiremind/platform/testack-deploy");
+        let hit = resolve("gitlab.example.com/wiremind/platform/testack-deploy", &repos).unwrap();
+        assert_eq!(hit.slug, "gitlab.example.com/wiremind/platform/testack-deploy");
+    }
+
+    /// The forge path, which is the name anyone actually knows — and the one the
+    /// ambiguity error tells an agent to pass. The pool prefixes the host, so this
+    /// is no longer the whole slug and has to resolve all the same.
+    #[test]
+    fn the_forge_path_resolves_without_its_host() {
+        let repos = fixture();
+        assert_eq!(
+            resolve("wiremind/platform/testack-deploy", &repos).unwrap().slug,
+            "gitlab.example.com/wiremind/platform/testack-deploy"
+        );
+        assert_eq!(
+            resolve("platform/testack-deploy", &repos).unwrap().slug,
+            "gitlab.example.com/wiremind/platform/testack-deploy"
+        );
     }
 
     #[test]
@@ -208,7 +232,7 @@ mod tests {
         let repos = fixture();
         assert_eq!(
             resolve("gitlab-ci-common", &repos).unwrap().slug,
-            "wiremind/devops/gitlab-ci-common"
+            "gitlab.example.com/wiremind/devops/gitlab-ci-common"
         );
     }
 
@@ -217,7 +241,7 @@ mod tests {
         let repos = fixture();
         assert_eq!(
             resolve("/GitLab-CI-Common/", &repos).unwrap().slug,
-            "wiremind/devops/gitlab-ci-common"
+            "gitlab.example.com/wiremind/devops/gitlab-ci-common"
         );
     }
 
@@ -228,8 +252,8 @@ mod tests {
         let repos = fixture();
         let err = resolve("testack-deploy", &repos).unwrap_err().to_string();
         assert!(err.contains("matches several"), "{err}");
-        assert!(err.contains("wiremind/devops/testack-deploy"), "{err}");
-        assert!(err.contains("wiremind/platform/testack-deploy"), "{err}");
+        assert!(err.contains("gitlab.example.com/wiremind/devops/testack-deploy"), "{err}");
+        assert!(err.contains("gitlab.example.com/wiremind/platform/testack-deploy"), "{err}");
     }
 
     #[test]

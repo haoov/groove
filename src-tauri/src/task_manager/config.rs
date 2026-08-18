@@ -101,7 +101,7 @@ fn default_true() -> bool {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitConfig {
-    // The repo pool is discovered on disk (`<worktree_root>/MAIN/**`), not
+    // The repo pool is discovered on disk (`<worktree_root>/main/**`), not
     // configured — an old `repos` key in the file is silently ignored.
     pub worktree_root: String,
 }

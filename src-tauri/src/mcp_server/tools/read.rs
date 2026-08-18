@@ -69,7 +69,7 @@ pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallRespo
     ))
 }
 
-/// Repos cloned under MAIN, flagged with whether they are on the caller's task.
+/// Repos in the clone pool, flagged with whether they are on the caller's task.
 ///
 /// `add_task_repo` takes a slug or project name, so the agent needs to see the
 /// real names rather than guess them.
@@ -81,7 +81,7 @@ pub(super) async fn list_repos(
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Attached repos are matched on local_path: the MAIN listing has no repo id
+    // Attached repos are matched on local_path: the pool listing has no repo id
     // until a repo is registered, and registering is `add_task_repo`'s job.
     let attached: Vec<String> = match state.task_for(mcp_session) {
         Some(task_id) => sqlx::query_scalar(
