@@ -21,5 +21,14 @@ pub async fn init(data_dir: &Path) -> Result<SqlitePool, sqlx::Error> {
 
     sqlx::migrate!("src/db/migrations").run(&pool).await?;
 
+    // A PTY dies with the process that owns it, so a row that outlived a launch
+    // describes a session that cannot exist. The reaper only runs when a reader
+    // reaches EOF while the app is alive, which a quit or a crash skips — two
+    // months of use had left 157 of these behind.
+    let stale = sqlx::query("DELETE FROM agent_sessions").execute(&pool).await?;
+    if stale.rows_affected() > 0 {
+        tracing::info!("[db] dropped {} pty sessions from a previous run", stale.rows_affected());
+    }
+
     Ok(pool)
 }
