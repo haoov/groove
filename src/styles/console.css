@@ -8,6 +8,13 @@
 .agent-pane {
   /* Yields before the panes do — see .session-dock. */
   flex-shrink: 1;
+  /* A flex item's automatic minimum is its MIN-CONTENT width, and this column's is
+     wide: a header of buttons, a composer, a terminal. Maximized it has no inline
+     width either, so that minimum became a floor it forced on the whole row — the
+     row overflowed and the only items able to give, the panel and the dock, were
+     pinned at their own floors and could not be dragged back. It grows to fill the
+     room; it does not get to say how much room there is. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;

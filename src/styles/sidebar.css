@@ -5,6 +5,8 @@
   flex-direction: column;
   /* Yields before the panes do — see .session-dock. */
   flex-shrink: 1;
+  /* The floor is the inline minWidth, not min-content — see .agent-pane. */
+  min-width: 0;
   overflow: hidden;
 }
 
