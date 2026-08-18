@@ -580,19 +580,27 @@ pub async fn list_main_repos() -> Result<Vec<super::types::MainRepo>, String> {
     .map_err(|e| e.to_string())?;
 
     let root = main_root();
-    let mut repos = vec![];
-    for path in found {
-        let local_path = path.to_string_lossy().to_string();
-        let slug = path
-            .strip_prefix(&root)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| local_path.clone());
-        // A clone without an origin remote can't be registered — skip it.
-        let Ok(url) = super::run_git(&local_path, &["remote", "get-url", "origin"]).await else {
-            continue;
-        };
-        repos.push(super::types::MainRepo { url: url.trim().to_string(), local_path, slug });
-    }
+    // One `git remote get-url` per clone, all at once. In a row they cost 124 ms on a
+    // 35-repo pool, and this runs on every review-queue poll and every time a repo
+    // picker opens — the answer is the same either way, so it may as well be prompt.
+    let mut repos: Vec<super::types::MainRepo> =
+        futures_util::future::join_all(found.into_iter().map(|path| {
+            let root = root.clone();
+            async move {
+                let local_path = path.to_string_lossy().to_string();
+                let slug = path
+                    .strip_prefix(&root)
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| local_path.clone());
+                // A clone without an origin remote can't be registered — skip it.
+                let url = super::run_git(&local_path, &["remote", "get-url", "origin"]).await.ok()?;
+                Some(super::types::MainRepo { url: url.trim().to_string(), local_path, slug })
+            }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
     repos.sort_by(|a, b| a.slug.to_lowercase().cmp(&b.slug.to_lowercase()));
     Ok(repos)
 }
