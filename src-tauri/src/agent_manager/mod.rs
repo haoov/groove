@@ -50,10 +50,18 @@ fn load_legacy_session_id(task_id: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-/// Encode a CWD path the same way Claude Code does for its session directory.
+/// Encode a CWD path the same way Claude Code does for its session directory:
+/// every character that is not a letter or digit becomes `-`. Replacing only
+/// `/` missed the dots — `gitlab.wiremind.io` encodes as `gitlab-wiremind-io` —
+/// so a cwd containing one never matched, and the conversation forked instead
+/// of resuming.
 fn claude_projects_dir(cwd: &str) -> std::path::PathBuf {
+    let encoded: String = cwd
+        .trim_end_matches('/')
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
     let home = std::env::var("HOME").unwrap_or_default();
-    let encoded = cwd.trim_end_matches('/').replace('/', "-");
     std::path::PathBuf::from(&home)
         .join(".claude")
         .join("projects")
@@ -82,6 +90,19 @@ pub(crate) fn resolve_claude_bin() -> String {
         }
     }
     "claude".to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    /// Pinned to a real entry in ~/.claude/projects: Claude Code encodes EVERY
+    /// non-alphanumeric character as `-`, not just the slashes.
+    #[test]
+    fn projects_dir_encodes_like_claude_code() {
+        let dir = super::claude_projects_dir("/home/x/worktrees/gitlab.wiremind.io/devops/");
+        assert!(dir
+            .to_string_lossy()
+            .ends_with("/.claude/projects/-home-x-worktrees-gitlab-wiremind-io-devops"));
+    }
 }
 
 /// The worktree root (from config, tilde-expanded), falling back to $HOME if it
@@ -134,28 +155,31 @@ pub async fn start_agent_session(
     // user looks elsewhere. The `?task=` query param makes the server bind the
     // connection to this task for its lifetime instead.
     //
-    // `--mcp-config` takes inline JSON, and WITHOUT `--strict-mcp-config` the
-    // user's other servers (notion, kubernetes, …) still load from disk.
-    args.push("--mcp-config".to_string());
-    args.push(
-        serde_json::json!({
-            "mcpServers": {
-                // The server name is the agent's tool PREFIX
-                // (mcp__groove__get_task_diff). Renaming it invalidates any
-                // permission allowlist or hook matcher built on the old prefix.
-                "groove": {
-                    "type": "sse",
-                    "url": crate::mcp_server::sse_url(&task_id),
+    // Both blobs go through FILES, not inline argv: they carry the loopback
+    // bearer token, and `/proc/<pid>/cmdline` is world-readable. WITHOUT
+    // `--strict-mcp-config` the user's other servers (notion, kubernetes, …)
+    // still load from disk.
+    let mcp_config = serde_json::json!({
+        "mcpServers": {
+            // The server name is the agent's tool PREFIX
+            // (mcp__groove__get_task_diff). Renaming it invalidates any
+            // permission allowlist or hook matcher built on the old prefix.
+            "groove": {
+                "type": "sse",
+                "url": crate::mcp_server::sse_url(&task_id),
+                "headers": {
+                    "Authorization": format!("Bearer {}", crate::mcp_server::auth::token()),
                 }
             }
-        })
-        .to_string(),
-    );
+        }
+    });
+    args.push("--mcp-config".to_string());
+    args.push(write_launch_file(&app, &task_id, "mcp.json", &mcp_config.to_string()).map_err(|e| e.to_string())?);
 
     // Report this agent's state (working / waiting on the user / idle) back to the
     // app. See agent_hooks for why hooks rather than reading the terminal.
     args.push("--settings".to_string());
-    args.push(hook_settings(&task_id));
+    args.push(write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id)).map_err(|e| e.to_string())?);
 
     // Drop the reported activity with the process, so a "waiting on you" can
     // never outlive the agent it described.
@@ -184,15 +208,41 @@ pub async fn start_agent_session(
     .map_err(|e| e.to_string())
 }
 
-/// Inline `--settings` JSON wiring Claude Code's lifecycle hooks to our loopback
-/// server. Verified with Claude Code 2.1.220: inline settings MERGE with the
+/// Write one agent-launch file (0600 — it carries the loopback token) and
+/// return its path. Overwritten on every spawn; one pair per task.
+fn write_launch_file(
+    app: &tauri::AppHandle,
+    task_id: &str,
+    name: &str,
+    contents: &str,
+) -> anyhow::Result<String> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    use tauri::Manager;
+
+    let dir = app.path().app_data_dir()?.join("agent-launch");
+    std::fs::create_dir_all(&dir)?;
+    let path = dir.join(format!("{task_id}.{name}"));
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&path)?;
+    file.write_all(contents.as_bytes())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// `--settings` JSON wiring Claude Code's lifecycle hooks to our loopback
+/// server. Verified with Claude Code 2.1.220: these settings MERGE with the
 /// user's own settings files, so their hooks keep running alongside these.
 ///
 /// `curl` is best-effort by design — `-m 2` caps the stall if the app is gone,
 /// and a failing hook must never hold up the agent, only cost a status update.
 fn hook_settings(task_id: &str) -> String {
     let command = format!(
-        "curl -s -m 2 -X POST -H 'content-type: application/json' --data-binary @- '{}' >/dev/null 2>&1 || true",
+        "curl -s -m 2 -X POST -H 'content-type: application/json' -H 'authorization: Bearer {}' --data-binary @- '{}' >/dev/null 2>&1 || true",
+        crate::mcp_server::auth::token(),
         crate::mcp_server::hook_url(task_id)
     );
     let post = serde_json::json!([{ "hooks": [{ "type": "command", "command": command }] }]);

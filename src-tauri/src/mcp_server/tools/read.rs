@@ -42,11 +42,9 @@ pub(super) async fn get_worktrees(
     Ok(ToolCallResponse::ok(serde_json::to_value(worktrees)?))
 }
 
-/// Every real task the app knows about, from the local mirror.
-///
-/// The desk agent has no worktrees and no diff, so without this it cannot answer
-/// "what am I working on". Synthetic rows are excluded: an explorer, a review or
-/// the desk itself is not something picked off a queue.
+/// Every real task the app knows about, from the local mirror. Synthetic
+/// sessions are excluded: an explorer or a review is not something picked off
+/// a queue.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
     let tasks: Vec<crate::core::db::models::TaskView> = store::notion_tasks::all(&state.pool)
         .await?

@@ -433,3 +433,38 @@ frozen (`resolve_confirmation` handler path only).
 | **N5**: GitTab "Commit & Push" posts both approvals at once — denying commit + approving push pushes without the commit | post `git.push` only after the commit's `confirmation_resolved` arrives approved |
 | **B11**: `PayloadView` has no case for `notion.property`, `notion.hours`, `notion.body`, `task.create` → raw JSON dialogs | add the four renderers; key the renderer registry by op name |
 | Dead `notion.status` entry in ops.ts + its modal case | delete, then strengthen the mirror test to check both directions |
+
+## Phase 6 — agent/MCP hardening (done)
+
+Backend only. IPC and events unchanged; no frontend work owed.
+
+### S1/S2 — loopback auth
+
+- Per-launch random bearer token (`mcp_server::auth`), REQUIRED on `/sse`,
+  `/message`, `/hook` via axum middleware; wrong/no token → 401 + warn. Before
+  this, any local process could read arbitrary files (`get_file_content`),
+  queue approvals, or spoof agent activity.
+- Token never touches argv (`/proc/*/cmdline` is world-readable): the MCP
+  config and hook settings are written to `<data>/agent-launch/<task>.{mcp,settings}.json`
+  (0600, overwritten per spawn) and passed by PATH to `--mcp-config` /
+  `--settings`. MCP config carries the token in a `headers` block; the hook
+  curl sends the same header.
+- S2 (binding asserted, not verified) collapses into S1: only spawned agents
+  hold the token, and `rebind` was already server-side only.
+- Consequence: a hand-run `claude` cannot reach the groove server without the
+  launch files — acceptable, it never had them configured anyway.
+
+### Bugs
+
+- **B7**: `claude_projects_dir` now encodes every non-alphanumeric char as `-`
+  (Claude Code's real scheme, pinned by test against a real
+  `gitlab.wiremind.io` entry). A cwd with a dot used to break `session_exists`
+  → conversations forked instead of resuming.
+- **N3**: a JSON-RPC message with a missing OR null `id` is a notification;
+  the dead half of the old check is gone and explicit `"id": null` is no
+  longer answered.
+
+### Simplification
+
+- `Sessions` + `SessionTasks` (two same-keyed mutex maps) merged into one
+  `Connections` map of `{tx, task}` — one lock, one-step cleanup on SSE drop.
