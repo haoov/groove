@@ -13,7 +13,6 @@ mod mcp_server;
 mod migrate_identity;
 mod mr_manager;
 mod ops;
-mod pty_trace;
 mod review;
 mod task_manager;
 mod worktrees;
@@ -45,7 +44,6 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
-            pty_trace::init(&data_dir);
             let handle = app.handle().clone();
 
             // Spin up the async init inside Tauri's tokio runtime, then block the
@@ -150,15 +148,14 @@ pub fn run() {
             annotation_store::resolve_annotation,
             annotation_store::get_annotations,
             annotation_store::delete_annotation,
-            // agent_manager
+            // agent_manager + core::pty
             agent_manager::start_agent_session,
             agent_manager::start_terminal_session,
-            agent_manager::stop_agent_session,
-            agent_manager::resolve_confirmation,
-            agent_manager::write_pty,
-            pty_trace::trace_pty,
-            pty_trace::pty_trace_on,
-            agent_manager::resize_pty,
+            core::pty::stop_agent_session,
+            core::pty::write_pty,
+            core::pty::resize_pty,
+            // confirmation_bridge
+            confirmation_bridge::resolve_confirmation,
             // clipboard
             clipboard::copy_to_clipboard,
             clipboard::read_clipboard,
@@ -198,14 +195,13 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
 
     let bridge = confirmation_bridge::Bridge::new(handle.clone());
     let editor_state = editor_host::State::new();
-    let agent_state = agent_manager::State::new();
     let task_state = task_manager::State::new();
     let activity = agent_hooks::new_state();
 
     handle.manage(pool.clone());
     handle.manage(bridge.clone());
     handle.manage(editor_state.clone());
-    handle.manage(agent_state);
+    handle.manage(core::pty::Ptys::new());
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 

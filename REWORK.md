@@ -284,3 +284,51 @@ removed/changed commands and is runtime-broken in the ways listed below.
 | `file_changed` listener + 350ms debounce block | delete; never fires |
 | No auto-refresh wiring | add `refreshSession(id)`: `flush_git_caches` → invalidateDiff → refreshStatusFor (+ refreshHome off-workspace); call it from `agent_activity` (throttled while working, once on idle) and from the sidebar refresh button |
 | `register_repo` invoked with `{localPath, remoteUrl}` (repoPicker) | pass `{slug, localPath}`; `MainRepo.url` no longer exists (type + tooltip) |
+
+## Phase 3d — core/pty: mechanics extracted, trace deleted, bash imposed (done)
+
+Backend only. Frontend untouched; owed changes below.
+
+### New module `core/pty`
+
+- `Ptys` registry (managed state, replaces `agent_manager::State`):
+  `spawn(app, PtySpec) -> session_id`, `write`, `resize`, `kill`.
+- `PtySpec { task_id, kind, cwd, program, args, env, on_exit }`. No uniqueness
+  constraint — a session opens any number of PTYs (multiple terminals already
+  work end to end; nothing changed there).
+- Reader loop (base64 `pty_output`, EOF reap, `pty_exit`) and
+  `describe_terminal` (TERM/COLORTERM) live here. Domain-free: the
+  agent-death → `agent_hooks::forget` link is now an `on_exit` callback passed
+  by `agent_manager`.
+- Generic IPC commands moved here, names/shapes frozen: `stop_agent_session`,
+  `write_pty`, `resize_pty`.
+- Kill is `libc::kill(pid, SIGTERM)` (new direct dep `libc`), not a spawned
+  `kill` subprocess. Entry dropped + immediate `pty_exit` as before; reader EOF
+  still emits a second `pty_exit` (frontend handlers are idempotent).
+
+### agent_manager slimmed to policy
+
+- Keeps: session UUID derivation, legacy id fallback, `resolve_claude_bin`,
+  `resolve_root_cwd`, `hook_settings`, `claude_env` (MCP timeout vars, set on
+  every PTY as before), `start_agent_session`, `start_terminal_session`,
+  `start_login_pty` (now sync).
+- **Shell imposed**: terminals and the auth PTY run `TERMINAL_SHELL =
+  "/bin/bash"`, never `$SHELL`. One redraw behavior against xterm.js. `.zshrc`
+  aliases are gone from in-app terminals by decision; PATH still comes from
+  `launch_env::widen_path`.
+- `resolve_confirmation` command moved to `confirmation_bridge` (handler path
+  change only).
+- `expand_tilde` moved to new `core/fs.rs` (users: setup, pool, agent_manager).
+
+### pty_trace deleted
+
+- `pty_trace.rs`, its `init` call, and the `trace_pty` / `pty_trace_on`
+  commands are gone. The doubled-character bug it existed to attribute is
+  fixed; bash removes the zsh variable entirely.
+
+### Frontend work owed — frontend phase
+
+| Break | Fix |
+|---|---|
+| `src/lib/ptyTrace.ts` invokes removed `pty_trace_on`/`trace_pty` (degrades silently) | delete the file + `tracePty` import/calls in `terminalHost.ts` |
+| `write_pty` sends `data: Array.from(bytes)` (P9, number array on the hottest path) | send base64 both ways; change `write_pty`/`data` contract together with the backend in that phase |

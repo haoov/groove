@@ -198,12 +198,10 @@ mod tests {
 #[tauri::command]
 pub async fn start_auth_session(
     app: tauri::AppHandle,
-    agent_state: tauri::State<'_, crate::agent_manager::State>,
+    ptys: tauri::State<'_, crate::core::pty::Ptys>,
 ) -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    crate::agent_manager::start_login_pty(&app, &home, &agent_state)
-        .await
-        .map_err(|e| e.to_string())
+    crate::agent_manager::start_login_pty(&app, &home, &ptys).map_err(|e| e.to_string())
 }
 
 /// The Notion workspace's people, so a new user can pick themselves instead of
@@ -338,7 +336,7 @@ pub async fn write_initial_config(
     if token.trim().is_empty() || database_id.trim().is_empty() {
         return Err("A Notion token and database id are both required.".into());
     }
-    let root = crate::agent_manager::expand_tilde(worktree_root.trim());
+    let root = crate::core::fs::expand_tilde(worktree_root.trim());
     if root.is_empty() {
         return Err("A worktree root is required — the directory repos are cloned into.".into());
     }

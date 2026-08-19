@@ -206,6 +206,20 @@ pub async fn surface_pending(pool: &SqlitePool, handle: &AppHandle) {
     }
 }
 
+#[tauri::command]
+pub async fn resolve_confirmation(
+    id: String,
+    approved: bool,
+    payload_overrides: Option<serde_json::Value>,
+    pool: tauri::State<'_, SqlitePool>,
+    bridge: tauri::State<'_, Bridge>,
+) -> Result<(), String> {
+    bridge
+        .resolve(&pool, &id, approved, payload_overrides)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Inject the Notion token (and any other config-derived secrets) into an op
 /// payload at execution time. Secrets are deliberately NOT stored in
 /// `pending_confirmations` rows or emitted in confirmation events.

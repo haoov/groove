@@ -39,7 +39,7 @@ pub fn resolve_worktree_root() -> PathBuf {
     if let Some(cfg) = crate::core::config::get() {
         let raw = cfg.git.worktree_root;
         if !raw.trim().is_empty() {
-            return PathBuf::from(crate::agent_manager::expand_tilde(&raw));
+            return PathBuf::from(crate::core::fs::expand_tilde(&raw));
         }
     }
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
