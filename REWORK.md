@@ -348,3 +348,9 @@ Closes P2. Backend only; no IPC or frontend impact.
   call sites untouched.
 - Guard test `no_http_client_outside_core_http`, same style as the git-spawn
   and raw-SQL guards.
+
+## Phase 3f — core/events: relocation only (done)
+
+- `src/events.rs` → `src/core/events.rs`, references now `crate::core::events`.
+- Nothing else changed: same names, same `set_app`/`notice` globals, same
+  hand-mirrored contract with `src/lib/events.ts`.

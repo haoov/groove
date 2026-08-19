@@ -239,7 +239,7 @@ pub(super) async fn create_annotation(
     let _ = state
         .bridge
         .app_handle()
-        .emit(crate::events::ANNOTATION_CREATED, serde_json::to_value(&row)?);
+        .emit(crate::core::events::ANNOTATION_CREATED, serde_json::to_value(&row)?);
 
     Ok(ToolCallResponse::ok(serde_json::to_value(row)?))
 }
@@ -254,7 +254,7 @@ pub(super) async fn resolve_annotation(
     }
     store::annotations::resolve(&state.pool, &id).await?;
     let _ = state.bridge.app_handle().emit(
-        crate::events::ANNOTATION_RESOLVED,
+        crate::core::events::ANNOTATION_RESOLVED,
         serde_json::json!({ "id": id }),
     );
     Ok(ToolCallResponse::ok(serde_json::json!({

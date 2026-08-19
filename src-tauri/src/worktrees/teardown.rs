@@ -72,7 +72,7 @@ async fn close_worktree_impl(
     let closed = store::worktrees::close(pool, worktree_id).await?;
 
     app.emit(
-        crate::events::WORKTREE_CLOSED,
+        crate::core::events::WORKTREE_CLOSED,
         serde_json::json!({
             "worktree_id": worktree_id,
             "session_id": closed.session_id,

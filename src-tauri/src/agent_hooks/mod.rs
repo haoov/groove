@@ -146,7 +146,7 @@ async fn hook_handler(
         entry.clone()
     };
 
-    let _ = state.app.emit(crate::events::AGENT_ACTIVITY, &updated);
+    let _ = state.app.emit(crate::core::events::AGENT_ACTIVITY, &updated);
     axum::http::StatusCode::OK
 }
 

@@ -242,14 +242,14 @@ pub async fn rebase_continue(
 
     if output.status.success() {
         app.emit(
-            crate::events::REBASE_DONE,
+            crate::core::events::REBASE_DONE,
             serde_json::json!({ "worktree_id": worktree_id }),
         )
         .map_err(|e| e.to_string())?;
     } else {
         let conflicts = get_conflict_files(&wt.path).await;
         app.emit(
-            crate::events::REBASE_CONFLICT,
+            crate::core::events::REBASE_CONFLICT,
             serde_json::json!({ "worktree_id": worktree_id, "files": conflicts }),
         )
         .map_err(|e| e.to_string())?;
@@ -279,7 +279,7 @@ pub async fn rebase_abort(
     }
 
     app.emit(
-        crate::events::REBASE_DONE,
+        crate::core::events::REBASE_DONE,
         serde_json::json!({ "worktree_id": worktree_id, "aborted": true }),
     )
     .map_err(|e| e.to_string())?;

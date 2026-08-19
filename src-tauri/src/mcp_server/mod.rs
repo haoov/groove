@@ -165,7 +165,7 @@ pub async fn start(
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
-            crate::events::notice(
+            crate::core::events::notice(
                 "error",
                 "mcp",
                 format!("Agent tools are unavailable: {} is busy", endpoint()),

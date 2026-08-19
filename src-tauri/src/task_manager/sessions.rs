@@ -39,7 +39,7 @@ pub async fn open_explorer_session(
     task_state.set_active_task_id(Some(short_id.clone()));
 
     app.emit(
-        crate::events::WORKSPACE_READY,
+        crate::core::events::WORKSPACE_READY,
         serde_json::json!({
             "task": task,
             "worktrees": [],
@@ -167,7 +167,7 @@ pub async fn discard_explorer(
     if task_state.get_active_task_id().as_deref() == Some(short_id.as_str()) {
         task_state.set_active_task_id(None);
     }
-    app.emit(crate::events::EXPLORER_DISCARDED, serde_json::json!({ "short_id": short_id }))
+    app.emit(crate::core::events::EXPLORER_DISCARDED, serde_json::json!({ "short_id": short_id }))
         .map_err(|e| e.to_string())?;
     Ok(())
 }

@@ -257,13 +257,13 @@ pub(super) async fn open_task_impl(
 
     if worktrees.is_empty() && session.kind == SessionKind::Task {
         app.emit(
-            crate::events::WORKSPACE_STUB,
+            crate::core::events::WORKSPACE_STUB,
             serde_json::json!({ "task": task, "kind": session.kind }),
         )?;
     } else {
         let repos = store::repos::attached_to(pool, &session.id).await?;
         app.emit(
-            crate::events::WORKSPACE_READY,
+            crate::core::events::WORKSPACE_READY,
             serde_json::json!({
                 "task": task,
                 "worktrees": worktrees,
@@ -396,7 +396,7 @@ async fn tear_down_session(
     }
 
     app.emit(
-        crate::events::TASK_FINISHED,
+        crate::core::events::TASK_FINISHED,
         serde_json::json!({ "short_id": short_id, "done_status": done_status }),
     )?;
 
@@ -413,7 +413,7 @@ pub async fn pause_task(
 ) -> Result<(), String> {
     task_state.set_active_task_id(None);
 
-    app.emit(crate::events::TASK_PAUSED, serde_json::json!({ "short_id": short_id }))
+    app.emit(crate::core::events::TASK_PAUSED, serde_json::json!({ "short_id": short_id }))
         .map_err(|e| e.to_string())?;
 
     Ok(())

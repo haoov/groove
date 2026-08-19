@@ -6,7 +6,6 @@ mod confirmation_bridge;
 mod core;
 mod desktop_notify;
 mod editor_host;
-mod events;
 mod home;
 mod launch_env;
 mod mcp_server;
@@ -191,7 +190,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
         .map_err(|e| format!("DB init failed: {e}"))?;
 
     // Lets background work (git provisioning) report problems it can't return.
-    events::set_app(handle.clone());
+    core::events::set_app(handle.clone());
 
     let bridge = confirmation_bridge::Bridge::new(handle.clone());
     let editor_state = editor_host::State::new();

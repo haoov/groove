@@ -241,7 +241,7 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
     let fetched = git::run(repo_path, &["fetch", "origin"]).await;
     git::cache::flush();
     if let Err(e) = fetched {
-        crate::events::notice(
+        crate::core::events::notice(
             "error",
             "git",
             format!("Could not fetch {repo_label} — its worktree may be based on stale history"),
@@ -269,7 +269,7 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
     if let Err(e) = result {
         // The common cause is local commits or a dirty tree in the MAIN clone,
         // which the user has to resolve there — so say which repo and branch.
-        crate::events::notice(
+        crate::core::events::notice(
             "attention",
             "git",
             format!("{repo_label}: {default_branch} in MAIN could not fast-forward"),

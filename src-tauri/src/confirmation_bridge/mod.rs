@@ -66,7 +66,7 @@ impl Bridge {
             .await?;
 
         self.inner.handle.emit(
-            crate::events::CONFIRMATION_REQUESTED,
+            crate::core::events::CONFIRMATION_REQUESTED,
             serde_json::json!({
                 "id": id,
                 "session_id": task_id,
@@ -154,7 +154,7 @@ impl Bridge {
         }
 
         let _ = self.inner.handle.emit(
-            crate::events::CONFIRMATION_RESOLVED,
+            crate::core::events::CONFIRMATION_RESOLVED,
             serde_json::json!({
                 "id": id,
                 "session_id": confirmation.session_id,
@@ -194,7 +194,7 @@ pub async fn surface_pending(pool: &SqlitePool, handle: &AppHandle) {
         let payload: serde_json::Value =
             serde_json::from_str(&row.payload).unwrap_or_default();
         let _ = handle.emit(
-            crate::events::CONFIRMATION_REQUESTED,
+            crate::core::events::CONFIRMATION_REQUESTED,
             serde_json::json!({
                 "id": row.id,
                 "session_id": row.session_id,

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod db;
+pub mod events;
 pub mod fs;
 pub mod git;
 pub mod http;

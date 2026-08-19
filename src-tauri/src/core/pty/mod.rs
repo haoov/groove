@@ -100,7 +100,7 @@ impl Ptys {
                     // 4 KB chunk against 5.5 KB, and 37 ms of parsing against 9 ms.
                     Ok(n) => {
                         let _ = app_reader.emit(
-                            crate::events::PTY_OUTPUT,
+                            crate::core::events::PTY_OUTPUT,
                             serde_json::json!({
                                 "session_id": sid,
                                 "b64": base64::Engine::encode(
@@ -119,7 +119,7 @@ impl Ptys {
             if let Some(hook) = on_exit {
                 hook();
             }
-            let _ = app_reader.emit(crate::events::PTY_EXIT, serde_json::json!({ "session_id": sid }));
+            let _ = app_reader.emit(crate::core::events::PTY_EXIT, serde_json::json!({ "session_id": sid }));
         });
 
         if let Ok(mut map) = self.entries.lock() {
@@ -134,7 +134,7 @@ impl Ptys {
         }
 
         app.emit(
-            crate::events::PTY_STARTED,
+            crate::core::events::PTY_STARTED,
             serde_json::json!({
                 "session_id": session_id,
                 "task_id": spec.task_id,
@@ -192,7 +192,7 @@ impl Ptys {
                 }
             }
         }
-        app.emit(crate::events::PTY_EXIT, serde_json::json!({ "session_id": session_id }))
+        app.emit(crate::core::events::PTY_EXIT, serde_json::json!({ "session_id": session_id }))
             .map_err(|e| e.to_string())
     }
 }
