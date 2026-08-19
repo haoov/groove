@@ -61,7 +61,7 @@ pub(super) async fn dispatch(
     // The calling connection — resolves to the agent's OWN task, not the focused one.
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    use crate::ops;
+    use crate::approvals::ops;
     match name {
         // Reads
         "get_active_task" => read::get_active_task(state, mcp_session).await,

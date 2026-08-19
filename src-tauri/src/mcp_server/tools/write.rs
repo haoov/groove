@@ -6,7 +6,7 @@
 
 use tauri::Emitter;
 
-use crate::confirmation_bridge::ResolveOutcome;
+use crate::approvals::ResolveOutcome;
 use crate::core::db::models::SessionKind;
 use crate::core::db::store;
 
@@ -61,10 +61,10 @@ pub(super) async fn via_bridge(
     // it exists in Notion. Scoped to those ops specifically: Notion writes and
     // task filing work fine from an explorer.
     const NEEDS_BRANCH: [&str; 4] = [
-        crate::ops::GIT_PUSH,
-        crate::ops::GIT_PULL,
-        crate::ops::GIT_REBASE,
-        crate::ops::MR_CREATE,
+        crate::approvals::ops::GIT_PUSH,
+        crate::approvals::ops::GIT_PULL,
+        crate::approvals::ops::GIT_REBASE,
+        crate::approvals::ops::MR_CREATE,
     ];
     let is_explorer = match state.task_for(mcp_session) {
         Some(id) => matches!(
@@ -169,7 +169,7 @@ pub(super) async fn create_task_from_explorer(
 
     let outcome = post_and_wait(
         state,
-        crate::ops::TASK_CREATE_FROM_EXPLORER,
+        crate::approvals::ops::TASK_CREATE_FROM_EXPLORER,
         payload,
         Some(&explorer_id),
     )
@@ -279,7 +279,7 @@ pub(super) async fn create_task(
     let payload = crate::notion::new_task_payload(&cfg.notion, &title, body_markdown);
     let task_id = state.task_for(mcp_session);
 
-    match post_and_wait(state, crate::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
+    match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
         ResolveOutcome::Approved(task) => Ok(ToolCallResponse::ok(task)),
         ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
         ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
@@ -314,7 +314,7 @@ pub(super) async fn add_task_repo(
         "branch": input["branch"].as_str(),
     });
 
-    match post_and_wait(state, crate::ops::TASK_ADD_REPO, payload, Some(&task_id)).await? {
+    match post_and_wait(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await? {
         ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
         ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Adding the repo was rejected by the user")),
         // The resolution errors (unknown repo, ambiguous name, wrong session kind)
@@ -367,7 +367,7 @@ pub(super) async fn update_task_property(
         "property": property,
         "value": input["value"].clone(),
     });
-    bridged(state, crate::ops::NOTION_PROPERTY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::NOTION_PROPERTY, payload, &task_id).await
 }
 
 /// Add hours to the task's "Hours spent". Adds — never replaces.
@@ -386,7 +386,7 @@ pub(super) async fn log_task_hours(
     let payload = serde_json::json!({
         "notion_page_id": page_id, "task_id": task_id, "hours": hours,
     });
-    bridged(state, crate::ops::NOTION_HOURS, payload, &task_id).await
+    bridged(state, crate::approvals::ops::NOTION_HOURS, payload, &task_id).await
 }
 
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
@@ -407,7 +407,7 @@ pub(super) async fn update_task_body(
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),
     });
-    bridged(state, crate::ops::NOTION_BODY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::NOTION_BODY, payload, &task_id).await
 }
 
 /// Post a pre-built payload and map the outcome — the tail every gated write

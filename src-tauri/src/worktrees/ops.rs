@@ -8,7 +8,7 @@ pub async fn commit(
     worktree_id: String,
     message: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -21,7 +21,7 @@ pub async fn commit(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_COMMIT, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_COMMIT, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -89,7 +89,7 @@ pub async fn discard_file(
     worktree_id: String,
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -100,7 +100,7 @@ pub async fn discard_file(
         "file_path": file_path,
     });
     bridge
-        .post(&pool, crate::ops::GIT_DISCARD, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_DISCARD, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -109,7 +109,7 @@ pub async fn discard_file(
 pub async fn discard_all(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -119,7 +119,7 @@ pub async fn discard_all(
         "worktree_path": wt.path,
     });
     bridge
-        .post(&pool, crate::ops::GIT_DISCARD_ALL, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_DISCARD_ALL, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -162,7 +162,7 @@ pub async fn discard_all_impl(payload: serde_json::Value) -> anyhow::Result<()> 
 pub async fn push(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -174,7 +174,7 @@ pub async fn push(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_PUSH, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_PUSH, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -183,7 +183,7 @@ pub async fn push(
 pub async fn pull(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -195,7 +195,7 @@ pub async fn pull(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_PULL, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_PULL, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -205,7 +205,7 @@ pub async fn rebase_on_main(
     worktree_id: String,
     default_branch: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
@@ -218,7 +218,7 @@ pub async fn rebase_on_main(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_REBASE, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::GIT_REBASE, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }

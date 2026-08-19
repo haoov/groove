@@ -211,13 +211,13 @@ pub async fn request_task_body_update(
     task_id: String,
     markdown: String,
     force: bool,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
     bridge
         .post(
             &pool,
-            crate::ops::NOTION_BODY,
+            crate::approvals::ops::NOTION_BODY,
             serde_json::json!({
                 "notion_page_id": notion_page_id,
                 "task_id": task_id,

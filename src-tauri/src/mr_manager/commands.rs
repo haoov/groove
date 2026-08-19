@@ -135,7 +135,7 @@ pub async fn reply_to_thread(
 pub async fn create_mr(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-    bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
+    bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
     let wt = store::worktrees::get(&*pool, &worktree_id)
         .await
@@ -151,7 +151,7 @@ pub async fn create_mr(
     });
 
     bridge
-        .post(&pool, crate::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))
+        .post(&pool, crate::approvals::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }

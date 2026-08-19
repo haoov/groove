@@ -2,7 +2,7 @@ mod agent_hooks;
 mod agent_manager;
 mod annotation_store;
 mod clipboard;
-mod confirmation_bridge;
+mod approvals;
 mod core;
 mod desktop_notify;
 mod editor_host;
@@ -12,7 +12,6 @@ mod mcp_server;
 mod migrate_identity;
 mod mr_manager;
 mod notion;
-mod ops;
 mod review;
 mod task_manager;
 mod worktrees;
@@ -155,8 +154,8 @@ pub fn run() {
             core::pty::stop_agent_session,
             core::pty::write_pty,
             core::pty::resize_pty,
-            // confirmation_bridge
-            confirmation_bridge::resolve_confirmation,
+            // approvals
+            approvals::resolve_confirmation,
             // clipboard
             clipboard::copy_to_clipboard,
             clipboard::read_clipboard,
@@ -194,7 +193,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     // Lets background work (git provisioning) report problems it can't return.
     core::events::set_app(handle.clone());
 
-    let bridge = confirmation_bridge::Bridge::new(handle.clone());
+    let bridge = approvals::Bridge::new(handle.clone());
     let editor_state = editor_host::State::new();
     let task_state = task_manager::State::new();
     let activity = agent_hooks::new_state();
@@ -211,7 +210,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     let pool_c = pool.clone();
     let handle_c = handle.clone();
     tokio::spawn(async move {
-        confirmation_bridge::surface_pending(&pool_c, &handle_c).await;
+        approvals::surface_pending(&pool_c, &handle_c).await;
     });
 
     // Start the MCP server (endpoint owned by `mcp_server`)

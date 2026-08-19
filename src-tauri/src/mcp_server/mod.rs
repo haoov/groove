@@ -19,7 +19,7 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-use crate::confirmation_bridge::Bridge;
+use crate::approvals::Bridge;
 use crate::editor_host::State as EditorState;
 use crate::task_manager::State as TaskState;
 

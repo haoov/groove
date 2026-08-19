@@ -404,3 +404,32 @@ cache), `create` (NewTask, create_page, filing), `body` (read/replace/template),
 | `notion.status` confirmation renderer (ops.ts + modal) is dead | delete; `notion.property` covers status |
 
 All other IPC names/shapes frozen.
+
+## Phase 5 — approvals module: catalog + mechanics split (done)
+
+Backend only. `ops.rs` (root) and `confirmation_bridge/` merged into
+`src/approvals/`. No behavior change: same events, payloads, op names; IPC
+frozen (`resolve_confirmation` handler path only).
+
+- `approvals/ops.rs` — the op CATALOG: every op's name constant and its
+  `execute` arm side by side. Two of the three must-agree places are now one
+  file; message builders (`op_ok`, `repo_of`, `branch_of`) live with them and
+  are computed only in the arms that use them.
+- `approvals/bridge.rs` — pure mechanics (post, identical-pending dedup,
+  oneshot senders, resolve → `ops::execute`, surface_pending,
+  `resolve_confirmation` IPC). Knows nothing about specific ops.
+- **Mirror guard test**: every backend op name must appear in `src/lib/ops.ts`
+  — a missing frontend renderer name now fails the build instead of rendering
+  raw JSON. The reverse check (dead frontend names) activates in the frontend
+  phase, since ops.ts still carries known-dead entries.
+- Paths: `crate::ops::X` → `crate::approvals::ops::X`,
+  `crate::confirmation_bridge::*` → `crate::approvals::*`.
+- N3 reassigned to the Agent/MCP phase (it is a JSON-RPC null-check nit).
+
+### Frontend work owed — frontend phase
+
+| Item | Fix |
+|---|---|
+| **N5**: GitTab "Commit & Push" posts both approvals at once — denying commit + approving push pushes without the commit | post `git.push` only after the commit's `confirmation_resolved` arrives approved |
+| **B11**: `PayloadView` has no case for `notion.property`, `notion.hours`, `notion.body`, `task.create` → raw JSON dialogs | add the four renderers; key the renderer registry by op name |
+| Dead `notion.status` entry in ops.ts + its modal case | delete, then strengthen the mirror test to check both directions |
