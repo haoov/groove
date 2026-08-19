@@ -66,7 +66,7 @@ pub(super) async fn list_repos(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let main = crate::git_engine::list_main_repos()
+    let main = crate::worktrees::list_main_repos()
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -99,7 +99,7 @@ pub(super) async fn get_task_diff(
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
     let task_id = str_field(&input, "task_id")?;
-    let result = crate::git_engine::get_task_diff_mcp(&task_id, &state.pool).await?;
+    let result = crate::review::get_task_diff_mcp(&task_id, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(result)?))
 }
 
@@ -110,7 +110,7 @@ pub(super) async fn get_commit_log(
     const DEFAULT_LIMIT: u64 = 20;
     let task_id = str_field(&input, "task_id")?;
     let limit = input["limit"].as_u64().unwrap_or(DEFAULT_LIMIT) as u32;
-    let log = crate::git_engine::get_commit_log_mcp(&task_id, limit, &state.pool).await?;
+    let log = crate::review::get_commit_log_mcp(&task_id, limit, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(log)?))
 }
 

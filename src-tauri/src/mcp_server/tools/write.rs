@@ -56,10 +56,10 @@ pub(super) async fn via_bridge(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Explorer sessions are scratch (detached HEAD): committing is fine, but
-    // anything that publishes a branch needs a real one — convert to a task first.
-    // Scoped to those ops specifically: Notion writes and task filing work fine
-    // from an explorer, and a blanket "everything except commit" blocked them.
+    // Explorer sessions are scratch by policy: committing locally is fine, but
+    // publishing (push, MR) means the work is real — convert to a task first so
+    // it exists in Notion. Scoped to those ops specifically: Notion writes and
+    // task filing work fine from an explorer.
     const NEEDS_BRANCH: [&str; 4] = [
         crate::ops::GIT_PUSH,
         crate::ops::GIT_PULL,

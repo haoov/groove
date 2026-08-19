@@ -14,7 +14,7 @@ use tauri::Manager;
 
 use crate::core::db::models::{Repo, SessionKind};
 use crate::core::db::store;
-use crate::git_engine::MainRepo;
+use crate::worktrees::MainRepo;
 
 /// Every name a slug answers to: itself, and each run of trailing segments. So
 /// `gitlab.example.com/wiremind/devops/foo` is named by that, by
@@ -68,25 +68,12 @@ fn slug_list(repos: &[MainRepo]) -> String {
     repos.iter().map(|r| r.slug.as_str()).collect::<Vec<_>>().join(", ")
 }
 
-/// How a session takes a new repo — or why it cannot.
-enum Provision {
-    /// A real task: a worktree on the task branch.
-    Branch,
-    /// An explorer: detached at origin/main, no branch until conversion.
-    Detached,
-    Refused(&'static str),
-}
-
-fn provision_for(kind: SessionKind) -> Provision {
-    match kind {
-        // A review's worktree is the MR's source branch; a second repo would get a
-        // worktree on a branch named after the review, which is meaningless.
-        SessionKind::Review => {
-            Provision::Refused("a review session tracks one MR and takes no extra repos")
-        }
-        SessionKind::Explorer => Provision::Detached,
-        SessionKind::Task => Provision::Branch,
-    }
+/// Whether this session can take a new repo. A review's worktree is the MR's
+/// source branch; a second repo would get a worktree on a branch named after
+/// the review, which is meaningless.
+fn refusal_for(kind: SessionKind) -> Option<&'static str> {
+    (kind == SessionKind::Review)
+        .then_some("a review session tracks one MR and takes no extra repos")
 }
 
 /// Attach `repo` to `task_id` and provision its worktree. The confirmation-bridge
@@ -113,18 +100,17 @@ pub async fn add_repo_impl(
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("no session {task_id}"))?;
-    let plan = provision_for(kind);
-    if let Provision::Refused(why) = plan {
+    if let Some(why) = refusal_for(kind) {
         anyhow::bail!("{why}");
     }
 
-    let available = crate::git_engine::list_main_repos()
+    let available = crate::worktrees::list_main_repos()
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
     let picked = resolve(name, &available)?;
 
     // Idempotent: a repo already registered keeps its id, so re-attaching is safe.
-    let repo: Repo = crate::git_engine::register_repo_impl(
+    let repo: Repo = crate::worktrees::register_repo_impl(
         picked.local_path.clone(),
         picked.url.clone(),
         pool,
@@ -133,26 +119,11 @@ pub async fn add_repo_impl(
 
     store::repos::attach(pool, task_id, &repo.id).await?;
 
-    // Both provisioning paths refresh the MAIN clone first, so the worktree starts
-    // from an up-to-date base.
-    let worktrees = match plan {
-        Provision::Detached => {
-            crate::git_engine::provision_explorer_worktrees_impl(
-                task_id,
-                std::slice::from_ref(&repo.id),
-                pool,
-            )
-            .await?
-        }
-        _ => {
-            let spec = crate::git_engine::BranchSpec {
-                repo_id: repo.id.clone(),
-                branch_name: branch.map(|b| b.to_string()),
-            };
-            let default = super::derive_branch(task_id);
-            crate::git_engine::provision_worktrees_impl(task_id, &[spec], &default, pool).await?
-        }
+    let spec = crate::worktrees::BranchSpec {
+        repo_id: repo.id.clone(),
+        branch_name: branch.map(|b| b.to_string()),
     };
+    let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
 
     let wt = worktrees
         .first()
@@ -179,7 +150,7 @@ pub async fn add_repo_impl(
 mod tests {
     use super::*;
 
-    /// `slug` is what the pool reports: host first (see git_engine::list_main_repos).
+    /// `slug` is what the pool reports: host first (see worktrees::pool).
     fn main_repo(slug: &str) -> MainRepo {
         let (host, path) = slug.split_once('/').unwrap();
         MainRepo {
@@ -264,9 +235,9 @@ mod tests {
     }
 
     #[test]
-    fn sessions_that_take_no_repos() {
-        assert!(matches!(provision_for(SessionKind::Review), Provision::Refused(_)));
-        assert!(matches!(provision_for(SessionKind::Explorer), Provision::Detached));
-        assert!(matches!(provision_for(SessionKind::Task), Provision::Branch));
+    fn only_review_sessions_refuse_new_repos() {
+        assert!(refusal_for(SessionKind::Review).is_some());
+        assert!(refusal_for(SessionKind::Explorer).is_none());
+        assert!(refusal_for(SessionKind::Task).is_none());
     }
 }

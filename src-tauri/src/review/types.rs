@@ -72,17 +72,3 @@ pub struct BlameLine {
     pub uncommitted: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct BranchSpec {
-    pub repo_id: String,
-    pub branch_name: Option<String>, // None → derive from task short_id
-}
-
-/// A clone living under `<worktree_root>/main` — the repo pool the pickers list.
-#[derive(Debug, Clone, Serialize)]
-pub struct MainRepo {
-    pub url: String,
-    pub local_path: String,
-    /// Path relative to the pool, host first — the picker's display name.
-    pub slug: String,
-}

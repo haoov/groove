@@ -393,15 +393,7 @@ pub async fn get_commit_diff(
 }
 
 pub async fn get_task_diff_mcp(task_id: &str, pool: &SqlitePool) -> anyhow::Result<DiffResult> {
-    // Explorer worktrees are detached at origin/main, so a committed-range diff
-    // is empty by construction — the agent must see the uncommitted work instead.
-    let kind = store::sessions::kind_of(pool, task_id).await?;
-    let mode = if kind == Some(crate::core::db::models::SessionKind::Explorer) {
-        "working"
-    } else {
-        "vs-main"
-    };
-    get_task_diff_impl(task_id, mode, pool).await
+    get_task_diff_impl(task_id, "vs-main", pool).await
 }
 
 // ── Reading file lines (diff context expansion) ────────────────────────────────

@@ -195,3 +195,48 @@ Diff refresh ~9 → ~4–5 spawns per worktree; file-diff tab 3 → 1; Home 4–
 - `git_engine` is now operations-only (provision/pool/ops/status/watcher/
   diff/blame/parse/commits) — the 3b rename to `worktrees/` + `review/`
   split is mechanical.
+
+---
+
+## Phase 3b — worktrees feature: unified provisioning, new naming (done)
+
+### Layout
+
+`git_engine` is gone, split into:
+- `worktrees/` — `naming.rs`, `pool.rs` (root/pool/session dirs, listing with a
+  **60s cache**, clone, register), `provision.rs` (ONE path for all kinds),
+  `teardown.rs`, `ops.rs`, `status.rs`, `watcher.rs`.
+- `review/` — `diff.rs`, `blame.rs`, `commits.rs`, `parse.rs`, `types.rs`.
+
+### Provisioning
+
+- One core (`provision_one`): reuse the session's existing (repo, branch)
+  worktree wherever its directory sits (old-layout dirs keep working), else
+  freshen clone → ensure/track branch → `worktree add` at
+  `<session>/<project>@<branch-slug>` → align → flush → upsert. Repos
+  provision **concurrently** (P6).
+- `provision_explorer_worktrees` command DELETED; explorers use the same path.
+  `--detach` and the `'(detached)'` sentinel are gone, with their special
+  cases (commits log_ref, MCP diff-mode override, frontend `working` default).
+- Branch defaults (`worktrees/naming.rs`): tasks `<type>/<id>-<slug>` with the
+  type inferred from whole words of the title; explorers `explorer/<name-slug>`;
+  override via `BranchSpec.branch_name`. `task_manager::derive_branch` deleted.
+- Directories: ALWAYS `<project>@<branch-slug>` for new worktrees.
+- Conversion renames the branch (`git branch -m`) instead of `switch -c`, and
+  relocates to the new dir shape.
+
+### Notes for later phases
+
+- **Provisioning UI** still sends `branch_name: null` everywhere; the wizard
+  should show `naming::default_branch` as an editable prefill (needs a small
+  `suggest_branch_name` command or the session title client-side) and the
+  add-repo modal's task copy still names the old lowercase-id default. →
+  frontend phase.
+- The MCP explorer publish-guard (push/MR from explorers refused) is now
+  **policy**, not mechanics — explorers have real branches. Kept as-is;
+  lift it deliberately if ever wanted.
+- Pre-rework explorer worktrees that are still detached on disk: conversion's
+  `branch -m` fails on them (warning surfaces, worktree stays usable);
+  commit-log for such a session errors. Discard/recreate is the path.
+- `refresh_main_clone`'s serial fetch per repo is now concurrent across repos,
+  still serial within one repo (correct: shared clone).

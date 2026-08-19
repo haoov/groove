@@ -109,9 +109,6 @@ export function newWorkspaceSession(kind: SessionKind, task: Task | null, worktr
     repos,
     ...sessionDefaults(),
     activeRepoId: repos[0]?.id ?? null,
-    // Explorer worktrees are detached at origin/main, so vs-main is empty —
-    // default to the uncommitted-changes view.
-    diffMode: kind === 'explorer' ? 'working' : 'vs-main',
   };
 }
 let termTabSeq = 0;

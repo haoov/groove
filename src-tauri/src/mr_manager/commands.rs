@@ -365,7 +365,7 @@ fn cache_username(host: &str, username: &str) {
 /// is best-effort and only a total failure surfaces.
 #[tauri::command]
 pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
-    let main_repos = crate::git_engine::list_main_repos().await.map_err(|e| e.to_string())?;
+    let main_repos = crate::worktrees::list_main_repos().await.map_err(|e| e.to_string())?;
 
     // Pool directory names do not mirror forge group paths — match by origin URL.
     let mut clone_by_host: std::collections::BTreeMap<String, String> =

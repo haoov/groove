@@ -42,11 +42,6 @@ impl Default for State {
     }
 }
 
-/// Derive the git branch name for a task (lower-case the full ID).
-pub fn derive_branch(short_id: &str) -> String {
-    short_id.to_lowercase()
-}
-
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -396,7 +391,7 @@ async fn tear_down_session(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    crate::git_engine::cleanup_session_worktrees(short_id, pool).await?;
+    crate::worktrees::cleanup_session_worktrees(short_id, pool).await?;
     store::sessions::remove(pool, short_id).await?;
 
     if task_state.get_active_task_id().as_deref() == Some(short_id) {

@@ -29,7 +29,7 @@ async fn removing_a_session_cascades_to_everything_it_owns() {
     repos::upsert(&pool, &repo("g/a")).await.unwrap();
     sessions::create_explorer(&pool, "explorer-1", "X").await.unwrap();
     repos::attach(&pool, "explorer-1", "g/a").await.unwrap();
-    let wt = worktrees::upsert(&pool, "explorer-1", "g/a", "(detached)", "/wt/explorer-1/a")
+    let wt = worktrees::upsert(&pool, "explorer-1", "g/a", "explorer/x", "/wt/explorer-1/a@explorer-x")
         .await
         .unwrap();
     mrs::upsert(&pool, &wt.id, "gitlab", "42", "https://x/42", "open").await.unwrap();
@@ -54,7 +54,7 @@ async fn adopting_an_explorer_carries_children_to_the_new_id() {
     repos::upsert(&pool, &repo("g/a")).await.unwrap();
     sessions::create_explorer(&pool, "explorer-2", "Scratch").await.unwrap();
     repos::attach(&pool, "explorer-2", "g/a").await.unwrap();
-    let wt = worktrees::upsert(&pool, "explorer-2", "g/a", "(detached)", "/wt/explorer-2/a")
+    let wt = worktrees::upsert(&pool, "explorer-2", "g/a", "explorer/scratch", "/wt/explorer-2/a@explorer-scratch")
         .await
         .unwrap();
     annotations::create(&pool, "explorer-2", "g/a", "f.rs", 1, 1, "note: x", "agent")

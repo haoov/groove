@@ -20,9 +20,7 @@ pub(super) async fn get_commit_log_impl(
 
     let mut all = vec![];
     for wt in worktrees {
-        // Detached explorer worktrees log their HEAD history (any detached
-        // commits count as task work; the rest is upstream base history).
-        let log_ref = if wt.branch == "(detached)" { "HEAD" } else { wt.branch.as_str() };
+        let log_ref = wt.branch.as_str();
 
         // Review worktrees pin the MR's target branch as the base, so history
         // divides at the real target and not the repo default. `None` means the

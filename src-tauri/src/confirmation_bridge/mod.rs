@@ -259,21 +259,21 @@ async fn execute_op(
                 .next()
                 .unwrap_or("")
                 .to_string();
-            crate::git_engine::commit_impl(payload, pool).await?;
+            crate::worktrees::commit_impl(payload, pool).await?;
             Ok(op_ok(op_type, format!("Committed \"{subject}\" on {branch} in {repo}")))
         }
         crate::ops::GIT_PUSH => {
-            crate::git_engine::push_impl(payload).await?;
+            crate::worktrees::push_impl(payload).await?;
             Ok(op_ok(op_type, format!("Pushed {branch} to origin in {repo}")))
         }
         crate::ops::GIT_PULL => {
-            crate::git_engine::pull_impl(payload).await?;
+            crate::worktrees::pull_impl(payload).await?;
             Ok(op_ok(op_type, format!("Pulled origin/{branch} into {repo}")))
         }
         crate::ops::GIT_REBASE => {
             // rebase_impl already reports status/files (the UI keys on
             // `status == "conflict"`); enrich it rather than replace it.
-            let mut v = crate::git_engine::rebase_impl(payload).await?;
+            let mut v = crate::worktrees::rebase_impl(payload).await?;
             let conflicted = v["status"].as_str() == Some("conflict");
             let files = v["files"].as_array().map(|a| a.len()).unwrap_or(0);
             if let Some(obj) = v.as_object_mut() {
@@ -292,11 +292,11 @@ async fn execute_op(
         }
         crate::ops::GIT_DISCARD => {
             let file = payload["file_path"].as_str().unwrap_or("the file").to_string();
-            crate::git_engine::discard_impl(payload).await?;
+            crate::worktrees::discard_impl(payload).await?;
             Ok(op_ok(op_type, format!("Discarded local changes in {file} ({repo})")))
         }
         crate::ops::GIT_DISCARD_ALL => {
-            crate::git_engine::discard_all_impl(payload).await?;
+            crate::worktrees::discard_all_impl(payload).await?;
             Ok(op_ok(op_type, format!("Discarded ALL local changes in {repo}")))
         }
         crate::ops::MR_CREATE => {

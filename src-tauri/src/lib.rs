@@ -7,7 +7,6 @@ mod core;
 mod desktop_notify;
 mod editor_host;
 mod events;
-mod git_engine;
 mod home;
 mod launch_env;
 mod mcp_server;
@@ -15,7 +14,9 @@ mod migrate_identity;
 mod mr_manager;
 mod ops;
 mod pty_trace;
+mod review;
 mod task_manager;
+mod worktrees;
 
 use tauri::Manager;
 
@@ -98,34 +99,34 @@ pub fn run() {
             task_manager::set_theme,
             task_manager::finish_task,
             task_manager::delete_task,
-            // git_engine
-            git_engine::register_repo,
-            git_engine::list_main_repos,
-            git_engine::clone_repo,
-            git_engine::provision_worktrees,
-            git_engine::provision_explorer_worktrees,
-            git_engine::close_worktree,
-            git_engine::remote_branch_exists,
-            git_engine::get_task_diff_summary,
-            git_engine::get_file_diff,
-            git_engine::read_file_lines,
-            git_engine::blame_file,
-            git_engine::get_commit_diff,
-            git_engine::get_commit_log,
-            git_engine::get_worktree_status,
-            git_engine::commit,
-            git_engine::stage_file,
-            git_engine::unstage_file,
-            git_engine::stage_all,
-            git_engine::unstage_all,
-            git_engine::discard_file,
-            git_engine::discard_all,
-            git_engine::push,
-            git_engine::pull,
-            git_engine::rebase_on_main,
-            git_engine::rebase_continue,
-            git_engine::rebase_abort,
-            git_engine::watch_task_worktrees,
+            // worktrees
+            worktrees::register_repo,
+            worktrees::list_main_repos,
+            worktrees::clone_repo,
+            worktrees::provision_worktrees,
+            worktrees::close_worktree,
+            worktrees::remote_branch_exists,
+            worktrees::get_worktree_status,
+            worktrees::commit,
+            worktrees::stage_file,
+            worktrees::unstage_file,
+            worktrees::stage_all,
+            worktrees::unstage_all,
+            worktrees::discard_file,
+            worktrees::discard_all,
+            worktrees::push,
+            worktrees::pull,
+            worktrees::rebase_on_main,
+            worktrees::rebase_continue,
+            worktrees::rebase_abort,
+            worktrees::watch_task_worktrees,
+            // review
+            review::get_task_diff_summary,
+            review::get_file_diff,
+            review::read_file_lines,
+            review::blame_file,
+            review::get_commit_diff,
+            review::get_commit_log,
             // home
             home::get_home_snapshot,
             // mcp_server
@@ -196,7 +197,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     events::set_app(handle.clone());
 
     let bridge = confirmation_bridge::Bridge::new(handle.clone());
-    let git_state = git_engine::State::new();
+    let git_state = worktrees::State::new();
     let editor_state = editor_host::State::new();
     let agent_state = agent_manager::State::new();
     let task_state = task_manager::State::new();

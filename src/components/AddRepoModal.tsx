@@ -53,9 +53,11 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
       const mergedIds = [...activeRepos.map((r) => r.id), ...newIds];
 
       if (isExplorer) {
-        // Explorer repos are detached at origin/main — no branch.
         await invoke('set_task_repos', { shortId, repoIds: mergedIds });
-        await invoke('provision_explorer_worktrees', { taskId: shortId, repoIds: newIds });
+        await invoke('provision_worktrees', {
+          taskId: shortId,
+          branches: newIds.map((id) => ({ repo_id: id, branch_name: null })),
+        });
       } else {
         // Resolve each repo's target branch (typed override, or the task default).
         const specs = selectedRepos.map((r) => {
@@ -118,8 +120,8 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         <div className="wizard-body">
           <p className="wizard-desc">
             {isExplorer ? (
-              <>Select repositories to add — they're checked out at <code>origin/main</code> (detached)
-              for browsing and editing. Branches are created only when you turn this into a task.</>
+              <>Select repositories to add — each gets a worktree on this explorer's own
+              branch, renamed to the task branch if you turn this into a task.</>
             ) : (
               <>Select repositories to add, then name each branch (defaults to{' '}
               <code>{activeTask.short_id.toLowerCase()}</code>). Creation is blocked if the

@@ -45,21 +45,24 @@ async fn validate_source(explorer_id: &str, pool: &SqlitePool) -> anyhow::Result
     }
 }
 
-/// Move a detached explorer worktree onto a real branch, carrying over
-/// uncommitted edits and any detached-HEAD commits.
-async fn switch_to_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
-    // A stray local branch named "HEAD" (older refresh bug) makes `git switch`
-    // fail with "refname 'HEAD' is ambiguous" — clean it before switching.
-    crate::git_engine::repair_head_branch(&wt.path).await;
+/// Carry the explorer branch — its commits and uncommitted edits — over to the
+/// task's branch name. A rename, not a new branch: the history IS the work.
+async fn rename_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
+    // A stray local branch named "HEAD" (older refresh bug) makes branch ops
+    // fail with "refname 'HEAD' is ambiguous" — clean it before renaming.
+    crate::worktrees::repair_head_branch(&wt.path).await;
 
-    match crate::core::git::output(&wt.path, &["switch", "-c", new_branch]).await {
-        Ok(o) if o.status.success() => Ok(()),
+    match crate::core::git::output(&wt.path, &["branch", "-m", new_branch]).await {
+        Ok(o) if o.status.success() => {
+            crate::core::git::cache::flush();
+            Ok(())
+        }
         Ok(o) => Err(format!(
-            "could not switch {} to {new_branch}: {}",
+            "could not rename the branch of {} to {new_branch}: {}",
             wt.path,
             String::from_utf8_lossy(&o.stderr).trim()
         )),
-        Err(e) => Err(format!("git switch failed for {}: {e}", wt.path)),
+        Err(e) => Err(format!("git branch -m failed for {}: {e}", wt.path)),
     }
 }
 
@@ -69,8 +72,12 @@ async fn relocate_worktree(
     wt: &Worktree,
     repo: &Repo,
     session_dir: &std::path::Path,
+    new_branch: &str,
 ) -> Result<String, String> {
-    let dest = session_dir.join(&repo.project).to_string_lossy().to_string();
+    let dest = session_dir
+        .join(crate::worktrees::naming::worktree_dir(&repo.project, new_branch))
+        .to_string_lossy()
+        .to_string();
     let _ = std::fs::create_dir_all(session_dir);
     match crate::core::git::output(
         &repo.local_path,
@@ -105,7 +112,7 @@ async fn promote_worktrees(
     let mut warnings: Vec<String> = vec![];
 
     for wt in &worktrees {
-        if let Err(msg) = switch_to_branch(wt, new_branch).await {
+        if let Err(msg) = rename_branch(wt, new_branch).await {
             tracing::error!("[convert] {msg}");
             warnings.push(msg);
             continue;
@@ -114,7 +121,7 @@ async fn promote_worktrees(
         // Failure to move keeps the old path (still functional).
         let mut final_path = wt.path.clone();
         if let Some(repo) = store::repos::get_opt(pool, &wt.repo_id).await? {
-            match relocate_worktree(wt, &repo, session_dir).await {
+            match relocate_worktree(wt, &repo, session_dir, new_branch).await {
                 Ok(dest) => final_path = dest,
                 Err(msg) => {
                     tracing::warn!("[convert] {msg}");
@@ -160,6 +167,20 @@ fn cleanup_explorer_dir(explorer_dir: &std::path::Path) {
 /// Convert an explorer session into a real task. Called from the confirmation
 /// bridge (op `task.create_from_explorer`); returns the new task as JSON
 /// (delivered to both the agent and the frontend).
+/// The session shape the branch namer needs, before the row is re-keyed.
+fn adopted_session(short_id: &str, task: &super::creation::NewTask<'_>) -> crate::core::db::models::Session {
+    crate::core::db::models::Session {
+        id: short_id.to_string(),
+        kind: crate::core::db::models::SessionKind::Task,
+        state: crate::core::db::models::SessionState::Open,
+        title: task.title.to_string(),
+        notion_page_id: Some(String::new()),
+        review_project: None,
+        review_iid: None,
+        created_at: 0,
+    }
+}
+
 pub async fn create_task_from_explorer_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -172,8 +193,8 @@ pub async fn create_task_from_explorer_impl(
     let (notion_page_id, short_id) = super::creation::create_page(&req.task).await?;
 
     let now = chrono::Utc::now().timestamp();
-    let new_branch = super::derive_branch(&short_id);
-    let session_dir = crate::git_engine::session_dir(&short_id);
+    let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task));
+    let session_dir = crate::worktrees::session_dir(&short_id);
 
     let (switched, branch_warnings) =
         promote_worktrees(req.explorer_id, &session_dir, &new_branch, pool).await?;
@@ -189,7 +210,7 @@ pub async fn create_task_from_explorer_impl(
     store::sessions::adopt_explorer(pool, req.explorer_id, &task, &switched, &new_branch).await?;
 
     handoff_agent_session(req.explorer_id, &session_dir);
-    cleanup_explorer_dir(&crate::git_engine::session_dir(req.explorer_id));
+    cleanup_explorer_dir(&crate::worktrees::session_dir(req.explorer_id));
 
     Ok(serde_json::json!({
         "short_id": short_id,

@@ -1,24 +1,22 @@
-mod blame;
-mod commits;
-mod diff;
-mod ops;
-mod parse;
-mod status;
-mod types;
-mod watcher;
-mod worktrees;
+//! Worktrees: the clone pool, provisioning for every session kind, naming,
+//! teardown, and the filesystem watcher.
 
-// Glob re-exports are required: tauri::generate_handler! looks up __cmd__* symbols
-// at the same path as the function, so they must all be available at git_engine::*.
-pub use blame::*;
-pub use commits::*;
-pub use diff::*;
+pub mod naming;
+mod ops;
+mod pool;
+mod provision;
+mod status;
+mod teardown;
+mod watcher;
+
+// Glob re-exports are required: tauri::generate_handler! looks up __cmd__*
+// symbols at the same path as the function.
 pub use ops::*;
+pub use pool::*;
+pub use provision::*;
 pub use status::*;
-// The DTOs the commands return; other modules construct BranchSpec / read MainRepo.
-pub use types::*;
+pub use teardown::*;
 pub use watcher::*;
-pub use worktrees::*;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

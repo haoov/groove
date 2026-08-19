@@ -72,7 +72,7 @@ async fn attach_review_repo(
         .map_err(|e| anyhow::anyhow!("could not read origin URL of {local_path}: {e}"))?
         .trim()
         .to_string();
-    let repo = crate::git_engine::register_repo_impl(local_path, remote_url, pool).await?;
+    let repo = crate::worktrees::register_repo_impl(local_path, remote_url, pool).await?;
     store::repos::attach(pool, session_id, &repo.id).await?;
     Ok(repo)
 }
@@ -105,7 +105,7 @@ pub async fn open_review_session(
         )
         .await?;
         let repo = attach_review_repo(&session.id, local_path, &pool).await?;
-        let wt = crate::git_engine::provision_review_worktree(
+        let wt = crate::worktrees::provision_review_worktree(
             &session.id,
             &repo,
             &source_branch,
@@ -155,7 +155,7 @@ pub async fn discard_explorer(
         return Err(format!("{short_id} is not an explorer or review session"));
     }
 
-    crate::git_engine::cleanup_session_worktrees(&short_id, &pool)
+    crate::worktrees::cleanup_session_worktrees(&short_id, &pool)
         .await
         .map_err(|e| e.to_string())?;
     store::sessions::remove(&*pool, &short_id)
