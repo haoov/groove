@@ -111,7 +111,7 @@ Decisions taken with the schema still unreleased, so 0006 was edited in place
 - **Worktree directories**: ALL worktrees live at
   `<root>/worktrees/<session>/<project>@<branch-slug>` (slug: `/` → `-`).
   No un-suffixed form. → provisioning (worktrees phase).
-- **Branch naming**: `<type>/<id>-<slug>`, generated as a *default from
+- **Branch naming**: `<type>/<slug>-<id>`, generated as a *default from
   context* and user-editable at provision time (`BranchSpec.branch_name` is
   the override path). `derive_branch` becomes the default-suggester. →
   worktrees phase + provisioning UI.
@@ -140,7 +140,7 @@ Decisions taken with the schema still unreleased, so 0006 was edited in place
   `task_manager::State` (now only the active-session pointer).
 - ~12 commands lost their `app: AppHandle` / `task_state` parameters —
   config is a plain read. IPC arg names unchanged; frontend untouched.
-- Decisions: branch-type vocabulary for `<type>/<id>-<slug>` is hardcoded
+- Decisions: branch-type vocabulary for `<type>/<slug>-<id>` is hardcoded
   (conventional-commit list), not config; config reload stays restart-only.
 
 ### Notes for later phases
@@ -218,7 +218,7 @@ Diff refresh ~9 → ~4–5 spawns per worktree; file-diff tab 3 → 1; Home 4–
 - `provision_explorer_worktrees` command DELETED; explorers use the same path.
   `--detach` and the `'(detached)'` sentinel are gone, with their special
   cases (commits log_ref, MCP diff-mode override, frontend `working` default).
-- Branch defaults (`worktrees/naming.rs`): tasks `<type>/<id>-<slug>` with the
+- Branch defaults (`worktrees/naming.rs`): tasks `<type>/<slug>-<id>` with the
   type inferred from whole words of the title; explorers `explorer/<name-slug>`;
   override via `BranchSpec.branch_name`. `task_manager::derive_branch` deleted.
 - Directories: ALWAYS `<project>@<branch-slug>` for new worktrees.
