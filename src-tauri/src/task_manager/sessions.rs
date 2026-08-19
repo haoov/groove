@@ -61,18 +61,18 @@ fn review_session_id(project_full: &str, iid: u64) -> String {
     format!("review-{}-{iid}", project_full.replace('/', "-"))
 }
 
-/// Register the MR's MAIN clone and attach it to the session.
+/// Register the MR's MAIN clone and attach it to the session. The slug is the
+/// clone's place in the pool: the review queue matched it there by
+/// `<host>/<project_full>`.
 async fn attach_review_repo(
     session_id: &str,
+    host: &str,
+    project_full: &str,
     local_path: String,
     pool: &SqlitePool,
 ) -> anyhow::Result<Repo> {
-    let remote_url = crate::core::git::run(&local_path, &["remote", "get-url", "origin"])
-        .await
-        .map_err(|e| anyhow::anyhow!("could not read origin URL of {local_path}: {e}"))?
-        .trim()
-        .to_string();
-    let repo = crate::worktrees::register_repo_impl(local_path, remote_url, pool).await?;
+    let slug = format!("{host}/{project_full}");
+    let repo = crate::worktrees::register_repo_impl(&slug, local_path, pool).await?;
     store::repos::attach(pool, session_id, &repo.id).await?;
     Ok(repo)
 }
@@ -104,7 +104,9 @@ pub async fn open_review_session(
             &title,
         )
         .await?;
-        let repo = attach_review_repo(&session.id, local_path, &pool).await?;
+        let host = crate::core::git::url_host(&web_url)
+            .ok_or_else(|| anyhow::anyhow!("no host in MR url {web_url}"))?;
+        let repo = attach_review_repo(&session.id, &host, &project_full, local_path, &pool).await?;
         let wt = crate::worktrees::provision_review_worktree(
             &session.id,
             &repo,

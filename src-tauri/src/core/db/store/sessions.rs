@@ -1,10 +1,10 @@
 use sqlx::{SqliteExecutor, SqlitePool};
 
 use super::super::error::{StoreError, StoreResult};
-use super::super::models::{Session, SessionKind, SessionState, TaskView};
+use super::super::models::{Session, SessionKind, TaskView};
 
 const COLUMNS: &str =
-    "id, kind, state, title, notion_page_id, review_project, review_iid, created_at";
+    "id, kind, title, notion_page_id, review_project, review_iid, created_at";
 
 pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Session> {
     get_opt(exec, id)
@@ -62,9 +62,9 @@ pub async fn open_task(exec: impl SqliteExecutor<'_> + Copy, short_id: &str) -> 
         .await?
         .ok_or_else(|| StoreError::not_found("notion task", short_id))?;
     sqlx::query(
-        "INSERT INTO sessions (id, kind, state, title, notion_page_id, created_at)
-         VALUES (?, 'task', 'open', ?, ?, unixepoch())
-         ON CONFLICT(id) DO UPDATE SET state = 'open', title = excluded.title",
+        "INSERT INTO sessions (id, kind, title, notion_page_id, created_at)
+         VALUES (?, 'task', ?, ?, unixepoch())
+         ON CONFLICT(id) DO UPDATE SET title = excluded.title",
     )
     .bind(short_id)
     .bind(&task.title)
@@ -80,8 +80,8 @@ pub async fn create_explorer(
     title: &str,
 ) -> StoreResult<Session> {
     sqlx::query(
-        "INSERT INTO sessions (id, kind, state, title, created_at)
-         VALUES (?, 'explorer', 'open', ?, unixepoch())",
+        "INSERT INTO sessions (id, kind, title, created_at)
+         VALUES (?, 'explorer', ?, unixepoch())",
     )
     .bind(id)
     .bind(title)
@@ -100,10 +100,10 @@ pub async fn upsert_review(
     title: &str,
 ) -> StoreResult<Session> {
     sqlx::query(
-        "INSERT INTO sessions (id, kind, state, title, review_project, review_iid, created_at)
-         VALUES (?, 'review', 'open', ?, ?, ?, unixepoch())
+        "INSERT INTO sessions (id, kind, title, review_project, review_iid, created_at)
+         VALUES (?, 'review', ?, ?, ?, unixepoch())
          ON CONFLICT(review_project, review_iid)
-           DO UPDATE SET state = 'open', title = excluded.title",
+           DO UPDATE SET title = excluded.title",
     )
     .bind(id)
     .bind(title)
@@ -119,19 +119,6 @@ pub async fn upsert_review(
     .fetch_one(exec)
     .await?;
     Ok(session)
-}
-
-pub async fn set_state(
-    exec: impl SqliteExecutor<'_>,
-    id: &str,
-    state: SessionState,
-) -> StoreResult<()> {
-    sqlx::query("UPDATE sessions SET state = ? WHERE id = ?")
-        .bind(state)
-        .bind(id)
-        .execute(exec)
-        .await?;
-    Ok(())
 }
 
 pub async fn rename_explorer(

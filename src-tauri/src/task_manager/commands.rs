@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 use tauri::Emitter;
 
 use crate::core::config::{self, Config, ConfigView};
-use crate::core::db::models::{Session, SessionKind, SessionState, TaskView, Worktree};
+use crate::core::db::models::{Session, SessionKind, TaskView, Worktree};
 use crate::core::db::store;
 use super::notion::{
     current_sprint_ids, get_task_body_impl, notion_patch, notion_post, page_to_task,
@@ -233,7 +233,7 @@ pub async fn set_active_task(
     Ok(())
 }
 
-/// Open a session: an existing one is re-opened in place, a mirrored task gets
+/// Open a session: an existing one re-emits its state, a mirrored task gets
 /// its session row on first open. Emits `workspace_ready` — or `workspace_stub`
 /// for a task that still has no worktrees, which sends the frontend to the
 /// repo-picking wizard.
@@ -244,10 +244,7 @@ pub(super) async fn open_task_impl(
     pool: &SqlitePool,
 ) -> anyhow::Result<Session> {
     let session = match store::sessions::get_opt(pool, short_id).await? {
-        Some(session) => {
-            store::sessions::set_state(pool, short_id, SessionState::Open).await?;
-            session
-        }
+        Some(session) => session,
         None => store::sessions::open_task(pool, short_id).await?,
     };
 
@@ -406,18 +403,15 @@ async fn tear_down_session(
     Ok(())
 }
 
+/// Put a session away without finishing it: the UI closes, the worktrees stay.
+/// Reopening is a plain `open_task`.
 #[tauri::command]
 pub async fn pause_task(
     app: tauri::AppHandle,
     short_id: String,
     task_state: tauri::State<'_, State>,
-    pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
     task_state.set_active_task_id(None);
-
-    store::sessions::set_state(&*pool, &short_id, SessionState::Paused)
-        .await
-        .map_err(|e| e.to_string())?;
 
     app.emit(crate::events::TASK_PAUSED, serde_json::json!({ "short_id": short_id }))
         .map_err(|e| e.to_string())?;

@@ -7,4 +7,4 @@ pub mod run;
 mod url;
 
 pub use run::{output, run};
-pub use url::parse_git_url;
+pub use url::{parse_git_url, url_host};

@@ -367,16 +367,15 @@ fn cache_username(host: &str, username: &str) {
 pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     let main_repos = crate::worktrees::list_main_repos().await.map_err(|e| e.to_string())?;
 
-    // Pool directory names do not mirror forge group paths — match by origin URL.
+    // The pool layout is the identity: slug = <host>/<group…>/<project>.
     let mut clone_by_host: std::collections::BTreeMap<String, String> =
         std::collections::BTreeMap::new();
     let mut clone_by_project: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
     for r in &main_repos {
-        if let Ok((host, group, project)) = crate::core::git::parse_git_url(&r.url) {
-            clone_by_host.entry(host.clone()).or_insert_with(|| r.local_path.clone());
-            clone_by_project.insert(format!("{host}/{group}/{project}"), r.local_path.clone());
-        }
+        let Some((host, _)) = r.slug.split_once('/') else { continue };
+        clone_by_host.entry(host.to_string()).or_insert_with(|| r.local_path.clone());
+        clone_by_project.insert(r.slug.clone(), r.local_path.clone());
     }
     if clone_by_host.is_empty() {
         return Err("no repos in the pool — clone one first".to_string());

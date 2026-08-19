@@ -1,7 +1,7 @@
 use sqlx::SqliteExecutor;
 
 use super::super::error::StoreResult;
-use super::super::models::{SessionKind, SessionState};
+use super::super::models::SessionKind;
 
 /// One row per (session, attached repo) — sessions with no repos yield a
 /// single row with the repo side NULL. Newest session first, repos by name.
@@ -9,7 +9,6 @@ use super::super::models::{SessionKind, SessionState};
 pub struct HomeRow {
     pub session_id: String,
     pub kind: SessionKind,
-    pub state: SessionState,
     pub title: String,
     pub status: Option<String>,
     pub priority: Option<String>,
@@ -31,7 +30,7 @@ pub struct HomeRow {
 pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>> {
     Ok(sqlx::query_as(
         "SELECT
-           s.id AS session_id, s.kind, s.state, s.title,
+           s.id AS session_id, s.kind, s.title,
            nt.status, nt.priority,
            r.id AS repo_id, r.project, r.host AS repo_host, r.local_path AS repo_local_path,
            w.id AS worktree_id, w.branch, w.path AS worktree_path, w.base_ref,

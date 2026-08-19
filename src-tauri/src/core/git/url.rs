@@ -43,6 +43,15 @@ pub fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
     Err(anyhow::anyhow!("Cannot parse git URL: {url}"))
 }
 
+/// The host of a web URL (`https://gitlab.example.com/g/p/-/merge_requests/4`
+/// → `gitlab.example.com`). Userinfo is stripped like everywhere else.
+pub fn url_host(url: &str) -> Option<String> {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
+    let host = rest.split('/').next()?.trim();
+    (!host.is_empty()).then(|| host.to_string())
+}
+
 
 #[cfg(test)]
 mod tests {

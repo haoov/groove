@@ -110,12 +110,9 @@ pub async fn add_repo_impl(
     let picked = resolve(name, &available)?;
 
     // Idempotent: a repo already registered keeps its id, so re-attaching is safe.
-    let repo: Repo = crate::worktrees::register_repo_impl(
-        picked.local_path.clone(),
-        picked.url.clone(),
-        pool,
-    )
-    .await?;
+    let repo: Repo =
+        crate::worktrees::register_repo_impl(&picked.slug, picked.local_path.clone(), pool)
+            .await?;
 
     store::repos::attach(pool, task_id, &repo.id).await?;
 
@@ -152,9 +149,7 @@ mod tests {
 
     /// `slug` is what the pool reports: host first (see worktrees::pool).
     fn main_repo(slug: &str) -> MainRepo {
-        let (host, path) = slug.split_once('/').unwrap();
         MainRepo {
-            url: format!("git@{host}:{path}.git"),
             local_path: format!("/home/u/worktrees/main/{slug}"),
             slug: slug.to_string(),
         }

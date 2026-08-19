@@ -8,7 +8,7 @@
 use serde::Serialize;
 use sqlx::SqlitePool;
 
-use crate::core::db::models::{SessionKind, SessionState, Worktree};
+use crate::core::db::models::{SessionKind, Worktree};
 use crate::core::db::store::home::HomeRow;
 use crate::core::db::store;
 
@@ -58,7 +58,6 @@ pub struct HomeEntry {
     /// Notion priority ("High"/"Medium"/"Low"); None for synthetic sessions.
     pub priority: Option<String>,
     pub kind: SessionKind,
-    pub state: SessionState,
     pub repos: Vec<HomeRepo>,
 }
 
@@ -100,7 +99,6 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
                     status: row.status.clone().unwrap_or_else(|| "in_progress".to_string()),
                     priority: row.priority.clone(),
                     kind: row.kind,
-                    state: row.state,
                     repos: vec![],
                 },
                 vec![],

@@ -119,7 +119,7 @@ pub fn run() {
             worktrees::rebase_on_main,
             worktrees::rebase_continue,
             worktrees::rebase_abort,
-            worktrees::watch_task_worktrees,
+            worktrees::flush_git_caches,
             // review
             review::get_task_diff_summary,
             review::get_file_diff,
@@ -197,7 +197,6 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     events::set_app(handle.clone());
 
     let bridge = confirmation_bridge::Bridge::new(handle.clone());
-    let git_state = worktrees::State::new();
     let editor_state = editor_host::State::new();
     let agent_state = agent_manager::State::new();
     let task_state = task_manager::State::new();
@@ -205,7 +204,6 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
 
     handle.manage(pool.clone());
     handle.manage(bridge.clone());
-    handle.manage(git_state);
     handle.manage(editor_state.clone());
     handle.manage(agent_state);
     handle.manage(task_state.clone());

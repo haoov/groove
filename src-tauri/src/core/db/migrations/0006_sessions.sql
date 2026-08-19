@@ -20,7 +20,6 @@ ALTER TABLE pending_confirmations RENAME TO old_pending_confirmations;
 CREATE TABLE sessions (
     id              TEXT PRIMARY KEY,
     kind            TEXT NOT NULL CHECK (kind IN ('task','explorer','review')),
-    state           TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open','paused')),
     title           TEXT NOT NULL,
     notion_page_id  TEXT,
     review_project  TEXT,
@@ -116,17 +115,10 @@ CREATE INDEX ix_confirmations_session ON pending_confirmations (session_id);
 
 -- Sessions: explorers plus any real task that has a worktree. Review sessions
 -- are dropped (see header); the old desk row is not carried over.
-INSERT INTO sessions (id, kind, state, title, notion_page_id, created_at)
+INSERT INTO sessions (id, kind, title, notion_page_id, created_at)
 SELECT
     t.short_id,
     CASE WHEN t.notion_page_id = '' THEN 'explorer' ELSE 'task' END,
-    CASE
-        WHEN EXISTS (SELECT 1 FROM old_worktrees w
-                     WHERE w.task_id = t.short_id AND w.is_active = 0)
-         AND NOT EXISTS (SELECT 1 FROM old_worktrees w
-                     WHERE w.task_id = t.short_id AND w.is_active = 1)
-        THEN 'paused' ELSE 'open'
-    END,
     t.title,
     NULLIF(t.notion_page_id, ''),
     t.last_synced_at

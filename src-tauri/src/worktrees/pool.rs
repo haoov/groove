@@ -1,8 +1,10 @@
 //! The clone pool: where primary clones live, how they are found and added.
+//!
+//! The pool layout IS the identity: `<root>/main/<host>/<group>/<project>`.
+//! Listing it is a pure directory walk — no git call per repo. The one
+//! `remote get-url origin` check happens when a repo is attached to a session.
 
 use std::path::PathBuf;
-use std::sync::{LazyLock, Mutex};
-use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use sqlx::SqlitePool;
@@ -14,20 +16,22 @@ use crate::core::git;
 /// A clone living under `<worktree_root>/main` — what the pickers list.
 #[derive(Debug, Clone, Serialize)]
 pub struct MainRepo {
-    pub url: String,
     pub local_path: String,
-    /// Path relative to the pool, host first — the picker's display name.
+    /// Path relative to the pool, host first — both the display name and the
+    /// identity: `<host>/<group…>/<project>`.
     pub slug: String,
 }
 
-/// The pool listing costs a filesystem walk plus one `git remote get-url` per
-/// clone, and the review queue asks for it on every poll — cache it.
-const POOL_TTL: Duration = Duration::from_secs(60);
-
-type PoolSnapshot = Option<(Instant, Vec<MainRepo>)>;
-
-static POOL: LazyLock<Mutex<PoolSnapshot>> =
-    LazyLock::new(|| Mutex::new(None));
+/// `(host, group_path, project)` read off a pool slug.
+pub(crate) fn slug_parts(slug: &str) -> anyhow::Result<(String, String, String)> {
+    let mut segments: Vec<&str> = slug.split('/').filter(|s| !s.is_empty()).collect();
+    if segments.len() < 3 {
+        return Err(anyhow::anyhow!("'{slug}' is not a <host>/<group>/<project> pool path"));
+    }
+    let project = segments.pop().unwrap().to_string();
+    let host = segments.remove(0).to_string();
+    Ok((host, segments.join("/"), project))
+}
 
 pub fn resolve_worktree_root() -> PathBuf {
     // Honor the configured root (the agent cwd already does) — tilde-expanded,
@@ -64,28 +68,37 @@ pub(crate) fn session_dir(session_id: &str) -> PathBuf {
 
 #[tauri::command]
 pub async fn register_repo(
+    slug: String,
     local_path: String,
-    remote_url: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<Repo, String> {
-    register_repo_impl(local_path, remote_url, &pool)
+    register_repo_impl(&slug, local_path, &pool)
         .await
         .map_err(|e| e.to_string())
 }
 
+/// Record a pool clone in the DB so a session can use it. The identity comes
+/// from its place in the pool; the one git call verifies it has an `origin`
+/// (every forge feature needs one) and happens here, at attach — never during
+/// a listing.
 pub(crate) async fn register_repo_impl(
+    slug: &str,
     local_path: String,
-    remote_url: String,
     pool: &SqlitePool,
 ) -> anyhow::Result<Repo> {
-    let (host, group_path, project) = git::parse_git_url(&remote_url)?;
-    let id = format!("{host}/{group_path}/{project}");
+    let (host, group_path, project) = slug_parts(slug)?;
 
-    if !local_path.is_empty() && !git::run::is_repository(&local_path).await {
-        return Err(anyhow::anyhow!("Not a git repository at {local_path}"));
-    }
+    git::run(&local_path, &["remote", "get-url", "origin"])
+        .await
+        .map_err(|_| anyhow::anyhow!("{local_path} has no `origin` remote — forge features need one"))?;
 
-    let repo = Repo { id, host, group_path, project, local_path };
+    let repo = Repo {
+        id: format!("{host}/{group_path}/{project}"),
+        host,
+        group_path,
+        project,
+        local_path,
+    };
     store::repos::upsert(pool, &repo).await?;
     Ok(repo)
 }
@@ -111,36 +124,15 @@ pub async fn remote_branch_exists(
         .any(|r| r == target))
 }
 
-/// All git clones in the pool, cached for `POOL_TTL` (searched a few levels
-/// deep, since a host level sits above group paths that nest; never descends
-/// INTO a repo). No pool → empty list.
+/// Every clone in the pool: a pure directory walk, no git calls (searched a
+/// few levels deep, since a host level sits above group paths that nest; never
+/// descends INTO a repo). No pool → empty list.
 #[tauri::command]
 pub async fn list_main_repos() -> Result<Vec<MainRepo>, String> {
-    if let Ok(guard) = POOL.lock() {
-        if let Some((at, repos)) = guard.as_ref() {
-            if at.elapsed() < POOL_TTL {
-                return Ok(repos.clone());
-            }
-        }
-    }
-    let repos = scan_pool().await?;
-    if let Ok(mut guard) = POOL.lock() {
-        *guard = Some((Instant::now(), repos.clone()));
-    }
-    Ok(repos)
-}
-
-fn invalidate_pool() {
-    if let Ok(mut guard) = POOL.lock() {
-        *guard = None;
-    }
-}
-
-async fn scan_pool() -> Result<Vec<MainRepo>, String> {
     let root = main_root();
-    // Walk on a blocking thread — it's pure filesystem.
-    let found: Vec<PathBuf> = tokio::task::spawn_blocking(move || {
-        fn walk(dir: &std::path::Path, depth: u32, acc: &mut Vec<PathBuf>) {
+    // On a blocking thread — it's pure filesystem.
+    let mut repos: Vec<MainRepo> = tokio::task::spawn_blocking(move || {
+        fn walk(dir: &std::path::Path, root: &std::path::Path, depth: u32, acc: &mut Vec<MainRepo>) {
             if depth > 6 {
                 return;
             }
@@ -151,39 +143,22 @@ async fn scan_pool() -> Result<Vec<MainRepo>, String> {
                     continue;
                 }
                 if path.join(".git").exists() {
-                    acc.push(path); // a repo — don't descend into it
+                    let Ok(slug) = path.strip_prefix(root) else { continue };
+                    acc.push(MainRepo {
+                        local_path: path.to_string_lossy().to_string(),
+                        slug: slug.to_string_lossy().to_string(),
+                    });
                 } else {
-                    walk(&path, depth + 1, acc);
+                    walk(&path, root, depth + 1, acc);
                 }
             }
         }
         let mut acc = vec![];
-        walk(&root, 1, &mut acc);
+        walk(&root, &root, 1, &mut acc);
         acc
     })
     .await
     .map_err(|e| e.to_string())?;
-
-    let root = main_root();
-    // One `git remote get-url` per clone, all at once.
-    let mut repos: Vec<MainRepo> =
-        futures_util::future::join_all(found.into_iter().map(|path| {
-            let root = root.clone();
-            async move {
-                let local_path = path.to_string_lossy().to_string();
-                let slug = path
-                    .strip_prefix(&root)
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_else(|_| local_path.clone());
-                // A clone without an origin remote can't be registered — skip it.
-                let url = git::run(&local_path, &["remote", "get-url", "origin"]).await.ok()?;
-                Some(MainRepo { url: url.trim().to_string(), local_path, slug })
-            }
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .collect();
     repos.sort_by(|a, b| a.slug.to_lowercase().cmp(&b.slug.to_lowercase()));
     Ok(repos)
 }
@@ -207,10 +182,26 @@ pub async fn clone_repo(url: String) -> Result<MainRepo, String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    invalidate_pool();
     Ok(MainRepo {
-        url,
         local_path: dest_str,
         slug: format!("{host}/{group_path}/{project}"),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::slug_parts;
+
+    #[test]
+    fn slugs_split_into_host_group_and_project() {
+        assert_eq!(
+            slug_parts("gitlab.example.com/wiremind/devops/mayo").unwrap(),
+            ("gitlab.example.com".into(), "wiremind/devops".into(), "mayo".into())
+        );
+        assert_eq!(
+            slug_parts("github.com/owner/proj").unwrap(),
+            ("github.com".into(), "owner".into(), "proj".into())
+        );
+        assert!(slug_parts("just/two").is_err());
+    }
 }

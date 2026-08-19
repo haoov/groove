@@ -1,4 +1,4 @@
-use super::super::models::{NotionTask, Repo, SessionKind, SessionState};
+use super::super::models::{NotionTask, Repo, SessionKind};
 use super::super::test_pool;
 use super::*;
 
@@ -159,17 +159,14 @@ async fn time_ledger_sums_and_never_goes_negative() {
 }
 
 #[tokio::test]
-async fn open_task_requires_the_mirror_and_reopens_paused() {
+async fn open_task_requires_the_mirror_and_is_idempotent() {
     let pool = test_pool().await;
     assert!(sessions::open_task(&pool, "TASKS2-1").await.is_err());
 
     notion_tasks::upsert(&pool, &mirror_task("TASKS2-1")).await.unwrap();
     let session = sessions::open_task(&pool, "TASKS2-1").await.unwrap();
-    assert_eq!(session.state, SessionState::Open);
-
-    sessions::set_state(&pool, "TASKS2-1", SessionState::Paused).await.unwrap();
     let reopened = sessions::open_task(&pool, "TASKS2-1").await.unwrap();
-    assert_eq!(reopened.state, SessionState::Open);
+    assert_eq!(session.id, reopened.id);
 
     let view = sessions::view(&pool, "TASKS2-1").await.unwrap();
     assert_eq!(view.status, "Ready", "status comes from the mirror");

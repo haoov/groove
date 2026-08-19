@@ -87,13 +87,12 @@ fn slug(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::db::models::{SessionKind, SessionState};
+    use crate::core::db::models::SessionKind;
 
     fn session(kind: SessionKind, id: &str, title: &str) -> Session {
         Session {
             id: id.into(),
             kind,
-            state: SessionState::Open,
             title: title.into(),
             notion_page_id: (kind == SessionKind::Task).then(|| "page".into()),
             review_project: (kind == SessionKind::Review).then(|| "g/p".into()),

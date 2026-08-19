@@ -240,3 +240,47 @@ Diff refresh ~9 → ~4–5 spawns per worktree; file-diff tab 3 → 1; Home 4–
   commit-log for such a session errors. Discard/recreate is the path.
 - `refresh_main_clone`'s serial fetch per repo is now concurrent across repos,
   still serial within one repo (correct: shared clone).
+
+---
+
+## Phase 3c — no watchers, no paused state, path-identity pool (done)
+
+Backend only. The frontend was deliberately NOT touched: it still calls
+removed/changed commands and is runtime-broken in the ways listed below.
+
+### Paused state removed
+
+- `sessions.state` column deleted (0006 edited in place), `SessionState` enum,
+  `sessions::set_state` and the migration's paused derivation gone.
+- `pause_task` now only clears the active pointer and emits `task_paused` —
+  "pausing" is purely a UI close. Rename the command in the sessions phase.
+
+### Watchers removed — explicit refresh is the model
+
+- `worktrees/watcher.rs`, `worktrees::State`, the `watch_task_worktrees`
+  command, the `file_changed` event and the **notify dependency** are gone.
+- New command `flush_git_caches` — the "make the next refresh exact" half of
+  the explicit-refresh contract.
+- Auto-refresh is now driven by **agent activity**, not the filesystem: the
+  hooks (`agent_activity` events) fire per agent action; refresh throttled
+  (~2s) while `working`, exactly once on the working→idle transition.
+
+### Pool: the path IS the identity
+
+- `MainRepo` = `{ local_path, slug }` — **no url field**. Listing is a pure
+  directory walk, zero git subprocesses, no cache needed (cache deleted).
+- `slug_parts(slug)` derives (host, group, project); review-queue matching
+  uses slugs directly instead of parsing origin URLs.
+- `register_repo(slug, local_path)` — signature changed. The single
+  `remote get-url origin` check happens HERE, at attach, as validation that
+  forge features can work. `register_repo_impl` same. Review attach builds the
+  slug from `url_host(web_url) + project_full` (new `core::git::url_host`).
+
+### Frontend work owed (runtime-broken until done) — frontend phase
+
+| Break | Fix |
+|---|---|
+| `useIpc` invokes `watch_task_worktrees` on every workspace_ready → error toast | delete `startWatchers` + the call |
+| `file_changed` listener + 350ms debounce block | delete; never fires |
+| No auto-refresh wiring | add `refreshSession(id)`: `flush_git_caches` → invalidateDiff → refreshStatusFor (+ refreshHome off-workspace); call it from `agent_activity` (throttled while working, once on idle) and from the sidebar refresh button |
+| `register_repo` invoked with `{localPath, remoteUrl}` (repoPicker) | pass `{slug, localPath}`; `MainRepo.url` no longer exists (type + tooltip) |

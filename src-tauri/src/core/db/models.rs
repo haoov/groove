@@ -9,19 +9,10 @@ pub enum SessionKind {
     Review,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-pub enum SessionState {
-    Open,
-    Paused,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Session {
     pub id: String,
     pub kind: SessionKind,
-    pub state: SessionState,
     pub title: String,
     pub notion_page_id: Option<String>,
     pub review_project: Option<String>,

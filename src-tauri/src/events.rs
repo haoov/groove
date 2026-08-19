@@ -16,7 +16,6 @@ pub const CONFIRMATION_RESOLVED: &str = "confirmation_resolved";
 
 // ── Git / worktrees ─────────────────────────────────────────────────────────
 pub const WORKTREE_CLOSED: &str = "worktree_closed";
-pub const FILE_CHANGED: &str = "file_changed";
 pub const REBASE_DONE: &str = "rebase_done";
 pub const REBASE_CONFLICT: &str = "rebase_conflict";
 

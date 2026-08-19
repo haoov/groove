@@ -172,7 +172,6 @@ fn adopted_session(short_id: &str, task: &super::creation::NewTask<'_>) -> crate
     crate::core::db::models::Session {
         id: short_id.to_string(),
         kind: crate::core::db::models::SessionKind::Task,
-        state: crate::core::db::models::SessionState::Open,
         title: task.title.to_string(),
         notion_page_id: Some(String::new()),
         review_project: None,
