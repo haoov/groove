@@ -28,14 +28,14 @@ pub(super) async fn get_commit_log_impl(
         // divides at the real target and not the repo default. `None` means the
         // remote has no branch to divide at (origin-less or unfetched clone), and
         // then every commit here is local work rather than base history.
-        let base = super::upstream_base(&wt.path, wt.base_ref.as_deref()).await.ok();
+        let base = crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref()).await.ok();
 
         // Full recent history of the branch — task commits AND upstream base
         // commits — so the list shows where the branch grew from.
         let max_count = format!("--max-count={limit}");
         // Subject (%s) goes LAST: it's the only field that can contain `|`, and
         // splitn keeps the remainder intact only for the final field.
-        let output = super::run_git_output(
+        let output = crate::core::git::output(
             &wt.path,
             &["log", &max_count, "--format=%H|%h|%an|%at|%s", log_ref],
         )
@@ -55,7 +55,7 @@ pub(super) async fn get_commit_log_impl(
             None => log_ref.to_string(),
         };
         let task_shas: std::collections::HashSet<String> =
-            super::run_git_output(&wt.path, &["rev-list", &range])
+            crate::core::git::output(&wt.path, &["rev-list", &range])
                 .await
                 .ok()
                 .filter(|o| o.status.success())

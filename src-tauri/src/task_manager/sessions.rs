@@ -67,7 +67,7 @@ async fn attach_review_repo(
     local_path: String,
     pool: &SqlitePool,
 ) -> anyhow::Result<Repo> {
-    let remote_url = crate::git_engine::run_git(&local_path, &["remote", "get-url", "origin"])
+    let remote_url = crate::core::git::run(&local_path, &["remote", "get-url", "origin"])
         .await
         .map_err(|e| anyhow::anyhow!("could not read origin URL of {local_path}: {e}"))?
         .trim()

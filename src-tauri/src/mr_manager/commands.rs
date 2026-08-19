@@ -373,7 +373,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     let mut clone_by_project: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
     for r in &main_repos {
-        if let Ok((host, group, project)) = crate::git_engine::parse_git_url(&r.url) {
+        if let Ok((host, group, project)) = crate::core::git::parse_git_url(&r.url) {
             clone_by_host.entry(host.clone()).or_insert_with(|| r.local_path.clone());
             clone_by_project.insert(format!("{host}/{group}/{project}"), r.local_path.clone());
         }

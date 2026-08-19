@@ -1,6 +1,8 @@
 use sqlx::SqlitePool;
 use tauri::Emitter;
 
+use crate::core::git;
+
 #[tauri::command]
 pub async fn commit(
     worktree_id: String,
@@ -36,7 +38,7 @@ async fn worktree_path(worktree_id: &str, pool: &SqlitePool) -> Result<String, S
 /// user-facing string. Thin wrapper over the shared `run_git` for the command
 /// layer (which returns `Result<(), String>`).
 async fn run_git_in(path: &str, args: &[&str]) -> Result<(), String> {
-    super::run_git(path, args)
+    crate::core::git::run(path, args)
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -125,51 +127,35 @@ pub async fn discard_all(
 /// Discard local changes for one file. Tracked/staged paths are restored from
 /// HEAD (a staged-new file is removed); a purely untracked file is deleted.
 pub async fn discard_impl(payload: serde_json::Value) -> anyhow::Result<()> {
-    let path = payload["worktree_path"].as_str().ok_or_else(|| anyhow::anyhow!("missing worktree_path"))?.to_string();
-    let file = payload["file_path"].as_str().ok_or_else(|| anyhow::anyhow!("missing file_path"))?.to_string();
+    let path = required_str(&payload, "worktree_path")?;
+    let file = required_str(&payload, "file_path")?;
 
-    tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-        let in_index = std::process::Command::new("git")
-            .args(["ls-files", "--error-unmatch", "--", &file])
-            .current_dir(&path)
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
+    let in_index = git::output(path, &["ls-files", "--error-unmatch", "--", file])
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false);
 
-        let args: Vec<&str> = if in_index {
-            vec!["restore", "--source=HEAD", "--staged", "--worktree", "--", &file]
-        } else {
-            vec!["clean", "-fd", "--", &file]
-        };
-        let out = std::process::Command::new("git")
-            .args(&args)
-            .current_dir(&path)
-            .output()?;
-        if !out.status.success() {
-            return Err(anyhow::anyhow!("git {} failed: {}", args.join(" "), String::from_utf8_lossy(&out.stderr).trim()));
-        }
-        Ok(())
-    })
-    .await?
+    if in_index {
+        git::run(path, &["restore", "--source=HEAD", "--staged", "--worktree", "--", file]).await?;
+    } else {
+        git::run(path, &["clean", "-fd", "--", file]).await?;
+    }
+    Ok(())
+}
+
+fn required_str<'a>(payload: &'a serde_json::Value, key: &str) -> anyhow::Result<&'a str> {
+    payload[key]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("missing {key}"))
 }
 
 /// Discard ALL local changes: revert tracked files to HEAD and remove untracked.
 pub async fn discard_all_impl(payload: serde_json::Value) -> anyhow::Result<()> {
-    let path = payload["worktree_path"].as_str().ok_or_else(|| anyhow::anyhow!("missing worktree_path"))?.to_string();
-
-    tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
-        for args in [["reset", "-q", "--hard", "HEAD"].as_slice(), ["clean", "-fd"].as_slice()] {
-            let out = std::process::Command::new("git")
-                .args(args)
-                .current_dir(&path)
-                .output()?;
-            if !out.status.success() {
-                return Err(anyhow::anyhow!("git {} failed: {}", args.join(" "), String::from_utf8_lossy(&out.stderr).trim()));
-            }
-        }
-        Ok(())
-    })
-    .await?
+    let path = required_str(&payload, "worktree_path")?;
+    git::run(path, &["reset", "-q", "--hard", "HEAD"]).await?;
+    git::run(path, &["clean", "-fd"]).await?;
+    git::cache::flush();
+    Ok(())
 }
 
 #[tauri::command]
@@ -249,9 +235,10 @@ pub async fn rebase_continue(
     // `-c core.editor=true` stands in for the old `GIT_EDITOR=true` env: it stops
     // `rebase --continue` from popping an editor for the commit message. run_git_output
     // keeps this (potentially slow) call off the tokio runtime.
-    let output = super::run_git_output(&wt.path, &["-c", "core.editor=true", "rebase", "--continue"])
+    let output = crate::core::git::output(&wt.path, &["-c", "core.editor=true", "rebase", "--continue"])
         .await
         .map_err(|e| e.to_string())?;
+    crate::core::git::cache::flush();
 
     if output.status.success() {
         app.emit(
@@ -280,9 +267,10 @@ pub async fn rebase_abort(
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
-    let output = super::run_git_output(&wt.path, &["rebase", "--abort"])
+    let output = crate::core::git::output(&wt.path, &["rebase", "--abort"])
         .await
         .map_err(|e| e.to_string())?;
+    crate::core::git::cache::flush();
     if !output.status.success() {
         return Err(format!(
             "git rebase --abort failed: {}",
@@ -300,7 +288,7 @@ pub async fn rebase_abort(
 }
 
 async fn get_conflict_files(path: &str) -> Vec<String> {
-    super::run_git_output(path, &["diff", "--name-only", "--diff-filter=U"])
+    crate::core::git::output(path, &["diff", "--name-only", "--diff-filter=U"])
         .await
         .ok()
         .map(|o| {
@@ -314,43 +302,22 @@ async fn get_conflict_files(path: &str) -> Vec<String> {
 }
 
 pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyhow::Result<()> {
-    let path = payload["worktree_path"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing worktree_path"))?
-        .to_string();
-    let message = payload["message"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing message"))?
-        .to_string();
+    let path = required_str(&payload, "worktree_path")?;
+    let message = required_str(&payload, "message")?;
 
     // Stage-aware: if anything is staged, commit the index only; otherwise commit
     // all tracked changes (the simple "type a message → commit everything" flow).
-    let has_staged = {
-        let path = path.clone();
-        tokio::task::spawn_blocking(move || {
-            std::process::Command::new("git")
-                .args(["diff", "--cached", "--quiet"])
-                .current_dir(&path)
-                .status()
-                .map(|s| !s.success())
-                .unwrap_or(false)
-        })
-        .await?
-    };
+    let has_staged = git::output(path, &["diff", "--cached", "--quiet"])
+        .await
+        .map(|o| !o.status.success())
+        .unwrap_or(false);
 
-    let output = tokio::task::spawn_blocking(move || {
-        let mut args = vec!["commit"];
-        if !has_staged {
-            args.push("-a");
-        }
-        args.push("-m");
-        args.push(&message);
-        std::process::Command::new("git")
-            .args(&args)
-            .current_dir(&path)
-            .output()
-    })
-    .await??;
+    let args: Vec<&str> = if has_staged {
+        vec!["commit", "-m", message]
+    } else {
+        vec!["commit", "-a", "-m", message]
+    };
+    let output = git::output(path, &args).await?;
 
     if !output.status.success() {
         // `git commit` writes "nothing to commit" / "Untracked files present" to
@@ -369,56 +336,23 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
             if detail.is_empty() { "no output (nothing to commit?)".to_string() } else { detail }
         ));
     }
+    git::cache::flush();
     Ok(())
 }
 
 pub async fn push_impl(payload: serde_json::Value) -> anyhow::Result<()> {
-    let path = payload["worktree_path"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing worktree_path"))?
-        .to_string();
-    let branch = payload["branch"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing branch"))?
-        .to_string();
+    let path = required_str(&payload, "worktree_path")?;
+    let branch = required_str(&payload, "branch")?;
 
-    let output = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["push", "origin", &format!("{branch}:{branch}"), "--set-upstream"])
-            .current_dir(&path)
-            .output()
-    })
-    .await??;
-
-    if !output.status.success() {
-        return Err(anyhow::anyhow!(
-            "git push failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    git::run(path, &["push", "origin", &format!("{branch}:{branch}"), "--set-upstream"]).await?;
+    git::cache::flush();
     Ok(())
 }
 
 pub async fn pull_impl(payload: serde_json::Value) -> anyhow::Result<()> {
-    let path = payload["worktree_path"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing worktree_path"))?
-        .to_string();
-
-    let output = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["pull", "--rebase"])
-            .current_dir(&path)
-            .output()
-    })
-    .await??;
-
-    if !output.status.success() {
-        return Err(anyhow::anyhow!(
-            "git pull failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    let path = required_str(&payload, "worktree_path")?;
+    git::run(path, &["pull", "--rebase"]).await?;
+    git::cache::flush();
     Ok(())
 }
 
@@ -433,28 +367,15 @@ pub async fn rebase_impl(payload: serde_json::Value) -> anyhow::Result<serde_jso
         .to_string();
     let worktree_id = payload["worktree_id"].as_str().unwrap_or("").to_string();
 
-    let path2 = path.clone();
-    let _ = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["fetch", "origin"])
-            .current_dir(&path2)
-            .status()
-    })
-    .await;
+    let _ = git::run(&path, &["fetch", "origin"]).await;
+    git::cache::flush();
 
     // Rebase onto the base BRANCH, never a merge-base: the point of the rebase is
     // to move onto the branch tip.
-    let base_ref = super::upstream_base(&path, Some(&default_branch)).await?;
+    let base_ref = git::refs::upstream_base(&path, Some(&default_branch)).await?;
 
-    let path3 = path.clone();
-    let base_for_cmd = base_ref.clone();
-    let output = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["rebase", &base_for_cmd])
-            .current_dir(&path3)
-            .output()
-    })
-    .await??;
+    let output = git::output(&path, &["rebase", &base_ref]).await?;
+    git::cache::flush();
 
     if output.status.success() {
         return Ok(serde_json::json!({

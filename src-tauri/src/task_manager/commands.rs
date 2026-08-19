@@ -295,7 +295,7 @@ async fn prune_missing_worktrees(session_id: &str, pool: &SqlitePool) -> anyhow:
         }
         store::worktrees::close(pool, &wt.id).await?;
         if let Some(repo) = store::repos::get_opt(pool, &wt.repo_id).await? {
-            let _ = crate::git_engine::run_git_output(&repo.local_path, &["worktree", "prune"]).await;
+            let _ = crate::core::git::output(&repo.local_path, &["worktree", "prune"]).await;
         }
     }
     Ok(())

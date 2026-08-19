@@ -11,7 +11,7 @@
 //! else uses the `gh pr` porcelain.
 
 use crate::core::db::models::Repo;
-use super::platform::{detect_default_branch, CliMissing, PlatformClient};
+use super::platform::{CliMissing, PlatformClient};
 
 /// Run `gh` in a repo checkout. Like `glab_run`, the cwd is what tells `gh` which
 /// repository (and host) it is talking about.
@@ -232,8 +232,9 @@ impl PlatformClient for GhClient {
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)> {
-        // The real default branch, not a hardcoded "main" as before.
-        let base = detect_default_branch(&repo.local_path).await;
+        let base = crate::core::git::refs::default_branch(&repo.local_path)
+            .await
+            .unwrap_or_else(|| "main".to_string());
         let out = gh_run(
             repo.local_path.clone(),
             vec![

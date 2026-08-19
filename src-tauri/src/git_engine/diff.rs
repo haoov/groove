@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use sqlx::SqlitePool;
 use crate::core::db::models::Worktree;
@@ -8,13 +7,9 @@ use crate::core::db::store;
 use super::parse::{parse_unified_diff, unquote_path};
 use super::types::{DiffResult, RepoDiff, FileDiff, Hunk, DiffLine};
 
-/// Per-repo throttle for the fire-and-forget `git fetch origin` a diff refresh
-/// kicks off. During agent edit bursts the diff view refreshes constantly; without
-/// this every refresh would hit the network. Keyed by repo id (worktrees of the
-/// same repo share a remote, so one fetch per repo per window is enough).
-static LAST_FETCH: LazyLock<Mutex<HashMap<String, Instant>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-
+/// Fire-and-forget `git fetch origin` at most once a minute per repo: during
+/// agent edit bursts the diff view refreshes constantly, and every refresh
+/// hitting the network would be waste (worktrees of one repo share a remote).
 const FETCH_THROTTLE: Duration = Duration::from_secs(60);
 
 /// Untracked files over this size are listed but not rendered (avoids ballooning
@@ -23,38 +18,24 @@ const UNTRACKED_MAX_BYTES: u64 = 512 * 1024;
 /// Untracked files longer than this many lines are truncated in the rendered hunk.
 const UNTRACKED_MAX_LINES: usize = 2000;
 
-/// True (and records now) if a fetch for `key` is due — i.e. none in the last
-/// `FETCH_THROTTLE` window; false if it should be skipped.
-fn fetch_due(key: &str) -> bool {
-    let mut guard = match LAST_FETCH.lock() {
-        Ok(g) => g,
-        Err(_) => return true,
-    };
-    let now = Instant::now();
-    match guard.get(key) {
-        Some(prev) if now.duration_since(*prev) < FETCH_THROTTLE => false,
-        _ => {
-            guard.insert(key.to_string(), now);
-            true
-        }
-    }
-}
-
 /// Kick off a throttled, fire-and-forget `git fetch origin` for a worktree.
+/// New remote state means new ref answers, so a completed fetch flushes them.
 fn spawn_throttled_fetch(repo_id: &str, wt_path: &str) {
-    if !fetch_due(repo_id) {
+    if !crate::core::git::cache::shared().due(repo_id, FETCH_THROTTLE) {
         return;
     }
     let fetch_path = wt_path.to_string();
     tokio::spawn(async move {
-        let _ = super::run_git_output(&fetch_path, &["fetch", "origin"]).await;
+        if crate::core::git::output(&fetch_path, &["fetch", "origin"]).await.is_ok() {
+            crate::core::git::cache::flush();
+        }
     });
 }
 
 /// Untracked, non-ignored files (newly created, not yet `git add`-ed). These never
 /// show up in `git diff`, so the diff view has to surface them separately.
 async fn list_untracked(path: &str) -> Vec<String> {
-    super::run_git_output(path, &["ls-files", "--others", "--exclude-standard"])
+    crate::core::git::output(path, &["ls-files", "--others", "--exclude-standard"])
         .await
         .ok()
         .filter(|o| o.status.success())
@@ -70,7 +51,7 @@ async fn list_untracked(path: &str) -> Vec<String> {
 /// Map of `path → status letter` ("A"/"M"/"D"/…) from `git diff <base> --name-status`.
 async fn name_status_map(path: &str, base_ref: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
-    if let Ok(out) = super::run_git_output(
+    if let Ok(out) = crate::core::git::output(
         path,
         &["diff", base_ref, "--name-status", "--no-renames", "--no-color"],
     )
@@ -92,7 +73,7 @@ async fn name_status_map(path: &str, base_ref: &str) -> HashMap<String, String> 
 /// ("R  old -> new") are keyed on the NEW path; quoted paths are unquoted.
 async fn staged_map(path: &str) -> HashMap<String, bool> {
     let mut map = HashMap::new();
-    if let Ok(out) = super::run_git_output(path, &["status", "--porcelain"]).await {
+    if let Ok(out) = crate::core::git::output(path, &["status", "--porcelain"]).await {
         for line in String::from_utf8_lossy(&out.stdout).lines() {
             if line.len() < 4 {
                 continue;
@@ -109,7 +90,7 @@ async fn staged_map(path: &str) -> HashMap<String, bool> {
 
 /// Whether a specific path is an untracked (newly created) file.
 async fn is_untracked(path: &str, file: &str) -> bool {
-    super::run_git_output(path, &["ls-files", "--others", "--exclude-standard", "--", file])
+    crate::core::git::output(path, &["ls-files", "--others", "--exclude-standard", "--", file])
         .await
         .ok()
         .filter(|o| o.status.success())
@@ -188,11 +169,11 @@ pub(super) async fn get_task_diff_impl(task_id: &str, mode: &str, pool: &SqliteP
             spawn_throttled_fetch(&wt.repo_id, &wt.path);
         }
 
-        let base_ref = super::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref()).await?;
+        let base_ref = crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref()).await?;
 
         // Diff from remote base to the current working tree — captures committed,
         // staged, and unstaged changes in one pass.
-        let diff_output = super::run_git_output(
+        let diff_output = crate::core::git::output(
             &wt.path,
             &["diff", &base_ref, "--unified=3", "--no-color", "--no-renames"],
         )
@@ -260,12 +241,12 @@ pub async fn get_task_diff_summary(
             spawn_throttled_fetch(&wt.repo_id, &wt.path);
         }
 
-        let base_ref = super::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
+        let base_ref = crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
             .await
             .map_err(|e| e.to_string())?;
         let statuses = name_status_map(&wt.path, &base_ref).await;
         let staged = staged_map(&wt.path).await;
-        let out = super::run_git_output(
+        let out = crate::core::git::output(
             &wt.path,
             &["diff", &base_ref, "--numstat", "--no-renames", "--no-color"],
         )
@@ -326,7 +307,7 @@ pub async fn get_file_diff(
         .await
         .map_err(|e| e.to_string())?;
 
-    let base_ref = super::diff_base(
+    let base_ref = crate::core::git::refs::diff_base(
         &wt.path,
         &wt.branch,
         mode.as_deref().unwrap_or("vs-main"),
@@ -334,7 +315,7 @@ pub async fn get_file_diff(
     )
     .await
     .map_err(|e| e.to_string())?;
-    let out = super::run_git_output(
+    let out = crate::core::git::output(
         &wt.path,
         &["diff", &base_ref, "--unified=3", "--no-color", "--no-renames", "--", &file_path],
     )
@@ -370,7 +351,7 @@ pub async fn get_commit_diff(
         .await
         .map_err(|e| e.to_string())?;
 
-    let out = super::run_git_output(
+    let out = crate::core::git::output(
         &wt.path,
         &["show", &sha, "--format=", "--unified=3", "--no-color", "--no-renames"],
     )
@@ -385,7 +366,7 @@ pub async fn get_commit_diff(
 
     // Status letters (A/M/D) per path for the file headers.
     let mut statuses: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    if let Ok(ns) = super::run_git_output(
+    if let Ok(ns) = crate::core::git::output(
         &wt.path,
         &["show", &sha, "--format=", "--name-status", "--no-renames"],
     )
@@ -454,7 +435,7 @@ pub async fn read_file_lines(
 
     let text = match rev {
         Some(sha) => {
-            let out = super::run_git_output(&wt.path, &["show", &format!("{sha}:{file_path}")])
+            let out = crate::core::git::output(&wt.path, &["show", &format!("{sha}:{file_path}")])
                 .await
                 .map_err(|e| e.to_string())?;
             if !out.status.success() {

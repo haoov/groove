@@ -219,7 +219,7 @@ async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
 /// ahead/behind pair (when the branch has an upstream) — v1 porcelain would need a
 /// second `rev-list`. Returns `(modified, staged, conflicted, Some((ahead, behind)))`.
 async fn working_tree_state(path: &str) -> (i64, i64, i64, Option<(i64, i64)>) {
-    let Ok(out) = crate::git_engine::run_git_output(path, &["status", "--porcelain=v2", "--branch"]).await
+    let Ok(out) = crate::core::git::output(path, &["status", "--porcelain=v2", "--branch"]).await
     else {
         return (0, 0, 0, None);
     };
@@ -266,7 +266,7 @@ async fn working_tree_state(path: &str) -> (i64, i64, i64, Option<(i64, i64)>) {
 /// `+added / −deleted` against the session's diff base — which for a review
 /// session is the MR's target branch, not the repo default.
 async fn line_delta(wt: &Worktree) -> (i64, i64, i64) {
-    let Ok(base) = crate::git_engine::diff_base(
+    let Ok(base) = crate::core::git::refs::diff_base(
         &wt.path,
         &wt.branch,
         "vs-main",
@@ -277,7 +277,7 @@ async fn line_delta(wt: &Worktree) -> (i64, i64, i64) {
         return (0, 0, 0);
     };
 
-    let Ok(out) = crate::git_engine::run_git_output(
+    let Ok(out) = crate::core::git::output(
         &wt.path,
         &["diff", &base, "--numstat", "--no-renames", "--no-color"],
     )
@@ -303,7 +303,7 @@ async fn line_delta(wt: &Worktree) -> (i64, i64, i64) {
 /// Commits on the branch that aren't on its base — the "ahead" count for a branch
 /// that was never pushed (so `branch.ab` is absent).
 async fn commits_past_base(wt: &Worktree) -> i64 {
-    let Ok(base) = crate::git_engine::diff_base(
+    let Ok(base) = crate::core::git::refs::diff_base(
         &wt.path,
         &wt.branch,
         "vs-main",
@@ -313,7 +313,7 @@ async fn commits_past_base(wt: &Worktree) -> i64 {
     else {
         return 0;
     };
-    crate::git_engine::run_git_output(&wt.path, &["rev-list", "--count", &format!("{base}..HEAD")])
+    crate::core::git::output(&wt.path, &["rev-list", "--count", &format!("{base}..HEAD")])
         .await
         .ok()
         .filter(|o| o.status.success())

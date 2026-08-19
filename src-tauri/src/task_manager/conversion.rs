@@ -52,7 +52,7 @@ async fn switch_to_branch(wt: &Worktree, new_branch: &str) -> Result<(), String>
     // fail with "refname 'HEAD' is ambiguous" — clean it before switching.
     crate::git_engine::repair_head_branch(&wt.path).await;
 
-    match crate::git_engine::run_git_output(&wt.path, &["switch", "-c", new_branch]).await {
+    match crate::core::git::output(&wt.path, &["switch", "-c", new_branch]).await {
         Ok(o) if o.status.success() => Ok(()),
         Ok(o) => Err(format!(
             "could not switch {} to {new_branch}: {}",
@@ -72,7 +72,7 @@ async fn relocate_worktree(
 ) -> Result<String, String> {
     let dest = session_dir.join(&repo.project).to_string_lossy().to_string();
     let _ = std::fs::create_dir_all(session_dir);
-    match crate::git_engine::run_git_output(
+    match crate::core::git::output(
         &repo.local_path,
         &["worktree", "move", &wt.path, &dest],
     )

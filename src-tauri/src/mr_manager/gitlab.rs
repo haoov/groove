@@ -1,7 +1,7 @@
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
 use sqlx::SqlitePool;
-use super::platform::{detect_default_branch, PlatformClient};
+use super::platform::PlatformClient;
 
 pub(super) async fn glab_run(cwd: String, args: Vec<String>) -> anyhow::Result<String> {
     let printable = args.join(" ");
@@ -95,7 +95,9 @@ impl PlatformClient for GlabClient {
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)> {
-        let default_branch = detect_default_branch(&repo.local_path).await;
+        let default_branch = crate::core::git::refs::default_branch(&repo.local_path)
+            .await
+            .unwrap_or_else(|| "main".to_string());
         let out = glab_run(
             repo.local_path.clone(),
             vec![

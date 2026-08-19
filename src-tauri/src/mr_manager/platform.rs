@@ -85,30 +85,6 @@ pub(super) trait PlatformClient: Send + Sync {
     ) -> anyhow::Result<()>;
 }
 
-/// Returns the remote default branch by reading `origin/HEAD` from local git config.
-/// Falls back to "main" if the ref is not set (run `git remote set-head origin -a` to fix).
-pub(super) async fn detect_default_branch(repo_path: &str) -> String {
-    let path = repo_path.to_string();
-    let result = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["rev-parse", "--abbrev-ref", "origin/HEAD"])
-            .current_dir(&path)
-            .output()
-    })
-    .await;
-
-    if let Ok(Ok(out)) = result {
-        if out.status.success() {
-            let raw = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            let branch = raw.strip_prefix("origin/").unwrap_or(&raw).to_string();
-            if !branch.is_empty() && branch != "HEAD" {
-                return branch;
-            }
-        }
-    }
-    "main".to_string()
-}
-
 /// The CLI owns auth on both platforms: `glab` for GitLab, `gh` for GitHub. There
 /// is no token to store, which is why this cannot fail per-repo any more.
 pub(super) fn make_client(repo: &Repo) -> Box<dyn PlatformClient> {

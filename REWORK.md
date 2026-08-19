@@ -149,3 +149,49 @@ Decisions taken with the schema still unreleased, so 0006 was edited in place
   the static to `arc-swap`. Not warranted today.
 - `check_environment` now reads the path via `config::file_path()` — the
   setup screen no longer needs an AppHandle for it.
+
+---
+
+## Phase 3a — core/git: one spawner, one resolver, a ref cache (done)
+
+### Layout
+
+- `core/git/run.rs` — `run()` / `output()` / `is_repository()`: the ONLY git
+  spawner (spawn_blocking + LC_ALL=C + timing), enforced by the
+  `no_git_spawn_outside_core_git` test.
+- `core/git/url.rs` — `parse_git_url` (moved, with tests).
+- `core/git/refs.rs` — `ref_exists` · `upstream_base` · `diff_base` ·
+  `default_branch`: base_ref.rs absorbed, `resolve_default_branch` moved in,
+  `mr_manager::detect_default_branch` DELETED (D1 dead — it stripped
+  origin/HEAD and fell back to a literal "main", mis-targeting MRs on
+  develop-default repos).
+- `core/git/cache.rs` — `RefCache`: merge-base / ref-exists / default-branch
+  answers cached with a **5s TTL**; `flush()` after every ref-moving op
+  (commit, push, pull, rebase ×3, discard-all, fetch ×3, worktree
+  add/close/switch). The fetch throttle (`due(key, window)`) lives here too;
+  throttle stamps survive a flush.
+
+### Also
+
+- `ops.rs` impls rewritten on core::git (D2 dead): forced-English output,
+  timing coverage, ~90 lines of spawn boilerplate gone.
+- `editor_host::list_files` async on core::git (B17 fixed).
+- **git2 dependency dropped** — both uses were "is this a repo?"; now
+  `rev-parse --git-dir`.
+- Fire-and-forget diff fetch flushes the cache on completion, so remote
+  movement becomes visible on the next refresh.
+
+### Effect
+
+Diff refresh ~9 → ~4–5 spawns per worktree; file-diff tab 3 → 1; Home 4–7 →
+2–3. Every git call now appears in `RUST_LOG=timing=debug`.
+
+### Notes for later phases
+
+- Staleness window: an agent committing in its own terminal can leave ref
+  answers up to 5s stale; the debounced watcher refresh lands after that.
+  If it ever bothers, watch `.git/HEAD` in the watcher and call
+  `cache::flush()` — one line each side.
+- `git_engine` is now operations-only (provision/pool/ops/status/watcher/
+  diff/blame/parse/commits) — the 3b rename to `worktrees/` + `review/`
+  split is mechanical.

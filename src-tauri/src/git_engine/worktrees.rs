@@ -4,47 +4,8 @@ use tauri::Emitter;
 
 use crate::core::db::models::{Repo, Worktree};
 use crate::core::db::store;
+use crate::core::git;
 use super::types::BranchSpec;
-
-pub(crate) fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
-    let url = url.trim_end_matches(".git");
-
-    // SSH: git@host:group/project
-    if let Some(at) = url.find('@') {
-        let rest = &url[at + 1..];
-        if let Some(colon) = rest.find(':') {
-            let host = &rest[..colon];
-            let path = &rest[colon + 1..];
-            if let Some(slash) = path.rfind('/') {
-                return Ok((
-                    host.to_string(),
-                    path[..slash].to_string(),
-                    path[slash + 1..].to_string(),
-                ));
-            }
-        }
-    }
-
-    // HTTPS: https://host/group/project — userinfo (user:token@) stripped, so a
-    // credentialed remote never leaks into the repo id.
-    let stripped = url
-        .trim_start_matches("https://")
-        .trim_start_matches("http://");
-    let stripped = stripped.rsplit_once('@').map_or(stripped, |(_, rest)| rest);
-    if let Some(slash) = stripped.find('/') {
-        let host = &stripped[..slash];
-        let path = &stripped[slash + 1..];
-        if let Some(last_slash) = path.rfind('/') {
-            return Ok((
-                host.to_string(),
-                path[..last_slash].to_string(),
-                path[last_slash + 1..].to_string(),
-            ));
-        }
-    }
-
-    Err(anyhow::anyhow!("Cannot parse git URL: {url}"))
-}
 
 /// Whether `branch` already exists as a head on the repo's `origin` remote.
 /// Used to block creating a worktree on a branch name that's already taken remotely.
@@ -56,7 +17,7 @@ pub async fn remote_branch_exists(
 ) -> Result<bool, String> {
     let repo = store::repos::get(&*pool, &repo_id).await.map_err(|e| e.to_string())?;
 
-    let out = super::run_git_output(&repo.local_path, &["ls-remote", "--heads", "origin", &branch])
+    let out = crate::core::git::output(&repo.local_path, &["ls-remote", "--heads", "origin", &branch])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -83,12 +44,11 @@ pub(crate) async fn register_repo_impl(
     remote_url: String,
     pool: &SqlitePool,
 ) -> anyhow::Result<Repo> {
-    let (host, group_path, project) = parse_git_url(&remote_url)?;
+    let (host, group_path, project) = git::parse_git_url(&remote_url)?;
     let id = format!("{host}/{group_path}/{project}");
 
-    if !local_path.is_empty() {
-        git2::Repository::open(&local_path)
-            .map_err(|e| anyhow::anyhow!("Not a git repository at {local_path}: {e}"))?;
+    if !local_path.is_empty() && !git::run::is_repository(&local_path).await {
+        return Err(anyhow::anyhow!("Not a git repository at {local_path}"));
     }
 
     let repo = Repo { id, host, group_path, project, local_path };
@@ -128,14 +88,8 @@ pub(crate) async fn provision_worktrees_impl(
 
         std::fs::create_dir_all(&wt_path)?;
 
-        {
-            let local_path = repo.local_path.clone();
-            tokio::task::spawn_blocking(move || {
-                git2::Repository::open(&local_path)
-                    .map(|_| ())
-                    .map_err(|e| anyhow::anyhow!("Cannot open repo {local_path}: {e}"))
-            })
-            .await??;
+        if !git::run::is_repository(&repo.local_path).await {
+            return Err(anyhow::anyhow!("Cannot open repo {}", repo.local_path));
         }
 
         // Fetch + fast-forward the MAIN clone before creating the branch, and use
@@ -145,7 +99,7 @@ pub(crate) async fn provision_worktrees_impl(
 
         let wt_path_str = wt_path.to_string_lossy().to_string();
         let output =
-            super::run_git_output(&repo.local_path, &["worktree", "add", &wt_path_str, &branch]).await?;
+            crate::core::git::output(&repo.local_path, &["worktree", "add", &wt_path_str, &branch]).await?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -155,6 +109,7 @@ pub(crate) async fn provision_worktrees_impl(
             align_checkout(&wt_path_str, &branch).await?;
         }
 
+        git::cache::flush();
         let wt = store::worktrees::upsert(pool, session_id, &repo.id, &branch, &wt_path_str).await?;
         created.push(wt);
     }
@@ -166,7 +121,7 @@ pub(crate) async fn provision_worktrees_impl(
 /// for; upserting the new branch while the checkout keeps the old one would
 /// desync DB and disk, so align the checkout first.
 async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
-    let current = super::run_git(wt_path, &["rev-parse", "--abbrev-ref", "HEAD"])
+    let current = crate::core::git::run(wt_path, &["rev-parse", "--abbrev-ref", "HEAD"])
         .await?
         .trim()
         .to_string();
@@ -174,11 +129,11 @@ async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
         return Ok(());
     }
     // Plain switch when the branch exists locally, -c otherwise.
-    let switch = super::run_git_output(wt_path, &["switch", branch]).await?;
+    let switch = crate::core::git::output(wt_path, &["switch", branch]).await?;
     if switch.status.success() {
         return Ok(());
     }
-    let create = super::run_git_output(wt_path, &["switch", "-c", branch]).await?;
+    let create = crate::core::git::output(wt_path, &["switch", "-c", branch]).await?;
     if !create.status.success() {
         return Err(anyhow::anyhow!(
             "worktree at {wt_path} is on branch '{current}' and switching to '{branch}' failed: {}",
@@ -223,7 +178,7 @@ pub(crate) async fn provision_explorer_worktrees_impl(
             if base.is_some() {
                 break;
             }
-            if super::ref_exists(&repo.local_path, candidate).await {
+            if crate::core::git::refs::ref_exists(&repo.local_path, candidate).await {
                 base = Some(candidate.to_string());
             }
         }
@@ -232,7 +187,7 @@ pub(crate) async fn provision_explorer_worktrees_impl(
         })?;
 
         let wt_path_str = wt_path.to_string_lossy().to_string();
-        let output = super::run_git_output(
+        let output = crate::core::git::output(
             &repo.local_path,
             &["worktree", "add", "--detach", &wt_path_str, &base],
         )
@@ -263,11 +218,12 @@ pub(crate) async fn provision_review_worktree(
 ) -> anyhow::Result<Worktree> {
     refresh_main_clone(&repo.local_path, &repo.project, session_id).await;
     // The default-branch fetch above may not cover the MR branches — fetch both.
-    let out = super::run_git_output(
+    let out = crate::core::git::output(
         &repo.local_path,
         &["fetch", "origin", source_branch, target_branch],
     )
     .await?;
+    git::cache::flush();
     if !out.status.success() {
         return Err(anyhow::anyhow!(
             "git fetch origin {source_branch} {target_branch} failed: {}",
@@ -278,20 +234,20 @@ pub(crate) async fn provision_review_worktree(
     // Drop registrations whose directories are gone: reopening a review whose
     // folder was deleted would otherwise fail with "missing but already
     // registered worktree" instead of simply recreating it.
-    let _ = super::run_git(&repo.local_path, &["worktree", "prune"]).await;
+    let _ = crate::core::git::run(&repo.local_path, &["worktree", "prune"]).await;
 
     let wt_path = session_dir(session_id).join(&repo.project);
     std::fs::create_dir_all(&wt_path)?;
     let wt_path_str = wt_path.to_string_lossy().to_string();
 
     let local_exists =
-        super::ref_exists(&repo.local_path, &format!("refs/heads/{source_branch}")).await;
+        crate::core::git::refs::ref_exists(&repo.local_path, &format!("refs/heads/{source_branch}")).await;
 
     let output = if local_exists {
-        super::run_git_output(&repo.local_path, &["worktree", "add", &wt_path_str, source_branch]).await?
+        crate::core::git::output(&repo.local_path, &["worktree", "add", &wt_path_str, source_branch]).await?
     } else {
         let track = format!("origin/{source_branch}");
-        super::run_git_output(
+        crate::core::git::output(
             &repo.local_path,
             &["worktree", "add", "--track", "-b", source_branch, &wt_path_str, &track],
         )
@@ -323,7 +279,7 @@ async fn ensure_branch(
     repo_path: &str,
     base_branch: Option<&str>,
 ) -> anyhow::Result<()> {
-    if super::ref_exists(repo_path, &format!("refs/heads/{branch}")).await {
+    if crate::core::git::refs::ref_exists(repo_path, &format!("refs/heads/{branch}")).await {
         return Ok(());
     }
 
@@ -334,7 +290,7 @@ async fn ensure_branch(
     candidates.extend(["origin/main".to_string(), "origin/master".to_string()]);
 
     for base in &candidates {
-        if let Ok(out) = super::run_git_output(repo_path, &["branch", branch, base]).await {
+        if let Ok(out) = crate::core::git::output(repo_path, &["branch", branch, base]).await {
             if out.status.success() {
                 return Ok(());
             }
@@ -385,49 +341,10 @@ pub(crate) fn session_dir(session_id: &str) -> PathBuf {
 /// worktrees (refs are shared). Older builds created one via `fetch HEAD:HEAD`.
 /// Best-effort; safe to call from a worktree path.
 pub(crate) async fn repair_head_branch(repo_or_wt_path: &str) {
-    if super::ref_exists(repo_or_wt_path, "refs/heads/HEAD").await {
+    if crate::core::git::refs::ref_exists(repo_or_wt_path, "refs/heads/HEAD").await {
         tracing::warn!("[git] deleting stray local branch 'HEAD' at {repo_or_wt_path}");
-        let _ = super::run_git(repo_or_wt_path, &["update-ref", "-d", "refs/heads/HEAD"]).await;
+        let _ = crate::core::git::run(repo_or_wt_path, &["update-ref", "-d", "refs/heads/HEAD"]).await;
     }
-}
-
-/// The repo's real default branch.
-///
-/// Resolved from `refs/remotes/origin/HEAD`, and NEVER by stripping the
-/// "origin/HEAD" shorthand — that yields "HEAD", and `fetch HEAD:HEAD` is exactly
-/// what creates the poisoned branch `repair_head_branch` cleans up.
-///
-/// When the symref is missing (a `--single-branch` clone, or one made before the
-/// remote had a default), this asks the remote and writes it, so the answer is
-/// deterministic next time instead of a guess between main and master.
-async fn resolve_default_branch(repo_path: &str) -> Option<String> {
-    async fn read_symref(repo_path: &str) -> Option<String> {
-        let out = super::run_git(repo_path, &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
-            .await
-            .ok()?;
-        match out.trim().strip_prefix("origin/") {
-            Some(name) if !name.is_empty() && name != "HEAD" => Some(name.to_string()),
-            _ => None,
-        }
-    }
-
-    if let Some(name) = read_symref(repo_path).await {
-        return Some(name);
-    }
-
-    // Ask the remote and record the answer.
-    let _ = super::run_git(repo_path, &["remote", "set-head", "origin", "-a"]).await;
-    if let Some(name) = read_symref(repo_path).await {
-        return Some(name);
-    }
-
-    // Offline, or a remote that won't say: fall back to whichever exists.
-    for name in ["main", "master"] {
-        if super::ref_exists(repo_path, &format!("refs/remotes/origin/{name}")).await {
-            return Some(name.to_string());
-        }
-    }
-    None
 }
 
 /// Bring the MAIN clone up to date before branching off it, and return the default
@@ -437,7 +354,9 @@ async fn resolve_default_branch(repo_path: &str) -> Option<String> {
 /// expired credentials) would hand back a worktree quietly based on last week's
 /// main, with nothing to explain why — which is worse than the delay of noticing.
 async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str) -> Option<String> {
-    if let Err(e) = super::run_git(repo_path, &["fetch", "origin"]).await {
+    let fetched = crate::core::git::run(repo_path, &["fetch", "origin"]).await;
+    git::cache::flush();
+    if let Err(e) = fetched {
         crate::events::notice(
             "error",
             "git",
@@ -450,18 +369,18 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
     }
     repair_head_branch(repo_path).await;
 
-    let default_branch = resolve_default_branch(repo_path).await?;
+    let default_branch = git::refs::default_branch(repo_path).await?;
 
-    let current = super::run_git(repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
+    let current = crate::core::git::run(repo_path, &["rev-parse", "--abbrev-ref", "HEAD"])
         .await
         .map(|s| s.trim().to_string())
         .unwrap_or_default();
 
     let result = if current == default_branch {
-        super::run_git(repo_path, &["pull", "--ff-only"]).await
+        crate::core::git::run(repo_path, &["pull", "--ff-only"]).await
     } else {
         // Advance the local branch ref without touching MAIN's checkout.
-        super::run_git(repo_path, &["fetch", "origin", &format!("{default_branch}:{default_branch}")]).await
+        crate::core::git::run(repo_path, &["fetch", "origin", &format!("{default_branch}:{default_branch}")]).await
     };
     if let Err(e) = result {
         // The common cause is local commits or a dirty tree in the MAIN clone, which
@@ -522,7 +441,7 @@ pub async fn list_main_repos() -> Result<Vec<super::types::MainRepo>, String> {
                     .map(|p| p.to_string_lossy().to_string())
                     .unwrap_or_else(|_| local_path.clone());
                 // A clone without an origin remote can't be registered — skip it.
-                let url = super::run_git(&local_path, &["remote", "get-url", "origin"]).await.ok()?;
+                let url = crate::core::git::run(&local_path, &["remote", "get-url", "origin"]).await.ok()?;
                 Some(super::types::MainRepo { url: url.trim().to_string(), local_path, slug })
             }
         }))
@@ -538,7 +457,7 @@ pub async fn list_main_repos() -> Result<Vec<super::types::MainRepo>, String> {
 /// be slow — it runs off the async runtime; the UI shows a pending state.
 #[tauri::command]
 pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
-    let (host, group_path, project) = parse_git_url(&url).map_err(|e| e.to_string())?;
+    let (host, group_path, project) = git::parse_git_url(&url).map_err(|e| e.to_string())?;
     let dest = repo_dir(&host, &group_path, &project);
     if dest.exists() {
         return Err(format!("{} already exists", dest.display()));
@@ -549,7 +468,7 @@ pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
 
     let dest_str = dest.to_string_lossy().to_string();
     let parent = dest.parent().unwrap_or(&dest).to_string_lossy().to_string();
-    super::run_git(&parent, &["clone", &url, &dest_str])
+    crate::core::git::run(&parent, &["clone", &url, &dest_str])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -563,16 +482,10 @@ pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
 /// Delete a worktree's directory and prune its clone's registration.
 /// Disk only — DB rows are the store's job.
 async fn remove_worktree_dir(wt_path: String, repo_local_path: Option<String>) {
-    let _ = tokio::task::spawn_blocking(move || {
-        let _ = std::fs::remove_dir_all(&wt_path);
-        if let Some(local_path) = repo_local_path {
-            let _ = std::process::Command::new("git")
-                .args(["worktree", "prune"])
-                .current_dir(&local_path)
-                .status();
-        }
-    })
-    .await;
+    let _ = tokio::task::spawn_blocking(move || std::fs::remove_dir_all(wt_path)).await;
+    if let Some(local_path) = repo_local_path {
+        let _ = git::run(&local_path, &["worktree", "prune"]).await;
+    }
 }
 
 /// Remove every worktree directory of a session and the session directory
@@ -616,7 +529,7 @@ async fn close_worktree_impl(
     // worktree with a dirty working tree (the frontend re-invokes with force after
     // a confirm).
     if force != Some(true) {
-        let dirty = super::run_git_output(&wt.path, &["status", "--porcelain"])
+        let dirty = crate::core::git::output(&wt.path, &["status", "--porcelain"])
             .await
             .map(|o| o.status.success() && !o.stdout.is_empty())
             .unwrap_or(false);
@@ -629,6 +542,7 @@ async fn close_worktree_impl(
 
     let repo = store::repos::get_opt(pool, &wt.repo_id).await?;
     remove_worktree_dir(wt.path.clone(), repo.map(|r| r.local_path)).await;
+    git::cache::flush();
 
     let closed = store::worktrees::close(pool, worktree_id).await?;
 
@@ -642,31 +556,4 @@ async fn close_worktree_impl(
     )?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_git_url;
-
-    #[test]
-    fn parses_ssh_and_https_remotes() {
-        assert_eq!(
-            parse_git_url("git@gitlab.example.com:group/sub/proj.git").unwrap(),
-            ("gitlab.example.com".into(), "group/sub".into(), "proj".into())
-        );
-        assert_eq!(
-            parse_git_url("https://github.com/owner/proj").unwrap(),
-            ("github.com".into(), "owner".into(), "proj".into())
-        );
-    }
-
-    /// A credentialed remote must never leak the token into the repo id.
-    #[test]
-    fn strips_userinfo_from_https_remotes() {
-        let (host, group, project) =
-            parse_git_url("https://oauth2:SECRET@gitlab.example.com/group/proj.git").unwrap();
-        assert_eq!(host, "gitlab.example.com");
-        assert_eq!(group, "group");
-        assert_eq!(project, "proj");
-    }
 }

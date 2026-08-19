@@ -16,7 +16,7 @@ pub async fn blame_file(
         .await
         .map_err(|e| e.to_string())?;
 
-    let out = super::run_git_output(&wt.path, &["blame", "--porcelain", "--", &file_path])
+    let out = crate::core::git::output(&wt.path, &["blame", "--porcelain", "--", &file_path])
         .await
         .map_err(|e| e.to_string())?;
     if !out.status.success() {

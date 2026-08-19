@@ -19,7 +19,7 @@ pub async fn get_worktree_status(
         .await
         .map_err(|e| e.to_string())?;
 
-    let status_out = super::run_git_output(&wt.path, &["status", "--porcelain"])
+    let status_out = crate::core::git::output(&wt.path, &["status", "--porcelain"])
         .await
         .map_err(|e| e.to_string())?;
 
@@ -42,14 +42,14 @@ pub async fn get_worktree_status(
     // Ahead/behind vs the branch's own remote tracking ref (origin/<branch>),
     // not vs main — that distance powers the diff view instead.
     let upstream = format!("origin/{}", wt.branch);
-    let has_upstream = super::run_git_output(&wt.path, &["rev-parse", "--verify", &upstream])
+    let has_upstream = crate::core::git::output(&wt.path, &["rev-parse", "--verify", &upstream])
         .await
         .map(|o| o.status.success())
         .unwrap_or(false);
 
     let (ahead, behind) = if has_upstream {
         let range = format!("HEAD...{upstream}");
-        super::run_git_output(&wt.path, &["rev-list", "--left-right", "--count", &range])
+        crate::core::git::output(&wt.path, &["rev-list", "--left-right", "--count", &range])
             .await
             .ok()
             .and_then(|o| {
@@ -68,8 +68,8 @@ pub async fn get_worktree_status(
         // worktree's pinned target, so this count agrees with the diff instead of
         // measuring against the repo default. No base on origin means there is
         // nothing to measure against, and the count stays 0.
-        let ahead = match super::upstream_base(&wt.path, wt.base_ref.as_deref()).await {
-            Ok(base_ref) => super::run_git_output(&wt.path, &["rev-list", "--count", &format!("{base_ref}..HEAD")])
+        let ahead = match crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref()).await {
+            Ok(base_ref) => crate::core::git::output(&wt.path, &["rev-list", "--count", &format!("{base_ref}..HEAD")])
                 .await
                 .ok()
                 .and_then(|o| {

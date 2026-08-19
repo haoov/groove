@@ -1,14 +1,13 @@
-//! One answer to "what does this worktree branch from?".
+//! One answer to "what does this branch from?" and "does this ref exist?".
 //!
-//! There used to be four: the diff, the commit log, the ahead/behind count and the
-//! rebase each probed origin their own way, and only the diff honoured a review
-//! worktree's pinned target. For an MR targeting anything but the default branch
-//! they disagreed, so the same worktree reported a different amount of work
-//! depending on which surface you looked at.
-//!
-//! Two questions, both answered here:
+//! There used to be several: the diff, the commit log, the ahead/behind count,
+//! the rebase and the MR target each probed origin their own way and could
+//! disagree. Two questions, both answered here, both cached (see cache.rs):
 //!   * `upstream_base` — which ref the work branches from (a branch name).
 //!   * `diff_base` — which point to compare against (usually a merge-base sha).
+
+use super::cache;
+use super::run;
 
 /// Fallbacks, in order, when a worktree has no pinned base. `origin/HEAD` is the
 /// remote's own default-branch pointer; the other two cover a remote that never
@@ -17,10 +16,10 @@ const DEFAULT_CANDIDATES: [&str; 3] = ["origin/HEAD", "origin/main", "origin/mas
 
 /// The upstream ref this worktree's work branches from.
 ///
-/// `pinned` is the review worktree's MR target branch (`Worktree::base_ref`), taken
-/// when it resolves on origin. Errors only when the remote has no usable default
-/// branch at all — an unfetched or origin-less clone.
-pub(crate) async fn upstream_base(path: &str, pinned: Option<&str>) -> anyhow::Result<String> {
+/// `pinned` is the review worktree's MR target branch (`Worktree::base_ref`),
+/// taken when it resolves on origin. Errors only when the remote has no usable
+/// default branch at all — an unfetched or origin-less clone.
+pub async fn upstream_base(path: &str, pinned: Option<&str>) -> anyhow::Result<String> {
     if let Some(b) = pinned.filter(|b| !b.is_empty()) {
         let target = format!("origin/{b}");
         if ref_exists(path, &target).await {
@@ -49,14 +48,14 @@ pub(crate) async fn upstream_base(path: &str, pinned: Option<&str>) -> anyhow::R
 /// is the base.
 ///
 /// In every case but `working` the answer is the **merge base**, not the base
-/// branch's tip: once the base moves on, `git diff origin/main` reports the upstream
-/// commits *inverted* — they read as if this branch reverted them. The merge base
-/// gives the changes this branch actually introduced, which is what GitLab shows for
-/// an MR and what a review session must show.
+/// branch's tip: once the base moves on, `git diff origin/main` reports the
+/// upstream commits *inverted*. The merge base gives the changes this branch
+/// actually introduced — what GitLab shows for an MR.
 ///
-/// The right side is always the working tree, so new-side line numbers are identical
-/// across modes — annotations anchored to them stay valid when the mode changes.
-pub(crate) async fn diff_base(
+/// The right side is always the working tree, so new-side line numbers are
+/// identical across modes — annotations anchored to them stay valid when the
+/// mode changes.
+pub async fn diff_base(
     path: &str,
     branch: &str,
     mode: &str,
@@ -80,23 +79,76 @@ pub(crate) async fn diff_base(
     }
 }
 
-/// `git merge-base <tip> HEAD`, falling back to the tip itself when it cannot be
-/// computed (unrelated histories, or HEAD not yet resolvable).
+/// `git merge-base <tip> HEAD`, falling back to the tip itself when it cannot
+/// be computed (unrelated histories, or HEAD not yet resolvable).
 async fn merge_base_or(path: &str, tip: &str) -> String {
-    super::run_git_output(path, &["merge-base", tip, "HEAD"])
+    cache::shared()
+        .text(format!("mb:{path}:{tip}"), || async {
+            run::output(path, &["merge-base", tip, "HEAD"])
+                .await
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
         .await
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .filter(|s| !s.is_empty())
         .unwrap_or_else(|| tip.to_string())
 }
 
-pub(crate) async fn ref_exists(path: &str, git_ref: &str) -> bool {
-    super::run_git_output(path, &["rev-parse", "--verify", "--quiet", git_ref])
+pub async fn ref_exists(path: &str, git_ref: &str) -> bool {
+    cache::shared()
+        .flag(format!("ref:{path}:{git_ref}"), || async {
+            run::output(path, &["rev-parse", "--verify", "--quiet", git_ref])
+                .await
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+        })
         .await
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+}
+
+/// The repo's real default branch.
+///
+/// Resolved from `refs/remotes/origin/HEAD`, and NEVER by stripping the
+/// "origin/HEAD" shorthand — that yields "HEAD", and `fetch HEAD:HEAD` creates
+/// a poisoned local branch (see `repair_head_branch`).
+///
+/// When the symref is missing (a `--single-branch` clone, or one made before
+/// the remote had a default), this asks the remote and writes it, so the answer
+/// is deterministic next time instead of a guess between main and master.
+pub async fn default_branch(repo_path: &str) -> Option<String> {
+    cache::shared()
+        .text(format!("db:{repo_path}"), || resolve_default_branch(repo_path))
+        .await
+}
+
+async fn resolve_default_branch(repo_path: &str) -> Option<String> {
+    async fn read_symref(repo_path: &str) -> Option<String> {
+        let out = run::run(repo_path, &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+            .await
+            .ok()?;
+        match out.trim().strip_prefix("origin/") {
+            Some(name) if !name.is_empty() && name != "HEAD" => Some(name.to_string()),
+            _ => None,
+        }
+    }
+
+    if let Some(name) = read_symref(repo_path).await {
+        return Some(name);
+    }
+
+    // Ask the remote and record the answer.
+    let _ = run::run(repo_path, &["remote", "set-head", "origin", "-a"]).await;
+    if let Some(name) = read_symref(repo_path).await {
+        return Some(name);
+    }
+
+    // Offline, or a remote that won't say: fall back to whichever exists.
+    for name in ["main", "master"] {
+        if ref_exists(repo_path, &format!("refs/remotes/origin/{name}")).await {
+            return Some(name.to_string());
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -131,7 +183,7 @@ mod tests {
         /// A work tree pushed to a bare origin, with `main` and `release/1.0`, and
         /// `refs/remotes/origin/HEAD` pointing at main.
         fn new(name: &str) -> (Self, String) {
-            let root = std::env::temp_dir().join(format!("groove-baseref-{name}-{}", std::process::id()));
+            let root = std::env::temp_dir().join(format!("groove-refs-{name}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&root);
             std::fs::create_dir_all(&root).unwrap();
             let fixture = Fixture { root: root.clone() };
@@ -255,5 +307,28 @@ mod tests {
             .output()
             .unwrap();
         assert_eq!(diff, String::from_utf8_lossy(&expected.stdout).trim());
+    }
+
+    /// A commit moves HEAD; the merge base must follow once the cache is
+    /// flushed — the contract every git op in the app relies on.
+    #[tokio::test]
+    async fn flush_makes_a_new_commit_visible() {
+        let (_fx, work) = Fixture::new("flush");
+        let dir = PathBuf::from(&work);
+        let before = diff_base(&work, "main", "vs-main", None).await.unwrap();
+
+        git(&dir, &["switch", "-c", "feature"]);
+        git(&dir, &["push", "origin", "main"]); // fast-forward origin/main to HEAD
+        git(&dir, &["fetch", "origin"]);
+        super::cache::flush();
+
+        let after = diff_base(&work, "feature", "vs-main", None).await.unwrap();
+        assert_ne!(before, after, "the fetched origin/main moved the merge base");
+    }
+
+    #[tokio::test]
+    async fn default_branch_reads_the_symref_not_the_shorthand() {
+        let (_fx, work) = Fixture::new("default");
+        assert_eq!(default_branch(&work).await.as_deref(), Some("main"));
     }
 }
