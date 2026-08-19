@@ -92,11 +92,9 @@ pub async fn log_task_hours(
     task_id: String,
     notion_page_id: String,
     hours: f64,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     let property = hours_property(&cfg.notion.token, &cfg.notion.database_id)
         .await
         .map_err(|e| e.to_string())?;
@@ -110,7 +108,7 @@ pub async fn log_hours_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = super::global_config().ok_or_else(|| anyhow::anyhow!("not configured"))?;
+    let cfg = crate::core::config::require()?;
     let token = payload["token"].as_str().unwrap_or_default();
     let property = hours_property(token, &cfg.notion.database_id).await?;
     log_hours(

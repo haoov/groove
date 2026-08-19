@@ -111,7 +111,7 @@ pub async fn create_task_impl(
 /// Payload shared by both creation entry points. The token is NOT included —
 /// `execute_op` injects it so it never lands in a persisted confirmation row.
 pub(crate) fn new_task_payload(
-    cfg: &super::config::NotionConfig,
+    cfg: &crate::core::config::NotionConfig,
     title: &str,
     body_markdown: &str,
 ) -> serde_json::Value {
@@ -138,7 +138,7 @@ pub(crate) fn new_task_payload(
 async fn apply_extra_properties(
     page_id: &str,
     properties: &std::collections::HashMap<String, serde_json::Value>,
-    cfg: &super::config::Config,
+    cfg: &crate::core::config::Config,
     pool: &SqlitePool,
 ) -> Vec<String> {
     let mut warnings = vec![];
@@ -167,14 +167,12 @@ pub async fn create_task(
     title: String,
     body_markdown: String,
     properties: Option<std::collections::HashMap<String, serde_json::Value>>,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
     if title.trim().is_empty() {
         return Err("a task needs a title".into());
     }
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     let mut payload = new_task_payload(&cfg.notion, title.trim(), &body_markdown);
     payload["token"] = serde_json::json!(cfg.notion.token);
     let mut created = create_task_impl(payload, &pool).await.map_err(|e| e.to_string())?;
@@ -192,11 +190,8 @@ pub async fn create_task(
 /// The configured task template as markdown, for the composer to start from.
 /// Empty when no template is configured — a blank body is a fine default.
 #[tauri::command]
-pub async fn get_task_template_markdown(
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
-) -> Result<String, String> {
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+pub async fn get_task_template_markdown() -> Result<String, String> {
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     let Some(page_id) = cfg.notion.task_template_page_id.filter(|s| !s.is_empty()) else {
         return Ok(String::new());
     };

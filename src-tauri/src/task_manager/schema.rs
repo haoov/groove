@@ -214,11 +214,8 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
 
 /// The configured task database's schema — drives the property panel.
 #[tauri::command]
-pub async fn get_task_schema(
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
-) -> Result<TaskSchema, String> {
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+pub async fn get_task_schema() -> Result<TaskSchema, String> {
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     load(&cfg.notion.token, &cfg.notion.database_id)
         .await
         .map_err(|e| e.to_string())
@@ -238,11 +235,9 @@ pub struct RelationOption {
 #[tauri::command]
 pub async fn list_relation_options(
     database_id: String,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
 ) -> Result<Vec<RelationOption>, String> {
     const MAX_PAGES: usize = 5;
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     let token = &cfg.notion.token;
 
     let mut out: Vec<RelationOption> = vec![];

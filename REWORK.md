@@ -124,3 +124,28 @@ Decisions taken with the schema still unreleased, so 0006 was edited in place
   default. → worktrees phase.
 - **Conversion** uses `git branch -m <explorer-branch> <task-branch>` instead
   of `switch -c` from detached HEAD. → sessions phase.
+
+---
+
+## Phase 2 — core/config: one source of truth (done)
+
+- `Config` + sub-structs moved to `core/config`. One process-wide
+  `RwLock<Option<Config>>`, initialised in `async_init` before anything reads
+  it; the config dir is remembered there for every later save.
+- API: `config::get()` / `require()` / `update(edit)` / `replace(cfg)` /
+  `file_path()`. `update` is the single write path (UI prefs, setup) —
+  persists **atomically** (temp + rename) and **0600** (S3 fixed).
+- Deleted: `GLOBAL_CONFIG` static + `global_config()` (D12 fixed),
+  `ensure_config(app, state)`, `save_ui`, the config half of
+  `task_manager::State` (now only the active-session pointer).
+- ~12 commands lost their `app: AppHandle` / `task_state` parameters —
+  config is a plain read. IPC arg names unchanged; frontend untouched.
+- Decisions: branch-type vocabulary for `<type>/<id>-<slug>` is hardcoded
+  (conventional-commit list), not config; config reload stays restart-only.
+
+### Notes for later phases
+
+- `core/config::get()` clones; if a hot path ever shows up in timing, switch
+  the static to `arc-swap`. Not warranted today.
+- `check_environment` now reads the path via `config::file_path()` — the
+  setup screen no longer needs an AppHandle for it.

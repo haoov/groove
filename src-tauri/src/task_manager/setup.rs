@@ -6,7 +6,7 @@
 
 use serde::Serialize;
 
-use super::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
+use crate::core::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
 use super::notion::notion_get;
 
 /// An external program the app shells out to.
@@ -86,15 +86,16 @@ fn clipboard_tools() -> Vec<ToolCheck> {
 }
 
 #[tauri::command]
-pub async fn check_environment(app: tauri::AppHandle) -> Result<Environment, String> {
-    use tauri::Manager;
-    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    let path = dir.join(super::config::CONFIG_FILE);
+pub async fn check_environment() -> Result<Environment, String> {
+    let path = crate::core::config::file_path()
+        .ok_or_else(|| "config dir not initialised".to_string())?;
     let exists = path.is_file();
     // Distinguish "not set up yet" from "set up wrongly": a config that fails to
     // parse must not look like a first run, or the fix is invisible.
     let config_error = if exists {
-        super::config::load_config_from_dir(&dir).err().map(|e| e.to_string())
+        crate::core::config::load_config_from_dir(path.parent().unwrap())
+            .err()
+            .map(|e| e.to_string())
     } else {
         None
     };
@@ -328,15 +329,12 @@ pub async fn detect_database(token: String, database_id: String) -> Result<Detec
 /// to the file, so a wrong detection can be corrected without a rebuild.
 #[tauri::command]
 pub async fn write_initial_config(
-    app: tauri::AppHandle,
     token: String,
     database_id: String,
     user_id: String,
     worktree_root: String,
     template_page_id: Option<String>,
-    task_state: tauri::State<'_, super::State>,
 ) -> Result<(), String> {
-    use tauri::Manager;
     if token.trim().is_empty() || database_id.trim().is_empty() {
         return Err("A Notion token and database id are both required.".into());
     }
@@ -392,9 +390,5 @@ pub async fn write_initial_config(
         ui: UiConfig::default(),
     };
 
-    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    super::config::save_config_to_dir(&dir, &cfg).map_err(|e| e.to_string())?;
-    task_state.set_config(cfg);
-    Ok(())
+    crate::core::config::replace(cfg).map_err(|e| e.to_string())
 }

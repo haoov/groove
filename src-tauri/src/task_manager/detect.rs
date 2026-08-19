@@ -14,7 +14,7 @@
 //! The result is still written to the config, where it can be corrected. Detection
 //! that cannot be overridden is just a different hardcoding.
 
-use super::config::{PropertyNames, StatusMap};
+use crate::core::config::{PropertyNames, StatusMap};
 use super::schema::{StatusGroup, TaskSchema};
 
 /// Lowercase, letters and digits only: makes "To-do", "to_do" and "To Do" the same

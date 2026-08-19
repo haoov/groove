@@ -161,15 +161,9 @@ pub(super) async fn get_file_content(
     Ok(ToolCallResponse::ok(serde_json::json!({ "content": content })))
 }
 
-pub(super) async fn get_task_body(
-    input: serde_json::Value,
-    state: &McpState,
-) -> anyhow::Result<ToolCallResponse> {
+pub(super) async fn get_task_body(input: serde_json::Value) -> anyhow::Result<ToolCallResponse> {
     let notion_page_id = str_field(&input, "notion_page_id")?;
-    let cfg = state
-        .task_state
-        .get_config()
-        .ok_or_else(|| anyhow::anyhow!("not configured — no Notion token"))?;
+    let cfg = crate::core::config::require()?;
     let blocks =
         crate::task_manager::get_task_body_impl(&notion_page_id, &cfg.notion.token).await?;
     Ok(ToolCallResponse::ok(
@@ -177,11 +171,8 @@ pub(super) async fn get_task_body(
     ))
 }
 
-pub(super) async fn get_task_template(state: &McpState) -> anyhow::Result<ToolCallResponse> {
-    let cfg = state
-        .task_state
-        .get_config()
-        .ok_or_else(|| anyhow::anyhow!("not configured — no Notion token"))?;
+pub(super) async fn get_task_template() -> anyhow::Result<ToolCallResponse> {
+    let cfg = crate::core::config::require()?;
     let page_id = cfg
         .notion
         .task_template_page_id

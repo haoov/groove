@@ -1,11 +1,11 @@
 use std::sync::{Arc, RwLock};
 
 use sqlx::SqlitePool;
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 
+use crate::core::config::{self, Config, ConfigView};
 use crate::core::db::models::{Session, SessionKind, SessionState, TaskView, Worktree};
 use crate::core::db::store;
-use super::config::{Config, ConfigView, load_config_from_dir, save_config_to_dir};
 use super::notion::{
     current_sprint_ids, get_task_body_impl, notion_patch, notion_post, page_to_task,
     parse_short_id_number,
@@ -13,80 +13,33 @@ use super::notion::{
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
+/// The focused session, for MCP tools with no binding of their own. Config
+/// lives in `core::config`, not here.
 #[derive(Clone)]
 pub struct State {
-    inner: Arc<StateInner>,
-}
-
-struct StateInner {
-    config: RwLock<Option<Config>>,
-    active_session_id: RwLock<Option<String>>,
+    inner: Arc<RwLock<Option<String>>>,
 }
 
 impl State {
     pub fn new() -> Self {
-        Self {
-            inner: Arc::new(StateInner {
-                config: RwLock::new(None),
-                active_session_id: RwLock::new(None),
-            }),
-        }
+        Self { inner: Arc::new(RwLock::new(None)) }
     }
 
     pub fn get_active_task_id(&self) -> Option<String> {
-        self.inner
-            .active_session_id
-            .read()
-            .ok()
-            .and_then(|g| g.clone())
+        self.inner.read().ok().and_then(|g| g.clone())
     }
 
     pub fn set_active_task_id(&self, id: Option<String>) {
-        if let Ok(mut g) = self.inner.active_session_id.write() {
+        if let Ok(mut g) = self.inner.write() {
             *g = id;
         }
     }
-
-    pub fn get_config(&self) -> Option<Config> {
-        self.inner.config.read().ok().and_then(|g| g.clone())
-    }
-
-    pub(super) fn set_config(&self, cfg: Config) {
-        if let Ok(mut g) = GLOBAL_CONFIG.write() {
-            *g = Some(cfg.clone());
-        }
-        if let Ok(mut g) = self.inner.config.write() {
-            *g = Some(cfg);
-        }
-    }
-}
-
-// Mirror of the managed State's config, readable from modules that have no
-// AppHandle/State access (e.g. git_engine::resolve_worktree_root).
-static GLOBAL_CONFIG: RwLock<Option<Config>> = RwLock::new(None);
-
-/// Last-loaded app config, if any. Kept in sync by every `set_config`.
-pub fn global_config() -> Option<Config> {
-    GLOBAL_CONFIG.read().ok().and_then(|g| g.clone())
 }
 
 impl Default for State {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub fn ensure_config(app: &tauri::AppHandle, state: &State) -> anyhow::Result<Config> {
-    if let Some(cfg) = state.get_config() {
-        return Ok(cfg);
-    }
-    let cfg_dir = app
-        .path()
-        .app_config_dir()
-        .map_err(|e| anyhow::anyhow!("cannot get config dir: {e}"))?;
-    let cfg = load_config_from_dir(&cfg_dir)?;
-    state.set_config(cfg.clone());
-    Ok(cfg)
 }
 
 /// Derive the git branch name for a task (lower-case the full ID).
@@ -97,63 +50,30 @@ pub fn derive_branch(short_id: &str) -> String {
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn get_config(
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, State>,
-) -> Result<Option<ConfigView>, String> {
-    if task_state.get_config().is_none() {
-        if let Ok(cfg_dir) = app.path().app_config_dir() {
-            match load_config_from_dir(&cfg_dir) {
-                Ok(cfg) => task_state.set_config(cfg),
-                // A corrupt config must be distinguishable from "not configured".
-                Err(e) => tracing::warn!("config not loaded: {e}"),
-            }
-        }
-    }
+pub async fn get_config() -> Result<Option<ConfigView>, String> {
     // A view, not the Config: the Notion token stays in Rust.
-    Ok(task_state.get_config().map(ConfigView::from))
-}
-
-/// Change one UI preference, persist it, and publish it. Every `set_*` below is
-/// this and nothing else, so the read-modify-save-publish order lives in one place.
-fn save_ui(
-    app: &tauri::AppHandle,
-    task_state: &State,
-    edit: impl FnOnce(&mut super::config::UiConfig),
-) -> Result<(), String> {
-    let mut cfg = ensure_config(app, task_state).map_err(|e| e.to_string())?;
-    edit(&mut cfg.ui);
-    let cfg_dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    save_config_to_dir(&cfg_dir, &cfg).map_err(|e| e.to_string())?;
-    task_state.set_config(cfg);
-    Ok(())
+    Ok(config::get().map(ConfigView::from))
 }
 
 #[tauri::command]
-pub async fn set_font_size(
-    font_size: u8,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, State>,
-) -> Result<(), String> {
-    save_ui(&app, &task_state, |ui| ui.font_size = font_size)
+pub async fn set_font_size(font_size: u8) -> Result<(), String> {
+    config::update(|cfg| cfg.ui.font_size = font_size)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn set_font_family(
-    font_family: String,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, State>,
-) -> Result<(), String> {
-    save_ui(&app, &task_state, |ui| ui.font_family = font_family)
+pub async fn set_font_family(font_family: String) -> Result<(), String> {
+    config::update(|cfg| cfg.ui.font_family = font_family)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn set_theme(
-    theme: String,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, State>,
-) -> Result<(), String> {
-    save_ui(&app, &task_state, |ui| ui.theme = theme)
+pub async fn set_theme(theme: String) -> Result<(), String> {
+    config::update(|cfg| cfg.ui.theme = theme)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// Monospace families fontconfig knows about, for the Settings picker.
@@ -182,14 +102,8 @@ pub async fn list_fonts() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-pub async fn list_tasks(
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, State>,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<TaskView>, String> {
-    list_tasks_impl(&app, &task_state, &pool)
-        .await
-        .map_err(|e| e.to_string())
+pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskView>, String> {
+    list_tasks_impl(&pool).await.map_err(|e| e.to_string())
 }
 
 /// One page of the tasks-database query, with the filters from config applied.
@@ -264,12 +178,8 @@ async fn query_task_pages(
 /// A runaway-pagination backstop far above any real queue.
 const MAX_TASK_PAGES: usize = 30;
 
-async fn list_tasks_impl(
-    app: &tauri::AppHandle,
-    task_state: &State,
-    pool: &SqlitePool,
-) -> anyhow::Result<Vec<TaskView>> {
-    let cfg = ensure_config(app, task_state)?;
+async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
+    let cfg = config::require()?;
 
     let mut tasks: Vec<TaskView> = vec![];
     let mut cursor: Option<String> = None;
@@ -409,7 +319,7 @@ async fn finish_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    let cfg = ensure_config(app, task_state)?;
+    let cfg = config::require()?;
 
     // Mark the task done in Notion BEFORE any destructive teardown — if it
     // fails, the workspace is still intact.
@@ -454,7 +364,7 @@ async fn delete_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    let cfg = ensure_config(app, task_state)?;
+    let cfg = config::require()?;
 
     // Trash the page BEFORE any local teardown, the same order finish_task uses.
     let page_id = task_page_id(pool, short_id).await?;
@@ -522,12 +432,10 @@ pub async fn pause_task(
 
 #[tauri::command]
 pub async fn sync_task(
-    app: tauri::AppHandle,
     short_id: String,
-    task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<TaskView, String> {
-    let cfg = ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+    let cfg = config::require().map_err(|e| e.to_string())?;
 
     let num = parse_short_id_number(&short_id)
         .ok_or_else(|| format!("Cannot parse short_id: {short_id}"))?;
@@ -600,12 +508,8 @@ pub async fn update_notion_status_impl(payload: serde_json::Value) -> anyhow::Re
 /// task and MR descriptions, Notion's inline annotations survive, AND markdown
 /// typed literally into Notion (`**bold**`, backticks) displays as intended.
 #[tauri::command]
-pub async fn get_task_body_markdown(
-    notion_page_id: String,
-    task_state: tauri::State<'_, State>,
-    app: tauri::AppHandle,
-) -> Result<String, String> {
-    let cfg = ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+pub async fn get_task_body_markdown(notion_page_id: String) -> Result<String, String> {
+    let cfg = config::require().map_err(|e| e.to_string())?;
     let blocks = get_task_body_impl(&notion_page_id, &cfg.notion.token)
         .await
         .map_err(|e| e.to_string())?;

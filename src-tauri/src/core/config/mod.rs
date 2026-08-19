@@ -150,20 +150,99 @@ impl From<Config> for ConfigView {
 }
 
 /// Named once: the setup flow reports this path to the user.
-pub(super) const CONFIG_FILE: &str = "workbench.config.json";
+pub(crate) const CONFIG_FILE: &str = "workbench.config.json";
 
-pub(super) fn load_config_from_dir(config_dir: &std::path::Path) -> anyhow::Result<Config> {
-    let path = config_dir.join(CONFIG_FILE);
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| anyhow::anyhow!("Cannot read {}: {e}", path.display()))?;
-    let cfg: Config = serde_json::from_str(&content)?;
+// ─── The one process-wide config ──────────────────────────────────────────────
+
+use std::path::{Path, PathBuf};
+use std::sync::{OnceLock, RwLock};
+
+static CONFIG_DIR: OnceLock<PathBuf> = OnceLock::new();
+static CONFIG: RwLock<Option<Config>> = RwLock::new(None);
+
+/// Remember where the config lives and load it if it exists. Called once at
+/// startup, before anything reads it; a missing file is the first-run state,
+/// a corrupt one is reported by `check_environment`.
+pub fn init(config_dir: PathBuf) {
+    match load_config_from_dir(&config_dir) {
+        Ok(cfg) => set(cfg),
+        Err(e) => tracing::warn!("config not loaded: {e}"),
+    }
+    let _ = CONFIG_DIR.set(config_dir);
+}
+
+pub fn get() -> Option<Config> {
+    CONFIG.read().ok().and_then(|g| g.clone())
+}
+
+pub fn require() -> anyhow::Result<Config> {
+    get().ok_or_else(|| anyhow::anyhow!("not configured — run the setup screen first"))
+}
+
+/// Where the config file lives (shown by the setup screen, read by env checks).
+pub fn file_path() -> Option<PathBuf> {
+    CONFIG_DIR.get().map(|dir| dir.join(CONFIG_FILE))
+}
+
+/// Mutate the config, persist it, and publish it — one write path for setup
+/// and every preference change.
+pub fn update(edit: impl FnOnce(&mut Config)) -> anyhow::Result<Config> {
+    let mut cfg = require()?;
+    edit(&mut cfg);
+    persist(&cfg)?;
+    set(cfg.clone());
     Ok(cfg)
 }
 
-pub(super) fn save_config_to_dir(config_dir: &std::path::Path, cfg: &Config) -> anyhow::Result<()> {
+/// Install a complete config (first-run setup) and persist it.
+pub fn replace(cfg: Config) -> anyhow::Result<()> {
+    persist(&cfg)?;
+    set(cfg);
+    Ok(())
+}
+
+fn set(cfg: Config) {
+    if let Ok(mut guard) = CONFIG.write() {
+        *guard = Some(cfg);
+    }
+}
+
+fn persist(cfg: &Config) -> anyhow::Result<()> {
+    let dir = CONFIG_DIR
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("config dir not initialised"))?;
+    std::fs::create_dir_all(dir)?;
+    save_config_to_dir(dir, cfg)
+}
+
+pub(crate) fn load_config_from_dir(config_dir: &Path) -> anyhow::Result<Config> {
     let path = config_dir.join(CONFIG_FILE);
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| anyhow::anyhow!("Cannot read {}: {e}", path.display()))?;
+    Ok(serde_json::from_str(&content)?)
+}
+
+/// Write the file atomically (temp + rename, so a crash never truncates it)
+/// and owner-only (0600) — it holds the Notion token.
+pub(crate) fn save_config_to_dir(config_dir: &Path, cfg: &Config) -> anyhow::Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+    use std::io::Write;
+
+    let path = config_dir.join(CONFIG_FILE);
+    let tmp = config_dir.join(format!("{CONFIG_FILE}.tmp"));
     let content = serde_json::to_string_pretty(cfg)?;
-    std::fs::write(&path, content)?;
+
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&tmp)?;
+    file.write_all(content.as_bytes())?;
+    file.sync_all()?;
+    drop(file);
+
+    std::fs::rename(&tmp, &path)?;
     Ok(())
 }
 
@@ -237,6 +316,22 @@ mod tests {
         assert_eq!(cfg.notion.task_template_page_id.as_deref(), Some("c9bff477d2f944fba9846567745a77ec"));
         // `ui` is absent in older files and must default rather than fail.
         assert_eq!(cfg.ui.font_size, default_font_size());
+    }
+
+    /// The file holds the Notion token, so it must be owner-only — and written
+    /// via a temp+rename so a crash mid-save can never truncate it.
+    #[test]
+    fn the_file_on_disk_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("groove-cfg-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        save_config_to_dir(&dir, &sample()).unwrap();
+        let mode = std::fs::metadata(dir.join(CONFIG_FILE)).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "mode was {mode:o}");
+        assert!(!dir.join(format!("{CONFIG_FILE}.tmp")).exists(), "temp file cleaned up");
+        let back = load_config_from_dir(&dir).unwrap();
+        assert_eq!(back.notion.token, "ntn_secret");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -148,10 +148,7 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    let cfg = state
-        .task_state
-        .get_config()
-        .ok_or_else(|| anyhow::anyhow!("not configured — no Notion token"))?;
+    let cfg = crate::core::config::require()?;
     let n = &cfg.notion;
 
     // NOTE: no notion token here — secrets are injected by `execute_op` at
@@ -276,10 +273,7 @@ pub(super) async fn create_task(
 ) -> anyhow::Result<ToolCallResponse> {
     let title = str_field(&input, "title")?;
     let body_markdown = input["body_markdown"].as_str().unwrap_or("");
-    let cfg = state
-        .task_state
-        .get_config()
-        .ok_or_else(|| anyhow::anyhow!("not configured — no Notion token"))?;
+    let cfg = crate::core::config::require()?;
 
     // Same payload the UI composer builds; the token is injected at execution.
     let payload = crate::task_manager::new_task_payload(&cfg.notion, &title, body_markdown);

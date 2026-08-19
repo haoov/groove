@@ -180,6 +180,14 @@ pub fn run() {
 }
 
 async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> Result<(), String> {
+    // Config first: the worktree root and agent cwd resolve from it, and the
+    // config dir is remembered here for every later save.
+    let config_dir = handle
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("cannot get config dir: {e}"))?;
+    crate::core::config::init(config_dir);
+
     let pool = crate::core::db::init(&data_dir)
         .await
         .map_err(|e| format!("DB init failed: {e}"))?;
@@ -202,9 +210,6 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 
-    // Load the config early so the worktree root and agent cwd resolve from the
-    // first command.
-    let _ = task_manager::ensure_config(&handle, &task_state);
 
     // Re-emit any confirmations that survived a crash
     let pool_c = pool.clone();

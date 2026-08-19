@@ -143,9 +143,8 @@ pub(crate) fn resolve_claude_bin() -> String {
 /// The worktree root (from config, tilde-expanded), falling back to $HOME if it
 /// isn't a directory. Used as the cwd for the agent and for terminals that have
 /// no worktree yet (e.g. a fresh explorer with no repos added).
-fn resolve_root_cwd(task_state: &crate::task_manager::State) -> String {
-    let raw = task_state
-        .get_config()
+fn resolve_root_cwd() -> String {
+    let raw = crate::core::config::get()
         .map(|c| c.git.worktree_root)
         .unwrap_or_else(|| std::env::var("HOME").unwrap_or_default());
     let cwd = expand_tilde(&raw);
@@ -163,9 +162,8 @@ pub async fn start_agent_session(
     app: tauri::AppHandle,
     task_id: String,
     agent_state: tauri::State<'_, State>,
-    task_state: tauri::State<'_, crate::task_manager::State>,
 ) -> Result<String, String> {
-    let cwd = resolve_root_cwd(&task_state);
+    let cwd = resolve_root_cwd();
 
     let claude_bin = resolve_claude_bin();
 
@@ -276,14 +274,13 @@ pub async fn start_terminal_session(
     task_id: String,
     worktree_path: Option<String>,
     agent_state: tauri::State<'_, State>,
-    task_state: tauri::State<'_, crate::task_manager::State>,
 ) -> Result<String, String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     // Open in the worktree when there is one; otherwise fall back to the worktree
     // root (an explorer with no repos added yet).
     let cwd = match worktree_path.as_deref() {
         Some(p) if !p.is_empty() && std::path::Path::new(p).is_dir() => p.to_string(),
-        _ => resolve_root_cwd(&task_state),
+        _ => resolve_root_cwd(),
     };
     start_pty_session(&app, &task_id, &cwd, "terminal", &shell, &[], &agent_state)
         .await

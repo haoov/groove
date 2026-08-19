@@ -44,7 +44,7 @@ use std::sync::OnceLock;
 
 /// The app handle, for modules with no `AppHandle`/`State` access.
 ///
-/// Same justification as `task_manager::global_config`: git provisioning runs deep
+/// Same pattern as `core::config`: git provisioning runs deep
 /// inside call chains that never needed a handle, and silently swallowing a failed
 /// fetch is worse than a global. Set once during init.
 static APP: OnceLock<tauri::AppHandle> = OnceLock::new();

@@ -219,12 +219,8 @@ fn as_str(v: &serde_json::Value) -> anyhow::Result<&str> {
 
 /// Every property of a task page, in schema order, with current values.
 #[tauri::command]
-pub async fn get_task_properties(
-    notion_page_id: String,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
-) -> Result<Vec<PropertyValue>, String> {
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyValue>, String> {
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     let page = notion_get(&cfg.notion.token, &format!("v1/pages/{notion_page_id}"))
         .await
         .map_err(|e| e.to_string())?;
@@ -256,7 +252,7 @@ pub(crate) async fn set_property(
     notion_page_id: &str,
     property: &str,
     value: &serde_json::Value,
-    cfg: &super::config::NotionConfig,
+    cfg: &crate::core::config::NotionConfig,
     pool: &SqlitePool,
 ) -> anyhow::Result<String> {
     let schema = super::schema::load(token, database_id).await?;
@@ -290,11 +286,9 @@ pub async fn update_task_property(
     notion_page_id: String,
     property: String,
     value: serde_json::Value,
-    app: tauri::AppHandle,
-    task_state: tauri::State<'_, super::State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
-    let cfg = super::ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
+    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
     set_property(
         &cfg.notion.token,
         &cfg.notion.database_id,
@@ -314,7 +308,7 @@ pub async fn update_property_impl(
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     let field = |k: &str| payload[k].as_str().unwrap_or_default().to_string();
-    let cfg = super::global_config().ok_or_else(|| anyhow::anyhow!("not configured"))?;
+    let cfg = crate::core::config::require()?;
     let display = set_property(
         &field("token"),
         &cfg.notion.database_id,

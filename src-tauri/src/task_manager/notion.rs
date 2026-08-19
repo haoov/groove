@@ -1,6 +1,6 @@
 use crate::core::db::models::NotionTask;
 use crate::core::timing::timed;
-use super::config::NotionConfig;
+use crate::core::config::NotionConfig;
 
 pub(super) const NOTION_BASE: &str = "https://api.notion.com";
 pub(super) const NOTION_VERSION: &str = "2022-06-28";

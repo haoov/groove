@@ -350,7 +350,7 @@ async fn ensure_branch(
 pub fn resolve_worktree_root() -> PathBuf {
     // Honor the configured root (the agent cwd already does) — tilde-expanded,
     // since the config stores it unexpanded.
-    if let Some(cfg) = crate::task_manager::global_config() {
+    if let Some(cfg) = crate::core::config::get() {
         let raw = cfg.git.worktree_root;
         if !raw.trim().is_empty() {
             return PathBuf::from(crate::agent_manager::expand_tilde(&raw));
