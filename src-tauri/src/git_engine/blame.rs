@@ -12,7 +12,8 @@ pub async fn blame_file(
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<Vec<BlameLine>, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let out = super::run_git_output(&wt.path, &["blame", "--porcelain", "--", &file_path])

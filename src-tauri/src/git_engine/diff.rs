@@ -3,7 +3,8 @@ use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
 use sqlx::SqlitePool;
-use crate::db::schema::Worktree;
+use crate::core::db::models::Worktree;
+use crate::core::db::store;
 use super::parse::{parse_unified_diff, unquote_path};
 use super::types::{DiffResult, RepoDiff, FileDiff, Hunk, DiffLine};
 
@@ -176,9 +177,7 @@ async fn untracked_added_count(path: &str, file: &str) -> i64 {
 }
 
 pub(super) async fn get_task_diff_impl(task_id: &str, mode: &str, pool: &SqlitePool) -> anyhow::Result<DiffResult> {
-    let worktrees: Vec<Worktree> =
-        crate::db::load::active_worktrees(pool, task_id)
-            .await?;
+    let worktrees: Vec<Worktree> = store::worktrees::for_session(pool, task_id).await?;
 
     let mut repo_diffs = vec![];
 
@@ -251,10 +250,9 @@ pub async fn get_task_diff_summary(
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<DiffResult, String> {
     let mode = mode.as_deref().unwrap_or("vs-main");
-    let worktrees: Vec<Worktree> =
-        crate::db::load::active_worktrees(&pool, &task_id)
-            .await
-            .map_err(|e| e.to_string())?;
+    let worktrees: Vec<Worktree> = store::worktrees::for_session(&*pool, &task_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let mut repo_diffs = vec![];
     for wt in worktrees {
@@ -324,7 +322,8 @@ pub async fn get_file_diff(
     mode: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<Vec<Hunk>, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let base_ref = super::diff_base(
@@ -367,7 +366,8 @@ pub async fn get_commit_diff(
     sha: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<Vec<FileDiff>, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let out = super::run_git_output(
@@ -414,7 +414,12 @@ pub async fn get_commit_diff(
 pub async fn get_task_diff_mcp(task_id: &str, pool: &SqlitePool) -> anyhow::Result<DiffResult> {
     // Explorer worktrees are detached at origin/main, so a committed-range diff
     // is empty by construction — the agent must see the uncommitted work instead.
-    let mode = if task_id.starts_with("explorer-") { "working" } else { "vs-main" };
+    let kind = store::sessions::kind_of(pool, task_id).await?;
+    let mode = if kind == Some(crate::core::db::models::SessionKind::Explorer) {
+        "working"
+    } else {
+        "vs-main"
+    };
     get_task_diff_impl(task_id, mode, pool).await
 }
 
@@ -443,7 +448,8 @@ pub async fn read_file_lines(
     rev: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<FileLines, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let text = match rev {

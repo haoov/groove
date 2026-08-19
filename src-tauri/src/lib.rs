@@ -3,7 +3,7 @@ mod agent_manager;
 mod annotation_store;
 mod clipboard;
 mod confirmation_bridge;
-mod db;
+mod core;
 mod desktop_notify;
 mod editor_host;
 mod events;
@@ -71,8 +71,6 @@ pub fn run() {
             task_manager::open_explorer_session,
             task_manager::ensure_desk_session,
             task_manager::open_review_session,
-            task_manager::set_file_reviewed,
-            task_manager::get_reviewed_files,
             task_manager::rename_explorer,
             task_manager::discard_explorer,
             task_manager::pause_task,
@@ -183,7 +181,7 @@ pub fn run() {
 }
 
 async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> Result<(), String> {
-    let pool = db::init(&data_dir)
+    let pool = crate::core::db::init(&data_dir)
         .await
         .map_err(|e| format!("DB init failed: {e}"))?;
 
@@ -205,12 +203,9 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 
-    // The worktree root's shape changed once; move an older one into place before
-    // anything reads a path out of it. Needs the config, which nothing has asked
-    // for yet at this point — a first run has none, and nothing to migrate either.
-    if task_manager::ensure_config(&handle, &task_state).is_ok() {
-        git_engine::migrate_layout::run(&git_engine::resolve_worktree_root(), &pool).await;
-    }
+    // Load the config early so the worktree root and agent cwd resolve from the
+    // first command.
+    let _ = task_manager::ensure_config(&handle, &task_state);
 
     // Re-emit any confirmations that survived a crash
     let pool_c = pool.clone();

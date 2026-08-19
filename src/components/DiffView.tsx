@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Check } from 'lucide-react';
 import { useStore, useSession } from '../store';
 import type { Annotation, Hunk, RepoDiff, Mr, MrThread } from '../types/ipc';
 import { mrForWorktree } from '../lib/workspace';
@@ -24,16 +23,12 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
   const mrs = useSession((s) => s.mrs);
   const expandedFiles = useSession((s) => s.expandedDiffFiles);
   const toggleFile = useSession((s) => s.toggleDiffFile);
-  const kind = useSession((s) => s.kind);
-  const reviewedFiles = useSession((s) => s.reviewedFiles);
-  const toggleReviewedFile = useSession((s) => s.toggleReviewedFile);
   const setLastError = useStore((s) => s.setLastError);
 
   const hunksInFlight = useRef<Set<string>>(new Set());
 
   const repo = diff?.repos.find((r) => r.repo_id === repoId);
   const wt = activeWorktrees.find((w) => w.repo_id === repoId);
-  const isReview = kind === 'review';
 
   // Lazily fetch line content for expanded files not yet cached.
   useEffect(() => {
@@ -53,17 +48,8 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
     return <div className="diff-empty"><p>No changes in this repo</p></div>;
   }
 
-  const viewedCount = repo.files.filter((f) => reviewedFiles.has(`${repoId}/${f.path}`)).length;
-
   return (
     <div className="diff-view changes-view" onClick={() => ann.cancel()}>
-      {isReview && (
-        <div className="changes-review-progress">
-          <span className={`changes-review-count ${viewedCount === repo.files.length ? 'done' : ''}`}>
-            {viewedCount}/{repo.files.length} viewed
-          </span>
-        </div>
-      )}
       <RepoDiffSection
         repo={repo}
         worktreeId={wt?.id}
@@ -74,8 +60,6 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
         threads={mrThreadsByRepo[repoId] ?? []}
         mr={mrForWorktree(mrs, wt?.id)}
         ann={ann}
-        reviewedFiles={isReview ? reviewedFiles : null}
-        onToggleReviewed={isReview ? toggleReviewedFile : undefined}
       />
     </div>
   );
@@ -84,7 +68,6 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
 /** One repo's changed files, stacked and individually expandable. */
 export function RepoDiffSection({
   repo, worktreeId, expandedFiles, onToggleFile, diffHunks, annotations, threads, mr, ann,
-  reviewedFiles = null, onToggleReviewed,
 }: {
   repo: RepoDiff;
   /** Needed to read more context around a hunk; omit to disable expansion. */
@@ -96,9 +79,6 @@ export function RepoDiffSection({
   threads: MrThread[];
   mr: Mr | null;
   ann: AnnCtx;
-  /** Non-null in review sessions: enables the per-file viewed ✓ checkbox. */
-  reviewedFiles?: Set<string> | null;
-  onToggleReviewed?: (repoId: string, filePath: string) => void;
 }) {
   const openAnns = annotations.filter((a) => a.repo_id === repo.repo_id && a.status === 'open');
 
@@ -151,12 +131,11 @@ export function RepoDiffSection({
         const key = `${repo.repo_id}/${file.path}`;
         const expanded = expandedFiles.has(key);
         const fileAnns = openAnns.filter((a) => a.file_path === file.path);
-        const viewed = reviewedFiles?.has(key) ?? false;
 
         return (
           <div key={file.path} className="diff-file">
             <div
-              className={`diff-file-header ${viewed ? 'viewed' : ''} ${i === cursor ? 'cursor' : ''}`}
+              className={`diff-file-header ${i === cursor ? 'cursor' : ''}`}
               onClick={() => { setCursor(i); onToggleFile(key); }}
             >
               <span className="diff-expand">{expanded ? '▾' : '▸'}</span>
@@ -167,20 +146,6 @@ export function RepoDiffSection({
                 title="Open in editor"
                 onClick={(e) => { e.stopPropagation(); ann.openInEditor(repo.repo_id, file.path); }}
               >↗</button>
-              {reviewedFiles !== null && (
-                <button
-                  className={`diff-viewed-check ${viewed ? 'checked' : ''}`}
-                  title={viewed ? 'Viewed — click to unmark' : 'Mark as viewed'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleReviewed?.(repo.repo_id, file.path);
-                    // GitHub behavior: marking viewed also collapses the file.
-                    if (!viewed && expanded) onToggleFile(key);
-                  }}
-                >
-                  <Check size={12} strokeWidth={2.25} />
-                </button>
-              )}
             </div>
 
             {expanded && (

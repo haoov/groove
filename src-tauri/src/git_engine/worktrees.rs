@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 use sqlx::SqlitePool;
 use tauri::Emitter;
-use crate::db::schema::{Repo, Worktree};
+
+use crate::core::db::models::{Repo, Worktree};
+use crate::core::db::store;
 use super::types::BranchSpec;
 
 pub(crate) fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
@@ -23,10 +25,12 @@ pub(crate) fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String
         }
     }
 
-    // HTTPS: https://host/group/project
+    // HTTPS: https://host/group/project — userinfo (user:token@) stripped, so a
+    // credentialed remote never leaks into the repo id.
     let stripped = url
         .trim_start_matches("https://")
         .trim_start_matches("http://");
+    let stripped = stripped.rsplit_once('@').map_or(stripped, |(_, rest)| rest);
     if let Some(slash) = stripped.find('/') {
         let host = &stripped[..slash];
         let path = &stripped[slash + 1..];
@@ -50,20 +54,11 @@ pub async fn remote_branch_exists(
     branch: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<bool, String> {
-    let repo = crate::db::load::repo(&pool, &repo_id).await
-        .map_err(|e| e.to_string())?;
+    let repo = store::repos::get(&*pool, &repo_id).await.map_err(|e| e.to_string())?;
 
-    let local_path = repo.local_path;
-    let branch_q = branch.clone();
-    let out = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("git")
-            .args(["ls-remote", "--heads", "origin", &branch_q])
-            .current_dir(&local_path)
-            .output()
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())?;
+    let out = super::run_git_output(&repo.local_path, &["ls-remote", "--heads", "origin", &branch])
+        .await
+        .map_err(|e| e.to_string())?;
 
     let target = format!("refs/heads/{branch}");
     Ok(String::from_utf8_lossy(&out.stdout)
@@ -96,27 +91,8 @@ pub(crate) async fn register_repo_impl(
             .map_err(|e| anyhow::anyhow!("Not a git repository at {local_path}: {e}"))?;
     }
 
-    let repo = Repo {
-        id: id.clone(),
-        host,
-        group_path,
-        project,
-        local_path: local_path.clone(),
-    };
-
-    sqlx::query(
-        "INSERT INTO repos (id, host, group_path, project, local_path)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET local_path = excluded.local_path",
-    )
-    .bind(&repo.id)
-    .bind(&repo.host)
-    .bind(&repo.group_path)
-    .bind(&repo.project)
-    .bind(&repo.local_path)
-    .execute(pool)
-    .await?;
-
+    let repo = Repo { id, host, group_path, project, local_path };
+    store::repos::upsert(pool, &repo).await?;
     Ok(repo)
 }
 
@@ -133,7 +109,7 @@ pub async fn provision_worktrees(
 }
 
 pub(crate) async fn provision_worktrees_impl(
-    task_id: &str,
+    session_id: &str,
     branches: &[BranchSpec],
     default_branch: &str,
     pool: &SqlitePool,
@@ -141,14 +117,14 @@ pub(crate) async fn provision_worktrees_impl(
     let mut created = vec![];
 
     for spec in branches {
-        let repo = crate::db::load::repo(pool, &spec.repo_id).await?;
+        let repo = store::repos::get(pool, &spec.repo_id).await?;
 
         let branch = spec
             .branch_name
             .clone()
             .unwrap_or_else(|| default_branch.to_string());
 
-        let wt_path = task_dir(task_id).join(&repo.project);
+        let wt_path = session_dir(session_id).join(&repo.project);
 
         std::fs::create_dir_all(&wt_path)?;
 
@@ -164,7 +140,7 @@ pub(crate) async fn provision_worktrees_impl(
 
         // Fetch + fast-forward the MAIN clone before creating the branch, and use
         // the default branch it resolved — the same notion of "base" throughout.
-        let default_branch = refresh_main_clone(&repo.local_path, &repo.project, task_id).await;
+        let default_branch = refresh_main_clone(&repo.local_path, &repo.project, session_id).await;
         ensure_branch(&branch, &repo.local_path, default_branch.as_deref()).await?;
 
         let wt_path_str = wt_path.to_string_lossy().to_string();
@@ -176,34 +152,40 @@ pub(crate) async fn provision_worktrees_impl(
             if !stderr.contains("already exists") {
                 return Err(anyhow::anyhow!("git worktree add failed: {stderr}"));
             }
-            // The worktree already exists — but possibly on a different branch
-            // (e.g. re-provisioned with a new name). Upserting the new branch
-            // while the checkout keeps the old one would desync DB and disk,
-            // so align the checkout first.
-            let current = super::run_git(&wt_path_str, &["rev-parse", "--abbrev-ref", "HEAD"])
-                .await?
-                .trim()
-                .to_string();
-            if current != branch {
-                // Plain switch when the branch exists locally, -c otherwise.
-                let sw = super::run_git_output(&wt_path_str, &["switch", &branch]).await?;
-                if !sw.status.success() {
-                    let sw_c = super::run_git_output(&wt_path_str, &["switch", "-c", &branch]).await?;
-                    if !sw_c.status.success() {
-                        return Err(anyhow::anyhow!(
-                            "worktree at {wt_path_str} is on branch '{current}' and switching to '{branch}' failed: {}",
-                            String::from_utf8_lossy(&sw_c.stderr).trim()
-                        ));
-                    }
-                }
-            }
+            align_checkout(&wt_path_str, &branch).await?;
         }
 
-        let wt = super::upsert_worktree(task_id, &repo.id, &branch, &wt_path_str, pool).await?;
+        let wt = store::worktrees::upsert(pool, session_id, &repo.id, &branch, &wt_path_str).await?;
         created.push(wt);
     }
 
     Ok(created)
+}
+
+/// A re-provisioned worktree may sit on a different branch than the one asked
+/// for; upserting the new branch while the checkout keeps the old one would
+/// desync DB and disk, so align the checkout first.
+async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
+    let current = super::run_git(wt_path, &["rev-parse", "--abbrev-ref", "HEAD"])
+        .await?
+        .trim()
+        .to_string();
+    if current == branch {
+        return Ok(());
+    }
+    // Plain switch when the branch exists locally, -c otherwise.
+    let switch = super::run_git_output(wt_path, &["switch", branch]).await?;
+    if switch.status.success() {
+        return Ok(());
+    }
+    let create = super::run_git_output(wt_path, &["switch", "-c", branch]).await?;
+    if !create.status.success() {
+        return Err(anyhow::anyhow!(
+            "worktree at {wt_path} is on branch '{current}' and switching to '{branch}' failed: {}",
+            String::from_utf8_lossy(&create.stderr).trim()
+        ));
+    }
+    Ok(())
 }
 
 /// Provision **detached** worktrees for an explorer session: each repo is checked
@@ -221,33 +203,28 @@ pub async fn provision_explorer_worktrees(
 }
 
 pub(crate) async fn provision_explorer_worktrees_impl(
-    task_id: &str,
+    session_id: &str,
     repo_ids: &[String],
     pool: &SqlitePool,
 ) -> anyhow::Result<Vec<Worktree>> {
     let mut created = vec![];
 
     for repo_id in repo_ids {
-        let repo = crate::db::load::repo(pool, repo_id).await?;
+        let repo = store::repos::get(pool, repo_id).await?;
 
-        let wt_path = task_dir(task_id).join(&repo.project);
+        let wt_path = session_dir(session_id).join(&repo.project);
         std::fs::create_dir_all(&wt_path)?;
 
-        let default_branch = refresh_main_clone(&repo.local_path, &repo.project, task_id).await;
+        let default_branch = refresh_main_clone(&repo.local_path, &repo.project, session_id).await;
 
         // Prefer the branch the refresh resolved; fall back to probing.
         let mut base = default_branch.map(|b| format!("origin/{b}"));
-        for r in ["origin/main", "origin/master"] {
+        for candidate in ["origin/main", "origin/master"] {
             if base.is_some() {
                 break;
             }
-            let ok = super::run_git_output(&repo.local_path, &["rev-parse", "--verify", "--quiet", r])
-                .await
-                .map(|o| o.status.success())
-                .unwrap_or(false);
-            if ok {
-                base = Some(r.to_string());
-                break;
+            if super::ref_exists(&repo.local_path, candidate).await {
+                base = Some(candidate.to_string());
             }
         }
         let base = base.ok_or_else(|| {
@@ -267,7 +244,7 @@ pub(crate) async fn provision_explorer_worktrees_impl(
             }
         }
 
-        let wt = super::upsert_worktree(task_id, &repo.id, "(detached)", &wt_path_str, pool).await?;
+        let wt = store::worktrees::upsert(pool, session_id, &repo.id, "(detached)", &wt_path_str).await?;
         created.push(wt);
     }
 
@@ -275,16 +252,16 @@ pub(crate) async fn provision_explorer_worktrees_impl(
 }
 
 /// Provision the worktree for a review session: check out the MR's source
-/// branch (tracking origin) at `<root>/<task_id>/<project>` and pin the MR's
+/// branch (tracking origin) at `<root>/<session_id>/<project>` and pin the MR's
 /// target branch as the diff/log base via `worktrees.base_ref`.
 pub(crate) async fn provision_review_worktree(
-    task_id: &str,
+    session_id: &str,
     repo: &Repo,
     source_branch: &str,
     target_branch: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<Worktree> {
-    refresh_main_clone(&repo.local_path, &repo.project, task_id).await;
+    refresh_main_clone(&repo.local_path, &repo.project, session_id).await;
     // The default-branch fetch above may not cover the MR branches — fetch both.
     let out = super::run_git_output(
         &repo.local_path,
@@ -303,17 +280,12 @@ pub(crate) async fn provision_review_worktree(
     // registered worktree" instead of simply recreating it.
     let _ = super::run_git(&repo.local_path, &["worktree", "prune"]).await;
 
-    let wt_path = task_dir(task_id).join(&repo.project);
+    let wt_path = session_dir(session_id).join(&repo.project);
     std::fs::create_dir_all(&wt_path)?;
     let wt_path_str = wt_path.to_string_lossy().to_string();
 
-    let local_exists = super::run_git_output(
-        &repo.local_path,
-        &["rev-parse", "--verify", "--quiet", &format!("refs/heads/{source_branch}")],
-    )
-    .await?
-    .status
-    .success();
+    let local_exists =
+        super::ref_exists(&repo.local_path, &format!("refs/heads/{source_branch}")).await;
 
     let output = if local_exists {
         super::run_git_output(&repo.local_path, &["worktree", "add", &wt_path_str, source_branch]).await?
@@ -327,34 +299,17 @@ pub(crate) async fn provision_review_worktree(
     };
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        // Reopening an existing review session lands here — the worktree is fine.
+        // Reopening an existing review session lands here — the worktree is fine,
+        // but it may sit on a different branch. Align, or the DB row below would
+        // claim a branch the worktree isn't on.
         if !stderr.contains("already exists") {
             return Err(anyhow::anyhow!("git worktree add failed: {stderr}"));
         }
-        // …but it may sit on a different branch (the reviewer checked something
-        // out, or an older session left it behind). Align the checkout, or the DB
-        // row below would claim a branch the worktree isn't on.
-        let current = super::run_git(&wt_path_str, &["rev-parse", "--abbrev-ref", "HEAD"])
-            .await
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default();
-        if current != source_branch {
-            let sw = super::run_git_output(&wt_path_str, &["switch", source_branch]).await?;
-            if !sw.status.success() {
-                return Err(anyhow::anyhow!(
-                    "worktree at {wt_path_str} is on '{current}' and switching to '{source_branch}' failed: {}",
-                    String::from_utf8_lossy(&sw.stderr).trim()
-                ));
-            }
-        }
+        align_checkout(&wt_path_str, source_branch).await?;
     }
 
-    let wt = super::upsert_worktree(task_id, &repo.id, source_branch, &wt_path_str, pool).await?;
-    sqlx::query("UPDATE worktrees SET base_ref = ? WHERE id = ?")
-        .bind(target_branch)
-        .bind(&wt.id)
-        .execute(pool)
-        .await?;
+    let wt = store::worktrees::upsert(pool, session_id, &repo.id, source_branch, &wt_path_str).await?;
+    store::worktrees::set_base_ref(pool, &wt.id, target_branch).await?;
     Ok(Worktree { base_ref: Some(target_branch.to_string()), ..wt })
 }
 
@@ -368,26 +323,18 @@ async fn ensure_branch(
     repo_path: &str,
     base_branch: Option<&str>,
 ) -> anyhow::Result<()> {
-    let exists = super::run_git_output(
-        repo_path,
-        &["rev-parse", "--verify", "--quiet", &format!("refs/heads/{branch}")],
-    )
-    .await?
-    .status
-    .success();
-    if exists {
+    if super::ref_exists(repo_path, &format!("refs/heads/{branch}")).await {
         return Ok(());
     }
 
     let mut candidates: Vec<String> = vec![];
-    if let Some(b) = base_branch {
-        candidates.push(format!("origin/{b}"));
+    if let Some(base) = base_branch {
+        candidates.push(format!("origin/{base}"));
     }
     candidates.extend(["origin/main".to_string(), "origin/master".to_string()]);
 
     for base in &candidates {
-        let output = super::run_git_output(repo_path, &["branch", branch, base]).await;
-        if let Ok(out) = output {
+        if let Ok(out) = super::run_git_output(repo_path, &["branch", branch, base]).await {
             if out.status.success() {
                 return Ok(());
             }
@@ -428,12 +375,9 @@ pub(super) fn repo_dir(host: &str, group_path: &str, project: &str) -> PathBuf {
     main_root().join(host).join(group_path).join(project)
 }
 
-/// Every worktree of one task: `<root>/worktrees/<task or explorer id>`.
-///
-/// A sibling of the clone pool rather than the root itself, which used to collect a
-/// directory per task anyone had ever opened, beside MAIN.
-pub(crate) fn task_dir(task_id: &str) -> PathBuf {
-    resolve_worktree_root().join("worktrees").join(task_id)
+/// Every worktree of one session: `<root>/worktrees/<session id>`.
+pub(crate) fn session_dir(session_id: &str) -> PathBuf {
+    resolve_worktree_root().join("worktrees").join(session_id)
 }
 
 /// Delete a stray local branch literally named `HEAD` — it makes every `HEAD`
@@ -441,20 +385,12 @@ pub(crate) fn task_dir(task_id: &str) -> PathBuf {
 /// worktrees (refs are shared). Older builds created one via `fetch HEAD:HEAD`.
 /// Best-effort; safe to call from a worktree path.
 pub(crate) async fn repair_head_branch(repo_or_wt_path: &str) {
-    let poisoned =
-        super::run_git_output(repo_or_wt_path, &["rev-parse", "--verify", "--quiet", "refs/heads/HEAD"])
-            .await
-            .map(|o| o.status.success())
-            .unwrap_or(false);
-    if poisoned {
+    if super::ref_exists(repo_or_wt_path, "refs/heads/HEAD").await {
         tracing::warn!("[git] deleting stray local branch 'HEAD' at {repo_or_wt_path}");
         let _ = super::run_git(repo_or_wt_path, &["update-ref", "-d", "refs/heads/HEAD"]).await;
     }
 }
 
-/// Freshen a MAIN clone during provisioning: fetch, then fast-forward its local
-/// default branch (pull when it's checked out, ref-update otherwise). All
-/// best-effort — worktrees are created from origin/<default> regardless.
 /// The repo's real default branch.
 ///
 /// Resolved from `refs/remotes/origin/HEAD`, and NEVER by stripping the
@@ -487,14 +423,7 @@ async fn resolve_default_branch(repo_path: &str) -> Option<String> {
 
     // Offline, or a remote that won't say: fall back to whichever exists.
     for name in ["main", "master"] {
-        let ok = super::run_git_output(
-            repo_path,
-            &["rev-parse", "--verify", "--quiet", &format!("refs/remotes/origin/{name}")],
-        )
-        .await
-        .map(|o| o.status.success())
-        .unwrap_or(false);
-        if ok {
+        if super::ref_exists(repo_path, &format!("refs/remotes/origin/{name}")).await {
             return Some(name.to_string());
         }
     }
@@ -507,14 +436,14 @@ async fn resolve_default_branch(repo_path: &str) -> Option<String> {
 /// Failures here are REPORTED, not swallowed. A silent fetch failure (off VPN,
 /// expired credentials) would hand back a worktree quietly based on last week's
 /// main, with nothing to explain why — which is worse than the delay of noticing.
-async fn refresh_main_clone(repo_path: &str, repo_label: &str, task_id: &str) -> Option<String> {
+async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str) -> Option<String> {
     if let Err(e) = super::run_git(repo_path, &["fetch", "origin"]).await {
         crate::events::notice(
             "error",
             "git",
             format!("Could not fetch {repo_label} — its worktree may be based on stale history"),
             Some(e.to_string()),
-            Some(task_id),
+            Some(session_id),
         );
         // Carry on: branching from whatever is on disk still beats failing outright,
         // now that the staleness has been named.
@@ -542,7 +471,7 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, task_id: &str) ->
             "git",
             format!("{repo_label}: {default_branch} in MAIN could not fast-forward"),
             Some(format!("{e}\n\nNew branches still come from origin/{default_branch}, so this only affects MAIN's own checkout.")),
-            Some(task_id),
+            Some(session_id),
         );
     }
     Some(default_branch)
@@ -631,37 +560,30 @@ pub async fn clone_repo(url: String) -> Result<super::types::MainRepo, String> {
     })
 }
 
-/// Remove all worktrees for a task: delete their directories and prune git references.
-/// Also removes the task's worktree root directory.
-pub async fn cleanup_task_worktrees(task_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
-    let worktrees: Vec<Worktree> = sqlx::query_as(
-        "SELECT w.* FROM worktrees w WHERE w.task_id = ?",
-    )
-    .bind(task_id)
-    .fetch_all(pool)
-    .await?;
+/// Delete a worktree's directory and prune its clone's registration.
+/// Disk only — DB rows are the store's job.
+async fn remove_worktree_dir(wt_path: String, repo_local_path: Option<String>) {
+    let _ = tokio::task::spawn_blocking(move || {
+        let _ = std::fs::remove_dir_all(&wt_path);
+        if let Some(local_path) = repo_local_path {
+            let _ = std::process::Command::new("git")
+                .args(["worktree", "prune"])
+                .current_dir(&local_path)
+                .status();
+        }
+    })
+    .await;
+}
 
-    for wt in &worktrees {
-        let wt_path = wt.path.clone();
-        let repo_id = wt.repo_id.clone();
-
-        let repo = crate::db::load::repo_opt(pool, &repo_id).await?;
-
-        let repo_local_path = repo.map(|r| r.local_path);
-
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = std::fs::remove_dir_all(&wt_path);
-            if let Some(local_path) = repo_local_path {
-                let _ = std::process::Command::new("git")
-                    .args(["worktree", "prune"])
-                    .current_dir(&local_path)
-                    .status();
-            }
-        })
-        .await;
+/// Remove every worktree directory of a session and the session directory
+/// itself. The DB rows cascade when the session row is deleted.
+pub async fn cleanup_session_worktrees(session_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
+    for wt in store::worktrees::for_session(pool, session_id).await? {
+        let repo = store::repos::get_opt(pool, &wt.repo_id).await?;
+        remove_worktree_dir(wt.path, repo.map(|r| r.local_path)).await;
     }
 
-    let dir = task_dir(task_id);
+    let dir = session_dir(session_id);
     let _ = tokio::task::spawn_blocking(move || {
         let _ = std::fs::remove_dir_all(&dir);
     })
@@ -688,7 +610,7 @@ async fn close_worktree_impl(
     force: Option<bool>,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    let wt = crate::db::load::worktree(pool, worktree_id).await?;
+    let wt = store::worktrees::get(pool, worktree_id).await?;
 
     // Guard against destroying uncommitted work: unless forced, refuse to close a
     // worktree with a dirty working tree (the frontend re-invokes with force after
@@ -705,53 +627,46 @@ async fn close_worktree_impl(
         }
     }
 
-    let wt_path = wt.path.clone();
-    let repo = crate::db::load::repo_opt(pool, &wt.repo_id).await?;
-    let repo_local_path = repo.map(|r| r.local_path);
+    let repo = store::repos::get_opt(pool, &wt.repo_id).await?;
+    remove_worktree_dir(wt.path.clone(), repo.map(|r| r.local_path)).await;
 
-    let _ = tokio::task::spawn_blocking(move || {
-        let _ = std::fs::remove_dir_all(&wt_path);
-        if let Some(local_path) = repo_local_path {
-            let _ = std::process::Command::new("git")
-                .args(["worktree", "prune"])
-                .current_dir(&local_path)
-                .status();
-        }
-    })
-    .await;
-
-    sqlx::query("DELETE FROM mrs WHERE worktree_id = ?")
-        .bind(worktree_id)
-        .execute(pool)
-        .await?;
-    sqlx::query("DELETE FROM worktrees WHERE id = ?")
-        .bind(worktree_id)
-        .execute(pool)
-        .await?;
-
-    let remaining: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM worktrees WHERE task_id = ? AND repo_id = ?")
-            .bind(&wt.task_id)
-            .bind(&wt.repo_id)
-            .fetch_one(pool)
-            .await?;
-
-    if remaining == 0 {
-        sqlx::query("DELETE FROM task_repos WHERE task_id = ? AND repo_id = ?")
-            .bind(&wt.task_id)
-            .bind(&wt.repo_id)
-            .execute(pool)
-            .await?;
-    }
+    let closed = store::worktrees::close(pool, worktree_id).await?;
 
     app.emit(
         crate::events::WORKTREE_CLOSED,
         serde_json::json!({
             "worktree_id": worktree_id,
-            "task_id": wt.task_id,
-            "repo_id": wt.repo_id,
+            "session_id": closed.session_id,
+            "repo_id": closed.repo_id,
         }),
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_git_url;
+
+    #[test]
+    fn parses_ssh_and_https_remotes() {
+        assert_eq!(
+            parse_git_url("git@gitlab.example.com:group/sub/proj.git").unwrap(),
+            ("gitlab.example.com".into(), "group/sub".into(), "proj".into())
+        );
+        assert_eq!(
+            parse_git_url("https://github.com/owner/proj").unwrap(),
+            ("github.com".into(), "owner".into(), "proj".into())
+        );
+    }
+
+    /// A credentialed remote must never leak the token into the repo id.
+    #[test]
+    fn strips_userinfo_from_https_remotes() {
+        let (host, group, project) =
+            parse_git_url("https://oauth2:SECRET@gitlab.example.com/group/proj.git").unwrap();
+        assert_eq!(host, "gitlab.example.com");
+        assert_eq!(group, "group");
+        assert_eq!(project, "proj");
+    }
 }

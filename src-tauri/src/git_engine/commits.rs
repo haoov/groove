@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
-use crate::db::schema::Worktree;
+use crate::core::db::models::Worktree;
+use crate::core::db::store;
 use super::types::CommitEntry;
 
 pub(super) async fn get_commit_log_impl(
@@ -8,16 +9,13 @@ pub(super) async fn get_commit_log_impl(
     limit: u32,
     pool: &SqlitePool,
 ) -> anyhow::Result<Vec<CommitEntry>> {
-    // Scope to a single worktree when given, otherwise every active worktree.
-    let worktrees: Vec<Worktree> = if let Some(wid) = worktree_id {
-        sqlx::query_as("SELECT * FROM worktrees WHERE task_id = ? AND id = ? AND is_active = 1")
-            .bind(task_id)
-            .bind(wid)
-            .fetch_all(pool)
-            .await?
-    } else {
-        crate::db::load::active_worktrees(pool, task_id)
-            .await?
+    // Scope to a single worktree when given, otherwise every worktree.
+    let worktrees: Vec<Worktree> = match worktree_id {
+        Some(wid) => {
+            let wt = store::worktrees::get(pool, wid).await?;
+            if wt.session_id == task_id { vec![wt] } else { vec![] }
+        }
+        None => store::worktrees::for_session(pool, task_id).await?,
     };
 
     let mut all = vec![];

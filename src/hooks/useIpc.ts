@@ -235,17 +235,17 @@ export function useIpc() {
           // agent never blocks. Scoped to the owning session — another session's
           // agent still has to ask. A notification is posted for each one, because
           // an op that happened without being seen must still be reviewable.
-          const owner = payload.task_id ? findSessionByTask(s, payload.task_id) : null;
+          const owner = payload.session_id ? findSessionByTask(s, payload.session_id) : null;
           if (owner?.autoApprove) {
             invoke('resolve_confirmation', { id: payload.id, approved: true })
               .then(() => {
                 useStore.getState().notify({
                   kind: 'info',
                   source: payload.origin === 'mcp' ? 'mcp' : 'app',
-                  taskId: payload.task_id ?? undefined,
+                  taskId: payload.session_id ?? undefined,
                   title: `${opLabel(payload.op_type)} auto-approved`,
                   detail: 'This session is set to allow every request.',
-                  goTo: { taskId: payload.task_id ?? undefined },
+                  goTo: { taskId: payload.session_id ?? undefined },
                 });
               })
               .catch((e) => useStore.getState().setLastError(String(e)));
@@ -254,7 +254,7 @@ export function useIpc() {
 
           s.addConfirmation({
             id: payload.id,
-            task_id: payload.task_id,
+            session_id: payload.session_id,
             op_type: payload.op_type,
             payload: payload.payload,
             origin: payload.origin,
@@ -270,9 +270,9 @@ export function useIpc() {
         await listen<ConfirmationResolvedEvent>(EVENT.CONFIRMATION_RESOLVED, ({ payload }) => {
           const s = useStore.getState();
           const conf = s.pendingConfirmations.find((c) => c.id === payload.id);
-          // Route to the owning session: prefer the payload's task_id, fall back to
+          // Route to the owning session: prefer the payload's session_id, fall back to
           // the pending row's, then the active session.
-          const ownerTaskId = payload.task_id ?? conf?.task_id ?? null;
+          const ownerTaskId = payload.session_id ?? conf?.session_id ?? null;
           const owner = ownerTaskId ? findSessionByTask(s, ownerTaskId) : getActiveSession(s);
           s.removeConfirmation(payload.id);
           if (!payload.approved) return;
@@ -368,7 +368,7 @@ export function useIpc() {
       track(
         await listen<WorktreeClosedEvent>(EVENT.WORKTREE_CLOSED, ({ payload }) => {
           const s = useStore.getState();
-          const sess = findSessionByTask(s, payload.task_id);
+          const sess = findSessionByTask(s, payload.session_id);
           if (!sess) return;
           s.updateSession(sess.id, (ss) => {
             const worktrees = ss.worktrees.filter((w) => w.id !== payload.worktree_id);
@@ -498,7 +498,7 @@ export function useIpc() {
       // optimistically, so `addAnnotation` dedupes by id.
       track(
         await listen<Annotation>(EVENT.ANNOTATION_CREATED, ({ payload }) => {
-          const sess = findSessionByTask(useStore.getState(), payload.task_id);
+          const sess = findSessionByTask(useStore.getState(), payload.session_id);
           if (sess) sessionActions(sess.id).addAnnotation(payload);
         })
       );

@@ -294,7 +294,7 @@ export function FilesTab({
     } else if (results.length) {
       previewPath(results[Math.min(selectedIdx, results.length - 1)].f);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [searching, mode, selectedIdx, results, rows, previewPath, previewGrep]);
   // Keep the cursor row visible.
   useEffect(() => {
@@ -340,7 +340,7 @@ export function FilesTab({
       const row = rows[clampedSel];
       if (row) commitGrep(row.file.file, rowLine(row));
     } else { const r = results[clampedSel]; if (r) commitPath(r.f); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [mode, rows, results, clampedSel, commitGrep, commitPath]);
 
   const cancelSearch = useCallback(() => {
@@ -528,7 +528,8 @@ export function FilesTab({
                       role="presentation"
                       onClick={() => setGrepCollapsed((prev) => {
                         const next = new Set(prev);
-                        next.has(row.file.file) ? next.delete(row.file.file) : next.add(row.file.file);
+                        if (next.has(row.file.file)) next.delete(row.file.file);
+                        else next.add(row.file.file);
                         return next;
                       })}
                     >

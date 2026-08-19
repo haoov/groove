@@ -105,7 +105,7 @@ export function useAnnotations(
     submittingRef.current = true;
     try {
       const created = await invoke<Annotation>('create_annotation', {
-        taskId: activeTask.short_id,
+        sessionId: activeTask.short_id,
         repoId: sel.repoId,
         filePath: sel.filePath,
         startLine: sel.startLine,
@@ -156,7 +156,7 @@ export function useAnnotations(
       await invoke('resolve_annotation', { id: a.id });
       resolveAnnotation(a.id);
       bumpMrs(); // the new thread shows up in Discussion + the diff gutter
-      notify({ kind: 'success', source: 'mr', taskId: a.task_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
+      notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
     } catch (e) {
       setLastError(String(e));
     } finally {

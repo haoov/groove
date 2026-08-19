@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore, useSession } from '../store';
-import type { Annotation, DiffResult, Mr, MrThread, ReviewedFile } from '../types/ipc';
+import type { Annotation, DiffResult, Mr, MrThread } from '../types/ipc';
 
 /**
  * Owns the per-task background data that several views depend on: git status,
@@ -12,8 +12,6 @@ import type { Annotation, DiffResult, Mr, MrThread, ReviewedFile } from '../type
  */
 export function useWorkspaceData() {
   const activeTask = useSession((s) => s.activeTask);
-  const kind = useSession((s) => s.kind);
-  const setReviewedFiles = useSession((s) => s.setReviewedFiles);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const refreshStatus = useSession((s) => s.refreshStatus);
   const upsertMr = useSession((s) => s.upsertMr);
@@ -73,19 +71,12 @@ export function useWorkspaceData() {
     return () => { stale = true; };
   }, [activeTask, activeWorktrees, mrNonce, upsertMr, setMrThreadsForRepo]);
 
-  // Review sessions: seed the viewed-files set from the persisted rows.
-  useEffect(() => {
-    if (!activeTask || kind !== 'review') return;
-    invoke<ReviewedFile[]>('get_reviewed_files', { taskId: activeTask.short_id })
-      .then((rows) => setReviewedFiles(new Set(rows.map((r) => `${r.repo_id}/${r.file_path}`))))
-      .catch(console.warn);
-  }, [activeTask, kind, setReviewedFiles]);
 
   // All annotations for the task (every repo), so the diff gutter shows them
   // without first visiting the Notes tab.
   useEffect(() => {
     if (!activeTask) return;
-    invoke<Annotation[]>('get_annotations', { taskId: activeTask.short_id, repoId: null })
+    invoke<Annotation[]>('get_annotations', { sessionId: activeTask.short_id, repoId: null })
       .then(setAnnotations)
       .catch((e) => setLastError(String(e)));
   }, [activeTask, setAnnotations, setLastError]);

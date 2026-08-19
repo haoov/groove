@@ -1,114 +1,66 @@
-//! Time spent on a task: measured locally, logged to Notion on purpose.
+//! Time spent on a session: measured locally, logged to Notion on purpose.
 //!
 //! The tracker never writes to Notion by itself. "Hours spent" is a number other
 //! people read, and a timer that quietly inflates it produces data nobody can
-//! trust — so the app accumulates seconds, shows you what it measured, and waits
-//! for you to log a figure you agree with.
-//!
-//! Accounting is two counters (see 0005_task_time.sql): `tracked` is what was
-//! measured, `logged` is what has been written. Logging advances `logged`, so
-//! pressing the button twice cannot double-count.
+//! trust — so the app accumulates seconds per day, shows what it measured, and
+//! waits for a figure you agree with. `time_entries` records what was measured,
+//! `time_logs` what was written; the difference is what is left to log.
 
-use serde::Serialize;
 use sqlx::SqlitePool;
 
+use crate::core::db::models::TimeSummary;
+use crate::core::db::store;
 use super::notion::{notion_get, notion_patch};
 
 /// A tick is only credited if it is this recent — the frontend decides when to
 /// tick (see useTaskTimer), and this rejects a stale or replayed one.
 const MAX_TICK_SECONDS: i64 = 120;
 
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
-pub struct TaskTime {
-    pub task_id: String,
-    pub tracked_seconds: i64,
-    pub logged_seconds: i64,
-    pub today_seconds: i64,
-    /// Measured but not yet written to Notion — what the log button offers.
-    /// Computed in SQL so there is one definition of it.
-    pub unlogged_seconds: i64,
-}
-
 fn today() -> String {
     chrono::Utc::now().format("%Y-%m-%d").to_string()
 }
 
-/// Credit `seconds` of work to a task. Called on a timer while the window is
+/// Credit `seconds` of work to a session. Called on a timer while the window is
 /// focused and the work is real (the frontend owns that judgement).
 #[tauri::command]
 pub async fn add_task_time(
     task_id: String,
     seconds: i64,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskTime, String> {
+) -> Result<TimeSummary, String> {
     if !(0..=MAX_TICK_SECONDS).contains(&seconds) {
         return Err(format!("implausible tick of {seconds}s ignored"));
     }
-    let now = chrono::Utc::now().timestamp();
     let day = today();
-
-    // One statement so concurrent ticks can't lose an increment. The CASE resets
-    // the daily bucket when the date has rolled over since the last tick.
-    sqlx::query(
-        "INSERT INTO task_time (task_id, tracked_seconds, logged_seconds, today_date, today_seconds, updated_at)
-         VALUES (?1, ?2, 0, ?3, ?2, ?4)
-         ON CONFLICT(task_id) DO UPDATE SET
-           tracked_seconds = tracked_seconds + ?2,
-           today_seconds   = CASE WHEN today_date = ?3 THEN today_seconds + ?2 ELSE ?2 END,
-           today_date      = ?3,
-           updated_at      = ?4",
-    )
-    .bind(&task_id)
-    .bind(seconds)
-    .bind(&day)
-    .bind(now)
-    .execute(&*pool)
-    .await
-    .map_err(|e| e.to_string())?;
-
-    read(&task_id, &pool).await.map_err(|e| e.to_string())
-}
-
-async fn read(task_id: &str, pool: &SqlitePool) -> anyhow::Result<TaskTime> {
-    let row: Option<TaskTime> = sqlx::query_as(
-        "SELECT task_id, tracked_seconds, logged_seconds,
-                CASE WHEN today_date = ?2 THEN today_seconds ELSE 0 END AS today_seconds,
-                MAX(tracked_seconds - logged_seconds, 0)              AS unlogged_seconds
-           FROM task_time WHERE task_id = ?1",
-    )
-    .bind(task_id)
-    .bind(today())
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.unwrap_or(TaskTime {
-        task_id: task_id.to_string(),
-        tracked_seconds: 0,
-        logged_seconds: 0,
-        today_seconds: 0,
-        unlogged_seconds: 0,
-    }))
+    store::time::add(&*pool, &task_id, &day, seconds)
+        .await
+        .map_err(|e| e.to_string())?;
+    store::time::summary(&*pool, &task_id, &day)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_task_time(
     task_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskTime, String> {
-    read(&task_id, &pool).await.map_err(|e| e.to_string())
+) -> Result<TimeSummary, String> {
+    store::time::summary(&*pool, &task_id, &today())
+        .await
+        .map_err(|e| e.to_string())
 }
 
-/// Add `hours` to the Notion number property and advance the logged watermark.
+/// Add `hours` to the Notion number property and record the write.
 ///
-/// ADDS rather than replaces: "Hours spent" is cumulative, and the value may have
-/// been edited in Notion since we last read it, so the current value is re-read
-/// immediately before the write.
+/// ADDS rather than replaces: "Hours spent" is cumulative, and the value may
+/// have been edited in Notion since we last read it, so the current value is
+/// re-read immediately before the write.
 pub(super) async fn log_hours(
     token: &str,
     notion_page_id: &str,
     property: &str,
     hours: f64,
-    task_id: &str,
+    session_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     if !(hours.is_finite() && hours > 0.0 && hours < 1000.0) {
@@ -126,22 +78,10 @@ pub(super) async fn log_hours(
     )
     .await?;
 
-    // Only now is the time accounted for. Capped at tracked so a manual entry
-    // larger than what was measured doesn't leave a negative remainder.
-    let logged = (hours * 3600.0).round() as i64;
-    sqlx::query(
-        "INSERT INTO task_time (task_id, tracked_seconds, logged_seconds, today_date, today_seconds, updated_at)
-         VALUES (?1, 0, ?2, ?3, 0, ?4)
-         ON CONFLICT(task_id) DO UPDATE SET
-           logged_seconds = MIN(tracked_seconds, logged_seconds + ?2),
-           updated_at     = ?4",
-    )
-    .bind(task_id)
-    .bind(logged)
-    .bind(today())
-    .bind(chrono::Utc::now().timestamp())
-    .execute(pool)
-    .await?;
+    // Only now is the time accounted for. The ledger records what was actually
+    // sent; the unlogged remainder is clamped at read time, so a manual entry
+    // larger than what was measured can never read negative.
+    store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 
     Ok(serde_json::json!({ "before": before, "after": after, "added": hours }))
 }

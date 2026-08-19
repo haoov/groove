@@ -357,9 +357,8 @@ function updateSessionState(id: string, recipe: (s: SessionState) => Partial<Ses
 async function doRefreshStatus(id: string) {
   const sess = useStore.getState().sessions[id];
   if (!sess) return;
-  const wts = sess.worktrees.filter((w) => w.is_active === 1);
   const entries = await Promise.allSettled(
-    wts.map((w) => invoke<WorktreeStatus>('get_worktree_status', { worktreeId: w.id }))
+    sess.worktrees.map((w) => invoke<WorktreeStatus>('get_worktree_status', { worktreeId: w.id }))
   );
   const next: Record<string, WorktreeStatus> = {};
   for (const r of entries) {
@@ -467,19 +466,6 @@ function makeSessionActions(id: string): SessionActions {
           activePtySessionId:
             s.activePtySessionId === pid ? (remaining[remaining.length - 1]?.sessionId ?? null) : s.activePtySessionId,
         };
-      }),
-    setReviewedFiles: (keys) => upd(() => ({ reviewedFiles: keys })),
-    toggleReviewedFile: (repoId, filePath) =>
-      upd((s) => {
-        const key = `${repoId}/${filePath}`;
-        const next = new Set(s.reviewedFiles);
-        const reviewed = !next.has(key);
-        if (reviewed) next.add(key); else next.delete(key);
-        const taskId = s.task?.short_id;
-        if (taskId) {
-          invoke('set_file_reviewed', { taskId, repoId, filePath, reviewed }).catch(console.warn);
-        }
-        return { reviewedFiles: next };
       }),
   };
 }

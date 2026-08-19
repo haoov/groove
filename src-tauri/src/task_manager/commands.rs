@@ -3,11 +3,12 @@ use std::sync::{Arc, RwLock};
 use sqlx::SqlitePool;
 use tauri::{Emitter, Manager};
 
-use crate::db::schema::{Repo, Task};
+use crate::core::db::models::{Session, SessionKind, SessionState, TaskView, Worktree};
+use crate::core::db::store;
 use super::config::{Config, ConfigView, load_config_from_dir, save_config_to_dir};
 use super::notion::{
     current_sprint_ids, get_task_body_impl, notion_patch, notion_post, page_to_task,
-    parse_short_id_number, upsert_task,
+    parse_short_id_number,
 };
 
 // ─── Module state ─────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ pub struct State {
 
 struct StateInner {
     config: RwLock<Option<Config>>,
-    active_task_id: RwLock<Option<String>>,
+    active_session_id: RwLock<Option<String>>,
 }
 
 impl State {
@@ -27,21 +28,21 @@ impl State {
         Self {
             inner: Arc::new(StateInner {
                 config: RwLock::new(None),
-                active_task_id: RwLock::new(None),
+                active_session_id: RwLock::new(None),
             }),
         }
     }
 
     pub fn get_active_task_id(&self) -> Option<String> {
         self.inner
-            .active_task_id
+            .active_session_id
             .read()
             .ok()
             .and_then(|g| g.clone())
     }
 
     pub fn set_active_task_id(&self, id: Option<String>) {
-        if let Ok(mut g) = self.inner.active_task_id.write() {
+        if let Ok(mut g) = self.inner.active_session_id.write() {
             *g = id;
         }
     }
@@ -185,19 +186,17 @@ pub async fn list_tasks(
     app: tauri::AppHandle,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<Task>, String> {
+) -> Result<Vec<TaskView>, String> {
     list_tasks_impl(&app, &task_state, &pool)
         .await
         .map_err(|e| e.to_string())
 }
 
-async fn list_tasks_impl(
-    app: &tauri::AppHandle,
-    task_state: &State,
-    pool: &SqlitePool,
-) -> anyhow::Result<Vec<Task>> {
-    let cfg = ensure_config(app, task_state)?;
-
+/// One page of the tasks-database query, with the filters from config applied.
+async fn query_task_pages(
+    cfg: &Config,
+    cursor: Option<&str>,
+) -> anyhow::Result<serde_json::Value> {
     let mut filter_conditions: Vec<serde_json::Value> = vec![];
 
     if cfg.notion.filters.filter_by_assignee {
@@ -242,30 +241,60 @@ async fn list_tasks_impl(
         }
     }
 
-    let body = if filter_conditions.len() > 1 {
+    let mut body = if filter_conditions.len() > 1 {
         serde_json::json!({ "filter": { "and": filter_conditions } })
     } else if filter_conditions.len() == 1 {
         serde_json::json!({ "filter": filter_conditions.remove(0) })
     } else {
         serde_json::json!({})
     };
+    body["page_size"] = serde_json::json!(100);
+    if let Some(cursor) = cursor {
+        body["start_cursor"] = serde_json::json!(cursor);
+    }
 
-    let resp = notion_post(
+    notion_post(
         &cfg.notion.token,
         &format!("v1/databases/{}/query", cfg.notion.database_id),
         &body,
-    ).await?;
+    )
+    .await
+}
 
-    let mut tasks = vec![];
-    if let Some(results) = resp["results"].as_array() {
-        for page in results {
-            match page_to_task(page, &cfg.notion) {
-                Ok(task) => {
-                    upsert_task(&task, pool).await?;
-                    tasks.push(task);
+/// A runaway-pagination backstop far above any real queue.
+const MAX_TASK_PAGES: usize = 30;
+
+async fn list_tasks_impl(
+    app: &tauri::AppHandle,
+    task_state: &State,
+    pool: &SqlitePool,
+) -> anyhow::Result<Vec<TaskView>> {
+    let cfg = ensure_config(app, task_state)?;
+
+    let mut tasks: Vec<TaskView> = vec![];
+    let mut cursor: Option<String> = None;
+
+    for _ in 0..MAX_TASK_PAGES {
+        let resp = query_task_pages(&cfg, cursor.as_deref()).await?;
+
+        if let Some(results) = resp["results"].as_array() {
+            for page in results {
+                match page_to_task(page, &cfg.notion) {
+                    Ok(task) => {
+                        store::notion_tasks::upsert(pool, &task).await?;
+                        tasks.push(task.into());
+                    }
+                    Err(e) => tracing::warn!("skipping page: {e}"),
                 }
-                Err(e) => tracing::warn!("skipping page: {e}"),
             }
+        }
+
+        if resp["has_more"].as_bool() != Some(true) {
+            break;
+        }
+        match resp["next_cursor"].as_str() {
+            Some(next) => cursor = Some(next.to_string()),
+            None => break,
         }
     }
 
@@ -281,15 +310,15 @@ pub async fn open_task(
 ) -> Result<(), String> {
     open_task_impl(&app, &short_id, &task_state, &pool)
         .await
+        .map(|_| ())
         .map_err(|e| e.to_string())
 }
 
 /// Point the backend at the session the user is looking at. EVERY MCP tool
-/// resolves its target from `active_task_id` (get_active_task, get_worktrees,
-/// get_task_diff, annotations, the push guard, create_task_from_explorer), so
-/// without this the agent operates on whichever task was last *opened* rather
-/// than the focused one. The frontend calls it whenever the active session (or
-/// its task id) changes; `None` when the last session closes.
+/// resolves its target from the active session, so without this the agent
+/// operates on whichever session was last *opened* rather than the focused one.
+/// The frontend calls it whenever the active session changes; `None` when the
+/// last session closes.
 #[tauri::command]
 pub async fn set_active_task(
     short_id: Option<String>,
@@ -299,118 +328,66 @@ pub async fn set_active_task(
     Ok(())
 }
 
+/// Open a session: an existing one is re-opened in place, a mirrored task gets
+/// its session row on first open. Emits `workspace_ready` — or `workspace_stub`
+/// for a task that still has no worktrees, which sends the frontend to the
+/// repo-picking wizard.
 pub(super) async fn open_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,
     task_state: &State,
     pool: &SqlitePool,
-) -> anyhow::Result<()> {
-    let task = crate::db::load::task_opt(pool, short_id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("Task {short_id} not in local DB — sync tasks first"))?;
-
-    task_state.set_active_task_id(Some(task.short_id.clone()));
-
-    // Re-activate worktrees deactivated by pause_task — everything (diff,
-    // commits, agent, MCP) filters on is_active = 1, so without this a
-    // paused task reopens as an empty workspace.
-    sqlx::query("UPDATE worktrees SET is_active = 1 WHERE task_id = ?")
-        .bind(&task.short_id)
-        .execute(pool)
-        .await?;
-
-    let worktrees = crate::db::load::all_worktrees(pool, &task.short_id).await?;
-
-    // Prune worktrees whose directories were manually deleted
-    for wt in &worktrees {
-        if !std::path::Path::new(&wt.path).exists() {
-            sqlx::query("DELETE FROM mrs WHERE worktree_id = ?")
-                .bind(&wt.id)
-                .execute(pool)
-                .await?;
-            sqlx::query("DELETE FROM worktrees WHERE id = ?")
-                .bind(&wt.id)
-                .execute(pool)
-                .await?;
-            let remaining: i64 = sqlx::query_scalar(
-                "SELECT COUNT(*) FROM worktrees WHERE task_id = ? AND repo_id = ?",
-            )
-            .bind(&task.short_id)
-            .bind(&wt.repo_id)
-            .fetch_one(pool)
-            .await?;
-            if remaining == 0 {
-                sqlx::query("DELETE FROM task_repos WHERE task_id = ? AND repo_id = ?")
-                    .bind(&task.short_id)
-                    .bind(&wt.repo_id)
-                    .execute(pool)
-                    .await?;
-            }
-            // Clear git's stale worktree registration in the source repo, or
-            // re-provisioning the same branch fails with "already registered".
-            let repo = crate::db::load::repo_opt(pool, &wt.repo_id).await?;
-            if let Some(repo) = repo {
-                let local = repo.local_path.clone();
-                let _ = tokio::task::spawn_blocking(move || {
-                    std::process::Command::new("git")
-                        .args(["-C", &local, "worktree", "prune"])
-                        .output()
-                })
-                .await;
-            }
+) -> anyhow::Result<Session> {
+    let session = match store::sessions::get_opt(pool, short_id).await? {
+        Some(session) => {
+            store::sessions::set_state(pool, short_id, SessionState::Open).await?;
+            session
         }
-    }
-
-    // Re-fetch after pruning
-    let worktrees = crate::db::load::all_worktrees(pool, &task.short_id).await?;
-
-    // Synthetic sessions (no Notion page) are identified by an empty page id;
-    // they never go through the task-open wizard, even with no worktrees yet.
-    // Review sessions are the synthetic ones with a review- short id.
-    let is_synthetic = task.notion_page_id.is_empty();
-    let kind = if task.short_id == super::DESK_ID {
-        "desk"
-    } else if task.short_id.starts_with("review-") {
-        "review"
-    } else if is_synthetic {
-        "explorer"
-    } else {
-        "task"
+        None => store::sessions::open_task(pool, short_id).await?,
     };
 
-    if worktrees.is_empty() && !is_synthetic {
-        app.emit(crate::events::WORKSPACE_STUB, serde_json::json!({ "task": task, "kind": kind }))?;
-    } else {
-        let repos: Vec<Repo> =
-            sqlx::query_as(
-                "SELECT r.* FROM repos r JOIN task_repos tr ON r.id = tr.repo_id WHERE tr.task_id = ?",
-            )
-            .bind(&task.short_id)
-            .fetch_all(pool)
-            .await?;
+    task_state.set_active_task_id(Some(session.id.clone()));
 
+    prune_missing_worktrees(&session.id, pool).await?;
+
+    let task = store::sessions::view(pool, &session.id).await?;
+    let worktrees = store::worktrees::for_session(pool, &session.id).await?;
+
+    if worktrees.is_empty() && session.kind == SessionKind::Task {
+        app.emit(
+            crate::events::WORKSPACE_STUB,
+            serde_json::json!({ "task": task, "kind": session.kind }),
+        )?;
+    } else {
+        let repos = store::repos::attached_to(pool, &session.id).await?;
         app.emit(
             crate::events::WORKSPACE_READY,
-            serde_json::json!({ "task": task, "worktrees": worktrees, "repos": repos, "kind": kind }),
+            serde_json::json!({
+                "task": task,
+                "worktrees": worktrees,
+                "repos": repos,
+                "kind": session.kind,
+            }),
         )?;
     }
 
-    Ok(())
+    Ok(session)
 }
 
-pub(super) async fn delete_task_rows(task_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
-    let mut tx = pool.begin().await?;
-    sqlx::query("DELETE FROM mrs WHERE worktree_id IN (SELECT id FROM worktrees WHERE task_id = ?)")
-        .bind(task_id)
-        .execute(&mut *tx)
-        .await?;
-    for table in ["worktrees", "task_repos", "annotations", "tab_snapshots", "agent_sessions", "pending_confirmations", "reviewed_files", "task_time"] {
-        sqlx::query(&format!("DELETE FROM {table} WHERE task_id = ?"))
-            .bind(task_id)
-            .execute(&mut *tx)
-            .await?;
+/// Drop worktrees whose directories were deleted by hand, and clear git's stale
+/// registration in the source repo — re-provisioning the same branch otherwise
+/// fails with "already registered".
+async fn prune_missing_worktrees(session_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
+    let worktrees: Vec<Worktree> = store::worktrees::for_session(pool, session_id).await?;
+    for wt in worktrees {
+        if std::path::Path::new(&wt.path).exists() {
+            continue;
+        }
+        store::worktrees::close(pool, &wt.id).await?;
+        if let Some(repo) = store::repos::get_opt(pool, &wt.repo_id).await? {
+            let _ = crate::git_engine::run_git_output(&repo.local_path, &["worktree", "prune"]).await;
+        }
     }
-    tx.commit().await?;
     Ok(())
 }
 
@@ -434,20 +411,14 @@ async fn finish_task_impl(
 ) -> anyhow::Result<()> {
     let cfg = ensure_config(app, task_state)?;
 
-    // Look up the task and mark it done in Notion BEFORE any destructive
-    // teardown — if either fails, the workspace is still intact.
-    let task = crate::db::load::task(pool, short_id).await?;
-    if task.notion_page_id.is_empty() {
-        return Err(anyhow::anyhow!(
-            "{short_id} is an explorer session — discard it instead of finishing"
-        ));
-    }
-
-    let done_status = &cfg.notion.status_map.done;
+    // Mark the task done in Notion BEFORE any destructive teardown — if it
+    // fails, the workspace is still intact.
+    let page_id = task_page_id(pool, short_id).await?;
+    let done_status = cfg.notion.status_map.done.clone();
     let prop_name = &cfg.notion.properties.status;
     notion_patch(
         &cfg.notion.token,
-        &format!("v1/pages/{}", task.notion_page_id),
+        &format!("v1/pages/{page_id}"),
         &serde_json::json!({
             "properties": {
                 prop_name: { "status": { "name": done_status } }
@@ -456,16 +427,15 @@ async fn finish_task_impl(
     )
     .await?;
 
-    tear_down_task(app, short_id, done_status, task_state, pool).await
+    store::notion_tasks::set_status(pool, short_id, &done_status).await?;
+    tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
 
 /// A task the user is deleting outright, not finishing.
 ///
-/// Notion has no hard delete through the API: a page goes to the workspace's trash,
-/// where Notion keeps it for thirty days and the user can restore it. So this is as
-/// destructive as the app can be, and no more — the local teardown is the same one
-/// `finish_task` runs, because "this task is over" means the same thing on disk
-/// either way.
+/// Notion has no hard delete through the API: a page goes to the workspace's
+/// trash, where Notion keeps it for thirty days. The local teardown is the same
+/// one `finish_task` runs.
 #[tauri::command]
 pub async fn delete_task(
     app: tauri::AppHandle,
@@ -486,42 +456,38 @@ async fn delete_task_impl(
 ) -> anyhow::Result<()> {
     let cfg = ensure_config(app, task_state)?;
 
-    // Trash the page BEFORE any local teardown: a failure here leaves the whole
-    // workspace intact, the same order `finish_task` uses.
-    let task = crate::db::load::task(pool, short_id).await?;
-    if task.notion_page_id.is_empty() {
-        return Err(anyhow::anyhow!(
-            "{short_id} is an explorer session — discard it instead of deleting"
-        ));
-    }
+    // Trash the page BEFORE any local teardown, the same order finish_task uses.
+    let page_id = task_page_id(pool, short_id).await?;
     notion_patch(
         &cfg.notion.token,
-        &format!("v1/pages/{}", task.notion_page_id),
+        &format!("v1/pages/{page_id}"),
         &serde_json::json!({ "in_trash": true }),
     )
     .await?;
 
-    tear_down_task(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
+    tear_down_session(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
 }
 
-/// Close a task locally: its worktrees, its rows, the active-task pointer, and the
-/// event the UI closes the session on. Shared by finishing and deleting, which
-/// differ only in what they did to the Notion page first.
-async fn tear_down_task(
+/// The Notion page behind a task session. Explorers and reviews have none and
+/// are discarded, not finished.
+async fn task_page_id(pool: &SqlitePool, short_id: &str) -> anyhow::Result<String> {
+    let session = store::sessions::get(pool, short_id).await?;
+    session.notion_page_id.ok_or_else(|| {
+        anyhow::anyhow!("{short_id} is a {:?} session — discard it instead", session.kind)
+    })
+}
+
+/// Close a session locally: its worktree directories, its rows (one cascading
+/// delete), the active pointer, and the event the UI closes the session on.
+async fn tear_down_session(
     app: &tauri::AppHandle,
     short_id: &str,
     done_status: &str,
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    crate::git_engine::cleanup_task_worktrees(short_id, pool).await?;
-    delete_task_rows(short_id, pool).await?;
-
-    sqlx::query("UPDATE tasks SET status = ? WHERE short_id = ?")
-        .bind(done_status)
-        .bind(short_id)
-        .execute(pool)
-        .await?;
+    crate::git_engine::cleanup_session_worktrees(short_id, pool).await?;
+    store::sessions::remove(pool, short_id).await?;
 
     if task_state.get_active_task_id().as_deref() == Some(short_id) {
         task_state.set_active_task_id(None);
@@ -544,9 +510,7 @@ pub async fn pause_task(
 ) -> Result<(), String> {
     task_state.set_active_task_id(None);
 
-    sqlx::query("UPDATE worktrees SET is_active = 0 WHERE task_id = ?")
-        .bind(&short_id)
-        .execute(&*pool)
+    store::sessions::set_state(&*pool, &short_id, SessionState::Paused)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -562,7 +526,7 @@ pub async fn sync_task(
     short_id: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Task, String> {
+) -> Result<TaskView, String> {
     let cfg = ensure_config(&app, &task_state).map_err(|e| e.to_string())?;
 
     let num = parse_short_id_number(&short_id)
@@ -588,9 +552,9 @@ pub async fn sync_task(
         .ok_or_else(|| format!("Task {short_id} not found in Notion"))?;
 
     let task = page_to_task(page, &cfg.notion).map_err(|e| e.to_string())?;
-    upsert_task(&task, &pool).await.map_err(|e| e.to_string())?;
+    store::notion_tasks::upsert(&*pool, &task).await.map_err(|e| e.to_string())?;
 
-    Ok(task)
+    Ok(task.into())
 }
 
 #[tauri::command]
@@ -599,27 +563,9 @@ pub async fn set_task_repos(
     repo_ids: Vec<String>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let now = chrono::Utc::now().timestamp();
-
-    sqlx::query("DELETE FROM task_repos WHERE task_id = ?")
-        .bind(&short_id)
-        .execute(&*pool)
+    store::repos::set_attached(&*pool, &short_id, &repo_ids)
         .await
-        .map_err(|e| e.to_string())?;
-
-    for repo_id in &repo_ids {
-        sqlx::query(
-            "INSERT INTO task_repos (task_id, repo_id, added_at) VALUES (?, ?, ?)",
-        )
-        .bind(&short_id)
-        .bind(repo_id)
-        .bind(now)
-        .execute(&*pool)
-        .await
-        .map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
+        .map_err(|e| e.to_string())
 }
 
 /// Called by the confirmation bridge when a notion.status op is approved.

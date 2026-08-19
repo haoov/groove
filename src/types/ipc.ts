@@ -19,14 +19,13 @@ export interface Repo {
 
 export interface Worktree {
   id: string;
-  task_id: string;
+  session_id: string;
   repo_id: string;
   branch: string;
   path: string;
-  is_active: number;
-  created_at: number;
   /** Review sessions: the MR's target branch (diff/log base = origin/<base_ref>). */
   base_ref: string | null;
+  created_at: number;
 }
 
 export interface Mr {
@@ -59,11 +58,9 @@ export interface MrThread {
 
 export interface Annotation {
   id: string;
-  task_id: string;
+  session_id: string;
   repo_id: string;
   file_path: string;
-  /** Anchor line (== start_line). */
-  line_num: number;
   /** First line of the annotated range (new-side). */
   start_line: number;
   /** Last line of the range; single-line annotations have start == end. */
@@ -168,7 +165,7 @@ export interface SearchMatch {
 // confirmation_bridge types
 export interface ConfirmationDto {
   id: string;
-  task_id: string | null;
+  session_id: string | null;
   op_type: string;
   payload: unknown;
   origin: 'ui' | 'mcp';
@@ -251,7 +248,7 @@ export interface PropertyValue {
 /** Locally measured time on a task (mirror of hours.rs). Never written to Notion
  *  without an explicit log. */
 export interface TaskTime {
-  task_id: string;
+  session_id: string;
   tracked_seconds: number;
   logged_seconds: number;
   today_seconds: number;
@@ -292,8 +289,6 @@ export interface HomeRepo {
   added: number;
   deleted: number;
   files_changed: number;
-  /** Files ticked off in a review session (drives the viewed progress bar). */
-  files_reviewed: number;
   mr: HomeMr | null;
 }
 
@@ -328,11 +323,6 @@ export interface ReviewMr {
   approved: boolean;
 }
 
-/** One viewed-file row from `get_reviewed_files`. */
-export interface ReviewedFile {
-  repo_id: string;
-  file_path: string;
-}
 
 /** A clone under `<worktree_root>/main` — the repo pool the pickers list. */
 export interface MainRepo {
@@ -388,7 +378,7 @@ export interface WorkspaceReadyEvent {
 
 export interface ConfirmationRequestedEvent {
   id: string;
-  task_id: string | null;
+  session_id: string | null;
   op_type: string;
   payload: unknown;
   origin: 'ui' | 'mcp';
@@ -396,7 +386,7 @@ export interface ConfirmationRequestedEvent {
 
 export interface ConfirmationResolvedEvent {
   id: string;
-  task_id: string | null;
+  session_id: string | null;
   approved: boolean;
   op_type: string;
   result: unknown;
@@ -421,7 +411,7 @@ export interface RebaseDoneEvent {
 
 export interface WorktreeClosedEvent {
   worktree_id: string;
-  task_id: string;
+  session_id: string;
   repo_id: string;
 }
 

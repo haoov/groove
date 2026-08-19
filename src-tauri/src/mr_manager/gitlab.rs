@@ -1,14 +1,18 @@
-use crate::db::schema::{Mr, Repo, Worktree};
+use crate::core::db::models::{Mr, Repo, Worktree};
+use crate::core::db::store;
 use sqlx::SqlitePool;
 use super::platform::{detect_default_branch, PlatformClient};
 
 pub(super) async fn glab_run(cwd: String, args: Vec<String>) -> anyhow::Result<String> {
     let printable = args.join(" ");
-    let out = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("glab")
-            .args(&args)
-            .current_dir(&cwd)
-            .output()
+    let out = crate::core::timing::timed("subprocess", format!("glab {printable}"), async {
+        tokio::task::spawn_blocking(move || {
+            std::process::Command::new("glab")
+                .args(&args)
+                .current_dir(&cwd)
+                .output()
+        })
+        .await
     })
     .await?;
 
@@ -580,46 +584,7 @@ pub(super) async fn fetch_and_upsert_mrs(
         let iid = item["iid"].as_u64().unwrap_or(0).to_string();
         let url = item["web_url"].as_str().unwrap_or("").to_string();
         let state = glab_state(item["state"].as_str().unwrap_or("opened"));
-
-        let existing: Option<Mr> =
-            sqlx::query_as("SELECT * FROM mrs WHERE worktree_id = ? AND remote_id = ?")
-                .bind(&wt.id)
-                .bind(&iid)
-                .fetch_optional(pool)
-                .await?;
-
-        let mr = if let Some(existing_mr) = existing {
-            sqlx::query("UPDATE mrs SET state = ?, url = ? WHERE id = ?")
-                .bind(&state)
-                .bind(&url)
-                .bind(&existing_mr.id)
-                .execute(pool)
-                .await?;
-            Mr { state, url, ..existing_mr }
-        } else {
-            let mr_id = uuid::Uuid::new_v4().to_string();
-            sqlx::query(
-                "INSERT INTO mrs (id, worktree_id, platform, remote_id, url, state)
-                 VALUES (?, ?, 'gitlab', ?, ?, ?)",
-            )
-            .bind(&mr_id)
-            .bind(&wt.id)
-            .bind(&iid)
-            .bind(&url)
-            .bind(&state)
-            .execute(pool)
-            .await?;
-            Mr {
-                id: mr_id,
-                worktree_id: wt.id.clone(),
-                platform: "gitlab".to_string(),
-                remote_id: iid,
-                url,
-                state,
-            }
-        };
-
-        result.push(mr);
+        result.push(store::mrs::upsert(pool, &wt.id, "gitlab", &iid, &url, &state).await?);
     }
 
     Ok(result)

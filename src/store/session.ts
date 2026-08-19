@@ -85,7 +85,6 @@ export function sessionDefaults(): Omit<SessionState, 'id' | 'kind' | 'title' | 
     rebaseConflict: null,
     ptySessions: [],
     activePtySessionId: null,
-    reviewedFiles: new Set<string>(),
   };
 }
 

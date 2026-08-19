@@ -101,9 +101,8 @@ export function CommandPalette() {
   }, [commandPaletteOpen]);
 
   const buildCommands = (): Command[] => {
-    const active = activeWorktrees.filter((w) => w.is_active === 1);
     // The focused repo's worktree, falling back to the only sensible default.
-    const wt = active.find((w) => w.repo_id === activeRepoId) ?? active[0];
+    const wt = activeWorktrees.find((w) => w.repo_id === activeRepoId) ?? activeWorktrees[0];
     // Named in the label so a git command can never act on a repo you did not mean.
     const scope = activeRepos.find((r) => r.id === wt?.repo_id)?.project ?? null;
     const inRepo = (label: string) => (scope ? `${label} — ${scope}` : label);

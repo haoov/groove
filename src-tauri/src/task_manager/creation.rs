@@ -7,7 +7,8 @@
 
 use sqlx::SqlitePool;
 
-use crate::db::schema::Task;
+use crate::core::db::models::NotionTask;
+use crate::core::db::store;
 
 /// The fields both callers put in their confirmation payload. Property names come
 /// from config; the token is injected at execution time, never persisted.
@@ -86,15 +87,15 @@ pub async fn create_task_impl(
     let req = NewTask::from_payload(&payload)?;
     let (notion_page_id, short_id) = create_page(&req).await?;
 
-    let task = Task {
+    let task = NotionTask {
+        page_id: notion_page_id.clone(),
         short_id: short_id.clone(),
-        notion_page_id: notion_page_id.clone(),
         title: req.title.to_string(),
         status: req.status_value.to_string(),
         priority: None,
-        last_synced_at: chrono::Utc::now().timestamp(),
+        synced_at: chrono::Utc::now().timestamp(),
     };
-    super::notion::upsert_task(&task, pool).await?;
+    store::notion_tasks::upsert(pool, &task).await?;
 
     Ok(serde_json::json!({
         "short_id": short_id,
@@ -102,7 +103,7 @@ pub async fn create_task_impl(
         "title": req.title,
         "status": req.status_value,
         "priority": null,
-        "last_synced_at": task.last_synced_at,
+        "last_synced_at": task.synced_at,
         "message": format!("Filed {short_id}"),
     }))
 }

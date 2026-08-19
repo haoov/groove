@@ -1,6 +1,6 @@
 //! Read-only tools: no confirmation, no side effects.
 
-use crate::db::schema::{Annotation, Mr, Repo, Task, Worktree};
+use crate::core::db::store;
 
 use super::{str_field, McpState, ToolCallResponse};
 
@@ -12,18 +12,9 @@ pub(super) async fn get_active_task(
         return Ok(ToolCallResponse::ok(serde_json::json!({ "active_task": null })));
     };
 
-    let task = crate::db::load::task_opt(&state.pool, &task_id).await?;
-
-    let worktrees: Vec<Worktree> =
-        crate::db::load::active_worktrees(&state.pool, &task_id)
-            .await?;
-
-    let repos: Vec<Repo> = sqlx::query_as(
-        "SELECT r.* FROM repos r JOIN task_repos tr ON r.id = tr.repo_id WHERE tr.task_id = ?",
-    )
-    .bind(&task_id)
-    .fetch_all(&state.pool)
-    .await?;
+    let task = store::sessions::view_opt(&state.pool, &task_id).await?;
+    let worktrees = store::worktrees::for_session(&state.pool, &task_id).await?;
+    let repos = store::repos::attached_to(&state.pool, &task_id).await?;
 
     Ok(ToolCallResponse::ok(serde_json::json!({
         "active_task": task,
@@ -46,9 +37,7 @@ pub(super) async fn get_worktrees(
         return Ok(ToolCallResponse::ok(serde_json::json!({ "worktrees": [] })));
     };
 
-    let worktrees: Vec<Worktree> =
-        crate::db::load::active_worktrees(&state.pool, &task_id)
-            .await?;
+    let worktrees = store::worktrees::for_session(&state.pool, &task_id).await?;
 
     Ok(ToolCallResponse::ok(serde_json::to_value(worktrees)?))
 }
@@ -59,11 +48,11 @@ pub(super) async fn get_worktrees(
 /// "what am I working on". Synthetic rows are excluded: an explorer, a review or
 /// the desk itself is not something picked off a queue.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
-    let tasks: Vec<Task> = sqlx::query_as(
-        "SELECT * FROM tasks WHERE notion_page_id != '' ORDER BY last_synced_at DESC",
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let tasks: Vec<crate::core::db::models::TaskView> = store::notion_tasks::all(&state.pool)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect();
     Ok(ToolCallResponse::ok(
         serde_json::json!({ "count": tasks.len(), "tasks": tasks }),
     ))
@@ -84,13 +73,7 @@ pub(super) async fn list_repos(
     // Attached repos are matched on local_path: the pool listing has no repo id
     // until a repo is registered, and registering is `add_task_repo`'s job.
     let attached: Vec<String> = match state.task_for(mcp_session) {
-        Some(task_id) => sqlx::query_scalar(
-            "SELECT r.local_path FROM repos r
-             JOIN task_repos tr ON r.id = tr.repo_id WHERE tr.task_id = ?",
-        )
-        .bind(&task_id)
-        .fetch_all(&state.pool)
-        .await?,
+        Some(task_id) => store::repos::attached_paths(&state.pool, &task_id).await?,
         None => vec![],
     };
 
@@ -136,10 +119,7 @@ pub(super) async fn get_mr_state(
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
     let worktree_id = str_field(&input, "worktree_id")?;
-    let mr: Option<Mr> = sqlx::query_as("SELECT * FROM mrs WHERE worktree_id = ?")
-        .bind(&worktree_id)
-        .fetch_optional(&state.pool)
-        .await?;
+    let mr = store::mrs::latest_for_worktree(&state.pool, &worktree_id).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(mr)?))
 }
 
@@ -148,12 +128,7 @@ pub(super) async fn get_annotations(
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
     let task_id = str_field(&input, "task_id")?;
-    let rows: Vec<Annotation> = sqlx::query_as(
-        "SELECT * FROM annotations WHERE task_id = ? ORDER BY file_path, line_num",
-    )
-    .bind(&task_id)
-    .fetch_all(&state.pool)
-    .await?;
+    let rows = store::annotations::for_session(&state.pool, &task_id, None).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
 }
 

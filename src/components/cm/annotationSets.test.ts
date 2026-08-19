@@ -6,8 +6,8 @@ import type { Annotation, MrThread } from '../../types/ipc';
 // puts a comment marker on the wrong line in the diff AND in the editor.
 
 const ann = (start: number, end = start, file = 'a.ts'): Annotation => ({
-  id: `a${start}-${end}`, task_id: 't', repo_id: 'r', file_path: file,
-  line_num: start, start_line: start, end_line: end,
+  id: `a${start}-${end}`, session_id: 't', repo_id: 'r', file_path: file,
+  start_line: start, end_line: end,
   content: 'note', author: 'me', status: 'open', created_at: 0,
 });
 

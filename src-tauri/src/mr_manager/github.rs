@@ -10,22 +10,25 @@
 //! state and the thread node id needed to resolve one exist only there. Everything
 //! else uses the `gh pr` porcelain.
 
-use crate::db::schema::Repo;
+use crate::core::db::models::Repo;
 use super::platform::{detect_default_branch, CliMissing, PlatformClient};
 
 /// Run `gh` in a repo checkout. Like `glab_run`, the cwd is what tells `gh` which
 /// repository (and host) it is talking about.
 pub(super) async fn gh_run(cwd: String, args: Vec<String>) -> anyhow::Result<String> {
     let printable = args.join(" ");
-    let out = tokio::task::spawn_blocking(move || {
-        std::process::Command::new("gh")
-            .args(&args)
-            .current_dir(&cwd)
-            // gh paginates interactively and colours output when it thinks it has a
-            // terminal; both corrupt JSON parsing.
-            .env("GH_PAGER", "")
-            .env("NO_COLOR", "1")
-            .output()
+    let out = crate::core::timing::timed("subprocess", format!("gh {printable}"), async {
+        tokio::task::spawn_blocking(move || {
+            std::process::Command::new("gh")
+                .args(&args)
+                .current_dir(&cwd)
+                // gh paginates interactively and colours output when it thinks it has a
+                // terminal; both corrupt JSON parsing.
+                .env("GH_PAGER", "")
+                .env("NO_COLOR", "1")
+                .output()
+        })
+        .await
     })
     .await?;
 

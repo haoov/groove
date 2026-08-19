@@ -1,5 +1,5 @@
-use sqlx::SqlitePool;
-use crate::db::schema::Task;
+use crate::core::db::models::NotionTask;
+use crate::core::timing::timed;
 use super::config::NotionConfig;
 
 pub(super) const NOTION_BASE: &str = "https://api.notion.com";
@@ -22,13 +22,16 @@ pub(super) fn notion_client(token: &str) -> anyhow::Result<reqwest::Client> {
 
 pub(super) async fn notion_get(token: &str, path: &str) -> anyhow::Result<serde_json::Value> {
     let url = format!("{NOTION_BASE}/{path}");
-    let resp = notion_client(token)?.get(&url).send().await?;
-    let status = resp.status();
-    let body: serde_json::Value = resp.json().await?;
-    if !status.is_success() {
-        return Err(anyhow::anyhow!("Notion GET {path} failed {status}: {body}"));
-    }
-    Ok(body)
+    timed("http", format!("notion GET {path}"), async {
+        let resp = notion_client(token)?.get(&url).send().await?;
+        let status = resp.status();
+        let body: serde_json::Value = resp.json().await?;
+        if !status.is_success() {
+            return Err(anyhow::anyhow!("Notion GET {path} failed {status}: {body}"));
+        }
+        Ok(body)
+    })
+    .await
 }
 
 pub(super) async fn notion_post(
@@ -37,13 +40,16 @@ pub(super) async fn notion_post(
     body: &serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
     let url = format!("{NOTION_BASE}/{path}");
-    let resp = notion_client(token)?.post(&url).json(body).send().await?;
-    let status = resp.status();
-    let out: serde_json::Value = resp.json().await?;
-    if !status.is_success() {
-        return Err(anyhow::anyhow!("Notion POST {path} failed {status}: {out}"));
-    }
-    Ok(out)
+    timed("http", format!("notion POST {path}"), async {
+        let resp = notion_client(token)?.post(&url).json(body).send().await?;
+        let status = resp.status();
+        let out: serde_json::Value = resp.json().await?;
+        if !status.is_success() {
+            return Err(anyhow::anyhow!("Notion POST {path} failed {status}: {out}"));
+        }
+        Ok(out)
+    })
+    .await
 }
 
 pub(super) async fn notion_patch(
@@ -52,13 +58,16 @@ pub(super) async fn notion_patch(
     body: &serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
     let url = format!("{NOTION_BASE}/{path}");
-    let resp = notion_client(token)?.patch(&url).json(body).send().await?;
-    let status = resp.status();
-    let out: serde_json::Value = resp.json().await?;
-    if !status.is_success() {
-        return Err(anyhow::anyhow!("Notion PATCH {path} failed {status}: {out}"));
-    }
-    Ok(out)
+    timed("http", format!("notion PATCH {path}"), async {
+        let resp = notion_client(token)?.patch(&url).json(body).send().await?;
+        let status = resp.status();
+        let out: serde_json::Value = resp.json().await?;
+        if !status.is_success() {
+            return Err(anyhow::anyhow!("Notion PATCH {path} failed {status}: {out}"));
+        }
+        Ok(out)
+    })
+    .await
 }
 
 fn extract_title(props: &serde_json::Value) -> Option<String> {
@@ -126,8 +135,8 @@ fn extract_unique_id(props: &serde_json::Value) -> Option<String> {
     None
 }
 
-pub(super) fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<Task> {
-    let notion_page_id = page["id"]
+pub(super) fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<NotionTask> {
+    let page_id = page["id"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("page missing id"))?
         .to_string();
@@ -135,7 +144,7 @@ pub(super) fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyh
     let props = &page["properties"];
 
     let short_id = extract_unique_id(props)
-        .ok_or_else(|| anyhow::anyhow!("page {notion_page_id} has no unique_id"))?;
+        .ok_or_else(|| anyhow::anyhow!("page {page_id} has no unique_id"))?;
 
     let title = extract_title(props).unwrap_or_else(|| format!("(untitled) {short_id}"));
 
@@ -148,13 +157,13 @@ pub(super) fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyh
         .as_deref()
         .and_then(|k| extract_select(props, k));
 
-    Ok(Task {
+    Ok(NotionTask {
+        page_id,
         short_id,
-        notion_page_id,
         title,
         status,
         priority,
-        last_synced_at: chrono::Utc::now().timestamp(),
+        synced_at: chrono::Utc::now().timestamp(),
     })
 }
 
@@ -183,28 +192,6 @@ pub(super) async fn current_sprint_ids(token: &str, sprint_db_id: &str) -> Vec<S
             vec![]
         }
     }
-}
-
-pub(super) async fn upsert_task(task: &Task, pool: &SqlitePool) -> anyhow::Result<()> {
-    sqlx::query(
-        "INSERT INTO tasks (short_id, notion_page_id, title, status, priority, last_synced_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(short_id) DO UPDATE SET
-           notion_page_id = excluded.notion_page_id,
-           title          = excluded.title,
-           status         = excluded.status,
-           priority       = excluded.priority,
-           last_synced_at = excluded.last_synced_at",
-    )
-    .bind(&task.short_id)
-    .bind(&task.notion_page_id)
-    .bind(&task.title)
-    .bind(&task.status)
-    .bind(&task.priority)
-    .bind(task.last_synced_at)
-    .execute(pool)
-    .await?;
-    Ok(())
 }
 
 /// Fetch one block's direct children, paginating past Notion's 100-block cap.

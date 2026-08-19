@@ -67,7 +67,7 @@ pub fn task_session_uuid(task_id: &str) -> String {
 /// approach. Read-only now — honored as a fallback so existing conversations
 /// keep resuming, but never written.
 fn legacy_session_id_file(task_id: &str) -> std::path::PathBuf {
-    crate::git_engine::task_dir(task_id).join(".agent_session_id")
+    crate::git_engine::session_dir(task_id).join(".agent_session_id")
 }
 
 fn load_legacy_session_id(task_id: &str) -> Option<String> {
@@ -164,7 +164,6 @@ pub async fn start_agent_session(
     task_id: String,
     agent_state: tauri::State<'_, State>,
     task_state: tauri::State<'_, crate::task_manager::State>,
-    pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
     let cwd = resolve_root_cwd(&task_state);
 
@@ -218,7 +217,7 @@ pub async fn start_agent_session(
     args.push("--settings".to_string());
     args.push(hook_settings(&task_id));
 
-    start_pty_session(&app, &task_id, &cwd, "agent", &claude_bin, &args, &agent_state, &pool)
+    start_pty_session(&app, &task_id, &cwd, "agent", &claude_bin, &args, &agent_state)
         .await
         .map_err(|e| e.to_string())
 }
@@ -266,10 +265,9 @@ pub(crate) async fn start_login_pty(
     app: &tauri::AppHandle,
     cwd: &str,
     agent_state: &State,
-    pool: &SqlitePool,
 ) -> anyhow::Result<String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    start_pty_session(app, "__auth__", cwd, "auth", &shell, &[], agent_state, pool).await
+    start_pty_session(app, "__auth__", cwd, "auth", &shell, &[], agent_state).await
 }
 
 #[tauri::command]
@@ -279,7 +277,6 @@ pub async fn start_terminal_session(
     worktree_path: Option<String>,
     agent_state: tauri::State<'_, State>,
     task_state: tauri::State<'_, crate::task_manager::State>,
-    pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     // Open in the worktree when there is one; otherwise fall back to the worktree
@@ -288,7 +285,7 @@ pub async fn start_terminal_session(
         Some(p) if !p.is_empty() && std::path::Path::new(p).is_dir() => p.to_string(),
         _ => resolve_root_cwd(&task_state),
     };
-    start_pty_session(&app, &task_id, &cwd, "terminal", &shell, &[], &agent_state, &pool)
+    start_pty_session(&app, &task_id, &cwd, "terminal", &shell, &[], &agent_state)
         .await
         .map_err(|e| e.to_string())
 }
@@ -302,7 +299,6 @@ async fn start_pty_session(
     program: &str,
     extra_args: &[String],
     agent_state: &State,
-    pool: &SqlitePool,
 ) -> anyhow::Result<String> {
     let pty_system = portable_pty::native_pty_system();
     let pair = pty_system
@@ -351,29 +347,13 @@ async fn start_pty_session(
         .map_err(|e| anyhow::anyhow!("clone_reader failed: {e}"))?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().timestamp();
-
-    // Persist session row
-    let session_name = format!("{task_id}-{pty_type}");
-    sqlx::query(
-        "INSERT INTO agent_sessions (id, task_id, session_name, pty_type, started_at)
-         VALUES (?, ?, ?, ?, ?)",
-    )
-    .bind(&session_id)
-    .bind(task_id)
-    .bind(&session_name)
-    .bind(pty_type)
-    .bind(now)
-    .execute(pool)
-    .await?;
 
     // Spawn background reader that forwards PTY output to the frontend. It owns the
     // child handle so it can `wait()` on natural exit (avoiding a zombie), then it
-    // reaps the session from the map and the DB so the entry doesn't leak.
+    // reaps the session from the in-memory map.
     let app_clone = app.clone();
     let sid_clone = session_id.clone();
     let state_inner = Arc::clone(&agent_state.inner);
-    let pool_clone = pool.clone();
     let is_agent = pty_type == "agent";
     let task_for_reaper = task_id.to_string();
     tokio::task::spawn_blocking(move || {
@@ -402,16 +382,11 @@ async fn start_pty_session(
             }
         }
         // Reader hit EOF → the PTY exited on its own. Reap the child so it doesn't
-        // linger as a zombie, then drop the session entry and its DB row.
+        // linger as a zombie, then drop the session entry.
         let _ = child.wait();
         if let Ok(mut sessions) = state_inner.sessions.lock() {
             sessions.remove(&sid_clone);
         }
-        let _ = tauri::async_runtime::block_on(
-            sqlx::query("DELETE FROM agent_sessions WHERE id = ?")
-                .bind(&sid_clone)
-                .execute(&pool_clone),
-        );
         // Drop the reported activity with the process, so a "waiting on you" can
         // never outlive the agent it described.
         if is_agent {
@@ -449,7 +424,6 @@ pub async fn stop_agent_session(
     app: tauri::AppHandle,
     session_id: String,
     agent_state: tauri::State<'_, State>,
-    pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
     if let Ok(mut sessions) = agent_state.inner.sessions.lock() {
         if let Some(session) = sessions.remove(&session_id) {
@@ -461,12 +435,6 @@ pub async fn stop_agent_session(
             }
         }
     }
-
-    sqlx::query("DELETE FROM agent_sessions WHERE id = ?")
-        .bind(&session_id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| e.to_string())?;
 
     app.emit(crate::events::PTY_EXIT, serde_json::json!({ "session_id": session_id }))
         .map_err(|e| e.to_string())?;

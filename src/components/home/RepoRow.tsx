@@ -44,7 +44,6 @@ export function RepoRow({ entry, repo }: { entry: HomeEntry; repo: HomeRepo }) {
   }
 
   const clean = repo.modified === 0 && repo.staged === 0 && repo.added === 0 && repo.deleted === 0;
-  const reviewing = entry.kind === 'review' && repo.files_changed > 0;
 
   return (
     <>
@@ -74,20 +73,6 @@ export function RepoRow({ entry, repo }: { entry: HomeEntry; repo: HomeRepo }) {
         </span>
       </div>
 
-      {reviewing && (
-        <div className="detail-row muted">
-          <span className="detail-repo" />
-          <span className="review-progress">
-            <span className="review-bar">
-              <span
-                className="review-fill"
-                style={{ width: `${Math.min(100, (repo.files_reviewed / repo.files_changed) * 100)}%` }}
-              />
-            </span>
-            {repo.files_reviewed}/{repo.files_changed} files viewed
-          </span>
-        </div>
-      )}
 
       {repo.mr && (
         <div className="detail-row detail-mr-row">

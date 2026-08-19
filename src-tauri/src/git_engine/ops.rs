@@ -8,7 +8,7 @@ pub async fn commit(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -19,7 +19,7 @@ pub async fn commit(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_COMMIT, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_COMMIT, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -27,7 +27,7 @@ pub async fn commit(
 // ─── Staging ──────────────────────────────────────────────────────────────────
 
 async fn worktree_path(worktree_id: &str, pool: &SqlitePool) -> Result<String, String> {
-    let wt = crate::db::load::worktree(pool, worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(pool, worktree_id).await
         .map_err(|e| e.to_string())?;
     Ok(wt.path)
 }
@@ -89,7 +89,7 @@ pub async fn discard_file(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -98,7 +98,7 @@ pub async fn discard_file(
         "file_path": file_path,
     });
     bridge
-        .post(&pool, crate::ops::GIT_DISCARD, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_DISCARD, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -109,7 +109,7 @@ pub async fn discard_all(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -117,7 +117,7 @@ pub async fn discard_all(
         "worktree_path": wt.path,
     });
     bridge
-        .post(&pool, crate::ops::GIT_DISCARD_ALL, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_DISCARD_ALL, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -178,7 +178,7 @@ pub async fn push(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -188,7 +188,7 @@ pub async fn push(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_PUSH, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_PUSH, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -199,7 +199,7 @@ pub async fn pull(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -209,7 +209,7 @@ pub async fn pull(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_PULL, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_PULL, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -221,7 +221,7 @@ pub async fn rebase_on_main(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -232,7 +232,7 @@ pub async fn rebase_on_main(
     });
 
     bridge
-        .post(&pool, crate::ops::GIT_REBASE, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::GIT_REBASE, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }
@@ -243,7 +243,7 @@ pub async fn rebase_continue(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     // `-c core.editor=true` stands in for the old `GIT_EDITOR=true` env: it stops
@@ -277,7 +277,7 @@ pub async fn rebase_abort(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
     let output = super::run_git_output(&wt.path, &["rebase", "--abort"])

@@ -1,7 +1,8 @@
 use std::path::Path;
 use sqlx::SqlitePool;
 use tauri::Emitter;
-use crate::db::schema::Worktree;
+use crate::core::db::models::Worktree;
+use crate::core::db::store;
 use super::State;
 
 /// Start watching one worktree's working tree for filesystem changes, emitting
@@ -54,7 +55,7 @@ pub fn watch_worktree(path: &str, app: &tauri::AppHandle, git_state: &State) -> 
     Ok(())
 }
 
-/// Start (or ensure) filesystem watchers for every active worktree of a task, so
+/// Start (or ensure) filesystem watchers for every worktree of a session, so
 /// edits made by the agent, the terminal, or external tools auto-refresh the diff.
 /// Called by the frontend when a workspace becomes ready and after adding a repo.
 #[tauri::command]
@@ -64,10 +65,9 @@ pub async fn watch_task_worktrees(
     pool: tauri::State<'_, SqlitePool>,
     git_state: tauri::State<'_, State>,
 ) -> Result<(), String> {
-    let worktrees: Vec<Worktree> =
-        crate::db::load::active_worktrees(&pool, &task_id)
-            .await
-            .map_err(|e| e.to_string())?;
+    let worktrees: Vec<Worktree> = store::worktrees::for_session(&*pool, &task_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Sweep entries whose worktree dir no longer exists on disk: a closed or
     // re-provisioned worktree leaves a watcher bound to a dead path. Dropping it

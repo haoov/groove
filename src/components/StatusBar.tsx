@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Terminal } from 'lucide-react';
 import { useStore, useSession } from '../store';
-import { activeWorktreeFor } from '../lib/workspace';
+import { worktreeFor } from '../lib/workspace';
 import { toggleTerminal } from '../lib/panes';
 
 export function StatusBar() {
@@ -38,7 +38,7 @@ export function StatusBar() {
 
         {/* At-a-glance per-repo git status (replaces the old sidebar chip dashboard). */}
         {activeTask && activeRepos.map((repo) => {
-          const wt = activeWorktreeFor(activeWorktrees, repo.id);
+          const wt = worktreeFor(activeWorktrees, repo.id);
           const st = wt ? worktreeStatus[wt.id] : undefined;
           const dirty = st ? st.modified + st.staged : 0;
           const title = st

@@ -1,4 +1,5 @@
 use sqlx::SqlitePool;
+use crate::core::db::store;
 use super::commands::load_mr_context;
 use super::platform::make_client;
 
@@ -39,12 +40,9 @@ async fn with_notion_footer(
     task_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<String> {
-    let page_id: Option<String> = sqlx::query_scalar(
-        "SELECT notion_page_id FROM tasks WHERE short_id = ? AND notion_page_id != ''",
-    )
-    .bind(task_id)
-    .fetch_optional(pool)
-    .await?;
+    let page_id = store::sessions::get_opt(pool, task_id)
+        .await?
+        .and_then(|s| s.notion_page_id);
 
     Ok(apply_footer(description, task_id, page_id.as_deref()))
 }
@@ -56,29 +54,18 @@ pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     let title = payload["title"].as_str().unwrap_or("WIP");
     let description = payload["description"].as_str().unwrap_or("");
 
-    let wt = crate::db::load::worktree(pool, worktree_id).await?;
+    let wt = store::worktrees::get(pool, worktree_id).await?;
+    let repo = store::repos::get(pool, &wt.repo_id).await?;
 
-    let repo = crate::db::load::repo(pool, &wt.repo_id).await?;
-
-    let described = with_notion_footer(description, &wt.task_id, pool).await?;
+    let described = with_notion_footer(description, &wt.session_id, pool).await?;
 
     let client = make_client(&repo);
     let (remote_id, url) = client
         .create_mr(&repo, &wt.branch, title, &described)
         .await?;
 
-    let mr_id = uuid::Uuid::new_v4().to_string();
-    sqlx::query(
-        "INSERT INTO mrs (id, worktree_id, platform, remote_id, url, state)
-         VALUES (?, ?, ?, ?, ?, 'open')",
-    )
-    .bind(&mr_id)
-    .bind(worktree_id)
-    .bind(client.platform_name())
-    .bind(&remote_id)
-    .bind(&url)
-    .execute(pool)
-    .await?;
+    store::mrs::upsert(pool, worktree_id, client.platform_name(), &remote_id, &url, "open")
+        .await?;
 
     Ok(())
 }
@@ -95,7 +82,7 @@ pub async fn update_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     // A description update REPLACES the whole body, so the footer has to be
     // re-appended here or the ticket link vanishes on every edit.
     let described = match description {
-        Some(d) => Some(with_notion_footer(d, &wt.task_id, pool).await?),
+        Some(d) => Some(with_notion_footer(d, &wt.session_id, pool).await?),
         None => None,
     };
 
@@ -117,10 +104,7 @@ pub async fn close_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> any
     let client = make_client(&repo);
     client.close_mr(&repo, &mr.remote_id).await?;
 
-    sqlx::query("UPDATE mrs SET state = 'closed' WHERE id = ?")
-        .bind(mr_id)
-        .execute(pool)
-        .await?;
+    store::mrs::set_state(pool, mr_id, "closed").await?;
 
     Ok(())
 }

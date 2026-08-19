@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
-use crate::db::schema::{Mr, Repo, Worktree};
+use crate::core::db::models::{Mr, Repo, Worktree};
+use crate::core::db::store;
 use super::gitlab::fetch_and_upsert_mrs;
 use super::platform::make_client;
 
@@ -11,15 +12,9 @@ pub(super) async fn load_mr_context(
     mr_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<(Mr, Worktree, Repo)> {
-    let mr: Mr = sqlx::query_as("SELECT * FROM mrs WHERE id = ?")
-        .bind(mr_id)
-        .fetch_one(pool)
-        .await?;
-
-    let wt = crate::db::load::worktree(pool, &mr.worktree_id).await?;
-
-    let repo = crate::db::load::repo(pool, &wt.repo_id).await?;
-
+    let mr = store::mrs::get(pool, mr_id).await?;
+    let wt = store::worktrees::get(pool, &mr.worktree_id).await?;
+    let repo = store::repos::get(pool, &wt.repo_id).await?;
     Ok((mr, wt, repo))
 }
 
@@ -33,10 +28,11 @@ pub async fn get_mr(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<Vec<Mr>, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
-
-    let repo = crate::db::load::repo(&pool, &wt.repo_id).await
+    let repo = store::repos::get(&*pool, &wt.repo_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     if !repo.host.contains("github") {
@@ -46,9 +42,7 @@ pub async fn get_mr(
         }
     }
 
-    sqlx::query_as("SELECT * FROM mrs WHERE worktree_id = ?")
-        .bind(&worktree_id)
-        .fetch_all(&*pool)
+    store::mrs::for_worktree(&*pool, &worktree_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -143,7 +137,8 @@ pub async fn create_mr(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::confirmation_bridge::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -156,7 +151,7 @@ pub async fn create_mr(
     });
 
     bridge
-        .post(&pool, crate::ops::MR_CREATE, payload, "ui", Some(&wt.task_id))
+        .post(&pool, crate::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))
         .await
         .map_err(|e| e.to_string())
 }

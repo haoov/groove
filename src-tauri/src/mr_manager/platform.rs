@@ -1,4 +1,4 @@
-use crate::db::schema::Repo;
+use crate::core::db::models::Repo;
 
 /// A forge CLI is not installed.
 ///

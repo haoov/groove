@@ -46,7 +46,7 @@ export function AnnotationsTab({
             />
             <span className="annotation-file">{a.file_path.split('/').pop()}</span>
             <span className="annotation-line">
-              :{a.start_line !== a.end_line ? `${a.start_line}–${a.end_line}` : a.line_num}
+              :{a.start_line !== a.end_line ? `${a.start_line}–${a.end_line}` : a.start_line}
             </span>
           </button>
           <div className="annotation-content">

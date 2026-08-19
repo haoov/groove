@@ -12,7 +12,8 @@
 use sqlx::SqlitePool;
 use tauri::Manager;
 
-use crate::db::schema::Repo;
+use crate::core::db::models::{Repo, SessionKind};
+use crate::core::db::store;
 use crate::git_engine::MainRepo;
 
 /// Every name a slug answers to: itself, and each run of trailing segments. So
@@ -76,17 +77,18 @@ enum Provision {
     Refused(&'static str),
 }
 
-fn provision_for(task_id: &str) -> Provision {
-    if task_id == super::DESK_ID {
-        Provision::Refused("the desk has no worktrees — open a task or an explorer first")
-    } else if task_id.starts_with("review-") {
+fn provision_for(kind: SessionKind) -> Provision {
+    match kind {
+        SessionKind::Desk => {
+            Provision::Refused("the desk has no worktrees — open a task or an explorer first")
+        }
         // A review's worktree is the MR's source branch; a second repo would get a
         // worktree on a branch named after the review, which is meaningless.
-        Provision::Refused("a review session tracks one MR and takes no extra repos")
-    } else if task_id.starts_with("explorer-") {
-        Provision::Detached
-    } else {
-        Provision::Branch
+        SessionKind::Review => {
+            Provision::Refused("a review session tracks one MR and takes no extra repos")
+        }
+        SessionKind::Explorer => Provision::Detached,
+        SessionKind::Task => Provision::Branch,
     }
 }
 
@@ -111,7 +113,10 @@ pub async fn add_repo_impl(
         .ok_or_else(|| anyhow::anyhow!("missing repo"))?;
     let branch = payload["branch"].as_str().filter(|s| !s.trim().is_empty());
 
-    let plan = provision_for(task_id);
+    let kind = store::sessions::kind_of(pool, task_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("no session {task_id}"))?;
+    let plan = provision_for(kind);
     if let Provision::Refused(why) = plan {
         anyhow::bail!("{why}");
     }
@@ -129,15 +134,7 @@ pub async fn add_repo_impl(
     )
     .await?;
 
-    sqlx::query(
-        "INSERT INTO task_repos (task_id, repo_id, added_at) VALUES (?, ?, ?)
-         ON CONFLICT(task_id, repo_id) DO NOTHING",
-    )
-    .bind(task_id)
-    .bind(&repo.id)
-    .bind(chrono::Utc::now().timestamp())
-    .execute(pool)
-    .await?;
+    store::repos::attach(pool, task_id, &repo.id).await?;
 
     // Both provisioning paths refresh the MAIN clone first, so the worktree starts
     // from an up-to-date base.
@@ -271,9 +268,9 @@ mod tests {
 
     #[test]
     fn sessions_that_take_no_repos() {
-        assert!(matches!(provision_for("desk"), Provision::Refused(_)));
-        assert!(matches!(provision_for("review-4f2a1b"), Provision::Refused(_)));
-        assert!(matches!(provision_for("explorer-0c953b"), Provision::Detached));
-        assert!(matches!(provision_for("TASKS2-3822"), Provision::Branch));
+        assert!(matches!(provision_for(SessionKind::Desk), Provision::Refused(_)));
+        assert!(matches!(provision_for(SessionKind::Review), Provision::Refused(_)));
+        assert!(matches!(provision_for(SessionKind::Explorer), Provision::Detached));
+        assert!(matches!(provision_for(SessionKind::Task), Provision::Branch));
     }
 }

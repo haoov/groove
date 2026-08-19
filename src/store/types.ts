@@ -362,10 +362,6 @@ export interface SessionState {
 
   ptySessions: PtySessionState[];
   activePtySessionId: string | null;
-
-  /** Review sessions: files marked "viewed", keyed `${repoId}/${path}`.
-   *  Persisted via set_file_reviewed; seeded from get_reviewed_files. */
-  reviewedFiles: Set<string>;
 }
 
 /** The per-session actions a component reaches through `useSession`. */
@@ -425,10 +421,6 @@ export interface SessionActions {
   setWorktreeStatus: (m: Record<string, WorktreeStatus>) => void;
   setRebaseConflict: (rc: SessionState['rebaseConflict']) => void;
   removePtySession: (id: string) => void;
-  /** Replace the viewed-files set (seeding from get_reviewed_files). */
-  setReviewedFiles: (keys: Set<string>) => void;
-  /** Toggle a file's viewed state (optimistic; persists via set_file_reviewed). */
-  toggleReviewedFile: (repoId: string, filePath: string) => void;
 }
 
 /** Convenience aliases so existing call-sites keep their `active*` field names. */

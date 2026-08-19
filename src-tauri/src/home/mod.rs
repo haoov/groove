@@ -1,19 +1,16 @@
 //! The Home snapshot: what is *locally real* right now.
 //!
 //! Home's job is the state Notion can't show — which repos are provisioned, what
-//! the working trees look like, and where each MR stands. Everything here is
-//! local git or SQLite except the MR signals, which `mr_manager` caches.
-//!
-//! Cost matters: this runs for every live session on each Home refresh, so it is
-//! **two git calls per provisioned worktree** (`status --porcelain=v2 --branch`
-//! covers dirty/staged/conflicts *and* ahead/behind; `diff --numstat` covers the
-//! line delta), all issued concurrently. Tasks with no worktrees cost nothing —
-//! the Notion queue is rendered from the task list the frontend already holds.
+//! the working trees look like, and where each MR stands. One SQL statement
+//! (store::home::snapshot) delivers every row; the per-worktree git state is the
+//! only remaining cost, issued concurrently, plus the cached MR signals.
 
 use serde::Serialize;
 use sqlx::SqlitePool;
 
-use crate::db::schema::{Mr, Repo, Task, Worktree};
+use crate::core::db::models::{SessionKind, SessionState, Worktree};
+use crate::core::db::store::home::HomeRow;
+use crate::core::db::store;
 
 #[derive(Debug, Serialize)]
 pub struct HomeMr {
@@ -50,8 +47,6 @@ pub struct HomeRepo {
     pub added: i64,
     pub deleted: i64,
     pub files_changed: i64,
-    /// Files ticked off in a review session (drives the "3/12 viewed" progress).
-    pub files_reviewed: i64,
     pub mr: Option<HomeMr>,
 }
 
@@ -62,13 +57,11 @@ pub struct HomeEntry {
     pub status: String,
     /// Notion priority ("High"/"Medium"/"Low"); None for synthetic sessions.
     pub priority: Option<String>,
-    /// "task" | "explorer" | "review" — same derivation as open_task.
-    pub kind: String,
+    pub kind: SessionKind,
+    pub state: SessionState,
     pub repos: Vec<HomeRepo>,
 }
 
-/// Everything with a local footprint: any task that has worktrees, plus every
-/// synthetic session (explorer / review) even before repos are attached.
 #[tauri::command]
 pub async fn get_home_snapshot(
     force_mr: Option<bool>,
@@ -80,71 +73,50 @@ pub async fn get_home_snapshot(
 }
 
 async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeEntry>> {
-    // The desk is synthetic too (empty page id) but it is not a session: it has no
-    // worktrees and is reachable only through the console on Home.
-    let tasks: Vec<Task> = sqlx::query_as(
-        "SELECT * FROM tasks
-         WHERE (notion_page_id = '' AND short_id != ?)
-            OR short_id IN (SELECT DISTINCT task_id FROM worktrees)
-         ORDER BY last_synced_at DESC",
-    )
-    .bind(crate::task_manager::DESK_ID)
-    .fetch_all(pool)
-    .await?;
+    let rows = store::home::snapshot(pool).await?;
+    let entries = group_rows(rows);
 
-    let entries = futures_util::future::join_all(
-        tasks.into_iter().map(|task| async move { entry_for(task, force_mr, pool).await }),
+    Ok(futures_util::future::join_all(
+        entries.into_iter().map(|(entry, repo_rows)| async move {
+            let repos = futures_util::future::join_all(
+                repo_rows.into_iter().map(|row| repo_state(row, force_mr)),
+            )
+            .await;
+            HomeEntry { repos, ..entry }
+        }),
     )
-    .await;
-
-    Ok(entries)
+    .await)
 }
 
-async fn entry_for(task: Task, force_mr: bool, pool: &SqlitePool) -> HomeEntry {
-    let kind = if task.short_id.starts_with("review-") {
-        "review"
-    } else if task.notion_page_id.is_empty() {
-        "explorer"
-    } else {
-        "task"
-    };
-
-    // Every repo attached to the task — including ones with no worktree yet, so
-    // Home can show "not provisioned" rather than silently omitting them.
-    let repos: Vec<Repo> = sqlx::query_as(
-        "SELECT r.* FROM repos r JOIN task_repos tr ON r.id = tr.repo_id
-         WHERE tr.task_id = ? ORDER BY r.project",
-    )
-    .bind(&task.short_id)
-    .fetch_all(pool)
-    .await
-    .unwrap_or_default();
-
-    let short_id = task.short_id.clone();
-    let repo_states = futures_util::future::join_all(
-        repos
-            .into_iter()
-            .map(|repo| {
-                let short_id = short_id.clone();
-                async move { repo_state(&short_id, repo, force_mr, pool).await }
-            }),
-    )
-    .await;
-
-    HomeEntry {
-        short_id: task.short_id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        kind: kind.to_string(),
-        repos: repo_states,
+/// Fold the flat snapshot rows into one entry per session, keeping row order.
+fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
+    let mut entries: Vec<(HomeEntry, Vec<HomeRow>)> = vec![];
+    for row in rows {
+        if entries.last().map(|(e, _)| e.short_id.as_str()) != Some(row.session_id.as_str()) {
+            entries.push((
+                HomeEntry {
+                    short_id: row.session_id.clone(),
+                    title: row.title.clone(),
+                    status: row.status.clone().unwrap_or_else(|| "in_progress".to_string()),
+                    priority: row.priority.clone(),
+                    kind: row.kind,
+                    state: row.state,
+                    repos: vec![],
+                },
+                vec![],
+            ));
+        }
+        if row.repo_id.is_some() {
+            entries.last_mut().unwrap().1.push(row);
+        }
     }
+    entries
 }
 
-async fn repo_state(task_id: &str, repo: Repo, force_mr: bool, pool: &SqlitePool) -> HomeRepo {
+async fn repo_state(row: HomeRow, force_mr: bool) -> HomeRepo {
     let base = HomeRepo {
-        repo_id: repo.id.clone(),
-        project: repo.project.clone(),
+        repo_id: row.repo_id.clone().unwrap_or_default(),
+        project: row.project.clone().unwrap_or_default(),
         worktree_id: None,
         branch: None,
         provisioned: false,
@@ -157,22 +129,21 @@ async fn repo_state(task_id: &str, repo: Repo, force_mr: bool, pool: &SqlitePool
         added: 0,
         deleted: 0,
         files_changed: 0,
-        files_reviewed: 0,
         mr: None,
     };
 
-    let wt = crate::db::load::worktree_for_repo(pool, task_id, &repo.id)
-        .await
-        .unwrap_or(None);
+    let (Some(worktree_id), Some(path), Some(branch)) =
+        (row.worktree_id.clone(), row.worktree_path.clone(), row.branch.clone())
+    else {
+        return base;
+    };
 
-    let Some(wt) = wt else { return base };
+    let mr = mr_signals_for(&row, force_mr).await;
 
-    let mr = mr_for(&wt, &repo, force_mr, pool).await;
-
-    if !std::path::Path::new(&wt.path).exists() {
+    if !std::path::Path::new(&path).exists() {
         return HomeRepo {
-            worktree_id: Some(wt.id),
-            branch: Some(wt.branch),
+            worktree_id: Some(worktree_id),
+            branch: Some(branch),
             provisioned: true,
             missing: true,
             mr,
@@ -180,16 +151,18 @@ async fn repo_state(task_id: &str, repo: Repo, force_mr: bool, pool: &SqlitePool
         };
     }
 
+    let wt = Worktree {
+        id: worktree_id.clone(),
+        session_id: row.session_id.clone(),
+        repo_id: base.repo_id.clone(),
+        branch: branch.clone(),
+        path,
+        base_ref: row.base_ref.clone(),
+        created_at: 0,
+    };
+
     let (modified, staged, conflicted, ab) = working_tree_state(&wt.path).await;
     let (added, deleted, files_changed) = line_delta(&wt).await;
-    let files_reviewed: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM reviewed_files WHERE task_id = ? AND repo_id = ?",
-    )
-    .bind(task_id)
-    .bind(&repo.id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
     // No upstream yet (never pushed) → count everything past the diff base as ahead.
     let (ahead, behind) = match ab {
         Some(ab) => ab,
@@ -197,8 +170,8 @@ async fn repo_state(task_id: &str, repo: Repo, force_mr: bool, pool: &SqlitePool
     };
 
     HomeRepo {
-        worktree_id: Some(wt.id),
-        branch: Some(wt.branch),
+        worktree_id: Some(worktree_id),
+        branch: Some(branch),
         provisioned: true,
         missing: false,
         modified,
@@ -209,27 +182,33 @@ async fn repo_state(task_id: &str, repo: Repo, force_mr: bool, pool: &SqlitePool
         added,
         deleted,
         files_changed,
-        files_reviewed,
         mr,
         ..base
     }
 }
 
-async fn mr_for(wt: &Worktree, repo: &Repo, force_mr: bool, pool: &SqlitePool) -> Option<HomeMr> {
-    let mr: Mr = sqlx::query_as("SELECT * FROM mrs WHERE worktree_id = ? ORDER BY rowid DESC LIMIT 1")
-        .bind(&wt.id)
-        .fetch_optional(pool)
-        .await
-        .ok()
-        .flatten()?;
-
-    let sig = crate::mr_manager::mr_signals(repo, &mr.id, &mr.remote_id, force_mr).await;
+async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
+    let (mr_id, platform, remote_id, url, state) = (
+        row.mr_id.clone()?,
+        row.mr_platform.clone()?,
+        row.mr_remote_id.clone()?,
+        row.mr_url.clone()?,
+        row.mr_state.clone()?,
+    );
+    let repo = crate::core::db::models::Repo {
+        id: row.repo_id.clone()?,
+        host: row.repo_host.clone()?,
+        group_path: String::new(),
+        project: row.project.clone().unwrap_or_default(),
+        local_path: row.repo_local_path.clone()?,
+    };
+    let sig = crate::mr_manager::mr_signals(&repo, &mr_id, &remote_id, force_mr).await;
     Some(HomeMr {
-        id: mr.id,
-        platform: mr.platform,
-        remote_id: mr.remote_id,
-        state: mr.state,
-        url: mr.url,
+        id: mr_id,
+        platform,
+        remote_id,
+        state,
+        url,
         ci: sig.ci,
         unresolved: sig.unresolved,
         approved: sig.approved,

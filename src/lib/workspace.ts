@@ -4,13 +4,9 @@
 
 import type { Worktree, Mr, Annotation, MrThread } from '../types/ipc';
 
-/** The active worktree for a repo (the one git ops target). */
-export const activeWorktreeFor = (worktrees: Worktree[], repoId: string | null | undefined) =>
-  repoId ? worktrees.find((w) => w.repo_id === repoId && w.is_active === 1) : undefined;
-
-/** Any worktree for a repo (active flag ignored). */
-export const worktreeFor = (worktrees: Worktree[], repoId: string) =>
-  worktrees.find((w) => w.repo_id === repoId);
+/** The worktree for a repo (the one git ops target). */
+export const worktreeFor = (worktrees: Worktree[], repoId: string | null | undefined) =>
+  repoId ? worktrees.find((w) => w.repo_id === repoId) : undefined;
 
 /** The MR attached to a worktree, if any. */
 export const mrForWorktree = (mrs: Mr[], worktreeId: string | undefined) =>

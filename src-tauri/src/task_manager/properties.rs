@@ -276,7 +276,7 @@ pub(crate) async fn set_property(
     let updated = notion_patch(token, &format!("v1/pages/{notion_page_id}"), &body).await?;
 
     if let Ok(task) = super::notion::page_to_task(&updated, cfg) {
-        let _ = super::notion::upsert_task(&task, pool).await;
+        let _ = crate::core::db::store::notion_tasks::upsert(pool, &task).await;
     }
 
     let (_, display) = read_value(&prop.kind, &updated["properties"][property]);

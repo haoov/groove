@@ -65,7 +65,7 @@ export function Sidebar() {
   const loadMoreCommits = useSession((s) => s.loadMoreCommits);
 
   const worktreeForRepo = useCallback(
-    (repoId: string) => activeWorktrees.find((w) => w.repo_id === repoId && w.is_active === 1),
+    (repoId: string) => activeWorktrees.find((w) => w.repo_id === repoId),
     [activeWorktrees]
   );
 
@@ -81,7 +81,7 @@ export function Sidebar() {
   // or interleave.
   useEffect(() => {
     if (!activeTask || sidebarTab !== 'git') return;
-    const wt = activeWorktrees.find((w) => w.repo_id === activeRepoId && w.is_active === 1);
+    const wt = activeWorktrees.find((w) => w.repo_id === activeRepoId);
     let cancelled = false;
     invoke<CommitEntry[]>('get_commit_log', { taskId: activeTask.short_id, worktreeId: wt?.id, limit: commitLimit })
       .then((c) => { if (!cancelled) setCommits(c, c.length >= commitLimit); })
@@ -254,7 +254,7 @@ export function Sidebar() {
               await invoke('resolve_annotation', { id: a.id });
               resolveAnnotation(a.id);
               bumpMrs();
-              notify({ kind: 'success', source: 'mr', taskId: a.task_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
+              notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
             } catch (e) {
               setLastError(String(e));
             }

@@ -7,6 +7,8 @@
 use tauri::Emitter;
 
 use crate::confirmation_bridge::ResolveOutcome;
+use crate::core::db::models::SessionKind;
+use crate::core::db::store;
 
 use super::{str_field, McpState, ToolCallResponse};
 
@@ -42,7 +44,7 @@ async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpStat
     let Some(wt_id) = payload["worktree_id"].as_str().map(|s| s.to_string()) else {
         return;
     };
-    if let Ok(wt) = crate::db::load::worktree(&state.pool, &wt_id).await {
+    if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
         payload["worktree_path"] = serde_json::json!(wt.path);
         payload["branch"] = serde_json::json!(wt.branch);
     }
@@ -64,10 +66,13 @@ pub(super) async fn via_bridge(
         crate::ops::GIT_REBASE,
         crate::ops::MR_CREATE,
     ];
-    let is_explorer = state
-        .task_for(mcp_session)
-        .map(|id| id.starts_with("explorer-"))
-        .unwrap_or(false);
+    let is_explorer = match state.task_for(mcp_session) {
+        Some(id) => matches!(
+            store::sessions::kind_of(&state.pool, &id).await?,
+            Some(SessionKind::Explorer)
+        ),
+        None => false,
+    };
     if is_explorer && NEEDS_BRANCH.contains(&op_type) {
         return Ok(ToolCallResponse::err(
             "This is an explorer session — convert it to a task (create_task_from_explorer) before pushing, rebasing, or opening an MR.",
@@ -110,19 +115,18 @@ async fn check_convertible(
     explorer_id: &str,
     state: &McpState,
 ) -> anyhow::Result<Option<ToolCallResponse>> {
-    let source = crate::db::load::task_opt(&state.pool, explorer_id).await?;
-    Ok(match source {
+    Ok(match store::sessions::kind_of(&state.pool, explorer_id).await? {
         None => Some(ToolCallResponse::err(format!(
             "no session {explorer_id} to convert"
         ))),
-        Some(t) if !t.notion_page_id.is_empty() => Some(ToolCallResponse::err(format!(
+        Some(SessionKind::Explorer) => None,
+        Some(SessionKind::Task) => Some(ToolCallResponse::err(format!(
             "The focused session is {explorer_id}, a real task — not an explorer. \
              Ask the user to focus the explorer session they want converted."
         ))),
-        Some(_) if !explorer_id.starts_with("explorer-") => Some(ToolCallResponse::err(format!(
-            "{explorer_id} is a review session — only explorer sessions convert to tasks."
+        Some(kind) => Some(ToolCallResponse::err(format!(
+            "{explorer_id} is a {kind:?} session — only explorer sessions convert to tasks."
         ))),
-        Some(_) => None,
     })
 }
 
@@ -222,15 +226,15 @@ pub(super) async fn create_annotation(
         .unwrap_or_else(|| input["line_num"].as_i64().unwrap_or(0));
     let end_line = input["end_line"].as_i64().unwrap_or(start_line);
 
-    let row = crate::annotation_store::create_annotation_impl(
-        str_field(&input, "task_id")?,
-        str_field(&input, "repo_id")?,
-        str_field(&input, "file_path")?,
+    let row = store::annotations::create(
+        &state.pool,
+        &str_field(&input, "task_id")?,
+        &str_field(&input, "repo_id")?,
+        &str_field(&input, "file_path")?,
         start_line,
         end_line,
-        mark_as_agent(&str_field(&input, "content")?),
-        str_field(&input, "author").unwrap_or_else(|_| "agent".to_string()),
-        &state.pool,
+        &mark_as_agent(&str_field(&input, "content")?),
+        &str_field(&input, "author").unwrap_or_else(|_| "agent".to_string()),
     )
     .await?;
 
@@ -248,7 +252,10 @@ pub(super) async fn resolve_annotation(
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
     let id = input["id"].as_str().unwrap_or("").to_string();
-    crate::annotation_store::resolve_annotation_impl(input, &state.pool).await?;
+    if id.is_empty() {
+        return Err(anyhow::anyhow!("missing id"));
+    }
+    store::annotations::resolve(&state.pool, &id).await?;
     let _ = state.bridge.app_handle().emit(
         crate::events::ANNOTATION_RESOLVED,
         serde_json::json!({ "id": id }),
@@ -336,14 +343,12 @@ async fn notion_target(
             None => return Ok(Err(ToolCallResponse::err("no task in scope"))),
         },
     };
-    let page: Option<String> =
-        sqlx::query_scalar("SELECT notion_page_id FROM tasks WHERE short_id = ?")
-            .bind(&task_id)
-            .fetch_optional(&state.pool)
-            .await?;
+    let page = store::sessions::get_opt(&state.pool, &task_id)
+        .await?
+        .and_then(|s| s.notion_page_id);
     match page {
-        Some(p) if !p.is_empty() => Ok(Ok((task_id, p))),
-        _ => Ok(Err(ToolCallResponse::err(format!(
+        Some(page_id) => Ok(Ok((task_id, page_id))),
+        None => Ok(Err(ToolCallResponse::err(format!(
             "{task_id} has no Notion page — explorer and review sessions aren't Notion tasks"
         )))),
     }

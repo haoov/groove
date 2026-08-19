@@ -251,7 +251,7 @@ export function ConfirmModal() {
   const current = pendingConfirmations[0];
   // The session this request belongs to, so "allow everything" can be scoped to it.
   const ownerId = useStore((st) =>
-    current?.task_id ? findSessionByTask(st, current.task_id)?.id ?? null : null,
+    current?.session_id ? findSessionByTask(st, current.session_id)?.id ?? null : null,
   );
   const setAutoApprove = (id: string, v: boolean) => sessionActions(id).setAutoApprove(v);
 

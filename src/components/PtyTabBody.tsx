@@ -44,7 +44,7 @@ export function PtyTabBody({
     if (!activeTask || starting) return;
     setStarting(true);
     try {
-      const wt = activeWorktrees.find((w) => w.is_active === 1);
+      const wt = activeWorktrees[0];
       const sid = await invoke<string>('start_terminal_session', {
         taskId: activeTask.short_id,
         worktreePath: wt?.path ?? null,

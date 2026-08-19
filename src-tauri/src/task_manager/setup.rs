@@ -5,7 +5,6 @@
 //! missing tool through a failed action.
 
 use serde::Serialize;
-use sqlx::SqlitePool;
 
 use super::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
 use super::notion::notion_get;
@@ -199,10 +198,9 @@ mod tests {
 pub async fn start_auth_session(
     app: tauri::AppHandle,
     agent_state: tauri::State<'_, crate::agent_manager::State>,
-    pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    crate::agent_manager::start_login_pty(&app, &home, &agent_state, &pool)
+    crate::agent_manager::start_login_pty(&app, &home, &agent_state)
         .await
         .map_err(|e| e.to_string())
 }

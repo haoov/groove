@@ -6,7 +6,7 @@ use std::{
 use sqlx::SqlitePool;
 use tauri::{AppHandle, Emitter};
 
-use crate::db::schema::PendingConfirmation;
+use crate::core::db::store;
 
 /// Outcome of a resolved confirmation, delivered to the waiting MCP handler.
 pub enum ResolveOutcome {
@@ -62,25 +62,14 @@ impl Bridge {
         origin: &str,
         task_id: Option<&str>,
     ) -> anyhow::Result<()> {
-        let payload_str = payload.to_string();
-
-        sqlx::query(
-            "INSERT INTO pending_confirmations (id, task_id, op_type, payload, origin)
-             VALUES (?, ?, ?, ?, ?)",
-        )
-        .bind(id)
-        .bind(task_id)
-        .bind(op_type)
-        .bind(&payload_str)
-        .bind(origin)
-        .execute(pool)
-        .await?;
+        store::confirmations::insert(pool, id, task_id, op_type, &payload.to_string(), origin)
+            .await?;
 
         self.inner.handle.emit(
             crate::events::CONFIRMATION_REQUESTED,
             serde_json::json!({
                 "id": id,
-                "task_id": task_id,
+                "session_id": task_id,
                 "op_type": op_type,
                 "payload": payload,
                 "origin": origin,
@@ -101,17 +90,9 @@ impl Bridge {
         task_id: Option<&str>,
         payload: &serde_json::Value,
     ) -> bool {
-        sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM pending_confirmations
-             WHERE op_type = ? AND IFNULL(task_id, '') = IFNULL(?, '') AND payload = ?",
-        )
-        .bind(op_type)
-        .bind(task_id)
-        .bind(payload.to_string())
-        .fetch_one(pool)
-        .await
-        .map(|n| n > 0)
-        .unwrap_or(false)
+        store::confirmations::identical_pending(pool, op_type, task_id, &payload.to_string())
+            .await
+            .unwrap_or(false)
     }
 
     /// Register a oneshot sender so MCP write handlers can block until the user
@@ -140,13 +121,7 @@ impl Bridge {
     ) -> anyhow::Result<()> {
         // Atomically claim the row so two concurrent resolves (e.g. double
         // Enter in the modal) can never execute the op twice.
-        let row: Option<PendingConfirmation> =
-            sqlx::query_as("DELETE FROM pending_confirmations WHERE id = ? RETURNING *")
-                .bind(id)
-                .fetch_optional(pool)
-                .await?;
-
-        let Some(confirmation) = row else {
+        let Some(confirmation) = store::confirmations::claim(pool, id).await? else {
             return Err(anyhow::anyhow!("confirmation {id} not found (already resolved?)"));
         };
 
@@ -182,7 +157,7 @@ impl Bridge {
             crate::events::CONFIRMATION_RESOLVED,
             serde_json::json!({
                 "id": id,
-                "task_id": confirmation.task_id,
+                "session_id": confirmation.session_id,
                 "approved": approved,
                 "op_type": &confirmation.op_type,
                 "result": result,
@@ -212,22 +187,17 @@ impl Bridge {
     }
 }
 
-/// Re-emit all rows that survived an app crash so the user can still act on them.
+/// Re-emit all rows that survived an app crash so the user can still act on
+/// them, oldest first.
 pub async fn surface_pending(pool: &SqlitePool, handle: &AppHandle) {
-    let rows: Vec<PendingConfirmation> =
-        sqlx::query_as("SELECT * FROM pending_confirmations")
-            .fetch_all(pool)
-            .await
-            .unwrap_or_default();
-
-    for row in rows {
+    for row in store::confirmations::all(pool).await.unwrap_or_default() {
         let payload: serde_json::Value =
             serde_json::from_str(&row.payload).unwrap_or_default();
         let _ = handle.emit(
             crate::events::CONFIRMATION_REQUESTED,
             serde_json::json!({
                 "id": row.id,
-                "task_id": row.task_id,
+                "session_id": row.session_id,
                 "op_type": row.op_type,
                 "payload": payload,
                 "origin": row.origin,
@@ -339,21 +309,17 @@ async fn execute_op(
             crate::mr_manager::create_mr_impl(payload, pool).await?;
             // Hand back the MR the op just recorded — the agent's next step is
             // almost always "give me the link".
-            let row: Option<(String, String)> = sqlx::query_as(
-                "SELECT remote_id, url FROM mrs WHERE worktree_id = ? ORDER BY rowid DESC LIMIT 1",
-            )
-            .bind(&worktree_id)
-            .fetch_optional(pool)
-            .await
-            .ok()
-            .flatten();
-            Ok(match row {
-                Some((iid, url)) => serde_json::json!({
+            let latest = store::mrs::latest_for_worktree(pool, &worktree_id)
+                .await
+                .ok()
+                .flatten();
+            Ok(match latest {
+                Some(mr) => serde_json::json!({
                     "ok": true,
                     "op": op_type,
-                    "message": format!("Merge request !{iid} created from {branch}"),
-                    "iid": iid,
-                    "url": url,
+                    "message": format!("Merge request !{} created from {branch}", mr.remote_id),
+                    "iid": mr.remote_id,
+                    "url": mr.url,
                 }),
                 None => op_ok(op_type, format!("Merge request created from {branch}")),
             })

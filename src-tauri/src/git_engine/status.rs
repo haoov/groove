@@ -15,7 +15,8 @@ pub async fn get_worktree_status(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<WorktreeStatus, String> {
-    let wt = crate::db::load::worktree(&pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let status_out = super::run_git_output(&wt.path, &["status", "--porcelain"])
