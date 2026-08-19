@@ -4,34 +4,35 @@ use crate::core::config::NotionConfig;
 
 pub(super) const NOTION_BASE: &str = "https://api.notion.com";
 pub(super) const NOTION_VERSION: &str = "2022-06-28";
-pub(super) fn notion_client(token: &str) -> anyhow::Result<reqwest::Client> {
-    use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {token}"))
-            .map_err(|e| anyhow::anyhow!("invalid token: {e}"))?,
-    );
-    headers.insert(
-        "Notion-Version",
-        HeaderValue::from_static(NOTION_VERSION),
-    );
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    Ok(reqwest::Client::builder().default_headers(headers).build()?)
+
+async fn notion_call(
+    method: reqwest::Method,
+    token: &str,
+    path: &str,
+    body: Option<&serde_json::Value>,
+) -> anyhow::Result<serde_json::Value> {
+    let verb = method.as_str().to_string();
+    timed("http", format!("notion {verb} {path}"), async {
+        let mut req = crate::core::http::client()
+            .request(method, format!("{NOTION_BASE}/{path}"))
+            .bearer_auth(token)
+            .header("Notion-Version", NOTION_VERSION);
+        if let Some(body) = body {
+            req = req.json(body);
+        }
+        let resp = req.send().await?;
+        let status = resp.status();
+        let out: serde_json::Value = resp.json().await?;
+        if !status.is_success() {
+            return Err(anyhow::anyhow!("Notion {verb} {path} failed {status}: {out}"));
+        }
+        Ok(out)
+    })
+    .await
 }
 
 pub(super) async fn notion_get(token: &str, path: &str) -> anyhow::Result<serde_json::Value> {
-    let url = format!("{NOTION_BASE}/{path}");
-    timed("http", format!("notion GET {path}"), async {
-        let resp = notion_client(token)?.get(&url).send().await?;
-        let status = resp.status();
-        let body: serde_json::Value = resp.json().await?;
-        if !status.is_success() {
-            return Err(anyhow::anyhow!("Notion GET {path} failed {status}: {body}"));
-        }
-        Ok(body)
-    })
-    .await
+    notion_call(reqwest::Method::GET, token, path, None).await
 }
 
 pub(super) async fn notion_post(
@@ -39,17 +40,7 @@ pub(super) async fn notion_post(
     path: &str,
     body: &serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
-    let url = format!("{NOTION_BASE}/{path}");
-    timed("http", format!("notion POST {path}"), async {
-        let resp = notion_client(token)?.post(&url).json(body).send().await?;
-        let status = resp.status();
-        let out: serde_json::Value = resp.json().await?;
-        if !status.is_success() {
-            return Err(anyhow::anyhow!("Notion POST {path} failed {status}: {out}"));
-        }
-        Ok(out)
-    })
-    .await
+    notion_call(reqwest::Method::POST, token, path, Some(body)).await
 }
 
 pub(super) async fn notion_patch(
@@ -57,17 +48,7 @@ pub(super) async fn notion_patch(
     path: &str,
     body: &serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
-    let url = format!("{NOTION_BASE}/{path}");
-    timed("http", format!("notion PATCH {path}"), async {
-        let resp = notion_client(token)?.patch(&url).json(body).send().await?;
-        let status = resp.status();
-        let out: serde_json::Value = resp.json().await?;
-        if !status.is_success() {
-            return Err(anyhow::anyhow!("Notion PATCH {path} failed {status}: {out}"));
-        }
-        Ok(out)
-    })
-    .await
+    notion_call(reqwest::Method::PATCH, token, path, Some(body)).await
 }
 
 fn extract_title(props: &serde_json::Value) -> Option<String> {

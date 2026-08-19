@@ -332,3 +332,19 @@ Backend only. Frontend untouched; owed changes below.
 |---|---|
 | `src/lib/ptyTrace.ts` invokes removed `pty_trace_on`/`trace_pty` (degrades silently) | delete the file + `tracePty` import/calls in `terminalHost.ts` |
 | `write_pty` sends `data: Array.from(bytes)` (P9, number array on the hottest path) | send base64 both ways; change `write_pty`/`data` contract together with the backend in that phase |
+
+## Phase 3e — core/http: one shared client (done)
+
+Closes P2. Backend only; no IPC or frontend impact.
+
+- New `core/http.rs`: `client()` returns the process-wide `reqwest::Client`
+  (`OnceLock`). One connection pool — Notion calls reuse a live TLS connection
+  instead of building a client + handshake per request.
+- **Timeouts introduced (behavior change, by decision)**: connect 10s, total
+  30s. Before this a hung call blocked its command forever.
+- `notion.rs`: `notion_client` deleted; auth/version headers set per request;
+  the triplicated get/post/patch bodies collapsed into one `notion_call`.
+  Names, signatures, and error shapes of the three verbs unchanged — all 20
+  call sites untouched.
+- Guard test `no_http_client_outside_core_http`, same style as the git-spawn
+  and raw-SQL guards.
