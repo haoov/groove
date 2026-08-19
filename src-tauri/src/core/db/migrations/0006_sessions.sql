@@ -19,7 +19,7 @@ ALTER TABLE pending_confirmations RENAME TO old_pending_confirmations;
 
 CREATE TABLE sessions (
     id              TEXT PRIMARY KEY,
-    kind            TEXT NOT NULL CHECK (kind IN ('task','explorer','review','desk')),
+    kind            TEXT NOT NULL CHECK (kind IN ('task','explorer','review')),
     state           TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open','paused')),
     title           TEXT NOT NULL,
     notion_page_id  TEXT,
@@ -31,7 +31,6 @@ CREATE TABLE sessions (
     CHECK ((review_iid     IS NOT NULL) = (kind = 'review')),
     UNIQUE (review_project, review_iid)
 );
-CREATE UNIQUE INDEX ux_sessions_desk ON sessions (kind) WHERE kind = 'desk';
 
 CREATE TABLE notion_tasks (
     page_id    TEXT PRIMARY KEY,
@@ -59,7 +58,7 @@ CREATE TABLE worktrees (
     path        TEXT NOT NULL UNIQUE,
     base_ref    TEXT,
     created_at  INTEGER NOT NULL,
-    UNIQUE (session_id, repo_id)
+    UNIQUE (session_id, repo_id, branch)
 );
 
 CREATE TABLE mrs (
@@ -115,16 +114,12 @@ CREATE TABLE pending_confirmations (
 );
 CREATE INDEX ix_confirmations_session ON pending_confirmations (session_id);
 
--- Sessions: synthetic rows (explorer/desk) plus any real task that has a
--- worktree. Review sessions are dropped (see header).
+-- Sessions: explorers plus any real task that has a worktree. Review sessions
+-- are dropped (see header); the old desk row is not carried over.
 INSERT INTO sessions (id, kind, state, title, notion_page_id, created_at)
 SELECT
     t.short_id,
-    CASE
-        WHEN t.short_id = 'desk' THEN 'desk'
-        WHEN t.notion_page_id = '' THEN 'explorer'
-        ELSE 'task'
-    END,
+    CASE WHEN t.notion_page_id = '' THEN 'explorer' ELSE 'task' END,
     CASE
         WHEN EXISTS (SELECT 1 FROM old_worktrees w
                      WHERE w.task_id = t.short_id AND w.is_active = 0)
@@ -137,11 +132,9 @@ SELECT
     t.last_synced_at
 FROM old_tasks t
 WHERE t.short_id NOT LIKE 'review-%'
+  AND t.short_id != 'desk'
   AND (t.notion_page_id = ''
        OR t.short_id IN (SELECT task_id FROM old_worktrees));
-
-INSERT OR IGNORE INTO sessions (id, kind, state, title, created_at)
-VALUES ('desk', 'desk', 'open', 'Desk', unixepoch());
 
 INSERT INTO notion_tasks (page_id, short_id, title, status, priority, synced_at)
 SELECT notion_page_id, short_id, title, status, priority, last_synced_at

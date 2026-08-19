@@ -7,7 +7,6 @@ pub enum SessionKind {
     Task,
     Explorer,
     Review,
-    Desk,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]

@@ -1,29 +1,16 @@
-//! Synthetic, task-less sessions: the desk, explorers and MR reviews.
+//! Synthetic, task-less sessions: explorers and MR reviews.
 //!
-//! All are `sessions` rows with no Notion page behind them, which is what lets
+//! Both are `sessions` rows with no Notion page behind them, which is what lets
 //! them reuse the entire task machinery (worktrees, agent, diff, add-repo)
-//! without ever appearing in Notion. `sessions.kind` is the discriminator; the
-//! desk is one seeded row the schema keeps singular.
+//! without ever appearing in Notion. `sessions.kind` is the discriminator.
 
 use sqlx::SqlitePool;
 use tauri::Emitter;
 
-use crate::core::db::models::{Repo, SessionKind, TaskView};
+use crate::core::db::models::{Repo, SessionKind};
 use crate::core::db::store;
 use super::commands::open_task_impl;
 use super::State;
-
-/// The desk's fixed id. Fixed, not random, so its Claude conversation (a
-/// deterministic uuid derived from this id) resumes for the life of the app.
-pub const DESK_ID: &str = "desk";
-
-/// The desk row is seeded at startup; this only reads it back for the frontend.
-/// Unlike `open_explorer_session` it does NOT set the active session and does
-/// NOT emit `workspace_ready`: there is no workspace to open.
-#[tauri::command]
-pub async fn ensure_desk_session(pool: tauri::State<'_, SqlitePool>) -> Result<TaskView, String> {
-    store::sessions::view(&*pool, DESK_ID).await.map_err(|e| e.to_string())
-}
 
 fn new_explorer_id() -> String {
     let uid = uuid::Uuid::new_v4().simple().to_string();

@@ -6,16 +6,6 @@ use super::super::models::{Session, SessionKind, SessionState, TaskView};
 const COLUMNS: &str =
     "id, kind, state, title, notion_page_id, review_project, review_iid, created_at";
 
-pub async fn seed_desk(exec: impl SqliteExecutor<'_>) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "INSERT OR IGNORE INTO sessions (id, kind, state, title, created_at)
-         VALUES ('desk', 'desk', 'open', 'Desk', unixepoch())",
-    )
-    .execute(exec)
-    .await?;
-    Ok(())
-}
-
 pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Session> {
     get_opt(exec, id)
         .await?
@@ -157,10 +147,9 @@ pub async fn rename_explorer(
     Ok(())
 }
 
-/// Delete a session and, through the cascades, everything it owns. The desk
-/// is excluded by the WHERE, never by caller discipline.
+/// Delete a session and, through the cascades, everything it owns.
 pub async fn remove(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<()> {
-    sqlx::query("DELETE FROM sessions WHERE id = ? AND kind != 'desk'")
+    sqlx::query("DELETE FROM sessions WHERE id = ?")
         .bind(id)
         .execute(exec)
         .await?;

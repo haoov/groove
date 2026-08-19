@@ -19,7 +19,6 @@ pub async fn init(data_dir: &Path) -> Result<SqlitePool, sqlx::Error> {
     let pool = SqlitePoolOptions::new().connect_with(options).await?;
 
     sqlx::migrate!("src/core/db/migrations").run(&pool).await?;
-    store::sessions::seed_desk(&pool).await?;
 
     Ok(pool)
 }
@@ -32,6 +31,5 @@ pub async fn test_pool() -> SqlitePool {
         .await
         .expect("in-memory pool");
     sqlx::migrate!("src/core/db/migrations").run(&pool).await.expect("migrations");
-    store::sessions::seed_desk(&pool).await.expect("desk seed");
     pool
 }

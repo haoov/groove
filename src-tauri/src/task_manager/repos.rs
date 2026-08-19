@@ -79,9 +79,6 @@ enum Provision {
 
 fn provision_for(kind: SessionKind) -> Provision {
     match kind {
-        SessionKind::Desk => {
-            Provision::Refused("the desk has no worktrees — open a task or an explorer first")
-        }
         // A review's worktree is the MR's source branch; a second repo would get a
         // worktree on a branch named after the review, which is meaningless.
         SessionKind::Review => {
@@ -268,7 +265,6 @@ mod tests {
 
     #[test]
     fn sessions_that_take_no_repos() {
-        assert!(matches!(provision_for(SessionKind::Desk), Provision::Refused(_)));
         assert!(matches!(provision_for(SessionKind::Review), Provision::Refused(_)));
         assert!(matches!(provision_for(SessionKind::Explorer), Provision::Detached));
         assert!(matches!(provision_for(SessionKind::Task), Provision::Branch));

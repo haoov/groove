@@ -23,16 +23,35 @@ pub async fn for_session(
         .await?)
 }
 
+// Production caller arrives with the worktrees phase (multi-worktree pickers).
+#[allow(dead_code)]
 pub async fn for_repo(
     exec: impl SqliteExecutor<'_>,
     session_id: &str,
     repo_id: &str,
-) -> StoreResult<Option<Worktree>> {
+) -> StoreResult<Vec<Worktree>> {
     Ok(sqlx::query_as(&format!(
-        "SELECT {COLUMNS} FROM worktrees WHERE session_id = ? AND repo_id = ?"
+        "SELECT {COLUMNS} FROM worktrees WHERE session_id = ? AND repo_id = ? ORDER BY created_at"
     ))
     .bind(session_id)
     .bind(repo_id)
+    .fetch_all(exec)
+    .await?)
+}
+
+async fn for_branch(
+    exec: impl SqliteExecutor<'_>,
+    session_id: &str,
+    repo_id: &str,
+    branch: &str,
+) -> StoreResult<Option<Worktree>> {
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM worktrees
+         WHERE session_id = ? AND repo_id = ? AND branch = ?"
+    ))
+    .bind(session_id)
+    .bind(repo_id)
+    .bind(branch)
     .fetch_optional(exec)
     .await?)
 }
@@ -47,9 +66,8 @@ pub async fn upsert(
     sqlx::query(
         "INSERT INTO worktrees (id, session_id, repo_id, branch, path, created_at)
          VALUES (?, ?, ?, ?, ?, unixepoch())
-         ON CONFLICT(session_id, repo_id) DO UPDATE SET
-           branch = excluded.branch,
-           path   = excluded.path",
+         ON CONFLICT(session_id, repo_id, branch) DO UPDATE SET
+           path = excluded.path",
     )
     .bind(uuid::Uuid::new_v4().to_string())
     .bind(session_id)
@@ -58,9 +76,9 @@ pub async fn upsert(
     .bind(path)
     .execute(exec)
     .await?;
-    for_repo(exec, session_id, repo_id)
+    for_branch(exec, session_id, repo_id, branch)
         .await?
-        .ok_or_else(|| StoreError::not_found("worktree", format!("{session_id}/{repo_id}")))
+        .ok_or_else(|| StoreError::not_found("worktree", format!("{session_id}/{repo_id}@{branch}")))
 }
 
 pub async fn set_base_ref(

@@ -24,16 +24,6 @@ fn mirror_task(short_id: &str) -> NotionTask {
 }
 
 #[tokio::test]
-async fn the_desk_is_seeded_exactly_once() {
-    let pool = test_pool().await;
-    sessions::seed_desk(&pool).await.expect("re-seed is a no-op");
-    let desk = sessions::get(&pool, "desk").await.expect("desk row");
-    assert_eq!(desk.kind, SessionKind::Desk);
-    let second = sessions::create_explorer(&pool, "desk2", "Desk 2").await;
-    assert!(second.is_ok(), "another kind under another id is fine");
-}
-
-#[tokio::test]
 async fn removing_a_session_cascades_to_everything_it_owns() {
     let pool = test_pool().await;
     repos::upsert(&pool, &repo("g/a")).await.unwrap();
@@ -56,13 +46,6 @@ async fn removing_a_session_cascades_to_everything_it_owns() {
     assert!(repos::attached_to(&pool, "explorer-1").await.unwrap().is_empty());
     let t = time::summary(&pool, "explorer-1", "2026-08-19").await.unwrap();
     assert_eq!(t.tracked_seconds, 0);
-}
-
-#[tokio::test]
-async fn the_desk_cannot_be_removed() {
-    let pool = test_pool().await;
-    sessions::remove(&pool, "desk").await.unwrap();
-    assert!(sessions::get_opt(&pool, "desk").await.unwrap().is_some());
 }
 
 #[tokio::test]
@@ -102,18 +85,44 @@ async fn adopting_an_explorer_carries_children_to_the_new_id() {
 }
 
 #[tokio::test]
-async fn closing_the_last_worktree_detaches_the_repo() {
+async fn a_repo_detaches_only_with_its_last_worktree() {
     let pool = test_pool().await;
     repos::upsert(&pool, &repo("g/a")).await.unwrap();
     sessions::create_explorer(&pool, "explorer-3", "X").await.unwrap();
     repos::attach(&pool, "explorer-3", "g/a").await.unwrap();
-    let wt = worktrees::upsert(&pool, "explorer-3", "g/a", "b", "/wt/explorer-3/a")
+    let first = worktrees::upsert(&pool, "explorer-3", "g/a", "b1", "/wt/explorer-3/a@b1")
         .await
         .unwrap();
+    let second = worktrees::upsert(&pool, "explorer-3", "g/a", "b2", "/wt/explorer-3/a@b2")
+        .await
+        .unwrap();
+    assert_ne!(first.id, second.id, "two branches, two worktrees, one repo");
 
-    let closed = worktrees::close(&pool, &wt.id).await.unwrap();
-    assert_eq!(closed.session_id, "explorer-3");
+    worktrees::close(&pool, &first.id).await.unwrap();
+    assert_eq!(
+        repos::attached_to(&pool, "explorer-3").await.unwrap().len(),
+        1,
+        "one worktree left keeps the repo attached"
+    );
+
+    worktrees::close(&pool, &second.id).await.unwrap();
     assert!(repos::attached_to(&pool, "explorer-3").await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn upserting_the_same_branch_reuses_the_worktree_row() {
+    let pool = test_pool().await;
+    repos::upsert(&pool, &repo("g/a")).await.unwrap();
+    sessions::create_explorer(&pool, "explorer-6", "X").await.unwrap();
+    let first = worktrees::upsert(&pool, "explorer-6", "g/a", "b1", "/wt/explorer-6/a@b1")
+        .await
+        .unwrap();
+    let again = worktrees::upsert(&pool, "explorer-6", "g/a", "b1", "/wt/moved/a@b1")
+        .await
+        .unwrap();
+    assert_eq!(first.id, again.id);
+    assert_eq!(again.path, "/wt/moved/a@b1");
+    assert_eq!(worktrees::for_repo(&pool, "explorer-6", "g/a").await.unwrap().len(), 1);
 }
 
 #[tokio::test]

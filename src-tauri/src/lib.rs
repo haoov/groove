@@ -69,7 +69,6 @@ pub fn run() {
             task_manager::open_task,
             task_manager::set_active_task,
             task_manager::open_explorer_session,
-            task_manager::ensure_desk_session,
             task_manager::open_review_session,
             task_manager::rename_explorer,
             task_manager::discard_explorer,

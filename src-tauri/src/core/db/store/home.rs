@@ -44,7 +44,6 @@ pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>
          LEFT JOIN worktrees w ON w.session_id = s.id AND w.repo_id = r.id
          LEFT JOIN mrs m ON m.id =
            (SELECT id FROM mrs WHERE worktree_id = w.id ORDER BY rowid DESC LIMIT 1)
-         WHERE s.kind != 'desk'
          ORDER BY s.created_at DESC, r.project",
     )
     .fetch_all(exec)
