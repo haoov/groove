@@ -1,97 +1,16 @@
-//! GitHub through the `gh` CLI, feature-for-feature with the GitLab client.
-//!
-//! `gh` rather than the REST API directly, for the same reason `glab` is used for
-//! GitLab: auth is the CLI's problem, not ours. The previous implementation held a
-//! token in the OS keyring with no UI to put it there, and three features were
-//! simply missing — CI status, thread resolution, and review threads in the shape
-//! the UI reads (it returned flat review comments, so threads rendered as nothing).
+//! GitHub over REST + GraphQL (see `api`). `gh` only supplies the token.
 //!
 //! Review threads come from GraphQL because REST cannot express them: resolution
-//! state and the thread node id needed to resolve one exist only there. Everything
-//! else uses the `gh pr` porcelain.
+//! state and the thread node id needed to resolve one exist only there. CI and
+//! approval ride GraphQL too (statusCheckRollup / reviewDecision are
+//! GraphQL-only); plain CRUD uses REST.
+
+use reqwest::Method;
 
 use crate::core::db::models::Repo;
-use super::platform::{CliMissing, PlatformClient};
 
-/// Run `gh` in a repo checkout. Like `glab_run`, the cwd is what tells `gh` which
-/// repository (and host) it is talking about.
-pub(super) async fn gh_run(cwd: String, args: Vec<String>) -> anyhow::Result<String> {
-    let printable = args.join(" ");
-    let out = crate::core::timing::timed("subprocess", format!("gh {printable}"), async {
-        tokio::task::spawn_blocking(move || {
-            std::process::Command::new("gh")
-                .args(&args)
-                .current_dir(&cwd)
-                // gh paginates interactively and colours output when it thinks it has a
-                // terminal; both corrupt JSON parsing.
-                .env("GH_PAGER", "")
-                .env("NO_COLOR", "1")
-                .output()
-        })
-        .await
-    })
-    .await?;
-
-    let out = match out {
-        Ok(o) => o,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Err(anyhow::Error::new(CliMissing("gh")));
-        }
-        Err(e) => return Err(anyhow::anyhow!("failed to run gh {printable}: {e}")),
-    };
-
-    if !out.status.success() {
-        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        // The one failure worth translating: everything fails this way until the
-        // user logs in, and gh's own wording buries it.
-        if stderr.contains("not logged") || stderr.contains("authentication") {
-            return Err(anyhow::anyhow!("`gh` is not authenticated — run `gh auth login`"));
-        }
-        return Err(anyhow::anyhow!("gh {printable}: {stderr}"));
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).to_string())
-}
-
-/// `gh pr view <n> --json …` for the fields a caller names.
-async fn pr_json(repo: &Repo, remote_id: &str, fields: &str) -> anyhow::Result<serde_json::Value> {
-    let out = gh_run(
-        repo.local_path.clone(),
-        vec![
-            "pr".into(), "view".into(), remote_id.to_string(),
-            "--json".into(), fields.to_string(),
-        ],
-    )
-    .await?;
-    Ok(serde_json::from_str(&out)?)
-}
-
-/// A GraphQL call against the repo's own host. `-F` sends typed variables, so
-/// numbers stay numbers (`-f` would make the PR number a string and the query
-/// would fail its type check).
-async fn graphql(
-    cwd: &str,
-    query: &str,
-    vars: &[(&str, String)],
-) -> anyhow::Result<serde_json::Value> {
-    let mut args = vec!["api".to_string(), "graphql".into(), "-f".into(), format!("query={query}")];
-    for (k, v) in vars {
-        args.push("-F".into());
-        args.push(format!("{k}={v}"));
-    }
-    let out = gh_run(cwd.to_string(), args).await?;
-    let v: serde_json::Value = serde_json::from_str(&out)?;
-    if let Some(errors) = v["errors"].as_array() {
-        if !errors.is_empty() {
-            let msg = errors
-                .iter()
-                .filter_map(|e| e["message"].as_str())
-                .collect::<Vec<_>>()
-                .join("; ");
-            return Err(anyhow::anyhow!("GitHub GraphQL: {msg}"));
-        }
-    }
-    Ok(v)
-}
+use super::api;
+use super::client::PlatformClient;
 
 /// `owner` and `repo` as GitHub means them: the group path can be nested in the
 /// local MAIN layout, but on GitHub only the last segment before the project is the
@@ -100,20 +19,28 @@ fn owner_of(repo: &Repo) -> &str {
     repo.group_path.rsplit('/').next().unwrap_or(&repo.group_path)
 }
 
-/// The current login, for "did I approve?". Stable for a run, like the glab one.
+fn pr_path(repo: &Repo, remote_id: &str) -> String {
+    format!("repos/{}/{}/pulls/{remote_id}", owner_of(repo), repo.project)
+}
+
+/// GraphQL variables addressing one PR.
+fn pr_vars(repo: &Repo, remote_id: &str) -> serde_json::Value {
+    serde_json::json!({
+        "owner": owner_of(repo),
+        "name": repo.project,
+        "number": remote_id.parse::<i64>().unwrap_or(0),
+    })
+}
+
+/// The current login, for "did I approve?". Stable for a run.
 static GH_LOGIN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-async fn gh_login(cwd: &str) -> Option<String> {
+async fn gh_login(host: &str) -> Option<String> {
     if let Some(l) = GH_LOGIN.get() {
         return Some(l.clone());
     }
-    let out = gh_run(cwd.to_string(), vec!["api".into(), "user".into(), "--jq".into(), ".login".into()])
-        .await
-        .ok()?;
-    let login = out.trim().to_string();
-    if login.is_empty() {
-        return None;
-    }
+    let v = api::github(host, Method::GET, "user", None).await.ok()?;
+    let login = v["login"].as_str()?.to_string();
     let _ = GH_LOGIN.set(login.clone());
     Some(login)
 }
@@ -235,31 +162,34 @@ impl PlatformClient for GhClient {
         let base = crate::core::git::refs::default_branch(&repo.local_path)
             .await
             .unwrap_or_else(|| "main".to_string());
-        let out = gh_run(
-            repo.local_path.clone(),
-            vec![
-                "pr".into(), "create".into(),
-                "--head".into(), branch.to_string(),
-                "--base".into(), base,
-                "--title".into(), title.to_string(),
-                "--body".into(), description.to_string(),
-                "--assignee".into(), "@me".into(),
-            ],
+        let v = api::github(
+            &repo.host,
+            Method::POST,
+            &format!("repos/{}/{}/pulls", owner_of(repo), repo.project),
+            Some(&serde_json::json!({
+                "title": title,
+                "body": description,
+                "head": branch,
+                "base": base,
+            })),
         )
         .await?;
-
-        let url = out
-            .lines()
-            .find_map(|l| {
-                let pos = l.find("https://")?;
-                Some(l[pos..].split_whitespace().next().unwrap_or("").to_string())
-            })
-            .ok_or_else(|| anyhow::anyhow!("no URL in gh pr create output:\n{out}"))?;
-        let number = url
-            .rsplit('/')
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("could not parse a PR number from URL: {url}"))?
+        let number = v["number"]
+            .as_u64()
+            .ok_or_else(|| anyhow::anyhow!("created PR has no number: {v}"))?
             .to_string();
+        let url = v["html_url"].as_str().unwrap_or("").to_string();
+
+        // Self-assignment is best-effort: a PR without an assignee beats no PR.
+        if let Some(login) = gh_login(&repo.host).await {
+            let _ = api::github(
+                &repo.host,
+                Method::POST,
+                &format!("repos/{}/{}/issues/{number}/assignees", owner_of(repo), repo.project),
+                Some(&serde_json::json!({ "assignees": [login] })),
+            )
+            .await;
+        }
         Ok((number, url))
     }
 
@@ -270,65 +200,83 @@ impl PlatformClient for GhClient {
         title: Option<&str>,
         description: Option<&str>,
     ) -> anyhow::Result<()> {
-        let mut args = vec!["pr".to_string(), "edit".into(), remote_id.to_string()];
+        let mut body = serde_json::Map::new();
         if let Some(t) = title {
-            args.push("--title".into());
-            args.push(t.to_string());
+            body.insert("title".into(), serde_json::json!(t));
         }
         if let Some(d) = description {
-            args.push("--body".into());
-            args.push(d.to_string());
+            body.insert("body".into(), serde_json::json!(d));
         }
-        gh_run(repo.local_path.clone(), args).await?;
+        api::github(
+            &repo.host,
+            Method::PATCH,
+            &pr_path(repo, remote_id),
+            Some(&serde_json::Value::Object(body)),
+        )
+        .await?;
         Ok(())
     }
 
     async fn close_mr(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<()> {
-        gh_run(
-            repo.local_path.clone(),
-            vec!["pr".into(), "close".into(), remote_id.to_string()],
+        api::github(
+            &repo.host,
+            Method::PATCH,
+            &pr_path(repo, remote_id),
+            Some(&serde_json::json!({ "state": "closed" })),
         )
         .await?;
         Ok(())
     }
 
     async fn get_mr_details(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
-        let v = pr_json(
-            repo,
-            remote_id,
-            "title,body,author,headRefName,baseRefName,state,isDraft,createdAt,url",
-        )
-        .await?;
+        let v = api::github(&repo.host, Method::GET, &pr_path(repo, remote_id), None).await?;
+        // REST has no "merged" state — it stays "closed" with a merged flag.
+        let state = if v["merged"].as_bool() == Some(true) {
+            "merged".to_string()
+        } else {
+            v["state"].as_str().unwrap_or("open").to_lowercase()
+        };
         Ok(serde_json::json!({
             "title": v["title"].as_str().unwrap_or(""),
             "description": v["body"].as_str().unwrap_or(""),
-            "author": v["author"]["login"].as_str().or(v["author"]["name"].as_str()).unwrap_or(""),
-            "source_branch": v["headRefName"].as_str().unwrap_or(""),
-            "target_branch": v["baseRefName"].as_str().unwrap_or(""),
-            // gh reports OPEN / CLOSED / MERGED; the UI expects lower case.
-            "state": v["state"].as_str().unwrap_or("OPEN").to_lowercase(),
-            "draft": v["isDraft"].as_bool().unwrap_or(false),
-            "created_at": v["createdAt"].as_str().unwrap_or(""),
-            "web_url": v["url"].as_str().unwrap_or(""),
+            "author": v["user"]["login"].as_str().unwrap_or(""),
+            "source_branch": v["head"]["ref"].as_str().unwrap_or(""),
+            "target_branch": v["base"]["ref"].as_str().unwrap_or(""),
+            "state": state,
+            "draft": v["draft"].as_bool().unwrap_or(false),
+            "created_at": v["created_at"].as_str().unwrap_or(""),
+            "web_url": v["html_url"].as_str().unwrap_or(""),
         }))
     }
 
     async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
-        let v = pr_json(repo, remote_id, "statusCheckRollup,url").await?;
-        let Some((status, url)) = rollup_status(&v["statusCheckRollup"]) else {
+        const QUERY: &str = r#"
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      url
+      commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { nodes {
+        __typename
+        ... on CheckRun { status conclusion detailsUrl }
+        ... on StatusContext { state targetUrl }
+      }}}}}}
+    }
+  }
+}"#;
+        let v = api::github_graphql(&repo.host, QUERY, pr_vars(repo, remote_id)).await?;
+        let pr = &v["data"]["repository"]["pullRequest"];
+        let contexts =
+            &pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["contexts"]["nodes"];
+        let Some((status, url)) = rollup_status(contexts) else {
             return Ok(serde_json::Value::Null);
         };
         Ok(serde_json::json!({
             "status": status,
-            "url": if url.is_empty() { v["url"].as_str().unwrap_or("") } else { &url },
+            "url": if url.is_empty() { pr["url"].as_str().unwrap_or("") } else { &url },
         }))
     }
 
     /// Review threads, in the shape the UI reads (`[{ id, notes: [...] }]`).
-    ///
-    /// GraphQL is the only source for `isResolved` and for the thread id that
-    /// `resolve_mr_thread` needs. General PR comments are appended as
-    /// position-less single-note threads, matching how GitLab returns notes.
     async fn get_mr_threads(
         &self,
         repo: &Repo,
@@ -352,16 +300,7 @@ query($owner:String!, $name:String!, $number:Int!) {
     }
   }
 }"#;
-        let v = graphql(
-            &repo.local_path,
-            QUERY,
-            &[
-                ("owner", owner_of(repo).to_string()),
-                ("name", repo.project.clone()),
-                ("number", remote_id.to_string()),
-            ],
-        )
-        .await?;
+        let v = api::github_graphql(&repo.host, QUERY, pr_vars(repo, remote_id)).await?;
         Ok(threads_from_graphql(&v["data"]["repository"]["pullRequest"]))
     }
 
@@ -378,10 +317,10 @@ mutation($threadId:ID!, $body:String!) {
     comment { databaseId }
   }
 }"#;
-        graphql(
-            &repo.local_path,
+        api::github_graphql(
+            &repo.host,
             MUTATION,
-            &[("threadId", thread_id.to_string()), ("body", body.to_string())],
+            serde_json::json!({ "threadId": thread_id, "body": body }),
         )
         .await?;
         Ok(())
@@ -397,7 +336,12 @@ mutation($threadId:ID!, $body:String!) {
 mutation($threadId:ID!) {
   resolveReviewThread(input:{threadId:$threadId}) { thread { isResolved } }
 }"#;
-        let v = graphql(&repo.local_path, MUTATION, &[("threadId", thread_id.to_string())]).await?;
+        let v = api::github_graphql(
+            &repo.host,
+            MUTATION,
+            serde_json::json!({ "threadId": thread_id }),
+        )
+        .await?;
         if v["data"]["resolveReviewThread"]["thread"]["isResolved"].as_bool() == Some(true) {
             return Ok(());
         }
@@ -405,20 +349,32 @@ mutation($threadId:ID!) {
     }
 
     async fn approve_mr(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<()> {
-        gh_run(
-            repo.local_path.clone(),
-            vec!["pr".into(), "review".into(), remote_id.to_string(), "--approve".into()],
+        api::github(
+            &repo.host,
+            Method::POST,
+            &format!("{}/reviews", pr_path(repo, remote_id)),
+            Some(&serde_json::json!({ "event": "APPROVE" })),
         )
         .await?;
         Ok(())
     }
 
     async fn get_mr_approval(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
-        let v = pr_json(repo, remote_id, "reviews,reviewDecision").await?;
+        const QUERY: &str = r#"
+query($owner:String!, $name:String!, $number:Int!) {
+  repository(owner:$owner, name:$name) {
+    pullRequest(number:$number) {
+      reviewDecision
+      reviews(last: 100) { nodes { state author { login } } }
+    }
+  }
+}"#;
+        let v = api::github_graphql(&repo.host, QUERY, pr_vars(repo, remote_id)).await?;
+        let pr = &v["data"]["repository"]["pullRequest"];
         // Latest review per author wins: an APPROVED then CHANGES_REQUESTED must
         // not still count as an approval.
         let mut latest: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-        for r in v["reviews"].as_array().cloned().unwrap_or_default() {
+        for r in pr["reviews"]["nodes"].as_array().cloned().unwrap_or_default() {
             let Some(login) = r["author"]["login"].as_str() else { continue };
             let state = r["state"].as_str().unwrap_or("");
             // COMMENTED does not change an earlier verdict.
@@ -432,9 +388,9 @@ mutation($threadId:ID!) {
             .filter(|(_, s)| *s == "APPROVED")
             .map(|(l, _)| l.clone())
             .collect();
-        let me = gh_login(&repo.local_path).await;
+        let me = gh_login(&repo.host).await;
         Ok(serde_json::json!({
-            "approved": v["reviewDecision"].as_str() == Some("APPROVED") || !by.is_empty(),
+            "approved": pr["reviewDecision"].as_str() == Some("APPROVED") || !by.is_empty(),
             "approved_by_me": me.map(|m| by.contains(&m)).unwrap_or(false),
             "approved_by": by,
         }))
@@ -448,12 +404,11 @@ mutation($threadId:ID!) {
         position: Option<(&str, i64)>,
     ) -> anyhow::Result<()> {
         let Some((path, line)) = position else {
-            gh_run(
-                repo.local_path.clone(),
-                vec![
-                    "pr".into(), "comment".into(), remote_id.to_string(),
-                    "--body".into(), body.to_string(),
-                ],
+            api::github(
+                &repo.host,
+                Method::POST,
+                &format!("repos/{}/{}/issues/{remote_id}/comments", owner_of(repo), repo.project),
+                Some(&serde_json::json!({ "body": body })),
             )
             .await?;
             return Ok(());
@@ -461,27 +416,22 @@ mutation($threadId:ID!) {
 
         // A positioned review comment needs the PR head sha. Like GitLab, the
         // position references the REMOTE head, so local commits can drift it.
-        let head = pr_json(repo, remote_id, "headRefOid").await?;
-        let head_sha = head["headRefOid"]
+        let pr = api::github(&repo.host, Method::GET, &pr_path(repo, remote_id), None).await?;
+        let head_sha = pr["head"]["sha"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("PR #{remote_id} has no head sha"))?;
 
-        let endpoint = format!(
-            "repos/{}/{}/pulls/{remote_id}/comments",
-            owner_of(repo),
-            repo.project
-        );
-        gh_run(
-            repo.local_path.clone(),
-            vec![
-                "api".into(), endpoint,
-                "--method".into(), "POST".into(),
-                "-f".into(), format!("body={body}"),
-                "-f".into(), format!("commit_id={head_sha}"),
-                "-f".into(), format!("path={path}"),
-                "-F".into(), format!("line={line}"),
-                "-f".into(), "side=RIGHT".into(),
-            ],
+        api::github(
+            &repo.host,
+            Method::POST,
+            &format!("{}/comments", pr_path(repo, remote_id)),
+            Some(&serde_json::json!({
+                "body": body,
+                "commit_id": head_sha,
+                "path": path,
+                "line": line,
+                "side": "RIGHT",
+            })),
         )
         .await?;
         Ok(())
@@ -490,11 +440,10 @@ mutation($threadId:ID!) {
 
 /// Open PRs where the current user is a requested reviewer, for the review queue.
 ///
-/// One GraphQL search rather than `gh search prs`, whose JSON has no branch names —
-/// and the review session needs both refs to check the PR out. `reviewDecision`
-/// comes back in the same call, so approval costs no extra round-trip (GitLab needs
-/// one per MR).
-pub(super) async fn review_requested_prs(cwd: &str) -> anyhow::Result<Vec<serde_json::Value>> {
+/// One GraphQL search: `reviewDecision` comes back in the same call, so approval
+/// costs no extra round-trip (GitLab needs one per MR), and REST search has no
+/// branch names — the review session needs both refs to check the PR out.
+pub(super) async fn review_requested_prs(host: &str) -> anyhow::Result<Vec<serde_json::Value>> {
     const QUERY: &str = r#"
 query {
   search(query: "is:pr is:open review-requested:@me", type: ISSUE, first: 50) {
@@ -508,7 +457,7 @@ query {
     }
   }
 }"#;
-    let v = graphql(cwd, QUERY, &[]).await?;
+    let v = api::github_graphql(host, QUERY, serde_json::json!({})).await?;
     Ok(v["data"]["search"]["nodes"].as_array().cloned().unwrap_or_default())
 }
 
@@ -531,6 +480,14 @@ mod tests {
     fn owner_is_the_last_group_segment() {
         assert_eq!(owner_of(&repo("cli", "cli")), "cli");
         assert_eq!(owner_of(&repo("acme/team", "svc")), "team");
+    }
+
+    /// GraphQL takes the PR number as an Int — a string would fail the type check.
+    #[test]
+    fn pr_vars_carry_a_numeric_number() {
+        let v = pr_vars(&repo("cli", "cli"), "9000");
+        assert_eq!(v["number"], 9000);
+        assert_eq!(v["owner"], "cli");
     }
 
     #[test]
@@ -582,7 +539,7 @@ mod tests {
         assert_eq!(rollup_status(&ok).unwrap().0, "success");
     }
 
-    /// Captured from `gh api graphql` against cli/cli#9000 — a resolved thread, an
+    /// Captured from the GraphQL API against cli/cli#9000 — a resolved thread, an
     /// open one, and a conversation comment.
     const THREADS: &str = r#"{
       "reviewThreads": { "nodes": [

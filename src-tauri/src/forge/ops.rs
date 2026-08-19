@@ -1,7 +1,7 @@
 use sqlx::SqlitePool;
 use crate::core::db::store;
 use super::commands::load_mr_context;
-use super::platform::make_client;
+use super::client::make_client;
 
 /// Separator before the ticket link. Also the marker that finds an existing
 /// footer, so re-describing an MR replaces the link instead of stacking copies.

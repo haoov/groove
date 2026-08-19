@@ -1,28 +1,9 @@
 use crate::core::db::models::Repo;
 
-/// A forge CLI is not installed.
-///
-/// Typed rather than a message, because the caller has to TELL IT APART from a
-/// failure: a machine with no `glab` is a machine with no GitLab repos, and the
-/// review queue must stay quiet about it instead of showing an error. Raw io would
-/// surface as "No such file or directory (os error 2)", localized, naming nothing.
-#[derive(Debug)]
-pub(super) struct CliMissing(pub &'static str);
-
-impl std::fmt::Display for CliMissing {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "`{}` is not installed, or not on the PATH this app was launched with",
-            self.0
-        )
-    }
-}
-impl std::error::Error for CliMissing {}
-
-/// True when the failure is only that the CLI is absent.
-pub(super) fn is_cli_missing(e: &anyhow::Error) -> bool {
-    e.downcast_ref::<CliMissing>().is_some()
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Platform {
+    Gitlab,
+    Github,
 }
 
 #[async_trait::async_trait]
@@ -48,6 +29,7 @@ pub(super) trait PlatformClient: Send + Sync {
     ///    draft, created_at, web_url }`.
     async fn get_mr_details(&self, repo: &Repo, remote_id: &str)
         -> anyhow::Result<serde_json::Value>;
+    /// Review threads in the UI's shape: `[{ id, notes: [...] }]`.
     async fn get_mr_threads(
         &self,
         repo: &Repo,
@@ -85,8 +67,7 @@ pub(super) trait PlatformClient: Send + Sync {
     ) -> anyhow::Result<()>;
 }
 
-/// The CLI owns auth on both platforms: `glab` for GitLab, `gh` for GitHub. There
-/// is no token to store, which is why this cannot fail per-repo any more.
+/// The API layer owns the calls; the CLIs only supply tokens (see `auth`).
 pub(super) fn make_client(repo: &Repo) -> Box<dyn PlatformClient> {
     if repo.host.contains("github") {
         Box::new(super::github::GhClient)

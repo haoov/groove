@@ -10,7 +10,7 @@ mod home;
 mod launch_env;
 mod mcp_server;
 mod migrate_identity;
-mod mr_manager;
+mod forge;
 mod notion;
 mod review;
 mod task_manager;
@@ -131,18 +131,18 @@ pub fn run() {
             mcp_server::get_mcp_endpoint,
             // agent_hooks
             agent_hooks::get_agent_activity,
-            // mr_manager
-            mr_manager::get_mr,
-            mr_manager::create_mr,
-            mr_manager::get_mr_threads,
-            mr_manager::get_mr_ci,
-            mr_manager::get_mr_details,
-            mr_manager::reply_to_thread,
-            mr_manager::resolve_mr_thread,
-            mr_manager::approve_mr,
-            mr_manager::edit_mr_text,
-            mr_manager::post_mr_comment,
-            mr_manager::list_review_mrs,
+            // forge
+            forge::get_mr,
+            forge::create_mr,
+            forge::get_mr_threads,
+            forge::get_mr_ci,
+            forge::get_mr_details,
+            forge::reply_to_thread,
+            forge::resolve_mr_thread,
+            forge::approve_mr,
+            forge::edit_mr_text,
+            forge::post_mr_comment,
+            forge::list_review_mrs,
             // annotation_store
             annotation_store::create_annotation,
             annotation_store::resolve_annotation,

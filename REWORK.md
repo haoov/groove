@@ -468,3 +468,45 @@ Backend only. IPC and events unchanged; no frontend work owed.
 
 - `Sessions` + `SessionTasks` (two same-keyed mutex maps) merged into one
   `Connections` map of `{tx, task}` — one lock, one-step cleanup on SSE drop.
+
+## Phase 7 — forge: direct API, CLIs demoted to token source (done)
+
+`mr_manager/` → `forge/`. The CLIs (`glab`, `gh`) are no longer the transport —
+they are consulted once per host for a token (`forge/auth`, parsed from
+`gh auth token` / `glab auth status -t`, cached in memory, refetched on 401,
+never persisted). All calls go through `forge/api` on the shared `core::http`
+client: GitLab REST v4, GitHub REST + GraphQL.
+
+### What this kills
+
+- **B1 + B2 (the whole argv class)**: `@`-file-expansion in `--form`/`-F`
+  could make an agent-drafted comment body exfiltrate a local file. JSON
+  bodies over HTTPS have nothing to expand — the class is structurally gone,
+  along with URL-scraping from `mr create` stdout and stderr string-matching.
+- **N11**: GitLab threads now come from the stable `…/discussions` endpoint
+  (reshaped by pure `threads_from_discussions`, pinned by test); the
+  experimental `glab mr note list` is gone. System notes ("added 1 commit")
+  are filtered out.
+- **P1 remainder**: a process spawn + fresh TLS handshake per call
+  (150–400ms) becomes a kept-alive pooled request. The MR overview drops from
+  4 sequential spawns to 4 pooled calls; queue and signals parallelize freely.
+
+### Deliberate behavior changes
+
+- GitLab thread replies now land IN the thread (`discussions/{id}/notes`);
+  the CLI path could only post a general note.
+- MR/PR self-assignment is best-effort (an MR without an assignee beats no
+  MR); previously a hard `--assignee @me` flag.
+- reqwest switched to `rustls-tls-native-roots` so a private-CA GitLab works
+  like the CLIs (system trust store).
+
+### Layout
+
+`auth` (tokens + CliMissing), `api` (verbs, pct/query encoding, error-body
+reduction, 401-retry), `client` (trait + Platform), `gitlab`, `github`,
+`queue` (review queue, host-driven — no more per-host cwd), `commands`
+(IPC + signals cache), `ops` (gated impls + footer, unchanged).
+
+IPC names/shapes frozen; `list_review_mrs` no longer needs a clone per host,
+only the pool slugs. No frontend work owed. Setup's `auth status` checks and
+the login PTY are unchanged — the CLIs remain how you log in.

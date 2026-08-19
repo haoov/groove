@@ -200,7 +200,7 @@ async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
         project: row.project.clone().unwrap_or_default(),
         local_path: row.repo_local_path.clone()?,
     };
-    let sig = crate::mr_manager::mr_signals(&repo, &mr_id, &remote_id, force_mr).await;
+    let sig = crate::forge::mr_signals(&repo, &mr_id, &remote_id, force_mr).await;
     Some(HomeMr {
         id: mr_id,
         platform,

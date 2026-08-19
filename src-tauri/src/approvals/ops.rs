@@ -137,7 +137,7 @@ pub(super) async fn execute(
         MR_CREATE => {
             let branch = branch_of(&payload);
             let worktree_id = payload["worktree_id"].as_str().unwrap_or("").to_string();
-            crate::mr_manager::create_mr_impl(payload, pool).await?;
+            crate::forge::create_mr_impl(payload, pool).await?;
             // Hand back the MR the op just recorded — the agent's next step is
             // almost always "give me the link".
             let latest = crate::core::db::store::mrs::latest_for_worktree(pool, &worktree_id)
@@ -156,11 +156,11 @@ pub(super) async fn execute(
             })
         }
         MR_UPDATE => {
-            crate::mr_manager::update_mr_impl(payload, pool).await?;
+            crate::forge::update_mr_impl(payload, pool).await?;
             Ok(op_ok(op_type, "Merge request title/description updated"))
         }
         MR_CLOSE => {
-            crate::mr_manager::close_mr_impl(payload, pool).await?;
+            crate::forge::close_mr_impl(payload, pool).await?;
             Ok(op_ok(op_type, "Merge request closed"))
         }
         NOTION_PROPERTY => {
