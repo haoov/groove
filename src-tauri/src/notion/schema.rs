@@ -14,7 +14,7 @@ use std::{
 
 use serde::Serialize;
 
-use super::notion::notion_get;
+use super::api;
 
 /// A schema is re-read this often. Long enough to keep property panels snappy,
 /// short enough that a new Notion option shows up while you work.
@@ -96,7 +96,7 @@ fn now() -> i64 {
 }
 
 /// Fetch a database's schema, from cache when it is fresh.
-pub(super) async fn load(token: &str, database_id: &str) -> anyhow::Result<TaskSchema> {
+pub(crate) async fn load(token: &str, database_id: &str) -> anyhow::Result<TaskSchema> {
     if let Ok(map) = cache().read() {
         if let Some((at, schema)) = map.get(database_id) {
             if now() - at < CACHE_TTL_SECS {
@@ -105,7 +105,7 @@ pub(super) async fn load(token: &str, database_id: &str) -> anyhow::Result<TaskS
         }
     }
 
-    let body = notion_get(token, &format!("v1/databases/{database_id}")).await?;
+    let body = api::get(token, &format!("v1/databases/{database_id}")).await?;
     let schema = parse(database_id, &body)?;
 
     if let Ok(mut map) = cache().write() {
@@ -238,24 +238,19 @@ pub async fn list_relation_options(
 ) -> Result<Vec<RelationOption>, String> {
     const MAX_PAGES: usize = 5;
     let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    let token = &cfg.notion.token;
 
-    let mut out: Vec<RelationOption> = vec![];
-    let mut cursor: Option<String> = None;
-    for _ in 0..MAX_PAGES {
-        let mut body = serde_json::json!({ "page_size": 100 });
-        if let Some(c) = &cursor {
-            body["start_cursor"] = serde_json::json!(c);
-        }
-        let page = super::notion::notion_post(
-            token,
-            &format!("v1/databases/{database_id}/query"),
-            &body,
-        )
-        .await
-        .map_err(|e| e.to_string())?;
+    let rows = api::paginate_post(
+        &cfg.notion.token,
+        &format!("v1/databases/{database_id}/query"),
+        &serde_json::json!({}),
+        MAX_PAGES,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
-        for row in page["results"].as_array().unwrap_or(&vec![]) {
+    let mut out: Vec<RelationOption> = rows
+        .iter()
+        .filter_map(|row| {
             // Find the title by TYPE, not by name: every database names it
             // differently ("Brick / Component" here).
             let title = row["properties"]
@@ -273,16 +268,9 @@ pub async fn list_relation_options(
                         .unwrap_or_default()
                 })
                 .unwrap_or_default();
-            if let Some(id) = row["id"].as_str() {
-                out.push(RelationOption { id: id.to_string(), title });
-            }
-        }
-
-        match page["next_cursor"].as_str() {
-            Some(c) if page["has_more"].as_bool().unwrap_or(false) => cursor = Some(c.to_string()),
-            _ => break,
-        }
-    }
+            row["id"].as_str().map(|id| RelationOption { id: id.to_string(), title })
+        })
+        .collect();
 
     out.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
     Ok(out)

@@ -5,12 +5,12 @@
 //! trust — so the app accumulates seconds per day, shows what it measured, and
 //! waits for a figure you agree with. `time_entries` records what was measured,
 //! `time_logs` what was written; the difference is what is left to log.
+//! The Notion write itself lives in `notion::hours`.
 
 use sqlx::SqlitePool;
 
 use crate::core::db::models::TimeSummary;
 use crate::core::db::store;
-use super::notion::{notion_get, notion_patch};
 
 /// A tick is only credited if it is this recent — the frontend decides when to
 /// tick (see useTaskTimer), and this rejects a stale or replayed one.
@@ -50,37 +50,21 @@ pub async fn get_task_time(
         .map_err(|e| e.to_string())
 }
 
-/// Add `hours` to the Notion number property and record the write.
-///
-/// ADDS rather than replaces: "Hours spent" is cumulative, and the value may
-/// have been edited in Notion since we last read it, so the current value is
-/// re-read immediately before the write.
-pub(super) async fn log_hours(
-    token: &str,
+/// Write `hours` to Notion, then record the write in the local ledger. Only a
+/// write that reached Notion counts as logged; the unlogged remainder is clamped
+/// at read time, so a manual entry larger than what was measured can never read
+/// negative.
+async fn log_hours(
     notion_page_id: &str,
-    property: &str,
     hours: f64,
     session_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    if !(hours.is_finite() && hours > 0.0 && hours < 1000.0) {
-        return Err(anyhow::anyhow!("{hours} is not a plausible number of hours"));
-    }
+    let cfg = crate::core::config::require()?;
+    let token = &cfg.notion.token;
+    let property = crate::notion::hours::hours_property(token, &cfg.notion.database_id).await?;
+    let (before, after) = crate::notion::hours::add_hours(token, notion_page_id, &property, hours).await?;
 
-    let page = notion_get(token, &format!("v1/pages/{notion_page_id}")).await?;
-    let before = page["properties"][property]["number"].as_f64().unwrap_or(0.0);
-    let after = ((before + hours) * 100.0).round() / 100.0;
-
-    notion_patch(
-        token,
-        &format!("v1/pages/{notion_page_id}"),
-        &serde_json::json!({ "properties": { property: { "number": after } } }),
-    )
-    .await?;
-
-    // Only now is the time accounted for. The ledger records what was actually
-    // sent; the unlogged remainder is clamped at read time, so a manual entry
-    // larger than what was measured can never read negative.
     store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 
     Ok(serde_json::json!({ "before": before, "after": after, "added": hours }))
@@ -94,11 +78,7 @@ pub async fn log_task_hours(
     hours: f64,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    let property = hours_property(&cfg.notion.token, &cfg.notion.database_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    log_hours(&cfg.notion.token, &notion_page_id, &property, hours, &task_id, &pool)
+    log_hours(&notion_page_id, hours, &task_id, &pool)
         .await
         .map_err(|e| e.to_string())
 }
@@ -108,34 +88,11 @@ pub async fn log_hours_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = crate::core::config::require()?;
-    let token = payload["token"].as_str().unwrap_or_default();
-    let property = hours_property(token, &cfg.notion.database_id).await?;
     log_hours(
-        token,
         payload["notion_page_id"].as_str().unwrap_or_default(),
-        &property,
         payload["hours"].as_f64().unwrap_or(0.0),
         payload["task_id"].as_str().unwrap_or_default(),
         pool,
     )
     .await
-}
-
-/// The number property hours go into. Found in the schema rather than configured:
-/// there is exactly one plausible name, and guessing wrong would silently write to
-/// the wrong column.
-async fn hours_property(token: &str, database_id: &str) -> anyhow::Result<String> {
-    const CANDIDATES: [&str; 3] = ["Hours spent", "Hours", "Time spent"];
-    let schema = super::schema::load(token, database_id).await?;
-    for name in CANDIDATES {
-        if let Some(p) = schema.property(name) {
-            if p.kind == "number" {
-                return Ok(p.name.clone());
-            }
-        }
-    }
-    Err(anyhow::anyhow!(
-        "no number property named any of {CANDIDATES:?} in this database — nothing to log hours into"
-    ))
 }

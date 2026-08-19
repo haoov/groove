@@ -1,12 +1,8 @@
-//! Reading and writing a task's Notion properties, driven by the schema.
-//!
-//! Nothing here knows about Priority or Platform Components specifically: the
-//! property's *type* (from schema.rs) decides how a value is read and how the
-//! patch is built. Adding a property in Notion makes it editable here with no
-//! code change.
+//! Reading a Notion page's properties: the task extraction and the canonical
+//! per-type value shapes the property panel round-trips.
 //!
 //! Values cross the IPC boundary in ONE canonical shape per type — the same shape
-//! for reads and writes, so the panel can round-trip what it was given:
+//! for reads and writes:
 //!   select / status / url / date  → string | null
 //!   number                        → number | null
 //!   checkbox                      → bool
@@ -15,9 +11,87 @@
 //!   rich_text                     → string
 
 use serde::Serialize;
-use sqlx::SqlitePool;
 
-use super::notion::{notion_get, notion_patch};
+use crate::core::config::NotionConfig;
+use crate::core::db::models::NotionTask;
+
+/// The page's title text, found by TYPE: every database names its title property
+/// differently, and the type is unambiguous.
+fn extract_title(props: &serde_json::Value) -> Option<String> {
+    let obj = props.as_object()?;
+    obj.values()
+        .find(|v| v["type"].as_str() == Some("title"))
+        .map(|v| {
+            v["title"]
+                .as_array()
+                .map(|arr| arr.iter().filter_map(|t| t["plain_text"].as_str()).collect())
+                .unwrap_or_default()
+        })
+        .filter(|t: &String| !t.is_empty())
+}
+
+fn extract_status(props: &serde_json::Value, prop_name: &str) -> Option<String> {
+    let prop = props.get(prop_name)?;
+    prop["status"]["name"]
+        .as_str()
+        .or_else(|| prop["select"]["name"].as_str())
+        .map(str::to_string)
+}
+
+fn extract_select(props: &serde_json::Value, prop_name: &str) -> Option<String> {
+    props.get(prop_name)?["select"]["name"].as_str().map(str::to_string)
+}
+
+pub(super) fn extract_unique_id(props: &serde_json::Value) -> Option<String> {
+    let obj = props.as_object()?;
+    obj.values().find_map(|val| {
+        if val["type"].as_str() != Some("unique_id") {
+            return None;
+        }
+        let num = val["unique_id"]["number"].as_u64()?;
+        let prefix = val["unique_id"]["prefix"].as_str().unwrap_or("");
+        Some(if prefix.is_empty() { format!("{num}") } else { format!("{prefix}-{num}") })
+    })
+}
+
+pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<NotionTask> {
+    let page_id = page["id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("page missing id"))?
+        .to_string();
+
+    let props = &page["properties"];
+
+    let short_id = extract_unique_id(props)
+        .ok_or_else(|| anyhow::anyhow!("page {page_id} has no unique_id"))?;
+
+    let title = extract_title(props).unwrap_or_else(|| format!("(untitled) {short_id}"));
+
+    let status = extract_status(props, &cfg.properties.status)
+        .unwrap_or_else(|| cfg.status_map.in_progress.clone());
+
+    let priority = cfg
+        .properties
+        .priority
+        .as_deref()
+        .and_then(|k| extract_select(props, k));
+
+    Ok(NotionTask {
+        page_id,
+        short_id,
+        title,
+        status,
+        priority,
+        synced_at: chrono::Utc::now().timestamp(),
+    })
+}
+
+/// "PLAT-42" → 42,  "42" → 42.
+pub(super) fn parse_short_id_number(short_id: &str) -> Option<u64> {
+    short_id.rsplit('-').next().and_then(|s| s.parse().ok())
+}
+
+// ─── Canonical property values ────────────────────────────────────────────────
 
 /// One property as the panel sees it: what it is, its current value, and a
 /// human rendering for the types we can display but not edit.
@@ -32,7 +106,7 @@ pub struct PropertyValue {
 }
 
 /// Pull one property out of a Notion page into the canonical shape.
-fn read_value(kind: &str, prop: &serde_json::Value) -> (serde_json::Value, String) {
+pub(super) fn read_value(kind: &str, prop: &serde_json::Value) -> (serde_json::Value, String) {
     let plain = |arr: &serde_json::Value| -> String {
         arr.as_array()
             .map(|spans| {
@@ -213,111 +287,4 @@ pub(super) fn property_patch(
 
 fn as_str(v: &serde_json::Value) -> anyhow::Result<&str> {
     v.as_str().ok_or_else(|| anyhow::anyhow!("string expected, got {v}"))
-}
-
-// ─── Reads ────────────────────────────────────────────────────────────────────
-
-/// Every property of a task page, in schema order, with current values.
-#[tauri::command]
-pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyValue>, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    let page = notion_get(&cfg.notion.token, &format!("v1/pages/{notion_page_id}"))
-        .await
-        .map_err(|e| e.to_string())?;
-    let schema = super::schema::load(&cfg.notion.token, &cfg.notion.database_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(schema
-        .properties
-        .iter()
-        .map(|p| {
-            let prop = &page["properties"][&p.name];
-            let (value, display) = read_value(&p.kind, prop);
-            PropertyValue { name: p.name.clone(), kind: p.kind.clone(), value, display }
-        })
-        .collect())
-}
-
-// ─── Writes ───────────────────────────────────────────────────────────────────
-
-/// Patch one property and re-sync the local task row.
-///
-/// The tasks table mirrors status and priority (Home and the queue read them), so
-/// a write that doesn't refresh it would leave the UI showing the old value until
-/// the next full sync.
-pub(crate) async fn set_property(
-    token: &str,
-    database_id: &str,
-    notion_page_id: &str,
-    property: &str,
-    value: &serde_json::Value,
-    cfg: &crate::core::config::NotionConfig,
-    pool: &SqlitePool,
-) -> anyhow::Result<String> {
-    let schema = super::schema::load(token, database_id).await?;
-    let prop = schema
-        .property(property)
-        .ok_or_else(|| anyhow::anyhow!("{property} is not a property of this database"))?;
-    if !prop.editable {
-        return Err(anyhow::anyhow!(
-            "{property} is a {} — Notion computes it, so it can't be set",
-            prop.kind
-        ));
-    }
-
-    let body = serde_json::json!({
-        "properties": { property: property_patch(&prop.kind, value)? }
-    });
-    let updated = notion_patch(token, &format!("v1/pages/{notion_page_id}"), &body).await?;
-
-    if let Ok(task) = super::notion::page_to_task(&updated, cfg) {
-        let _ = crate::core::db::store::notion_tasks::upsert(pool, &task).await;
-    }
-
-    let (_, display) = read_value(&prop.kind, &updated["properties"][property]);
-    Ok(display)
-}
-
-/// UI path: you clicked it, so it happens. Agent writes go through the
-/// confirmation bridge instead (op `notion.property`).
-#[tauri::command]
-pub async fn update_task_property(
-    notion_page_id: String,
-    property: String,
-    value: serde_json::Value,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    set_property(
-        &cfg.notion.token,
-        &cfg.notion.database_id,
-        &notion_page_id,
-        &property,
-        &value,
-        &cfg.notion,
-        &pool,
-    )
-    .await
-    .map_err(|e| e.to_string())
-}
-
-/// Confirmation-bridge path for `notion.property` (agent-initiated).
-pub async fn update_property_impl(
-    payload: serde_json::Value,
-    pool: &SqlitePool,
-) -> anyhow::Result<serde_json::Value> {
-    let field = |k: &str| payload[k].as_str().unwrap_or_default().to_string();
-    let cfg = crate::core::config::require()?;
-    let display = set_property(
-        &field("token"),
-        &cfg.notion.database_id,
-        &field("notion_page_id"),
-        &field("property"),
-        &payload["value"],
-        &cfg.notion,
-        pool,
-    )
-    .await?;
-    Ok(serde_json::json!({ "property": field("property"), "value": display }))
 }

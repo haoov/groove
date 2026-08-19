@@ -15,7 +15,6 @@ pub const MR_CREATE: &str = "mr.create";
 pub const MR_UPDATE: &str = "mr.update";
 pub const MR_CLOSE: &str = "mr.close";
 
-pub const NOTION_STATUS: &str = "notion.status";
 /// Set any editable Notion property (agent-initiated; the UI writes directly).
 pub const NOTION_PROPERTY: &str = "notion.property";
 /// Add hours to the task's "Hours spent" number.

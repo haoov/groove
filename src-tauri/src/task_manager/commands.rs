@@ -3,13 +3,9 @@ use std::sync::{Arc, RwLock};
 use sqlx::SqlitePool;
 use tauri::Emitter;
 
-use crate::core::config::{self, Config, ConfigView};
-use crate::core::db::models::{Session, SessionKind, TaskView, Worktree};
+use crate::core::config::{self, ConfigView};
+use crate::core::db::models::{Session, SessionKind, Worktree};
 use crate::core::db::store;
-use super::notion::{
-    current_sprint_ids, get_task_body_impl, notion_patch, notion_post, page_to_task,
-    parse_short_id_number,
-};
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
@@ -94,116 +90,6 @@ pub async fn list_fonts() -> Result<Vec<String>, String> {
     families.sort_by_key(|f| f.to_lowercase());
     families.dedup();
     Ok(families)
-}
-
-#[tauri::command]
-pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskView>, String> {
-    list_tasks_impl(&pool).await.map_err(|e| e.to_string())
-}
-
-/// One page of the tasks-database query, with the filters from config applied.
-async fn query_task_pages(
-    cfg: &Config,
-    cursor: Option<&str>,
-) -> anyhow::Result<serde_json::Value> {
-    let mut filter_conditions: Vec<serde_json::Value> = vec![];
-
-    if cfg.notion.filters.filter_by_assignee {
-        filter_conditions.push(serde_json::json!({
-            "property": cfg.notion.properties.assignee
-                .as_deref()
-                .unwrap_or("Assignee"),
-            "people": { "contains": cfg.notion.user_id }
-        }));
-    }
-
-    for status in &cfg.notion.filters.exclude_statuses {
-        filter_conditions.push(serde_json::json!({
-            "property": cfg.notion.properties.status,
-            "status": { "does_not_equal": status }
-        }));
-    }
-
-    // Sprint filtering only applies when a sprint property is configured —
-    // filtering on a property the database doesn't have 400s the whole query.
-    if let Some(sprint_prop) = cfg.notion.properties.sprint.as_deref() {
-        let sprint_db =
-            super::notion::sprint_database_id(&cfg.notion.token, &cfg.notion.database_id, sprint_prop)
-                .await;
-        let sprint_ids = match &sprint_db {
-            Some(db) => current_sprint_ids(&cfg.notion.token, db).await,
-            None => vec![],
-        };
-        if !sprint_ids.is_empty() {
-            let sprint_filters: Vec<serde_json::Value> = sprint_ids
-                .iter()
-                .map(|id| serde_json::json!({
-                    "property": sprint_prop,
-                    "relation": { "contains": id }
-                }))
-                .collect();
-            if sprint_filters.len() == 1 {
-                filter_conditions.push(sprint_filters.into_iter().next().unwrap());
-            } else {
-                filter_conditions.push(serde_json::json!({ "or": sprint_filters }));
-            }
-        }
-    }
-
-    let mut body = if filter_conditions.len() > 1 {
-        serde_json::json!({ "filter": { "and": filter_conditions } })
-    } else if filter_conditions.len() == 1 {
-        serde_json::json!({ "filter": filter_conditions.remove(0) })
-    } else {
-        serde_json::json!({})
-    };
-    body["page_size"] = serde_json::json!(100);
-    if let Some(cursor) = cursor {
-        body["start_cursor"] = serde_json::json!(cursor);
-    }
-
-    notion_post(
-        &cfg.notion.token,
-        &format!("v1/databases/{}/query", cfg.notion.database_id),
-        &body,
-    )
-    .await
-}
-
-/// A runaway-pagination backstop far above any real queue.
-const MAX_TASK_PAGES: usize = 30;
-
-async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
-    let cfg = config::require()?;
-
-    let mut tasks: Vec<TaskView> = vec![];
-    let mut cursor: Option<String> = None;
-
-    for _ in 0..MAX_TASK_PAGES {
-        let resp = query_task_pages(&cfg, cursor.as_deref()).await?;
-
-        if let Some(results) = resp["results"].as_array() {
-            for page in results {
-                match page_to_task(page, &cfg.notion) {
-                    Ok(task) => {
-                        store::notion_tasks::upsert(pool, &task).await?;
-                        tasks.push(task.into());
-                    }
-                    Err(e) => tracing::warn!("skipping page: {e}"),
-                }
-            }
-        }
-
-        if resp["has_more"].as_bool() != Some(true) {
-            break;
-        }
-        match resp["next_cursor"].as_str() {
-            Some(next) => cursor = Some(next.to_string()),
-            None => break,
-        }
-    }
-
-    Ok(tasks)
 }
 
 #[tauri::command]
@@ -317,15 +203,11 @@ async fn finish_task_impl(
     // fails, the workspace is still intact.
     let page_id = task_page_id(pool, short_id).await?;
     let done_status = cfg.notion.status_map.done.clone();
-    let prop_name = &cfg.notion.properties.status;
-    notion_patch(
+    crate::notion::tasks::set_status(
         &cfg.notion.token,
-        &format!("v1/pages/{page_id}"),
-        &serde_json::json!({
-            "properties": {
-                prop_name: { "status": { "name": done_status } }
-            }
-        }),
+        &page_id,
+        &cfg.notion.properties.status,
+        &done_status,
     )
     .await?;
 
@@ -360,12 +242,7 @@ async fn delete_task_impl(
 
     // Trash the page BEFORE any local teardown, the same order finish_task uses.
     let page_id = task_page_id(pool, short_id).await?;
-    notion_patch(
-        &cfg.notion.token,
-        &format!("v1/pages/{page_id}"),
-        &serde_json::json!({ "in_trash": true }),
-    )
-    .await?;
+    crate::notion::tasks::trash(&cfg.notion.token, &page_id).await?;
 
     tear_down_session(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
 }
@@ -420,41 +297,6 @@ pub async fn pause_task(
 }
 
 #[tauri::command]
-pub async fn sync_task(
-    short_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskView, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-
-    let num = parse_short_id_number(&short_id)
-        .ok_or_else(|| format!("Cannot parse short_id: {short_id}"))?;
-
-    let body = serde_json::json!({
-        "filter": {
-            "property": "unique_id",
-            "unique_id": { "equals": num }
-        }
-    });
-    let resp = notion_post(
-        &cfg.notion.token,
-        &format!("v1/databases/{}/query", cfg.notion.database_id),
-        &body,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-
-    let page = resp["results"]
-        .as_array()
-        .and_then(|arr| arr.first())
-        .ok_or_else(|| format!("Task {short_id} not found in Notion"))?;
-
-    let task = page_to_task(page, &cfg.notion).map_err(|e| e.to_string())?;
-    store::notion_tasks::upsert(&*pool, &task).await.map_err(|e| e.to_string())?;
-
-    Ok(task.into())
-}
-
-#[tauri::command]
 pub async fn set_task_repos(
     short_id: String,
     repo_ids: Vec<String>,
@@ -465,42 +307,3 @@ pub async fn set_task_repos(
         .map_err(|e| e.to_string())
 }
 
-/// Called by the confirmation bridge when a notion.status op is approved.
-/// `token`/`status_prop_name` are injected by `execute_op` from config —
-/// secrets never live in the persisted confirmation payload.
-pub async fn update_notion_status_impl(payload: serde_json::Value) -> anyhow::Result<()> {
-    let token = payload["token"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing token in notion.status payload"))?;
-    let page_id = payload["notion_page_id"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing notion_page_id"))?;
-    let status = payload["status"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing status"))?;
-    let prop_name = payload["status_prop_name"].as_str().unwrap_or("Status");
-
-    let body = serde_json::json!({
-        "properties": {
-            prop_name: {
-                "status": { "name": status }
-            }
-        }
-    });
-
-    notion_patch(token, &format!("v1/pages/{page_id}"), &body).await?;
-    Ok(())
-}
-
-/// The ticket body as markdown — what the overview renders. Going through
-/// markdown (rather than a bespoke Notion-block renderer) means one renderer for
-/// task and MR descriptions, Notion's inline annotations survive, AND markdown
-/// typed literally into Notion (`**bold**`, backticks) displays as intended.
-#[tauri::command]
-pub async fn get_task_body_markdown(notion_page_id: String) -> Result<String, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let blocks = get_task_body_impl(&notion_page_id, &cfg.notion.token)
-        .await
-        .map_err(|e| e.to_string())?;
-    Ok(super::notion::blocks_to_markdown(&blocks))
-}

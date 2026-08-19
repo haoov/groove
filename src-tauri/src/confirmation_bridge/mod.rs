@@ -220,18 +220,6 @@ pub async fn resolve_confirmation(
         .map_err(|e| e.to_string())
 }
 
-/// Inject the Notion token (and any other config-derived secrets) into an op
-/// payload at execution time. Secrets are deliberately NOT stored in
-/// `pending_confirmations` rows or emitted in confirmation events.
-fn inject_notion_secrets(payload: &mut serde_json::Value) -> anyhow::Result<()> {
-    let cfg = crate::core::config::require()?;
-    payload["token"] = serde_json::json!(cfg.notion.token);
-    if payload.get("status_prop_name").and_then(|v| v.as_str()).is_none() {
-        payload["status_prop_name"] = serde_json::json!(cfg.notion.properties.status);
-    }
-    Ok(())
-}
-
 /// The success payload every write op returns. A bare `null` is what an agent
 /// gets when a tool call does nothing, so ops that "just succeed" must still say
 /// so explicitly — otherwise the model reads success as failure and retries.
@@ -257,7 +245,7 @@ fn branch_of(payload: &serde_json::Value) -> String {
 /// Dispatch an approved write op to its implementation. Returns op-specific metadata.
 async fn execute_op(
     op_type: &str,
-    mut payload: serde_json::Value,
+    payload: serde_json::Value,
     pool: &SqlitePool,
     handle: &AppHandle,
 ) -> anyhow::Result<serde_json::Value> {
@@ -341,15 +329,8 @@ async fn execute_op(
             crate::mr_manager::close_mr_impl(payload, pool).await?;
             Ok(op_ok(op_type, "Merge request closed"))
         }
-        crate::ops::NOTION_STATUS => {
-            let status = payload["status"].as_str().unwrap_or("").to_string();
-            inject_notion_secrets(&mut payload)?;
-            crate::task_manager::update_notion_status_impl(payload).await?;
-            Ok(op_ok(op_type, format!("Notion status set to \"{status}\"")))
-        }
         crate::ops::NOTION_PROPERTY => {
-            inject_notion_secrets(&mut payload)?;
-            let out = crate::task_manager::update_property_impl(payload, pool).await?;
+            let out = crate::notion::update_property_impl(payload, pool).await?;
             let prop = out["property"].as_str().unwrap_or("property").to_string();
             let value = out["value"].as_str().unwrap_or("").to_string();
             Ok(op_ok(op_type, if value.is_empty() {
@@ -359,20 +340,15 @@ async fn execute_op(
             }))
         }
         crate::ops::NOTION_HOURS => {
-            inject_notion_secrets(&mut payload)?;
             let out = crate::task_manager::log_hours_impl(payload, pool).await?;
             let (before, after) = (out["before"].as_f64().unwrap_or(0.0), out["after"].as_f64().unwrap_or(0.0));
             Ok(op_ok(op_type, format!("Hours spent {before} → {after}")))
         }
         crate::ops::NOTION_BODY => {
-            inject_notion_secrets(&mut payload)?;
             // Carries its own message (block counts).
-            crate::task_manager::update_body_impl(payload, pool).await
+            crate::notion::update_body_impl(payload, pool).await
         }
-        crate::ops::TASK_CREATE => {
-            inject_notion_secrets(&mut payload)?;
-            crate::task_manager::create_task_impl(payload, pool).await
-        }
+        crate::ops::TASK_CREATE => crate::notion::create_task_impl(payload, pool).await,
         crate::ops::TASK_ADD_REPO => {
             // No Notion secrets: this is local git and DB work only. The handle is
             // for the workspace_ready refresh the add ends with.
@@ -380,7 +356,6 @@ async fn execute_op(
         }
         crate::ops::TASK_CREATE_FROM_EXPLORER => {
             // Already returns the created task (short_id, page id, …).
-            inject_notion_secrets(&mut payload)?;
             crate::task_manager::create_task_from_explorer_impl(payload, pool).await
         }
         _ => Err(anyhow::anyhow!("unknown op_type: {op_type}")),

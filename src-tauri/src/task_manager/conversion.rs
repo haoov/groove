@@ -15,7 +15,7 @@ use crate::core::db::store;
 /// it. The task half is shared with `task.create` — see creation.rs.
 struct ConvertRequest<'a> {
     explorer_id: &'a str,
-    task: super::creation::NewTask<'a>,
+    task: crate::notion::NewTask<'a>,
 }
 
 impl<'a> ConvertRequest<'a> {
@@ -24,7 +24,7 @@ impl<'a> ConvertRequest<'a> {
             explorer_id: payload["explorer_id"]
                 .as_str()
                 .ok_or_else(|| anyhow::anyhow!("missing explorer_id"))?,
-            task: super::creation::NewTask::from_payload(payload)?,
+            task: crate::notion::NewTask::from_payload(payload)?,
         })
     }
 }
@@ -168,7 +168,7 @@ fn cleanup_explorer_dir(explorer_dir: &std::path::Path) {
 /// bridge (op `task.create_from_explorer`); returns the new task as JSON
 /// (delivered to both the agent and the frontend).
 /// The session shape the branch namer needs, before the row is re-keyed.
-fn adopted_session(short_id: &str, task: &super::creation::NewTask<'_>) -> crate::core::db::models::Session {
+fn adopted_session(short_id: &str, task: &crate::notion::NewTask<'_>) -> crate::core::db::models::Session {
     crate::core::db::models::Session {
         id: short_id.to_string(),
         kind: crate::core::db::models::SessionKind::Task,
@@ -187,9 +187,11 @@ pub async fn create_task_from_explorer_impl(
     let req = ConvertRequest::from_payload(&payload)?;
     validate_source(req.explorer_id, pool).await?;
 
-    // Same page creation as filing a standalone task (see creation.rs) — this op
-    // is that, plus adopting the session onto the result.
-    let (notion_page_id, short_id) = super::creation::create_page(&req.task).await?;
+    // Same page creation as filing a standalone task (see notion::create) — this
+    // op is that, plus adopting the session onto the result.
+    let cfg = crate::core::config::require()?;
+    let (notion_page_id, short_id) =
+        crate::notion::create::create_page(&cfg.notion.token, &req.task).await?;
 
     let now = chrono::Utc::now().timestamp();
     let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task));

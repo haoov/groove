@@ -11,6 +11,7 @@ mod launch_env;
 mod mcp_server;
 mod migrate_identity;
 mod mr_manager;
+mod notion;
 mod ops;
 mod review;
 mod task_manager;
@@ -63,7 +64,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // task_manager
-            task_manager::list_tasks,
             task_manager::open_task,
             task_manager::set_active_task,
             task_manager::open_explorer_session,
@@ -71,22 +71,12 @@ pub fn run() {
             task_manager::rename_explorer,
             task_manager::discard_explorer,
             task_manager::pause_task,
-            task_manager::sync_task,
             task_manager::set_task_repos,
             task_manager::get_config,
             task_manager::check_environment,
             task_manager::detect_database,
             task_manager::start_auth_session,
-            task_manager::list_notion_users,
             task_manager::write_initial_config,
-            task_manager::get_task_body_markdown,
-            task_manager::get_task_schema,
-            task_manager::list_relation_options,
-            task_manager::get_task_properties,
-            task_manager::update_task_property,
-            task_manager::request_task_body_update,
-            task_manager::create_task,
-            task_manager::get_task_template_markdown,
             task_manager::get_task_time,
             task_manager::add_task_time,
             task_manager::log_task_hours,
@@ -96,6 +86,18 @@ pub fn run() {
             task_manager::set_theme,
             task_manager::finish_task,
             task_manager::delete_task,
+            // notion
+            notion::list_tasks,
+            notion::sync_task,
+            notion::find_notion_user,
+            notion::get_task_body_markdown,
+            notion::get_task_schema,
+            notion::list_relation_options,
+            notion::get_task_properties,
+            notion::update_task_property,
+            notion::request_task_body_update,
+            notion::create_task,
+            notion::get_task_template_markdown,
             // worktrees
             worktrees::register_repo,
             worktrees::list_main_repos,

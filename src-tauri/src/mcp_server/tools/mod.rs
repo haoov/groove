@@ -85,9 +85,6 @@ pub(super) async fn dispatch(
         "create_mr" => write::via_bridge(ops::MR_CREATE, input, state, mcp_session).await,
         "update_mr" => write::via_bridge(ops::MR_UPDATE, input, state, mcp_session).await,
         "close_mr" => write::via_bridge(ops::MR_CLOSE, input, state, mcp_session).await,
-        "update_notion_status" => {
-            write::via_bridge(ops::NOTION_STATUS, input, state, mcp_session).await
-        }
         "create_task_from_explorer" => {
             write::create_task_from_explorer(input, state, mcp_session).await
         }

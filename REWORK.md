@@ -354,3 +354,53 @@ Closes P2. Backend only; no IPC or frontend impact.
 - `src/events.rs` → `src/core/events.rs`, references now `crate::core::events`.
 - Nothing else changed: same names, same `set_app`/`notice` globals, same
   hand-mirrored contract with `src/lib/events.ts`.
+
+## Phase 4 — notion feature module (done)
+
+Backend only. All Notion API knowledge now lives in `src/notion/`; `api.rs`
+holds the verbs as `pub(super)` (compiler-enforced boundary) plus a guard test
+(`no_notion_api_outside_notion_api`). task_manager drops to session lifecycle,
+time ledger, repos, conversion, setup.
+
+### Layout
+
+`api` (verbs + paginate_get/paginate_post), `markdown` (blocks↔md, pure),
+`schema`, `detect` (moved as-is), `page` (page_to_task + canonical property
+shapes), `properties`, `tasks` (queue query, sync, set_status, trash, sprint
+cache), `create` (NewTask, create_page, filing), `body` (read/replace/template),
+`hours` (Notion half; ledger stays in task_manager), `users` (find by email).
+
+### Dropped
+
+- **`notion.status` op + MCP tool `update_notion_status` + impl** — redundant
+  with `notion.property` (status is a property type), and the dropped path never
+  refreshed the local mirror (staleness bug dies with it).
+- **`list_notion_users`** → `find_notion_user(token, email)` returns the one
+  matching person. No fallback by decision; requires the integration's
+  user-email capability.
+- `inject_notion_secrets` and the `token` field in op payloads — handlers read
+  config at execution time; secrecy (nothing persisted) unchanged.
+- Title name-guessing in page_to_task (exact by-type scan stays).
+
+### Fixed / improved
+
+- `sync_task` filtered on a property literally named "unique_id"; now resolves
+  the unique_id property NAME from the schema (suspected 400 on every sync).
+- Sprint-status property resolved by TYPE in the sprint DB's schema — last of
+  the N2 hardcoded vocabulary ("Sprint status") gone. "Current" match stays.
+- Current-sprint ids cached 5 min: task listing pays 1 Notion call amortized,
+  not 3.
+- `create_task` extra properties: one batched PATCH, per-property fallback only
+  on failure (keeps warning isolation).
+- Body reader fetches table rows concurrently.
+- `list_tasks` mirrors pages in one transaction.
+- Three hand-rolled cursor loops → `api::paginate_get/paginate_post`.
+
+### Frontend work owed — frontend phase
+
+| Break | Fix |
+|---|---|
+| `FirstRun.tsx` invokes removed `list_notion_users` | email input → `find_notion_user({token, email})` → `{id, name, email}` |
+| `notion.status` confirmation renderer (ops.ts + modal) is dead | delete; `notion.property` covers status |
+
+All other IPC names/shapes frozen.
