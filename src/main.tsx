@@ -8,11 +8,14 @@ import '@fontsource/ibm-plex-sans/600.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/600.css';
+import '@xterm/xterm/css/xterm.css';
 import './shared/styles/base.css';
 import './shared/ui/ui.css';
 import './app/app.css';
 import './home/home.css';
 import './workspace/workspace.css';
+import './editor/editor.css';
+import './terminal/terminal.css';
 import App from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);

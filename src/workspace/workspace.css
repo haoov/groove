@@ -21,7 +21,10 @@
 .tab { height: 26px; padding: 0 10px; border-radius: var(--gl-border-radius-base) var(--gl-border-radius-base) 0 0; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--gl-text-color-subtle); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
 .tab.on { background: var(--gl-background-color-default); color: var(--gl-text-color-default); border-color: var(--gl-border-color-default); }
 .tab .fn { font-family: var(--font-mono); font-size: 12px; }
+.tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gl-color-blue-400); flex: none; }
 .tab .x { color: var(--gl-text-color-muted); }
 .tab .x:hover { color: var(--gl-color-red-400); }
-.pane-body { flex: 1; min-height: 0; overflow: auto; }
-.fileview { padding: 12px 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; white-space: pre; color: var(--gl-text-color-default); tab-size: 4; }
+.tabs .add { margin-left: 2px; color: var(--gl-text-color-muted); cursor: pointer; padding: 2px 8px; border-radius: var(--gl-border-radius-base); font-size: 14px; }
+.tabs .add:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+.pane-body { flex: 1; min-height: 0; position: relative; }
+.tabbody { position: absolute; inset: 0; overflow: hidden; }

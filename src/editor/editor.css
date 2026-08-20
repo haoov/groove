@@ -1,0 +1,3 @@
+.cm-host { height: 100%; }
+.cm-host .cm-editor { height: 100%; }
+.cm-host .cm-editor.cm-focused { outline: none; }
