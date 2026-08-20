@@ -95,7 +95,8 @@ pub(super) fn parse_short_id_number(short_id: &str) -> Option<u64> {
 
 /// One property as the panel sees it: what it is, its current value, and a
 /// human rendering for the types we can display but not edit.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct PropertyValue {
     pub name: String,
     pub kind: String,

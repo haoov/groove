@@ -1,12 +1,17 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct WorktreeStatus {
     pub worktree_id: String,
+    #[ts(type = "number")]
     pub modified: usize,
+    #[ts(type = "number")]
     pub staged: usize,
+    #[ts(type = "number")]
     pub ahead: i64,
+    #[ts(type = "number")]
     pub behind: i64,
 }
 

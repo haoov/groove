@@ -35,7 +35,8 @@ const WRITABLE: [&str; 9] = [
     "url",
 ];
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct PropertySchema {
     pub name: String,
     /// Notion's own type string — the frontend renders by this.
@@ -52,7 +53,8 @@ pub struct PropertySchema {
 /// In progress, Complete. This is the ONLY non-guess signal for what an option
 /// means — "Fixed with required action" is a completion state and no amount of
 /// name matching would say so.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct StatusGroup {
     /// Notion's group name ("To-do", "In progress", "Complete"), verbatim.
     pub name: String,
@@ -60,7 +62,8 @@ pub struct StatusGroup {
     pub options: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct TaskSchema {
     pub database_id: String,
     /// The title property's name — it differs per database ("Task name" here).
@@ -222,7 +225,8 @@ pub async fn get_task_schema() -> Result<TaskSchema, String> {
 }
 
 /// One choice for a relation property: a page in the target database.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct RelationOption {
     pub id: String,
     pub title: String,

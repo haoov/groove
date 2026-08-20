@@ -2,7 +2,8 @@
 
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct NotionUser {
     pub id: String,
     pub name: String,

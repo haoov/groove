@@ -5,13 +5,15 @@ use super::api::pct;
 
 /// An open MR where the current user is a reviewer, matched (by pool slug) to
 /// its MAIN clone when one exists. TS mirror in types/ipc.ts.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ReviewMr {
     /// Which forge this row came from: "gitlab" or "github". The UI reads it for
     /// the reference sigil (`!42` vs `#42`).
     pub platform: String,
     /// Full project path on the forge, e.g. "wiremind/devops/gitlab-ci-common".
     pub project_full: String,
+    #[ts(type = "number")]
     pub iid: u64,
     pub title: String,
     pub author: String,

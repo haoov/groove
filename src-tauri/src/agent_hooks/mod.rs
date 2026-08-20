@@ -28,7 +28,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 /// What an agent is doing right now, per task.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct AgentActivity {
     /// Task short id — the key, repeated in the payload for the frontend.
     pub task_id: String,
@@ -38,10 +39,12 @@ pub struct AgentActivity {
     /// Claude's closing message for the last finished turn.
     pub last_message: Option<String>,
     /// When this state was entered (unix seconds).
+    #[ts(type = "number")]
     pub since: i64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 #[serde(rename_all = "lowercase")]
 pub enum AgentState {
     /// Between turns — free to take a prompt.
@@ -52,7 +55,8 @@ pub enum AgentState {
     Waiting,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ToolCall {
     pub name: String,
     /// One-line rendering of the tool's input, e.g. `cargo test --all`.

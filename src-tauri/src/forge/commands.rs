@@ -232,10 +232,12 @@ pub async fn post_mr_comment(
 /// Live-ish MR facts Home shows per repo. Everything else in the snapshot is
 /// local git or SQLite; these two cost a forge round-trip each, so they are
 /// cached per MR and refreshed on a TTL rather than on every Home render.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct MrSignals {
     /// Pipeline status ("success", "failed", …) — None when the MR has no pipeline.
     pub ci: Option<String>,
+    #[ts(type = "number")]
     pub unresolved: i64,
     /// Carries at least one approval (from anyone).
     pub approved: bool,

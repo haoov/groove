@@ -8,7 +8,8 @@ pub struct Config {
     pub ui: UiConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct UiConfig {
     #[serde(default = "default_font_size")]
     pub font_size: u8,
@@ -64,7 +65,8 @@ pub struct NotionConfig {
     pub default_project_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct PropertyNames {
     pub status: String,
     pub priority: Option<String>,
@@ -81,14 +83,16 @@ pub struct PropertyNames {
 /// database this was written against has no "In review" option at all — the map was
 /// describing states the app does not drive. Reading a status is a different problem
 /// and needs no map: `lib/taskStatus.ts` classifies whatever label Notion returns.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct StatusMap {
     pub ready: String,
     pub in_progress: String,
     pub done: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct FilterConfig {
     pub exclude_statuses: Vec<String>,
     #[serde(default = "default_true")]
@@ -99,7 +103,8 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GitConfig {
     // The repo pool is discovered on disk (`<worktree_root>/main/**`), not
     // configured — an old `repos` key in the file is silently ignored.
@@ -113,14 +118,16 @@ pub struct GitConfig {
 /// `skip_serializing` on the field, because `Config` is also what gets written back
 /// to `workbench.config.json` (see `save_config_to_dir`), so skipping it there would
 /// erase the token from disk on the next preference change.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ConfigView {
     pub notion: NotionView,
     pub git: GitConfig,
     pub ui: UiConfig,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct NotionView {
     pub database_id: String,
     pub user_id: String,

@@ -12,7 +12,8 @@ use crate::core::db::models::{SessionKind, Worktree};
 use crate::core::db::store::home::HomeRow;
 use crate::core::db::store;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct HomeMr {
     pub id: String,
     /// "gitlab" | "github" — the UI picks `!42` or `#42` from it.
@@ -22,12 +23,14 @@ pub struct HomeMr {
     pub url: String,
     /// Pipeline status; None when unknown or the MR has no pipeline.
     pub ci: Option<String>,
+    #[ts(type = "number")]
     pub unresolved: i64,
     /// Carries at least one approval — surfaced as a pill on Home.
     pub approved: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct HomeRepo {
     pub repo_id: String,
     pub project: String,
@@ -38,19 +41,28 @@ pub struct HomeRepo {
     /// Provisioned, but the directory is gone (deleted by hand / stale row).
     pub missing: bool,
     /// Working-tree changes (untracked files included, matching the sidebar chips).
+    #[ts(type = "number")]
     pub modified: i64,
+    #[ts(type = "number")]
     pub staged: i64,
+    #[ts(type = "number")]
     pub conflicted: i64,
+    #[ts(type = "number")]
     pub ahead: i64,
+    #[ts(type = "number")]
     pub behind: i64,
     /// Line delta against the diff base (the MR target for review sessions).
+    #[ts(type = "number")]
     pub added: i64,
+    #[ts(type = "number")]
     pub deleted: i64,
+    #[ts(type = "number")]
     pub files_changed: i64,
     pub mr: Option<HomeMr>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct HomeEntry {
     pub short_id: String,
     pub title: String,

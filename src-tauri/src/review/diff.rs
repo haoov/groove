@@ -400,7 +400,8 @@ pub async fn get_task_diff_mcp(task_id: &str, pool: &SqlitePool) -> anyhow::Resu
 
 /// A slice of a file, plus how long the file is so a caller can tell whether a
 /// trailing gap still has more to show.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct FileLines {
     pub lines: Vec<String>,
     pub total: u32,

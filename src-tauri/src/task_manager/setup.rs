@@ -9,7 +9,8 @@ use serde::Serialize;
 use crate::core::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
 
 /// An external program the app shells out to.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ToolCheck {
     pub name: String,
     /// Resolved path, or None when it is not on PATH.
@@ -26,7 +27,8 @@ pub struct ToolCheck {
     pub authed: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct Environment {
     /// Where the config file is read from, whether or not it exists.
     pub config_path: String,
@@ -182,7 +184,8 @@ pub async fn start_auth_session(
 ///
 /// The point is that the user can SEE what was detected: a silent wrong guess about
 /// which property holds the status is worse than a visible one.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct DetectedSchema {
     pub title_property: String,
     pub status_property: String,
