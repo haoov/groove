@@ -1,103 +1,182 @@
-import { useCallback, useEffect, useState } from 'react';
-import { call } from '../shared/ipc/client';
-import { useStore } from '../shared/store';
-import type { Repo } from '../shared/ipc/generated';
+import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useSession, useStore } from '../shared/store';
+import { useRepoPicker, RepoPickerList, CloneRepoForm } from './repoPicker';
 
-// list_main_repos / clone_repo return MainRepo (no ts-rs DTO): { local_path, slug }.
-interface MainRepo { local_path: string; slug: string }
+/**
+ * Add one or more repos to the ALREADY-OPEN task — the post-wizard path.
+ * Reuses the wizard's step-1 repo picker. Branches default to the task branch
+ * (same as the task's other worktrees); provisioning is incremental so existing
+ * worktrees are left untouched.
+ */
+export function AddRepoModal({ onClose }: { onClose: () => void }) {
+  const activeTask = useSession((s) => s.activeTask);
+  const activeRepos = useSession((s) => s.activeRepos);
+  const isExplorer = useSession((s) => s.kind === 'explorer');
+  const notify = useStore((s) => s.notify);
+  const defaultBranch = (activeTask?.short_id ?? '').toLowerCase();
 
-/** Add repos to the active session, then provision worktrees. Repos come from
- *  the local clone pool (or a fresh clone); each is registered, attached to the
- *  session, and provisioned. A reopen refreshes the workspace. */
-export function AddRepoModal() {
-  const open = useStore((s) => s.addRepoOpen);
-  const setOpen = useStore((s) => s.setAddRepoOpen);
-  const activeId = useStore((s) => s.activeSessionId);
-  const session = useStore((s) => (activeId ? s.sessions[activeId] : undefined));
+  // repo.id → branch name. Seeded with the task branch when a repo is selected so
+  // the field holds real text you can prepend or append to; a placeholder gave
+  // nothing to edit.
+  const [branchByRepo, setBranchByRepo] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const [pool, setPool] = useState<MainRepo[] | null>(null);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [cloneUrl, setCloneUrl] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    mainRepos, selectedRepos,
+    isSelected, isPending, toggleRepo, loadRepos,
+  } = useRepoPicker({
+    onSelect: (repo) =>
+      setBranchByRepo((p) => (p[repo.id] ? p : { ...p, [repo.id]: defaultBranch })),
+    onDeselect: (repo) => setBranchByRepo((p) => { const n = { ...p }; delete n[repo.id]; return n; }),
+    onError: (msg) => setError(msg),
+  });
 
-  const attachedSlugs = new Set((session?.repos ?? []).map((r) => r.id));
+  useEffect(() => { loadRepos(); }, [loadRepos]);
 
-  const load = useCallback(() => {
-    call<MainRepo[]>('list_main_repos').then(setPool).catch((e) => { setError(String(e)); setPool([]); });
-  }, []);
-  useEffect(() => { if (open) { setPicked(new Set()); setError(null); load(); } }, [open, load]);
+  if (!activeTask) return null;
 
-  if (!open || !session) return null;
+  // Only repos not already attached to this task are addable.
+  const addable = mainRepos.filter(
+    (mr) => !activeRepos.some((r) => r.local_path === mr.local_path)
+  );
 
-  const toggle = (slug: string) =>
-    setPicked((s) => { const n = new Set(s); n.has(slug) ? n.delete(slug) : n.add(slug); return n; });
-
-  const clone = async () => {
-    if (!cloneUrl.trim()) return;
-    setBusy(true); setError(null);
-    try { const mr = await call<MainRepo>('clone_repo', { url: cloneUrl.trim() }); setCloneUrl(''); load(); toggle(mr.slug); }
-    catch (e) { setError(String(e)); }
-    finally { setBusy(false); }
-  };
-
-  const add = async () => {
-    const chosen = (pool ?? []).filter((r) => picked.has(r.slug));
-    if (chosen.length === 0) return;
-    setBusy(true); setError(null);
+  const submit = async () => {
+    if (selectedRepos.length === 0) return;
+    setLoading(true);
+    setError('');
+    const shortId = activeTask.short_id;
     try {
-      // Register each pool entry into the DB to get a Repo id.
-      const newRepos = await Promise.all(
-        chosen.map((r) => call<Repo>('register_repo', { slug: r.slug, localPath: r.local_path })),
-      );
-      const newIds = newRepos.map((r) => r.id);
-      // set_task_repos REPLACES the set, so merge with what's already attached.
-      const merged = Array.from(new Set([...session.repos.map((r) => r.id), ...newIds]));
-      await call('set_task_repos', { shortId: session.id, repoIds: merged });
-      // Session-default branch (null) → task branch, or explorer/<slug>.
-      await call('provision_worktrees', {
-        taskId: session.id,
-        branches: newIds.map((id) => ({ repo_id: id, branch_name: null })),
-      });
-      // Reopen to re-hydrate the workspace via workspace_ready.
-      await call('open_task', { shortId: session.id }).catch(() => {});
-      setOpen(false);
-    } catch (e) { setError(String(e)); }
-    finally { setBusy(false); }
+      const newIds = selectedRepos.map((r) => r.id);
+      // set_task_repos replaces the set, so merge with the repos already attached.
+      const mergedIds = [...activeRepos.map((r) => r.id), ...newIds];
+
+      if (isExplorer) {
+        await invoke('set_task_repos', { shortId, repoIds: mergedIds });
+        await invoke('provision_worktrees', {
+          taskId: shortId,
+          branches: newIds.map((id) => ({ repo_id: id, branch_name: null })),
+        });
+      } else {
+        // Resolve each repo's target branch (typed override, or the task default).
+        const specs = selectedRepos.map((r) => {
+          const typed = (branchByRepo[r.id] ?? '').trim();
+          return { repo: r, branch: typed || defaultBranch, custom: typed || null };
+        });
+
+        // Refuse if any target branch already exists on the repo's origin.
+        const taken: string[] = [];
+        for (const s of specs) {
+          const exists = await invoke<boolean>('remote_branch_exists', {
+            repoId: s.repo.id,
+            branch: s.branch,
+          });
+          if (exists) taken.push(`${s.repo.project} → ${s.branch}`);
+        }
+        if (taken.length > 0) {
+          setError(`Remote branch already exists on origin: ${taken.join(', ')}. Pick another name.`);
+          return;
+        }
+
+        await invoke('set_task_repos', { shortId, repoIds: mergedIds });
+        await invoke('provision_worktrees', {
+          taskId: shortId,
+          branches: specs.map((s) => ({ repo_id: s.repo.id, branch_name: s.custom })),
+        });
+      }
+      // The repos are attached and provisioned by this point, so a failed refresh
+      // must NOT hold the modal open: it would read as "nothing happened" while
+      // the worktrees are already on disk. Report it and close either way.
+      try {
+        // Re-hydrates activeRepos / activeWorktrees via workspace_ready.
+        await invoke('open_task', { shortId });
+      } catch (e) {
+        notify({
+          kind: 'attention',
+          source: 'app',
+          taskId: shortId,
+          title: 'Repo added, but the workspace did not refresh',
+          detail: `Reopen the session to see it. ${String(e)}`,
+        });
+      }
+      onClose();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="ov-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-      <div className="addrepo" role="dialog" aria-modal="true">
-        <div className="settings-h"><span>Add repo to {session.title}</span><button className="settings-x" onClick={() => setOpen(false)}>×</button></div>
-
-        <div className="ar-clone">
-          <input placeholder="Clone a new repo by URL…" value={cloneUrl} inputMode="url"
-            onChange={(e) => setCloneUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') clone(); }} />
-          <button disabled={busy || !cloneUrl.trim()} onClick={clone}>Clone</button>
+    <div className="wizard-overlay" onClick={onClose}>
+      <div className="wizard-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="wizard-header">
+          <div className="wizard-title">Add repo to {activeTask.short_id}</div>
+          <div className="wizard-subtitle">{activeTask.title}</div>
+          <button className="wizard-close" onClick={onClose}>×</button>
         </div>
 
-        <div className="ar-list">
-          {pool === null && <div className="ar-empty">Loading…</div>}
-          {pool?.length === 0 && <div className="ar-empty">No repos in the pool. Clone one above.</div>}
-          {pool?.map((r) => {
-            const already = attachedSlugs.has(r.slug);
-            return (
-              <label key={r.slug} className={`ar-row${already ? ' disabled' : ''}`}>
-                <input type="checkbox" disabled={already} checked={already || picked.has(r.slug)} onChange={() => toggle(r.slug)} />
-                <span className="ar-slug">{r.slug}</span>
-                {already && <span className="ar-tag">attached</span>}
-              </label>
-            );
-          })}
-        </div>
+        <div className="wizard-body">
+          <p className="wizard-desc">
+            {isExplorer ? (
+              <>Select repositories to add — each gets a worktree on this explorer's own
+              branch, renamed to the task branch if you turn this into a task.</>
+            ) : (
+              <>Select repositories to add, then name each branch (defaults to{' '}
+              <code>{activeTask.short_id.toLowerCase()}</code>). Creation is blocked if the
+              branch already exists on the repo's origin.</>
+            )}
+          </p>
 
-        {error && <div className="fr-error">{error}</div>}
-        <div className="ar-actions">
-          <button className="ovw-ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="fr-save" disabled={busy || picked.size === 0} onClick={add}>
-            {busy ? 'Adding…' : `Add ${picked.size || ''}`}
-          </button>
+          {addable.length === 0 ? (
+            <p className="wizard-empty">
+              {mainRepos.length === 0
+                ? 'No repos in the pool yet — clone one below.'
+                : 'Every pooled repo is already on this task. Clone a new one below.'}
+            </p>
+          ) : (
+            <RepoPickerList
+              repos={addable}
+              isSelected={isSelected}
+              isPending={isPending}
+              onToggle={toggleRepo}
+              onConfirm={submit}
+            />
+          )}
+
+          {!isExplorer && selectedRepos.length > 0 && (
+            <div className="wizard-branch-list">
+              {selectedRepos.map((r) => (
+                <div key={r.id} className="wizard-branch-item">
+                  <span className="wizard-branch-repo">{r.project}</span>
+                  <input
+                    className="wizard-input"
+                    placeholder={defaultBranch}
+                    value={branchByRepo[r.id] ?? defaultBranch}
+                    onChange={(e) => setBranchByRepo((p) => ({ ...p, [r.id]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <CloneRepoForm onCloned={(repo) => { loadRepos(); toggleRepo(repo); }} />
+
+          {error && <div className="wizard-error">{error}</div>}
+
+          <div className="wizard-footer">
+            <button className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button
+              className="btn-primary"
+              onClick={submit}
+              disabled={loading || selectedRepos.length === 0}
+            >
+              {loading
+                ? 'Adding…'
+                : `Add ${selectedRepos.length || ''} repo${selectedRepos.length === 1 ? '' : 's'}`.trim()}
+            </button>
+          </div>
         </div>
       </div>
     </div>

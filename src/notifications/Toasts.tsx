@@ -1,41 +1,48 @@
 import { useEffect } from 'react';
 import { useStore } from '../shared/store';
-import type { Toast } from './notifications.slice';
+import { NotificationRow } from './NotificationCenter';
+import type { AppNotification } from '../shared/store';
 
-const TTL_MS = 6000;
+/** Errors stay up longer — you may be reading them, not glancing. */
+const DISMISS_MS: Record<AppNotification['kind'], number> = {
+  success: 3800,
+  info: 3800,
+  attention: 7000,
+  error: 8000,
+};
 
-/** Transient notifications, stacked bottom-right. Errors stay until dismissed;
- *  the rest auto-expire. Clicking one that names a session focuses it. */
-export function Toasts() {
-  const toasts = useStore((s) => s.toasts);
-  if (toasts.length === 0) return null;
-  return (
-    <div className="toasts">
-      {toasts.map((t) => <ToastItem key={t.id} toast={t} />)}
-    </div>
-  );
+function Toast({ n }: { n: AppNotification }) {
+  const dismiss = useStore((s) => s.dismissToast);
+  useEffect(() => {
+    const t = window.setTimeout(() => dismiss(n.id), DISMISS_MS[n.kind]);
+    return () => clearTimeout(t);
+  }, [n.id, n.kind, dismiss]);
+
+  return <NotificationRow n={n} variant="toast" onDismiss={() => dismiss(n.id)} />;
 }
 
-function ToastItem({ toast }: { toast: Toast }) {
-  const dismiss = useStore((s) => s.dismissToast);
-  const setActiveSession = useStore((s) => s.setActiveSession);
-  const setView = useStore((s) => s.setView);
+/**
+ * The interrupting view of the notification feed, top right.
+ *
+ * Dismissing one only hides it here — the entry stays in the notification centre,
+ * so nothing announced becomes unrecoverable.
+ */
+export function Toasts() {
+  const notifications = useStore((s) => s.notifications);
+  const toastIds = useStore((s) => s.toastIds);
+  const panelOpen = useStore((s) => s.notificationsOpen);
 
-  useEffect(() => {
-    if (toast.kind === 'error') return;
-    const h = setTimeout(() => dismiss(toast.id), TTL_MS);
-    return () => clearTimeout(h);
-  }, [toast.id, toast.kind, dismiss]);
+  // No point shouting at someone who is already reading the feed.
+  if (panelOpen) return null;
 
-  const focus = () => {
-    if (toast.sessionId) { setActiveSession(toast.sessionId); setView('session'); }
-    dismiss(toast.id);
-  };
+  const shown = toastIds
+    .map((id) => notifications.find((n) => n.id === id))
+    .filter((n): n is AppNotification => !!n);
+  if (shown.length === 0) return null;
 
   return (
-    <div className={`toast t-${toast.kind}${toast.sessionId ? ' clickable' : ''}`} onClick={focus}>
-      <span className="toast-msg">{toast.message}</span>
-      <button className="toast-x" onClick={(e) => { e.stopPropagation(); dismiss(toast.id); }}>×</button>
+    <div className="toast-stack">
+      {shown.map((n) => <Toast key={n.id} n={n} />)}
     </div>
   );
 }

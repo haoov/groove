@@ -1,86 +1,134 @@
-import { useStore } from '../shared/store';
-import { FilesPanel } from '../files/FilesPanel';
-import { GitPanel } from '../git/GitPanel';
-import { NotesPanel } from '../notes/NotesPanel';
-import { CodeEditor } from '../editor/CodeEditor';
-import { TerminalTab } from '../terminal/TerminalTab';
-import { ChangesView } from '../git/ChangesView';
-import { activeWorktree, type Tab } from '../sessions/sessions.slice';
+import { useCallback, useRef } from 'react';
+import { useSession, type LayoutNode } from '../shared/store';
+import { containsLeaf } from '../shared/lib/layout';
+import { WorkspacePane } from './WorkspacePane';
+import { useAnnotations, type AnnCtx } from '../editor/useAnnotations';
 
-/** The session workspace: a sidebar panel + a content pane with the open tabs.
- *  All tab bodies stay mounted (hidden when inactive) so editor state and live
- *  terminals survive tab switches. Split panes + diff land in 2c. */
 export function Workspace() {
-  const activeId = useStore((s) => s.activeSessionId);
-  const session = useStore((s) => (activeId ? s.sessions[activeId] : undefined));
-  const setActiveTab = useStore((s) => s.setActiveTab);
-  const closeTab = useStore((s) => s.closeTab);
-  const openTerminalTab = useStore((s) => s.openTerminalTab);
+  const panes = useSession((s) => s.panes);
+  const activePaneId = useSession((s) => s.activePaneId);
+  const layout = useSession((s) => s.layout);
+  const maximizedPaneId = useSession((s) => s.maximizedPaneId);
+  const activeRepos = useSession((s) => s.activeRepos);
+  const openTab = useSession((s) => s.openTab);
+  const setSplitRatio = useSession((s) => s.setSplitRatio);
 
-  if (!session) return <div className="placeholder">Opening session…</div>;
-  if (session.repos.length === 0) {
+  // "Open in editor" from the diff inline form → an edit tab in the active pane.
+  const openInEditor = useCallback((repoId: string, filePath: string, lineNum = 0) => {
+    openTab({ repoId, filePath, view: 'edit', cursorLine: lineNum || undefined });
+  }, [openTab]);
+  const { ann } = useAnnotations(openInEditor);
+
+  return (
+    <div className="workspace-surface">
+      <div className="ws-body">
+        <LayoutView
+          node={layout}
+          panes={panes}
+          activePaneId={activePaneId}
+          maximizedPaneId={maximizedPaneId}
+          multiRepo={activeRepos.length > 1}
+          ann={ann}
+          setSplitRatio={setSplitRatio}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface LayoutViewProps {
+  node: LayoutNode;
+  panes: import('../shared/store').WorkspacePane[];
+  activePaneId: string;
+  maximizedPaneId: string | null;
+  multiRepo: boolean;
+  ann: AnnCtx;
+  setSplitRatio: (splitId: string, ratio: number) => void;
+}
+
+/** Recursive split renderer: leaf → pane, split → two flex children + handle.
+ *  Everything stays mounted; a maximized pane hides the rest via display. */
+function LayoutView(props: LayoutViewProps) {
+  const { node, panes, activePaneId, maximizedPaneId, multiRepo, ann } = props;
+
+  if (node.kind === 'leaf') {
+    const pane = panes.find((p) => p.id === node.paneId);
+    if (!pane) return null;
+    const hidden = maximizedPaneId !== null && maximizedPaneId !== pane.id;
     return (
-      <div className="ws">
-        <div className="placeholder ws-norepo">
-          <p>This session has no repos yet.</p>
-          <button className="fr-save" onClick={() => useStore.getState().setAddRepoOpen(true)}>Add a repo</button>
-        </div>
+      <div
+        className="ws-pane-wrap"
+        style={{ display: hidden ? 'none' : 'flex', flex: 1, minWidth: 0, minHeight: 0 }}
+      >
+        <WorkspacePane
+          pane={pane}
+          ann={ann}
+          isActive={pane.id === activePaneId}
+          multiRepo={multiRepo}
+        />
       </div>
     );
   }
 
-  const cwd = activeWorktree(session)?.path;
+  return (
+    <SplitView {...props} node={node} />
+  );
+}
 
-  const tabLabel = (t: Tab) =>
-    t.kind === 'terminal' || t.kind === 'changes' ? t.label ?? t.kind : t.path?.split('/').pop() ?? t.id;
+function SplitView(props: LayoutViewProps & { node: Extract<LayoutNode, { kind: 'split' }> }) {
+  const { node, maximizedPaneId, setSplitRatio } = props;
+  const hostRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+
+  // While a pane is maximized, only the subtree containing it is visible — the
+  // other side (and the handle) hide, but everything stays mounted.
+  const maximized = maximizedPaneId !== null;
+  const showA = !maximized || containsLeaf(node.a, maximizedPaneId!);
+  const showB = !maximized || containsLeaf(node.b, maximizedPaneId!);
+
+  const startDrag = (e: React.MouseEvent) => {
+    dragging.current = true;
+    const dir = node.dir;
+    document.body.style.cursor = dir === 'row' ? 'col-resize' : 'row-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !hostRef.current) return;
+      const rect = hostRef.current.getBoundingClientRect();
+      const ratio = dir === 'row'
+        ? (ev.clientX - rect.left) / rect.width
+        : (ev.clientY - rect.top) / rect.height;
+      setSplitRatio(node.id, ratio);
+    };
+    const onUp = () => {
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  };
+
+  const childStyle = (show: boolean, ratio: number): React.CSSProperties =>
+    show
+      ? { flex: maximized ? '1 1 0%' : `${ratio} 1 0%`, minWidth: 0, minHeight: 0, display: 'flex' }
+      : { display: 'none' };
 
   return (
-    <div className="ws">
-      {session.sidebar === 'files' ? (
-        <FilesPanel session={session} />
-      ) : session.sidebar === 'git' ? (
-        <GitPanel session={session} />
-      ) : (
-        <NotesPanel session={session} />
+    <div className={`ws-split ${node.dir}`} ref={hostRef}>
+      <div className="ws-split-child" style={childStyle(showA, node.ratio)}>
+        <LayoutView {...props} node={node.a} />
+      </div>
+      {showA && showB && (
+        <div
+          className={node.dir === 'row' ? 'resize-handle' : 'resize-handle-h'}
+          onMouseDown={startDrag}
+        />
       )}
-      <div className="pane">
-        <div className="tabs">
-          {session.tabs.map((t) => (
-            <div
-              key={t.id}
-              className={`tab${t.id === session.activeTabId ? ' on' : ''}`}
-              onClick={() => setActiveTab(session.id, t.id)}
-            >
-              {t.dirty && <span className="dot" />}
-              <span className="fn">{tabLabel(t)}</span>
-              <span className="x" onClick={(e) => { e.stopPropagation(); closeTab(session.id, t.id); }}>×</span>
-            </div>
-          ))}
-          <span className="add" title="New terminal" onClick={() => openTerminalTab(session.id)}>＋</span>
-        </div>
-        <div className="pane-body">
-          {session.tabs.length === 0 && <div className="placeholder">Open a file, or start a terminal with ＋.</div>}
-          {session.tabs.map((t) => (
-            <div key={t.id} className="tabbody" style={{ display: t.id === session.activeTabId ? 'block' : 'none' }}>
-              {t.kind === 'terminal' ? (
-                <TerminalTab sessionId={session.id} tabId={t.id} taskId={session.id} cwd={cwd} />
-              ) : t.kind === 'changes' ? (
-                <ChangesView session={session} />
-              ) : t.content === null ? (
-                <div className="placeholder">Loading…</div>
-              ) : (
-                <CodeEditor
-                  sessionId={session.id}
-                  tabId={t.id}
-                  repoId={t.repoId!}
-                  path={t.path!}
-                  worktreePath={t.worktreePath!}
-                  initial={t.content ?? ''}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="ws-split-child" style={childStyle(showB, 1 - node.ratio)}>
+        <LayoutView {...props} node={node.b} />
       </div>
     </div>
   );

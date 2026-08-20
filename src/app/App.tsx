@@ -1,64 +1,187 @@
-import { useEffect } from 'react';
-import { call } from '../shared/ipc/client';
-import { useStore } from '../shared/store';
-import { applyUiConfig } from '../shared/lib/ui';
-import type { ConfigView } from '../shared/ipc/generated';
-import { Header } from './chrome/Header';
-import { Rail } from './chrome/Rail';
-import { StatusBar } from './chrome/StatusBar';
-import { Home } from '../home/Home';
-import { SessionShell } from './SessionShell';
-import { ApprovalModal } from '../approvals/ApprovalModal';
-import { Toasts } from '../notifications/Toasts';
-import { SettingsModal } from '../setup/SettingsModal';
-import { FirstRun } from '../setup/FirstRun';
-import { AddRepoModal } from '../setup/AddRepoModal';
-import { CommandPalette } from '../command/CommandPalette';
+import { useCallback, useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useIpc } from './providers/useIpc';
+import { useKeybindings } from './providers/useKeybindings';
+import { useTaskTimer } from '../sessions/useTaskTimer';
+import { ensureDeskSession, useDeskId } from '../sessions/desk';
+import { useStore, SessionIdContext } from '../shared/store';
+import { FirstRun } from '../setup/FirstRun';
+import { Header } from './chrome/Header';
+import { ActivityRail } from './chrome/ActivityRail';
+import { StatusBar } from './chrome/StatusBar';
+import { Home } from '../home';
+import { SessionWorkspaces } from '../workspace/SessionWorkspaces';
+import { ConfirmModal } from '../approvals/ConfirmModal';
+import { CommandPalette } from '../command/CommandPalette';
+import { TaskOpenWizard } from '../setup/TaskOpenWizard';
+import { AddRepoModal } from '../setup/AddRepoModal';
+import { RepoSwitcher } from '../sessions/RepoSwitcher';
+import { SessionDock } from '../sessions/SessionDock';
+import { ResizeHandles } from './chrome/ResizeHandles';
+import { SettingsModal } from '../setup/SettingsModal';
+import { Toasts } from '../notifications/Toasts';
+import { AgentConsole } from '../agent/AgentConsole';
+import { TerminalConsole } from '../terminal/TerminalConsole';
+import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
+import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from '../shared/ipc/ipc';
+
+/** Refresh the review queue on startup and every ~5 min (rail badge + strip). */
+const REVIEW_POLL_MS = 5 * 60 * 1000;
+function useReviewQueue() {
+  const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
+  useEffect(() => {
+    refreshReviewQueue();
+    const t = setInterval(refreshReviewQueue, REVIEW_POLL_MS);
+    return () => clearInterval(t);
+  }, [refreshReviewQueue]);
+}
+
+/**
+ * Keep the backend's active task pointed at the focused session. Every MCP tool
+ * resolves its target from it (get_active_task / get_worktrees / get_task_diff /
+ * annotations / the push guard / create_task_from_explorer), and opening a task
+ * is not the only way the focus changes — clicking a session tab, closing one,
+ * or an explorer→task conversion all move it. Null when no session is open.
+ */
+function useActiveTaskSync() {
+  const activeShortId = useStore((s) =>
+    s.activeSessionId ? s.sessions[s.activeSessionId]?.task?.short_id ?? null : null,
+  );
+  useEffect(() => {
+    invoke('set_active_task', { shortId: activeShortId }).catch(console.warn);
+  }, [activeShortId]);
+}
+
+/**
+ * Refresh the Home snapshot whenever Home becomes visible or the set of open
+ * sessions changes. Edits and landed git ops refresh it too (useIpc), and both
+ * paths no-op while a workspace is showing — Home isn't rendered then, so its
+ * git calls would be pure waste.
+ */
+function useHomeSnapshot() {
+  const visible = useStore((s) => s.view !== 'workspace');
+  const sessionOrder = useStore((s) => s.sessionOrder);
+  const refreshHome = useStore((s) => s.refreshHome);
+  useEffect(() => {
+    if (visible) refreshHome();
+  }, [visible, sessionOrder, refreshHome]);
+}
+
+/**
+ * The desk session, created once at startup so the console has something to
+ * address on Home. Only the DB row and the store session — the agent process
+ * starts when the console is opened, like every other session's.
+ */
+function useDesk(): string | null {
+  const deskId = useDeskId();
+  useEffect(() => {
+    ensureDeskSession().catch(console.warn);
+  }, []);
+  return deskId;
+}
 
 export default function App() {
   useIpc();
-  const config = useStore((s) => s.config);
-  const setConfig = useStore((s) => s.setConfig);
+  useKeybindings();
+  useReviewQueue();
+  useActiveTaskSync();
+  useHomeSnapshot();
+  useTaskTimer();
+  const deskId = useDesk();
+
   const view = useStore((s) => s.view);
+  const setConfig = useStore((s) => s.setConfig);
+  const setLastError = useStore((s) => s.setLastError);
+  const hydrateAgentActivity = useStore((s) => s.hydrateAgentActivity);
+  // Mounted once here rather than twice with local state, so Alt+R and both
+  // buttons open the same instance.
+  const addRepoOpen = useStore((s) => s.addRepoOpen);
+  const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
 
-  const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
-
+  // Agent state lives in memory on the backend, so after a reload the app knows
+  // nothing until the next hook fires — ask once for whatever is already known.
   useEffect(() => {
-    applyUiConfig(undefined); // Latte until the config arrives.
-    call<ConfigView | null>('get_config')
-      .then((c) => { setConfig(c); applyUiConfig(c?.ui); })
-      .catch(() => setConfig(null));
+    hydrateAgentActivity();
+  }, [hydrateAgentActivity]);
+
+  // Three states, not two: loading, configured, and never-configured. Without the
+  // third, a new machine showed an empty Home and a Notion error in the corner.
+  const [configured, setConfigured] = useState<boolean | null>(null);
+
+  const applyConfig = useCallback((cfg: Config) => {
+    setConfig(cfg);
+    applyFontSize(cfg.ui?.font_size ?? DEFAULT_FONT_SIZE);
+    applyFontFamily(cfg.ui?.font_family);
+    applyTheme(cfg.ui?.theme ?? DEFAULT_THEME);
+    setConfigured(true);
   }, [setConfig]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setPaletteOpen(true); }
-      else if ((e.metaKey || e.ctrlKey) && e.key === ',') { e.preventDefault(); setSettingsOpen(true); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [setPaletteOpen, setSettingsOpen]);
+    invoke<Config | null>('get_config')
+      .then((cfg) => {
+        if (!cfg) { setConfigured(false); return; }
+        applyConfig(cfg);
+      })
+      .catch((e) => {
+        // An unreadable config is a setup problem, so it goes to the setup screen
+        // (which prints the path and the parse error) rather than a toast.
+        setConfigured(false);
+        setLastError(`Failed to load config: ${String(e)}`);
+      });
+  }, [applyConfig, setLastError]);
 
-  if (config === undefined) return <div className="booting" />;
-  if (config === null) return <FirstRun onReady={setConfig} />;
+  if (configured === null) return <div className="app app-booting" />;
+  if (!configured) return <FirstRun onReady={applyConfig} />;
 
   return (
     <div className="app">
       <Header />
-      <div className="stage">
-        <Rail />
-        <main className="main">
-          {view === 'home' ? <Home /> : <SessionShell />}
+      <div className="app-body">
+        <ActivityRail />
+        <main className="app-main">
+          {/* Home (shown when no session is focused): reviews / tasks / explorers. */}
+          {view !== 'workspace' && <Home />}
+          {/* Active session workspace — kept mounted across views so
+              background sessions' terminals persist. */}
+          <SessionWorkspaces hidden={view !== 'workspace'} />
         </main>
+        {/* The agent's own column, between the work and the session list, so the
+            two right-hand columns read as one edge. In a workspace it addresses
+            the focused session; on Home it addresses the desk, named through the
+            session context so it needs no notion of views itself. */}
+        {view === 'workspace' ? (
+          <AgentConsole />
+        ) : (
+          deskId && (
+            <SessionIdContext.Provider value={deskId}>
+              <AgentConsole />
+            </SessionIdContext.Provider>
+          )
+        )}
+        {/* The session list. A sibling of main rather than inside it, so it is
+            app-level: sessions and their agents exist on Home too. */}
+        <SessionDock />
       </div>
+      {/* A shell on Home, addressing the desk. In a workspace the panes own the
+          terminals, so this is not mounted there. */}
+      {view !== 'workspace' && deskId && (
+        <SessionIdContext.Provider value={deskId}>
+          <TerminalConsole />
+        </SessionIdContext.Provider>
+      )}
       <StatusBar />
-      <ApprovalModal />
-      <Toasts />
-      <SettingsModal />
-      <AddRepoModal />
+
+      {/* Overlays */}
+      <ConfirmModal />
       <CommandPalette />
+      <TaskOpenWizard />
+      {addRepoOpen && <AddRepoModal onClose={() => setAddRepoOpen(false)} />}
+      <RepoSwitcher />
+      <SettingsModal />
+      <Toasts />
+
+      {/* Frameless-window resize grips (must be last so they sit on top) */}
+      <ResizeHandles />
     </div>
   );
 }

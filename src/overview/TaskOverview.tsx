@@ -1,132 +1,186 @@
-import { useCallback, useEffect, useState } from 'react';
-import { call } from '../shared/ipc/client';
-import { Markdown } from '../shared/ui';
-import { openExternal } from '../shared/lib/openExternal';
-import { activeWorktree } from '../sessions/sessions.slice';
-import type { SessionState } from '../sessions/sessions.slice';
-import type { PropertyValue, TaskSchema, TimeSummary, Mr } from '../shared/ipc/generated';
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { CheckCircle2, AlertTriangle, Trash2, X } from 'lucide-react';
+import { useStore, useSession } from '../shared/store';
+import type { Mr } from '../shared/ipc/ipc';
+import { MrBadge, RepoRow } from './parts';
+import { PropertyStrip } from './PropertyStrip';
+import { HoursWidget } from './HoursWidget';
+import { BodyEditor } from './BodyEditor';
 
-const hours = (s: number) => (s / 3600).toFixed(1);
+export function TaskOverview() {
+  const activeTask = useSession((s) => s.activeTask);
+  const activeWorktrees = useSession((s) => s.activeWorktrees);
+  const activeRepos = useSession((s) => s.activeRepos);
+  const setLastError = useStore((s) => s.setLastError);
+  const [allMrs, setAllMrs] = useState<Mr[]>([]);
+  const [body, setBody] = useState('');
+  const [loading, setLoading] = useState(false);
+  /** Which ending is awaiting confirmation. Finishing marks the task Done;
+   *  deleting sends the Notion page to the trash. Both then tear the local
+   *  workspace down, so they share one banner and one busy flag. */
+  const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
+  const [finishing, setFinishing] = useState(false);
+  /** Bumped after a Notion write so the panel and hours re-read the page. */
+  const [hoursLogged, setHoursLogged] = useState('');
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const reload = () => setReloadNonce((n) => n + 1);
 
-/** A task's Notion ticket: editable properties, tracked hours, an MR link, and
- *  the page body. Properties and hours write straight through (you clicked it);
- *  the MR link opens GitLab, never an in-app MR view. */
-export function TaskOverview({ session }: { session: SessionState }) {
-  const pageId = session.notionPageId;
-  const wt = activeWorktree(session);
+  useEffect(() => {
+    if (!activeTask) return;
+    setLoading(true);
+    // Markdown, not raw blocks: same renderer as MR descriptions, and markdown
+    // typed literally into Notion (backticks, **bold**) then displays properly.
+    invoke<string>('get_task_body_markdown', { notionPageId: activeTask.notion_page_id })
+      .then(setBody)
+      .catch(() => setBody(''))
+      .finally(() => setLoading(false));
+  }, [activeTask?.notion_page_id, reloadNonce]);
 
-  const [props, setProps] = useState<PropertyValue[] | null>(null);
-  const [schema, setSchema] = useState<TaskSchema | null>(null);
-  const [time, setTime] = useState<TimeSummary | null>(null);
-  const [body, setBody] = useState<string | null>(null);
-  const [mr, setMr] = useState<Mr | null>(null);
+  // Load MRs for all worktrees into local state — independent of the sidebar's
+  // per-repo store so switching repos in the sidebar never clears this list.
+  useEffect(() => {
+    if (!activeWorktrees.length) return;
+    let cancelled = false;
+    Promise.all(
+      activeWorktrees.map((wt) =>
+        invoke<Mr[]>('get_mr', { worktreeId: wt.id }).catch(() => [] as Mr[])
+      )
+    ).then((results) => { if (!cancelled) setAllMrs(results.flat()); });
+    return () => { cancelled = true; };
+  }, [activeWorktrees]);
 
-  const load = useCallback(() => {
-    if (pageId) {
-      call<PropertyValue[]>('get_task_properties', { notionPageId: pageId }).then(setProps).catch(() => setProps([]));
-      call<string>('get_task_body_markdown', { notionPageId: pageId }).then(setBody).catch(() => setBody(''));
+  // No success path to handle: both commands emit task_finished, which closes the
+  // session — this component goes with it.
+  const handleEnd = async () => {
+    if (!activeTask || !ending) return;
+    setFinishing(true);
+    try {
+      await invoke(ending === 'delete' ? 'delete_task' : 'finish_task', {
+        shortId: activeTask.short_id,
+      });
+    } catch (e) {
+      setLastError(String(e));
+      setFinishing(false);
+      setEnding(null);
     }
-    call<TaskSchema>('get_task_schema').then(setSchema).catch(() => {});
-    call<TimeSummary>('get_task_time', { taskId: session.id }).then(setTime).catch(() => {});
-    if (wt) call<Mr[]>('get_mr', { worktreeId: wt.id }).then((m) => setMr(m[0] ?? null)).catch(() => {});
-  }, [pageId, session.id, wt?.id]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const editableKinds = new Set(['select', 'status']);
-  const optionsFor = (name: string) => schema?.properties.find((p) => p.name === name)?.options ?? [];
-  const isEditable = (p: PropertyValue) =>
-    editableKinds.has(p.kind) && (schema?.properties.find((s) => s.name === p.name)?.editable ?? false);
-
-  const setProperty = async (name: string, value: string) => {
-    if (!pageId) return;
-    try {
-      await call('update_task_property', { notionPageId: pageId, property: name, value });
-      load();
-    } catch (e) { console.warn('update_task_property failed', e); }
   };
 
-  const [logField, setLogField] = useState('');
-  const logHours = async () => {
-    const h = parseFloat(logField);
-    if (!pageId || !isFinite(h) || h <= 0) return;
-    try {
-      await call('log_task_hours', { taskId: session.id, notionPageId: pageId, hours: h });
-      setLogField('');
-      call<TimeSummary>('get_task_time', { taskId: session.id }).then(setTime).catch(() => {});
-    } catch (e) { console.warn('log_task_hours failed', e); }
-  };
-
-  const [syncing, setSyncing] = useState(false);
-  const sync = async () => {
-    setSyncing(true);
-    try { await call('sync_task', { shortId: session.id }); load(); }
-    catch (e) { console.warn('sync_task failed', e); }
-    finally { setSyncing(false); }
-  };
+  if (!activeTask) return null;
 
   return (
-    <div className="ovw">
-      <header className="ovw-h">
-        <div>
-          <span className="ovw-id">{session.id}</span>
-          <h1 className="ovw-title">{session.title}</h1>
+    <div className="overview-view">
+      {/* Header — eyebrow (id + metadata) over a display-scale title. */}
+      <div className="overview-header">
+        <div className="overview-header-top">
+          <span className="overview-eyebrow">
+            <span className="overview-task-id">{activeTask.short_id}</span>
+          </span>
+          <div className="overview-header-actions">
+            <button
+              className="finish-task-btn"
+              onClick={() => setEnding('finish')}
+              disabled={finishing}
+            >
+              <CheckCircle2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Finish task
+            </button>
+            <button
+              className="finish-task-btn delete-task-btn"
+              onClick={() => setEnding('delete')}
+              disabled={finishing}
+              title="Send the Notion page to the trash and close the task here"
+            >
+              <Trash2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Delete task
+            </button>
+          </div>
         </div>
-        <span className="spring" />
-        {mr && <button className="ovw-link" onClick={() => openExternal(mr.url)}>MR {mr.platform === 'github' ? '#' : '!'}{mr.remote_id} ↗</button>}
-        {pageId && <button className="ovw-sync" disabled={syncing} onClick={sync}>{syncing ? 'Syncing…' : 'Sync'}</button>}
-      </header>
+        <h2 className="overview-title">{activeTask.title}</h2>
 
-      <div className="ovw-grid">
-        <section className="ovw-card">
-          <h2>Properties</h2>
-          {props === null && <div className="ovw-empty">Loading…</div>}
-          {props?.length === 0 && <div className="ovw-empty">No properties.</div>}
-          <dl className="ovw-props">
-            {props?.map((p) => (
-              <div key={p.name}>
-                <dt>{p.name}</dt>
-                <dd>
-                  {isEditable(p) ? (
-                    <select value={p.display} onChange={(e) => setProperty(p.name, e.target.value)}>
-                      {!optionsFor(p.name).includes(p.display) && <option value={p.display}>{p.display || '—'}</option>}
-                      {optionsFor(p.name).map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <span>{p.display || '—'}</span>
-                  )}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+        {/* Metadata about the task, under its name. */}
+        <PropertyStrip
+          key={reloadNonce}
+          notionPageId={activeTask.notion_page_id}
+          hours={
+            <HoursWidget
+              taskId={activeTask.short_id}
+              notionPageId={activeTask.notion_page_id}
+              logged={hoursLogged}
+              onLogged={reload}
+            />
+          }
+          onHoursValue={setHoursLogged}
+        />
+      </div>
 
-        <section className="ovw-card">
-          <h2>Hours</h2>
-          {time && (
-            <dl className="ovw-props">
-              <div><dt>Today</dt><dd>{hours(time.today_seconds)} h</dd></div>
-              <div><dt>Tracked</dt><dd>{hours(time.tracked_seconds)} h</dd></div>
-              <div><dt>Logged</dt><dd>{hours(time.logged_seconds)} h</dd></div>
-              <div><dt>Unlogged</dt><dd>{hours(time.unlogged_seconds)} h</dd></div>
-            </dl>
-          )}
-          {pageId && (
-            <div className="ovw-log">
-              <input placeholder="Hours" value={logField} inputMode="decimal"
-                onChange={(e) => setLogField(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') logHours(); }} />
-              <button disabled={!logField.trim()} onClick={logHours}>Log to Notion</button>
+      {/* One banner for both endings — the local half is identical, so only the
+          sentence about Notion changes. */}
+      {ending && (
+        <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
+          <div className="finish-confirm-icon">
+            <AlertTriangle size={14} strokeWidth={2} />
+          </div>
+          <div className="finish-confirm-body">
+            <strong>
+              {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
+            </strong>
+            <p>
+              This will remove all local worktrees and delete task data from the local
+              database.{' '}
+              {ending === 'delete'
+                ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
+                : 'The task is marked Done in Notion.'}
+            </p>
+          </div>
+          <div className="finish-confirm-actions">
+            <button className="finish-confirm-ok" onClick={handleEnd} disabled={finishing}>
+              {finishing ? 'Working…' : 'Confirm'}
+            </button>
+            <button
+              className="finish-confirm-cancel"
+              onClick={() => setEnding(null)}
+              disabled={finishing}
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="overview-body">
+        <BodyEditor
+          taskId={activeTask.short_id}
+          notionPageId={activeTask.notion_page_id}
+          markdown={body}
+          loading={loading}
+          onSaved={reload}
+        />
+
+        {/* Repos */}
+        {activeRepos.length > 0 && (
+          <section className="overview-section">
+            <h3 className="overview-section-title">Repositories</h3>
+            <div className="overview-repos">
+              {activeRepos.map((repo) => (
+                <RepoRow key={repo.id} repo={repo} worktrees={activeWorktrees} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* MRs */}
+        <section className="overview-section">
+          <h3 className="overview-section-title">Merge Requests</h3>
+          {allMrs.length === 0 ? (
+            <p className="overview-empty-body">No open MRs.</p>
+          ) : (
+            <div className="overview-mrs">
+              {allMrs.map((mr) => <MrBadge key={mr.id} mr={mr} />)}
             </div>
           )}
         </section>
       </div>
-
-      <section className="ovw-card ovw-body">
-        <h2>Description</h2>
-        {body === null && <div className="ovw-empty">Loading…</div>}
-        {body !== null && (body.trim() ? <Markdown>{body}</Markdown> : <div className="ovw-empty">Empty.</div>)}
-      </section>
     </div>
   );
 }
