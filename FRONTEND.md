@@ -1,81 +1,79 @@
-# Frontend rework — structure & slices
+# Frontend architecture
 
-The backend rework is done (see REWORK.md): a frozen, feature-partitioned, tested
-contract. The frontend is rebuilt on it, feature-first, mirroring the backend 1:1.
-Design is pinned in the Excalidraw boards (Wiremind → Main) + the Catppuccin-Latte
-mockup; this file is the code plan.
+The frontend is the ORIGINAL app's code, reworked in place (2026-08-20): feature-first
+layout, ts-rs types, a sliced store, the REWORK.md ledger paid off, and the mockup-phase
+UX decisions applied — same visual identity, same features. History: a from-scratch
+rebuild was attempted first and rejected; the correction ported the original code into
+this structure and then reworked it. REWORK.md is the backend's ledger.
 
-## Target `src/`
+## Layout
 
 ```
 src/
-  main.tsx
-  app/            App (home|session|overview|review) + chrome + providers (useIpc, keys, theme)
-  shared/         the frontend "core"
-    ipc/          client.ts · events.ts · generated/  (ts-rs output from Rust)
-    store/        index.ts composes feature slices
-    ui/           Button Chip Tag Tab Panel Pill CIDot Icon Markdown ContextMenu Toasts
-    lib/          layout · keys · keybindings · match · taskStatus · openExternal · goToSession · diff/ (ONE engine)
-    styles/       tokens.css + themes/*  (Catppuccin, kept as-is)
-  home/           Home · LiveSection · UpNext · NewTaskModal · home.slice
-  sessions/       sessions.slice (session.ts pure logic) · SessionPicker (switch/close; no dock)
-  workspace/      Workspace · WorkspacePane · WorkspaceLayout · TabStrip · SessionWorkspaces · panes
-  editor/         CodeEditor · FileDiffEditor · setup/ · annotations/ (inline widget) · useAnnotations/Blame/DiffExpand
-  files/          FilesPanel · tree · FileTreeMenu · search
-  git/            GitPanel (Changes+commit box · Forge: MR·CI·threads·commits) · DiffView · CommitDiffView
-  notes/          NotesPanel (local annotations + review mr threads) · MrThreads
-  overview/       Overview (by kind) · TaskOverview (props·hours·body) · ReviewOverview (MR)
-  agent/          AgentConsole (state / PTY / actions) · agentSend · prompts
-  terminal/       TerminalConsole (Home scratch) · PtyTabBody · terminalHost · useAttachedHost
-  approvals/      ConfirmModal · ops.ts · per-op renderers · approvals.slice
-  notifications/  Toasts · NotificationCenter · notifications.slice
-  command/        CommandPalette · useListNav · registry
-  setup/          FirstRun (email→find_notion_user) · AuthModal · SettingsModal · TaskOpenWizard · AddRepoModal · repoPicker
+  main.tsx        fonts (bundled Plex Sans + Lilex/Plex Mono) · global.css · feature css
+  app/            App (composition root) · chrome/ (Header+pickers, ActivityRail,
+                  StatusBar, WindowControls, ResizeHandles) · providers/ (useIpc, useKeybindings)
+  shared/         the frontend core — features import DOWN from here only
+    ipc/          ipc.ts (THE type surface) · generated/ (ts-rs, via `pnpm gen:types`)
+                  invoke.ts (timing wrapper) · events.ts · ops.ts (both mirror Rust; tests guard ops)
+    store/        index.ts (barrel: useStore, useSession, SessionIdContext, accessors)
+                  types.ts (slice interfaces; AppState = intersection) · session.ts (pure reducers + tests)
+                  slices/ (ui, home, sessions+machinery, agent, confirmations, config,
+                  keybindings, notifications)
+    lib/          terminalHost · ptyRegistry · endSession · refreshSession · gitChain ·
+                  agentSend · panes · goToSession · diffModes · workspace · taskStatus ·
+                  keybindings · keys · layout · match · mr · icons · theme · notionUser ·
+                  openExternal · useListNav · useAttachedHost · word-diff · diffGaps · cm langs
+    ui/           Markdown · ContextMenu · StatBadge · propertyControls
+    styles/       global.css (imports ↓) · tokens.css · themes/ · ui.css (shared bases:
+                  .btn-*, .ctx-*, .composer-*, .nb-* markdown, .spin)
+  home/ sessions/ workspace/ files/ git/ notes/ editor/ overview/ agent/ terminal/
+  approvals/ notifications/ command/ setup/    — each owns components + css
 ```
 
-Rules: features import downward from `shared/` only; each feature owns its
-components + hooks + store slice + CSS.
+## Rules
 
-## Decisions
-- **ts-rs: yes** — IPC types generated from the Rust structs into `shared/ipc/generated/`.
-- **store slices: yes** — the god-store splits (sessions / home / notifications / approvals / command-ui); tested `session.ts` reducers survive.
-- **CSS: keep the Catppuccin token system** as the shared design layer; feature CSS co-located.
+- **Types**: features import `shared/ipc/ipc` only — never `generated/`. ipc.ts
+  re-exports the generated types and rebuilds the deliberate narrowings (DiffLine,
+  Annotation.status, UiConfig.theme). `pnpm gen:types` regenerates; the Rust
+  mirror tests (`approvals::ops::tests`) guard the op names in both directions.
+  The `Task` DTO stays named Task (= generated TaskView): "Session" already names
+  the workspace concept in the store.
+- **Dependencies**: features import from `shared/` and themselves. Declared
+  exceptions: `app/ → *` (composition root); `workspace/ → files|git|notes|editor|
+  overview|terminal` (tab/sidebar host); `git/ → editor/` (data → renderer);
+  hosts may import leaf features (`overview → notes/MrThreadsSection`).
+- **Store**: one zustand store from slices; every consumer imports the barrel.
+  Slices are full-state creators (cross-slice writes go through set/get). The
+  `buildView` WeakMap and bound-action caches are perf invariants — a session
+  object identity changes only on real change.
+- **Refresh contract**: `shared/lib/refreshSession` = flush_git_caches →
+  invalidateDiff → refreshStatusFor (+ refreshHome off-workspace). Driven by
+  agent activity (throttled while working, immediate on idle) and the sidebar
+  refresh button. There is no filesystem watcher.
+- **PTY**: base64 both directions (`pty_output.b64`, `write_pty.dataB64`).
+  IPC timing: `localStorage.setItem('wb.ipcTiming','1')` logs every call.
+- **Worktree-centric**: `activeWorktreeId` is the git-ops target;
+  `activeRepoId` derives from it. Diff/blame/expansion caches key on
+  `${worktreeId}/${path}`; diff summary entries pair by worktree branch.
 
-## Design decisions baked in
-- Home = pure dashboard (no agent, no dock). Live fold/expand (repo→worktree→MR w/ CI+threads); Up Next 4-col table (review row: name = MR id+title, state = repo). `+ New` = explorer. Scratch terminal (deskless).
-- Header = context pickers (Active Session/Repo/Worktree); no session dock — the Session picker switches/closes.
-- Rail = spine: Home · (Ovw · Files · Git · Notes) · Cmd. 44px, icon-only, grouped by a hairline.
-- Overview is a session MODE, by kind: task → ticket (properties·hours·body); review → the MR overview. Agent console persists across Code↔Overview; pop-out ready.
-- **MR links always open GitLab** (browser), like CI. No in-app MR view for tasks.
-- Notes → local annotations (inline CM widget) + review-only mr threads.
-- **Approvals are a standalone attention modal** (a global overlay that demands a decision), NOT inline in the agent console.
+## UX decisions (2026-08, agreed with the owner)
 
-## Dies / ledger payoff
-desk (15 files), ptyTrace, task-MR view, session dock, OverviewView dispatcher, RepoSwitcher name clash.
-Owed items from REWORK.md land here: watch_task_worktrees/file_changed removal, `register_repo {slug,localPath}`,
-`MainRepo.url` gone, refresh contract (`flush_git_caches → invalidateDiff → refreshStatusFor`, driven by
-`agent_activity` + button), B11 per-op renderers, N5 commit→push chaining, P9 base64 `write_pty`,
-diff cache re-key `${worktreeId}/${path}`, `list_notion_users → find_notion_user`, dropped `notion.status` renderer.
-
-## Slices (each leaves the app runnable; verified by tsc/vitest/tauri dev)
-0. **Foundation** — shared/ (ipc client, ts-rs types, events, store scaffold), tokens/themes, ui primitives, app shell + view routing, get_config→FirstRun.
-1. **Home (MVP)** — home.slice (get_home_snapshot, list_tasks, list_review_mrs), Live, Up Next, open task/explorer/review. *0+1 = the MVP.*
-2. **Session core** — sessions slice, panes/tabs/layout, files panel, editor (+save), terminal (PTY, base64).
-3. **Git & diff** — Changes/commit/commits, the one diff engine, diff modes, explicit-refresh wiring.
-4. **Agent & approvals** — PTY agent console (state/term/actions), ConfirmModal per-op renderers + N5 chaining, notifications.
-5. **Overview · Notes · Forge** — task + review Overview, inline annotations + mr threads, MR create/CI/approve, GitLab links.
-6. **Palette · settings · wizards.** Command palette (⌘K), Preferences, first-run, add-repo, inline CM annotations. Pop-out agent window DROPPED by decision — the agent console stays docked in-app.
-
-## Status
-COURSE CORRECTION (user decision): the slice-built components were a from-scratch
-rebuild that lost the app's design and features. They were deleted, and the FULL
-original frontend was ported into this feature-first layout instead (131 files
-moved, imports rewritten) — the old code IS the app; only the structure and the
-backend adaptations are new. Adaptations: desk = store-only session (no backend
-row), pty tracer gone, filesystem watcher replaced by agent-activity-driven
-refresh (flush_git_caches → invalidateDiff → refreshStatusFor), FirstRun uses
-find_notion_user(email), register_repo takes {slug, localPath}, ghost notion.status
-op removed, notion.property/hours/body + task.create modal renderers added,
-pty_started "auth" kind guarded. Verified: tsc, vite build, vitest 171, cargo 189
-(incl. the ops mirror test, repathed to src/shared/ipc/ops.ts). Agent console is
-in-app only (pop-out dropped). End-to-end `pnpm tauri dev` test pending.
+- Identity: Catppuccin **Latte default** (config wins) · IBM Plex Sans UI ·
+  **Lilex** → IBM Plex Mono code — all bundled.
+- Home = pure dashboard: **no desk** (the scratch terminal owns its PTY under
+  `__scratch__`); Live entries fold/expand with aggregate chips and two-click
+  finish/delete/discard; Up next is one table (code · name · state · owner)
+  with a filter and approved reviews soft-hidden.
+- **Overview is a session MODE** (`workspaceMode`), not a tab: fresh sessions
+  land on it; any tab open flips to code; the rail is the spine
+  (Home · Overview · Files · Git · Notes · ⌘K).
+- **Header pickers** (Session · Repo · Worktree chips) replaced the SessionDock;
+  Alt+S opens the session picker; the notification feed lives in the bell's
+  popover (Ctrl+N).
+- **MR links always open the forge** — no in-app MR tab for tasks; a review's
+  MR overview lives in its session Overview. Notes panel = annotations + (for
+  reviews) the MR discussion threads.
+- Approvals stay a standalone modal (ConfirmModal); **Commit & Push** posts the
+  push only after the commit's confirmation resolves approved (N5).
+- Pop-out agent window: dropped by decision.
