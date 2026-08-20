@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
   AlertTriangle, Bell, Bot, Check, CheckCircle2, Copy, Expand, FileText, GitBranch,
@@ -227,21 +227,45 @@ function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => 
   );
 }
 
-/** The header bell: the unread count, and the way to the dock's feed. */
+/** The header bell: the unread count, and the feed as its own popover (the
+ *  session dock that used to host the feed is gone). */
 export function NotificationCenter() {
   const all = useStore((s) => s.notifications);
+  const open = useStore((s) => s.notificationsOpen);
   const setOpen = useStore((s) => s.setNotificationsOpen);
-  const setDockOpen = useStore((s) => s.setDockOpen);
   const unread = all.filter((n) => !n.ephemeral && !n.read).length;
+  const hostRef = useRef<HTMLSpanElement>(null);
+
+  // Click-away + Escape close, like the header pickers.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!hostRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, setOpen]);
 
   return (
-    <button
-      className={`notif-bell ${unread > 0 ? 'has-unread' : ''}`}
-      onClick={() => { setDockOpen(true); setOpen(true); }}
-      title={unread > 0 ? `${unread} new notification${unread === 1 ? '' : 's'}` : 'Notifications (Ctrl+N)'}
-    >
-      <Bell size={14} strokeWidth={1.75} />
-      {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? '9+' : unread}</span>}
-    </button>
+    <span className="notif-center" ref={hostRef}>
+      <button
+        className={`notif-bell ${unread > 0 ? 'has-unread' : ''}`}
+        onClick={() => setOpen(!open)}
+        title={unread > 0 ? `${unread} new notification${unread === 1 ? '' : 's'}` : 'Notifications (Ctrl+N)'}
+      >
+        <Bell size={14} strokeWidth={1.75} />
+        {unread > 0 && <span className="notif-bell-badge">{unread > 9 ? '9+' : unread}</span>}
+      </button>
+      {open && (
+        <div className="notif-popover">
+          <NotificationFeed />
+        </div>
+      )}
+    </span>
   );
 }

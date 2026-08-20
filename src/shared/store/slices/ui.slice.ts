@@ -53,17 +53,8 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   revealDir: null,
   revealInTree: (path) =>
     set((s) => ({ revealDir: { path, nonce: (s.revealDir?.nonce ?? 0) + 1 } })),
-  dockOpen: localStorage.getItem('wb.dockOpen') !== '0',
-  setDockOpen: (v) => {
-    localStorage.setItem('wb.dockOpen', v ? '1' : '0');
-    set({ dockOpen: v });
-  },
-  dockFocusNonce: 0,
-  requestDockFocus: () =>
-    set((s) => {
-      localStorage.setItem('wb.dockOpen', '1');
-      return { dockOpen: true, dockFocusNonce: s.dockFocusNonce + 1 };
-    }),
+  sessionPickerOpen: false,
+  setSessionPickerOpen: (v) => set({ sessionPickerOpen: v }),
   addRepoOpen: false,
   setAddRepoOpen: (v) => set({ addRepoOpen: v }),
   repoSwitcherOpen: false,

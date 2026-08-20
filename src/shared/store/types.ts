@@ -66,13 +66,10 @@ export interface UiSlice {
    *  nonce makes repeat requests for the same path fire again. */
   revealDir: { path: string; nonce: number } | null;
   revealInTree: (path: string) => void;
-  /** The right-hand session dock: the one list of open sessions (it replaced the
-   *  header tabs, the rail's agent list and the Alt+S modal). */
-  dockOpen: boolean;
-  setDockOpen: (v: boolean) => void;
-  /** Bumped by Alt+S to move keyboard focus into the dock's list. */
-  dockFocusNonce: number;
-  requestDockFocus: () => void;
+  /** The header session picker's popover (Alt+S) — the one list of open
+   *  sessions: switch on click, close with its ×. Replaced the session dock. */
+  sessionPickerOpen: boolean;
+  setSessionPickerOpen: (v: boolean) => void;
   /** Alt+Shift+R add-repo wizard. One flag, so the two buttons that used to hold
    *  their own local state and the keybinding all open the same instance. */
   addRepoOpen: boolean;

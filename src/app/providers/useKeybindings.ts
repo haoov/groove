@@ -17,11 +17,6 @@ function isAgentFocused(): boolean {
 }
 
 /** True when DOM focus is inside the session dock. */
-function isDockFocused(): boolean {
-  const el = document.activeElement as HTMLElement | null;
-  return !!el?.closest('.session-dock');
-}
-
 /** Run a global command against the current store state. Returns false when the
  *  command was a no-op in this context (so the keystroke can fall through). */
 export function runCommand(id: CommandId): boolean {
@@ -41,15 +36,8 @@ export function runCommand(id: CommandId): boolean {
       st.setView('home');
       return true;
     case 'view.notifications':
-      // The feed is the dock's second tab, so the same 3-state as the session list
-      // it shares that dock with: closed → open+focus; open elsewhere → focus;
-      // focused → close.
-      if (st.dockOpen && st.notificationsOpen && isDockFocused()) {
-        st.setDockOpen(false);
-        return true;
-      }
-      st.setNotificationsOpen(true);
-      st.requestDockFocus();
+      // The feed is the bell's popover now: the chord simply toggles it.
+      st.setNotificationsOpen(!st.notificationsOpen);
       return true;
     case 'editor.toggleVim':
       st.setVimMode(!st.vimMode);
@@ -184,17 +172,9 @@ export function runCommand(id: CommandId): boolean {
     }
 
     case 'session.switcher':
-      // Same 3-state: focused on the dock means you are done with it. Only while the
-      // session list is the visible tab, though — from the feed this switches back
-      // to the sessions rather than closing the dock out from under you.
-      if (st.dockOpen && !st.notificationsOpen && isDockFocused()) {
-        st.setDockOpen(false);
-        return true;
-      }
-      // Not gated on a session: with none open it shows the empty state, which
-      // is a clearer answer than a key that silently does nothing.
-      st.setNotificationsOpen(false);
-      st.requestDockFocus();
+      // The header session picker. Not gated on a session: with none open it
+      // shows the empty state, a clearer answer than a key doing nothing.
+      st.setSessionPickerOpen(!st.sessionPickerOpen);
       return true;
 
     case 'git.commitFocus':

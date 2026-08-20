@@ -15,7 +15,6 @@ import { CommandPalette } from '../command/CommandPalette';
 import { TaskOpenWizard } from '../setup/TaskOpenWizard';
 import { AddRepoModal } from '../setup/AddRepoModal';
 import { RepoSwitcher } from '../sessions/RepoSwitcher';
-import { SessionDock } from '../sessions/SessionDock';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import { SettingsModal } from '../setup/SettingsModal';
 import { Toasts } from '../notifications/Toasts';
@@ -134,9 +133,6 @@ export default function App() {
             two right-hand columns read as one edge. It addresses the focused
             session; Home is a pure dashboard — no agent there. */}
         {view === 'workspace' && <AgentConsole />}
-        {/* The session list. A sibling of main rather than inside it, so it is
-            app-level: sessions and their agents exist on Home too. */}
-        <SessionDock />
       </div>
       {/* A scratch shell on Home (session-less — it owns its PTY). In a
           workspace the panes own the terminals, so this is not mounted there. */}

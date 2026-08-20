@@ -1,7 +1,8 @@
 import { invoke } from '../../shared/ipc/invoke';
-import { Layers, RefreshCw, PanelRight, ShieldAlert, Settings } from 'lucide-react';
+import { Layers, RefreshCw, ShieldAlert, Settings } from 'lucide-react';
 import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';
+import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
 
 export function Header() {
@@ -16,9 +17,6 @@ export function Header() {
   // in the status bar where a parked agent write was easy to forget.
   const approvals = useStore((s) => s.pendingConfirmations.length);
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);
-  const sessionCount = useStore((s) => s.sessionOrder.length);
-  const dockOpen = useStore((s) => s.dockOpen);
-  const setDockOpen = useStore((s) => s.setDockOpen);
 
   const handleSync = async () => {
     setSyncStatus('syncing');
@@ -47,6 +45,7 @@ export function Header() {
           Home
         </button>
 
+        <HeaderPickers />
       </div>
       <div className="header-right" data-tauri-drag-region>
         <button
@@ -70,14 +69,6 @@ export function Header() {
             {approvals}
           </button>
         )}
-        <button
-          className={`header-dock-btn ${dockOpen ? 'active' : ''}`}
-          onClick={() => setDockOpen(!dockOpen)}
-          title={`${sessionCount} open session${sessionCount === 1 ? '' : 's'} — show the dock (Alt+S)`}
-        >
-          <PanelRight size={14} strokeWidth={1.75} />
-          {sessionCount > 0 && <span className="header-dock-count">{sessionCount}</span>}
-        </button>
         <NotificationCenter />
         <button
           className="header-settings-btn"

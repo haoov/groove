@@ -346,3 +346,127 @@
 .statusbar-dock-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
 .statusbar-dock-btn.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.08); }
 
+
+/* ── Header context pickers (session · repo · worktree) ─────────────────────── */
+.header-pickers { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3); }
+.hp { position: relative; display: inline-flex; }
+.hp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  max-width: 280px;
+}
+.hp-chip:hover, .hp-chip.open { background: var(--gl-background-color-hover); }
+.hp-chip-k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-disabled);
+}
+.hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; }
+.hp-chip-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.hp-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  min-width: 320px;
+  max-width: 440px;
+  max-height: 60vh;
+  overflow: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-large);
+  background: var(--gl-background-color-raised);
+  box-shadow: var(--shadow-float);
+}
+.hp-rows { display: flex; flex-direction: column; gap: 2px; outline: none; }
+.hp-empty { padding: var(--space-3); color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-sm); }
+
+.hp-row { display: flex; align-items: stretch; border-radius: var(--gl-border-radius-base); }
+.hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); }
+.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); }
+.hp-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px var(--space-3);
+  border: none;
+  background: none;
+  text-align: left;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  border-radius: var(--gl-border-radius-base);
+}
+.hp-row-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--gl-text-color-disabled);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.hp-row-id { color: var(--gl-text-color-subtle); }
+.hp-row-state { display: inline-flex; align-items: center; gap: 4px; }
+.hp-row-state.waiting { color: var(--ctp-peach); }
+.hp-row-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: none;
+  background: none;
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  border-radius: var(--gl-border-radius-base);
+}
+.hp-row-close:hover { color: var(--ctp-red); }
+.hp-row-simple {
+  align-items: center;
+  gap: 8px;
+  padding: 6px var(--space-3);
+  border: none;
+  background: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.hp-row-simple:hover { background: var(--gl-background-color-hover); }
+.hp-row-simple .hp-row-title { flex: 1; }
+.hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
+
+/* ── Notification popover (the bell owns its feed now) ──────────────────────── */
+.notif-center { position: relative; display: inline-flex; }
+.notif-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  width: 380px;
+  max-height: 65vh;
+  overflow: auto;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-large);
+  background: var(--gl-background-color-raised);
+  box-shadow: var(--shadow-float);
+}
