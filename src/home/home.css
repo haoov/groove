@@ -16,6 +16,7 @@
   flex-direction: column;
   background: var(--gl-background-color-default);
 }
+
 .home-scroll {
   flex: 1;
   min-height: 0;
@@ -29,7 +30,9 @@
 /* ── Section heading ────────────────────────────────────────────────────────── */
 /* Full width — rows fill the pane. The trailing info stays aligned into a column
    because it carries its own min-width, not because the container is narrow. */
+
 .home-section { display: flex; flex-direction: column; width: 100%; }
+
 .home-heading {
   display: flex;
   align-items: center;
@@ -44,9 +47,12 @@
   letter-spacing: 0.1em;
   color: var(--gl-text-color-subtle);
 }
+
 .home-heading-count { font-family: var(--font-mono); font-weight: 400; color: var(--gl-text-color-disabled); }
+
 /* Actions ride the heading rule so they never become a second toolbar — left
    with the title, since a right-pinned pair reads as detached chrome. */
+
 .home-heading-actions {
   margin-left: var(--space-4);
   display: inline-flex;
@@ -55,6 +61,7 @@
   text-transform: none;
   letter-spacing: 0;
 }
+
 .home-link {
   display: inline-flex;
   align-items: center;
@@ -69,9 +76,13 @@
   cursor: pointer;
   transition: color 0.12s;
 }
+
 .home-link:hover { color: var(--gl-color-blue-300); }
+
 .home-link.danger:hover { color: var(--gl-color-red-400); }
+
 .home-link:disabled { opacity: 0.5; cursor: default; }
+
 .home-empty {
   font-size: var(--home-text);
   color: var(--gl-text-color-disabled);
@@ -79,7 +90,9 @@
 }
 
 /* ── Rows ───────────────────────────────────────────────────────────────────── */
+
 .home-rows { display: flex; flex-direction: column; }
+
 .home-row {
   display: grid;
   align-items: center;
@@ -96,7 +109,9 @@
   cursor: pointer;
   transition: background 0.1s;
 }
+
 .home-row:hover { background: var(--gl-background-color-hover); }
+
 .home-row:disabled { opacity: 0.6; cursor: default; }
 
 .row-key {
@@ -108,6 +123,7 @@
   font-size: var(--home-text-sm);
   color: var(--gl-text-color-subtle);
 }
+
 .row-title {
   flex: 1;
   min-width: 0;
@@ -115,6 +131,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .row-note {
   flex-shrink: 0;
   font-size: var(--home-text-sm);
@@ -124,14 +141,15 @@
   white-space: nowrap;
 }
 
-
 /* ONE shape for both sections — badge · key · title · trailing info — so Live and
    Up next line up column for column down the whole page. The title grows to fill
    the pane; the trailing track has a floor (so it forms a column) but may grow on
    the rare row whose summary is unusually long. */
+
 .live-row { grid-template-columns: 20px 78px 104px minmax(0, 1fr) minmax(168px, auto); }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
+
 .live-caret {
   display: inline-flex;
   align-items: center;
@@ -145,9 +163,11 @@
   color: var(--gl-text-color-disabled);
   cursor: pointer;
 }
+
 .live-caret:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 
 /* Folded-row aggregate chips: quiet, mono, readable at a glance. */
+
 .row-chip {
   display: inline-flex;
   align-items: center;
@@ -160,10 +180,13 @@
   color: var(--gl-text-color-subtle);
   white-space: nowrap;
 }
+
 .row-chip.stat-bad { color: var(--ctp-red); }
 
 /* ── Up next: one table — badge · code · name · state · owner ───────────────── */
+
 .upnext-table { display: flex; flex-direction: column; }
+
 .upnext-head,
 .upnext-tr {
   display: grid;
@@ -174,6 +197,7 @@
   text-align: left;
   padding: 7px var(--space-2);
 }
+
 .upnext-head {
   padding-top: 2px;
   padding-bottom: 4px;
@@ -185,6 +209,7 @@
   color: var(--gl-text-color-disabled);
   user-select: none;
 }
+
 .upnext-tr {
   background: none;
   border: none;
@@ -195,10 +220,15 @@
   cursor: pointer;
   transition: background 0.1s;
 }
+
 .upnext-tr:hover { background: var(--gl-background-color-hover); }
+
 .upnext-tr:disabled { opacity: 0.6; cursor: default; }
+
 .upnext-tr.is-review .row-key { color: var(--gl-color-blue-300); font-weight: 600; }
+
 .upnext-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .upnext-owner { justify-self: start; }
 
 .upnext-filter {
@@ -212,13 +242,17 @@
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
 }
+
 .upnext-filter:focus { outline: none; border-color: var(--gl-focus-border); }
+
 .home-link.active { color: var(--ctp-blue); }
 
 /* The track carries the floor now; the item just anchors to its left edge. */
+
 .row-summary { justify-self: start; }
 
 /* ── Session-type badge ─────────────────────────────────────────────────────── */
+
 .type-badge {
   justify-self: start;
   font-family: var(--font-ui);
@@ -230,20 +264,24 @@
   padding: 1px 8px;
   border-radius: 100px;
 }
+
 .type-task {
   color: var(--gl-color-blue-300);
   background: color-mix(in srgb, var(--gl-color-blue-400) 14%, transparent);
 }
+
 .type-review {
   color: var(--gl-color-orange-400);
   background: color-mix(in srgb, var(--gl-color-orange-400) 14%, transparent);
 }
+
 .type-explorer {
   color: var(--gl-color-purple-400);
   background: color-mix(in srgb, var(--gl-color-purple-400) 16%, transparent);
 }
 
 /* Rolled-up state on a collapsed session line. */
+
 .row-summary {
   display: inline-flex;
   align-items: center;
@@ -254,24 +292,38 @@
 }
 
 /* ── Stat colours (shared by summary + detail rows) ─────────────────────────── */
+
 .stat-add     { color: var(--gl-color-green-400); }
+
 .stat-del     { color: var(--gl-color-red-400); }
+
 .stat-dirty   { color: var(--gl-color-orange-400); }
+
 .stat-staged  { color: var(--gl-color-green-400); }
+
 .stat-ahead   { color: var(--gl-color-blue-300); }
+
 .stat-behind  { color: var(--gl-color-purple-400); }
+
 .stat-bad     { color: var(--gl-color-red-400); font-weight: 600; }
+
 .stat-warn    { color: var(--gl-color-orange-400); }
+
 .stat-threads { color: var(--gl-color-orange-400); }
+
 .stat-agent   { color: var(--wb-annotation-agent, var(--gl-color-blue-300)); font-weight: 600; }
+
 /* Blocked on an answer in a terminal the user may not be looking at. */
+
 .stat-agent.waiting { color: var(--wb-warn); }
+
 .muted { color: var(--gl-text-color-disabled); }
 
 /* ── Live: collapsed line + indented detail ─────────────────────────────────── */
 /* Each session is a softly tinted block with air around it — the tint groups a
    row with its repo rows, the gap separates one session from the next (no rule
    needed). A failing pipeline shows up in the summary, not as a border. */
+
 .live-group {
   display: flex;
   flex-direction: column;
@@ -280,6 +332,7 @@
   background: rgba(var(--gl-elevate), 0.028);
   border-radius: var(--gl-border-radius-base);
 }
+
 .live-group:first-child { margin-top: 0; }
 
 .live-detail {
@@ -291,6 +344,7 @@
   margin-left: 16px;
   border-left: 1px solid var(--gl-border-color-subtle);
 }
+
 .detail-row {
   display: grid;
   /* repo · branch · stats · slack. Only the repo column is fixed: the stats sit
@@ -304,8 +358,11 @@
   font-size: var(--home-text-sm);
   border-radius: var(--gl-border-radius-base);
 }
+
 .detail-row.clickable { cursor: pointer; transition: background 0.1s; }
+
 .detail-row.clickable:hover { background: var(--gl-background-color-hover); }
+
 .detail-repo {
   font-family: var(--font-ui);
   color: var(--gl-text-color-default);
@@ -313,7 +370,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .detail-row.muted .detail-repo { color: var(--gl-text-color-disabled); }
+
 .detail-branch {
   flex: 1;
   min-width: 0;
@@ -323,6 +382,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .detail-stats {
   display: inline-flex;
   align-items: center;
@@ -330,41 +390,46 @@
   justify-self: start;
   font-family: var(--font-mono);
 }
+
 /* Snug under the repo row it belongs to, rather than floating between rows. */
+
 .detail-mr-row { padding-top: 0; }
+
 .detail-mr { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-mono); }
+
 /* The MR number is the anchor of this line — everything else is context. */
+
 .detail-mr-num { font-weight: 700; color: var(--gl-color-blue-300); }
+
 /* The overview's mr-state-* colours are scoped to .overview-badge, so the state
    word here had been inheriting the row's grey. Give it its own. */
+
 .detail-mr .mr-state-open   { color: var(--gl-color-green-400); }
+
 .detail-mr .mr-state-merged { color: var(--gl-color-purple-400); }
+
 .detail-mr .mr-state-closed { color: var(--gl-color-red-400); }
+
 .detail-mr .ci-ok   { color: var(--gl-color-green-400); }
+
 .detail-mr .ci-fail { color: var(--gl-color-red-400); font-weight: 600; }
+
 .detail-mr .ci-run  { color: var(--gl-color-orange-400); }
+
 .detail-actions {
   display: flex;
   gap: var(--space-4);
   padding: 4px var(--space-2) 2px var(--space-4);
 }
+
 .detail-row.confirm {
   gap: var(--space-3);
   color: var(--gl-color-red-400);
   font-size: var(--home-text-sm);
 }
 
-.review-progress { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--gl-text-color-subtle); }
-.review-bar {
-  width: 120px;
-  height: 3px;
-  border-radius: 100px;
-  background: rgba(var(--gl-elevate), 0.1);
-  overflow: hidden;
-}
-.review-fill { display: block; height: 100%; background: var(--gl-color-green-400); transition: width 0.25s ease-out; }
-
 /* ── Queue ──────────────────────────────────────────────────────────────────── */
+
 .row-status {
   font-size: var(--home-text-sm);
   color: var(--gl-text-color-disabled);
@@ -372,13 +437,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .row-status.status-in_progress { color: var(--gl-color-blue-300); }
+
 .row-status.status-blocked { color: var(--gl-color-red-400); }
+
 .row-status.status-in_review { color: var(--gl-color-orange-400); }
+
 /* Title + its priority pill share one grid cell, so the badge sits right beside
    the text instead of in a column of its own. */
+
 .row-titleline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
 .row-titleline .row-title { flex: 0 1 auto; }
+
 .prio-badge,
 .approved-badge {
   flex-shrink: 0;
@@ -393,201 +465,31 @@
   color: var(--gl-text-color-subtle);
   background: rgba(var(--gl-elevate), 0.07);
 }
+
 .approved-badge {
   color: var(--gl-color-green-400);
   background: color-mix(in srgb, var(--gl-color-green-400) 16%, transparent);
 }
+
 /* On an MR line it shares space with mono text — hold its own type. */
+
 .detail-mr .approved-badge {
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   line-height: 1.35;
 }
+
 .prio-badge.p0 {
   color: var(--gl-color-red-400);
   background: color-mix(in srgb, var(--gl-color-red-400) 15%, transparent);
 }
+
 .prio-badge.p1 {
   color: var(--gl-color-orange-400);
   background: color-mix(in srgb, var(--gl-color-orange-400) 15%, transparent);
 }
 
 .upnext-more { align-self: flex-start; padding: var(--space-2); }
-
-.spin { animation: wb-spin 0.9s linear infinite; }
-
-/* ── Review workspace ─────────────────────────────────────────────────────── */
-
-/* ReviewOverview = action bar over the MR overview. */
-.review-overview {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.review-overview .overview-view { flex: 1; min-height: 0; }
-.review-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-5);
-  border-bottom: 1px solid var(--gl-border-color-subtle);
-  background: rgba(var(--gl-elevate), 0.02);
-}
-.review-actions-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--gl-text-color-subtle);
-}
-.review-actions-eyebrow svg { color: var(--gl-color-blue-300); }
-.review-actions-buttons { display: flex; align-items: center; gap: var(--space-2); }
-.review-finish-btn:hover { color: var(--wb-warn, var(--gl-color-red-400)); border-color: var(--wb-warn, var(--gl-color-red-400)); }
-
-/* MR overview header actions (Approve + Open in …). */
-.mr-header-actions { display: inline-flex; align-items: center; gap: var(--space-2); }
-.mr-approve-btn { color: var(--gl-color-green-400); }
-.mr-approve-btn:hover { border-color: var(--gl-color-green-400); }
-
-/* General comment composer under Discussion. */
-.mr-comment-composer {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-.mr-comment-input {
-  flex: 1;
-  min-width: 0;
-  resize: vertical;
-  font-family: var(--font-ui);
-  font-size: var(--gl-font-size-sm);
-  color: var(--gl-text-color-default);
-  background: var(--gl-background-color-strong);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  padding: var(--space-2) var(--space-3);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.mr-comment-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
-.mr-comment-post { display: inline-flex; align-items: center; flex-shrink: 0; }
-
-/* "Post to MR" on an inline annotation. */
-.diff-inline-post-mr {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  margin-top: 4px;
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  color: var(--gl-color-blue-300);
-  background: none;
-  border: 1px solid var(--gl-accent-border-subtle);
-  border-radius: var(--gl-border-radius-sm);
-  padding: 2px 8px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.diff-inline-post-mr:hover { background: var(--gl-color-blue-100); }
-.diff-inline-post-mr:disabled { opacity: 0.6; cursor: default; }
-
-/* Annotations panel action pair. */
-.annotation-post-mr { color: var(--gl-color-blue-300); }
-
-/* ── Viewed-file tracking (review sessions) ───────────────────────────────── */
-.changes-review-progress {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--space-2) var(--space-3) 0;
-}
-.changes-review-count {
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  color: var(--gl-text-color-subtle);
-  background: rgba(var(--gl-elevate), 0.05);
-  border: 1px solid var(--gl-border-color-subtle);
-  border-radius: 100px;
-  padding: 1px 9px;
-}
-.changes-review-count.done { color: var(--gl-color-green-400); border-color: color-mix(in srgb, var(--gl-color-green-400) 45%, transparent); }
-
-.diff-viewed-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: var(--space-2);
-  flex-shrink: 0;
-  color: transparent;
-  background: none;
-  border: 1px solid var(--gl-border-color-strong);
-  border-radius: var(--gl-border-radius-sm);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-.diff-viewed-check:hover { border-color: var(--gl-color-green-400); color: var(--gl-text-color-disabled); }
-.diff-viewed-check.checked {
-  color: var(--gl-background-color-overlap);
-  background: var(--gl-color-green-400);
-  border-color: var(--gl-color-green-400);
-}
-.diff-file-header.viewed { opacity: 0.55; }
-.diff-file-header.viewed:hover { opacity: 0.85; }
-
-/* ── New-task composer ─────────────────────────────────────────────────────── */
-.composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-3) 0;
-  padding: var(--space-3);
-  background: var(--gl-background-color-raised);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-medium);
-}
-.composer-head { display: flex; align-items: center; gap: var(--space-2); }
-.composer-title {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--home-text, var(--gl-font-size-md));
-  font-family: var(--font-ui);
-  color: var(--gl-text-color-default);
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--gl-border-color-default);
-  padding: 2px 0;
-  outline: none;
-}
-.composer-title:focus { border-bottom-color: var(--gl-color-blue-300); }
-.composer-body {
-  min-height: 180px;
-  resize: vertical;
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-sm);
-  line-height: 1.6;
-  color: var(--gl-text-color-default);
-  background: var(--gl-background-color-default);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  padding: var(--space-2) var(--space-3);
-  outline: none;
-}
-.composer-body:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
-.composer-actions { display: flex; align-items: center; gap: var(--space-3); }
-.composer-spacer { flex: 1; }
-.composer-note { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
 
 /* ── New-task modal ────────────────────────────────────────────────────────────
    Reuses the wizard shell and the overview's property controls; only the layout
@@ -598,27 +500,38 @@
    room, and a modal that grows as you type moves the footer under the cursor.
    The wizard shell caps it at 90vh and `.wizard-body` scrolls, so a long
    property rail still fits. */
+
 .wizard-modal.ntm { width: 720px; height: 86vh; }
+
 /* One compact line for the chrome. The hero header plus a hero title input meant
    two tall rows before the first field. */
+
 .ntm .wizard-header {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-5) var(--space-3) var(--space-4);
 }
+
 .ntm .wizard-title { font-size: var(--gl-font-size-md); }
+
 .ntm .wizard-subtitle { margin-top: 0; font-size: var(--gl-font-size-xs); }
+
 /* A column, so the editor takes every pixel the other rows don't. Still scrolls
    (from the base .wizard-body) if a long property rail runs out of room. */
+
 .ntm .wizard-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
+
 /* The footer holds the bottom; the editor above it is what stretches. */
+
 .ntm .wizard-footer { flex: none; }
+
 /* A field, not a hero: same size as the body it introduces, and labelled like it. */
+
 .ntm-title {
   width: 100%;
   font-family: var(--font-ui);
@@ -630,11 +543,17 @@
   padding: var(--space-2) var(--space-3);
   outline: none;
 }
+
 .ntm-title:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
 .ntm-title::placeholder { color: var(--gl-text-color-disabled); }
+
 /* The label above a field, matching the Description bar's eyebrow. */
+
 .ntm-fieldbar { display: flex; align-items: baseline; }
+
 /* The property rail sits under the title, where the overview also puts it. */
+
 .ntm-props {
   display: flex;
   flex-wrap: wrap;
@@ -642,26 +561,31 @@
   gap: var(--space-2);
   min-height: 24px;
 }
+
 .ntm-bodybar {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-top: var(--space-1);
 }
+
 .ntm-bodylabel {
   font-size: var(--gl-font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--gl-text-color-subtle);
 }
+
 /* One rule for both, so the editor and the preview can never differ in size —
    toggling must not move the footer or change how much text you can see. They
    fill whatever the fixed modal height leaves after the title, rail and footer. */
+
 .ntm-body,
 .ntm-preview {
   flex: 1;
   min-height: 48vh;
 }
+
 .ntm-preview {
   overflow-y: auto;
   padding: var(--space-2) var(--space-3);

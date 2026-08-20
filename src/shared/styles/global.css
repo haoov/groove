@@ -3,10 +3,7 @@
 @import './themes/latte.css';
 @import './themes/onedark.css';
 @import './themes/onelight.css';
-@import './home.css';
-@import './sidebar.css';
-@import './console.css';
-@import './overlays.css';
+@import './ui.css';
 
 *, *::before, *::after {
   box-sizing: border-box;

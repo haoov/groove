@@ -470,3 +470,7 @@
   background: var(--gl-background-color-raised);
   box-shadow: var(--shadow-float);
 }
+
+/* Session-picker row status colours (inherited from the dock rows). */
+.hp-row-status.status-blocked { color: var(--gl-color-red-400); }
+.hp-row-status.status-done { color: var(--gl-color-green-400); }

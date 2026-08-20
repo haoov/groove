@@ -146,3 +146,31 @@
    never wrap tighter than that — a narrower pane scrolls horizontally instead.
    Applies to both editors (code + unified diff). */
 .cm-content { min-width: 80ch; }
+
+/* ── from home.css (split) ── */
+
+/* "Post to MR" on an inline annotation. */
+
+.diff-inline-post-mr {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  margin-top: 4px;
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--gl-color-blue-300);
+  background: none;
+  border: 1px solid var(--gl-accent-border-subtle);
+  border-radius: var(--gl-border-radius-sm);
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.diff-inline-post-mr:hover { background: var(--gl-color-blue-100); }
+
+.diff-inline-post-mr:disabled { opacity: 0.6; cursor: default; }
+
+/* Annotations panel action pair. */
+
+.annotation-post-mr { color: var(--gl-color-blue-300); }

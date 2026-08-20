@@ -1,0 +1,150 @@
+/* ── Command Palette · File finder · Search-in-files (shared overlay language) ── */
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: var(--gl-backdrop);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 72px;
+  animation: wb-overlay-in 0.14s ease-out both;
+}
+
+.palette-modal {
+  display: flex;
+  flex-direction: column;
+  /* Wide enough for a command with its shortcut, and tall enough to show the
+     result list without a near-immediate scroll. */
+  width: 760px;
+  max-width: calc(100vw - 32px);
+  max-height: min(78vh, 760px);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-large);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  animation: wb-modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* input row — leading search glyph + borderless input */
+
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  flex-shrink: 0;
+}
+
+.palette-search-icon { color: var(--gl-text-color-muted); flex-shrink: 0; }
+
+.palette-input {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) 0;
+  font-size: var(--gl-font-size-lg);
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-default);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.palette-input::placeholder { color: var(--gl-text-color-disabled); }
+
+.palette-list { flex: 1; overflow-y: auto; padding: var(--space-1); min-height: 0; }
+
+.palette-group + .palette-group { margin-top: var(--space-1); }
+
+.palette-group-label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--gl-text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.palette-item.selected, .palette-item:hover {
+  background: var(--gl-color-blue-100);
+  color: var(--gl-text-color-default);
+}
+
+.palette-item-icon { color: var(--gl-text-color-muted); flex-shrink: 0; }
+
+.palette-item.selected .palette-item-icon,
+.palette-item:hover .palette-item-icon { color: var(--gl-color-blue-400); }
+
+.palette-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.palette-item-shortcut {
+  flex-shrink: 0;
+  margin-left: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-muted);
+  letter-spacing: 0.02em;
+}
+
+.palette-item.selected .palette-item-shortcut { color: var(--gl-text-color-subtle); }
+
+/* matched-character highlight (palette + finder) */
+
+.hl-match {
+  background: transparent;
+  color: var(--gl-color-blue-300);
+  font-weight: 700;
+}
+
+.palette-item.selected .hl-match, .palette-item:hover .hl-match { color: var(--gl-text-color-default); }
+
+.palette-empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--gl-text-color-muted);
+  font-size: var(--gl-font-size-sm);
+}
+
+.palette-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--gl-border-color-subtle);
+  background: var(--gl-panel-header-bg);
+  flex-shrink: 0;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-muted);
+}
+
+.palette-footer-hints { display: inline-flex; align-items: center; gap: 4px; }
+
+.palette-footer kbd {
+  margin-left: 0;
+  margin-right: 1px;
+  font-size: 0.72em;
+}

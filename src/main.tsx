@@ -19,12 +19,23 @@ import './shared/styles/global.css';
 // overlays — still load from global.css until their split). Order preserved
 // from the old monolith; the cascade audit found no order dependence.
 import './app/layout.css';
+import './home/home.css';
+import './agent/console.css';
+import './workspace/sidebar.css';
+import './files/files.css';
+import './git/git.css';
+import './notes/notes.css';
+import './notifications/notifications.css';
+import './setup/setup.css';
+import './command/command.css';
+import './approvals/approvals.css';
+import './sessions/sessions.css';
 import './overview/explorer.css';
 import './git/diff.css';
 import './editor/editor.css';
 import './workspace/workspace.css';
 import './agent/agent.css';
-import './sessions/dock.css';
+import './notifications/feed.css';
 import './overview/overview.css';
 import './setup/firstrun.css';
 import App from './app/App';

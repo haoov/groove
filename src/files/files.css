@@ -1,0 +1,328 @@
+/* Files tab */
+
+.files-list { display: flex; flex-direction: column; padding: var(--space-1) 0; }
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  background: none;
+  border: none;
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  transition: color 0.1s, background 0.1s, border-color 0.1s;
+}
+
+.file-item:hover {
+  background: rgba(var(--gl-elevate), 0.04);
+  color: var(--gl-text-color-default);
+}
+
+.file-item-modified { color: var(--gl-color-orange-400); }
+
+.file-icon { flex-shrink: 0; display: inline-flex; align-items: center;}
+
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: var(--gl-font-size-sm); flex: 1; }
+
+.file-dot-modified { width: 6px; height: 6px; border-radius: 50%; background: var(--gl-color-orange-400); flex-shrink: 0; }
+
+/* ── Files panel: pinned fuzzy search bar over the tree / results ──────────── */
+
+.files-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Both the tree and the result list scroll under the pinned search bar. Use
+   block flow (not the base flex column) so rows keep their height and overflow
+   scrolls — a height-constrained flex column would shrink/overlap the rows. */
+
+.files-panel > .files-list { display: block; flex: 1; min-height: 0; overflow-y: auto; }
+
+.file-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  flex-shrink: 0;
+}
+
+.file-search-icon { color: var(--gl-text-color-muted); flex-shrink: 0; }
+
+.file-search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+}
+
+.file-search-input::placeholder { color: var(--gl-text-color-disabled); }
+
+.file-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+
+.file-search-clear:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
+
+/* Name/content search-mode toggle. */
+
+.file-search-modes { display: inline-flex; gap: 1px; flex-shrink: 0; }
+
+.file-search-mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+
+.file-search-mode:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
+
+.file-search-mode.active { color: var(--gl-text-color-strong); background: var(--gl-color-blue-100); }
+
+/* Per-file match count in content-search results. */
+
+.file-search-count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-muted);
+  background: var(--gl-background-color-strong);
+  border-radius: 8px;
+}
+
+.file-search-results .file-item { position: relative; }
+
+/* Result rows: name then a muted, truncated directory. */
+
+.file-search-results .file-name { flex: 0 1 auto; }
+
+.file-search-dir {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+}
+
+/* The cursor row reads as accent even though the input (not the list) is focused. */
+
+.file-search-results .file-item.nav-selected {
+	border: 1px solid var(--gl-text-color-default);
+}
+
+/* File tree directory rows */
+
+.file-tree-dir {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 3px var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gl-text-color-default);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-mono);
+  text-align: left;
+  user-select: none;
+  transition: color 0.1s, background 0.1s;
+}
+
+.file-tree-dir:hover { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.03); }
+
+.file-tree-arrow { flex-shrink: 0; display: inline-flex; align-items: center; width: 18px; color: var(--gl-text-color-default); }
+
+/* Inline +/- diff counts in the diff-mode file tree */
+
+.file-tree-stats {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+}
+
+.file-tree-stats .diff-add { color: var(--gl-color-green-400); }
+
+.file-tree-stats .diff-del { color: var(--gl-color-red-400); }
+
+/* ── Grep results, VS Code style ───────────────────────────────────────────────
+   The file is a header and its hits are indented under it, so every match is its
+   own row: walking the list previews each one at its own line. */
+
+.grep-file { font-weight: 500; }
+
+.grep-collapse {
+  display: inline-flex;
+  align-items: center;
+  color: var(--gl-text-color-muted);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.grep-collapse:hover { color: var(--gl-text-color-default); }
+
+.grep-match {
+  /* Indented past the header's chevron + icon so the grouping reads at a glance. */
+  padding-left: calc(var(--space-3) + 22px);
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+
+.grep-match-line {
+  min-width: 3ch;
+  text-align: right;
+  color: var(--gl-text-color-disabled);
+  flex-shrink: 0;
+}
+
+/* One line each: a wrapped hit would break the row rhythm the cursor moves over. */
+
+.grep-match-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── from overlays.css (split) ── */
+
+/* ── Tree prompt / confirm (create, rename, delete) ──────────────────────────── */
+
+.tree-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 22vh;
+  background: var(--gl-backdrop);
+}
+
+.tree-prompt {
+  width: 380px;
+  max-width: 90vw;
+  padding: var(--space-4);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-large);
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tree-prompt-title { font-size: var(--gl-font-size-md); font-weight: 600; color: var(--gl-text-color-strong); }
+
+.tree-prompt-body { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-muted); line-height: 1.5; }
+
+.tree-prompt-body code {
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-float-inset);
+  padding: 1px 4px;
+  border-radius: var(--gl-border-radius-sm);
+}
+
+.tree-prompt-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-strong);
+  background: var(--gl-background-color-float-inset);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  outline: none;
+}
+
+.tree-prompt-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); outline: none; }
+
+.tree-prompt-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+.tree-prompt-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tree-prompt-cancel:hover {
+  color: var(--gl-text-color-default);
+  border-color: var(--gl-border-color-strong);
+  background: var(--gl-background-color-strong);
+}
+
+.tree-prompt-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--gl-color-blue-500);
+  border: 1px solid var(--gl-color-blue-400);
+  border-radius: var(--gl-border-radius-base);
+  color: #fff;
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  letter-spacing: 0;
+}
+
+.tree-prompt-ok:hover {
+  background: var(--gl-color-blue-400);
+  border-color: var(--gl-color-blue-300);
+}
+
+.tree-prompt-ok--danger { background: var(--gl-color-red-500); border-color: var(--gl-color-red-500); }
+
+.tree-prompt-ok--danger:hover { background: var(--gl-color-red-400); border-color: var(--gl-color-red-400); }
