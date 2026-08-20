@@ -17,8 +17,10 @@ export function CommandPalette() {
   const setView = useStore((s) => s.setView);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const setActiveSession = useStore((s) => s.setActiveSession);
+  const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
   const setConfig = useStore((s) => s.setConfig);
   const sessions = useStore((s) => s.sessions);
+  const activeId = useStore((s) => s.activeSessionId);
 
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(0);
@@ -45,6 +47,7 @@ export function CommandPalette() {
       { id: 'home', label: 'Go to Home', run: close(() => setView('home')) },
       { id: 'settings', label: 'Open Preferences', run: close(() => setSettingsOpen(true)) },
       { id: 'explorer', label: 'New explorer session', hint: 'scratch', run: close(() => { void call('open_explorer_session', { name: null }); }) },
+      ...(activeId ? [{ id: 'addrepo', label: 'Add repo to this session', run: close(() => setAddRepoOpen(true)) }] : []),
       ...THEMES.map((t) => ({ id: `theme-${t}`, label: `Theme: ${THEME_LABEL[t] ?? t}`, run: close(() => void setTheme(t)) })),
       ...Object.values(sessions).map((s) => ({
         id: `sess-${s.id}`, label: `Switch to ${s.title}`, hint: s.id,
@@ -67,7 +70,7 @@ export function CommandPalette() {
       })),
     ];
     return list;
-  }, [sessions, tasks, reviews, setOpen, setView, setSettingsOpen, setActiveSession]);
+  }, [sessions, tasks, reviews, activeId, setOpen, setView, setSettingsOpen, setActiveSession, setAddRepoOpen]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();

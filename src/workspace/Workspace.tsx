@@ -18,8 +18,15 @@ export function Workspace() {
   const openTerminalTab = useStore((s) => s.openTerminalTab);
 
   if (!session) return <div className="placeholder">Opening session…</div>;
-  if (session.repos.length === 0 && session.kind === 'task') {
-    return <div className="ws"><div className="placeholder">This session has no repos yet — the add-repo wizard lands in a later slice.</div></div>;
+  if (session.repos.length === 0) {
+    return (
+      <div className="ws">
+        <div className="placeholder ws-norepo">
+          <p>This session has no repos yet.</p>
+          <button className="fr-save" onClick={() => useStore.getState().setAddRepoOpen(true)}>Add a repo</button>
+        </div>
+      </div>
+    );
   }
 
   const cwd = activeWorktree(session)?.path;
@@ -65,6 +72,7 @@ export function Workspace() {
                 <CodeEditor
                   sessionId={session.id}
                   tabId={t.id}
+                  repoId={t.repoId!}
                   path={t.path!}
                   worktreePath={t.worktreePath!}
                   initial={t.content ?? ''}

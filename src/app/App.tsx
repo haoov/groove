@@ -11,6 +11,8 @@ import { SessionShell } from './SessionShell';
 import { ApprovalModal } from '../approvals/ApprovalModal';
 import { Toasts } from '../notifications/Toasts';
 import { SettingsModal } from '../setup/SettingsModal';
+import { FirstRun } from '../setup/FirstRun';
+import { AddRepoModal } from '../setup/AddRepoModal';
 import { CommandPalette } from '../command/CommandPalette';
 import { useIpc } from './providers/useIpc';
 
@@ -40,16 +42,7 @@ export default function App() {
   }, [setPaletteOpen, setSettingsOpen]);
 
   if (config === undefined) return <div className="booting" />;
-  if (config === null) {
-    return (
-      <div className="setup">
-        <div>
-          <h1>Groove isn't set up yet</h1>
-          <p>First-run configuration lands in the setup slice.</p>
-        </div>
-      </div>
-    );
-  }
+  if (config === null) return <FirstRun onReady={setConfig} />;
 
   return (
     <div className="app">
@@ -64,6 +57,7 @@ export default function App() {
       <ApprovalModal />
       <Toasts />
       <SettingsModal />
+      <AddRepoModal />
       <CommandPalette />
     </div>
   );

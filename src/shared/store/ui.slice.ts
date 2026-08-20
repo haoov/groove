@@ -18,6 +18,8 @@ export interface UiSlice {
   setSettingsOpen: (open: boolean) => void;
   paletteOpen: boolean;
   setPaletteOpen: (open: boolean) => void;
+  addRepoOpen: boolean;
+  setAddRepoOpen: (open: boolean) => void;
 }
 
 export const uiSlice: StateCreator<Store, [], [], UiSlice> = (set) => ({
@@ -31,4 +33,6 @@ export const uiSlice: StateCreator<Store, [], [], UiSlice> = (set) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  addRepoOpen: false,
+  setAddRepoOpen: (addRepoOpen) => set({ addRepoOpen }),
 });
