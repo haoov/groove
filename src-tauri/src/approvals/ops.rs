@@ -203,14 +203,37 @@ mod tests {
 
     /// The frontend renders each op by name from its own mirror. A backend op
     /// missing there is a raw-JSON dialog — silent, so it fails here instead.
-    /// (The reverse direction — dead frontend names — is checked once the
-    /// frontend rework lands; ops.ts still carries known-dead entries.)
     #[test]
     fn every_op_exists_in_the_frontend_mirror() {
         let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/shared/ipc/ops.ts");
         let ts = std::fs::read_to_string(&ts).expect("src/shared/ipc/ops.ts must exist");
         for op in ALL {
             assert!(ts.contains(&format!("'{op}'")), "op {op} missing from src/shared/ipc/ops.ts");
+        }
+    }
+
+    /// The reverse: a frontend op name the backend does not execute is dead UI —
+    /// approving it would hit "unknown op_type". Parses every quoted dotted name
+    /// out of ops.ts and demands the backend knows it.
+    #[test]
+    fn frontend_mirror_has_no_dead_ops() {
+        let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/shared/ipc/ops.ts");
+        let ts = std::fs::read_to_string(&ts).expect("src/shared/ipc/ops.ts must exist");
+        for (i, line) in ts.lines().enumerate() {
+            let Some(start) = line.find('\'') else { continue };
+            let rest = &line[start + 1..];
+            let Some(end) = rest.find('\'') else { continue };
+            let name = &rest[..end];
+            // Op names are dotted lowercase ("git.commit"); prefixes ("git.") and
+            // other strings are not op names.
+            if !name.contains('.') || name.ends_with('.') || !name.chars().all(|c| c.is_ascii_lowercase() || c == '.' || c == '_') {
+                continue;
+            }
+            assert!(
+                ALL.contains(&name),
+                "ops.ts line {}: '{name}' is not a backend op",
+                i + 1
+            );
         }
     }
 
