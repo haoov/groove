@@ -5,10 +5,10 @@ import {
   GitPullRequest, GitCompare, Search, X,
 } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
-import { useListNav } from '../command/useListNav';
+import { useListNav } from '../shared/lib/useListNav';
 import type { CommitEntry, WorktreeStatus } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
-import { StatBadge } from '../files/tree';
+import { StatBadge } from '../shared/ui/StatBadge';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */

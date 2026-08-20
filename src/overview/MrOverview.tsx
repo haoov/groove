@@ -7,7 +7,8 @@ import {
 import { useStore, useSession } from '../shared/store';
 import type { MrDetails } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
-import { MrThreadsSection, ciGroup } from '../notes/MrThreads';
+import { MrThreadsSection } from '../notes/MrThreads';
+import { ciGroup } from '../shared/lib/mr';
 import { Markdown } from '../shared/ui/Markdown';
 
 /** Full-page MR/PR overview — the task overview's layout applied to a merge

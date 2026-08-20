@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Terminal } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
 import { worktreeFor } from '../../shared/lib/workspace';
-import { toggleTerminal } from '../../workspace/panes';
+import { toggleTerminal } from '../../shared/lib/panes';
 
 export function StatusBar() {
   const activeTask = useSession((s) => s.activeTask);

@@ -6,8 +6,8 @@ import {
   ListTodo, PauseCircle, RefreshCw, Circle, Settings, Palette, Keyboard, type LucideIcon,
 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { ensureTerminalTab } from '../workspace/panes';
-import { DIFF_MODES } from '../git/diffModes';
+import { ensureTerminalTab } from '../shared/lib/panes';
+import { DIFF_MODES } from '../shared/lib/diffModes';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 import { THEMES, DEFAULT_THEME } from '../shared/ipc/ipc';
 import { chordLabel } from '../shared/lib/keys';

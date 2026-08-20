@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Play, ShieldOff, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { ensureAgentSession, sendToAgent } from './agentSend';
+import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from './prompts';
-import { focusHost } from '../terminal/terminalHost';
-import { useAttachedHost } from '../terminal/useAttachedHost';
+import { focusHost } from '../shared/lib/terminalHost';
+import { useAttachedHost } from '../shared/lib/useAttachedHost';
 import type { AgentActivity } from '../shared/ipc/ipc';
 
 /**

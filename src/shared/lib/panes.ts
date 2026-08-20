@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { useStore, sessionActions, isTerminalPane, type EditorTab, type SessionState } from '../shared/store';
-import { disposeHost } from '../terminal/terminalHost';
+import { useStore, sessionActions, isTerminalPane, type EditorTab, type SessionState } from '../store';
+import { disposeHost } from './terminalHost';
 
 /** True when DOM focus is currently inside a terminal tab. */
 function isTerminalFocused(): boolean {

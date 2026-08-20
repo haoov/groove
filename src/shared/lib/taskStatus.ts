@@ -20,3 +20,19 @@ export function statusKey(status: string): string {
   if (s.includes('done') || s.includes('complete')) return 'done';
   return 'ready';
 }
+
+/** Priority text → rank 0..3 (urgent..low). Unset ranks 3, like Low. */
+export function priorityRank(priority: string | null): number {
+  const s = (priority ?? '').toLowerCase();
+  if (s.includes('p0') || s.includes('urgent') || s.includes('critical') || s.includes('blocker')) return 0;
+  if (s.includes('p1') || s.includes('high')) return 1;
+  if (s.includes('p2') || s.includes('medium') || s.includes('normal')) return 2;
+  return 3;
+}
+
+/** Compact label for the priority pill; '' when the task has no priority
+ *  (which must stay distinct from "Low" — both rank 3). */
+export function priorityLabel(priority: string | null): string {
+  if (!priority) return '';
+  return ['urg', 'high', 'med', 'low'][priorityRank(priority)] ?? '';
+}

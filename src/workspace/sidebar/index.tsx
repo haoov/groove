@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
-import { DIFF_MODES } from '../../git/diffModes';
+import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { countUnresolved } from '../useWorkspaceData';
-import { RepoSwitcher } from './RepoSwitcher';
+import { RepoChips } from './RepoChips';
 import { FilesTab } from '../../files/FilesTab';
 import { CommitsTab, ChangedFilesList, GitCommitPanel } from '../../git/GitTab';
 import { ForgeSection } from '../../git/ForgeSection';
@@ -391,7 +391,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar" ref={rootRef} tabIndex={-1}>
 
-      <RepoSwitcher
+      <RepoChips
         repos={activeRepos}
         activeRepoId={activeRepoId}
         worktreeForRepo={worktreeForRepo}

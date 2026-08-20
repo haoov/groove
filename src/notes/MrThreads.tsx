@@ -6,14 +6,6 @@ import type { Mr, MrThread } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { useSession } from '../shared/store';
 
-/** Group a raw CI status string for styling (forge-ci-* classes). */
-export function ciGroup(status: string): 'ok' | 'fail' | 'run' | 'idle' {
-  if (status === 'success') return 'ok';
-  if (status === 'failed') return 'fail';
-  if (['running', 'pending', 'preparing', 'created', 'waiting_for_resource', 'scheduled'].includes(status)) return 'run';
-  return 'idle';
-}
-
 /** Review threads with reply counts + resolve flow. Rendered in the MR overview
  *  (moved out of the sidebar Forge section, which is now a compact list). */
 export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThread[]; mr: Mr; onResolved: () => void }) {

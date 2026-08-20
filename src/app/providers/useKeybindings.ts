@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useStore, sessionActions, type GitSubTab, type SidebarTab } from '../../shared/store';
-import { toggleTerminal } from '../../workspace/panes';
+import { toggleTerminal } from '../../shared/lib/panes';
 import { COMMANDS, type CommandId } from '../../shared/lib/keybindings';
 import { chordMatches, isModifierOnly, isTypingCharacter } from '../../shared/lib/keys';
 

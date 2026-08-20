@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, GitPullRequest, LayoutList, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
 import { worktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
-import { ensureTerminalTab } from './panes';
+import { ensureTerminalTab } from '../shared/lib/panes';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
 import type { Hunk } from '../shared/ipc/ipc';
@@ -16,7 +16,7 @@ import { OverviewView } from '../overview/OverviewView';
 import { PtyTabBody } from '../terminal/PtyTabBody';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { CodeEditor } from '../editor/CodeEditor';
-import { killPtyTab } from './panes';
+import { killPtyTab } from '../shared/lib/panes';
 import type { AnnCtx } from '../editor/useAnnotations';
 
 const isPtyKind = (k?: EditorTab['kind']) => k === 'terminal';

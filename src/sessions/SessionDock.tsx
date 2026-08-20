@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Code2, Compass, GitPullRequest, MessageSquare, X, type LucideIcon } from 'lucide-react';
 import { useStore, type SessionKind, type SessionState } from '../shared/store';
-import { endSession } from '../app/providers/useIpc';
+import { endSession } from '../shared/lib/endSession';
 import { NotificationFeed } from '../notifications/NotificationCenter';
 import { goToSession } from '../shared/lib/goToSession';
 import { statusKey } from '../shared/lib/taskStatus';

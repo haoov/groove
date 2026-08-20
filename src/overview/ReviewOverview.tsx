@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { GitPullRequest, Sparkles, Check, X, Trash2 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { sendToAgent } from '../agent/agentSend';
+import { sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from '../agent/prompts';
-import { endSession } from '../app/providers/useIpc';
+import { endSession } from '../shared/lib/endSession';
 import { MrOverview } from './MrOverview';
 
 /** Review session overview: the MR overview plus the review action row

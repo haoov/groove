@@ -2,7 +2,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { useStore, sessionActions } from '../shared/store';
-import { ciGroup } from '../notes/MrThreads';
+import { ciGroup } from '../shared/lib/mr';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 
 export const openTask = (shortId: string) =>
@@ -50,17 +50,5 @@ export function rowKey(entry: HomeEntry): string {
   return entry.short_id;
 }
 
-/** Compact label for the priority pill; '' when the task has no priority
- *  (which must stay distinct from "Low" — both rank 3). */
-export function priorityLabel(priority: string | null): string {
-  if (!priority) return '';
-  return ['urg', 'high', 'med', 'low'][priorityRank(priority)] ?? '';
-}
-
-export function priorityRank(priority: string | null): number {
-  const s = (priority ?? '').toLowerCase();
-  if (s.includes('p0') || s.includes('urgent') || s.includes('critical') || s.includes('blocker')) return 0;
-  if (s.includes('p1') || s.includes('high')) return 1;
-  if (s.includes('p2') || s.includes('medium') || s.includes('normal')) return 2;
-  return 3;
-}
+// priorityRank / priorityLabel moved to shared/lib/taskStatus (used across features).
+export { priorityLabel, priorityRank } from '../shared/lib/taskStatus';

@@ -5,8 +5,8 @@ import { Loader2, X } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { EVENT } from '../shared/ipc/events';
 import type { PtyOutputEvent } from '../shared/ipc/ipc';
-import { focusHost } from '../terminal/terminalHost';
-import { useAttachedHost } from '../terminal/useAttachedHost';
+import { focusHost } from '../shared/lib/terminalHost';
+import { useAttachedHost } from '../shared/lib/useAttachedHost';
 
 /** Typed at the prompt without a newline: the command is the same for everyone but
  *  its flags are not — a self-managed GitLab needs `--hostname`, and which login

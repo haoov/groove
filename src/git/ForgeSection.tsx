@@ -4,7 +4,7 @@ import {
   GitPullRequest, GitMerge, GitPullRequestClosed, MessageSquare,
 } from 'lucide-react';
 import type { Mr } from '../shared/ipc/ipc';
-import { ciGroup } from '../notes/MrThreads';
+import { ciGroup } from '../shared/lib/mr';
 
 export interface ForgeItem {
   mr: Mr;

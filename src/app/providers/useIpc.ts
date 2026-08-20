@@ -13,9 +13,9 @@ import {
 } from '../../shared/store';
 import { EVENT } from '../../shared/ipc/events';
 import { OP, OP_GIT_PREFIX, OP_MR_PREFIX } from '../../shared/ipc/ops';
-// Runtime-only cycle with terminalHost (it registers PTY handlers back here);
-// safe: neither module touches the other's exports at module evaluation.
-import { disposeHost } from '../../terminal/terminalHost';
+import { disposeHost } from '../../shared/lib/terminalHost';
+import { deliverPtyOutput } from '../../shared/lib/ptyRegistry';
+import { endSession } from '../../shared/lib/endSession';
 import type {
   AgentActivity,
   Annotation,
@@ -55,38 +55,6 @@ function scheduleAgentRefresh(taskId: string) {
     // but only refresh it while it's actually on screen.
     if (s.view !== 'workspace') s.refreshHome();
   }, AGENT_REFRESH_DEBOUNCE_MS));
-}
-
-// Global PTY output handlers keyed by session_id — registered by terminalHost
-// for the lifetime of each PTY session (not per-component).
-const ptyOutputHandlers = new Map<string, (data: Uint8Array) => void>();
-// Output that arrived before an xterm handler registered, buffered per session so
-// the first bytes of a fast-starting PTY aren't lost. Capped to avoid unbounded
-// growth if a handler never mounts.
-const MAX_PTY_BUFFER_CHUNKS = 256;
-const ptyOutputBuffers = new Map<string, Uint8Array[]>();
-
-/** Base64 to bytes, once, on the way to xterm. */
-function decodeChunk(b64: string): Uint8Array {
-  const text = atob(b64);
-  const bytes = new Uint8Array(text.length);
-  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
-  return bytes;
-}
-
-export function registerPtyHandler(sessionId: string, handler: (data: Uint8Array) => void) {
-  ptyOutputHandlers.set(sessionId, handler);
-  // Flush anything that arrived before the handler mounted, in arrival order.
-  const buffered = ptyOutputBuffers.get(sessionId);
-  if (buffered) {
-    ptyOutputBuffers.delete(sessionId);
-    for (const chunk of buffered) handler(chunk);
-  }
-}
-
-export function unregisterPtyHandler(sessionId: string) {
-  ptyOutputHandlers.delete(sessionId);
-  ptyOutputBuffers.delete(sessionId);
 }
 
 /** Human op label for failure toasts, e.g. "Commit failed: …". */
@@ -132,26 +100,6 @@ function applyRebaseConflict(sessionId: string, worktreeId: string, files: strin
     detail: files.slice(0, 6).join(', ') + (files.length > 6 ? ` +${files.length - 6} more` : ''),
     goTo: { taskId: useStore.getState().sessions[sessionId]?.task?.short_id },
   });
-}
-
-/**
- * Fully close a workspace session: stop its agent/terminal PTYs (the explicit
- * "I'm done" signal — switching away never does this), drop their output
- * handlers, then remove the session from the store.
- */
-export async function endSession(sessionId: string) {
-  const sess = useStore.getState().sessions[sessionId];
-  if (sess) {
-    for (const p of sess.ptySessions) {
-      try {
-        await invoke('stop_agent_session', { sessionId: p.sessionId });
-      } catch {
-        // already dead — clean up frontend state anyway
-      }
-      disposeHost(p.sessionId);
-    }
-  }
-  useStore.getState().closeSession(sessionId);
 }
 
 /** Human success message for an approved write op, or null if it shouldn't toast. */
@@ -425,18 +373,8 @@ export function useIpc() {
       // pty_output — dispatch to the session's xterm handler, buffering anything
       // that arrives before the handler registers.
       track(
-        await listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) => {
-          const data = decodeChunk(payload.b64);
-          const handler = ptyOutputHandlers.get(payload.session_id);
-          if (handler) {
-            handler(data);
-            return;
-          }
-          let buf = ptyOutputBuffers.get(payload.session_id);
-          if (!buf) { buf = []; ptyOutputBuffers.set(payload.session_id, buf); }
-          buf.push(data);
-          if (buf.length > MAX_PTY_BUFFER_CHUNKS) buf.shift();
-        })
+        await listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) =>
+          deliverPtyOutput(payload.session_id, payload.b64))
       );
 
       // pty_exit — dispose the terminal host (the PTY is gone for real) and drop

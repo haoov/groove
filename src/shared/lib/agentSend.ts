@@ -6,7 +6,7 @@
 // before Claude's input is ready to receive it.
 
 import { invoke } from '@tauri-apps/api/core';
-import { useStore } from '../shared/store';
+import { useStore } from '../store';
 
 /** Give up waiting for a cold agent to report in and just send. */
 const READY_TIMEOUT_MS = 25_000;

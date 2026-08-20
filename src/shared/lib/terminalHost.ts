@@ -2,9 +2,9 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { invoke } from '@tauri-apps/api/core';
-import { useStore } from '../shared/store';
-import { DEFAULT_FONT_SIZE } from '../shared/ipc/ipc';
-import { registerPtyHandler, unregisterPtyHandler } from '../app/providers/useIpc';
+import { useStore } from '../store';
+import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
+import { registerPtyHandler, unregisterPtyHandler } from './ptyRegistry';
 import '@xterm/xterm/css/xterm.css';
 
 /**

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Eye, Loader2, Pencil, Sparkles } from 'lucide-react';
 import { useStore } from '../shared/store';
-import { sendToAgent } from '../agent/agentSend';
+import { sendToAgent } from '../shared/lib/agentSend';
 import { ensureDeskSession } from '../sessions/desk';
 import { Markdown } from '../shared/ui/Markdown';
 import {
   AddField, MultiRow, Pill, draftRow, isHoursProperty, MULTI_KINDS, SINGLE_KINDS,
-} from '../overview/propertyControls';
+} from '../shared/ui/propertyControls';
 import type { Task, TaskSchema } from '../shared/ipc/ipc';
 
 /**

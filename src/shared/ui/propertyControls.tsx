@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
-import { statusKey } from '../shared/lib/taskStatus';
-import { priorityRank } from '../home/helpers';
-import type { PropertySchema, PropertyValue, RelationOption } from '../shared/ipc/ipc';
+import { statusKey } from '../lib/taskStatus';
+import { priorityRank } from '../lib/taskStatus';
+import type { PropertySchema, PropertyValue, RelationOption } from '../ipc/ipc';
 
 /**
  * The property controls themselves — pills, chip rows, popovers.

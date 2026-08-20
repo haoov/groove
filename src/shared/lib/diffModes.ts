@@ -1,5 +1,5 @@
 import { GitCompare, Cloud, Pencil, type LucideIcon } from 'lucide-react';
-import type { DiffMode } from '../shared/store';
+import type { DiffMode } from '../store';
 
 /** The diff comparison-base options, shared by the sidebar Changes toolbar and
  *  the command palette. */

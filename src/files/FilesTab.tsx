@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Search, TextSearch, X, ChevronRight, ChevronDown } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
-import { useListNav } from '../command/useListNav';
+import { useListNav } from '../shared/lib/useListNav';
 import { guessLang } from '../shared/lib/lang';
 import { matchRanges, Highlighted } from '../shared/lib/match';
 import type { Worktree, SearchMatch } from '../shared/ipc/ipc';

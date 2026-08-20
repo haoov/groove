@@ -14,7 +14,7 @@ function dotState(st: WorktreeStatus | undefined): string {
  * with its git status). Selecting one scopes the whole sidebar to it. The
  * StatusBar keeps the always-visible at-a-glance status of every repo.
  */
-export function RepoSwitcher({
+export function RepoChips({
   repos, activeRepoId, worktreeForRepo, worktreeStatus, onSelect, onAddRepo, onCloseRepo,
 }: {
   repos: Repo[];

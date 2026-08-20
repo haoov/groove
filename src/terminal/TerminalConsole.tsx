@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Loader2, Play, X } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
-import { focusHost } from './terminalHost';
-import { useAttachedHost } from './useAttachedHost';
+import { focusHost } from '../shared/lib/terminalHost';
+import { useAttachedHost } from '../shared/lib/useAttachedHost';
 
 /**
  * A terminal on Home.

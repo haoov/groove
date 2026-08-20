@@ -5,7 +5,7 @@ import { useStore } from '../shared/store';
 import {
   AddField, MultiRow, Pill, hasValue, isHoursProperty,
   MULTI_KINDS, SINGLE_KINDS, type Row,
-} from './propertyControls';
+} from '../shared/ui/propertyControls';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
 /**

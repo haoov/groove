@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { RotateCcw } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
-import { fitAndSync, focusHost } from './terminalHost';
-import { useAttachedHost } from './useAttachedHost';
+import { fitAndSync, focusHost } from '../shared/lib/terminalHost';
+import { useAttachedHost } from '../shared/lib/useAttachedHost';
 
 /**
  * Body of a terminal tab. The xterm lives in the module-level host registry —

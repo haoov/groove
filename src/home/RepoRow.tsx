@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../shared/store';
-import { ciGroup } from '../notes/MrThreads';
+import { ciGroup } from '../shared/lib/mr';
 import { openRepo } from './helpers';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 

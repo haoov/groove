@@ -14,7 +14,8 @@ export interface TreeNode {
   children: TreeNode[];
 }
 
-export interface DiffStat { add: number; del: number }
+export type { DiffStat } from '../shared/ui/StatBadge';
+import { StatBadge, type DiffStat } from '../shared/ui/StatBadge';
 
 // ── Tree builders ─────────────────────────────────────────────────────────────
 
@@ -82,15 +83,6 @@ export function FileTypeIcon({ name }: { name: string }) {
   if (ext === 'sql') return <Database {...props} />;
   if (['sh', 'bash', 'zsh'].includes(ext)) return <Terminal {...props} />;
   return <File {...props} />;
-}
-
-export function StatBadge({ stat }: { stat: DiffStat }) {
-  return (
-    <span className="file-tree-stats">
-      {stat.add > 0 && <span className="diff-add">+{stat.add}</span>}
-      {stat.del > 0 && <span className="diff-del">-{stat.del}</span>}
-    </span>
-  );
 }
 
 export function FileTreeNodes({

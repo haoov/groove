@@ -1,6 +1,6 @@
 import { Compass, Plus, Sparkles } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { sendToAgent } from '../agent/agentSend';
+import { sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from '../agent/prompts';
 import { RepoRow } from './parts';
 

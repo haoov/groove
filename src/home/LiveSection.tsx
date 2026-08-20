@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
-import { endSession } from '../app/providers/useIpc';
+import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { RepoRow } from './RepoRow';
 import { KIND_LABEL, openTask, priorityLabel, priorityRank, rowKey, summarize } from './helpers';
