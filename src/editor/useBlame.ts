@@ -16,7 +16,8 @@ export function useBlame(opts: {
   filePath: string;
 }) {
   const { worktreeId, repoId, filePath } = opts;
-  const key = `${repoId}/${filePath}`;
+  // Worktree-keyed (falls back to the repo while provisioning) — REWORK re-key.
+  const key = `${worktreeId ?? repoId}/${filePath}`;
   const blameOn = useSession((s) => s.blameOn);
   const blame = useSession((s) => s.blameByFile[key]);
   const setBlame = useSession((s) => s.setBlame);

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
 import { refreshSession } from '../../shared/lib/refreshSession';
+import { activeWorktreeFor } from '../../shared/lib/workspace';
 import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { countUnresolved } from '../useWorkspaceData';
@@ -66,9 +67,10 @@ export function Sidebar() {
   const commitsHasMore = useSession((s) => s.commitsHasMore);
   const loadMoreCommits = useSession((s) => s.loadMoreCommits);
 
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const worktreeForRepo = useCallback(
-    (repoId: string) => activeWorktrees.find((w) => w.repo_id === repoId),
-    [activeWorktrees]
+    (repoId: string) => activeWorktreeFor(activeWorktrees, repoId, activeWorktreeId),
+    [activeWorktrees, activeWorktreeId]
   );
 
   // Opening the Forge sub-tab refreshes MRs + threads, so it never shows a

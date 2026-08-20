@@ -58,6 +58,7 @@ export const emptyPane = (): WorkspacePane => ({
 export function sessionDefaults(): Omit<SessionState, 'id' | 'kind' | 'title' | 'task' | 'worktrees' | 'repos'> {
   return {
     activeRepoId: null,
+    activeWorktreeId: null,
     panes: [emptyPane()],
     activePaneId: 'pane-1',
     layout: leaf('pane-1'),
@@ -109,6 +110,8 @@ export function newWorkspaceSession(kind: SessionKind, task: Task | null, worktr
     repos,
     ...sessionDefaults(),
     activeRepoId: repos[0]?.id ?? null,
+    activeWorktreeId:
+      worktrees.find((w) => w.repo_id === repos[0]?.id)?.id ?? worktrees[0]?.id ?? null,
   };
 }
 let termTabSeq = 0;

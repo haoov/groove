@@ -319,6 +319,9 @@ export interface SessionState {
   worktrees: Worktree[];
   repos: Repo[];
   activeRepoId: string | null;
+  /** The worktree git ops target. PRIMARY: `activeRepoId` is derived from it —
+   *  a repo can hold several worktrees (unique key session+repo+branch). */
+  activeWorktreeId: string | null;
 
   panes: WorkspacePane[];
   activePaneId: string;
@@ -405,7 +408,11 @@ export interface SessionActions {
   /** Bind a terminal tab to its started PTY session. */
   setTabPty: (paneId: string, tabId: string, ptySessionId: string) => void;
   focusPane: (paneId: string) => void;
+  /** Select a repo; targets that repo's first worktree (or keeps the current
+   *  one when it already belongs to the repo). */
   setActiveRepoId: (id: string | null) => void;
+  /** Select the exact worktree (multi-worktree repos); syncs activeRepoId. */
+  setActiveWorktreeId: (id: string | null) => void;
   setSidebarTab: (t: SidebarTab) => void;
   setSidebarCollapsed: (v: boolean) => void;
   setGitSubTab: (t: GitSubTab) => void;

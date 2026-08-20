@@ -47,6 +47,12 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
                   // Preserve the existing session's kind; only refresh the label.
                   title: sessionTitle(prev.kind, task),
                   activeRepoId: prev.activeRepoId ?? repos[0]?.id ?? null,
+                  // Keep the selected worktree if it survived the refresh
+                  // (conversion/provisioning replace worktree rows).
+                  activeWorktreeId: worktrees.some((w) => w.id === prev.activeWorktreeId)
+                    ? prev.activeWorktreeId
+                    : worktrees.find((w) => w.repo_id === (prev.activeRepoId ?? repos[0]?.id))?.id
+                      ?? worktrees[0]?.id ?? null,
                 },
               },
               ...navigate,
@@ -179,7 +185,17 @@ function makeSessionActions(id: string): SessionActions {
         ),
       })),
     focusPane: (paneId) => upd(() => ({ activePaneId: paneId })),
-    setActiveRepoId: (rid) => upd(() => ({ activeRepoId: rid })),
+    setActiveRepoId: (rid) =>
+      upd((s) => {
+        const current = s.worktrees.find((w) => w.id === s.activeWorktreeId);
+        const wt = current?.repo_id === rid ? current : s.worktrees.find((w) => w.repo_id === rid);
+        return { activeRepoId: rid, activeWorktreeId: wt?.id ?? null };
+      }),
+    setActiveWorktreeId: (wid) =>
+      upd((s) => {
+        const wt = s.worktrees.find((w) => w.id === wid);
+        return { activeWorktreeId: wid, activeRepoId: wt?.repo_id ?? s.activeRepoId };
+      }),
     setSidebarTab: (t) => upd(() => ({ sidebarTab: t })),
     setSidebarCollapsed: (v) => upd(() => ({ sidebarCollapsed: v })),
     setGitSubTab: (t) => upd(() => ({ gitSubTab: t })),

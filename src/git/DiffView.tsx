@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation, Hunk, RepoDiff, Mr, MrThread } from '../shared/ipc/ipc';
-import { mrForWorktree } from '../shared/lib/workspace';
+import { mrForWorktree, activeWorktreeFor } from '../shared/lib/workspace';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
@@ -27,14 +27,18 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
 
   const hunksInFlight = useRef<Set<string>>(new Set());
 
-  const repo = diff?.repos.find((r) => r.repo_id === repoId);
-  const wt = activeWorktrees.find((w) => w.repo_id === repoId);
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
+  const wt = activeWorktreeFor(activeWorktrees, repoId, activeWorktreeId);
+  // The summary emits one entry PER WORKTREE (same repo_id, different branch) —
+  // pick the entry for the targeted worktree's branch.
+  const repo = diff?.repos.find((r) => r.repo_id === repoId && (!wt || r.branch === wt.branch))
+    ?? diff?.repos.find((r) => r.repo_id === repoId);
 
   // Lazily fetch line content for expanded files not yet cached.
   useEffect(() => {
     if (!repo || !wt) return;
     for (const f of repo.files) {
-      const key = `${repoId}/${f.path}`;
+      const key = `${wt.id}/${f.path}`;
       if (!expandedFiles.has(key) || diffHunks[key] !== undefined || hunksInFlight.current.has(key)) continue;
       hunksInFlight.current.add(key);
       invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: f.path, mode: diffMode })
@@ -81,6 +85,9 @@ export function RepoDiffSection({
   ann: AnnCtx;
 }) {
   const openAnns = annotations.filter((a) => a.repo_id === repo.repo_id && a.status === 'open');
+  // Cache/expansion key base: the worktree, not the repo — two worktrees of one
+  // repo must not share hunks (REWORK ledger re-key).
+  const keyBase = worktreeId ?? repo.repo_id;
 
   // File-level keyboard navigation. The editors inside expanded files own j/k for
   // lines (vim); this moves between the file HEADERS, which was otherwise
@@ -108,7 +115,7 @@ export function RepoDiffSection({
       case 'Enter': case ' ': {
         e.preventDefault();
         const file = repo.files[cursor];
-        if (file) onToggleFile(`${repo.repo_id}/${file.path}`);
+        if (file) onToggleFile(`${keyBase}/${file.path}`);
         return;
       }
     }
@@ -128,7 +135,7 @@ export function RepoDiffSection({
       }}
     >
       {repo.files.map((file, i) => {
-        const key = `${repo.repo_id}/${file.path}`;
+        const key = `${keyBase}/${file.path}`;
         const expanded = expandedFiles.has(key);
         const fileAnns = openAnns.filter((a) => a.file_path === file.path);
 

@@ -321,6 +321,9 @@ export function useIpc() {
               worktrees,
               repos,
               activeRepoId: ss.activeRepoId === payload.repo_id ? (repos[0]?.id ?? null) : ss.activeRepoId,
+              activeWorktreeId: ss.activeWorktreeId === payload.worktree_id
+                ? (worktrees[0]?.id ?? null)
+                : ss.activeWorktreeId,
             };
           });
         })

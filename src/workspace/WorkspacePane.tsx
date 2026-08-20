@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, GitPullRequest, LayoutList, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
-import { worktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
+import { worktreeFor, activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
 import { ensureTerminalTab } from '../shared/lib/panes';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
@@ -247,8 +247,10 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   const setLastError = useStore((s) => s.setLastError);
   const inFlight = useRef(false);
 
-  const wt = worktreeFor(activeWorktrees, tab.repoId);
-  const key = `${tab.repoId}/${tab.filePath}`;
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
+  const wt = activeWorktreeFor(activeWorktrees, tab.repoId, activeWorktreeId);
+  // Worktree-keyed (falls back to the repo while provisioning) — REWORK re-key.
+  const key = `${wt?.id ?? tab.repoId}/${tab.filePath}`;
   const hunks = diffHunks[key];
   const expand = useDiffExpand({
     worktreeId: wt?.id, filePath: tab.filePath, hunks,

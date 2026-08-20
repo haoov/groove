@@ -61,6 +61,7 @@ export function CommandPalette() {
   // Which repo the user is actually in. Git commands used to take the session's
   // FIRST active worktree, so on a multi-repo task they hit an arbitrary repo.
   const activeRepoId = useSession((s) => s.activeRepoId);
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const activeRepos = useSession((s) => s.activeRepos);
   const openTab = useSession((s) => s.openTab);
   const setDiffMode = useSession((s) => s.setDiffMode);
@@ -102,7 +103,9 @@ export function CommandPalette() {
 
   const buildCommands = (): Command[] => {
     // The focused repo's worktree, falling back to the only sensible default.
-    const wt = activeWorktrees.find((w) => w.repo_id === activeRepoId) ?? activeWorktrees[0];
+    const wt = activeWorktrees.find((w) => w.id === activeWorktreeId)
+      ?? activeWorktrees.find((w) => w.repo_id === activeRepoId)
+      ?? activeWorktrees[0];
     // Named in the label so a git command can never act on a repo you did not mean.
     const scope = activeRepos.find((r) => r.id === wt?.repo_id)?.project ?? null;
     const inRepo = (label: string) => (scope ? `${label} — ${scope}` : label);
