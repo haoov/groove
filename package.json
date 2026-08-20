@@ -31,6 +31,7 @@
     "@codemirror/view": "^6.43.1",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/lilex": "^5.3.0",
     "@lezer/highlight": "^1.2.3",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@replit/codemirror-vim": "^6.3.0",

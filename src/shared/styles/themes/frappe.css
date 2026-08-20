@@ -1,6 +1,5 @@
-/* Catppuccin Frappé — dark (default theme; applies with or without data-theme).
+/* Catppuccin Frappé — dark.
    https://catppuccin.com  ·  raw palette only; semantic tokens live in tokens.css. */
-:root,
 :root[data-theme='frappe'] {
   --ctp-rosewater: #f2d5cf;
   --ctp-flamingo:  #eebebe;

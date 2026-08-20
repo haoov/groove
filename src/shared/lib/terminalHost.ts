@@ -55,8 +55,8 @@ const termFontSize = () => (useStore.getState().config?.ui.font_size ?? DEFAULT_
  *  read CSS variables, so this mirrors the token in JS. */
 const termFontFamily = () => {
   const configured = useStore.getState().config?.ui.font_family?.trim();
-  const stack = `'FiraCode Nerd Font Mono', ui-monospace, monospace`;
-  return configured ? `'${configured}', ${stack}` : `'JetBrainsMono Nerd Font Mono', ${stack}`;
+  const stack = `'Lilex', 'IBM Plex Mono', ui-monospace, monospace`;
+  return configured ? `'${configured}', ${stack}` : stack;
 };
 
 /**

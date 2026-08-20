@@ -82,13 +82,13 @@ export type NotionConfig = NotionView;
 export type ThemeName = 'frappe' | 'latte' | 'onedark' | 'onelight';
 
 export const THEMES: { id: ThemeName; label: string }[] = [
-  { id: 'frappe',   label: 'Catppuccin Frappé' },
   { id: 'latte',    label: 'Catppuccin Latte' },
-  { id: 'onedark',  label: 'One Dark' },
+  { id: 'frappe',   label: 'Catppuccin Frappé' },
   { id: 'onelight', label: 'One Light' },
+  { id: 'onedark',  label: 'One Dark' },
 ];
 
-export const DEFAULT_THEME: ThemeName = 'frappe';
+export const DEFAULT_THEME: ThemeName = 'latte';
 /** Base UI font size in px. Mirrors `default_font_size()` in core/config —
  *  the whole type ramp is derived from it (lib/theme.ts::applyFontSize). */
 export const DEFAULT_FONT_SIZE = 15;

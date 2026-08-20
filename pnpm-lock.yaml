@@ -62,6 +62,9 @@ importers:
       '@fontsource/ibm-plex-sans':
         specifier: ^5.2.8
         version: 5.2.8
+      '@fontsource/lilex':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@lezer/highlight':
         specifier: ^1.2.3
         version: 1.2.3
@@ -484,6 +487,9 @@ packages:
 
   '@fontsource/ibm-plex-sans@5.2.8':
     resolution: {integrity: sha512-eztSXjDhPhcpxNIiGTgMebdLP9qS4rWkysuE1V7c+DjOR0qiezaiDaTwQE7bTnG5HxAY/8M43XKDvs3cYq6ZYQ==}
+
+  '@fontsource/lilex@5.3.0':
+    resolution: {integrity: sha512-iSmg+PfNAlXotUVkXvxRhHaHC2OQeFRjWurb3AnJWPTmw+M6JZKIvj0MfwYjkdL5mCw5AiBSE2UxPAhN5Idh/g==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2185,6 +2191,8 @@ snapshots:
   '@fontsource/ibm-plex-mono@5.2.7': {}
 
   '@fontsource/ibm-plex-sans@5.2.8': {}
+
+  '@fontsource/lilex@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

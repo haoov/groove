@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
-import { DEFAULT_FONT_SIZE, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
+import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
 import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
 
 /**
@@ -91,7 +91,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
       if (!cfg) throw new Error('Config saved but not readable — check the path below.');
       applyFontSize(cfg.ui?.font_size ?? DEFAULT_FONT_SIZE);
       applyFontFamily(cfg.ui?.font_family);
-      applyTheme(cfg.ui?.theme ?? 'frappe');
+      applyTheme(cfg.ui?.theme ?? DEFAULT_THEME);
       onReady(cfg);
     } catch (e) {
       setError(String(e));

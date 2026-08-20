@@ -1,4 +1,6 @@
-/* Catppuccin Latte — light.  Palette + light-mode polarity overrides. */
+/* Catppuccin Latte — light (DEFAULT theme; applies with or without data-theme).
+   Palette + light-mode polarity overrides. */
+:root,
 :root[data-theme='latte'] {
   --ctp-rosewater: #dc8a78;
   --ctp-flamingo:  #dd7878;

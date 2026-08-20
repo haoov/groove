@@ -8,10 +8,10 @@
      3. polarity tokens (--gl-elevate, shadows, scrollbar, selection-text, …) — also defined
                   per theme so light themes flip the light-on-dark assumptions.
    This file holds the theme-AGNOSTIC semantic layer + all non-color structural tokens.
-   The palette + polarity defaults live in the theme files (frappe is the no-attribute default). */
+   The palette + polarity defaults live in the theme files (latte is the no-attribute default). */
 
 :root {
-  /* ── Polarity fallback (frappe/dark). Theme files override per data-theme. ──── */
+  /* ── Polarity fallback (overridden by every theme file; latte is the default). ── */
   --gl-elevate: 255, 255, 255;   /* elevation-tint channel: white on dark, black on light */
 
   /* ── Backgrounds — layered by elevation ─────────────────────────────────────
@@ -173,14 +173,13 @@
   --gl-font-size-xl: calc(var(--font-size-base) + 4px); /* 18 */
 
   /* ── Typography ─────────────────────────────────────────────────────────── */
-  /* Family names must match what fontconfig reports, NOT the vendor's marketing
-     name: the Nerd Font build installs as 'JetBrainsMono Nerd Font' (no space),
-     so 'JetBrains Mono' silently matched nothing and fell through to FiraCode.
-     Check with `fc-list : family` before changing these. Overridable at runtime
-     from Settings, which sets --font-mono on :root (lib/theme.ts). */
-  --font-ui:      'JetBrainsMono Nerd Font', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-mono:    'JetBrainsMono Nerd Font Mono', 'FiraCode Nerd Font Mono', ui-monospace, 'SFMono-Regular', monospace;
-  --font-display: 'JetBrains Mono', ui-monospace, monospace; /* brand / tracked labels */
+  /* IBM Plex Sans (UI chrome) and Lilex → IBM Plex Mono (code/data) are BUNDLED
+     via @fontsource in main.tsx, so the app renders identically on any machine.
+     The mono face is overridable at runtime from Settings, which sets
+     --font-mono on :root (lib/theme.ts). */
+  --font-ui:      'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:    'Lilex', 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --font-display: 'Lilex', 'IBM Plex Mono', ui-monospace, monospace; /* brand / tracked labels */
 
   /* ── Layout dimensions ──────────────────────────────────────────────────── */
   --wb-sidebar-width:        17rem;      /* 272px */

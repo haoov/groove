@@ -45,7 +45,7 @@ fn default_font_family() -> String {
 }
 
 fn default_theme() -> String {
-    "frappe".to_string()
+    "latte".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
