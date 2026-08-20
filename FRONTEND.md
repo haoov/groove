@@ -64,4 +64,7 @@ diff cache re-key `${worktreeId}/${path}`, `list_notion_users → find_notion_us
 3. **Git & diff** — Changes/commit/commits, the one diff engine, diff modes, explicit-refresh wiring.
 4. **Agent & approvals** — PTY agent console (state/term/actions), ConfirmModal per-op renderers + N5 chaining, notifications.
 5. **Overview · Notes · Forge** — task + review Overview, inline annotations + mr threads, MR create/CI/approve, GitLab links.
-6. **Palette · settings · wizards · pop-out agent window.**
+6. **Palette · settings · wizards.** Command palette (⌘K), Preferences, first-run, add-repo, inline CM annotations. Pop-out agent window DROPPED by decision — the agent console stays docked in-app.
+
+## Status
+All six slices done on `rework/core-db`; each verified tsc + vite build + vitest. Agent console is in-app only (pop-out dropped). Not yet run against the real DB — end-to-end `pnpm tauri dev` test pending.
