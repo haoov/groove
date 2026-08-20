@@ -16,6 +16,7 @@ import { OP, OP_GIT_PREFIX, OP_MR_PREFIX } from '../../shared/ipc/ops';
 import { disposeHost } from '../../shared/lib/terminalHost';
 import { deliverPtyOutput } from '../../shared/lib/ptyRegistry';
 import { endSession } from '../../shared/lib/endSession';
+import { refreshOnAgentActivity } from '../../shared/lib/refreshSession';
 import type {
   AgentActivity,
   Annotation,
@@ -33,29 +34,6 @@ import type {
   TaskPausedEvent,
   TaskFinishedEvent,
 } from '../../shared/ipc/ipc';
-
-// The filesystem watcher is gone from the backend; agent activity is the signal
-// that a worktree changed on disk. Coalesce a turn's burst of hook events into
-// one refresh per session: flush the backend git caches, then refetch.
-const AGENT_REFRESH_DEBOUNCE_MS = 800;
-const agentRefreshTimers = new Map<string, number>();
-
-function scheduleAgentRefresh(taskId: string) {
-  const prev = agentRefreshTimers.get(taskId);
-  if (prev !== undefined) clearTimeout(prev);
-  agentRefreshTimers.set(taskId, window.setTimeout(async () => {
-    agentRefreshTimers.delete(taskId);
-    const s = useStore.getState();
-    const owner = findSessionByTask(s, taskId);
-    if (!owner) return;
-    await invoke('flush_git_caches').catch(() => { /* best-effort */ });
-    s.invalidateDiff(owner.id);
-    s.refreshStatusFor(owner.id);
-    // Home mirrors working-tree state, so it goes stale on the same edits —
-    // but only refresh it while it's actually on screen.
-    if (s.view !== 'workspace') s.refreshHome();
-  }, AGENT_REFRESH_DEBOUNCE_MS));
-}
 
 /** Human op label for failure toasts, e.g. "Commit failed: …". */
 function opLabel(opType: string): string {
@@ -424,8 +402,9 @@ export function useIpc() {
           const previous = s.agentActivity[payload.task_id]?.state;
           s.setAgentActivity(payload);
           // The agent touching the worktree is the diff-staleness signal now
-          // that the filesystem watcher is gone.
-          scheduleAgentRefresh(payload.task_id);
+          // that the filesystem watcher is gone: throttled while working,
+          // immediate once the turn ends.
+          refreshOnAgentActivity(payload.task_id, payload.state);
           if (payload.state !== 'waiting' || previous === 'waiting') return;
           const owner = findSessionByTask(s, payload.task_id);
           const focused = owner && s.activeSessionId === owner.id && s.view === 'workspace';

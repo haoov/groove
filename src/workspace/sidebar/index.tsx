@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
+import { refreshSession } from '../../shared/lib/refreshSession';
 import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { countUnresolved } from '../useWorkspaceData';
@@ -19,6 +20,7 @@ export function Sidebar() {
   const activeRepoId = useSession((s) => s.activeRepoId);
   const setActiveRepoId = useSession((s) => s.setActiveRepoId);
   const worktreeStatus = useSession((s) => s.worktreeStatus);
+  const sessionId = useSession((s) => s.id);
   const refreshStatus = useSession((s) => s.refreshStatus);
   const bumpDiff = useSession((s) => s.bumpDiff);
   const bumpMrs = useSession((s) => s.bumpMrs);
@@ -319,7 +321,7 @@ export function Sidebar() {
                   </div>
                   <button
                     className="diff-mode-refresh"
-                    onClick={() => { bumpDiff(); refreshStatus(); }}
+                    onClick={() => void refreshSession(sessionId)}
                     title="Refresh diff & git status"
                   >
                     <RefreshCw size={12} strokeWidth={1.75} />
