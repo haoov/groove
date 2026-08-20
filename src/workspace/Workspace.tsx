@@ -1,5 +1,6 @@
 import { useStore } from '../shared/store';
 import { FilesPanel } from '../files/FilesPanel';
+import { GitPanel } from '../git/GitPanel';
 import { CodeEditor } from '../editor/CodeEditor';
 import { TerminalTab } from '../terminal/TerminalTab';
 import { ChangesView } from '../git/ChangesView';
@@ -29,6 +30,8 @@ export function Workspace() {
     <div className="ws">
       {session.sidebar === 'files' ? (
         <FilesPanel session={session} />
+      ) : session.sidebar === 'git' ? (
+        <GitPanel session={session} />
       ) : (
         <aside className="sidebar"><div className="side-h">{session.sidebar}</div><div className="tempty">Lands in a later slice.</div></aside>
       )}

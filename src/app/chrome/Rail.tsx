@@ -1,5 +1,5 @@
 import { useStore } from '../../shared/store';
-import { Icon } from '../../shared/ui';
+import { Icon, type IconName } from '../../shared/ui';
 import type { SidebarPanel } from '../../sessions/sessions.slice';
 
 export function Rail() {
@@ -8,18 +8,15 @@ export function Rail() {
   const activeId = useStore((s) => s.activeSessionId);
   const session = useStore((s) => (activeId ? s.sessions[activeId] : undefined));
   const setSidebar = useStore((s) => s.setSidebar);
-  const openChangesTab = useStore((s) => s.openChangesTab);
 
   const inSession = view !== 'home';
-  const activeChanges = view === 'session' && session?.activeTabId === 'changes';
-  // Files and Notes are sidebar panels; Git opens the diff review as a tab
-  // (a full Git sidebar panel lands in a later slice).
+  const panel: [SidebarPanel, IconName, string][] = [
+    ['files', 'files', 'Files'],
+    ['git', 'git', 'Source control'],
+    ['notes', 'notes', 'Notes'],
+  ];
   const pickPanel = (p: SidebarPanel) => {
     if (session) setSidebar(session.id, p);
-    setView('session');
-  };
-  const openGit = () => {
-    if (session) openChangesTab(session.id);
     setView('session');
   };
 
@@ -42,27 +39,16 @@ export function Rail() {
           >
             <Icon name="overview" />
           </button>
-          <button
-            className={`r${view === 'session' && session?.sidebar === 'files' ? ' on' : ''}`}
-            title="Files"
-            onClick={() => pickPanel('files')}
-          >
-            <Icon name="files" />
-          </button>
-          <button
-            className={`r${activeChanges ? ' on' : ''}`}
-            title="Changes"
-            onClick={openGit}
-          >
-            <Icon name="git" />
-          </button>
-          <button
-            className={`r${view === 'session' && session?.sidebar === 'notes' ? ' on' : ''}`}
-            title="Notes"
-            onClick={() => pickPanel('notes')}
-          >
-            <Icon name="notes" />
-          </button>
+          {panel.map(([p, icon, title]) => (
+            <button
+              key={p}
+              className={`r${view === 'session' && session?.sidebar === p ? ' on' : ''}`}
+              title={title}
+              onClick={() => pickPanel(p)}
+            >
+              <Icon name={icon} />
+            </button>
+          ))}
         </div>
       )}
       <button className="r r-bottom" title="Command palette"><Icon name="cmd" /></button>
