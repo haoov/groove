@@ -33,6 +33,7 @@ export interface SessionState {
   id: string;
   kind: SessionKind;
   title: string;
+  notionPageId: string;
   worktrees: Worktree[];
   repos: Repo[];
   activeRepoId: string | null;
@@ -86,6 +87,7 @@ export const sessionsSlice: StateCreator<Store, [], [], SessionsSlice> = (set, g
         id,
         kind: p.kind,
         title: p.task.title || id,
+        notionPageId: p.task.notion_page_id ?? '',
         worktrees: p.worktrees,
         repos: p.repos,
         activeRepoId: existing?.activeRepoId ?? firstRepo,

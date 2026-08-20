@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../shared/store';
 import { Workspace } from '../workspace/Workspace';
+import { Overview } from '../overview/Overview';
 import { AgentConsole } from '../agent/AgentConsole';
 
 /** The session frame: a mode body (code now, Overview in a later slice) beside a
@@ -14,9 +15,7 @@ export function SessionShell() {
 
   if (!session) return <div className="placeholder">Opening session…</div>;
 
-  const body = view === 'session'
-    ? <Workspace />
-    : <div className="placeholder">Overview lands in slice 5.</div>;
+  const body = view === 'session' ? <Workspace /> : <Overview />;
 
   return (
     <div className={`session-shell${agentOpen ? '' : ' agent-hidden'}`}>
