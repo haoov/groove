@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ciGroup } from '../shared/lib/mr';
+import { openExternal } from '../shared/lib/openExternal';
 import { openRepo } from './helpers';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 
@@ -78,9 +79,13 @@ export function RepoRow({ entry, repo }: { entry: HomeEntry; repo: HomeRepo }) {
         <div className="detail-row detail-mr-row">
           <span className="detail-repo" />
           <span className="detail-mr">
-            <span className="detail-mr-num">
+            <a
+              className="detail-mr-num"
+              title={`${repo.mr.url} — open in ${repo.mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+              onClick={(e) => { e.stopPropagation(); openExternal(repo.mr!.url); }}
+            >
               {repo.mr.platform === 'github' ? '#' : '!'}{repo.mr.remote_id}
-            </span>
+            </a>
             <span className={`mr-state-${repo.mr.state}`}>{repo.mr.state}</span>
             {repo.mr.approved && (
               <span className="approved-badge" title="Approved, not merged yet">approved</span>

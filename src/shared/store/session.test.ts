@@ -62,12 +62,11 @@ describe('openTabReducer', () => {
     expect(pane(s).tabs[1].view).toBe('diff');
   });
 
-  it('keys a commit tab on its sha and an MR tab on its id', () => {
+  it('keys a commit tab on its sha', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: '', view: 'diff', kind: 'commit', sha: 'abc' }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: '', view: 'diff', kind: 'commit', sha: 'def' }));
-    s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: '', view: 'diff', kind: 'mr', mrId: '7' }));
-    expect(tabIds(s)).toEqual(['::overview', 'r1::commit::abc', 'r1::commit::def', 'r1::mr::7']);
+    expect(tabIds(s)).toEqual(['::overview', 'r1::commit::abc', 'r1::commit::def']);
   });
 
   // The bug: the tab id fell back to the label, and every unbound terminal is

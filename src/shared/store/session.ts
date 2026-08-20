@@ -118,14 +118,13 @@ let termTabSeq = 0;
 
 export function openTabReducer(
   s: SessionState,
-  { repoId, filePath, view, kind = 'file', sha, mrId, ptySessionId, label, cursorLine, preview: previewIn = false }: OpenTabInput,
+  { repoId, filePath, view, kind = 'file', sha, ptySessionId, label, cursorLine, preview: previewIn = false }: OpenTabInput,
   opts?: { paneId?: string }
 ): Partial<SessionState> {
   const paneId = paneFor(s, kind, opts?.paneId);
   const tabId =
     kind === 'changes' ? `${repoId}::__changes__`
     : kind === 'commit' ? `${repoId}::commit::${sha}`
-    : kind === 'mr' ? `${repoId}::mr::${mrId}`
     : kind === 'overview' ? '::overview'
     // NEVER the label: every unbound terminal is labelled 'Terminal', so keying on
     // it made them all one tab and a second terminal silently focused the first.
@@ -169,11 +168,11 @@ export function openTabReducer(
       );
     } else if (preview) {
       // Reuse the pane's single preview tab in place, else append a new one.
-      const newTab: EditorTab = { id: tabId, repoId, filePath, view, kind, sha, mrId, ptySessionId, label, cursorLine, preview: true };
+      const newTab: EditorTab = { id: tabId, repoId, filePath, view, kind, sha, ptySessionId, label, cursorLine, preview: true };
       const pIdx = p.tabs.findIndex((t) => t.preview);
       tabs = pIdx >= 0 ? p.tabs.map((t, i) => (i === pIdx ? newTab : t)) : [...p.tabs, newTab];
     } else {
-      tabs = [...p.tabs, { id: tabId, repoId, filePath, view, kind, sha, mrId, ptySessionId, label, cursorLine }];
+      tabs = [...p.tabs, { id: tabId, repoId, filePath, view, kind, sha, ptySessionId, label, cursorLine }];
     }
     return { ...p, tabs, activeTabId: tabId };
   });

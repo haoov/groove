@@ -361,7 +361,9 @@ export function Sidebar() {
             );
           })()}
           {gitSubTab === 'forge' && !isExplorer && (() => {
-            // All of the task's MRs across repos — selecting one opens its overview tab.
+            // All of the task's MRs across repos — a row opens the MR on the
+            // forge (MR links always open GitLab/GitHub; reviews get the in-app
+            // overview through their session's Overview instead).
             const items = mrs.flatMap((m) => {
               const wt = activeWorktrees.find((w) => w.id === m.worktree_id);
               if (!wt) return [];
@@ -373,21 +375,7 @@ export function Sidebar() {
                 unresolved: countUnresolved(mrThreadsByRepo[wt.repo_id] ?? []),
               }];
             });
-            return (
-              <ForgeSection
-                items={items}
-                onSelect={(item) =>
-                  openTab({
-                    repoId: item.repoId,
-                    filePath: '',
-                    view: 'diff',
-                    kind: 'mr',
-                    mrId: item.mr.id,
-                    label: `${item.mr.platform === 'github' ? '#' : '!'}${item.mr.remote_id}`,
-                  })
-                }
-              />
-            );
+            return <ForgeSection items={items} />;
           })()}
         </div>
       </div>

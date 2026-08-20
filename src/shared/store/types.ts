@@ -269,14 +269,13 @@ export interface EditorTab {
   filePath: string;
   view: TabView;
   /** 'file' = a single file (default); 'changes' = the repo's whole "All changes"
-   *  review; 'commit' = one commit's diff; 'mr' = a merge-request overview;
-   *  'overview' = the task overview page; 'terminal' = a shell.
-   *  The agent has no tab kind — it lives in the console (components/AgentConsole). */
-  kind?: 'file' | 'changes' | 'commit' | 'mr' | 'overview' | 'terminal';
+   *  review; 'commit' = one commit's diff; 'overview' = the task overview page;
+   *  'terminal' = a shell. MRs have no tab: their links open the forge, and a
+   *  review session's MR overview lives in its Overview.
+   *  The agent has no tab kind — it lives in the console (agent/AgentConsole). */
+  kind?: 'file' | 'changes' | 'commit' | 'overview' | 'terminal';
   /** Commit sha for kind='commit'. */
   sha?: string;
-  /** MR id (local mrs row) for kind='mr'. */
-  mrId?: string;
   /** Bound PTY session for kind='terminal' (set once the session starts). */
   ptySessionId?: string;
   /** Tab-strip label for non-file kinds (short sha, "!42"/"#42"). */
@@ -460,7 +459,6 @@ export interface OpenTabInput {
   view: TabView;
   kind?: EditorTab['kind'];
   sha?: string;
-  mrId?: string;
   ptySessionId?: string;
   label?: string;
   cursorLine?: number;

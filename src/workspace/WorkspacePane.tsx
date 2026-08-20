@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, GitPullRequest, LayoutList, Terminal as TerminalIcon, Skull } from 'lucide-react';
+import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, LayoutList, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
 import { worktreeFor, activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
 import { ensureTerminalTab } from '../shared/lib/panes';
@@ -11,7 +11,6 @@ import { guessLang } from '../shared/lib/lang';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { ChangesView } from '../git/DiffView';
 import { CommitDiffView } from '../git/CommitDiffView';
-import { MrOverview } from '../overview/MrOverview';
 import { OverviewView } from '../overview/OverviewView';
 import { PtyTabBody } from '../terminal/PtyTabBody';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -24,7 +23,6 @@ const isPtyKind = (k?: EditorTab['kind']) => k === 'terminal';
 function tabLabel(tab: EditorTab): string {
   if (tab.kind === 'changes') return 'All changes';
   if (tab.kind === 'commit') return tab.label ?? tab.sha?.slice(0, 7) ?? 'commit';
-  if (tab.kind === 'mr') return tab.label ?? 'MR';
   if (tab.kind === 'overview') return 'Overview';
   if (tab.kind === 'terminal') return tab.label ?? 'Terminal';
   return tab.filePath.split('/').pop() ?? tab.filePath;
@@ -85,14 +83,12 @@ export function WorkspacePane({
               title={
                 t.kind === 'changes' ? `${repoName(t.repoId)} — all changes`
                 : t.kind === 'commit' ? `${repoName(t.repoId)} · commit ${t.label ?? t.sha?.slice(0, 7) ?? ''}`
-                : t.kind === 'mr' ? `${repoName(t.repoId)} · merge request ${t.label ?? ''}`
                 : t.kind === 'overview' ? 'Task overview'
                 : t.kind === 'terminal' ? 'Terminal — close hides; right-click to kill'
                 : `${repoName(t.repoId)} · ${t.filePath}`
               }
             >
               {t.kind === 'commit' && <GitCommit size={11} strokeWidth={1.75} className="ws-tab-icon" />}
-              {t.kind === 'mr' && <GitPullRequest size={11} strokeWidth={1.75} className="ws-tab-icon" />}
               {t.kind === 'overview' && <LayoutList size={11} strokeWidth={1.75} className="ws-tab-icon" />}
               {t.kind === 'terminal' && <TerminalIcon size={11} strokeWidth={1.75} className="ws-tab-icon" />}
               {(t.kind === 'file' || !t.kind) && (
@@ -207,8 +203,6 @@ export function WorkspacePane({
           <ChangesView repoId={activeTab.repoId} ann={ann} />
         ) : activeTab.kind === 'commit' ? (
           <CommitDiffView repoId={activeTab.repoId} sha={activeTab.sha!} ann={ann} />
-        ) : activeTab.kind === 'mr' ? (
-          <MrOverview repoId={activeTab.repoId} mrId={activeTab.mrId!} />
         ) : activeTab.view === 'diff' ? (
           <DiffTab tab={activeTab} ann={ann} focusSignal={focusSignal} />
         ) : (
