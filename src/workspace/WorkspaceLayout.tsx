@@ -3,16 +3,19 @@ import { useWorkspaceData } from './useWorkspaceData';
 import { useSession } from '../shared/store';
 import { Sidebar } from './sidebar';
 import { Workspace } from './Workspace';
+import { OverviewView } from '../overview/OverviewView';
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 560;
 const SIDEBAR_DEFAULT_PCT = 0.26;
 
-/** One session's workspace: sidebar + the recursive tab/pane surface. Agent and
- *  terminal live as tabs inside the surface (see lib/panes.ts conventions). */
+/** One session's workspace, by mode: the Overview page (full width, no sidebar
+ *  band), or sidebar + the recursive tab/pane surface. Agent and terminal live
+ *  as tabs inside the surface (see lib/panes.ts conventions). */
 export function WorkspaceLayout() {
   useWorkspaceData();
 
+  const mode = useSession((s) => s.workspaceMode);
   // Collapsed by its own shortcut (pressing panel.* while already focused there).
   const collapsed = useSession((s) => s.sidebarCollapsed);
 
@@ -55,6 +58,16 @@ export function WorkspaceLayout() {
     document.body.style.userSelect = 'none';
     e.preventDefault();
   };
+
+  if (mode === 'overview') {
+    return (
+      <div className="workspace">
+        <div className="workspace-main">
+          <OverviewView />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="workspace">

@@ -12,7 +12,7 @@ import type {
 
 /** Tab kinds that may exist at most once per session (one DOM/terminal instance):
  *  opening focuses the existing tab wherever it lives; splits never clone them. */
-const UNIQUE_TAB_KINDS = new Set(['overview', 'terminal']);
+const UNIQUE_TAB_KINDS = new Set(['terminal']);
 
 /**
  * A pane that holds terminals holds nothing else.
@@ -43,20 +43,17 @@ export const COMMIT_PAGE = 20;
 let paneSeq = 1;
 export const newPaneId = () => `pane-${++paneSeq}`;
 /** The task overview page — seeded as every session's first tab. */
-export const overviewTab = (): EditorTab => ({
-  id: '::overview', repoId: '', filePath: '', view: 'diff', kind: 'overview', label: 'Overview',
-});
-
 export const emptyPane = (): WorkspacePane => ({
   id: 'pane-1',
-  tabs: [overviewTab()],
-  activeTabId: '::overview',
+  tabs: [],
+  activeTabId: null,
 });
 
 /** Fresh per-session defaults. A factory (not a shared const) so every new
  *  session gets its own mutable containers (Sets, arrays, records). */
 export function sessionDefaults(): Omit<SessionState, 'id' | 'kind' | 'title' | 'task' | 'worktrees' | 'repos'> {
   return {
+    workspaceMode: 'overview' as const,
     activeRepoId: null,
     activeWorktreeId: null,
     panes: [emptyPane()],
@@ -124,7 +121,6 @@ export function openTabReducer(
   const tabId =
     kind === 'changes' ? `${repoId}::__changes__`
     : kind === 'commit' ? `${repoId}::commit::${sha}`
-    : kind === 'overview' ? '::overview'
     // NEVER the label: every unbound terminal is labelled 'Terminal', so keying on
     // it made them all one tab and a second terminal silently focused the first.
     : kind === 'terminal' ? `::term::${ptySessionId ?? ++termTabSeq}`

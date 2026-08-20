@@ -269,11 +269,11 @@ export interface EditorTab {
   filePath: string;
   view: TabView;
   /** 'file' = a single file (default); 'changes' = the repo's whole "All changes"
-   *  review; 'commit' = one commit's diff; 'overview' = the task overview page;
-   *  'terminal' = a shell. MRs have no tab: their links open the forge, and a
-   *  review session's MR overview lives in its Overview.
+   *  review; 'commit' = one commit's diff; 'terminal' = a shell. The Overview is
+   *  a session MODE (workspaceMode), not a tab; MRs have no tab either — their
+   *  links open the forge, and a review's MR overview lives in its Overview.
    *  The agent has no tab kind — it lives in the console (agent/AgentConsole). */
-  kind?: 'file' | 'changes' | 'commit' | 'overview' | 'terminal';
+  kind?: 'file' | 'changes' | 'commit' | 'terminal';
   /** Commit sha for kind='commit'. */
   sha?: string;
   /** Bound PTY session for kind='terminal' (set once the session starts). */
@@ -310,10 +310,15 @@ export interface PtySessionState {
 import type { SessionKind } from '../ipc/ipc';
 export type { SessionKind };
 
+export type WorkspaceMode = 'overview' | 'code';
+
 export interface SessionState {
   id: string;            // session id (distinct from the task short_id)
   kind: SessionKind;
   title: string;         // tab label
+  /** Which surface the session shows: the Overview page (per kind: ticket /
+   *  explorer / MR review) or the code panes. Opening any tab flips to code. */
+  workspaceMode: WorkspaceMode;
 
   // ── task-kind payload (optional so future kinds can omit it) ──
   task: Task | null;
@@ -383,6 +388,7 @@ export interface SessionState {
 
 /** The per-session actions a component reaches through `useSession`. */
 export interface SessionActions {
+  setWorkspaceMode: (m: WorkspaceMode) => void;
   setDiffMode: (m: DiffMode) => void;
   bumpDiff: () => void;
   refreshStatus: () => Promise<void>;

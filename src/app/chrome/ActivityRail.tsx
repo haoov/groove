@@ -13,7 +13,8 @@ export function ActivityRail() {
   const activeTask = useSession((s) => s.activeTask);
   const sidebarTab = useSession((s) => s.sidebarTab);
   const setSidebarTab = useSession((s) => s.setSidebarTab);
-  const openTab = useSession((s) => s.openTab);
+  const workspaceMode = useSession((s) => s.workspaceMode);
+  const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const annotations = useSession((s) => s.annotations);
   const setCommandPaletteOpen = useStore((s) => s.setCommandPaletteOpen);
 
@@ -25,11 +26,12 @@ export function ActivityRail() {
 
   const selectPanel = (tab: SidebarTab) => {
     setSidebarTab(tab);
+    setWorkspaceMode('code');
     setView('workspace');
   };
 
   const openOverview = () => {
-    openTab({ repoId: '', filePath: '', view: 'diff', kind: 'overview' });
+    setWorkspaceMode('overview');
     setView('workspace');
   };
 
@@ -49,11 +51,11 @@ export function ActivityRail() {
         </button>
       </div>
 
-      {/* Open (or refocus) the session overview tab. */}
+      {/* The session's Overview MODE — the ticket / explorer / MR page. */}
       {showPanels && (
         <div className="rail-group">
           <button
-            className="rail-btn"
+            className={`rail-btn ${inWorkspace && workspaceMode === 'overview' ? 'active' : ''}`}
             onClick={openOverview}
             title="Overview"
           >
@@ -65,21 +67,21 @@ export function ActivityRail() {
       {showPanels && (
         <div className="rail-group">
           <button
-            className={`rail-btn ${inWorkspace && sidebarTab === 'files' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'files' ? 'active' : ''}`}
             onClick={() => selectPanel('files')}
             title="Files"
           >
             <Files size={18} strokeWidth={1.75} />
           </button>
           <button
-            className={`rail-btn ${inWorkspace && sidebarTab === 'git' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'git' ? 'active' : ''}`}
             onClick={() => selectPanel('git')}
             title="Source control"
           >
             <GitBranch size={18} strokeWidth={1.75} />
           </button>
           <button
-            className={`rail-btn ${inWorkspace && sidebarTab === 'annotations' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'annotations' ? 'active' : ''}`}
             onClick={() => selectPanel('annotations')}
             title="Annotations"
           >

@@ -63,7 +63,7 @@ export function CommandPalette() {
   const activeRepoId = useSession((s) => s.activeRepoId);
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const activeRepos = useSession((s) => s.activeRepos);
-  const openTab = useSession((s) => s.openTab);
+  const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const setDiffMode = useSession((s) => s.setDiffMode);
   const setLastError = useStore((s) => s.setLastError);
   const setView = useStore((s) => s.setView);
@@ -129,11 +129,21 @@ export function CommandPalette() {
       });
       cmds.push({
         id: 'mode-overview',
-        label: 'View: Task overview',
+        label: 'View: Session overview',
         group: 'Workspace',
         action: () => {
           setView('workspace');
-          openTab({ repoId: '', filePath: '', view: 'diff', kind: 'overview' });
+          setWorkspaceMode('overview');
+          close();
+        },
+      });
+      cmds.push({
+        id: 'mode-code',
+        label: 'View: Editor & diff',
+        group: 'Workspace',
+        action: () => {
+          setView('workspace');
+          setWorkspaceMode('code');
           close();
         },
       });

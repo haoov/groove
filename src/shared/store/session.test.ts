@@ -21,10 +21,11 @@ const tabIds = (s: Partial<SessionState>, i = 0) => (pane(s, i)?.tabs ?? []).map
 const apply = (s: SessionState, patch: Partial<SessionState>): SessionState => ({ ...s, ...patch });
 
 describe('newWorkspaceSession', () => {
-  it('starts with one pane holding the overview', () => {
+  it('starts on the Overview mode with one empty pane', () => {
     const s = fresh();
+    expect(s.workspaceMode).toBe('overview');
     expect(s.panes).toHaveLength(1);
-    expect(tabIds(s)).toEqual(['::overview']);
+    expect(tabIds(s)).toEqual([]);
     expect(s.activePaneId).toBe(s.panes[0].id);
   });
 
@@ -33,7 +34,7 @@ describe('newWorkspaceSession', () => {
     const b = fresh();
     expect(a.expandedDiffFiles).not.toBe(b.expandedDiffFiles);
     expect(a.diffHunks).not.toBe(b.diffHunks);
-    expect(a.panes[0].tabs).not.toBe(b.panes[0].tabs);
+    expect(a.panes[0]).not.toBe(b.panes[0]);
   });
 });
 
@@ -51,22 +52,22 @@ describe('openTabReducer', () => {
   it('opens a file tab and focuses it', () => {
     const s = fresh();
     const next = openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit' });
-    expect(tabIds(next)).toEqual(['::overview', 'r1::a.ts']);
+    expect(tabIds(next)).toEqual(['r1::a.ts']);
     expect(pane(next).activeTabId).toBe('r1::a.ts');
   });
 
   it('reuses the tab for a file already open, switching its view', () => {
     let s = apply(fresh(), openTabReducer(fresh(), { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'diff' }));
-    expect(tabIds(s)).toEqual(['::overview', 'r1::a.ts']);
-    expect(pane(s).tabs[1].view).toBe('diff');
+    expect(tabIds(s)).toEqual(['r1::a.ts']);
+    expect(pane(s).tabs[0].view).toBe('diff');
   });
 
   it('keys a commit tab on its sha', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: '', view: 'diff', kind: 'commit', sha: 'abc' }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: '', view: 'diff', kind: 'commit', sha: 'def' }));
-    expect(tabIds(s)).toEqual(['::overview', 'r1::commit::abc', 'r1::commit::def']);
+    expect(tabIds(s)).toEqual(['r1::commit::abc', 'r1::commit::def']);
   });
 
   // The bug: the tab id fell back to the label, and every unbound terminal is
@@ -89,12 +90,15 @@ describe('openTabReducer', () => {
 
   it('focuses a single-instance tab where it already lives instead of copying it', () => {
     let s = fresh();
+    s = apply(s, openTabReducer(s, { repoId: '', filePath: '', view: 'diff', kind: 'terminal', ptySessionId: 'pty-1' }));
+    // Split from a FILE tab, so the new pane holds a file clone, not a terminal.
+    s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
     s = apply(s, splitPaneReducer(s, 'row'));
     const other = s.panes[1].id;
-    // The overview lives in pane 1; asking for it from pane 2 must not duplicate it.
-    const next = openTabReducer(s, { repoId: '', filePath: '', view: 'diff', kind: 'overview' }, { paneId: other });
+    // The terminal lives in pane 1; asking for it from pane 2 must not duplicate it.
+    const next = openTabReducer(s, { repoId: '', filePath: '', view: 'diff', kind: 'terminal', ptySessionId: 'pty-1' }, { paneId: other });
     expect(next.activePaneId).toBe(s.panes[0].id);
-    const all = (next.panes ?? []).flatMap((p) => p.tabs).filter((t) => t.kind === 'overview');
+    const all = (next.panes ?? []).flatMap((p) => p.tabs).filter((t) => t.kind === 'terminal');
     expect(all).toHaveLength(1);
   });
 
@@ -109,14 +113,14 @@ describe('openTabReducer', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit', preview: true }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'b.ts', view: 'edit', preview: true }));
-    expect(tabIds(s)).toEqual(['::overview', 'r1::b.ts']);
+    expect(tabIds(s)).toEqual(['r1::b.ts']);
   });
 
   it('promotes a preview when the same file is opened for real', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit', preview: true }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
-    expect(pane(s).tabs[1].preview).toBe(false);
+    expect(pane(s).tabs[0].preview).toBe(false);
   });
 
   // A tab opened normally carries no `preview` key at all, so the flag reads
@@ -125,7 +129,7 @@ describe('openTabReducer', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit', preview: true }));
-    expect(pane(s).tabs[1].preview).toBeFalsy();
+    expect(pane(s).tabs[0].preview).toBeFalsy();
   });
 });
 
@@ -134,16 +138,16 @@ describe('commitPreviewReducer / discardPreviewReducer', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit', preview: true }));
     s = apply(s, commitPreviewReducer(s, s.activePaneId));
-    expect(tabIds(s)).toEqual(['::overview', 'r1::a.ts']);
-    expect(pane(s).tabs[1].preview).toBe(false);
+    expect(tabIds(s)).toEqual(['r1::a.ts']);
+    expect(pane(s).tabs[0].preview).toBe(false);
   });
 
   it('removes it on discard and falls back to the tab before it', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit', preview: true }));
     s = apply(s, discardPreviewReducer(s, s.activePaneId));
-    expect(tabIds(s)).toEqual(['::overview']);
-    expect(pane(s).activeTabId).toBe('::overview');
+    expect(tabIds(s)).toEqual([]);
+    expect(pane(s).activeTabId).toBeNull();
   });
 
   it('never collapses a split pane the user made, even when left empty', () => {
@@ -183,8 +187,9 @@ describe('closeTabReducer', () => {
   });
 
   it('keeps the only pane, empty, rather than leaving no pane at all', () => {
-    const solo = fresh();
-    const after = closeTabReducer(solo, solo.activePaneId, '::overview');
+    let solo = fresh();
+    solo = apply(solo, openTabReducer(solo, { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
+    const after = closeTabReducer(solo, solo.activePaneId, 'r1::a.ts');
     expect((after.panes ?? []).length).toBe(1);
     expect(tabIds(after)).toEqual([]);
   });
@@ -309,7 +314,7 @@ describe('closePaneReducer', () => {
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'b.ts', view: 'edit' }, { paneId: second }));
     s = apply(s, closePaneReducer(s, second));
     expect(s.panes).toHaveLength(1);
-    expect(tabIds(s)).toEqual(['::overview', 'r1::a.ts', 'r1::b.ts']);
+    expect(tabIds(s)).toEqual(['r1::a.ts', 'r1::b.ts']);
   });
 
   it('carries a terminal over instead of destroying it', () => {

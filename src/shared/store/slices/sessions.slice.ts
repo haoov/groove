@@ -143,6 +143,7 @@ async function doRefreshStatus(id: string) {
 function makeSessionActions(id: string): SessionActions {
   const upd = (recipe: (s: SessionState) => Partial<SessionState>) => updateSessionState(id, recipe);
   return {
+    setWorkspaceMode: (m) => upd(() => ({ workspaceMode: m })),
     setDiffMode: (m) => upd(() => ({ diffMode: m })),
     bumpDiff: () => upd(bumpDiffRecipe),
     refreshStatus: () => doRefreshStatus(id),
@@ -170,8 +171,11 @@ function makeSessionActions(id: string): SessionActions {
     openTab: (input, opts) =>
       upd((s) => {
         const patch = openTabReducer(s, input, opts);
+        // Any open shows the panes: leaving Overview is implied by asking for a tab.
         // A real open focuses the editor; a preview open leaves focus in the search input.
-        return input.preview ? patch : { ...patch, editorFocusNonce: s.editorFocusNonce + 1 };
+        return input.preview
+          ? { ...patch, workspaceMode: 'code' as const }
+          : { ...patch, workspaceMode: 'code' as const, editorFocusNonce: s.editorFocusNonce + 1 };
       }),
     commitPreview: (paneId) =>
       upd((s) => ({ ...commitPreviewReducer(s, paneId), editorFocusNonce: s.editorFocusNonce + 1 })),
