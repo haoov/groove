@@ -163,7 +163,9 @@ export function HeaderPickers() {
   const [repoOpen, setRepoOpen] = useState(false);
   const [wtOpen, setWtOpen] = useState(false);
 
-  const session = useSession((s) => (s.id ? { id: s.id, kind: s.kind, title: s.title } : null));
+  const sessionId = useSession((s) => s.id);
+  const sessionKind = useSession((s) => s.kind);
+  const sessionTitle = useSession((s) => s.title);
   const repos = useSession((s) => s.repos);
   const worktrees = useSession((s) => s.worktrees);
   const activeRepoId = useSession((s) => s.activeRepoId);
@@ -171,7 +173,7 @@ export function HeaderPickers() {
   const setActiveRepoId = useSession((s) => s.setActiveRepoId);
   const setActiveWorktreeId = useSession((s) => s.setActiveWorktreeId);
 
-  const inWorkspace = view === 'workspace' && !!session;
+  const inWorkspace = view === 'workspace' && !!sessionId;
   const activeRepo = repos.find((r) => r.id === activeRepoId) ?? null;
   const repoWorktrees = worktrees.filter((w) => w.repo_id === activeRepoId);
   const activeWt = worktrees.find((w) => w.id === activeWorktreeId) ?? null;
@@ -184,8 +186,8 @@ export function HeaderPickers() {
     <span className="header-pickers">
       <Picker
         label="session"
-        value={inWorkspace ? session!.title : `${sessionCount} open`}
-        icon={inWorkspace ? (KIND_ICON[session!.kind] ?? Code2) : Code2}
+        value={inWorkspace ? sessionTitle : `${sessionCount} open`}
+        icon={inWorkspace ? (KIND_ICON[sessionKind] ?? Code2) : Code2}
         open={sessionPickerOpen}
         setOpen={setSessionPickerOpen}
         chipTitle="Switch or close sessions (Alt+S)"
