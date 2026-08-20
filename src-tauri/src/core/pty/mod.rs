@@ -203,15 +203,28 @@ impl Default for Ptys {
     }
 }
 
-/// Tell the child what terminal it is talking to.
+/// Tell the child what terminal it is talking to, and sever it from any terminal
+/// multiplexer that launched the APP.
 ///
-/// The frontend is xterm.js, so this is the truth and never the launcher's idea
+/// The frontend is xterm.js, so `TERM` is the truth and never the launcher's idea
 /// of it: a desktop launch has no `TERM` at all, and a program with no terminfo
-/// cannot move the cursor. Inheriting `TERM` is just as wrong: a shell told it
-/// is inside tmux writes sequences xterm.js does not implement.
+/// cannot move the cursor. Inheriting `TERM` is just as wrong: a shell told it is
+/// inside tmux writes sequences xterm.js does not implement.
+///
+/// `TMUX`/`TMUX_PANE`/`STY` are severed for a sharper reason: `pnpm tauri dev`
+/// (and any terminal launch from inside tmux/screen) leaves those set, and
+/// portable-pty hands the child the app's whole environment. An interactive
+/// shell that inherits `$TMUX` becomes a CLIENT of the multiplexer session that
+/// launched the app — a tmux-aware startup (e.g. prezto's `exec tmux
+/// attach-session -d`) then reaches back into that session and detaches it,
+/// killing the dev server. The in-app terminal is its own world, never nested in
+/// the launcher's session.
 fn describe_terminal(cmd: &mut portable_pty::CommandBuilder) {
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
+    cmd.env_remove("TMUX");
+    cmd.env_remove("TMUX_PANE");
+    cmd.env_remove("STY"); // GNU screen's equivalent of $TMUX
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────
