@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { StoreApi } from 'zustand';
-import type { AppNotification, AppState } from './types';
+import type { StateCreator } from 'zustand';
+import type { AppNotification, AppState, NotificationsSlice } from '../types';
 
 // The notification feed: one place decides what collapses, what is kept, and what
 // escalates to the desktop. Everything that reports to the user goes through
@@ -11,21 +11,7 @@ const NOTIFICATION_CAP = 200;
 const NOTIFICATION_DEDUPE_MS = 10_000;
 let notificationSeq = 0;
 
-type NotificationState = Pick<
-  AppState,
-  | 'notifications'
-  | 'toastIds'
-  | 'notify'
-  | 'dismissToast'
-  | 'notificationsOpen'
-  | 'setNotificationsOpen'
-  | 'markNotificationRead'
-  | 'markNotificationsRead'
-  | 'clearNotifications'
->;
-
-export function notificationSlice(set: StoreApi<AppState>['setState']): NotificationState {
-  return {
+export const notificationsSlice: StateCreator<AppState, [], [], NotificationsSlice> = (set) => ({
   notifications: [],
   toastIds: [],
   notify: (input) =>
@@ -92,5 +78,4 @@ export function notificationSlice(set: StoreApi<AppState>['setState']): Notifica
   markNotificationsRead: () =>
     set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
   clearNotifications: () => set({ notifications: [], toastIds: [] }),
-  };
-}
+});

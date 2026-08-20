@@ -23,60 +23,10 @@ export interface GrepHighlight {
   line: number;
 }
 
-export interface AppState {
+export interface UiSlice {
   // ── Navigation ────────────────────────────────────────────────────────────
   view: AppView;
   setView: (v: AppView) => void;
-
-  // ── Review queue (Home + rail badge) ────────────────────────────────────────
-  /** Open MRs where the user is a reviewer. Null until the first fetch lands. */
-  reviewQueue: ReviewMr[] | null;
-  /** Refetch the queue (silent-warn on failure — glab may be unavailable). */
-  refreshReviewQueue: () => Promise<void>;
-
-  // ── Home snapshot (local state of every live session) ───────────────────────
-  /** Per-session repo/worktree/MR state. Null until the first fetch lands. */
-  homeSnapshot: HomeEntry[] | null;
-  /** True while a refresh is in flight (drives the refresh spinner). */
-  homeLoading: boolean;
-  /** Refetch. `forceMr` also bypasses the cached CI/thread counts (manual refresh). */
-  refreshHome: (forceMr?: boolean) => Promise<void>;
-
-  // ── Sessions ──────────────────────────────────────────────────────────────
-  sessions: Record<string, SessionState>;
-  sessionOrder: string[];
-  activeSessionId: string | null;
-  /** Open (or focus, for an already-open task) a session and make it active.
-   *  `focus: false` registers it without navigating — how the desk is created,
-   *  since it has no workspace to show and must not pull the user off Home. */
-  openSession: (input: { kind: SessionKind; task?: Task | null; worktrees?: Worktree[]; repos?: Repo[]; focus?: boolean }) => string;
-  focusSession: (id: string) => void;
-  /** Remove a session from the store (pure state — stop its PTYs first via endSession). */
-  closeSession: (id: string) => void;
-  /** Patch one session's state (object patch or recipe). Used by event handlers. */
-  updateSession: (id: string, patch: Partial<SessionState> | ((s: SessionState) => Partial<SessionState>)) => void;
-  /** Recompute a session's worktree git status (for non-hook event handlers). */
-  refreshStatusFor: (id: string) => Promise<void>;
-  /** Force a diff reload for a session: bump its diffNonce (re-fetches the
-   *  summary) and clear cached hunks (re-fetches expanded files). Keeps the
-   *  current diff visible until the refetch lands, so there's no flicker. */
-  invalidateDiff: (id: string) => void;
-  /** Force an MR + threads reload for a session (after mr.* ops land). */
-  invalidateMrs: (id: string) => void;
-
-  // ── Task list ─────────────────────────────────────────────────────────────
-  tasks: Task[];
-  setTasks: (tasks: Task[]) => void;
-  upsertTask: (task: Task) => void;
-
-  // ── Confirmations ─────────────────────────────────────────────────────────
-  pendingConfirmations: ConfirmationDto[];
-  addConfirmation: (c: ConfirmationDto) => void;
-  removeConfirmation: (id: string) => void;
-  /** True while the approvals modal is deferred (Esc / "Later"). The queue stays
-   *  pending and the statusbar badge stays lit; a NEW confirmation un-defers. */
-  confirmationsMinimized: boolean;
-  setConfirmationsMinimized: (v: boolean) => void;
 
   // ── Sidebar list focus ──────────────────────────────────────────────────────
   // Bumped by the panel.* shortcuts so the focused list grabs DOM focus for
@@ -109,28 +59,7 @@ export interface AppState {
   terminalConsoleOpen: boolean;
   setTerminalConsoleOpen: (v: boolean) => void;
 
-  // ── Agent activity + console ────────────────────────────────────────────────
-  /** What each agent is doing, keyed by TASK short id. Reported by Claude Code
-   *  hooks (src-tauri/src/agent_hooks) — a task absent from the map has no agent
-   *  running, or one that started before this build and never reported. */
-  agentActivity: Record<string, AgentActivity>;
-  setAgentActivity: (a: AgentActivity) => void;
-  dropAgentActivity: (taskId: string) => void;
-  hydrateAgentActivity: () => Promise<void>;
-  /** The agent console is expanded. It always addresses the FOCUSED session — no
-   *  picker, so "the agent I'm talking to" is whatever the window is showing. It
-   *  is also the agent's ONLY surface: there is no agent tab. */
-  consoleOpen: boolean;
-  setConsoleOpen: (v: boolean) => void;
-  /** Bumped by the keybinding to pull DOM focus into the console's terminal. */
-  consoleFocusNonce: number;
-  requestConsoleFocus: () => void;
-  /** The agent column fills the body. `pane.maximize` toggles it when focus is
-   *  inside the agent, so one shortcut maximizes whichever pane you are in. */
-  agentMaximized: boolean;
-  setAgentMaximized: (v: boolean) => void;
-
-  // ── Command palette ───────────────────────────────────────────────────────
+  // ── Command palette / overlays ─────────────────────────────────────────────
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (v: boolean) => void;
   /** Ask the file tree to expand down to a directory (breadcrumb clicks). The
@@ -160,7 +89,88 @@ export interface AppState {
   vimMode: boolean;
   setVimMode: (v: boolean) => void;
 
-  // ── Keybindings (defaults + user overrides, persisted to localStorage) ─────
+  // ── Task open wizard ──────────────────────────────────────────────────────
+  wizardTask: Task | null;
+  setWizardTask: (t: Task | null) => void;
+}
+
+export interface HomeSlice {
+  // ── Review queue (Home + rail badge) ────────────────────────────────────────
+  /** Open MRs where the user is a reviewer. Null until the first fetch lands. */
+  reviewQueue: ReviewMr[] | null;
+  /** Refetch the queue (silent-warn on failure — glab may be unavailable). */
+  refreshReviewQueue: () => Promise<void>;
+
+  // ── Home snapshot (local state of every live session) ───────────────────────
+  /** Per-session repo/worktree/MR state. Null until the first fetch lands. */
+  homeSnapshot: HomeEntry[] | null;
+  /** True while a refresh is in flight (drives the refresh spinner). */
+  homeLoading: boolean;
+  /** Refetch. `forceMr` also bypasses the cached CI/thread counts (manual refresh). */
+  refreshHome: (forceMr?: boolean) => Promise<void>;
+
+  // ── Task list ─────────────────────────────────────────────────────────────
+  tasks: Task[];
+  setTasks: (tasks: Task[]) => void;
+  upsertTask: (task: Task) => void;
+}
+
+export interface SessionsSlice {
+  sessions: Record<string, SessionState>;
+  sessionOrder: string[];
+  activeSessionId: string | null;
+  /** Open (or focus, for an already-open task) a session and make it active.
+   *  `focus: false` registers it without navigating. */
+  openSession: (input: { kind: SessionKind; task?: Task | null; worktrees?: Worktree[]; repos?: Repo[]; focus?: boolean }) => string;
+  focusSession: (id: string) => void;
+  /** Remove a session from the store (pure state — stop its PTYs first via endSession). */
+  closeSession: (id: string) => void;
+  /** Patch one session's state (object patch or recipe). Used by event handlers. */
+  updateSession: (id: string, patch: Partial<SessionState> | ((s: SessionState) => Partial<SessionState>)) => void;
+  /** Recompute a session's worktree git status (for non-hook event handlers). */
+  refreshStatusFor: (id: string) => Promise<void>;
+  /** Force a diff reload for a session: bump its diffNonce (re-fetches the
+   *  summary) and clear cached hunks (re-fetches expanded files). Keeps the
+   *  current diff visible until the refetch lands, so there's no flicker. */
+  invalidateDiff: (id: string) => void;
+  /** Force an MR + threads reload for a session (after mr.* ops land). */
+  invalidateMrs: (id: string) => void;
+}
+
+export interface ConfirmationsSlice {
+  pendingConfirmations: ConfirmationDto[];
+  addConfirmation: (c: ConfirmationDto) => void;
+  removeConfirmation: (id: string) => void;
+  /** True while the approvals modal is deferred (Esc / "Later"). The queue stays
+   *  pending and the statusbar badge stays lit; a NEW confirmation un-defers. */
+  confirmationsMinimized: boolean;
+  setConfirmationsMinimized: (v: boolean) => void;
+}
+
+export interface AgentSlice {
+  /** What each agent is doing, keyed by TASK short id. Reported by Claude Code
+   *  hooks (src-tauri/src/agent_hooks) — a task absent from the map has no agent
+   *  running, or one that started before this build and never reported. */
+  agentActivity: Record<string, AgentActivity>;
+  setAgentActivity: (a: AgentActivity) => void;
+  dropAgentActivity: (taskId: string) => void;
+  hydrateAgentActivity: () => Promise<void>;
+  /** The agent console is expanded. It always addresses the FOCUSED session — no
+   *  picker, so "the agent I'm talking to" is whatever the window is showing. It
+   *  is also the agent's ONLY surface: there is no agent tab. */
+  consoleOpen: boolean;
+  setConsoleOpen: (v: boolean) => void;
+  /** Bumped by the keybinding to pull DOM focus into the console's terminal. */
+  consoleFocusNonce: number;
+  requestConsoleFocus: () => void;
+  /** The agent column fills the body. `pane.maximize` toggles it when focus is
+   *  inside the agent, so one shortcut maximizes whichever pane you are in. */
+  agentMaximized: boolean;
+  setAgentMaximized: (v: boolean) => void;
+}
+
+export interface KeybindingsSlice {
+  // Defaults + user overrides, persisted to localStorage.
   keymap: Keymap;
   setBinding: (id: CommandId, chords: Chord[]) => void;
   resetKeymap: () => void;
@@ -168,12 +178,9 @@ export interface AppState {
    *  global keymap so the captured chord isn't also run as a command). */
   capturingKey: boolean;
   setCapturingKey: (v: boolean) => void;
+}
 
-  // ── Task open wizard ──────────────────────────────────────────────────────
-  wizardTask: Task | null;
-  setWizardTask: (t: Task | null) => void;
-
-  // ── Config ────────────────────────────────────────────────────────────────
+export interface ConfigSlice {
   config: Config | null;
   setConfig: (c: Config | null) => void;
   setTheme: (theme: ThemeName) => void;
@@ -185,8 +192,9 @@ export interface AppState {
   setSyncStatus: (s: 'idle' | 'syncing' | 'error') => void;
   lastError: string | null;
   setLastError: (e: string | null) => void;
+}
 
-  // ── Notifications ───────────────────────────────────────────────────────────
+export interface NotificationsSlice {
   /** Newest first, capped. Two views: transient toasts + the notification centre. */
   notifications: AppNotification[];
   /** Ids currently showing as toasts. Dismissing a toast keeps the feed entry. */
@@ -201,6 +209,11 @@ export interface AppState {
   markNotificationsRead: () => void;
   clearNotifications: () => void;
 }
+
+/** The composed store: every slice, one state. Slice creators are typed over the
+ *  whole AppState (cross-slice writes go through the shared set/get). */
+export type AppState = UiSlice & HomeSlice & SessionsSlice & ConfirmationsSlice &
+  AgentSlice & KeybindingsSlice & ConfigSlice & NotificationsSlice;
 
 /** Enough history to scroll back through a work session, not a log file. */
 
