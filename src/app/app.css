@@ -1,0 +1,38 @@
+/* The app shell: three rows (header / stage / status), a 44px icon rail. */
+.app { height: 100vh; display: grid; grid-template-rows: 46px 1fr 26px; }
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; gap: 12px; padding: 0 12px;
+  background: var(--gl-background-color-overlap); border-bottom: 1px solid var(--gl-border-color-default);
+}
+.wordmark { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.01em; }
+.wordmark .knob { width: 13px; height: 13px; border-radius: 50%; border: 2px solid var(--gl-color-blue-400); position: relative; }
+.wordmark .knob::after { content: ''; position: absolute; top: 1px; left: 50%; width: 2px; height: 4px; background: var(--gl-color-blue-400); transform: translateX(-50%); }
+.topbar .spring { flex: 1; }
+.navpill { font-weight: 500; color: var(--gl-text-color-default); padding: 6px 10px; border-radius: var(--gl-border-radius-base); border: 1px solid var(--gl-border-color-default); background: var(--gl-background-color-strong); cursor: pointer; }
+.iconbtn { width: 30px; height: 30px; display: grid; place-items: center; border: 0; background: none; border-radius: var(--gl-border-radius-base); color: var(--gl-text-color-subtle); cursor: pointer; }
+.iconbtn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+/* ── stage: rail + main ─────────────────────────────────────────────────── */
+.stage { display: grid; grid-template-columns: 44px 1fr; min-height: 0; }
+
+.rail { background: var(--gl-background-color-overlap); border-right: 1px solid var(--gl-border-color-default); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; }
+.rgroup { display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 8px; width: 100%; border-bottom: 1px solid var(--gl-border-color-subtle); }
+.r { position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 0; background: none; border-radius: var(--gl-border-radius-medium); color: var(--gl-text-color-disabled); cursor: pointer; transition: color 0.12s, background 0.12s; }
+.r:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+.r.on { color: var(--gl-color-blue-300); background: var(--gl-color-blue-100); }
+.r .num { position: absolute; top: -3px; right: -3px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 100px; background: var(--gl-brand-orange); color: var(--gl-background-color-overlap); font: 700 9px/14px var(--font-mono); text-align: center; }
+.r-bottom { margin-top: auto; }
+
+.main { min-width: 0; overflow: auto; }
+
+/* ── status bar ─────────────────────────────────────────────────────────── */
+.statusbar { display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--gl-background-color-overlap); border-top: 1px solid var(--gl-border-color-default); font-family: var(--font-mono); font-size: 11px; color: var(--gl-text-color-subtle); }
+.statusbar .spring { flex: 1; }
+.statusbar b { font-weight: 500; color: var(--gl-text-color-default); }
+
+/* ── slice-0 placeholders ───────────────────────────────────────────────── */
+.booting, .placeholder, .setup { height: 100%; display: grid; place-items: center; color: var(--gl-text-color-subtle); }
+.setup { text-align: center; }
+.setup h1 { font-size: 18px; color: var(--gl-text-color-default); margin-bottom: 6px; }

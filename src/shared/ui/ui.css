@@ -1,0 +1,31 @@
+/* Design-system primitives, drawn from the app tokens (Catppuccin). Radii follow
+   the token scale: 4px controls, 6px cards. */
+
+.btn {
+  font: 500 12px/1 var(--font-ui);
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--gl-border-radius-base);
+  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-default);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.btn:hover { background: var(--gl-background-color-hover); }
+.btn-sm { height: 26px; padding: 0 9px; font-size: 11px; }
+.btn-ghost { background: transparent; }
+.btn-ghost:hover { background: var(--gl-hover-overlay); }
+.btn-accent {
+  background: var(--gl-color-blue-400);
+  border-color: var(--gl-color-blue-400);
+  color: #fff;
+  font-weight: 600;
+}
+.btn-accent:hover { background: var(--gl-color-blue-500); border-color: var(--gl-color-blue-500); }
+.btn-good { background: transparent; border-color: var(--gl-color-green-400); color: var(--gl-color-green-400); }
+.btn-danger { background: transparent; }
+.btn-danger:hover { border-color: var(--gl-color-red-400); color: var(--gl-color-red-400); }

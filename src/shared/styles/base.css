@@ -1,0 +1,26 @@
+/* Base for the reworked frontend: the design tokens + themes, the rework's font
+   choice, and a minimal reset. Old per-component CSS is intentionally NOT pulled
+   in here — each feature ships its own. */
+@import '../../styles/tokens.css';
+@import '../../styles/themes/frappe.css';
+@import '../../styles/themes/latte.css';
+@import '../../styles/themes/onedark.css';
+@import '../../styles/themes/onelight.css';
+
+:root {
+  /* the rework's type system: IBM Plex Sans for chrome, Lilex for machine data
+     (Lilex is bundled in the app; falls back to Plex Mono until then) */
+  --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'Lilex', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+body {
+  background: var(--gl-background-color-default);
+  color: var(--gl-text-color-default);
+  font: 400 14px/1.5 var(--font-ui);
+  font-feature-settings: 'calt' 1, 'liga' 1;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--gl-color-blue-400); outline-offset: 1px; }
