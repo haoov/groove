@@ -55,7 +55,7 @@ export const COMMANDS: CommandSpec[] = [
   // Panels
   { id: 'panel.files', label: 'Files tree', group: 'Panels', defaults: [C('e', { alt: true })] },
   { id: 'panel.git', label: 'Source control', group: 'Panels', defaults: [C('g', { alt: true })] },
-  { id: 'panel.annotations', label: 'Annotations', group: 'Panels', defaults: [C('a', { ctrl: true, shift: true })] },
+  { id: 'panel.annotations', label: 'Notes', group: 'Panels', defaults: [C('a', { ctrl: true, shift: true })] },
   { id: 'git.cycleSubTab', label: 'Cycle git sub-mode', group: 'Panels', defaults: [C('tab', { ctrl: true })] },
   { id: 'git.commitFocus', label: 'Write a commit message', group: 'Panels', defaults: [C('c', { alt: true, shift: true })] },
 

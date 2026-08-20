@@ -12,6 +12,7 @@ import { FilesTab } from '../../files/FilesTab';
 import { CommitsTab, ChangedFilesList, GitCommitPanel } from '../../git/GitTab';
 import { ForgeSection } from '../../git/ForgeSection';
 import { AnnotationsTab } from '../../notes/AnnotationsTab';
+import { MrThreadsSection } from '../../notes/MrThreads';
 
 export function Sidebar() {
   const activeTask = useSession((s) => s.activeTask);
@@ -37,6 +38,7 @@ export function Sidebar() {
   const resolveAnnotation = useSession((s) => s.resolveAnnotation);
   const removeAnnotation = useSession((s) => s.removeAnnotation);
   const isExplorer = useSession((s) => s.kind === 'explorer');
+  const isReview = useSession((s) => s.kind === 'review');
   const setLastError = useStore((s) => s.setLastError);
   const notify = useStore((s) => s.notify);
 
@@ -219,7 +221,10 @@ export function Sidebar() {
     if (sidebarTab === 'annotations') {
       const wt = worktreeForRepo(repoId);
       const repoMr = mrs.find((m) => m.worktree_id === wt?.id) ?? null;
+      // Notes = the local annotations, plus (for a review) the MR's own
+      // discussion threads — one panel for everything said about the change.
       return (
+        <>
         <AnnotationsTab
           annotations={annotations.filter((a) => a.repo_id === repoId)}
           repoFor={(id) => activeRepos.find((r) => r.id === id)}
@@ -266,6 +271,17 @@ export function Sidebar() {
             }
           }}
         />
+        {isReview && repoMr && (
+          <div className="notes-threads">
+            <div className="notes-threads-title">MR discussion</div>
+            <MrThreadsSection
+              threads={mrThreadsByRepo[repoId] ?? []}
+              mr={repoMr}
+              onResolved={bumpMrs}
+            />
+          </div>
+        )}
+        </>
       );
     }
 

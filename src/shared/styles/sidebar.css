@@ -1065,3 +1065,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Notes: the MR discussion below the annotations (review sessions) ───────── */
+.notes-threads { border-top: 1px solid var(--gl-border-color-subtle); margin-top: var(--space-3); padding-top: var(--space-2); }
+.notes-threads-title {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-disabled);
+}
