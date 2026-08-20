@@ -1,0 +1,47 @@
+/* Preferences modal — reuses the .ov-scrim overlay from approvals.css. */
+.settings { width: min(460px, 100%); background: var(--gl-background-color-default); border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-large); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); overflow: hidden; }
+
+.settings-h { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--gl-border-color-subtle); font: 600 15px var(--font-ui); color: var(--gl-text-color-default); }
+.settings-h .settings-x { margin-left: auto; color: var(--gl-text-color-muted); font-size: 18px; }
+.settings-h .settings-x:hover { color: var(--gl-text-color-default); }
+
+.settings-row { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--gl-border-color-subtle); }
+.settings-row:last-child { border-bottom: 0; }
+.settings-row > label { font: 500 11px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--gl-text-color-subtle); }
+.settings-row input { width: 100%; height: 30px; border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-base); background: var(--gl-background-color-float-inset); color: var(--gl-text-color-default); font: 13px var(--font-ui); padding: 0 10px; }
+.settings-row input[type="number"] { width: 90px; }
+.settings-row input:focus { outline: none; border-color: var(--gl-color-blue-400); }
+.settings-hint { font: 11px var(--font-ui); color: var(--gl-text-color-muted); }
+
+.theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.theme-swatch { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-base); font: 500 12px var(--font-ui); color: var(--gl-text-color-default); background: var(--gl-background-color-overlap); }
+.theme-swatch:hover { background: var(--gl-hover-overlay); }
+.theme-swatch.on { border-color: var(--gl-color-blue-400); box-shadow: inset 0 0 0 1px var(--gl-color-blue-400); }
+.sw-dots { display: inline-flex; gap: 3px; }
+.sw-dots i { width: 10px; height: 10px; border-radius: 50%; }
+/* Each swatch previews its own palette. */
+.theme-swatch.latte .sw-dots i:nth-child(1) { background: #eff1f5; border: 1px solid #ccd0da; }
+.theme-swatch.latte .sw-dots i:nth-child(2) { background: #1e66f5; }
+.theme-swatch.latte .sw-dots i:nth-child(3) { background: #8839ef; }
+.theme-swatch.frappe .sw-dots i:nth-child(1) { background: #303446; }
+.theme-swatch.frappe .sw-dots i:nth-child(2) { background: #8caaee; }
+.theme-swatch.frappe .sw-dots i:nth-child(3) { background: #ca9ee6; }
+.theme-swatch.onelight .sw-dots i:nth-child(1) { background: #fafafa; border: 1px solid #d4d4d4; }
+.theme-swatch.onelight .sw-dots i:nth-child(2) { background: #4078f2; }
+.theme-swatch.onelight .sw-dots i:nth-child(3) { background: #a626a4; }
+.theme-swatch.onedark .sw-dots i:nth-child(1) { background: #282c34; }
+.theme-swatch.onedark .sw-dots i:nth-child(2) { background: #61afef; }
+.theme-swatch.onedark .sw-dots i:nth-child(3) { background: #c678dd; }
+
+/* Command palette — top-anchored overlay. */
+.palette-scrim { align-items: flex-start; padding-top: 12vh; }
+.palette { width: min(600px, 100%); background: var(--gl-background-color-default); border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-large); box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3); overflow: hidden; }
+.palette-input { width: 100%; height: 46px; border: 0; border-bottom: 1px solid var(--gl-border-color-default); background: none; color: var(--gl-text-color-default); font: 14px var(--font-ui); padding: 0 16px; }
+.palette-input:focus { outline: none; }
+.palette-list { max-height: 360px; overflow: auto; padding: 6px; }
+.palette-empty { padding: 16px; color: var(--gl-text-color-muted); font: 13px var(--font-ui); }
+.palette-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--gl-border-radius-base); cursor: pointer; }
+.palette-item.on { background: var(--gl-color-blue-100); }
+.palette-label { flex: 1; font: 13px var(--font-ui); color: var(--gl-text-color-default); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.palette-item.on .palette-label { color: var(--gl-color-blue-600); }
+.palette-hint { font: 11px var(--font-mono); color: var(--gl-text-color-muted); flex: none; }

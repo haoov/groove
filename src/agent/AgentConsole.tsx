@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { call } from '../shared/ipc/client';
 import { on, EV } from '../shared/ipc/events';
+import { monoSize } from '../shared/lib/ui';
 import type { AgentActivity, AgentState } from '../shared/ipc/generated';
 
 const cssVar = (name: string) =>
@@ -32,7 +33,7 @@ export function AgentConsole({ sessionId, onCollapse }: { sessionId: string; onC
 
     const term = new XTerm({
       fontFamily: cssVar('--font-mono') || 'monospace',
-      fontSize: 12,
+      fontSize: monoSize(),
       cursorBlink: true,
       theme: {
         background: cssVar('--ctp-base'),

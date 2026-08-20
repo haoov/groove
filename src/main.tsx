@@ -22,6 +22,7 @@ import './approvals/approvals.css';
 import './notifications/notifications.css';
 import './overview/overview.css';
 import './notes/notes.css';
+import './setup/setup.css';
 import App from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);

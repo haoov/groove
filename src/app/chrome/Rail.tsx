@@ -8,6 +8,7 @@ export function Rail() {
   const activeId = useStore((s) => s.activeSessionId);
   const session = useStore((s) => (activeId ? s.sessions[activeId] : undefined));
   const setSidebar = useStore((s) => s.setSidebar);
+  const setPaletteOpen = useStore((s) => s.setPaletteOpen);
 
   const inSession = view !== 'home';
   const panel: [SidebarPanel, IconName, string][] = [
@@ -51,7 +52,7 @@ export function Rail() {
           ))}
         </div>
       )}
-      <button className="r r-bottom" title="Command palette"><Icon name="cmd" /></button>
+      <button className="r r-bottom" title="Command palette (⌘K)" onClick={() => setPaletteOpen(true)}><Icon name="cmd" /></button>
     </nav>
   );
 }

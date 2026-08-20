@@ -9,6 +9,7 @@ export function Header() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const setActiveSession = useStore((s) => s.setActiveSession);
+  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
 
   const newExplorer = async () => {
     try {
@@ -37,7 +38,7 @@ export function Header() {
       )}
       <div style={{ display: 'flex', gap: 2 }}>
         <button className="iconbtn" title="Notifications"><Icon name="bell" /></button>
-        <button className="iconbtn" title="Settings"><Icon name="settings" /></button>
+        <button className="iconbtn" title="Preferences" onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button>
       </div>
     </header>
   );

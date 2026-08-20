@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { call } from '../shared/ipc/client';
 import { on, EV } from '../shared/ipc/events';
 import { useStore } from '../shared/store';
+import { monoSize } from '../shared/lib/ui';
 
 const cssVar = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined;
@@ -33,7 +34,7 @@ export function TerminalTab({
 
     const term = new XTerm({
       fontFamily: cssVar('--font-mono') || 'monospace',
-      fontSize: 12,
+      fontSize: monoSize(),
       cursorBlink: true,
       theme: {
         background: cssVar('--ctp-base'),

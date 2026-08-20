@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { call } from '../shared/ipc/client';
 import { on, EV } from '../shared/ipc/events';
 import { useStore } from '../shared/store';
+import { openExternal } from '../shared/lib/openExternal';
 import { activeWorktree } from '../sessions/sessions.slice';
 import type { SessionState } from '../sessions/sessions.slice';
-import type { DiffResult, FileDiff, WorktreeStatus } from '../shared/ipc/generated';
+import type { DiffResult, FileDiff, WorktreeStatus, Mr } from '../shared/ipc/generated';
 
 /** Source-control panel for the active worktree: staged/unstaged file lists
  *  with stage/unstage/discard, a commit box, and branch push/pull/rebase.
@@ -16,19 +17,22 @@ export function GitPanel({ session }: { session: SessionState }) {
 
   const [status, setStatus] = useState<WorktreeStatus | null>(null);
   const [files, setFiles] = useState<FileDiff[] | null>(null);
+  const [mr, setMr] = useState<Mr | null>(null);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!wt) { setFiles([]); setStatus(null); return; }
     try {
-      const [st, diff] = await Promise.all([
+      const [st, diff, mrs] = await Promise.all([
         call<WorktreeStatus>('get_worktree_status', { worktreeId: wt.id }),
         call<DiffResult>('get_task_diff_summary', { taskId: session.id, mode: 'working' }),
+        call<Mr[]>('get_mr', { worktreeId: wt.id }).catch(() => [] as Mr[]),
       ]);
       setStatus(st);
       const repo = diff.repos.find((r) => r.branch === wt.branch) ?? diff.repos[0];
       setFiles(repo?.files ?? []);
+      setMr(mrs[0] ?? null);
     } catch (e) {
       console.warn('git status refresh failed', e);
       setFiles([]);
@@ -75,6 +79,7 @@ export function GitPanel({ session }: { session: SessionState }) {
   const push = () => run(call('push', { worktreeId: wt.id }));
   const pull = () => run(call('pull', { worktreeId: wt.id }));
   const rebase = () => run(call('rebase_on_main', { worktreeId: wt.id }));
+  const createMr = () => run(call('create_mr', { worktreeId: wt.id }));
 
   const total = (files ?? []).length;
 
@@ -132,6 +137,9 @@ export function GitPanel({ session }: { session: SessionState }) {
         <button disabled={busy} onClick={push} title="Push this branch">Push</button>
         <button disabled={busy} onClick={pull} title="Pull with rebase">Pull</button>
         <button disabled={busy} onClick={rebase} title="Rebase onto the base branch">Rebase</button>
+        {mr
+          ? <button onClick={() => openExternal(mr.url)} title="Open the merge request">MR ↗</button>
+          : <button disabled={busy} onClick={createMr} title="Open a merge request">Create MR</button>}
       </div>
     </aside>
   );

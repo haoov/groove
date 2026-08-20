@@ -14,6 +14,10 @@ export interface UiSlice {
   setConfig: (c: ConfigView | null) => void;
   activeSessionId: string | null;
   setActiveSession: (id: string | null) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
+  paletteOpen: boolean;
+  setPaletteOpen: (open: boolean) => void;
 }
 
 export const uiSlice: StateCreator<Store, [], [], UiSlice> = (set) => ({
@@ -23,4 +27,8 @@ export const uiSlice: StateCreator<Store, [], [], UiSlice> = (set) => ({
   setConfig: (config) => set({ config }),
   activeSessionId: null,
   setActiveSession: (activeSessionId) => set({ activeSessionId }),
+  settingsOpen: false,
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  paletteOpen: false,
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
 });

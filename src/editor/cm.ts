@@ -58,7 +58,7 @@ const highlight = HighlightStyle.define([
 ]);
 
 const theme = EditorView.theme({
-  '&': { color: v('--gl-text-color-default'), backgroundColor: 'transparent', height: '100%', fontSize: '12.5px' },
+  '&': { color: v('--gl-text-color-default'), backgroundColor: 'transparent', height: '100%', fontSize: 'var(--mono-size, 12.5px)' },
   '.cm-scroller': { fontFamily: v('--font-mono'), lineHeight: '1.7', overflow: 'auto' },
   '.cm-content': { caretColor: v('--gl-color-blue-400') },
   '.cm-gutters': { backgroundColor: v('--gl-background-color-overlap'), color: v('--gl-text-color-muted'), border: 'none' },
