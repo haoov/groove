@@ -5,10 +5,12 @@ import type { ConfigView } from '../shared/ipc/generated';
 import { Header } from './chrome/Header';
 import { Rail } from './chrome/Rail';
 import { StatusBar } from './chrome/StatusBar';
+import { Home } from '../home/Home';
 
 export default function App() {
   const config = useStore((s) => s.config);
   const setConfig = useStore((s) => s.setConfig);
+  const view = useStore((s) => s.view);
 
   useEffect(() => {
     // The mockup's identity is Catppuccin Latte; real theme selection lands with Settings.
@@ -36,7 +38,11 @@ export default function App() {
       <div className="stage">
         <Rail />
         <main className="main">
-          <div className="placeholder">Home — the dashboard lands in slice 1.</div>
+          {view === 'home' ? (
+            <Home />
+          ) : (
+            <div className="placeholder">Session workspace lands in slice 2.</div>
+          )}
         </main>
       </div>
       <StatusBar />

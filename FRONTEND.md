@@ -48,6 +48,7 @@ components + hooks + store slice + CSS.
 - Overview is a session MODE, by kind: task → ticket (properties·hours·body); review → the MR overview. Agent console persists across Code↔Overview; pop-out ready.
 - **MR links always open GitLab** (browser), like CI. No in-app MR view for tasks.
 - Notes → local annotations (inline CM widget) + review-only mr threads.
+- **Approvals are a standalone attention modal** (a global overlay that demands a decision), NOT inline in the agent console.
 
 ## Dies / ledger payoff
 desk (15 files), ptyTrace, task-MR view, session dock, OverviewView dispatcher, RepoSwitcher name clash.

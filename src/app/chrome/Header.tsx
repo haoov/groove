@@ -1,4 +1,5 @@
 import { useStore } from '../../shared/store';
+import { call } from '../../shared/ipc/client';
 import { Button, Icon } from '../../shared/ui';
 
 /** The top context bar. On Home it carries the Home nav + New explorer; the
@@ -6,6 +7,17 @@ import { Button, Icon } from '../../shared/ui';
 export function Header() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
+  const setActiveSession = useStore((s) => s.setActiveSession);
+
+  const newExplorer = async () => {
+    try {
+      const id = await call<string>('open_explorer_session', {});
+      setActiveSession(id);
+      setView('session');
+    } catch (e) {
+      console.warn('open_explorer_session failed', e);
+    }
+  };
 
   return (
     <header className="topbar">
@@ -14,7 +26,7 @@ export function Header() {
         <>
           <button className="navpill" onClick={() => setView('home')}>Home</button>
           <div className="spring" />
-          <Button variant="accent" title="Open a scratch explorer session">+ New explorer</Button>
+          <Button variant="accent" onClick={newExplorer} title="Open a scratch explorer session">+ New explorer</Button>
         </>
       )}
       {view !== 'home' && <div className="spring" />}

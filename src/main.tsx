@@ -11,6 +11,7 @@ import '@fontsource/ibm-plex-mono/600.css';
 import './shared/styles/base.css';
 import './shared/ui/ui.css';
 import './app/app.css';
+import './home/home.css';
 import App from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);
