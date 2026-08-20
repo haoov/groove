@@ -1,9 +1,10 @@
 import { useStore } from '../../shared/store';
 import { call } from '../../shared/ipc/client';
 import { Button, Icon } from '../../shared/ui';
+import { Pickers } from '../../sessions/Pickers';
 
-/** The top context bar. On Home it carries the Home nav + New explorer; the
- *  session context pickers arrive with the sessions slice. */
+/** The top context bar: Home nav + New on the dashboard; session context pickers
+ *  inside a session. */
 export function Header() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
@@ -22,14 +23,18 @@ export function Header() {
   return (
     <header className="topbar">
       <div className="wordmark"><span className="knob" />groove</div>
-      {view === 'home' && (
+      {view === 'home' ? (
         <>
           <button className="navpill" onClick={() => setView('home')}>Home</button>
           <div className="spring" />
           <Button variant="accent" onClick={newExplorer} title="Open a scratch explorer session">+ New explorer</Button>
         </>
+      ) : (
+        <>
+          <Pickers />
+          <div className="spring" />
+        </>
       )}
-      {view !== 'home' && <div className="spring" />}
       <div style={{ display: 'flex', gap: 2 }}>
         <button className="iconbtn" title="Notifications"><Icon name="bell" /></button>
         <button className="iconbtn" title="Settings"><Icon name="settings" /></button>

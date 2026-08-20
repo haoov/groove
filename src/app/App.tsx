@@ -6,8 +6,11 @@ import { Header } from './chrome/Header';
 import { Rail } from './chrome/Rail';
 import { StatusBar } from './chrome/StatusBar';
 import { Home } from '../home/Home';
+import { Workspace } from '../workspace/Workspace';
+import { useIpc } from './providers/useIpc';
 
 export default function App() {
+  useIpc();
   const config = useStore((s) => s.config);
   const setConfig = useStore((s) => s.setConfig);
   const view = useStore((s) => s.view);
@@ -38,10 +41,10 @@ export default function App() {
       <div className="stage">
         <Rail />
         <main className="main">
-          {view === 'home' ? (
-            <Home />
-          ) : (
-            <div className="placeholder">Session workspace lands in slice 2.</div>
+          {view === 'home' && <Home />}
+          {view === 'session' && <Workspace />}
+          {(view === 'overview' || view === 'review') && (
+            <div className="placeholder">Overview / review lands in slice 5.</div>
           )}
         </main>
       </div>

@@ -3,5 +3,6 @@
 
 import type { UiSlice } from './ui.slice';
 import type { HomeSlice } from '../../home/home.slice';
+import type { SessionsSlice } from '../../sessions/sessions.slice';
 
-export type Store = UiSlice & HomeSlice;
+export type Store = UiSlice & HomeSlice & SessionsSlice;
