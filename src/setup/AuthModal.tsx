@@ -7,6 +7,7 @@ import { EVENT } from '../shared/ipc/events';
 import type { PtyOutputEvent } from '../shared/ipc/ipc';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
+import { bytesToB64 } from '../shared/lib/ptyRegistry';
 
 /** Typed at the prompt without a newline: the command is the same for everyone but
  *  its flags are not — a self-managed GitLab needs `--hostname`, and which login
@@ -63,8 +64,8 @@ export function AuthModal({ tool, onDone }: { tool: 'glab' | 'gh'; onDone: () =>
       quiet = window.setTimeout(() => {
         if (typed.current) return;
         typed.current = true;
-        const data = Array.from(new TextEncoder().encode(LOGIN_COMMAND[tool]));
-        invoke('write_pty', { sessionId: pty, data }).catch(() => { /* the user can type it */ });
+        const dataB64 = bytesToB64(new TextEncoder().encode(LOGIN_COMMAND[tool]));
+        invoke('write_pty', { sessionId: pty, dataB64 }).catch(() => { /* the user can type it */ });
         focusHost(pty);
       }, SETTLE_MS);
     };

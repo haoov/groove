@@ -228,9 +228,13 @@ pub async fn stop_agent_session(
 #[tauri::command]
 pub async fn write_pty(
     session_id: String,
-    data: Vec<u8>,
+    // Base64, not Vec<u8>: a JSON number array costs four characters and a parse
+    // per byte on the hottest IPC path (every keystroke). Symmetric with pty_output.
+    data_b64: String,
     ptys: tauri::State<'_, Ptys>,
 ) -> Result<(), String> {
+    let data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &data_b64)
+        .map_err(|e| format!("bad base64 pty payload: {e}"))?;
     ptys.write(&session_id, data).await
 }
 

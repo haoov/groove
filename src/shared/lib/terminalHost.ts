@@ -4,7 +4,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../store';
 import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
-import { registerPtyHandler, unregisterPtyHandler } from './ptyRegistry';
+import { registerPtyHandler, unregisterPtyHandler, bytesToB64 } from './ptyRegistry';
 import '@xterm/xterm/css/xterm.css';
 
 /**
@@ -246,8 +246,8 @@ export function ensureHost(sessionId: string): TermHost {
   attachClipboard(term);
 
   term.onData((data) => {
-    const bytes = Array.from(new TextEncoder().encode(data));
-    invoke('write_pty', { sessionId, data: bytes }).catch(console.error);
+    const dataB64 = bytesToB64(new TextEncoder().encode(data));
+    invoke('write_pty', { sessionId, dataB64 }).catch(console.error);
   });
 
   // Registered for the SESSION lifetime (not a component's): output keeps

@@ -18,6 +18,17 @@ export function decodeChunk(b64: string): Uint8Array {
   return bytes;
 }
 
+/** Bytes to base64 for `write_pty` — chunked so a large paste can't blow the
+ *  argument limit of String.fromCharCode. */
+export function bytesToB64(bytes: Uint8Array): string {
+  let bin = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
 export function registerPtyHandler(sessionId: string, handler: (data: Uint8Array) => void) {
   ptyOutputHandlers.set(sessionId, handler);
   // Flush anything that arrived before the handler mounted, in arrival order.

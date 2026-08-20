@@ -6,6 +6,7 @@
 // before Claude's input is ready to receive it.
 
 import { invoke } from '@tauri-apps/api/core';
+import { bytesToB64 } from './ptyRegistry';
 import { useStore } from '../store';
 
 /** Give up waiting for a cold agent to report in and just send. */
@@ -83,14 +84,14 @@ export async function ensureAgentSession(
  */
 export async function sendToAgent(sessionKey: string, text: string): Promise<void> {
   const pty = await ensureAgentSession(sessionKey, { waitReady: true });
-  const write = (data: number[]) => invoke('write_pty', { sessionId: pty, data });
+  const write = (bytes: Uint8Array) => invoke('write_pty', { sessionId: pty, dataB64: bytesToB64(bytes) });
 
   // Trailing whitespace would become blank lines in the draft.
   const body = text.replace(/\s+$/, '');
-  await write(Array.from(new TextEncoder().encode(body)));
+  await write(new TextEncoder().encode(body));
 
   // Long enough that the TUI has finished handling the paste, so the CR arrives as
   // its own keypress instead of being folded into it.
   await sleep(SUBMIT_DELAY_MS);
-  await write([CARRIAGE_RETURN]);
+  await write(new Uint8Array([CARRIAGE_RETURN]));
 }
