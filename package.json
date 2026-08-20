@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q"
+    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q && cd .. && node scripts/gen-index.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
