@@ -1,0 +1,32 @@
+/* Approval modal: a global attention overlay. It sits above everything and
+   demands a decision before the user continues. */
+.ov-scrim { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(0, 0, 0, 0.32); padding: 24px; }
+
+.approval { width: min(520px, 100%); background: var(--gl-background-color-default); border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-large); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); overflow: hidden; }
+.approval.danger { border-color: var(--gl-color-red-400); }
+
+.approval-h { display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 12px; border-bottom: 1px solid var(--gl-border-color-subtle); }
+.approval-title { font: 600 15px var(--font-ui); color: var(--gl-text-color-default); }
+.approval.danger .approval-title { color: var(--gl-color-red-500); }
+.approval-more { margin-left: auto; font: 500 11px var(--font-mono); color: var(--gl-text-color-muted); }
+
+.approval-summary { padding: 12px 18px; display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.approval-summary > div { display: flex; gap: 12px; }
+.approval-summary dt { flex: none; width: 96px; font: 500 12px var(--font-ui); color: var(--gl-text-color-subtle); }
+.approval-summary dd { margin: 0; font: 12px var(--font-mono); color: var(--gl-text-color-default); word-break: break-word; }
+
+.approval-field { display: flex; flex-direction: column; gap: 4px; padding: 6px 18px 12px; }
+.approval-field span { font: 500 11px var(--font-ui); text-transform: uppercase; letter-spacing: 0.06em; color: var(--gl-text-color-subtle); }
+.approval-field input, .approval-field textarea { border: 1px solid var(--gl-border-color-default); border-radius: var(--gl-border-radius-base); background: var(--gl-background-color-float-inset); color: var(--gl-text-color-default); font: 13px var(--font-ui); padding: 8px 10px; resize: vertical; }
+.approval-field textarea { font-family: var(--font-mono); }
+.approval-field input:focus, .approval-field textarea:focus { outline: none; border-color: var(--gl-color-blue-400); }
+
+.approval-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; border-top: 1px solid var(--gl-border-color-subtle); }
+.approval-actions button { height: 32px; padding: 0 16px; border-radius: var(--gl-border-radius-base); font: 500 13px var(--font-ui); }
+.approval-reject { border: 1px solid var(--gl-border-color-default); background: var(--gl-background-color-overlap); color: var(--gl-text-color-default); }
+.approval-reject:hover { background: var(--gl-hover-overlay); }
+.approval-approve { background: var(--gl-color-blue-500); color: #fff; }
+.approval-approve:hover:not(:disabled) { background: var(--gl-color-blue-600); }
+.approval-approve.danger { background: var(--gl-color-red-500); }
+.approval-approve.danger:hover:not(:disabled) { background: var(--gl-color-red-400); }
+.approval-approve:disabled { opacity: 0.5; }

@@ -6,6 +6,8 @@ import type { Store } from './types';
 import { uiSlice } from './ui.slice';
 import { homeSlice } from '../../home/home.slice';
 import { sessionsSlice } from '../../sessions/sessions.slice';
+import { approvalsSlice } from '../../approvals/approvals.slice';
+import { notificationsSlice } from '../../notifications/notifications.slice';
 
 export type { View } from './ui.slice';
 export type { Store } from './types';
@@ -14,4 +16,6 @@ export const useStore = create<Store>()((...a) => ({
   ...uiSlice(...a),
   ...homeSlice(...a),
   ...sessionsSlice(...a),
+  ...approvalsSlice(...a),
+  ...notificationsSlice(...a),
 }));

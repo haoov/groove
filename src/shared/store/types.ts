@@ -4,5 +4,7 @@
 import type { UiSlice } from './ui.slice';
 import type { HomeSlice } from '../../home/home.slice';
 import type { SessionsSlice } from '../../sessions/sessions.slice';
+import type { ApprovalsSlice } from '../../approvals/approvals.slice';
+import type { NotificationsSlice } from '../../notifications/notifications.slice';
 
-export type Store = UiSlice & HomeSlice & SessionsSlice;
+export type Store = UiSlice & HomeSlice & SessionsSlice & ApprovalsSlice & NotificationsSlice;

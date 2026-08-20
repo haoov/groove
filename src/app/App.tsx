@@ -6,7 +6,9 @@ import { Header } from './chrome/Header';
 import { Rail } from './chrome/Rail';
 import { StatusBar } from './chrome/StatusBar';
 import { Home } from '../home/Home';
-import { Workspace } from '../workspace/Workspace';
+import { SessionShell } from './SessionShell';
+import { ApprovalModal } from '../approvals/ApprovalModal';
+import { Toasts } from '../notifications/Toasts';
 import { useIpc } from './providers/useIpc';
 
 export default function App() {
@@ -41,14 +43,12 @@ export default function App() {
       <div className="stage">
         <Rail />
         <main className="main">
-          {view === 'home' && <Home />}
-          {view === 'session' && <Workspace />}
-          {(view === 'overview' || view === 'review') && (
-            <div className="placeholder">Overview / review lands in slice 5.</div>
-          )}
+          {view === 'home' ? <Home /> : <SessionShell />}
         </main>
       </div>
       <StatusBar />
+      <ApprovalModal />
+      <Toasts />
     </div>
   );
 }
