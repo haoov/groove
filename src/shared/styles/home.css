@@ -124,15 +124,96 @@
   white-space: nowrap;
 }
 
-/* Review lines lead with their !iid, so give it the accent. */
-.upnext-row.is-review .row-key { color: var(--gl-color-blue-300); font-weight: 600; }
 
 /* ONE shape for both sections — badge · key · title · trailing info — so Live and
    Up next line up column for column down the whole page. The title grows to fill
    the pane; the trailing track has a floor (so it forms a column) but may grow on
    the rare row whose summary is unusually long. */
-.live-row,
-.upnext-row { grid-template-columns: 78px 104px minmax(0, 1fr) minmax(168px, auto); }
+.live-row { grid-template-columns: 20px 78px 104px minmax(0, 1fr) minmax(168px, auto); }
+
+/* ── Live: fold/expand ──────────────────────────────────────────────────────── */
+.live-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+.live-caret:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+
+/* Folded-row aggregate chips: quiet, mono, readable at a glance. */
+.row-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-background-color-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-subtle);
+  white-space: nowrap;
+}
+.row-chip.stat-bad { color: var(--ctp-red); }
+
+/* ── Up next: one table — badge · code · name · state · owner ───────────────── */
+.upnext-table { display: flex; flex-direction: column; }
+.upnext-head,
+.upnext-tr {
+  display: grid;
+  grid-template-columns: 78px 104px minmax(0, 1fr) minmax(140px, 220px) minmax(90px, 150px);
+  align-items: center;
+  column-gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  padding: 7px var(--space-2);
+}
+.upnext-head {
+  padding-top: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  font-family: var(--font-mono);
+  font-size: calc(var(--home-text-sm) - 1px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-disabled);
+  user-select: none;
+}
+.upnext-tr {
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  font-family: var(--font-ui);
+  font-size: var(--home-text);
+  color: var(--gl-text-color-default);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.upnext-tr:hover { background: var(--gl-background-color-hover); }
+.upnext-tr:disabled { opacity: 0.6; cursor: default; }
+.upnext-tr.is-review .row-key { color: var(--gl-color-blue-300); font-weight: 600; }
+.upnext-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upnext-owner { justify-self: start; }
+
+.upnext-filter {
+  width: 150px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-background-color-default);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+}
+.upnext-filter:focus { outline: none; border-color: var(--gl-focus-border); }
+.home-link.active { color: var(--ctp-blue); }
 
 /* The track carries the floor now; the item just anchors to its left edge. */
 .row-summary { justify-self: start; }

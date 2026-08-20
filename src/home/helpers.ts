@@ -23,17 +23,31 @@ export function openRepo(entry: HomeEntry, repo: HomeRepo) {
   st.focusSession(sid);
 }
 
-/** Rolled-up state — used only for ordering Live now that the row itself shows
- *  no aggregates (each repo reports its own state below). */
+/** Rolled-up state: orders Live, and fills the FOLDED row's summary chips. */
 export function summarize(entry: HomeEntry) {
   let dirty = 0;
+  let added = 0;
+  let deleted = 0;
+  let ahead = 0;
+  let behind = 0;
+  let mrs = 0;
+  let unresolved = 0;
+  let ciFail = false;
   let attention = false;
   for (const r of entry.repos) {
     dirty += r.modified + r.staged;
+    added += r.added;
+    deleted += r.deleted;
+    ahead += r.ahead;
+    behind += r.behind;
+    if (r.mr) {
+      mrs += 1;
+      unresolved += r.mr.unresolved;
+      if (r.mr.ci && ciGroup(r.mr.ci) === 'fail') { ciFail = true; attention = true; }
+    }
     if (r.conflicted > 0 || r.missing) attention = true;
-    if (r.mr?.ci && ciGroup(r.mr.ci) === 'fail') attention = true;
   }
-  return { dirty, attention };
+  return { dirty, added, deleted, ahead, behind, mrs, unresolved, ciFail, attention };
 }
 
 export const KIND_LABEL = { task: 'task', explorer: 'expl', review: 'review' } as const;

@@ -9,14 +9,25 @@ import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { MainRepo, ReviewMr, Task } from '../shared/ipc/ipc';
 
 // Review requests and queued tasks answer the same question — "what do I pick up
-// next?" — so they share one list. Reviews are pinned above tasks rather than
-// interleaved: there are only ever a few, and someone else is blocked on them.
+// next?" — so they share ONE table: code · name · state · owner. Reviews are
+// pinned above tasks rather than interleaved: there are only ever a few, and
+// someone else is blocked on them.
 
 const UPNEXT_PREVIEW = 10;
 
 type UpNextItem =
   | { kind: 'review'; key: string; mr: ReviewMr }
   | { kind: 'task'; key: string; task: Task };
+
+/** The filter matches what the table shows: code, name, state, owner. */
+function itemText(item: UpNextItem): string {
+  if (item.kind === 'review') {
+    const { mr } = item;
+    return `${sigil(mr)}${mr.iid} ${mr.title} ${mr.project_full} ${mr.author}`.toLowerCase();
+  }
+  const { task } = item;
+  return `${task.short_id} ${task.title} ${task.status} ${task.priority ?? ''}`.toLowerCase();
+}
 
 export function UpNextSection() {
   const tasks = useStore((s) => s.tasks);
@@ -31,6 +42,10 @@ export function UpNextSection() {
   const [menu, setMenu] = useState<{ x: number; y: number; task: Task } | null>(null);
   const [composing, setComposing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('');
+  // Approved reviews are soft-hidden: someone signed off, so they are no longer
+  // waiting on YOU — but they stay one toggle away until they merge.
+  const [showApproved, setShowApproved] = useState(false);
 
   const loadTasks = useCallback(async () => {
     setSyncStatus('syncing');
@@ -57,9 +72,13 @@ export function UpNextSection() {
     return keys;
   }, [snapshot]);
 
-  const items = useMemo<UpNextItem[]>(() => {
-    const reviews: UpNextItem[] = (reviewQueue ?? [])
-      .filter((mr) => !startedReviews.has(`${mr.project_full.split('/').pop()}!${mr.iid}`))
+  const { items, approvedHidden } = useMemo(() => {
+    const pending = (reviewQueue ?? []).filter(
+      (mr) => !startedReviews.has(`${mr.project_full.split('/').pop()}!${mr.iid}`),
+    );
+    const approvedCount = pending.filter((mr) => mr.approved).length;
+    const reviews: UpNextItem[] = pending
+      .filter((mr) => showApproved || !mr.approved)
       .map((mr) => ({ kind: 'review' as const, key: `${mr.project_full}!${mr.iid}`, mr }));
 
     const live = new Set((snapshot ?? []).map((e) => e.short_id));
@@ -71,8 +90,11 @@ export function UpNextSection() {
       })
       .map((t) => ({ kind: 'task' as const, key: t.short_id, task: t }));
 
-    return [...reviews, ...queued];
-  }, [reviewQueue, startedReviews, snapshot, tasks]);
+    let all = [...reviews, ...queued];
+    const needle = filter.trim().toLowerCase();
+    if (needle) all = all.filter((i) => itemText(i).includes(needle));
+    return { items: all, approvedHidden: showApproved ? 0 : approvedCount };
+  }, [reviewQueue, startedReviews, snapshot, tasks, filter, showApproved]);
 
   const openReview = async (mr: ReviewMr) => {
     const key = `${mr.project_full}!${mr.iid}`;
@@ -102,7 +124,7 @@ export function UpNextSection() {
     }
   };
 
-  const shown = expanded ? items : items.slice(0, UPNEXT_PREVIEW);
+  const shown = expanded || filter.trim() ? items : items.slice(0, UPNEXT_PREVIEW);
 
   return (
     <section className="home-section" onClick={() => setMenu(null)}>
@@ -110,6 +132,22 @@ export function UpNextSection() {
         Up next
         {items.length > 0 && <span className="home-heading-count">{items.length}</span>}
         <span className="home-heading-actions">
+          <input
+            className="upnext-filter"
+            placeholder="Filter…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setFilter(''); }}
+          />
+          {(approvedHidden > 0 || showApproved) && (
+            <button
+              className={`home-link${showApproved ? ' active' : ''}`}
+              onClick={() => setShowApproved((v) => !v)}
+              title="Approved reviews are no longer waiting on you — shown on demand"
+            >
+              {showApproved ? 'hide approved' : `approved (${approvedHidden})`}
+            </button>
+          )}
           {/* The review queue is polled every ~5 min, which is too slow when you
               know someone just asked. Refreshes the tasks too — both feed this list. */}
           <button
@@ -138,9 +176,20 @@ export function UpNextSection() {
       {composing && <NewTaskModal onClose={() => setComposing(false)} />}
 
       {items.length === 0 ? (
-        <p className="home-empty">Nothing waiting — no review requests, no queued tasks.</p>
+        <p className="home-empty">
+          {filter.trim()
+            ? `Nothing matches “${filter.trim()}”.`
+            : 'Nothing waiting — no review requests, no queued tasks.'}
+        </p>
       ) : (
-        <div className="home-rows">
+        <div className="upnext-table">
+          <div className="upnext-head">
+            <span />
+            <span>code</span>
+            <span>name</span>
+            <span>state</span>
+            <span>owner</span>
+          </div>
           {shown.map((item) =>
             item.kind === 'review' ? (
               <ReviewRow
@@ -157,7 +206,7 @@ export function UpNextSection() {
               />
             ),
           )}
-          {items.length > UPNEXT_PREVIEW && (
+          {!filter.trim() && items.length > UPNEXT_PREVIEW && (
             <button className="home-link upnext-more" onClick={() => setExpanded((v) => !v)}>
               {expanded ? 'show less' : `show ${items.length - UPNEXT_PREVIEW} more`}
             </button>
@@ -192,12 +241,11 @@ export function UpNextSection() {
 /** GitHub numbers PRs with `#`, GitLab with `!`. */
 const sigil = (mr: ReviewMr) => (mr.platform === 'github' ? '#' : '!');
 
-/** An MR waiting on the user. `approved` means someone signed off but it is not
- *  merged yet — the reason it is still in the queue. */
+/** An MR waiting on the user: code = the reference, state = the project. */
 function ReviewRow({ mr, busy, onOpen }: { mr: ReviewMr; busy: boolean; onOpen: () => void }) {
   return (
     <button
-      className="home-row upnext-row is-review"
+      className="upnext-tr is-review"
       onClick={onOpen}
       disabled={busy}
       title={`${mr.title}\n${mr.project_full}${sigil(mr)}${mr.iid}\n${mr.source_branch} → ${mr.target_branch}`}
@@ -213,17 +261,17 @@ function ReviewRow({ mr, busy, onOpen }: { mr: ReviewMr; busy: boolean; onOpen: 
           </span>
         )}
       </span>
-      <span className="row-note">
-        {busy ? 'opening…' : mr.local_path ? mr.author : `${mr.author} · needs clone`}
-      </span>
+      <span className="row-note upnext-state">{mr.project_full}</span>
+      <span className="row-note upnext-owner">{busy ? 'opening…' : mr.author}</span>
     </button>
   );
 }
 
+/** A queued task: state = priority when set, else the Notion status. */
 function TaskRow({ task, onMenu }: { task: Task; onMenu: (x: number, y: number) => void }) {
   return (
     <button
-      className="home-row upnext-row"
+      className="upnext-tr"
       onClick={() => openTask(task.short_id)}
       onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       title={task.title}
@@ -232,13 +280,17 @@ function TaskRow({ task, onMenu }: { task: Task; onMenu: (x: number, y: number) 
       <span className="row-key">{task.short_id}</span>
       <span className="row-titleline">
         <span className="row-title">{task.title}</span>
-        {task.priority && (
+      </span>
+      <span className="upnext-state">
+        {task.priority ? (
           <span className={`prio-badge p${priorityRank(task.priority)}`}>
             {priorityLabel(task.priority)}
           </span>
+        ) : (
+          <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
         )}
       </span>
-      <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
+      <span className="row-note upnext-owner">—</span>
     </button>
   );
 }
