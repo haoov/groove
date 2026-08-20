@@ -139,18 +139,13 @@ function attachClipboard(term: Terminal) {
  * of a terminal an agent is streaming into — it redraws its whole screen as it
  * thinks. The WebGL renderer draws from one texture atlas instead.
  *
- * OPT-IN (`localStorage.setItem('wb.termWebgl', '1')`), default OFF: on Linux
- * webkit2gtk, creating a WebGL context can SEGFAULT the web process on some
- * driver/compositor combinations — the whole window dies and no try/catch ever
- * runs. The DOM renderer (what this app shipped with) is plenty fast here, so
- * GPU rendering has to be asked for, not defaulted into a crash.
- *
- * Must be loaded AFTER `open`. The recoverable failures (no WebGL2, a driver
- * that refuses, a context lost later) still fall back to the DOM renderer.
+ * Must be loaded AFTER `open`, and it can fail for reasons that are the machine's
+ * rather than ours: no WebGL2, a driver that refuses, a context lost later on. Every
+ * one of those falls back to the DOM renderer, which is what this app shipped with,
+ * so the terminal is never worse off for having tried.
  */
 function attachGpuRenderer(term: Terminal) {
   try {
-    if (localStorage.getItem('wb.termWebgl') !== '1') return;
     const gpu = new WebglAddon();
     gpu.onContextLoss(() => {
       // Nothing to retry against: the addon disposes itself and xterm reverts.
