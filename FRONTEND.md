@@ -67,4 +67,15 @@ diff cache re-key `${worktreeId}/${path}`, `list_notion_users → find_notion_us
 6. **Palette · settings · wizards.** Command palette (⌘K), Preferences, first-run, add-repo, inline CM annotations. Pop-out agent window DROPPED by decision — the agent console stays docked in-app.
 
 ## Status
-All six slices done on `rework/core-db`; each verified tsc + vite build + vitest. Agent console is in-app only (pop-out dropped). Not yet run against the real DB — end-to-end `pnpm tauri dev` test pending.
+COURSE CORRECTION (user decision): the slice-built components were a from-scratch
+rebuild that lost the app's design and features. They were deleted, and the FULL
+original frontend was ported into this feature-first layout instead (131 files
+moved, imports rewritten) — the old code IS the app; only the structure and the
+backend adaptations are new. Adaptations: desk = store-only session (no backend
+row), pty tracer gone, filesystem watcher replaced by agent-activity-driven
+refresh (flush_git_caches → invalidateDiff → refreshStatusFor), FirstRun uses
+find_notion_user(email), register_repo takes {slug, localPath}, ghost notion.status
+op removed, notion.property/hours/body + task.create modal renderers added,
+pty_started "auth" kind guarded. Verified: tsc, vite build, vitest 171, cargo 189
+(incl. the ops mirror test, repathed to src/shared/ipc/ops.ts). Agent console is
+in-app only (pop-out dropped). End-to-end `pnpm tauri dev` test pending.
