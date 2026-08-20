@@ -39,6 +39,8 @@ export interface Mr {
 
 /** One note within an MR discussion thread (GitLab/GitHub-normalized, loose). */
 export interface ThreadNote {
+  id?: number;
+  created_at?: string;
   author?: { username?: string; name?: string };
   body?: string;
   resolved?: boolean;
@@ -223,6 +225,13 @@ export interface TaskSchema {
   /** Differs per database ("Task name" here). */
   title_property: string;
   properties: PropertySchema[];
+  /** Status options grouped by Notion group (To-do / In progress / Complete). */
+  status_groups: StatusGroup[];
+}
+
+export interface StatusGroup {
+  name: string;
+  options: string[];
 }
 
 /** A page in a relation's target database, offered as a choice. */
@@ -326,7 +335,6 @@ export interface ReviewMr {
 
 /** A clone under `<worktree_root>/main` — the repo pool the pickers list. */
 export interface MainRepo {
-  url: string;
   local_path: string;
   /** Path relative to the pool, e.g. "gitlab.example.com/devops/mayo". */
   slug: string;
@@ -449,7 +457,8 @@ export interface AgentActivity {
 export interface PtyStartedEvent {
   session_id: string;
   task_id: string;
-  pty_type: 'agent' | 'terminal';
+  /** "auth" = the forge-CLI sign-in shell (task_id "__auth__", no session). */
+  pty_type: 'agent' | 'terminal' | 'auth';
 }
 
 export interface TaskPausedEvent {

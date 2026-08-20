@@ -5,7 +5,7 @@ import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
 import { DEFAULT_FONT_SIZE, type Config } from '../shared/ipc/ipc';
-import { resolveUser, userLabel, type NotionUser } from '../shared/lib/notionUser';
+import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
 
 /**
  * What a new machine sees: the dependency list, and the four values only the user
@@ -55,7 +55,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const [token, setToken] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [root, setRoot] = useState('~/worktrees');
-  const [users, setUsers] = useState<NotionUser[] | null>(null);
+  const [found, setFound] = useState<NotionUser | null>(null);
   const [who, setWho] = useState('');
   const [template, setTemplate] = useState('');
   const [detected, setDetected] = useState<DetectedSchema | null>(null);
@@ -69,23 +69,20 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   };
   useEffect(loadEnv, []);
 
-  // The token is checked by using it: the people list is both the check and the
-  // way to pick yourself without hunting a UUID in the API.
-  const loadUsers = async () => {
-    if (!token.trim()) return;
+  // The token is checked by using it: looking yourself up by email is both the
+  // check and the way to get your user id without hunting a UUID in the API.
+  // (The backend replaced the whole-workspace people list with this lookup.)
+  const lookupUser = async () => {
+    if (!token.trim() || !who.trim() || looksLikeNotionId(who)) return;
     setBusy('users');
     setError(null);
     try {
-      const list = await invoke<NotionUser[]>('list_notion_users', { token: token.trim() });
-      setUsers(list);
-      if (list.length === 0) {
-        // The integration needs the "read user information" capability; without it
-        // the call succeeds and returns nobody, which reads as a broken picker.
-        setError('The token works, but no people came back — the integration needs the user-information capability.');
-      }
+      setFound(await invoke<NotionUser>('find_notion_user', { token: token.trim(), email: who.trim() }));
     } catch (e) {
-      setUsers(null);
-      setError(`Notion rejected the token: ${String(e)}`);
+      setFound(null);
+      // Could be a bad token OR a missing capability OR an unknown email — the
+      // backend message says which.
+      setError(String(e));
     } finally {
       setBusy(null);
     }
@@ -135,7 +132,14 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     }
   };
 
-  const whoMatch = resolveUser(who, users ?? []);
+  // Empty → no assignee filter; a found user or a pasted Notion id → that id.
+  const whoMatch = !who.trim()
+    ? { kind: 'empty' as const }
+    : found
+      ? { kind: 'user' as const, id: found.id, user: found }
+      : looksLikeNotionId(who)
+        ? { kind: 'raw' as const, id: who.trim() }
+        : { kind: 'unknown' as const };
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
   const canSave = !!token.trim() && !!databaseId.trim() && !!root.trim() && busy === null;
 
@@ -225,7 +229,6 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
               placeholder="ntn_…"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              onBlur={loadUsers}
             />
             <span className="firstrun-hint">
               notion.so/my-integrations → your integration → Internal Integration Secret. The task
@@ -306,17 +309,18 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
                   people, and a pasted id still has to work when the list fails. */}
               <input
                 className="firstrun-input"
-                list="groove-notion-users"
-                placeholder={users ? 'Type your name, or paste a user id' : 'Enter the token first'}
+                placeholder={token.trim() ? 'Your Notion email, or paste a user id' : 'Enter the token first'}
                 value={who}
-                onChange={(e) => setWho(e.target.value)}
+                onChange={(e) => { setWho(e.target.value); setFound(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') lookupUser(); }}
               />
-              <datalist id="groove-notion-users">
-                {(users ?? []).map((u) => <option key={u.id} value={userLabel(u)} />)}
-              </datalist>
-              <button className="btn-secondary" onClick={loadUsers} disabled={!token.trim() || busy !== null}>
+              <button
+                className="btn-secondary"
+                onClick={lookupUser}
+                disabled={!token.trim() || !who.trim() || looksLikeNotionId(who) || busy !== null}
+              >
                 {busy === 'users' ? <Loader2 size={11} className="spin" /> : null}
-                {users ? 'reload' : 'check token'}
+                find me
               </button>
             </div>
             <span className="firstrun-hint">
@@ -324,11 +328,10 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
                 <>Matched <strong>{whoMatch.user.name}</strong> · <code>{whoMatch.id}</code>. </>
               )}
               {whoMatch.kind === 'raw' && (
-                <>Using <code>{whoMatch.id}</code> as-is — it is not in this workspace's people, so
-                  check it is a USER id and not a page id. </>
+                <>Using <code>{whoMatch.id}</code> as-is — it cannot be checked, so make sure it is
+                  a USER id and not a page id. </>
               )}
-              {whoMatch.kind === 'unknown' && <>No match yet — keep typing, or paste a user id. </>}
-              {users && <>{users.length} people found. </>}
+              {whoMatch.kind === 'unknown' && <>Type your email and press find me, or paste a user id. </>}
               Used to show only your tasks and to assign the ones you file. Leave empty to see the
               whole database.
             </span>

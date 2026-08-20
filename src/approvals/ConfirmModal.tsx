@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, ShieldOff } from 'lucide-react';
+import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, ShieldOff, Clock, FileText, Tag } from 'lucide-react';
 import { useStore, findSessionByTask, sessionActions } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
 
@@ -12,7 +12,10 @@ const OP_LABELS: Record<string, string> = {
   [OP.MR_CREATE]:   'Create MR',
   [OP.MR_UPDATE]:   'Update MR',
   [OP.MR_CLOSE]:    'Close MR',
-  [OP.NOTION_STATUS]: 'Update Notion status',
+  [OP.NOTION_PROPERTY]: 'Update Notion property',
+  [OP.NOTION_HOURS]: 'Log hours to Notion',
+  [OP.NOTION_BODY]: 'Update task description',
+  [OP.TASK_CREATE]: 'Create task',
   [OP.TASK_ADD_REPO]: 'Add repo to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
   [OP.GIT_DISCARD]: 'Discard changes',
@@ -31,7 +34,10 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.MR_CREATE]:   <GitPullRequest size={14} strokeWidth={1.75} />,
   [OP.MR_UPDATE]:   <RefreshCw    size={14} strokeWidth={1.75} />,
   [OP.MR_CLOSE]:    <X            size={14} strokeWidth={1.75} />,
-  [OP.NOTION_STATUS]: <RefreshCw    size={14} strokeWidth={1.75} />,
+  [OP.NOTION_PROPERTY]: <Tag size={14} strokeWidth={1.75} />,
+  [OP.NOTION_HOURS]: <Clock size={14} strokeWidth={1.75} />,
+  [OP.NOTION_BODY]: <FileText size={14} strokeWidth={1.75} />,
+  [OP.TASK_CREATE]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD]: <RotateCcw   size={14} strokeWidth={1.75} />,
@@ -199,8 +205,60 @@ function PayloadView({ op, payload, edits, setField }: {
         </>
       );
 
-    case OP.NOTION_STATUS:
-      return <Field label="New status" value={str('status')} />;
+    case OP.NOTION_PROPERTY: {
+      const v = payload.value;
+      return (
+        <>
+          <Field label="Property" value={str('property')} />
+          <Field label="Value" value={typeof v === 'string' ? v : JSON.stringify(v)} mono />
+          <Field label="Task" value={str('task_id')} mono />
+        </>
+      );
+    }
+
+    case OP.NOTION_HOURS:
+      return (
+        <>
+          <Field label="Hours" value={String(payload.hours ?? '')} mono />
+          <Field label="Task" value={str('task_id')} mono />
+        </>
+      );
+
+    case OP.NOTION_BODY:
+      return (
+        <>
+          <Field label="Task" value={str('task_id')} mono />
+          <EditableField
+            label="New description"
+            value={edits.markdown ?? ''}
+            onChange={(v) => setField('markdown', v)}
+            multiline
+            placeholder="Page body (markdown)"
+          />
+          <div className="cp-hint cp-hint--danger">
+            Replaces the whole Notion page body. Blocks markdown cannot represent are lost.
+          </div>
+        </>
+      );
+
+    case OP.TASK_CREATE:
+      return (
+        <>
+          <EditableField
+            label="Title"
+            value={edits.title ?? ''}
+            onChange={(v) => setField('title', v)}
+            placeholder="Task title"
+          />
+          <EditableField
+            label="Description"
+            value={edits.body_markdown ?? ''}
+            onChange={(v) => setField('body_markdown', v)}
+            multiline
+            placeholder="Task description (markdown)"
+          />
+        </>
+      );
 
     case OP.TASK_CREATE_FROM_EXPLORER:
       return (
@@ -268,10 +326,11 @@ export function ConfirmModal() {
       // start from the same two headings the agent's contract requires.
       seed.description = String(p.description ?? '') || MR_SKELETON;
     }
-    if (current.op_type === OP.TASK_CREATE_FROM_EXPLORER) {
+    if (current.op_type === OP.TASK_CREATE_FROM_EXPLORER || current.op_type === OP.TASK_CREATE) {
       seed.title = String(p.title ?? '');
       seed.body_markdown = String(p.body_markdown ?? '');
     }
+    if (current.op_type === OP.NOTION_BODY) seed.markdown = String(p.markdown ?? '');
     setEdits(seed);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

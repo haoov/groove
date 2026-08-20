@@ -45,13 +45,13 @@ export function useRepoPicker(opts?: {
       setPending((p) => { const n = new Set(p); n.add(mr.local_path); return n; });
       try {
         const repo = await invoke<Repo>('register_repo', {
+          slug: mr.slug,
           localPath: mr.local_path,
-          remoteUrl: mr.url,
         });
         setSelectedRepos((p) => (p.some((r) => r.local_path === repo.local_path) ? p : [...p, repo]));
         opts?.onSelect?.(repo);
       } catch (e) {
-        opts?.onError?.(`Could not register ${mr.url}: ${e}`);
+        opts?.onError?.(`Could not register ${mr.slug}: ${e}`);
       } finally {
         setPending((p) => { const n = new Set(p); n.delete(mr.local_path); return n; });
       }
@@ -141,7 +141,7 @@ export function RepoPickerList({
               onMouseEnter={() => setCursor(i)}
               onClick={() => onToggle(mr)}
               disabled={busy}
-              title={mr.url}
+              title={mr.local_path}
             >
               <span className="wizard-repo-check">{busy ? '…' : sel ? '✓' : ' '}</span>
               <span className="wizard-repo-name">

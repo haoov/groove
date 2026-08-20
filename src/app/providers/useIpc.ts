@@ -101,7 +101,11 @@ function opLabel(opType: string): string {
     case OP.MR_CREATE: return 'Create merge request';
     case OP.MR_UPDATE: return 'Update merge request';
     case OP.MR_CLOSE: return 'Close merge request';
-    case OP.NOTION_STATUS: return 'Notion status update';
+    case OP.NOTION_PROPERTY: return 'Notion property update';
+    case OP.NOTION_HOURS: return 'Hours log';
+    case OP.NOTION_BODY: return 'Task description update';
+    case OP.TASK_CREATE: return 'Task creation';
+    case OP.TASK_ADD_REPO: return 'Add repo';
     case OP.TASK_CREATE_FROM_EXPLORER: return 'Task creation';
     default: return opType;
   }
@@ -111,7 +115,7 @@ function opLabel(opType: string): string {
 function opSource(opType: string): NotificationSource {
   if (opType.startsWith(OP_GIT_PREFIX)) return 'git';
   if (opType.startsWith(OP_MR_PREFIX)) return 'mr';
-  if (opType === OP.NOTION_STATUS || opType === OP.TASK_CREATE_FROM_EXPLORER) return 'notion';
+  if (opType.startsWith('notion.') || opType === OP.TASK_CREATE || opType === OP.TASK_CREATE_FROM_EXPLORER) return 'notion';
   return 'app';
 }
 
@@ -165,7 +169,14 @@ function successToastFor(opType: string, result: unknown): string | null {
     case OP.MR_CREATE: return 'Merge request created';
     case OP.MR_UPDATE: return 'Merge request updated';
     case OP.MR_CLOSE: return 'Merge request closed';
-    case OP.NOTION_STATUS: return 'Notion status updated';
+    case OP.NOTION_PROPERTY: return 'Notion property updated';
+    case OP.NOTION_HOURS: return 'Hours logged to Notion';
+    case OP.NOTION_BODY: return 'Task description updated';
+    case OP.TASK_ADD_REPO: return 'Repo added to the task';
+    case OP.TASK_CREATE: {
+      const t = result as { short_id?: string } | null;
+      return t?.short_id ? `Task ${t.short_id} created` : 'Task created';
+    }
     case OP.TASK_CREATE_FROM_EXPLORER: {
       const t = result as { short_id?: string } | null;
       return t?.short_id ? `Task ${t.short_id} created` : 'Task created';
@@ -392,6 +403,9 @@ export function useIpc() {
       // pty_started — route the new PTY into the session for its task
       track(
         await listen<PtyStartedEvent>(EVENT.PTY_STARTED, ({ payload }) => {
+          // The sign-in shell (AuthModal) owns its PTY directly — no session.
+          if (payload.pty_type === 'auth') return;
+          const ptyType = payload.pty_type;
           const s = useStore.getState();
           const sess = findSessionByTask(s, payload.task_id);
           if (!sess) return;
@@ -401,7 +415,7 @@ export function useIpc() {
           s.updateSession(sess.id, (ss) => ({
             ptySessions: [
               ...ss.ptySessions,
-              { sessionId: payload.session_id, taskId: payload.task_id, ptyType: payload.pty_type, label },
+              { sessionId: payload.session_id, taskId: payload.task_id, ptyType, label },
             ],
             activePtySessionId: payload.session_id,
           }));

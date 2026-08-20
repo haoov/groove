@@ -1,4 +1,4 @@
-// Confirmation-bridge op_type names — hand-mirrored with src-tauri/src/ops.rs.
+// Confirmation-bridge op_type names — hand-mirrored with src-tauri/src/approvals/ops.rs.
 
 export const OP = {
   GIT_COMMIT: 'git.commit',
@@ -12,7 +12,6 @@ export const OP = {
   MR_UPDATE: 'mr.update',
   MR_CLOSE: 'mr.close',
 
-  NOTION_STATUS: 'notion.status',
   NOTION_PROPERTY: 'notion.property',
   NOTION_HOURS: 'notion.hours',
   NOTION_BODY: 'notion.body',

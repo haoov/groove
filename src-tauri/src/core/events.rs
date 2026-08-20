@@ -1,7 +1,7 @@
 //! Tauri event names — the single source of truth for backend→frontend events.
 //!
 //! This is a hand-mirrored contract with the frontend: every name here must match
-//! `src/lib/events.ts`. Keep the two files in sync.
+//! `src/shared/ipc/events.ts`. Keep the two files in sync.
 
 // ── Workspace / task lifecycle ──────────────────────────────────────────────
 pub const WORKSPACE_STUB: &str = "workspace_stub";

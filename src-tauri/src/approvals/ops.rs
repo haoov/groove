@@ -1,6 +1,6 @@
 //! The op catalog: every approval-gated write's name AND its executor, side by
 //! side. Adding an op is one constant plus one `execute` arm here — the frontend
-//! renders it by the same name (`src/lib/ops.ts`, checked by the mirror test).
+//! renders it by the same name (`src/shared/ipc/ops.ts`, checked by the mirror test).
 
 use sqlx::SqlitePool;
 use tauri::AppHandle;
@@ -207,10 +207,10 @@ mod tests {
     /// frontend rework lands; ops.ts still carries known-dead entries.)
     #[test]
     fn every_op_exists_in_the_frontend_mirror() {
-        let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/lib/ops.ts");
-        let ts = std::fs::read_to_string(&ts).expect("src/lib/ops.ts must exist");
+        let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/shared/ipc/ops.ts");
+        let ts = std::fs::read_to_string(&ts).expect("src/shared/ipc/ops.ts must exist");
         for op in ALL {
-            assert!(ts.contains(&format!("'{op}'")), "op {op} missing from src/lib/ops.ts");
+            assert!(ts.contains(&format!("'{op}'")), "op {op} missing from src/shared/ipc/ops.ts");
         }
     }
 
