@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
