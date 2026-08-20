@@ -1,6 +1,6 @@
 // Shared, presentation-free logic for Home: opening sessions, ranking, labels.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore, sessionActions } from '../shared/store';
 import { ciGroup } from '../shared/lib/mr';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';

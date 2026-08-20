@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useStore } from '../shared/store';
 

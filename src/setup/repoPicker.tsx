@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { Search, GitBranch } from 'lucide-react';
 import type { Repo, MainRepo } from '../shared/ipc/ipc';
 import { matchRanges, Highlighted } from '../shared/lib/match';

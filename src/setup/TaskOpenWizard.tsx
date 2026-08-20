@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { useRepoPicker, RepoPickerList, CloneRepoForm } from './repoPicker';
 

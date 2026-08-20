@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { RotateCcw } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
 import { fitAndSync, focusHost } from '../shared/lib/terminalHost';

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../ipc/invoke';
 import type { StateCreator, StoreApi } from 'zustand';
 import type { WorktreeStatus } from '../../ipc/ipc';
 import {
@@ -116,17 +116,32 @@ function updateSessionState(id: string, recipe: (s: SessionState) => Partial<Ses
 
 /** Recompute git status for a session's active worktrees. Shared by the bound
  *  per-session action and the root `refreshStatusFor` (used by event handlers). */
+// One run per session at a time — overlapping callers fold into a trailing
+// re-run instead of stacking N-per-worktree git calls.
+const statusInFlight = new Set<string>();
+const statusQueued = new Set<string>();
+
 async function doRefreshStatus(id: string) {
+  if (statusInFlight.has(id)) {
+    statusQueued.add(id);
+    return;
+  }
   const sess = _get().sessions[id];
   if (!sess) return;
-  const entries = await Promise.allSettled(
-    sess.worktrees.map((w) => invoke<WorktreeStatus>('get_worktree_status', { worktreeId: w.id }))
-  );
-  const next: Record<string, WorktreeStatus> = {};
-  for (const r of entries) {
-    if (r.status === 'fulfilled') next[r.value.worktree_id] = r.value;
+  statusInFlight.add(id);
+  try {
+    const entries = await Promise.allSettled(
+      sess.worktrees.map((w) => invoke<WorktreeStatus>('get_worktree_status', { worktreeId: w.id }))
+    );
+    const next: Record<string, WorktreeStatus> = {};
+    for (const r of entries) {
+      if (r.status === 'fulfilled') next[r.value.worktree_id] = r.value;
+    }
+    updateSessionState(id, () => ({ worktreeStatus: next }));
+  } finally {
+    statusInFlight.delete(id);
+    if (statusQueued.delete(id)) void doRefreshStatus(id);
   }
-  updateSessionState(id, () => ({ worktreeStatus: next }));
 }
 
 /** Per-session actions, bound to a session id. Cached so references stay stable. */

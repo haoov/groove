@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../shared/ipc/invoke';
 import {
   useStore,
   getActiveSession,
@@ -17,6 +17,7 @@ import { disposeHost } from '../../shared/lib/terminalHost';
 import { deliverPtyOutput } from '../../shared/lib/ptyRegistry';
 import { endSession } from '../../shared/lib/endSession';
 import { refreshOnAgentActivity } from '../../shared/lib/refreshSession';
+import { takeCommitPush } from '../../shared/lib/gitChain';
 import type {
   AgentActivity,
   Annotation,
@@ -219,7 +220,12 @@ export function useIpc() {
           const ownerTaskId = payload.session_id ?? conf?.session_id ?? null;
           const owner = ownerTaskId ? findSessionByTask(s, ownerTaskId) : getActiveSession(s);
           s.removeConfirmation(payload.id);
+          // Commit & Push: the chained push exists only for a commit that landed.
+          const chainedPushWt = payload.op_type === OP.GIT_COMMIT ? takeCommitPush(payload.id) : undefined;
           if (!payload.approved) return;
+          if (chainedPushWt && !payload.error) {
+            invoke('push', { worktreeId: chainedPushWt }).catch((e) => s.setLastError(String(e)));
+          }
 
           // Approved but the op FAILED (the row is already gone — no retry): surface
           // the error instead of a success toast, but still refresh so any partial

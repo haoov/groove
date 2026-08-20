@@ -1,8 +1,14 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { HomeEntry, ReviewMr } from '../../ipc/ipc';
 import type { AppState, HomeSlice } from '../types';
 import { sessionTitle } from '../session';
+
+// Coalesce refreshHome: agent ticks, event handlers and the visibility effect
+// all call it — one snapshot fetch runs at a time, and callers landing mid-fetch
+// fold into ONE trailing re-run (keeping the strongest forceMr).
+let homeInFlight = false;
+let homeQueued: { forceMr: boolean } | null = null;
 
 export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) => ({
   // Review queue
@@ -27,6 +33,11 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
   homeSnapshot: null,
   homeLoading: false,
   refreshHome: async (forceMr = false) => {
+    if (homeInFlight) {
+      homeQueued = { forceMr: forceMr || (homeQueued?.forceMr ?? false) };
+      return;
+    }
+    homeInFlight = true;
     set({ homeLoading: true });
     try {
       set({ homeSnapshot: await invoke<HomeEntry[]>('get_home_snapshot', { forceMr }) });
@@ -38,7 +49,13 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
         detail: String(e),
       });
     } finally {
+      homeInFlight = false;
       set({ homeLoading: false });
+      if (homeQueued) {
+        const next = homeQueued;
+        homeQueued = null;
+        void get().refreshHome(next.forceMr);
+      }
     }
   },
 

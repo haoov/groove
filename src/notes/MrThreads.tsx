@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { GitPullRequest, Check } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
 import type { Mr, MrThread } from '../shared/ipc/ipc';

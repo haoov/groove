@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { Clock, Loader2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import type { TaskTime } from '../shared/ipc/ipc';

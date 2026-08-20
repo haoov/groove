@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../ipc/invoke';
 import { useStore, findSessionByTask } from '../store';
 import type { AgentState } from '../ipc/ipc';
 

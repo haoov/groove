@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { listen } from '@tauri-apps/api/event';
 import { Loader2, X } from 'lucide-react';
 import { useStore } from '../shared/store';

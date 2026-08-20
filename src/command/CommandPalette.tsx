@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import {
   Search, Compass, LayoutGrid, PanelsTopLeft, LayoutPanelLeft, PanelRight, SquareTerminal,
   GitBranch, GitCommitVertical, ArrowUpFromLine, ArrowDownToLine, GitPullRequestArrow,

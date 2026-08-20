@@ -5,7 +5,7 @@
 // module: the text must end in a newline to be submitted, and it must not arrive
 // before Claude's input is ready to receive it.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../ipc/invoke';
 import { bytesToB64 } from './ptyRegistry';
 import { useStore } from '../store';
 

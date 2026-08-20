@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { Loader2, Play, X } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
 import { focusHost } from '../shared/lib/terminalHost';

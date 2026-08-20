@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { AppNotification, AppState, NotificationsSlice } from '../types';
 

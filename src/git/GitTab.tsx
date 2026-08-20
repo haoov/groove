@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import {
   GitCommit, Upload, Download, ChevronsUp, ChevronDown, Plus, Minus, Circle, RotateCcw, AlertTriangle,
   GitPullRequest, GitCompare, Search, X,
@@ -9,6 +9,7 @@ import { useListNav } from '../shared/lib/useListNav';
 import type { CommitEntry, WorktreeStatus } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
+import { registerCommitPush } from '../shared/lib/gitChain';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
@@ -270,7 +271,8 @@ export function GitCommitPanel({
   commitOnly?: boolean;
   /** This branch already has an MR — hides "Create MR…". */
   hasMr?: boolean;
-  onCommit: (message: string) => Promise<void>;
+  /** Resolves to the commit confirmation's id (chains Commit & Push). */
+  onCommit: (message: string) => Promise<string | undefined | void>;
   onAction: (cmd: string) => void;
 }) {
   const [message, setMessage] = useState('');
@@ -333,9 +335,13 @@ export function GitCommitPanel({
       if (!hasMsg || committing) return;
       setCommitting(true);
       try {
-        await onCommit(message.trim());
+        const confirmationId = await onCommit(message.trim());
         setMessage('');
-        if (key === 'commit-push') onAction('push');
+        // The push posts only after the commit RESOLVES approved (useIpc) —
+        // posting both at once could push a tree whose commit was denied.
+        if (key === 'commit-push' && typeof confirmationId === 'string' && worktreeId) {
+          registerCommitPush(confirmationId, worktreeId);
+        }
       } catch { /* keep the message so it isn't lost */ }
       finally { setCommitting(false); }
     } else if (key === 'push') onAction('push');

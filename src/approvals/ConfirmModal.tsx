@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, ShieldOff, Clock, FileText, Tag } from 'lucide-react';
 import { useStore, findSessionByTask, sessionActions } from '../shared/store';
 import { OP } from '../shared/ipc/ops';

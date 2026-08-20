@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import { applyTheme, applyFontSize, applyFontFamily } from '../../lib/theme';
 import type { AppState, ConfigSlice } from '../types';

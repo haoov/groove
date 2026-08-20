@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { AgentActivity } from '../../ipc/ipc';
 import type { AppState, AgentSlice } from '../types';

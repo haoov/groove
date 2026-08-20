@@ -1,7 +1,7 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../ipc/invoke';
 import { useStore } from '../store';
 import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
 import { registerPtyHandler, unregisterPtyHandler, bytesToB64 } from './ptyRegistry';

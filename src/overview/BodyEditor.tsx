@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { Eye, Loader2, Pencil, X } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { Markdown } from '../shared/ui/Markdown';

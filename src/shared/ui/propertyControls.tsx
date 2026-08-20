@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../ipc/invoke';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { statusKey } from '../lib/taskStatus';
 import { priorityRank } from '../lib/taskStatus';

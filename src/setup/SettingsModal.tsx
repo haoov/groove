@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { X, Check, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, type ThemeName } from '../shared/ipc/ipc';

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { mergeExpansion, stepRange, type Gap } from '../shared/lib/diffGaps';
 import type { Hunk, FileLines } from '../shared/ipc/ipc';

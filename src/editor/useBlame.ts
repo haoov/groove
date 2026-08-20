@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { BlameLine } from '../shared/ipc/ipc';
 

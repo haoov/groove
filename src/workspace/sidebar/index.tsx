@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../shared/ipc/invoke';
 import { RotateCcw, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
 import { refreshSession } from '../../shared/lib/refreshSession';
@@ -141,10 +141,12 @@ export function Sidebar() {
   };
 
   const makeCommit = (worktreeId: string) => async (message: string) => {
-    if (!message.trim()) return;
+    if (!message.trim()) return undefined;
     try {
-      await invoke('commit', { worktreeId, message: message.trim() });
+      // The id of the posted confirmation — "Commit & Push" chains off it.
+      const confirmationId = await invoke<string>('commit', { worktreeId, message: message.trim() });
       setTimeout(refreshStatus, 1500);
+      return confirmationId;
     } catch (e) {
       setLastError(String(e));
       throw e;

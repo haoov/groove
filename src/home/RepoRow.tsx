@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ciGroup } from '../shared/lib/mr';
 import { openRepo } from './helpers';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import {
   GitPullRequest, GitMerge, GitPullRequestClosed, MessageSquare,
 } from 'lucide-react';

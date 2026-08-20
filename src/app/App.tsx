@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useIpc } from './providers/useIpc';
 import { useKeybindings } from './providers/useKeybindings';
 import { useTaskTimer } from '../sessions/useTaskTimer';

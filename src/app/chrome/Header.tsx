@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../shared/ipc/invoke';
 import { Layers, RefreshCw, PanelRight, ShieldAlert, Settings } from 'lucide-react';
 import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';

@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../ipc/invoke';
 import { useStore, sessionActions, isTerminalPane, type EditorTab, type SessionState } from '../store';
 import { disposeHost } from './terminalHost';
 

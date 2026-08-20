@@ -11,7 +11,7 @@ import { indentationMarkers } from '@replit/codemirror-indentation-markers';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { setupVimSearch } from './cm/vimSetup';
 import { viewBasics } from './cm/basics';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore, type GrepHighlight } from '../shared/store';
 import { cmLangFor } from './cmLang';
 import { catppuccinHighlight, cmChromeTheme, editorTheme } from './cm/theme';
