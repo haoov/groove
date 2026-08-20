@@ -1,4 +1,0 @@
-/* Session hosts. The tab strip that used to live here went with the header tabs —
-   sessions are listed in the dock now (styles/dock.css). */
-.session-workspaces { display: flex; }
-.session-host { display: flex; }

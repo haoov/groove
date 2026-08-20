@@ -15,6 +15,18 @@ import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/600.css';
 import '@fontsource/ibm-plex-mono/700.css';
 import './shared/styles/global.css';
+// Feature-owned stylesheets (the multi-owner files — home, sidebar, console,
+// overlays — still load from global.css until their split). Order preserved
+// from the old monolith; the cascade audit found no order dependence.
+import './app/layout.css';
+import './overview/explorer.css';
+import './git/diff.css';
+import './editor/editor.css';
+import './workspace/workspace.css';
+import './agent/agent.css';
+import './sessions/dock.css';
+import './overview/overview.css';
+import './setup/firstrun.css';
 import App from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

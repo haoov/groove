@@ -3,20 +3,10 @@
 @import './themes/latte.css';
 @import './themes/onedark.css';
 @import './themes/onelight.css';
-@import './layout.css';
-@import './session.css';
 @import './home.css';
-@import './explorer.css';
 @import './sidebar.css';
-@import './diff.css';
-@import './editor.css';
-@import './workspace.css';
-@import './agent.css';
 @import './console.css';
-@import './dock.css';
 @import './overlays.css';
-@import './overview.css';
-@import './firstrun.css';
 
 *, *::before, *::after {
   box-sizing: border-box;

@@ -191,3 +191,9 @@
 }
 .ws-crumb-dir:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 .ws-crumb-file { color: var(--gl-text-color-default); padding: 2px 4px; }
+
+/* ── Session workspaces host (from session.css) ── */
+/* Session hosts. The tab strip that used to live here went with the header tabs —
+   sessions are listed in the dock now (styles/dock.css). */
+.session-workspaces { display: flex; }
+.session-host { display: flex; }
