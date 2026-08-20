@@ -16,6 +16,7 @@ import './home/home.css';
 import './workspace/workspace.css';
 import './editor/editor.css';
 import './terminal/terminal.css';
+import './git/diff.css';
 import App from './app/App';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />);

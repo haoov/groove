@@ -2,6 +2,7 @@ import { useStore } from '../shared/store';
 import { FilesPanel } from '../files/FilesPanel';
 import { CodeEditor } from '../editor/CodeEditor';
 import { TerminalTab } from '../terminal/TerminalTab';
+import { ChangesView } from '../git/ChangesView';
 import { activeWorktree, type Tab } from '../sessions/sessions.slice';
 
 /** The session workspace: a sidebar panel + a content pane with the open tabs.
@@ -21,7 +22,8 @@ export function Workspace() {
 
   const cwd = activeWorktree(session)?.path;
 
-  const tabLabel = (t: Tab) => (t.kind === 'terminal' ? t.label ?? 'terminal' : t.path?.split('/').pop() ?? t.id);
+  const tabLabel = (t: Tab) =>
+    t.kind === 'terminal' || t.kind === 'changes' ? t.label ?? t.kind : t.path?.split('/').pop() ?? t.id;
 
   return (
     <div className="ws">
@@ -51,6 +53,8 @@ export function Workspace() {
             <div key={t.id} className="tabbody" style={{ display: t.id === session.activeTabId ? 'block' : 'none' }}>
               {t.kind === 'terminal' ? (
                 <TerminalTab sessionId={session.id} tabId={t.id} taskId={session.id} cwd={cwd} />
+              ) : t.kind === 'changes' ? (
+                <ChangesView session={session} />
               ) : t.content === null ? (
                 <div className="placeholder">Loading…</div>
               ) : (

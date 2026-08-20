@@ -12,11 +12,12 @@ export interface WorkspacePayload {
 }
 
 export type SidebarPanel = 'files' | 'git' | 'notes';
+export type DiffMode = 'vs-main' | 'vs-remote' | 'working';
 
-/** A tab in the content pane: an open file, or a terminal bound to a PTY. */
+/** A tab in the content pane: an open file, a terminal, or the diff review. */
 export interface Tab {
   id: string;
-  kind: 'file' | 'terminal';
+  kind: 'file' | 'terminal' | 'changes';
   // file
   repoId?: string;
   path?: string;
@@ -39,6 +40,9 @@ export interface SessionState {
   sidebar: SidebarPanel;
   tabs: Tab[];
   activeTabId: string | null;
+  diffMode: DiffMode;
+  /** Bumped to force the diff review to refetch (manual refresh, git ops). */
+  diffNonce: number;
 }
 
 export interface SessionsSlice {
@@ -50,6 +54,9 @@ export interface SessionsSlice {
   setSidebar: (sid: string, panel: SidebarPanel) => void;
   openFileTab: (sid: string, repoId: string, path: string) => Promise<void>;
   openTerminalTab: (sid: string) => void;
+  openChangesTab: (sid: string) => void;
+  setDiffMode: (sid: string, mode: DiffMode) => void;
+  bumpDiff: (sid: string) => void;
   setActiveTab: (sid: string, tabId: string) => void;
   closeTab: (sid: string, tabId: string) => void;
   patchTab: (sid: string, tabId: string, patch: Partial<Tab>) => void;
@@ -86,6 +93,8 @@ export const sessionsSlice: StateCreator<Store, [], [], SessionsSlice> = (set, g
         sidebar: existing?.sidebar ?? 'files',
         tabs: existing?.tabs ?? [],
         activeTabId: existing?.activeTabId ?? null,
+        diffMode: existing?.diffMode ?? 'vs-main',
+        diffNonce: existing?.diffNonce ?? 0,
       };
       return { sessions: { ...st.sessions, [id]: next }, activeSessionId: id };
     });
@@ -137,6 +146,17 @@ export const sessionsSlice: StateCreator<Store, [], [], SessionsSlice> = (set, g
       const tab: Tab = { id, kind: 'terminal', label: `terminal ${n}` };
       return { ...s, tabs: [...s.tabs, tab], activeTabId: id };
     })),
+
+  openChangesTab: (sid) =>
+    set((st) => upd(st, sid, (s) => {
+      const id = 'changes';
+      if (s.tabs.some((t) => t.id === id)) return { ...s, activeTabId: id };
+      const tab: Tab = { id, kind: 'changes', label: 'changes' };
+      return { ...s, tabs: [...s.tabs, tab], activeTabId: id };
+    })),
+
+  setDiffMode: (sid, mode) => set((st) => upd(st, sid, (s) => ({ ...s, diffMode: mode }))),
+  bumpDiff: (sid) => set((st) => upd(st, sid, (s) => ({ ...s, diffNonce: s.diffNonce + 1 }))),
 
   setActiveTab: (sid, tabId) => set((st) => upd(st, sid, (s) => ({ ...s, activeTabId: tabId }))),
 
