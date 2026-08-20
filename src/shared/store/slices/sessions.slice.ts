@@ -82,13 +82,8 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
         let activeSessionId = s.activeSessionId;
         let view = s.view;
         if (s.activeSessionId === id) {
-          // Only a session with a WORKSPACE can be the successor. The desk is
-          // always in sessionOrder and never closes, so picking it left the app in
-          // 'workspace' view with nothing to render — a blank page after finishing
-          // the last real session.
-          const workspaces = s.sessionOrder.filter((x) => s.sessions[x]?.kind !== 'desk');
-          const at = workspaces.indexOf(id);
-          const remaining = workspaces.filter((x) => x !== id);
+          const at = s.sessionOrder.indexOf(id);
+          const remaining = s.sessionOrder.filter((x) => x !== id);
           activeSessionId = remaining[at] ?? remaining[at - 1] ?? null;
           if (!activeSessionId) view = 'home';
         }

@@ -70,8 +70,7 @@ export function runCommand(id: CommandId): boolean {
 
     case 'session.next':
     case 'session.prev': {
-      // Skip the desk: it has no workspace to cycle to (see lib/desk.ts).
-      const order = st.sessionOrder.filter((id) => st.sessions[id]?.kind !== 'desk');
+      const order = st.sessionOrder;
       if (!order.length) return false;
       const idx = order.indexOf(st.activeSessionId ?? '');
       let target: string;
@@ -113,14 +112,13 @@ export function runCommand(id: CommandId): boolean {
 
     // 3-state like every other surface: closed → open+focus; open but elsewhere →
     // focus; open AND focused → close. Escape belongs to Claude, so closing is
-    // this chord's job. No session guard: on Home it addresses the desk.
+    // this chord's job.
     case 'agent.console':
       if (st.consoleOpen && isAgentFocused()) {
         st.setConsoleOpen(false);
         return true;
       }
-      // Only navigate when there IS a workspace to navigate to; on Home the desk
-      // agent is already the one on screen.
+      // Only navigate when there IS a workspace to navigate to.
       if (sess) st.setView('workspace');
       st.requestConsoleFocus();
       return true;

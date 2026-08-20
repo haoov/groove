@@ -55,12 +55,6 @@ const openMr = (ctx: PromptContext) =>
   'get_task_diff and get_commit_log first so the description matches what actually ' +
   "changed, then call create_mr. I'll approve it before it goes out.\n";
 
-// The desk has no worktrees and no diff, so its asks are about filing — never
-// about a change.
-const deskNewTask = () =>
-  'File a new Notion task. Call get_task_template first, then create_task. Ask me ' +
-  'what you need to know before filing — do not invent scope.\n';
-
 const reviewFixes = (ctx: PromptContext) =>
   `In session ${ctx.shortId}: read the open annotations with get_annotations and fix ` +
   'the ones that are real problems, in this worktree. Skip any you disagree with and ' +
@@ -69,9 +63,6 @@ const reviewFixes = (ctx: PromptContext) =>
 
 /** Actions offered per session kind — the pill shows only what makes sense. */
 const ACTIONS: Record<SessionKind, AgentAction[]> = {
-  desk: [
-    { id: 'desk-task', label: 'new task', title: 'Draft and file a Notion task', build: deskNewTask },
-  ],
   review: [
     { id: 'co-review', label: 'co-review', title: 'Summarize the MR and annotate real problems', build: coReview },
     { id: 'fix-notes', label: 'fix notes', title: 'Fix the open annotations', build: reviewFixes },

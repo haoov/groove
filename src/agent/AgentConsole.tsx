@@ -20,7 +20,7 @@ import type { AgentActivity } from '../shared/ipc/ipc';
  * columns read as one edge.
  *
  * It addresses whichever session its context names — the focused one in a
- * workspace, the desk on Home (App.tsx picks).
+ * workspace (App.tsx mounts it there only).
  */
 
 const MIN_WIDTH = 320;

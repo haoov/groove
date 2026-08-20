@@ -306,7 +306,9 @@ export interface PtySessionState {
 // SessionState so several can be open at once, each keeping its own tabs, diff,
 // annotations, and agent terminals alive.
 
-export type SessionKind = 'task' | 'explorer' | 'review' | 'desk';
+// The generated union — the desk is gone from the schema and the frontend.
+import type { SessionKind } from '../ipc/ipc';
+export type { SessionKind };
 
 export interface SessionState {
   id: string;            // session id (distinct from the task short_id)

@@ -1,5 +1,4 @@
 import { useStore, SessionIdContext } from '../shared/store';
-import { useDeskId } from '../sessions/desk';
 import { WorkspaceLayout } from './WorkspaceLayout';
 
 /**
@@ -19,10 +18,7 @@ export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
   // nothing instead. Content-sized in that mode, and still shrinkable.
   const agentMaximized = useStore((s) => s.agentMaximized);
   const grow = agentMaximized ? ('0 1 auto' as const) : 1;
-  // The desk is not a workspace: mounting one would build an editor, sidebar and
-  // overview for a session that has no repos and is never focused.
-  const deskId = useDeskId();
-  const sessionOrder = allSessions.filter((id) => id !== deskId);
+  const sessionOrder = allSessions;
 
   if (sessionOrder.length === 0) return null;
 

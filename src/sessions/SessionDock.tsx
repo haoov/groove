@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Code2, Compass, GitPullRequest, MessageSquare, X, type LucideIcon } from 'lucide-react';
+import { Code2, Compass, GitPullRequest, X, type LucideIcon } from 'lucide-react';
 import { useStore, type SessionKind, type SessionState } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { NotificationFeed } from '../notifications/NotificationCenter';
@@ -15,7 +15,7 @@ import type { AgentActivity } from '../shared/ipc/ipc';
  * switching). Three renderings of the same data drift; one does not.
  *
  * App-level rather than per-session, so it survives view changes and lists the
- * same sessions on Home. The desk is not among them: it is not something you
+ * same sessions on Home.
  * opened, it cannot be closed, and it is reached through the console on Home.
  *
  * Every value is read from the store (sessions, agentActivity). Nothing here
@@ -31,14 +31,12 @@ const KIND_LABEL: Record<SessionKind, string> = {
   task: 'task',
   explorer: 'expl',
   review: 'review',
-  desk: 'desk',
 };
 
 const KIND_ICON: Record<SessionKind, LucideIcon> = {
   task: Code2,
   explorer: Compass,
   review: GitPullRequest,
-  desk: MessageSquare,
 };
 
 export function SessionDock() {
@@ -63,13 +61,12 @@ export function SessionDock() {
   const listRef = useRef<HTMLDivElement>(null);
   const asideRef = useRef<HTMLElement>(null);
 
-  // The desk is excluded: it is not a session you opened, it cannot be closed,
   // and it is reached through the console on Home. Its agent still reports through
   // notifications.
   const rows = useMemo(
     () => sessionOrder
       .map((id) => sessions[id])
-      .filter((s): s is SessionState => !!s && s.kind !== 'desk'),
+      .filter((s): s is SessionState => !!s),
     [sessionOrder, sessions],
   );
 

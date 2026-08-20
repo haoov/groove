@@ -61,7 +61,7 @@ export function NotificationRow({
   /** Navigate when the event says where it belongs. */
   const go = () => {
     if (!n.goTo?.taskId) return;
-    // Shared with the activity rail's agent list — including the desk case.
+    // Shared with the activity rail's agent list.
     if (goToSession(n.goTo.taskId, { agent: n.goTo.agent })) {
       useStore.getState().setNotificationsOpen(false);
     }

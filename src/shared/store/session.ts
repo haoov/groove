@@ -96,7 +96,6 @@ const newSessionId = () => `sess-${++sessionSeq}`;
 export function sessionTitle(kind: SessionKind, task: Task | null): string {
   if (kind === 'explorer') return task?.title || 'Explorer';
   if (kind === 'review') return task?.title || 'Review';
-  if (kind === 'desk') return 'Desk';
   return task?.short_id ?? 'Untitled';
 }
 

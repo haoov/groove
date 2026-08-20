@@ -3,8 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { useIpc } from './providers/useIpc';
 import { useKeybindings } from './providers/useKeybindings';
 import { useTaskTimer } from '../sessions/useTaskTimer';
-import { ensureDeskSession, useDeskId } from '../sessions/desk';
-import { useStore, SessionIdContext } from '../shared/store';
+import { useStore } from '../shared/store';
 import { FirstRun } from '../setup/FirstRun';
 import { Header } from './chrome/Header';
 import { ActivityRail } from './chrome/ActivityRail';
@@ -67,19 +66,6 @@ function useHomeSnapshot() {
   }, [visible, sessionOrder, refreshHome]);
 }
 
-/**
- * The desk session, created once at startup so the console has something to
- * address on Home. Only the DB row and the store session — the agent process
- * starts when the console is opened, like every other session's.
- */
-function useDesk(): string | null {
-  const deskId = useDeskId();
-  useEffect(() => {
-    ensureDeskSession().catch(console.warn);
-  }, []);
-  return deskId;
-}
-
 export default function App() {
   useIpc();
   useKeybindings();
@@ -87,7 +73,6 @@ export default function App() {
   useActiveTaskSync();
   useHomeSnapshot();
   useTaskTimer();
-  const deskId = useDesk();
 
   const view = useStore((s) => s.view);
   const setConfig = useStore((s) => s.setConfig);
@@ -146,29 +131,16 @@ export default function App() {
           <SessionWorkspaces hidden={view !== 'workspace'} />
         </main>
         {/* The agent's own column, between the work and the session list, so the
-            two right-hand columns read as one edge. In a workspace it addresses
-            the focused session; on Home it addresses the desk, named through the
-            session context so it needs no notion of views itself. */}
-        {view === 'workspace' ? (
-          <AgentConsole />
-        ) : (
-          deskId && (
-            <SessionIdContext.Provider value={deskId}>
-              <AgentConsole />
-            </SessionIdContext.Provider>
-          )
-        )}
+            two right-hand columns read as one edge. It addresses the focused
+            session; Home is a pure dashboard — no agent there. */}
+        {view === 'workspace' && <AgentConsole />}
         {/* The session list. A sibling of main rather than inside it, so it is
             app-level: sessions and their agents exist on Home too. */}
         <SessionDock />
       </div>
-      {/* A shell on Home, addressing the desk. In a workspace the panes own the
-          terminals, so this is not mounted there. */}
-      {view !== 'workspace' && deskId && (
-        <SessionIdContext.Provider value={deskId}>
-          <TerminalConsole />
-        </SessionIdContext.Provider>
-      )}
+      {/* A scratch shell on Home (session-less — it owns its PTY). In a
+          workspace the panes own the terminals, so this is not mounted there. */}
+      {view !== 'workspace' && <TerminalConsole />}
       <StatusBar />
 
       {/* Overlays */}

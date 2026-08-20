@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { Eye, Loader2, Pencil, Sparkles } from 'lucide-react';
+import { Eye, Loader2, Pencil } from 'lucide-react';
 import { useStore } from '../shared/store';
-import { sendToAgent } from '../shared/lib/agentSend';
-import { ensureDeskSession } from '../sessions/desk';
 import { Markdown } from '../shared/ui/Markdown';
 import {
   AddField, MultiRow, Pill, draftRow, isHoursProperty, MULTI_KINDS, SINGLE_KINDS,
@@ -102,21 +100,7 @@ export function NewTaskModal({ onClose }: { onClose: () => void }) {
     }
   };
 
-  /** Hand drafting to the desk agent — always available, session or not. */
-  const askAgent = async () => {
-    const ask =
-      `File a new Notion task${title.trim() ? ` titled "${title.trim()}"` : ''}. ` +
-      'Call get_task_template first, then create_task. Ask me what you need to know ' +
-      'before filing — do not invent scope.\n';
-    try {
-      const deskId = await ensureDeskSession();
-      await sendToAgent(deskId, ask);
-      useStore.getState().requestConsoleFocus();
-      onClose();
-    } catch (e) {
-      setLastError(String(e));
-    }
-  };
+
 
   return (
     <div className="wizard-overlay" onClick={onClose}>
@@ -203,10 +187,6 @@ export function NewTaskModal({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="wizard-footer">
-            <button className="home-link" onClick={askAgent} title="Let the desk agent draft and file it">
-              <Sparkles size={11} strokeWidth={2} />
-              ask the agent
-            </button>
             <span className="composer-spacer" />
             <button className="btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn-primary" disabled={!title.trim() || saving} onClick={file}>
