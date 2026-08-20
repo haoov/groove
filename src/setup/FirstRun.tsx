@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
-import { DEFAULT_FONT_SIZE, type Config } from '../shared/ipc/ipc';
+import { DEFAULT_FONT_SIZE, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
 import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
 
 /**
@@ -17,37 +17,6 @@ import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
  * where to put worktrees. The rest of the config is written with defaults and can
  * be edited in the file, whose path is printed below.
  */
-
-export interface ToolCheck {
-  name: string;
-  path: string | null;
-  purpose: string;
-  required: boolean;
-  /** For the forge CLIs: logged in or not. Null when absent or not applicable. */
-  authed: boolean | null;
-}
-
-/** Shared with Settings, which shows the same check after setup. */
-export interface Environment {
-  config_path: string;
-  config_exists: boolean;
-  config_error: string | null;
-  tools: ToolCheck[];
-}
-
-/** What the database says about itself (mirror of setup.rs::DetectedSchema). */
-interface DetectedSchema {
-  title_property: string;
-  status_property: string;
-  priority_property: string | null;
-  sprint_property: string | null;
-  project_property: string | null;
-  assignee_property: string | null;
-  status_ready: string;
-  status_in_progress: string;
-  status_done: string;
-  status_options: string[];
-}
 
 export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const setLastError = useStore((s) => s.setLastError);

@@ -2,12 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useStore } from '../shared/store';
 import { mergeExpansion, stepRange, type Gap } from '../shared/lib/diffGaps';
-import type { Hunk } from '../shared/ipc/ipc';
+import type { Hunk, FileLines } from '../shared/ipc/ipc';
 
-interface FileLines {
-  lines: string[];
-  total: number;
-}
+
 
 /**
  * Fills the unshown stretches of one file's diff on demand.

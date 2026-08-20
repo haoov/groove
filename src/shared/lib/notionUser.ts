@@ -7,11 +7,8 @@
  * not be a dead end.
  */
 
-export interface NotionUser {
-  id: string;
-  name: string;
-  email: string | null;
-}
+import type { NotionUser } from '../ipc/ipc';
+export type { NotionUser };
 
 /** What the input offers and echoes: `Name · email`. */
 export function userLabel(u: NotionUser): string {

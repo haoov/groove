@@ -101,6 +101,9 @@ pub struct PropertyValue {
     pub name: String,
     pub kind: String,
     /// Canonical value (see the module docs). `null` when unset.
+    // `unknown` on the TS side: the default JsonValue binding imports from
+    // outside the Vite root, and the frontend treats it as opaque anyway.
+    #[ts(type = "unknown")]
     pub value: serde_json::Value,
     /// Read-only rendering, used for formulas, rollups, people, timestamps.
     pub display: String,

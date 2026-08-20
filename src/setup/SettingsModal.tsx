@@ -5,7 +5,7 @@ import { useStore } from '../shared/store';
 import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, type ThemeName } from '../shared/ipc/ipc';
 import { COMMANDS, type CommandId } from '../shared/lib/keybindings';
 import { chordFromEvent, chordLabel, isModifierOnly, isTypingCharacter } from '../shared/lib/keys';
-import type { Environment } from './FirstRun';
+import type { Environment } from '../shared/ipc/ipc';
 
 const FONT_MIN = 10;
 const FONT_MAX = 18;
