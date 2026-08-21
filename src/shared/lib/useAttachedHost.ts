@@ -15,11 +15,12 @@ import { ensureHost, fitAndSync } from './terminalHost';
 export function useAttachedHost(
   ptySessionId: string | null,
   containerRef: RefObject<HTMLDivElement | null>,
+  fontFamily?: string,
 ) {
   useEffect(() => {
     const container = containerRef.current;
     if (!ptySessionId || !container) return;
-    const host = ensureHost(ptySessionId);
+    const host = ensureHost(ptySessionId, fontFamily);
     container.appendChild(host.el);
 
     let raf1 = 0;
@@ -44,5 +45,5 @@ export function useAttachedHost(
       // leave a blank terminal there. Never dispose: the registry owns it.
       if (host.el.parentElement === container) host.el.remove();
     };
-  }, [ptySessionId, containerRef]);
+  }, [ptySessionId, containerRef, fontFamily]);
 }

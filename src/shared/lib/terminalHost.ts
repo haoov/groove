@@ -19,6 +19,8 @@ export interface TermHost {
   term: Terminal;
   fit: FitAddon;
   el: HTMLDivElement;
+  /** A fixed font, exempt from the config font-family change (the agent PTY). */
+  fontOverride?: string;
 }
 
 const hosts = new Map<string, TermHost>();
@@ -224,12 +226,12 @@ function reflow(sessionId: string, host: TermHost, opts: { fontSize?: number; fo
   host.term.refresh(0, host.term.rows - 1);
 }
 
-export function ensureHost(sessionId: string): TermHost {
+export function ensureHost(sessionId: string, fontFamily?: string): TermHost {
   const existing = hosts.get(sessionId);
   if (existing) return existing;
 
   const term = new Terminal({
-    fontFamily: termFontFamily(),
+    fontFamily: fontFamily ?? termFontFamily(),
     fontSize: termFontSize(),
     lineHeight: 1.2,
     theme: xtermThemeFromCss(),
@@ -256,7 +258,7 @@ export function ensureHost(sessionId: string): TermHost {
     term.write(bytes);
   });
 
-  const host: TermHost = { term, fit, el };
+  const host: TermHost = { term, fit, el, fontOverride: fontFamily };
   hosts.set(sessionId, host);
   return host;
 }
@@ -301,6 +303,6 @@ useStore.subscribe((state) => {
   if (family !== lastFamily) {
     lastFamily = family;
     const stack = termFontFamily();
-    for (const [id, h] of hosts) reflow(id, h, { fontFamily: stack });
+    for (const [id, h] of hosts) if (!h.fontOverride) reflow(id, h, { fontFamily: stack });
   }
 });

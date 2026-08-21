@@ -51,20 +51,27 @@
 .pty-pane .xterm-screen { background: transparent !important; }
 .pty-pane .xterm-viewport { overflow-y: auto !important; }
 
-/* "Allowing all" — deliberately the only warm-coloured thing in the header, and a
-   button rather than a label, because the way out has to be where the news is. */
-.console-trusted {
+/* Auto-approve toggle. Quiet when off; warm when on — approving blind is the one
+   state that must never be a surprise, so while it is on it is loud on screen. */
+.console-autoapprove {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   margin-left: auto;
   padding: 1px var(--space-2);
-  border: 1px solid color-mix(in srgb, var(--ctp-peach) 45%, transparent);
+  border: 1px solid var(--gl-border-color-default);
   border-radius: 100px;
-  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
-  color: var(--wb-warn);
+  background: none;
+  color: var(--gl-text-color-subtle);
   font-family: var(--font-ui);
   font-size: var(--gl-font-size-xs);
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.console-trusted:hover { background: color-mix(in srgb, var(--ctp-peach) 24%, transparent); }
+.console-autoapprove:hover { border-color: var(--gl-border-color-strong); color: var(--gl-text-color-default); }
+.console-autoapprove.on {
+  border-color: color-mix(in srgb, var(--ctp-peach) 45%, transparent);
+  background: color-mix(in srgb, var(--ctp-peach) 14%, transparent);
+  color: var(--wb-warn);
+}
+.console-autoapprove.on:hover { background: color-mix(in srgb, var(--ctp-peach) 24%, transparent); }

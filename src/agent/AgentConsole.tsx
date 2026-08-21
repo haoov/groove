@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Play, ShieldOff, X } from 'lucide-react';
+import { Loader2, Play, ShieldCheck, ShieldOff, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from './prompts';
@@ -27,6 +27,9 @@ const MIN_WIDTH = 320;
 const MAX_WIDTH = 900;
 const DEFAULT_WIDTH = 460;
 const WIDTH_KEY = 'wb.agentPaneWidth';
+
+// Claude Code's TUI needs a fixed monospace; keep the Plex family, force mono.
+const AGENT_FONT = "'IBM Plex Mono', ui-monospace, monospace";
 
 export function AgentConsole() {
   const sessionKey = useSession((s) => s.id);
@@ -80,7 +83,7 @@ export function AgentConsole() {
 
   // Attach the terminal only while actually showing it.
   const holding = visible ? agentPty : null;
-  useAttachedHost(holding, termRef);
+  useAttachedHost(holding, termRef, AGENT_FONT);
 
   useEffect(() => {
     if (holding) focusHost(holding);
@@ -139,18 +142,20 @@ export function AgentConsole() {
           <span className={`pill-dot ${state}`} />
           <span className="console-target">{activeTask.short_id}</span>
           <span className="console-status">{statusText(activity, !!agentPty, starting)}</span>
-          {/* Approving blind is not a state to discover later: while it is on, it is
-              on screen, and one click ends it. */}
-          {autoApprove && (
-            <button
-              className="console-trusted"
-              onClick={() => setAutoApprove(false)}
-              title="Every request from this session is approved automatically — click to start asking again"
-            >
-              <ShieldOff size={11} strokeWidth={2} />
-              allowing all
-            </button>
-          )}
+          {/* Auto-approve lives here now, not in the modal: an always-visible
+              toggle, warm while on so approving blind is never a hidden state. */}
+          <button
+            className={`console-autoapprove ${autoApprove ? 'on' : ''}`}
+            onClick={() => setAutoApprove(!autoApprove)}
+            title={autoApprove
+              ? 'Every request from this session is approved automatically — click to start asking again'
+              : 'Approve every request from this session automatically'}
+          >
+            {autoApprove
+              ? <ShieldOff size={11} strokeWidth={2} />
+              : <ShieldCheck size={11} strokeWidth={2} />}
+            {autoApprove ? 'allowing all' : 'allow all'}
+          </button>
           <button
             className="dock-close"
             onClick={() => setOpen(false)}

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, ShieldOff, Clock, FileText, Tag } from 'lucide-react';
-import { useStore, findSessionByTask, sessionActions } from '../shared/store';
+import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, Clock, FileText, Tag } from 'lucide-react';
+import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
 
 const OP_LABELS: Record<string, string> = {
@@ -307,11 +307,6 @@ export function ConfirmModal() {
   const approveRef = useRef<HTMLButtonElement>(null);
 
   const current = pendingConfirmations[0];
-  // The session this request belongs to, so "allow everything" can be scoped to it.
-  const ownerId = useStore((st) =>
-    current?.session_id ? findSessionByTask(st, current.session_id)?.id ?? null : null,
-  );
-  const setAutoApprove = (id: string, v: boolean) => sessionActions(id).setAutoApprove(v);
 
   // Reset error + seed editable fields whenever the active confirmation changes.
   useEffect(() => {
@@ -484,21 +479,6 @@ export function ConfirmModal() {
             Later <kbd>Esc</kbd>
           </button>
         </div>
-
-        {/* Offered here because this is where the cost of being asked is felt. It
-            approves THIS op too, and only this session; the agent console shows a
-            badge for as long as it is on. */}
-        {ownerId && (
-          <button
-            className="confirm-trust"
-            disabled={running}
-            onClick={() => { setAutoApprove(ownerId, true); resolve(true); }}
-            title="Stop asking for this session — every later request is approved automatically"
-          >
-            <ShieldOff size={11} strokeWidth={2} />
-            Approve, and allow everything from this session
-          </button>
-        )}
 
       </div>
     </div>
