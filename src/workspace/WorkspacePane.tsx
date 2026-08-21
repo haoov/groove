@@ -72,7 +72,8 @@ export function WorkspacePane({
             <div
               key={t.id}
               className={`ws-tab ${t.id === pane.activeTabId ? 'active' : ''} ${t.preview ? 'preview' : ''}`}
-              onMouseDown={() => setActiveTab(pane.id, t.id)}
+              onMouseDown={(e) => { if (e.button === 0) setActiveTab(pane.id, t.id); }}
+              onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(pane.id, t.id); } }}
               onContextMenu={
                 isPtyKind(t.kind)
                   ? (e) => { e.preventDefault(); setPtyMenu({ x: e.clientX, y: e.clientY, tab: t }); }
