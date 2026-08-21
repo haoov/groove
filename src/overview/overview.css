@@ -249,7 +249,7 @@
 .overview-section {
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-raised);
+  background: var(--gl-background-color-mantle);
   padding: var(--space-4);
   overflow: hidden;
   min-width: 0;
@@ -415,7 +415,7 @@
   align-items: stretch;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-raised);
+  background: var(--gl-background-color-mantle);
 }
 
 .props-cols {
@@ -781,7 +781,7 @@
   padding: var(--space-4) var(--space-4) var(--space-3);
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-raised);
+  background: var(--gl-background-color-mantle);
 }
 
 /* Legend sits on the border, fieldset-style — names the block without a heading row. */
