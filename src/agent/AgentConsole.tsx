@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Play, ShieldCheck, ShieldOff, X } from 'lucide-react';
+import { Loader2, Play, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from './prompts';
@@ -142,20 +142,6 @@ export function AgentConsole() {
           <span className={`pill-dot ${state}`} />
           <span className="console-target">{activeTask.short_id}</span>
           <span className="console-status">{statusText(activity, !!agentPty, starting)}</span>
-          {/* Auto-approve lives here now, not in the modal: an always-visible
-              toggle, warm while on so approving blind is never a hidden state. */}
-          <button
-            className={`console-autoapprove ${autoApprove ? 'on' : ''}`}
-            onClick={() => setAutoApprove(!autoApprove)}
-            title={autoApprove
-              ? 'Every request from this session is approved automatically — click to start asking again'
-              : 'Approve every request from this session automatically'}
-          >
-            {autoApprove
-              ? <ShieldOff size={11} strokeWidth={2} />
-              : <ShieldCheck size={11} strokeWidth={2} />}
-            {autoApprove ? 'allowing all' : 'allow all'}
-          </button>
           <button
             className="dock-close"
             onClick={() => setOpen(false)}
@@ -203,6 +189,20 @@ export function AgentConsole() {
               {a.label}
             </button>
           ))}
+          {/* Auto-approve, as a real switch — warm while on, so approving blind is
+              never a hidden state. Sits apart from the canned asks. */}
+          <button
+            className={`console-toggle ${autoApprove ? 'on' : ''}`}
+            role="switch"
+            aria-checked={autoApprove}
+            onClick={() => setAutoApprove(!autoApprove)}
+            title={autoApprove
+              ? 'Every request from this session is approved automatically — click to start asking again'
+              : 'Approve every request from this session automatically'}
+          >
+            <span className="console-toggle-track"><span className="console-toggle-knob" /></span>
+            Allow all
+          </button>
         </div>
       </aside>
     </>
