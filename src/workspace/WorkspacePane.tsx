@@ -56,10 +56,12 @@ export function WorkspacePane({
   const focusSignal = isActive ? editorFocusNonce : undefined;
   const repoName = (repoId: string) => activeRepos.find((r) => r.id === repoId)?.project ?? repoId;
 
-  // Right-click menu on PTY tabs: closing hides (session keeps running);
-  // killing for real is the explicit context action.
+  // Right-click menu on any tab: close / close others / left / right / all, plus
+  // Kill on a terminal (its plain close only hides — the session keeps running).
   const sessionKey = useSession((s) => s.id);
-  const [ptyMenu, setPtyMenu] = useState<{ x: number; y: number; tab: EditorTab } | null>(null);
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tab: EditorTab } | null>(null);
+
+  const closeMany = (ids: string[]) => { setTabMenu(null); ids.forEach((id) => closeTab(pane.id, id)); };
 
   return (
     <div
@@ -74,15 +76,11 @@ export function WorkspacePane({
               className={`ws-tab ${t.id === pane.activeTabId ? 'active' : ''} ${t.preview ? 'preview' : ''}`}
               onMouseDown={(e) => { if (e.button === 0) setActiveTab(pane.id, t.id); }}
               onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(pane.id, t.id); } }}
-              onContextMenu={
-                isPtyKind(t.kind)
-                  ? (e) => { e.preventDefault(); setPtyMenu({ x: e.clientX, y: e.clientY, tab: t }); }
-                  : undefined
-              }
+              onContextMenu={(e) => { e.preventDefault(); setTabMenu({ x: e.clientX, y: e.clientY, tab: t }); }}
               title={
                 t.kind === 'changes' ? `${repoName(t.repoId)} — all changes`
                 : t.kind === 'commit' ? `${repoName(t.repoId)} · commit ${t.label ?? t.sha?.slice(0, 7) ?? ''}`
-                : t.kind === 'terminal' ? 'Terminal — close hides; right-click to kill'
+                : t.kind === 'terminal' ? 'Terminal — close hides; right-click for options'
                 : `${repoName(t.repoId)} · ${t.filePath}`
               }
             >
@@ -207,20 +205,45 @@ export function WorkspacePane({
         )}
       </div>
 
-      {ptyMenu && (
-        <ContextMenu x={ptyMenu.x} y={ptyMenu.y} onClose={() => setPtyMenu(null)} className="ctx-menu">
-          <button
-            className="ctx-menu-item danger"
-            onClick={() => {
-              killPtyTab(sessionKey, pane.id, ptyMenu.tab);
-              setPtyMenu(null);
-            }}
-          >
-            <Skull size={13} strokeWidth={1.75} style={{ marginRight: 7 }} />
-            Kill terminal session
-          </button>
-        </ContextMenu>
-      )}
+      {tabMenu && (() => {
+        const ids = pane.tabs.map((t) => t.id);
+        const i = ids.indexOf(tabMenu.tab.id);
+        const others = ids.filter((id) => id !== tabMenu.tab.id);
+        const left = ids.slice(0, i);
+        const right = ids.slice(i + 1);
+        return (
+          <ContextMenu x={tabMenu.x} y={tabMenu.y} onClose={() => setTabMenu(null)} className="ctx-menu">
+            <button className="ctx-menu-item" onClick={() => closeMany([tabMenu.tab.id])}>
+              <X size={13} strokeWidth={1.75} style={{ marginRight: 7 }} />
+              Close
+            </button>
+            <button className="ctx-menu-item" disabled={others.length === 0} onClick={() => closeMany(others)}>
+              Close others
+            </button>
+            <button className="ctx-menu-item" disabled={right.length === 0} onClick={() => closeMany(right)}>
+              Close to the right
+            </button>
+            <button className="ctx-menu-item" disabled={left.length === 0} onClick={() => closeMany(left)}>
+              Close to the left
+            </button>
+            <button className="ctx-menu-item" onClick={() => closeMany(ids)}>
+              Close all
+            </button>
+            {isPtyKind(tabMenu.tab.kind) && (
+              <>
+                <div className="ctx-menu-sep" />
+                <button
+                  className="ctx-menu-item ctx-menu-item--danger"
+                  onClick={() => { killPtyTab(sessionKey, pane.id, tabMenu.tab); setTabMenu(null); }}
+                >
+                  <Skull size={13} strokeWidth={1.75} style={{ marginRight: 7 }} />
+                  Kill terminal session
+                </button>
+              </>
+            )}
+          </ContextMenu>
+        );
+      })()}
     </div>
   );
 }

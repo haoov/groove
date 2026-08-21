@@ -110,6 +110,9 @@
 
 .ctx-menu-item:hover { background: var(--gl-color-blue-100); color: var(--gl-text-color-strong); }
 
+.ctx-menu-item:disabled { opacity: 0.4; cursor: default; }
+.ctx-menu-item:disabled:hover { background: none; color: var(--gl-text-color-default); }
+
 .ctx-menu-item svg { flex-shrink: 0; color: var(--gl-text-color-muted); }
 
 .ctx-menu-item:hover svg { color: var(--gl-text-color-strong); }
