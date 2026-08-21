@@ -14,7 +14,6 @@ import { ConfirmModal } from '../approvals/ConfirmModal';
 import { CommandPalette } from '../command/CommandPalette';
 import { TaskOpenWizard } from '../setup/TaskOpenWizard';
 import { AddRepoModal } from '../setup/AddRepoModal';
-import { RepoSwitcher } from '../sessions/RepoSwitcher';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import { SettingsModal } from '../setup/SettingsModal';
 import { Toasts } from '../notifications/Toasts';
@@ -144,7 +143,6 @@ export default function App() {
       <CommandPalette />
       <TaskOpenWizard />
       {addRepoOpen && <AddRepoModal onClose={() => setAddRepoOpen(false)} />}
-      <RepoSwitcher />
       <SettingsModal />
       <Toasts />
 

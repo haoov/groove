@@ -29,7 +29,6 @@ import './notifications/notifications.css';
 import './setup/setup.css';
 import './command/command.css';
 import './approvals/approvals.css';
-import './sessions/sessions.css';
 import './overview/explorer.css';
 import './git/diff.css';
 import './editor/editor.css';

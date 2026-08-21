@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMMANDS, assignBinding, defaultKeymap, loadKeymap, saveKeymap, type Keymap } from './keybindings';
+import { COMMANDS, assignBinding, defaultKeymap, loadKeymap, saveKeymap, type CommandId, type Keymap } from './keybindings';
 import { chordLabel, chordMatches, isTypingCharacter, normalizeKey, type Chord } from './keys';
 
 // The keymap is the one piece of state that survives upgrades: a stored map from an
@@ -39,10 +39,12 @@ describe('defaultKeymap', () => {
     expect(doubled, `shared chords: ${JSON.stringify(doubled)}`).toEqual([]);
   });
 
-  it('leaves no command unbound', () => {
+  it('leaves every command bound except tab.close', () => {
     const m = defaultKeymap();
     const unbound = COMMANDS.filter((c) => (m[c.id] ?? []).length === 0).map((c) => c.id);
-    expect(unbound).toEqual([]);
+    // tab.close is intentionally unbound: Alt+W now cycles worktrees, and a tab
+    // closes with middle-click or its × button.
+    expect(unbound).toEqual(['tab.close']);
   });
 });
 
@@ -81,13 +83,12 @@ describe('loadKeymap', () => {
     expect(doubled, `shared chords: ${JSON.stringify(doubled)}`).toEqual([]);
   });
 
-  it('gives Alt+W to closing a file, not closing a pane', () => {
-    // The real regression: Alt+W was the pane-close chord before file tabs existed.
+  it('gives Alt+W to the worktree switcher, not tab or pane close', () => {
     const m = loadKeymap();
-    const altW = m['tab.close'].some((c) => c.key === 'w' && c.alt && !c.shift);
-    const paneAltW = (m['pane.close'] ?? []).some((c) => c.key === 'w' && c.alt && !c.shift);
-    expect(altW).toBe(true);
-    expect(paneAltW).toBe(false);
+    const hasAltW = (id: CommandId) => (m[id] ?? []).some((c) => c.key === 'w' && c.alt && !c.shift);
+    expect(hasAltW('worktree.switch')).toBe(true);
+    expect(hasAltW('tab.close')).toBe(false);
+    expect(hasAltW('pane.close')).toBe(false);
   });
 
   it('migrates a v3 map and drops the chords that changed owner', () => {
@@ -101,9 +102,9 @@ describe('loadKeymap', () => {
   });
 
   it('writes the migrated map back, so the migration runs once', () => {
-    localStorage.setItem('workbench.keymap.v3', JSON.stringify(defaultKeymap()));
+    localStorage.setItem('workbench.keymap.v4', JSON.stringify(defaultKeymap()));
     loadKeymap();
-    expect(store.has('workbench.keymap.v4')).toBe(true);
+    expect(store.has('workbench.keymap.v5')).toBe(true);
   });
 });
 
@@ -129,8 +130,8 @@ describe('assignBinding', () => {
 
   it('distinguishes chords that differ only by a modifier', () => {
     const m = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'w', alt: true, shift: true }]);
-    // Alt+Shift+W belonged to pane.close; Alt+W (tab.close) is untouched.
-    expect(m['tab.close'].some((c) => c.key === 'w' && c.alt && !c.shift)).toBe(true);
+    // Alt+Shift+W belonged to pane.close; Alt+W (worktree.switch) is untouched.
+    expect(m['worktree.switch'].some((c) => c.key === 'w' && c.alt && !c.shift)).toBe(true);
     expect((m['pane.close'] ?? []).some((c) => c.key === 'w' && c.alt && c.shift)).toBe(false);
   });
 });

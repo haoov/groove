@@ -43,18 +43,21 @@ function agentLine(a: AgentActivity): string {
   }
 }
 
-/** Chip + portalled dropdown shell shared by the three pickers. */
+/** Chip + portalled dropdown shell shared by the three pickers. Open state lives
+ *  in the store (`openPicker`) so the Alt+S/R/W shortcuts can drive it. */
 function Picker({
-  value, icon: Icon, open, setOpen, children, chipTitle, ariaLabel,
+  kind, value, icon: Icon, children, chipTitle, ariaLabel,
 }: {
+  kind: 'session' | 'repo' | 'worktree';
   value: React.ReactNode;
   icon: LucideIcon;
-  open: boolean;
-  setOpen: (v: boolean) => void;
   children: React.ReactNode;
   chipTitle?: string;
   ariaLabel: string;
 }) {
+  const open = useStore((s) => s.openPicker === kind);
+  const setOpenPicker = useStore((s) => s.setOpenPicker);
+  const setOpen = (v: boolean) => setOpenPicker(v ? kind : null);
   const chipRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -127,6 +130,12 @@ function SessionRows({ onPick }: { onPick: () => void }) {
 
   useEffect(() => { listRef.current?.focus(); }, []);
 
+  // Alt+S cycling switches the active session; keep the highlight on it.
+  useEffect(() => {
+    const i = rows.findIndex((r) => r.id === activeId);
+    if (i >= 0) setCursor(i);
+  }, [activeId, rows]);
+
   const pick = (s: SessionState) => {
     if (s.task?.short_id) goToSession(s.task.short_id);
     else useStore.getState().focusSession(s.id);
@@ -189,11 +198,7 @@ function SessionRows({ onPick }: { onPick: () => void }) {
 export function HeaderPickers() {
   const view = useStore((s) => s.view);
   const sessionCount = useStore((s) => s.sessionOrder.length);
-  // Alt+S opens the session picker from anywhere (the dock's old shortcut).
-  const sessionPickerOpen = useStore((s) => s.sessionPickerOpen);
-  const setSessionPickerOpen = useStore((s) => s.setSessionPickerOpen);
-  const [repoOpen, setRepoOpen] = useState(false);
-  const [wtOpen, setWtOpen] = useState(false);
+  const setOpenPicker = useStore((s) => s.setOpenPicker);
 
   const sessionId = useSession((s) => s.id);
   const sessionKind = useSession((s) => s.kind);
@@ -223,31 +228,29 @@ export function HeaderPickers() {
   return (
     <span className="header-pickers">
       <Picker
+        kind="session"
         ariaLabel="Sessions"
         value={sessionValue}
         icon={inWorkspace ? (KIND_ICON[sessionKind] ?? Code2) : Code2}
-        open={sessionPickerOpen}
-        setOpen={setSessionPickerOpen}
         chipTitle="Switch or close sessions (Alt+S)"
       >
-        <SessionRows onPick={() => setSessionPickerOpen(false)} />
+        <SessionRows onPick={() => setOpenPicker(null)} />
       </Picker>
 
       {inWorkspace && repos.length > 0 && (
         <Picker
+          kind="repo"
           ariaLabel="Repository"
           value={(activeRepo ?? repos[0])?.project ?? '—'}
           icon={FolderGit2}
-          open={repoOpen}
-          setOpen={setRepoOpen}
-          chipTitle="The repo git actions target"
+          chipTitle="The repo git actions target (Alt+R)"
         >
           <div className="hp-rows">
             {repos.map((r) => (
               <button
                 key={r.id}
                 className={`hp-row hp-row-simple ${r.id === activeRepoId ? 'active' : ''}`}
-                onClick={() => { setActiveRepoId(r.id); setRepoOpen(false); }}
+                onClick={() => { setActiveRepoId(r.id); setOpenPicker(null); }}
               >
                 <span className="hp-tick">{r.id === activeRepoId && <Check size={12} strokeWidth={2.5} />}</span>
                 <FolderGit2 size={12} strokeWidth={1.75} />
@@ -261,19 +264,18 @@ export function HeaderPickers() {
 
       {inWorkspace && repoWorktrees.length > 0 && (
         <Picker
+          kind="worktree"
           ariaLabel="Worktree"
           value={(activeWt ?? repoWorktrees[0])?.branch ?? '—'}
           icon={GitBranch}
-          open={wtOpen}
-          setOpen={setWtOpen}
-          chipTitle="The worktree git actions target"
+          chipTitle="The worktree git actions target (Alt+W)"
         >
           <div className="hp-rows">
             {repoWorktrees.map((w) => (
               <button
                 key={w.id}
                 className={`hp-row hp-row-simple ${w.id === activeWorktreeId ? 'active' : ''}`}
-                onClick={() => { setActiveWorktreeId(w.id); setWtOpen(false); }}
+                onClick={() => { setActiveWorktreeId(w.id); setOpenPicker(null); }}
               >
                 <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
                 <GitBranch size={12} strokeWidth={1.75} />

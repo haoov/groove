@@ -13,6 +13,9 @@ import type { LayoutNode, SplitDir } from '../lib/layout';
 import type { Chord } from '../lib/keys';
 import type { CommandId, Keymap } from '../lib/keybindings';
 
+/** Which header context picker is open, or none. */
+export type PickerKind = 'session' | 'repo' | 'worktree' | null;
+
 // ─── The app store's own contract ────────────────────────────────────────────
 
 /** A content-search hit the editor should mark: the needle, and the 1-based line it
@@ -66,17 +69,14 @@ export interface UiSlice {
    *  nonce makes repeat requests for the same path fire again. */
   revealDir: { path: string; nonce: number } | null;
   revealInTree: (path: string) => void;
-  /** The header session picker's popover (Alt+S) — the one list of open
-   *  sessions: switch on click, close with its ×. Replaced the session dock. */
-  sessionPickerOpen: boolean;
-  setSessionPickerOpen: (v: boolean) => void;
+  /** Which header context picker is open (Alt+S / Alt+R / Alt+W), or none. Only
+   *  one at a time. Pressing the same shortcut again cycles that list. */
+  openPicker: PickerKind;
+  setOpenPicker: (p: PickerKind) => void;
   /** Alt+Shift+R add-repo wizard. One flag, so the two buttons that used to hold
    *  their own local state and the keybinding all open the same instance. */
   addRepoOpen: boolean;
   setAddRepoOpen: (v: boolean) => void;
-  /** Alt+R repo switcher — which repo of the session the git commands act on. */
-  repoSwitcherOpen: boolean;
-  setRepoSwitcherOpen: (v: boolean) => void;
 
   // ── Settings ──────────────────────────────────────────────────────────────
   settingsOpen: boolean;

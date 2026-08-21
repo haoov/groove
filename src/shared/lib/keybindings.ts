@@ -30,6 +30,7 @@ export type CommandId =
   | 'tab.close'
   | 'session.switcher'
   | 'repo.switch'
+  | 'worktree.switch'
   | 'repo.add'
   | 'git.commitFocus'
   | 'editor.focus'
@@ -66,7 +67,7 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'view.tasks', label: 'Home', group: 'Navigation', defaults: [C('t', { alt: true })] },
   { id: 'view.notifications', label: 'Notifications', group: 'Navigation', defaults: [C('n', { ctrl: true })] },
   { id: 'session.next', label: 'Next session tab', group: 'Navigation', defaults: [C('n', { alt: true, shift: true })] },
-  { id: 'session.switcher', label: 'Sessions dock (open / focus)', group: 'Navigation', defaults: [C('s', { alt: true })] },
+  { id: 'session.switcher', label: 'Session switcher (open / cycle)', group: 'Navigation', defaults: [C('s', { alt: true })] },
   { id: 'session.prev', label: 'Previous session tab', group: 'Navigation', defaults: [C('p', { alt: true, shift: true })] },
 
   // Workspace
@@ -79,8 +80,10 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'pane.maximize', label: 'Maximize / restore pane', group: 'Workspace', defaults: [C('m', { alt: true })] },
   { id: 'tab.next', label: 'Next file tab', group: 'Workspace', defaults: [C('n', { alt: true })] },
   { id: 'tab.prev', label: 'Previous file tab', group: 'Workspace', defaults: [C('p', { alt: true })] },
-  { id: 'tab.close', label: 'Close file tab', group: 'Workspace', defaults: [C('w', { alt: true })] },
-  { id: 'repo.switch', label: 'Switch repo…', group: 'Workspace', defaults: [C('r', { alt: true })] },
+  // Alt+W now cycles worktrees; a tab closes with middle-click or its × button.
+  { id: 'tab.close', label: 'Close file tab', group: 'Workspace', defaults: [] },
+  { id: 'repo.switch', label: 'Repo switcher (open / cycle)', group: 'Workspace', defaults: [C('r', { alt: true })] },
+  { id: 'worktree.switch', label: 'Worktree switcher (open / cycle)', group: 'Workspace', defaults: [C('w', { alt: true })] },
   { id: 'repo.add', label: 'Add a repo to this session…', group: 'Workspace', defaults: [C('r', { alt: true, shift: true })] },
 
   // Editor
@@ -100,11 +103,11 @@ export function defaultKeymap(): Keymap {
   return m;
 }
 
-const LS_KEY = 'workbench.keymap.v4';
+const LS_KEY = 'workbench.keymap.v5';
 /** Older maps are read once and migrated. v1 → v2 resolved chords shared by two
  *  commands (they used to resolve silently by declaration order); v2 → v3 released
  *  chords whose owning command changed (see MOVED_CHORDS). */
-const LS_KEYS_OLD = ['workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
+const LS_KEYS_OLD = ['workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
 
 /**
  * Commands whose default chord moved to a different command, so a stored binding
@@ -114,8 +117,10 @@ const LS_KEYS_OLD = ['workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.ke
  * `repo.add` held Alt+R until `repo.switch` took it; add-repo is now Alt+Shift+R.
  * `pane.close` lost Alt+W to `tab.close` and was left with nothing, so it takes
  * its new Alt+Shift+W default rather than staying unbound.
+ * `tab.close` lost Alt+W to `worktree.switch`; it is unbound now (middle-click
+ * and the × button close a tab).
  */
-const MOVED_CHORDS: CommandId[] = ['repo.add', 'pane.close'];
+const MOVED_CHORDS: CommandId[] = ['repo.add', 'pane.close', 'tab.close'];
 
 /** A chord identifies one command. Same shape as `chordMatches` compares. */
 const chordKey = (c: Chord) =>
