@@ -216,7 +216,6 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
         <div className="upnext-table">
           <div className="upnext-head">
             <span />
-            <span />
             <span>code</span>
             <span>name</span>
             <span>state</span>
@@ -308,7 +307,6 @@ function ReviewRow({
       disabled={busy}
       title={`${mr.title}\n${mr.project_full}${sigil(mr)}${mr.iid}\n${mr.source_branch} → ${mr.target_branch}`}
     >
-      <span className="upnext-lead" aria-hidden />
       <span className="type-badge type-review">review</span>
       <span className="row-key">{sigil(mr)}{mr.iid}</span>
       <span className="row-titleline">
@@ -343,7 +341,6 @@ function TaskRow({
       onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       title={task.title}
     >
-      <span className="upnext-lead" aria-hidden />
       <span className="type-badge type-task">task</span>
       <span className="row-key">{task.short_id}</span>
       <span className="row-titleline">

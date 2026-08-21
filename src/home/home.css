@@ -281,9 +281,8 @@
 .upnext-head,
 .upnext-tr {
   display: grid;
-  /* spacer(caret) · type · code · name(fills) · state · owner — the first four
-     match .live-row so both tables line up column-for-column. */
-  grid-template-columns: 1.5rem 5rem 7rem minmax(0, 1fr) 8rem 7rem;
+  /* type · code · name(fills) · state · owner — same type/id widths as .live-row. */
+  grid-template-columns: 5rem 7rem minmax(0, 1fr) 8rem 7rem;
   align-items: center;
   column-gap: var(--space-4);
   width: 100%;
