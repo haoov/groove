@@ -1,27 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { Check, ChevronDown } from 'lucide-react';
 import { useStore } from '../shared/store';
 import {
-  AddField, MultiRow, Pill, hasValue, isHoursProperty,
-  MULTI_KINDS, SINGLE_KINDS, type Row,
+  AddField, PropField, hasValue, isHoursProperty, type Row,
 } from '../shared/ui/propertyControls';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
 /**
- * The task's properties as a rail of controls, in the app's own badge language:
- * filled pills, uppercase, with a caret that is ALWAYS visible. A property is
- * something you change, so it has to look like something you can change — hiding
- * the affordance until hover was the mistake in the previous pass.
+ * The task's properties as a framed strip of labelled columns (the mockup): each
+ * property is a small uppercase key over its value, divided by hairlines, with
+ * the "+ field" button pinned to the right. Every value opens a popover to edit —
+ * one interaction model for status, select, date, number and multi-value sets.
  *
- * Colour is reused, not invented: status takes the same colours as Home's queue
- * rows, priority the same tints as its `prio-badge`. Everything else stays neutral,
- * so the colour that IS there still means something.
- *
- * Single values sit in the rail; multi-value sets (components, tags) get a labelled
- * row beneath, because a pile of chips can't say which set it belongs to. Empty
- * properties live behind `+ field`. Every pill opens a popover — one interaction
- * model for select, status, date and number alike.
+ * Shown = properties that have a value (or were just revealed via + field), plus
+ * read-only computed fields; empty editable properties live behind + field.
+ * Hours is not here — it has its own block in the overview side column.
  */
 
 export function PropertyStrip({
@@ -34,13 +27,9 @@ export function PropertyStrip({
   onHoursAvailable?: (available: boolean) => void;
 }) {
   const setLastError = useStore((s) => s.setLastError);
-  // Which property IS priority comes from config, so its pill can take the
-  // priority colours without inferring them from the value.
-  const priorityProp = useStore((s) => s.config?.notion.properties.priority ?? null);
   const [schema, setSchema] = useState<TaskSchema | null>(null);
   const [values, setValues] = useState<PropertyValue[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [details, setDetails] = useState(false);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
   const load = () => {
@@ -72,87 +61,50 @@ export function PropertyStrip({
     }
   };
 
-  const groups = useMemo(() => {
+  const { shown, unset, hasHours } = useMemo(() => {
     const rows: Row[] = (schema?.properties ?? [])
-      .filter((p) => p.kind !== 'title')
+      .filter((p) => p.kind !== 'title' && !isHoursProperty(p.name, p.kind))
       .map((p) => ({ prop: p, current: values.find((v) => v.name === p.name) }));
-    const editable = rows.filter((r) => r.prop.editable);
-    const live = editable.filter((r) => hasValue(r.current) || revealed.has(r.prop.name));
+    // Columns, in schema order: editable props that carry a value (or were just
+    // revealed), plus read-only computed props that have something to show.
+    const shownRows = rows.filter((r) =>
+      r.prop.editable
+        ? (hasValue(r.current) || revealed.has(r.prop.name))
+        : !!r.current?.display,
+    );
+    const unsetRows = rows.filter(
+      (r) => r.prop.editable && !hasValue(r.current) && !revealed.has(r.prop.name),
+    );
     return {
-      single: live.filter(
-        (r) => SINGLE_KINDS.includes(r.prop.kind) && !isHoursProperty(r.prop.name, r.prop.kind),
-      ),
-      flags: live.filter((r) => r.prop.kind === 'checkbox'),
-      multi: live.filter((r) => MULTI_KINDS.includes(r.prop.kind)),
-      hoursRow: editable.find((r) => isHoursProperty(r.prop.name, r.prop.kind)),
-      unset: editable.filter((r) => !hasValue(r.current) && !revealed.has(r.prop.name)),
-      computed: rows.filter((r) => !r.prop.editable && r.current?.display),
+      shown: shownRows,
+      unset: unsetRows,
+      hasHours: (schema?.properties ?? []).some((p) => p.editable && isHoursProperty(p.name, p.kind)),
     };
   }, [schema, values, revealed]);
 
-  const hasHours = !!groups.hoursRow;
   useEffect(() => { onHoursAvailable?.(hasHours); }, [hasHours]);
 
   if (!schema) return null;
 
   return (
     <div className="props">
-      <div className="props-rail">
-        {groups.single.map((row) => (
-          <Pill
+      <div className="props-cols">
+        {shown.map((row) => (
+          <PropField
             key={row.prop.name}
             row={row}
             busy={busy === row.prop.name}
-            isPriority={row.prop.name === priorityProp}
             onChange={(v) => write(row.prop.name, v)}
+            onError={setLastError}
           />
         ))}
-        {groups.flags.map(({ prop, current }) => (
-          <button
-            key={prop.name}
-            className={`ppill flag ${current?.value ? 'on' : ''}`}
-            title={prop.name}
-            onClick={() => write(prop.name, !current?.value)}
-          >
-            {current?.value === true && <Check size={11} strokeWidth={3} />}
-            <span className="ppill-text">{prop.name}</span>
-          </button>
-        ))}
-        {groups.unset.length > 0 && (
+      </div>
+      {unset.length > 0 && (
+        <div className="props-add">
           <AddField
-            fields={groups.unset.map((r) => r.prop.name)}
+            fields={unset.map((r) => r.prop.name)}
             onPick={(name) => setRevealed((s) => new Set(s).add(name))}
           />
-        )}
-      </div>
-
-      {groups.multi.length > 0 && (
-        <div className="props-sets">
-          {groups.multi.map((row) => (
-            <MultiRow
-              key={row.prop.name}
-              row={row}
-              busy={busy === row.prop.name}
-              onChange={(v) => write(row.prop.name, v)}
-              onError={setLastError}
-            />
-          ))}
-        </div>
-      )}
-
-      {groups.computed.length > 0 && (
-        <div className="props-details">
-          <button className="props-details-toggle" onClick={() => setDetails((v) => !v)}>
-            {details ? 'hide' : 'details'} ({groups.computed.length})
-            <ChevronDown size={10} strokeWidth={2.5} className={details ? 'flip' : undefined} />
-          </button>
-          {details &&
-            groups.computed.map(({ prop, current }) => (
-              <span className="props-detail" key={prop.name}>
-                <span className="props-detail-label">{prop.name}</span>
-                <span className="props-detail-value">{current?.display}</span>
-              </span>
-            ))}
         </div>
       )}
     </div>

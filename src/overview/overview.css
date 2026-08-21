@@ -12,9 +12,9 @@
 }
 
 .overview-inner {
-  max-width: 62rem;
+  max-width: 70%;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-6) var(--space-8);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -405,26 +405,80 @@
   background: var(--gl-color-green-100);
 }
 
-/* ── Task properties: a rail of controls ──────────────────────────────────────
-   The app's own badge language (see .type-badge / .prio-badge on Home): filled
-   pills, uppercase, 600. Every pill carries a PERMANENT caret — a property is
-   something you change, so it has to look changeable without being hovered first.
-
-   Colour is reused rather than invented: status matches Home's queue-row colours,
-   priority matches its prio-badge tints. Dates and numbers stay neutral, so the
-   colour that is there still means something.                                */
+/* ── Task properties: a framed strip of labelled columns (the mockup) ──────────
+   Each property is a small uppercase key over its value, divided by hairlines;
+   the value opens a popover to edit. The "+ field" button is pinned to the right.
+   (The pill controls below are still used by the new-task modal.)             */
 
 .props {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  align-items: stretch;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-raised);
-  padding: var(--space-3) var(--space-4);
 }
 
-.props-rail { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.props-cols {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  padding: var(--space-3) 0;
+}
+
+.prop {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px var(--space-4);
+  min-width: 0;
+}
+
+.prop:not(:last-child) { border-right: 1px solid var(--gl-border-color-subtle); }
+
+.prop-k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-muted);
+  white-space: nowrap;
+}
+
+.prop-v {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 500;
+  color: var(--gl-text-color-default);
+}
+
+.prop-v-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.prop-v-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.prop-v-btn:hover .prop-v-text { color: var(--gl-color-blue-300); }
+
+.prop-v-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.props-add {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--gl-border-color-subtle);
+}
 
 /* ── Pills ──────────────────────────────────────────────────────────────────── */
 
@@ -717,40 +771,6 @@
   color: var(--gl-color-blue-300);
   border-color: color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
   background: var(--gl-color-blue-100);
-}
-
-/* ── Computed values ────────────────────────────────────────────────────────── */
-
-.props-details { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
-
-.props-details-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0;
-  background: none;
-  border: none;
-  font-family: var(--font-ui);
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-muted);
-  cursor: pointer;
-}
-
-.props-details-toggle:hover { color: var(--gl-color-blue-300); }
-
-.props-details-toggle .flip { transform: rotate(180deg); }
-
-.props-detail { display: inline-flex; align-items: baseline; gap: 5px; }
-
-.props-detail-label {
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-muted);
-}
-
-.props-detail-value {
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-subtle);
 }
 
 /* ── Time: its own block, because it is the one you use daily ───────────────── */

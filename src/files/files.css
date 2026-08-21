@@ -1,6 +1,6 @@
 /* Files tab */
 
-.files-list { display: flex; flex-direction: column; padding: var(--space-1) 0; }
+.files-list { display: flex; flex-direction: column; }
 
 .file-item {
   display: flex;

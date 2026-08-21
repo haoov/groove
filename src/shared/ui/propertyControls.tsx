@@ -250,6 +250,113 @@ export function MultiRow({
   );
 }
 
+/** A property as a labelled column (the overview's mockup strip): the name as a
+ *  small uppercase key over an editable value that opens the same popover the
+ *  pills use. Multi-value kinds join their titles; read-only kinds show text. */
+export function PropField({
+  row, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
+}: {
+  row: Row;
+  busy: boolean;
+  onChange: (v: unknown) => void;
+  onError: (e: string) => void;
+  debounce?: number;
+}) {
+  const { prop, current } = row;
+  const raw = current?.value;
+  const isMulti = MULTI_KINDS.includes(prop.kind);
+  const canEdit = prop.editable && prop.kind !== 'title';
+
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement | null>(null);
+  useOutsideClose(box, open, () => setOpen(false));
+
+  // Multi-value state (relation / multi_select): fetched options + debounced write.
+  const [options, setOptions] = useState<RelationOption[] | null>(
+    prop.kind === 'multi_select' ? prop.options.map((o) => ({ id: o, title: o })) : null,
+  );
+  const selected = isMulti ? ((raw as string[]) ?? []) : [];
+  const [draft, setDraft] = useState<string[]>(selected);
+  const timer = useRef<number | null>(null);
+  useEffect(() => { if (isMulti) setDraft(selected); }, [selected.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(() => {
+    if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;
+    invoke<RelationOption[]>('list_relation_options', { databaseId: prop.relation_db })
+      .then(setOptions).catch((e) => onError(String(e)));
+  }, [open, options, prop.kind, prop.relation_db, onError]);
+  const stageMulti = (ids: string[]) => {
+    setDraft(ids);
+    if (debounce === 0) return onChange(ids);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => onChange(ids), debounce);
+  };
+  const titleOf = (id: string) => options?.find((o) => o.id === id)?.title ?? id;
+
+  let display: string;
+  if (isMulti) display = draft.length ? draft.map(titleOf).join(', ') : '—';
+  else if (prop.kind === 'checkbox') display = raw === true ? 'Yes' : 'No';
+  else if (prop.kind === 'date') { const iso = String(raw ?? '').slice(0, 10); display = iso ? shortDate(iso) : '—'; }
+  else if (prop.kind === 'number') display = raw === null || raw === undefined ? '—' : `${raw}${unitFor(prop.name)}`;
+  else if (prop.kind === 'status' || prop.kind === 'select') display = raw ? String(raw) : '—';
+  else display = current?.display || '—';
+
+  const label = <span className="prop-k">{prop.name}</span>;
+
+  // Read-only: a formula/rollup/people field the app can't edit — just show it.
+  if (!canEdit) {
+    return <div className="prop">{label}<span className="prop-v">{display}</span></div>;
+  }
+
+  // Checkbox toggles in place; no popover needed.
+  if (prop.kind === 'checkbox') {
+    return (
+      <div className="prop">
+        {label}
+        <button className="prop-v prop-v-btn" onClick={() => onChange(!raw)}>
+          {busy ? <Loader2 size={11} className="spin" /> : display}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="prop">
+      {label}
+      <span className="ppop-anchor" ref={box}>
+        <button className="prop-v prop-v-btn" title={prop.name} onClick={() => setOpen(!open)}>
+          <span className="prop-v-text">{display}</span>
+          {busy
+            ? <Loader2 size={10} className="spin" />
+            : <ChevronDown size={10} strokeWidth={2.5} className="prop-v-caret" />}
+        </button>
+        {open && (
+          <div className="ppop">
+            <div className="ppop-head">{prop.name}</div>
+            {isMulti ? (
+              <OptionList
+                options={options ?? []}
+                selected={draft}
+                loading={options === null}
+                onPick={(id, on) => stageMulti(on ? [...draft, id] : draft.filter((d) => d !== id))}
+              />
+            ) : prop.kind === 'status' || prop.kind === 'select' ? (
+              <OptionList
+                options={prop.options.map((o) => ({ id: o, title: o }))}
+                selected={raw ? [String(raw)] : []}
+                onPick={(id, on) => { onChange(on ? id : null); setOpen(false); }}
+                allowClear={!!raw}
+              />
+            ) : (
+              <ValueEditor kind={prop.kind} value={raw} onCommit={(v) => { onChange(v); setOpen(false); }} />
+            )}
+          </div>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /** The option list every popover shows, with search once it gets long. */
 export function OptionList({
   options, selected, onPick, loading = false, allowClear = false,
