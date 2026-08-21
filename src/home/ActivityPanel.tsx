@@ -3,9 +3,9 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import type { ActivityDay } from '../shared/ipc/ipc';
 
-// A GitHub-style heatmap of tracked work: 7 weekday rows × N week columns, the
-// newest week on the right. All figures come from one get_activity_days call.
-const WEEKS = 13;
+// A heatmap of tracked work: 7 weekday columns × 7 week rows (a square), newest
+// week at the bottom. All figures come from one get_activity_days call.
+const WEEKS = 7;
 
 const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -75,32 +75,34 @@ export function ActivityPanel() {
 
   return (
     <section className="home-section">
-      <h2 className="home-heading">
-        Activity
-        <span className="home-heading-actions activity-summary">
-          <span><strong>{human(totalSeconds)}</strong> in {WEEKS} weeks</span>
-          <span><strong>{activeDays}</strong> active {activeDays === 1 ? 'day' : 'days'}</span>
-          <span><strong>{streak}</strong> day streak</span>
-        </span>
-      </h2>
+      <h2 className="home-heading">Activity</h2>
 
       <div className="activity-body">
         {days === null ? (
           <p className="home-empty">Loading…</p>
         ) : (
           <>
-            <div className="activity-weekdays">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => <span key={d}>{d}</span>)}
+            <div className="activity-stats">
+              <span className="activity-stat"><span className="k">Total</span><span className="v">{human(totalSeconds)}</span></span>
+              <span className="activity-stat"><span className="k">Active days</span><span className="v">{activeDays}</span></span>
+              <span className="activity-stat"><span className="k">Streak</span><span className="v">{streak}</span></span>
             </div>
-            <div className="activity-grid">
-              {cells.map((c) => (
-                <span
-                  key={c.key}
-                  className={`activity-cell lvl-${c.future ? 'x' : level(c.seconds)}`}
-                  title={c.future ? undefined : `${c.label} · ${c.seconds > 0 ? human(c.seconds) : 'nothing tracked'}`}
-                />
-              ))}
+
+            <div className="activity-cal">
+              <div className="activity-weekdays">
+                {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => <span key={d}>{d}</span>)}
+              </div>
+              <div className="activity-grid">
+                {cells.map((c) => (
+                  <span
+                    key={c.key}
+                    className={`activity-cell lvl-${c.future ? 'x' : level(c.seconds)}`}
+                    title={c.future ? undefined : `${c.label} · ${c.seconds > 0 ? human(c.seconds) : 'nothing tracked'}`}
+                  />
+                ))}
+              </div>
             </div>
+
             <div className="activity-legend">
               <span>Less</span>
               <span className="activity-cell lvl-0" />
