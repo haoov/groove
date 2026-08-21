@@ -341,14 +341,14 @@
 
 .markdown-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 
-/* Repos, each with its merge requests listed beneath. */
+/* Repos — the project name over its worktrees, each branch indented with its MR. */
 
 .overview-repos { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .overview-repo-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   padding: var(--space-3);
   background: var(--gl-background-color-subtle);
   border: 1px solid var(--gl-border-color-default);
@@ -359,13 +359,14 @@
 
 .overview-repo-name {
   font-size: var(--gl-font-size-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--gl-text-color-default);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Kept for the MR Details panel (mr-fact-branches) — no longer used by RepoRow. */
 .overview-repo-branch {
   font-size: var(--gl-font-size-xs);
   font-family: var(--font-mono);
@@ -373,32 +374,56 @@
   background: var(--gl-color-teal-100);
   padding: 2px var(--space-2);
   border-radius: var(--gl-border-radius-sm);
-  margin-left: auto;
-  flex-shrink: 0;
 }
 
-.overview-repo-mr {
+/* Worktree row: branch on the left, its MR beside it — tabbed under the repo,
+   bound by a hairline guide like Home's expanded sessions. */
+.overview-wt {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding-top: 2px;
-  text-decoration: none;
+  margin-left: 5px;
+  padding: 1px 0 1px var(--space-3);
+  border-left: 1px solid var(--gl-border-color-default);
   font-size: var(--gl-font-size-xs);
+  min-width: 0;
 }
 
-.overview-repo-mr svg { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+.overview-wt-icon { color: var(--gl-text-color-disabled); flex-shrink: 0; }
 
-.overview-repo-mr-num { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
+.overview-wt-branch {
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
 
-.overview-repo-mr:hover .overview-repo-mr-num { text-decoration: underline; }
+.overview-wt-empty { color: var(--gl-text-color-disabled); font-style: italic; }
 
-.overview-repo-mr-state { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.overview-wt-mr {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  text-decoration: none;
+}
 
-.overview-repo-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
+.overview-wt-mr svg { color: var(--gl-text-color-disabled); flex-shrink: 0; }
 
-.overview-repo-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
+.overview-wt-mr-num { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
 
-.overview-repo-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
+.overview-wt-mr:hover .overview-wt-mr-num { text-decoration: underline; }
+
+.overview-wt-mr-state { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+.overview-wt-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
+
+.overview-wt-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
+
+.overview-wt-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
 
 /* Approved MR — green, next to the state/draft/CI badges. */
 
