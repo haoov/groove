@@ -1,38 +1,45 @@
+import { GitPullRequest } from 'lucide-react';
 import type { Mr, Repo, Worktree } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 
 // Ticket bodies render through the shared Markdown component now (the backend
 // converts Notion blocks to markdown), so this file only holds overview parts.
 
-export function MrBadge({ mr }: { mr: Mr }) {
-  const stateColor: Record<string, string> = {
-    open:   'var(--gl-color-green-400)',
-    merged: 'var(--gl-color-purple-400)',
-    closed: 'var(--gl-color-red-400)',
-  };
-  const color = stateColor[mr.state] ?? 'var(--gl-text-color-subtle)';
+/** One MR line under its repo: number + state, opening the forge. */
+function MrLine({ mr }: { mr: Mr }) {
+  const num = `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
   return (
     <a
-      className="overview-mr"
+      className="overview-repo-mr"
       href={mr.url}
+      title={`${num} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
       onClick={(e) => { e.preventDefault(); openExternal(mr.url); }}
-      style={{ borderColor: color }}
     >
-      <span className="overview-mr-state" style={{ color }}>{mr.state}</span>
-      <span className="overview-mr-platform">{mr.platform}</span>
-      <span className="overview-mr-url">{mr.url}</span>
+      <GitPullRequest size={11} strokeWidth={1.75} />
+      <span className="overview-repo-mr-num">{num}</span>
+      <span className={`overview-repo-mr-state mr-state-${mr.state}`}>{mr.state}</span>
     </a>
   );
 }
 
 // ─── Repo row ─────────────────────────────────────────────────────────────────
 
-export function RepoRow({ repo, worktrees }: { repo: Repo; worktrees: Worktree[] }) {
+/** A repo with its branch, and its merge requests listed beneath it. */
+export function RepoRow({
+  repo, worktrees, mrs = [],
+}: {
+  repo: Repo;
+  worktrees: Worktree[];
+  mrs?: Mr[];
+}) {
   const wt = worktrees.find((w) => w.repo_id === repo.id);
   return (
-    <div className="overview-repo">
-      <span className="overview-repo-name">{repo.project}</span>
-      {wt && <span className="overview-repo-branch">{wt.branch}</span>}
+    <div className="overview-repo-block">
+      <div className="overview-repo">
+        <span className="overview-repo-name">{repo.project}</span>
+        {wt && <span className="overview-repo-branch">{wt.branch}</span>}
+      </div>
+      {mrs.map((mr) => <MrLine key={mr.id} mr={mr} />)}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
-import { MrBadge, RepoRow } from './parts';
+import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
 import { HoursWidget } from './HoursWidget';
 import { BodyEditor } from './BodyEditor';
@@ -174,23 +174,22 @@ export function TaskOverview() {
               <section className="overview-section">
                 <h3 className="overview-section-title">Repositories</h3>
                 <div className="overview-repos">
-                  {activeRepos.map((repo) => (
-                    <RepoRow key={repo.id} repo={repo} worktrees={activeWorktrees} />
-                  ))}
+                  {activeRepos.map((repo) => {
+                    const wtIds = new Set(
+                      activeWorktrees.filter((w) => w.repo_id === repo.id).map((w) => w.id),
+                    );
+                    return (
+                      <RepoRow
+                        key={repo.id}
+                        repo={repo}
+                        worktrees={activeWorktrees}
+                        mrs={allMrs.filter((m) => wtIds.has(m.worktree_id))}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             )}
-
-            <section className="overview-section">
-              <h3 className="overview-section-title">Merge Requests</h3>
-              {allMrs.length === 0 ? (
-                <p className="overview-empty-body">No open MRs.</p>
-              ) : (
-                <div className="overview-mrs">
-                  {allMrs.map((mr) => <MrBadge key={mr.id} mr={mr} />)}
-                </div>
-              )}
-            </section>
           </aside>
         </div>
       </div>
