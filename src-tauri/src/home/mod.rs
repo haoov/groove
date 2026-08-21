@@ -90,7 +90,7 @@ async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeE
     Ok(futures_util::future::join_all(
         entries.into_iter().map(|(entry, repo_rows)| async move {
             let repos = futures_util::future::join_all(
-                repo_rows.into_iter().map(|row| repo_state(row, force_mr)),
+                repo_rows.into_iter().map(|row| repo_state(row, force_mr, pool)),
             )
             .await;
             HomeEntry { repos, ..entry }
@@ -123,7 +123,7 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
     entries
 }
 
-async fn repo_state(row: HomeRow, force_mr: bool) -> HomeRepo {
+async fn repo_state(row: HomeRow, force_mr: bool, pool: &SqlitePool) -> HomeRepo {
     let base = HomeRepo {
         repo_id: row.repo_id.clone().unwrap_or_default(),
         project: row.project.clone().unwrap_or_default(),
@@ -148,7 +148,7 @@ async fn repo_state(row: HomeRow, force_mr: bool) -> HomeRepo {
         return base;
     };
 
-    let mr = mr_signals_for(&row, force_mr).await;
+    let mr = mr_signals_for(&row, force_mr, pool).await;
 
     if !std::path::Path::new(&path).exists() {
         return HomeRepo {
@@ -197,7 +197,7 @@ async fn repo_state(row: HomeRow, force_mr: bool) -> HomeRepo {
     }
 }
 
-async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
+async fn mr_signals_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<HomeMr> {
     let (mr_id, platform, remote_id, url, state) = (
         row.mr_id.clone()?,
         row.mr_platform.clone()?,
@@ -213,12 +213,22 @@ async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
         local_path: row.repo_local_path.clone()?,
     };
     let sig = crate::forge::mr_signals(&repo, &mr_id, &remote_id, force_mr).await;
+
+    // Persist the live state when it moved (only on a successful fetch, so a
+    // transient forge error never clobbers a good row). The stored value goes
+    // stale after a merge — this keeps every surface reading `mrs.state` correct.
+    let live = sig.state.clone();
+    if let Some(fresh) = &live {
+        if *fresh != state {
+            let _ = store::mrs::set_state(pool, &mr_id, fresh).await;
+        }
+    }
+
     Some(HomeMr {
         id: mr_id,
         platform,
         remote_id,
-        // Prefer the live state; fall back to the stored row if the fetch failed.
-        state: sig.state.clone().unwrap_or(state),
+        state: live.unwrap_or(state),
         url,
         ci: sig.ci,
         unresolved: sig.unresolved,
