@@ -193,8 +193,20 @@ export function FilesTab({
         }
         break;
       }
+      case 'copyRelPath':
+        if (node) copyPath(node.path, 'Relative path copied');
+        break;
+      case 'copyAbsPath':
+        if (node) copyPath(joinPath(wtPath, node.path), 'Absolute path copied');
+        break;
       case 'delete': if (node) setConfirmDel(node); break;
     }
+  };
+
+  const copyPath = (text: string, done: string) => {
+    invoke('copy_to_clipboard', { text })
+      .then(() => notify({ kind: 'success', source: 'files', title: done, detail: text }))
+      .catch((e) => setLastError(String(e)));
   };
 
   const doDelete = () => {

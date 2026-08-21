@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  FilePlus, FolderPlus, Pencil, Copy, Scissors, ClipboardPaste, Files, Trash2,
+  FilePlus, FolderPlus, Pencil, Copy, Scissors, ClipboardPaste, Files, Trash2, Link2,
 } from 'lucide-react';
 import type { TreeNode } from './tree';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 
 export type MenuAction =
-  | 'newFile' | 'newFolder' | 'rename' | 'duplicate' | 'copy' | 'cut' | 'paste' | 'delete';
+  | 'newFile' | 'newFolder' | 'rename' | 'duplicate' | 'copy' | 'cut' | 'paste' | 'delete'
+  | 'copyRelPath' | 'copyAbsPath';
 
 export interface TreeClipboard { path: string; mode: 'copy' | 'cut' }
 
@@ -34,6 +35,9 @@ export function TreeContextMenu({
     if (isFile) items.push({ action: 'duplicate', label: 'Duplicate', Icon: Files });
     items.push({ action: 'copy', label: 'Copy', Icon: Copy });
     items.push({ action: 'cut', label: 'Cut', Icon: Scissors });
+    items.push('sep');
+    items.push({ action: 'copyRelPath', label: 'Copy relative path', Icon: Link2 });
+    items.push({ action: 'copyAbsPath', label: 'Copy absolute path', Icon: Link2 });
   }
   if (hasClipboard) items.push({ action: 'paste', label: 'Paste', Icon: ClipboardPaste });
   if (node) {

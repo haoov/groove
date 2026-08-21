@@ -5,9 +5,11 @@ import { Sidebar } from './sidebar';
 import { Workspace } from './Workspace';
 import { OverviewView } from '../overview/OverviewView';
 
-const SIDEBAR_MIN = 200;
-const SIDEBAR_MAX = 560;
-const SIDEBAR_DEFAULT_PCT = 0.26;
+// Width is a percentage of the workspace, with a rem floor so it stays usable.
+const SIDEBAR_DEFAULT_PCT = 18;
+const SIDEBAR_MIN_PCT = 12;
+const SIDEBAR_MAX_PCT = 40;
+const SIDEBAR_MIN_PX = 176; // ~11rem — hard floor for the drag
 
 /** One session's workspace, by mode: the Overview page (full width, no sidebar
  *  band), or sidebar + the recursive tab/pane surface. Agent and terminal live
@@ -19,9 +21,7 @@ export function WorkspaceLayout() {
   // Collapsed by its own shortcut (pressing panel.* while already focused there).
   const collapsed = useSession((s) => s.sidebarCollapsed);
 
-  const [sidebarWidth, setSidebarWidth] = useState(() =>
-    Math.round(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, window.innerWidth * SIDEBAR_DEFAULT_PCT)))
-  );
+  const [sidebarPct, setSidebarPct] = useState(SIDEBAR_DEFAULT_PCT);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -32,7 +32,11 @@ export function WorkspaceLayout() {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return;
       const delta = e.clientX - startX.current;
-      setSidebarWidth(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, startSize.current + delta)));
+      // Convert the pixel drag to a percentage of the workspace row.
+      const container = wrapRef.current?.parentElement?.getBoundingClientRect().width ?? window.innerWidth;
+      const px = Math.max(SIDEBAR_MIN_PX, startSize.current + delta);
+      const pct = (px / container) * 100;
+      setSidebarPct(Math.max(SIDEBAR_MIN_PCT, Math.min(SIDEBAR_MAX_PCT, pct)));
     };
     const onUp = () => {
       if (!dragging.current) return;
@@ -53,7 +57,7 @@ export function WorkspaceLayout() {
     startX.current = e.clientX;
     // The rendered width, not the stored one: in a window too narrow for every
     // column this has been shrunk, and dragging from the stored value would jump.
-    startSize.current = wrapRef.current?.getBoundingClientRect().width ?? sidebarWidth;
+    startSize.current = wrapRef.current?.getBoundingClientRect().width ?? SIDEBAR_MIN_PX;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
@@ -73,7 +77,7 @@ export function WorkspaceLayout() {
     <div className="workspace">
       {!collapsed && (
         <>
-          <div className="sidebar-wrapper" ref={wrapRef} style={{ width: sidebarWidth, minWidth: SIDEBAR_MIN }}>
+          <div className="sidebar-wrapper" ref={wrapRef} style={{ width: `${sidebarPct}%`, minWidth: `${SIDEBAR_MIN_PX}px` }}>
             <Sidebar />
           </div>
           <div className="resize-handle" onMouseDown={startSidebarDrag} />
