@@ -31,15 +31,27 @@
 /* Full width — rows fill the pane. The trailing info stays aligned into a column
    because it carries its own min-width, not because the container is narrow. */
 
-.home-section { display: flex; flex-direction: column; width: 100%; }
+/* Each section is a panel, cohesive with the overview and sidebar: a hairline
+   card with a header strip. The outline lives INSIDE the panel now. */
+
+.home-section {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-raised);
+  overflow: hidden;
+}
 
 .home-heading {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: 0 0 var(--space-2);
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--gl-border-color-subtle);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-subtle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 600;
@@ -86,12 +98,13 @@
 .home-empty {
   font-size: var(--home-text);
   color: var(--gl-text-color-disabled);
-  padding: var(--space-2) 0 var(--space-3);
+  padding: var(--space-4);
+  margin: 0;
 }
 
 /* ── Rows ───────────────────────────────────────────────────────────────────── */
 
-.home-rows { display: flex; flex-direction: column; }
+.home-rows { display: flex; flex-direction: column; padding: var(--space-2); }
 
 .home-row {
   display: grid;
@@ -185,7 +198,7 @@
 
 /* ── Up next: one table — badge · code · name · state · owner ───────────────── */
 
-.upnext-table { display: flex; flex-direction: column; }
+.upnext-table { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); }
 
 .upnext-head,
 .upnext-tr {
@@ -226,6 +239,10 @@
 .upnext-tr:disabled { opacity: 0.6; cursor: default; }
 
 .upnext-tr.is-review .row-key { color: var(--gl-color-blue-300); font-weight: 600; }
+
+/* Hidden rows, shown only while "hidden (N)" is revealed. */
+.upnext-tr.dimmed { opacity: 0.42; }
+.upnext-tr.dimmed:hover { opacity: 0.7; }
 
 .upnext-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -327,13 +344,11 @@
 .live-group {
   display: flex;
   flex-direction: column;
-  margin: var(--space-2) 0;
-  padding-bottom: var(--space-1);
-  background: rgba(var(--gl-elevate), 0.028);
+  padding-bottom: 2px;
   border-radius: var(--gl-border-radius-base);
 }
 
-.live-group:first-child { margin-top: 0; }
+.live-group + .live-group { margin-top: 2px; }
 
 .live-detail {
   display: flex;

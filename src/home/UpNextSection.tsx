@@ -15,6 +15,17 @@ import type { MainRepo, ReviewMr, Task } from '../shared/ipc/ipc';
 
 const UPNEXT_PREVIEW = 10;
 
+// Rows you dismissed with right-click stay hidden across reloads until you reveal
+// them — they are noise you already triaged, not gone for good.
+const HIDDEN_KEY = 'wb.homeHidden';
+function loadHidden(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')); }
+  catch { return new Set(); }
+}
+function saveHidden(keys: Set<string>) {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
+}
+
 type UpNextItem =
   | { kind: 'review'; key: string; mr: ReviewMr }
   | { kind: 'task'; key: string; task: Task };
@@ -39,13 +50,24 @@ export function UpNextSection() {
   const setLastError = useStore((s) => s.setLastError);
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; task: Task } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; item: UpNextItem } | null>(null);
   const [composing, setComposing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('');
   // Approved reviews are soft-hidden: someone signed off, so they are no longer
   // waiting on YOU — but they stay one toggle away until they merge.
   const [showApproved, setShowApproved] = useState(false);
+  const [hidden, setHidden] = useState<Set<string>>(loadHidden);
+  const [showHidden, setShowHidden] = useState(false);
+
+  const toggleHidden = (key: string) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      saveHidden(next);
+      return next;
+    });
+  };
 
   const loadTasks = useCallback(async () => {
     setSyncStatus('syncing');
@@ -72,7 +94,7 @@ export function UpNextSection() {
     return keys;
   }, [snapshot]);
 
-  const { items, approvedHidden } = useMemo(() => {
+  const { items, approvedHidden, hiddenCount } = useMemo(() => {
     const pending = (reviewQueue ?? []).filter(
       (mr) => !startedReviews.has(`${mr.project_full.split('/').pop()}!${mr.iid}`),
     );
@@ -93,8 +115,14 @@ export function UpNextSection() {
     let all = [...reviews, ...queued];
     const needle = filter.trim().toLowerCase();
     if (needle) all = all.filter((i) => itemText(i).includes(needle));
-    return { items: all, approvedHidden: showApproved ? 0 : approvedCount };
-  }, [reviewQueue, startedReviews, snapshot, tasks, filter, showApproved]);
+    const hiddenN = all.filter((i) => hidden.has(i.key)).length;
+    const visible = showHidden ? all : all.filter((i) => !hidden.has(i.key));
+    return {
+      items: visible,
+      approvedHidden: showApproved ? 0 : approvedCount,
+      hiddenCount: hiddenN,
+    };
+  }, [reviewQueue, startedReviews, snapshot, tasks, filter, showApproved, hidden, showHidden]);
 
   const openReview = async (mr: ReviewMr) => {
     const key = `${mr.project_full}!${mr.iid}`;
@@ -148,6 +176,15 @@ export function UpNextSection() {
               {showApproved ? 'hide approved' : `approved (${approvedHidden})`}
             </button>
           )}
+          {(hiddenCount > 0 || showHidden) && (
+            <button
+              className={`home-link${showHidden ? ' active' : ''}`}
+              onClick={() => setShowHidden((v) => !v)}
+              title="Rows you hid with right-click — reveal them to unhide"
+            >
+              {showHidden ? 'done' : `hidden (${hiddenCount})`}
+            </button>
+          )}
           {/* The review queue is polled every ~5 min, which is too slow when you
               know someone just asked. Refreshes the tasks too — both feed this list. */}
           <button
@@ -196,13 +233,16 @@ export function UpNextSection() {
                 key={item.key}
                 mr={item.mr}
                 busy={busy === item.key}
+                dimmed={hidden.has(item.key)}
                 onOpen={() => openReview(item.mr)}
+                onMenu={(x, y) => setMenu({ x, y, item })}
               />
             ) : (
               <TaskRow
                 key={item.key}
                 task={item.task}
-                onMenu={(x, y) => setMenu({ x, y, task: item.task })}
+                dimmed={hidden.has(item.key)}
+                onMenu={(x, y) => setMenu({ x, y, item })}
               />
             ),
           )}
@@ -216,21 +256,35 @@ export function UpNextSection() {
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)} className="context-menu">
-          <button className="context-item" onClick={() => { openTask(menu.task.short_id); setMenu(null); }}>
-            Open workspace
-          </button>
-          <button
-            className="context-item"
-            onClick={async () => {
-              try {
-                await invoke('sync_task', { shortId: menu.task.short_id });
-              } catch (e) {
-                setLastError(String(e));
-              }
-              setMenu(null);
-            }}
-          >
-            Sync from Notion
+          {menu.item.kind === 'task' ? (
+            <>
+              <button className="context-item" onClick={() => { openTask(menu.item.kind === 'task' ? menu.item.task.short_id : ''); setMenu(null); }}>
+                Open workspace
+              </button>
+              <button
+                className="context-item"
+                onClick={async () => {
+                  const task = menu.item.kind === 'task' ? menu.item.task : null;
+                  if (task) {
+                    try {
+                      await invoke('sync_task', { shortId: task.short_id });
+                    } catch (e) {
+                      setLastError(String(e));
+                    }
+                  }
+                  setMenu(null);
+                }}
+              >
+                Sync from Notion
+              </button>
+            </>
+          ) : (
+            <button className="context-item" onClick={() => { if (menu.item.kind === 'review') openReview(menu.item.mr); setMenu(null); }}>
+              Open review
+            </button>
+          )}
+          <button className="context-item" onClick={() => { toggleHidden(menu.item.key); setMenu(null); }}>
+            {hidden.has(menu.item.key) ? 'Unhide' : 'Hide from Up next'}
           </button>
         </ContextMenu>
       )}
@@ -242,11 +296,20 @@ export function UpNextSection() {
 const sigil = (mr: ReviewMr) => (mr.platform === 'github' ? '#' : '!');
 
 /** An MR waiting on the user: code = the reference, state = the project. */
-function ReviewRow({ mr, busy, onOpen }: { mr: ReviewMr; busy: boolean; onOpen: () => void }) {
+function ReviewRow({
+  mr, busy, dimmed, onOpen, onMenu,
+}: {
+  mr: ReviewMr;
+  busy: boolean;
+  dimmed: boolean;
+  onOpen: () => void;
+  onMenu: (x: number, y: number) => void;
+}) {
   return (
     <button
-      className="upnext-tr is-review"
+      className={`upnext-tr is-review${dimmed ? ' dimmed' : ''}`}
       onClick={onOpen}
+      onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       disabled={busy}
       title={`${mr.title}\n${mr.project_full}${sigil(mr)}${mr.iid}\n${mr.source_branch} → ${mr.target_branch}`}
     >
@@ -268,10 +331,16 @@ function ReviewRow({ mr, busy, onOpen }: { mr: ReviewMr; busy: boolean; onOpen: 
 }
 
 /** A queued task: state = priority when set, else the Notion status. */
-function TaskRow({ task, onMenu }: { task: Task; onMenu: (x: number, y: number) => void }) {
+function TaskRow({
+  task, dimmed, onMenu,
+}: {
+  task: Task;
+  dimmed: boolean;
+  onMenu: (x: number, y: number) => void;
+}) {
   return (
     <button
-      className="upnext-tr"
+      className={`upnext-tr${dimmed ? ' dimmed' : ''}`}
       onClick={() => openTask(task.short_id)}
       onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       title={task.title}
