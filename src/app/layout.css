@@ -348,34 +348,42 @@
 
 
 /* ── Header context pickers (session · repo · worktree) ─────────────────────── */
-.header-pickers { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-3); }
+/* Header context pickers — quiet Zed-style chips that open a filterable list. */
+
+.header-pickers { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-2); }
 .hp { position: relative; display: inline-flex; }
 .hp-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 var(--space-2) 0 var(--space-3);
-  border: 1px solid var(--gl-border-color-default);
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
   border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-strong);
+  background: none;
   color: var(--gl-text-color-default);
   font-family: var(--font-ui);
   font-size: var(--gl-font-size-sm);
   cursor: pointer;
-  max-width: 280px;
+  max-width: 300px;
 }
-.hp-chip:hover, .hp-chip.open { background: var(--gl-background-color-hover); }
-.hp-chip-k {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--gl-text-color-disabled);
+.hp-chip:hover, .hp-chip.open {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-subtle);
 }
 .hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; }
-.hp-chip-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.hp-chip-id {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gl-color-blue-300);
+}
+.hp-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Caret stays faint until the chip is touched — one accent per row, no clutter. */
+.hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; opacity: 0.5; }
+.hp-chip:hover .hp-chip-caret, .hp-chip.open .hp-chip-caret { opacity: 1; }
 
 .hp-pop {
   position: absolute;
@@ -383,17 +391,40 @@
   left: 0;
   z-index: 60;
   min-width: 320px;
-  max-width: 440px;
-  max-height: 60vh;
-  overflow: auto;
-  padding: var(--space-2);
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  max-height: 62vh;
+  overflow: hidden;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-large);
   background: var(--gl-background-color-raised);
   box-shadow: var(--shadow-float);
 }
-.hp-rows { display: flex; flex-direction: column; gap: 2px; outline: none; }
-.hp-empty { padding: var(--space-3); color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-sm); }
+
+/* Filter row — the Zed command-list header. */
+.hp-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  color: var(--gl-text-color-disabled);
+  flex-shrink: 0;
+}
+.hp-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+}
+
+.hp-rows { display: flex; flex-direction: column; gap: 1px; padding: var(--space-1); overflow-y: auto; outline: none; }
+.hp-empty { padding: var(--space-4) var(--space-3); margin: 0; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-sm); text-align: center; }
 
 .hp-row { display: flex; align-items: stretch; border-radius: var(--gl-border-radius-base); }
 .hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); }
@@ -403,8 +434,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px var(--space-3);
+  gap: 3px;
+  padding: 7px var(--space-3);
   border: none;
   background: none;
   text-align: left;
@@ -414,17 +445,20 @@
   cursor: pointer;
   border-radius: var(--gl-border-radius-base);
 }
-.hp-row-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-row-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hp-row-kind-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; }
+.hp-row-id { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; color: var(--gl-color-blue-300); }
+.hp-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hp-row-meta {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  padding-left: 18px;
   color: var(--gl-text-color-disabled);
   font-family: var(--font-mono);
   font-size: 10.5px;
 }
-.hp-row-id { color: var(--gl-text-color-subtle); }
 .hp-row-state { display: inline-flex; align-items: center; gap: 4px; }
 .hp-row-state.waiting { color: var(--ctp-peach); }
 .hp-row-close {
@@ -440,9 +474,10 @@
 }
 .hp-row-close:hover { color: var(--ctp-red); }
 .hp-row-simple {
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px var(--space-3);
+  padding: 7px var(--space-3);
   border: none;
   background: none;
   color: var(--gl-text-color-default);
@@ -450,8 +485,10 @@
   font-size: var(--gl-font-size-sm);
   cursor: pointer;
   text-align: left;
+  border-radius: var(--gl-border-radius-base);
 }
 .hp-row-simple:hover { background: var(--gl-background-color-hover); }
+.hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
 

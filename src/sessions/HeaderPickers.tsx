@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Boxes, ChevronDown, Code2, Eye, FolderGit2, GitBranch, ListTodo, X, type LucideIcon,
+  Boxes, Check, ChevronDown, Code2, Eye, FolderGit2, GitBranch, ListTodo, Search, X,
+  type LucideIcon,
 } from 'lucide-react';
 import { useStore, useSession, type SessionKind, type SessionState } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
@@ -9,10 +10,12 @@ import { statusKey } from '../shared/lib/taskStatus';
 import type { AgentActivity } from '../shared/ipc/ipc';
 
 /**
- * The header context pickers: Active Session · Repo · Worktree (the mockup's
- * chip pickers — they replaced the session dock). The session chip switches and
- * closes sessions; the repo/worktree chips scope the sidebar, commit panel and
- * diff to one checkout. Repo/worktree chips only render when there is a choice.
+ * The header context pickers: Active Session · Repo · Worktree. Modelled on Zed's
+ * title-bar project/branch switcher — quiet chips (icon + value, no boxy label)
+ * that open a filterable command-list. The session chip switches and closes
+ * sessions and always shows the id, so which session is active is never in doubt.
+ * The repo/worktree chips scope the sidebar, commit panel and diff, and only
+ * appear when there is more than one to pick.
  */
 
 const KIND_ICON: Record<SessionKind, LucideIcon> = {
@@ -44,7 +47,7 @@ function Picker({
   label, value, icon: Icon, open, setOpen, children, chipTitle,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   icon: LucideIcon;
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -70,9 +73,13 @@ function Picker({
 
   return (
     <span className="hp">
-      <button className={`hp-chip ${open ? 'open' : ''}`} onClick={() => setOpen(!open)} title={chipTitle}>
-        <span className="hp-chip-k">{label}</span>
-        <Icon size={12} strokeWidth={1.75} className="hp-chip-icon" />
+      <button
+        className={`hp-chip ${open ? 'open' : ''}`}
+        onClick={() => setOpen(!open)}
+        title={chipTitle}
+        aria-label={label}
+      >
+        <Icon size={13} strokeWidth={1.75} className="hp-chip-icon" />
         <span className="hp-chip-v">{value}</span>
         <ChevronDown size={11} strokeWidth={2} className="hp-chip-caret" />
       </button>
@@ -86,16 +93,29 @@ function SessionRows({ onPick }: { onPick: () => void }) {
   const sessionOrder = useStore((s) => s.sessionOrder);
   const activeId = useStore((s) => s.activeSessionId);
   const agentActivity = useStore((s) => s.agentActivity);
-  const [cursor, setCursor] = useState(() =>
-    Math.max(0, sessionOrder.indexOf(activeId ?? '')));
-  const listRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const rows = useMemo(
     () => sessionOrder.map((id) => sessions[id]).filter((s): s is SessionState => !!s),
     [sessionOrder, sessions],
   );
 
-  useEffect(() => { listRef.current?.focus(); }, []);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((s) => {
+      const hay = `${s.task?.short_id ?? ''} ${s.task?.title ?? s.title} ${s.kind}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, query]);
+
+  // Focus the filter on open; keep the cursor in range as the list narrows.
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    setCursor((c) => Math.min(Math.max(0, c), Math.max(0, filtered.length - 1)));
+  }, [filtered.length]);
 
   const pick = (s: SessionState) => {
     if (s.task?.short_id) goToSession(s.task.short_id);
@@ -104,53 +124,70 @@ function SessionRows({ onPick }: { onPick: () => void }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const last = rows.length - 1;
-    if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(c + 1, last)); }
-    else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); const s = rows[cursor]; if (s) pick(s); }
+    const last = filtered.length - 1;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(c + 1, last)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); const s = filtered[cursor]; if (s) pick(s); }
   };
 
-  if (rows.length === 0) {
-    return <p className="hp-empty">No open sessions — open a task from Home.</p>;
-  }
-
   return (
-    <div className="hp-rows" tabIndex={-1} ref={listRef} onKeyDown={onKeyDown}>
-      {rows.map((s, i) => {
-        const Icon = KIND_ICON[s.kind] ?? Code2;
-        const taskId = s.task?.short_id;
-        const activity = taskId ? agentActivity[taskId] : undefined;
-        const title = s.task?.title || s.title;
-        const status = s.task?.status;
-        return (
-          <div key={s.id} className={`hp-row ${s.id === activeId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}>
-            <button className="hp-row-main" onClick={() => pick(s)} onMouseEnter={() => setCursor(i)} title={title}>
-              <span className="hp-row-title">{title}</span>
-              <span className="hp-row-meta">
-                <Icon size={11} strokeWidth={1.75} />
-                {taskId && <span className="hp-row-id">{taskId}</span>}
-                <span className="hp-row-kind">{KIND_LABEL[s.kind]}</span>
-                {activity ? (
-                  <span className={`hp-row-state ${activity.state}`}>
-                    <span className={`pill-dot ${activity.state}`} />
-                    {agentLine(activity)}
+    <>
+      <div className="hp-search">
+        <Search size={13} strokeWidth={1.75} />
+        <input
+          ref={inputRef}
+          value={query}
+          placeholder="Search sessions…"
+          spellCheck={false}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
+      {filtered.length === 0 ? (
+        <p className="hp-empty">
+          {rows.length === 0 ? 'No open sessions — open a task from Home.' : 'No sessions match.'}
+        </p>
+      ) : (
+        <div className="hp-rows">
+          {filtered.map((s, i) => {
+            const Icon = KIND_ICON[s.kind] ?? Code2;
+            const taskId = s.task?.short_id;
+            const activity = taskId ? agentActivity[taskId] : undefined;
+            const title = s.task?.title || s.title;
+            const status = s.task?.status;
+            return (
+              <div key={s.id} className={`hp-row ${s.id === activeId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}>
+                <button className="hp-row-main" onClick={() => pick(s)} onMouseEnter={() => setCursor(i)} title={title}>
+                  <span className="hp-row-title">
+                    <Icon size={12} strokeWidth={1.75} className="hp-row-kind-icon" />
+                    {taskId && <span className="hp-row-id">{taskId}</span>}
+                    <span className="hp-row-name">{title}</span>
                   </span>
-                ) : status ? (
-                  <span className={`hp-row-status status-${statusKey(status)}`}>{status}</span>
-                ) : null}
-              </span>
-            </button>
-            <button
-              className="hp-row-close"
-              title="Close session"
-              onClick={(e) => { e.stopPropagation(); endSession(s.id); }}
-            >
-              <X size={11} strokeWidth={2.25} />
-            </button>
-          </div>
-        );
-      })}
-    </div>
+                  <span className="hp-row-meta">
+                    <span className="hp-row-kind">{KIND_LABEL[s.kind]}</span>
+                    {activity ? (
+                      <span className={`hp-row-state ${activity.state}`}>
+                        <span className={`pill-dot ${activity.state}`} />
+                        {agentLine(activity)}
+                      </span>
+                    ) : status ? (
+                      <span className={`hp-row-status status-${statusKey(status)}`}>{status}</span>
+                    ) : null}
+                  </span>
+                </button>
+                <button
+                  className="hp-row-close"
+                  title="Close session"
+                  onClick={(e) => { e.stopPropagation(); endSession(s.id); }}
+                >
+                  <X size={11} strokeWidth={2.25} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -166,6 +203,7 @@ export function HeaderPickers() {
   const sessionId = useSession((s) => s.id);
   const sessionKind = useSession((s) => s.kind);
   const sessionTitle = useSession((s) => s.title);
+  const sessionShortId = useSession((s) => s.task?.short_id ?? null);
   const repos = useSession((s) => s.repos);
   const worktrees = useSession((s) => s.worktrees);
   const activeRepoId = useSession((s) => s.activeRepoId);
@@ -182,11 +220,20 @@ export function HeaderPickers() {
   // repo/worktree chips are workspace context and hide with it.
   if (sessionCount === 0 && !inWorkspace) return null;
 
+  const sessionValue = inWorkspace ? (
+    <>
+      {sessionShortId && <span className="hp-chip-id">{sessionShortId}</span>}
+      <span className="hp-chip-name">{sessionTitle}</span>
+    </>
+  ) : (
+    <span className="hp-chip-name">{sessionCount} open</span>
+  );
+
   return (
     <span className="header-pickers">
       <Picker
-        label="session"
-        value={inWorkspace ? sessionTitle : `${sessionCount} open`}
+        label="Sessions"
+        value={sessionValue}
         icon={inWorkspace ? (KIND_ICON[sessionKind] ?? Code2) : Code2}
         open={sessionPickerOpen}
         setOpen={setSessionPickerOpen}
@@ -197,7 +244,7 @@ export function HeaderPickers() {
 
       {inWorkspace && repos.length > 1 && (
         <Picker
-          label="repo"
+          label="Repository"
           value={activeRepo?.project ?? '—'}
           icon={FolderGit2}
           open={repoOpen}
@@ -211,7 +258,8 @@ export function HeaderPickers() {
                 className={`hp-row hp-row-simple ${r.id === activeRepoId ? 'active' : ''}`}
                 onClick={() => { setActiveRepoId(r.id); setRepoOpen(false); }}
               >
-                <FolderGit2 size={11} strokeWidth={1.75} />
+                <span className="hp-tick">{r.id === activeRepoId && <Check size={12} strokeWidth={2.5} />}</span>
+                <FolderGit2 size={12} strokeWidth={1.75} />
                 <span className="hp-row-title">{r.project}</span>
                 <span className="hp-row-kind">{r.host}</span>
               </button>
@@ -222,7 +270,7 @@ export function HeaderPickers() {
 
       {inWorkspace && repoWorktrees.length > 1 && (
         <Picker
-          label="worktree"
+          label="Worktree"
           value={activeWt?.branch ?? '—'}
           icon={GitBranch}
           open={wtOpen}
@@ -236,7 +284,8 @@ export function HeaderPickers() {
                 className={`hp-row hp-row-simple ${w.id === activeWorktreeId ? 'active' : ''}`}
                 onClick={() => { setActiveWorktreeId(w.id); setWtOpen(false); }}
               >
-                <GitBranch size={11} strokeWidth={1.75} />
+                <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
+                <GitBranch size={12} strokeWidth={1.75} />
                 <span className="hp-row-title">{w.branch}</span>
               </button>
             ))}
