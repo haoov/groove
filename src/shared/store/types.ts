@@ -70,9 +70,13 @@ export interface UiSlice {
   revealDir: { path: string; nonce: number } | null;
   revealInTree: (path: string) => void;
   /** Which header context picker is open (Alt+S / Alt+R / Alt+W), or none. Only
-   *  one at a time. Pressing the same shortcut again cycles that list. */
+   *  one at a time. Pressing the same shortcut again moves the highlight. */
   openPicker: PickerKind;
   setOpenPicker: (p: PickerKind) => void;
+  /** Highlighted row in the open picker. The shortcut advances it; Enter (or a
+   *  click) commits. Shared because only one picker is open at a time. */
+  pickerCursor: number;
+  setPickerCursor: (n: number) => void;
   /** Alt+Shift+R add-repo wizard. One flag, so the two buttons that used to hold
    *  their own local state and the keybinding all open the same instance. */
   addRepoOpen: boolean;

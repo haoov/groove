@@ -172,16 +172,13 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
-    // Alt+S: first press opens the session switcher; each further press cycles
-    // to the next open session (wrapping) — a carousel. Esc closes it.
+    // Alt+S: first press opens the session switcher; each further press moves the
+    // highlight down (wrapping). Enter commits, Esc cancels — no live switching.
     case 'session.switcher': {
-      const order = st.sessionOrder;
-      if (order.length === 0) return false;
+      const n = st.sessionOrder.length;
+      if (n === 0) return false;
       if (st.openPicker !== 'session') { st.setOpenPicker('session'); return true; }
-      if (order.length > 1) {
-        const i = order.indexOf(st.activeSessionId ?? '');
-        st.focusSession(order[(i + 1 + order.length) % order.length]);
-      }
+      st.setPickerCursor((st.pickerCursor + 1) % n);
       return true;
     }
 
@@ -193,31 +190,23 @@ export function runCommand(id: CommandId): boolean {
       st.requestCommitFocus();
       return true;
 
-    // Alt+R: open the header repo switcher, then cycle repos on each press.
+    // Alt+R: open the header repo switcher, then move the highlight. Enter commits.
     case 'repo.switch': {
       if (!sess || sess.repos.length === 0) return false;
       st.setView('workspace');
       if (st.openPicker !== 'repo') { st.setOpenPicker('repo'); return true; }
-      if (sess.repos.length > 1) {
-        const i = sess.repos.findIndex((r) => r.id === sess.activeRepoId);
-        const next = sess.repos[(i + 1 + sess.repos.length) % sess.repos.length];
-        sessionActions(sess.id).setActiveRepoId(next.id);
-      }
+      st.setPickerCursor((st.pickerCursor + 1) % sess.repos.length);
       return true;
     }
 
-    // Alt+W: open the header worktree switcher, then cycle this repo's worktrees.
+    // Alt+W: open the header worktree switcher, then move the highlight.
     case 'worktree.switch': {
       if (!sess) return false;
       const wts = sess.worktrees.filter((w) => w.repo_id === sess.activeRepoId);
       if (wts.length === 0) return false;
       st.setView('workspace');
       if (st.openPicker !== 'worktree') { st.setOpenPicker('worktree'); return true; }
-      if (wts.length > 1) {
-        const i = wts.findIndex((w) => w.id === sess.activeWorktreeId);
-        const next = wts[(i + 1 + wts.length) % wts.length];
-        sessionActions(sess.id).setActiveWorktreeId(next.id);
-      }
+      st.setPickerCursor((st.pickerCursor + 1) % wts.length);
       return true;
     }
 

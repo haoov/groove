@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Boxes, Check, ChevronDown, Code2, Eye, FolderGit2, GitBranch, ListTodo, X,
+  Boxes, Check, ChevronDown, Code2, Eye, FolderGit2, GitBranch, ListTodo, Plus, X,
   type LucideIcon,
 } from 'lucide-react';
+import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession, type SessionKind, type SessionState } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { goToSession } from '../shared/lib/goToSession';
@@ -12,11 +13,10 @@ import type { AgentActivity } from '../shared/ipc/ipc';
 
 /**
  * The header context pickers: Active Session · Repo · Worktree. Each chip is
- * compact — an icon plus the id/name — and opens a plain dropdown list of the
- * choices, like the repo switcher. Repo and worktree chips show whenever the
- * session has at least one — a single-choice chip still names the current repo
- * or branch. The list is PORTALLED to the body with fixed positioning so the
- * header's `overflow: hidden` can never clip it.
+ * compact — icon + id/name — and opens a plain dropdown list of the choices.
+ * Alt+S/R/W open the list and move the highlight; Enter (or a click) commits,
+ * Esc cancels — nothing switches until you commit. The list is PORTALLED to the
+ * body with fixed positioning so the header's overflow can never clip it.
  */
 
 const KIND_ICON: Record<SessionKind, LucideIcon> = {
@@ -43,8 +43,31 @@ function agentLine(a: AgentActivity): string {
   }
 }
 
-/** Chip + portalled dropdown shell shared by the three pickers. Open state lives
- *  in the store (`openPicker`) so the Alt+S/R/W shortcuts can drive it. */
+/** Keyboard-navigable list state, shared by the three dropdowns. The highlight
+ *  lives in the store so Alt+S/R/W can drive it; Enter commits the highlighted. */
+function usePickerList(count: number, initialIndex: number, onEnter: (i: number) => void) {
+  const cursor = useStore((s) => s.pickerCursor);
+  const setCursor = useStore((s) => s.setPickerCursor);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // On open, highlight the current item and take focus for the arrow keys.
+  useEffect(() => {
+    setCursor(initialIndex >= 0 ? initialIndex : 0);
+    ref.current?.focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (count === 0) return;
+    if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); setCursor((cursor + 1) % count); }
+    else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); setCursor((cursor - 1 + count) % count); }
+    else if (e.key === 'Enter') { e.preventDefault(); onEnter(cursor); }
+  };
+
+  return { cursor, setCursor, ref, onKeyDown };
+}
+
+/** Chip + portalled dropdown shell. Open state lives in the store (`openPicker`)
+ *  so the Alt+S/R/W shortcuts can drive it. */
 function Picker({
   kind, value, icon: Icon, children, chipTitle, ariaLabel,
 }: {
@@ -62,14 +85,12 @@ function Picker({
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
-  // Anchor the fixed-position dropdown just under the chip.
   useLayoutEffect(() => {
     if (!open) { setPos(null); return; }
     const r = chipRef.current?.getBoundingClientRect();
     if (r) setPos({ left: r.left, top: r.bottom + 6 });
   }, [open]);
 
-  // Click-away + Escape close. The list is portalled, so check both nodes.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -78,7 +99,6 @@ function Picker({
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    // The window moving out from under a fixed popover would leave it stranded.
     const onMove = () => setOpen(false);
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -115,46 +135,34 @@ function Picker({
   );
 }
 
-function SessionRows({ onPick }: { onPick: () => void }) {
+function SessionRows({ onClose }: { onClose: () => void }) {
   const sessions = useStore((s) => s.sessions);
   const sessionOrder = useStore((s) => s.sessionOrder);
   const activeId = useStore((s) => s.activeSessionId);
   const agentActivity = useStore((s) => s.agentActivity);
-  const [cursor, setCursor] = useState(() => Math.max(0, sessionOrder.indexOf(activeId ?? '')));
-  const listRef = useRef<HTMLDivElement>(null);
 
   const rows = useMemo(
     () => sessionOrder.map((id) => sessions[id]).filter((s): s is SessionState => !!s),
     [sessionOrder, sessions],
   );
 
-  useEffect(() => { listRef.current?.focus(); }, []);
-
-  // Alt+S cycling switches the active session; keep the highlight on it.
-  useEffect(() => {
-    const i = rows.findIndex((r) => r.id === activeId);
-    if (i >= 0) setCursor(i);
-  }, [activeId, rows]);
-
   const pick = (s: SessionState) => {
     if (s.task?.short_id) goToSession(s.task.short_id);
     else useStore.getState().focusSession(s.id);
-    onPick();
+    onClose();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const last = rows.length - 1;
-    if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(c + 1, last)); }
-    else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); const s = rows[cursor]; if (s) pick(s); }
-  };
+  const activeIdx = rows.findIndex((r) => r.id === activeId);
+  const { cursor, setCursor, ref, onKeyDown } = usePickerList(
+    rows.length, activeIdx, (i) => { const s = rows[i]; if (s) pick(s); },
+  );
 
   if (rows.length === 0) {
     return <p className="hp-empty">No open sessions — open a task from Home.</p>;
   }
 
   return (
-    <div className="hp-rows" tabIndex={-1} ref={listRef} onKeyDown={onKeyDown}>
+    <div className="hp-rows" tabIndex={-1} ref={ref} onKeyDown={onKeyDown}>
       {rows.map((s, i) => {
         const Icon = KIND_ICON[s.kind] ?? Code2;
         const taskId = s.task?.short_id;
@@ -195,10 +203,118 @@ function SessionRows({ onPick }: { onPick: () => void }) {
   );
 }
 
+interface RepoLite { id: string; project: string; host: string }
+interface WtLite { id: string; branch: string; repo_id: string }
+
+function RepoRows({
+  repos, worktrees, activeRepoId, onSelect, onClose, onAddRepo,
+}: {
+  repos: RepoLite[];
+  worktrees: WtLite[];
+  activeRepoId: string | null;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+  onAddRepo: () => void;
+}) {
+  const setLastError = useStore((s) => s.setLastError);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const select = (r: RepoLite) => { onSelect(r.id); onClose(); };
+  // force:true so closing succeeds on a dirty worktree — the confirm step is the
+  // guard, matching the old sidebar repo switcher.
+  const closeRepo = async (worktreeId: string) => {
+    try { await invoke('close_worktree', { worktreeId, force: true }); }
+    catch (e) { setLastError(String(e)); }
+    onClose();
+  };
+
+  const activeIdx = repos.findIndex((r) => r.id === activeRepoId);
+  const { cursor, setCursor, ref, onKeyDown } = usePickerList(
+    repos.length, activeIdx, (i) => { const r = repos[i]; if (r) select(r); },
+  );
+
+  return (
+    <div className="hp-rows" tabIndex={-1} ref={ref} onKeyDown={onKeyDown}>
+      {repos.map((r, i) => {
+        const wt = worktrees.find((w) => w.repo_id === r.id);
+        if (confirmId === r.id) {
+          return (
+            <div key={r.id} className="hp-row hp-confirm">
+              <span className="hp-confirm-text">Remove <strong>{r.project}</strong>?</span>
+              <button className="hp-confirm-yes" onClick={() => { if (wt) closeRepo(wt.id); }}>Remove</button>
+              <button className="hp-confirm-no" onClick={() => setConfirmId(null)}>Cancel</button>
+            </div>
+          );
+        }
+        return (
+          <div key={r.id} className={`hp-row ${r.id === activeRepoId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}>
+            <button
+              className="hp-row-main hp-row-simple"
+              onClick={() => select(r)}
+              onMouseEnter={() => setCursor(i)}
+            >
+              <span className="hp-tick">{r.id === activeRepoId && <Check size={12} strokeWidth={2.5} />}</span>
+              <FolderGit2 size={12} strokeWidth={1.75} />
+              <span className="hp-row-title">{r.project}</span>
+              <span className="hp-row-kind">{r.host}</span>
+            </button>
+            {wt && (
+              <button
+                className="hp-row-close"
+                title="Close repo — detach from the task and delete its worktree"
+                onClick={(e) => { e.stopPropagation(); setConfirmId(r.id); }}
+              >
+                <X size={11} strokeWidth={2.25} />
+              </button>
+            )}
+          </div>
+        );
+      })}
+      <button className="hp-row hp-row-add" onClick={() => { onAddRepo(); onClose(); }}>
+        <span className="hp-tick"><Plus size={12} strokeWidth={2} /></span>
+        Add repo to task…
+      </button>
+    </div>
+  );
+}
+
+function WorktreeRows({
+  worktrees, activeWorktreeId, onSelect, onClose,
+}: {
+  worktrees: WtLite[];
+  activeWorktreeId: string | null;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+}) {
+  const select = (w: WtLite) => { onSelect(w.id); onClose(); };
+  const activeIdx = worktrees.findIndex((w) => w.id === activeWorktreeId);
+  const { cursor, setCursor, ref, onKeyDown } = usePickerList(
+    worktrees.length, activeIdx, (i) => { const w = worktrees[i]; if (w) select(w); },
+  );
+
+  return (
+    <div className="hp-rows" tabIndex={-1} ref={ref} onKeyDown={onKeyDown}>
+      {worktrees.map((w, i) => (
+        <button
+          key={w.id}
+          className={`hp-row hp-row-simple ${w.id === activeWorktreeId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}
+          onClick={() => select(w)}
+          onMouseEnter={() => setCursor(i)}
+        >
+          <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
+          <GitBranch size={12} strokeWidth={1.75} />
+          <span className="hp-row-title">{w.branch}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function HeaderPickers() {
   const view = useStore((s) => s.view);
   const sessionCount = useStore((s) => s.sessionOrder.length);
   const setOpenPicker = useStore((s) => s.setOpenPicker);
+  const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
 
   const sessionId = useSession((s) => s.id);
   const sessionKind = useSession((s) => s.kind);
@@ -215,12 +331,12 @@ export function HeaderPickers() {
   const activeRepo = repos.find((r) => r.id === activeRepoId) ?? null;
   const repoWorktrees = worktrees.filter((w) => w.repo_id === activeRepoId);
   const activeWt = worktrees.find((w) => w.id === activeWorktreeId) ?? null;
+  const close = () => setOpenPicker(null);
 
   // The session chip is useful everywhere (it also closes sessions); the
   // repo/worktree chips are workspace context and hide with it.
   if (sessionCount === 0 && !inWorkspace) return null;
 
-  // Chip shows icon + id (session), name (repo) or branch (worktree) — nothing more.
   const sessionValue = inWorkspace
     ? <span className="hp-chip-id">{sessionShortId ?? sessionTitle}</span>
     : <span className="hp-chip-name">{sessionCount} open</span>;
@@ -234,7 +350,7 @@ export function HeaderPickers() {
         icon={inWorkspace ? (KIND_ICON[sessionKind] ?? Code2) : Code2}
         chipTitle="Switch or close sessions (Alt+S)"
       >
-        <SessionRows onPick={() => setOpenPicker(null)} />
+        <SessionRows onClose={close} />
       </Picker>
 
       {inWorkspace && repos.length > 0 && (
@@ -245,20 +361,14 @@ export function HeaderPickers() {
           icon={FolderGit2}
           chipTitle="The repo git actions target (Alt+R)"
         >
-          <div className="hp-rows">
-            {repos.map((r) => (
-              <button
-                key={r.id}
-                className={`hp-row hp-row-simple ${r.id === activeRepoId ? 'active' : ''}`}
-                onClick={() => { setActiveRepoId(r.id); setOpenPicker(null); }}
-              >
-                <span className="hp-tick">{r.id === activeRepoId && <Check size={12} strokeWidth={2.5} />}</span>
-                <FolderGit2 size={12} strokeWidth={1.75} />
-                <span className="hp-row-title">{r.project}</span>
-                <span className="hp-row-kind">{r.host}</span>
-              </button>
-            ))}
-          </div>
+          <RepoRows
+            repos={repos}
+            worktrees={worktrees}
+            activeRepoId={activeRepoId}
+            onSelect={setActiveRepoId}
+            onClose={close}
+            onAddRepo={() => setAddRepoOpen(true)}
+          />
         </Picker>
       )}
 
@@ -270,19 +380,12 @@ export function HeaderPickers() {
           icon={GitBranch}
           chipTitle="The worktree git actions target (Alt+W)"
         >
-          <div className="hp-rows">
-            {repoWorktrees.map((w) => (
-              <button
-                key={w.id}
-                className={`hp-row hp-row-simple ${w.id === activeWorktreeId ? 'active' : ''}`}
-                onClick={() => { setActiveWorktreeId(w.id); setOpenPicker(null); }}
-              >
-                <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
-                <GitBranch size={12} strokeWidth={1.75} />
-                <span className="hp-row-title">{w.branch}</span>
-              </button>
-            ))}
-          </div>
+          <WorktreeRows
+            worktrees={repoWorktrees}
+            activeWorktreeId={activeWorktreeId}
+            onSelect={setActiveWorktreeId}
+            onClose={close}
+          />
         </Picker>
       )}
     </span>

@@ -7,7 +7,6 @@ import { activeWorktreeFor } from '../../shared/lib/workspace';
 import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { countUnresolved } from '../useWorkspaceData';
-import { RepoChips } from './RepoChips';
 import { FilesTab } from '../../files/FilesTab';
 import { CommitsTab, ChangedFilesList, GitCommitPanel } from '../../git/GitTab';
 import { ForgeSection } from '../../git/ForgeSection';
@@ -20,7 +19,6 @@ export function Sidebar() {
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const sidebarTab = useSession((s) => s.sidebarTab);
   const activeRepoId = useSession((s) => s.activeRepoId);
-  const setActiveRepoId = useSession((s) => s.setActiveRepoId);
   const worktreeStatus = useSession((s) => s.worktreeStatus);
   const sessionId = useSession((s) => s.id);
   const refreshStatus = useSession((s) => s.refreshStatus);
@@ -60,7 +58,6 @@ export function Sidebar() {
       return next;
     });
   }, [revealDir]);
-  const setShowAddRepo = useStore((s) => s.setAddRepoOpen);
   // Git sub-mode lives in the session store so the global Alt+Shift+Tab shortcut
   // can cycle it; the buttons below write the same field.
   const gitSubTab = useSession((s) => s.gitSubTab);
@@ -121,16 +118,6 @@ export function Sidebar() {
 
   const openFileInDiff = (path: string, repoId: string) => {
     openTab({ repoId, filePath: path, view: 'diff' });
-  };
-
-  const closeRepo = async (worktreeId: string) => {
-    // force:true so closing still succeeds on a dirty worktree (the user has
-    // already confirmed removal via the repo-switcher's confirm step).
-    try {
-      await invoke('close_worktree', { worktreeId, force: true });
-    } catch (e) {
-      setLastError(String(e));
-    }
   };
 
   const makeGitAction = (worktreeId: string) => async (cmd: string) => {
@@ -400,16 +387,6 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar" ref={rootRef} tabIndex={-1}>
-
-      <RepoChips
-        repos={activeRepos}
-        activeRepoId={activeRepoId}
-        worktreeForRepo={worktreeForRepo}
-        worktreeStatus={worktreeStatus}
-        onSelect={setActiveRepoId}
-        onAddRepo={() => setShowAddRepo(true)}
-        onCloseRepo={closeRepo}
-      />
 
       <div className="sidebar-content">{renderContent()}</div>
 

@@ -55,6 +55,8 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
     set((s) => ({ revealDir: { path, nonce: (s.revealDir?.nonce ?? 0) + 1 } })),
   openPicker: null,
   setOpenPicker: (p) => set({ openPicker: p }),
+  pickerCursor: 0,
+  setPickerCursor: (n) => set({ pickerCursor: n }),
   addRepoOpen: false,
   setAddRepoOpen: (v) => set({ addRepoOpen: v }),
 

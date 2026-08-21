@@ -467,9 +467,49 @@
   border-radius: var(--gl-border-radius-base);
 }
 .hp-row-simple:hover { background: var(--gl-background-color-hover); }
-.hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; color: var(--gl-color-blue-300); }
+.hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
+
+/* "＋ Add repo…" footer row and the close-repo confirm, in the repo dropdown. */
+.hp-row-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px var(--space-3);
+  margin-top: 2px;
+  border: none;
+  border-top: 1px solid var(--gl-border-color-subtle);
+  background: none;
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.hp-row-add:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+
+.hp-confirm {
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  background: var(--gl-color-red-100);
+}
+.hp-confirm-text { flex: 1; min-width: 0; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); }
+.hp-confirm-yes, .hp-confirm-no {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-default);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.hp-confirm-yes { border-color: var(--gl-color-red-400); color: var(--gl-color-red-400); }
+.hp-confirm-yes:hover { background: var(--gl-color-red-100); }
+.hp-confirm-no:hover { background: var(--gl-background-color-hover); }
 
 /* ── Notification popover (the bell owns its feed now) ──────────────────────── */
 .notif-center { position: relative; display: inline-flex; }
