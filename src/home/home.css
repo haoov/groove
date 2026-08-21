@@ -281,14 +281,20 @@
 .upnext-head,
 .upnext-tr {
   display: grid;
-  /* type · code · name(fills) · state · owner — same type/id widths as .live-row. */
-  grid-template-columns: 5rem 7rem minmax(0, 1fr) 8rem 7rem;
   align-items: center;
   column-gap: var(--space-4);
   width: 100%;
   text-align: left;
   padding: 7px var(--space-2);
 }
+
+/* Up next (tasks): code · name · priority · status. */
+.tasks-table .upnext-head,
+.tasks-table .upnext-tr { grid-template-columns: 7rem minmax(0, 1fr) 7rem 10rem; }
+
+/* Reviews: code · name · repo · owner · last update. */
+.reviews-table .upnext-head,
+.reviews-table .upnext-tr { grid-template-columns: 5rem minmax(0, 1fr) 12rem 8rem 6rem; }
 
 .upnext-head {
   padding-top: 2px;

@@ -9,7 +9,6 @@ import { useStore, useSession, type SidebarTab } from '../../shared/store';
 export function ActivityRail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
-  const reviewCount = useStore((s) => s.reviewQueue?.length ?? 0);
   const activeTask = useSession((s) => s.activeTask);
   const sidebarTab = useSession((s) => s.sidebarTab);
   const setSidebarTab = useSession((s) => s.setSidebarTab);
@@ -46,17 +45,14 @@ export function ActivityRail() {
 
   return (
     <nav className="activity-rail">
-      {/* Home: reviews strip / tasks kanban / explorers strip. */}
+      {/* Home: Live · Up next · Reviews tabs (the review count lives in the tab). */}
       <div className="rail-group">
         <button
           className={`rail-btn ${!inWorkspace ? 'active' : ''}`}
           onClick={() => setView('home')}
-          title={reviewCount > 0
-            ? `Home — ${reviewCount} review${reviewCount === 1 ? '' : 's'} waiting on you`
-            : 'Home'}
+          title="Home"
         >
           <LayoutGrid size={18} strokeWidth={1.75} />
-          {reviewCount > 0 && <span className="rail-badge">{reviewCount}</span>}
         </button>
       </div>
 
