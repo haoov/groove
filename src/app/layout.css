@@ -134,6 +134,25 @@
   color: var(--gl-text-color-subtle);
 }
 
+/* Center label: the active session's title, truncating so it never shoves the
+   left pickers or the right controls. */
+.header-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.header-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 500;
+  color: var(--gl-text-color-subtle);
+}
+
 .header-right { display: flex; align-items: center; gap: var(--space-2); }
 
 /* ── Custom window controls (frameless window) ────────────────────────────── */

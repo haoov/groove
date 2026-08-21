@@ -6,6 +6,13 @@ import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
 
 export function Header() {
+  // The active session's title (task title, or MR name for reviews), centered as
+  // the header label. Only in a workspace — Home has no single subject.
+  const title = useStore((s) => {
+    if (s.view !== 'workspace') return null;
+    const sess = s.activeSessionId ? s.sessions[s.activeSessionId] : null;
+    return sess ? (sess.task?.title || sess.title || null) : null;
+  });
   const syncStatus = useStore((s) => s.syncStatus);
   const setSyncStatus = useStore((s) => s.setSyncStatus);
   const setTasks = useStore((s) => s.setTasks);
@@ -38,6 +45,11 @@ export function Header() {
 
         <HeaderPickers />
       </div>
+
+      <div className="header-center" data-tauri-drag-region>
+        {title && <span className="header-title" title={title}>{title}</span>}
+      </div>
+
       <div className="header-right" data-tauri-drag-region>
         <button
           className="btn-sync"
