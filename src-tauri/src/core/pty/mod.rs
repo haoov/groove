@@ -225,16 +225,6 @@ fn describe_terminal(cmd: &mut portable_pty::CommandBuilder) {
     cmd.env_remove("TMUX");
     cmd.env_remove("TMUX_PANE");
     cmd.env_remove("STY"); // GNU screen's equivalent of $TMUX
-    // Never leak the dev harness's dynamic-loader settings into the user's shell.
-    // Under `cargo run`/`tauri dev` the app inherits LD_LIBRARY_PATH pointing at
-    // target/debug/deps (a writable build dir); passing that to an interactive
-    // shell is both wrong (user commands would resolve libs from there) and a
-    // library-injection pattern EDRs (CrowdStrike) SIGKILL on sight — the likely
-    // cause of the dev-mode terminal crash. A desktop launch has none of these.
-    cmd.env_remove("LD_LIBRARY_PATH");
-    cmd.env_remove("LD_PRELOAD");
-    cmd.env_remove("DYLD_LIBRARY_PATH");
-    cmd.env_remove("DYLD_INSERT_LIBRARIES");
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────
