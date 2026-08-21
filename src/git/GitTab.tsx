@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
-  GitCommit, Upload, Download, ChevronsUp, ChevronDown, Plus, Minus, Circle, Trash2, AlertTriangle,
-  GitPullRequest, GitCompare, Search, X,
+  GitCommit, Upload, Download, ChevronsUp, ChevronDown, ChevronRight, Plus, Minus, Circle, Trash2,
+  AlertTriangle, GitPullRequest, GitCompare, Search, X, Check,
 } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
 import { useListNav } from '../shared/lib/useListNav';
-import type { CommitEntry, WorktreeStatus } from '../shared/ipc/ipc';
+import { ContextMenu } from '../shared/ui/ContextMenu';
+import type { CommitEntry, WorktreeStatus, FileDiff } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
 import { registerCommitPush } from '../shared/lib/gitChain';
@@ -140,6 +141,54 @@ export function CommitsTab({
 
 // ── Changed files (flat list) ──────────────────────────────────────────────────
 
+const VIEW_KEY = 'wb.gitChangesView';
+
+// One flat row list drives both views and the keyboard nav. "All changes" is
+// always first; a file row carries its folder (flat view shows it as a suffix,
+// tree view as indentation); a dir row groups files under one folder segment.
+type Row =
+  | { kind: 'all' }
+  | { kind: 'dir'; path: string; depth: number; label: string; count: number }
+  | { kind: 'file'; f: FileDiff; depth: number; name: string; parent: string };
+
+function buildRows(files: FileDiff[], tree: boolean, collapsed: Set<string>): Row[] {
+  const out: Row[] = [{ kind: 'all' }];
+  if (!tree) {
+    for (const f of files) {
+      const name = f.path.split('/').pop() ?? f.path;
+      const parent = f.path.slice(0, Math.max(0, f.path.length - name.length - 1));
+      out.push({ kind: 'file', f, depth: 0, name, parent });
+    }
+    return out;
+  }
+  type Node = { dirs: Map<string, Node>; files: FileDiff[]; count: number };
+  const root: Node = { dirs: new Map(), files: [], count: 0 };
+  for (const f of files) {
+    const segs = f.path.split('/');
+    let node = root;
+    for (let k = 0; k < segs.length - 1; k++) {
+      let child = node.dirs.get(segs[k]);
+      if (!child) { child = { dirs: new Map(), files: [], count: 0 }; node.dirs.set(segs[k], child); }
+      child.count++;
+      node = child;
+    }
+    node.files.push(f);
+  }
+  const walk = (node: Node, prefix: string, depth: number) => {
+    for (const name of [...node.dirs.keys()].sort()) {
+      const child = node.dirs.get(name)!;
+      const path = prefix ? `${prefix}/${name}` : name;
+      out.push({ kind: 'dir', path, depth, label: name, count: child.count });
+      if (!collapsed.has(path)) walk(child, path, depth + 1);
+    }
+    for (const f of [...node.files].sort((a, b) => a.path.localeCompare(b.path))) {
+      out.push({ kind: 'file', f, depth, name: f.path.split('/').pop() ?? f.path, parent: prefix });
+    }
+  };
+  walk(root, '', 0);
+  return out;
+}
+
 export function ChangedFilesList({
   repoId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard, onStageAll, onDiscardAll,
 }: {
@@ -159,8 +208,21 @@ export function ChangedFilesList({
   const panelFocusNonce = useStore((s) => s.panelFocusNonce);
   const files = repoId ? (diff?.repos.find((r) => r.repo_id === repoId)?.files ?? []) : [];
 
-  // "All changes" is row 0, so it is reachable by keyboard like any file. Every
-  // nav index is therefore one ahead of its file: index 1 is files[0].
+  // Flat by default; tree groups files by folder. The choice is per-user and
+  // persisted; right-click the list to switch.
+  const [treeView, setTreeView] = useState(() => localStorage.getItem(VIEW_KEY) === 'tree');
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const setView = useCallback((tree: boolean) => {
+    setTreeView(tree);
+    localStorage.setItem(VIEW_KEY, tree ? 'tree' : 'list');
+  }, []);
+  const toggleDir = useCallback((path: string) => setCollapsed((s) => {
+    const n = new Set(s);
+    if (n.has(path)) n.delete(path); else n.add(path);
+    return n;
+  }), []);
+
   const totals = files.reduce(
     (acc, f) => ({ add: acc.add + f.added, del: acc.del + f.deleted }),
     { add: 0, del: 0 },
@@ -169,73 +231,117 @@ export function ChangedFilesList({
   const anyUnstaged = stageable.some((f) => f.staged === false);
   const openAll = useCallback(() => { if (repoId) onOpenAll(repoId); }, [repoId, onOpenAll]);
 
-  // Enter stages/unstages — the action you repeat while reviewing your own work.
-  // Opening moves to l / ArrowRight (and click), which is what the file tree uses
-  // for "go into this". On row 0 both mean "open the review".
+  // Both views render the same row list, so keyboard nav is shared. "All changes"
+  // is always row 0; tree rows carry their nesting depth for indentation.
+  const rows = useMemo<Row[]>(() => buildRows(files, treeView, collapsed), [files, treeView, collapsed]);
+
+  // Enter stages/unstages a file, toggles a folder, or opens the review on row 0
+  // — the action you repeat while reviewing. Opening a file moves to l / Right.
   const onEnter = useCallback((i: number) => {
-    if (i === 0) return openAll();
-    const f = files[i - 1];
-    if (f && repoId && f.staged != null) onToggleStage(f.path, repoId, !(f.staged === true));
-  }, [files, repoId, onToggleStage, openAll]);
+    const row = rows[i];
+    if (!row || row.kind === 'all') return openAll();
+    if (row.kind === 'dir') return toggleDir(row.path);
+    const f = row.f;
+    if (repoId && f.staged != null) onToggleStage(f.path, repoId, !(f.staged === true));
+  }, [rows, repoId, onToggleStage, openAll, toggleDir]);
   const onRight = useCallback((i: number) => {
-    if (i === 0) return openAll();
-    const f = files[i - 1];
-    if (f && repoId) onOpenFile(f.path, repoId, guessLang(f.path));
-  }, [files, repoId, onOpenFile, openAll]);
-  const nav = useListNav({ count: files.length + 1, onEnter, onRight, focusNonce: panelFocusNonce });
+    const row = rows[i];
+    if (!row || row.kind === 'all') return openAll();
+    if (row.kind === 'dir') { setCollapsed((s) => { if (!s.has(row.path)) return s; const n = new Set(s); n.delete(row.path); return n; }); return; }
+    if (repoId) onOpenFile(row.f.path, repoId, guessLang(row.f.path));
+  }, [rows, repoId, onOpenFile, openAll]);
+  const onLeft = useCallback((i: number): number | void => {
+    const row = rows[i];
+    if (!row || row.kind === 'all') return;
+    if (row.kind === 'dir' && !collapsed.has(row.path)) return toggleDir(row.path);
+    const parent = row.kind === 'dir' ? row.path.split('/').slice(0, -1).join('/') : row.parent;
+    if (!parent) return;
+    for (let k = i - 1; k >= 0; k--) { const r = rows[k]; if (r.kind === 'dir' && r.path === parent) return k; }
+  }, [rows, collapsed, toggleDir]);
+  const nav = useListNav({ count: rows.length, onEnter, onLeft, onRight, focusNonce: panelFocusNonce });
 
   if (!repoId) return <div className="sidebar-empty">Select a repo above</div>;
   if (files.length === 0) return <div className="sidebar-empty">No changed files</div>;
 
+  const indent = (depth: number) => ({ paddingLeft: `calc(var(--space-3) + ${depth * 0.75}rem)` });
+
   return (
-    <div className="files-list nav-list" tabIndex={0} ref={nav.containerRef} onKeyDown={nav.onKeyDown}>
-      <div className="changed-file-row">
-        <button
-          className={`changed-file changed-file-all ${nav.index === 0 ? 'nav-selected' : ''}`}
-          title="Open all of this repo's changes in one review tab"
-          tabIndex={-1}
-          onClick={() => { nav.setIndex(0); openAll(); }}
-        >
-          <GitCompare size={12} strokeWidth={1.75} className="changed-file-all-icon" />
-          <span className="changed-file-name">All changes</span>
-          <span className="changed-file-dir">{files.length} file{files.length === 1 ? '' : 's'}</span>
-          <StatBadge stat={totals} />
-        </button>
-        {stageable.length > 0 && (
-          <>
-            <input
-              type="checkbox"
-              className="changed-file-checkbox"
-              checked={!anyUnstaged}
-              title={anyUnstaged ? 'Stage all changes' : 'Unstage all changes'}
-              onChange={() => onStageAll(anyUnstaged)}
-            />
-            <button
-              className="changed-file-discard"
-              title="Discard all local changes"
-              onClick={(e) => { e.stopPropagation(); onDiscardAll(); }}
-            >
-              <Trash2 size={12} strokeWidth={1.75} />
-            </button>
-          </>
-        )}
-      </div>
-      {files.map((f, fi) => {
-        const i = fi + 1;
-        const name = f.path.split('/').pop() ?? f.path;
-        const dir = f.path.slice(0, Math.max(0, f.path.length - name.length - 1));
+    <div
+      className="files-list nav-list"
+      tabIndex={0}
+      ref={nav.containerRef}
+      onKeyDown={nav.onKeyDown}
+      onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY }); }}
+    >
+      {rows.map((row, i) => {
+        const selected = i === nav.index ? 'nav-selected' : '';
+        if (row.kind === 'all') {
+          return (
+            <div key="__all__" className="changed-file-row">
+              <button
+                className={`changed-file changed-file-all ${selected}`}
+                title="Open all of this repo's changes in one review tab"
+                tabIndex={-1}
+                onClick={() => { nav.setIndex(i); openAll(); }}
+              >
+                <GitCompare size={12} strokeWidth={1.75} className="changed-file-all-icon" />
+                <span className="changed-file-name">All changes</span>
+                <span className="changed-file-dir">{files.length} file{files.length === 1 ? '' : 's'}</span>
+                <StatBadge stat={totals} />
+              </button>
+              {stageable.length > 0 && (
+                <>
+                  <input
+                    type="checkbox"
+                    className="changed-file-checkbox"
+                    checked={!anyUnstaged}
+                    title={anyUnstaged ? 'Stage all changes' : 'Unstage all changes'}
+                    onChange={() => onStageAll(anyUnstaged)}
+                  />
+                  <button
+                    className="changed-file-discard"
+                    title="Discard all local changes"
+                    onClick={(e) => { e.stopPropagation(); onDiscardAll(); }}
+                  >
+                    <Trash2 size={12} strokeWidth={1.75} />
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        }
+        if (row.kind === 'dir') {
+          const open = !collapsed.has(row.path);
+          return (
+            <div key={`d:${row.path}`} className="changed-file-row">
+              <button
+                className={`changed-file changed-file-folder ${selected}`}
+                style={indent(row.depth)}
+                title={row.path}
+                tabIndex={-1}
+                onClick={() => { nav.setIndex(i); toggleDir(row.path); }}
+              >
+                {open ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />}
+                <span className="changed-file-name">{row.label}</span>
+                <span className="changed-file-dir">{row.count}</span>
+              </button>
+            </div>
+          );
+        }
+        const f = row.f;
         return (
           <div key={f.path} className="changed-file-row">
             <button
-              className={`changed-file ${i === nav.index ? 'nav-selected' : ''}`}
+              className={`changed-file ${selected}`}
+              style={treeView ? indent(row.depth) : undefined}
               title={f.path}
               tabIndex={-1}
               onClick={() => { nav.setIndex(i); onOpenFile(f.path, repoId, guessLang(f.path)); }}
               onDoubleClick={() => onOpenFileAlt(f.path, repoId, guessLang(f.path))}
             >
               <FileStatusIcon status={f.status} />
-              <span className="changed-file-name">{name}</span>
-              {dir && <span className="changed-file-dir">{dir}</span>}
+              <span className="changed-file-name">{row.name}</span>
+              {!treeView && row.parent && <span className="changed-file-dir">{row.parent}</span>}
               <StatBadge stat={{ add: f.added, del: f.deleted }} />
             </button>
             {f.staged != null && (
@@ -259,6 +365,16 @@ export function ChangedFilesList({
           </div>
         );
       })}
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)}>
+          <button className="ctx-menu-item" onClick={() => { setView(false); setMenu(null); }}>
+            <Check size={13} style={{ opacity: treeView ? 0 : 1 }} /> Flat view
+          </button>
+          <button className="ctx-menu-item" onClick={() => { setView(true); setMenu(null); }}>
+            <Check size={13} style={{ opacity: treeView ? 1 : 0 }} /> Tree view
+          </button>
+        </ContextMenu>
+      )}
     </div>
   );
 }

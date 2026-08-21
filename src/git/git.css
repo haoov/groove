@@ -99,6 +99,11 @@
 
 .changed-file-status.st-D { color: var(--gl-color-red-400); }
 
+/* Tree-view folder rows: chevron + folder name, file count pushed to the right. */
+.changed-file-folder > svg { flex-shrink: 0; color: var(--gl-text-color-muted); }
+.changed-file-folder .changed-file-name { color: var(--gl-text-color-subtle); }
+.changed-file-folder .changed-file-dir { flex: 0 0 auto; margin-left: auto; }
+
 /* Per-file stage/unstage checkbox (sits after the +/- stats). */
 
 .changed-file-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
