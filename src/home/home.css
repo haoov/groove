@@ -40,7 +40,7 @@
   width: 100%;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-raised);
+  background: var(--gl-background-color-mantle);
   overflow: hidden;
 }
 
@@ -49,9 +49,9 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--gl-border-color-default);
-  background: var(--gl-background-color-subtle);
+  background: var(--gl-background-color-mantle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 600;
@@ -249,8 +249,8 @@
 .upnext-owner { justify-self: start; }
 
 .upnext-filter {
-  width: 150px;
-  height: 22px;
+  width: 200px;
+  height: 32px;
   padding: 0 var(--space-2);
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-base);
@@ -274,12 +274,11 @@
   justify-self: start;
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 400;
   letter-spacing: 0.06em;
   line-height: 1.5;
   padding: 1px 8px;
-  border-radius: 100px;
+  border-radius: var(--gl-border-radius-base);
 }
 
 .type-task {
@@ -348,13 +347,19 @@
   border-radius: var(--gl-border-radius-base);
 }
 
-.live-group + .live-group { margin-top: 2px; }
+/* A clear break between one live session and the next. */
+.live-group + .live-group {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gl-border-color-default);
+}
 
 .live-detail {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: 2px var(--space-2) var(--space-2) var(--space-5);
+  gap: var(--space-3);
+  /* Indented to sit under the row's title, so the detail reads as nested. */
+  padding: var(--space-2) var(--space-2) var(--space-2) 1.75rem;
 }
 
 .live-repos { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -371,10 +376,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--gl-background-color-strong);
-  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-color-green-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-green) 35%, transparent);
   border-radius: var(--gl-border-radius-base);
-  color: var(--gl-text-color-subtle);
+  color: var(--gl-color-green-400);
   font-family: var(--font-ui);
   font-size: var(--gl-font-size-xs);
   font-weight: 600;
@@ -394,7 +399,7 @@
   color: var(--gl-color-green-400);
 }
 .live-btn.go:hover:not(:disabled) { background: color-mix(in srgb, var(--ctp-green) 20%, transparent); color: var(--gl-color-green-400); }
-.live-btn.danger { color: var(--gl-color-red-400); }
+.live-btn.danger { color: var(--gl-color-red-400); background: var(--gl-color-red-100)}
 .live-btn.danger:hover:not(:disabled) {
   background: var(--gl-color-red-100);
   border-color: color-mix(in srgb, var(--gl-color-red-400) 45%, transparent);

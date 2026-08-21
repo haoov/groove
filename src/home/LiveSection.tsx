@@ -218,11 +218,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
 
       {expanded && (
         <div className="live-detail">
-          {entry.repos.length === 0 ? (
-            <div className="live-detail-empty">No repos yet — open it to add one.</div>
-          ) : (
-            <LiveRepos entry={entry} />
-          )}
           <div className="detail-actions">
             <button className="live-btn" onClick={() => openTask(entry.short_id)}>Open workspace</button>
             {entry.kind === 'explorer' && (
@@ -240,6 +235,11 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
               </button>
             )}
           </div>
+          {entry.repos.length === 0 ? (
+            <div className="live-detail-empty">No repos yet — open it to add one.</div>
+          ) : (
+            <LiveRepos entry={entry} />
+          )}
         </div>
       )}
 

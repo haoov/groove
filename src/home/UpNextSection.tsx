@@ -328,7 +328,7 @@ function ReviewRow({
         )}
       </span>
       <span className="row-note upnext-state" title={`Updated ${timeAgo(mr.updated_at)} ago · ${mr.project_full}`}>
-        asked {timeAgo(mr.updated_at)} ago
+        updated {timeAgo(mr.updated_at)} ago
       </span>
       <span className="row-note upnext-owner">{busy ? 'opening…' : mr.author}</span>
     </button>
