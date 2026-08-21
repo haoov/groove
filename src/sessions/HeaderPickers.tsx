@@ -30,6 +30,16 @@ const KIND_LABEL: Record<SessionKind, string> = {
   review: 'review',
 };
 
+/** The short id for a session: the MR number for reviews (their short_id is long
+ *  and unhelpful), else the task short_id. */
+function sessionIdLabel(s: SessionState): string | null {
+  if (s.kind === 'review') {
+    const mr = s.mrs?.[0];
+    if (mr) return `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+  }
+  return s.task?.short_id ?? null;
+}
+
 /** What the agent is doing, in one line. */
 function agentLine(a: AgentActivity): string {
   const tool = a.tool ? (a.tool.detail ? `${a.tool.name}(${a.tool.detail})` : a.tool.name) : null;
@@ -167,6 +177,7 @@ function SessionRows({ onClose }: { onClose: () => void }) {
         const Icon = KIND_ICON[s.kind] ?? Code2;
         const taskId = s.task?.short_id;
         const activity = taskId ? agentActivity[taskId] : undefined;
+        const idLabel = sessionIdLabel(s);
         const title = s.task?.title || s.title;
         const status = s.task?.status;
         return (
@@ -174,7 +185,7 @@ function SessionRows({ onClose }: { onClose: () => void }) {
             <button className="hp-row-main" onClick={() => pick(s)} onMouseEnter={() => setCursor(i)} title={title}>
               <span className="hp-row-title">
                 <Icon size={12} strokeWidth={1.75} className="hp-row-kind-icon" />
-                {taskId && <span className="hp-row-id">{taskId}</span>}
+                {idLabel && <span className="hp-row-id">{idLabel}</span>}
                 <span className="hp-row-name">{title}</span>
               </span>
               <span className="hp-row-meta">
@@ -320,6 +331,7 @@ export function HeaderPickers() {
   const sessionKind = useSession((s) => s.kind);
   const sessionTitle = useSession((s) => s.title);
   const sessionShortId = useSession((s) => s.task?.short_id ?? null);
+  const sessionMrs = useSession((s) => s.mrs);
   const repos = useSession((s) => s.repos);
   const worktrees = useSession((s) => s.worktrees);
   const activeRepoId = useSession((s) => s.activeRepoId);
@@ -337,8 +349,12 @@ export function HeaderPickers() {
   // repo/worktree chips are workspace context and hide with it.
   if (sessionCount === 0 && !inWorkspace) return null;
 
+  // Reviews get the MR number, not their long title/short_id.
+  const reviewNum = sessionKind === 'review' && sessionMrs[0]
+    ? `${sessionMrs[0].platform === 'github' ? '#' : '!'}${sessionMrs[0].remote_id}`
+    : null;
   const sessionValue = inWorkspace
-    ? <span className="hp-chip-id">{sessionShortId ?? sessionTitle}</span>
+    ? <span className="hp-chip-id">{reviewNum ?? sessionShortId ?? sessionTitle}</span>
     : <span className="hp-chip-name">{sessionCount} open</span>;
 
   return (
