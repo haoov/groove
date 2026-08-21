@@ -235,8 +235,9 @@
    the pane; the trailing track has a floor (so it forms a column) but may grow on
    the rare row whose summary is unusually long. */
 
-/* Percentage tracks — caret · type · id · title(fills) · summary. */
-.live-row { grid-template-columns: 1% 5% 8% minmax(0, 1fr) 4%; }
+/* caret · type · id · title(fills) · summary. Live and Up next share the leading
+   tracks (caret/spacer · type · id · title) so their columns line up. */
+.live-row { grid-template-columns: 1.5rem 5rem 7rem minmax(0, 1fr) auto; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -280,8 +281,9 @@
 .upnext-head,
 .upnext-tr {
   display: grid;
-  /* Percentage tracks — type · code · name(fills) · state · owner. */
-  grid-template-columns: 5% 10% minmax(0, 1fr) 16% 16%;
+  /* spacer(caret) · type · code · name(fills) · state · owner — the first four
+     match .live-row so both tables line up column-for-column. */
+  grid-template-columns: 1.5rem 5rem 7rem minmax(0, 1fr) 8rem 7rem;
   align-items: center;
   column-gap: var(--space-4);
   width: 100%;
