@@ -241,6 +241,9 @@ pub struct MrSignals {
     pub unresolved: i64,
     /// Carries at least one approval (from anyone).
     pub approved: bool,
+    /// Live MR state ("open"/"merged"/"closed") — the stored row goes stale after
+    /// a merge, so Home reads this instead. None when the fetch failed.
+    pub state: Option<String>,
 }
 
 static MR_SIGNALS: std::sync::LazyLock<
@@ -304,7 +307,15 @@ pub(crate) async fn mr_signals(repo: &Repo, mr_id: &str, remote_id: &str, force:
         .and_then(|v| v["approved"].as_bool())
         .unwrap_or(false);
 
-    let sig = MrSignals { ci, unresolved, approved };
+    // The stored mrs.state is only the discovery value; re-read the live state so
+    // a merged/closed MR stops reading "open" on Home.
+    let state = client
+        .get_mr_details(repo, remote_id)
+        .await
+        .ok()
+        .and_then(|v| v["state"].as_str().map(|s| s.to_string()));
+
+    let sig = MrSignals { ci, unresolved, approved, state };
     if let Ok(mut map) = MR_SIGNALS.lock() {
         map.insert(mr_id.to_string(), (std::time::Instant::now(), sig.clone()));
     }

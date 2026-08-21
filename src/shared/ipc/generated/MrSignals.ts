@@ -13,4 +13,9 @@ ci: string | null, unresolved: number,
 /**
  * Carries at least one approval (from anyone).
  */
-approved: boolean, };
+approved: boolean, 
+/**
+ * Live MR state ("open"/"merged"/"closed") — the stored row goes stale after
+ * a merge, so Home reads this instead. None when the fetch failed.
+ */
+state: string | null, };

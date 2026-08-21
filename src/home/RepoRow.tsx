@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { GitBranch, GitPullRequest } from 'lucide-react';
+import { GitBranch, GitMerge, GitPullRequest, GitPullRequestClosed } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ciGroup } from '../shared/lib/mr';
@@ -10,14 +10,15 @@ import type { HomeEntry, HomeMr, HomeRepo } from '../shared/ipc/ipc';
 /** The MR beside a worktree: number + state (+ CI dot, unresolved count). */
 function MrLine({ mr }: { mr: HomeMr }) {
   const num = `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+  const Icon = mr.state === 'merged' ? GitMerge : mr.state === 'closed' ? GitPullRequestClosed : GitPullRequest;
   return (
     <a
       className="overview-wt-mr"
       href={mr.url}
-      title={`${num} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+      title={`${num} ${mr.state} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
     >
-      <GitPullRequest size={11} strokeWidth={1.75} />
+      <Icon size={11} strokeWidth={1.75} />
       <span className="overview-wt-mr-num">{num}</span>
       <span className={`overview-wt-mr-state mr-state-${mr.state}`}>{mr.state}</span>
       {mr.ci && <span className={`live-ci ci-${ciGroup(mr.ci)}`} title={`Pipeline: ${mr.ci}`}>●</span>}

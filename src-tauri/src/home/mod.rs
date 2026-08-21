@@ -217,7 +217,8 @@ async fn mr_signals_for(row: &HomeRow, force_mr: bool) -> Option<HomeMr> {
         id: mr_id,
         platform,
         remote_id,
-        state,
+        // Prefer the live state; fall back to the stored row if the fetch failed.
+        state: sig.state.clone().unwrap_or(state),
         url,
         ci: sig.ci,
         unresolved: sig.unresolved,
