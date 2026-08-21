@@ -744,3 +744,20 @@
   color: var(--gl-text-color-disabled);
 }
 .activity-legend .activity-cell { width: 0.85rem; height: 0.85rem; }
+
+/* New-explorer control in the tab bar. */
+.home-new-explorer { margin-left: var(--space-2); }
+.explorer-new-composer { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2); }
+.explorer-new-input {
+  width: 12rem;
+  height: 1.7rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-background-color-default);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  outline: none;
+}
+.explorer-new-input:focus { border-color: var(--gl-focus-border); }

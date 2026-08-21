@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -24,9 +24,6 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
   const snapshot = useStore((s) => s.homeSnapshot);
   const homeLoading = useStore((s) => s.homeLoading);
   const refreshHome = useStore((s) => s.refreshHome);
-  const setLastError = useStore((s) => s.setLastError);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
 
   // Attention first, then the busiest working trees; the shared filter narrows.
   const entries = useMemo(() => {
@@ -42,42 +39,9 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
 
   useEffect(() => { onCount?.(entries.length); }, [entries.length, onCount]);
 
-  const createExplorer = async () => {
-    const name = newName.trim();
-    setCreating(false);
-    setNewName('');
-    try {
-      await invoke<string>('open_explorer_session', { name: name || null });
-    } catch (e) {
-      setLastError(String(e));
-    }
-  };
-
   return (
     <>
       <div className="home-toolbar">
-        {creating ? (
-          <span className="explorer-new-composer">
-            <input
-              className="explorer-new-input"
-              autoFocus
-              placeholder="Name this explorer…"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') createExplorer();
-                if (e.key === 'Escape') { setCreating(false); setNewName(''); }
-              }}
-            />
-            <button className="btn-primary" onClick={createExplorer}>Create</button>
-            <button className="btn-secondary" onClick={() => { setCreating(false); setNewName(''); }}>Cancel</button>
-          </span>
-        ) : (
-          <button className="live-btn" onClick={() => { setNewName(''); setCreating(true); }}>
-            <Plus size={13} strokeWidth={2} />
-            New explorer
-          </button>
-        )}
         <span className="home-toolbar-spring" />
         <button
           className="home-link"

@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import { invoke } from '../shared/ipc/invoke';
+import { useStore } from '../shared/store';
 import { LiveSection } from './LiveSection';
 import { UpNextSection } from './UpNextSection';
 import { ReviewsSection } from './ReviewsSection';
@@ -25,8 +28,25 @@ export function Home() {
   const [liveCount, setLiveCount] = useState(0);
   const [upnextCount, setUpnextCount] = useState(0);
   const [reviewsCount, setReviewsCount] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const setLastError = useStore((s) => s.setLastError);
 
   const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* ignore */ } };
+
+  // New explorer lives in the header — it opens a Live session, so it belongs
+  // next to the tabs, not inside one tab's body.
+  const createExplorer = async () => {
+    const name = newName.trim();
+    setCreating(false);
+    setNewName('');
+    try {
+      await invoke<string>('open_explorer_session', { name: name || null });
+      setTab('live');
+    } catch (e) {
+      setLastError(String(e));
+    }
+  };
 
   const Tab = ({ id, label, count }: { id: Tab; label: string; count: number }) => (
     <button className={`home-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
@@ -42,6 +62,28 @@ export function Home() {
             <Tab id="live" label="Live" count={liveCount} />
             <Tab id="upnext" label="Up next" count={upnextCount} />
             <Tab id="reviews" label="Reviews" count={reviewsCount} />
+            {creating ? (
+              <span className="explorer-new-composer">
+                <input
+                  className="explorer-new-input"
+                  autoFocus
+                  placeholder="Name this explorer…"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createExplorer();
+                    if (e.key === 'Escape') { setCreating(false); setNewName(''); }
+                  }}
+                />
+                <button className="btn-primary" onClick={createExplorer}>Create</button>
+                <button className="btn-secondary" onClick={() => { setCreating(false); setNewName(''); }}>Cancel</button>
+              </span>
+            ) : (
+              <button className="live-btn home-new-explorer" onClick={() => { setNewName(''); setCreating(true); }}>
+                <Plus size={13} strokeWidth={2} />
+                New explorer
+              </button>
+            )}
             <span className="home-tabbar-spring" />
             <input
               className="home-filter"
