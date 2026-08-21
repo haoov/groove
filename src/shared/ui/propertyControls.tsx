@@ -22,6 +22,9 @@ const RELATION_DEBOUNCE_MS = 800;
 
 export const SINGLE_KINDS = ['status', 'select', 'date', 'number'];
 export const MULTI_KINDS = ['relation', 'multi_select'];
+/** Read-only Notion meta fields — never a "property you set", so the overview
+ *  strip leaves them out (created/edited time, the unique id, formulas, rollups). */
+export const META_KINDS = ['title', 'formula', 'unique_id', 'created_time', 'last_edited_time', 'rollup'];
 
 /** Hours has its own block — it's measured, not just stored (see hours.rs). */
 export const isHoursProperty = (name: string, kind: string) =>
@@ -294,7 +297,12 @@ export function PropField({
   const titleOf = (id: string) => options?.find((o) => o.id === id)?.title ?? id;
 
   let display: string;
-  if (isMulti) display = draft.length ? draft.map(titleOf).join(', ') : '—';
+  if (isMulti) {
+    // Before the options are fetched, titleOf can only echo the id, so fall back
+    // to the backend-resolved display (Notion already gave us the titles).
+    const joined = draft.map(titleOf).join(', ');
+    display = draft.length ? (options ? joined : (current?.display || joined)) : '—';
+  }
   else if (prop.kind === 'checkbox') display = raw === true ? 'Yes' : 'No';
   else if (prop.kind === 'date') { const iso = String(raw ?? '').slice(0, 10); display = iso ? shortDate(iso) : '—'; }
   else if (prop.kind === 'number') display = raw === null || raw === undefined ? '—' : `${raw}${unitFor(prop.name)}`;

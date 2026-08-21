@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import {
-  AddField, PropField, hasValue, isHoursProperty, type Row,
+  AddField, PropField, hasValue, isHoursProperty, META_KINDS, type Row,
 } from '../shared/ui/propertyControls';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
@@ -63,7 +63,7 @@ export function PropertyStrip({
 
   const { shown, unset, hasHours } = useMemo(() => {
     const rows: Row[] = (schema?.properties ?? [])
-      .filter((p) => p.kind !== 'title' && !isHoursProperty(p.name, p.kind))
+      .filter((p) => !META_KINDS.includes(p.kind) && !isHoursProperty(p.name, p.kind))
       .map((p) => ({ prop: p, current: values.find((v) => v.name === p.name) }));
     // Columns, in schema order: editable props that carry a value (or were just
     // revealed), plus read-only computed props that have something to show.
