@@ -1,6 +1,6 @@
 [package]
 name = "groove"
-version = "1.0.0"
+version = "0.2.0"
 description = "Groove — task-centric desktop engineering workspace"
 authors = ["Raphael Sabbah"]
 edition = "2021"
