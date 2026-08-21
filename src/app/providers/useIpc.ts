@@ -413,7 +413,7 @@ export function useIpc() {
           // The agent touching the worktree is the diff-staleness signal now
           // that the filesystem watcher is gone: throttled while working,
           // immediate once the turn ends.
-          refreshOnAgentActivity(payload.task_id, payload.state);
+          refreshOnAgentActivity(payload.task_id, payload.state, payload.tool?.name);
           if (payload.state !== 'waiting' || previous === 'waiting') return;
           const owner = findSessionByTask(s, payload.task_id);
           const focused = owner && s.activeSessionId === owner.id && s.view === 'workspace';
