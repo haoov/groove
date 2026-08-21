@@ -100,7 +100,9 @@ export function WorkspacePane({
               <button
                 className="ws-tab-close"
                 title="Close"
-                onMouseDown={(e) => { e.stopPropagation(); closeTab(pane.id, t.id); }}
+                // Left button only — right-clicking the × must not close the tab.
+                onMouseDown={(e) => { if (e.button !== 0) return; e.stopPropagation(); closeTab(pane.id, t.id); }}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
               >
                 <X size={11} strokeWidth={2.25} />
               </button>

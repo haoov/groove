@@ -434,8 +434,8 @@
 
 /* A clear break between one live session and the next. */
 .live-group + .live-group {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
   border-top: 1px solid var(--gl-border-color-default);
 }
 
@@ -444,7 +444,7 @@
   flex-direction: column;
   gap: var(--space-3);
   /* Indented to sit under the row's title, so the detail reads as nested. */
-  padding: var(--space-2) var(--space-2) var(--space-2) 1.75rem;
+  padding: var(--space-2) var(--space-2) var(--space-2) 3.75rem;
 }
 
 .live-repos { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -627,13 +627,12 @@
 .prio-badge,
 .approved-badge {
   flex-shrink: 0;
-  border-radius: 100px;
+  border-radius: var(--gl-border-radius-base);
   padding: 1px 8px;
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.45;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--gl-text-color-subtle);
   background: rgba(var(--gl-elevate), 0.07);
