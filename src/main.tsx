@@ -2,6 +2,7 @@ import ReactDOM from 'react-dom/client';
 // Bundle the type system locally so the app renders identically regardless of
 // installed system fonts and with no remote font dependency:
 //   IBM Plex Sans → UI chrome, Lilex (IBM Plex Mono fallback) → editor / code.
+import '@fontsource/lilex/300.css';
 import '@fontsource/lilex/400.css';
 import '@fontsource/lilex/500.css';
 import '@fontsource/lilex/600.css';

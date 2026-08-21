@@ -43,7 +43,8 @@ export const cmChromeTheme = EditorView.theme({
     '--indent-marker-active-bg-color': 'var(--cm-indent-marker-active)',
   },
   '&.cm-focused': { outline: 'none' },
-  '.cm-scroller': { fontFamily: 'var(--font-mono)' },
+  // Lighter base weight (Lilex Light); highlight tags set their own where bolder.
+  '.cm-scroller': { fontFamily: 'var(--font-mono)', fontWeight: '300' },
   '.cm-gutters': { background: 'transparent', border: 'none', color: 'var(--gl-text-color-subtle)' },
   '.cm-foldGutter': { display: 'none' },
   '.cm-selectionBackground': { background: 'var(--gl-selection-bg) !important', borderRadius: '3px' },
