@@ -385,12 +385,12 @@
 .hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; opacity: 0.5; }
 .hp-chip:hover .hp-chip-caret, .hp-chip.open .hp-chip-caret { opacity: 1; }
 
+/* Portalled to <body> with fixed position (set inline from the chip rect), so
+   the header's overflow:hidden can never clip it. */
 .hp-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 60;
-  min-width: 320px;
+  position: fixed;
+  z-index: 200;
+  min-width: 300px;
   max-width: 460px;
   display: flex;
   flex-direction: column;
@@ -400,27 +400,6 @@
   border-radius: var(--gl-border-radius-large);
   background: var(--gl-background-color-raised);
   box-shadow: var(--shadow-float);
-}
-
-/* Filter row — the Zed command-list header. */
-.hp-search {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--gl-border-color-default);
-  color: var(--gl-text-color-disabled);
-  flex-shrink: 0;
-}
-.hp-search input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: none;
-  color: var(--gl-text-color-default);
-  font-family: var(--font-ui);
-  font-size: var(--gl-font-size-sm);
 }
 
 .hp-rows { display: flex; flex-direction: column; gap: 1px; padding: var(--space-1); overflow-y: auto; outline: none; }
