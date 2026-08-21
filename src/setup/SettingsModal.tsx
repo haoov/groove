@@ -7,6 +7,10 @@ import { COMMANDS, type CommandId } from '../shared/lib/keybindings';
 import { chordFromEvent, chordLabel, isModifierOnly, isTypingCharacter } from '../shared/lib/keys';
 import type { Environment } from '../shared/ipc/ipc';
 
+// Monospace faces shipped with the app (see main.tsx @fontsource imports). They are
+// always selectable even though the OS font list never reports them.
+const BUNDLED_FONTS = ['Lilex', 'IBM Plex Mono'];
+
 // Representative swatches for the theme picker preview (base · surface · accent · green).
 const SWATCHES: Record<ThemeName, string[]> = {
   frappe:   ['#303446', '#414559', '#8caaee', '#a6d189'],
@@ -153,13 +157,20 @@ export function SettingsModal() {
                 {/* The configured family may not be installed (a config copied
                     from another machine) — keep it selectable rather than
                     silently switching to whatever sorts first. */}
-                {/* Empty = the theme's own stack, which is what a fresh install
-                    uses: it degrades to a system mono instead of pinning a name. */}
-                <option value="">Theme default</option>
-                {fontFamily && !fonts.includes(fontFamily) && (
+                {/* Empty = the theme's own stack (Lilex first), which is what a
+                    fresh install uses. */}
+                <option value="">Theme default (Lilex)</option>
+                {/* Bundled faces ship with the app, so they are always selectable
+                    even though the OS font list never reports them. */}
+                <optgroup label="Bundled">
+                  {BUNDLED_FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </optgroup>
+                {fontFamily && !fonts.includes(fontFamily) && !BUNDLED_FONTS.includes(fontFamily) && (
                   <option value={fontFamily}>{fontFamily} (not installed)</option>
                 )}
-                {fonts.map((f) => <option key={f} value={f}>{f}</option>)}
+                <optgroup label="Installed">
+                  {fonts.filter((f) => !BUNDLED_FONTS.includes(f)).map((f) => <option key={f} value={f}>{f}</option>)}
+                </optgroup>
               </select>
             ) : (
               <input
