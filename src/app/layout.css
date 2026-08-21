@@ -363,8 +363,7 @@
 .hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1; }
 .hp-chip-id {
   flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--gl-color-blue-300);
 }
 .hp-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
