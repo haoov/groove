@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
-import { RotateCcw, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
 import { refreshSession } from '../../shared/lib/refreshSession';
 import { activeWorktreeFor } from '../../shared/lib/workspace';
@@ -26,7 +26,6 @@ export function Sidebar() {
   const bumpMrs = useSession((s) => s.bumpMrs);
   const diffMode = useSession((s) => s.diffMode);
   const setDiffMode = useSession((s) => s.setDiffMode);
-  const diff = useSession((s) => s.diff);
   const annotations = useSession((s) => s.annotations);
   const commits = useSession((s) => s.commits);
   const setCommits = useSession((s) => s.setCommits);
@@ -304,65 +303,45 @@ export function Sidebar() {
               }
             />
           )}
-          {gitSubTab === 'changes' && (() => {
-            const repoFiles = diff?.repos.find((r) => r.repo_id === repoId)?.files ?? [];
-            const stageable = repoFiles.filter((f) => f.staged != null);
-            const anyUnstaged = stageable.some((f) => f.staged === false);
-            return (
-              <>
-                {/* Diff base + refresh (moved here from the old modebar): this list
-                    and every diff tab follow the selected base. */}
-                <div className="diff-mode-row">
-                  <div className="diff-mode-seg">
-                    {DIFF_MODES.map((m) => (
-                      <button
-                        key={m.id}
-                        className={`diff-mode-btn ${diffMode === m.id ? 'active' : ''}`}
-                        title={m.title}
-                        onClick={() => setDiffMode(m.id)}
-                      >
-                        <m.Icon size={12} strokeWidth={1.75} />
-                        <span>{m.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className="diff-mode-refresh"
-                    onClick={() => void refreshSession(sessionId)}
-                    title="Refresh diff & git status"
-                  >
-                    <RefreshCw size={12} strokeWidth={1.75} />
-                  </button>
+          {gitSubTab === 'changes' && (
+            <>
+              {/* Diff base + refresh (moved here from the old modebar): this list
+                  and every diff tab follow the selected base. */}
+              <div className="diff-mode-row">
+                <div className="diff-mode-seg">
+                  {DIFF_MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      className={`diff-mode-btn ${diffMode === m.id ? 'active' : ''}`}
+                      title={m.title}
+                      onClick={() => setDiffMode(m.id)}
+                    >
+                      <m.Icon size={12} strokeWidth={1.75} />
+                      <span>{m.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="git-changes-toolbar">
-                  {stageable.length > 0 && (
-                    <>
-                      {anyUnstaged ? (
-                        <button className="git-stage-all" onClick={stageAll('stage_all')} title="Stage all changes">
-                          Stage all
-                        </button>
-                      ) : (
-                        <button className="git-stage-all" onClick={stageAll('unstage_all')} title="Unstage all changes">
-                          Unstage all
-                        </button>
-                      )}
-                      <button className="git-discard-all" onClick={discardAll} title="Discard all local changes">
-                        <RotateCcw size={13} strokeWidth={1.75} />
-                      </button>
-                    </>
-                  )}
-                </div>
-                <ChangedFilesList
-                  repoId={repoId}
-                  onOpenFile={(path, rid) => openFileInDiff(path, rid)}
-                  onOpenFileAlt={openFileInEditor}
-                  onOpenAll={(rid) => openTab({ repoId: rid, filePath: '', view: 'diff', kind: 'changes' })}
-                  onToggleStage={toggleStage}
-                  onDiscard={discardFile}
-                />
-              </>
-            );
-          })()}
+                <button
+                  className="diff-mode-refresh"
+                  onClick={() => void refreshSession(sessionId)}
+                  title="Refresh diff & git status"
+                >
+                  <RefreshCw size={12} strokeWidth={1.75} />
+                </button>
+              </div>
+              {/* Stage-all / discard-all live on the All-changes row now. */}
+              <ChangedFilesList
+                repoId={repoId}
+                onOpenFile={(path, rid) => openFileInDiff(path, rid)}
+                onOpenFileAlt={openFileInEditor}
+                onOpenAll={(rid) => openTab({ repoId: rid, filePath: '', view: 'diff', kind: 'changes' })}
+                onToggleStage={toggleStage}
+                onDiscard={discardFile}
+                onStageAll={(stage) => stageAll(stage ? 'stage_all' : 'unstage_all')()}
+                onDiscardAll={discardAll}
+              />
+            </>
+          )}
           {gitSubTab === 'forge' && !isExplorer && (() => {
             // All of the task's MRs across repos — a row opens the MR on the
             // forge (MR links always open GitLab/GitHub; reviews get the in-app

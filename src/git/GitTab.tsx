@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
-  GitCommit, Upload, Download, ChevronsUp, ChevronDown, Plus, Minus, Circle, RotateCcw, AlertTriangle,
+  GitCommit, Upload, Download, ChevronsUp, ChevronDown, Plus, Minus, Circle, Trash2, AlertTriangle,
   GitPullRequest, GitCompare, Search, X,
 } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
@@ -141,7 +141,7 @@ export function CommitsTab({
 // ── Changed files (flat list) ──────────────────────────────────────────────────
 
 export function ChangedFilesList({
-  repoId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard,
+  repoId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard, onStageAll, onDiscardAll,
 }: {
   repoId: string | null;
   onOpenFile: (path: string, repoId: string, lang: string) => void;
@@ -150,6 +150,10 @@ export function ChangedFilesList({
   onOpenAll: (repoId: string) => void;
   onToggleStage: (path: string, repoId: string, staged: boolean) => void;
   onDiscard: (path: string, repoId: string) => void;
+  /** Stage or unstage every file at once (the All-changes row's checkbox). */
+  onStageAll: (stage: boolean) => void;
+  /** Discard every local change (the All-changes row's trash). */
+  onDiscardAll: () => void;
 }) {
   const diff = useSession((s) => s.diff);
   const panelFocusNonce = useStore((s) => s.panelFocusNonce);
@@ -161,6 +165,8 @@ export function ChangedFilesList({
     (acc, f) => ({ add: acc.add + f.added, del: acc.del + f.deleted }),
     { add: 0, del: 0 },
   );
+  const stageable = files.filter((f) => f.staged != null);
+  const anyUnstaged = stageable.some((f) => f.staged === false);
   const openAll = useCallback(() => { if (repoId) onOpenAll(repoId); }, [repoId, onOpenAll]);
 
   // Enter stages/unstages — the action you repeat while reviewing your own work.
@@ -195,6 +201,24 @@ export function ChangedFilesList({
           <span className="changed-file-dir">{files.length} file{files.length === 1 ? '' : 's'}</span>
           <StatBadge stat={totals} />
         </button>
+        {stageable.length > 0 && (
+          <>
+            <input
+              type="checkbox"
+              className="changed-file-checkbox"
+              checked={!anyUnstaged}
+              title={anyUnstaged ? 'Stage all changes' : 'Unstage all changes'}
+              onChange={() => onStageAll(anyUnstaged)}
+            />
+            <button
+              className="changed-file-discard"
+              title="Discard all local changes"
+              onClick={(e) => { e.stopPropagation(); onDiscardAll(); }}
+            >
+              <Trash2 size={12} strokeWidth={1.75} />
+            </button>
+          </>
+        )}
       </div>
       {files.map((f, fi) => {
         const i = fi + 1;
@@ -228,7 +252,7 @@ export function ChangedFilesList({
                   title="Discard changes to this file"
                   onClick={(e) => { e.stopPropagation(); onDiscard(f.path, repoId); }}
                 >
-                  <RotateCcw size={12} strokeWidth={1.75} />
+                  <Trash2 size={12} strokeWidth={1.75} />
                 </button>
               </>
             )}
