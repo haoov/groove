@@ -302,7 +302,26 @@ export function useKeybindings() {
         }
       }
     };
+    // Mouse back/forward (M4/M5) cycle the focused pane. preventDefault stops the
+    // webview from treating them as history navigation.
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      const st = useStore.getState();
+      if (st.view !== 'workspace') return;
+      const sess = st.activeSessionId ? st.sessions[st.activeSessionId] : null;
+      if (!sess || sess.panes.length < 2) return;
+      e.preventDefault();
+      const order = sess.panes.map((p) => p.id);
+      const idx = order.indexOf(sess.activePaneId);
+      const dir = e.button === 3 ? -1 : 1;
+      const target = order[(idx + dir + order.length) % order.length];
+      sessionActions(sess.id).focusPane(target);
+    };
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onMouse, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onMouse, true);
+    };
   }, []);
 }
