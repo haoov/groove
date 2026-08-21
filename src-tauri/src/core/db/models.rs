@@ -144,3 +144,14 @@ pub struct TimeSummary {
     #[ts(type = "number")]
     pub unlogged_seconds: i64,
 }
+
+/// One day of tracked work, summed across every session — the Home activity
+/// heatmap reads a list of these.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct ActivityDay {
+    /// Local calendar day, `YYYY-MM-DD` (as written by the tracker).
+    pub day: String,
+    #[ts(type = "number")]
+    pub seconds: i64,
+}

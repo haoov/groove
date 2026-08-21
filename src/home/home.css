@@ -22,8 +22,10 @@
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-5) var(--space-6) var(--space-6);
-  display: flex;
-  flex-direction: column;
+  /* Panels tile responsively: several columns when wide, one when narrow. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(30rem, 1fr));
+  align-items: start;
   gap: var(--space-5);
 }
 
@@ -37,7 +39,7 @@
 .home-section {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  min-width: 0;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-mantle);
@@ -160,7 +162,7 @@
    the rare row whose summary is unusually long. */
 
 /* Percentage tracks — caret · type · id · title(fills) · summary. */
-.live-row { grid-template-columns: 3% 11% 18% minmax(0, 1fr) 20%; }
+.live-row { grid-template-columns: 1% 5% 8% minmax(0, 1fr) 4%; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -205,7 +207,7 @@
 .upnext-tr {
   display: grid;
   /* Percentage tracks — type · code · name(fills) · state · owner. */
-  grid-template-columns: 11% 18% minmax(0, 1fr) 20% 16%;
+  grid-template-columns: 5% 10% minmax(0, 1fr) 16% 16%;
   align-items: center;
   column-gap: var(--space-4);
   width: 100%;
@@ -580,3 +582,57 @@
 }
 
 .upnext-more { align-self: flex-start; padding: var(--space-2); }
+
+/* ── Activity heatmap ──────────────────────────────────────────────────────────
+   The daily time log (get_activity_days) as a GitHub-style grid: 7 weekday rows,
+   one column per week, newest on the right. Green scales with tracked time. */
+
+.activity-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--gl-text-color-subtle);
+}
+.activity-summary strong { color: var(--gl-text-color-default); font-family: var(--font-mono); }
+
+.activity-body {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.activity-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 13px);
+  grid-auto-columns: 13px;
+  gap: 3px;
+}
+
+.activity-cell {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--gl-background-color-strong);
+}
+.activity-cell.lvl-x { background: transparent; }
+.activity-cell.lvl-0 { background: var(--gl-background-color-strong); }
+.activity-cell.lvl-1 { background: color-mix(in srgb, var(--ctp-green) 28%, transparent); }
+.activity-cell.lvl-2 { background: color-mix(in srgb, var(--ctp-green) 50%, transparent); }
+.activity-cell.lvl-3 { background: color-mix(in srgb, var(--ctp-green) 72%, transparent); }
+.activity-cell.lvl-4 { background: var(--gl-color-green-400); }
+
+.activity-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+}

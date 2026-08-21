@@ -41,6 +41,7 @@ export type {
   RelationOption,
   PropertyValue,
   TimeSummary as TaskTime,
+  ActivityDay,
   HomeMr,
   HomeRepo,
   HomeEntry,
