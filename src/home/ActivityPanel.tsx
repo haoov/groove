@@ -89,6 +89,9 @@ export function ActivityPanel() {
           <p className="home-empty">Loading…</p>
         ) : (
           <>
+            <div className="activity-weekdays">
+              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => <span key={d}>{d}</span>)}
+            </div>
             <div className="activity-grid">
               {cells.map((c) => (
                 <span

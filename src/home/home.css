@@ -608,18 +608,25 @@
   gap: var(--space-3);
 }
 
+/* A week reads left-to-right: 7 weekday columns, one row per week (newest last). */
+.activity-weekdays,
 .activity-grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(7, 13px);
-  grid-auto-columns: 13px;
-  gap: 3px;
+  grid-template-columns: repeat(7, 1.5rem);
+  gap: 5px;
+}
+
+.activity-weekdays {
+  margin-bottom: 4px;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+  text-align: center;
 }
 
 .activity-cell {
-  width: 13px;
-  height: 13px;
-  border-radius: 2px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--gl-border-radius-sm);
   background: var(--gl-background-color-strong);
 }
 .activity-cell.lvl-x { background: transparent; }
@@ -636,3 +643,4 @@
   font-size: var(--gl-font-size-xs);
   color: var(--gl-text-color-disabled);
 }
+.activity-legend .activity-cell { width: 0.85rem; height: 0.85rem; }
