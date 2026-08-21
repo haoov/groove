@@ -13,6 +13,8 @@ export function ActivityRail() {
   const activeTask = useSession((s) => s.activeTask);
   const sidebarTab = useSession((s) => s.sidebarTab);
   const setSidebarTab = useSession((s) => s.setSidebarTab);
+  const sidebarCollapsed = useSession((s) => s.sidebarCollapsed);
+  const setSidebarCollapsed = useSession((s) => s.setSidebarCollapsed);
   const workspaceMode = useSession((s) => s.workspaceMode);
   const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const annotations = useSession((s) => s.annotations);
@@ -25,7 +27,14 @@ export function ActivityRail() {
   const showPanels = !!activeTask;
 
   const selectPanel = (tab: SidebarTab) => {
+    // Clicking the panel you are already on folds it away, like Zed's dock icons.
+    const here = inWorkspace && workspaceMode === 'code' && sidebarTab === tab && !sidebarCollapsed;
+    if (here) {
+      setSidebarCollapsed(true);
+      return;
+    }
     setSidebarTab(tab);
+    setSidebarCollapsed(false);
     setWorkspaceMode('code');
     setView('workspace');
   };
@@ -67,21 +76,21 @@ export function ActivityRail() {
       {showPanels && (
         <div className="rail-group">
           <button
-            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'files' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && !sidebarCollapsed && sidebarTab === 'files' ? 'active' : ''}`}
             onClick={() => selectPanel('files')}
             title="Files"
           >
             <Files size={18} strokeWidth={1.75} />
           </button>
           <button
-            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'git' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && !sidebarCollapsed && sidebarTab === 'git' ? 'active' : ''}`}
             onClick={() => selectPanel('git')}
             title="Source control"
           >
             <GitBranch size={18} strokeWidth={1.75} />
           </button>
           <button
-            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && sidebarTab === 'annotations' ? 'active' : ''}`}
+            className={`rail-btn ${inWorkspace && workspaceMode === 'code' && !sidebarCollapsed && sidebarTab === 'annotations' ? 'active' : ''}`}
             onClick={() => selectPanel('annotations')}
             title="Notes"
           >
