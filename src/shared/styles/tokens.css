@@ -122,7 +122,7 @@
 
   /* ── Terminal (xterm) — resolved to concrete hex at runtime; ANSI hues come
      from the palette, the black/white ramp is polarity-tuned in the theme files. */
-  --term-bg:           var(--ctp-base);
+  --term-bg:           var(--ctp-crust);   /* matches the .pty-pane chrome (overlap) */
   --term-fg:           var(--ctp-text);
   --term-cursor:       var(--ctp-blue);
   --term-selection:    var(--ctp-surface2);

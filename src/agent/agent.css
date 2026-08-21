@@ -40,7 +40,7 @@
 .pty-pane {
   flex: 1;
   overflow: hidden;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1);
   min-height: 0;
   /* Match the xterm theme background so the padding around the terminal blends
      in — otherwise the panel colour shows through as a visible edge/limit. */
