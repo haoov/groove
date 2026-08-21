@@ -134,19 +134,6 @@
   color: var(--gl-text-color-subtle);
 }
 
-.header-back {
-  background: none;
-  border: none;
-  color: var(--gl-text-color-subtle);
-  font-size: var(--gl-font-size-sm);
-  padding: 2px 4px;
-  border-radius: var(--gl-border-radius-sm);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.header-back:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
-.header-back.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
-
 .header-right { display: flex; align-items: center; gap: var(--space-2); }
 
 /* ── Custom window controls (frameless window) ────────────────────────────── */

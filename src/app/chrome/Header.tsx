@@ -6,12 +6,10 @@ import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
 
 export function Header() {
-  const view = useStore((s) => s.view);
   const syncStatus = useStore((s) => s.syncStatus);
   const setSyncStatus = useStore((s) => s.setSyncStatus);
   const setTasks = useStore((s) => s.setTasks);
   const setLastError = useStore((s) => s.setLastError);
-  const setView = useStore((s) => s.setView);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   // Deferred approvals belong next to the other "waiting for you" counter, not
   // in the status bar where a parked agent write was easy to forget.
@@ -37,13 +35,6 @@ export function Header() {
           <Layers size={14} strokeWidth={1.75} style={{ marginRight: 7, opacity: 0.7, verticalAlign: 'middle' }} />
           Groove
         </span>
-
-        <button
-          className={`header-back ${view === 'home' ? 'active' : ''}`}
-          onClick={() => setView('home')}
-        >
-          Home
-        </button>
 
         <HeaderPickers />
       </div>
