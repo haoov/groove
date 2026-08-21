@@ -357,7 +357,7 @@ export function HeaderPickers() {
         <Picker
           kind="repo"
           ariaLabel="Repository"
-          value={(activeRepo ?? repos[0])?.project ?? '—'}
+          value={<span className="hp-chip-name">{(activeRepo ?? repos[0])?.project ?? '—'}</span>}
           icon={FolderGit2}
           chipTitle="The repo git actions target (Alt+R)"
         >
@@ -376,7 +376,7 @@ export function HeaderPickers() {
         <Picker
           kind="worktree"
           ariaLabel="Worktree"
-          value={(activeWt ?? repoWorktrees[0])?.branch ?? '—'}
+          value={<span className="hp-chip-name">{(activeWt ?? repoWorktrees[0])?.branch ?? '—'}</span>}
           icon={GitBranch}
           chipTitle="The worktree git actions target (Alt+W)"
         >

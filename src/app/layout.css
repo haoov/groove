@@ -358,12 +358,12 @@
   background: var(--gl-background-color-hover);
   border-color: var(--gl-border-color-subtle);
 }
-.hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; }
-.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; display: inline-flex; align-items: center; }
+/* One line-height and size across all three chips, so id and name align the same. */
+.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1; }
 .hp-chip-id {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 11px;
   font-weight: 500;
   color: var(--gl-color-blue-300);
 }
