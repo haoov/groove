@@ -12,8 +12,9 @@
 }
 
 .overview-inner {
-  max-width: 70%;
+  max-width: 80%;
   margin: 0 auto;
+  margin-top: 1%;
   padding: var(--space-6);
   display: flex;
   flex-direction: column;
@@ -231,7 +232,7 @@
 
 .overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: minmax(0, 1fr) 30%;
   gap: var(--space-5);
   align-items: start;
 }
@@ -250,7 +251,7 @@
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-mantle);
-  padding: var(--space-4);
+  padding: var(--space-3);
   overflow: hidden;
   min-width: 0;
 }
@@ -350,7 +351,6 @@
   flex-direction: column;
   gap: 4px;
   padding: var(--space-3);
-  background: var(--gl-background-color-subtle);
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
 }
@@ -358,6 +358,7 @@
 .overview-repo { display: flex; align-items: center; gap: var(--space-2); }
 
 .overview-repo-name {
+  min-width: 0;
   font-size: var(--gl-font-size-sm);
   font-weight: 600;
   color: var(--gl-text-color-default);
@@ -388,6 +389,12 @@
   font-size: var(--gl-font-size-xs);
   min-width: 0;
 }
+
+.overview-wt.clickable { cursor: pointer; border-radius: var(--gl-border-radius-sm); transition: background 0.1s; }
+
+.overview-wt.clickable:hover { background: var(--gl-background-color-hover); }
+
+.overview-wt.clickable:hover .overview-wt-branch { color: var(--gl-color-blue-300); }
 
 .overview-wt-icon { color: var(--gl-text-color-disabled); flex-shrink: 0; }
 
@@ -835,7 +842,7 @@
 
 .time-body { display: flex; flex-direction: column; gap: var(--space-2); }
 
-.time-figures { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.time-figures { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
 
 .time-logged { display: inline-flex; align-items: baseline; gap: 3px; }
 
@@ -851,7 +858,7 @@
 
 .time-caption { margin-left: 5px; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
 
-.time-tracked { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-subtle); }
+.time-tracked { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-subtle); min-width: 0; overflow-wrap: anywhere; }
 
 .time-tracked strong { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
 
@@ -871,7 +878,7 @@
   transition: width 0.4s ease-out;
 }
 
-.time-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.time-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 
 .time-log {
   display: inline-flex;
@@ -897,7 +904,7 @@
   cursor: default;
 }
 
-.time-quick { display: inline-flex; align-items: center; gap: var(--space-2); }
+.time-quick { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 
 .time-btn, .time-input {
   padding: 3px 8px;

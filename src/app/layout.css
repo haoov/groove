@@ -356,7 +356,7 @@
 /* ── Header context pickers (session · repo · worktree) ─────────────────────── */
 /* Header context pickers — quiet Zed-style chips that open a filterable list. */
 
-.header-pickers { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--space-2); }
+.header-pickers { display: inline-flex; align-items: center; gap: 1px; margin-left: var(--space-2); }
 .hp { position: relative; display: inline-flex; }
 .hp-chip {
   display: inline-flex;

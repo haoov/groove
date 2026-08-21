@@ -12,7 +12,17 @@ export function TaskOverview() {
   const activeTask = useSession((s) => s.activeTask);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const activeRepos = useSession((s) => s.activeRepos);
+  const setActiveRepoId = useSession((s) => s.setActiveRepoId);
+  const setActiveWorktreeId = useSession((s) => s.setActiveWorktreeId);
+  const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const setLastError = useStore((s) => s.setLastError);
+
+  // Clicking a worktree scopes the editor to it and leaves the overview.
+  const openWorktree = (repoId: string, worktreeId: string) => {
+    setActiveRepoId(repoId);
+    setActiveWorktreeId(worktreeId);
+    setWorkspaceMode('code');
+  };
   const [allMrs, setAllMrs] = useState<Mr[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
@@ -184,6 +194,7 @@ export function TaskOverview() {
                         repo={repo}
                         worktrees={activeWorktrees}
                         mrs={allMrs.filter((m) => wtIds.has(m.worktree_id))}
+                        onOpenWorktree={openWorktree}
                       />
                     );
                   })}

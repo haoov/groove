@@ -13,7 +13,8 @@ function MrLine({ mr }: { mr: Mr }) {
       className="overview-wt-mr"
       href={mr.url}
       title={`${num} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
-      onClick={(e) => { e.preventDefault(); openExternal(mr.url); }}
+      // Stop the click reaching the worktree row (which opens the editor).
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
     >
       <GitPullRequest size={11} strokeWidth={1.75} />
       <span className="overview-wt-mr-num">{num}</span>
@@ -25,13 +26,15 @@ function MrLine({ mr }: { mr: Mr }) {
 // ─── Repo row ─────────────────────────────────────────────────────────────────
 
 /** A repo, with each of its worktrees indented beneath it — branch on the left,
- *  the worktree's merge request (if any) beside it. */
+ *  the worktree's merge request (if any) beside it. Clicking a worktree opens
+ *  the editor scoped to that repo + branch. */
 export function RepoRow({
-  repo, worktrees, mrs = [],
+  repo, worktrees, mrs = [], onOpenWorktree,
 }: {
   repo: Repo;
   worktrees: Worktree[];
   mrs?: Mr[];
+  onOpenWorktree?: (repoId: string, worktreeId: string) => void;
 }) {
   const repoWts = worktrees.filter((w) => w.repo_id === repo.id);
   return (
@@ -44,8 +47,17 @@ export function RepoRow({
       ) : (
         repoWts.map((wt) => {
           const mr = mrs.find((m) => m.worktree_id === wt.id);
+          const open = onOpenWorktree ? () => onOpenWorktree(repo.id, wt.id) : undefined;
           return (
-            <div className="overview-wt" key={wt.id}>
+            <div
+              className={`overview-wt${open ? ' clickable' : ''}`}
+              key={wt.id}
+              role={open ? 'button' : undefined}
+              tabIndex={open ? 0 : undefined}
+              onClick={open}
+              onKeyDown={open ? (e) => { if (e.key === 'Enter') open(); } : undefined}
+              title={open ? `Open ${wt.branch} in the editor` : undefined}
+            >
               <GitBranch size={11} strokeWidth={1.75} className="overview-wt-icon" />
               <span className="overview-wt-branch">{wt.branch}</span>
               {mr && <MrLine mr={mr} />}
