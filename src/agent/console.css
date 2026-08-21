@@ -111,7 +111,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-2);
   border-top: 1px solid var(--gl-border-color-default);
   background: var(--gl-background-color-overlap);
   flex-shrink: 0;

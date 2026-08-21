@@ -353,12 +353,75 @@
 .live-detail {
   display: flex;
   flex-direction: column;
-  padding: 2px 0 var(--space-2);
-  /* Guide line binding a session's repo rows to it — the only thing separating
-     one session's children from the next now that every session is open. */
-  margin-left: 16px;
-  border-left: 1px solid var(--gl-border-color-subtle);
+  gap: var(--space-2);
+  padding: 2px var(--space-2) var(--space-2) var(--space-5);
 }
+
+.live-repos { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.live-detail-empty {
+  padding: var(--space-2) 0;
+  color: var(--gl-text-color-disabled);
+  font-size: var(--home-text-sm);
+}
+
+/* Home action buttons — the finish-task button shape, so Live reads as buttons
+   not links. Neutral by default; green for finish, red for destructive. */
+.live-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.live-btn:hover:not(:disabled) {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-strong);
+  color: var(--gl-text-color-default);
+}
+.live-btn:disabled { opacity: 0.5; cursor: default; }
+.live-btn.go {
+  background: var(--gl-color-green-100);
+  border-color: color-mix(in srgb, var(--ctp-green) 35%, transparent);
+  color: var(--gl-color-green-400);
+}
+.live-btn.go:hover:not(:disabled) { background: color-mix(in srgb, var(--ctp-green) 20%, transparent); color: var(--gl-color-green-400); }
+.live-btn.danger { color: var(--gl-color-red-400); }
+.live-btn.danger:hover:not(:disabled) {
+  background: var(--gl-color-red-100);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 45%, transparent);
+  color: var(--gl-color-red-400);
+}
+
+/* Provision link on an unprovisioned worktree row. */
+.live-wt-provision {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--gl-color-blue-300);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.live-wt-provision:hover:not(:disabled) { text-decoration: underline; }
+.live-wt-provision:disabled { opacity: 0.6; cursor: default; }
+
+/* MR CI dot + unresolved count beside a worktree's MR. */
+.live-ci { flex-shrink: 0; }
+.live-ci.ci-ok { color: var(--gl-color-green-400); }
+.live-ci.ci-fail { color: var(--gl-color-red-400); }
+.live-ci.ci-run { color: var(--gl-color-orange-400); }
+.live-mr-threads { flex-shrink: 0; color: var(--gl-color-orange-400); font-family: var(--font-mono); }
 
 .detail-row {
   display: grid;
@@ -433,14 +496,19 @@
 
 .detail-actions {
   display: flex;
-  gap: var(--space-4);
-  padding: 4px var(--space-2) 2px var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
 }
 
 .detail-row.confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-3);
   color: var(--gl-color-red-400);
   font-size: var(--home-text-sm);
+  padding: 3px var(--space-2);
 }
 
 /* ── Queue ──────────────────────────────────────────────────────────────────── */
@@ -505,106 +573,3 @@
 }
 
 .upnext-more { align-self: flex-start; padding: var(--space-2); }
-
-/* ── New-task modal ────────────────────────────────────────────────────────────
-   Reuses the wizard shell and the overview's property controls; only the layout
-   between them is new. Wider than the default wizard: this one holds a markdown
-   body, and 540px makes the template's headings wrap for no reason.
-
-   The height is fixed rather than content-driven: writing a description wants
-   room, and a modal that grows as you type moves the footer under the cursor.
-   The wizard shell caps it at 90vh and `.wizard-body` scrolls, so a long
-   property rail still fits. */
-
-.wizard-modal.ntm { width: 720px; height: 86vh; }
-
-/* One compact line for the chrome. The hero header plus a hero title input meant
-   two tall rows before the first field. */
-
-.ntm .wizard-header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-4);
-}
-
-.ntm .wizard-title { font-size: var(--gl-font-size-md); }
-
-.ntm .wizard-subtitle { margin-top: 0; font-size: var(--gl-font-size-xs); }
-
-/* A column, so the editor takes every pixel the other rows don't. Still scrolls
-   (from the base .wizard-body) if a long property rail runs out of room. */
-
-.ntm .wizard-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* The footer holds the bottom; the editor above it is what stretches. */
-
-.ntm .wizard-footer { flex: none; }
-
-/* A field, not a hero: same size as the body it introduces, and labelled like it. */
-
-.ntm-title {
-  width: 100%;
-  font-family: var(--font-ui);
-  font-size: var(--gl-font-size-md);
-  color: var(--gl-text-color-default);
-  background: var(--gl-background-color-default);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  padding: var(--space-2) var(--space-3);
-  outline: none;
-}
-
-.ntm-title:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
-
-.ntm-title::placeholder { color: var(--gl-text-color-disabled); }
-
-/* The label above a field, matching the Description bar's eyebrow. */
-
-.ntm-fieldbar { display: flex; align-items: baseline; }
-
-/* The property rail sits under the title, where the overview also puts it. */
-
-.ntm-props {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 24px;
-}
-
-.ntm-bodybar {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: var(--space-1);
-}
-
-.ntm-bodylabel {
-  font-size: var(--gl-font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--gl-text-color-subtle);
-}
-
-/* One rule for both, so the editor and the preview can never differ in size —
-   toggling must not move the footer or change how much text you can see. They
-   fill whatever the fixed modal height leaves after the title, rail and footer. */
-
-.ntm-body,
-.ntm-preview {
-  flex: 1;
-  min-height: 48vh;
-}
-
-.ntm-preview {
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-3);
-  background: var(--gl-background-color-default);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-}

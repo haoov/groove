@@ -1,104 +1,104 @@
 import { useState } from 'react';
+import { GitBranch, GitPullRequest } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ciGroup } from '../shared/lib/mr';
 import { openExternal } from '../shared/lib/openExternal';
 import { openRepo } from './helpers';
-import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
+import type { HomeEntry, HomeMr, HomeRepo } from '../shared/ipc/ipc';
 
-/** One repo of a live session: branch + working-tree stats, review progress, MR. */
-export function RepoRow({ entry, repo }: { entry: HomeEntry; repo: HomeRepo }) {
+/** The MR beside a worktree: number + state (+ CI dot, unresolved count). */
+function MrLine({ mr }: { mr: HomeMr }) {
+  const num = `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+  return (
+    <a
+      className="overview-wt-mr"
+      href={mr.url}
+      title={`${num} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
+    >
+      <GitPullRequest size={11} strokeWidth={1.75} />
+      <span className="overview-wt-mr-num">{num}</span>
+      <span className={`overview-wt-mr-state mr-state-${mr.state}`}>{mr.state}</span>
+      {mr.ci && <span className={`live-ci ci-${ciGroup(mr.ci)}`} title={`Pipeline: ${mr.ci}`}>●</span>}
+      {mr.unresolved > 0 && <span className="live-mr-threads" title={`${mr.unresolved} unresolved`}>{mr.unresolved}</span>}
+    </a>
+  );
+}
+
+/** Group the flat repo+worktree rows by repo, preserving first-seen order. */
+function byRepo(repos: HomeRepo[]) {
+  const order: string[] = [];
+  const map = new Map<string, HomeRepo[]>();
+  for (const r of repos) {
+    if (!map.has(r.repo_id)) { map.set(r.repo_id, []); order.push(r.repo_id); }
+    map.get(r.repo_id)!.push(r);
+  }
+  return order.map((id) => ({ repoId: id, project: map.get(id)![0].project, worktrees: map.get(id)! }));
+}
+
+/** A live session's repos, expanded: the project name over its worktrees, each
+ *  branch a clickable row (opens the editor there) with its MR beside it. */
+export function LiveRepos({ entry }: { entry: HomeEntry }) {
   const refreshHome = useStore((s) => s.refreshHome);
   const setLastError = useStore((s) => s.setLastError);
-  const [working, setWorking] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
 
-  // Same call for a never-provisioned repo and a stale one whose folder was
-  // deleted — provisioning is idempotent and prunes the stale registration.
-  const provision = async (e: React.MouseEvent) => {
+  // Idempotent: the same call provisions a fresh repo and re-provisions a stale one.
+  const provision = async (e: React.MouseEvent, repoId: string) => {
     e.stopPropagation();
-    setWorking(true);
+    setWorking(repoId);
     try {
       await invoke('provision_worktrees', {
         taskId: entry.short_id,
-        branches: [{ repo_id: repo.repo_id, branch_name: null }],
+        branches: [{ repo_id: repoId, branch_name: null }],
       });
       refreshHome();
     } catch (err) {
       setLastError(String(err));
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
 
-  if (!repo.provisioned || repo.missing) {
-    return (
-      <div className="detail-row">
-        <span className="detail-repo">{repo.project}</span>
-        <span className={repo.missing ? 'stat-warn' : 'muted'}>
-          {repo.missing ? 'missing on disk' : 'not provisioned'}
-        </span>
-        <button className="home-link" onClick={provision} disabled={working}>
-          {working ? 'working…' : repo.missing ? 're-provision' : 'provision'}
-        </button>
-      </div>
-    );
-  }
-
-  const clean = repo.modified === 0 && repo.staged === 0 && repo.added === 0 && repo.deleted === 0;
-
   return (
-    <>
-      <div
-        className="detail-row clickable"
-        role="button"
-        tabIndex={0}
-        onClick={() => openRepo(entry, repo)}
-        onKeyDown={(e) => { if (e.key === 'Enter') openRepo(entry, repo); }}
-      >
-        <span className="detail-repo">{repo.project}</span>
-        <span className="detail-branch">{repo.branch}</span>
-        <span className="detail-stats">
-          {clean ? (
-            <span className="muted">clean</span>
-          ) : (
-            <>
-              {repo.added > 0 && <span className="stat-add">+{repo.added}</span>}
-              {repo.deleted > 0 && <span className="stat-del">−{repo.deleted}</span>}
-              {repo.modified > 0 && <span className="stat-dirty" title={`${repo.modified} modified`}>~{repo.modified}</span>}
-              {repo.staged > 0 && <span className="stat-staged" title={`${repo.staged} staged`}>●{repo.staged}</span>}
-              {repo.conflicted > 0 && <span className="stat-bad" title={`${repo.conflicted} conflicted`}>!{repo.conflicted}</span>}
-            </>
-          )}
-          {repo.ahead > 0 && <span className="stat-ahead" title={`${repo.ahead} to push`}>↑{repo.ahead}</span>}
-          {repo.behind > 0 && <span className="stat-behind" title={`${repo.behind} behind`}>↓{repo.behind}</span>}
-        </span>
-      </div>
-
-
-      {repo.mr && (
-        <div className="detail-row detail-mr-row">
-          <span className="detail-repo" />
-          <span className="detail-mr">
-            <a
-              className="detail-mr-num"
-              title={`${repo.mr.url} — open in ${repo.mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
-              onClick={(e) => { e.stopPropagation(); openExternal(repo.mr!.url); }}
-            >
-              {repo.mr.platform === 'github' ? '#' : '!'}{repo.mr.remote_id}
-            </a>
-            <span className={`mr-state-${repo.mr.state}`}>{repo.mr.state}</span>
-            {repo.mr.approved && (
-              <span className="approved-badge" title="Approved, not merged yet">approved</span>
-            )}
-            {repo.mr.ci && (
-              <span className={`ci-${ciGroup(repo.mr.ci)}`}>{repo.mr.ci.replace(/_/g, ' ')}</span>
-            )}
-            {repo.mr.unresolved > 0 && (
-              <span className="stat-threads">{repo.mr.unresolved} unresolved</span>
-            )}
-          </span>
+    <div className="live-repos">
+      {byRepo(entry.repos).map((g) => (
+        <div className="overview-repo-block" key={g.repoId}>
+          <div className="overview-repo">
+            <span className="overview-repo-name">{g.project}</span>
+          </div>
+          {g.worktrees.map((r, i) => {
+            const key = r.worktree_id ?? `${r.repo_id}-${i}`;
+            if (!r.provisioned || r.missing) {
+              return (
+                <div className="overview-wt" key={key}>
+                  <GitBranch size={11} strokeWidth={1.75} className="overview-wt-icon" />
+                  <span className="overview-wt-branch muted">{r.missing ? 'missing on disk' : 'not provisioned'}</span>
+                  <button className="live-wt-provision" onClick={(e) => provision(e, r.repo_id)} disabled={working === r.repo_id}>
+                    {working === r.repo_id ? 'working…' : r.missing ? 're-provision' : 'provision'}
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <div
+                className="overview-wt clickable"
+                key={key}
+                role="button"
+                tabIndex={0}
+                onClick={() => openRepo(entry, r)}
+                onKeyDown={(e) => { if (e.key === 'Enter') openRepo(entry, r); }}
+                title={`Open ${r.branch} in the editor`}
+              >
+                <GitBranch size={11} strokeWidth={1.75} className="overview-wt-icon" />
+                <span className="overview-wt-branch">{r.branch}</span>
+                {r.mr && <MrLine mr={r.mr} />}
+              </div>
+            );
+          })}
         </div>
-      )}
-    </>
+      ))}
+    </div>
   );
 }

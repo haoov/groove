@@ -4,8 +4,8 @@ import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
-import { RepoRow } from './RepoRow';
-import { KIND_LABEL, openTask, priorityLabel, priorityRank, rowKey, summarize } from './helpers';
+import { LiveRepos } from './RepoRow';
+import { KIND_LABEL, openTask, priorityRank, rowKey, summarize } from './helpers';
 import type { HomeEntry } from '../shared/ipc/ipc';
 
 // Fold state per entry, persisted so Home reopens the way it was left.
@@ -72,9 +72,9 @@ export function LiveSection() {
               <button className="btn-secondary" onClick={() => { setCreating(false); setNewName(''); }}>Cancel</button>
             </span>
           ) : (
-            <button className="home-link" onClick={() => { setNewName(''); setCreating(true); }}>
-              <Plus size={11} strokeWidth={2.2} />
-              new explorer
+            <button className="live-btn" onClick={() => { setNewName(''); setCreating(true); }}>
+              <Plus size={13} strokeWidth={2} />
+              New explorer
             </button>
           )}
           <button
@@ -109,7 +109,6 @@ type LiveConfirm = 'finish' | 'delete' | 'discard' | null;
 function LiveRow({ entry }: { entry: HomeEntry }) {
   const sessions = useStore((s) => s.sessions);
   const sessionOrder = useStore((s) => s.sessionOrder);
-  const agentActivity = useStore((s) => s.agentActivity);
   const refreshHome = useStore((s) => s.refreshHome);
   const setLastError = useStore((s) => s.setLastError);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -118,7 +117,12 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
   // Two-click confirm: the first click arms; the confirm row does the deed.
   const [confirm, setConfirm] = useState<LiveConfirm>(null);
   const [expanded, setExpanded] = useState(() => loadExpanded().has(entry.short_id));
-  const summary = summarize(entry);
+
+  // Folded, the row states only what it is and how many repos it holds.
+  const repoCount = useMemo(
+    () => new Set(entry.repos.map((r) => r.repo_id)).size,
+    [entry.repos],
+  );
 
   const toggleExpanded = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -133,8 +137,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
   const session = sessionOrder
     .map((id) => sessions[id])
     .find((x) => x?.task?.short_id === entry.short_id);
-  const agentLive = !!session?.ptySessions.some((p) => p.ptyType === 'agent');
-  const agentWaiting = agentActivity[entry.short_id]?.state === 'waiting';
 
   const rename = async () => {
     const next = name.trim();
@@ -204,40 +206,12 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
         ) : (
           <span className="row-titleline">
             <span className="row-title">{entry.title}</span>
-            {entry.priority && (
-              <span className={`prio-badge p${priorityRank(entry.priority)}`}>
-                {priorityLabel(entry.priority)}
-              </span>
-            )}
           </span>
         )}
 
-        {/* Folded: the aggregates stand in for the hidden repo rows. Expanded:
-            each repo reports its own state below, so only the agent chip stays. */}
         <span className="row-summary">
-          {!expanded && (
-            <>
-              {(summary.added > 0 || summary.deleted > 0) && (
-                <span className="row-chip">
-                  {summary.added > 0 && <span className="stat-add">+{summary.added}</span>}
-                  {summary.deleted > 0 && <span className="stat-del">−{summary.deleted}</span>}
-                </span>
-              )}
-              {summary.ahead > 0 && <span className="row-chip stat-ahead">↑{summary.ahead}</span>}
-              {summary.behind > 0 && <span className="row-chip stat-behind">↓{summary.behind}</span>}
-              {summary.mrs > 0 && (
-                <span className={`row-chip${summary.ciFail ? ' stat-bad' : ''}`}>
-                  {summary.mrs === 1 ? 'MR' : `${summary.mrs} MRs`}
-                  {summary.ciFail && ' · ci failed'}
-                  {summary.unresolved > 0 && ` · ${summary.unresolved} open`}
-                </span>
-              )}
-            </>
-          )}
-          {agentLive && (
-            <span className={agentWaiting ? 'stat-agent waiting' : 'stat-agent'}>
-              {agentWaiting ? 'agent · waiting' : 'agent'}
-            </span>
+          {repoCount > 0 && (
+            <span className="row-note">{repoCount} repo{repoCount === 1 ? '' : 's'}</span>
           )}
         </span>
       </div>
@@ -245,24 +219,24 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
       {expanded && (
         <div className="live-detail">
           {entry.repos.length === 0 ? (
-            <div className="detail-row muted">No repos yet — open it to add one.</div>
+            <div className="live-detail-empty">No repos yet — open it to add one.</div>
           ) : (
-            entry.repos.map((repo) => <RepoRow key={repo.repo_id} entry={entry} repo={repo} />)
+            <LiveRepos entry={entry} />
           )}
           <div className="detail-actions">
-            <button className="home-link" onClick={() => openTask(entry.short_id)}>open workspace</button>
+            <button className="live-btn" onClick={() => openTask(entry.short_id)}>Open workspace</button>
             {entry.kind === 'explorer' && (
-              <button className="home-link" onClick={() => { setName(entry.title); setRenaming(true); }}>rename</button>
+              <button className="live-btn" onClick={() => { setName(entry.title); setRenaming(true); }}>Rename</button>
             )}
             {entry.kind === 'task' && (
               <>
-                <button className="home-link" onClick={() => setConfirm('finish')}>finish</button>
-                <button className="home-link danger" onClick={() => setConfirm('delete')}>delete</button>
+                <button className="live-btn go" onClick={() => setConfirm('finish')}>Finish</button>
+                <button className="live-btn danger" onClick={() => setConfirm('delete')}>Delete</button>
               </>
             )}
             {entry.kind !== 'task' && (
-              <button className="home-link danger" onClick={() => setConfirm('discard')}>
-                {entry.kind === 'review' ? 'finish review' : 'discard'}
+              <button className="live-btn danger" onClick={() => setConfirm('discard')}>
+                {entry.kind === 'review' ? 'Finish review' : 'Discard'}
               </button>
             )}
           </div>
@@ -278,10 +252,10 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
                 ? `Delete ${entry.short_id} locally? Notion is untouched; the worktrees are removed.`
                 : `Discard ${entry.short_id} and delete its worktrees?`}
           </span>
-          <button className="home-link danger" onClick={() => runConfirmed(confirm)}>
-            {confirm === 'finish' ? 'yes, finish' : confirm === 'delete' ? 'yes, delete' : 'yes, discard'}
+          <button className="live-btn danger" onClick={() => runConfirmed(confirm)}>
+            {confirm === 'finish' ? 'Yes, finish' : confirm === 'delete' ? 'Yes, delete' : 'Yes, discard'}
           </button>
-          <button className="home-link" onClick={() => setConfirm(null)}>cancel</button>
+          <button className="live-btn" onClick={() => setConfirm(null)}>Cancel</button>
         </div>
       )}
 

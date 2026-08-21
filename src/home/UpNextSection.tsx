@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
-import { NewTaskModal } from './NewTaskModal';
-import { openTask, priorityLabel, priorityRank } from './helpers';
+import { openTask, priorityRank } from './helpers';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { MainRepo, ReviewMr, Task } from '../shared/ipc/ipc';
+
+/** Rough "how long ago", for the MR age column. */
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '';
+  const s = Math.max(0, (Date.now() - then) / 1000);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m`;
+  if (s < 86_400) return `${Math.round(s / 3600)}h`;
+  if (s < 86_400 * 7) return `${Math.round(s / 86_400)}d`;
+  return `${Math.round(s / 86_400 / 7)}w`;
+}
 
 // Review requests and queued tasks answer the same question — "what do I pick up
 // next?" — so they share ONE table: code · name · state · owner. Reviews are
@@ -51,7 +61,6 @@ export function UpNextSection() {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; item: UpNextItem } | null>(null);
-  const [composing, setComposing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('');
   // Approved reviews are soft-hidden: someone signed off, so they are no longer
@@ -203,14 +212,8 @@ export function UpNextSection() {
             <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
             refresh
           </button>
-          <button className="home-link" onClick={() => setComposing((v) => !v)}>
-            <Plus size={11} strokeWidth={2.2} />
-            new task
-          </button>
         </span>
       </h2>
-
-      {composing && <NewTaskModal onClose={() => setComposing(false)} />}
 
       {items.length === 0 ? (
         <p className="home-empty">
@@ -324,13 +327,15 @@ function ReviewRow({
           </span>
         )}
       </span>
-      <span className="row-note upnext-state">{mr.project_full}</span>
+      <span className="row-note upnext-state" title={`Updated ${timeAgo(mr.updated_at)} ago · ${mr.project_full}`}>
+        asked {timeAgo(mr.updated_at)} ago
+      </span>
       <span className="row-note upnext-owner">{busy ? 'opening…' : mr.author}</span>
     </button>
   );
 }
 
-/** A queued task: state = priority when set, else the Notion status. */
+/** A queued task: state = its Notion status. */
 function TaskRow({
   task, dimmed, onMenu,
 }: {
@@ -351,13 +356,7 @@ function TaskRow({
         <span className="row-title">{task.title}</span>
       </span>
       <span className="upnext-state">
-        {task.priority ? (
-          <span className={`prio-badge p${priorityRank(task.priority)}`}>
-            {priorityLabel(task.priority)}
-          </span>
-        ) : (
-          <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
-        )}
+        <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
       </span>
       <span className="row-note upnext-owner">—</span>
     </button>
