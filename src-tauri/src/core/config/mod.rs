@@ -37,9 +37,9 @@ fn default_font_size() -> u8 {
     15
 }
 
-/// Empty = use the CSS stack in tokens.css, which tries the Nerd Font variants and
-/// falls back to `ui-monospace`. A name written here on a machine that lacks the
-/// font is a silent fallback with no way to tell why; no name is honest.
+/// Empty = use the CSS stack in tokens.css (Lilex → IBM Plex Mono → ui-monospace).
+/// A name written here on a machine that lacks the font is a silent fallback with
+/// no way to tell why; no name is honest.
 fn default_font_family() -> String {
     String::new()
 }
