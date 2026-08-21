@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Boxes, Check, ChevronDown, Code2, Eye, FolderGit2, GitBranch, ListTodo, Plus, X,
+  Boxes, Check, Code2, Eye, FolderGit2, GitBranch, ListTodo, Plus, X,
   type LucideIcon,
 } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
@@ -133,7 +133,6 @@ function Picker({
       >
         <Icon size={13} strokeWidth={1.75} className="hp-chip-icon" />
         <span className="hp-chip-v">{value}</span>
-        <ChevronDown size={11} strokeWidth={2} className="hp-chip-caret" />
       </button>
       {open && pos && createPortal(
         <div className="hp-pop" ref={popRef} style={{ left: pos.left, top: pos.top }}>
