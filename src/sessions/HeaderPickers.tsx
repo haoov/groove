@@ -13,8 +13,10 @@ import type { AgentActivity } from '../shared/ipc/ipc';
 /**
  * The header context pickers: Active Session · Repo · Worktree. Each chip is
  * compact — an icon plus the id/name — and opens a plain dropdown list of the
- * choices, like the repo switcher. The list is PORTALLED to the body with fixed
- * positioning so the header's `overflow: hidden` can never clip it.
+ * choices, like the repo switcher. Repo and worktree chips show whenever the
+ * session has at least one — a single-choice chip still names the current repo
+ * or branch. The list is PORTALLED to the body with fixed positioning so the
+ * header's `overflow: hidden` can never clip it.
  */
 
 const KIND_ICON: Record<SessionKind, LucideIcon> = {
@@ -231,10 +233,10 @@ export function HeaderPickers() {
         <SessionRows onPick={() => setSessionPickerOpen(false)} />
       </Picker>
 
-      {inWorkspace && repos.length > 1 && (
+      {inWorkspace && repos.length > 0 && (
         <Picker
           ariaLabel="Repository"
-          value={activeRepo?.project ?? '—'}
+          value={(activeRepo ?? repos[0])?.project ?? '—'}
           icon={FolderGit2}
           open={repoOpen}
           setOpen={setRepoOpen}
@@ -257,14 +259,14 @@ export function HeaderPickers() {
         </Picker>
       )}
 
-      {inWorkspace && repoWorktrees.length > 1 && (
+      {inWorkspace && repoWorktrees.length > 0 && (
         <Picker
           ariaLabel="Worktree"
-          value={activeWt?.branch ?? '—'}
+          value={(activeWt ?? repoWorktrees[0])?.branch ?? '—'}
           icon={GitBranch}
           open={wtOpen}
           setOpen={setWtOpen}
-          chipTitle="The worktree git actions target (this repo has several)"
+          chipTitle="The worktree git actions target"
         >
           <div className="hp-rows">
             {repoWorktrees.map((w) => (
