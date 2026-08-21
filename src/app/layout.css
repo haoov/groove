@@ -470,6 +470,8 @@
 .hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
+/* Repo main button sits beside a close ×, so it grows to fill the row width. */
+.hp-row-grow { flex: 1; min-width: 0; }
 
 /* "＋ Add repo…" footer row and the close-repo confirm, in the repo dropdown. */
 .hp-row-add {

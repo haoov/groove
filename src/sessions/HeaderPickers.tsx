@@ -249,7 +249,7 @@ function RepoRows({
         return (
           <div key={r.id} className={`hp-row ${r.id === activeRepoId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}>
             <button
-              className="hp-row-main hp-row-simple"
+              className="hp-row-simple hp-row-grow"
               onClick={() => select(r)}
               onMouseEnter={() => setCursor(i)}
             >
