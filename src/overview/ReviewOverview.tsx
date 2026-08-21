@@ -93,7 +93,7 @@ export function ReviewOverview() {
         <MrOverview repoId={repoId} mrId={mr.id} />
       ) : (
         <div className="overview-view">
-          <div className="overview-body">
+          <div className="overview-inner">
             <p className="overview-empty-body">Loading the merge request…</p>
           </div>
         </div>

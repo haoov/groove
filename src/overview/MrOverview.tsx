@@ -12,7 +12,7 @@ import { ciGroup } from '../shared/lib/mr';
 import { Markdown } from '../shared/ui/Markdown';
 
 /** Full-page MR/PR overview — the task overview's layout applied to a merge
- *  request: eyebrow chips, display-scale title, description, review threads. */
+ *  request: id + title header, a details column, description, review threads. */
 export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
   const mrs = useSession((s) => s.mrs);
   const mrThreadsByRepo = useSession((s) => s.mrThreadsByRepo);
@@ -95,7 +95,13 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
   }, [mrId, mrNonce]);
 
   if (!mr) {
-    return <div className="overview-view"><div className="overview-body"><p className="overview-empty-body">This merge request is no longer tracked.</p></div></div>;
+    return (
+      <div className="overview-view">
+        <div className="overview-inner">
+          <p className="overview-empty-body">This merge request is no longer tracked.</p>
+        </div>
+      </div>
+    );
   }
 
   const isGithub = mr.platform === 'github';
@@ -103,42 +109,19 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
   const num = `${isGithub ? '#' : '!'}${mr.remote_id}`;
   const state = details?.state ?? mr.state;
   const url = details?.web_url || mr.url;
+  const StateIcon = state === 'merged' ? GitMerge : state === 'closed' ? GitPullRequestClosed : GitPullRequest;
 
   return (
     <div className="overview-view">
-      <div className="overview-header">
-        <div className="overview-header-top">
-          <span className="overview-eyebrow">
-            <span className="overview-task-id">
-              {state === 'merged' ? <GitMerge size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-                : state === 'closed' ? <GitPullRequestClosed size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-                : <GitPullRequest size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />}
-              {shortKind} {num}
-            </span>
-            <span className={`overview-badge mr-state-${state}`}>{state}</span>
-            {details?.draft && <span className="overview-badge">draft</span>}
-            {details?.approved && (
-              <span className="overview-badge mr-approved" title={
-                details.approved_by?.length
-                  ? `Approved by ${details.approved_by.join(', ')}`
-                  : 'Approved'
-              }>
-                <Check size={11} strokeWidth={2.5} />
-                {details.approved_by_me ? 'approved by you' : 'approved'}
-              </span>
-            )}
-            {ci && (
-              <button
-                className={`overview-badge overview-ci forge-ci-${ciGroup(ci.status)}`}
-                onClick={() => openExternal(ci.url || url)}
-                title={`Pipeline: ${ci.status} — open`}
-              >
-                <span className="forge-ci-dot" />
-                CI · {ci.status.replace(/_/g, ' ')}
-              </button>
-            )}
+      <div className="overview-inner">
+        <header className="overview-header">
+          <span className="overview-task-id">
+            <StateIcon size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            {shortKind} {num}
           </span>
-          <span className="mr-header-actions">
+          <h1 className="overview-title">{details?.title || `${shortKind} ${num}`}</h1>
+          <span className="overview-spring" />
+          <div className="mr-header-actions">
             {kind === 'review' && state === 'open' && (
               <button
                 className="finish-task-btn mr-approve-btn"
@@ -154,102 +137,145 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
                 {approving ? 'Approving…' : details?.approved_by_me ? 'Approved' : 'Approve'}
               </button>
             )}
-            <button className="finish-task-btn mr-open-btn" onClick={() => openExternal(url)}>
+            <button className="finish-task-btn ov-update mr-open-btn" onClick={() => openExternal(url)}>
               <ExternalLink size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Open in {isGithub ? 'GitHub' : 'GitLab'}
             </button>
-          </span>
-        </div>
-        <h2 className="overview-title">{details?.title || `${shortKind} ${num}`}</h2>
-        {(details?.author || details?.source_branch) && (
-          <div className="mr-meta-row">
-            {details.author && <span className="mr-meta-author">{details.author}</span>}
-            {details.source_branch && (
-              <span className="mr-meta-branches">
-                <GitBranch size={11} strokeWidth={1.75} />
-                <span className="overview-repo-branch">{details.source_branch}</span>
-                <span className="mr-meta-arrow">→</span>
-                <span className="overview-repo-branch">{details.target_branch}</span>
-              </span>
-            )}
           </div>
-        )}
-      </div>
+        </header>
 
-      <div className="overview-body">
-        <section className="overview-section">
-          <h3 className="overview-section-title">
-            Description
-            {details !== null && !editingDesc && (
-              <button
-                className="home-link overview-section-action"
-                onClick={() => { setDraft(details.description ?? ''); setEditingDesc(true); }}
-              >
-                <Pencil size={11} strokeWidth={2} />
-                edit
-              </button>
-            )}
-          </h3>
-          {error ? (
-            <p className="overview-empty-body">{error}</p>
-          ) : details === null ? (
-            <p className="overview-empty-body">Loading…</p>
-          ) : editingDesc ? (
-            <div className="mr-desc-editor">
-              <textarea
-                className="composer-body"
-                autoFocus
-                spellCheck={false}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Markdown — ## What then ## Why"
-              />
-              <div className="mr-desc-actions">
-                {/* The Notion link is re-appended by the backend, so it survives
-                    an edit even though it is not in the box. */}
-                <span className="composer-note">Saved straight to the merge request.</span>
-                <button className="btn-secondary" onClick={() => setEditingDesc(false)} disabled={savingDesc}>
-                  Cancel
-                </button>
-                <button className="btn-primary" onClick={saveDescription} disabled={savingDesc}>
-                  {savingDesc ? <Loader2 size={11} className="spin" /> : null}
-                  Save
+        {/* State / draft / approval / CI as a badge row under the title. */}
+        <div className="mr-badges">
+          <span className={`overview-badge mr-state-${state}`}>{state}</span>
+          {details?.draft && <span className="overview-badge">draft</span>}
+          {details?.approved && (
+            <span className="overview-badge mr-approved" title={
+              details.approved_by?.length
+                ? `Approved by ${details.approved_by.join(', ')}`
+                : 'Approved'
+            }>
+              <Check size={11} strokeWidth={2.5} />
+              {details.approved_by_me ? 'approved by you' : 'approved'}
+            </span>
+          )}
+          {ci && (
+            <button
+              className={`overview-badge overview-ci forge-ci-${ciGroup(ci.status)}`}
+              onClick={() => openExternal(ci.url || url)}
+              title={`Pipeline: ${ci.status} — open`}
+            >
+              <span className="forge-ci-dot" />
+              CI · {ci.status.replace(/_/g, ' ')}
+            </button>
+          )}
+        </div>
+
+        <div className="overview-grid">
+          <main className="overview-main">
+            <section className="overview-section">
+              <h3 className="overview-section-title">
+                Description
+                {details !== null && !editingDesc && (
+                  <button
+                    className="home-link overview-section-action"
+                    onClick={() => { setDraft(details.description ?? ''); setEditingDesc(true); }}
+                  >
+                    <Pencil size={11} strokeWidth={2} />
+                    edit
+                  </button>
+                )}
+              </h3>
+              {error ? (
+                <p className="overview-empty-body">{error}</p>
+              ) : details === null ? (
+                <p className="overview-empty-body">Loading…</p>
+              ) : editingDesc ? (
+                <div className="mr-desc-editor">
+                  <textarea
+                    className="composer-body"
+                    autoFocus
+                    spellCheck={false}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Markdown — ## What then ## Why"
+                  />
+                  <div className="mr-desc-actions">
+                    {/* The Notion link is re-appended by the backend, so it survives
+                        an edit even though it is not in the box. */}
+                    <span className="composer-note">Saved straight to the merge request.</span>
+                    <button className="btn-secondary" onClick={() => setEditingDesc(false)} disabled={savingDesc}>
+                      Cancel
+                    </button>
+                    <button className="btn-primary" onClick={saveDescription} disabled={savingDesc}>
+                      {savingDesc ? <Loader2 size={11} className="spin" /> : null}
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : details.description ? (
+                <Markdown text={details.description} />
+              ) : (
+                <p className="overview-empty-body">No description.</p>
+              )}
+            </section>
+
+            <section className="overview-section">
+              <h3 className="overview-section-title">Discussion</h3>
+              {threads.length === 0 ? (
+                <p className="overview-empty-body">No review threads.</p>
+              ) : (
+                <MrThreadsSection threads={threads} mr={mr} onResolved={bumpMrs} />
+              )}
+              <div className="mr-comment-composer">
+                <textarea
+                  className="mr-comment-input"
+                  placeholder={`Comment on this ${shortKind}…`}
+                  rows={2}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  disabled={posting}
+                />
+                <button
+                  className="btn-secondary mr-comment-post"
+                  onClick={postComment}
+                  disabled={posting || !comment.trim()}
+                >
+                  <Send size={12} strokeWidth={1.75} style={{ marginRight: 5 }} />
+                  {posting ? 'Posting…' : 'Post to MR'}
                 </button>
               </div>
-            </div>
-          ) : details.description ? (
-            <Markdown text={details.description} />
-          ) : (
-            <p className="overview-empty-body">No description.</p>
-          )}
-        </section>
+            </section>
+          </main>
 
-        <section className="overview-section">
-          <h3 className="overview-section-title">Discussion</h3>
-          {threads.length === 0 ? (
-            <p className="overview-empty-body">No review threads.</p>
-          ) : (
-            <MrThreadsSection threads={threads} mr={mr} onResolved={bumpMrs} />
-          )}
-          <div className="mr-comment-composer">
-            <textarea
-              className="mr-comment-input"
-              placeholder={`Comment on this ${shortKind}…`}
-              rows={2}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              disabled={posting}
-            />
-            <button
-              className="btn-secondary mr-comment-post"
-              onClick={postComment}
-              disabled={posting || !comment.trim()}
-            >
-              <Send size={12} strokeWidth={1.75} style={{ marginRight: 5 }} />
-              {posting ? 'Posting…' : 'Post'}
-            </button>
-          </div>
-        </section>
+          <aside className="overview-side">
+            <section className="overview-section">
+              <h3 className="overview-section-title">Details</h3>
+              <dl className="mr-facts">
+                {details?.author && (
+                  <div className="mr-fact">
+                    <dt>Author</dt>
+                    <dd>{details.author}</dd>
+                  </div>
+                )}
+                {details?.source_branch && (
+                  <div className="mr-fact">
+                    <dt>Branch</dt>
+                    <dd className="mr-fact-branches">
+                      <GitBranch size={11} strokeWidth={1.75} />
+                      <span className="overview-repo-branch">{details.source_branch}</span>
+                      <span className="mr-meta-arrow">→</span>
+                      <span className="overview-repo-branch">{details.target_branch}</span>
+                    </dd>
+                  </div>
+                )}
+                <div className="mr-fact">
+                  <dt>Platform</dt>
+                  <dd>{isGithub ? 'GitHub' : 'GitLab'}</dd>
+                </div>
+              </dl>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );

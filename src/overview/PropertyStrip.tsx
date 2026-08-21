@@ -25,11 +25,13 @@ import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
  */
 
 export function PropertyStrip({
-  notionPageId, hours, onHoursValue,
+  notionPageId, onHoursValue, onHoursAvailable,
 }: {
   notionPageId: string;
-  hours?: React.ReactNode;
   onHoursValue?: (display: string) => void;
+  /** Whether the task schema HAS an hours property. Hours render in the overview
+   *  side column now, not here — the parent needs this to show that panel. */
+  onHoursAvailable?: (available: boolean) => void;
 }) {
   const setLastError = useStore((s) => s.setLastError);
   // Which property IS priority comes from config, so its pill can take the
@@ -88,6 +90,9 @@ export function PropertyStrip({
     };
   }, [schema, values, revealed]);
 
+  const hasHours = !!groups.hoursRow;
+  useEffect(() => { onHoursAvailable?.(hasHours); }, [hasHours]);
+
   if (!schema) return null;
 
   return (
@@ -134,8 +139,6 @@ export function PropertyStrip({
           ))}
         </div>
       )}
-
-      {hours && groups.hoursRow && hours}
 
       {groups.computed.length > 0 && (
         <div className="props-details">

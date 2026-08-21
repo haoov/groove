@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { CheckCircle2, AlertTriangle, Trash2, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { MrBadge, RepoRow } from './parts';
@@ -23,6 +23,7 @@ export function TaskOverview() {
   const [finishing, setFinishing] = useState(false);
   /** Bumped after a Notion write so the panel and hours re-read the page. */
   const [hoursLogged, setHoursLogged] = useState('');
+  const [hoursAvailable, setHoursAvailable] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
   const reload = () => setReloadNonce((n) => n + 1);
 
@@ -70,13 +71,21 @@ export function TaskOverview() {
 
   return (
     <div className="overview-view">
-      {/* Header — eyebrow (id + metadata) over a display-scale title. */}
-      <div className="overview-header">
-        <div className="overview-header-top">
-          <span className="overview-eyebrow">
-            <span className="overview-task-id">{activeTask.short_id}</span>
-          </span>
+      <div className="overview-inner">
+        {/* Header — id chip, title, and the task-level actions. */}
+        <header className="overview-header">
+          <span className="overview-task-id">{activeTask.short_id}</span>
+          <h1 className="overview-title">{activeTask.title}</h1>
+          <span className="overview-spring" />
           <div className="overview-header-actions">
+            <button
+              className="finish-task-btn ov-update"
+              onClick={reload}
+              title="Re-read this task from Notion"
+            >
+              <RefreshCw size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Update
+            </button>
             <button
               className="finish-task-btn"
               onClick={() => setEnding('finish')}
@@ -95,91 +104,95 @@ export function TaskOverview() {
               Delete task
             </button>
           </div>
-        </div>
-        <h2 className="overview-title">{activeTask.title}</h2>
+        </header>
 
-        {/* Metadata about the task, under its name. */}
+        {/* Properties — the framed metadata card under the title. */}
         <PropertyStrip
           key={reloadNonce}
           notionPageId={activeTask.notion_page_id}
-          hours={
-            <HoursWidget
-              taskId={activeTask.short_id}
-              notionPageId={activeTask.notion_page_id}
-              logged={hoursLogged}
-              onLogged={reload}
-            />
-          }
           onHoursValue={setHoursLogged}
-        />
-      </div>
-
-      {/* One banner for both endings — the local half is identical, so only the
-          sentence about Notion changes. */}
-      {ending && (
-        <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
-          <div className="finish-confirm-icon">
-            <AlertTriangle size={14} strokeWidth={2} />
-          </div>
-          <div className="finish-confirm-body">
-            <strong>
-              {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
-            </strong>
-            <p>
-              This will remove all local worktrees and delete task data from the local
-              database.{' '}
-              {ending === 'delete'
-                ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
-                : 'The task is marked Done in Notion.'}
-            </p>
-          </div>
-          <div className="finish-confirm-actions">
-            <button className="finish-confirm-ok" onClick={handleEnd} disabled={finishing}>
-              {finishing ? 'Working…' : 'Confirm'}
-            </button>
-            <button
-              className="finish-confirm-cancel"
-              onClick={() => setEnding(null)}
-              disabled={finishing}
-            >
-              <X size={12} strokeWidth={2} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="overview-body">
-        <BodyEditor
-          taskId={activeTask.short_id}
-          notionPageId={activeTask.notion_page_id}
-          markdown={body}
-          loading={loading}
-          onSaved={reload}
+          onHoursAvailable={setHoursAvailable}
         />
 
-        {/* Repos */}
-        {activeRepos.length > 0 && (
-          <section className="overview-section">
-            <h3 className="overview-section-title">Repositories</h3>
-            <div className="overview-repos">
-              {activeRepos.map((repo) => (
-                <RepoRow key={repo.id} repo={repo} worktrees={activeWorktrees} />
-              ))}
+        {/* One banner for both endings — the local half is identical, so only the
+            sentence about Notion changes. */}
+        {ending && (
+          <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
+            <div className="finish-confirm-icon">
+              <AlertTriangle size={14} strokeWidth={2} />
             </div>
-          </section>
+            <div className="finish-confirm-body">
+              <strong>
+                {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
+              </strong>
+              <p>
+                This will remove all local worktrees and delete task data from the local
+                database.{' '}
+                {ending === 'delete'
+                  ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
+                  : 'The task is marked Done in Notion.'}
+              </p>
+            </div>
+            <div className="finish-confirm-actions">
+              <button className="finish-confirm-ok" onClick={handleEnd} disabled={finishing}>
+                {finishing ? 'Working…' : 'Confirm'}
+              </button>
+              <button
+                className="finish-confirm-cancel"
+                onClick={() => setEnding(null)}
+                disabled={finishing}
+              >
+                <X size={12} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* MRs */}
-        <section className="overview-section">
-          <h3 className="overview-section-title">Merge Requests</h3>
-          {allMrs.length === 0 ? (
-            <p className="overview-empty-body">No open MRs.</p>
-          ) : (
-            <div className="overview-mrs">
-              {allMrs.map((mr) => <MrBadge key={mr.id} mr={mr} />)}
-            </div>
-          )}
-        </section>
+        {/* Body left, context (time · repos · MRs) right. */}
+        <div className="overview-grid">
+          <main className="overview-main">
+            <BodyEditor
+              taskId={activeTask.short_id}
+              notionPageId={activeTask.notion_page_id}
+              markdown={body}
+              loading={loading}
+              onSaved={reload}
+            />
+          </main>
+
+          <aside className="overview-side">
+            {hoursAvailable && (
+              <HoursWidget
+                taskId={activeTask.short_id}
+                notionPageId={activeTask.notion_page_id}
+                logged={hoursLogged}
+                onLogged={reload}
+              />
+            )}
+
+            {activeRepos.length > 0 && (
+              <section className="overview-section">
+                <h3 className="overview-section-title">Repositories</h3>
+                <div className="overview-repos">
+                  {activeRepos.map((repo) => (
+                    <RepoRow key={repo.id} repo={repo} worktrees={activeWorktrees} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="overview-section">
+              <h3 className="overview-section-title">Merge Requests</h3>
+              {allMrs.length === 0 ? (
+                <p className="overview-empty-body">No open MRs.</p>
+              ) : (
+                <div className="overview-mrs">
+                  {allMrs.map((mr) => <MrBadge key={mr.id} mr={mr} />)}
+                </div>
+              )}
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );

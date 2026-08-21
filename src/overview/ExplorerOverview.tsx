@@ -36,33 +36,31 @@ export function ExplorerOverview() {
 
   return (
     <div className="overview-view">
-
-      <div className="overview-header">
-        <div className="overview-header-top">
-          <span className="overview-eyebrow">
-            <span className="overview-task-id explorer-overview-id">
-              <Compass size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-              {activeTask.short_id}
-            </span>
-            <span className="overview-badge">explorer</span>
+      <div className="overview-inner">
+        <header className="overview-header">
+          <span className="overview-task-id explorer-overview-id">
+            <Compass size={13} strokeWidth={1.75} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            {activeTask.short_id}
           </span>
+          <h1 className="overview-title">{activeTask.title}</h1>
+          <span className="overview-badge">explorer</span>
+          <span className="overview-spring" />
           <button className="finish-task-btn" onClick={createTaskFromSession} title="Draft a Notion task from this session via the agent">
             <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
             Create task from this session
           </button>
-        </div>
-        <h2 className="overview-title">{activeTask.title}</h2>
-      </div>
+        </header>
 
-      <div className="overview-body">
         <section className="overview-section">
-          <div className="overview-section-head">
-            <h3 className="overview-section-title">Repositories</h3>
-            <button className="overview-add-repo" onClick={() => setShowAddRepo(true)}>
-              <Plus size={12} strokeWidth={2} style={{ marginRight: 4 }} />
-              Add repo
-            </button>
-          </div>
+          <h3 className="overview-section-title">
+            Repositories
+            <span className="overview-section-head-actions">
+              <button className="overview-add-repo" onClick={() => setShowAddRepo(true)}>
+                <Plus size={12} strokeWidth={2} style={{ marginRight: 4 }} />
+                Add repo
+              </button>
+            </span>
+          </h3>
           {activeRepos.length === 0 ? (
             <p className="overview-empty-body">No repos yet — add one to start browsing and editing.</p>
           ) : (

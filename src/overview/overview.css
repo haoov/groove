@@ -1,36 +1,33 @@
 /* ── Overview ─────────────────────────────────────────────────────────────── */
 
+/* The overview is the app's one reading page: a single scrolling surface with a
+   centered document column (~62rem). Header, properties, then a two-column grid —
+   the body on the left, task context (time · repos · MRs) on the right. */
+
 .overview-view {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--gl-background-color-default);
+}
+
+.overview-inner {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) var(--space-8);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: var(--space-5);
 }
-
-/* The overview is the app's one reading page: header + body share a centered
-   column (~46rem measure) while the header hairline stays full-bleed. */
 
 .overview-header {
-  padding: var(--space-6) max(var(--space-6), calc((100% - 46rem) / 2)) var(--space-5);
-  border-bottom: 1px solid var(--gl-border-color-default);
-  flex-shrink: 0;
-}
-
-.overview-header-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
 }
 
-.overview-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  min-width: 0;
-}
+.overview-spring { flex: 1 1 auto; }
 
 .finish-task-btn {
   display: inline-flex;
@@ -55,6 +52,20 @@
 }
 
 .finish-task-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Neutral action (Update / Open in GitLab): reads as a control, not a decision. */
+
+.finish-task-btn.ov-update {
+  background: var(--gl-background-color-strong);
+  border-color: var(--gl-border-color-default);
+  color: var(--gl-text-color-subtle);
+}
+
+.finish-task-btn.ov-update:hover {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-strong);
+  color: var(--gl-text-color-default);
+}
 
 /* Both endings sit together. The destructive one keeps its neighbour's shape — it
    is the same kind of action — and says so in red. */
@@ -83,7 +94,6 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  margin: var(--space-4) max(var(--space-6), calc((100% - 46rem) / 2)) 0;
   background: var(--gl-color-orange-100);
   border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
   border-radius: var(--gl-border-radius-medium);
@@ -191,13 +201,15 @@
 }
 
 .overview-title {
+  flex: 0 1 auto;
+  min-width: 0;
   font-family: var(--font-ui);
-  font-size: 1.75rem;
+  font-size: 1.375rem;
   font-weight: 600;
   color: var(--gl-text-color-default);
   margin: 0;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
 
@@ -215,25 +227,44 @@
   background: rgba(var(--gl-elevate), 0.03);
 }
 
-.overview-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-6) max(var(--space-6), calc((100% - 46rem) / 2)) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-  width: 100%;
+/* Two-column body: document left, context right; collapses under 60rem. */
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.overview-main { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+.overview-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+@media (max-width: 60rem) {
+  .overview-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Sections are panels: a hairline card with a full-bleed header strip. */
+
+.overview-section {
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-raised);
+  padding: var(--space-4);
+  overflow: hidden;
+  min-width: 0;
 }
 
 .overview-section-title {
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-subtle);
   font-size: var(--gl-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   color: var(--gl-text-color-muted);
-  margin: 0 0 var(--space-3) 0;
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--gl-border-color-subtle);
 }
 
 .overview-empty-body {
@@ -283,6 +314,28 @@
 .mr-meta-branches { display: inline-flex; align-items: center; gap: 6px; color: var(--gl-text-color-disabled); }
 
 .mr-meta-arrow { color: var(--gl-text-color-disabled); }
+
+/* MR badges under the title, and the Details panel in the side column. */
+
+.mr-badges { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+
+.mr-facts { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; }
+
+.mr-fact { display: flex; flex-direction: column; gap: 3px; }
+
+.mr-fact dt {
+  font-size: var(--gl-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gl-text-color-muted);
+  font-weight: 600;
+}
+
+.mr-fact dd { margin: 0; font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); }
+
+.mr-fact-branches { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--gl-text-color-disabled); }
+
+.mr-fact-branches .overview-repo-branch { margin-left: 0; }
 
 /* ── Markdown / rich blocks (shared: Notion body + MR descriptions) ────────── */
 
@@ -361,7 +414,15 @@
    priority matches its prio-badge tints. Dates and numbers stay neutral, so the
    colour that is there still means something.                                */
 
-.props { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-raised);
+  padding: var(--space-3) var(--space-4);
+}
 
 .props-rail { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 
@@ -696,12 +757,11 @@
 
 .time {
   position: relative;
-  align-self: flex-start;
-  min-width: min(420px, 100%);
-  padding: var(--space-3) var(--space-4) var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3);
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: rgba(var(--gl-elevate), 0.03);
+  background: var(--gl-background-color-raised);
 }
 
 /* Legend sits on the border, fieldset-style — names the block without a heading row. */
@@ -714,7 +774,7 @@
   align-items: center;
   gap: 4px;
   padding: 0 6px;
-  background: var(--gl-background-color-overlap);
+  background: var(--gl-background-color-default);
   font-size: var(--gl-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
