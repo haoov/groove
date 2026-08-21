@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { ChevronDown, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
@@ -18,8 +18,9 @@ function saveExpanded(ids: Set<string>) {
   try { localStorage.setItem(EXPAND_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
 }
 
-/** Everything checked out locally: tasks, explorers and reviews with a worktree. */
-export function LiveSection() {
+/** Everything checked out locally: tasks, explorers and reviews with a worktree.
+ *  Rendered as the body of the Home "Live" tab — toolbar over the list. */
+export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
   const snapshot = useStore((s) => s.homeSnapshot);
   const homeLoading = useStore((s) => s.homeLoading);
   const refreshHome = useStore((s) => s.refreshHome);
@@ -27,16 +28,19 @@ export function LiveSection() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
 
-  // Attention first, then the busiest working trees.
+  // Attention first, then the busiest working trees; the shared filter narrows.
   const entries = useMemo(() => {
     const score = (e: HomeEntry) => {
       const s = summarize(e);
       return (s.attention ? 1000 : 0) + s.dirty;
     };
-    return [...(snapshot ?? [])].sort(
-      (a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority),
-    );
-  }, [snapshot]);
+    const needle = filter.trim().toLowerCase();
+    return [...(snapshot ?? [])]
+      .filter((e) => !needle || `${e.short_id} ${e.title} ${e.kind}`.toLowerCase().includes(needle))
+      .sort((a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority));
+  }, [snapshot, filter]);
+
+  useEffect(() => { onCount?.(entries.length); }, [entries.length, onCount]);
 
   const createExplorer = async () => {
     const name = newName.trim();
@@ -50,57 +54,56 @@ export function LiveSection() {
   };
 
   return (
-    <section className="home-section">
-      <h2 className="home-heading">
-        Live
-        {entries.length > 0 && <span className="home-heading-count">{entries.length}</span>}
-        <span className="home-heading-actions">
-          {creating ? (
-            <span className="explorer-new-composer">
-              <input
-                className="explorer-new-input"
-                autoFocus
-                placeholder="Name this explorer…"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') createExplorer();
-                  if (e.key === 'Escape') { setCreating(false); setNewName(''); }
-                }}
-              />
-              <button className="btn-primary" onClick={createExplorer}>Create</button>
-              <button className="btn-secondary" onClick={() => { setCreating(false); setNewName(''); }}>Cancel</button>
-            </span>
-          ) : (
-            <button className="live-btn" onClick={() => { setNewName(''); setCreating(true); }}>
-              <Plus size={13} strokeWidth={2} />
-              New explorer
-            </button>
-          )}
-          <button
-            className="home-link"
-            title="Refresh (also re-checks CI)"
-            onClick={() => refreshHome(true)}
-            disabled={homeLoading}
-          >
-            <RefreshCw size={11} strokeWidth={2} className={homeLoading ? 'spin' : undefined} />
-            refresh
+    <>
+      <div className="home-toolbar">
+        {creating ? (
+          <span className="explorer-new-composer">
+            <input
+              className="explorer-new-input"
+              autoFocus
+              placeholder="Name this explorer…"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createExplorer();
+                if (e.key === 'Escape') { setCreating(false); setNewName(''); }
+              }}
+            />
+            <button className="btn-primary" onClick={createExplorer}>Create</button>
+            <button className="btn-secondary" onClick={() => { setCreating(false); setNewName(''); }}>Cancel</button>
+          </span>
+        ) : (
+          <button className="live-btn" onClick={() => { setNewName(''); setCreating(true); }}>
+            <Plus size={13} strokeWidth={2} />
+            New explorer
           </button>
-        </span>
-      </h2>
+        )}
+        <span className="home-toolbar-spring" />
+        <button
+          className="home-link"
+          title="Refresh (also re-checks CI)"
+          onClick={() => refreshHome(true)}
+          disabled={homeLoading}
+        >
+          <RefreshCw size={11} strokeWidth={2} className={homeLoading ? 'spin' : undefined} />
+          refresh
+        </button>
+      </div>
 
       {snapshot === null ? (
         <p className="home-empty">Loading…</p>
       ) : entries.length === 0 ? (
         <p className="home-empty">
-          Nothing checked out — open a task from the queue below, or start an explorer.
+          {filter.trim()
+            ? `Nothing checked out matches “${filter.trim()}”.`
+            : 'Nothing checked out — open a task from Up next, or start an explorer.'}
         </p>
       ) : (
         <div className="home-rows">
           {entries.map((e) => <LiveRow key={e.short_id} entry={e} />)}
         </div>
       )}
-    </section>
+    </>
   );
 }
 

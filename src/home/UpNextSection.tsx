@@ -50,7 +50,7 @@ function itemText(item: UpNextItem): string {
   return `${task.short_id} ${task.title} ${task.status} ${task.priority ?? ''}`.toLowerCase();
 }
 
-export function UpNextSection() {
+export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
   const tasks = useStore((s) => s.tasks);
   const setTasks = useStore((s) => s.setTasks);
   const snapshot = useStore((s) => s.homeSnapshot);
@@ -62,7 +62,6 @@ export function UpNextSection() {
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; item: UpNextItem } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('');
   // Approved reviews are soft-hidden: someone signed off, so they are no longer
   // waiting on YOU — but they stay one toggle away until they merge.
   const [showApproved, setShowApproved] = useState(false);
@@ -133,6 +132,8 @@ export function UpNextSection() {
     };
   }, [reviewQueue, startedReviews, snapshot, tasks, filter, showApproved, hidden, showHidden]);
 
+  useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
+
   const openReview = async (mr: ReviewMr) => {
     const key = `${mr.project_full}!${mr.iid}`;
     if (busy) return;
@@ -164,56 +165,46 @@ export function UpNextSection() {
   const shown = expanded || filter.trim() ? items : items.slice(0, UPNEXT_PREVIEW);
 
   return (
-    <section className="home-section" onClick={() => setMenu(null)}>
-      <h2 className="home-heading">
-        Up next
-        {items.length > 0 && <span className="home-heading-count">{items.length}</span>}
-        <span className="home-heading-actions">
-          <input
-            className="upnext-filter"
-            placeholder="Filter…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') setFilter(''); }}
-          />
-          {(approvedHidden > 0 || showApproved) && (
-            <button
-              className={`home-link${showApproved ? ' active' : ''}`}
-              onClick={() => setShowApproved((v) => !v)}
-              title="Approved reviews are no longer waiting on you — shown on demand"
-            >
-              {showApproved ? 'hide approved' : `approved (${approvedHidden})`}
-            </button>
-          )}
-          {(hiddenCount > 0 || showHidden) && (
-            <button
-              className={`home-link${showHidden ? ' active' : ''}`}
-              onClick={() => setShowHidden((v) => !v)}
-              title="Rows you hid with right-click — reveal them to unhide"
-            >
-              {showHidden ? 'done' : `hidden (${hiddenCount})`}
-            </button>
-          )}
-          {/* The review queue is polled every ~5 min, which is too slow when you
-              know someone just asked. Refreshes the tasks too — both feed this list. */}
+    <div className="upnext-root" onClick={() => setMenu(null)}>
+      <div className="home-toolbar">
+        {(approvedHidden > 0 || showApproved) && (
           <button
-            className="home-link"
-            onClick={async () => {
-              if (refreshing) return;
-              setRefreshing(true);
-              try {
-                await Promise.all([refreshReviewQueue(), loadTasks()]);
-              } finally {
-                setRefreshing(false);
-              }
-            }}
-            title="Refresh review requests and tasks"
+            className={`home-link${showApproved ? ' active' : ''}`}
+            onClick={() => setShowApproved((v) => !v)}
+            title="Approved reviews are no longer waiting on you — shown on demand"
           >
-            <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
-            refresh
+            {showApproved ? 'hide approved' : `approved (${approvedHidden})`}
           </button>
-        </span>
-      </h2>
+        )}
+        {(hiddenCount > 0 || showHidden) && (
+          <button
+            className={`home-link${showHidden ? ' active' : ''}`}
+            onClick={() => setShowHidden((v) => !v)}
+            title="Rows you hid with right-click — reveal them to unhide"
+          >
+            {showHidden ? 'done' : `hidden (${hiddenCount})`}
+          </button>
+        )}
+        <span className="home-toolbar-spring" />
+        {/* The review queue is polled every ~5 min, which is too slow when you
+            know someone just asked. Refreshes the tasks too — both feed this list. */}
+        <button
+          className="home-link"
+          onClick={async () => {
+            if (refreshing) return;
+            setRefreshing(true);
+            try {
+              await Promise.all([refreshReviewQueue(), loadTasks()]);
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+          title="Refresh review requests and tasks"
+        >
+          <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
+          refresh
+        </button>
+      </div>
 
       {items.length === 0 ? (
         <p className="home-empty">
@@ -291,7 +282,7 @@ export function UpNextSection() {
           </button>
         </ContextMenu>
       )}
-    </section>
+    </div>
   );
 }
 

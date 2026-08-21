@@ -14,20 +14,91 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   background: var(--gl-background-color-default);
 }
 
-.home-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-5) var(--space-6) var(--space-6);
-  /* Panels tile responsively: several columns when wide, one when narrow. */
+/* Big tabbed panel on the left, ambient rail on the right; one column when narrow. */
+.home-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(30rem, 1fr));
+  grid-template-columns: minmax(0, 1fr) 22rem;
   align-items: start;
   gap: var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-6);
 }
+
+@media (max-width: 70rem) {
+  .home-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+.home-rail { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+/* ── Tab bar (the main panel's header strip) ────────────────────────────────── */
+
+.home-tabbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-mantle);
+}
+.home-tabbar-spring { flex: 1; }
+
+.home-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.home-tab:hover { color: var(--gl-text-color-default); }
+.home-tab.active { color: var(--gl-text-color-default); border-bottom-color: var(--gl-color-blue-400); }
+
+.home-tab-count {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  color: var(--gl-text-color-disabled);
+  background: var(--gl-background-color-strong);
+  border-radius: 100px;
+  padding: 0 6px;
+}
+.home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
+
+.home-filter {
+  width: 12rem;
+  height: 1.7rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-background-color-default);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+}
+.home-filter:focus { outline: none; border-color: var(--gl-focus-border); }
+
+.home-tabpanel.is-hidden { display: none; }
+
+/* Per-tab actions row, under the tabs. */
+.home-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  min-height: 1.6rem;
+}
+.home-toolbar-spring { flex: 1; }
 
 /* ── Section heading ────────────────────────────────────────────────────────── */
 /* Full width — rows fill the pane. The trailing info stays aligned into a column
