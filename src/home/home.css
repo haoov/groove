@@ -159,7 +159,8 @@
    the pane; the trailing track has a floor (so it forms a column) but may grow on
    the rare row whose summary is unusually long. */
 
-.live-row { grid-template-columns: 20px 78px 104px minmax(0, 1fr) minmax(168px, auto); }
+/* Percentage tracks — caret · type · id · title(fills) · summary. */
+.live-row { grid-template-columns: 3% 11% 18% minmax(0, 1fr) 20%; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -203,7 +204,8 @@
 .upnext-head,
 .upnext-tr {
   display: grid;
-  grid-template-columns: 78px 104px minmax(0, 1fr) minmax(140px, 220px) minmax(90px, 150px);
+  /* Percentage tracks — type · code · name(fills) · state · owner. */
+  grid-template-columns: 11% 18% minmax(0, 1fr) 20% 16%;
   align-items: center;
   column-gap: var(--space-4);
   width: 100%;
@@ -376,10 +378,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--gl-color-green-100);
+  background: var(--gl-background-color-subtle);
   border: 1px solid color-mix(in srgb, var(--ctp-green) 35%, transparent);
   border-radius: var(--gl-border-radius-base);
-  color: var(--gl-color-green-400);
+  color: var(--gl-text-color-default);
   font-family: var(--font-ui);
   font-size: var(--gl-font-size-xs);
   font-weight: 600;

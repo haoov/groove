@@ -413,7 +413,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
+  margin-left: 7px;
   flex-shrink: 0;
   text-decoration: none;
 }
