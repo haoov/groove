@@ -19,7 +19,6 @@ export type { HomeMr } from './HomeMr';
 export type { HomeRepo } from './HomeRepo';
 export type { Hunk } from './Hunk';
 export type { Mr } from './Mr';
-export type { MrSignals } from './MrSignals';
 export type { NotionTask } from './NotionTask';
 export type { NotionUser } from './NotionUser';
 export type { NotionView } from './NotionView';

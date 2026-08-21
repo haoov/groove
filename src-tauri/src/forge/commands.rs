@@ -177,7 +177,6 @@ pub async fn edit_mr_text(
     super::ops::update_mr_impl(payload, &pool)
         .await
         .map_err(|e| e.to_string())?;
-    invalidate_mr_signals(&mr_id);
     Ok(())
 }
 
@@ -197,7 +196,6 @@ pub async fn approve_mr(
         .approve_mr(&repo, &mr.remote_id)
         .await
         .map_err(|e| e.to_string())?;
-    invalidate_mr_signals(&mr.id);
     Ok(())
 }
 
@@ -227,99 +225,18 @@ pub async fn post_mr_comment(
         .map_err(|e| e.to_string())
 }
 
-// ─── MR signals for Home (cached: these are the only network calls there) ─────
+// ─── MR state for Home ────────────────────────────────────────────────────────
 
-/// Live-ish MR facts Home shows per repo. Everything else in the snapshot is
-/// local git or SQLite; these two cost a forge round-trip each, so they are
-/// cached per MR and refreshed on a TTL rather than on every Home render.
-#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct MrSignals {
-    /// Pipeline status ("success", "failed", …) — None when the MR has no pipeline.
-    pub ci: Option<String>,
-    #[ts(type = "number")]
-    pub unresolved: i64,
-    /// Carries at least one approval (from anyone).
-    pub approved: bool,
-    /// Live MR state ("open"/"merged"/"closed") — the stored row goes stale after
-    /// a merge, so Home reads this instead. None when the fetch failed.
-    pub state: Option<String>,
-}
-
-static MR_SIGNALS: std::sync::LazyLock<
-    std::sync::Mutex<std::collections::HashMap<String, (std::time::Instant, MrSignals)>>,
-> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
-
-const MR_SIGNALS_TTL: std::time::Duration = std::time::Duration::from_secs(90);
-
-/// Forget one MR's cached signals — called after approving so Home reflects it
-/// on the next refresh instead of at the end of the TTL.
-pub(crate) fn invalidate_mr_signals(mr_id: &str) {
-    if let Ok(mut map) = MR_SIGNALS.lock() {
-        map.remove(mr_id);
-    }
-}
-
-/// Cached `(ci, unresolved, approved)` for one MR. `force` bypasses the TTL (manual refresh).
-/// Never errors: a forge hiccup degrades to "unknown", it must not fail the snapshot.
-pub(crate) async fn mr_signals(repo: &Repo, mr_id: &str, remote_id: &str, force: bool) -> MrSignals {
-    if !force {
-        if let Ok(map) = MR_SIGNALS.lock() {
-            if let Some((at, sig)) = map.get(mr_id) {
-                if at.elapsed() < MR_SIGNALS_TTL {
-                    return sig.clone();
-                }
-            }
-        }
-    }
-
-    let client = make_client(repo);
-
-    let ci = client
-        .get_mr_ci(repo, remote_id)
-        .await
-        .ok()
-        .and_then(|v| v["status"].as_str().map(|s| s.to_string()));
-
-    // Mirrors the frontend's countUnresolved: a thread counts when its first
-    // note is resolvable and not yet resolved.
-    let unresolved = client
-        .get_mr_threads(repo, remote_id)
-        .await
-        .ok()
-        .and_then(|v| v.as_array().cloned())
-        .map(|threads| {
-            threads
-                .iter()
-                .filter(|t| {
-                    let first = &t["notes"][0];
-                    first["resolvable"].as_bool() == Some(true)
-                        && first["resolved"].as_bool() == Some(false)
-                })
-                .count() as i64
-        })
-        .unwrap_or(0);
-
-    let approved = client
-        .get_mr_approval(repo, remote_id)
-        .await
-        .ok()
-        .and_then(|v| v["approved"].as_bool())
-        .unwrap_or(false);
-
-    // The stored mrs.state is only the discovery value; re-read the live state so
-    // a merged/closed MR stops reading "open" on Home.
-    let state = client
+/// Live MR state ("open"/"merged"/"closed") — the one forge fact Home still reads
+/// per MR, and only on an explicit refresh. The stored row goes stale after a
+/// merge. Never errors: a forge hiccup returns None and the caller keeps the
+/// stored value.
+pub(crate) async fn mr_state(repo: &Repo, remote_id: &str) -> Option<String> {
+    make_client(repo)
         .get_mr_details(repo, remote_id)
         .await
         .ok()
-        .and_then(|v| v["state"].as_str().map(|s| s.to_string()));
-
-    let sig = MrSignals { ci, unresolved, approved, state };
-    if let Ok(mut map) = MR_SIGNALS.lock() {
-        map.insert(mr_id.to_string(), (std::time::Instant::now(), sig.clone()));
-    }
-    sig
+        .and_then(|v| v["state"].as_str().map(|s| s.to_string()))
 }
 
 #[tauri::command]

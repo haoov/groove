@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { GitBranch, GitMerge, GitPullRequest, GitPullRequestClosed } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
-import { ciGroup } from '../shared/lib/mr';
 import { openExternal } from '../shared/lib/openExternal';
 import { openRepo } from './helpers';
 import type { HomeEntry, HomeMr, HomeRepo } from '../shared/ipc/ipc';
@@ -21,8 +20,6 @@ function MrLine({ mr }: { mr: HomeMr }) {
       <Icon size={11} strokeWidth={1.75} />
       <span className="overview-wt-mr-num">{num}</span>
       <span className={`overview-wt-mr-state mr-state-${mr.state}`}>{mr.state}</span>
-      {mr.ci && <span className={`live-ci ci-${ciGroup(mr.ci)}`} title={`Pipeline: ${mr.ci}`}>●</span>}
-      {mr.unresolved > 0 && <span className="live-mr-threads" title={`${mr.unresolved} unresolved`}>{mr.unresolved}</span>}
     </a>
   );
 }

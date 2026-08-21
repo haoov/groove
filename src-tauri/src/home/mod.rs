@@ -1,14 +1,14 @@
 //! The Home snapshot: what is *locally real* right now.
 //!
-//! Home's job is the state Notion can't show — which repos are provisioned, what
-//! the working trees look like, and where each MR stands. One SQL statement
-//! (store::home::snapshot) delivers every row; the per-worktree git state is the
-//! only remaining cost, issued concurrently, plus the cached MR signals.
+//! Home's job is the state Notion can't show — which sessions are checked out,
+//! their repos/worktrees, and each MR's id + state. One SQL statement
+//! (store::home::snapshot) delivers every row, so a normal load is fully local;
+//! an explicit refresh (`force_mr`) additionally re-reads each MR's live state.
 
 use serde::Serialize;
 use sqlx::SqlitePool;
 
-use crate::core::db::models::{SessionKind, Worktree};
+use crate::core::db::models::SessionKind;
 use crate::core::db::store::home::HomeRow;
 use crate::core::db::store;
 
@@ -148,196 +148,58 @@ async fn repo_state(row: HomeRow, force_mr: bool, pool: &SqlitePool) -> HomeRepo
         return base;
     };
 
-    let mr = mr_signals_for(&row, force_mr, pool).await;
-
-    if !std::path::Path::new(&path).exists() {
-        return HomeRepo {
-            worktree_id: Some(worktree_id),
-            branch: Some(branch),
-            provisioned: true,
-            missing: true,
-            mr,
-            ..base
-        };
-    }
-
-    let wt = Worktree {
-        id: worktree_id.clone(),
-        session_id: row.session_id.clone(),
-        repo_id: base.repo_id.clone(),
-        branch: branch.clone(),
-        path,
-        base_ref: row.base_ref.clone(),
-        created_at: 0,
-    };
-
-    let (modified, staged, conflicted, ab) = working_tree_state(&wt.path).await;
-    let (added, deleted, files_changed) = line_delta(&wt).await;
-    // No upstream yet (never pushed) → count everything past the diff base as ahead.
-    let (ahead, behind) = match ab {
-        Some(ab) => ab,
-        None => (commits_past_base(&wt).await, 0),
-    };
+    // Home Live shows only repo · branch · MR id + state, so the snapshot stays
+    // local: no git status/delta and no forge signals. The git-stat fields keep
+    // their zero defaults; the frontend does not read them here.
+    let mr = mr_for(&row, force_mr, pool).await;
 
     HomeRepo {
         worktree_id: Some(worktree_id),
         branch: Some(branch),
         provisioned: true,
-        missing: false,
-        modified,
-        staged,
-        conflicted,
-        ahead,
-        behind,
-        added,
-        deleted,
-        files_changed,
+        missing: !std::path::Path::new(&path).exists(),
         mr,
         ..base
     }
 }
 
-async fn mr_signals_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<HomeMr> {
-    let (mr_id, platform, remote_id, url, state) = (
+async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<HomeMr> {
+    let (mr_id, platform, remote_id, url, mut state) = (
         row.mr_id.clone()?,
         row.mr_platform.clone()?,
         row.mr_remote_id.clone()?,
         row.mr_url.clone()?,
         row.mr_state.clone()?,
     );
-    let repo = crate::core::db::models::Repo {
-        id: row.repo_id.clone()?,
-        host: row.repo_host.clone()?,
-        group_path: String::new(),
-        project: row.project.clone().unwrap_or_default(),
-        local_path: row.repo_local_path.clone()?,
-    };
-    let sig = crate::forge::mr_signals(&repo, &mr_id, &remote_id, force_mr).await;
 
-    // Persist the live state when it moved (only on a successful fetch, so a
-    // transient forge error never clobbers a good row). The stored value goes
-    // stale after a merge — this keeps every surface reading `mrs.state` correct.
-    let live = sig.state.clone();
-    if let Some(fresh) = &live {
-        if *fresh != state {
-            let _ = store::mrs::set_state(pool, &mr_id, fresh).await;
+    // Only on an explicit refresh: re-read the live state and persist it if it
+    // moved (a merge leaves the stored row reading "open"). A failed fetch keeps
+    // the stored value. Normal loads stay fully local.
+    if force_mr {
+        let repo = crate::core::db::models::Repo {
+            id: row.repo_id.clone()?,
+            host: row.repo_host.clone()?,
+            group_path: String::new(),
+            project: row.project.clone().unwrap_or_default(),
+            local_path: row.repo_local_path.clone()?,
+        };
+        if let Some(fresh) = crate::forge::mr_state(&repo, &remote_id).await {
+            if fresh != state {
+                let _ = store::mrs::set_state(pool, &mr_id, &fresh).await;
+                state = fresh;
+            }
         }
     }
 
+    // Home shows only the id + state; the other signals are no longer fetched.
     Some(HomeMr {
         id: mr_id,
         platform,
         remote_id,
-        state: live.unwrap_or(state),
+        state,
         url,
-        ci: sig.ci,
-        unresolved: sig.unresolved,
-        approved: sig.approved,
+        ci: None,
+        unresolved: 0,
+        approved: false,
     })
-}
-
-/// One `git status --porcelain=v2 --branch` gives dirty/staged/conflicted AND the
-/// ahead/behind pair (when the branch has an upstream) — v1 porcelain would need a
-/// second `rev-list`. Returns `(modified, staged, conflicted, Some((ahead, behind)))`.
-async fn working_tree_state(path: &str) -> (i64, i64, i64, Option<(i64, i64)>) {
-    let Ok(out) = crate::core::git::output(path, &["status", "--porcelain=v2", "--branch"]).await
-    else {
-        return (0, 0, 0, None);
-    };
-    if !out.status.success() {
-        return (0, 0, 0, None);
-    }
-
-    let (mut modified, mut staged, mut conflicted) = (0i64, 0i64, 0i64);
-    let mut ab = None;
-
-    for line in String::from_utf8_lossy(&out.stdout).lines() {
-        if let Some(rest) = line.strip_prefix("# branch.ab ") {
-            // "# branch.ab +2 -1"
-            let mut it = rest.split_whitespace();
-            let a = it.next().and_then(|s| s.trim_start_matches('+').parse::<i64>().ok());
-            let b = it.next().and_then(|s| s.trim_start_matches('-').parse::<i64>().ok());
-            if let (Some(a), Some(b)) = (a, b) {
-                ab = Some((a, b));
-            }
-            continue;
-        }
-        match line.chars().next() {
-            // "1 XY …" (ordinary) / "2 XY …" (rename): X = index side, Y = worktree
-            // side, '.' meaning unchanged on that side.
-            Some('1') | Some('2') => {
-                let xy: Vec<char> = line.chars().skip(2).take(2).collect();
-                if xy.first().is_some_and(|c| *c != '.') {
-                    staged += 1;
-                }
-                if xy.get(1).is_some_and(|c| *c != '.') {
-                    modified += 1;
-                }
-            }
-            Some('u') => conflicted += 1,
-            // Untracked files count as working-tree changes, like the sidebar chips.
-            Some('?') => modified += 1,
-            _ => {}
-        }
-    }
-
-    (modified, staged, conflicted, ab)
-}
-
-/// `+added / −deleted` against the session's diff base — which for a review
-/// session is the MR's target branch, not the repo default.
-async fn line_delta(wt: &Worktree) -> (i64, i64, i64) {
-    let Ok(base) = crate::core::git::refs::diff_base(
-        &wt.path,
-        &wt.branch,
-        "vs-main",
-        wt.base_ref.as_deref(),
-    )
-    .await
-    else {
-        return (0, 0, 0);
-    };
-
-    let Ok(out) = crate::core::git::output(
-        &wt.path,
-        &["diff", &base, "--numstat", "--no-renames", "--no-color"],
-    )
-    .await
-    else {
-        return (0, 0, 0);
-    };
-
-    let (mut added, mut deleted, mut files) = (0i64, 0i64, 0i64);
-    for line in String::from_utf8_lossy(&out.stdout).lines() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        files += 1;
-        let mut parts = line.split('\t');
-        // Binary files report "-\t-\t<path>" — counted as a file, no line delta.
-        added += parts.next().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
-        deleted += parts.next().and_then(|s| s.parse::<i64>().ok()).unwrap_or(0);
-    }
-    (added, deleted, files)
-}
-
-/// Commits on the branch that aren't on its base — the "ahead" count for a branch
-/// that was never pushed (so `branch.ab` is absent).
-async fn commits_past_base(wt: &Worktree) -> i64 {
-    let Ok(base) = crate::core::git::refs::diff_base(
-        &wt.path,
-        &wt.branch,
-        "vs-main",
-        wt.base_ref.as_deref(),
-    )
-    .await
-    else {
-        return 0;
-    };
-    crate::core::git::output(&wt.path, &["rev-list", "--count", &format!("{base}..HEAD")])
-        .await
-        .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse::<i64>().ok())
-        .unwrap_or(0)
 }
