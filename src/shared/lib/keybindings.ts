@@ -34,7 +34,10 @@ export type CommandId =
   | 'git.commitFocus'
   | 'editor.focus'
   | 'editor.toggleVim'
-  | 'editor.toggleBlame';
+  | 'editor.toggleBlame'
+  | 'font.increase'
+  | 'font.decrease'
+  | 'font.reset';
 
 export interface CommandSpec {
   id: CommandId;
@@ -84,6 +87,9 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'editor.focus', label: 'Focus editor', group: 'Editor', defaults: [C('c', { alt: true })] },
   { id: 'editor.toggleVim', label: 'Toggle Vim mode', group: 'Editor', defaults: [C('v', { alt: true, shift: true })] },
   { id: 'editor.toggleBlame', label: 'Toggle blame gutter', group: 'Editor', defaults: [C('b', { alt: true })] },
+  { id: 'font.increase', label: 'Increase font size', group: 'Editor', defaults: [C('=', { ctrl: true }), C('+', { ctrl: true, shift: true })] },
+  { id: 'font.decrease', label: 'Decrease font size', group: 'Editor', defaults: [C('-', { ctrl: true })] },
+  { id: 'font.reset', label: 'Reset font size', group: 'Editor', defaults: [C('0', { ctrl: true })] },
 ];
 
 export type Keymap = Record<CommandId, Chord[]>;

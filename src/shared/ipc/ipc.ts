@@ -92,6 +92,9 @@ export const DEFAULT_THEME: ThemeName = 'latte';
 /** Base UI font size in px. Mirrors `default_font_size()` in core/config —
  *  the whole type ramp is derived from it (lib/theme.ts::applyFontSize). */
 export const DEFAULT_FONT_SIZE = 15;
+/** Bounds for the settings stepper and the Ctrl +/- zoom shortcuts. */
+export const FONT_MIN = 10;
+export const FONT_MAX = 18;
 
 /** `theme` narrowed to the themes the CSS actually ships. */
 export type UiConfig = Omit<GUiConfig, 'theme'> & { theme: ThemeName };

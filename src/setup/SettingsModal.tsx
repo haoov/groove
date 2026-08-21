@@ -2,13 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { X, Check, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useStore } from '../shared/store';
-import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, type ThemeName } from '../shared/ipc/ipc';
+import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, FONT_MIN, FONT_MAX, type ThemeName } from '../shared/ipc/ipc';
 import { COMMANDS, type CommandId } from '../shared/lib/keybindings';
 import { chordFromEvent, chordLabel, isModifierOnly, isTypingCharacter } from '../shared/lib/keys';
 import type { Environment } from '../shared/ipc/ipc';
-
-const FONT_MIN = 10;
-const FONT_MAX = 18;
 
 // Representative swatches for the theme picker preview (base · surface · accent · green).
 const SWATCHES: Record<ThemeName, string[]> = {

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStore, sessionActions, type GitSubTab, type SidebarTab } from '../../shared/store';
 import { toggleTerminal } from '../../shared/lib/panes';
+import { DEFAULT_FONT_SIZE, FONT_MIN, FONT_MAX } from '../../shared/ipc/ipc';
 import { COMMANDS, type CommandId } from '../../shared/lib/keybindings';
 import { chordMatches, isModifierOnly, isTypingCharacter } from '../../shared/lib/keys';
 
@@ -202,6 +203,18 @@ export function runCommand(id: CommandId): boolean {
       if (!sess) return false;
       st.updateSession(sess.id, (s) => ({ blameOn: !s.blameOn }));
       return true;
+
+    case 'font.increase':
+    case 'font.decrease':
+    case 'font.reset': {
+      const current = st.config?.ui.font_size ?? DEFAULT_FONT_SIZE;
+      const next =
+        id === 'font.reset' ? DEFAULT_FONT_SIZE
+        : id === 'font.increase' ? current + 1
+        : current - 1;
+      st.setFontSize(Math.max(FONT_MIN, Math.min(FONT_MAX, next)));
+      return true;
+    }
 
     case 'editor.focus':
       if (!sess) return false;
