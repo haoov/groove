@@ -419,9 +419,17 @@ export function CodeEditor(props: CodeEditorProps) {
     viewRef.current?.focus();
   }, [props.focusSignal, props.isPreview]);
 
-  // Reflect the active content-search query into the editor's match highlight.
+  // Reflect the active content-search query into the editor's match highlight,
+  // and jump to the selected match — so walking results within one previewed
+  // file scrolls to each hit, not only when a new file opens.
   useEffect(() => {
-    viewRef.current?.dispatch({ effects: setGrepQuery.of(grepHighlight) });
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: setGrepQuery.of(grepHighlight) });
+    const line = grepHighlight?.line ?? 0;
+    if (line > 0 && line <= view.state.doc.lines) {
+      view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(line).from, { y: 'center' }) });
+    }
   }, [grepHighlight]);
 
   // Push dynamic state into CM whenever annotations/threads or the selection change.
