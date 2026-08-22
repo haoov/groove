@@ -64,32 +64,25 @@ pub struct SearchMatch {
 
 #[tauri::command]
 pub async fn list_files(worktree_path: String) -> Result<Vec<String>, String> {
-    list_files_impl(&worktree_path).map_err(|e| e.to_string())
+    list_files_impl(&worktree_path).await.map_err(|e| e.to_string())
 }
 
-fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
-    // tracked files
-    let tracked = std::process::Command::new("git")
-        .args(["-C", worktree_path, "ls-files"])
-        .output()?;
-    // untracked, non-ignored
-    let untracked = std::process::Command::new("git")
-        .args(["-C", worktree_path, "ls-files", "--others", "--exclude-standard"])
-        .output()?;
+async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
+    let tracked = crate::core::git::run(worktree_path, &["ls-files"]).await?;
+    let untracked =
+        crate::core::git::run(worktree_path, &["ls-files", "--others", "--exclude-standard"])
+            .await?;
 
-    let mut files = std::collections::HashSet::new();
-    for line in String::from_utf8_lossy(&tracked.stdout)
+    let mut files: Vec<String> = tracked
         .lines()
-        .chain(String::from_utf8_lossy(&untracked.stdout).lines())
-    {
-        let s = line.trim();
-        if !s.is_empty() {
-            files.insert(s.to_string());
-        }
-    }
-    let mut result: Vec<String> = files.into_iter().collect();
-    result.sort();
-    Ok(result)
+        .chain(untracked.lines())
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string)
+        .collect();
+    files.sort();
+    files.dedup();
+    Ok(files)
 }
 
 #[tauri::command]

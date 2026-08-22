@@ -19,10 +19,11 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc;
 
-use crate::confirmation_bridge::Bridge;
+use crate::approvals::Bridge;
 use crate::editor_host::State as EditorState;
 use crate::task_manager::State as TaskState;
 
+pub(crate) mod auth;
 mod tools;
 
 use tools::{dispatch, mcp_tool_definitions};
@@ -59,12 +60,11 @@ pub fn get_mcp_endpoint() -> String {
 
 // ─── SSE stream wrapper ───────────────────────────────────────────────────────
 
-/// Wraps the event receiver and unregisters its session entry when the SSE
-/// connection drops — otherwise every agent reconnect leaks a dead sender.
+/// Wraps the event receiver and unregisters its connection entry when the SSE
+/// stream drops — otherwise every agent reconnect leaks a dead sender.
 struct SseReceiver {
     rx: mpsc::Receiver<Event>,
-    sessions: Sessions,
-    session_tasks: SessionTasks,
+    connections: Connections,
     session_id: String,
 }
 
@@ -77,25 +77,26 @@ impl Stream for SseReceiver {
 
 impl Drop for SseReceiver {
     fn drop(&mut self) {
-        if let Ok(mut map) = self.sessions.lock() {
-            map.remove(&self.session_id);
-        }
-        if let Ok(mut map) = self.session_tasks.lock() {
+        if let Ok(mut map) = self.connections.lock() {
             map.remove(&self.session_id);
         }
     }
 }
 
-// ─── Shared session state ─────────────────────────────────────────────────────
+// ─── Shared connection state ──────────────────────────────────────────────────
 
-type Sessions = Arc<Mutex<HashMap<String, mpsc::Sender<Event>>>>;
-/// MCP session id → the task that connection belongs to.
+/// One live SSE connection: where its responses go, and the task it belongs to.
 ///
 /// The global "active task" follows UI focus, which is wrong for an agent: the
 /// user switches sessions constantly, and an agent working on task A must keep
-/// resolving to A. Each agent is spawned with `--mcp-config` pointing at
+/// resolving to A. Each agent is spawned with an `--mcp-config` pointing at
 /// `/sse?task=<short_id>`, so its connection carries its own task for life.
-type SessionTasks = Arc<Mutex<HashMap<String, String>>>;
+struct Connection {
+    tx: mpsc::Sender<Event>,
+    task: Option<String>,
+}
+
+type Connections = Arc<Mutex<HashMap<String, Connection>>>;
 
 // ─── Axum shared state ────────────────────────────────────────────────────────
 
@@ -105,17 +106,16 @@ struct McpState {
     bridge: Bridge,
     task_state: TaskState,
     editor_state: EditorState,
-    sessions: Sessions,
-    session_tasks: SessionTasks,
+    connections: Connections,
 }
 
 impl McpState {
     /// The task this CALLER is working on: its connection's binding when it has
     /// one, else the focused session (a hand-run `claude`, or an older agent).
     fn task_for(&self, mcp_session: &str) -> Option<String> {
-        if let Ok(map) = self.session_tasks.lock() {
-            if let Some(id) = map.get(mcp_session) {
-                return Some(id.clone());
+        if let Ok(map) = self.connections.lock() {
+            if let Some(task) = map.get(mcp_session).and_then(|c| c.task.clone()) {
+                return Some(task);
             }
         }
         self.task_state.get_active_task_id()
@@ -124,9 +124,9 @@ impl McpState {
     /// Re-point a connection (used when an explorer converts into a real task,
     /// which changes the id underneath the agent).
     fn rebind(&self, mcp_session: &str, task_id: &str) {
-        if let Ok(mut map) = self.session_tasks.lock() {
-            if map.contains_key(mcp_session) {
-                map.insert(mcp_session.to_string(), task_id.to_string());
+        if let Ok(mut map) = self.connections.lock() {
+            if let Some(conn) = map.get_mut(mcp_session) {
+                conn.task = Some(task_id.to_string());
             }
         }
     }
@@ -147,17 +147,18 @@ pub async fn start(
         bridge,
         task_state,
         editor_state,
-        sessions: Arc::new(Mutex::new(HashMap::new())),
-        session_tasks: Arc::new(Mutex::new(HashMap::new())),
+        connections: Arc::new(Mutex::new(HashMap::new())),
     };
 
     // One loopback server for everything agents talk to: MCP tools here, Claude
-    // Code hook callbacks in `agent_hooks`.
+    // Code hook callbacks in `agent_hooks`. Every route requires the launch
+    // token — the port is open to any local process otherwise.
     let app = Router::new()
         .route("/sse", get(sse_handler))
         .route("/message", post(message_handler))
         .with_state(state)
-        .merge(crate::agent_hooks::router(app_handle, activity));
+        .merge(crate::agent_hooks::router(app_handle, activity))
+        .layer(axum::middleware::from_fn(auth::require_auth));
 
     let addr: SocketAddr = endpoint().parse()?;
     // A taken port is the one startup failure a user cannot diagnose: every agent
@@ -165,7 +166,7 @@ pub async fn start(
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
-            crate::events::notice(
+            crate::core::events::notice(
                 "error",
                 "mcp",
                 format!("Agent tools are unavailable: {} is busy", endpoint()),
@@ -200,25 +201,22 @@ async fn sse_handler(
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(64);
 
-    if let Some(task) = q.task.filter(|t| !t.is_empty()) {
+    let task = q.task.filter(|t| !t.is_empty());
+    if let Some(task) = &task {
         tracing::info!("[mcp] session {session_id} bound to task {task}");
-        if let Ok(mut map) = state.session_tasks.lock() {
-            map.insert(session_id.clone(), task);
-        }
     }
 
     // First event tells the client where to POST messages
     let endpoint_url = format!("/message?sessionId={session_id}");
     let _ = tx.try_send(Event::default().event("endpoint").data(endpoint_url));
 
-    if let Ok(mut map) = state.sessions.lock() {
-        map.insert(session_id.clone(), tx);
+    if let Ok(mut map) = state.connections.lock() {
+        map.insert(session_id.clone(), Connection { tx, task });
     }
 
     Sse::new(SseReceiver {
         rx,
-        sessions: state.sessions.clone(),
-        session_tasks: state.session_tasks.clone(),
+        connections: state.connections.clone(),
         session_id,
     })
     .keep_alive(KeepAlive::default())
@@ -242,8 +240,9 @@ async fn message_handler(
         Err(_) => return StatusCode::BAD_REQUEST,
     };
 
-    // Notifications have no "id" — fire and forget, no response needed
-    if request["id"].is_null() && request.get("id").is_none() {
+    // Notifications carry no id (a JSON-RPC request must not use a null one
+    // either) — fire and forget, no response needed.
+    if request.get("id").is_none_or(|v| v.is_null()) {
         return StatusCode::ACCEPTED;
     }
 
@@ -253,10 +252,10 @@ async fn message_handler(
     let event = Event::default().event("message").data(event_data);
 
     let tx = state
-        .sessions
+        .connections
         .lock()
         .ok()
-        .and_then(|s| s.get(&q.session_id).cloned());
+        .and_then(|s| s.get(&q.session_id).map(|c| c.tx.clone()));
 
     if let Some(tx) = tx {
         let _ = tx.send(event).await;

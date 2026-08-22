@@ -1,0 +1,238 @@
+/* ── Confirm Modal ────────────────────────────────────────────────────────── */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: var(--gl-backdrop);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 84px;
+  animation: wb-overlay-in 0.14s ease-out both;
+}
+
+.confirm-modal {
+  width: var(--wb-modal-width);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-large);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  position: relative;
+  animation: wb-modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.confirm-header {
+  padding: var(--space-3) var(--space-4);
+  background: var(--gl-panel-header-bg);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.confirm-title { font-size: var(--gl-font-size-lg); font-weight: 600; color: var(--gl-text-color-default); flex: 1; }
+
+.confirm-origin-badge {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: 100px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Actor duet: peach = human-initiated, blue = agent-initiated (matches the
+   annotation layer and the statusbar indicators). */
+
+.confirm-origin-badge.ui {
+  background: color-mix(in srgb, var(--wb-annotation-human) 16%, transparent);
+  color: var(--wb-annotation-human);
+}
+
+.confirm-origin-badge.agent {
+  background: color-mix(in srgb, var(--wb-annotation-agent) 16%, transparent);
+  color: var(--wb-annotation-agent);
+}
+
+.confirm-queue { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+
+.confirm-op-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--gl-border-radius-base);
+  background: var(--gl-color-blue-100);
+  color: var(--gl-color-blue-400);
+  flex-shrink: 0;
+}
+
+.confirm-payload {
+  padding: var(--space-4);
+  max-height: 65vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Editable fields (commit message, MR title/description) */
+
+.cp-field-input {
+  width: 100%;
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.5;
+  padding: var(--space-2) var(--space-3);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cp-field-input:focus {
+  border-color: var(--gl-focus-border);
+  box-shadow: var(--ring-accent);
+  outline: none;
+}
+
+.cp-field-textarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+
+/* structured field row */
+
+.cp-field {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-height: 22px;
+}
+
+.cp-field--block {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.cp-field-label {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--gl-text-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  min-width: 76px;
+  flex-shrink: 0;
+}
+
+.cp-field--block .cp-field-label { min-width: unset; }
+
+.cp-field-value {
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.cp-field-value--mono {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-blue-300);
+  background: var(--gl-color-blue-100);
+  padding: 2px 7px;
+  border-radius: var(--gl-border-radius-sm);
+}
+
+.cp-field--block .cp-field-value {
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+  white-space: pre-wrap;
+  max-height: 110px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  line-height: 1.55;
+}
+
+.cp-hint {
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+}
+
+.cp-hint--danger { color: var(--gl-color-red-400); }
+
+.cp-raw {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-2) var(--space-3);
+}
+
+.confirm-error {
+  margin: 0 var(--space-4) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-color-red-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-red) 35%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-red-400);
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.confirm-actions {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--gl-border-color-subtle);
+  background: var(--gl-panel-header-bg);
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.confirm-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* "Later" separates from the decide buttons: deferring ≠ deciding. */
+
+.confirm-later { margin-right: auto; order: -1; }
+
+/* The escape hatch under the approve/deny row: quieter than the primary action,
+   and it says what it does rather than "don't ask again". */
+
+.confirm-trust {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px dashed color-mix(in srgb, var(--ctp-peach) 40%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--wb-warn);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+
+.confirm-trust:hover { background: color-mix(in srgb, var(--ctp-peach) 12%, transparent); }
+
+.confirm-trust:disabled { opacity: 0.5; cursor: default; }

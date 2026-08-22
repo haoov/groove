@@ -1,0 +1,185 @@
+/* Annotations tab */
+/* Flat list — cleaner, styled like the commit list (no bordered cards) */
+
+.annotations-list { display: flex; flex-direction: column; }
+
+.annotation-item {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 0.1s;
+}
+
+.annotation-item:hover { background: rgba(var(--gl-elevate), 0.025); }
+
+/* MR thread item stays a card (used in the Forge section) */
+
+.mr-thread-item {
+  background: var(--gl-background-color-subtle);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mr-thread-item:hover { background: var(--gl-background-color-strong); }
+
+/* Open vs resolved is carried by the status dot in the header row and by the
+   dimming here — no border accent (see the notification rows for the same rule). */
+
+.mr-thread-item.mr-thread-resolved { opacity: 0.5; }
+
+/* Comment prose. Markdown-rendered, so it needs real block spacing rather than
+   the inline span it used to be. */
+
+.mr-thread-body { font-size: var(--gl-font-size-sm); line-height: 1.6; color: var(--gl-text-color-default); }
+
+.mr-thread-body > :first-child { margin-top: 0; }
+
+.mr-thread-body > :last-child { margin-bottom: 0; }
+
+.mr-thread-body pre {
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-subtle);
+  border-radius: var(--gl-border-radius-base);
+  overflow-x: auto;
+}
+
+.mr-thread-body code { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); }
+
+.mr-thread-reply { display: flex; flex-direction: column; gap: 3px; }
+
+/* The location line is a button: it opens the file at the annotated line. */
+
+.annotation-loc {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.annotation-loc:disabled { cursor: default; }
+
+.annotation-loc:not(:disabled):hover .annotation-file { color: var(--gl-text-color-default); }
+
+.annotation-loc:not(:disabled):hover .annotation-line { filter: brightness(1.2); }
+
+.annotation-icon { flex-shrink: 0; display: inline-flex; }
+
+.annotation-file { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.annotation-line { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-color-blue-400); background: var(--gl-color-blue-100); padding: 0 5px; border-radius: var(--gl-border-radius-sm); flex-shrink: 0; }
+
+.annotation-author-dot { font-size: var(--gl-font-size-xs); flex-shrink: 0; margin-left: auto; }
+
+.thread-loc-author { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-subtle); font-weight: 600; flex-shrink: 0; margin-right: 2px; }
+
+.annotation-content { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); line-height: 1.55; word-break: break-word; }
+
+.annotation-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+
+.annotation-resolve {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--gl-color-green-400);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.annotation-resolve:hover { opacity: 1; }
+
+.annotation-actions { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+
+.annotation-delete { color: var(--gl-text-color-disabled); }
+
+.annotation-delete:hover { color: var(--wb-warn, var(--gl-color-red-400)); }
+
+.annotation-confirm { color: var(--gl-color-red-400); font-weight: 600; }
+
+/* Notes are markdown: keep block spacing tight inside a sidebar row. */
+
+.annotation-content > .markdown-body > *:first-child { margin-top: 0; }
+
+.annotation-content > .markdown-body > *:last-child { margin-bottom: 0; }
+
+.annotation-content .nb-p { margin: 0 0 4px; }
+
+.annotation-content .nb-code { margin: 4px 0; font-size: var(--gl-font-size-xs); }
+
+.annotation-content ul, .annotation-content ol { margin: 2px 0 4px; padding-left: 18px; }
+
+/* ── MR Threads (in annotations tab) ──────────────────────────────────────── */
+
+.mr-threads-section { border-top: 1px solid var(--gl-border-color-default); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+
+.mr-threads-header { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; display: flex; align-items: center; gap: 6px; padding: var(--space-1) 0; }
+
+.mr-threads-link { color: var(--gl-color-blue-400); text-decoration: none; margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; font-family: var(--font-mono); }
+
+.mr-threads-link:hover { text-decoration: underline; }
+
+/* mr-thread-item base is defined above alongside annotation-item */
+
+.mr-thread-author { font-size: var(--gl-font-size-xs); font-weight: 600; color: var(--gl-text-color-subtle); flex-shrink: 0; }
+
+.mr-thread-body { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+
+.mr-thread-replies-toggle {
+  background: none; border: none; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-xs);
+  cursor: pointer; padding: 0; transition: color 0.12s;
+}
+
+.mr-thread-replies-toggle:hover { color: var(--gl-text-color-default); }
+
+.mr-thread-resolve-confirm { display: flex; align-items: center; gap: var(--space-2); }
+
+.mr-thread-resolve-prompt { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+
+.mr-thread-resolve-cancel {
+  background: none; border: none; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-xs);
+  cursor: pointer; padding: 0; transition: color 0.12s; line-height: 1;
+}
+
+.mr-thread-resolve-cancel:hover { color: var(--gl-color-red-400); }
+
+.mr-thread-resolve-error { font-size: var(--gl-font-size-xs); color: var(--gl-color-red-400); line-height: 1.4; word-break: break-word; }
+
+.mr-thread-replies { border-top: 1px solid var(--gl-border-color-subtle); padding-top: var(--space-2); margin-top: 2px; display: flex; flex-direction: column; gap: 5px; }
+
+.mr-thread-reply { display: flex; gap: var(--space-2); align-items: baseline; }
+
+.mr-thread-reply .mr-thread-author { color: var(--gl-text-color-disabled); }
+
+.mr-thread-reply .mr-thread-body { flex: 1; font-size: var(--gl-font-size-xs); }
+
+/* ── Notes: the MR discussion below the annotations (review sessions) ───────── */
+
+.notes-threads { border-top: 1px solid var(--gl-border-color-subtle); margin-top: var(--space-3); padding-top: var(--space-2); }
+
+.notes-threads-title {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-disabled);
+}

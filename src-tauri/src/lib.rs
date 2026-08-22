@@ -2,20 +2,19 @@ mod agent_hooks;
 mod agent_manager;
 mod annotation_store;
 mod clipboard;
-mod confirmation_bridge;
-mod db;
+mod approvals;
+mod core;
 mod desktop_notify;
 mod editor_host;
-mod events;
-mod git_engine;
 mod home;
 mod launch_env;
 mod mcp_server;
 mod migrate_identity;
-mod mr_manager;
-mod ops;
-mod pty_trace;
+mod forge;
+mod notion;
+mod review;
 mod task_manager;
+mod worktrees;
 
 use tauri::Manager;
 
@@ -44,7 +43,6 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
-            pty_trace::init(&data_dir);
             let handle = app.handle().clone();
 
             // Spin up the async init inside Tauri's tokio runtime, then block the
@@ -65,34 +63,21 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // task_manager
-            task_manager::list_tasks,
             task_manager::open_task,
             task_manager::set_active_task,
             task_manager::open_explorer_session,
-            task_manager::ensure_desk_session,
             task_manager::open_review_session,
-            task_manager::set_file_reviewed,
-            task_manager::get_reviewed_files,
             task_manager::rename_explorer,
             task_manager::discard_explorer,
             task_manager::pause_task,
-            task_manager::sync_task,
             task_manager::set_task_repos,
             task_manager::get_config,
             task_manager::check_environment,
             task_manager::detect_database,
             task_manager::start_auth_session,
-            task_manager::list_notion_users,
             task_manager::write_initial_config,
-            task_manager::get_task_body_markdown,
-            task_manager::get_task_schema,
-            task_manager::list_relation_options,
-            task_manager::get_task_properties,
-            task_manager::update_task_property,
-            task_manager::request_task_body_update,
-            task_manager::create_task,
-            task_manager::get_task_template_markdown,
             task_manager::get_task_time,
+            task_manager::get_activity_days,
             task_manager::add_task_time,
             task_manager::log_task_hours,
             task_manager::set_font_size,
@@ -101,66 +86,77 @@ pub fn run() {
             task_manager::set_theme,
             task_manager::finish_task,
             task_manager::delete_task,
-            // git_engine
-            git_engine::register_repo,
-            git_engine::list_main_repos,
-            git_engine::clone_repo,
-            git_engine::provision_worktrees,
-            git_engine::provision_explorer_worktrees,
-            git_engine::close_worktree,
-            git_engine::remote_branch_exists,
-            git_engine::get_task_diff_summary,
-            git_engine::get_file_diff,
-            git_engine::read_file_lines,
-            git_engine::blame_file,
-            git_engine::get_commit_diff,
-            git_engine::get_commit_log,
-            git_engine::get_worktree_status,
-            git_engine::commit,
-            git_engine::stage_file,
-            git_engine::unstage_file,
-            git_engine::stage_all,
-            git_engine::unstage_all,
-            git_engine::discard_file,
-            git_engine::discard_all,
-            git_engine::push,
-            git_engine::pull,
-            git_engine::rebase_on_main,
-            git_engine::rebase_continue,
-            git_engine::rebase_abort,
-            git_engine::watch_task_worktrees,
+            // notion
+            notion::list_tasks,
+            notion::sync_task,
+            notion::find_notion_user,
+            notion::get_task_body_markdown,
+            notion::get_task_schema,
+            notion::list_relation_options,
+            notion::get_task_properties,
+            notion::update_task_property,
+            notion::request_task_body_update,
+            notion::create_task,
+            notion::get_task_template_markdown,
+            // worktrees
+            worktrees::register_repo,
+            worktrees::list_main_repos,
+            worktrees::clone_repo,
+            worktrees::provision_worktrees,
+            worktrees::close_worktree,
+            worktrees::remote_branch_exists,
+            worktrees::get_worktree_status,
+            worktrees::commit,
+            worktrees::stage_file,
+            worktrees::unstage_file,
+            worktrees::stage_all,
+            worktrees::unstage_all,
+            worktrees::discard_file,
+            worktrees::discard_all,
+            worktrees::push,
+            worktrees::pull,
+            worktrees::rebase_on_main,
+            worktrees::rebase_continue,
+            worktrees::rebase_abort,
+            worktrees::flush_git_caches,
+            // review
+            review::get_task_diff_summary,
+            review::get_file_diff,
+            review::read_file_lines,
+            review::blame_file,
+            review::get_commit_diff,
+            review::get_commit_log,
             // home
             home::get_home_snapshot,
             // mcp_server
             mcp_server::get_mcp_endpoint,
             // agent_hooks
             agent_hooks::get_agent_activity,
-            // mr_manager
-            mr_manager::get_mr,
-            mr_manager::create_mr,
-            mr_manager::get_mr_threads,
-            mr_manager::get_mr_ci,
-            mr_manager::get_mr_details,
-            mr_manager::reply_to_thread,
-            mr_manager::resolve_mr_thread,
-            mr_manager::approve_mr,
-            mr_manager::edit_mr_text,
-            mr_manager::post_mr_comment,
-            mr_manager::list_review_mrs,
+            // forge
+            forge::get_mr,
+            forge::create_mr,
+            forge::get_mr_threads,
+            forge::get_mr_ci,
+            forge::get_mr_details,
+            forge::reply_to_thread,
+            forge::resolve_mr_thread,
+            forge::approve_mr,
+            forge::edit_mr_text,
+            forge::post_mr_comment,
+            forge::list_review_mrs,
             // annotation_store
             annotation_store::create_annotation,
             annotation_store::resolve_annotation,
             annotation_store::get_annotations,
             annotation_store::delete_annotation,
-            // agent_manager
+            // agent_manager + core::pty
             agent_manager::start_agent_session,
             agent_manager::start_terminal_session,
-            agent_manager::stop_agent_session,
-            agent_manager::resolve_confirmation,
-            agent_manager::write_pty,
-            pty_trace::trace_pty,
-            pty_trace::pty_trace_on,
-            agent_manager::resize_pty,
+            core::pty::stop_agent_session,
+            core::pty::write_pty,
+            core::pty::resize_pty,
+            // approvals
+            approvals::resolve_confirmation,
             // clipboard
             clipboard::copy_to_clipboard,
             clipboard::read_clipboard,
@@ -183,40 +179,39 @@ pub fn run() {
 }
 
 async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> Result<(), String> {
-    let pool = db::init(&data_dir)
+    // Config first: the worktree root and agent cwd resolve from it, and the
+    // config dir is remembered here for every later save.
+    let config_dir = handle
+        .path()
+        .app_config_dir()
+        .map_err(|e| format!("cannot get config dir: {e}"))?;
+    crate::core::config::init(config_dir);
+
+    let pool = crate::core::db::init(&data_dir)
         .await
         .map_err(|e| format!("DB init failed: {e}"))?;
 
     // Lets background work (git provisioning) report problems it can't return.
-    events::set_app(handle.clone());
+    core::events::set_app(handle.clone());
 
-    let bridge = confirmation_bridge::Bridge::new(handle.clone());
-    let git_state = git_engine::State::new();
+    let bridge = approvals::Bridge::new(handle.clone());
     let editor_state = editor_host::State::new();
-    let agent_state = agent_manager::State::new();
     let task_state = task_manager::State::new();
     let activity = agent_hooks::new_state();
 
     handle.manage(pool.clone());
     handle.manage(bridge.clone());
-    handle.manage(git_state);
     handle.manage(editor_state.clone());
-    handle.manage(agent_state);
+    handle.manage(core::pty::Ptys::new());
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 
-    // The worktree root's shape changed once; move an older one into place before
-    // anything reads a path out of it. Needs the config, which nothing has asked
-    // for yet at this point — a first run has none, and nothing to migrate either.
-    if task_manager::ensure_config(&handle, &task_state).is_ok() {
-        git_engine::migrate_layout::run(&git_engine::resolve_worktree_root(), &pool).await;
-    }
 
     // Re-emit any confirmations that survived a crash
     let pool_c = pool.clone();
     let handle_c = handle.clone();
     tokio::spawn(async move {
-        confirmation_bridge::surface_pending(&pool_c, &handle_c).await;
+        approvals::surface_pending(&pool_c, &handle_c).await;
     });
 
     // Start the MCP server (endpoint owned by `mcp_server`)

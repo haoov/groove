@@ -1,7 +1,7 @@
 {
   "name": "groove",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q && cd .. && node scripts/gen-index.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -30,12 +31,14 @@
     "@codemirror/view": "^6.43.1",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/lilex": "^5.3.0",
     "@lezer/highlight": "^1.2.3",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@replit/codemirror-vim": "^6.3.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@xterm/addon-fit": "^0.10",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^5",
     "codemirror": "^6.0.2",
     "lucide-react": "^1.17.0",

@@ -1,0 +1,1080 @@
+/* ── Overview ─────────────────────────────────────────────────────────────── */
+
+/* The overview is the app's one reading page: a single scrolling surface with a
+   centered document column (~62rem). Header, properties, then a two-column grid —
+   the body on the left, task context (time · repos · MRs) on the right. */
+
+.overview-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--gl-background-color-default);
+}
+
+.overview-inner {
+  max-width: 80%;
+  margin: 0 auto;
+  margin-top: 1%;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.overview-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.overview-spring { flex: 1 1 auto; }
+
+.finish-task-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gl-color-green-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-green) 35%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-color-green-400);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.finish-task-btn:hover {
+  background: color-mix(in srgb, var(--ctp-green) 20%, transparent);
+  border-color: color-mix(in srgb, var(--ctp-green) 55%, transparent);
+}
+
+.finish-task-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Neutral action (Update / Open in GitLab): reads as a control, not a decision. */
+
+.finish-task-btn.ov-update {
+  background: var(--gl-background-color-strong);
+  border-color: var(--gl-border-color-default);
+  color: var(--gl-text-color-subtle);
+}
+
+.finish-task-btn.ov-update:hover {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-strong);
+  color: var(--gl-text-color-default);
+}
+
+/* Both endings sit together. The destructive one keeps its neighbour's shape — it
+   is the same kind of action — and says so in red. */
+
+.overview-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.delete-task-btn {
+  background: var(--gl-color-red-100);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 35%, transparent);
+  color: var(--gl-color-red-400);
+}
+
+.delete-task-btn:hover {
+  background: color-mix(in srgb, var(--gl-color-red-400) 20%, transparent);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 55%, transparent);
+}
+
+/* ── Finish confirmation banner ───────────────────────────────────────────── */
+
+.finish-confirm-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--gl-color-orange-100);
+  border: 1px solid color-mix(in srgb, var(--ctp-peach) 35%, transparent);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Deleting reads red, so the banner cannot be mistaken for the Done one. */
+
+.finish-confirm-banner.destructive {
+  background: var(--gl-color-red-100);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 35%, transparent);
+}
+
+.finish-confirm-banner.destructive .finish-confirm-icon { color: var(--gl-color-red-400); }
+
+.finish-confirm-banner.destructive .finish-confirm-ok {
+  background: color-mix(in srgb, var(--gl-color-red-400) 16%, transparent);
+  border-color: color-mix(in srgb, var(--gl-color-red-400) 40%, transparent);
+  color: var(--gl-color-red-400);
+}
+
+.finish-confirm-banner.destructive .finish-confirm-ok:hover {
+  background: color-mix(in srgb, var(--gl-color-red-400) 26%, transparent);
+}
+
+.finish-confirm-icon {
+  color: var(--wb-warn);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.finish-confirm-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.finish-confirm-body strong {
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.finish-confirm-body p {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.finish-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.finish-confirm-ok {
+  background: color-mix(in srgb, var(--ctp-green) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ctp-green) 40%, transparent);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-color-green-400);
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.finish-confirm-ok:hover { background: color-mix(in srgb, var(--ctp-green) 26%, transparent); }
+
+.finish-confirm-ok:disabled { opacity: 0.5; cursor: default; }
+
+.finish-confirm-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.finish-confirm-cancel:hover { background: var(--gl-background-color-hover); color: var(--gl-text-color-default); }
+
+.overview-task-id {
+  font-size: var(--gl-font-size-lg);
+  color: var(--gl-color-blue-300);
+  font-family: var(--font-mono);
+  font-weight: 500;
+  display: inline-block;
+  background: var(--gl-color-blue-100);
+  padding: 2px 8px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-accent-border-subtle);
+  letter-spacing: 0.02em;
+}
+
+.overview-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* Metadata chips are quiet — color is reserved for the human/agent duet. */
+
+.overview-badge {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: 100px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-subtle);
+  border: 1px solid var(--gl-border-color-default);
+  background: rgba(var(--gl-elevate), 0.03);
+}
+
+/* Two-column body: document left, context right; collapses under 60rem. */
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30%;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.overview-main { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+.overview-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+@media (max-width: 60rem) {
+  .overview-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Sections are panels: a hairline card with a full-bleed header strip. */
+
+.overview-section {
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-mantle);
+  padding: var(--space-3);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.overview-section-title {
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-subtle);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gl-text-color-muted);
+}
+
+.overview-empty-body {
+  color: var(--gl-text-color-disabled);
+  font-size: var(--gl-font-size-sm);
+  margin: 0;
+}
+
+/* ── MR overview tab (same page language as the task overview) ────────────── */
+
+/* "Open in GitLab/GitHub" reuses the header-button slot but neutral, not green. */
+
+.finish-task-btn.mr-open-btn {
+  background: var(--gl-background-color-strong);
+  border-color: var(--gl-border-color-default);
+  color: var(--gl-text-color-subtle);
+}
+
+.finish-task-btn.mr-open-btn:hover {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-strong);
+  color: var(--gl-text-color-default);
+}
+
+/* State chips keep platform colors (green open / purple merged / red closed). */
+
+.overview-badge.mr-state-open   { color: var(--gl-color-green-400); border-color: color-mix(in srgb, var(--ctp-green) 35%, transparent); background: var(--gl-color-green-100); }
+
+.overview-badge.mr-state-merged { color: var(--gl-color-purple-400); border-color: color-mix(in srgb, var(--ctp-mauve) 35%, transparent); background: var(--gl-color-purple-100); }
+
+.overview-badge.mr-state-closed { color: var(--gl-color-red-400); border-color: color-mix(in srgb, var(--ctp-red) 35%, transparent); background: var(--gl-color-red-100); }
+
+.overview-ci { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+
+.mr-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+  flex-wrap: wrap;
+}
+
+.mr-meta-author { font-weight: 500; color: var(--gl-text-color-strong); }
+
+.mr-meta-branches { display: inline-flex; align-items: center; gap: 6px; color: var(--gl-text-color-disabled); }
+
+.mr-meta-arrow { color: var(--gl-text-color-disabled); }
+
+/* MR badges under the title, and the Details panel in the side column. */
+
+.mr-badges { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+
+.mr-facts { display: flex; flex-direction: column; gap: var(--space-3); margin: 0; }
+
+.mr-fact { display: flex; flex-direction: column; gap: 3px; }
+
+.mr-fact dt {
+  font-size: var(--gl-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gl-text-color-muted);
+  font-weight: 600;
+}
+
+.mr-fact dd { margin: 0; font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); }
+
+.mr-fact-branches { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--gl-text-color-disabled); }
+
+.mr-fact-branches .overview-repo-branch { margin-left: 0; }
+
+/* ── Markdown / rich blocks (shared: Notion body + MR descriptions) ────────── */
+
+.markdown-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+/* Repos — the project name over its worktrees, each branch indented with its MR. */
+
+.overview-repos { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.overview-repo-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+}
+
+.overview-repo { display: flex; align-items: center; gap: var(--space-2); }
+
+.overview-repo-name {
+  min-width: 0;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kept for the MR Details panel (mr-fact-branches) — no longer used by RepoRow. */
+.overview-repo-branch {
+  font-size: var(--gl-font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--gl-color-teal-400);
+  background: var(--gl-color-teal-100);
+  padding: 2px var(--space-2);
+  border-radius: var(--gl-border-radius-sm);
+}
+
+/* Worktree row: branch on the left, its MR beside it — tabbed under the repo,
+   bound by a hairline guide like Home's expanded sessions. */
+.overview-wt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 5px;
+  padding: 1px 0 1px var(--space-3);
+  border-left: 1px solid var(--gl-border-color-default);
+  font-size: var(--gl-font-size-xs);
+  min-width: 0;
+}
+
+.overview-wt.clickable { cursor: pointer; border-radius: var(--gl-border-radius-sm); transition: background 0.1s; }
+
+.overview-wt.clickable:hover { background: var(--gl-background-color-hover); }
+
+.overview-wt.clickable:hover .overview-wt-branch { color: var(--gl-color-blue-300); }
+
+.overview-wt-icon { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.overview-wt-branch {
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.overview-wt-empty { color: var(--gl-text-color-disabled); font-style: italic; }
+
+.overview-wt-mr {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 7px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.overview-wt-mr svg { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.overview-wt-mr-num { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
+
+.overview-wt-mr:hover .overview-wt-mr-num { text-decoration: underline; }
+
+.overview-wt-mr-state { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+.overview-wt-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
+
+.overview-wt-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
+
+.overview-wt-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
+
+/* Approved MR — green, next to the state/draft/CI badges. */
+
+.overview-badge.mr-approved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gl-color-green-400);
+  border-color: color-mix(in srgb, var(--ctp-green) 35%, transparent);
+  background: var(--gl-color-green-100);
+}
+
+/* ── Task properties: a framed strip of labelled columns (the mockup) ──────────
+   Each property is a small uppercase key over its value, divided by hairlines;
+   the value opens a popover to edit. The "+ field" button is pinned to the right.
+   (The pill controls below are still used by the new-task modal.)             */
+
+.props {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-mantle);
+}
+
+.props-cols {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  padding: var(--space-3) 0;
+}
+
+.prop {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 2px var(--space-4);
+  min-width: 0;
+}
+
+.prop:not(:last-child) { border-right: 1px solid var(--gl-border-color-subtle); }
+
+.prop-k {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gl-text-color-muted);
+  white-space: nowrap;
+}
+
+.prop-v {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 500;
+  color: var(--gl-text-color-default);
+}
+
+.prop-v-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.prop-v-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.prop-v-btn:hover .prop-v-text { color: var(--gl-color-blue-300); }
+
+.prop-v-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.props-add {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border-left: 1px solid var(--gl-border-color-subtle);
+}
+
+/* ── Pills ──────────────────────────────────────────────────────────────────── */
+
+.ppill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 9px;
+  border-radius: 100px;
+  border: 1px solid transparent;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.12s, border-color 0.12s;
+}
+
+.ppill:hover { filter: brightness(1.14); }
+
+.ppill:focus-visible { outline: none; box-shadow: var(--ring-accent); }
+
+.ppill-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ppill-caret { flex-shrink: 0; opacity: 0.65; }
+
+.ppill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
+
+/* Neutral: dates, numbers, plain selects. A visible border does the affordance. */
+
+.ppill.neutral {
+  color: var(--gl-text-color-subtle);
+  background: rgba(var(--gl-elevate), 0.05);
+  border-color: var(--gl-border-color-default);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.ppill.neutral:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+
+/* Status — same colours as the queue rows on Home. */
+
+.ppill.status { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.07); }
+
+.ppill.status.status-in_progress {
+  color: var(--gl-color-blue-300);
+  background: color-mix(in srgb, var(--gl-color-blue-400) 16%, transparent);
+}
+
+.ppill.status.status-blocked {
+  color: var(--gl-color-red-400);
+  background: color-mix(in srgb, var(--gl-color-red-400) 16%, transparent);
+}
+
+.ppill.status.status-in_review {
+  color: var(--gl-color-orange-400);
+  background: color-mix(in srgb, var(--gl-color-orange-400) 16%, transparent);
+}
+
+.ppill.status.status-done {
+  color: var(--gl-color-green-400);
+  background: color-mix(in srgb, var(--gl-color-green-400) 16%, transparent);
+}
+
+/* Priority — the exact tints Home uses, so High means the same thing in both. */
+
+.ppill.prio.p0 { color: var(--gl-color-red-400);    background: color-mix(in srgb, var(--gl-color-red-400) 15%, transparent); }
+
+.ppill.prio.p1 { color: var(--gl-color-orange-400); background: color-mix(in srgb, var(--gl-color-orange-400) 15%, transparent); }
+
+.ppill.prio.p2 { color: var(--gl-color-blue-300);   background: color-mix(in srgb, var(--gl-color-blue-400) 14%, transparent); }
+
+.ppill.prio.p3 { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.07); }
+
+/* A flag states itself: nearly invisible off, green on. */
+
+.ppill.flag {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+  background: none;
+  border-color: var(--gl-border-color-subtle);
+  border-style: dashed;
+}
+
+.ppill.flag.on {
+  color: var(--gl-color-green-400);
+  background: color-mix(in srgb, var(--gl-color-green-400) 14%, transparent);
+  border-style: solid;
+  border-color: transparent;
+}
+
+/* ── Labelled sets: components, tags ────────────────────────────────────────── */
+
+.props-sets { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.props-set {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.props-set-label {
+  padding-top: 3px;
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gl-text-color-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.props-set-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; }
+
+.pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 9px;
+  border-radius: 100px;
+  background: rgba(var(--gl-elevate), 0.07);
+  border: 1px solid var(--gl-border-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  max-width: 30ch;
+}
+
+.pchip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--gl-text-color-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pchip-x:hover { color: var(--gl-color-red-400); background: color-mix(in srgb, var(--gl-color-red-400) 18%, transparent); }
+
+.padd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 100px;
+  border: 1px dashed var(--gl-border-color-default);
+  background: none;
+  color: var(--gl-text-color-muted);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.padd:hover { color: var(--gl-color-blue-300); border-color: var(--gl-color-blue-300); }
+
+.padd.rail { padding: 3px 10px; font-size: var(--gl-font-size-sm); }
+
+/* ── Popovers (every pill opens one) ────────────────────────────────────────── */
+
+.ppop-anchor { position: relative; display: inline-flex; max-width: 100%; }
+
+.ppop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 240px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+
+.ppop-head {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gl-text-color-muted);
+}
+
+.ppop-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  color: var(--gl-text-color-disabled);
+}
+
+.ppop-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+}
+
+.ppop-list { max-height: 260px; overflow-y: auto; padding: var(--space-1); }
+
+.ppop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+
+.ppop-item:hover { background: var(--gl-background-color-hover); }
+
+.ppop-item.on { color: var(--gl-color-blue-300); }
+
+/* Fixed tick column so labels align selected or not. */
+
+.ppop-tick { width: 12px; flex-shrink: 0; display: inline-flex; }
+
+.ppop-empty {
+  padding: var(--space-3);
+  margin: 0;
+  text-align: center;
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+}
+
+.ppop-edit { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+
+.ppop-input {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-default);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  outline: none;
+}
+
+.ppop-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.ppop-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--gl-border-color-default);
+}
+
+.ppop-btn {
+  padding: 3px 10px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-border-color-default);
+  background: none;
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ppop-btn:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+
+.ppop-btn.primary {
+  color: var(--gl-color-blue-300);
+  border-color: color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
+  background: var(--gl-color-blue-100);
+}
+
+/* ── Time: its own block, because it is the one you use daily ───────────────── */
+
+.time {
+  position: relative;
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-mantle);
+}
+
+/* Legend sits on the border, fieldset-style — names the block without a heading row. */
+
+.time-legend {
+  position: absolute;
+  top: -8px;
+  left: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: var(--gl-background-color-default);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gl-text-color-muted);
+}
+
+.time-body { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.time-figures { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
+
+.time-logged { display: inline-flex; align-items: baseline; gap: 3px; }
+
+.time-logged strong {
+  font-family: var(--font-mono);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--gl-text-color-default);
+}
+
+.time-unit { font-family: var(--font-mono); font-size: var(--gl-font-size-md); color: var(--gl-text-color-subtle); }
+
+.time-caption { margin-left: 5px; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
+
+.time-tracked { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-subtle); min-width: 0; overflow-wrap: anywhere; }
+
+.time-tracked strong { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
+
+/* Filled portion = unlogged ÷ total known work. */
+
+.time-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(var(--gl-elevate), 0.1);
+  overflow: hidden;
+}
+
+.time-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--gl-color-blue-400);
+  transition: width 0.4s ease-out;
+}
+
+.time-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+
+.time-log {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--gl-border-radius-base);
+  border: 1px solid color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
+  background: var(--gl-color-blue-100);
+  color: var(--gl-color-blue-300);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.time-log:hover:not(:disabled) { background: color-mix(in srgb, var(--gl-color-blue-400) 22%, transparent); }
+
+.time-log:disabled {
+  color: var(--gl-text-color-disabled);
+  background: none;
+  border-color: var(--gl-border-color-subtle);
+  cursor: default;
+}
+
+.time-quick { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+.time-btn, .time-input {
+  padding: 3px 8px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-border-color-default);
+  background: none;
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  outline: none;
+}
+
+.time-btn:hover:not(:disabled) { color: var(--gl-text-color-default); border-color: var(--gl-color-blue-300); }
+
+.time-btn:disabled { opacity: 0.5; cursor: default; }
+
+.time-input { width: 3.4rem; cursor: text; text-align: center; }
+
+.time-input:focus { border-color: var(--gl-focus-border); background: var(--gl-background-color-default); }
+
+@media (prefers-reduced-motion: reduce) {
+  .time-bar-fill { transition: none; }
+}
+
+/* ── Body editor ───────────────────────────────────────────────────────────── */
+
+.overview-section-head-actions { display: inline-flex; align-items: center; gap: var(--space-3); margin-left: auto; }
+
+.overview-section-title { display: flex; align-items: center; gap: var(--space-2); }
+
+.body-editor {
+  width: 100%;
+  min-height: 320px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.6;
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-3);
+  outline: none;
+}
+
+.body-editor:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.body-editor-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: var(--space-2) 0 0 0;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+  line-height: 1.5;
+}
+
+.body-editor-hint svg { flex-shrink: 0; margin-top: 2px; }
+
+/* ── MR description editor ─────────────────────────────────────────────────────
+   Editing by hand goes straight to the forge (the agent's path still goes through
+   the confirmation). The Notion footer is re-appended by the backend, so it is
+   deliberately not in the box.                                                 */
+
+.overview-section-action { margin-left: var(--space-3); font-weight: 400; }
+
+.mr-desc-editor { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.mr-desc-editor .composer-body { min-height: 220px; }
+
+.mr-desc-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.mr-desc-actions .composer-note { margin-right: auto; }
+
+/* ── from home.css (split) ── */
+
+.review-progress { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--gl-text-color-subtle); }
+
+.review-bar {
+  width: 120px;
+  height: 3px;
+  border-radius: 100px;
+  background: rgba(var(--gl-elevate), 0.1);
+  overflow: hidden;
+}
+
+.review-fill { display: block; height: 100%; background: var(--gl-color-green-400); transition: width 0.25s ease-out; }
+
+/* ── Review workspace ─────────────────────────────────────────────────────── */
+
+/* ReviewOverview = action bar over the MR overview. */
+
+.review-overview {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.review-overview .overview-view { flex: 1; min-height: 0; }
+
+.review-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  background: rgba(var(--gl-elevate), 0.02);
+}
+
+.review-actions-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gl-text-color-subtle);
+}
+
+.review-actions-eyebrow svg { color: var(--gl-color-blue-300); }
+
+.review-actions-buttons { display: flex; align-items: center; gap: var(--space-2); }
+
+.review-finish-btn:hover { color: var(--wb-warn, var(--gl-color-red-400)); border-color: var(--wb-warn, var(--gl-color-red-400)); }
+
+/* MR overview header actions (Approve + Open in …). */
+
+.mr-header-actions { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+.mr-approve-btn { color: var(--gl-color-green-400); }
+
+.mr-approve-btn:hover { border-color: var(--gl-color-green-400); }
+
+/* General comment composer under Discussion. */
+
+.mr-comment-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.mr-comment-input {
+  flex: 1;
+  min-width: 0;
+  resize: vertical;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mr-comment-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.mr-comment-post { display: inline-flex; align-items: center; flex-shrink: 0; }

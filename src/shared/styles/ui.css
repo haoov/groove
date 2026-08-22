@@ -1,0 +1,313 @@
+.btn-ghost { background: none; border: none; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-sm); font-family: var(--font-ui); cursor: pointer; padding: var(--space-1) var(--space-2); transition: color 0.12s; }
+
+.btn-ghost:hover { color: var(--gl-text-color-default); }
+
+/* ── Common buttons ───────────────────────────────────────────────────────── */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--gl-color-blue-500);
+  border: 1px solid var(--gl-color-blue-400);
+  border-radius: var(--gl-border-radius-base);
+  color: #fff;
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  letter-spacing: 0;
+}
+
+.btn-primary:hover {
+  background: var(--gl-color-blue-400);
+  border-color: var(--gl-color-blue-300);
+}
+
+.btn-primary:active { background: var(--gl-color-blue-600); }
+
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.btn-secondary:hover {
+  color: var(--gl-text-color-default);
+  border-color: var(--gl-border-color-strong);
+  background: var(--gl-background-color-hover);
+}
+
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  padding: 4px var(--space-2);
+  font-size: var(--gl-font-size-md);
+  border-radius: var(--gl-border-radius-base);
+  transition: color 0.12s, background 0.12s;
+}
+
+.btn-icon:hover { background: var(--gl-hover-overlay); color: var(--gl-text-color-default); }
+
+/* kbd glyph on a filled primary button needs light-on-blue contrast */
+
+.btn-primary kbd {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ── File-tree context menu ──────────────────────────────────────────────────── */
+
+.ctx-menu {
+  position: fixed;
+  z-index: 985;
+  min-width: 170px;
+  padding: var(--space-1);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ctx-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px var(--space-2);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  background: transparent;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ctx-menu-item:hover { background: var(--gl-color-blue-100); color: var(--gl-text-color-strong); }
+
+.ctx-menu-item:disabled { opacity: 0.4; cursor: default; }
+.ctx-menu-item:disabled:hover { background: none; color: var(--gl-text-color-default); }
+
+.ctx-menu-item svg { flex-shrink: 0; color: var(--gl-text-color-muted); }
+
+.ctx-menu-item:hover svg { color: var(--gl-text-color-strong); }
+
+.ctx-menu-item--danger { color: var(--gl-color-red-400); }
+
+.ctx-menu-item--danger:hover { background: var(--gl-color-red-100); color: var(--gl-color-red-500); }
+
+.ctx-menu-item--danger svg,
+.ctx-menu-item--danger:hover svg { color: var(--gl-color-red-400); }
+
+.ctx-menu-sep { height: 1px; margin: var(--space-1) 4px; background: var(--gl-border-color-subtle); }
+
+/* ── Context menu (shared: Home cards, queue rows) ──────────────────────────── */
+
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  padding: var(--space-1);
+  box-shadow: var(--shadow-float);
+  min-width: 184px;
+  animation: wb-pop-in 0.12s ease-out both;
+}
+
+.context-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--gl-border-radius-base);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+
+.context-item:hover {
+  background: var(--gl-color-blue-100);
+  color: var(--gl-text-color-default);
+}
+
+/* ── from home.css (split) ── */
+
+.spin { animation: wb-spin 0.9s linear infinite; }
+
+/* ── New-task composer ─────────────────────────────────────────────────────── */
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3) 0;
+  padding: var(--space-3);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+}
+
+.composer-head { display: flex; align-items: center; gap: var(--space-2); }
+
+.composer-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--home-text, var(--gl-font-size-md));
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-default);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--gl-border-color-default);
+  padding: 2px 0;
+  outline: none;
+}
+
+.composer-title:focus { border-bottom-color: var(--gl-color-blue-300); }
+
+.composer-body {
+  min-height: 180px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.6;
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+}
+
+.composer-body:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.composer-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+.composer-spacer { flex: 1; }
+
+.composer-note { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
+
+/* ── Markdown (.nb-*) base — styles shared/ui/Markdown.tsx ── */
+
+/* Rendered markdown (task + MR bodies) — document scale: real heading hierarchy,
+   body at md for comfortable reading (the rest of the app stays dense; this page
+   breathes). Every class here is emitted by components/Markdown.tsx. */
+
+.nb-h1{ font-size: 1.25rem; font-weight: 600; color: var(--gl-text-color-default); margin: var(--space-5) 0 var(--space-1) 0; letter-spacing: -0.015em; line-height: 1.3; }
+
+.nb-h2 { font-size: 1.0625rem; font-weight: 600; color: var(--gl-text-color-default); margin: var(--space-4) 0 var(--space-1) 0; letter-spacing: -0.01em; line-height: 1.35; }
+
+.nb-h3 { font-size: var(--gl-font-size-md); font-weight: 600; color: var(--gl-text-color-strong); margin: var(--space-3) 0 var(--space-1) 0; }
+
+.nb-h1:first-child, .nb-h2:first-child, .nb-h3:first-child { margin-top: 0; }
+
+.nb-p  { font-size: var(--gl-font-size-md); color: var(--gl-text-color-default); margin: 0; line-height: 1.65; }
+
+.nb-list { margin: var(--space-2) 0; padding-left: var(--space-5); }
+
+.nb-list-ul { list-style: disc; }
+
+.nb-list-ol { list-style: decimal; }
+
+.nb-list::marker, .nb-bullet::marker { color: var(--gl-text-color-muted); }
+
+.nb-bullet { font-size: var(--gl-font-size-md); color: var(--gl-text-color-default); margin: 3px 0; line-height: 1.65; }
+
+.nb-todo-box { font-size: 0.8em; color: var(--gl-color-blue-400); flex-shrink: 0; }
+
+.nb-quote {
+  border-left: 3px solid var(--gl-border-color-strong);
+  padding-left: var(--space-3);
+  margin: var(--space-1) 0;
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-md);
+  line-height: 1.65;
+}
+
+.nb-divider {
+  border: none;
+  border-top: 1px solid var(--gl-border-color-default);
+  margin: var(--space-3) 0;
+}
+
+.nb-link { color: var(--gl-color-blue-400); text-decoration: none; }
+
+.nb-link:hover { color: var(--gl-color-blue-300); text-decoration: underline; }
+
+.nb-code {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  background: var(--gl-background-color-subtle);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.55;
+  color: var(--gl-text-color-default);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.nb-code code { font-family: inherit; font-size: inherit; }
+
+/* Inline code inside markdown paragraphs. */
+
+.nb-p code, .nb-bullet code, .nb-quote code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: rgba(var(--gl-elevate), 0.07);
+  padding: 1px 5px;
+  border-radius: var(--gl-border-radius-sm);
+}
+
+.nb-table-wrap { margin: var(--space-2) 0; overflow-x: auto; }
+
+.nb-table {
+  border-collapse: collapse;
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.5;
+  min-width: 50%;
+}
+
+.nb-table th, .nb-table td {
+  border: 1px solid var(--gl-border-color-default);
+  padding: 5px var(--space-3);
+  text-align: left;
+  color: var(--gl-text-color-default);
+  vertical-align: top;
+}
+
+.nb-table th {
+  background: var(--gl-panel-header-bg);
+  font-weight: 600;
+  color: var(--gl-text-color-strong);
+}

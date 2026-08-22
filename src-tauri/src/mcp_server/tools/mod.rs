@@ -61,7 +61,7 @@ pub(super) async fn dispatch(
     // The calling connection — resolves to the agent's OWN task, not the focused one.
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    use crate::ops;
+    use crate::approvals::ops;
     match name {
         // Reads
         "get_active_task" => read::get_active_task(state, mcp_session).await,
@@ -74,8 +74,8 @@ pub(super) async fn dispatch(
         "get_annotations" => read::get_annotations(input, state).await,
         "get_open_file" => read::get_open_file(state, mcp_session).await,
         "get_file_content" => read::get_file_content(input).await,
-        "get_task_body" => read::get_task_body(input, state).await,
-        "get_task_template" => read::get_task_template(state).await,
+        "get_task_body" => read::get_task_body(input).await,
+        "get_task_template" => read::get_task_template().await,
 
         // Writes gated by the confirmation bridge
         "git_commit" => write::via_bridge(ops::GIT_COMMIT, input, state, mcp_session).await,
@@ -85,9 +85,6 @@ pub(super) async fn dispatch(
         "create_mr" => write::via_bridge(ops::MR_CREATE, input, state, mcp_session).await,
         "update_mr" => write::via_bridge(ops::MR_UPDATE, input, state, mcp_session).await,
         "close_mr" => write::via_bridge(ops::MR_CLOSE, input, state, mcp_session).await,
-        "update_notion_status" => {
-            write::via_bridge(ops::NOTION_STATUS, input, state, mcp_session).await
-        }
         "create_task_from_explorer" => {
             write::create_task_from_explorer(input, state, mcp_session).await
         }

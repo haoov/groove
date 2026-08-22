@@ -1,0 +1,199 @@
+/* ── Workspace ────────────────────────────────────────────────────────────── */
+
+.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.resize-handle {
+  width: 1px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--gl-border-color-default);
+  transition: background 0.15s, box-shadow 0.15s, width 0.1s;
+  z-index: 10;
+}
+.resize-handle:hover,
+.resize-handle:active {
+  width: 2px;
+  background: var(--gl-color-blue-400);
+}
+
+/* Horizontal divider above the bottom terminal dock */
+.resize-handle-h {
+  height: 1px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--gl-border-color-default);
+  transition: background 0.15s, height 0.1s;
+  z-index: 10;
+}
+.resize-handle-h:hover,
+.resize-handle-h:active {
+  height: 2px;
+  background: var(--gl-color-blue-400);
+}
+
+.workspace-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Unified workspace surface (tabbed + splittable) ──────────────────────── */
+
+.workspace-surface {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--gl-background-color-default);
+}
+
+.ws-body { flex: 1; min-height: 0; position: relative; display: flex; }
+.ws-pane-wrap { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+
+.ws-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* When split, mark the focused pane (top accent — never a left inset border). */
+.ws-split .ws-pane { border-top: 2px solid transparent; }
+.ws-split .ws-pane.active { border-top-color: var(--gl-color-blue-400); }
+
+/* Tab strip */
+.ws-tabstrip {
+  display: flex;
+  align-items: stretch;
+  height: 38px;
+  background: var(--gl-background-color-overlap);
+  flex-shrink: 0;
+}
+.ws-tabs { display: flex; align-items: stretch; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+.ws-tabs::-webkit-scrollbar { display: none; }
+
+.ws-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 12px;
+  border-right: 1px solid var(--gl-border-color-subtle);
+  border-bottom: 2px solid transparent;
+  color: var(--gl-text-color-disabled);
+  font-size: var(--gl-font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 260px;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.ws-tab:hover { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.03); }
+.ws-tab.active {
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-default);
+  border-bottom-color: transparent;
+}
+.ws-tab-icon { flex-shrink: 0; }
+/* Transient preview tab (file-search) — italic, like VS Code. */
+.ws-tab.preview .ws-tab-name { font-style: italic; }
+/* Label stack: filename on top, repo name as a subtitle below (multi-repo). */
+.ws-tab-labels { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.15; }
+.ws-tab-name { font-family: var(--font-mono); font-size: var(--gl-font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-tab-repo {
+  font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ws-tab-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--gl-text-color-disabled);
+  cursor: pointer; padding: 1px; border-radius: var(--gl-border-radius-sm);
+  opacity: 0.55; transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+.ws-tab:hover .ws-tab-close { opacity: 1; }
+.ws-tab-close:hover { color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
+
+/* Per-tab Diff⇄Edit toggle */
+.ws-view-toggle { display: flex; align-items: center; gap: 2px; padding: 0 var(--space-2); flex-shrink: 0; }
+.ws-view-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid transparent; border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled); cursor: pointer; padding: 2px 6px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.ws-view-btn:hover { color: var(--gl-text-color-subtle); }
+.ws-view-btn.active {
+  color: var(--gl-color-blue-300);
+  border-color: var(--gl-accent-border);
+  background: var(--gl-color-blue-100);
+}
+.ws-toggle-sep { width: 1px; height: 14px; background: var(--gl-border-color-default); margin: 0 4px; flex-shrink: 0; }
+
+/* ── Recursive pane splits ─────────────────────────────────────────────────── */
+.ws-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
+.ws-split.row { flex-direction: row; }
+.ws-split.col { flex-direction: column; }
+.ws-split-child { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+
+.ws-pane-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.ws-pane-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-3); color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-md);
+}
+
+/* Edit tab: CodeMirror editor + a thin footer (lang · path · save). */
+.edit-tab { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.edit-tab .code-editor-host { flex: 1; min-height: 0; }
+.edit-tab-foot {
+  height: 24px; flex-shrink: 0; display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-3); border-top: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-overlap); font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-disabled);
+}
+
+/* ── Breadcrumbs ───────────────────────────────────────────────────────────────
+   Shares the tab strip's background so it reads as one piece of chrome rather
+   than a band across the editor. File tabs only — nothing else has a path. */
+.ws-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  /* Transparent, so it sits on the editor's own surface rather than reading as a
+     second header bar above it. */
+  background: transparent;
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.ws-crumbs::-webkit-scrollbar { display: none; }
+.ws-crumb-repo { color: var(--gl-color-blue-300); flex-shrink: 0; }
+.ws-crumb-part { display: inline-flex; align-items: center; gap: 2px; }
+.ws-crumb-sep { color: var(--gl-text-color-disabled); padding: 0 2px; }
+.ws-crumb-dir {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-subtle);
+  font: inherit;
+  cursor: pointer;
+}
+.ws-crumb-dir:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+.ws-crumb-file { color: var(--gl-text-color-default); padding: 2px 4px; }
+
+/* ── Session workspaces host (from session.css) ── */
+/* Session hosts. The tab strip that used to live here went with the header tabs —
+   sessions are listed in the dock now (styles/dock.css). */
+.session-workspaces { display: flex; }
+.session-host { display: flex; }

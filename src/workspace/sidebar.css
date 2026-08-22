@@ -1,0 +1,67 @@
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+.sidebar-wrapper {
+  display: flex;
+  flex-direction: column;
+  /* Yields before the panes do — see .session-dock. */
+  flex-shrink: 1;
+  /* The floor is the inline minWidth, not min-content — see .agent-pane. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  /* Takes focus as a fallback so the panel shortcut can close it (see index.tsx). */
+  outline: none;
+  width: 100%;
+  height: 100%;
+  background: var(--gl-background-color-overlap);
+  border-right: 1px solid var(--gl-border-color-default);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Per-repo git status stat colors (shared by diff + sidebar repo headers) */
+
+.repo-stat-modified { color: var(--gl-color-orange-400); }
+
+.repo-stat-staged   { color: var(--gl-color-green-400); }
+
+.repo-stat-ahead    { color: var(--gl-color-blue-400); }
+
+.repo-stat-behind   { color: var(--gl-color-red-400); }
+
+.sidebar-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+
+.sidebar-empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--gl-text-color-disabled);
+  font-size: var(--gl-font-size-xs);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Keyboard-navigable list (file tree / changed files): the cursor row gets a
+   full-row background (no left-border accent — see project rule). When the list
+   itself is focused the cursor reads as an accent; otherwise it stays subtle. */
+
+.nav-list { outline: none; }
+
+.nav-list:focus { outline: none; }
+
+.nav-list .file-item.nav-selected,
+.nav-list .file-tree-dir.nav-selected,
+.nav-list .changed-file.nav-selected {
+  border: 1px solid var(--gl-border-color-default);
+}
+
+.nav-list:focus-within .file-item.nav-selected,
+.nav-list:focus-within .file-tree-dir.nav-selected,
+.nav-list:focus-within .changed-file.nav-selected {
+  border: 1px solid var(--gl-color-blue-300);
+}
+
+.sidebar-footer-banner { margin-top: var(--space-2); }

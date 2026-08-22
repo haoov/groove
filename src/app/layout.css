@@ -1,0 +1,539 @@
+/* Platform Workbench — Component styles "Pure Zed"
+   Flat cool-gray chrome · single sky-blue accent · no brand gradients/glows.
+   Class names are stable contracts with the React tree; only the visual layer changes. */
+
+/* ── SVG icon helpers ─────────────────────────────────────────────────────── */
+
+.tab-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ── App shell ────────────────────────────────────────────────────────────── */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ── Activity rail ────────────────────────────────────────────────────────── */
+.activity-rail {
+  width: 2.75rem;            /* 44px */
+  flex-shrink: 0;
+  background: var(--gl-background-color-overlap);
+  border-right: 1px solid var(--gl-border-color-default);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  width: 100%;
+}
+.rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  border-radius: var(--gl-border-radius-medium);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.rail-btn:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
+.rail-btn.active { color: var(--gl-color-blue-300); background: var(--gl-color-blue-100); }
+.rail-btn-bottom { margin-top: auto; }
+.rail-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 100px;
+  background: var(--gl-color-orange-400);
+  color: var(--gl-background-color-overlap);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+
+.header {
+  height: var(--wb-header-height);
+  background: var(--gl-background-color-overlap);
+  border-bottom: 1px solid var(--gl-border-color-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  flex-shrink: 0;
+  gap: var(--space-3);
+  position: relative;
+  z-index: 50;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.header-logo svg {
+  color: var(--gl-text-color-subtle);
+}
+
+/* Center label: the active session's title, truncating so it never shoves the
+   left pickers or the right controls. */
+.header-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.header-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--gl-font-size-sm);
+  font-weight: 500;
+  color: var(--gl-text-color-subtle);
+}
+
+.header-right { display: flex; align-items: center; gap: var(--space-2); }
+
+/* ── Custom window controls (frameless window) ────────────────────────────── */
+.window-controls { display: flex; align-items: center; gap: 2px; margin-left: var(--space-1); }
+.win-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--gl-text-color-subtle);
+  border-radius: var(--gl-border-radius-base);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.win-btn:hover { background: rgba(var(--gl-elevate), 0.08); color: var(--gl-text-color-default); }
+.win-btn-close:hover { background: var(--gl-color-red-400); color: #fff; }
+
+/* ── Frameless resize grips (overlay the window edges/corners) ────────────── */
+.resize-grip { position: fixed; z-index: 1000; }
+.resize-grip-n { top: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
+.resize-grip-s { bottom: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
+.resize-grip-e { top: 0; right: 0; bottom: 0; width: 4px; cursor: ew-resize; }
+.resize-grip-w { top: 0; left: 0; bottom: 0; width: 4px; cursor: ew-resize; }
+.resize-grip-nw { top: 0; left: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
+.resize-grip-ne { top: 0; right: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
+.resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
+.resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
+
+.btn-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;              /* match the settings gear + window controls */
+  background: transparent;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-sync:hover:not(:disabled) {
+  color: var(--gl-text-color-default);
+  background: var(--gl-hover-overlay);
+}
+.btn-sync:disabled { opacity: 0.55; cursor: default; }
+
+.header-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.header-settings-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.btn-sync-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: wb-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── StatusBar ────────────────────────────────────────────────────────────── */
+
+.statusbar {
+  height: var(--wb-statusbar-height);
+  background: var(--gl-background-color-overlap);
+  border-top: 1px solid var(--gl-border-color-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.statusbar-left, .statusbar-right { display: flex; align-items: center; gap: var(--space-3); }
+
+.statusbar-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  background: var(--gl-text-color-disabled);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.statusbar-dot.active {
+  background: var(--gl-color-green-400);
+}
+
+.statusbar-task { display: flex; align-items: center; color: var(--gl-text-color-subtle); font-family: var(--font-mono); }
+.statusbar-idle { color: var(--gl-text-color-disabled); }
+
+.statusbar-dot.dirty { background: var(--gl-color-orange-400); }
+.statusbar-dot.clean { background: var(--gl-color-green-400); }
+
+.statusbar-repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+  transition: color 0.12s;
+}
+.statusbar-repo:hover { color: var(--gl-text-color-default); }
+.statusbar-repo-dirty { color: var(--gl-color-orange-400); }
+.statusbar-repo-ahead { color: var(--gl-color-blue-400); }
+.statusbar-repo-behind { color: var(--gl-color-red-400); }
+.statusbar-error {
+  color: var(--gl-color-red-400);
+  font-weight: 500;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.statusbar-error:hover { text-decoration: underline; }
+.statusbar-syncing { color: var(--gl-color-orange-400); }
+.statusbar-ok { color: var(--gl-text-color-disabled); font-family: var(--font-mono); }
+
+/* ── Approvals badge — the human (peach) half of the duet ─────────────────────
+   Lives in the header beside the notification bell: both answer "what is waiting
+   for me?", and a parked agent write was easy to miss down in the status bar.  */
+.header-approvals {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  background: color-mix(in srgb, var(--wb-annotation-human) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wb-annotation-human) 40%, transparent);
+  border-radius: 999px;
+  color: var(--wb-annotation-human);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.header-approvals:hover {
+  background: color-mix(in srgb, var(--wb-annotation-human) 28%, transparent);
+  border-color: color-mix(in srgb, var(--wb-annotation-human) 60%, transparent);
+}
+/* Deferred queue: keep gently pulsing so "your turn" is never lost. */
+.header-approvals.deferred { animation: wb-approvals-pulse 2.4s ease-in-out infinite; }
+@keyframes wb-approvals-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--wb-annotation-human) 40%, transparent); }
+  50%      { border-color: color-mix(in srgb, var(--wb-annotation-human) 85%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-approvals.deferred { animation: none; }
+}
+
+/* ── Dock toggles (bottom-right, Zed-style). Agent = the blue half. ───────── */
+.statusbar-docks { display: inline-flex; align-items: center; gap: 2px; }
+.statusbar-dock-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.statusbar-dock-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+.statusbar-dock-btn.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.08); }
+
+
+/* ── Header context pickers (session · repo · worktree) ─────────────────────── */
+/* Header context pickers — quiet Zed-style chips that open a filterable list. */
+
+.header-pickers { display: inline-flex; align-items: center; gap: 1px; margin-left: var(--space-2); }
+.hp { position: relative; display: inline-flex; }
+.hp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--gl-border-radius-base);
+  background: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  max-width: 300px;
+}
+.hp-chip:hover, .hp-chip.open {
+  background: var(--gl-background-color-hover);
+  border-color: var(--gl-border-color-subtle);
+}
+.hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; display: inline-flex; align-items: center; }
+/* One line-height and size across all three chips, so id and name align the same. */
+.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1; }
+.hp-chip-id {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--gl-color-blue-300);
+}
+.hp-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Caret stays faint until the chip is touched — one accent per row, no clutter. */
+.hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; opacity: 0.5; }
+.hp-chip:hover .hp-chip-caret, .hp-chip.open .hp-chip-caret { opacity: 1; }
+
+/* Portalled to <body> with fixed position (set inline from the chip rect), so
+   the header's overflow:hidden can never clip it. */
+.hp-pop {
+  position: fixed;
+  z-index: 200;
+  min-width: 300px;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  max-height: 62vh;
+  overflow: hidden;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-raised);
+  box-shadow: var(--shadow-float);
+}
+
+.hp-rows { display: flex; flex-direction: column; overflow-y: auto; outline: none; }
+.hp-empty { padding: var(--space-4) var(--space-3); margin: 0; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-md); text-align: center; }
+
+.hp-row { display: flex; align-items: stretch; }
+.hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); }
+.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); }
+.hp-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px var(--space-3);
+  border: none;
+  background: none;
+  text-align: left;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-md);
+  cursor: pointer;
+  border-radius: var(--gl-border-radius-base);
+}
+.hp-row-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hp-row-kind-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; }
+.hp-row-id { flex-shrink: 0; font-family: var(--font-mono); font-size: 11px; color: var(--gl-color-blue-300); }
+.hp-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 18px;
+  color: var(--gl-text-color-disabled);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+.hp-row-state { display: inline-flex; align-items: center; gap: 4px; }
+.hp-row-state.waiting { color: var(--ctp-peach); }
+.hp-row-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: none;
+  background: none;
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  border-radius: var(--gl-border-radius-base);
+}
+.hp-row-close:hover { color: var(--ctp-red); }
+.hp-row-simple {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px var(--space-3);
+  border: none;
+  background: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-md);
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--gl-border-radius-base);
+}
+.hp-row-simple:hover { background: var(--gl-background-color-hover); }
+.hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
+.hp-row-simple .hp-row-title { flex: 1; }
+.hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
+/* Repo main button sits beside a close ×, so it grows to fill the row width. */
+.hp-row-grow { flex: 1; min-width: 0; }
+
+/* "＋ Add repo…" footer row and the close-repo confirm, in the repo dropdown. */
+.hp-row-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px var(--space-3);
+  margin-top: 2px;
+  border: none;
+  border-top: 1px solid var(--gl-border-color-subtle);
+  background: none;
+  color: var(--gl-text-color-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-md);
+  text-align: left;
+  cursor: pointer;
+}
+.hp-row-add:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
+
+.hp-confirm {
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  background: var(--gl-color-red-100);
+}
+.hp-confirm-text { flex: 1; min-width: 0; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); }
+.hp-confirm-yes, .hp-confirm-no {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-strong);
+  color: var(--gl-text-color-default);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+}
+.hp-confirm-yes { border-color: var(--gl-color-red-400); color: var(--gl-color-red-400); }
+.hp-confirm-yes:hover { background: var(--gl-color-red-100); }
+.hp-confirm-no:hover { background: var(--gl-background-color-hover); }
+
+/* ── Notification popover (the bell owns its feed now) ──────────────────────── */
+.notif-center { position: relative; display: inline-flex; }
+.notif-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  width: 380px;
+  max-height: 65vh;
+  overflow: auto;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-large);
+  background: var(--gl-background-color-raised);
+  box-shadow: var(--shadow-float);
+}
+
+/* Session-picker row status colours (inherited from the dock rows). */
+.hp-row-status.status-blocked { color: var(--gl-color-red-400); }
+.hp-row-status.status-done { color: var(--gl-color-green-400); }
