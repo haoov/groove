@@ -42,15 +42,22 @@ pub(crate) async fn provision_worktrees_impl(
 ) -> anyhow::Result<Vec<Worktree>> {
     let session = store::sessions::get(pool, session_id).await?;
 
+    let tag = store::provider_tasks::get_by_short_id(pool, &session.id)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|t| t.branch_tag);
+
     futures_util::future::try_join_all(branches.iter().map(|spec| {
         let session = &session;
+        let tag = tag.as_deref();
         async move {
             let repo = store::repos::get(pool, &spec.repo_id).await?;
             let branch = spec
                 .branch_name
                 .clone()
                 .filter(|b| !b.trim().is_empty())
-                .unwrap_or_else(|| naming::default_branch(session));
+                .unwrap_or_else(|| naming::default_branch(session, tag));
             provision_one(pool, session, &repo, &branch, None).await
         }
     }))

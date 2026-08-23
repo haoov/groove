@@ -194,7 +194,7 @@ pub async fn create_task_from_explorer_impl(
         crate::provider::notion::create::create_page(&cfg.token, &req.task).await?;
 
     let now = chrono::Utc::now().timestamp();
-    let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task));
+    let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task), None);
     let session_dir = crate::worktrees::session_dir(&short_id);
 
     let (switched, branch_warnings) =

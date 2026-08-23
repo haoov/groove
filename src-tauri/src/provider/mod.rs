@@ -1,6 +1,7 @@
 //! Where tasks come from. One module per source, behind a shared trait.
 
 pub mod commands;
+pub mod github;
 pub mod notion;
 pub mod types;
 
@@ -72,18 +73,27 @@ pub(crate) trait TaskProvider: Send + Sync {
 }
 
 static NOTION: notion::NotionProvider = notion::NotionProvider;
+static GITHUB: github::GithubProvider = github::GithubProvider;
 
 /// A provider, if it is configured.
 pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
     match id {
         ProviderId::Notion => Ok(&NOTION),
-        ProviderId::Github => anyhow::bail!("the GitHub provider is not built yet"),
+        ProviderId::Github => Ok(&GITHUB),
     }
 }
 
 /// Every configured provider, for the queue fan-out.
 pub(crate) fn enabled() -> Vec<&'static dyn TaskProvider> {
-    vec![&NOTION]
+    let Some(cfg) = crate::core::config::get() else { return vec![] };
+    let mut out: Vec<&'static dyn TaskProvider> = vec![];
+    if cfg.notion.is_some() {
+        out.push(&NOTION);
+    }
+    if cfg.github.is_some() {
+        out.push(&GITHUB);
+    }
+    out
 }
 
 /// The mirror row for a task the provider just reported.
