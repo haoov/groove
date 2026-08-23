@@ -36,9 +36,14 @@ pub fn default_branch(session: &Session, tag: Option<&str>) -> String {
     }
 }
 
-/// `<project>@<branch-slug>` — the one directory shape every worktree gets.
-pub fn worktree_dir(project: &str, branch: &str) -> String {
-    format!("{project}@{}", branch.replace('/', "-"))
+/// `<project>/<branch>` — the one directory shape every worktree gets.
+///
+/// The branch keeps its slashes as real directories. Flattening them to dashes
+/// collided: `fix/parser` and `fix-parser` are branches git keeps apart and both
+/// became `project@fix-parser`. A file/directory clash is impossible in the other
+/// direction, since git refuses `fix` and `fix/parser` as refs at the same time.
+pub fn worktree_dir(project: &str, branch: &str) -> std::path::PathBuf {
+    std::path::Path::new(project).join(branch)
 }
 
 /// Conventional-commit type, guessed from whole words of the title. A guess is
@@ -91,6 +96,7 @@ fn slug(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     use crate::core::db::models::SessionKind;
 
     fn session(kind: SessionKind, id: &str, title: &str) -> Session {
@@ -141,8 +147,15 @@ mod tests {
 
     #[test]
     fn worktree_dirs_carry_the_branch() {
-        assert_eq!(worktree_dir("mayo", "fix/tasks2-42-parser"), "mayo@fix-tasks2-42-parser");
-        assert_eq!(worktree_dir("mayo", "explorer/x"), "mayo@explorer-x");
+        assert_eq!(worktree_dir("mayo", "fix/tasks2-42-parser"), PathBuf::from("mayo/fix/tasks2-42-parser"));
+        assert_eq!(worktree_dir("mayo", "explorer/x"), PathBuf::from("mayo/explorer/x"));
+    }
+
+    /// Branches git keeps apart must not share a directory. Flattening slashes to
+    /// dashes gave both of these the same one.
+    #[test]
+    fn a_slash_and_a_dash_are_different_worktrees() {
+        assert_ne!(worktree_dir("mayo", "fix/parser"), worktree_dir("mayo", "fix-parser"));
     }
 
     /// A GitHub task's branch carries only the issue number: a branch lives in one
