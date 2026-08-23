@@ -29,20 +29,25 @@ fn extra_dirs() -> Vec<std::path::PathBuf> {
     dirs
 }
 
-/// Extend this process's PATH with the directories above, keeping order and
-/// dropping duplicates. Call once, before anything spawns a child.
-pub fn widen_path() {
-    let current = std::env::var_os("PATH").unwrap_or_default();
-    let mut paths: Vec<std::path::PathBuf> = std::env::split_paths(&current).collect();
-
+/// `current` plus the directories above. Pure, so the rules can be checked without
+/// the process environment — which the tests share, and which already holds entries
+/// nobody here added.
+fn widened(current: &std::ffi::OsStr) -> Vec<std::path::PathBuf> {
+    let mut paths: Vec<std::path::PathBuf> = std::env::split_paths(current).collect();
     for dir in extra_dirs() {
         // Only real directories, and never a second copy of one already there.
         if dir.is_dir() && !paths.contains(&dir) {
             paths.push(dir);
         }
     }
+    paths
+}
 
-    if let Ok(joined) = std::env::join_paths(&paths) {
+/// Extend this process's PATH with the directories above, keeping order and
+/// dropping duplicates. Call once, before anything spawns a child.
+pub fn widen_path() {
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    if let Ok(joined) = std::env::join_paths(&widened(&current)) {
         std::env::set_var("PATH", &joined);
         tracing::debug!("PATH widened to {}", joined.to_string_lossy());
     }
@@ -51,35 +56,39 @@ pub fn widen_path() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    /// A PATH of our own, so a test never depends on the runner's.
+    fn given(entries: &[&str]) -> std::ffi::OsString {
+        std::env::join_paths(entries).expect("joinable")
+    }
 
     /// The user's own PATH must keep priority: a tool they put first stays first.
     #[test]
     fn appends_without_reordering_what_was_there() {
-        let before: Vec<std::path::PathBuf> =
-            std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect();
-        widen_path();
-        let after: Vec<std::path::PathBuf> =
-            std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect();
-        assert!(after.starts_with(&before), "existing entries must keep their order");
+        let current = given(&["/usr/bin", "/bin"]);
+        let before: Vec<PathBuf> = std::env::split_paths(&current).collect();
+        assert!(
+            widened(&current).starts_with(&before),
+            "existing entries must keep their order"
+        );
     }
 
     #[test]
     fn is_idempotent() {
-        widen_path();
-        let once = std::env::var_os("PATH").unwrap();
-        widen_path();
-        assert_eq!(once, std::env::var_os("PATH").unwrap(), "no duplicate entries");
+        let once = widened(&given(&["/usr/bin"]));
+        let twice = widened(&std::env::join_paths(&once).unwrap());
+        assert_eq!(once, twice, "no duplicate entries");
     }
 
+    /// Only what we ADD has to exist. The environment already carries entries that
+    /// do not — `~/.local/bin` on a CI runner — and those are not ours to judge.
     #[test]
-    fn only_offers_directories_that_exist() {
-        for dir in extra_dirs() {
-            // extra_dirs() may name absent paths; widen_path must filter them.
-            let _ = dir;
-        }
-        widen_path();
-        for dir in std::env::split_paths(&std::env::var_os("PATH").unwrap()) {
-            if extra_dirs().contains(&dir) {
+    fn only_adds_directories_that_exist() {
+        let current = given(&["/usr/bin"]);
+        let before: Vec<PathBuf> = std::env::split_paths(&current).collect();
+        for dir in widened(&current) {
+            if !before.contains(&dir) {
                 assert!(dir.is_dir(), "{} was added but does not exist", dir.display());
             }
         }
