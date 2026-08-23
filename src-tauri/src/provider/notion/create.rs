@@ -5,11 +5,8 @@
 //! creation is identical, so it lives here once — conversion is "create + adopt",
 //! not a second creation path.
 
-use sqlx::SqlitePool;
 
-use crate::core::config::{self, NotionConfig};
-use crate::core::db::models::ProviderTask;
-use crate::core::db::store;
+use crate::core::config::NotionConfig;
 
 use super::page::extract_unique_id;
 
@@ -135,83 +132,4 @@ pub async fn create_page(token: &str, req: &NewTask<'_>) -> anyhow::Result<(Stri
     }
 
     Ok((notion_page_id, short_id))
-}
-
-/// Confirmation-bridge path for `task.create`: file the task and nothing else.
-///
-/// Deliberately does NOT open a session or provision worktrees — filing a task you
-/// intend to pick up later shouldn't clone repositories.
-pub async fn create_task_impl(
-    payload: serde_json::Value,
-    pool: &SqlitePool,
-) -> anyhow::Result<serde_json::Value> {
-    let cfg = config::notion()?;
-    let req = NewTask::from_payload(&payload)?;
-    let (notion_page_id, short_id) = create_page(&cfg.token, &req).await?;
-
-    let task = ProviderTask {
-        external_id: notion_page_id.clone(),
-        provider: "notion".to_string(),
-        url: Some(format!("https://www.notion.so/{}", notion_page_id.replace('-', ""))),
-        board: None,
-        branch_tag: None,
-        short_id: short_id.clone(),
-        title: req.title.to_string(),
-        status: req.status_value.to_string(),
-        priority: None,
-        synced_at: chrono::Utc::now().timestamp(),
-    };
-    store::provider_tasks::upsert(pool, &task).await?;
-
-    Ok(serde_json::json!({
-        "short_id": short_id,
-        "notion_page_id": notion_page_id,
-        "title": req.title,
-        "status": req.status_value,
-        "priority": null,
-        "last_synced_at": task.synced_at,
-        "message": format!("Filed {short_id}"),
-    }))
-}
-
-/// File a task from the UI composer. Direct, not gated: you typed it and pressed
-/// the button. It is NOT opened or provisioned — it lands in the queue.
-#[tauri::command]
-pub async fn create_task(
-    title: String,
-    body_markdown: String,
-    properties: Option<std::collections::HashMap<String, serde_json::Value>>,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
-    if title.trim().is_empty() {
-        return Err("a task needs a title".into());
-    }
-    let cfg = config::notion().map_err(|e| e.to_string())?;
-    let payload = new_task_payload(&cfg, title.trim(), &body_markdown);
-    let mut created = create_task_impl(payload, &pool).await.map_err(|e| e.to_string())?;
-
-    // Notion's create call takes a fixed property set; anything else the composer
-    // set is a follow-up patch. The page is already filed by then, so a property
-    // that won't take must NOT fail the whole call — it is reported instead.
-    if let Some(props) = properties.filter(|p| !p.is_empty()) {
-        let page_id = created["notion_page_id"].as_str().unwrap_or_default().to_string();
-        let warnings = super::properties::set_properties(&page_id, &props, &cfg, &pool).await;
-        if !warnings.is_empty() {
-            created["warnings"] = serde_json::json!(warnings);
-        }
-    }
-    Ok(created)
-}
-
-/// The configured task template as markdown, for the composer to start from.
-/// Empty when no template is configured — a blank body is a fine default.
-#[tauri::command]
-pub async fn get_task_template_markdown() -> Result<String, String> {
-    let cfg = config::notion().map_err(|e| e.to_string())?;
-    let Some(page_id) = cfg.task_template_page_id.filter(|s| !s.is_empty()) else {
-        return Ok(String::new());
-    };
-    super::body::template_markdown(&page_id, &cfg.token)
-        .await
-        .map_err(|e| e.to_string())
 }

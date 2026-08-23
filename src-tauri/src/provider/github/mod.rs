@@ -77,10 +77,9 @@ impl TaskProvider for GithubProvider {
             // A board can carry an hours field; whether this one does is the
             // schema's answer, not the provider's.
             external_hours: true,
-            // .github/ISSUE_TEMPLATE would be the analogue; filing issues from
-            // here needs a target repo the draft does not carry yet.
+            // .github/ISSUE_TEMPLATE would be the analogue; not read yet.
             template: false,
-            create: false,
+            create: true,
             editable_body: true,
             discard: true,
         }
@@ -233,5 +232,52 @@ impl TaskProvider for GithubProvider {
         fields::set_field(&cfg, &project_id, &item.item_id, &name, &serde_json::json!(after))
             .await?;
         Ok(HoursWrite { before, after })
+    }
+
+    /// File an issue in the draft's repo and put it on the first configured board.
+    /// A task that is not on a board would not come back from `list_tasks`.
+    async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
+        let cfg = config::github()?;
+        let slug = draft
+            .repo
+            .ok_or_else(|| anyhow::anyhow!("filing a GitHub issue needs a repo to file it in"))?;
+        let (owner, repo) = slug
+            .split_once('/')
+            .ok_or_else(|| anyhow::anyhow!("expected owner/repo, got {slug}"))?;
+        let project = cfg
+            .projects
+            .first()
+            .ok_or_else(|| anyhow::anyhow!("no board configured to file onto"))?;
+
+        let (number, url, node_id) =
+            issues::create(&cfg, owner, repo, draft.title, draft.body_markdown).await?;
+        let item_id = issues::add_to_board(&cfg, &project.id, &node_id).await?;
+
+        let status = self.status_label(StatusIntent::Ready).unwrap_or_default();
+        if !status.is_empty() {
+            fields::set_field(
+                &cfg,
+                &project.id,
+                &item_id,
+                &cfg.properties.status,
+                &serde_json::json!(status),
+            )
+            .await?;
+        }
+
+        Ok(FetchedTask {
+            key: TaskKey::Github {
+                host: cfg.host.clone(),
+                owner: owner.to_string(),
+                repo: repo.to_string(),
+                number,
+            },
+            title: draft.title.to_string(),
+            status,
+            priority: None,
+            url,
+            natural_short_id: None,
+            branch_tag: Some(number.to_string()),
+        })
     }
 }

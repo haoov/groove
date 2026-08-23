@@ -1,30 +1,41 @@
 //! Explorer → task conversion.
 //!
-//! An explorer is a throwaway local session; converting it creates the real
-//! Notion page and moves the whole local footprint (worktrees on disk, DB rows,
+//! An explorer is a throwaway local session; converting it files a real task at
+//! its provider and moves the whole local footprint (worktrees on disk, DB rows,
 //! the Claude conversation) onto the new task id. Every step is independently
 //! recoverable: a worktree that fails to switch or move keeps working where it
 //! is and reports a warning instead of aborting the conversion.
 
 use sqlx::SqlitePool;
 
-use crate::core::db::models::{ProviderTask, Repo, SessionKind, Worktree};
+use crate::core::db::models::{Repo, SessionKind, Worktree};
 use crate::core::db::store;
+use crate::provider::types::{ProviderId, TaskDraft};
 
-/// The confirmation payload: which explorer to convert, plus the task to file for
-/// it. The task half is shared with `task.create` — see creation.rs.
+/// The confirmation payload: which explorer to convert, and the task to file for
+/// it. The task half is shared with `task.create`.
 struct ConvertRequest<'a> {
     explorer_id: &'a str,
-    task: crate::provider::notion::NewTask<'a>,
+    provider: ProviderId,
+    draft: TaskDraft<'a>,
 }
 
 impl<'a> ConvertRequest<'a> {
     fn from_payload(payload: &'a serde_json::Value) -> anyhow::Result<Self> {
+        let provider = match payload["provider"].as_str() {
+            Some("github") => ProviderId::Github,
+            _ => ProviderId::Notion,
+        };
         Ok(Self {
             explorer_id: payload["explorer_id"]
                 .as_str()
                 .ok_or_else(|| anyhow::anyhow!("missing explorer_id"))?,
-            task: crate::provider::notion::NewTask::from_payload(payload)?,
+            provider,
+            draft: TaskDraft {
+                title: payload["title"].as_str().unwrap_or("Untitled task"),
+                body_markdown: payload["body_markdown"].as_str().unwrap_or(""),
+                repo: payload["repo"].as_str(),
+            },
         })
     }
 }
@@ -168,11 +179,11 @@ fn cleanup_explorer_dir(explorer_dir: &std::path::Path) {
 /// bridge (op `task.create_from_explorer`); returns the new task as JSON
 /// (delivered to both the agent and the frontend).
 /// The session shape the branch namer needs, before the row is re-keyed.
-fn adopted_session(short_id: &str, task: &crate::provider::notion::NewTask<'_>) -> crate::core::db::models::Session {
+fn adopted_session(short_id: &str, title: &str) -> crate::core::db::models::Session {
     crate::core::db::models::Session {
         id: short_id.to_string(),
         kind: crate::core::db::models::SessionKind::Task,
-        title: task.title.to_string(),
+        title: title.to_string(),
         external_id: Some(String::new()),
         review_project: None,
         review_iid: None,
@@ -187,31 +198,23 @@ pub async fn create_task_from_explorer_impl(
     let req = ConvertRequest::from_payload(&payload)?;
     validate_source(req.explorer_id, pool).await?;
 
-    // Same page creation as filing a standalone task (see notion::create) — this
-    // op is that, plus adopting the session onto the result.
-    let cfg = crate::core::config::notion()?;
-    let (notion_page_id, short_id) =
-        crate::provider::notion::create::create_page(&cfg.token, &req.task).await?;
+    // Same filing as a standalone task — this op is that, plus adopting the
+    // session onto the result.
+    let provider = crate::provider::get(req.provider)?;
+    let filed = provider.create_task(&req.draft).await?;
+    let short_id = crate::provider::commands::mint_short_id(pool, &filed).await;
 
     let now = chrono::Utc::now().timestamp();
-    let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task), None);
+    let new_branch = crate::worktrees::naming::default_branch(
+        &adopted_session(&short_id, req.draft.title),
+        filed.branch_tag.as_deref(),
+    );
     let session_dir = crate::worktrees::session_dir(&short_id);
 
     let (switched, branch_warnings) =
         promote_worktrees(req.explorer_id, &session_dir, &new_branch, pool).await?;
 
-    let task = ProviderTask {
-        external_id: notion_page_id.clone(),
-        provider: "notion".to_string(),
-        url: Some(format!("https://www.notion.so/{}", notion_page_id.replace('-', ""))),
-        board: None,
-        branch_tag: None,
-        short_id: short_id.clone(),
-        title: req.task.title.to_string(),
-        status: req.task.status_value.to_string(),
-        priority: None,
-        synced_at: now,
-    };
+    let task = crate::provider::mirror_row(&short_id, &filed);
     store::sessions::adopt_explorer(pool, req.explorer_id, &task, &switched, &new_branch).await?;
 
     handoff_agent_session(req.explorer_id, &session_dir);
@@ -219,9 +222,11 @@ pub async fn create_task_from_explorer_impl(
 
     Ok(serde_json::json!({
         "short_id": short_id,
-        "notion_page_id": notion_page_id,
-        "title": req.task.title,
-        "status": req.task.status_value,
+        "external_id": filed.key.external_id(),
+        "provider": filed.key.provider().as_str(),
+        "external_url": filed.url,
+        "title": filed.title,
+        "status": filed.status,
         "priority": null,
         "last_synced_at": now,
         "branch_warnings": branch_warnings,

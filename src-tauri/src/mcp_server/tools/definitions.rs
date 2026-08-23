@@ -26,7 +26,7 @@ const SUBJECT: &str = "Conventional commit subject: `type(scope): subject`, impe
 const TIGHT: &str = "Only what the reader needs to act on. Cut what adds nothing.";
 
 /// Markdown affordances. Stated because the bans on file lists and per-commit
-/// changelogs otherwise read as "prose only". `- [ ]` becomes a real Notion to-do
+/// changelogs otherwise read as "prose only". `- [ ]` becomes a real to-do
 /// block (task_manager/notion.rs) and a GitLab task list.
 const LISTS: &str = "Lists where you are listing things. `- [ ]` for anything still open.";
 
@@ -34,7 +34,7 @@ fn mr_description() -> String {
     format!(
         "Markdown. Required: `## What`, then `## Why`. Why ends with how you verified \
          it. Further headings when the change needs them. {TIGHT} Nothing the diff \
-         already shows: no file list, no per-commit changelog. {LISTS} The Notion task \
+         already shows: no file list, no per-commit changelog. {LISTS} The task \
          link is appended automatically."
     )
 }
@@ -44,7 +44,7 @@ fn mr_description() -> String {
 fn task_body_description(specifics: &str) -> String {
     format!(
         "Markdown under the template's headings. {TIGHT} {specifics} {LISTS} Checkboxes \
-         become real Notion to-do items."
+         become real to-do items."
     )
 }
 
@@ -71,12 +71,12 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("close_mr", "Close MR without merging. Requires confirmation.", serde_json::json!({"type":"object","required":["mr_id"],"properties":{"mr_id":{"type":"string"}}})),
         mcp_tool("create_annotation", "Annotate a line (or line range) in a file (no confirmation needed). Use line_num for a single line, or start_line+end_line for a multiline range.", serde_json::json!({"type":"object","required":["task_id","repo_id","file_path","content"],"properties":{"task_id":{"type":"string"},"repo_id":{"type":"string"},"file_path":{"type":"string"},"line_num":{"type":"integer"},"start_line":{"type":"integer"},"end_line":{"type":"integer"},"content":{"type":"string","description":"Conventional Comment: `label:` or `label (decoration):`, then the problem in plain language. Labels: issue, suggestion, nitpick, question, todo, praise, thought, typo, polish, quibble, note, chore. Decorations: blocking, non-blocking, if-minor. Short. Do not restate the code. Markdown renders, so `code` for identifiers. A [claude] marker is added for you; do not write it."},"author":{"type":"string"}}})),
         mcp_tool("resolve_annotation", "Mark annotation as resolved (no confirmation).", serde_json::json!({"type":"object","required":["id"],"properties":{"id":{"type":"string"}}})),
-        mcp_tool("create_task", "File a NEW task in Notion. It is not opened or checked out — it lands in the queue. Call get_task_template first and mirror its headings.", serde_json::json!({"type":"object","required":["title"],"properties":{"title":{"type":"string","description":"One line naming the outcome, in plain language. NOT a conventional-commit subject — no \"type(scope):\" prefix."},"body_markdown":{"type":"string","description":task_body_description("Drop headings with nothing real to say.")}}})),
-        mcp_tool("update_task_property", "Set one property of a task (Priority, Platform Components, Tags, Due, …). Requires confirmation. Call get_active_task for the task id; the value shape follows the property type: select/status/url/date = string, number = number, checkbox = bool, multi_select = array of option names, relation = array of page ids.", serde_json::json!({"type":"object","required":["property","value"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"property":{"type":"string","description":"Exact Notion property name."},"value":{"description":"Shape depends on the property type; null clears it."}}})),
+        mcp_tool("create_task", "File a NEW task. It is not opened or checked out — it lands in the queue. Call get_task_template first and mirror its headings.", serde_json::json!({"type":"object","required":["title"],"properties":{"title":{"type":"string","description":"One line naming the outcome, in plain language. NOT a conventional-commit subject — no \"type(scope):\" prefix."},"body_markdown":{"type":"string","description":task_body_description("Drop headings with nothing real to say.")},"provider":{"type":"string","description":"notion or github. Only needed when both are set up."},"repo":{"type":"string","description":"owner/repo, for a source that files per repo."}}})),
+        mcp_tool("update_task_property", "Set one property of a task (Priority, Platform Components, Tags, Due, …). Requires confirmation. Call get_active_task for the task id; the value shape follows the property type: select/status/url/date = string, number = number, checkbox = bool, multi_select = array of option names, relation = array of page ids.", serde_json::json!({"type":"object","required":["property","value"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"property":{"type":"string","description":"Exact property name, as the task's source spells it."},"value":{"description":"Shape depends on the property type; null clears it."}}})),
         mcp_tool("log_task_hours", "ADD hours to the task's \"Hours spent\" (never replaces it). Requires confirmation. Only log time the user asked you to log.", serde_json::json!({"type":"object","required":["hours"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"hours":{"type":"number","description":"Hours to add, e.g. 1.5."}}})),
         mcp_tool("update_task_body", "Replace the task page's body with markdown. Requires confirmation. Read the current body with get_task_body first and send the WHOLE new body — this replaces, it does not append. Fails if the page holds blocks markdown can't rebuild.", serde_json::json!({"type":"object","required":["markdown"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"markdown":{"type":"string","description":format!("The complete new body — this REPLACES the page. Keep what the user wrote unless asked to change it. {LISTS}")},"force":{"type":"boolean","description":"Only after the user accepts losing unsupported blocks."}}})),
-        mcp_tool("get_task_template", "Fetch the Notion task template as markdown (template_markdown). Mirror its headings when drafting body_markdown for create_task_from_explorer — but keep each section to a line or two.", serde_json::json!({"type":"object","properties":{}})),
-        mcp_tool("create_task_from_explorer", "Draft and create a Notion task from the current explorer session, then convert the session into a task (requires user confirmation). First call get_task_template and mirror its headings. Provide a title and a SHORT markdown body.", serde_json::json!({"type":"object","required":["title","body_markdown"],"properties":{"title":{"type":"string","description":"One line naming the outcome, not the investigation, in plain language. NOT a conventional-commit subject — no \"type(scope):\" prefix."},"body_markdown":{"type":"string","description":task_body_description("Drop headings with nothing real to say. No narration of the exploration.")}}})),
+        mcp_tool("get_task_template", "Fetch the task template as markdown (template_markdown), empty when the source has none. Mirror its headings when drafting body_markdown for create_task_from_explorer — but keep each section to a line or two.", serde_json::json!({"type":"object","properties":{}})),
+        mcp_tool("create_task_from_explorer", "Draft and file a task from the current explorer session, then convert the session into a task (requires user confirmation). First call get_task_template and mirror its headings. Provide a title and a SHORT markdown body.", serde_json::json!({"type":"object","required":["title","body_markdown"],"properties":{"title":{"type":"string","description":"One line naming the outcome, not the investigation, in plain language. NOT a conventional-commit subject — no \"type(scope):\" prefix."},"body_markdown":{"type":"string","description":task_body_description("Drop headings with nothing real to say. No narration of the exploration.")},"provider":{"type":"string","description":"notion or github. Only needed when both are set up."}}})),
     ]
 }
 

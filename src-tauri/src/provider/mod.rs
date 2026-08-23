@@ -64,8 +64,6 @@ pub(crate) trait TaskProvider: Send + Sync {
         Ok(None)
     }
 
-    // Used once explorer -> task goes through the provider.
-    #[allow(dead_code)]
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
         let _ = draft;
         anyhow::bail!("{} cannot file new tasks", self.id().as_str())

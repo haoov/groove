@@ -183,7 +183,7 @@ pub(super) async fn execute(
             // Carries its own message (block counts).
             crate::provider::notion::update_body_impl(payload, pool).await
         }
-        TASK_CREATE => crate::provider::notion::create_task_impl(payload, pool).await,
+        TASK_CREATE => crate::provider::create_task_impl(payload, pool).await,
         TASK_ADD_REPO => {
             // Local git and DB work only. The handle is for the workspace_ready
             // refresh the add ends with.

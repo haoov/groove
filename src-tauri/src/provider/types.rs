@@ -191,10 +191,12 @@ pub struct FetchedTask {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct TaskDraft<'a> {
     pub title: &'a str,
     pub body_markdown: &'a str,
+    /// Where to file it, for a provider that needs telling. Notion has one
+    /// database; GitHub needs a repo.
+    pub repo: Option<&'a str>,
 }
 
 pub struct PropertyWrite {

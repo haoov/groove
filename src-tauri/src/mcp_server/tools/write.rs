@@ -130,7 +130,7 @@ async fn check_convertible(
     })
 }
 
-/// Draft + create a Notion task from the active explorer session (gated by the
+/// Draft + file a task from the active explorer session (gated by the
 /// confirmation bridge), then point the backend's active task at the new id so
 /// subsequent agent tool calls resolve to the real task.
 pub(super) async fn create_task_from_explorer(
@@ -148,22 +148,26 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    let n = crate::core::config::notion()?;
+    // The source's own settings are read by the executor, not carried here: a
+    // payload is persisted and emitted, and the token must never sit in one.
+    let provider = crate::provider::commands::draft_provider(&input)?;
 
-    // NOTE: no notion token here — secrets are injected by `execute_op` at
-    // execution time so they never sit in persisted/emitted confirmation payloads.
+    // A GitHub issue needs a repo. Default to the explorer's own, which is what
+    // the work was done in.
+    let repo = match input["repo"].as_str() {
+        Some(r) => Some(r.to_string()),
+        None => store::repos::attached_to(&state.pool, &explorer_id)
+            .await
+            .ok()
+            .and_then(|rs| rs.first().map(|r| r.id.clone())),
+    };
+
     let payload = serde_json::json!({
         "explorer_id": explorer_id,
-        "database_id": n.database_id,
+        "provider": provider.as_str(),
         "title": title,
         "body_markdown": body_markdown,
-        "status_prop": n.properties.status,
-        "status_value": n.status_map.ready,
-        "assignee_prop": n.properties.assignee,
-        "user_id": n.user_id,
-        "sprint_prop": n.properties.sprint,
-        "project_prop": n.properties.project,
-        "project_id": n.default_project_id,
+        "repo": repo,
     });
 
     let outcome = post_and_wait(
@@ -261,21 +265,22 @@ pub(super) async fn resolve_annotation(
     })))
 }
 
-// ─── Notion task writes ───────────────────────────────────────────────────────
+// ─── Task writes ──────────────────────────────────────────────────────────────
 
-/// File a task in Notion. Nothing is opened or provisioned — it lands in the
-/// queue for later, which is what "file a task" means.
+/// File a task. Nothing is opened or provisioned — it lands in the queue for
+/// later, which is what "file a task" means.
 pub(super) async fn create_task(
     input: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let title = str_field(&input, "title")?;
-    let body_markdown = input["body_markdown"].as_str().unwrap_or("");
-    let cfg = crate::core::config::notion()?;
-
-    // Same payload the UI composer builds; the token is injected at execution.
-    let payload = crate::provider::notion::new_task_payload(&cfg, &title, body_markdown);
+    let payload = serde_json::json!({
+        "title": title,
+        "body_markdown": input["body_markdown"].as_str().unwrap_or(""),
+        "provider": input["provider"].as_str(),
+        "repo": input["repo"].as_str(),
+    });
     let task_id = state.task_for(mcp_session);
 
     match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {

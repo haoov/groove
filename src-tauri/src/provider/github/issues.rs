@@ -37,3 +37,54 @@ pub(super) async fn close_not_planned(
     .await?;
     Ok(())
 }
+
+const ADD_TO_BOARD: &str = r#"
+mutation($project: ID!, $content: ID!) {
+  addProjectV2ItemById(input: { projectId: $project, contentId: $content }) {
+    item { id }
+  }
+}
+"#;
+
+/// File an issue and put it on the board. Returns `(number, url, node_id)`.
+pub(super) async fn create(
+    cfg: &GithubConfig,
+    owner: &str,
+    repo: &str,
+    title: &str,
+    body: &str,
+) -> anyhow::Result<(i64, String, String)> {
+    let created = api::github(
+        &cfg.host,
+        reqwest::Method::POST,
+        &format!("repos/{owner}/{repo}/issues"),
+        Some(&serde_json::json!({ "title": title, "body": body })),
+    )
+    .await?;
+
+    let number = created["number"]
+        .as_i64()
+        .ok_or_else(|| anyhow::anyhow!("GitHub returned an issue with no number"))?;
+    let url = created["html_url"].as_str().unwrap_or_default().to_string();
+    let node_id = created["node_id"].as_str().unwrap_or_default().to_string();
+    Ok((number, url, node_id))
+}
+
+/// Put an existing issue on a board. Idempotent — GitHub returns the existing
+/// item when it is already there.
+pub(super) async fn add_to_board(
+    cfg: &GithubConfig,
+    project_id: &str,
+    content_node_id: &str,
+) -> anyhow::Result<String> {
+    let res = api::github_graphql(
+        &cfg.host,
+        ADD_TO_BOARD,
+        serde_json::json!({ "project": project_id, "content": content_node_id }),
+    )
+    .await?;
+    Ok(res["data"]["addProjectV2ItemById"]["item"]["id"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string())
+}
