@@ -1,26 +1,25 @@
 //! System clipboard, through the OS rather than the webview.
 //!
-//! Tauri's Linux webview is WebKitGTK, where `navigator.clipboard` is missing
-//! unless the origin counts as a secure context, and `document.execCommand('copy')`
-//! needs a real DOM selection — which a terminal does not have: xterm draws its own
-//! selection, so there is nothing for the browser to copy. Both webview routes
-//! failed silently, which is worse than failing loudly.
-//!
-//! Shelling out to the clipboard tool is deliberate over pulling in `arboard`: it
-//! is what actually works on this desktop today (verified: `xclip` round-trips
-//! under XWayland), it adds no dependency, and Wayland-native support is a matter
-//! of installing `wl-clipboard` rather than rebuilding.
+//! `navigator.clipboard` needs a secure context and `execCommand('copy')` needs a DOM
+//! selection, which a terminal does not have — xterm draws its own. Both failed
+//! silently.
 
 use tokio::io::AsyncWriteExt;
 
-/// Writers, in preference order: Wayland-native first, then X11 (which XWayland
-/// bridges), then the older xsel.
+/// Writers, in preference order. Linux: Wayland-native, then X11, then xsel.
+#[cfg(target_os = "macos")]
+const WRITERS: [(&str, &[&str]); 1] = [("pbcopy", &[])];
+#[cfg(target_os = "macos")]
+const READERS: [(&str, &[&str]); 1] = [("pbpaste", &[])];
+
+#[cfg(not(target_os = "macos"))]
 const WRITERS: [(&str, &[&str]); 3] = [
     ("wl-copy", &[]),
     ("xclip", &["-selection", "clipboard"]),
     ("xsel", &["--clipboard", "--input"]),
 ];
 
+#[cfg(not(target_os = "macos"))]
 const READERS: [(&str, &[&str]); 3] = [
     ("wl-paste", &["--no-newline"]),
     ("xclip", &["-selection", "clipboard", "-o"]),
@@ -35,13 +34,11 @@ fn missing_tools(candidates: &[(&str, &[&str])]) -> String {
     )
 }
 
-/// Put `text` on the system clipboard — on EVERY clipboard the desktop has.
+/// Put `text` on EVERY clipboard the desktop has.
 ///
-/// Verified on this desktop: the Wayland and X11 clipboards are entirely separate
-/// (a `wl-copy` is invisible to `xclip` and the reverse), with no bridging in either
-/// direction. Stopping at the first tool that succeeded therefore filled one
-/// clipboard and left the other holding something stale — which reads as "copy does
-/// nothing" whenever the paste target happens to use the other one.
+/// Do not stop at the first success: the Wayland and X11 clipboards are separate and
+/// unbridged, so writing one leaves the other stale.
+
 #[tauri::command]
 pub async fn copy_to_clipboard(text: String) -> Result<(), String> {
     let mut wrote = 0usize;
@@ -55,7 +52,7 @@ pub async fn copy_to_clipboard(text: String) -> Result<(), String> {
             .stderr(std::process::Stdio::null())
             .spawn();
 
-        // Not installed — not an error, the desktop simply has no such clipboard.
+        // Not installed is not an error.
         let Ok(mut child) = spawned else { continue };
 
         if let Some(mut stdin) = child.stdin.take() {
@@ -63,7 +60,7 @@ pub async fn copy_to_clipboard(text: String) -> Result<(), String> {
                 errors.push(format!("{bin}: {e}"));
                 continue;
             }
-            // The tool copies until stdin closes; without this it waits for ever.
+            // The tool copies until stdin closes.
             drop(stdin);
         }
 
@@ -92,8 +89,7 @@ pub async fn read_clipboard() -> Result<String, String> {
             Ok(out) if out.status.success() => {
                 return Ok(String::from_utf8_lossy(&out.stdout).to_string());
             }
-            // An empty clipboard makes some tools exit non-zero; that is not an
-            // error worth failing over, and no other tool would do better.
+            // Some tools exit non-zero on an empty clipboard.
             Ok(_) => return Ok(String::new()),
             Err(_) => continue,
         }
