@@ -5,7 +5,7 @@ pub mod annotations;
 pub mod confirmations;
 pub mod home;
 pub mod mrs;
-pub mod notion_tasks;
+pub mod provider_tasks;
 pub mod repos;
 pub mod sessions;
 pub mod time;

@@ -8,7 +8,7 @@
 
 use sqlx::SqlitePool;
 
-use crate::core::db::models::{NotionTask, Repo, SessionKind, Worktree};
+use crate::core::db::models::{ProviderTask, Repo, SessionKind, Worktree};
 use crate::core::db::store;
 
 /// The confirmation payload: which explorer to convert, plus the task to file for
@@ -173,7 +173,7 @@ fn adopted_session(short_id: &str, task: &crate::provider::notion::NewTask<'_>) 
         id: short_id.to_string(),
         kind: crate::core::db::models::SessionKind::Task,
         title: task.title.to_string(),
-        notion_page_id: Some(String::new()),
+        external_id: Some(String::new()),
         review_project: None,
         review_iid: None,
         created_at: 0,
@@ -200,8 +200,12 @@ pub async fn create_task_from_explorer_impl(
     let (switched, branch_warnings) =
         promote_worktrees(req.explorer_id, &session_dir, &new_branch, pool).await?;
 
-    let task = NotionTask {
-        page_id: notion_page_id.clone(),
+    let task = ProviderTask {
+        external_id: notion_page_id.clone(),
+        provider: "notion".to_string(),
+        url: Some(format!("https://www.notion.so/{}", notion_page_id.replace('-', ""))),
+        board: None,
+        branch_tag: None,
         short_id: short_id.clone(),
         title: req.task.title.to_string(),
         status: req.task.status_value.to_string(),

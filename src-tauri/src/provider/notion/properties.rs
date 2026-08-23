@@ -63,7 +63,7 @@ pub(crate) async fn set_property(
     let updated = super::api::patch(&cfg.token, &format!("v1/pages/{notion_page_id}"), &body).await?;
 
     if let Ok(task) = page_to_task(&updated, cfg) {
-        let _ = store::notion_tasks::upsert(pool, &task).await;
+        let _ = store::provider_tasks::upsert(pool, &task).await;
     }
 
     let (_, display) = read_value(&prop.kind, &updated["properties"][property]);
@@ -105,7 +105,7 @@ pub(super) async fn set_properties(
     if let Ok(body) = &batch {
         if let Ok(updated) = super::api::patch(&cfg.token, &format!("v1/pages/{notion_page_id}"), body).await {
             if let Ok(task) = page_to_task(&updated, cfg) {
-                let _ = store::notion_tasks::upsert(pool, &task).await;
+                let _ = store::provider_tasks::upsert(pool, &task).await;
             }
             return vec![];
         }
@@ -144,13 +144,12 @@ async fn batch_patch(
 /// confirmation bridge instead (op `task.property`).
 #[tauri::command]
 pub async fn update_task_property(
-    notion_page_id: String,
+    short_id: String,
     property: String,
     value: serde_json::Value,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    set_property(&notion_page_id, &property, &value, &cfg.notion, &pool)
+    write_property(&short_id, &property, &value, &pool)
         .await
         .map_err(|e| e.to_string())
 }
@@ -160,15 +159,24 @@ pub async fn update_property_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = config::require()?;
     let field = |k: &str| payload[k].as_str().unwrap_or_default().to_string();
-    let display = set_property(
-        &field("notion_page_id"),
-        &field("property"),
-        &payload["value"],
-        &cfg.notion,
-        pool,
-    )
-    .await?;
+    let display =
+        write_property(&field("task_id"), &field("property"), &payload["value"], pool).await?;
     Ok(serde_json::json!({ "property": field("property"), "value": display }))
+}
+
+/// Set one property through the task's own provider, then re-mirror it: Home and
+/// the queue read status and priority from the local row.
+pub(crate) async fn write_property(
+    short_id: &str,
+    property: &str,
+    value: &serde_json::Value,
+    pool: &SqlitePool,
+) -> anyhow::Result<String> {
+    let (provider, key) = crate::provider::resolve(pool, short_id).await?;
+    let written = provider.set_property(&key, property, value).await?;
+    if let Ok(task) = provider.fetch_task(&key).await {
+        let _ = store::provider_tasks::upsert(pool, &crate::provider::mirror_row(short_id, &task)).await;
+    }
+    Ok(written.display)
 }

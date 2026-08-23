@@ -86,3 +86,39 @@ pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
 pub(crate) fn enabled() -> Vec<&'static dyn TaskProvider> {
     vec![&NOTION]
 }
+
+/// The mirror row for a task the provider just reported.
+pub(crate) fn mirror_row(
+    short_id: &str,
+    task: &FetchedTask,
+) -> crate::core::db::models::ProviderTask {
+    crate::core::db::models::ProviderTask {
+        external_id: task.key.external_id(),
+        short_id: short_id.to_string(),
+        title: task.title.clone(),
+        status: task.status.clone(),
+        priority: task.priority.clone(),
+        synced_at: chrono::Utc::now().timestamp(),
+        provider: task.key.provider().as_str().to_string(),
+        url: Some(task.url.clone()),
+        board: None,
+        branch_tag: task.branch_tag.clone(),
+    }
+}
+
+/// The provider a task belongs to, and its key at the source.
+///
+/// Reads the mirror rather than the session, so it answers for a task that has
+/// never been opened. Explorer and review sessions have no mirror row.
+pub(crate) async fn resolve(
+    pool: &sqlx::SqlitePool,
+    short_id: &str,
+) -> anyhow::Result<(&'static dyn TaskProvider, TaskKey)> {
+    let row = crate::core::db::store::provider_tasks::get_by_short_id(pool, short_id)
+        .await?
+        .ok_or_else(|| {
+            anyhow::anyhow!("{short_id} is not a task — explorer and review sessions have no source")
+        })?;
+    let key = TaskKey::parse(&row.external_id)?;
+    Ok((get(key.provider())?, key))
+}

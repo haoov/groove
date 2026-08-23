@@ -16,7 +16,7 @@ pub struct Session {
     pub id: String,
     pub kind: SessionKind,
     pub title: String,
-    pub notion_page_id: Option<String>,
+    pub external_id: Option<String>,
     pub review_project: Option<String>,
     #[ts(type = "number | null")]
     pub review_iid: Option<i64>,
@@ -26,14 +26,21 @@ pub struct Session {
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct NotionTask {
-    pub page_id: String,
+pub struct ProviderTask {
+    pub external_id: String,
     pub short_id: String,
     pub title: String,
     pub status: String,
     pub priority: Option<String>,
     #[ts(type = "number")]
     pub synced_at: i64,
+    /// "notion" or "github".
+    pub provider: String,
+    pub url: Option<String>,
+    /// The Projects v2 board that supplied the fields, when several could have.
+    pub board: Option<String>,
+    /// Appended to branch names; None means use short_id.
+    pub branch_tag: Option<String>,
 }
 
 /// The task shape the frontend and MCP tools consume. Real tasks come from the
@@ -42,7 +49,12 @@ pub struct NotionTask {
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct TaskView {
     pub short_id: String,
-    pub notion_page_id: String,
+    /// Opaque handle for the provider's own API. Never parsed by the frontend.
+    pub external_id: String,
+    /// "notion" or "github".
+    pub provider: String,
+    /// Deep link to the page or issue.
+    pub external_url: Option<String>,
     pub title: String,
     pub status: String,
     pub priority: Option<String>,
@@ -50,11 +62,13 @@ pub struct TaskView {
     pub last_synced_at: i64,
 }
 
-impl From<NotionTask> for TaskView {
-    fn from(t: NotionTask) -> Self {
+impl From<ProviderTask> for TaskView {
+    fn from(t: ProviderTask) -> Self {
         Self {
             short_id: t.short_id,
-            notion_page_id: t.page_id,
+            external_id: t.external_id,
+            provider: t.provider,
+            external_url: t.url,
             title: t.title,
             status: t.status,
             priority: t.priority,

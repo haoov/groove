@@ -41,12 +41,12 @@ export function TaskOverview() {
     if (!activeTask) return;
     setLoading(true);
     // Markdown, not raw blocks: same renderer as MR descriptions, and markdown
-    // typed literally into Notion (backticks, **bold**) then displays properly.
-    invoke<string>('get_task_body_markdown', { notionPageId: activeTask.notion_page_id })
+    // typed literally into the source (backticks, **bold**) then displays properly.
+    invoke<string>('get_task_body_markdown', { shortId: activeTask.short_id })
       .then(setBody)
       .catch(() => setBody(''))
       .finally(() => setLoading(false));
-  }, [activeTask?.notion_page_id, reloadNonce]);
+  }, [activeTask?.short_id, reloadNonce]);
 
   // Load MRs for all worktrees into local state — independent of the sidebar's
   // per-repo store so switching repos in the sidebar never clears this list.
@@ -119,7 +119,7 @@ export function TaskOverview() {
         {/* Properties — the framed metadata card under the title. */}
         <PropertyStrip
           key={reloadNonce}
-          notionPageId={activeTask.notion_page_id}
+          shortId={activeTask.short_id}
           onHoursValue={setHoursLogged}
           onHoursAvailable={setHoursAvailable}
         />
@@ -163,7 +163,6 @@ export function TaskOverview() {
           <main className="overview-main">
             <BodyEditor
               taskId={activeTask.short_id}
-              notionPageId={activeTask.notion_page_id}
               markdown={body}
               loading={loading}
               onSaved={reload}
@@ -174,7 +173,6 @@ export function TaskOverview() {
             {hoursAvailable && (
               <HoursWidget
                 taskId={activeTask.short_id}
-                notionPageId={activeTask.notion_page_id}
                 logged={hoursLogged}
                 onLogged={reload}
               />

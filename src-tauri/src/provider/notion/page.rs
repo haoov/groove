@@ -12,7 +12,7 @@
 
 
 use crate::core::config::NotionConfig;
-use crate::core::db::models::NotionTask;
+use crate::core::db::models::ProviderTask;
 
 /// The page's title text, found by TYPE: every database names its title property
 /// differently, and the type is unambiguous.
@@ -53,7 +53,7 @@ pub(super) fn extract_unique_id(props: &serde_json::Value) -> Option<String> {
     })
 }
 
-pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<NotionTask> {
+pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<ProviderTask> {
     let page_id = page["id"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("page missing id"))?
@@ -75,13 +75,17 @@ pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Res
         .as_deref()
         .and_then(|k| extract_select(props, k));
 
-    Ok(NotionTask {
-        page_id,
+    Ok(ProviderTask {
+        url: Some(format!("https://www.notion.so/{}", page_id.replace('-', ""))),
+        external_id: page_id,
         short_id,
         title,
         status,
         priority,
         synced_at: chrono::Utc::now().timestamp(),
+        provider: "notion".to_string(),
+        board: None,
+        branch_tag: None,
     })
 }
 

@@ -323,12 +323,13 @@ pub(super) async fn add_task_repo(
     }
 }
 
-/// Resolve the caller's task to the ids a Notion write needs.
-async fn notion_target(
+/// The task a write applies to. The provider resolves it at execution time, so
+/// the payload only ever carries the short id.
+async fn task_target(
     state: &McpState,
     mcp_session: &str,
     input: &serde_json::Value,
-) -> anyhow::Result<Result<(String, String), ToolCallResponse>> {
+) -> anyhow::Result<Result<String, ToolCallResponse>> {
     // An explicit task_id wins, so an agent can update a task it isn't sitting in.
     let task_id = match input["task_id"].as_str() {
         Some(id) => id.to_string(),
@@ -337,13 +338,14 @@ async fn notion_target(
             None => return Ok(Err(ToolCallResponse::err("no task in scope"))),
         },
     };
-    let page = store::sessions::get_opt(&state.pool, &task_id)
+    let has_source = store::sessions::get_opt(&state.pool, &task_id)
         .await?
-        .and_then(|s| s.notion_page_id);
-    match page {
-        Some(page_id) => Ok(Ok((task_id, page_id))),
-        None => Ok(Err(ToolCallResponse::err(format!(
-            "{task_id} has no Notion page — explorer and review sessions aren't Notion tasks"
+        .and_then(|s| s.external_id)
+        .is_some();
+    match has_source {
+        true => Ok(Ok(task_id)),
+        false => Ok(Err(ToolCallResponse::err(format!(
+            "{task_id} has no task behind it — explorer and review sessions aren't tasks"
         )))),
     }
 }
@@ -357,12 +359,11 @@ pub(super) async fn update_task_property(
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let property = str_field(&input, "property")?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
-        "notion_page_id": page_id,
         "task_id": task_id,
         "property": property,
         "value": input["value"].clone(),
@@ -379,13 +380,11 @@ pub(super) async fn log_task_hours(
     let hours = input["hours"]
         .as_f64()
         .ok_or_else(|| anyhow::anyhow!("hours must be a number"))?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
-    let payload = serde_json::json!({
-        "notion_page_id": page_id, "task_id": task_id, "hours": hours,
-    });
+    let payload = serde_json::json!({ "task_id": task_id, "hours": hours });
     bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
 }
 
@@ -397,12 +396,11 @@ pub(super) async fn update_task_body(
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let markdown = str_field(&input, "markdown")?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
-        "notion_page_id": page_id,
         "task_id": task_id,
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),

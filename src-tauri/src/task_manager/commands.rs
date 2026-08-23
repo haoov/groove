@@ -211,7 +211,7 @@ async fn finish_task_impl(
     )
     .await?;
 
-    store::notion_tasks::set_status(pool, short_id, &done_status).await?;
+    store::provider_tasks::set_status(pool, short_id, &done_status).await?;
     tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
 
@@ -251,7 +251,7 @@ async fn delete_task_impl(
 /// are discarded, not finished.
 async fn task_page_id(pool: &SqlitePool, short_id: &str) -> anyhow::Result<String> {
     let session = store::sessions::get(pool, short_id).await?;
-    session.notion_page_id.ok_or_else(|| {
+    session.external_id.ok_or_else(|| {
         anyhow::anyhow!("{short_id} is a {:?} session — discard it instead", session.kind)
     })
 }

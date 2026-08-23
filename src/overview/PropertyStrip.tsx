@@ -18,9 +18,9 @@ import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
  */
 
 export function PropertyStrip({
-  notionPageId, onHoursValue, onHoursAvailable,
+  shortId, onHoursValue, onHoursAvailable,
 }: {
-  notionPageId: string;
+  shortId: string;
   onHoursValue?: (display: string) => void;
   /** Whether the task schema HAS an hours property. Hours render in the overview
    *  side column now, not here — the parent needs this to show that panel. */
@@ -33,7 +33,7 @@ export function PropertyStrip({
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
   const load = () => {
-    invoke<PropertyValue[]>('get_task_properties', { notionPageId })
+    invoke<PropertyValue[]>('get_task_properties', { shortId })
       .then((vs) => {
         setValues(vs);
         const h = vs.find((v) => isHoursProperty(v.name, v.kind));
@@ -42,17 +42,19 @@ export function PropertyStrip({
       .catch((e) => setLastError(String(e)));
   };
 
+  // Keyed on the task: a schema is per-source, so switching tasks inside a
+  // mounted overview must refetch it.
   useEffect(() => {
     invoke<TaskSchema>('get_task_schema').then(setSchema).catch((e) => setLastError(String(e)));
-  }, [setLastError]);
+  }, [shortId, setLastError]);
 
-  useEffect(load, [notionPageId]);
+  useEffect(load, [shortId]);
 
   const write = async (name: string, value: unknown) => {
     setBusy(name);
     setValues((vs) => vs.map((v) => (v.name === name ? { ...v, value } : v)));
     try {
-      await invoke<string>('update_task_property', { notionPageId, property: name, value });
+      await invoke<string>('update_task_property', { shortId, property: name, value });
     } catch (e) {
       setLastError(String(e));
       load();

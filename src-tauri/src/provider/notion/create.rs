@@ -8,7 +8,7 @@
 use sqlx::SqlitePool;
 
 use crate::core::config::{self, NotionConfig};
-use crate::core::db::models::NotionTask;
+use crate::core::db::models::ProviderTask;
 use crate::core::db::store;
 
 use super::page::extract_unique_id;
@@ -149,15 +149,19 @@ pub async fn create_task_impl(
     let req = NewTask::from_payload(&payload)?;
     let (notion_page_id, short_id) = create_page(&cfg.notion.token, &req).await?;
 
-    let task = NotionTask {
-        page_id: notion_page_id.clone(),
+    let task = ProviderTask {
+        external_id: notion_page_id.clone(),
+        provider: "notion".to_string(),
+        url: Some(format!("https://www.notion.so/{}", notion_page_id.replace('-', ""))),
+        board: None,
+        branch_tag: None,
         short_id: short_id.clone(),
         title: req.title.to_string(),
         status: req.status_value.to_string(),
         priority: None,
         synced_at: chrono::Utc::now().timestamp(),
     };
-    store::notion_tasks::upsert(pool, &task).await?;
+    store::provider_tasks::upsert(pool, &task).await?;
 
     Ok(serde_json::json!({
         "short_id": short_id,

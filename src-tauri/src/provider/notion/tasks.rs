@@ -9,7 +9,7 @@ use std::{
 use sqlx::SqlitePool;
 
 use crate::core::config::{self, Config, NotionConfig};
-use crate::core::db::models::{NotionTask, TaskView};
+use crate::core::db::models::{ProviderTask, TaskView};
 use crate::core::db::store;
 
 use super::page::{page_to_task, parse_short_id_number};
@@ -147,7 +147,7 @@ async fn queue_filter(cfg: &Config) -> serde_json::Value {
 }
 
 /// Every queued task, straight from Notion. No local writes.
-pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<NotionTask>> {
+pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<ProviderTask>> {
     let cfg = config::require()?;
     let body = queue_filter(&cfg).await;
     let pages = super::api::paginate_post(
@@ -171,7 +171,7 @@ pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<NotionTask>> {
 }
 
 /// One page by id.
-pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<NotionTask> {
+pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<ProviderTask> {
     let cfg = config::require()?;
     let page = super::api::get(&cfg.notion.token, &format!("v1/pages/{page_id}")).await?;
     page_to_task(&page, &cfg.notion)
@@ -180,10 +180,12 @@ pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<NotionTask> {
 /// Every queued task, mirrored locally in one transaction.
 async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
     let tasks = fetch_queue().await?;
+    let keep: Vec<String> = tasks.iter().map(|t| t.external_id.clone()).collect();
 
     let mut tx = pool.begin().await?;
+    store::provider_tasks::prune_missing(&mut *tx, "notion", &keep).await?;
     for task in &tasks {
-        store::notion_tasks::upsert(&mut *tx, task).await?;
+        store::provider_tasks::upsert(&mut *tx, task).await?;
     }
     tx.commit().await?;
 
@@ -192,7 +194,7 @@ async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
 
 /// One task by its short id, via the unique_id property — whose NAME is resolved
 /// from the schema (Notion filters take the property's name, not its type).
-async fn fetch_by_short_id(cfg: &NotionConfig, short_id: &str) -> anyhow::Result<NotionTask> {
+async fn fetch_by_short_id(cfg: &NotionConfig, short_id: &str) -> anyhow::Result<ProviderTask> {
     let num = parse_short_id_number(short_id)
         .ok_or_else(|| anyhow::anyhow!("Cannot parse short_id: {short_id}"))?;
     let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
@@ -262,6 +264,6 @@ pub async fn sync_task(
     let task = fetch_by_short_id(&cfg.notion, &short_id)
         .await
         .map_err(|e| e.to_string())?;
-    store::notion_tasks::upsert(&*pool, &task).await.map_err(|e| e.to_string())?;
+    store::provider_tasks::upsert(&*pool, &task).await.map_err(|e| e.to_string())?;
     Ok(task.into())
 }

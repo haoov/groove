@@ -60,7 +60,7 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("get_annotations", "All annotations for a task.", serde_json::json!({"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"}}})),
         mcp_tool("get_open_file", "Currently open file in the editor.", serde_json::json!({"type":"object","properties":{}})),
         mcp_tool("get_file_content", "Read file content by path.", serde_json::json!({"type":"object","required":["file_path"],"properties":{"file_path":{"type":"string"}}})),
-        mcp_tool("get_task_body", "Fetch the Notion page body (rich text blocks) for a task. Use notion_page_id from get_active_task.", serde_json::json!({"type":"object","required":["notion_page_id"],"properties":{"notion_page_id":{"type":"string","description":"Notion page ID returned by get_active_task"}}})),
+        mcp_tool("get_task_body", "Fetch a task's body as markdown.", serde_json::json!({"type":"object","properties":{"task_id":{"type":"string","description":"Defaults to your own task."}}})),
         mcp_tool("git_commit", "Stage all and commit. Requires user confirmation.", serde_json::json!({"type":"object","required":["worktree_id","message"],"properties":{"worktree_id":{"type":"string"},"message":{"type":"string","description":format!("{SUBJECT} Body optional: why, not what. No file lists.")}}})),
         mcp_tool("git_push", "Push branch to origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
         mcp_tool("git_pull", "Pull --rebase from origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),

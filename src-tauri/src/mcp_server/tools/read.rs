@@ -46,7 +46,7 @@ pub(super) async fn get_worktrees(
 /// sessions are excluded: an explorer or a review is not something picked off
 /// a queue.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
-    let tasks: Vec<crate::core::db::models::TaskView> = store::notion_tasks::all(&state.pool)
+    let tasks: Vec<crate::core::db::models::TaskView> = store::provider_tasks::all(&state.pool)
         .await?
         .into_iter()
         .map(Into::into)
@@ -159,31 +159,39 @@ pub(super) async fn get_file_content(
     Ok(ToolCallResponse::ok(serde_json::json!({ "content": content })))
 }
 
-pub(super) async fn get_task_body(input: serde_json::Value) -> anyhow::Result<ToolCallResponse> {
-    let notion_page_id = str_field(&input, "notion_page_id")?;
-    let cfg = crate::core::config::require()?;
-    let blocks =
-        crate::provider::notion::get_task_body_impl(&notion_page_id, &cfg.notion.token).await?;
-    Ok(ToolCallResponse::ok(
-        serde_json::json!({ "blocks": blocks, "count": blocks.len() }),
-    ))
+pub(super) async fn get_task_body(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = str_field(&input, "task_id")?;
+    let (provider, key) = crate::provider::resolve(&state.pool, &task_id).await?;
+    let markdown = provider.body_markdown(&key).await?;
+    Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
 }
 
-pub(super) async fn get_task_template() -> anyhow::Result<ToolCallResponse> {
-    let cfg = crate::core::config::require()?;
-    let page_id = cfg
-        .notion
-        .task_template_page_id
-        .clone()
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("notion.task_template_page_id is not set in config"))?;
+/// Markdown is what the agent mirrors, and what create_task_from_explorer takes
+/// back — raw block JSON was easy to misread.
+pub(super) async fn get_task_template(
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    // The template belongs to whichever provider the task in scope came from; with
+    // no task in scope, the only provider that has one.
+    let provider = match state.task_for(mcp_session) {
+        Some(task_id) => crate::provider::resolve(&state.pool, &task_id).await.map(|(p, _)| p),
+        None => crate::provider::get(crate::provider::types::ProviderId::Notion),
+    };
+    let provider = match provider {
+        Ok(p) => p,
+        Err(e) => return Ok(ToolCallResponse::err(e.to_string())),
+    };
 
-    // Markdown is what the agent mirrors (and what create_task_from_explorer takes
-    // back) — raw block JSON was easy to misread. The impl validates the configured
-    // id and returns actionable errors (database id, no access, empty).
-    match crate::provider::notion::body::template_markdown(&page_id, &cfg.notion.token).await {
-        Ok(markdown) => Ok(ToolCallResponse::ok(
+    match provider.template_markdown().await {
+        Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
+        )),
+        Ok(None) => Ok(ToolCallResponse::err(
+            "this task source has no template configured",
         )),
         Err(e) => Ok(ToolCallResponse::err(e.to_string())),
     }

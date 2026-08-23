@@ -58,37 +58,39 @@ pub async fn get_activity_days(
     store::time::activity(&*pool).await.map_err(|e| e.to_string())
 }
 
-/// Write `hours` to Notion, then record the write in the local ledger. Only a
-/// write that reached Notion counts as logged; the unlogged remainder is clamped
-/// at read time, so a manual entry larger than what was measured can never read
-/// negative.
+/// Record `hours` in the local ledger, and in the provider's own field when it has
+/// one. The external write goes first where it exists: only a write that landed
+/// counts as logged, which is what keeps pressing the button twice from
+/// double-counting. The unlogged remainder is clamped at read time.
 async fn log_hours(
-    notion_page_id: &str,
     hours: f64,
     session_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = crate::core::config::require()?;
-    let token = &cfg.notion.token;
-    let property = crate::provider::notion::hours::hours_property(token, &cfg.notion.database_id).await?;
-    let (before, after) = crate::provider::notion::hours::add_hours(token, notion_page_id, &property, hours).await?;
+    let (provider, key) = crate::provider::resolve(pool, session_id).await?;
+
+    let written = match provider.capabilities().external_hours {
+        true => Some(provider.add_hours(&key, hours).await?),
+        false => None,
+    };
 
     store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 
-    Ok(serde_json::json!({ "before": before, "after": after, "added": hours }))
+    Ok(serde_json::json!({
+        "before": written.as_ref().map(|w| w.before),
+        "after": written.as_ref().map(|w| w.after),
+        "added": hours,
+    }))
 }
 
 /// UI path: you typed the number, so it happens.
 #[tauri::command]
 pub async fn log_task_hours(
-    task_id: String,
-    notion_page_id: String,
+    short_id: String,
     hours: f64,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    log_hours(&notion_page_id, hours, &task_id, &pool)
-        .await
-        .map_err(|e| e.to_string())
+    log_hours(hours, &short_id, &pool).await.map_err(|e| e.to_string())
 }
 
 /// Confirmation-bridge path for `task.hours` (agent-initiated).
@@ -97,7 +99,6 @@ pub async fn log_hours_impl(
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     log_hours(
-        payload["notion_page_id"].as_str().unwrap_or_default(),
         payload["hours"].as_f64().unwrap_or(0.0),
         payload["task_id"].as_str().unwrap_or_default(),
         pool,

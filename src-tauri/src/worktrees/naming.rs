@@ -94,7 +94,7 @@ mod tests {
             id: id.into(),
             kind,
             title: title.into(),
-            notion_page_id: (kind == SessionKind::Task).then(|| "page".into()),
+            external_id: (kind == SessionKind::Task).then(|| "page".into()),
             review_project: (kind == SessionKind::Review).then(|| "g/p".into()),
             review_iid: (kind == SessionKind::Review).then_some(1),
             created_at: 0,

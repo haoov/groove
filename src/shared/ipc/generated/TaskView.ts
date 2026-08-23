@@ -4,4 +4,16 @@
  * The task shape the frontend and MCP tools consume. Real tasks come from the
  * mirror; synthetic sessions synthesize status/priority.
  */
-export type TaskView = { short_id: string, notion_page_id: string, title: string, status: string, priority: string | null, last_synced_at: number, };
+export type TaskView = { short_id: string, 
+/**
+ * Opaque handle for the provider's own API. Never parsed by the frontend.
+ */
+external_id: string, 
+/**
+ * "notion" or "github".
+ */
+provider: string, 
+/**
+ * Deep link to the page or issue.
+ */
+external_url: string | null, title: string, status: string, priority: string | null, last_synced_at: number, };

@@ -9,7 +9,6 @@
 
 use sqlx::SqlitePool;
 
-use crate::core::config;
 
 use super::markdown::{blocks_to_markdown, markdown_to_blocks};
 
@@ -124,14 +123,14 @@ pub async fn update_body_impl(
     payload: serde_json::Value,
     _pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = config::require()?;
-    let page_id = payload["notion_page_id"]
+    let task_id = payload["task_id"]
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing notion_page_id"))?;
+        .ok_or_else(|| anyhow::anyhow!("missing task_id"))?;
     let markdown = payload["markdown"].as_str().unwrap_or_default();
     let force = payload["force"].as_bool().unwrap_or(false);
 
-    let written = replace(&cfg.notion.token, page_id, markdown, force).await?;
+    let (provider, key) = crate::provider::resolve(_pool, task_id).await?;
+    let written = provider.replace_body(&key, markdown, force).await?;
     Ok(serde_json::json!({
         "ok": true,
         "blocks_written": written.blocks_written,
@@ -203,12 +202,16 @@ pub(crate) async fn replace(
 /// task and MR descriptions, Notion's inline annotations survive, AND markdown
 /// typed literally into Notion (`**bold**`, backticks) displays as intended.
 #[tauri::command]
-pub async fn get_task_body_markdown(notion_page_id: String) -> Result<String, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let blocks = get_task_body_impl(&notion_page_id, &cfg.notion.token)
-        .await
-        .map_err(|e| e.to_string())?;
-    Ok(blocks_to_markdown(&blocks))
+pub async fn get_task_body_markdown(
+    short_id: String,
+    pool: tauri::State<'_, SqlitePool>,
+) -> Result<String, String> {
+    async {
+        let (provider, key) = crate::provider::resolve(&pool, &short_id).await?;
+        provider.body_markdown(&key).await
+    }
+    .await
+    .map_err(|e: anyhow::Error| e.to_string())
 }
 
 /// Queue a body replacement from the UI.
@@ -218,8 +221,7 @@ pub async fn get_task_body_markdown(notion_page_id: String) -> Result<String, St
 /// preview and an explicit yes like an agent's write would.
 #[tauri::command]
 pub async fn request_task_body_update(
-    notion_page_id: String,
-    task_id: String,
+    short_id: String,
     markdown: String,
     force: bool,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
@@ -230,13 +232,12 @@ pub async fn request_task_body_update(
             &pool,
             crate::approvals::ops::TASK_BODY,
             serde_json::json!({
-                "notion_page_id": notion_page_id,
-                "task_id": task_id,
+                "task_id": short_id,
                 "markdown": markdown,
                 "force": force,
             }),
             "ui",
-            Some(&task_id),
+            Some(&short_id),
         )
         .await
         .map_err(|e| e.to_string())

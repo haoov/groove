@@ -1,4 +1,4 @@
-use super::super::models::{NotionTask, Repo, SessionKind};
+use super::super::models::{ProviderTask, Repo, SessionKind};
 use super::super::test_pool;
 use super::*;
 
@@ -12,9 +12,13 @@ fn repo(id: &str) -> Repo {
     }
 }
 
-fn mirror_task(short_id: &str) -> NotionTask {
-    NotionTask {
-        page_id: format!("page-{short_id}"),
+fn mirror_task(short_id: &str) -> ProviderTask {
+    ProviderTask {
+        external_id: format!("page-{short_id}"),
+        provider: "notion".to_string(),
+        url: None,
+        board: None,
+        branch_tag: None,
         short_id: short_id.to_string(),
         title: format!("Title of {short_id}"),
         status: "Ready".into(),
@@ -74,7 +78,7 @@ async fn adopting_an_explorer_carries_children_to_the_new_id() {
 
     let adopted = sessions::get(&pool, "TASKS2-9").await.unwrap();
     assert_eq!(adopted.kind, SessionKind::Task);
-    assert_eq!(adopted.notion_page_id.as_deref(), Some("page-TASKS2-9"));
+    assert_eq!(adopted.external_id.as_deref(), Some("page-TASKS2-9"));
     assert!(sessions::get_opt(&pool, "explorer-2").await.unwrap().is_none());
 
     let moved = worktrees::for_session(&pool, "TASKS2-9").await.unwrap();
@@ -163,7 +167,7 @@ async fn open_task_requires_the_mirror_and_is_idempotent() {
     let pool = test_pool().await;
     assert!(sessions::open_task(&pool, "TASKS2-1").await.is_err());
 
-    notion_tasks::upsert(&pool, &mirror_task("TASKS2-1")).await.unwrap();
+    provider_tasks::upsert(&pool, &mirror_task("TASKS2-1")).await.unwrap();
     let session = sessions::open_task(&pool, "TASKS2-1").await.unwrap();
     let reopened = sessions::open_task(&pool, "TASKS2-1").await.unwrap();
     assert_eq!(session.id, reopened.id);
@@ -225,4 +229,48 @@ fn no_raw_sql_outside_the_store() {
             }
         }
     }
+}
+
+#[tokio::test]
+async fn a_sync_prunes_the_rows_it_no_longer_returns() {
+    let pool = test_pool().await;
+    for id in ["A-1", "A-2"] {
+        provider_tasks::upsert(&pool, &mirror_task(id)).await.unwrap();
+    }
+
+    let keep = vec!["page-A-1".to_string()];
+    provider_tasks::prune_missing(&pool, "notion", &keep).await.unwrap();
+
+    let left: Vec<String> =
+        provider_tasks::all(&pool).await.unwrap().into_iter().map(|t| t.short_id).collect();
+    assert_eq!(left, ["A-1"]);
+}
+
+#[tokio::test]
+async fn pruning_leaves_another_provider_alone() {
+    let pool = test_pool().await;
+    let mut gh = mirror_task("gh-groove-3");
+    gh.provider = "github".into();
+    gh.external_id = "github.com/haoov/groove#3".into();
+    provider_tasks::upsert(&pool, &mirror_task("A-1")).await.unwrap();
+    provider_tasks::upsert(&pool, &gh).await.unwrap();
+
+    provider_tasks::prune_missing(&pool, "notion", &[]).await.unwrap();
+
+    let left: Vec<String> =
+        provider_tasks::all(&pool).await.unwrap().into_iter().map(|t| t.short_id).collect();
+    assert_eq!(left, ["gh-groove-3"]);
+}
+
+/// An open task keeps its mirror row even when it drops out of the queue —
+/// otherwise finishing it would lose the title Home shows.
+#[tokio::test]
+async fn pruning_spares_a_task_with_a_session() {
+    let pool = test_pool().await;
+    provider_tasks::upsert(&pool, &mirror_task("A-1")).await.unwrap();
+    sessions::open_task(&pool, "A-1").await.unwrap();
+
+    provider_tasks::prune_missing(&pool, "notion", &[]).await.unwrap();
+
+    assert!(provider_tasks::get_by_short_id(&pool, "A-1").await.unwrap().is_some());
 }

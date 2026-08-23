@@ -13,10 +13,9 @@ import { Markdown } from '../shared/ui/Markdown';
  * outright if the page holds anything unrepresentable.
  */
 export function BodyEditor({
-  taskId, notionPageId, markdown, loading, onSaved,
+  taskId, markdown, loading, onSaved,
 }: {
   taskId: string;
-  notionPageId: string;
   markdown: string;
   loading: boolean;
   onSaved: () => void;
@@ -36,7 +35,7 @@ export function BodyEditor({
     setSaving(true);
     try {
       await invoke('request_task_body_update', {
-        notionPageId, taskId, markdown: draft, force: false,
+        shortId: taskId, markdown: draft, force: false,
       });
       notify({
         kind: 'info',

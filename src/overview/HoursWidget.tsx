@@ -27,10 +27,9 @@ function human(seconds: number): string {
 }
 
 export function HoursWidget({
-  taskId, notionPageId, logged, onLogged,
+  taskId, logged, onLogged,
 }: {
   taskId: string;
-  notionPageId: string;
   /** Current Notion value, read by the property strip. */
   logged: string;
   onLogged: () => void;
@@ -58,7 +57,7 @@ export function HoursWidget({
     setBusy(true);
     try {
       const r = await invoke<{ before: number; after: number }>('log_task_hours', {
-        taskId, notionPageId, hours,
+        shortId: taskId, hours,
       });
       notify({
         kind: 'success',

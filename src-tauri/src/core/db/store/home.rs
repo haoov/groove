@@ -37,7 +37,7 @@ pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>
            m.id AS mr_id, m.platform AS mr_platform, m.remote_id AS mr_remote_id,
            m.url AS mr_url, m.state AS mr_state
          FROM sessions s
-         LEFT JOIN notion_tasks nt ON nt.page_id = s.notion_page_id
+         LEFT JOIN provider_tasks nt ON nt.external_id = s.external_id
          LEFT JOIN session_repos sr ON sr.session_id = s.id
          LEFT JOIN repos r ON r.id = sr.repo_id
          LEFT JOIN worktrees w ON w.session_id = s.id AND w.repo_id = r.id

@@ -42,7 +42,7 @@ async fn with_notion_footer(
 ) -> anyhow::Result<String> {
     let page_id = store::sessions::get_opt(pool, task_id)
         .await?
-        .and_then(|s| s.notion_page_id);
+        .and_then(|s| s.external_id);
 
     Ok(apply_footer(description, task_id, page_id.as_deref()))
 }

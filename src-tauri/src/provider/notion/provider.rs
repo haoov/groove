@@ -13,8 +13,8 @@ fn page_of(key: &TaskKey) -> anyhow::Result<&str> {
 }
 
 impl NotionProvider {
-    fn fetched(&self, task: &crate::core::db::models::NotionTask) -> FetchedTask {
-        let key = TaskKey::Notion { page_id: task.page_id.clone() };
+    fn fetched(&self, task: &crate::core::db::models::ProviderTask) -> FetchedTask {
+        let key = TaskKey::Notion { page_id: task.external_id.clone() };
         FetchedTask {
             url: self.task_url(&key),
             key,
