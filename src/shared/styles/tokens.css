@@ -184,6 +184,7 @@
   /* ── Layout dimensions ──────────────────────────────────────────────────── */
   --wb-sidebar-width:        17rem;      /* 272px */
   --wb-header-height:        2.375rem;   /* 38px — app title bar */
+  --wb-traffic-lights:       4.875rem;   /* 78px — macOS window buttons */
   --wb-modebar-height:       2.25rem;    /* 36px — content-column bands: modebar, tabstrip, agent/git subtabs */
   --wb-statusbar-height:     1.75rem;   /* 28px */
   --wb-modal-width:          min(64rem, 92vw);  /* roomy; never wider than the window */

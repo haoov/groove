@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
+import { shortcutLabel } from '../shared/lib/keybindings';
 import { worktreeFor, activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
 import { ensureTerminalTab } from '../shared/lib/panes';
 import { useDiffExpand } from '../editor/useDiffExpand';
@@ -321,6 +322,7 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
 // ── Edit tab: an editable CodeMirror buffer for one file ──────────────────────
 
 function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focusSignal?: number }) {
+  const blameHint = useStore((s) => shortcutLabel(s.keymap, 'editor.toggleBlame'));
   const activeTask = useSession((s) => s.activeTask);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const annotations = useSession((s) => s.annotations);
@@ -385,7 +387,7 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
         <button
           className={`editor-foot-btn ${blameOn ? 'on' : ''}`}
           onClick={() => setBlameOn(!blameOn)}
-          title="Blame — who last changed each line (Alt+B)"
+          title={`Blame — who last changed each line${blameHint ? ` (${blameHint})` : ''}`}
         >
           blame
         </button>

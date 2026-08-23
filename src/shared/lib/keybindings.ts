@@ -1,4 +1,5 @@
-import type { Chord } from './keys';
+import { chordLabel, type Chord } from './keys';
+import { isMac } from './platform';
 
 // ── Command registry + editable keymap ────────────────────────────────────────
 // Single source of truth for every global shortcut. Bindings match the typed
@@ -45,13 +46,15 @@ export interface CommandSpec {
   label: string;
   group: string;
   defaults: Chord[];
+  /** macOS override, for chords whose Linux key is punctuation Option composes. */
+  macDefaults?: Chord[];
 }
 
 const C = (key: string, mods: Partial<Chord> = {}): Chord => ({ key, ...mods });
 
 export const COMMANDS: CommandSpec[] = [
   // General
-  { id: 'palette.commands', label: 'Command palette', group: 'General', defaults: [C(':', { alt: true, shift: true })] },
+  { id: 'palette.commands', label: 'Command palette', group: 'General', defaults: [C(':', { alt: true, shift: true })], macDefaults: [C('k', { alt: true, shift: true })] },
   { id: 'files.quickOpen', label: 'Find file (search bar)', group: 'General', defaults: [C('f', { alt: true })] },
   { id: 'files.search', label: 'Search in files…', group: 'General', defaults: [C('f', { alt: true, shift: true })] },
   { id: 'settings.open', label: 'Open settings…', group: 'General', defaults: [C(',', { ctrl: true })] },
@@ -71,10 +74,10 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'session.prev', label: 'Previous session tab', group: 'Navigation', defaults: [C('p', { alt: true, shift: true })] },
 
   // Workspace
-  { id: 'workspace.toggleTerminal', label: 'Terminal dock (open / focus / close)', group: 'Workspace', defaults: [C("'", { alt: true })] },
+  { id: 'workspace.toggleTerminal', label: 'Terminal dock (open / focus / close)', group: 'Workspace', defaults: [C("'", { alt: true })], macDefaults: [C('j', { alt: true })] },
   { id: 'agent.console', label: 'Agent console (open / focus)', group: 'Workspace', defaults: [C('a', { alt: true })] },
-  { id: 'pane.splitRight', label: 'Split pane right', group: 'Workspace', defaults: [C('|', { alt: true, shift: true })] },
-  { id: 'pane.splitDown', label: 'Split pane down', group: 'Workspace', defaults: [C('-', { alt: true })] },
+  { id: 'pane.splitRight', label: 'Split pane right', group: 'Workspace', defaults: [C('|', { alt: true, shift: true })], macDefaults: [C('d', { alt: true })] },
+  { id: 'pane.splitDown', label: 'Split pane down', group: 'Workspace', defaults: [C('-', { alt: true })], macDefaults: [C('d', { alt: true, shift: true })] },
   { id: 'pane.close', label: 'Close pane', group: 'Workspace', defaults: [C('w', { alt: true, shift: true })] },
   { id: 'pane.next', label: 'Focus next pane', group: 'Workspace', defaults: [C('o', { alt: true })] },
   { id: 'pane.maximize', label: 'Maximize / restore pane', group: 'Workspace', defaults: [C('m', { alt: true })] },
@@ -98,16 +101,25 @@ export const COMMANDS: CommandSpec[] = [
 export type Keymap = Record<CommandId, Chord[]>;
 
 export function defaultKeymap(): Keymap {
+  const mac = isMac();
   const m = {} as Keymap;
-  for (const c of COMMANDS) m[c.id] = c.defaults.map((d) => ({ ...d }));
+  for (const c of COMMANDS) {
+    const src = mac && c.macDefaults ? c.macDefaults : c.defaults;
+    m[c.id] = src.map((d) => ({ ...d }));
+  }
   return m;
 }
 
-const LS_KEY = 'workbench.keymap.v5';
+/** Commands whose default differs on macOS. */
+const macDivergedIds = (): CommandId[] =>
+  COMMANDS.filter((c) => c.macDefaults).map((c) => c.id);
+
+const LS_KEY = 'workbench.keymap.v6';
 /** Older maps are read once and migrated. v1 → v2 resolved chords shared by two
  *  commands (they used to resolve silently by declaration order); v2 → v3 released
- *  chords whose owning command changed (see MOVED_CHORDS). */
-const LS_KEYS_OLD = ['workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
+ *  chords whose owning command changed (see MOVED_CHORDS); v5 → v6 released the
+ *  chords that differ on macOS. */
+const LS_KEYS_OLD = ['workbench.keymap.v5', 'workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
 
 /**
  * Commands whose default chord moved to a different command, so a stored binding
@@ -177,6 +189,8 @@ export function loadKeymap(): Keymap {
     for (const id of Object.keys(saved) as CommandId[]) {
       // On an upgrade, a moved chord keeps the NEW default instead of the stored one.
       if (!current && MOVED_CHORDS.includes(id)) continue;
+      // A pre-macOS map holds punctuation chords Option cannot produce.
+      if (!current && isMac() && macDivergedIds().includes(id)) continue;
       if (base[id] && Array.isArray(saved[id])) base[id] = saved[id]!;
     }
     const resolved = resolveConflicts(base);
@@ -206,4 +220,11 @@ export function saveKeymap(m: Keymap): void {
 
 export function clearKeymap(): void {
   try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+}
+
+/** First chord bound to a command, labelled for this platform. Use this for every
+ *  shortcut hint in the UI rather than hardcoding one. */
+export function shortcutLabel(keymap: Keymap, id: CommandId): string | undefined {
+  const c = keymap[id]?.[0];
+  return c ? chordLabel(c) : undefined;
 }

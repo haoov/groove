@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { COMMANDS, assignBinding, defaultKeymap, loadKeymap, saveKeymap, type CommandId, type Keymap } from './keybindings';
 import { chordLabel, chordMatches, isTypingCharacter, normalizeKey, type Chord } from './keys';
+import { setPlatform } from './platform';
 
 // The keymap is the one piece of state that survives upgrades: a stored map from an
 // older version is merged over new defaults. Every bug here has been the same
@@ -104,7 +105,7 @@ describe('loadKeymap', () => {
   it('writes the migrated map back, so the migration runs once', () => {
     localStorage.setItem('workbench.keymap.v4', JSON.stringify(defaultKeymap()));
     loadKeymap();
-    expect(store.has('workbench.keymap.v5')).toBe(true);
+    expect(store.has('workbench.keymap.v6')).toBe(true);
   });
 });
 
@@ -195,5 +196,74 @@ describe('isTypingCharacter', () => {
     expect(isTypingCharacter(ev({ key: 'k', ctrlKey: true }))).toBe(false);
     expect(isTypingCharacter(ev({ key: ' ' }))).toBe(false);
     expect(isTypingCharacter(ev({ key: "'" }))).toBe(false);
+  });
+});
+
+describe('macOS chords', () => {
+  const ev = (o: Partial<KeyboardEvent>) => o as KeyboardEvent;
+  /** Option+<letter>: a composed character, with a keyCode naming the real key. */
+  const optionPress = (composed: string, keyCode: number, extra: Partial<KeyboardEvent> = {}) =>
+    ev({ key: composed, keyCode, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false,
+         isComposing: false, getModifierState: () => false, ...extra });
+
+  beforeEach(() => { setPlatform('macos'); });
+  afterEach(() => { setPlatform('linux'); });
+
+  it('resolves the letter behind a composed Option character', () => {
+    expect(chordMatches(optionPress('ß', 83), { key: 's', alt: true })).toBe(true);
+    expect(chordMatches(optionPress('ß', 83), { key: 'ß', alt: true })).toBe(false);
+  });
+
+  it('follows the layout, not the physical key', () => {
+    // On AZERTY the key QWERTY calls Q is labelled A; keyCode reports 65.
+    expect(chordMatches(optionPress('æ', 65), { key: 'a', alt: true })).toBe(true);
+    expect(chordMatches(optionPress('æ', 65), { key: 'q', alt: true })).toBe(false);
+  });
+
+  it('lets a dead-key Option chord through as a command', () => {
+    // Option+E is a dead acute, and panel.files binds it.
+    const deadE = optionPress('Dead', 69);
+    expect(isTypingCharacter(deadE)).toBe(false);
+    expect(chordMatches(deadE, { key: 'e', alt: true })).toBe(true);
+  });
+
+  it('still protects real composition that is not an Option chord', () => {
+    const dead = ev({ key: 'Dead', keyCode: 192, altKey: false, isComposing: false,
+                      getModifierState: () => false });
+    expect(isTypingCharacter(dead)).toBe(true);
+  });
+
+  it('leaves punctuation to the platform defaults rather than guessing', () => {
+    expect(chordMatches(optionPress('æ', 222), { key: "'", alt: true })).toBe(false);
+  });
+
+  it('gives the diverged commands a reachable default', () => {
+    const mac = defaultKeymap();
+    for (const c of COMMANDS.filter((c) => c.macDefaults)) {
+      for (const chord of mac[c.id]) {
+        expect(chord.key, `${c.id} must not bind punctuation under Option`)
+          .toMatch(/^[a-z0-9]$/);
+      }
+    }
+  });
+
+  it('keeps every macOS default free of conflicts', () => {
+    const doubled = [...claims(defaultKeymap())].filter(([, ids]) => ids.length > 1);
+    expect(doubled).toEqual([]);
+  });
+
+  it('labels chords with Apple glyphs', () => {
+    expect(chordLabel({ key: 'e', alt: true, shift: true })).toBe('⌥⇧E');
+    expect(chordLabel({ key: ',', ctrl: true })).toBe('⌘,');
+  });
+});
+
+describe('Linux defaults are untouched by the port', () => {
+  it('keeps the punctuation chords the diverged commands always had', () => {
+    const linux = defaultKeymap(); // platform defaults to linux in these tests
+    expect(linux['palette.commands']).toEqual([{ key: ':', alt: true, shift: true }]);
+    expect(linux['workspace.toggleTerminal']).toEqual([{ key: "'", alt: true }]);
+    expect(linux['pane.splitRight']).toEqual([{ key: '|', alt: true, shift: true }]);
+    expect(linux['pane.splitDown']).toEqual([{ key: '-', alt: true }]);
   });
 });

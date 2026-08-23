@@ -9,7 +9,9 @@ mod editor_host;
 mod home;
 mod launch_env;
 mod mcp_server;
+#[cfg(target_os = "linux")]
 mod migrate_identity;
+mod platform;
 mod forge;
 mod notion;
 mod review;
@@ -27,6 +29,8 @@ pub fn run() {
     // migration has to beat the webview to the data directory, which rules out
     // Tauri's `setup()` hook.
     launch_env::widen_path();
+    // XDG paths only; macOS uses ~/Library/Application Support.
+    #[cfg(target_os = "linux")]
     if let Some((config_dir, data_dir)) = migrate_identity::linux_dirs() {
         migrate_identity::from_legacy_identity(&config_dir, &data_dir);
     }
@@ -157,6 +161,8 @@ pub fn run() {
             core::pty::resize_pty,
             // approvals
             approvals::resolve_confirmation,
+            // platform
+            platform::platform,
             // clipboard
             clipboard::copy_to_clipboard,
             clipboard::read_clipboard,

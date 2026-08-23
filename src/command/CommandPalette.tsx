@@ -10,8 +10,7 @@ import { ensureTerminalTab } from '../shared/lib/panes';
 import { DIFF_MODES } from '../shared/lib/diffModes';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 import { THEMES, DEFAULT_THEME } from '../shared/ipc/ipc';
-import { chordLabel } from '../shared/lib/keys';
-import type { CommandId, Keymap } from '../shared/lib/keybindings';
+import { shortcutLabel } from '../shared/lib/keybindings';
 
 interface Command {
   id: string;
@@ -22,11 +21,7 @@ interface Command {
   shortcut?: string;
 }
 
-/** First bound chord for a command, rendered as e.g. "Alt+Shift+E". */
-function shortcutFor(keymap: Keymap, id: CommandId): string | undefined {
-  const c = keymap[id]?.[0];
-  return c ? chordLabel(c) : undefined;
-}
+const shortcutFor = shortcutLabel;
 
 const ICON_BY_ID: Record<string, LucideIcon> = {
   'nav-tasks-board': LayoutGrid,

@@ -13,6 +13,11 @@
   padding: var(--space-6) var(--space-4);
 }
 
+/* No header here, so reserve the band the traffic lights sit in. */
+[data-platform="macos"] .firstrun {
+  padding-top: var(--wb-header-height);
+}
+
 .firstrun-card {
   width: 100%;
   max-width: 620px;

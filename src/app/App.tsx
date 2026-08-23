@@ -20,6 +20,7 @@ import { Toasts } from '../notifications/Toasts';
 import { AgentConsole } from '../agent/AgentConsole';
 import { TerminalConsole } from '../terminal/TerminalConsole';
 import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
+import { isMac } from '../shared/lib/platform';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from '../shared/ipc/ipc';
 
 /** Refresh the review queue on startup and every ~5 min (rail badge + strip). */
@@ -146,8 +147,9 @@ export default function App() {
       <SettingsModal />
       <Toasts />
 
-      {/* Frameless-window resize grips (must be last so they sit on top) */}
-      <ResizeHandles />
+      {/* Frameless-window resize grips (must be last so they sit on top). Not on
+          macOS: the window is decorated, and these would cover the traffic lights. */}
+      {!isMac() && <ResizeHandles />}
     </div>
   );
 }

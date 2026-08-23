@@ -39,7 +39,7 @@ pub struct Environment {
 }
 
 /// Resolve against the process PATH — which `launch_env::widen_path()` has already
-/// extended, so a tool installed by linuxbrew or npm is found even though a desktop
+/// extended, so a tool installed by Homebrew or npm is found even though a desktop
 /// launch never sourced the shell profile that would have added it.
 fn which(bin: &str) -> Option<String> {
     let path = std::env::var_os("PATH")?;
@@ -78,12 +78,34 @@ async fn forge_authed(tool: &str) -> Option<bool> {
 
 /// One clipboard tool is enough, so they are reported as a group: the app writes to
 /// every one it finds (Wayland and X11 clipboards are separate).
+#[cfg(not(target_os = "macos"))]
 fn clipboard_tools() -> Vec<ToolCheck> {
     vec![
         check("wl-copy", "Copy from the terminal on Wayland (wl-clipboard)", false),
         check("xclip", "Copy from the terminal on X11", false),
         check("xsel", "Copy from the terminal on X11 (alternative to xclip)", false),
     ]
+}
+
+/// `pbcopy`/`pbpaste` ship with macOS, so there is nothing to install or report.
+#[cfg(target_os = "macos")]
+fn clipboard_tools() -> Vec<ToolCheck> {
+    vec![]
+}
+
+/// macOS uses `osascript`, which ships with the OS, so it reports nothing.
+#[cfg(not(target_os = "macos"))]
+fn notification_tools() -> Vec<ToolCheck> {
+    vec![check(
+        "notify-send",
+        "Desktop notifications when the window is unfocused",
+        false,
+    )]
+}
+
+#[cfg(target_os = "macos")]
+fn notification_tools() -> Vec<ToolCheck> {
+    vec![]
 }
 
 #[tauri::command]
@@ -132,8 +154,8 @@ pub async fn check_environment() -> Result<Environment, String> {
         // have repos on matter, so both are optional.
         glab,
         gh,
-        check("notify-send", "Desktop notifications when the window is unfocused", false),
     ];
+    tools.extend(notification_tools());
     tools.extend(clipboard_tools());
 
     Ok(Environment {

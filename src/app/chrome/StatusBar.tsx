@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
 import { Terminal } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
+import { shortcutLabel } from '../../shared/lib/keybindings';
 import { worktreeFor } from '../../shared/lib/workspace';
 import { toggleTerminal } from '../../shared/lib/panes';
 
 export function StatusBar() {
   const activeTask = useSession((s) => s.activeTask);
+  const termHint = useStore((s) => shortcutLabel(s.keymap, 'workspace.toggleTerminal'));
   const activeRepos = useSession((s) => s.activeRepos);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const worktreeStatus = useSession((s) => s.worktreeStatus);
@@ -83,7 +85,7 @@ export function StatusBar() {
             <button
               className={`statusbar-dock-btn ${terminalTabOpen ? 'active' : ''}`}
               onClick={toggleTerminal}
-              title="Terminal (Alt+`)"
+              title={`Terminal${termHint ? ` (${termHint})` : ''}`}
             >
               <Terminal size={12} strokeWidth={1.75} />
             </button>

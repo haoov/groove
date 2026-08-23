@@ -38,8 +38,13 @@ import './agent/agent.css';
 import './notifications/feed.css';
 import './overview/overview.css';
 import './setup/firstrun.css';
-import App from './app/App';
+import { initPlatform } from './shared/lib/platform';
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <App />
-);
+// App is imported dynamically so the platform is known before the store module
+// builds the default keymap.
+initPlatform().then(async () => {
+  const { default: App } = await import('./app/App');
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+    <App />
+  );
+});
