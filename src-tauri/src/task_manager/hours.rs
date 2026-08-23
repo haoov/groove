@@ -70,8 +70,8 @@ async fn log_hours(
 ) -> anyhow::Result<serde_json::Value> {
     let cfg = crate::core::config::require()?;
     let token = &cfg.notion.token;
-    let property = crate::notion::hours::hours_property(token, &cfg.notion.database_id).await?;
-    let (before, after) = crate::notion::hours::add_hours(token, notion_page_id, &property, hours).await?;
+    let property = crate::provider::notion::hours::hours_property(token, &cfg.notion.database_id).await?;
+    let (before, after) = crate::provider::notion::hours::add_hours(token, notion_page_id, &property, hours).await?;
 
     store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 

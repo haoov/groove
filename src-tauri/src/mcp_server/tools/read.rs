@@ -163,7 +163,7 @@ pub(super) async fn get_task_body(input: serde_json::Value) -> anyhow::Result<To
     let notion_page_id = str_field(&input, "notion_page_id")?;
     let cfg = crate::core::config::require()?;
     let blocks =
-        crate::notion::get_task_body_impl(&notion_page_id, &cfg.notion.token).await?;
+        crate::provider::notion::get_task_body_impl(&notion_page_id, &cfg.notion.token).await?;
     Ok(ToolCallResponse::ok(
         serde_json::json!({ "blocks": blocks, "count": blocks.len() }),
     ))
@@ -181,7 +181,7 @@ pub(super) async fn get_task_template() -> anyhow::Result<ToolCallResponse> {
     // Markdown is what the agent mirrors (and what create_task_from_explorer takes
     // back) — raw block JSON was easy to misread. The impl validates the configured
     // id and returns actionable errors (database id, no access, empty).
-    match crate::notion::body::template_markdown(&page_id, &cfg.notion.token).await {
+    match crate::provider::notion::body::template_markdown(&page_id, &cfg.notion.token).await {
         Ok(markdown) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),

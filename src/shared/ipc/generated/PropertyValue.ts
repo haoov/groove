@@ -6,7 +6,7 @@
  */
 export type PropertyValue = { name: string, kind: string, 
 /**
- * Canonical value (see the module docs). `null` when unset.
+ * Canonical value. `null` when unset.
  */
 value: unknown, 
 /**

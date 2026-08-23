@@ -226,11 +226,11 @@ pub struct DetectedSchema {
 /// Read the database's vocabulary. Also the check that the integration can see it.
 #[tauri::command]
 pub async fn detect_database(token: String, database_id: String) -> Result<DetectedSchema, String> {
-    let schema = crate::notion::schema::load(&token, database_id.trim())
+    let schema = crate::provider::notion::schema::load(&token, database_id.trim())
         .await
         .map_err(|e| format!("Cannot read that database: {e}"))?;
-    let props = crate::notion::detect::detect_properties(&schema);
-    let status = crate::notion::detect::detect_status_map(&schema);
+    let props = crate::provider::notion::detect::detect_properties(&schema);
+    let status = crate::provider::notion::detect::detect_status_map(&schema);
     Ok(DetectedSchema {
         title_property: schema.title_property.clone(),
         status_property: props.status.clone(),
@@ -276,11 +276,11 @@ pub async fn write_initial_config(
     // Reading the schema is both the detection and the check that the integration
     // can see this database — the most likely mistake, and one that would otherwise
     // surface later as an empty task list.
-    let schema = crate::notion::schema::load(&token, database_id.trim())
+    let schema = crate::provider::notion::schema::load(&token, database_id.trim())
         .await
         .map_err(|e| format!("Notion rejected the database: {e}"))?;
-    let properties = crate::notion::detect::detect_properties(&schema);
-    let status_map = crate::notion::detect::detect_status_map(&schema);
+    let properties = crate::provider::notion::detect::detect_properties(&schema);
+    let status_map = crate::provider::notion::detect::detect_status_map(&schema);
 
     // Excluding the completion state is what keeps finished work off Home. Detected
     // rather than assumed to be called "Done".
@@ -296,7 +296,7 @@ pub async fn write_initial_config(
     // Validate it now: a template id that cannot be read fails at explorer→task
     // conversion, long after setup, with nothing pointing back here.
     if let Some(id) = &template {
-        crate::notion::body::template_markdown(id, &token)
+        crate::provider::notion::body::template_markdown(id, &token)
             .await
             .map_err(|e| format!("That template page could not be read: {e}"))?;
     }

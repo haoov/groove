@@ -6,8 +6,4 @@ export type TaskSchema = { database_id: string,
 /**
  * The title property's name — it differs per database ("Task name" here).
  */
-title_property: string, properties: Array<PropertySchema>, 
-/**
- * Groups of the first `status` property, empty when the database has none.
- */
-status_groups: Array<StatusGroup>, };
+title_property: string, properties: Array<PropertySchema>, status_groups: Array<StatusGroup>, };

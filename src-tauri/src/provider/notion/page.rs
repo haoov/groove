@@ -93,21 +93,7 @@ pub(super) fn parse_short_id_number(short_id: &str) -> Option<u64> {
 
 // ─── Canonical property values ────────────────────────────────────────────────
 
-/// One property as the panel sees it: what it is, its current value, and a
-/// human rendering for the types we can display but not edit.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct PropertyValue {
-    pub name: String,
-    pub kind: String,
-    /// Canonical value (see the module docs). `null` when unset.
-    // `unknown` on the TS side: the default JsonValue binding imports from
-    // outside the Vite root, and the frontend treats it as opaque anyway.
-    #[ts(type = "unknown")]
-    pub value: serde_json::Value,
-    /// Read-only rendering, used for formulas, rollups, people, timestamps.
-    pub display: String,
-}
+pub use crate::provider::types::PropertyValue;
 
 /// Pull one property out of a Notion page into the canonical shape.
 pub(super) fn read_value(kind: &str, prop: &serde_json::Value) -> (serde_json::Value, String) {

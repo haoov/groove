@@ -203,7 +203,7 @@ async fn finish_task_impl(
     // fails, the workspace is still intact.
     let page_id = task_page_id(pool, short_id).await?;
     let done_status = cfg.notion.status_map.done.clone();
-    crate::notion::tasks::set_status(
+    crate::provider::notion::tasks::set_status(
         &cfg.notion.token,
         &page_id,
         &cfg.notion.properties.status,
@@ -242,7 +242,7 @@ async fn delete_task_impl(
 
     // Trash the page BEFORE any local teardown, the same order finish_task uses.
     let page_id = task_page_id(pool, short_id).await?;
-    crate::notion::tasks::trash(&cfg.notion.token, &page_id).await?;
+    crate::provider::notion::tasks::trash(&cfg.notion.token, &page_id).await?;
 
     tear_down_session(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
 }

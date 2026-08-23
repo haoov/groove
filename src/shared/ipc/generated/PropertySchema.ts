@@ -2,11 +2,11 @@
 
 export type PropertySchema = { name: string, 
 /**
- * Notion's own type string — the frontend renders by this.
+ * The shared type vocabulary — the frontend renders by this.
  */
 kind: string, 
 /**
- * Allowed values for select / status / multi_select, in Notion's order.
+ * Allowed values for select / status / multi_select, in the provider's order.
  */
 options: Array<string>, 
 /**

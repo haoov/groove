@@ -35,55 +35,7 @@ const WRITABLE: [&str; 9] = [
     "url",
 ];
 
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct PropertySchema {
-    pub name: String,
-    /// Notion's own type string — the frontend renders by this.
-    pub kind: String,
-    /// Allowed values for select / status / multi_select, in Notion's order.
-    pub options: Vec<String>,
-    /// Target database for a relation, so its rows can be offered as choices.
-    pub relation_db: Option<String>,
-    /// False for formulas, rollups and timestamps: displayable, not settable.
-    pub editable: bool,
-}
-
-/// A status property's option groups, as Notion itself classifies them: To-do,
-/// In progress, Complete. This is the ONLY non-guess signal for what an option
-/// means — "Fixed with required action" is a completion state and no amount of
-/// name matching would say so.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct StatusGroup {
-    /// Notion's group name ("To-do", "In progress", "Complete"), verbatim.
-    pub name: String,
-    /// Option names in the group, in Notion's order.
-    pub options: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct TaskSchema {
-    pub database_id: String,
-    /// The title property's name — it differs per database ("Task name" here).
-    pub title_property: String,
-    pub properties: Vec<PropertySchema>,
-    /// Groups of the first `status` property, empty when the database has none.
-    pub status_groups: Vec<StatusGroup>,
-}
-
-impl TaskSchema {
-    pub fn property(&self, name: &str) -> Option<&PropertySchema> {
-        self.properties.iter().find(|p| p.name == name)
-    }
-
-    /// The database a relation property points at, e.g. the sprint or component
-    /// database. `None` when the property is absent or isn't a relation.
-    pub fn relation_target(&self, property: &str) -> Option<&str> {
-        self.property(property)?.relation_db.as_deref()
-    }
-}
+pub use crate::provider::types::{PropertySchema, StatusGroup, TaskSchema};
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -224,13 +176,7 @@ pub async fn get_task_schema() -> Result<TaskSchema, String> {
         .map_err(|e| e.to_string())
 }
 
-/// One choice for a relation property: a page in the target database.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct RelationOption {
-    pub id: String,
-    pub title: String,
-}
+pub use crate::provider::types::RelationOption;
 
 /// Every row of a relation's target database, so the picker can filter locally.
 /// Paginates to a cap — a relation with thousands of rows wants a server-side

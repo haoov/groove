@@ -276,7 +276,7 @@ pub(super) async fn create_task(
     let cfg = crate::core::config::require()?;
 
     // Same payload the UI composer builds; the token is injected at execution.
-    let payload = crate::notion::new_task_payload(&cfg.notion, &title, body_markdown);
+    let payload = crate::provider::notion::new_task_payload(&cfg.notion, &title, body_markdown);
     let task_id = state.task_for(mcp_session);
 
     match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
