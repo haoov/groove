@@ -89,11 +89,6 @@ pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Res
     })
 }
 
-/// "PLAT-42" → 42,  "42" → 42.
-pub(super) fn parse_short_id_number(short_id: &str) -> Option<u64> {
-    short_id.rsplit('-').next().and_then(|s| s.parse().ok())
-}
-
 // ─── Canonical property values ────────────────────────────────────────────────
 
 pub use crate::provider::types::PropertyValue;

@@ -22,8 +22,6 @@ pub mod users;
 pub use body::*;
 pub use create::*;
 pub use properties::*;
-pub use schema::*;
-pub use tasks::*;
 pub use users::*;
 
 pub use provider::NotionProvider;

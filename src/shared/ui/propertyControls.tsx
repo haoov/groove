@@ -178,11 +178,12 @@ export function ValueEditor({
 
 /** A labelled set of chips: components, tags. */
 export function MultiRow({
-  row, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
+  row, shortId, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
 }: {
   row: Row;
   busy: boolean;
   onChange: (v: string[]) => void;
+  shortId: string;
   onError: (e: string) => void;
   /** 0 reports every change straight away — right when nothing is being written yet. */
   debounce?: number;
@@ -204,10 +205,10 @@ export function MultiRow({
   // Relation choices come from the target database, fetched once.
   useEffect(() => {
     if (options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { databaseId: prop.relation_db })
+    invoke<RelationOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions)
       .catch((e) => onError(String(e)));
-  }, [options, prop.kind, prop.relation_db, onError]);
+  }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
 
   /** One write per burst of ticking, not one per tick (Notion allows ~3 req/s). */
   const stage = (ids: string[]) => {
@@ -257,11 +258,12 @@ export function MultiRow({
  *  small uppercase key over an editable value that opens the same popover the
  *  pills use. Multi-value kinds join their titles; read-only kinds show text. */
 export function PropField({
-  row, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
+  row, shortId, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
 }: {
   row: Row;
   busy: boolean;
   onChange: (v: unknown) => void;
+  shortId: string;
   onError: (e: string) => void;
   debounce?: number;
 }) {
@@ -285,9 +287,9 @@ export function PropField({
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   useEffect(() => {
     if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { databaseId: prop.relation_db })
+    invoke<RelationOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions).catch((e) => onError(String(e)));
-  }, [open, options, prop.kind, prop.relation_db, onError]);
+  }, [open, options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
   const stageMulti = (ids: string[]) => {
     setDraft(ids);
     if (debounce === 0) return onChange(ids);

@@ -167,13 +167,6 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 
 /// The configured task database's schema — drives the property panel.
-#[tauri::command]
-pub async fn get_task_schema() -> Result<TaskSchema, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    load(&cfg.notion.token, &cfg.notion.database_id)
-        .await
-        .map_err(|e| e.to_string())
-}
 
 pub use crate::provider::types::RelationOption;
 
@@ -181,13 +174,6 @@ pub use crate::provider::types::RelationOption;
 /// Paginates to a cap — a relation with thousands of rows wants a server-side
 /// search instead, and this returns what it got rather than silently truncating
 /// to one page.
-#[tauri::command]
-pub async fn list_relation_options(
-    database_id: String,
-) -> Result<Vec<RelationOption>, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    relation_options(&cfg.notion.token, &database_id).await.map_err(|e| e.to_string())
-}
 
 /// Every row of a relation's target database, as pickable options.
 pub(crate) async fn relation_options(

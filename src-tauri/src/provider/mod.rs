@@ -1,5 +1,6 @@
 //! Where tasks come from. One module per source, behind a shared trait.
 
+pub mod commands;
 pub mod notion;
 pub mod types;
 
@@ -7,10 +8,9 @@ use types::*;
 
 // Glob re-export is required: tauri::generate_handler! looks up __cmd__* symbols
 // at the same path as the function.
+pub use commands::*;
 pub use notion::*;
 
-// Callers are routed onto this in the next step.
-#[allow(dead_code)]
 #[async_trait::async_trait]
 pub(crate) trait TaskProvider: Send + Sync {
     fn id(&self) -> ProviderId;
@@ -63,17 +63,17 @@ pub(crate) trait TaskProvider: Send + Sync {
         Ok(None)
     }
 
+    // Used once explorer -> task goes through the provider.
+    #[allow(dead_code)]
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
         let _ = draft;
         anyhow::bail!("{} cannot file new tasks", self.id().as_str())
     }
 }
 
-#[allow(dead_code)]
 static NOTION: notion::NotionProvider = notion::NotionProvider;
 
 /// A provider, if it is configured.
-#[allow(dead_code)]
 pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
     match id {
         ProviderId::Notion => Ok(&NOTION),
@@ -82,7 +82,6 @@ pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
 }
 
 /// Every configured provider, for the queue fan-out.
-#[allow(dead_code)]
 pub(crate) fn enabled() -> Vec<&'static dyn TaskProvider> {
     vec![&NOTION]
 }

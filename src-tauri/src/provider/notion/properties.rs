@@ -7,7 +7,7 @@
 
 use sqlx::SqlitePool;
 
-use crate::core::config::{self, NotionConfig};
+use crate::core::config::NotionConfig;
 use crate::core::db::store;
 
 use super::page::{page_to_task, property_patch, read_value, PropertyValue};
@@ -28,11 +28,6 @@ pub(crate) async fn read_all(cfg: &NotionConfig, page_id: &str) -> anyhow::Resul
         .collect())
 }
 
-#[tauri::command]
-pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyValue>, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    read_all(&cfg.notion, &notion_page_id).await.map_err(|e| e.to_string())
-}
 
 /// Patch one property and re-sync the local task row.
 ///

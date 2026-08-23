@@ -49,6 +49,18 @@ pub async fn get_by_short_id(
     )
 }
 
+pub async fn get_by_external_id(
+    exec: impl SqliteExecutor<'_>,
+    external_id: &str,
+) -> StoreResult<Option<ProviderTask>> {
+    Ok(
+        sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks WHERE external_id = ?"))
+            .bind(external_id)
+            .fetch_optional(exec)
+            .await?,
+    )
+}
+
 pub async fn all(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<ProviderTask>> {
     Ok(
         sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks ORDER BY synced_at DESC"))

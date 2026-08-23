@@ -74,19 +74,16 @@ pub struct PropertyValue {
 }
 
 // ─── Provider identity ────────────────────────────────────────────────────────
-// The allows come off as callers move onto the trait.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 #[serde(rename_all = "lowercase")]
 #[ts(rename_all = "lowercase")]
-#[allow(dead_code)]
 pub enum ProviderId {
     Notion,
     Github,
 }
 
-#[allow(dead_code)]
 impl ProviderId {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -99,13 +96,11 @@ impl ProviderId {
 /// A task's identity at its source. `external_id` is the stored string form;
 /// the shapes are distinct enough that the provider is recoverable from it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum TaskKey {
     Notion { page_id: String },
     Github { host: String, owner: String, repo: String, number: i64 },
 }
 
-#[allow(dead_code)]
 impl TaskKey {
     pub fn provider(&self) -> ProviderId {
         match self {
@@ -166,7 +161,6 @@ pub struct Capabilities {
 
 /// One task as its provider reports it, before the store mints a short_id.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct FetchedTask {
     pub key: TaskKey,
     pub title: String,
@@ -186,12 +180,10 @@ pub struct TaskDraft<'a> {
     pub body_markdown: &'a str,
 }
 
-#[allow(dead_code)]
 pub struct PropertyWrite {
     pub display: String,
 }
 
-#[allow(dead_code)]
 pub struct HoursWrite {
     pub before: f64,
     pub after: f64,

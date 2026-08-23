@@ -6,13 +6,11 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 
-use sqlx::SqlitePool;
 
-use crate::core::config::{self, Config, NotionConfig};
-use crate::core::db::models::{ProviderTask, TaskView};
-use crate::core::db::store;
+use crate::core::config::{self, Config};
+use crate::core::db::models::ProviderTask;
 
-use super::page::{page_to_task, parse_short_id_number};
+use super::page::page_to_task;
 
 /// A runaway-pagination backstop far above any real queue.
 const MAX_TASK_PAGES: usize = 30;
@@ -177,50 +175,6 @@ pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<ProviderTask> {
     page_to_task(&page, &cfg.notion)
 }
 
-/// Every queued task, mirrored locally in one transaction.
-async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
-    let tasks = fetch_queue().await?;
-    let keep: Vec<String> = tasks.iter().map(|t| t.external_id.clone()).collect();
-
-    let mut tx = pool.begin().await?;
-    store::provider_tasks::prune_missing(&mut *tx, "notion", &keep).await?;
-    for task in &tasks {
-        store::provider_tasks::upsert(&mut *tx, task).await?;
-    }
-    tx.commit().await?;
-
-    Ok(tasks.into_iter().map(Into::into).collect())
-}
-
-/// One task by its short id, via the unique_id property — whose NAME is resolved
-/// from the schema (Notion filters take the property's name, not its type).
-async fn fetch_by_short_id(cfg: &NotionConfig, short_id: &str) -> anyhow::Result<ProviderTask> {
-    let num = parse_short_id_number(short_id)
-        .ok_or_else(|| anyhow::anyhow!("Cannot parse short_id: {short_id}"))?;
-    let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
-    let id_prop = schema
-        .properties
-        .iter()
-        .find(|p| p.kind == "unique_id")
-        .map(|p| p.name.clone())
-        .ok_or_else(|| anyhow::anyhow!("the task database has no unique_id property"))?;
-
-    let body = serde_json::json!({
-        "filter": { "property": id_prop, "unique_id": { "equals": num } }
-    });
-    let rows = super::api::paginate_post(
-        &cfg.token,
-        &format!("v1/databases/{}/query", cfg.database_id),
-        &body,
-        1,
-    )
-    .await?;
-    let page = rows
-        .first()
-        .ok_or_else(|| anyhow::anyhow!("Task {short_id} not found in Notion"))?;
-    page_to_task(page, cfg)
-}
-
 // ─── Status writes ────────────────────────────────────────────────────────────
 
 /// Set the configured status property of a page.
@@ -246,24 +200,4 @@ pub async fn trash(token: &str, page_id: &str) -> anyhow::Result<()> {
     )
     .await?;
     Ok(())
-}
-
-// ─── IPC ──────────────────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskView>, String> {
-    list_tasks_impl(&pool).await.map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn sync_task(
-    short_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskView, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let task = fetch_by_short_id(&cfg.notion, &short_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    store::provider_tasks::upsert(&*pool, &task).await.map_err(|e| e.to_string())?;
-    Ok(task.into())
 }

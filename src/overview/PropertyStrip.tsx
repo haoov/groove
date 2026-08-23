@@ -45,7 +45,7 @@ export function PropertyStrip({
   // Keyed on the task: a schema is per-source, so switching tasks inside a
   // mounted overview must refetch it.
   useEffect(() => {
-    invoke<TaskSchema>('get_task_schema').then(setSchema).catch((e) => setLastError(String(e)));
+    invoke<TaskSchema>('get_task_schema', { shortId }).then(setSchema).catch((e) => setLastError(String(e)));
   }, [shortId, setLastError]);
 
   useEffect(load, [shortId]);
@@ -95,6 +95,7 @@ export function PropertyStrip({
           <PropField
             key={row.prop.name}
             row={row}
+            shortId={shortId}
             busy={busy === row.prop.name}
             onChange={(v) => write(row.prop.name, v)}
             onError={setLastError}

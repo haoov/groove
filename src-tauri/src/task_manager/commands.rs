@@ -197,29 +197,23 @@ async fn finish_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    let cfg = config::require()?;
-
-    // Mark the task done in Notion BEFORE any destructive teardown — if it
+    // Mark it done at the source BEFORE any destructive teardown — if that
     // fails, the workspace is still intact.
-    let page_id = task_page_id(pool, short_id).await?;
-    let done_status = cfg.notion.status_map.done.clone();
-    crate::provider::notion::tasks::set_status(
-        &cfg.notion.token,
-        &page_id,
-        &cfg.notion.properties.status,
-        &done_status,
-    )
-    .await?;
+    let (provider, key) = crate::provider::resolve(pool, short_id).await?;
+    provider.set_status(&key, crate::provider::types::StatusIntent::Done).await?;
 
+    let done_status = provider
+        .status_label(crate::provider::types::StatusIntent::Done)
+        .unwrap_or_else(|| "Done".to_string());
     store::provider_tasks::set_status(pool, short_id, &done_status).await?;
     tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
 
 /// A task the user is deleting outright, not finishing.
 ///
-/// Notion has no hard delete through the API: a page goes to the workspace's
-/// trash, where Notion keeps it for thirty days. The local teardown is the same
-/// one `finish_task` runs.
+/// What that means at the source is the provider's business — Notion trashes the
+/// page, which its workspace keeps for thirty days. The local teardown is the
+/// same one `finish_task` runs.
 #[tauri::command]
 pub async fn delete_task(
     app: tauri::AppHandle,
@@ -238,22 +232,14 @@ async fn delete_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    let cfg = config::require()?;
+    // Discard at the source BEFORE any local teardown, the order finish_task uses.
+    let (provider, key) = crate::provider::resolve(pool, short_id).await?;
+    provider.discard(&key).await?;
 
-    // Trash the page BEFORE any local teardown, the same order finish_task uses.
-    let page_id = task_page_id(pool, short_id).await?;
-    crate::provider::notion::tasks::trash(&cfg.notion.token, &page_id).await?;
-
-    tear_down_session(app, short_id, &cfg.notion.status_map.done, task_state, pool).await
-}
-
-/// The Notion page behind a task session. Explorers and reviews have none and
-/// are discarded, not finished.
-async fn task_page_id(pool: &SqlitePool, short_id: &str) -> anyhow::Result<String> {
-    let session = store::sessions::get(pool, short_id).await?;
-    session.external_id.ok_or_else(|| {
-        anyhow::anyhow!("{short_id} is a {:?} session — discard it instead", session.kind)
-    })
+    let done_status = provider
+        .status_label(crate::provider::types::StatusIntent::Done)
+        .unwrap_or_else(|| "Done".to_string());
+    tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
 
 /// Close a session locally: its worktree directories, its rows (one cascading
