@@ -236,7 +236,7 @@ function PayloadView({ op, payload, edits, setField }: {
             placeholder="Page body (markdown)"
           />
           <div className="cp-hint cp-hint--danger">
-            Replaces the whole Notion page body. Blocks markdown cannot represent are lost.
+            Replaces the whole task body. Anything markdown cannot represent is lost.
           </div>
         </>
       );
@@ -281,7 +281,7 @@ function PayloadView({ op, payload, edits, setField }: {
               BEFORE approval — it moves that session's worktrees and repos. */}
           <Field label="Converting" value={str('explorer_id')} mono />
           <div className="cp-hint">
-            Creates a Notion task, then moves this session's worktrees, repos, and annotations onto it.
+            Files a task, then moves this session's worktrees, repos, and annotations onto it.
           </div>
         </>
       );

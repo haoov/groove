@@ -117,7 +117,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     }
   };
 
-  // Finish (task → Notion done + teardown), delete (task, no Notion change) and
+  // Finish (task → done at its source + teardown), delete (local only) and
   // discard (explorer/review) all end in the same place: session gone, Home fresh.
   const runConfirmed = async (action: Exclude<LiveConfirm, null>) => {
     setConfirm(null);
@@ -214,9 +214,9 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
         <div className="detail-row confirm">
           <span>
             {confirm === 'finish'
-              ? `Finish ${entry.short_id}? Marks it done in Notion and removes its worktrees.`
+              ? `Finish ${entry.short_id}? Marks it done at its source and removes its worktrees.`
               : confirm === 'delete'
-                ? `Delete ${entry.short_id} locally? Notion is untouched; the worktrees are removed.`
+                ? `Delete ${entry.short_id} locally? Its source is untouched; the worktrees are removed.`
                 : `Discard ${entry.short_id} and delete its worktrees?`}
           </span>
           <button className="live-btn danger" onClick={() => runConfirmed(confirm)}>

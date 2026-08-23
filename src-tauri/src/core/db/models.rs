@@ -154,7 +154,7 @@ pub struct TimeSummary {
     pub logged_seconds: i64,
     #[ts(type = "number")]
     pub today_seconds: i64,
-    /// Measured but not yet written to Notion — what the log button offers.
+    /// Measured but not yet logged at the source — what the log button offers.
     #[ts(type = "number")]
     pub unlogged_seconds: i64,
 }

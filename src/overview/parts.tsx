@@ -3,7 +3,7 @@ import type { Mr, Repo, Worktree } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 
 // Ticket bodies render through the shared Markdown component now (the backend
-// converts Notion blocks to markdown), so this file only holds overview parts.
+// renders the task body), so this file only holds overview parts.
 
 /** One MR, beside its worktree: number + state, opening the forge. */
 function MrLine({ mr }: { mr: Mr }) {

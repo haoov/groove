@@ -103,6 +103,8 @@ pub fn run() {
             provider::create_task,
             provider::get_task_template_markdown,
             provider::preview_github,
+            task_manager::set_github_source,
+            task_manager::set_notion_source,
             // worktrees
             worktrees::register_repo,
             worktrees::list_main_repos,

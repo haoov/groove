@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { X, Check, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useStore } from '../shared/store';
+import { TaskSources } from './sources/TaskSources';
+import { AuthModal } from './AuthModal';
 import { THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, FONT_MIN, FONT_MAX, type ThemeName } from '../shared/ipc/ipc';
 import { COMMANDS, type CommandId } from '../shared/lib/keybindings';
 import { chordFromEvent, chordLabel, isModifierOnly, isTypingCharacter } from '../shared/lib/keys';
-import type { Environment } from '../shared/ipc/ipc';
+import type { Config, Environment } from '../shared/ipc/ipc';
 
 // Monospace faces shipped with the app (see main.tsx @fontsource imports). They are
 // always selectable even though the OS font list never reports them.
@@ -26,6 +28,9 @@ export function SettingsModal() {
   const open = useStore((s) => s.settingsOpen);
   const setOpen = useStore((s) => s.setSettingsOpen);
   const config = useStore((s) => s.config);
+  const setConfig = useStore((s) => s.setConfig);
+  const [authing, setAuthing] = useState<{ tool: 'glab' | 'gh'; mode: 'login' | 'scope' } | null>(null);
+
   const setTheme = useStore((s) => s.setTheme);
   const setFontSize = useStore((s) => s.setFontSize);
   const setFontFamily = useStore((s) => s.setFontFamily);
@@ -51,6 +56,11 @@ export function SettingsModal() {
     invoke<Environment>('check_environment').then(setEnv).catch(() => setEnv(null));
   }, []);
   useEffect(() => { if (open) loadEnv(); }, [open, loadEnv]);
+
+  const reloadConfig = useCallback(() => {
+    invoke<Config | null>('get_config').then((c) => { if (c) setConfig(c); }).catch(() => {});
+    loadEnv();
+  }, [setConfig, loadEnv]);
   useEffect(() => {
     if (!open || fonts) return;
     invoke<string[]>('list_fonts').then(setFonts).catch(() => setFonts([]));
@@ -91,8 +101,17 @@ export function SettingsModal() {
   const grouped = GROUP_ORDER.map((g) => ({ group: g, cmds: COMMANDS.filter((c) => c.group === g) }))
     .filter((x) => x.cmds.length > 0);
 
+  const authModal = authing && (
+    <AuthModal
+      tool={authing.tool}
+      mode={authing.mode}
+      onDone={() => { setAuthing(null); reloadConfig(); }}
+    />
+  );
+
   return (
     <div className="settings-overlay" onClick={close}>
+      {authModal}
       <div className="settings-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
           <span className="settings-title">Settings</span>
@@ -201,6 +220,19 @@ export function SettingsModal() {
                 <span className="settings-switch-knob" />
               </button>
             </label>
+          </section>
+
+          {/* Status and repair, not a second setup screen. The first-run screen is
+              unreachable once configured, so this is the only route to adding a
+              source to a machine that already has one. */}
+          <section className="settings-section">
+            <div className="settings-section-title">Task sources</div>
+            <TaskSources
+              config={config}
+              env={env}
+              onChanged={reloadConfig}
+              onNeedsScope={() => setAuthing({ tool: 'gh', mode: 'scope' })}
+            />
           </section>
 
           {/* The same check the first-run screen does. Kept reachable afterwards:

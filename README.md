@@ -5,7 +5,7 @@ repos, its branches, its diff, its merge request and an agent that can act on al
 them — so a piece of work stays in one place instead of a browser, a terminal and an
 editor that know nothing about each other.
 
-Groove reads your work from a Notion database and keeps a pool of git worktrees on
+Groove reads your work from Notion or GitHub and keeps a pool of git worktrees on
 disk. Opening a task checks out a branch in every repo the task touches; finishing it
 puts the worktrees away.
 
@@ -13,14 +13,14 @@ puts the worktrees away.
 
 ## What it does
 
-**Tasks come from Notion.** Home lists what is assigned to you, ordered by status,
+**Tasks come from Notion or GitHub.** Home lists what is assigned to you, ordered by status,
 alongside the merge requests waiting on your review. Opening one provisions a git
 worktree per repo, on a branch named after the task, and every panel from then on is
 scoped to it.
 
 **Sessions.** A *task* session is the normal case. A *review* session checks out
 someone else's MR against its real target branch. An *explorer* session is a scratch
-checkout with no task behind it, which can be turned into a Notion task later. The
+checkout with no task behind it, which can be turned into a real task later. The
 dock on the right lists them all, with what each agent is doing.
 
 **Source control, per task.** Changed files, staging, commit, push, rebase, and the
@@ -39,7 +39,7 @@ commits, its annotations, its MR. The agent reads all of that and proposes actio
 
 **Approvals.** Anything the agent does that leaves the machine or rewrites history
 stops for you first — `git` commit, push, pull, rebase, discard; MR create, update,
-close; and every Notion write. Nothing in that list happens without a click, unless
+close; and every task write. Nothing in that list happens without a click, unless
 you tell one session to allow everything: that is offered in the dialog, scoped to
 that session, gone when it closes, and shown in the agent's header while it is on.
 
@@ -62,7 +62,7 @@ Linux (Wayland and X11) and macOS 10.15+ are both supported.
 | **Claude Code** (`claude`) | Required. The agent console and the MCP tools. | both |
 | **curl** | Agent status (waiting / working / idle) in the dock. | both |
 | **glab**, authenticated | GitLab merge requests, threads, CI status. | both |
-| **gh**, authenticated | GitHub pull requests, threads, CI status. | both |
+| **gh**, authenticated | GitHub pull requests, threads, CI status. Also GitHub tasks, which additionally need the `project` scope. | both |
 | **wl-clipboard** / **xclip** / **xsel** | Copying out of the terminal panes. | Linux |
 | **libnotify** (`notify-send`) | Desktop notifications while the window is unfocused. | Linux |
 
@@ -194,7 +194,15 @@ building machine trusts its own ad-hoc signature and will pass either way.
 Groove opens a setup screen when it has no config. It asks for four things, and
 reads everything else off the database:
 
-1. **Notion integration token** — notion.so/my-integrations → your integration →
+Turn on at least one task source, and set a worktree root.
+
+**GitHub** needs nothing typed — `gh` already holds the credential. Switching it on
+shows what it can see: how many issues assigned to you sit on a board, which boards,
+and how many are on none and will therefore be skipped.
+
+**Notion** asks for four things:
+
+1. **Integration token** — notion.so/my-integrations → your integration →
    *Internal Integration Secret*. The task database must be shared with that
    integration (open the database → *…* → *Connections* → add it), or every read
    comes back empty.
@@ -204,12 +212,16 @@ reads everything else off the database:
    the workspace's people. Pasting a user id works too, but check it is a *user* id:
    a Notion page id has the same shape, and filtering on one silently matches no
    tasks. Leave it empty to see the whole database.
-4. **Worktree root** — the directory Groove owns. Point it at an empty directory
-   unless you already use the layout below.
+4. Optionally, a **task template page id**: the page whose body seeds a new task. It
+   is required to turn an explorer session into a Notion task, and it is checked when
+   you save, so a page the integration cannot read fails there rather than weeks
+   later.
 
-Optionally, a **task template page id**: the page whose body seeds a new task. It is
-required to turn an explorer session into a task, and it is checked when you save, so
-a page the integration cannot read fails there rather than weeks later.
+**Worktree root** — the directory Groove owns. Point it at an empty directory unless
+you already use the layout below.
+
+Sources can be added or removed later under **Settings → Task sources**; the setup
+screen is not reachable again once a config exists.
 
 That writes `~/.config/com.haoov.groove/workbench.config.json`; the
 screen prints the exact path.
@@ -239,6 +251,18 @@ to a task. Cloning something new is done from the app (`Alt+Shift+R`).
 An older root — `MAIN/` beside a task directory per task — is moved into this shape
 once, on first launch, with the git worktree links repaired and the recorded paths
 updated.
+
+### Task source: Notion or GitHub, or both
+
+Notion reads a database you point it at. GitHub needs no configuration beyond being
+switched on: a task is an **open issue assigned to you that sits on a Projects v2
+board**, and the board's own fields (Status, Priority, whatever else it has) become
+the task's properties. An issue on no board is deliberately not a task — that is the
+filter.
+
+Both can be on at once; their tasks share one queue. Enabling GitHub needs `gh`
+signed in with the `project` scope (`gh auth refresh -s project`) — the setup screen
+reports it and offers to run it for you.
 
 ### Notion property names are detected, not configured
 
@@ -335,7 +359,7 @@ where the agent console also lives.
 │  React + TypeScript           Rust                │
 │  ──────────────────           ────                │
 │  panes, editor, diff   ⇄IPC⇄  git worktrees       │
-│  sessions, dock               Notion client       │
+│  sessions, dock               task providers      │
 │  approvals UI                 glab / GitHub       │
 │                               SQLite (state)      │
 │                               PTYs (agent, term)  │
@@ -366,7 +390,7 @@ src/                     React app
   lib/                   pure logic (layout tree, keymap, diff gaps, matching)
 src-tauri/src/
   git_engine/            worktrees, diff, blame, base refs, status, ops
-  task_manager/          Notion sync, config, setup, sessions, repos
+  task_manager/          config, setup, sessions, repos, time
   mr_manager/            GitLab + GitHub clients
   agent_manager/         PTYs for the agent and terminals
   mcp_server/            the tools agents call

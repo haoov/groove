@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
+import { providerCopy } from '../shared/lib/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
 import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
@@ -28,13 +29,14 @@ export function TaskOverview() {
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
   /** Which ending is awaiting confirmation. Finishing marks the task Done;
-   *  deleting sends the Notion page to the trash. Both then tear the local
+   *  deleting discards it at the source. Both then tear the local
    *  workspace down, so they share one banner and one busy flag. */
   const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
-  /** Bumped after a Notion write so the panel and hours re-read the page. */
+  /** Bumped after a write so the panel and hours re-read the task. */
   const [hoursLogged, setHoursLogged] = useState('');
   const [schema, setSchema] = useState<TaskSchema | null>(null);
+  const src = providerCopy(activeTask);
   const [reloadNonce, setReloadNonce] = useState(0);
   const reload = () => setReloadNonce((n) => n + 1);
 
@@ -100,7 +102,7 @@ export function TaskOverview() {
             <button
               className="finish-task-btn ov-update"
               onClick={reload}
-              title="Re-read this task from Notion"
+              title={`Re-read this task from ${src.label}`}
             >
               <RefreshCw size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Update
@@ -117,7 +119,7 @@ export function TaskOverview() {
               className="finish-task-btn delete-task-btn"
               onClick={() => setEnding('delete')}
               disabled={finishing}
-              title="Send the Notion page to the trash and close the task here"
+              title={`Discard the ${src.item} and close the task here`}
             >
               <Trash2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Delete task
@@ -134,7 +136,7 @@ export function TaskOverview() {
         />
 
         {/* One banner for both endings — the local half is identical, so only the
-            sentence about Notion changes. */}
+            sentence about what changes at the source. */}
         {ending && (
           <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
             <div className="finish-confirm-icon">
@@ -148,8 +150,8 @@ export function TaskOverview() {
                 This will remove all local worktrees and delete task data from the local
                 database.{' '}
                 {ending === 'delete'
-                  ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
-                  : 'The task is marked Done in Notion.'}
+                  ? src.discard
+                  : src.finish}
               </p>
             </div>
             <div className="finish-confirm-actions">
@@ -172,6 +174,7 @@ export function TaskOverview() {
           <main className="overview-main">
             <BodyEditor
               taskId={activeTask.short_id}
+              source={src}
               markdown={body}
               loading={loading}
               onSaved={reload}

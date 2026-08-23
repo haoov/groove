@@ -42,7 +42,7 @@ impl Default for State {
 
 #[tauri::command]
 pub async fn get_config() -> Result<Option<ConfigView>, String> {
-    // A view, not the Config: the Notion token stays in Rust.
+    // A view, not the Config: a source token stays in Rust.
     Ok(config::get().map(ConfigView::from))
 }
 

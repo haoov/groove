@@ -140,7 +140,7 @@ export function useIpc() {
         await listen<WorkspaceReadyEvent>(EVENT.WORKSPACE_READY, ({ payload }) => {
           const s = useStore.getState();
           // Explorer sessions are local-only; keep their synthetic task out of the
-          // global task list so they never show on the Notion board.
+          // global task list so they never show in the queue.
           if ((payload.kind ?? 'task') === 'task') s.upsertTask(payload.task);
           s.openSession({
             kind: payload.kind ?? 'task',
@@ -248,7 +248,7 @@ export function useIpc() {
             return;
           }
 
-          // Success line for git/forge/notion actions.
+          // Success line for git/forge/task actions.
           const done = successToastFor(payload.op_type, payload.result);
           if (done) {
             s.notify({

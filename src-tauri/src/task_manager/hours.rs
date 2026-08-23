@@ -1,12 +1,12 @@
-//! Time spent on a session: measured locally, logged to Notion on purpose.
+//! Time spent on a session: measured locally, logged deliberately.
 //!
-//! The tracker never writes to Notion by itself. "Hours spent" is a number other
-//! people read, and a timer that quietly inflates it produces data nobody can
-//! trust — so the app accumulates seconds per day, shows what it measured, and
-//! waits for a figure you agree with. `time_entries` records what was measured,
-//! `time_logs` what was written; the difference is what is left to log.
-//! The Notion write itself lives in `notion::hours`.
-
+//! The tracker never writes to the task source by itself. An hours field is a
+//! number other people read, so it moves when you say so, not when a timer says
+//! so — and only for a source that has one.
+//!
+//! Two counters, never one: what was measured, and how much of it has been
+//! logged. The difference is what there is left to log, which is what makes
+//! logging idempotent.
 use sqlx::SqlitePool;
 
 use crate::core::db::models::{ActivityDay, TimeSummary};

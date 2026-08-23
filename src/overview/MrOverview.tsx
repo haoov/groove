@@ -41,7 +41,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
       await invoke('edit_mr_text', { mrId, description: draft });
       setEditingDesc(false);
       // Re-read so the rendered markdown matches what the forge now holds
-      // (the backend re-appends the Notion footer, so it is not what we sent).
+      // (the backend re-appends the task footer, so it is not what we sent).
       bumpMrs();
     } catch (e) {
       setError(String(e));
@@ -200,7 +200,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
                     placeholder="Markdown — ## What then ## Why"
                   />
                   <div className="mr-desc-actions">
-                    {/* The Notion link is re-appended by the backend, so it survives
+                    {/* The task link is re-appended by the backend, so it survives
                         an edit even though it is not in the box. */}
                     <span className="composer-note">Saved straight to the merge request.</span>
                     <button className="btn-secondary" onClick={() => setEditingDesc(false)} disabled={savingDesc}>

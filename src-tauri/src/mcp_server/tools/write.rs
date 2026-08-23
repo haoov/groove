@@ -1,6 +1,6 @@
 //! Tools that change something.
 //!
-//! Anything the user would want to see before it happens (git, MRs, Notion) goes
+//! Anything the user would want to see before it happens (git, MRs, tasks) goes
 //! through the confirmation bridge via `post_and_wait`; annotations are local and
 //! reversible, so they apply immediately and are pushed to the UI instead.
 
@@ -58,7 +58,7 @@ pub(super) async fn via_bridge(
 ) -> anyhow::Result<ToolCallResponse> {
     // Explorer sessions are scratch by policy: committing locally is fine, but
     // publishing (push, MR) means the work is real — convert to a task first so
-    // it exists in Notion. Scoped to those ops specifically: Notion writes and
+    // it is a real task. Scoped to those ops specifically: task writes and
     // task filing work fine from an explorer.
     const NEEDS_BRANCH: [&str; 4] = [
         crate::approvals::ops::GIT_PUSH,

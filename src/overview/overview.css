@@ -338,7 +338,7 @@
 
 .mr-fact-branches .overview-repo-branch { margin-left: 0; }
 
-/* ── Markdown / rich blocks (shared: Notion body + MR descriptions) ────────── */
+/* ── Markdown / rich blocks (shared: task body + MR descriptions) ─────────── */
 
 .markdown-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 
@@ -967,7 +967,7 @@
 
 /* ── MR description editor ─────────────────────────────────────────────────────
    Editing by hand goes straight to the forge (the agent's path still goes through
-   the confirmation). The Notion footer is re-appended by the backend, so it is
+   the confirmation). The task footer is re-appended by the backend, so it is
    deliberately not in the box.                                                 */
 
 .overview-section-action { margin-left: var(--space-3); font-weight: 400; }

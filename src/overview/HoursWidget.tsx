@@ -11,7 +11,7 @@ import type { TaskTime } from '../shared/ipc/ipc';
  *
  * The bar's filled portion is unlogged ÷ total known work: a real ratio, no
  * invented denominator. Logging is always explicit (see hours.rs) — a timer that
- * quietly wrote to a shared Notion number would produce data nobody could trust.
+ * quietly wrote to a shared number field would produce data nobody could trust.
  */
 
 /** Hours are logged to the quarter — nobody means 1.37 hours. */
@@ -32,7 +32,7 @@ export function HoursWidget({
   taskId: string;
   /** The field hours are logged to, or null when the source has none. */
   hoursProperty: string | null;
-  /** Current Notion value, read by the property strip. */
+  /** Current value at the source, read by the property strip. */
   logged: string;
   onLogged: () => void;
 }) {

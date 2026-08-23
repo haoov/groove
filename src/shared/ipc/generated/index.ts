@@ -26,7 +26,6 @@ export type { HomeRepo } from './HomeRepo';
 export type { Hunk } from './Hunk';
 export type { Mr } from './Mr';
 export type { NotionSetup } from './NotionSetup';
-export type { NotionTask } from './NotionTask';
 export type { NotionUser } from './NotionUser';
 export type { NotionView } from './NotionView';
 export type { PendingConfirmation } from './PendingConfirmation';

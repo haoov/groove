@@ -13,9 +13,10 @@ import { Markdown } from '../shared/ui/Markdown';
  * outright if the page holds anything unrepresentable.
  */
 export function BodyEditor({
-  taskId, markdown, loading, onSaved,
+  taskId, source, markdown, loading, onSaved,
 }: {
   taskId: string;
+  source: { label: string; bodyWarning: string | null };
   markdown: string;
   loading: boolean;
   onSaved: () => void;
@@ -42,7 +43,7 @@ export function BodyEditor({
         source: 'task',
         taskId,
         title: 'Body update queued for approval',
-        detail: 'Review the change, then approve it to write to Notion.',
+        detail: `Review the change, then approve it to write to ${source.label}.`,
       });
       setEditing(false);
       onSaved();
@@ -64,7 +65,7 @@ export function BodyEditor({
             <>
               <button className="home-link" disabled={saving || !dirty} onClick={save}>
                 {saving ? <Loader2 size={11} className="spin" /> : null}
-                save to Notion
+                save to {source.label}
               </button>
               <button className="home-link" onClick={() => setEditing(false)}>
                 <X size={11} strokeWidth={2} />
@@ -91,9 +92,8 @@ export function BodyEditor({
           />
           <p className="body-editor-hint">
             <Eye size={10} strokeWidth={2} />
-            Markdown. Saving replaces the page body — anything Notion holds that
-            markdown can&rsquo;t express (images, embeds, sub-databases) would be
-            lost, so the save is refused if the page has any.
+            Markdown. Saving replaces the whole body.
+            {source.bodyWarning && <> {source.bodyWarning}</>}
           </p>
         </>
       ) : loading ? (

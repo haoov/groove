@@ -8,7 +8,7 @@ import { ReviewsSection } from './ReviewsSection';
 import { ActivityPanel } from './ActivityPanel';
 
 /**
- * Home = what is locally real, not a mirror of the Notion board.
+ * Home = what is locally real, not a mirror of the task queue.
  *
  * A big tabbed panel on the left — Live (checked out), Up next (queued tasks)
  * and Reviews (MRs waiting on you), each tab showing its count. A shared filter

@@ -425,3 +425,31 @@ pub struct GithubSetup {
     /// github.com unless a GitHub Enterprise host is given.
     pub host: Option<String>,
 }
+
+/// Turn the GitHub source on or off after first run.
+///
+/// Existing installs never see the setup screen again, so this is the only route
+/// to adding a source to a machine that is already configured.
+#[tauri::command]
+pub async fn set_github_source(enabled: bool, host: Option<String>) -> Result<(), String> {
+    let mut cfg = crate::core::config::require().map_err(|e| e.to_string())?;
+    cfg.github = enabled.then(|| github_config(&GithubSetup { host }));
+    if cfg.notion.is_none() && cfg.github.is_none() {
+        return Err("That would leave no task source at all.".into());
+    }
+    crate::core::config::replace(cfg).map_err(|e| e.to_string())
+}
+
+/// Replace the Notion source, or remove it when `setup` is absent.
+#[tauri::command]
+pub async fn set_notion_source(setup: Option<NotionSetup>) -> Result<(), String> {
+    let mut cfg = crate::core::config::require().map_err(|e| e.to_string())?;
+    cfg.notion = match &setup {
+        Some(n) => Some(notion_config(n).await?),
+        None => None,
+    };
+    if cfg.notion.is_none() && cfg.github.is_none() {
+        return Err("That would leave no task source at all.".into());
+    }
+    crate::core::config::replace(cfg).map_err(|e| e.to_string())
+}

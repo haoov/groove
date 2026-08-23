@@ -13,7 +13,7 @@ import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
  * this would drift, and a task filed through a different-looking editor is exactly
  * the kind of seam that makes an app feel assembled rather than designed.
  *
- * Nothing here talks to a Notion page: every control takes a value and reports a
+ * Nothing here talks to a task source: every control takes a value and reports a
  * new one. The overview writes each change through immediately; the modal holds
  * them until the task exists.
  */
@@ -202,7 +202,7 @@ export function MultiRow({
       .catch((e) => onError(String(e)));
   }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
 
-  /** One write per burst of ticking, not one per tick (Notion allows ~3 req/s). */
+  /** One write per burst of ticking, not one per tick — sources rate-limit. */
   const stage = (ids: string[]) => {
     setDraft(ids);
     if (debounce === 0) return onChange(ids);
@@ -293,7 +293,7 @@ export function PropField({
   let display: string;
   if (isMulti) {
     // Before the options are fetched, titleOf can only echo the id, so fall back
-    // to the backend-resolved display (Notion already gave us the titles).
+    // to the backend-resolved display (the titles came with the schema).
     const joined = draft.map(titleOf).join(', ');
     display = draft.length ? (options ? joined : (current?.display || joined)) : '—';
   }

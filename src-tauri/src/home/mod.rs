@@ -1,6 +1,6 @@
 //! The Home snapshot: what is *locally real* right now.
 //!
-//! Home's job is the state Notion can't show — which sessions are checked out,
+//! Home's job is the state a task source can't show — which sessions are checked out,
 //! their repos/worktrees, and each MR's id + state. One SQL statement
 //! (store::home::snapshot) delivers every row, so a normal load is fully local;
 //! an explicit refresh (`force_mr`) additionally re-reads each MR's live state.
@@ -67,7 +67,7 @@ pub struct HomeEntry {
     pub short_id: String,
     pub title: String,
     pub status: String,
-    /// Notion priority ("High"/"Medium"/"Low"); None for synthetic sessions.
+    /// Priority as the source names it; None for synthetic sessions.
     pub priority: Option<String>,
     pub kind: SessionKind,
     pub repos: Vec<HomeRepo>,
