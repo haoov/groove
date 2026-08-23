@@ -10,6 +10,7 @@ mod home;
 mod launch_env;
 mod mcp_server;
 mod migrate_identity;
+mod platform;
 mod forge;
 mod notion;
 mod review;
@@ -157,6 +158,8 @@ pub fn run() {
             core::pty::resize_pty,
             // approvals
             approvals::resolve_confirmation,
+            // platform
+            platform::platform,
             // clipboard
             clipboard::copy_to_clipboard,
             clipboard::read_clipboard,
