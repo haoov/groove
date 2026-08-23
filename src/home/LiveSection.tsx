@@ -216,7 +216,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
             {confirm === 'finish'
               ? `Finish ${entry.short_id}? Marks it done at its source and removes its worktrees.`
               : confirm === 'delete'
-                ? `Delete ${entry.short_id} locally? Its source is untouched; the worktrees are removed.`
+                ? `Delete ${entry.short_id}? Closes it at its source and removes its worktrees.`
                 : `Discard ${entry.short_id} and delete its worktrees?`}
           </span>
           <button className="live-btn danger" onClick={() => runConfirmed(confirm)}>
