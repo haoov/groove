@@ -22,6 +22,14 @@ const CACHE_TTL_SECS: i64 = 300;
 /// Property types we can render AND write. Anything else is shown read-only
 /// rather than hidden — seeing a value you can't edit beats pretending it isn't
 /// there.
+/// Number properties hours are logged into. There is exactly one plausible name,
+/// and guessing wrong would silently write to the wrong column.
+pub(super) const HOURS_NAMES: [&str; 3] = ["Hours spent", "Hours", "Time spent"];
+
+/// Not fields the user sets: an id, a timestamp, a computed value.
+const META_KINDS: [&str; 6] =
+    ["title", "formula", "unique_id", "created_time", "last_edited_time", "rollup"];
+
 const WRITABLE: [&str; 9] = [
     "select",
     "status",
@@ -82,13 +90,14 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
                 .as_array()
                 .map(|opts| {
                     opts.iter()
-                        .filter_map(|o| o["name"].as_str().map(str::to_string))
+                        .filter_map(|o| o["name"].as_str().map(PropertyOption::named))
                         .collect()
                 })
                 .unwrap_or_default();
             let relation_db = def["relation"]["database_id"].as_str().map(str::to_string);
             PropertySchema {
                 editable: WRITABLE.contains(&kind.as_str()),
+                meta: META_KINDS.contains(&kind.as_str()),
                 name: name.clone(),
                 kind,
                 options,
@@ -110,11 +119,17 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
         .map(|def| parse_status_groups(&def["status"]))
         .unwrap_or_default();
 
+    let hours_property = properties
+        .iter()
+        .find(|p| p.kind == "number" && HOURS_NAMES.contains(&p.name.as_str()))
+        .map(|p| p.name.clone());
+
     Ok(TaskSchema {
         database_id: database_id.to_string(),
         title_property,
         properties,
         status_groups,
+        hours_property,
     })
 }
 
@@ -168,7 +183,7 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
 
 /// The configured task database's schema — drives the property panel.
 
-pub use crate::provider::types::RelationOption;
+pub use crate::provider::types::PropertyOption;
 
 /// Every row of a relation's target database, so the picker can filter locally.
 /// Paginates to a cap — a relation with thousands of rows wants a server-side
@@ -179,7 +194,7 @@ pub use crate::provider::types::RelationOption;
 pub(crate) async fn relation_options(
     token: &str,
     database_id: &str,
-) -> anyhow::Result<Vec<RelationOption>> {
+) -> anyhow::Result<Vec<PropertyOption>> {
     const MAX_PAGES: usize = 5;
     let rows = api::paginate_post(
         token,
@@ -189,7 +204,7 @@ pub(crate) async fn relation_options(
     )
     .await?;
 
-    let mut out: Vec<RelationOption> = rows
+    let mut out: Vec<PropertyOption> = rows
         .iter()
         .filter_map(|row| {
             // Find the title by TYPE, not by name: every database names it
@@ -209,7 +224,7 @@ pub(crate) async fn relation_options(
                         .unwrap_or_default()
                 })
                 .unwrap_or_default();
-            row["id"].as_str().map(|id| RelationOption { id: id.to_string(), title })
+            row["id"].as_str().map(|id| PropertyOption { id: id.to_string(), title })
         })
         .collect();
 
@@ -248,10 +263,9 @@ mod tests {
     fn options_and_relation_targets_come_from_notion() {
         let s = parse("db-1", &body()).expect("schema");
         assert_eq!(s.title_property, "Task name");
-        assert_eq!(
-            s.property("Priority").unwrap().options,
-            vec!["Low", "Medium", "High"]
-        );
+        let options: Vec<&str> =
+            s.property("Priority").unwrap().options.iter().map(|o| o.title.as_str()).collect();
+        assert_eq!(options, ["Low", "Medium", "High"]);
         // This is what replaces the hardcoded sprint database id.
         assert_eq!(
             s.relation_target("Sprint"),

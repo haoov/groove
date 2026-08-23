@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import {
-  AddField, PropField, hasValue, isHoursProperty, META_KINDS, type Row,
+  AddField, PropField, hasValue, type Row,
 } from '../shared/ui/propertyControls';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
@@ -18,16 +18,13 @@ import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
  */
 
 export function PropertyStrip({
-  shortId, onHoursValue, onHoursAvailable,
+  shortId, schema, onHoursValue,
 }: {
   shortId: string;
+  schema: TaskSchema | null;
   onHoursValue?: (display: string) => void;
-  /** Whether the task schema HAS an hours property. Hours render in the overview
-   *  side column now, not here — the parent needs this to show that panel. */
-  onHoursAvailable?: (available: boolean) => void;
 }) {
   const setLastError = useStore((s) => s.setLastError);
-  const [schema, setSchema] = useState<TaskSchema | null>(null);
   const [values, setValues] = useState<PropertyValue[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
@@ -36,17 +33,11 @@ export function PropertyStrip({
     invoke<PropertyValue[]>('get_task_properties', { shortId })
       .then((vs) => {
         setValues(vs);
-        const h = vs.find((v) => isHoursProperty(v.name, v.kind));
+        const h = schema?.hours_property && vs.find((v) => v.name === schema.hours_property);
         if (h && onHoursValue) onHoursValue(h.display);
       })
       .catch((e) => setLastError(String(e)));
   };
-
-  // Keyed on the task: a schema is per-source, so switching tasks inside a
-  // mounted overview must refetch it.
-  useEffect(() => {
-    invoke<TaskSchema>('get_task_schema', { shortId }).then(setSchema).catch((e) => setLastError(String(e)));
-  }, [shortId, setLastError]);
 
   useEffect(load, [shortId]);
 
@@ -63,9 +54,9 @@ export function PropertyStrip({
     }
   };
 
-  const { shown, unset, hasHours } = useMemo(() => {
+  const { shown, unset } = useMemo(() => {
     const rows: Row[] = (schema?.properties ?? [])
-      .filter((p) => !META_KINDS.includes(p.kind) && !isHoursProperty(p.name, p.kind))
+      .filter((p) => !p.meta && p.name !== schema?.hours_property)
       .map((p) => ({ prop: p, current: values.find((v) => v.name === p.name) }));
     // Columns, in schema order: editable props that carry a value (or were just
     // revealed), plus read-only computed props that have something to show.
@@ -77,14 +68,8 @@ export function PropertyStrip({
     const unsetRows = rows.filter(
       (r) => r.prop.editable && !hasValue(r.current) && !revealed.has(r.prop.name),
     );
-    return {
-      shown: shownRows,
-      unset: unsetRows,
-      hasHours: (schema?.properties ?? []).some((p) => p.editable && isHoursProperty(p.name, p.kind)),
-    };
+    return { shown: shownRows, unset: unsetRows };
   }, [schema, values, revealed]);
-
-  useEffect(() => { onHoursAvailable?.(hasHours); }, [hasHours]);
 
   if (!schema) return null;
 

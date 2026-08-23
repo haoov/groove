@@ -245,7 +245,7 @@ pub async fn detect_database(token: String, database_id: String) -> Result<Detec
             .properties
             .iter()
             .find(|p| p.name == props.status)
-            .map(|p| p.options.clone())
+            .map(|p| p.options.iter().map(|o| o.title.clone()).collect())
             .unwrap_or_default(),
     })
 }

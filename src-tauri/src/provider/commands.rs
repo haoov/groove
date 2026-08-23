@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 
 use super::types::{FetchedTask, TaskKey};
 use super::{enabled, mirror_row, resolve};
-use super::types::{PropertyValue, RelationOption, TaskSchema};
+use super::types::{PropertyValue, PropertyOption, TaskSchema};
 use crate::core::db::models::TaskView;
 use crate::core::db::store;
 
@@ -135,7 +135,7 @@ pub async fn list_relation_options(
     short_id: String,
     property: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<RelationOption>, String> {
+) -> Result<Vec<PropertyOption>, String> {
     async {
         let (provider, key) = resolve(&pool, &short_id).await?;
         provider.reference_options(&key, &property).await

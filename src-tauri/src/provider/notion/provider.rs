@@ -87,7 +87,7 @@ impl TaskProvider for NotionProvider {
         &self,
         _key: &TaskKey,
         property: &str,
-    ) -> anyhow::Result<Vec<RelationOption>> {
+    ) -> anyhow::Result<Vec<PropertyOption>> {
         let cfg = config::require()?;
         let schema = super::schema::load(&cfg.notion.token, &cfg.notion.database_id).await?;
         match schema.relation_target(property) {

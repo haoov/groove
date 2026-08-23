@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
+import type { TaskSchema } from '../shared/ipc/ipc';
 import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
@@ -33,7 +34,7 @@ export function TaskOverview() {
   const [finishing, setFinishing] = useState(false);
   /** Bumped after a Notion write so the panel and hours re-read the page. */
   const [hoursLogged, setHoursLogged] = useState('');
-  const [hoursAvailable, setHoursAvailable] = useState(false);
+  const [schema, setSchema] = useState<TaskSchema | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const reload = () => setReloadNonce((n) => n + 1);
 
@@ -47,6 +48,14 @@ export function TaskOverview() {
       .catch(() => setBody(''))
       .finally(() => setLoading(false));
   }, [activeTask?.short_id, reloadNonce]);
+
+  // Per task, not per mount: a schema belongs to the source the task came from.
+  useEffect(() => {
+    if (!activeTask) return;
+    invoke<TaskSchema>('get_task_schema', { shortId: activeTask.short_id })
+      .then(setSchema)
+      .catch(() => setSchema(null));
+  }, [activeTask?.short_id]);
 
   // Load MRs for all worktrees into local state — independent of the sidebar's
   // per-repo store so switching repos in the sidebar never clears this list.
@@ -120,8 +129,8 @@ export function TaskOverview() {
         <PropertyStrip
           key={reloadNonce}
           shortId={activeTask.short_id}
+          schema={schema}
           onHoursValue={setHoursLogged}
-          onHoursAvailable={setHoursAvailable}
         />
 
         {/* One banner for both endings — the local half is identical, so only the
@@ -170,13 +179,14 @@ export function TaskOverview() {
           </main>
 
           <aside className="overview-side">
-            {hoursAvailable && (
-              <HoursWidget
-                taskId={activeTask.short_id}
-                logged={hoursLogged}
-                onLogged={reload}
-              />
-            )}
+            {/* Always rendered: time is tracked locally whatever the source has.
+                hoursProperty null means there is nowhere to log it to. */}
+            <HoursWidget
+              taskId={activeTask.short_id}
+              hoursProperty={schema?.hours_property ?? null}
+              logged={hoursLogged}
+              onLogged={reload}
+            />
 
             {activeRepos.length > 0 && (
               <section className="overview-section">

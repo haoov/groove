@@ -9,11 +9,17 @@ pub struct PropertySchema {
     /// The shared type vocabulary — the frontend renders by this.
     pub kind: String,
     /// Allowed values for select / status / multi_select, in the provider's order.
-    pub options: Vec<String>,
+    ///
+    /// Carries ids as well as titles because GitHub's Projects v2 mutations take
+    /// the option id, not its name. Notion has no separate id and sets both.
+    pub options: Vec<PropertyOption>,
     /// Target database for a relation, so its rows can be offered as choices.
     pub relation_db: Option<String>,
     /// False for formulas, rollups and timestamps: displayable, not settable.
     pub editable: bool,
+    /// Not a field the user sets — an id, a timestamp, a computed value. Kept out
+    /// of the property strip.
+    pub meta: bool,
 }
 
 /// A status property's option groups, as the provider itself classifies them.
@@ -35,6 +41,9 @@ pub struct TaskSchema {
     pub title_property: String,
     pub properties: Vec<PropertySchema>,
     pub status_groups: Vec<StatusGroup>,
+    /// The number field hours are logged to, when this source has one. None means
+    /// time is tracked locally and written nowhere else.
+    pub hours_property: Option<String>,
 }
 
 impl TaskSchema {
@@ -49,12 +58,20 @@ impl TaskSchema {
     }
 }
 
-/// One choice for a relation property.
+/// One choice for a property: an option on a select, or a row of a relation.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct RelationOption {
+pub struct PropertyOption {
     pub id: String,
     pub title: String,
+}
+
+impl PropertyOption {
+    /// For a provider whose options are identified by their name.
+    pub fn named(title: impl Into<String>) -> Self {
+        let title = title.into();
+        Self { id: title.clone(), title }
+    }
 }
 
 /// One property as the panel sees it: what it is, its current value, and a

@@ -3,7 +3,7 @@ import { invoke } from '../ipc/invoke';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { statusKey } from '../lib/taskStatus';
 import { priorityRank } from '../lib/taskStatus';
-import type { PropertySchema, PropertyValue, RelationOption } from '../ipc/ipc';
+import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
 
 /**
  * The property controls themselves — pills, chip rows, popovers.
@@ -22,14 +22,6 @@ const RELATION_DEBOUNCE_MS = 800;
 
 export const SINGLE_KINDS = ['status', 'select', 'date', 'number'];
 export const MULTI_KINDS = ['relation', 'multi_select'];
-/** Read-only Notion meta fields — never a "property you set", so the overview
- *  strip leaves them out (created/edited time, the unique id, formulas, rollups). */
-export const META_KINDS = ['title', 'formula', 'unique_id', 'created_time', 'last_edited_time', 'rollup'];
-
-/** Hours has its own block — it's measured, not just stored (see hours.rs). */
-export const isHoursProperty = (name: string, kind: string) =>
-  kind === 'number' && /^(hours spent|hours|time spent)$/i.test(name);
-
 export function hasValue(v: PropertyValue | undefined): boolean {
   if (!v) return false;
   if (v.value === null || v.value === undefined || v.value === '') return false;
@@ -116,7 +108,7 @@ export function Pill({
           <div className="ppop-head">{prop.name}</div>
           {prop.kind === 'status' || prop.kind === 'select' ? (
             <OptionList
-              options={prop.options.map((o) => ({ id: o, title: o }))}
+              options={prop.options}
               selected={raw ? [String(raw)] : []}
               onPick={(id, on) => { onChange(on ? id : null); setOpen(false); }}
               allowClear={!!raw}
@@ -190,8 +182,8 @@ export function MultiRow({
 }) {
   const { prop, current } = row;
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<RelationOption[] | null>(
-    prop.kind === 'multi_select' ? prop.options.map((o) => ({ id: o, title: o })) : null,
+  const [options, setOptions] = useState<PropertyOption[] | null>(
+    prop.kind === 'multi_select' ? prop.options : null,
   );
   const selected = (current?.value as string[]) ?? [];
   const [draft, setDraft] = useState<string[]>(selected);
@@ -205,7 +197,7 @@ export function MultiRow({
   // Relation choices come from the target database, fetched once.
   useEffect(() => {
     if (options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { shortId, property: prop.name })
+    invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions)
       .catch((e) => onError(String(e)));
   }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
@@ -277,8 +269,8 @@ export function PropField({
   useOutsideClose(box, open, () => setOpen(false));
 
   // Multi-value state (relation / multi_select): fetched options + debounced write.
-  const [options, setOptions] = useState<RelationOption[] | null>(
-    prop.kind === 'multi_select' ? prop.options.map((o) => ({ id: o, title: o })) : null,
+  const [options, setOptions] = useState<PropertyOption[] | null>(
+    prop.kind === 'multi_select' ? prop.options : null,
   );
   const selected = isMulti ? ((raw as string[]) ?? []) : [];
   const [draft, setDraft] = useState<string[]>(selected);
@@ -287,7 +279,7 @@ export function PropField({
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   useEffect(() => {
     if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { shortId, property: prop.name })
+    invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions).catch((e) => onError(String(e)));
   }, [open, options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
   const stageMulti = (ids: string[]) => {
@@ -352,7 +344,7 @@ export function PropField({
               />
             ) : prop.kind === 'status' || prop.kind === 'select' ? (
               <OptionList
-                options={prop.options.map((o) => ({ id: o, title: o }))}
+                options={prop.options}
                 selected={raw ? [String(raw)] : []}
                 onPick={(id, on) => { onChange(on ? id : null); setOpen(false); }}
                 allowClear={!!raw}

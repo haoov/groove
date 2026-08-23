@@ -38,7 +38,7 @@ export type {
   PropertySchema,
   StatusGroup,
   TaskSchema,
-  RelationOption,
+  PropertyOption,
   PropertyValue,
   TimeSummary as TaskTime,
   ActivityDay,

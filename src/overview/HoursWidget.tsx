@@ -27,9 +27,11 @@ function human(seconds: number): string {
 }
 
 export function HoursWidget({
-  taskId, logged, onLogged,
+  taskId, hoursProperty, logged, onLogged,
 }: {
   taskId: string;
+  /** The field hours are logged to, or null when the source has none. */
+  hoursProperty: string | null;
   /** Current Notion value, read by the property strip. */
   logged: string;
   onLogged: () => void;
@@ -90,11 +92,13 @@ export function HoursWidget({
 
       <div className="time-body">
         <div className="time-figures">
-          <span className="time-logged">
-            <strong>{logged || '0'}</strong>
-            <span className="time-unit">h</span>
-            <span className="time-caption">logged</span>
-          </span>
+          {hoursProperty && (
+            <span className="time-logged">
+              <strong>{logged || '0'}</strong>
+              <span className="time-unit">h</span>
+              <span className="time-caption">logged</span>
+            </span>
+          )}
           <span className="time-tracked">
             {unlogged > 0
               ? <><strong>{human(unlogged)}</strong> tracked, not logged yet</>
@@ -104,16 +108,19 @@ export function HoursWidget({
           </span>
         </div>
 
-        <div className="time-bar" aria-hidden>
-          <span className="time-bar-fill" style={{ width: `${Math.min(100, fraction * 100)}%` }} />
-        </div>
+        {hoursProperty && (
+          <div className="time-bar" aria-hidden>
+            <span className="time-bar-fill" style={{ width: `${Math.min(100, fraction * 100)}%` }} />
+          </div>
+        )}
 
+        {hoursProperty && (
         <div className="time-actions">
           <button
             className="time-log"
             disabled={busy || suggestion <= 0}
             onClick={() => log(suggestion)}
-            title={suggestion > 0 ? `Add ${suggestion}h to Hours spent in Notion` : 'Nothing tracked to log'}
+            title={suggestion > 0 ? `Add ${suggestion}h to ${hoursProperty}` : 'Nothing tracked to log'}
           >
             {busy ? <Loader2 size={12} className="spin" /> : null}
             {suggestion > 0 ? `Log ${suggestion}h` : 'Nothing to log'}
@@ -136,6 +143,7 @@ export function HoursWidget({
             />
           </span>
         </div>
+        )}
       </div>
     </div>
   );

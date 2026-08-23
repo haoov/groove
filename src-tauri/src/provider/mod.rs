@@ -34,7 +34,7 @@ pub(crate) trait TaskProvider: Send + Sync {
         &self,
         key: &TaskKey,
         property: &str,
-    ) -> anyhow::Result<Vec<RelationOption>> {
+    ) -> anyhow::Result<Vec<PropertyOption>> {
         let _ = (key, property);
         Ok(vec![])
     }

@@ -97,7 +97,7 @@ pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
         .properties
         .iter()
         .find(|p| p.kind == "status")
-        .map(|p| p.options.clone())
+        .map(|p| p.options.iter().map(|o| o.title.clone()).collect())
         .unwrap_or_default();
 
     // No groups (a `select` used as a status, or an API surface that omits them):
@@ -121,9 +121,10 @@ mod tests {
 
     fn prop(name: &str, kind: &str, options: &[&str]) -> PropertySchema {
         PropertySchema {
+            meta: false,
             name: name.into(),
             kind: kind.into(),
-            options: options.iter().map(|s| s.to_string()).collect(),
+            options: options.iter().map(|o| crate::provider::types::PropertyOption::named(*o)).collect(),
             relation_db: None,
             editable: true,
         }
@@ -137,6 +138,7 @@ mod tests {
     /// and a Complete group holding four different completions.
     fn real() -> TaskSchema {
         TaskSchema {
+            hours_property: None,
             database_id: "db".into(),
             title_property: "Task name".into(),
             properties: vec![
@@ -187,6 +189,7 @@ mod tests {
     #[test]
     fn resolves_a_database_that_uses_other_words() {
         let schema = TaskSchema {
+            hours_property: None,
             database_id: "db".into(),
             title_property: "Name".into(),
             properties: vec![
@@ -232,6 +235,7 @@ mod tests {
     #[test]
     fn falls_back_to_every_option_when_there_are_no_groups() {
         let schema = TaskSchema {
+            hours_property: None,
             database_id: "db".into(),
             title_property: "Name".into(),
             properties: vec![
@@ -249,6 +253,7 @@ mod tests {
     #[test]
     fn an_empty_database_produces_empty_values_not_wrong_ones() {
         let schema = TaskSchema {
+            hours_property: None,
             database_id: "db".into(),
             title_property: "Name".into(),
             properties: vec![prop("Name", "title", &[])],
