@@ -1,0 +1,66 @@
+# Assembling the app is slow — a release build on top of the debug one CI already
+# did — and it only covers what `cargo test` and `pnpm build` do not: the bundler
+# itself, icons, and the platform config. Those change rarely, so this does not run
+# on every pull request.
+name: Bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'src-tauri/tauri*.conf.json'
+      - 'src-tauri/Cargo.toml'
+      - 'src-tauri/build.rs'
+      - 'src-tauri/icons/**'
+      - 'src-tauri/capabilities/**'
+      - 'package.json'
+      - '.github/workflows/bundle.yml'
+
+concurrency:
+  group: bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    name: bundle (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: System dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libappindicator3-dev patchelf build-essential
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          # Its own key: this builds --release, which shares nothing with the
+          # debug artifacts the test workflow caches.
+          prefix-key: bundle
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Bundle
+        run: pnpm tauri build --bundles ${{ matrix.os == 'macos-14' && 'app' || 'deb' }}
