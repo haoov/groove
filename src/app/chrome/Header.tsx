@@ -4,6 +4,7 @@ import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';
 import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
+import { isMac } from '../../shared/lib/platform';
 
 export function Header() {
   // The active session's title (task title, or MR name for reviews), centered as
@@ -80,7 +81,8 @@ export function Header() {
         >
           <Settings size={14} strokeWidth={1.75} />
         </button>
-        <WindowControls />
+        {/* macOS has its own traffic lights. */}
+        {!isMac() && <WindowControls />}
       </div>
     </header>
   );

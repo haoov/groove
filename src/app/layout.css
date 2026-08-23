@@ -134,6 +134,11 @@
   color: var(--gl-text-color-subtle);
 }
 
+/* Clear the traffic lights, which float over the top-left of the header. */
+[data-platform="macos"] .header {
+  padding-left: var(--wb-traffic-lights);
+}
+
 /* Center label: the active session's title, truncating so it never shoves the
    left pickers or the right controls. */
 .header-center {
