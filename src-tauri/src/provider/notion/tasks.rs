@@ -146,8 +146,8 @@ async fn queue_filter(cfg: &Config) -> serde_json::Value {
     }
 }
 
-/// Every queued task, mirrored locally in one transaction.
-async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
+/// Every queued task, straight from Notion. No local writes.
+pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<NotionTask>> {
     let cfg = config::require()?;
     let body = queue_filter(&cfg).await;
     let pages = super::api::paginate_post(
@@ -158,7 +158,7 @@ async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
     )
     .await?;
 
-    let tasks: Vec<NotionTask> = pages
+    Ok(pages
         .iter()
         .filter_map(|page| match page_to_task(page, &cfg.notion) {
             Ok(task) => Some(task),
@@ -167,7 +167,19 @@ async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
                 None
             }
         })
-        .collect();
+        .collect())
+}
+
+/// One page by id.
+pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<NotionTask> {
+    let cfg = config::require()?;
+    let page = super::api::get(&cfg.notion.token, &format!("v1/pages/{page_id}")).await?;
+    page_to_task(&page, &cfg.notion)
+}
+
+/// Every queued task, mirrored locally in one transaction.
+async fn list_tasks_impl(pool: &SqlitePool) -> anyhow::Result<Vec<TaskView>> {
+    let tasks = fetch_queue().await?;
 
     let mut tx = pool.begin().await?;
     for task in &tasks {

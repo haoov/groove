@@ -13,15 +13,9 @@ use crate::core::db::store;
 use super::page::{page_to_task, property_patch, read_value, PropertyValue};
 
 /// Every property of a task page, in schema order, with current values.
-#[tauri::command]
-pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyValue>, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let page = super::api::get(&cfg.notion.token, &format!("v1/pages/{notion_page_id}"))
-        .await
-        .map_err(|e| e.to_string())?;
-    let schema = super::schema::load(&cfg.notion.token, &cfg.notion.database_id)
-        .await
-        .map_err(|e| e.to_string())?;
+pub(crate) async fn read_all(cfg: &NotionConfig, page_id: &str) -> anyhow::Result<Vec<PropertyValue>> {
+    let page = super::api::get(&cfg.token, &format!("v1/pages/{page_id}")).await?;
+    let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
 
     Ok(schema
         .properties
@@ -32,6 +26,12 @@ pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyV
             PropertyValue { name: p.name.clone(), kind: p.kind.clone(), value, display }
         })
         .collect())
+}
+
+#[tauri::command]
+pub async fn get_task_properties(notion_page_id: String) -> Result<Vec<PropertyValue>, String> {
+    let cfg = config::require().map_err(|e| e.to_string())?;
+    read_all(&cfg.notion, &notion_page_id).await.map_err(|e| e.to_string())
 }
 
 /// Patch one property and re-sync the local task row.
@@ -66,6 +66,28 @@ pub(crate) async fn set_property(
         let _ = store::notion_tasks::upsert(pool, &task).await;
     }
 
+    let (_, display) = read_value(&prop.kind, &updated["properties"][property]);
+    Ok(display)
+}
+
+/// Patch one property without touching the local mirror.
+pub(crate) async fn patch_property(
+    cfg: &NotionConfig,
+    page_id: &str,
+    property: &str,
+    value: &serde_json::Value,
+) -> anyhow::Result<String> {
+    let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
+    let prop = schema
+        .property(property)
+        .ok_or_else(|| anyhow::anyhow!("{property} is not a property of this database"))?;
+    if !prop.editable {
+        anyhow::bail!("{property} is a {} — Notion computes it, so it can't be set", prop.kind);
+    }
+    let body = serde_json::json!({
+        "properties": { property: property_patch(&prop.kind, value)? }
+    });
+    let updated = super::api::patch(&cfg.token, &format!("v1/pages/{page_id}"), &body).await?;
     let (_, display) = read_value(&prop.kind, &updated["properties"][property]);
     Ok(display)
 }

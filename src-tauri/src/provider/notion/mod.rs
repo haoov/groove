@@ -12,6 +12,7 @@ pub mod hours;
 pub mod markdown;
 pub mod page;
 pub mod properties;
+mod provider;
 pub mod schema;
 pub mod tasks;
 pub mod users;
@@ -24,3 +25,5 @@ pub use properties::*;
 pub use schema::*;
 pub use tasks::*;
 pub use users::*;
+
+pub use provider::NotionProvider;

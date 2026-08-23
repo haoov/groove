@@ -10,7 +10,6 @@
 //!   relation                      → string[]  (page ids)
 //!   rich_text                     → string
 
-use serde::Serialize;
 
 use crate::core::config::NotionConfig;
 use crate::core::db::models::NotionTask;

@@ -12,7 +12,6 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 
-use serde::Serialize;
 
 use super::api;
 
@@ -186,17 +185,23 @@ pub use crate::provider::types::RelationOption;
 pub async fn list_relation_options(
     database_id: String,
 ) -> Result<Vec<RelationOption>, String> {
-    const MAX_PAGES: usize = 5;
     let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
+    relation_options(&cfg.notion.token, &database_id).await.map_err(|e| e.to_string())
+}
 
+/// Every row of a relation's target database, as pickable options.
+pub(crate) async fn relation_options(
+    token: &str,
+    database_id: &str,
+) -> anyhow::Result<Vec<RelationOption>> {
+    const MAX_PAGES: usize = 5;
     let rows = api::paginate_post(
-        &cfg.notion.token,
+        token,
         &format!("v1/databases/{database_id}/query"),
         &serde_json::json!({}),
         MAX_PAGES,
     )
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
     let mut out: Vec<RelationOption> = rows
         .iter()

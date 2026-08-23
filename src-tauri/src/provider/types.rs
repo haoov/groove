@@ -72,3 +72,165 @@ pub struct PropertyValue {
     /// Read-only rendering, used for formulas, rollups, people, timestamps.
     pub display: String,
 }
+
+// ─── Provider identity ────────────────────────────────────────────────────────
+// The allows come off as callers move onto the trait.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+#[serde(rename_all = "lowercase")]
+#[ts(rename_all = "lowercase")]
+#[allow(dead_code)]
+pub enum ProviderId {
+    Notion,
+    Github,
+}
+
+#[allow(dead_code)]
+impl ProviderId {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ProviderId::Notion => "notion",
+            ProviderId::Github => "github",
+        }
+    }
+}
+
+/// A task's identity at its source. `external_id` is the stored string form;
+/// the shapes are distinct enough that the provider is recoverable from it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum TaskKey {
+    Notion { page_id: String },
+    Github { host: String, owner: String, repo: String, number: i64 },
+}
+
+#[allow(dead_code)]
+impl TaskKey {
+    pub fn provider(&self) -> ProviderId {
+        match self {
+            TaskKey::Notion { .. } => ProviderId::Notion,
+            TaskKey::Github { .. } => ProviderId::Github,
+        }
+    }
+
+    /// `<page-uuid>` or `<host>/<owner>/<repo>#<number>`.
+    pub fn external_id(&self) -> String {
+        match self {
+            TaskKey::Notion { page_id } => page_id.clone(),
+            TaskKey::Github { host, owner, repo, number } => {
+                format!("{host}/{owner}/{repo}#{number}")
+            }
+        }
+    }
+
+    pub fn parse(external_id: &str) -> anyhow::Result<Self> {
+        let Some((path, number)) = external_id.rsplit_once('#') else {
+            return Ok(TaskKey::Notion { page_id: external_id.to_string() });
+        };
+        let parts: Vec<&str> = path.split('/').collect();
+        let [host, owner, repo] = parts[..] else {
+            anyhow::bail!("not a task id: {external_id}");
+        };
+        Ok(TaskKey::Github {
+            host: host.to_string(),
+            owner: owner.to_string(),
+            repo: repo.to_string(),
+            number: number.parse()?,
+        })
+    }
+}
+
+/// What the app asks for; the provider owns the label it writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum StatusIntent {
+    Ready,
+    InProgress,
+    Done,
+}
+
+/// What a provider can do. Serialized so the frontend can hide what is absent
+/// without knowing what a provider is.
+#[derive(Debug, Clone, Copy, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct Capabilities {
+    /// Writes hours to a field of its own. False does NOT mean time is
+    /// untracked — the local ledger is universal.
+    pub external_hours: bool,
+    pub template: bool,
+    pub create: bool,
+    pub editable_body: bool,
+    pub discard: bool,
+}
+
+/// One task as its provider reports it, before the store mints a short_id.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct FetchedTask {
+    pub key: TaskKey,
+    pub title: String,
+    pub status: String,
+    pub priority: Option<String>,
+    pub url: String,
+    /// The provider's own identifier, when it has one worth using ("PLAT-42").
+    pub natural_short_id: Option<String>,
+    /// Appended to branch names. Falls back to the short_id when absent.
+    pub branch_tag: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct TaskDraft<'a> {
+    pub title: &'a str,
+    pub body_markdown: &'a str,
+}
+
+#[allow(dead_code)]
+pub struct PropertyWrite {
+    pub display: String,
+}
+
+#[allow(dead_code)]
+pub struct HoursWrite {
+    pub before: f64,
+    pub after: f64,
+}
+
+#[allow(dead_code)]
+pub struct BodyWrite {
+    pub blocks_written: usize,
+    /// Content the provider holds that markdown cannot rebuild. Always empty
+    /// where the body is markdown already.
+    pub lossy: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_task_key_round_trips_through_its_external_id() {
+        for key in [
+            TaskKey::Notion { page_id: "24f1a2b3c4d5".into() },
+            TaskKey::Github {
+                host: "github.com".into(),
+                owner: "haoov".into(),
+                repo: "groove".into(),
+                number: 42,
+            },
+        ] {
+            let id = key.external_id();
+            assert_eq!(TaskKey::parse(&id).unwrap(), key, "{id}");
+        }
+    }
+
+    #[test]
+    fn the_provider_is_recoverable_from_the_id_alone() {
+        assert_eq!(TaskKey::parse("24f1a2b3c4d5").unwrap().provider(), ProviderId::Notion);
+        assert_eq!(
+            TaskKey::parse("github.com/haoov/groove#3").unwrap().provider(),
+            ProviderId::Github
+        );
+    }
+}

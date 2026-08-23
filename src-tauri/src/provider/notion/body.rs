@@ -125,13 +125,28 @@ pub async fn update_body_impl(
     _pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     let cfg = config::require()?;
-    let token = &cfg.notion.token;
     let page_id = payload["notion_page_id"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing notion_page_id"))?;
     let markdown = payload["markdown"].as_str().unwrap_or_default();
     let force = payload["force"].as_bool().unwrap_or(false);
 
+    let written = replace(&cfg.notion.token, page_id, markdown, force).await?;
+    Ok(serde_json::json!({
+        "ok": true,
+        "blocks_written": written.blocks_written,
+        "message": format!("Task body updated ({} blocks)", written.blocks_written),
+    }))
+}
+
+/// Replace the page body from markdown. Refuses when the page holds blocks
+/// markdown cannot rebuild, unless forced.
+pub(crate) async fn replace(
+    token: &str,
+    page_id: &str,
+    markdown: &str,
+    force: bool,
+) -> anyhow::Result<crate::provider::types::BodyWrite> {
     let existing = fetch_block_children(page_id, token).await?;
 
     let lossy = lossy_types(&existing);
@@ -177,12 +192,8 @@ pub async fn update_body_impl(
         }
     }
 
-    Ok(serde_json::json!({
-        "ok": true,
-        "blocks_written": appended,
-        "blocks_replaced": removed,
-        "message": format!("Task body updated ({appended} blocks)"),
-    }))
+    let _ = removed;
+    Ok(crate::provider::types::BodyWrite { blocks_written: appended, lossy })
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────
