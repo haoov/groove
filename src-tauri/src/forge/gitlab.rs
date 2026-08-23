@@ -6,7 +6,7 @@ use sqlx::SqlitePool;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
 
-use super::api::{self, gitlab_project_ref, pct};
+use crate::core::forge::api::{self, gitlab_project_ref, pct};
 use super::client::PlatformClient;
 
 fn project_ref(repo: &Repo) -> String {
