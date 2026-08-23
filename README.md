@@ -54,34 +54,51 @@ to replace your editor.
 
 ## Requirements
 
-| | Needed for |
-|---|---|
-| **git** ≥ 2.30 | Required. Worktrees, diffs, commits. |
-| **Claude Code** (`claude`) | Required. The agent console and the MCP tools. |
-| **curl** | Agent status (waiting / working / idle) in the dock. |
-| **glab**, authenticated | GitLab merge requests, threads, CI status. |
-| **gh**, authenticated | GitHub pull requests, threads, CI status. |
+Linux (Wayland and X11) and macOS 10.15+ are both supported.
 
-The setup screen reports whether each forge CLI is signed in, and offers to run
-`glab auth login` / `gh auth login` in a terminal inside the app.
-| **wl-clipboard** / **xclip** / **xsel** | Copying out of the terminal panes. |
-| **libnotify** (`notify-send`) | Desktop notifications while the window is unfocused. |
+| | Needed for | |
+|---|---|---|
+| **git** ≥ 2.30 | Required. Worktrees, diffs, commits. | both |
+| **Claude Code** (`claude`) | Required. The agent console and the MCP tools. | both |
+| **curl** | Agent status (waiting / working / idle) in the dock. | both |
+| **glab**, authenticated | GitLab merge requests, threads, CI status. | both |
+| **gh**, authenticated | GitHub pull requests, threads, CI status. | both |
+| **wl-clipboard** / **xclip** / **xsel** | Copying out of the terminal panes. | Linux |
+| **libnotify** (`notify-send`) | Desktop notifications while the window is unfocused. | Linux |
 
-Linux is the supported platform (Wayland and X11). None of this is checked at build
-time: the app reports what is missing on first run, and again under
-**Settings → This machine**.
+The last two have no macOS entry because there is nothing to install: `pbcopy` and
+`osascript` ship with the OS.
+
+Note that Claude Code's **CLI** is what is needed, which is a separate install from
+the desktop app. On macOS everything else is `brew install git gh glab`.
+
+None of this is checked at build time: the app reports what is missing on first run,
+and again under **Settings → This machine**. The setup screen also reports whether
+each forge CLI is signed in, and offers to run `glab auth login` / `gh auth login` in
+a terminal inside the app.
 
 ---
 
 ## Install
 
-### As a package
+### As a package — Linux
 
 ```sh
 pnpm install
 pnpm tauri build --bundles deb        # or: rpm, appimage
 sudo apt install ./src-tauri/target/release/bundle/deb/Groove_*_amd64.deb
 ```
+
+### As a package — macOS
+
+```sh
+pnpm install
+pnpm tauri build --bundles app,dmg
+open src-tauri/target/release/bundle/dmg/Groove_*.dmg
+```
+
+An unsigned local build is ad-hoc signed, which is fine on the machine that built it
+and refused by Gatekeeper anywhere else. See **Releasing** for the signed path.
 
 ### From source
 
@@ -90,10 +107,85 @@ pnpm install
 pnpm tauri dev
 ```
 
-Building needs the Rust toolchain and the usual Tauri 2 system libraries
+Building needs the Rust toolchain, plus on Linux the usual Tauri 2 system libraries
 (`libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `librsvg2-dev`, `patchelf`,
 `build-essential`) — see
-[tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/).
+[tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/). macOS needs
+only the Xcode Command Line Tools (`xcode-select --install`); `pnpm` is not bundled
+with recent Node, so `npm install -g pnpm` first if it is missing.
+
+### Platform differences
+
+The window is frameless on Linux and draws its own controls; on macOS it is a normal
+decorated window with the traffic lights over the header, configured by
+`src-tauri/tauri.macos.conf.json`.
+
+Shortcuts are the same on both, with one exception. Shortcuts use Alt/Option, but
+macOS composes a character out of every Option+letter, so four commands whose Linux
+chord is punctuation take a letter there instead:
+
+| | Linux | macOS |
+|---|---|---|
+| Command palette | `Alt+Shift+:` | `⌥⇧K` |
+| Terminal dock | `Alt+'` | `⌥J` |
+| Split pane right | `Alt+Shift+\|` | `⌥D` |
+| Split pane down | `Alt+-` | `⌥⇧D` |
+
+One consequence worth knowing: because Option is how macOS types `é`, `ü` and the
+rest, an Option chord runs its command even inside a text field. That is the same
+bargain Linux already makes with Alt. Rebind anything in **Settings → Keyboard
+shortcuts**.
+
+---
+
+## Releasing (macOS)
+
+A local `pnpm tauri build` is **ad-hoc signed**: it runs on the machine that built
+it and Gatekeeper refuses it anywhere else. Shipping needs an Apple Developer
+Program membership, a *Developer ID Application* certificate, and notarization.
+
+Build for both architectures — the default build is whatever the machine is, so an
+Apple Silicon build alone leaves Intel Macs out:
+
+```sh
+rustup target add x86_64-apple-darwin
+pnpm tauri build --target universal-apple-darwin --bundles app,dmg
+```
+
+If that fails with `can't find crate for 'core'` naming a target you just added,
+the Rust on PATH is not the one rustup manages — a Homebrew `rust` shadows it, and
+`rustup target add` installed the target somewhere the build never looks. Check with
+`which cargo`; `~/.cargo/bin` has to come first:
+
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+Signing and notarization are driven entirely by environment variables; Tauri picks
+them up with no config change. Certificate:
+
+| | |
+|---|---|
+| `APPLE_CERTIFICATE` |  | the `.p12`, base64 encoded |
+| `APPLE_CERTIFICATE_PASSWORD` |  | its export password |
+| `APPLE_SIGNING_IDENTITY` |  | the identity name, e.g. `Developer ID Application: … (TEAMID)` |
+| `KEYCHAIN_PASSWORD` |  | CI only, for the temporary keychain |
+
+Notarization, either an App Store Connect API key (`APPLE_API_ISSUER`,
+`APPLE_API_KEY`, `APPLE_API_KEY_PATH`) or an Apple ID (`APPLE_ID`,
+`APPLE_PASSWORD` — an app-specific password, not the account one — and
+`APPLE_TEAM_ID`).
+
+Then verify the result is actually accepted, which is the only check that catches a
+signature that exists but is not trusted:
+
+```sh
+codesign -dv --verbose=4 src-tauri/target/release/bundle/macos/Groove.app
+spctl -a -vvv src-tauri/target/release/bundle/macos/Groove.app
+```
+
+`spctl` must say *accepted*. Confirm on a Mac that never saw the build — the
+building machine trusts its own ad-hoc signature and will pass either way.
 
 ---
 
@@ -193,37 +285,41 @@ session mixing GitLab and GitHub repos works with no extra setup.
 Every binding is editable in **Settings → Keyboard shortcuts**, and matches the
 character you type, so non-QWERTY layouts keep working.
 
-| Chord | Does |
-|---|---|
-| `Alt+Shift+:` | Command palette |
-| `Alt+F` | Find file (search bar) |
-| `Alt+Shift+F` | Search in files |
-| `Ctrl+,` | Open settings |
-| `Alt+E` | Files tree |
-| `Alt+G` | Source control |
-| `Ctrl+Shift+A` | Annotations |
-| `Ctrl+Tab` | Cycle git sub-mode |
-| `Alt+Shift+C` | Write a commit message |
-| `Alt+T` | Home |
-| `Ctrl+N` | Notifications |
-| `Alt+Shift+N` | Next session tab |
-| `Alt+S` | Sessions dock (open / focus) |
-| `Alt+Shift+P` | Previous session tab |
-| `Alt+'` | Terminal dock (open / focus / close) |
-| `Alt+A` | Agent console (open / focus) |
-| `` Alt+Shift+\| `` | Split pane right |
-| `Alt+-` | Split pane down |
-| `Alt+Shift+W` | Close pane |
-| `Alt+O` | Focus next pane |
-| `Alt+M` | Maximize / restore pane |
-| `Alt+N` | Next file tab |
-| `Alt+P` | Previous file tab |
-| `Alt+W` | Close file tab |
-| `Alt+R` | Switch repo |
-| `Alt+Shift+R` | Add a repo to this session |
-| `Alt+C` | Focus editor |
-| `Alt+Shift+V` | Toggle Vim mode |
-| `Alt+B` | Toggle blame gutter |
+The macOS column is only filled in where the chord differs. Four do, because Option
+composes a character out of the punctuation they use there — see
+**Platform differences**.
+
+| Chord | macOS | Does |
+|---|---|---|
+| `Alt+Shift+:` | `⌥⇧K` | Command palette |
+| `Alt+F` |  | Find file (search bar) |
+| `Alt+Shift+F` |  | Search in files |
+| `Ctrl+,` |  | Open settings |
+| `Alt+E` |  | Files tree |
+| `Alt+G` |  | Source control |
+| `Ctrl+Shift+A` |  | Annotations |
+| `Ctrl+Tab` |  | Cycle git sub-mode |
+| `Alt+Shift+C` |  | Write a commit message |
+| `Alt+T` |  | Home |
+| `Ctrl+N` |  | Notifications |
+| `Alt+Shift+N` |  | Next session tab |
+| `Alt+S` |  | Sessions dock (open / focus) |
+| `Alt+Shift+P` |  | Previous session tab |
+| `Alt+'` | `⌥J` | Terminal dock (open / focus / close) |
+| `Alt+A` |  | Agent console (open / focus) |
+| `` Alt+Shift+\| `` | `⌥D` | Split pane right |
+| `Alt+-` | `⌥⇧D` | Split pane down |
+| `Alt+Shift+W` |  | Close pane |
+| `Alt+O` |  | Focus next pane |
+| `Alt+M` |  | Maximize / restore pane |
+| `Alt+N` |  | Next file tab |
+| `Alt+P` |  | Previous file tab |
+| `Alt+W` |  | Switch worktree |
+| `Alt+R` |  | Switch repo |
+| `Alt+Shift+R` |  | Add a repo to this session |
+| `Alt+C` |  | Focus editor |
+| `Alt+Shift+V` |  | Toggle Vim mode |
+| `Alt+B` |  | Toggle blame gutter |
 
 Panels are three-state: the shortcut opens, then focuses, then closes. Lists take
 `j`/`k` and `Enter`. Terminals live in one dock at the bottom — splitting it gives
