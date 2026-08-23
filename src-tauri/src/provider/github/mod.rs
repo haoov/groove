@@ -43,27 +43,24 @@ impl GithubProvider {
             // Only the issue number goes in the branch — a branch is scoped to one
             // repo, so the rest of the id would be noise.
             branch_tag: Some(item.number.to_string()),
+            board: Some(item.board.clone()),
         }
     }
 
-    /// The board item behind a task, and the board it came from. When an issue is
-    /// on several configured boards the first one listed wins, so its fields do not
-    /// flip between syncs.
+    /// The board item behind a task.
     async fn item_for(
         &self,
         cfg: &config::GithubConfig,
         key: &TaskKey,
-    ) -> anyhow::Result<(String, projects::BoardItem)> {
+    ) -> anyhow::Result<projects::BoardItem> {
         let (_, owner, repo, number) = issue_of(key)?;
-        for project in &cfg.projects {
-            let items = projects::board_items(cfg, &project.id).await?;
-            if let Some(item) =
-                items.into_iter().find(|i| i.owner == owner && i.repo == repo && i.number == number)
-            {
-                return Ok((project.id.clone(), item));
-            }
-        }
-        anyhow::bail!("{owner}/{repo}#{number} is not on any configured board")
+        projects::assigned_issues(cfg)
+            .await?
+            .into_iter()
+            .find(|i| i.owner == owner && i.repo == repo && i.number == number)
+            .ok_or_else(|| {
+                anyhow::anyhow!("{owner}/{repo}#{number} is not an open issue assigned to you on a board")
+            })
     }
 }
 
@@ -95,36 +92,29 @@ impl TaskProvider for GithubProvider {
 
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> {
         let cfg = config::github()?;
-        let mut out: Vec<FetchedTask> = Vec::new();
-
-        for project in &cfg.projects {
-            for item in projects::board_items(&cfg, &project.id).await? {
-                let task = self.fetched(&cfg, &item);
-                // First board listed wins, so a shared issue does not flip fields.
-                if !out.iter().any(|t| t.key == task.key) {
-                    out.push(task);
-                }
-            }
-        }
-        Ok(out)
+        Ok(projects::assigned_issues(&cfg)
+            .await?
+            .iter()
+            .map(|item| self.fetched(&cfg, item))
+            .collect())
     }
 
     async fn fetch_task(&self, key: &TaskKey) -> anyhow::Result<FetchedTask> {
         let cfg = config::github()?;
-        let (_, item) = self.item_for(&cfg, key).await?;
+        let item = self.item_for(&cfg, key).await?;
         Ok(self.fetched(&cfg, &item))
     }
 
     async fn schema(&self, key: &TaskKey) -> anyhow::Result<TaskSchema> {
         let cfg = config::github()?;
-        let (project_id, _) = self.item_for(&cfg, key).await?;
-        schema::board_schema(&cfg, &project_id).await
+        let item = self.item_for(&cfg, key).await?;
+        schema::board_schema(&cfg, &item.project_id).await
     }
 
     async fn properties(&self, key: &TaskKey) -> anyhow::Result<Vec<PropertyValue>> {
         let cfg = config::github()?;
-        let (project_id, item) = self.item_for(&cfg, key).await?;
-        let schema = schema::board_schema(&cfg, &project_id).await?;
+        let item = self.item_for(&cfg, key).await?;
+        let schema = schema::board_schema(&cfg, &item.project_id).await?;
 
         Ok(schema
             .properties
@@ -164,10 +154,10 @@ impl TaskProvider for GithubProvider {
         let label = self
             .status_label(intent)
             .ok_or_else(|| anyhow::anyhow!("no status configured for {intent:?}"))?;
-        let (project_id, item) = self.item_for(&cfg, key).await?;
+        let item = self.item_for(&cfg, key).await?;
         fields::set_field(
             &cfg,
-            &project_id,
+            &item.project_id,
             &item.item_id,
             &cfg.properties.status,
             &serde_json::json!(label),
@@ -189,15 +179,15 @@ impl TaskProvider for GithubProvider {
         value: &serde_json::Value,
     ) -> anyhow::Result<PropertyWrite> {
         let cfg = config::github()?;
-        let (project_id, item) = self.item_for(&cfg, key).await?;
+        let item = self.item_for(&cfg, key).await?;
         let display =
-            fields::set_field(&cfg, &project_id, &item.item_id, property, value).await?;
+            fields::set_field(&cfg, &item.project_id, &item.item_id, property, value).await?;
         Ok(PropertyWrite { display })
     }
 
     async fn body_markdown(&self, key: &TaskKey) -> anyhow::Result<String> {
         let cfg = config::github()?;
-        let (_, item) = self.item_for(&cfg, key).await?;
+        let item = self.item_for(&cfg, key).await?;
         Ok(item.body)
     }
 
@@ -217,8 +207,8 @@ impl TaskProvider for GithubProvider {
 
     async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
         let cfg = config::github()?;
-        let (project_id, item) = self.item_for(&cfg, key).await?;
-        let schema = schema::board_schema(&cfg, &project_id).await?;
+        let item = self.item_for(&cfg, key).await?;
+        let schema = schema::board_schema(&cfg, &item.project_id).await?;
         let name = schema
             .hours_property
             .ok_or_else(|| anyhow::anyhow!("this board has no hours field"))?;
@@ -230,7 +220,7 @@ impl TaskProvider for GithubProvider {
             .and_then(|f| f.value.as_f64())
             .unwrap_or(0.0);
         let after = before + hours;
-        fields::set_field(&cfg, &project_id, &item.item_id, &name, &serde_json::json!(after))
+        fields::set_field(&cfg, &item.project_id, &item.item_id, &name, &serde_json::json!(after))
             .await?;
         Ok(HoursWrite { before, after })
     }
@@ -245,20 +235,17 @@ impl TaskProvider for GithubProvider {
         let (owner, repo) = slug
             .split_once('/')
             .ok_or_else(|| anyhow::anyhow!("expected owner/repo, got {slug}"))?;
-        let project = cfg
-            .projects
-            .first()
-            .ok_or_else(|| anyhow::anyhow!("no board configured to file onto"))?;
+        let project_id = issues::repo_board(&cfg, owner, repo).await?;
 
         let (number, url, node_id) =
             issues::create(&cfg, owner, repo, draft.title, draft.body_markdown).await?;
-        let item_id = issues::add_to_board(&cfg, &project.id, &node_id).await?;
+        let item_id = issues::add_to_board(&cfg, &project_id, &node_id).await?;
 
-        let status = self.status_label(StatusIntent::Ready).unwrap_or_default();
+        let status = fields::status_for(&cfg, &project_id, StatusIntent::Ready).await;
         if !status.is_empty() {
             fields::set_field(
                 &cfg,
-                &project.id,
+                &project_id,
                 &item_id,
                 &cfg.properties.status,
                 &serde_json::json!(status),
@@ -279,6 +266,7 @@ impl TaskProvider for GithubProvider {
             url,
             natural_short_id: None,
             branch_tag: Some(number.to_string()),
+            board: None,
         })
     }
 }

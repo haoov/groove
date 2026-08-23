@@ -23,6 +23,7 @@ impl NotionProvider {
             priority: task.priority.clone(),
             natural_short_id: Some(task.short_id.clone()),
             branch_tag: None,
+            board: None,
         }
     }
 }
@@ -173,6 +174,7 @@ impl TaskProvider for NotionProvider {
             priority: None,
             natural_short_id: Some(short_id),
             branch_tag: None,
+            board: None,
         })
     }
 }

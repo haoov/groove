@@ -102,8 +102,7 @@ pub fn run() {
             provider::request_task_body_update,
             provider::create_task,
             provider::get_task_template_markdown,
-            provider::list_github_projects,
-            provider::detect_github_project,
+            provider::preview_github,
             // worktrees
             worktrees::register_repo,
             worktrees::list_main_repos,

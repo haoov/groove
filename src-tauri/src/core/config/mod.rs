@@ -72,26 +72,19 @@ pub struct NotionConfig {
 
 /// No token: `gh auth token` owns it, and check_environment already reports gh's
 /// state. That also means GithubConfig needs no token-stripped view type.
+///
+/// No boards either: a task is an issue assigned to you that sits on any board, so
+/// there is nothing to nominate.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GithubConfig {
     /// github.com, or a GitHub Enterprise hostname.
     pub host: String,
-    /// The boards whose items are tasks, in precedence order: an issue on several
-    /// takes its fields from the first one listed.
-    pub projects: Vec<ProjectRef>,
     pub properties: GithubPropertyNames,
+    /// A fallback for the labels the app writes. Each board has its own vocabulary,
+    /// so a write reads the board's own options first and only falls back here.
     pub status_map: StatusMap,
     pub filters: FilterConfig,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct ProjectRef {
-    /// The GraphQL node id.
-    pub id: String,
-    /// For display, and so a stale id is recognisable.
-    pub title: String,
 }
 
 /// The board fields the app drives, by name. Everything else is just a property.

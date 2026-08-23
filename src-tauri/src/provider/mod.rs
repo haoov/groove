@@ -110,7 +110,7 @@ pub(crate) fn mirror_row(
         synced_at: chrono::Utc::now().timestamp(),
         provider: task.key.provider().as_str().to_string(),
         url: Some(task.url.clone()),
-        board: None,
+        board: task.board.clone(),
         branch_tag: task.branch_tag.clone(),
     }
 }

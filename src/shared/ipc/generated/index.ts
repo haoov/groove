@@ -16,6 +16,7 @@ export type { FileLines } from './FileLines';
 export type { FilterConfig } from './FilterConfig';
 export type { GitConfig } from './GitConfig';
 export type { GithubConfig } from './GithubConfig';
+export type { GithubPreview } from './GithubPreview';
 export type { GithubProject } from './GithubProject';
 export type { GithubPropertyNames } from './GithubPropertyNames';
 export type { GithubSetup } from './GithubSetup';

@@ -188,6 +188,9 @@ pub struct FetchedTask {
     pub natural_short_id: Option<String>,
     /// Appended to branch names. Falls back to the short_id when absent.
     pub branch_tag: Option<String>,
+    /// Which board supplied the fields, when the source has more than one place
+    /// they could have come from.
+    pub board: Option<String>,
 }
 
 #[derive(Debug, Clone)]

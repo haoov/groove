@@ -197,3 +197,51 @@ mod tests {
         );
     }
 }
+
+/// The label this board uses for an intent.
+///
+/// Read off the board rather than the config: each board names its own columns,
+/// and with no board nominated there is no single vocabulary to have detected at
+/// setup. The config value is the fallback for a board whose names match nothing.
+pub(super) async fn status_for(
+    cfg: &GithubConfig,
+    project_id: &str,
+    intent: crate::provider::types::StatusIntent,
+) -> String {
+    use crate::provider::types::StatusIntent;
+
+    let configured = match intent {
+        StatusIntent::Ready => &cfg.status_map.ready,
+        StatusIntent::InProgress => &cfg.status_map.in_progress,
+        StatusIntent::Done => &cfg.status_map.done,
+    };
+
+    let Ok(def) = field_def(cfg, project_id, &cfg.properties.status).await else {
+        return configured.clone();
+    };
+    let options: Vec<String> = def.options.iter().map(|(n, _)| n.clone()).collect();
+    let detected = crate::provider::detect::detect_status_map(&crate::provider::types::TaskSchema {
+        database_id: project_id.to_string(),
+        title_property: "Title".into(),
+        properties: vec![crate::provider::types::PropertySchema {
+            name: cfg.properties.status.clone(),
+            kind: "status".into(),
+            options: options
+                .iter()
+                .map(crate::provider::types::PropertyOption::named)
+                .collect(),
+            relation_db: None,
+            editable: true,
+            meta: false,
+        }],
+        status_groups: vec![],
+        hours_property: None,
+    });
+
+    let picked = match intent {
+        StatusIntent::Ready => detected.ready,
+        StatusIntent::InProgress => detected.in_progress,
+        StatusIntent::Done => detected.done,
+    };
+    if picked.is_empty() { configured.clone() } else { picked }
+}

@@ -88,3 +88,34 @@ pub(super) async fn add_to_board(
         .unwrap_or_default()
         .to_string())
 }
+
+const REPO_BOARDS: &str = r#"
+query($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) {
+    projectsV2(first: 5) { nodes { id title } }
+  }
+}
+"#;
+
+/// The first board the repo is linked to. A filed issue has to land on one, or it
+/// would never come back from list_tasks.
+pub(super) async fn repo_board(
+    cfg: &GithubConfig,
+    owner: &str,
+    repo: &str,
+) -> anyhow::Result<String> {
+    let res = api::github_graphql(
+        &cfg.host,
+        REPO_BOARDS,
+        serde_json::json!({ "owner": owner, "repo": repo }),
+    )
+    .await?;
+    res["data"]["repository"]["projectsV2"]["nodes"]
+        .as_array()
+        .and_then(|n| n.first())
+        .and_then(|p| p["id"].as_str())
+        .map(str::to_string)
+        .ok_or_else(|| {
+            anyhow::anyhow!("{owner}/{repo} is not linked to a board, so a new issue would not become a task")
+        })
+}

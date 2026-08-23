@@ -7,8 +7,8 @@
 use serde::Serialize;
 
 use crate::core::config::{
-    Config, FilterConfig, GitConfig, GithubConfig, GithubPropertyNames, NotionConfig, ProjectRef,
-    StatusMap, UiConfig,
+    Config, FilterConfig, GitConfig, GithubConfig, GithubPropertyNames, NotionConfig, StatusMap,
+    UiConfig,
 };
 
 /// An external program the app shells out to.
@@ -378,22 +378,25 @@ async fn notion_config(n: &NotionSetup) -> Result<NotionConfig, String> {
     })
 }
 
-/// A board needs no validation round trip: the setup screen only offers boards
-/// `list_github_projects` already returned.
+/// Nothing to validate: there is no board to nominate, and gh already holds the
+/// credential. The field names are Projects v2's own defaults and are corrected in
+/// the config file if a board names them differently.
 fn github_config(g: &GithubSetup) -> GithubConfig {
     GithubConfig {
         host: g.host.clone().unwrap_or_else(|| "github.com".to_string()),
-        projects: vec![ProjectRef { id: g.project_id.clone(), title: g.project_title.clone() }],
         properties: GithubPropertyNames {
             status: "Status".into(),
             priority: Some("Priority".into()),
             iteration: None,
         },
-        status_map: g.status_map.clone(),
-        filters: FilterConfig {
-            exclude_statuses: vec![g.status_map.done.clone()].into_iter().filter(|s| !s.is_empty()).collect(),
-            filter_by_assignee: true,
+        // Each board names its own columns, so a write reads them off the board and
+        // only falls back to this.
+        status_map: StatusMap {
+            ready: "Ready".into(),
+            in_progress: "In progress".into(),
+            done: "Done".into(),
         },
+        filters: FilterConfig { exclude_statuses: vec!["Done".into()], filter_by_assignee: true },
     }
 }
 
@@ -419,8 +422,6 @@ pub struct NotionSetup {
 #[derive(Debug, serde::Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GithubSetup {
-    pub project_id: String,
-    pub project_title: String,
+    /// github.com unless a GitHub Enterprise host is given.
     pub host: Option<String>,
-    pub status_map: StatusMap,
 }

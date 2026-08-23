@@ -1,7 +1,6 @@
 import type { DetectedSchema } from '../../shared/ipc/ipc';
 
-/** What the app read off a task source, shown before it is saved. Shared by both
- *  source forms so neither can describe a detection the other does not. */
+/** What the app read off a task source, shown before it is saved. */
 export function DetectedPanel({ detected, note }: { detected: DetectedSchema; note: string }) {
   return (
     <div className="firstrun-detected">

@@ -3,7 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
-import { GithubSetup, type GithubDraft } from './sources/GithubSetup';
+import { GithubSetup } from './sources/GithubSetup';
 import { DetectedPanel } from './sources/DetectedPanel';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
@@ -33,7 +33,6 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   /** Which forge CLI is being signed in, if any. */
   const [notionOn, setNotionOn] = useState(false);
   const [githubOn, setGithubOn] = useState(false);
-  const [github, setGithub] = useState<GithubDraft>({ projectId: '', projectTitle: '', statusMap: { ready: '', in_progress: '', done: '' } });
   const [authing, setAuthing] = useState<{ tool: 'glab' | 'gh'; mode: 'login' | 'scope' } | null>(null);
   const [busy, setBusy] = useState<'users' | 'detect' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,12 +93,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
             user_id: whoMatch.kind === 'user' || whoMatch.kind === 'raw' ? whoMatch.id : '',
             template_page_id: template.trim() || null,
           } : null,
-          github: githubOn ? {
-            project_id: github.projectId,
-            project_title: github.projectTitle,
-            host: null,
-            status_map: github.statusMap,
-          } : null,
+          github: githubOn ? { host: null } : null,
         },
       });
       const cfg = await invoke<Config | null>('get_config');
@@ -126,16 +120,11 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
         : { kind: 'unknown' as const };
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
 
-  // An enabled-but-empty source blocks saving; at least one must be filled in.
+  // An enabled-but-empty source blocks saving; at least one must be on. GitHub has
+  // nothing to fill in, so enabling it is enough.
   const notionFilled = !!token.trim() && !!databaseId.trim();
-  const githubFilled = !!github.projectId;
-  const anySource = (notionOn && notionFilled) || (githubOn && githubFilled);
-  const canSave =
-    (!notionOn || notionFilled) &&
-    (!githubOn || githubFilled) &&
-    anySource &&
-    !!root.trim() &&
-    busy === null;
+  const anySource = (notionOn && notionFilled) || githubOn;
+  const canSave = (!notionOn || notionFilled) && anySource && !!root.trim() && busy === null;
 
   return (
     <div className="firstrun">
@@ -350,11 +339,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
             </label>
           </h2>
           {githubOn && (
-            <GithubSetup
-              value={github}
-              onChange={setGithub}
-              onNeedsScope={() => loadEnv()}
-            />
+            <GithubSetup onNeedsScope={loadEnv} />
           )}
         </section>
 
