@@ -16,7 +16,14 @@ export function ExplorerOverview() {
   // The prompt itself lives in lib/prompts (shared with the agent pill), and
   // sendToAgent starts the agent if there isn't one — waiting on its SessionStart
   // hook rather than guessing how long Claude takes to boot.
-  const createTaskFromSession = async () => {
+  // Naming the source is only needed when there is a choice; with one set up the
+  // backend infers it.
+  const sources = useStore((s) => {
+    const c = s.config;
+    return [c?.notion ? 'notion' : null, c?.github ? 'github' : null].filter(Boolean) as string[];
+  });
+
+  const createTaskFromSession = async (provider?: string) => {
     if (!activeTask) return;
     const action = actionsFor('explorer').find((a) => a.id === 'create-task');
     if (!action) return;
@@ -26,6 +33,7 @@ export function ExplorerOverview() {
         shortId: activeTask.short_id,
         kind: 'explorer',
         project: activeRepos[0]?.project,
+        provider,
       }));
     } catch (e) {
       setLastError(String(e));
@@ -45,10 +53,28 @@ export function ExplorerOverview() {
           <h1 className="overview-title">{activeTask.title}</h1>
           <span className="overview-badge">explorer</span>
           <span className="overview-spring" />
-          <button className="finish-task-btn" onClick={createTaskFromSession} title="Draft a Notion task from this session via the agent">
-            <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-            Create task from this session
-          </button>
+          {sources.length > 1 ? (
+            sources.map((src) => (
+              <button
+                key={src}
+                className="finish-task-btn"
+                onClick={() => createTaskFromSession(src)}
+                title={`Draft a task in ${src} from this session via the agent`}
+              >
+                <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+                Create task in {src}
+              </button>
+            ))
+          ) : (
+            <button
+              className="finish-task-btn"
+              onClick={() => createTaskFromSession()}
+              title="Draft a task from this session via the agent"
+            >
+              <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+              Create task from this session
+            </button>
+          )}
         </header>
 
         <section className="overview-section">
@@ -76,8 +102,8 @@ export function ExplorerOverview() {
           <h3 className="overview-section-title">Turn this into a task</h3>
           <p className="overview-empty-body">
             When this exploration is worth tracking, “Create task from this session” asks the agent to draft a
-            Notion task (mirroring your template) from what you've done here. After you approve it, this session
-            becomes that task — keeping the agent conversation and worktrees intact.
+            task (mirroring your template, where the source has one) from what you've done here. After you
+            approve it, this session becomes that task — keeping the agent conversation and worktrees intact.
           </p>
         </section>
       </div>

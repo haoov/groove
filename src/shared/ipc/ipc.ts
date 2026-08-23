@@ -18,6 +18,7 @@ import type {
   Worktree,
   Repo,
   SessionKind,
+  GithubConfig,
   NotionView,
   GitConfig,
 } from './generated';
@@ -100,8 +101,10 @@ export const FONT_MAX = 18;
 /** `theme` narrowed to the themes the CSS actually ships. */
 export type UiConfig = Omit<GUiConfig, 'theme'> & { theme: ThemeName };
 
+/** Mirrors ConfigView: a task source is absent when it is not set up. */
 export interface Config {
-  notion: NotionConfig;
+  notion: NotionConfig | null;
+  github: GithubConfig | null;
   git: GitConfig;
   ui: UiConfig;
 }

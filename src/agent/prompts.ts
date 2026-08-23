@@ -21,6 +21,8 @@ export interface PromptContext {
   project?: string;
   /** MR number as `!42`, when the session has one. */
   mrNumber?: string;
+  /** Which task source to file at. Only needed when more than one is set up. */
+  provider?: string;
 }
 
 /** A button in the pill: a label plus the prompt it sends. */
@@ -40,9 +42,12 @@ const coReview = (ctx: PromptContext) =>
   'Skip style nits and anything you would phrase as "consider…".\n';
 
 const createTask = (ctx: PromptContext) =>
-  `Create a Notion task from our work in explorer session ${ctx.shortId}. Call ` +
-  'get_task_template first, then create_task_from_explorer with a one-line title and ' +
-  "a body under that template's headings.\n";
+  `File a task from our work in explorer session ${ctx.shortId}` +
+  (ctx.provider ? ` in ${ctx.provider}` : '') +
+  '. Call get_task_template first, then create_task_from_explorer with a one-line ' +
+  "title and a body under that template's headings" +
+  (ctx.provider ? ` and provider "${ctx.provider}"` : '') +
+  '.\n';
 
 // Chat output, not a tool field — so the shape guidance has to be here.
 const summarize = (ctx: PromptContext) =>
@@ -68,7 +73,7 @@ const ACTIONS: Record<SessionKind, AgentAction[]> = {
     { id: 'fix-notes', label: 'fix notes', title: 'Fix the open annotations', build: reviewFixes },
   ],
   explorer: [
-    { id: 'create-task', label: 'create task', title: 'Draft a Notion task from this session', build: createTask },
+    { id: 'create-task', label: 'create task', title: 'Draft a task from this session', build: createTask },
     { id: 'summarize', label: 'summarize', title: 'Explain the current change', build: summarize },
   ],
   task: [
