@@ -16,15 +16,15 @@ pub const MR_CREATE: &str = "mr.create";
 pub const MR_UPDATE: &str = "mr.update";
 pub const MR_CLOSE: &str = "mr.close";
 
-/// Set any editable Notion property (agent-initiated; the UI writes directly).
-pub const NOTION_PROPERTY: &str = "notion.property";
-/// Add hours to the task's "Hours spent" number.
-pub const NOTION_HOURS: &str = "notion.hours";
-/// Replace the task page's body from markdown — gated even from the UI, because
-/// it can delete blocks markdown cannot represent.
-pub const NOTION_BODY: &str = "notion.body";
+/// Set any editable task property (agent-initiated; the UI writes directly).
+pub const TASK_PROPERTY: &str = "task.property";
+/// Add hours to the task's hours field.
+pub const TASK_HOURS: &str = "task.hours";
+/// Replace the task's body from markdown — gated even from the UI, because it can
+/// delete content markdown cannot represent.
+pub const TASK_BODY: &str = "task.body";
 
-/// File a new task in Notion without opening or provisioning anything.
+/// File a new task without opening or provisioning anything.
 pub const TASK_CREATE: &str = "task.create";
 /// Attach an already-cloned repo to a task and provision its worktree.
 pub const TASK_ADD_REPO: &str = "task.add_repo";
@@ -42,9 +42,9 @@ const ALL: [&str; 15] = [
     MR_CREATE,
     MR_UPDATE,
     MR_CLOSE,
-    NOTION_PROPERTY,
-    NOTION_HOURS,
-    NOTION_BODY,
+    TASK_PROPERTY,
+    TASK_HOURS,
+    TASK_BODY,
     TASK_CREATE,
     TASK_ADD_REPO,
     TASK_CREATE_FROM_EXPLORER,
@@ -163,7 +163,7 @@ pub(super) async fn execute(
             crate::forge::close_mr_impl(payload, pool).await?;
             Ok(op_ok(op_type, "Merge request closed"))
         }
-        NOTION_PROPERTY => {
+        TASK_PROPERTY => {
             let out = crate::notion::update_property_impl(payload, pool).await?;
             let prop = out["property"].as_str().unwrap_or("property").to_string();
             let value = out["value"].as_str().unwrap_or("").to_string();
@@ -173,13 +173,13 @@ pub(super) async fn execute(
                 format!("{prop} set to \"{value}\"")
             }))
         }
-        NOTION_HOURS => {
+        TASK_HOURS => {
             let out = crate::task_manager::log_hours_impl(payload, pool).await?;
             let (before, after) =
                 (out["before"].as_f64().unwrap_or(0.0), out["after"].as_f64().unwrap_or(0.0));
             Ok(op_ok(op_type, format!("Hours spent {before} → {after}")))
         }
-        NOTION_BODY => {
+        TASK_BODY => {
             // Carries its own message (block counts).
             crate::notion::update_body_impl(payload, pool).await
         }

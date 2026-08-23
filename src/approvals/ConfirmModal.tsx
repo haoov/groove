@@ -12,9 +12,9 @@ const OP_LABELS: Record<string, string> = {
   [OP.MR_CREATE]:   'Create MR',
   [OP.MR_UPDATE]:   'Update MR',
   [OP.MR_CLOSE]:    'Close MR',
-  [OP.NOTION_PROPERTY]: 'Update Notion property',
-  [OP.NOTION_HOURS]: 'Log hours to Notion',
-  [OP.NOTION_BODY]: 'Update task description',
+  [OP.TASK_PROPERTY]: 'Update task property',
+  [OP.TASK_HOURS]: 'Log hours',
+  [OP.TASK_BODY]: 'Update task description',
   [OP.TASK_CREATE]: 'Create task',
   [OP.TASK_ADD_REPO]: 'Add repo to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
@@ -34,9 +34,9 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.MR_CREATE]:   <GitPullRequest size={14} strokeWidth={1.75} />,
   [OP.MR_UPDATE]:   <RefreshCw    size={14} strokeWidth={1.75} />,
   [OP.MR_CLOSE]:    <X            size={14} strokeWidth={1.75} />,
-  [OP.NOTION_PROPERTY]: <Tag size={14} strokeWidth={1.75} />,
-  [OP.NOTION_HOURS]: <Clock size={14} strokeWidth={1.75} />,
-  [OP.NOTION_BODY]: <FileText size={14} strokeWidth={1.75} />,
+  [OP.TASK_PROPERTY]: <Tag size={14} strokeWidth={1.75} />,
+  [OP.TASK_HOURS]: <Clock size={14} strokeWidth={1.75} />,
+  [OP.TASK_BODY]: <FileText size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
@@ -205,7 +205,7 @@ function PayloadView({ op, payload, edits, setField }: {
         </>
       );
 
-    case OP.NOTION_PROPERTY: {
+    case OP.TASK_PROPERTY: {
       const v = payload.value;
       return (
         <>
@@ -216,7 +216,7 @@ function PayloadView({ op, payload, edits, setField }: {
       );
     }
 
-    case OP.NOTION_HOURS:
+    case OP.TASK_HOURS:
       return (
         <>
           <Field label="Hours" value={String(payload.hours ?? '')} mono />
@@ -224,7 +224,7 @@ function PayloadView({ op, payload, edits, setField }: {
         </>
       );
 
-    case OP.NOTION_BODY:
+    case OP.TASK_BODY:
       return (
         <>
           <Field label="Task" value={str('task_id')} mono />
@@ -325,7 +325,7 @@ export function ConfirmModal() {
       seed.title = String(p.title ?? '');
       seed.body_markdown = String(p.body_markdown ?? '');
     }
-    if (current.op_type === OP.NOTION_BODY) seed.markdown = String(p.markdown ?? '');
+    if (current.op_type === OP.TASK_BODY) seed.markdown = String(p.markdown ?? '');
     setEdits(seed);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

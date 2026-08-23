@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
   AlertTriangle, Bell, Bot, Check, CheckCircle2, Copy, Expand, FileText, GitBranch,
-  GitPullRequest, Info, Plug, StickyNote, X, type LucideIcon,
+  GitPullRequest, Info, ListTodo, Plug, X, type LucideIcon,
 } from 'lucide-react';
 import { goToSession } from '../shared/lib/goToSession';
 import { useStore } from '../shared/store';
@@ -29,7 +29,7 @@ const SOURCE_ICON: Record<NotificationSource, LucideIcon> = {
   mcp: Plug,
   git: GitBranch,
   mr: GitPullRequest,
-  notion: StickyNote,
+  task: ListTodo,
   files: FileText,
   app: Info,
 };

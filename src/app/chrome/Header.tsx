@@ -56,7 +56,7 @@ export function Header() {
           className="btn-sync"
           onClick={handleSync}
           disabled={syncStatus === 'syncing'}
-          title="Sync tasks from Notion"
+          title="Sync tasks"
         >
           {syncStatus === 'syncing'
             ? <span className="btn-sync-spinner" />

@@ -62,7 +62,7 @@ export function HoursWidget({
       });
       notify({
         kind: 'success',
-        source: 'notion',
+        source: 'task',
         taskId,
         title: `Logged ${hours}h — Hours spent ${r.before} → ${r.after}`,
       });

@@ -12,9 +12,9 @@ export const OP = {
   MR_UPDATE: 'mr.update',
   MR_CLOSE: 'mr.close',
 
-  NOTION_PROPERTY: 'notion.property',
-  NOTION_HOURS: 'notion.hours',
-  NOTION_BODY: 'notion.body',
+  TASK_PROPERTY: 'task.property',
+  TASK_HOURS: 'task.hours',
+  TASK_BODY: 'task.body',
 
   TASK_CREATE: 'task.create',
   TASK_ADD_REPO: 'task.add_repo',
@@ -25,3 +25,5 @@ export const OP = {
 export const OP_GIT_PREFIX = 'git.';
 /** Op_type prefix for merge-request operations (create/update/close). */
 export const OP_MR_PREFIX = 'mr.';
+/** Op_type prefix for task operations, whichever provider the task came from. */
+export const OP_TASK_PREFIX = 'task.';

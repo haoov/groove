@@ -7,7 +7,7 @@ import { openTask, priorityLabel, priorityRank } from './helpers';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { Task } from '../shared/ipc/ipc';
 
-// Up next = the queued Notion tasks not yet checked out. Columns: id · name ·
+// Up next = the queued tasks not yet checked out. Columns: id · name ·
 // priority · status. Reviews live in their own tab now.
 
 const HIDDEN_KEY = 'wb.homeHiddenTasks';
@@ -90,7 +90,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
             setRefreshing(true);
             try { await loadTasks(); } finally { setRefreshing(false); }
           }}
-          title="Refresh tasks from Notion"
+          title="Refresh tasks"
         >
           <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
           refresh
@@ -145,7 +145,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               setMenu(null);
             }}
           >
-            Sync from Notion
+            Sync
           </button>
           <button className="context-item" onClick={() => { toggleHidden(menu.task.short_id); setMenu(null); }}>
             {hidden.has(menu.task.short_id) ? 'Unhide' : 'Hide from Up next'}

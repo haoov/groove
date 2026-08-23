@@ -367,7 +367,7 @@ pub(super) async fn update_task_property(
         "property": property,
         "value": input["value"].clone(),
     });
-    bridged(state, crate::approvals::ops::NOTION_PROPERTY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, &task_id).await
 }
 
 /// Add hours to the task's "Hours spent". Adds — never replaces.
@@ -386,7 +386,7 @@ pub(super) async fn log_task_hours(
     let payload = serde_json::json!({
         "notion_page_id": page_id, "task_id": task_id, "hours": hours,
     });
-    bridged(state, crate::approvals::ops::NOTION_HOURS, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
 }
 
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
@@ -407,7 +407,7 @@ pub(super) async fn update_task_body(
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),
     });
-    bridged(state, crate::approvals::ops::NOTION_BODY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_BODY, payload, &task_id).await
 }
 
 /// Post a pre-built payload and map the outcome — the tail every gated write

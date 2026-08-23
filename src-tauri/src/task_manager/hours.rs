@@ -91,7 +91,7 @@ pub async fn log_task_hours(
         .map_err(|e| e.to_string())
 }
 
-/// Confirmation-bridge path for `notion.hours` (agent-initiated).
+/// Confirmation-bridge path for `task.hours` (agent-initiated).
 pub async fn log_hours_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

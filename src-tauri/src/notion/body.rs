@@ -116,7 +116,7 @@ fn lossy_types(blocks: &[serde_json::Value]) -> Vec<String> {
     found
 }
 
-/// Confirmation-bridge path for `notion.body`.
+/// Confirmation-bridge path for `task.body`.
 ///
 /// Gated even when it comes from the UI: it is the one Notion write that can
 /// destroy content the app never showed you.
@@ -217,7 +217,7 @@ pub async fn request_task_body_update(
     bridge
         .post(
             &pool,
-            crate::approvals::ops::NOTION_BODY,
+            crate::approvals::ops::TASK_BODY,
             serde_json::json!({
                 "notion_page_id": notion_page_id,
                 "task_id": task_id,

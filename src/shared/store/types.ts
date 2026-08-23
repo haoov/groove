@@ -230,7 +230,7 @@ export type SidebarTab = 'files' | 'git' | 'annotations';
 export type NotificationKind = 'success' | 'error' | 'attention' | 'info';
 
 /** Who produced it — drives the icon and lets the feed be scanned by subsystem. */
-export type NotificationSource = 'agent' | 'mcp' | 'git' | 'mr' | 'notion' | 'files' | 'app';
+export type NotificationSource = 'agent' | 'mcp' | 'git' | 'mr' | 'task' | 'files' | 'app';
 
 export interface NotificationInput {
   kind: NotificationKind;

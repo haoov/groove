@@ -119,7 +119,7 @@ async fn batch_patch(
 }
 
 /// UI path: you clicked it, so it happens. Agent writes go through the
-/// confirmation bridge instead (op `notion.property`).
+/// confirmation bridge instead (op `task.property`).
 #[tauri::command]
 pub async fn update_task_property(
     notion_page_id: String,
@@ -133,7 +133,7 @@ pub async fn update_task_property(
         .map_err(|e| e.to_string())
 }
 
-/// Confirmation-bridge path for `notion.property` (agent-initiated).
+/// Confirmation-bridge path for `task.property` (agent-initiated).
 pub async fn update_property_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

@@ -7,7 +7,7 @@ import { Markdown } from '../shared/ui/Markdown';
 /**
  * The task body: rendered markdown, or the raw markdown to edit by hand.
  *
- * Saving does NOT write directly. It queues a confirmation (op `notion.body`)
+ * Saving does NOT write directly. It queues a confirmation (op `task.body`)
  * because replacing a page's children can destroy blocks markdown cannot express
  * — the modal is where you see what is about to change, and the backend refuses
  * outright if the page holds anything unrepresentable.
@@ -40,7 +40,7 @@ export function BodyEditor({
       });
       notify({
         kind: 'info',
-        source: 'notion',
+        source: 'task',
         taskId,
         title: 'Body update queued for approval',
         detail: 'Review the change, then approve it to write to Notion.',

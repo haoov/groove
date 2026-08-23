@@ -1,4 +1,4 @@
-// Notion status names, normalized.
+// Task status names, normalized.
 //
 // Boards name their statuses freely ("Ready for sprint", "Fixed with required
 // action"), so anything that colours or orders by status has to map the label to a
