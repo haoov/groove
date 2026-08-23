@@ -302,7 +302,8 @@ pub async fn write_initial_config(
     }
 
     let cfg = Config {
-        notion: NotionConfig {
+        github: None,
+        notion: Some(NotionConfig {
             token: token.trim().to_string(),
             database_id: database_id.trim().to_string(),
             user_id: user_id.trim().to_string(),
@@ -314,7 +315,7 @@ pub async fn write_initial_config(
             },
             task_template_page_id: template,
             default_project_id: None,
-        },
+        }),
         git: GitConfig { worktree_root: root },
         ui: UiConfig::default(),
     };

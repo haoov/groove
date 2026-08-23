@@ -148,8 +148,7 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    let cfg = crate::core::config::require()?;
-    let n = &cfg.notion;
+    let n = crate::core::config::notion()?;
 
     // NOTE: no notion token here — secrets are injected by `execute_op` at
     // execution time so they never sit in persisted/emitted confirmation payloads.
@@ -273,10 +272,10 @@ pub(super) async fn create_task(
 ) -> anyhow::Result<ToolCallResponse> {
     let title = str_field(&input, "title")?;
     let body_markdown = input["body_markdown"].as_str().unwrap_or("");
-    let cfg = crate::core::config::require()?;
+    let cfg = crate::core::config::notion()?;
 
     // Same payload the UI composer builds; the token is injected at execution.
-    let payload = crate::provider::notion::new_task_payload(&cfg.notion, &title, body_markdown);
+    let payload = crate::provider::notion::new_task_payload(&cfg, &title, body_markdown);
     let task_id = state.task_for(mcp_session);
 
     match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {

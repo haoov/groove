@@ -62,13 +62,13 @@ impl TaskProvider for NotionProvider {
     }
 
     async fn schema(&self, _key: &TaskKey) -> anyhow::Result<TaskSchema> {
-        let cfg = config::require()?;
-        super::schema::load(&cfg.notion.token, &cfg.notion.database_id).await
+        let cfg = config::notion()?;
+        super::schema::load(&cfg.token, &cfg.database_id).await
     }
 
     async fn properties(&self, key: &TaskKey) -> anyhow::Result<Vec<PropertyValue>> {
-        let cfg = config::require()?;
-        super::properties::read_all(&cfg.notion, page_of(key)?).await
+        let cfg = config::notion()?;
+        super::properties::read_all(&cfg, page_of(key)?).await
     }
 
     async fn set_property(
@@ -77,9 +77,9 @@ impl TaskProvider for NotionProvider {
         property: &str,
         value: &serde_json::Value,
     ) -> anyhow::Result<PropertyWrite> {
-        let cfg = config::require()?;
+        let cfg = config::notion()?;
         let display =
-            super::properties::patch_property(&cfg.notion, page_of(key)?, property, value).await?;
+            super::properties::patch_property(&cfg, page_of(key)?, property, value).await?;
         Ok(PropertyWrite { display })
     }
 
@@ -88,17 +88,17 @@ impl TaskProvider for NotionProvider {
         _key: &TaskKey,
         property: &str,
     ) -> anyhow::Result<Vec<PropertyOption>> {
-        let cfg = config::require()?;
-        let schema = super::schema::load(&cfg.notion.token, &cfg.notion.database_id).await?;
+        let cfg = config::notion()?;
+        let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
         match schema.relation_target(property) {
-            Some(db) => super::schema::relation_options(&cfg.notion.token, db).await,
+            Some(db) => super::schema::relation_options(&cfg.token, db).await,
             None => Ok(vec![]),
         }
     }
 
     fn status_label(&self, intent: StatusIntent) -> Option<String> {
-        let cfg = config::get()?;
-        let map = &cfg.notion.status_map;
+        let cfg = config::notion().ok()?;
+        let map = &cfg.status_map;
         Some(match intent {
             StatusIntent::Ready => map.ready.clone(),
             StatusIntent::InProgress => map.in_progress.clone(),
@@ -107,27 +107,27 @@ impl TaskProvider for NotionProvider {
     }
 
     async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()> {
-        let cfg = config::require()?;
+        let cfg = config::notion()?;
         let label = self
             .status_label(intent)
             .ok_or_else(|| anyhow::anyhow!("no status configured for {intent:?}"))?;
         super::tasks::set_status(
-            &cfg.notion.token,
+            &cfg.token,
             page_of(key)?,
-            &cfg.notion.properties.status,
+            &cfg.properties.status,
             &label,
         )
         .await
     }
 
     async fn discard(&self, key: &TaskKey) -> anyhow::Result<()> {
-        let cfg = config::require()?;
-        super::tasks::trash(&cfg.notion.token, page_of(key)?).await
+        let cfg = config::notion()?;
+        super::tasks::trash(&cfg.token, page_of(key)?).await
     }
 
     async fn body_markdown(&self, key: &TaskKey) -> anyhow::Result<String> {
-        let cfg = config::require()?;
-        let blocks = super::get_task_body_impl(page_of(key)?, &cfg.notion.token).await?;
+        let cfg = config::notion()?;
+        let blocks = super::get_task_body_impl(page_of(key)?, &cfg.token).await?;
         Ok(super::markdown::blocks_to_markdown(&blocks))
     }
 
@@ -137,38 +137,38 @@ impl TaskProvider for NotionProvider {
         markdown: &str,
         force: bool,
     ) -> anyhow::Result<BodyWrite> {
-        let cfg = config::require()?;
-        super::body::replace(&cfg.notion.token, page_of(key)?, markdown, force).await
+        let cfg = config::notion()?;
+        super::body::replace(&cfg.token, page_of(key)?, markdown, force).await
     }
 
     async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
-        let cfg = config::require()?;
+        let cfg = config::notion()?;
         let property =
-            super::hours::hours_property(&cfg.notion.token, &cfg.notion.database_id).await?;
+            super::hours::hours_property(&cfg.token, &cfg.database_id).await?;
         let (before, after) =
-            super::hours::add_hours(&cfg.notion.token, page_of(key)?, &property, hours).await?;
+            super::hours::add_hours(&cfg.token, page_of(key)?, &property, hours).await?;
         Ok(HoursWrite { before, after })
     }
 
     async fn template_markdown(&self) -> anyhow::Result<Option<String>> {
-        let cfg = config::require()?;
-        match cfg.notion.task_template_page_id.as_deref() {
-            Some(id) => Ok(Some(super::body::template_markdown(id, &cfg.notion.token).await?)),
+        let cfg = config::notion()?;
+        match cfg.task_template_page_id.as_deref() {
+            Some(id) => Ok(Some(super::body::template_markdown(id, &cfg.token).await?)),
             None => Ok(None),
         }
     }
 
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
-        let cfg = config::require()?;
-        let payload = super::new_task_payload(&cfg.notion, draft.title, draft.body_markdown);
+        let cfg = config::notion()?;
+        let payload = super::new_task_payload(&cfg, draft.title, draft.body_markdown);
         let req = super::NewTask::from_payload(&payload)?;
-        let (page_id, short_id) = super::create::create_page(&cfg.notion.token, &req).await?;
+        let (page_id, short_id) = super::create::create_page(&cfg.token, &req).await?;
         let key = TaskKey::Notion { page_id };
         Ok(FetchedTask {
             url: self.task_url(&key),
             key,
             title: draft.title.to_string(),
-            status: cfg.notion.status_map.ready.clone(),
+            status: cfg.status_map.ready.clone(),
             priority: None,
             natural_short_id: Some(short_id),
             branch_tag: None,

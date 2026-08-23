@@ -145,9 +145,9 @@ pub async fn create_task_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = config::require()?;
+    let cfg = config::notion()?;
     let req = NewTask::from_payload(&payload)?;
-    let (notion_page_id, short_id) = create_page(&cfg.notion.token, &req).await?;
+    let (notion_page_id, short_id) = create_page(&cfg.token, &req).await?;
 
     let task = ProviderTask {
         external_id: notion_page_id.clone(),
@@ -186,8 +186,8 @@ pub async fn create_task(
     if title.trim().is_empty() {
         return Err("a task needs a title".into());
     }
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let payload = new_task_payload(&cfg.notion, title.trim(), &body_markdown);
+    let cfg = config::notion().map_err(|e| e.to_string())?;
+    let payload = new_task_payload(&cfg, title.trim(), &body_markdown);
     let mut created = create_task_impl(payload, &pool).await.map_err(|e| e.to_string())?;
 
     // Notion's create call takes a fixed property set; anything else the composer
@@ -195,7 +195,7 @@ pub async fn create_task(
     // that won't take must NOT fail the whole call — it is reported instead.
     if let Some(props) = properties.filter(|p| !p.is_empty()) {
         let page_id = created["notion_page_id"].as_str().unwrap_or_default().to_string();
-        let warnings = super::properties::set_properties(&page_id, &props, &cfg.notion, &pool).await;
+        let warnings = super::properties::set_properties(&page_id, &props, &cfg, &pool).await;
         if !warnings.is_empty() {
             created["warnings"] = serde_json::json!(warnings);
         }
@@ -207,11 +207,11 @@ pub async fn create_task(
 /// Empty when no template is configured — a blank body is a fine default.
 #[tauri::command]
 pub async fn get_task_template_markdown() -> Result<String, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let Some(page_id) = cfg.notion.task_template_page_id.filter(|s| !s.is_empty()) else {
+    let cfg = config::notion().map_err(|e| e.to_string())?;
+    let Some(page_id) = cfg.task_template_page_id.filter(|s| !s.is_empty()) else {
         return Ok(String::new());
     };
-    super::body::template_markdown(&page_id, &cfg.notion.token)
+    super::body::template_markdown(&page_id, &cfg.token)
         .await
         .map_err(|e| e.to_string())
 }

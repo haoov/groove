@@ -189,9 +189,9 @@ pub async fn create_task_from_explorer_impl(
 
     // Same page creation as filing a standalone task (see notion::create) — this
     // op is that, plus adopting the session onto the result.
-    let cfg = crate::core::config::require()?;
+    let cfg = crate::core::config::notion()?;
     let (notion_page_id, short_id) =
-        crate::provider::notion::create::create_page(&cfg.notion.token, &req.task).await?;
+        crate::provider::notion::create::create_page(&cfg.token, &req.task).await?;
 
     let now = chrono::Utc::now().timestamp();
     let new_branch = crate::worktrees::naming::default_branch(&adopted_session(&short_id, &req.task));

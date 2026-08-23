@@ -7,7 +7,7 @@ use std::{
 };
 
 
-use crate::core::config::{self, Config};
+use crate::core::config::{self, NotionConfig};
 use crate::core::db::models::ProviderTask;
 
 use super::page::page_to_task;
@@ -96,8 +96,8 @@ async fn status_property_of(token: &str, database_id: &str) -> Option<String> {
 // ─── Queue query ──────────────────────────────────────────────────────────────
 
 /// The filter the config describes, as a Notion query body.
-async fn queue_filter(cfg: &Config) -> serde_json::Value {
-    let n = &cfg.notion;
+async fn queue_filter(cfg: &NotionConfig) -> serde_json::Value {
+    let n = &cfg;
     let mut conditions: Vec<serde_json::Value> = vec![];
 
     if n.filters.filter_by_assignee {
@@ -146,11 +146,11 @@ async fn queue_filter(cfg: &Config) -> serde_json::Value {
 
 /// Every queued task, straight from Notion. No local writes.
 pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<ProviderTask>> {
-    let cfg = config::require()?;
+    let cfg = config::notion()?;
     let body = queue_filter(&cfg).await;
     let pages = super::api::paginate_post(
-        &cfg.notion.token,
-        &format!("v1/databases/{}/query", cfg.notion.database_id),
+        &cfg.token,
+        &format!("v1/databases/{}/query", cfg.database_id),
         &body,
         MAX_TASK_PAGES,
     )
@@ -158,7 +158,7 @@ pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<ProviderTask>> {
 
     Ok(pages
         .iter()
-        .filter_map(|page| match page_to_task(page, &cfg.notion) {
+        .filter_map(|page| match page_to_task(page, &cfg) {
             Ok(task) => Some(task),
             Err(e) => {
                 tracing::warn!("skipping page: {e}");
@@ -170,9 +170,9 @@ pub(crate) async fn fetch_queue() -> anyhow::Result<Vec<ProviderTask>> {
 
 /// One page by id.
 pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<ProviderTask> {
-    let cfg = config::require()?;
-    let page = super::api::get(&cfg.notion.token, &format!("v1/pages/{page_id}")).await?;
-    page_to_task(&page, &cfg.notion)
+    let cfg = config::notion()?;
+    let page = super::api::get(&cfg.token, &format!("v1/pages/{page_id}")).await?;
+    page_to_task(&page, &cfg)
 }
 
 // ─── Status writes ────────────────────────────────────────────────────────────
