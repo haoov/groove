@@ -16,6 +16,10 @@ const READ_ONLY: [&str; 9] = [
     "Parent issue",
     "Sub-issues progress",
 ];
+/// Number fields hours are logged into, matched case-insensitively — a board is
+/// named by hand and "Time spent" is as likely as "Hours".
+const HOURS_NAMES: [&str; 4] = ["Hours spent", "Hours", "Time spent", "Time spent (H)"];
+
 /// Board columns GitHub maintains itself.
 const TIMESTAMPS: [&str; 3] = ["Created", "Updated", "Closed"];
 
@@ -110,13 +114,16 @@ pub(super) async fn board_schema(
     // matching over every option.
     let status_groups: Vec<StatusGroup> = vec![];
 
+    let hours_property = properties
+        .iter()
+        .find(|p| p.kind == "number" && HOURS_NAMES.iter().any(|h| p.name.eq_ignore_ascii_case(h)))
+        .map(|p| p.name.clone());
+
     Ok(TaskSchema {
         database_id: project_id.to_string(),
         title_property: "Title".to_string(),
         properties,
         status_groups,
-        // Writes land in the next step; until then there is nowhere to log to and
-        // the widget must not offer it.
-        hours_property: None,
+        hours_property,
     })
 }

@@ -1,3 +1,5 @@
+mod fields;
+mod issues;
 mod projects;
 mod schema;
 
@@ -72,11 +74,15 @@ impl TaskProvider for GithubProvider {
 
     fn capabilities(&self) -> Capabilities {
         Capabilities {
-            external_hours: false,
+            // A board can carry an hours field; whether this one does is the
+            // schema's answer, not the provider's.
+            external_hours: true,
+            // .github/ISSUE_TEMPLATE would be the analogue; filing issues from
+            // here needs a target repo the draft does not carry yet.
             template: false,
             create: false,
-            editable_body: false,
-            discard: false,
+            editable_body: true,
+            discard: true,
         }
     }
 
@@ -153,21 +159,40 @@ impl TaskProvider for GithubProvider {
         })
     }
 
-    async fn set_status(&self, _key: &TaskKey, _intent: StatusIntent) -> anyhow::Result<()> {
-        anyhow::bail!("writing to a GitHub board is not implemented yet")
+    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()> {
+        let cfg = config::github()?;
+        let label = self
+            .status_label(intent)
+            .ok_or_else(|| anyhow::anyhow!("no status configured for {intent:?}"))?;
+        let (project_id, item) = self.item_for(&cfg, key).await?;
+        fields::set_field(
+            &cfg,
+            &project_id,
+            &item.item_id,
+            &cfg.properties.status,
+            &serde_json::json!(label),
+        )
+        .await?;
+        Ok(())
     }
 
-    async fn discard(&self, _key: &TaskKey) -> anyhow::Result<()> {
-        anyhow::bail!("closing a GitHub issue from here is not implemented yet")
+    async fn discard(&self, key: &TaskKey) -> anyhow::Result<()> {
+        let cfg = config::github()?;
+        let (_, owner, repo, number) = issue_of(key)?;
+        issues::close_not_planned(&cfg, owner, repo, number).await
     }
 
     async fn set_property(
         &self,
-        _key: &TaskKey,
-        _property: &str,
-        _value: &serde_json::Value,
+        key: &TaskKey,
+        property: &str,
+        value: &serde_json::Value,
     ) -> anyhow::Result<PropertyWrite> {
-        anyhow::bail!("writing to a GitHub board is not implemented yet")
+        let cfg = config::github()?;
+        let (project_id, item) = self.item_for(&cfg, key).await?;
+        let display =
+            fields::set_field(&cfg, &project_id, &item.item_id, property, value).await?;
+        Ok(PropertyWrite { display })
     }
 
     async fn body_markdown(&self, key: &TaskKey) -> anyhow::Result<String> {
@@ -176,12 +201,37 @@ impl TaskProvider for GithubProvider {
         Ok(item.body)
     }
 
+    /// An issue body is markdown already, so nothing can be lost in the round trip
+    /// and `force` has nothing to decide.
     async fn replace_body(
         &self,
-        _key: &TaskKey,
-        _markdown: &str,
+        key: &TaskKey,
+        markdown: &str,
         _force: bool,
     ) -> anyhow::Result<BodyWrite> {
-        anyhow::bail!("editing a GitHub issue body from here is not implemented yet")
+        let cfg = config::github()?;
+        let (_, owner, repo, number) = issue_of(key)?;
+        issues::set_body(&cfg, owner, repo, number, markdown).await?;
+        Ok(BodyWrite { blocks_written: markdown.lines().count(), lossy: vec![] })
+    }
+
+    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
+        let cfg = config::github()?;
+        let (project_id, item) = self.item_for(&cfg, key).await?;
+        let schema = schema::board_schema(&cfg, &project_id).await?;
+        let name = schema
+            .hours_property
+            .ok_or_else(|| anyhow::anyhow!("this board has no hours field"))?;
+
+        let before = item
+            .fields
+            .iter()
+            .find(|f| f.name == name)
+            .and_then(|f| f.value.as_f64())
+            .unwrap_or(0.0);
+        let after = before + hours;
+        fields::set_field(&cfg, &project_id, &item.item_id, &name, &serde_json::json!(after))
+            .await?;
+        Ok(HoursWrite { before, after })
     }
 }
