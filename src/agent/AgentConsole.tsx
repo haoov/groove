@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader2, Play, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
+import { shortcutLabel } from '../shared/lib/keybindings';
 import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from './prompts';
 import { focusHost } from '../shared/lib/terminalHost';
@@ -34,6 +35,7 @@ const AGENT_FONT = "'IBM Plex Mono', ui-monospace, monospace";
 export function AgentConsole() {
   const sessionKey = useSession((s) => s.id);
   const activeTask = useSession((s) => s.activeTask);
+  const agentHint = useStore((s) => shortcutLabel(s.keymap, 'agent.console'));
   const ptySessions = useSession((s) => s.ptySessions);
   const kind = useSession((s) => s.kind);
   const autoApprove = useSession((s) => s.autoApprove);
@@ -145,7 +147,7 @@ export function AgentConsole() {
           <button
             className="dock-close"
             onClick={() => setOpen(false)}
-            title="Hide the agent (Alt+A reopens)"
+            title={`Hide the agent${agentHint ? ` (${agentHint} reopens)` : ''}`}
           >
             <X size={12} strokeWidth={2} />
           </button>
