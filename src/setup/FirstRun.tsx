@@ -3,6 +3,8 @@ import { invoke } from '../shared/ipc/invoke';
 import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
+import { GithubSetup, type GithubDraft } from './sources/GithubSetup';
+import { DetectedPanel } from './sources/DetectedPanel';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
 import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
@@ -29,7 +31,10 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const [template, setTemplate] = useState('');
   const [detected, setDetected] = useState<DetectedSchema | null>(null);
   /** Which forge CLI is being signed in, if any. */
-  const [authing, setAuthing] = useState<'glab' | 'gh' | null>(null);
+  const [notionOn, setNotionOn] = useState(false);
+  const [githubOn, setGithubOn] = useState(false);
+  const [github, setGithub] = useState<GithubDraft>({ projectId: '', projectTitle: '', statusMap: { ready: '', in_progress: '', done: '' } });
+  const [authing, setAuthing] = useState<{ tool: 'glab' | 'gh'; mode: 'login' | 'scope' } | null>(null);
   const [busy, setBusy] = useState<'users' | 'detect' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,11 +86,21 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     setError(null);
     try {
       await invoke('write_initial_config', {
-        token: token.trim(),
-        databaseId: databaseId.trim(),
-        userId: whoMatch.kind === 'user' || whoMatch.kind === 'raw' ? whoMatch.id : '',
-        worktreeRoot: root.trim(),
-        templatePageId: template.trim() || null,
+        setup: {
+          worktree_root: root.trim(),
+          notion: notionOn ? {
+            token: token.trim(),
+            database_id: databaseId.trim(),
+            user_id: whoMatch.kind === 'user' || whoMatch.kind === 'raw' ? whoMatch.id : '',
+            template_page_id: template.trim() || null,
+          } : null,
+          github: githubOn ? {
+            project_id: github.projectId,
+            project_title: github.projectTitle,
+            host: null,
+            status_map: github.statusMap,
+          } : null,
+        },
       });
       const cfg = await invoke<Config | null>('get_config');
       if (!cfg) throw new Error('Config saved but not readable — check the path below.');
@@ -110,13 +125,24 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
         ? { kind: 'raw' as const, id: who.trim() }
         : { kind: 'unknown' as const };
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
-  const canSave = !!token.trim() && !!databaseId.trim() && !!root.trim() && busy === null;
+
+  // An enabled-but-empty source blocks saving; at least one must be filled in.
+  const notionFilled = !!token.trim() && !!databaseId.trim();
+  const githubFilled = !!github.projectId;
+  const anySource = (notionOn && notionFilled) || (githubOn && githubFilled);
+  const canSave =
+    (!notionOn || notionFilled) &&
+    (!githubOn || githubFilled) &&
+    anySource &&
+    !!root.trim() &&
+    busy === null;
 
   return (
     <div className="firstrun">
       {authing && (
         <AuthModal
-          tool={authing}
+          tool={authing.tool}
+          mode={authing.mode}
           onDone={() => { setAuthing(null); loadEnv(); }}
         />
       )}
@@ -153,23 +179,37 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
                 // Installed but not logged in is its own state: the tool is there,
                 // and every MR feature still fails until the CLI has credentials.
                 const needsAuth = !!t.path && t.authed === false;
-                const cls = !t.path ? (t.required ? 'missing' : 'optional') : needsAuth ? 'optional' : 'ok';
+                // A scopes list we could not read is unknown, not empty: a GH_TOKEN
+                // prints none, and warning those users would be permanent.
+                const needsScope =
+                  t.name === 'gh' && !!t.path && t.authed === true &&
+                  !!t.scopes && !t.scopes.includes('project');
+                const cls = !t.path
+                  ? (t.required ? 'missing' : 'optional')
+                  : needsAuth || needsScope ? 'optional' : 'ok';
                 return (
                   <li key={t.name} className={cls}>
-                    {t.path && !needsAuth
+                    {t.path && !needsAuth && !needsScope
                       ? <Check size={12} strokeWidth={2.5} />
                       : <AlertTriangle size={12} strokeWidth={2} />}
                     <code>{t.name}</code>
                     <span className="firstrun-tool-purpose">
-                      {needsAuth ? 'installed, but not signed in' : t.purpose}
+                      {needsAuth
+                        ? 'installed, but not signed in'
+                        : needsScope
+                          ? 'signed in, but missing the project scope — GitHub tasks stay read-only'
+                          : t.purpose}
                     </span>
-                    {needsAuth && (t.name === 'glab' || t.name === 'gh') ? (
+                    {(needsAuth || needsScope) && (t.name === 'glab' || t.name === 'gh') ? (
                       <button
                         className="firstrun-signin"
-                        onClick={() => setAuthing(t.name as 'glab' | 'gh')}
-                        title={`Run ${t.name} auth login here`}
+                        onClick={() => setAuthing({
+                          tool: t.name as 'glab' | 'gh',
+                          mode: needsScope ? 'scope' : 'login',
+                        })}
+                        title={needsScope ? 'Widen the token here' : `Run ${t.name} auth login here`}
                       >
-                        sign in
+                        {needsScope ? 'grant access' : 'sign in'}
                       </button>
                     ) : (
                       !t.path && <span className="firstrun-tool-tag">{t.required ? 'required' : 'optional'}</span>
@@ -188,7 +228,17 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
         </section>
 
         <section className="firstrun-section">
-          <h2 className="firstrun-h2">Notion</h2>
+          <h2 className="firstrun-h2">
+            <label className="firstrun-source-toggle">
+              <input
+                type="checkbox"
+                checked={notionOn}
+                onChange={(e) => setNotionOn(e.target.checked)}
+              />
+              Notion
+            </label>
+          </h2>
+          {notionOn && (<>
           <label className="firstrun-field">
             <span className="firstrun-label">Integration token</span>
             <input
@@ -230,30 +280,10 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
           </label>
 
           {detected && (
-            <div className="firstrun-detected">
-              <div className="firstrun-detected-head">Read from the database</div>
-              <dl className="firstrun-detected-list">
-                <dt>Title</dt><dd>{detected.title_property}</dd>
-                <dt>Status</dt><dd>{detected.status_property}</dd>
-                <dt>Priority</dt><dd>{detected.priority_property ?? <em>none</em>}</dd>
-                <dt>Sprint</dt><dd>{detected.sprint_property ?? <em>none</em>}</dd>
-                <dt>Project</dt><dd>{detected.project_property ?? <em>none</em>}</dd>
-                <dt>Assignee</dt><dd>{detected.assignee_property ?? <em>none</em>}</dd>
-              </dl>
-              <div className="firstrun-detected-head">Status values Groove will set</div>
-              <dl className="firstrun-detected-list">
-                <dt>Filing a task</dt><dd>{detected.status_ready || <em>not found</em>}</dd>
-                <dt>Picking it up</dt><dd>{detected.status_in_progress || <em>not found</em>}</dd>
-                <dt>Finishing it</dt><dd>{detected.status_done || <em>not found</em>}</dd>
-              </dl>
-              <span className="firstrun-hint">
-                Detected from the property types and Notion's own status groups. Every value is
-                written to the config file and can be corrected there.
-                {detected.status_options.length > 0 && (
-                  <> All options: {detected.status_options.join(' · ')}.</>
-                )}
-              </span>
-            </div>
+            <DetectedPanel
+              detected={detected}
+              note="Detected from the property types and Notion's own status groups."
+            />
           )}
 
           <label className="firstrun-field">
@@ -305,6 +335,27 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
               whole database.
             </span>
           </label>
+          </>)}
+        </section>
+
+        <section className="firstrun-section">
+          <h2 className="firstrun-h2">
+            <label className="firstrun-source-toggle">
+              <input
+                type="checkbox"
+                checked={githubOn}
+                onChange={(e) => setGithubOn(e.target.checked)}
+              />
+              GitHub Projects
+            </label>
+          </h2>
+          {githubOn && (
+            <GithubSetup
+              value={github}
+              onChange={setGithub}
+              onNeedsScope={() => loadEnv()}
+            />
+          )}
         </section>
 
         <section className="firstrun-section">

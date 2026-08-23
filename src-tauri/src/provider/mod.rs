@@ -1,6 +1,7 @@
 //! Where tasks come from. One module per source, behind a shared trait.
 
 pub mod commands;
+pub mod detect;
 pub mod github;
 pub mod notion;
 pub mod types;
@@ -10,6 +11,7 @@ use types::*;
 // Glob re-export is required: tauri::generate_handler! looks up __cmd__* symbols
 // at the same path as the function.
 pub use commands::*;
+pub use github::setup::*;
 pub use notion::*;
 
 #[async_trait::async_trait]

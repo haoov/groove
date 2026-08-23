@@ -2,6 +2,7 @@ mod fields;
 mod issues;
 mod projects;
 mod schema;
+pub mod setup;
 
 use crate::core::config;
 use crate::provider::types::*;

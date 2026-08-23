@@ -14,8 +14,10 @@
 //! The result is still written to the config, where it can be corrected. Detection
 //! that cannot be overridden is just a different hardcoding.
 
-use crate::core::config::{PropertyNames, StatusMap};
-use super::schema::{StatusGroup, TaskSchema};
+use crate::core::config::PropertyNames;
+use super::schema::TaskSchema;
+
+pub use crate::provider::detect::detect_status_map;
 
 /// Lowercase, letters and digits only: makes "To-do", "to_do" and "To Do" the same
 /// string, so group names from either API surface compare equal.
@@ -28,7 +30,7 @@ fn norm(s: &str) -> String {
 /// Type narrows, the name only breaks ties. Notion's public API calls a person
 /// property `people`; other surfaces call it `person`, so callers pass both.
 fn find(schema: &TaskSchema, kinds: &[&str], hint: &str) -> Option<String> {
-    let candidates: Vec<&super::schema::PropertySchema> =
+    let candidates: Vec<&crate::provider::types::PropertySchema> =
         schema.properties.iter().filter(|p| kinds.contains(&p.kind.as_str())).collect();
     let hint = norm(hint);
     candidates
@@ -64,59 +66,10 @@ pub fn detect_properties(schema: &TaskSchema) -> PropertyNames {
     }
 }
 
-/// Options in the group whose name normalizes to `group`.
-fn group_options<'a>(groups: &'a [StatusGroup], group: &str) -> &'a [String] {
-    groups
-        .iter()
-        .find(|g| norm(&g.name) == group)
-        .map(|g| g.options.as_slice())
-        .unwrap_or(&[])
-}
-
-/// The option in `options` whose name contains `hint`, else the first one.
-fn pick(options: &[String], hint: &str) -> Option<String> {
-    let hint = norm(hint);
-    options
-        .iter()
-        .find(|o| norm(o) == hint)
-        .or_else(|| options.iter().find(|o| norm(o).contains(&hint)))
-        .or_else(|| options.first())
-        .cloned()
-}
-
-/// The three status values the app actually writes: what it sets when a task is
-/// filed (`ready`), picked up (`in_progress`) and finished (`done`).
-///
-/// Group membership decides the meaning; the name only chooses within a group. In a
-/// real database "Complete" holds `Fixed with required action`, `Done`, `Abandoned`
-/// and `Archived` — all completions, but only one of them is what finishing a task
-/// should set.
-pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
-    let g = &schema.status_groups;
-    let all: Vec<String> = schema
-        .properties
-        .iter()
-        .find(|p| p.kind == "status")
-        .map(|p| p.options.iter().map(|o| o.title.clone()).collect())
-        .unwrap_or_default();
-
-    // No groups (a `select` used as a status, or an API surface that omits them):
-    // fall back to matching over every option.
-    let from = |group: &str, hint: &str| -> Option<String> {
-        let scoped = group_options(g, group);
-        if scoped.is_empty() { pick(&all, hint) } else { pick(scoped, hint) }
-    };
-
-    StatusMap {
-        ready: from("todo", "ready").unwrap_or_default(),
-        in_progress: from("inprogress", "progress").unwrap_or_default(),
-        done: from("complete", "done").unwrap_or_default(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider::types::StatusGroup;
     use super::super::schema::PropertySchema;
 
     fn prop(name: &str, kind: &str, options: &[&str]) -> PropertySchema {

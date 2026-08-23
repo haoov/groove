@@ -54,6 +54,7 @@ export type {
   Environment,
   ToolCheck,
   DetectedSchema,
+  GithubProject,
   NotionUser,
   FileLines,
   SessionKind,

@@ -23,4 +23,12 @@ required: boolean,
  * Installed-but-not-logged-in is the state worth naming: every MR feature
  * fails, and the CLI's own error ("not logged in") only appears once you try.
  */
-authed: boolean | null, };
+authed: boolean | null, 
+/**
+ * The token's scopes, when the CLI reports them.
+ *
+ * `None` means UNKNOWN, not missing: a GH_TOKEN or a fine-grained PAT prints
+ * no scopes line, and treating that as missing would warn those users for
+ * ever. Only a `Some` that lacks a scope is worth acting on.
+ */
+scopes: Array<string> | null, };
