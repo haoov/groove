@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -21,12 +20,10 @@ function saveHidden(keys: Set<string>) {
 
 export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
   const tasks = useStore((s) => s.tasks);
-  const setTasks = useStore((s) => s.setTasks);
+  const refreshTasks = useStore((s) => s.refreshTasks);
   const snapshot = useStore((s) => s.homeSnapshot);
-  const setSyncStatus = useStore((s) => s.setSyncStatus);
   const setLastError = useStore((s) => s.setLastError);
   const [menu, setMenu] = useState<{ x: number; y: number; task: Task } | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(loadHidden);
   const [showHidden, setShowHidden] = useState(false);
 
@@ -39,20 +36,9 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
     });
   };
 
-  const loadTasks = useCallback(async () => {
-    setSyncStatus('syncing');
-    try {
-      setTasks(await invoke<Task[]>('list_tasks'));
-      setSyncStatus('idle');
-    } catch (e) {
-      setSyncStatus('error');
-      setLastError(String(e));
-    }
-  }, [setSyncStatus, setTasks, setLastError]);
-
   useEffect(() => {
-    if (tasks.length === 0) loadTasks();
-  }, [tasks.length, loadTasks]);
+    if (tasks.length === 0) refreshTasks();
+  }, [tasks.length, refreshTasks]);
 
   const { items, hiddenCount } = useMemo(() => {
     const live = new Set((snapshot ?? []).map((e) => e.short_id));
@@ -72,8 +58,8 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
 
   return (
     <div className="upnext-root" onClick={() => setMenu(null)}>
-      <div className="home-toolbar">
-        {(hiddenCount > 0 || showHidden) && (
+      {(hiddenCount > 0 || showHidden) && (
+        <div className="home-toolbar">
           <button
             className={`home-link${showHidden ? ' active' : ''}`}
             onClick={() => setShowHidden((v) => !v)}
@@ -81,21 +67,8 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
           >
             {showHidden ? 'done' : `hidden (${hiddenCount})`}
           </button>
-        )}
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          onClick={async () => {
-            if (refreshing) return;
-            setRefreshing(true);
-            try { await loadTasks(); } finally { setRefreshing(false); }
-          }}
-          title="Refresh tasks"
-        >
-          <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="home-empty">

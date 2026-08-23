@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { LiveSection } from './LiveSection';
@@ -31,6 +31,10 @@ export function Home() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const setLastError = useStore((s) => s.setLastError);
+  const refreshHome = useStore((s) => s.refreshHome);
+  const refreshTasks = useStore((s) => s.refreshTasks);
+  const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
+  const [refreshing, setRefreshing] = useState(false);
 
   const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* ignore */ } };
 
@@ -46,6 +50,20 @@ export function Home() {
     } catch (e) {
       setLastError(String(e));
     }
+  };
+
+  // One button, whichever tab is showing — each tab reads a different source, so
+  // a shared "refresh everything" would fetch three things to update one.
+  const REFRESH: Record<Tab, { run: () => Promise<void>; title: string }> = {
+    live: { run: () => refreshHome(true), title: 'Refresh sessions (also re-checks CI)' },
+    upnext: { run: refreshTasks, title: 'Refresh the task queue' },
+    reviews: { run: refreshReviewQueue, title: 'Refresh review requests' },
+  };
+
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try { await REFRESH[tab].run(); } finally { setRefreshing(false); }
   };
 
   const Tab = ({ id, label, count }: { id: Tab; label: string; count: number }) => (
@@ -85,6 +103,10 @@ export function Home() {
               </button>
             )}
             <span className="home-tabbar-spring" />
+            <button className="home-link" onClick={refresh} title={REFRESH[tab].title}>
+              <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
+              refresh
+            </button>
             <input
               className="home-filter"
               placeholder="Filter…"

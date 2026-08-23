@@ -53,15 +53,15 @@ export function summarize(entry: HomeEntry) {
 export const KIND_LABEL = { task: 'task', explorer: 'expl', review: 'review' } as const;
 
 /** The key column: always filled so the title column lines up across kinds. */
-export function rowKey(entry: HomeEntry): string {
+/** Where a row came from. A review keeps its MR number: that is the only place it
+ *  is shown, and the sigil already names the forge. */
+export function rowProvider(entry: HomeEntry): string {
   if (entry.kind === 'review') {
-    const iid = entry.repos.find((r) => r.mr)?.mr?.remote_id;
-    if (iid) return `!${iid}`;
+    const mr = entry.repos.find((r) => r.mr)?.mr;
+    if (mr) return `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
   }
-  // The EXPL badge already carries the kind — the prefix would only widen the
-  // key column for every other row.
-  if (entry.kind === 'explorer') return entry.short_id.replace(/^explorer-/, '');
-  return entry.short_id;
+  if (entry.kind === 'explorer') return 'local';
+  return entry.provider ?? '—';
 }
 
 // priorityRank / priorityLabel moved to shared/lib/taskStatus (used across features).

@@ -113,6 +113,8 @@ export interface HomeSlice {
   // ── Task list ─────────────────────────────────────────────────────────────
   tasks: Task[];
   setTasks: (tasks: Task[]) => void;
+  /** Re-read the queue from every configured source. */
+  refreshTasks: () => Promise<void>;
   upsertTask: (task: Task) => void;
 }
 

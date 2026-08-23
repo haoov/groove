@@ -69,6 +69,8 @@ pub struct HomeEntry {
     pub status: String,
     /// Priority as the source names it; None for synthetic sessions.
     pub priority: Option<String>,
+    /// Where the task came from; None for explorer and review sessions.
+    pub provider: Option<String>,
     pub kind: SessionKind,
     pub repos: Vec<HomeRepo>,
 }
@@ -110,6 +112,7 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
                     title: row.title.clone(),
                     status: row.status.clone().unwrap_or_else(|| "in_progress".to_string()),
                     priority: row.priority.clone(),
+                    provider: row.provider.clone(),
                     kind: row.kind,
                     repos: vec![],
                 },

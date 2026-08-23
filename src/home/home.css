@@ -213,6 +213,16 @@
   color: var(--gl-text-color-subtle);
 }
 
+/* Where a Live row came from, in place of its id. */
+.row-provider {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-subtle);
+}
+
 .row-title {
   flex: 1;
   min-width: 0;

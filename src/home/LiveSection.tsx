@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
-import { KIND_LABEL, openTask, priorityRank, rowKey, summarize } from './helpers';
+import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
 import type { HomeEntry } from '../shared/ipc/ipc';
 
 // Fold state per entry, persisted so Home reopens the way it was left.
@@ -22,8 +22,6 @@ function saveExpanded(ids: Set<string>) {
  *  Rendered as the body of the Home "Live" tab — toolbar over the list. */
 export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
   const snapshot = useStore((s) => s.homeSnapshot);
-  const homeLoading = useStore((s) => s.homeLoading);
-  const refreshHome = useStore((s) => s.refreshHome);
 
   // Attention first, then the busiest working trees; the shared filter narrows.
   const entries = useMemo(() => {
@@ -41,19 +39,6 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
 
   return (
     <>
-      <div className="home-toolbar">
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          title="Refresh (also re-checks CI)"
-          onClick={() => refreshHome(true)}
-          disabled={homeLoading}
-        >
-          <RefreshCw size={11} strokeWidth={2} className={homeLoading ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
-
       {snapshot === null ? (
         <p className="home-empty">Loading…</p>
       ) : entries.length === 0 ? (
@@ -156,7 +141,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
           {expanded ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />}
         </button>
         <span className={`type-badge type-${entry.kind}`}>{KIND_LABEL[entry.kind]}</span>
-        <span className="row-key">{rowKey(entry)}</span>
         {renaming ? (
           <input
             className="explorer-rename-input"
@@ -175,6 +159,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
             <span className="row-title">{entry.title}</span>
           </span>
         )}
+        <span className="row-provider">{rowProvider(entry)}</span>
 
         <span className="row-summary">
           {repoCount > 0 && (

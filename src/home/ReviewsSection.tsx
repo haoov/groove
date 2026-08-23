@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -36,7 +35,6 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
   const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
   const setLastError = useStore((s) => s.setLastError);
   const [busy, setBusy] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; mr: ReviewMr; key: string } | null>(null);
   const [showApproved, setShowApproved] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(loadHidden);
@@ -111,7 +109,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
 
   return (
     <div className="upnext-root" onClick={() => setMenu(null)}>
-      <div className="home-toolbar">
+      {(approvedHidden > 0 || showApproved || hiddenCount > 0 || showHidden) && (
+        <div className="home-toolbar">
         {(approvedHidden > 0 || showApproved) && (
           <button
             className={`home-link${showApproved ? ' active' : ''}`}
@@ -130,20 +129,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
             {showHidden ? 'done' : `hidden (${hiddenCount})`}
           </button>
         )}
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          onClick={async () => {
-            if (refreshing) return;
-            setRefreshing(true);
-            try { await refreshReviewQueue(); } finally { setRefreshing(false); }
-          }}
-          title="Refresh review requests"
-        >
-          <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="home-empty">
