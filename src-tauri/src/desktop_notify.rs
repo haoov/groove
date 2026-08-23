@@ -1,22 +1,56 @@
-//! Desktop notifications, for when the window is not the thing you are looking at.
-//!
-//! `notify-send` rather than a Tauri plugin, for the same reasons as the clipboard:
-//! it needs no dependency, and it is verifiable — this desktop runs `mako` on
-//! `org.freedesktop.Notifications`, so a send either appears or reports why.
-//!
-//! Deliberately narrow. The in-app toast already covers everything while the window
-//! has focus; the only thing worth interrupting the desktop for is an agent that
-//! cannot continue without the user, or a failure they have not seen.
+//! Desktop notifications, for when the window is unfocused.
 
-/// Send one desktop notification. `urgency` is `low`, `normal` or `critical`.
+/// Quote and escape a string so AppleScript reads it as one literal.
+///
+/// Required: an unescaped `"` ends the literal and the rest runs as AppleScript.
+#[cfg(target_os = "macos")]
+fn applescript_string(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// Send one desktop notification. `urgency` is accepted and ignored — macOS has no
+/// equivalent, and osascript attributes the notification to the script host, not us.
+#[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn notify_desktop(
     title: String,
     body: String,
     urgency: Option<String>,
 ) -> Result<(), String> {
-    // Anything unexpected becomes `normal` rather than an error: a notification is
-    // not worth failing a caller over.
+    let _ = urgency;
+
+    let script = format!(
+        "display notification {} with title {}",
+        applescript_string(&body),
+        applescript_string(&title)
+    );
+
+    let out = tokio::process::Command::new("osascript")
+        .args(["-e", &script])
+        .output()
+        .await
+        .map_err(|e| format!("osascript: {e}"))?;
+
+    if out.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "osascript exited with {}: {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr).trim()
+        ))
+    }
+}
+
+/// Send one desktop notification. `urgency` is `low`, `normal` or `critical`.
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub async fn notify_desktop(
+    title: String,
+    body: String,
+    urgency: Option<String>,
+) -> Result<(), String> {
+    // Anything unexpected becomes `normal`.
     let urgency = match urgency.as_deref() {
         Some("low") => "low",
         Some("critical") => "critical",
@@ -37,5 +71,17 @@ pub async fn notify_desktop(
             out.status,
             String::from_utf8_lossy(&out.stderr).trim()
         ))
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escapes_quotes_and_backslashes() {
+        assert_eq!(applescript_string(r#"say "hi""#), r#""say \"hi\"""#);
+        assert_eq!(applescript_string(r"a\b"), r#""a\\b""#);
+        assert_eq!(applescript_string("plain"), r#""plain""#);
     }
 }
