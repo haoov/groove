@@ -199,7 +199,9 @@ pub async fn create_task_from_explorer_impl(
     // session onto the result.
     let provider = crate::provider::get(req.provider)?;
     let filed = provider.create_task(&req.draft).await?;
-    let short_id = crate::provider::commands::mint_short_id(pool, &filed, &mut Default::default()).await?;
+    let short_id =
+        crate::provider::commands::mint_short_id(pool, provider, &filed, &mut Default::default())
+            .await?;
 
     let now = chrono::Utc::now().timestamp();
     let new_branch = crate::worktrees::naming::default_branch(

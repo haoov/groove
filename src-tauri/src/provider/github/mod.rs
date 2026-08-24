@@ -78,6 +78,19 @@ impl TaskProvider for GithubProvider {
         }
     }
 
+    /// `gh-<repo>-<number>` is unique within one owner; the owner is added only
+    /// when that collides, so the task that got there first is never re-keyed.
+    fn short_id_candidates(&self, task: &FetchedTask) -> Vec<String> {
+        let TaskKey::Github { owner, repo, number, .. } = &task.key else {
+            return vec![];
+        };
+        let seg = crate::provider::commands::segment;
+        vec![
+            format!("gh-{}-{number}", seg(repo)),
+            format!("gh-{}-{}-{number}", seg(owner), seg(repo)),
+        ]
+    }
+
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> {
         let cfg = config::github()?;
         Ok(projects::assigned_issues(&cfg.host)
