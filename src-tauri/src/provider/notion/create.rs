@@ -1,18 +1,12 @@
 //! Filing a new task in Notion.
-//!
-//! Two callers share this: `task.create` files a task and stops there, and the
-//! explorer conversion files one and then adopts the session onto it. The page
-//! creation is identical, so it lives here once — conversion is "create + adopt",
-//! not a second creation path.
 
 
 use crate::core::config::NotionConfig;
 
 use super::page::extract_unique_id;
 
-/// The fields both callers put in their confirmation payload. Property names come
-/// from config; the token never rides in a payload — it is read from config at
-/// execution time.
+/// What creating a page needs, read off the config. The token is not here: it is
+/// read at execution time so it never rides in a persisted payload.
 pub struct NewTask<'a> {
     pub database_id: &'a str,
     pub title: &'a str,
@@ -27,38 +21,20 @@ pub struct NewTask<'a> {
 }
 
 impl<'a> NewTask<'a> {
-    pub fn from_payload(payload: &'a serde_json::Value) -> anyhow::Result<Self> {
-        let field = |k: &str| -> Option<&'a str> { payload[k].as_str() };
-        Ok(Self {
-            database_id: field("database_id")
-                .ok_or_else(|| anyhow::anyhow!("missing database_id"))?,
-            title: field("title").unwrap_or("Untitled task"),
-            body_markdown: field("body_markdown").unwrap_or(""),
-            status_prop: field("status_prop").unwrap_or("Status"),
-            status_value: field("status_value").unwrap_or(""),
-            assignee_prop: field("assignee_prop"),
-            user_id: field("user_id").unwrap_or(""),
-            sprint_prop: field("sprint_prop"),
-            project_prop: field("project_prop"),
-            project_id: field("project_id"),
-        })
+    pub fn from_config(cfg: &'a NotionConfig, title: &'a str, body_markdown: &'a str) -> Self {
+        Self {
+            database_id: &cfg.database_id,
+            title,
+            body_markdown,
+            status_prop: &cfg.properties.status,
+            status_value: &cfg.status_map.ready,
+            assignee_prop: cfg.properties.assignee.as_deref(),
+            user_id: &cfg.user_id,
+            sprint_prop: cfg.properties.sprint.as_deref(),
+            project_prop: cfg.properties.project.as_deref(),
+            project_id: cfg.default_project_id.as_deref(),
+        }
     }
-}
-
-/// Payload shared by both creation entry points.
-pub fn new_task_payload(cfg: &NotionConfig, title: &str, body_markdown: &str) -> serde_json::Value {
-    serde_json::json!({
-        "database_id": cfg.database_id,
-        "title": title,
-        "body_markdown": body_markdown,
-        "status_prop": cfg.properties.status,
-        "status_value": cfg.status_map.ready,
-        "assignee_prop": cfg.properties.assignee,
-        "user_id": cfg.user_id,
-        "sprint_prop": cfg.properties.sprint,
-        "project_prop": cfg.properties.project,
-        "project_id": cfg.default_project_id,
-    })
 }
 
 /// Create the page. Returns `(notion_page_id, short_id)` — the short id is read

@@ -217,15 +217,7 @@ pub async fn create_task_from_explorer_impl(
     handoff_agent_session(req.explorer_id, &session_dir);
     cleanup_explorer_dir(&crate::worktrees::session_dir(req.explorer_id));
 
-    Ok(serde_json::json!({
-        "short_id": short_id,
-        "external_id": filed.key.external_id(),
-        "provider": filed.key.provider().as_str(),
-        "external_url": filed.url,
-        "title": filed.title,
-        "status": filed.status,
-        "priority": null,
-        "last_synced_at": now,
-        "branch_warnings": branch_warnings,
-    }))
+    let mut out = crate::provider::commands::filed_response(&short_id, &filed, now);
+    out["branch_warnings"] = serde_json::json!(branch_warnings);
+    Ok(out)
 }

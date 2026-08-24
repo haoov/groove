@@ -154,8 +154,7 @@ impl TaskProvider for NotionProvider {
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
         let cfg = config::notion()?;
         // Notion files into its one database; the draft's repo means nothing here.
-        let payload = super::new_task_payload(&cfg, draft.title, draft.body_markdown);
-        let req = super::NewTask::from_payload(&payload)?;
+        let req = super::NewTask::from_config(&cfg, draft.title, draft.body_markdown);
         let (page_id, short_id) = super::create::create_page(&cfg.token, &req).await?;
         let key = TaskKey::Notion { page_id };
         Ok(FetchedTask {

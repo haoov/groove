@@ -206,7 +206,20 @@ pub async fn create_task_impl(
     let row = mirror_row(&short_id, &filed);
     store::provider_tasks::upsert(pool, &row).await?;
 
-    Ok(serde_json::json!({
+    let mut out = filed_response(&short_id, &filed, row.synced_at);
+    out["message"] = serde_json::json!(format!("Filed {short_id}"));
+    Ok(out)
+}
+
+/// What a caller gets back for a task that was just filed. Shared with the
+/// explorer conversion, which is this plus adopting the session onto the result —
+/// two copies of these keys had already drifted apart.
+pub(crate) fn filed_response(
+    short_id: &str,
+    filed: &FetchedTask,
+    synced_at: i64,
+) -> serde_json::Value {
+    serde_json::json!({
         "short_id": short_id,
         "external_id": filed.key.external_id(),
         "provider": filed.key.provider().as_str(),
@@ -214,9 +227,8 @@ pub async fn create_task_impl(
         "title": filed.title,
         "status": filed.status,
         "priority": null,
-        "last_synced_at": row.synced_at,
-        "message": format!("Filed {short_id}"),
-    }))
+        "last_synced_at": synced_at,
+    })
 }
 
 #[cfg(test)]
