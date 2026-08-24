@@ -21,7 +21,7 @@
 /* Big tabbed panel on the left, ambient rail on the right; one column when narrow. */
 .home-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: minmax(0, 1fr) 17rem;
   align-items: start;
   gap: var(--space-5);
   padding: var(--space-5) var(--space-6) var(--space-6);
@@ -39,7 +39,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: 2.75rem;
+  min-height: 2.4rem;
   padding: 0 var(--space-3);
   border-bottom: 1px solid var(--gl-border-color-default);
   background: var(--gl-background-color-mantle);
@@ -115,7 +115,7 @@
   min-width: 0;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
+  background: var(--gl-background-color-default);
   overflow: hidden;
 }
 
@@ -124,14 +124,13 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  min-height: 2.75rem;
+  min-height: 2.4rem;
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--gl-border-color-default);
   background: var(--gl-background-color-mantle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--gl-text-color-subtle);
 }
@@ -157,6 +156,7 @@
   background: none;
   border: none;
   padding: 0;
+  padding-right: var(--space-2);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 500;
@@ -229,6 +229,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 1000;
 }
 
 .row-note {
@@ -247,7 +248,7 @@
 
 /* caret · type · id · title(fills) · summary. Live and Up next share the leading
    tracks (caret/spacer · type · id · title) so their columns line up. */
-.live-row { grid-template-columns: 1.5rem 5rem 7rem minmax(0, 1fr) auto; }
+.live-row { grid-template-columns: 0.5rem 3rem minmax(0, 1fr) 8rem auto; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -298,16 +299,16 @@
   padding: 7px var(--space-2);
 }
 
-/* Up next (tasks): code · name · priority · status. */
+/* Up next (tasks): name · priority · status · provider */
 .tasks-table .upnext-head,
-.tasks-table .upnext-tr { grid-template-columns: 7rem minmax(0, 1fr) 7rem 10rem; }
+.tasks-table .upnext-tr { grid-template-columns: 28rem minmax(0, 1fr) 8rem 5rem; }
 
 /* Reviews: code · name · repo · owner · last update. */
 .reviews-table .upnext-head,
 .reviews-table .upnext-tr { grid-template-columns: 5rem minmax(0, 1fr) 12rem 8rem 6rem; }
 
 .upnext-head {
-  padding-top: 2px;
+  padding-top: 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--gl-border-color-subtle);
   font-family: var(--font-mono);
@@ -454,7 +455,7 @@
   flex-direction: column;
   gap: var(--space-3);
   /* Indented to sit under the row's title, so the detail reads as nested. */
-  padding: var(--space-2) var(--space-2) var(--space-2) 3.75rem;
+  padding: var(--space-2) var(--space-2) var(--space-2) 2rem;
 }
 
 .live-repos { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -472,7 +473,7 @@
   align-items: center;
   gap: 6px;
   background: var(--gl-background-color-subtle);
-  border: 1px solid color-mix(in srgb, var(--ctp-green) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ctp-blue) 35%, transparent);
   border-radius: var(--gl-border-radius-base);
   color: var(--gl-text-color-default);
   font-family: var(--font-ui);

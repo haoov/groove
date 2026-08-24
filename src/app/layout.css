@@ -39,7 +39,7 @@
 
 /* ── Activity rail ────────────────────────────────────────────────────────── */
 .activity-rail {
-  width: 2.75rem;            /* 44px */
+  width: 2.2rem;            /* 35px */
   flex-shrink: 0;
   background: var(--gl-background-color-overlap);
   border-right: 1px solid var(--gl-border-color-default);
