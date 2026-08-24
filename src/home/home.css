@@ -33,6 +33,75 @@
 
 .home-rail { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
 
+/* Title row, filter bar, then the panel — the issue-list shape. */
+.home-main-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.home-pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 2rem;
+}
+
+.home-pagetitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-lg);
+  font-weight: 600;
+  color: var(--gl-text-color-strong);
+}
+
+/* Full-width filter bar: icon, the query, a clear button once it has content. */
+.home-searchbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  min-height: 2.2rem;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-mantle);
+  transition: border-color 0.12s;
+}
+.home-searchbar:focus-within { border-color: var(--gl-focus-border); }
+
+/* The input and its mirror stack here; both must use the same metrics. */
+.home-searchbar-field { position: relative; flex: 1; min-width: 0; }
+
+.home-filter-mirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre;
+  pointer-events: none;
+  color: var(--gl-text-color-default);
+}
+
+/* The value carries the highlight — that is what you are filtering ON; the key
+   just names the field and stays quiet. */
+.flt-key { color: var(--gl-text-color-muted); }
+.flt-value {
+  color: var(--gl-color-blue-300);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--ctp-blue) 14%, transparent);
+  border-radius: 3px;
+}
+
+.home-searchbar-clear,
+.home-searchbar-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  background: none;
+  color: var(--gl-text-color-muted);
+  cursor: pointer;
+}
+.home-searchbar-clear:hover,
+.home-searchbar-go:hover { background: var(--gl-background-color-hover); color: var(--gl-text-color-default); }
+
 /* ── Tab bar (the main panel's header strip) ────────────────────────────────── */
 
 .home-tabbar {
@@ -52,8 +121,10 @@
   gap: 6px;
   align-self: stretch;
   padding: 0 var(--space-2);
+  margin: var(--space-1) 0;
   border: none;
   border-bottom: 2px solid transparent;
+  border-radius: var(--gl-border-radius-medium);
   background: none;
   color: var(--gl-text-color-subtle);
   font-family: var(--font-ui);
@@ -63,31 +134,46 @@
   transition: color 0.12s, border-color 0.12s;
 }
 .home-tab:hover { color: var(--gl-text-color-default); }
-.home-tab.active { color: var(--gl-text-color-default); }
+.home-tab.active {
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-strong);
+}
 
 .home-tab-count {
   font-family: var(--font-mono);
   font-size: var(--gl-font-size-xs);
   font-weight: 500;
   color: var(--gl-text-color-disabled);
-  background: var(--gl-background-color-strong);
   border-radius: 100px;
-  padding: 0 6px;
+  padding-left: 3px;
 }
 .home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
 
-.home-filter {
-  width: 12rem;
-  height: 1.7rem;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-default);
-  color: var(--gl-text-color-default);
-  font-family: var(--font-ui);
+/* The query itself — the bar owns the border, the mirror owns the colour, so the
+   text here is transparent and only the caret shows. Both layers MUST keep the
+   same font, size and metrics or the highlight drifts off the characters. */
+.home-filter,
+.home-filter-mirror {
+  display: block;
+  width: 100%;
+  height: 1.9rem;
+  line-height: 1.9rem;
+  padding: 0;
+  border: none;
+  font-family: var(--font-mono);
   font-size: var(--home-text-sm);
+  letter-spacing: 0;
 }
-.home-filter:focus { outline: none; border-color: var(--gl-focus-border); }
+
+.home-filter {
+  position: relative;
+  background: none;
+  color: transparent;
+  caret-color: var(--gl-text-color-default);
+}
+.home-filter:focus { outline: none; }
+.home-filter::placeholder { color: var(--gl-text-color-disabled); }
+.home-filter::selection { background: var(--gl-color-blue-100); }
 
 .home-tabpanel.is-hidden { display: none; }
 

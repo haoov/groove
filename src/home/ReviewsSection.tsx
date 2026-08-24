@@ -3,6 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
+import { matchesQuery, parseQuery } from './filter';
 
 // Reviews = open MRs where you are a reviewer, not yet checked out. Columns:
 // id · name · repo · owner · last update.
@@ -64,10 +65,21 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
       (mr) => !startedReviews.has(`${mr.project_full.split('/').pop()}!${mr.iid}`),
     );
     const approvedCount = pending.filter((mr) => mr.approved).length;
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     const all = pending
       .filter((mr) => showApproved || !mr.approved)
-      .filter((mr) => !needle || `${sigil(mr)}${mr.iid} ${mr.title} ${mr.project_full} ${mr.author}`.toLowerCase().includes(needle))
+      .filter((mr) => matchesQuery(q, `${sigil(mr)}${mr.iid} ${mr.title} ${mr.project_full} ${mr.author}`, {
+        id: String(mr.iid),
+        mr: String(mr.iid),
+        title: mr.title,
+        provider: mr.platform,
+        repo: mr.project_full,
+        branch: mr.source_branch,
+        owner: mr.author,
+        author: mr.author,
+        approved: mr.approved,
+        draft: mr.draft,
+      }))
       .map((mr) => ({ mr, key: `${mr.project_full}!${mr.iid}` }));
     const hiddenN = all.filter((i) => hidden.has(i.key)).length;
     return {

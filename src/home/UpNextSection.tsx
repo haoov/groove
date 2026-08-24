@@ -3,6 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { openTask, priorityLabel, priorityRank } from './helpers';
+import { matchesQuery, parseQuery } from './filter';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { Task } from '../shared/ipc/ipc';
 
@@ -42,10 +43,16 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
 
   const { items, hiddenCount } = useMemo(() => {
     const live = new Set((snapshot ?? []).map((e) => e.short_id));
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     const all = tasks
       .filter((t) => !live.has(t.short_id) && statusKey(t.status) !== 'done')
-      .filter((t) => !needle || `${t.short_id} ${t.title} ${t.status} ${t.priority ?? ''}`.toLowerCase().includes(needle))
+      .filter((t) => matchesQuery(q, `${t.short_id} ${t.title} ${t.status} ${t.priority ?? ''}`, {
+        id: t.short_id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        provider: t.provider,
+      }))
       .sort((a, b) => {
         const s = (STATUS_RANK[statusKey(a.status)] ?? 9) - (STATUS_RANK[statusKey(b.status)] ?? 9);
         return s !== 0 ? s : priorityRank(a.priority) - priorityRank(b.priority);

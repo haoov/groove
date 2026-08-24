@@ -6,6 +6,7 @@ import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
+import { matchesQuery, parseQuery } from './filter';
 import type { HomeEntry } from '../shared/ipc/ipc';
 
 // Fold state per entry, persisted so Home reopens the way it was left.
@@ -29,9 +30,19 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
       const s = summarize(e);
       return (s.attention ? 1000 : 0) + s.dirty;
     };
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     return [...(snapshot ?? [])]
-      .filter((e) => !needle || `${e.short_id} ${e.title} ${e.kind}`.toLowerCase().includes(needle))
+      .filter((e) => matchesQuery(q, `${e.short_id} ${e.title} ${e.kind}`, {
+        id: e.short_id,
+        title: e.title,
+        kind: e.kind,
+        status: e.status,
+        priority: e.priority,
+        provider: e.provider,
+        repo: e.repos.map((r) => r.project),
+        branch: e.repos.map((r) => r.branch ?? ''),
+        mr: e.repos.map((r) => r.mr?.remote_id ?? ''),
+      }))
       .sort((a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority));
   }, [snapshot, filter]);
 
