@@ -54,6 +54,7 @@ query($after: String) {
 "#;
 
 /// One board item that is a task: an open issue assigned to the viewer.
+#[derive(Clone)]
 pub(super) struct BoardItem {
     /// Addresses a field write, together with `project_id`.
     pub item_id: String,
@@ -71,6 +72,7 @@ pub(super) struct BoardItem {
     pub fields: Vec<FieldValue>,
 }
 
+#[derive(Clone)]
 pub(super) struct FieldValue {
     pub name: String,
     pub value: serde_json::Value,
@@ -128,6 +130,21 @@ fn field_value(node: &serde_json::Value) -> Option<FieldValue> {
 /// GitHub returns supplies its fields; the board is recorded so the choice is
 /// visible rather than silently flipping between syncs.
 pub(super) async fn assigned_issues(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
+    let items = fetch_assigned(cfg).await?;
+    super::cache::put_issues(&items);
+    Ok(items)
+}
+
+/// The same list, reused if it was fetched moments ago. For single-task work,
+/// where re-running the whole search to pick one item out is the wrong trade.
+pub(super) async fn cached_issues(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
+    match super::cache::issues() {
+        Some(items) => Ok(items),
+        None => assigned_issues(cfg).await,
+    }
+}
+
+async fn fetch_assigned(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
     let mut out = Vec::new();
     let mut after = serde_json::Value::Null;
 

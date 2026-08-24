@@ -1,7 +1,6 @@
 //! Board field definitions as a TaskSchema.
 
 use crate::core::config::GithubConfig;
-use crate::core::forge::api;
 use crate::provider::types::{PropertyOption, PropertySchema, StatusGroup, TaskSchema};
 
 /// Board columns the app renders from the issue itself, not as editable fields.
@@ -23,24 +22,6 @@ const HOURS_NAMES: [&str; 4] = ["Hours spent", "Hours", "Time spent", "Time spen
 /// Board columns GitHub maintains itself.
 const TIMESTAMPS: [&str; 3] = ["Created", "Updated", "Closed"];
 
-const FIELDS: &str = r#"
-query($project: ID!) {
-  node(id: $project) {
-    ... on ProjectV2 {
-      title
-      fields(first: 50) {
-        nodes {
-          ... on ProjectV2FieldCommon { __typename name dataType }
-          ... on ProjectV2SingleSelectField { options { id name } }
-          ... on ProjectV2IterationField {
-            configuration { iterations { id title } completedIterations { id title } }
-          }
-        }
-      }
-    }
-  }
-}
-"#;
 
 /// GitHub's dataType, in the shared vocabulary.
 fn kind_of(data_type: &str) -> &'static str {
@@ -57,11 +38,9 @@ pub(super) async fn board_schema(
     cfg: &GithubConfig,
     project_id: &str,
 ) -> anyhow::Result<TaskSchema> {
-    let res =
-        api::github_graphql(&cfg.host, FIELDS, serde_json::json!({ "project": project_id })).await?;
-    let node = &res["data"]["node"];
+    let nodes = super::fields::board_fields(cfg, project_id).await?;
 
-    let mut properties: Vec<PropertySchema> = node["fields"]["nodes"]
+    let mut properties: Vec<PropertySchema> = nodes
         .as_array()
         .unwrap_or(&vec![])
         .iter()

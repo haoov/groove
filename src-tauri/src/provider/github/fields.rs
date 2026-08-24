@@ -44,19 +44,34 @@ pub(super) struct FieldDef {
     pub options: Vec<(String, String)>,
 }
 
-pub(super) async fn field_def(
+/// The board's field definitions, cached: `board_schema` and every write want the
+/// same payload, and it changes about as often as the board is redesigned.
+pub(super) async fn board_fields(
     cfg: &GithubConfig,
     project_id: &str,
-    name: &str,
-) -> anyhow::Result<FieldDef> {
+) -> anyhow::Result<serde_json::Value> {
+    if let Some(hit) = super::cache::fields(project_id) {
+        return Ok(hit);
+    }
     let res = api::github_graphql(
         &cfg.host,
         FIELD_IDS,
         serde_json::json!({ "project": project_id }),
     )
     .await?;
+    let nodes = res["data"]["node"]["fields"]["nodes"].clone();
+    super::cache::put_fields(project_id, nodes.clone());
+    Ok(nodes)
+}
 
-    for f in res["data"]["node"]["fields"]["nodes"].as_array().unwrap_or(&vec![]) {
+pub(super) async fn field_def(
+    cfg: &GithubConfig,
+    project_id: &str,
+    name: &str,
+) -> anyhow::Result<FieldDef> {
+    let nodes = board_fields(cfg, project_id).await?;
+
+    for f in nodes.as_array().unwrap_or(&vec![]) {
         if f["name"].as_str() != Some(name) {
             continue;
         }
@@ -137,6 +152,7 @@ pub(super) async fn set_field(
     if value.is_null() {
         let vars = serde_json::json!({ "project": project_id, "item": item_id, "field": def.id });
         api::github_graphql(&cfg.host, CLEAR_FIELD, vars).await?;
+        super::cache::invalidate();
         return Ok(String::new());
     }
 
@@ -145,6 +161,7 @@ pub(super) async fn set_field(
         "project": project_id, "item": item_id, "field": def.id, "value": payload,
     });
     api::github_graphql(&cfg.host, SET_FIELD, vars).await?;
+    super::cache::invalidate();
 
     Ok(value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string()))
 }

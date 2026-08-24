@@ -1,3 +1,4 @@
+mod cache;
 mod fields;
 mod issues;
 mod projects;
@@ -54,7 +55,7 @@ impl GithubProvider {
         key: &TaskKey,
     ) -> anyhow::Result<projects::BoardItem> {
         let (_, owner, repo, number) = issue_of(key)?;
-        projects::assigned_issues(cfg)
+        projects::cached_issues(cfg)
             .await?
             .into_iter()
             .find(|i| i.owner == owner && i.repo == repo && i.number == number)
