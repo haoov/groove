@@ -47,7 +47,7 @@
 .home-pagetitle {
   margin: 0;
   font-family: var(--font-ui);
-  font-size: var(--gl-font-size-lg);
+  font-size: var(--gl-font-size-xl);
   font-weight: 600;
   color: var(--gl-text-color-strong);
 }
@@ -61,7 +61,7 @@
   min-height: 2.2rem;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
+  background: var(--gl-background-color-default);
   transition: border-color 0.12s;
 }
 .home-searchbar:focus-within { border-color: var(--gl-focus-border); }
@@ -79,13 +79,70 @@
 }
 
 /* The value carries the highlight — that is what you are filtering ON; the key
-   just names the field and stays quiet. */
+   just names the field and stays quiet. Colour and background only: any change
+   to weight, size or spacing here widens the mirror past the real input and the
+   highlight slides off the caret. */
 .flt-key { color: var(--gl-text-color-muted); }
 .flt-value {
   color: var(--gl-color-blue-300);
-  font-weight: 600;
   background: color-mix(in srgb, var(--ctp-blue) 14%, transparent);
   border-radius: 3px;
+}
+
+/* Suggestion list — hangs under the token being completed (its `left` is set
+   inline from the measured text width), sized to its content. */
+.home-ac {
+  position: absolute;
+  top: calc(100% + 6px);
+  /* Keep min-width in step with AC_MIN_WIDTH in index.tsx. */
+  min-width: 260px;
+  width: max-content;
+  max-width: 100%;
+  z-index: 40;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-overlap);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.home-ac-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 5px var(--space-2);
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.home-ac-item.active { background: var(--gl-background-color-hover); }
+
+.home-ac-icon { flex-shrink: 0; color: var(--gl-text-color-disabled); }
+.home-ac-item.active .home-ac-icon { color: var(--gl-color-blue-300); }
+
+.home-ac-key,
+.home-ac-value {
+  font-family: var(--font-ui);
+  font-size: var(--home-text);
+  white-space: nowrap;
+}
+.home-ac-key { color: var(--gl-text-color-default); font-weight: 400; }
+.home-ac-value { color: var(--gl-color-blue-300); font-weight: 400; }
+
+.home-ac-hint {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-disabled);
+  white-space: nowrap;
 }
 
 .home-searchbar-clear,
@@ -148,21 +205,44 @@
   padding-left: 3px;
 }
 .home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
+/* A dash, not a number: the query names a field this tab has no column for. */
+.home-tab-count.na,
+.home-tab.active .home-tab-count.na { color: var(--gl-text-color-disabled); opacity: 0.6; }
+
+.home-nomatch {
+  margin: 0;
+  padding: 0 var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-muted);
+}
 
 /* The query itself — the bar owns the border, the mirror owns the colour, so the
    text here is transparent and only the caret shows. Both layers MUST keep the
    same font, size and metrics or the highlight drifts off the characters. */
 .home-filter,
-.home-filter-mirror {
-  display: block;
-  width: 100%;
+.home-filter-mirror,
+.home-filter-measure {
   height: 1.9rem;
   line-height: 1.9rem;
   padding: 0;
   border: none;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   letter-spacing: 0;
+}
+
+.home-filter,
+.home-filter-mirror { display: block; width: 100%; }
+
+/* Measures the text before the token; never seen, so it must not affect layout. */
+.home-filter-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
 }
 
 .home-filter {
@@ -315,7 +395,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 1000;
+  font-weight: 600;
 }
 
 .row-note {

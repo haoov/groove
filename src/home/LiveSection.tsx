@@ -6,7 +6,10 @@ import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
-import { matchesQuery, parseQuery } from './filter';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
+
+/** The fields a Live row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'repo', 'branch', 'mr'];
 import type { HomeEntry } from '../shared/ipc/ipc';
 
 // Fold state per entry, persisted so Home reopens the way it was left.
@@ -21,7 +24,7 @@ function saveExpanded(ids: Set<string>) {
 
 /** Everything checked out locally: tasks, explorers and reviews with a worktree.
  *  Rendered as the body of the Home "Live" tab — toolbar over the list. */
-export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
 
   // Attention first, then the busiest working trees; the shared filter narrows.
@@ -46,7 +49,9 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
       .sort((a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority));
   }, [snapshot, filter]);
 
-  useEffect(() => { onCount?.(entries.length); }, [entries.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  // Report the filter the count belongs to: Home must not route on a stale count.
+  useEffect(() => { onCount?.(entries.length, applicable, filter); }, [entries.length, applicable, filter, onCount]);
 
   return (
     <>

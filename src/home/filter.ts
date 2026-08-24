@@ -27,6 +27,97 @@ export const KNOWN_KEYS = new Set([
   'repo', 'branch', 'owner', 'author', 'approved', 'draft', 'mr',
 ]);
 
+/** What each field means, shown beside the key in the suggestion list. */
+export const KEY_HELP: Record<string, string> = {
+  id: 'task id or MR number',
+  title: 'name of the task or MR',
+  provider: 'notion · github · gitlab',
+  kind: 'task · explorer · review',
+  status: 'workflow status',
+  priority: 'priority as the source names it',
+  repo: 'repository',
+  branch: 'branch name',
+  owner: 'who opened it',
+  author: 'who opened it',
+  approved: 'true · false',
+  draft: 'true · false',
+  mr: 'MR number',
+};
+
+export interface Suggestion {
+  kind: 'key' | 'value';
+  /** Shown in the list. */
+  label: string;
+  /** Replaces the token being typed. */
+  insert: string;
+  /** The field this line belongs to — the list reads it for the icon. */
+  field: string;
+  hint?: string;
+}
+
+export interface SuggestResult {
+  items: Suggestion[];
+  /** Range of the token the completion replaces. */
+  start: number;
+  end: number;
+  kind: 'key' | 'value';
+}
+
+// Values are unbounded (every repo, every author), so cap them and let the list
+// scroll. Keys are a fixed set of thirteen — truncating those would hide fields
+// nobody can then discover.
+const MAX_VALUES = 10;
+
+/** The whitespace-bounded token around the caret. */
+export function tokenRange(input: string, caret: number): [number, number] {
+  let start = caret;
+  while (start > 0 && !/\s/.test(input[start - 1])) start--;
+  let end = caret;
+  while (end < input.length && !/\s/.test(input[end])) end++;
+  return [start, end];
+}
+
+const quoted = (v: string) => (/\s/.test(v) ? `"${v}"` : v);
+
+/**
+ * What to offer for the token under the caret: values once a known `key:` is
+ * typed, otherwise the field names themselves. `values` supplies what the loaded
+ * rows actually contain, so the list only ever offers something that matches.
+ */
+export function suggest(input: string, caret: number, values: Record<string, string[]>): SuggestResult {
+  const [start, end] = tokenRange(input, caret);
+  const token = input.slice(start, end);
+  const sigil = /^[-!]/.test(token) ? token[0] : '';
+  const bare = sigil ? token.slice(1) : token;
+  const colon = bare.indexOf(':');
+
+  if (colon >= 0) {
+    const key = bare.slice(0, colon).toLowerCase();
+    if (KNOWN_KEYS.has(key)) {
+      const partial = bare.slice(colon + 1).replace(/"/g, '').toLowerCase();
+      const items = (values[key] ?? [])
+        .filter((v) => v.toLowerCase().includes(partial))
+        .slice(0, MAX_VALUES)
+        .map((v): Suggestion => ({ kind: 'value', label: v, insert: `${sigil}${key}:${quoted(v)}`, field: key }));
+      return { items, start, end, kind: 'value' };
+    }
+  }
+
+  const partial = bare.toLowerCase();
+  const items = [...KNOWN_KEYS]
+    .filter((k) => k.startsWith(partial))
+    .sort()
+    .map((k): Suggestion => ({ kind: 'key', label: `${k}:`, insert: `${sigil}${k}:`, field: k, hint: KEY_HELP[k] }));
+  return { items, start, end, kind: 'key' };
+}
+
+/** Splice a completion in, and say where the caret lands. */
+export function applySuggestion(
+  input: string, start: number, end: number, insert: string,
+): { text: string; caret: number } {
+  return { text: input.slice(0, start) + insert + input.slice(end), caret: start + insert.length };
+}
+
 /** A run of the raw query, tagged so the input's mirror layer can colour it. */
 export interface Segment {
   text: string;
@@ -56,6 +147,13 @@ export function highlightSegments(input: string): Segment[] {
   if (last < input.length) out.push({ text: input.slice(last), kind: 'plain' });
   return out;
 }
+
+/**
+ * How a tab reports back to Home: how many rows matched, whether the query even
+ * applies here, and which filter the answer is for (Home routes only once every
+ * tab has answered for the current query).
+ */
+export type CountReport = (n: number, applicable: boolean, forFilter: string) => void;
 
 /** What a section can answer: field name → the value(s) of the row. */
 export type Fields = Record<string, string | number | boolean | null | undefined | string[]>;
@@ -106,6 +204,18 @@ export function parseQuery(input: string): Query {
 /** True when the query has nothing to apply. */
 export const isEmptyQuery = (q: Query) => q.terms.length === 0;
 
+/** The distinct fields the query constrains. */
+export const queryKeys = (q: Query): string[] =>
+  [...new Set(q.terms.flatMap((t) => (t.kind === 'field' ? [t.key] : [])))];
+
+/**
+ * True when a section can answer every field the query names. A section that
+ * cannot is not merely empty — it is the wrong tab for this query, which is what
+ * lets Home tell "nothing matched here" apart from "ask another tab".
+ */
+export const appliesTo = (q: Query, fields: readonly string[]): boolean =>
+  queryKeys(q).every((k) => fields.includes(k));
+
 function haystack(v: Fields[string]): string[] {
   if (v === null || v === undefined) return [];
   if (Array.isArray(v)) return v.map((s) => String(s).toLowerCase());
@@ -129,7 +239,9 @@ export function matchesQuery(q: Query, text: string, fields: Fields): boolean {
       if (!hay.includes(t.value)) return false;
       continue;
     }
-    if (!(t.key in fields)) continue; // another section's field — not our business
+    // A field this section cannot answer excludes every row: the tab is not
+    // applicable, and Home routes the query to the tab that owns the field.
+    if (!(t.key in fields)) return false;
     if (t.negated) {
       if (hits(t.values, haystack(fields[t.key]))) return false;
       continue;

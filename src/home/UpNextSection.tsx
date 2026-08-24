@@ -3,12 +3,15 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { openTask, priorityLabel, priorityRank } from './helpers';
-import { matchesQuery, parseQuery } from './filter';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { Task } from '../shared/ipc/ipc';
 
 // Up next = the queued tasks not yet checked out. Columns: id · name ·
 // priority · status. Reviews live in their own tab now.
+
+/** The fields an Up next row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'title', 'status', 'priority', 'provider'];
 
 const HIDDEN_KEY = 'wb.homeHiddenTasks';
 function loadHidden(): Set<string> {
@@ -19,7 +22,7 @@ function saveHidden(keys: Set<string>) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
 }
 
-export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const tasks = useStore((s) => s.tasks);
   const refreshTasks = useStore((s) => s.refreshTasks);
   const snapshot = useStore((s) => s.homeSnapshot);
@@ -61,7 +64,8 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
     return { items: showHidden ? all : all.filter((t) => !hidden.has(t.short_id)), hiddenCount: hiddenN };
   }, [tasks, snapshot, filter, hidden, showHidden]);
 
-  useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  useEffect(() => { onCount?.(items.length, applicable, filter); }, [items.length, applicable, filter, onCount]);
 
   return (
     <div className="upnext-root" onClick={() => setMenu(null)}>

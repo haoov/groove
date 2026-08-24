@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { highlightSegments, matchesQuery, parseQuery } from './filter';
+import {
+  applySuggestion, appliesTo, highlightSegments, matchesQuery, parseQuery, queryKeys, suggest,
+} from './filter';
 
 const q = (s: string) => parseQuery(s);
 
@@ -77,9 +79,10 @@ describe('matchesQuery', () => {
     expect(matchesQuery(q('parser'), 'TASK-1 fix the lexer', row)).toBe(false);
   });
 
-  // The shared-query rule: a field this section does not have must not empty it.
-  it('ignores a field the section does not answer', () => {
-    expect(matchesQuery(q('owner:alice'), 'anything', row)).toBe(true);
+  // A field the section cannot answer excludes every row, so the tab reads as
+  // empty and Home routes the query to the tab that owns the field.
+  it('excludes every row for a field the section does not answer', () => {
+    expect(matchesQuery(q('owner:alice'), 'anything', row)).toBe(false);
   });
 
   it('fails a field the section answers with nothing', () => {
@@ -128,5 +131,86 @@ describe('highlightSegments', () => {
     for (const s of ['', 'a', 'provider:github  priority:high', '  -kind:explorer x ', 'title:"a b" z']) {
       expect(join(s)).toBe(s);
     }
+  });
+});
+
+describe('suggest', () => {
+  const values = { provider: ['github', 'gitlab', 'notion'], repo: ['api', 'web app'] };
+  const at = (s: string, values2 = values) => suggest(s, s.length, values2);
+
+  it('offers every key on an empty query', () => {
+    const r = at('');
+    expect(r.kind).toBe('key');
+    expect(r.items.map((i) => i.label)).toContain('provider:');
+  });
+
+  it('narrows keys by prefix', () => {
+    expect(at('pri').items.map((i) => i.label)).toEqual(['priority:']);
+  });
+
+  it('offers a key its values once the colon is typed', () => {
+    const r = at('provider:');
+    expect(r.kind).toBe('value');
+    expect(r.items.map((i) => i.label)).toEqual(['github', 'gitlab', 'notion']);
+  });
+
+  it('narrows values by substring', () => {
+    expect(at('provider:git').items.map((i) => i.label)).toEqual(['github', 'gitlab']);
+  });
+
+  it('keeps the negation sigil in the completion', () => {
+    expect(at('-provider:git').items[0].insert).toBe('-provider:github');
+  });
+
+  it('quotes a value that has spaces', () => {
+    expect(at('repo:web').items[0].insert).toBe('repo:"web app"');
+  });
+
+  it('completes the token at the caret, not the whole query', () => {
+    const s = 'provider:github pri';
+    const r = suggest(s, s.length, values);
+    expect(r.start).toBe(16);
+    expect(r.items.map((i) => i.label)).toEqual(['priority:']);
+  });
+
+  it('offers nothing for a key with no loaded values', () => {
+    expect(at('status:').items).toEqual([]);
+  });
+});
+
+describe('applySuggestion', () => {
+  it('splices the completion in and reports the caret', () => {
+    expect(applySuggestion('provider:github pri', 16, 19, 'priority:'))
+      .toEqual({ text: 'provider:github priority:', caret: 25 });
+  });
+
+  it('replaces mid-query without touching the rest', () => {
+    expect(applySuggestion('a bb c', 2, 4, 'XYZ')).toEqual({ text: 'a XYZ c', caret: 5 });
+  });
+});
+
+describe('appliesTo', () => {
+  const FIELDS = ['id', 'title', 'status', 'priority', 'provider'];
+
+  it('applies when the query names no field', () => {
+    expect(appliesTo(parseQuery('some text'), FIELDS)).toBe(true);
+  });
+
+  it('applies when every named field is answerable', () => {
+    expect(appliesTo(parseQuery('priority:high provider:notion'), FIELDS)).toBe(true);
+  });
+
+  it('does not apply when any named field is missing', () => {
+    expect(appliesTo(parseQuery('priority:high owner:alice'), FIELDS)).toBe(false);
+  });
+
+  it('ignores an unknown key, which parses as free text', () => {
+    expect(appliesTo(parseQuery('foo:bar'), FIELDS)).toBe(true);
+  });
+});
+
+describe('queryKeys', () => {
+  it('lists each named field once', () => {
+    expect(queryKeys(parseQuery('provider:a provider:b title:x free'))).toEqual(['provider', 'title']);
   });
 });

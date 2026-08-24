@@ -3,10 +3,13 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
-import { matchesQuery, parseQuery } from './filter';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 
 // Reviews = open MRs where you are a reviewer, not yet checked out. Columns:
 // id · name · repo · owner · last update.
+
+/** The fields a Reviews row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'mr', 'title', 'provider', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
 
 const HIDDEN_KEY = 'wb.homeHiddenReviews';
 function loadHidden(): Set<string> {
@@ -30,7 +33,7 @@ function timeAgo(iso: string): string {
   return `${Math.round(s / 86_400 / 7)}w`;
 }
 
-export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
   const reviewQueue = useStore((s) => s.reviewQueue);
   const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
@@ -89,7 +92,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
     };
   }, [reviewQueue, startedReviews, filter, showApproved, hidden, showHidden]);
 
-  useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  useEffect(() => { onCount?.(items.length, applicable, filter); }, [items.length, applicable, filter, onCount]);
 
   const openReview = async (mr: ReviewMr) => {
     const key = `${mr.project_full}!${mr.iid}`;
