@@ -77,10 +77,10 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
       ) : (
         <div className="upnext-table tasks-table">
           <div className="upnext-head">
-            <span>code</span>
             <span>name</span>
             <span>priority</span>
             <span>status</span>
+            <span>provider</span>
           </div>
           {items.map((task) => (
             <button
@@ -90,7 +90,6 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, task }); }}
               title={task.title}
             >
-              <span className="row-key">{task.short_id}</span>
               <span className="row-titleline"><span className="row-title">{task.title}</span></span>
               <span className="upnext-prio">
                 {task.priority
@@ -100,6 +99,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               <span className="upnext-status">
                 <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
               </span>
+              <span className="row-provider">{task.provider}</span>
             </button>
           ))}
         </div>
