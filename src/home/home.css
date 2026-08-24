@@ -63,7 +63,7 @@
   transition: color 0.12s, border-color 0.12s;
 }
 .home-tab:hover { color: var(--gl-text-color-default); }
-.home-tab.active { color: var(--gl-text-color-default); border-bottom-color: var(--gl-color-blue-400); }
+.home-tab.active { color: var(--gl-text-color-default); }
 
 .home-tab-count {
   font-family: var(--font-mono);
@@ -248,7 +248,7 @@
 
 /* caret · type · id · title(fills) · summary. Live and Up next share the leading
    tracks (caret/spacer · type · id · title) so their columns line up. */
-.live-row { grid-template-columns: 0.5rem 3rem minmax(0, 1fr) 8rem auto; }
+.live-row { grid-template-columns: 0.5rem 5rem minmax(0, 1fr) 8rem 8rem; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -301,7 +301,7 @@
 
 /* Up next (tasks): name · priority · status · provider */
 .tasks-table .upnext-head,
-.tasks-table .upnext-tr { grid-template-columns: 28rem minmax(0, 1fr) 8rem 5rem; }
+.tasks-table .upnext-tr { grid-template-columns: 43rem minmax(0, 1fr) 15rem 8rem; }
 
 /* Reviews: code · name · repo · owner · last update. */
 .reviews-table .upnext-head,
@@ -501,6 +501,17 @@
   border-color: color-mix(in srgb, var(--gl-color-red-400) 45%, transparent);
   color: var(--gl-color-red-400);
 }
+
+/* Icon-only actions stay quiet: no background or border until hover. Declared
+   after the .go/.danger variants so it wins at equal specificity. */
+.live-btn--icon { padding: 5px; color: var(--gl-text-color-muted); }
+.live-btn--icon svg { display: block; }
+.live-btn--icon,
+.live-btn--icon.go,
+.live-btn--icon.danger { background: none; border-color: transparent; }
+.live-btn--icon:hover:not(:disabled) { background: var(--gl-background-color-hover); border-color: transparent; }
+.live-btn--icon.go:hover:not(:disabled) { background: var(--gl-color-green-100); border-color: transparent; color: var(--gl-color-green-400); }
+.live-btn--icon.danger:hover:not(:disabled) { background: var(--gl-color-red-100); border-color: transparent; color: var(--gl-color-red-400); }
 
 /* Provision link on an unprovisioned worktree row. */
 .live-wt-provision {

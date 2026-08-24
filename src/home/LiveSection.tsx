@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelsTopLeft, Pencil, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -171,19 +171,31 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
       {expanded && (
         <div className="live-detail">
           <div className="detail-actions">
-            <button className="live-btn" onClick={() => openTask(entry.short_id)}>Open workspace</button>
+            <button className="live-btn live-btn--icon" title="Open workspace" onClick={() => openTask(entry.short_id)}>
+              <PanelsTopLeft size={15} strokeWidth={1.75} />
+            </button>
             {entry.kind === 'explorer' && (
-              <button className="live-btn" onClick={() => { setName(entry.title); setRenaming(true); }}>Rename</button>
+              <button className="live-btn live-btn--icon" title="Rename" onClick={() => { setName(entry.title); setRenaming(true); }}>
+                <Pencil size={15} strokeWidth={1.75} />
+              </button>
             )}
             {entry.kind === 'task' && (
               <>
-                <button className="live-btn go" onClick={() => setConfirm('finish')}>Finish</button>
-                <button className="live-btn danger" onClick={() => setConfirm('delete')}>Delete</button>
+                <button className="live-btn live-btn--icon go" title="Finish" onClick={() => setConfirm('finish')}>
+                  <Check size={16} strokeWidth={2} />
+                </button>
+                <button className="live-btn live-btn--icon danger" title="Delete" onClick={() => setConfirm('delete')}>
+                  <Trash2 size={15} strokeWidth={1.75} />
+                </button>
               </>
             )}
             {entry.kind !== 'task' && (
-              <button className="live-btn danger" onClick={() => setConfirm('discard')}>
-                {entry.kind === 'review' ? 'Finish review' : 'Discard'}
+              <button
+                className="live-btn live-btn--icon danger"
+                title={entry.kind === 'review' ? 'Finish review' : 'Discard'}
+                onClick={() => setConfirm('discard')}
+              >
+                {entry.kind === 'review' ? <Check size={16} strokeWidth={2} /> : <Trash2 size={15} strokeWidth={1.75} />}
               </button>
             )}
           </div>

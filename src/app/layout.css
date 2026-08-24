@@ -417,8 +417,7 @@
 .hp-empty { padding: var(--space-4) var(--space-3); margin: 0; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-md); text-align: center; }
 
 .hp-row { display: flex; align-items: stretch; }
-.hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); }
-.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); }
+.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover), border-radius: var(--gl-border-radius-medium);}
 .hp-row-main {
   flex: 1;
   min-width: 0;
