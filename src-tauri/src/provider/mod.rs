@@ -19,6 +19,17 @@ pub(crate) trait TaskProvider: Send + Sync {
     fn id(&self) -> ProviderId;
     fn task_url(&self, key: &TaskKey) -> String;
 
+    /// Short ids to try for a task with no natural id of its own, best first —
+    /// the first one not already taken is minted.
+    ///
+    /// A short_id names a session, a worktree directory and part of a branch, so
+    /// it must be filesystem-safe and stable. A provider whose tasks always carry
+    /// `natural_short_id` never needs this.
+    fn short_id_candidates(&self, task: &FetchedTask) -> Vec<String> {
+        let _ = task;
+        vec![]
+    }
+
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>>;
     async fn fetch_task(&self, key: &TaskKey) -> anyhow::Result<FetchedTask>;
 
@@ -134,6 +145,9 @@ pub(crate) async fn resolve(
         .ok_or_else(|| {
             anyhow::anyhow!("{short_id} is not a task — explorer and review sessions have no source")
         })?;
-    let key = TaskKey::parse(&row.external_id)?;
-    Ok((get(key.provider())?, key))
+    // The row's own column decides the provider. Deriving it from the id's shape
+    // instead would guess, and the shapes are not reserved.
+    let id = ProviderId::parse(&row.provider)?;
+    let key = TaskKey::parse(id, &row.external_id)?;
+    Ok((get(id)?, key))
 }

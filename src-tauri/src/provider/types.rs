@@ -108,6 +108,17 @@ impl ProviderId {
             ProviderId::Github => "github",
         }
     }
+
+    /// Every provider, so nothing has to spell the set out a second time.
+    pub const ALL: [ProviderId; 2] = [ProviderId::Notion, ProviderId::Github];
+
+    /// The stored column back into an id. The one place a provider name is read.
+    pub fn parse(name: &str) -> anyhow::Result<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|p| p.as_str() == name)
+            .ok_or_else(|| anyhow::anyhow!("unknown task source {name}"))
+    }
 }
 
 /// A task's identity at its source. `external_id` is the stored string form;
@@ -136,28 +147,40 @@ impl TaskKey {
         }
     }
 
-    pub fn parse(external_id: &str) -> anyhow::Result<Self> {
-        let Some((path, number)) = external_id.rsplit_once('#') else {
-            // A Notion page id is a uuid. Accepting anything else here turns a
-            // malformed id into a confusing 404 from Notion.
-            if !is_uuid(external_id) {
-                anyhow::bail!("not a task id: {external_id}");
+    /// The stored id back into a key, for the provider the row says owns it.
+    ///
+    /// The provider is a parameter, NOT inferred from the id's shape: the shapes
+    /// are not reserved. Any uuid used to mean Notion, so a provider that keys by
+    /// uuid — Linear, Asana — was silently routed to the Notion client.
+    pub fn parse(provider: ProviderId, external_id: &str) -> anyhow::Result<Self> {
+        match provider {
+            ProviderId::Notion => {
+                // Rejecting a non-uuid here keeps a malformed id from becoming a
+                // confusing 404 from Notion.
+                if !is_uuid(external_id) {
+                    anyhow::bail!("not a Notion page id: {external_id}");
+                }
+                Ok(TaskKey::Notion { page_id: external_id.to_string() })
             }
-            return Ok(TaskKey::Notion { page_id: external_id.to_string() });
-        };
-        let parts: Vec<&str> = path.split('/').collect();
-        let [host, owner, repo] = parts[..] else {
-            anyhow::bail!("not a task id: {external_id}");
-        };
-        let number = number
-            .parse()
-            .map_err(|_| anyhow::anyhow!("not a task id: {external_id}"))?;
-        Ok(TaskKey::Github {
-            host: host.to_string(),
-            owner: owner.to_string(),
-            repo: repo.to_string(),
-            number,
-        })
+            ProviderId::Github => {
+                let Some((path, number)) = external_id.rsplit_once('#') else {
+                    anyhow::bail!("not a GitHub issue id: {external_id}");
+                };
+                let parts: Vec<&str> = path.split('/').collect();
+                let [host, owner, repo] = parts[..] else {
+                    anyhow::bail!("not a GitHub issue id: {external_id}");
+                };
+                let number = number
+                    .parse()
+                    .map_err(|_| anyhow::anyhow!("not a GitHub issue id: {external_id}"))?;
+                Ok(TaskKey::Github {
+                    host: host.to_string(),
+                    owner: owner.to_string(),
+                    repo: repo.to_string(),
+                    number,
+                })
+            }
+        }
     }
 }
 
@@ -231,27 +254,38 @@ mod tests {
             },
         ] {
             let id = key.external_id();
-            assert_eq!(TaskKey::parse(&id).unwrap(), key, "{id}");
+            assert_eq!(TaskKey::parse(key.provider(), &id).unwrap(), key, "{id}");
         }
     }
 
-    /// A malformed id must say so, not become a Notion page id that 404s.
+    /// A malformed id must say so, not become a page id that 404s.
     #[test]
-    fn garbage_is_not_silently_a_notion_page() {
-        for bad in ["", "garbage", "gh-groove-1", "github.com/haoov/groove#x"] {
-            assert!(TaskKey::parse(bad).is_err(), "{bad} should not parse");
+    fn garbage_does_not_parse() {
+        for bad in ["", "garbage", "gh-groove-1"] {
+            assert!(TaskKey::parse(ProviderId::Notion, bad).is_err(), "{bad} as notion");
+            assert!(TaskKey::parse(ProviderId::Github, bad).is_err(), "{bad} as github");
         }
+        assert!(TaskKey::parse(ProviderId::Github, "github.com/haoov/groove#x").is_err());
+    }
+
+    /// The shapes are NOT reserved. A uuid is a Notion page only because the row
+    /// said Notion — a provider that keys by uuid must not be claimed by it.
+    #[test]
+    fn the_id_shape_never_decides_the_provider() {
+        let uuid = "24f1a2b3-c4d5-6789-abcd-ef0123456789";
+        assert_eq!(
+            TaskKey::parse(ProviderId::Notion, uuid).unwrap(),
+            TaskKey::Notion { page_id: uuid.to_string() }
+        );
+        // The same string offered to another provider is rejected, not adopted.
+        assert!(TaskKey::parse(ProviderId::Github, uuid).is_err());
     }
 
     #[test]
-    fn the_provider_is_recoverable_from_the_id_alone() {
-        assert_eq!(
-            TaskKey::parse("24f1a2b3-c4d5-6789-abcd-ef0123456789").unwrap().provider(),
-            ProviderId::Notion
-        );
-        assert_eq!(
-            TaskKey::parse("github.com/haoov/groove#3").unwrap().provider(),
-            ProviderId::Github
-        );
+    fn a_provider_name_round_trips() {
+        for id in ProviderId::ALL {
+            assert_eq!(ProviderId::parse(id.as_str()).unwrap(), id);
+        }
+        assert!(ProviderId::parse("jira").is_err());
     }
 }
