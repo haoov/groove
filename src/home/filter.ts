@@ -23,15 +23,23 @@ export interface Query {
 
 /** Every field any section answers. A key outside this set is treated as text. */
 export const KNOWN_KEYS = new Set([
-  'id', 'title', 'provider', 'kind', 'status', 'priority',
+  'id', 'title', 'provider', 'forge', 'kind', 'status', 'priority',
   'repo', 'branch', 'owner', 'author', 'approved', 'draft', 'mr',
 ]);
 
-/** What each field means, shown beside the key in the suggestion list. */
+/**
+ * What each field means, shown beside the key in the suggestion list.
+ *
+ * `provider` and `forge` are different axes and must never be merged: a provider
+ * is where the TASK came from, a forge is where the CODE is hosted. An MR has no
+ * provider at all. Both can read "github", which is exactly why one key for the
+ * two would answer the wrong question.
+ */
 export const KEY_HELP: Record<string, string> = {
   id: 'task id or MR number',
   title: 'name of the task or MR',
-  provider: 'notion · github · gitlab',
+  provider: 'where the task came from — notion · github',
+  forge: 'where the code is hosted — github · gitlab',
   kind: 'task · explorer · review',
   status: 'workflow status',
   priority: 'priority as the source names it',

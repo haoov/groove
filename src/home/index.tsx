@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, RefreshCw, Search, X, Hash, Type, Boxes, Shapes, CircleDot, Flag, FolderGit2,
-  GitBranch, User, CircleCheck, PencilLine, GitPullRequest, Tag, type LucideIcon,
+  GitBranch, GitFork, User, CircleCheck, PencilLine, GitPullRequest, Tag, type LucideIcon,
 } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
@@ -26,6 +26,7 @@ const KEY_ICON: Record<string, LucideIcon> = {
   id: Hash,
   title: Type,
   provider: Boxes,
+  forge: GitFork,
   kind: Shapes,
   status: CircleDot,
   priority: Flag,

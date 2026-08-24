@@ -8,9 +8,10 @@ import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 
-/** The fields a Live row can answer — see `appliesTo`. */
-const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'repo', 'branch', 'mr'];
 import type { HomeEntry } from '../shared/ipc/ipc';
+
+/** The fields a Live row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'forge', 'repo', 'branch', 'mr'];
 
 // Fold state per entry, persisted so Home reopens the way it was left.
 const EXPAND_KEY = 'wb.homeExpanded';
@@ -45,6 +46,8 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
         repo: e.repos.map((r) => r.project),
         branch: e.repos.map((r) => r.branch ?? ''),
         mr: e.repos.map((r) => r.mr?.remote_id ?? ''),
+        // Where the code is hosted, not where the task came from.
+        forge: e.repos.map((r) => r.mr?.platform ?? ''),
       }))
       .sort((a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority));
   }, [snapshot, filter]);

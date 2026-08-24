@@ -9,7 +9,8 @@ import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter'
 // id · name · repo · owner · last update.
 
 /** The fields a Reviews row can answer — see `appliesTo`. */
-const FIELDS = ['id', 'mr', 'title', 'provider', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
+// No `provider`: an MR has no task source. Where the code is hosted is `forge`.
+const FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
 
 const HIDDEN_KEY = 'wb.homeHiddenReviews';
 function loadHidden(): Set<string> {
@@ -75,7 +76,7 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
         id: String(mr.iid),
         mr: String(mr.iid),
         title: mr.title,
-        provider: mr.platform,
+        forge: mr.platform,
         repo: mr.project_full,
         branch: mr.source_branch,
         owner: mr.author,

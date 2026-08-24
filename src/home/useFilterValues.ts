@@ -30,6 +30,8 @@ export function useFilterValues(): Record<string, string[]> {
       for (const r of e.repos) {
         add(m, 'repo', r.project);
         add(m, 'branch', r.branch);
+        // A repo's MR names the forge, never the task's provider.
+        add(m, 'forge', r.mr?.platform);
       }
     }
     for (const t of tasks) {
@@ -38,7 +40,9 @@ export function useFilterValues(): Record<string, string[]> {
       add(m, 'provider', t.provider);
     }
     for (const mr of reviews ?? []) {
-      add(m, 'provider', mr.platform);
+      // `mr.platform` is a forge. Feeding it to `provider` would offer "gitlab"
+      // as a task source, which no task can ever match.
+      add(m, 'forge', mr.platform);
       add(m, 'repo', mr.project_full);
       add(m, 'branch', mr.source_branch);
       add(m, 'owner', mr.author);

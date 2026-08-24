@@ -58,6 +58,7 @@ export type {
   NotionUser,
   FileLines,
   SessionKind,
+  ProviderId,
 } from './generated';
 
 // ── Deliberate narrowings (rebuilt over the generated shapes) ─────────────────

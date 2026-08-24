@@ -214,3 +214,32 @@ describe('queryKeys', () => {
     expect(queryKeys(parseQuery('provider:a provider:b title:x free'))).toEqual(['provider', 'title']);
   });
 });
+
+// `provider` is where the TASK came from; `forge` is where the CODE is hosted. An
+// MR has no provider. Both can read "github", so one key for the two would answer
+// the wrong question — these lock the split.
+describe('provider and forge are separate axes', () => {
+  const REVIEW_FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'owner'];
+  const TASK_FIELDS = ['id', 'title', 'status', 'priority', 'provider'];
+
+  it('does not let a provider query claim the reviews tab', () => {
+    expect(appliesTo(parseQuery('provider:notion'), REVIEW_FIELDS)).toBe(false);
+  });
+
+  it('does not let a forge query claim the tasks tab', () => {
+    expect(appliesTo(parseQuery('forge:gitlab'), TASK_FIELDS)).toBe(false);
+  });
+
+  it('keeps github distinct between the two keys', () => {
+    const mr = { forge: 'github', title: 'fix' };
+    const task = { provider: 'github', title: 'fix' };
+    expect(matchesQuery(parseQuery('forge:github'), '', mr)).toBe(true);
+    expect(matchesQuery(parseQuery('provider:github'), '', mr)).toBe(false);
+    expect(matchesQuery(parseQuery('provider:github'), '', task)).toBe(true);
+    expect(matchesQuery(parseQuery('forge:github'), '', task)).toBe(false);
+  });
+
+  it('offers forge as its own field', () => {
+    expect(suggest('for', 3, {}).items.map((i) => i.label)).toEqual(['forge:']);
+  });
+});
