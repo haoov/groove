@@ -110,7 +110,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               <span className="upnext-status">
                 <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
               </span>
-              <span className="row-provider">{task.provider}</span>
+              <span className="row-provider">{task.provider ?? '—'}</span>
             </button>
           ))}
         </div>

@@ -51,8 +51,10 @@ pub struct TaskView {
     pub short_id: String,
     /// Opaque handle for the provider's own API. Never parsed by the frontend.
     pub external_id: String,
-    /// "notion" or "github".
-    pub provider: String,
+    /// Which source the task came from. None for a session with no task behind it
+    /// (explorer, review) — naming one would be a guess, and it used to guess
+    /// "notion".
+    pub provider: Option<String>,
     /// Deep link to the page or issue.
     pub external_url: Option<String>,
     pub title: String,
@@ -67,7 +69,7 @@ impl From<ProviderTask> for TaskView {
         Self {
             short_id: t.short_id,
             external_id: t.external_id,
-            provider: t.provider,
+            provider: Some(t.provider),
             external_url: t.url,
             title: t.title,
             status: t.status,

@@ -3,6 +3,7 @@ import { useStore, useSession } from '../shared/store';
 import { sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from '../agent/prompts';
 import { RepoRow } from './parts';
+import { providerCopy } from '../shared/lib/taskProvider';
 
 export function ExplorerOverview() {
   const activeTask = useSession((s) => s.activeTask);
@@ -59,10 +60,10 @@ export function ExplorerOverview() {
                 key={src}
                 className="finish-task-btn"
                 onClick={() => createTaskFromSession(src)}
-                title={`Draft a task in ${src} from this session via the agent`}
+                title={`Draft a task in ${providerCopy({ provider: src }).label} from this session via the agent`}
               >
                 <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-                Create task in {src}
+                Create task in {providerCopy({ provider: src }).label}
               </button>
             ))
           ) : (

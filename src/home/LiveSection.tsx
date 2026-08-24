@@ -7,6 +7,7 @@ import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
+import { providerCopy } from '../shared/lib/taskProvider';
 
 import type { HomeEntry } from '../shared/ipc/ipc';
 
@@ -88,6 +89,9 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
   // Two-click confirm: the first click arms; the confirm row does the deed.
   const [confirm, setConfirm] = useState<LiveConfirm>(null);
   const [expanded, setExpanded] = useState(() => loadExpanded().has(entry.short_id));
+  // Copy that names this task's own source, so a confirm says "in Notion"
+  // rather than "at its source".
+  const src = providerCopy(entry);
 
   // Folded, the row states only what it is and how many repos it holds.
   const repoCount = useMemo(
@@ -228,11 +232,13 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
 
       {confirm && (
         <div className="detail-row confirm">
+          {/* Name what happens AT THE SOURCE: this is the last step before an
+              action that reaches outside the app. */}
           <span>
             {confirm === 'finish'
-              ? `Finish ${entry.short_id}? Marks it done at its source and removes its worktrees.`
+              ? `Finish ${entry.short_id}? ${src.finish} Its worktrees are removed.`
               : confirm === 'delete'
-                ? `Delete ${entry.short_id}? Closes it at its source and removes its worktrees.`
+                ? `Delete ${entry.short_id}? ${src.discard} Its worktrees are removed.`
                 : `Discard ${entry.short_id} and delete its worktrees?`}
           </span>
           <button className="live-btn danger" onClick={() => runConfirmed(confirm)}>

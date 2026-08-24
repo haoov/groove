@@ -10,9 +10,11 @@ export type TaskView = { short_id: string,
  */
 external_id: string, 
 /**
- * "notion" or "github".
+ * Which source the task came from. None for a session with no task behind it
+ * (explorer, review) — naming one would be a guess, and it used to guess
+ * "notion".
  */
-provider: string, 
+provider: string | null, 
 /**
  * Deep link to the page or issue.
  */

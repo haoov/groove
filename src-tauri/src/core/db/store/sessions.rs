@@ -51,7 +51,7 @@ pub async fn view_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Op
     Ok(row.map(|r| TaskView {
         short_id: r.id,
         external_id: r.external_id.unwrap_or_default(),
-        provider: r.provider.unwrap_or_else(|| "notion".to_string()),
+        provider: r.provider,
         external_url: r.url,
         title: r.title,
         status: r.status.unwrap_or_else(|| "in_progress".to_string()),
