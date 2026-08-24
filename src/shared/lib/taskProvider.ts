@@ -1,5 +1,3 @@
-import type { Task } from '../ipc/ipc';
-
 /** Copy that names a specific task's source. Only copy — anything a provider can
  *  or cannot do is answered by its schema, not by a flag here. */
 interface ProviderCopy {
@@ -43,5 +41,3 @@ const FALLBACK: ProviderCopy = {
 export function providerCopy(task: { provider?: string } | null | undefined): ProviderCopy {
   return PROVIDERS[task?.provider ?? ''] ?? FALLBACK;
 }
-
-export const providerOf = (task: Task) => providerCopy(task);

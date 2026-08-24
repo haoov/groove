@@ -84,7 +84,6 @@ pub struct GithubConfig {
     /// A fallback for the labels the app writes. Each board has its own vocabulary,
     /// so a write reads the board's own options first and only falls back here.
     pub status_map: StatusMap,
-    pub filters: FilterConfig,
 }
 
 /// The board fields the app drives, by name. Everything else is just a property.
@@ -93,7 +92,6 @@ pub struct GithubConfig {
 pub struct GithubPropertyNames {
     pub status: String,
     pub priority: Option<String>,
-    pub iteration: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
@@ -262,8 +260,6 @@ pub fn notion() -> anyhow::Result<NotionConfig> {
         .ok_or_else(|| anyhow::anyhow!("Notion is not set up — add it in Settings"))
 }
 
-// Used once the GitHub provider lands.
-#[allow(dead_code)]
 pub fn github() -> anyhow::Result<GithubConfig> {
     require()?
         .github

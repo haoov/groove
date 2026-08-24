@@ -7,7 +7,8 @@ import { GithubSetup } from './sources/GithubSetup';
 import { DetectedPanel } from './sources/DetectedPanel';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
-import { looksLikeNotionId, type NotionUser } from '../shared/lib/notionUser';
+import { looksLikeNotionId } from '../shared/lib/notionUser';
+import type { NotionUser } from '../shared/ipc/ipc';
 
 /**
  * What a new machine sees: the dependency list, and the four values only the user

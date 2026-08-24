@@ -192,7 +192,7 @@ pub(crate) async fn replace(
     }
 
     let _ = removed;
-    Ok(crate::provider::types::BodyWrite { blocks_written: appended, lossy })
+    Ok(crate::provider::types::BodyWrite { blocks_written: appended })
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────

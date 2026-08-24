@@ -166,6 +166,45 @@ pub(super) async fn set_field(
     Ok(value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string()))
 }
 
+/// The label this board uses for an intent.
+///
+/// Read off the board rather than the config: each board names its own columns,
+/// and with none nominated there is no single vocabulary to have detected at setup.
+pub(super) async fn status_for(
+    cfg: &GithubConfig,
+    project_id: &str,
+    intent: crate::provider::types::StatusIntent,
+) -> String {
+    use crate::provider::types::StatusIntent;
+
+    let (hint, configured) = match intent {
+        StatusIntent::Ready => ("ready", &cfg.status_map.ready),
+        StatusIntent::InProgress => ("progress", &cfg.status_map.in_progress),
+        StatusIntent::Done => ("done", &cfg.status_map.done),
+    };
+
+    let Ok(def) = field_def(cfg, project_id, &cfg.properties.status).await else {
+        return configured.clone();
+    };
+    let options: Vec<String> = def.options.iter().map(|(n, _)| n.clone()).collect();
+    pick_status(&options, hint, configured)
+}
+
+/// The board column for an intent: one whose name looks like it, else the
+/// configured label when the board really has a column by that name, else nothing.
+///
+/// Never positional. detect_status_map ends in `options.first()`, which would have
+/// filed a new issue into whatever column happens to be leftmost.
+fn pick_status(options: &[String], hint: &str, configured: &str) -> String {
+    if let Some(m) = options.iter().find(|o| o.to_lowercase().contains(hint)) {
+        return m.clone();
+    }
+    if options.iter().any(|o| o == configured) {
+        return configured.to_string();
+    }
+    String::new()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,6 +258,23 @@ mod tests {
         assert!(field_value(&def, &serde_json::json!("2.5")).is_err());
     }
 
+    fn board(options: &[&str]) -> Vec<String> {
+        options.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// A board whose Done column is called something else must still resolve by
+    /// name — and a board with no matching column must resolve to nothing rather
+    /// than to whichever option is first.
+    #[test]
+    fn a_status_is_matched_by_name_never_by_position() {
+        assert!(pick_status(&board(&["Backlog", "Todo", "In Progress", "Done"]), "done", "Done")
+            .eq("Done"));
+        // No "ready"-ish column: "Backlog" is first, and must NOT be chosen.
+        assert!(pick_status(&board(&["Backlog", "Todo", "Done"]), "ready", "Ready").is_empty());
+        // Unless the configured label really is one of the columns.
+        assert!(pick_status(&board(&["Backlog", "Ready", "Done"]), "ready", "Ready").eq("Ready"));
+    }
+
     #[test]
     fn anything_else_is_text() {
         let def = FieldDef { id: "f".into(), data_type: "TEXT".into(), options: vec![] };
@@ -227,52 +283,4 @@ mod tests {
             serde_json::json!({ "text": "hello" })
         );
     }
-}
-
-/// The label this board uses for an intent.
-///
-/// Read off the board rather than the config: each board names its own columns,
-/// and with no board nominated there is no single vocabulary to have detected at
-/// setup. The config value is the fallback for a board whose names match nothing.
-pub(super) async fn status_for(
-    cfg: &GithubConfig,
-    project_id: &str,
-    intent: crate::provider::types::StatusIntent,
-) -> String {
-    use crate::provider::types::StatusIntent;
-
-    let configured = match intent {
-        StatusIntent::Ready => &cfg.status_map.ready,
-        StatusIntent::InProgress => &cfg.status_map.in_progress,
-        StatusIntent::Done => &cfg.status_map.done,
-    };
-
-    let Ok(def) = field_def(cfg, project_id, &cfg.properties.status).await else {
-        return configured.clone();
-    };
-    let options: Vec<String> = def.options.iter().map(|(n, _)| n.clone()).collect();
-    let detected = crate::provider::detect::detect_status_map(&crate::provider::types::TaskSchema {
-        database_id: project_id.to_string(),
-        title_property: "Title".into(),
-        properties: vec![crate::provider::types::PropertySchema {
-            name: cfg.properties.status.clone(),
-            kind: "status".into(),
-            options: options
-                .iter()
-                .map(crate::provider::types::PropertyOption::named)
-                .collect(),
-            relation_db: None,
-            editable: true,
-            meta: false,
-        }],
-        status_groups: vec![],
-        hours_property: None,
-    });
-
-    let picked = match intent {
-        StatusIntent::Ready => detected.ready,
-        StatusIntent::InProgress => detected.in_progress,
-        StatusIntent::Done => detected.done,
-    };
-    if picked.is_empty() { configured.clone() } else { picked }
 }

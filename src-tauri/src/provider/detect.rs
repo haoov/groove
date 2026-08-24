@@ -12,7 +12,7 @@ use crate::core::config::StatusMap;
 
 /// Lowercase, letters and digits only: makes "To-do", "to_do" and "To Do" the same
 /// string, so group names from either API surface compare equal.
-fn norm(s: &str) -> String {
+pub(super) fn norm(s: &str) -> String {
     s.chars().filter(|c| c.is_alphanumeric()).flat_map(|c| c.to_lowercase()).collect()
 }
 

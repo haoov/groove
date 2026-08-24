@@ -4,7 +4,6 @@
 //! somebody has put on a board. Asking that way needs no board configured, costs
 //! one query rather than one per board, and a new board starts working on its own.
 
-use crate::core::config::GithubConfig;
 use crate::core::forge::api;
 
 /// A board with more items than this is paginated; the cap stops one runaway
@@ -77,50 +76,34 @@ pub(super) struct FieldValue {
     pub name: String,
     pub value: serde_json::Value,
     pub display: String,
-    /// The option id, which a single-select or iteration write takes instead of
-    /// the name.
-    #[allow(dead_code)]
-    pub option_id: Option<String>,
 }
 
 fn field_value(node: &serde_json::Value) -> Option<FieldValue> {
     let name = node["field"]["name"].as_str()?.to_string();
-    let (value, display, option_id) = match node["__typename"].as_str()? {
+    let (value, display) = match node["__typename"].as_str()? {
         "ProjectV2ItemFieldSingleSelectValue" => {
             let n = node["name"].as_str().unwrap_or_default().to_string();
-            (
-                serde_json::json!(n),
-                n,
-                node["optionId"].as_str().map(str::to_string),
-            )
+            (serde_json::json!(n), n)
         }
         "ProjectV2ItemFieldIterationValue" => {
             let t = node["title"].as_str().unwrap_or_default().to_string();
-            (
-                serde_json::json!(t),
-                t,
-                node["iterationId"].as_str().map(str::to_string),
-            )
+            (serde_json::json!(t), t)
         }
         "ProjectV2ItemFieldTextValue" => {
             let t = node["text"].as_str().unwrap_or_default().to_string();
-            (serde_json::json!(t), t, None)
+            (serde_json::json!(t), t)
         }
         "ProjectV2ItemFieldNumberValue" => {
             let n = node["number"].as_f64();
-            (
-                serde_json::json!(n),
-                n.map(|v| v.to_string()).unwrap_or_default(),
-                None,
-            )
+            (serde_json::json!(n), n.map(|v| v.to_string()).unwrap_or_default())
         }
         "ProjectV2ItemFieldDateValue" => {
             let d = node["date"].as_str().unwrap_or_default().to_string();
-            (serde_json::json!(d), d, None)
+            (serde_json::json!(d), d)
         }
         _ => return None,
     };
-    Some(FieldValue { name, value, display, option_id })
+    Some(FieldValue { name, value, display })
 }
 
 /// Every task: an open issue assigned to you that sits on some board.
@@ -129,28 +112,28 @@ fn field_value(node: &serde_json::Value) -> Option<FieldValue> {
 /// it is what "has a project" meant. When an issue is on several, the first one
 /// GitHub returns supplies its fields; the board is recorded so the choice is
 /// visible rather than silently flipping between syncs.
-pub(super) async fn assigned_issues(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
-    let items = fetch_assigned(cfg).await?;
+pub(super) async fn assigned_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> {
+    let items = fetch_assigned(host).await?;
     super::cache::put_issues(&items);
     Ok(items)
 }
 
 /// The same list, reused if it was fetched moments ago. For single-task work,
 /// where re-running the whole search to pick one item out is the wrong trade.
-pub(super) async fn cached_issues(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
+pub(super) async fn cached_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     match super::cache::issues() {
         Some(items) => Ok(items),
-        None => assigned_issues(cfg).await,
+        None => assigned_issues(host).await,
     }
 }
 
-async fn fetch_assigned(cfg: &GithubConfig) -> anyhow::Result<Vec<BoardItem>> {
+async fn fetch_assigned(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     let mut out = Vec::new();
     let mut after = serde_json::Value::Null;
 
     for _ in 0..MAX_PAGES {
         let res =
-            api::github_graphql(&cfg.host, ASSIGNED, serde_json::json!({ "after": after })).await?;
+            api::github_graphql(host, ASSIGNED, serde_json::json!({ "after": after })).await?;
         let search = &res["data"]["search"];
 
         for issue in search["nodes"].as_array().unwrap_or(&vec![]) {
@@ -198,16 +181,16 @@ query { search(query: "assignee:@me is:issue is:open", type: ISSUE, first: 1) { 
 "#;
 
 /// Every open issue assigned to you, boarded or not.
-pub(super) async fn assigned_count(cfg: &GithubConfig) -> anyhow::Result<i64> {
-    let res = api::github_graphql(&cfg.host, ASSIGNED_COUNT, serde_json::json!({})).await?;
+pub(super) async fn assigned_count(host: &str) -> anyhow::Result<i64> {
+    let res = api::github_graphql(host, ASSIGNED_COUNT, serde_json::json!({})).await?;
     Ok(res["data"]["search"]["issueCount"].as_i64().unwrap_or(0))
 }
 
 const VIEWER: &str = r#"query { viewer { login } }"#;
 
 /// The signed-in login, which issue creation needs so the queue can find it again.
-pub(super) async fn viewer_login(cfg: &GithubConfig) -> anyhow::Result<String> {
-    let res = api::github_graphql(&cfg.host, VIEWER, serde_json::json!({})).await?;
+pub(super) async fn viewer_login(host: &str) -> anyhow::Result<String> {
+    let res = api::github_graphql(host, VIEWER, serde_json::json!({})).await?;
     res["data"]["viewer"]["login"]
         .as_str()
         .map(str::to_string)

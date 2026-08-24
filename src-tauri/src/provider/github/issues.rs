@@ -57,7 +57,7 @@ pub(super) async fn create(
     title: &str,
     body: &str,
 ) -> anyhow::Result<(i64, String, String)> {
-    let me = super::projects::viewer_login(cfg).await?;
+    let me = super::projects::viewer_login(&cfg.host).await?;
     let created = api::github(
         &cfg.host,
         reqwest::Method::POST,

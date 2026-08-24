@@ -387,7 +387,6 @@ fn github_config(g: &GithubSetup) -> GithubConfig {
         properties: GithubPropertyNames {
             status: "Status".into(),
             priority: Some("Priority".into()),
-            iteration: None,
         },
         // Each board names its own columns, so a write reads them off the board and
         // only falls back to this.
@@ -396,7 +395,6 @@ fn github_config(g: &GithubSetup) -> GithubConfig {
             in_progress: "In progress".into(),
             done: "Done".into(),
         },
-        filters: FilterConfig { exclude_statuses: vec!["Done".into()], filter_by_assignee: true },
     }
 }
 
@@ -433,7 +431,13 @@ pub struct GithubSetup {
 #[tauri::command]
 pub async fn set_github_source(enabled: bool, host: Option<String>) -> Result<(), String> {
     let mut cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    cfg.github = enabled.then(|| github_config(&GithubSetup { host }));
+    // Reconnecting keeps whatever was corrected by hand in the config file, which
+    // is the only place those names can be corrected.
+    cfg.github = match (enabled, cfg.github.take()) {
+        (false, _) => None,
+        (true, Some(existing)) => Some(existing),
+        (true, None) => Some(github_config(&GithubSetup { host })),
+    };
     if cfg.notion.is_none() && cfg.github.is_none() {
         return Err("That would leave no task source at all.".into());
     }

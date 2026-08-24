@@ -18,12 +18,7 @@ use crate::core::config::PropertyNames;
 use super::schema::TaskSchema;
 
 pub use crate::provider::detect::detect_status_map;
-
-/// Lowercase, letters and digits only: makes "To-do", "to_do" and "To Do" the same
-/// string, so group names from either API surface compare equal.
-fn norm(s: &str) -> String {
-    s.chars().filter(|c| c.is_alphanumeric()).flat_map(|c| c.to_lowercase()).collect()
-}
+use crate::provider::detect::norm;
 
 /// The first property of one of `kinds`, preferring a name containing `hint`.
 ///

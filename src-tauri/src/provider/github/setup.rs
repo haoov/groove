@@ -21,37 +21,20 @@ pub struct GithubPreview {
 
 #[tauri::command]
 pub async fn preview_github(host: Option<String>) -> Result<GithubPreview, String> {
-    let cfg = crate::core::config::GithubConfig {
-        host: host.unwrap_or_else(|| DEFAULT_HOST.to_string()),
-        properties: crate::core::config::GithubPropertyNames {
-            status: "Status".into(),
-            priority: Some("Priority".into()),
-            iteration: None,
-        },
-        status_map: crate::core::config::StatusMap {
-            ready: String::new(),
-            in_progress: String::new(),
-            done: String::new(),
-        },
-        filters: crate::core::config::FilterConfig {
-            exclude_statuses: vec![],
-            filter_by_assignee: true,
-        },
-    };
+    let host = host.unwrap_or_else(|| DEFAULT_HOST.to_string());
 
-    let items = super::projects::assigned_issues(&cfg)
-        .await
-        .map_err(|e| e.to_string())?;
+    let items = super::projects::assigned_issues(&host).await.map_err(|e| e.to_string())?;
 
     let mut boards: Vec<String> = items.iter().map(|i| i.board.clone()).collect();
     boards.sort();
     boards.dedup();
 
-    let mut fields: Vec<String> = items.iter().flat_map(|i| i.fields.iter().map(|f| f.name.clone())).collect();
+    let mut fields: Vec<String> =
+        items.iter().flat_map(|i| i.fields.iter().map(|f| f.name.clone())).collect();
     fields.sort();
     fields.dedup();
 
-    let unboarded = super::projects::assigned_count(&cfg).await.unwrap_or(0) - items.len() as i64;
+    let unboarded = super::projects::assigned_count(&host).await.unwrap_or(0) - items.len() as i64;
 
     Ok(GithubPreview {
         tasks: items.len() as i64,

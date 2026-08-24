@@ -100,8 +100,6 @@ pub fn run() {
             provider::get_task_properties,
             provider::update_task_property,
             provider::request_task_body_update,
-            provider::create_task,
-            provider::get_task_template_markdown,
             provider::preview_github,
             task_manager::set_github_source,
             task_manager::set_notion_source,

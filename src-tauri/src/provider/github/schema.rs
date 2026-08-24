@@ -3,11 +3,13 @@
 use crate::core::config::GithubConfig;
 use crate::provider::types::{PropertyOption, PropertySchema, StatusGroup, TaskSchema};
 
-/// Board columns the app renders from the issue itself, not as editable fields.
-const READ_ONLY: [&str; 9] = [
+/// Columns that come off the issue rather than the board, so they are shown but
+/// cannot be set here. `properties()` fills their values.
+const DISPLAY_ONLY: [&str; 2] = ["Labels", "Assignees"];
+
+/// Not fields at all: the title is the row, and the rest is board plumbing.
+const NOT_A_FIELD: [&str; 7] = [
     "Title",
-    "Assignees",
-    "Labels",
     "Repository",
     "Milestone",
     "Reviewers",
@@ -70,9 +72,16 @@ pub(super) async fn board_schema(
                 }
             }
 
-            let meta = TIMESTAMPS.contains(&name.as_str()) || READ_ONLY.contains(&name.as_str());
+            let display_only = DISPLAY_ONLY.contains(&name.as_str());
+            let meta = TIMESTAMPS.contains(&name.as_str()) || NOT_A_FIELD.contains(&name.as_str());
+            // The board's Status column is a status, not a plain select: the strip
+            // gives that kind the coloured dot and the tone.
+            let kind = match name.eq_ignore_ascii_case("Status") && kind == "select" {
+                true => "status".to_string(),
+                false => kind,
+            };
             Some(PropertySchema {
-                editable: !meta,
+                editable: !meta && !display_only,
                 meta,
                 name,
                 kind,

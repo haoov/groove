@@ -22,10 +22,7 @@ struct ConvertRequest<'a> {
 
 impl<'a> ConvertRequest<'a> {
     fn from_payload(payload: &'a serde_json::Value) -> anyhow::Result<Self> {
-        let provider = match payload["provider"].as_str() {
-            Some("github") => ProviderId::Github,
-            _ => ProviderId::Notion,
-        };
+        let provider = crate::provider::commands::draft_provider(payload)?;
         Ok(Self {
             explorer_id: payload["explorer_id"]
                 .as_str()
@@ -202,7 +199,7 @@ pub async fn create_task_from_explorer_impl(
     // session onto the result.
     let provider = crate::provider::get(req.provider)?;
     let filed = provider.create_task(&req.draft).await?;
-    let short_id = crate::provider::commands::mint_short_id(pool, &filed).await;
+    let short_id = crate::provider::commands::mint_short_id(pool, &filed, &mut Default::default()).await?;
 
     let now = chrono::Utc::now().timestamp();
     let new_branch = crate::worktrees::naming::default_branch(

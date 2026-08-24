@@ -138,19 +138,33 @@ impl TaskKey {
 
     pub fn parse(external_id: &str) -> anyhow::Result<Self> {
         let Some((path, number)) = external_id.rsplit_once('#') else {
+            // A Notion page id is a uuid. Accepting anything else here turns a
+            // malformed id into a confusing 404 from Notion.
+            if !is_uuid(external_id) {
+                anyhow::bail!("not a task id: {external_id}");
+            }
             return Ok(TaskKey::Notion { page_id: external_id.to_string() });
         };
         let parts: Vec<&str> = path.split('/').collect();
         let [host, owner, repo] = parts[..] else {
             anyhow::bail!("not a task id: {external_id}");
         };
+        let number = number
+            .parse()
+            .map_err(|_| anyhow::anyhow!("not a task id: {external_id}"))?;
         Ok(TaskKey::Github {
             host: host.to_string(),
             owner: owner.to_string(),
             repo: repo.to_string(),
-            number: number.parse()?,
+            number,
         })
     }
+}
+
+/// Dashed or bare, which are both spellings Notion uses.
+fn is_uuid(text: &str) -> bool {
+    let bare: String = text.chars().filter(|c| *c != '-').collect();
+    bare.len() == 32 && bare.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 /// What the app asks for; the provider owns the label it writes.
@@ -160,20 +174,6 @@ pub enum StatusIntent {
     Ready,
     InProgress,
     Done,
-}
-
-/// What a provider can do. Serialized so the frontend can hide what is absent
-/// without knowing what a provider is.
-#[derive(Debug, Clone, Copy, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct Capabilities {
-    /// Writes hours to a field of its own. False does NOT mean time is
-    /// untracked — the local ledger is universal.
-    pub external_hours: bool,
-    pub template: bool,
-    pub create: bool,
-    pub editable_body: bool,
-    pub discard: bool,
 }
 
 /// One task as its provider reports it, before the store mints a short_id.
@@ -211,12 +211,8 @@ pub struct HoursWrite {
     pub after: f64,
 }
 
-#[allow(dead_code)]
 pub struct BodyWrite {
     pub blocks_written: usize,
-    /// Content the provider holds that markdown cannot rebuild. Always empty
-    /// where the body is markdown already.
-    pub lossy: Vec<String>,
 }
 
 #[cfg(test)]
@@ -226,7 +222,7 @@ mod tests {
     #[test]
     fn a_task_key_round_trips_through_its_external_id() {
         for key in [
-            TaskKey::Notion { page_id: "24f1a2b3c4d5".into() },
+            TaskKey::Notion { page_id: "24f1a2b3c4d56789abcdef0123456789".into() },
             TaskKey::Github {
                 host: "github.com".into(),
                 owner: "haoov".into(),
@@ -239,9 +235,20 @@ mod tests {
         }
     }
 
+    /// A malformed id must say so, not become a Notion page id that 404s.
+    #[test]
+    fn garbage_is_not_silently_a_notion_page() {
+        for bad in ["", "garbage", "gh-groove-1", "github.com/haoov/groove#x"] {
+            assert!(TaskKey::parse(bad).is_err(), "{bad} should not parse");
+        }
+    }
+
     #[test]
     fn the_provider_is_recoverable_from_the_id_alone() {
-        assert_eq!(TaskKey::parse("24f1a2b3c4d5").unwrap().provider(), ProviderId::Notion);
+        assert_eq!(
+            TaskKey::parse("24f1a2b3-c4d5-6789-abcd-ef0123456789").unwrap().provider(),
+            ProviderId::Notion
+        );
         assert_eq!(
             TaskKey::parse("github.com/haoov/groove#3").unwrap().provider(),
             ProviderId::Github

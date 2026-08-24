@@ -61,6 +61,20 @@ pub async fn get_by_external_id(
     )
 }
 
+/// One provider's mirrored tasks, for showing what is known when its queue is
+/// unreachable.
+pub async fn for_provider(
+    exec: impl SqliteExecutor<'_>,
+    provider: &str,
+) -> StoreResult<Vec<ProviderTask>> {
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM provider_tasks WHERE provider = ? ORDER BY synced_at DESC"
+    ))
+    .bind(provider)
+    .fetch_all(exec)
+    .await?)
+}
+
 pub async fn all(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<ProviderTask>> {
     Ok(
         sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks ORDER BY synced_at DESC"))

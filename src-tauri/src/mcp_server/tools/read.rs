@@ -175,11 +175,12 @@ pub(super) async fn get_task_template(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // The template belongs to whichever provider the task in scope came from; with
-    // no task in scope, the only provider that has one.
+    // The template belongs to whichever source the task in scope came from; with no
+    // task in scope, the one that is configured.
     let provider = match state.task_for(mcp_session) {
         Some(task_id) => crate::provider::resolve(&state.pool, &task_id).await.map(|(p, _)| p),
-        None => crate::provider::get(crate::provider::types::ProviderId::Notion),
+        None => crate::provider::commands::draft_provider(&serde_json::json!({}))
+            .and_then(crate::provider::get),
     };
     let provider = match provider {
         Ok(p) => p,

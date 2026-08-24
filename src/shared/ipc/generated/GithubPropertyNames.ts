@@ -3,4 +3,4 @@
 /**
  * The board fields the app drives, by name. Everything else is just a property.
  */
-export type GithubPropertyNames = { status: string, priority: string | null, iteration: string | null, };
+export type GithubPropertyNames = { status: string, priority: string | null, };
