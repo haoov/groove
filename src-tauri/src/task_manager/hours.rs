@@ -69,10 +69,10 @@ async fn log_hours(
 ) -> anyhow::Result<serde_json::Value> {
     let (provider, key) = crate::provider::resolve(pool, session_id).await?;
 
-    let written = match provider.capabilities().external_hours {
-        true => Some(provider.add_hours(&key, hours).await?),
-        false => None,
-    };
+    // The source's own field first where there is one, so only a write that landed
+    // counts as logged. A source with no such field is not a failure — the local
+    // ledger is the whole record there.
+    let written = provider.add_hours(&key, hours).await?;
 
     store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 

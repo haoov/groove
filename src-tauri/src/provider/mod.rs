@@ -17,7 +17,6 @@ pub use notion::*;
 #[async_trait::async_trait]
 pub(crate) trait TaskProvider: Send + Sync {
     fn id(&self) -> ProviderId;
-    fn capabilities(&self) -> Capabilities;
     fn task_url(&self, key: &TaskKey) -> String;
 
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>>;
@@ -54,12 +53,11 @@ pub(crate) trait TaskProvider: Send + Sync {
         force: bool,
     ) -> anyhow::Result<BodyWrite>;
 
-    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
+    /// Add to the source's own hours field. `Ok(None)` means it has none — time is
+    /// still tracked locally, so that is an answer, not a failure.
+    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<Option<HoursWrite>> {
         let _ = (key, hours);
-        anyhow::bail!(
-            "{} tasks have no hours field; the local ledger still recorded it",
-            self.id().as_str()
-        )
+        Ok(None)
     }
 
     async fn template_markdown(&self) -> anyhow::Result<Option<String>> {
@@ -75,8 +73,16 @@ pub(crate) trait TaskProvider: Send + Sync {
 static NOTION: notion::NotionProvider = notion::NotionProvider;
 static GITHUB: github::GithubProvider = github::GithubProvider;
 
-/// A provider, if it is configured.
+/// A provider, if it is configured. Asking for one that is not set up is the
+/// error the caller wants, not a client that fails on its first call.
 pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
+    let configured = crate::core::config::get().is_some_and(|c| match id {
+        ProviderId::Notion => c.notion.is_some(),
+        ProviderId::Github => c.github.is_some(),
+    });
+    if !configured {
+        anyhow::bail!("{} is not set up — add it in Settings", id.as_str());
+    }
     match id {
         ProviderId::Notion => Ok(&NOTION),
         ProviderId::Github => Ok(&GITHUB),

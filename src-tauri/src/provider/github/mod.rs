@@ -55,7 +55,7 @@ impl GithubProvider {
         key: &TaskKey,
     ) -> anyhow::Result<projects::BoardItem> {
         let (_, owner, repo, number) = issue_of(key)?;
-        projects::cached_issues(cfg)
+        projects::cached_issues(&cfg.host)
             .await?
             .into_iter()
             .find(|i| i.owner == owner && i.repo == repo && i.number == number)
@@ -71,19 +71,6 @@ impl TaskProvider for GithubProvider {
         ProviderId::Github
     }
 
-    fn capabilities(&self) -> Capabilities {
-        Capabilities {
-            // A board can carry an hours field; whether this one does is the
-            // schema's answer, not the provider's.
-            external_hours: true,
-            // .github/ISSUE_TEMPLATE would be the analogue; not read yet.
-            template: false,
-            create: true,
-            editable_body: true,
-            discard: true,
-        }
-    }
-
     fn task_url(&self, key: &TaskKey) -> String {
         match issue_of(key) {
             Ok((host, owner, repo, number)) => format!("https://{host}/{owner}/{repo}/issues/{number}"),
@@ -93,7 +80,7 @@ impl TaskProvider for GithubProvider {
 
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> {
         let cfg = config::github()?;
-        Ok(projects::assigned_issues(&cfg)
+        Ok(projects::assigned_issues(&cfg.host)
             .await?
             .iter()
             .map(|item| self.fetched(&cfg, item))
@@ -206,16 +193,16 @@ impl TaskProvider for GithubProvider {
         let cfg = config::github()?;
         let (_, owner, repo, number) = issue_of(key)?;
         issues::set_body(&cfg, owner, repo, number, markdown).await?;
-        Ok(BodyWrite { blocks_written: markdown.lines().count(), lossy: vec![] })
+        Ok(BodyWrite { blocks_written: markdown.lines().count() })
     }
 
-    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
+    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<Option<HoursWrite>> {
         let cfg = config::github()?;
         let item = self.item_for(&cfg, key).await?;
         let schema = schema::board_schema(&cfg, &item.project_id).await?;
-        let name = schema
-            .hours_property
-            .ok_or_else(|| anyhow::anyhow!("this board has no hours field"))?;
+        let Some(name) = schema.hours_property else {
+            return Ok(None);
+        };
 
         let before = item
             .fields
@@ -226,7 +213,7 @@ impl TaskProvider for GithubProvider {
         let after = before + hours;
         fields::set_field(&cfg, &item.project_id, &item.item_id, &name, &serde_json::json!(after))
             .await?;
-        Ok(HoursWrite { before, after })
+        Ok(Some(HoursWrite { before, after }))
     }
 
     /// File an issue in the draft's repo and put it on the first configured board.

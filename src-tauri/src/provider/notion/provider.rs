@@ -34,16 +34,6 @@ impl TaskProvider for NotionProvider {
         ProviderId::Notion
     }
 
-    fn capabilities(&self) -> Capabilities {
-        Capabilities {
-            external_hours: true,
-            template: true,
-            create: true,
-            editable_body: true,
-            discard: true,
-        }
-    }
-
     fn task_url(&self, key: &TaskKey) -> String {
         match key {
             TaskKey::Notion { page_id } => {
@@ -142,13 +132,15 @@ impl TaskProvider for NotionProvider {
         super::body::replace(&cfg.token, page_of(key)?, markdown, force).await
     }
 
-    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<HoursWrite> {
+    async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<Option<HoursWrite>> {
         let cfg = config::notion()?;
-        let property =
-            super::hours::hours_property(&cfg.token, &cfg.database_id).await?;
+        let schema = super::schema::load(&cfg.token, &cfg.database_id).await?;
+        let Some(property) = schema.hours_property.clone() else {
+            return Ok(None);
+        };
         let (before, after) =
             super::hours::add_hours(&cfg.token, page_of(key)?, &property, hours).await?;
-        Ok(HoursWrite { before, after })
+        Ok(Some(HoursWrite { before, after }))
     }
 
     async fn template_markdown(&self) -> anyhow::Result<Option<String>> {

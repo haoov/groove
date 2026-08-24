@@ -58,14 +58,16 @@ export function HoursWidget({
     if (!(hours > 0) || busy) return;
     setBusy(true);
     try {
-      const r = await invoke<{ before: number; after: number }>('log_task_hours', {
+      const r = await invoke<{ before: number | null; after: number | null }>('log_task_hours', {
         shortId: taskId, hours,
       });
       notify({
         kind: 'success',
         source: 'task',
         taskId,
-        title: `Logged ${hours}h — Hours spent ${r.before} → ${r.after}`,
+        title: r.after !== null && hoursProperty
+          ? `Logged ${hours}h — ${hoursProperty} ${r.before} → ${r.after}`
+          : `Logged ${hours}h`,
       });
       setManual('');
       refresh();
@@ -80,7 +82,12 @@ export function HoursWidget({
   const unlogged = time?.unlogged_seconds ?? 0;
   const today = time?.today_seconds ?? 0;
   const suggestion = roundHours(unlogged);
-  const loggedSeconds = (Number(logged) || 0) * 3600;
+  // The source's own total where there is one, the local ledger otherwise — with
+  // no external field that ledger IS the record.
+  const loggedSeconds = hoursProperty
+    ? (Number(logged) || 0) * 3600
+    : (time?.logged_seconds ?? 0);
+  const loggedLabel = hoursProperty ? (logged || '0') : roundHours(loggedSeconds).toString();
   const fraction = unlogged > 0 ? unlogged / (loggedSeconds + unlogged) : 0;
 
   return (
@@ -92,13 +99,11 @@ export function HoursWidget({
 
       <div className="time-body">
         <div className="time-figures">
-          {hoursProperty && (
-            <span className="time-logged">
-              <strong>{logged || '0'}</strong>
-              <span className="time-unit">h</span>
-              <span className="time-caption">logged</span>
-            </span>
-          )}
+          <span className="time-logged">
+            <strong>{loggedLabel}</strong>
+            <span className="time-unit">h</span>
+            <span className="time-caption">logged</span>
+          </span>
           <span className="time-tracked">
             {unlogged > 0
               ? <><strong>{human(unlogged)}</strong> tracked, not logged yet</>
@@ -108,19 +113,22 @@ export function HoursWidget({
           </span>
         </div>
 
-        {hoursProperty && (
-          <div className="time-bar" aria-hidden>
-            <span className="time-bar-fill" style={{ width: `${Math.min(100, fraction * 100)}%` }} />
-          </div>
-        )}
+        <div className="time-bar" aria-hidden>
+          <span className="time-bar-fill" style={{ width: `${Math.min(100, fraction * 100)}%` }} />
+        </div>
 
-        {hoursProperty && (
         <div className="time-actions">
           <button
             className="time-log"
             disabled={busy || suggestion <= 0}
             onClick={() => log(suggestion)}
-            title={suggestion > 0 ? `Add ${suggestion}h to ${hoursProperty}` : 'Nothing tracked to log'}
+            title={
+              suggestion <= 0
+                ? 'Nothing tracked to log'
+                : hoursProperty
+                  ? `Add ${suggestion}h to ${hoursProperty}`
+                  : `Record ${suggestion}h as logged`
+            }
           >
             {busy ? <Loader2 size={12} className="spin" /> : null}
             {suggestion > 0 ? `Log ${suggestion}h` : 'Nothing to log'}
@@ -143,7 +151,6 @@ export function HoursWidget({
             />
           </span>
         </div>
-        )}
       </div>
     </div>
   );
