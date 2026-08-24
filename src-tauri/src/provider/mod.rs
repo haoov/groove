@@ -19,15 +19,16 @@ pub(crate) trait TaskProvider: Send + Sync {
     fn id(&self) -> ProviderId;
     fn task_url(&self, key: &TaskKey) -> String;
 
-    /// Short ids to try for a task with no natural id of its own, best first —
-    /// the first one not already taken is minted.
+    /// The short id for a task whose source gives it none of its own.
     ///
-    /// A short_id names a session, a worktree directory and part of a branch, so
-    /// it must be filesystem-safe and stable. A provider whose tasks always carry
-    /// `natural_short_id` never needs this.
-    fn short_id_candidates(&self, task: &FetchedTask) -> Vec<String> {
+    /// A short_id is the session's primary key and can become part of a branch
+    /// name, so it must be stable and safe in a git ref. Build it so it cannot
+    /// collide within this provider; a clash is still deduplicated, but the id
+    /// carries the suffix forever. `None` means every task here arrives with a
+    /// `natural_short_id`.
+    fn short_id(&self, task: &FetchedTask) -> Option<String> {
         let _ = task;
-        vec![]
+        None
     }
 
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>>;

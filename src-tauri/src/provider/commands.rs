@@ -13,9 +13,10 @@ use crate::core::db::store;
 /// directory, and part of its branch. Minted once and never recomputed — it names
 /// things that already exist on disk.
 ///
-/// A provider with a natural id keeps it; otherwise the provider offers its own
-/// candidate forms via `short_id_candidates` and the first free one is taken. This
-/// function knows no provider: the formats live with the providers that own them.
+/// A task keeps the id its source gave it, or takes the one its provider builds
+/// (`TaskProvider::short_id`). A clash — which the UNIQUE column would otherwise
+/// reject — gets a numeric suffix. This function names no provider: every format
+/// lives with the provider that owns it.
 pub(crate) async fn mint_short_id(
     pool: &SqlitePool,
     provider: &dyn super::TaskProvider,
@@ -29,29 +30,25 @@ pub(crate) async fn mint_short_id(
         return Ok(existing.short_id);
     }
 
-    // A source with an id of its own keeps it — but `short_id` is UNIQUE, and a
-    // clash used to surface as a constraint error that aborted the whole sync.
-    // Suffixing is safe here: nothing on disk carries this id yet.
-    if let Some(natural) = &task.natural_short_id {
-        let suffixed = (2..=99).map(|n| format!("{natural}-{n}"));
-        for candidate in std::iter::once(natural.clone()).chain(suffixed) {
-            if is_free(pool, minted, &candidate).await? {
-                minted.insert(candidate.clone());
-                return Ok(candidate);
-            }
-        }
-        anyhow::bail!("cannot mint a short id for {natural}: every form is taken");
-    }
+    // The source's own id when it has one, else the one the provider builds.
+    // Never the raw external_id: that is an API handle, not a name for a session.
+    let wanted = match &task.natural_short_id {
+        Some(natural) => natural.clone(),
+        None => provider
+            .short_id(task)
+            .ok_or_else(|| anyhow::anyhow!("{} gave no short id for {external_id}", provider.id().as_str()))?,
+    };
 
-    // No natural id: the provider offers its own forms, best first. Falling back
-    // to the raw external_id here would name a directory `host/owner/repo#42`.
-    for candidate in provider.short_id_candidates(task) {
+    // `short_id` is UNIQUE, and a clash used to surface as a constraint error that
+    // aborted the whole sync. Suffixing is safe: nothing carries this id yet.
+    let suffixed = (2..=99).map(|n| format!("{wanted}-{n}"));
+    for candidate in std::iter::once(wanted.clone()).chain(suffixed) {
         if is_free(pool, minted, &candidate).await? {
             minted.insert(candidate.clone());
             return Ok(candidate);
         }
     }
-    anyhow::bail!("{} gave no usable short id for {external_id}", provider.id().as_str())
+    anyhow::bail!("cannot mint a short id for {wanted}: every form is taken")
 }
 
 /// `minted` covers the rest of this sync: two tasks can collide inside one batch,
@@ -194,9 +191,7 @@ pub async fn list_relation_options(
 /// both set up the caller has to say.
 pub(crate) fn draft_provider(payload: &serde_json::Value) -> anyhow::Result<ProviderId> {
     match payload["provider"].as_str() {
-        Some("github") => Ok(ProviderId::Github),
-        Some("notion") => Ok(ProviderId::Notion),
-        Some(other) => anyhow::bail!("unknown task source {other}"),
+        Some(name) => ProviderId::parse(name),
         None => match enabled().as_slice() {
             [only] => Ok(only.id()),
             [] => anyhow::bail!("no task source is set up"),
@@ -288,24 +283,37 @@ mod tests {
         }
     }
 
-    /// Two repos that truncate to the same segment collide. Nothing is written to
-    /// the store until the batch ends, so the store cannot be what catches it.
+    /// The owner is in the id, so the common case — one repo name under two
+    /// owners — cannot collide at all.
+    #[tokio::test]
+    async fn two_owners_sharing_a_repo_name_do_not_collide() {
+        let pool = test_pool().await;
+        let github = crate::provider::github::GithubProvider;
+        let mut minted = std::collections::HashSet::new();
+
+        let first = mint_short_id(&pool, &github, &gh("acme", "api", 42), &mut minted).await.unwrap();
+        let second = mint_short_id(&pool, &github, &gh("beta", "api", 42), &mut minted).await.unwrap();
+
+        assert_eq!(first, "gh-acme-api-42");
+        assert_eq!(second, "gh-beta-api-42");
+    }
+
+    /// Truncation can still collide. Nothing is written to the store until the
+    /// batch ends, so the store cannot be what catches it.
     #[tokio::test]
     async fn a_collision_inside_one_sync_still_gets_two_ids() {
         let pool = test_pool().await;
-        let gh_provider = crate::provider::github::GithubProvider;
+        let github = crate::provider::github::GithubProvider;
         let mut minted = std::collections::HashSet::new();
 
-        let first = mint_short_id(&pool, &gh_provider, &gh("acme", "kubernetes-operator", 42), &mut minted)
-            .await
-            .unwrap();
-        let second = mint_short_id(&pool, &gh_provider, &gh("beta", "kubernetes-operations", 42), &mut minted)
+        let long = "kubernetes-operator-controller";
+        let first = mint_short_id(&pool, &github, &gh("acme", long, 42), &mut minted).await.unwrap();
+        let second = mint_short_id(&pool, &github, &gh("acme", &format!("{long}-extra"), 42), &mut minted)
             .await
             .unwrap();
 
         assert_ne!(first, second, "two tasks must never share a short_id");
-        assert_eq!(first, "gh-kubernetes-opera-42", "the first keeps the short form");
-        assert!(second.contains("beta"), "the collider takes the owner: {second}");
+        assert_eq!(second, format!("{first}-2"), "the collider is suffixed");
     }
 
     /// `short_id` is UNIQUE, so a natural id that clashes must be disambiguated.
@@ -327,10 +335,11 @@ mod tests {
         assert_eq!(second, "PLAT-42-2", "the collider is suffixed, not repeated");
     }
 
-    /// A provider offering no candidates must fail loudly. Returning the raw
-    /// external_id would name a worktree directory `host/owner/repo#42`.
+    /// A provider that supplies neither a natural id nor one of its own must fail
+    /// loudly. Falling back to the raw external_id would make an API handle the
+    /// session's primary key, and part of a branch name.
     #[tokio::test]
-    async fn no_candidate_is_an_error_not_a_raw_external_id() {
+    async fn no_short_id_is_an_error_not_a_raw_external_id() {
         struct Silent;
         #[async_trait::async_trait]
         impl crate::provider::TaskProvider for Silent {
@@ -361,6 +370,6 @@ mod tests {
             .await
             .unwrap_err()
             .to_string();
-        assert!(err.contains("no usable short id"), "{err}");
+        assert!(err.contains("gave no short id"), "{err}");
     }
 }
