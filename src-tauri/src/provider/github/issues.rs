@@ -47,6 +47,9 @@ mutation($project: ID!, $content: ID!) {
 "#;
 
 /// File an issue and put it on the board. Returns `(number, url, node_id)`.
+///
+/// Assigned to you on the way in: the queue is "issues assigned to me", so an
+/// unassigned one would be filed and then never come back as a task.
 pub(super) async fn create(
     cfg: &GithubConfig,
     owner: &str,
@@ -54,11 +57,12 @@ pub(super) async fn create(
     title: &str,
     body: &str,
 ) -> anyhow::Result<(i64, String, String)> {
+    let me = super::projects::viewer_login(cfg).await?;
     let created = api::github(
         &cfg.host,
         reqwest::Method::POST,
         &format!("repos/{owner}/{repo}/issues"),
-        Some(&serde_json::json!({ "title": title, "body": body })),
+        Some(&serde_json::json!({ "title": title, "body": body, "assignees": [me] })),
     )
     .await?;
 

@@ -185,3 +185,14 @@ pub(super) async fn assigned_count(cfg: &GithubConfig) -> anyhow::Result<i64> {
     let res = api::github_graphql(&cfg.host, ASSIGNED_COUNT, serde_json::json!({})).await?;
     Ok(res["data"]["search"]["issueCount"].as_i64().unwrap_or(0))
 }
+
+const VIEWER: &str = r#"query { viewer { login } }"#;
+
+/// The signed-in login, which issue creation needs so the queue can find it again.
+pub(super) async fn viewer_login(cfg: &GithubConfig) -> anyhow::Result<String> {
+    let res = api::github_graphql(&cfg.host, VIEWER, serde_json::json!({})).await?;
+    res["data"]["viewer"]["login"]
+        .as_str()
+        .map(str::to_string)
+        .ok_or_else(|| anyhow::anyhow!("GitHub did not say who you are signed in as"))
+}

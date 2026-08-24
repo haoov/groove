@@ -159,7 +159,7 @@ pub(super) async fn create_task_from_explorer(
         None => store::repos::attached_to(&state.pool, &explorer_id)
             .await
             .ok()
-            .and_then(|rs| rs.first().map(|r| r.id.clone())),
+            .and_then(|rs| rs.first().map(|r| format!("{}/{}", r.group_path, r.project))),
     };
 
     let payload = serde_json::json!({

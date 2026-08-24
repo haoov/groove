@@ -151,10 +151,13 @@ impl TaskProvider for GithubProvider {
 
     async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()> {
         let cfg = config::github()?;
-        let label = self
-            .status_label(intent)
-            .ok_or_else(|| anyhow::anyhow!("no status configured for {intent:?}"))?;
         let item = self.item_for(&cfg, key).await?;
+        // The board's own columns, not the config: every board names them
+        // differently, and this is the write a user makes every day.
+        let label = fields::status_for(&cfg, &item.project_id, intent).await;
+        if label.is_empty() {
+            anyhow::bail!("no status column on this board matches {intent:?}");
+        }
         fields::set_field(
             &cfg,
             &item.project_id,
@@ -232,9 +235,12 @@ impl TaskProvider for GithubProvider {
         let slug = draft
             .repo
             .ok_or_else(|| anyhow::anyhow!("filing a GitHub issue needs a repo to file it in"))?;
-        let (owner, repo) = slug
-            .split_once('/')
-            .ok_or_else(|| anyhow::anyhow!("expected owner/repo, got {slug}"))?;
+        // The last two segments: a caller passes either `owner/repo` or a repo id,
+        // which carries the host in front of it.
+        let mut parts = slug.rsplit('/');
+        let (Some(repo), Some(owner)) = (parts.next(), parts.next()) else {
+            anyhow::bail!("expected owner/repo, got {slug}");
+        };
         let project_id = issues::repo_board(&cfg, owner, repo).await?;
 
         let (number, url, node_id) =
@@ -268,5 +274,27 @@ impl TaskProvider for GithubProvider {
             branch_tag: Some(number.to_string()),
             board: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The same split create_task does. A caller passes either `owner/repo` or a
+    /// repo id, which is `host/owner/repo` — taking the first two segments made
+    /// every GitHub conversion ask GitHub for a repo called `owner/repo` owned by
+    /// the hostname.
+    fn owner_repo(slug: &str) -> Option<(&str, &str)> {
+        let mut parts = slug.rsplit('/');
+        match (parts.next(), parts.next()) {
+            (Some(repo), Some(owner)) => Some((owner, repo)),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_repo_id_and_a_bare_slug_both_resolve() {
+        assert_eq!(owner_repo("haoov/groove"), Some(("haoov", "groove")));
+        assert_eq!(owner_repo("github.com/haoov/groove"), Some(("haoov", "groove")));
+        assert_eq!(owner_repo("groove"), None);
     }
 }

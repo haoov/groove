@@ -164,8 +164,9 @@ mod tests {
         }
     }
 
-    /// The whole reason options carry ids: the mutation takes the id, and sending
-    /// the name is silently wrong rather than an error.
+    /// The schema hands the frontend the option NAME as the value to send, and the
+    /// mutation takes the option id — so the resolution happens here. Sending what
+    /// the frontend sends must work; sending a node id must not silently pass.
     #[test]
     fn a_select_is_addressed_by_option_id() {
         let out = field_value(&select(), &serde_json::json!("In progress")).unwrap();
@@ -176,6 +177,19 @@ mod tests {
     fn an_unknown_option_names_the_ones_that_exist() {
         let err = field_value(&select(), &serde_json::json!("Shipped")).unwrap_err().to_string();
         assert!(err.contains("Ready") && err.contains("In progress"), "{err}");
+    }
+
+    /// What the frontend actually sends is PropertyOption.id, which the schema
+    /// sets to the option name. This is the round trip that was broken.
+    #[test]
+    fn the_value_the_schema_offers_is_the_value_a_write_accepts() {
+        let def = select();
+        for (id_the_ui_sends, expected) in
+            [("Ready", "61e4505c"), ("In progress", "47fc9ee4")]
+        {
+            let out = field_value(&def, &serde_json::json!(id_the_ui_sends)).unwrap();
+            assert_eq!(out, serde_json::json!({ "singleSelectOptionId": expected }));
+        }
     }
 
     #[test]

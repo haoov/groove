@@ -70,16 +70,14 @@ pub(super) async fn board_schema(
             let data_type = f["dataType"].as_str().unwrap_or("TEXT");
             let kind = kind_of(data_type).to_string();
 
+            // `id` is the value the app sends back, not the node id: a write
+            // resolves the option id from the name (see fields::field_value), the
+            // same shape Notion uses.
             let mut options: Vec<PropertyOption> = f["options"]
                 .as_array()
                 .map(|o| {
                     o.iter()
-                        .filter_map(|x| {
-                            Some(PropertyOption {
-                                id: x["id"].as_str()?.to_string(),
-                                title: x["name"].as_str()?.to_string(),
-                            })
-                        })
+                        .filter_map(|x| Some(PropertyOption::named(x["name"].as_str()?)))
                         .collect()
                 })
                 .unwrap_or_default();
@@ -87,12 +85,9 @@ pub(super) async fn board_schema(
             // listed so an existing value still resolves to a name.
             for key in ["iterations", "completedIterations"] {
                 if let Some(iters) = f["configuration"][key].as_array() {
-                    options.extend(iters.iter().filter_map(|i| {
-                        Some(PropertyOption {
-                            id: i["id"].as_str()?.to_string(),
-                            title: i["title"].as_str()?.to_string(),
-                        })
-                    }));
+                    options.extend(
+                        iters.iter().filter_map(|i| Some(PropertyOption::named(i["title"].as_str()?))),
+                    );
                 }
             }
 
