@@ -74,6 +74,17 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
+    // The session's Overview MODE — the rail's own button, on a key. Pressing it
+    // while already there goes back to the code view, so the key toggles rather
+    // than dead-ends (the panel shortcuts fold the same way).
+    case 'panel.overview': {
+      if (!sess) return false;
+      const a = sessionActions(sess.id);
+      a.setWorkspaceMode(sess.workspaceMode === 'overview' && inWorkspace ? 'code' : 'overview');
+      st.setView('workspace');
+      return true;
+    }
+
     // 3-state, matching the terminal: closed → open+focus; open but not focused →
     // focus; focused on the same panel → close. Pressing the shortcut you are
     // already in should put the space back, not do nothing.
@@ -83,7 +94,10 @@ export function runCommand(id: CommandId): boolean {
       if (!sess) return false;
       const tab: SidebarTab =
         id === 'panel.files' ? 'files' : id === 'panel.git' ? 'git' : 'annotations';
-      if (!sess.sidebarCollapsed && sess.sidebarTab === tab && isSidebarFocused()) {
+      const inCode = sess.workspaceMode === 'code';
+      // Fold only when already looking at this panel; from Overview the same key
+      // has to bring the panels back, which is what the rail's buttons do.
+      if (inCode && !sess.sidebarCollapsed && sess.sidebarTab === tab && isSidebarFocused()) {
         sessionActions(sess.id).setSidebarCollapsed(true);
         // Hand the keyboard back to the editor, or focus lands nowhere.
         st.updateSession(sess.id, (x) => ({ editorFocusNonce: x.editorFocusNonce + 1 }));
@@ -92,6 +106,9 @@ export function runCommand(id: CommandId): boolean {
       st.updateSession(sess.id, () => ({
         sidebarTab: tab,
         sidebarCollapsed: false,
+        // Overview is a MODE, not a tab: without this the sidebar state changed
+        // behind the overview and the keystroke looked dead.
+        workspaceMode: 'code' as const,
         ...(tab === 'git' ? { gitSubTab: 'changes' as GitSubTab } : {}),
       }));
       st.setView('workspace');

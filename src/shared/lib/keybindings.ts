@@ -11,6 +11,7 @@ export type CommandId =
   | 'files.quickOpen'
   | 'files.search'
   | 'settings.open'
+  | 'panel.overview'
   | 'panel.files'
   | 'panel.git'
   | 'panel.annotations'
@@ -60,6 +61,7 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'settings.open', label: 'Open settings…', group: 'General', defaults: [C(',', { ctrl: true })] },
 
   // Panels
+  { id: 'panel.overview', label: 'Overview', group: 'Panels', defaults: [C('o', { alt: true })] },
   { id: 'panel.files', label: 'Files tree', group: 'Panels', defaults: [C('e', { alt: true })] },
   { id: 'panel.git', label: 'Source control', group: 'Panels', defaults: [C('g', { alt: true })] },
   { id: 'panel.annotations', label: 'Notes', group: 'Panels', defaults: [C('a', { ctrl: true, shift: true })] },
@@ -79,7 +81,7 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'pane.splitRight', label: 'Split pane right', group: 'Workspace', defaults: [C('|', { alt: true, shift: true })], macDefaults: [C('d', { alt: true })] },
   { id: 'pane.splitDown', label: 'Split pane down', group: 'Workspace', defaults: [C('-', { alt: true })], macDefaults: [C('d', { alt: true, shift: true })] },
   { id: 'pane.close', label: 'Close pane', group: 'Workspace', defaults: [C('w', { alt: true, shift: true })] },
-  { id: 'pane.next', label: 'Focus next pane', group: 'Workspace', defaults: [C('o', { alt: true })] },
+  { id: 'pane.next', label: 'Focus next pane', group: 'Workspace', defaults: [C('i', { alt: true })] },
   { id: 'pane.maximize', label: 'Maximize / restore pane', group: 'Workspace', defaults: [C('m', { alt: true })] },
   { id: 'tab.next', label: 'Next file tab', group: 'Workspace', defaults: [C('n', { alt: true })] },
   { id: 'tab.prev', label: 'Previous file tab', group: 'Workspace', defaults: [C('p', { alt: true })] },
@@ -114,12 +116,13 @@ export function defaultKeymap(): Keymap {
 const macDivergedIds = (): CommandId[] =>
   COMMANDS.filter((c) => c.macDefaults).map((c) => c.id);
 
-const LS_KEY = 'workbench.keymap.v6';
+const LS_KEY = 'workbench.keymap.v7';
 /** Older maps are read once and migrated. v1 → v2 resolved chords shared by two
  *  commands (they used to resolve silently by declaration order); v2 → v3 released
  *  chords whose owning command changed (see MOVED_CHORDS); v5 → v6 released the
- *  chords that differ on macOS. */
-const LS_KEYS_OLD = ['workbench.keymap.v5', 'workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
+ *  chords that differ on macOS; v6 → v7 released Alt+O to the new Overview
+ *  command. */
+const LS_KEYS_OLD = ['workbench.keymap.v6', 'workbench.keymap.v5', 'workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
 
 /**
  * Commands whose default chord moved to a different command, so a stored binding
@@ -131,8 +134,11 @@ const LS_KEYS_OLD = ['workbench.keymap.v5', 'workbench.keymap.v4', 'workbench.ke
  * its new Alt+Shift+W default rather than staying unbound.
  * `tab.close` lost Alt+W to `worktree.switch`; it is unbound now (middle-click
  * and the × button close a tab).
+ * `pane.next` lost Alt+O to `panel.overview` and takes Alt+I. Without this a
+ * customised map would keep Alt+O for both and the conflict resolver would
+ * quietly unbind one of them.
  */
-const MOVED_CHORDS: CommandId[] = ['repo.add', 'pane.close', 'tab.close'];
+const MOVED_CHORDS: CommandId[] = ['repo.add', 'pane.close', 'tab.close', 'pane.next'];
 
 /** A chord identifies one command. Same shape as `chordMatches` compares. */
 const chordKey = (c: Chord) =>
