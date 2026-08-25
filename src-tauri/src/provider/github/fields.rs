@@ -190,6 +190,22 @@ pub(super) async fn status_for(
     pick_status(&options, hint, configured)
 }
 
+/// The error for a board whose status columns match neither the intent nor the
+/// config. Lists the real columns: the fix is one line in the config file, and
+/// the list is what tells the user what to write there.
+pub(super) fn no_status_error(
+    intent: crate::provider::types::StatusIntent,
+    columns: &[String],
+) -> anyhow::Error {
+    let listed = match columns.is_empty() {
+        true => "the board's columns could not be read".to_string(),
+        false => format!("the board's columns are: {}", columns.join(", ")),
+    };
+    anyhow::anyhow!(
+        "no status column on this board matches {intent:?} — {listed}.          Set github.status_map in the config file to one of them."
+    )
+}
+
 /// The board column for an intent: one whose name looks like it, else the
 /// configured label when the board really has a column by that name, else nothing.
 ///
@@ -208,6 +224,19 @@ fn pick_status(options: &[String], hint: &str, configured: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The user's fix is a config line; the error must name the real columns.
+    #[test]
+    fn the_no_status_error_names_every_column() {
+        let cols = vec!["Todo".to_string(), "Doing".to_string(), "Shipped".to_string()];
+        let msg = no_status_error(crate::provider::types::StatusIntent::Done, &cols).to_string();
+        for c in &cols {
+            assert!(msg.contains(c.as_str()), "{msg}");
+        }
+        assert!(msg.contains("status_map"), "{msg}");
+        let empty = no_status_error(crate::provider::types::StatusIntent::Done, &[]).to_string();
+        assert!(empty.contains("could not be read"), "{empty}");
+    }
 
     fn select() -> FieldDef {
         FieldDef {

@@ -49,19 +49,26 @@ impl GithubProvider {
     }
 
     /// The board item behind a task.
+    ///
+    /// The queue cache is the fast path, but it only holds OPEN issues ASSIGNED
+    /// to you — a task whose issue was closed or reassigned must stay operable
+    /// for its open session, so a miss falls back to fetching the issue itself.
     async fn item_for(
         &self,
         cfg: &config::GithubConfig,
         key: &TaskKey,
     ) -> anyhow::Result<projects::BoardItem> {
         let (_, owner, repo, number) = issue_of(key)?;
-        projects::cached_issues(&cfg.host)
+        let cached = projects::cached_issues(&cfg.host)
             .await?
             .into_iter()
-            .find(|i| i.owner == owner && i.repo == repo && i.number == number)
-            .ok_or_else(|| {
-                anyhow::anyhow!("{owner}/{repo}#{number} is not an open issue assigned to you on a board")
-            })
+            .find(|i| i.owner == owner && i.repo == repo && i.number == number);
+        if let Some(item) = cached {
+            return Ok(item);
+        }
+        projects::fetch_item(&cfg.host, owner, repo, number)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("{owner}/{repo}#{number} is not on any project board"))
     }
 }
 
@@ -145,7 +152,13 @@ impl TaskProvider for GithubProvider {
         // differently, and this is the write a user makes every day.
         let label = fields::status_for(&cfg, &item.project_id, intent).await;
         if label.is_empty() {
-            anyhow::bail!("no status column on this board matches {intent:?}");
+            // Name the board's real columns: the fix is one config line, and
+            // without the list the user cannot know what to put there.
+            let columns = fields::field_def(&cfg, &item.project_id, &cfg.properties.status)
+                .await
+                .map(|d| d.options.into_iter().map(|(n, _)| n).collect::<Vec<_>>())
+                .unwrap_or_default();
+            return Err(fields::no_status_error(intent, &columns));
         }
         fields::set_field(
             &cfg,

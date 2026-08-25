@@ -10,12 +10,9 @@ use crate::core::forge::api;
 /// board from stalling the whole queue.
 const MAX_PAGES: usize = 20;
 
-const ASSIGNED: &str = r#"
-query($after: String) {
-  search(query: "assignee:@me is:issue is:open", type: ISSUE, first: 50, after: $after) {
-    pageInfo { hasNextPage endCursor }
-    nodes {
-      ... on Issue {
+/// The per-issue selection both queries share. One fragment, formatted into
+/// each, so the search path and the single-issue path cannot drift apart.
+const ISSUE_FIELDS: &str = r#"
         number title url body
         repository { name owner { login } }
         assignees(first: 10) { nodes { login } }
@@ -46,11 +43,38 @@ query($after: String) {
             }
           }
         }
-      }
-    }
-  }
-}
 "#;
+
+fn assigned_query() -> String {
+    format!(
+        r#"
+query($after: String) {{
+  search(query: "assignee:@me is:issue is:open", type: ISSUE, first: 50, after: $after) {{
+    pageInfo {{ hasNextPage endCursor }}
+    nodes {{
+      ... on Issue {{
+{ISSUE_FIELDS}
+      }}
+    }}
+  }}
+}}
+"#
+    )
+}
+
+fn issue_query() -> String {
+    format!(
+        r#"
+query($owner: String!, $repo: String!, $number: Int!) {{
+  repository(owner: $owner, name: $repo) {{
+    issue(number: $number) {{
+{ISSUE_FIELDS}
+    }}
+  }}
+}}
+"#
+    )
+}
 
 /// One board item that is a task: an open issue assigned to the viewer.
 #[derive(Clone)]
@@ -127,45 +151,48 @@ pub(super) async fn cached_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> 
     }
 }
 
+/// An issue node into a task, or `None` when it sits on no board — an issue off
+/// every board is deliberately not a task. When it is on several, the first one
+/// GitHub returns supplies the fields; the board is recorded so the choice is
+/// visible rather than silently flipping between syncs.
+fn board_item(issue: &serde_json::Value) -> Option<BoardItem> {
+    let item = issue["projectItems"]["nodes"].as_array().and_then(|n| n.first())?;
+    Some(BoardItem {
+        item_id: item["id"].as_str().unwrap_or_default().to_string(),
+        project_id: item["project"]["id"].as_str().unwrap_or_default().to_string(),
+        board: item["project"]["title"].as_str().unwrap_or_default().to_string(),
+        owner: issue["repository"]["owner"]["login"].as_str().unwrap_or_default().to_string(),
+        repo: issue["repository"]["name"].as_str().unwrap_or_default().to_string(),
+        number: issue["number"].as_i64().unwrap_or_default(),
+        title: issue["title"].as_str().unwrap_or_default().to_string(),
+        url: issue["url"].as_str().unwrap_or_default().to_string(),
+        body: issue["body"].as_str().unwrap_or_default().to_string(),
+        labels: issue["labels"]["nodes"]
+            .as_array()
+            .map(|l| l.iter().filter_map(|n| n["name"].as_str().map(str::to_string)).collect())
+            .unwrap_or_default(),
+        assignees: issue["assignees"]["nodes"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|n| n["login"].as_str().map(str::to_string)).collect())
+            .unwrap_or_default(),
+        fields: item["fieldValues"]["nodes"]
+            .as_array()
+            .map(|f| f.iter().filter_map(field_value).collect())
+            .unwrap_or_default(),
+    })
+}
+
 async fn fetch_assigned(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     let mut out = Vec::new();
     let mut after = serde_json::Value::Null;
+    let query = assigned_query();
 
     for _ in 0..MAX_PAGES {
         let res =
-            api::github_graphql(host, ASSIGNED, serde_json::json!({ "after": after })).await?;
+            api::github_graphql(host, &query, serde_json::json!({ "after": after })).await?;
         let search = &res["data"]["search"];
 
-        for issue in search["nodes"].as_array().unwrap_or(&vec![]) {
-            let Some(item) = issue["projectItems"]["nodes"].as_array().and_then(|n| n.first())
-            else {
-                continue;
-            };
-
-            out.push(BoardItem {
-                item_id: item["id"].as_str().unwrap_or_default().to_string(),
-                project_id: item["project"]["id"].as_str().unwrap_or_default().to_string(),
-                board: item["project"]["title"].as_str().unwrap_or_default().to_string(),
-                owner: issue["repository"]["owner"]["login"].as_str().unwrap_or_default().to_string(),
-                repo: issue["repository"]["name"].as_str().unwrap_or_default().to_string(),
-                number: issue["number"].as_i64().unwrap_or_default(),
-                title: issue["title"].as_str().unwrap_or_default().to_string(),
-                url: issue["url"].as_str().unwrap_or_default().to_string(),
-                body: issue["body"].as_str().unwrap_or_default().to_string(),
-                labels: issue["labels"]["nodes"]
-                    .as_array()
-                    .map(|l| l.iter().filter_map(|n| n["name"].as_str().map(str::to_string)).collect())
-                    .unwrap_or_default(),
-                assignees: issue["assignees"]["nodes"]
-                    .as_array()
-                    .map(|a| a.iter().filter_map(|n| n["login"].as_str().map(str::to_string)).collect())
-                    .unwrap_or_default(),
-                fields: item["fieldValues"]["nodes"]
-                    .as_array()
-                    .map(|f| f.iter().filter_map(field_value).collect())
-                    .unwrap_or_default(),
-            });
-        }
+        out.extend(search["nodes"].as_array().unwrap_or(&vec![]).iter().filter_map(board_item));
 
         if !search["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
             break;
@@ -174,6 +201,30 @@ async fn fetch_assigned(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     }
 
     Ok(out)
+}
+
+/// One issue by address, on a board or not — closed and unassigned included.
+///
+/// The queue's search only returns OPEN issues ASSIGNED TO YOU, so a task whose
+/// issue was closed or reassigned vanished from it and every per-task operation
+/// failed for a session already open. `None` means the issue is on no board.
+pub(super) async fn fetch_item(
+    host: &str,
+    owner: &str,
+    repo: &str,
+    number: i64,
+) -> anyhow::Result<Option<BoardItem>> {
+    let res = api::github_graphql(
+        host,
+        &issue_query(),
+        serde_json::json!({ "owner": owner, "repo": repo, "number": number }),
+    )
+    .await?;
+    let issue = &res["data"]["repository"]["issue"];
+    if issue.is_null() {
+        anyhow::bail!("{owner}/{repo}#{number} does not exist, or you cannot see it");
+    }
+    Ok(board_item(issue))
 }
 
 const ASSIGNED_COUNT: &str = r#"
@@ -195,4 +246,45 @@ pub(super) async fn viewer_login(host: &str) -> anyhow::Result<String> {
         .as_str()
         .map(str::to_string)
         .ok_or_else(|| anyhow::anyhow!("GitHub did not say who you are signed in as"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn issue(project_items: serde_json::Value) -> serde_json::Value {
+        serde_json::json!({
+            "number": 42,
+            "title": "Fix the parser",
+            "url": "https://github.com/acme/api/issues/42",
+            "body": "body",
+            "repository": { "name": "api", "owner": { "login": "acme" } },
+            "assignees": { "nodes": [{ "login": "me" }] },
+            "labels": { "nodes": [{ "name": "bug" }] },
+            "projectItems": { "nodes": project_items },
+        })
+    }
+
+    /// The parse both the search path and the single-issue fetch share.
+    #[test]
+    fn an_issue_on_a_board_becomes_a_task() {
+        let item = board_item(&issue(serde_json::json!([{
+            "id": "PVTI_x",
+            "project": { "id": "PVT_y", "title": "Platform" },
+            "fieldValues": { "nodes": [{
+                "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                "optionId": "o1", "name": "In progress", "field": { "name": "Status" }
+            }] },
+        }])))
+        .expect("on a board = a task");
+        assert_eq!((item.owner.as_str(), item.repo.as_str(), item.number), ("acme", "api", 42));
+        assert_eq!(item.board, "Platform");
+        assert_eq!(item.fields[0].display, "In progress");
+    }
+
+    /// An issue off every board is not a task — the whole filter.
+    #[test]
+    fn a_boardless_issue_is_not_a_task() {
+        assert!(board_item(&issue(serde_json::json!([]))).is_none());
+    }
 }
