@@ -11,7 +11,7 @@ import { useStore } from '../shared/store';
  * mid-turn. So watching an agent grind through a refactor counts (it is work on
  * the task), but leaving the app open over lunch does not.
  *
- * Nothing here writes to Notion. It accumulates locally; the overview shows what
+ * Nothing here writes to the task source. It accumulates locally; the overview shows what
  * was measured and you log a figure you agree with (see hours.rs).
  */
 

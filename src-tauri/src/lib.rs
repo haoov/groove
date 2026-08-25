@@ -13,7 +13,7 @@ mod mcp_server;
 mod migrate_identity;
 mod platform;
 mod forge;
-mod notion;
+mod provider;
 mod review;
 mod task_manager;
 mod worktrees;
@@ -77,7 +77,7 @@ pub fn run() {
             task_manager::set_task_repos,
             task_manager::get_config,
             task_manager::check_environment,
-            task_manager::detect_database,
+            provider::detect_notion_database,
             task_manager::start_auth_session,
             task_manager::write_initial_config,
             task_manager::get_task_time,
@@ -90,18 +90,18 @@ pub fn run() {
             task_manager::set_theme,
             task_manager::finish_task,
             task_manager::delete_task,
-            // notion
-            notion::list_tasks,
-            notion::sync_task,
-            notion::find_notion_user,
-            notion::get_task_body_markdown,
-            notion::get_task_schema,
-            notion::list_relation_options,
-            notion::get_task_properties,
-            notion::update_task_property,
-            notion::request_task_body_update,
-            notion::create_task,
-            notion::get_task_template_markdown,
+            // tasks
+            provider::list_tasks,
+            provider::sync_task,
+            provider::find_notion_user,
+            provider::get_task_body_markdown,
+            provider::get_task_schema,
+            provider::list_relation_options,
+            provider::get_task_properties,
+            provider::update_task_property,
+            provider::request_task_body_update,
+            provider::preview_github,
+            task_manager::set_task_source,
             // worktrees
             worktrees::register_repo,
             worktrees::list_main_repos,

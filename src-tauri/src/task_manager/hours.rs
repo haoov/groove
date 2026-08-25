@@ -1,12 +1,12 @@
-//! Time spent on a session: measured locally, logged to Notion on purpose.
+//! Time spent on a session: measured locally, logged deliberately.
 //!
-//! The tracker never writes to Notion by itself. "Hours spent" is a number other
-//! people read, and a timer that quietly inflates it produces data nobody can
-//! trust — so the app accumulates seconds per day, shows what it measured, and
-//! waits for a figure you agree with. `time_entries` records what was measured,
-//! `time_logs` what was written; the difference is what is left to log.
-//! The Notion write itself lives in `notion::hours`.
-
+//! The tracker never writes to the task source by itself. An hours field is a
+//! number other people read, so it moves when you say so, not when a timer says
+//! so — and only for a source that has one.
+//!
+//! Two counters, never one: what was measured, and how much of it has been
+//! logged. The difference is what there is left to log, which is what makes
+//! logging idempotent.
 use sqlx::SqlitePool;
 
 use crate::core::db::models::{ActivityDay, TimeSummary};
@@ -58,46 +58,47 @@ pub async fn get_activity_days(
     store::time::activity(&*pool).await.map_err(|e| e.to_string())
 }
 
-/// Write `hours` to Notion, then record the write in the local ledger. Only a
-/// write that reached Notion counts as logged; the unlogged remainder is clamped
-/// at read time, so a manual entry larger than what was measured can never read
-/// negative.
+/// Record `hours` in the local ledger, and in the provider's own field when it has
+/// one. The external write goes first where it exists: only a write that landed
+/// counts as logged, which is what keeps pressing the button twice from
+/// double-counting. The unlogged remainder is clamped at read time.
 async fn log_hours(
-    notion_page_id: &str,
     hours: f64,
     session_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
-    let cfg = crate::core::config::require()?;
-    let token = &cfg.notion.token;
-    let property = crate::notion::hours::hours_property(token, &cfg.notion.database_id).await?;
-    let (before, after) = crate::notion::hours::add_hours(token, notion_page_id, &property, hours).await?;
+    let (provider, key) = crate::provider::resolve(pool, session_id).await?;
+
+    // The source's own field first where there is one, so only a write that landed
+    // counts as logged. A source with no such field is not a failure — the local
+    // ledger is the whole record there.
+    let written = provider.add_hours(&key, hours).await?;
 
     store::time::log(pool, session_id, (hours * 3600.0).round() as i64).await?;
 
-    Ok(serde_json::json!({ "before": before, "after": after, "added": hours }))
+    Ok(serde_json::json!({
+        "before": written.as_ref().map(|w| w.before),
+        "after": written.as_ref().map(|w| w.after),
+        "added": hours,
+    }))
 }
 
 /// UI path: you typed the number, so it happens.
 #[tauri::command]
 pub async fn log_task_hours(
-    task_id: String,
-    notion_page_id: String,
+    short_id: String,
     hours: f64,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    log_hours(&notion_page_id, hours, &task_id, &pool)
-        .await
-        .map_err(|e| e.to_string())
+    log_hours(hours, &short_id, &pool).await.map_err(|e| e.to_string())
 }
 
-/// Confirmation-bridge path for `notion.hours` (agent-initiated).
+/// Confirmation-bridge path for `task.hours` (agent-initiated).
 pub async fn log_hours_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     log_hours(
-        payload["notion_page_id"].as_str().unwrap_or_default(),
         payload["hours"].as_f64().unwrap_or(0.0),
         payload["task_id"].as_str().unwrap_or_default(),
         pool,

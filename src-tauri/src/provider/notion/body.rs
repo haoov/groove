@@ -7,9 +7,7 @@
 //! So the replace refuses by default when the page holds something it cannot
 //! faithfully rebuild, and names what it found; `force` accepts the loss.
 
-use sqlx::SqlitePool;
 
-use crate::core::config;
 
 use super::markdown::{blocks_to_markdown, markdown_to_blocks};
 
@@ -116,22 +114,14 @@ fn lossy_types(blocks: &[serde_json::Value]) -> Vec<String> {
     found
 }
 
-/// Confirmation-bridge path for `notion.body`.
-///
-/// Gated even when it comes from the UI: it is the one Notion write that can
-/// destroy content the app never showed you.
-pub async fn update_body_impl(
-    payload: serde_json::Value,
-    _pool: &SqlitePool,
-) -> anyhow::Result<serde_json::Value> {
-    let cfg = config::require()?;
-    let token = &cfg.notion.token;
-    let page_id = payload["notion_page_id"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing notion_page_id"))?;
-    let markdown = payload["markdown"].as_str().unwrap_or_default();
-    let force = payload["force"].as_bool().unwrap_or(false);
-
+/// Replace the page body from markdown. Refuses when the page holds blocks
+/// markdown cannot rebuild, unless forced.
+pub(crate) async fn replace(
+    token: &str,
+    page_id: &str,
+    markdown: &str,
+    force: bool,
+) -> anyhow::Result<crate::provider::types::BodyWrite> {
     let existing = fetch_block_children(page_id, token).await?;
 
     let lossy = lossy_types(&existing);
@@ -177,58 +167,8 @@ pub async fn update_body_impl(
         }
     }
 
-    Ok(serde_json::json!({
-        "ok": true,
-        "blocks_written": appended,
-        "blocks_replaced": removed,
-        "message": format!("Task body updated ({appended} blocks)"),
-    }))
-}
-
-// ─── IPC ──────────────────────────────────────────────────────────────────────
-
-/// The ticket body as markdown — what the overview renders. Going through
-/// markdown (rather than a bespoke Notion-block renderer) means one renderer for
-/// task and MR descriptions, Notion's inline annotations survive, AND markdown
-/// typed literally into Notion (`**bold**`, backticks) displays as intended.
-#[tauri::command]
-pub async fn get_task_body_markdown(notion_page_id: String) -> Result<String, String> {
-    let cfg = config::require().map_err(|e| e.to_string())?;
-    let blocks = get_task_body_impl(&notion_page_id, &cfg.notion.token)
-        .await
-        .map_err(|e| e.to_string())?;
-    Ok(blocks_to_markdown(&blocks))
-}
-
-/// Queue a body replacement from the UI.
-///
-/// Goes through the confirmation bridge even though a human asked for it: this is
-/// the one write that can delete blocks the app never displayed, so it gets a
-/// preview and an explicit yes like an agent's write would.
-#[tauri::command]
-pub async fn request_task_body_update(
-    notion_page_id: String,
-    task_id: String,
-    markdown: String,
-    force: bool,
-    bridge: tauri::State<'_, crate::approvals::Bridge>,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    bridge
-        .post(
-            &pool,
-            crate::approvals::ops::NOTION_BODY,
-            serde_json::json!({
-                "notion_page_id": notion_page_id,
-                "task_id": task_id,
-                "markdown": markdown,
-                "force": force,
-            }),
-            "ui",
-            Some(&task_id),
-        )
-        .await
-        .map_err(|e| e.to_string())
+    let _ = removed;
+    Ok(crate::provider::types::BodyWrite { blocks_written: appended })
 }
 
 #[cfg(test)]

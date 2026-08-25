@@ -4,6 +4,10 @@ import type { SessionKind } from "./SessionKind";
 
 export type HomeEntry = { short_id: string, title: string, status: string, 
 /**
- * Notion priority ("High"/"Medium"/"Low"); None for synthetic sessions.
+ * Priority as the source names it; None for synthetic sessions.
  */
-priority: string | null, kind: SessionKind, repos: Array<HomeRepo>, };
+priority: string | null, 
+/**
+ * Where the task came from; None for explorer and review sessions.
+ */
+provider: string | null, kind: SessionKind, repos: Array<HomeRepo>, };

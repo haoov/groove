@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { forgeName, mrSigil } from '../shared/lib/forge';
 import { invoke } from '../shared/ipc/invoke';
 import {
   GitPullRequest, GitMerge, GitPullRequestClosed, MessageSquare,
@@ -37,13 +38,13 @@ function ForgeRow({
     return () => { cancelled = true; };
   }, [mr.id]);
 
-  const shortKind = mr.platform === 'github' ? '#' : '!';
+  const shortKind = mrSigil(mr.platform);
 
   return (
     <button
       className="forge-mr-row"
       onClick={() => openExternal(mr.url)}
-      title={`${mr.url} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+      title={`${mr.url} — open in ${forgeName(mr.platform)}`}
     >
       <span className={`forge-state forge-state-${mr.state}`}>
         <StateIcon state={mr.state} />

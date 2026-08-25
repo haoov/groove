@@ -6,7 +6,9 @@
 
 use serde::Serialize;
 
-use crate::core::config::{Config, FilterConfig, GitConfig, NotionConfig, UiConfig};
+use crate::core::config::{Config, GitConfig, UiConfig};
+use crate::provider::github::setup::GithubSetup;
+use crate::provider::notion::setup::NotionSetup;
 
 /// An external program the app shells out to.
 #[derive(Debug, Serialize, ts_rs::TS)]
@@ -25,6 +27,12 @@ pub struct ToolCheck {
     /// Installed-but-not-logged-in is the state worth naming: every MR feature
     /// fails, and the CLI's own error ("not logged in") only appears once you try.
     pub authed: Option<bool>,
+    /// The token's scopes, when the CLI reports them.
+    ///
+    /// `None` means UNKNOWN, not missing: a GH_TOKEN or a fine-grained PAT prints
+    /// no scopes line, and treating that as missing would warn those users for
+    /// ever. Only a `Some` that lacks a scope is worth acting on.
+    pub scopes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, ts_rs::TS)]
@@ -56,24 +64,41 @@ fn check(name: &str, purpose: &str, required: bool) -> ToolCheck {
         purpose: purpose.to_string(),
         required,
         authed: None,
+        scopes: None,
     }
 }
 
-/// `<tool> auth status` — exit code only, which is all the CLIs promise.
-async fn forge_authed(tool: &str) -> Option<bool> {
-    which(tool)?;
-    let tool = tool.to_string();
-    let ok = tokio::task::spawn_blocking(move || {
-        std::process::Command::new(&tool)
-            .args(["auth", "status"])
-            .env("NO_COLOR", "1")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+/// `<tool> auth status` — the exit code, plus the scopes when it prints them.
+async fn forge_authed(tool: &str) -> (Option<bool>, Option<Vec<String>>) {
+    if which(tool).is_none() {
+        return (None, None);
+    }
+    let name = tool.to_string();
+    let out = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(&name).args(["auth", "status"]).env("NO_COLOR", "1").output()
     })
-    .await
-    .unwrap_or(false);
-    Some(ok)
+    .await;
+
+    let Ok(Ok(out)) = out else { return (Some(false), None) };
+    // gh prints to stderr; glab has no scopes line at all.
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    (Some(out.status.success()), parse_scopes(&text))
+}
+
+/// The scopes out of a `Token scopes: 'a', 'b'` line.
+fn parse_scopes(text: &str) -> Option<Vec<String>> {
+    let line = text.lines().find(|l| l.contains("Token scopes:"))?;
+    let list = line.split("Token scopes:").nth(1)?;
+    let scopes: Vec<String> = list
+        .split(',')
+        .map(|s| s.trim().trim_matches(|c| c == '\'' || c == '"').to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    (!scopes.is_empty()).then_some(scopes)
 }
 
 /// One clipboard tool is enough, so they are reported as a group: the app writes to
@@ -133,9 +158,9 @@ pub async fn check_environment() -> Result<Environment, String> {
     // pause on a screen whose whole job is to answer "is this machine ready?".
     let (glab_auth, gh_auth) = futures_util::future::join(forge_authed("glab"), forge_authed("gh")).await;
     let mut glab = check("glab", "GitLab merge requests, threads, CI status", false);
-    glab.authed = glab_auth;
+    (glab.authed, glab.scopes) = glab_auth;
     let mut gh = check("gh", "GitHub pull requests, threads, CI status", false);
-    gh.authed = gh_auth;
+    (gh.authed, gh.scopes) = gh_auth;
 
     let mut tools = vec![
         check("git", "Everything: worktrees, diffs, commits", true),
@@ -145,6 +170,7 @@ pub async fn check_environment() -> Result<Environment, String> {
             purpose: "The agent console and the MCP tools (Claude Code)".into(),
             required: true,
             authed: None,
+            scopes: None,
         },
         // Claude Code reports what the agent is doing by POSTing to the app from a
         // hook, and the hook command is a curl. Without it the agent still works,
@@ -179,6 +205,22 @@ mod tests {
     }
 
     #[test]
+    fn scopes_come_off_the_status_line() {
+        let text = "  - Token scopes: 'gist', 'project', 'read:org', 'repo'\n";
+        assert_eq!(
+            parse_scopes(text).unwrap(),
+            ["gist", "project", "read:org", "repo"]
+        );
+    }
+
+    /// A token that prints no scopes line is UNKNOWN, not unscoped — warning
+    /// those users about a missing scope would be permanent and wrong.
+    #[test]
+    fn no_scopes_line_means_unknown() {
+        assert!(parse_scopes("Logged in to github.com account haoov\n").is_none());
+    }
+
+    #[test]
     fn a_missing_tool_is_reported_with_its_purpose() {
         let t = check("definitely-not-a-real-binary-xyz", "Nothing at all", false);
         assert!(t.path.is_none());
@@ -202,54 +244,6 @@ pub async fn start_auth_session(
     crate::agent_manager::start_login_pty(&app, &home, &ptys).map_err(|e| e.to_string())
 }
 
-/// What the database says about itself, for the setup screen to show before saving.
-///
-/// The point is that the user can SEE what was detected: a silent wrong guess about
-/// which property holds the status is worse than a visible one.
-#[derive(Debug, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct DetectedSchema {
-    pub title_property: String,
-    pub status_property: String,
-    pub priority_property: Option<String>,
-    pub sprint_property: Option<String>,
-    pub project_property: Option<String>,
-    pub assignee_property: Option<String>,
-    /// The status values the app will write when filing / starting / finishing.
-    pub status_ready: String,
-    pub status_in_progress: String,
-    pub status_done: String,
-    /// Every status option, so a wrong pick is obvious in context.
-    pub status_options: Vec<String>,
-}
-
-/// Read the database's vocabulary. Also the check that the integration can see it.
-#[tauri::command]
-pub async fn detect_database(token: String, database_id: String) -> Result<DetectedSchema, String> {
-    let schema = crate::notion::schema::load(&token, database_id.trim())
-        .await
-        .map_err(|e| format!("Cannot read that database: {e}"))?;
-    let props = crate::notion::detect::detect_properties(&schema);
-    let status = crate::notion::detect::detect_status_map(&schema);
-    Ok(DetectedSchema {
-        title_property: schema.title_property.clone(),
-        status_property: props.status.clone(),
-        priority_property: props.priority.clone(),
-        sprint_property: props.sprint.clone(),
-        project_property: props.project.clone(),
-        assignee_property: props.assignee.clone(),
-        status_ready: status.ready,
-        status_in_progress: status.in_progress,
-        status_done: status.done,
-        status_options: schema
-            .properties
-            .iter()
-            .find(|p| p.name == props.status)
-            .map(|p| p.options.clone())
-            .unwrap_or_default(),
-    })
-}
-
 /// Write the initial config.
 ///
 /// Property names and status values are DETECTED from the database rather than
@@ -257,67 +251,88 @@ pub async fn detect_database(token: String, database_id: String) -> Result<Detec
 /// which of its options mean to-do / in-progress / complete. They are still written
 /// to the file, so a wrong detection can be corrected without a rebuild.
 #[tauri::command]
-pub async fn write_initial_config(
-    token: String,
-    database_id: String,
-    user_id: String,
-    worktree_root: String,
-    template_page_id: Option<String>,
-) -> Result<(), String> {
-    if token.trim().is_empty() || database_id.trim().is_empty() {
-        return Err("A Notion token and database id are both required.".into());
-    }
-    let root = crate::core::fs::expand_tilde(worktree_root.trim());
+pub async fn write_initial_config(setup: SetupRequest) -> Result<(), String> {
+    let root = crate::core::fs::expand_tilde(setup.worktree_root.trim());
     if root.is_empty() {
         return Err("A worktree root is required — the directory repos are cloned into.".into());
     }
     std::fs::create_dir_all(&root).map_err(|e| format!("Cannot create {root}: {e}"))?;
 
-    // Reading the schema is both the detection and the check that the integration
-    // can see this database — the most likely mistake, and one that would otherwise
-    // surface later as an empty task list.
-    let schema = crate::notion::schema::load(&token, database_id.trim())
-        .await
-        .map_err(|e| format!("Notion rejected the database: {e}"))?;
-    let properties = crate::notion::detect::detect_properties(&schema);
-    let status_map = crate::notion::detect::detect_status_map(&schema);
-
-    // Excluding the completion state is what keeps finished work off Home. Detected
-    // rather than assumed to be called "Done".
-    let exclude_statuses = if status_map.done.is_empty() {
-        vec![]
-    } else {
-        vec![status_map.done.clone()]
+    let notion = match &setup.notion {
+        Some(n) => Some(crate::provider::notion::setup::build_config(n).await?),
+        None => None,
     };
-
-    let template = template_page_id
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty());
-    // Validate it now: a template id that cannot be read fails at explorer→task
-    // conversion, long after setup, with nothing pointing back here.
-    if let Some(id) = &template {
-        crate::notion::body::template_markdown(id, &token)
-            .await
-            .map_err(|e| format!("That template page could not be read: {e}"))?;
-    }
+    let github =
+        setup.github.as_ref().map(|g| crate::provider::github::setup::build_config(g, None));
 
     let cfg = Config {
-        notion: NotionConfig {
-            token: token.trim().to_string(),
-            database_id: database_id.trim().to_string(),
-            user_id: user_id.trim().to_string(),
-            properties,
-            status_map,
-            filters: FilterConfig {
-                exclude_statuses,
-                filter_by_assignee: !user_id.trim().is_empty(),
-            },
-            task_template_page_id: template,
-            default_project_id: None,
-        },
+        notion,
+        github,
         git: GitConfig { worktree_root: root },
         ui: UiConfig::default(),
     };
-
+    if !crate::provider::has_task_source(&cfg) {
+        return Err("Set up at least one task source.".into());
+    }
     crate::core::config::replace(cfg).map_err(|e| e.to_string())
+}
+
+/// What the setup screen sends: a worktree root, plus whichever sources were
+/// filled in.
+#[derive(Debug, serde::Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct SetupRequest {
+    pub worktree_root: String,
+    pub notion: Option<NotionSetup>,
+    pub github: Option<GithubSetup>,
+}
+
+/// Turn one task source on or off after first run.
+///
+/// Existing installs never see the setup screen again, so this is the only route
+/// to adding a source to a machine that is already configured. `options` is the
+/// provider's own setup payload (NotionSetup / GithubSetup as JSON); null works
+/// for a source with nothing to fill in, and always for disabling.
+///
+/// The match is exhaustive over ProviderId ON PURPOSE: config fields are typed
+/// per provider, so this is a sanctioned, compiler-enforced edit site.
+#[tauri::command]
+pub async fn set_task_source(
+    provider: crate::provider::types::ProviderId,
+    enabled: bool,
+    options: serde_json::Value,
+    pool: tauri::State<'_, sqlx::SqlitePool>,
+) -> Result<(), String> {
+    use crate::provider::types::ProviderId;
+
+    let mut cfg = crate::core::config::require().map_err(|e| e.to_string())?;
+    match (provider, enabled) {
+        (ProviderId::Notion, true) => {
+            let setup: crate::provider::notion::setup::NotionSetup =
+                serde_json::from_value(options).map_err(|e| format!("bad Notion setup: {e}"))?;
+            cfg.notion = Some(crate::provider::notion::setup::build_config(&setup).await?);
+        }
+        (ProviderId::Notion, false) => cfg.notion = None,
+        (ProviderId::Github, true) => {
+            // Reconnecting keeps whatever was corrected by hand in the config
+            // file, which is the only place those names can be corrected.
+            let setup: crate::provider::github::setup::GithubSetup =
+                serde_json::from_value(options).unwrap_or(crate::provider::github::setup::GithubSetup { host: None });
+            cfg.github = Some(crate::provider::github::setup::build_config(&setup, cfg.github.take()));
+        }
+        (ProviderId::Github, false) => cfg.github = None,
+    }
+    if !crate::provider::has_task_source(&cfg) {
+        return Err("That would leave no task source at all.".into());
+    }
+    crate::core::config::replace(cfg).map_err(|e| e.to_string())?;
+
+    // A disabled source's mirror rows would keep rendering on Home forever —
+    // its sync loop, the usual pruner, no longer runs. Checked-out tasks stay.
+    if !enabled {
+        crate::core::db::store::provider_tasks::prune_provider(&*pool, provider.as_str())
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }

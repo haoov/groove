@@ -11,7 +11,11 @@ use crate::core::db::models::{Session, SessionKind};
 const SLUG_MAX_CHARS: usize = 32;
 
 /// The default branch name for a session's new worktree.
-pub fn default_branch(session: &Session) -> String {
+///
+/// `tag` is what the task is called at its source — a Notion short id, a GitHub
+/// issue number. Falls back to the session id, which is what it was before a task
+/// could come from anywhere.
+pub fn default_branch(session: &Session, tag: Option<&str>) -> String {
     match session.kind {
         SessionKind::Explorer => {
             let slug = slug(&session.title);
@@ -22,7 +26,7 @@ pub fn default_branch(session: &Session) -> String {
             }
         }
         _ => {
-            let id = session.id.to_lowercase();
+            let id = tag.unwrap_or(&session.id).to_lowercase();
             let slug = slug(&session.title);
             match slug.is_empty() {
                 true => format!("{}/{id}", branch_type(&session.title)),
@@ -32,9 +36,14 @@ pub fn default_branch(session: &Session) -> String {
     }
 }
 
-/// `<project>@<branch-slug>` — the one directory shape every worktree gets.
-pub fn worktree_dir(project: &str, branch: &str) -> String {
-    format!("{project}@{}", branch.replace('/', "-"))
+/// `<project>/<branch>` — the one directory shape every worktree gets.
+///
+/// The branch keeps its slashes as real directories. Flattening them to dashes
+/// collided: `fix/parser` and `fix-parser` are branches git keeps apart and both
+/// became `project@fix-parser`. A file/directory clash is impossible in the other
+/// direction, since git refuses `fix` and `fix/parser` as refs at the same time.
+pub fn worktree_dir(project: &str, branch: &str) -> std::path::PathBuf {
+    std::path::Path::new(project).join(branch)
 }
 
 /// Conventional-commit type, guessed from whole words of the title. A guess is
@@ -87,6 +96,7 @@ fn slug(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     use crate::core::db::models::SessionKind;
 
     fn session(kind: SessionKind, id: &str, title: &str) -> Session {
@@ -94,7 +104,7 @@ mod tests {
             id: id.into(),
             kind,
             title: title.into(),
-            notion_page_id: (kind == SessionKind::Task).then(|| "page".into()),
+            external_id: (kind == SessionKind::Task).then(|| "page".into()),
             review_project: (kind == SessionKind::Review).then(|| "g/p".into()),
             review_iid: (kind == SessionKind::Review).then_some(1),
             created_at: 0,
@@ -104,22 +114,22 @@ mod tests {
     #[test]
     fn task_branches_follow_type_slug_id() {
         let s = session(SessionKind::Task, "TASKS2-42", "Fix the diff parser crash");
-        assert_eq!(default_branch(&s), "fix/fix-the-diff-parser-crash-tasks2-42");
+        assert_eq!(default_branch(&s, None), "fix/fix-the-diff-parser-crash-tasks2-42");
 
         let s = session(SessionKind::Task, "TASKS2-43", "Add MR templates");
-        assert_eq!(default_branch(&s), "feat/add-mr-templates-tasks2-43");
+        assert_eq!(default_branch(&s, None), "feat/add-mr-templates-tasks2-43");
 
         let unnamed = session(SessionKind::Task, "TASKS2-44", "!!!");
-        assert_eq!(default_branch(&unnamed), "feat/tasks2-44");
+        assert_eq!(default_branch(&unnamed, None), "feat/tasks2-44");
     }
 
     #[test]
     fn explorer_branches_use_the_session_name() {
         let s = session(SessionKind::Explorer, "explorer-ab12cd34", "Try sqlite vacuum");
-        assert_eq!(default_branch(&s), "explorer/try-sqlite-vacuum");
+        assert_eq!(default_branch(&s, None), "explorer/try-sqlite-vacuum");
 
         let unnamed = session(SessionKind::Explorer, "explorer-ab12cd34", "!!!");
-        assert_eq!(default_branch(&unnamed), "explorer/ab12cd34");
+        assert_eq!(default_branch(&unnamed, None), "explorer/ab12cd34");
     }
 
     #[test]
@@ -129,7 +139,7 @@ mod tests {
             "TASKS2-1",
             "Implement the extraordinarily long specification document end to end",
         );
-        let branch = default_branch(&s);
+        let branch = default_branch(&s, None);
         assert!(branch.starts_with("feat/implement-the"), "{branch}");
         assert!(branch.ends_with("-tasks2-1"), "{branch}");
         assert!(branch.len() < 60, "{branch}");
@@ -137,7 +147,29 @@ mod tests {
 
     #[test]
     fn worktree_dirs_carry_the_branch() {
-        assert_eq!(worktree_dir("mayo", "fix/tasks2-42-parser"), "mayo@fix-tasks2-42-parser");
-        assert_eq!(worktree_dir("mayo", "explorer/x"), "mayo@explorer-x");
+        assert_eq!(worktree_dir("mayo", "fix/tasks2-42-parser"), PathBuf::from("mayo/fix/tasks2-42-parser"));
+        assert_eq!(worktree_dir("mayo", "explorer/x"), PathBuf::from("mayo/explorer/x"));
+    }
+
+    /// Branches git keeps apart must not share a directory. Flattening slashes to
+    /// dashes gave both of these the same one.
+    #[test]
+    fn a_slash_and_a_dash_are_different_worktrees() {
+        assert_ne!(worktree_dir("mayo", "fix/parser"), worktree_dir("mayo", "fix-parser"));
+    }
+
+    /// A GitHub task's branch carries only the issue number: a branch lives in one
+    /// repo, so the rest of its short id would be noise.
+    #[test]
+    fn a_tag_replaces_the_id_in_the_branch() {
+        let s = session(SessionKind::Task, "gh-groove-42", "Fix the diff parser crash");
+        assert_eq!(default_branch(&s, Some("42")), "fix/fix-the-diff-parser-crash-42");
+    }
+
+    /// Notion passes no tag, so its branches are byte-identical to before.
+    #[test]
+    fn no_tag_falls_back_to_the_session_id() {
+        let s = session(SessionKind::Task, "TASKS2-42", "Fix the diff parser crash");
+        assert_eq!(default_branch(&s, None), "fix/fix-the-diff-parser-crash-tasks2-42");
     }
 }

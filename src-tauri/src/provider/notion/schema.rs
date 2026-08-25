@@ -12,7 +12,6 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 
-use serde::Serialize;
 
 use super::api;
 
@@ -23,6 +22,10 @@ const CACHE_TTL_SECS: i64 = 300;
 /// Property types we can render AND write. Anything else is shown read-only
 /// rather than hidden — seeing a value you can't edit beats pretending it isn't
 /// there.
+/// Not fields the user sets: an id, a timestamp, a computed value.
+const META_KINDS: [&str; 6] =
+    ["title", "formula", "unique_id", "created_time", "last_edited_time", "rollup"];
+
 const WRITABLE: [&str; 9] = [
     "select",
     "status",
@@ -35,55 +38,7 @@ const WRITABLE: [&str; 9] = [
     "url",
 ];
 
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct PropertySchema {
-    pub name: String,
-    /// Notion's own type string — the frontend renders by this.
-    pub kind: String,
-    /// Allowed values for select / status / multi_select, in Notion's order.
-    pub options: Vec<String>,
-    /// Target database for a relation, so its rows can be offered as choices.
-    pub relation_db: Option<String>,
-    /// False for formulas, rollups and timestamps: displayable, not settable.
-    pub editable: bool,
-}
-
-/// A status property's option groups, as Notion itself classifies them: To-do,
-/// In progress, Complete. This is the ONLY non-guess signal for what an option
-/// means — "Fixed with required action" is a completion state and no amount of
-/// name matching would say so.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct StatusGroup {
-    /// Notion's group name ("To-do", "In progress", "Complete"), verbatim.
-    pub name: String,
-    /// Option names in the group, in Notion's order.
-    pub options: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct TaskSchema {
-    pub database_id: String,
-    /// The title property's name — it differs per database ("Task name" here).
-    pub title_property: String,
-    pub properties: Vec<PropertySchema>,
-    /// Groups of the first `status` property, empty when the database has none.
-    pub status_groups: Vec<StatusGroup>,
-}
-
-impl TaskSchema {
-    pub fn property(&self, name: &str) -> Option<&PropertySchema> {
-        self.properties.iter().find(|p| p.name == name)
-    }
-
-    /// The database a relation property points at, e.g. the sprint or component
-    /// database. `None` when the property is absent or isn't a relation.
-    pub fn relation_target(&self, property: &str) -> Option<&str> {
-        self.property(property)?.relation_db.as_deref()
-    }
-}
+pub use crate::provider::types::{PropertySchema, StatusGroup, TaskSchema};
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
@@ -131,13 +86,14 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
                 .as_array()
                 .map(|opts| {
                     opts.iter()
-                        .filter_map(|o| o["name"].as_str().map(str::to_string))
+                        .filter_map(|o| o["name"].as_str().map(PropertyOption::named))
                         .collect()
                 })
                 .unwrap_or_default();
             let relation_db = def["relation"]["database_id"].as_str().map(str::to_string);
             PropertySchema {
                 editable: WRITABLE.contains(&kind.as_str()),
+                meta: META_KINDS.contains(&kind.as_str()),
                 name: name.clone(),
                 kind,
                 options,
@@ -159,11 +115,17 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
         .map(|def| parse_status_groups(&def["status"]))
         .unwrap_or_default();
 
+    let hours_property = properties
+        .iter()
+        .find(|p| p.kind == "number" && crate::provider::detect::is_hours_property(&p.name))
+        .map(|p| p.name.clone());
+
     Ok(TaskSchema {
         database_id: database_id.to_string(),
         title_property,
         properties,
         status_groups,
+        hours_property,
     })
 }
 
@@ -216,43 +178,29 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 
 /// The configured task database's schema — drives the property panel.
-#[tauri::command]
-pub async fn get_task_schema() -> Result<TaskSchema, String> {
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
-    load(&cfg.notion.token, &cfg.notion.database_id)
-        .await
-        .map_err(|e| e.to_string())
-}
 
-/// One choice for a relation property: a page in the target database.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct RelationOption {
-    pub id: String,
-    pub title: String,
-}
+pub use crate::provider::types::PropertyOption;
 
 /// Every row of a relation's target database, so the picker can filter locally.
 /// Paginates to a cap — a relation with thousands of rows wants a server-side
 /// search instead, and this returns what it got rather than silently truncating
 /// to one page.
-#[tauri::command]
-pub async fn list_relation_options(
-    database_id: String,
-) -> Result<Vec<RelationOption>, String> {
-    const MAX_PAGES: usize = 5;
-    let cfg = crate::core::config::require().map_err(|e| e.to_string())?;
 
+/// Every row of a relation's target database, as pickable options.
+pub(crate) async fn relation_options(
+    token: &str,
+    database_id: &str,
+) -> anyhow::Result<Vec<PropertyOption>> {
+    const MAX_PAGES: usize = 5;
     let rows = api::paginate_post(
-        &cfg.notion.token,
+        token,
         &format!("v1/databases/{database_id}/query"),
         &serde_json::json!({}),
         MAX_PAGES,
     )
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
-    let mut out: Vec<RelationOption> = rows
+    let mut out: Vec<PropertyOption> = rows
         .iter()
         .filter_map(|row| {
             // Find the title by TYPE, not by name: every database names it
@@ -272,7 +220,7 @@ pub async fn list_relation_options(
                         .unwrap_or_default()
                 })
                 .unwrap_or_default();
-            row["id"].as_str().map(|id| RelationOption { id: id.to_string(), title })
+            row["id"].as_str().map(|id| PropertyOption { id: id.to_string(), title })
         })
         .collect();
 
@@ -311,10 +259,9 @@ mod tests {
     fn options_and_relation_targets_come_from_notion() {
         let s = parse("db-1", &body()).expect("schema");
         assert_eq!(s.title_property, "Task name");
-        assert_eq!(
-            s.property("Priority").unwrap().options,
-            vec!["Low", "Medium", "High"]
-        );
+        let options: Vec<&str> =
+            s.property("Priority").unwrap().options.iter().map(|o| o.title.as_str()).collect();
+        assert_eq!(options, ["Low", "Medium", "High"]);
         // This is what replaces the hardcoded sprint database id.
         assert_eq!(
             s.relation_target("Sprint"),

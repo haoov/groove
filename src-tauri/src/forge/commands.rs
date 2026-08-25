@@ -141,14 +141,10 @@ pub async fn create_mr(
         .await
         .map_err(|e| e.to_string())?;
 
-    let payload = serde_json::json!({
-        "worktree_id": worktree_id,
-        // Shown read-only in the dialog; create_mr_impl re-derives what it needs.
-        "worktree_path": wt.path,
-        "branch": wt.branch,
-        "title": "",
-        "description": "",
-    });
+    // Shown read-only in the dialog; create_mr_impl re-derives what it needs.
+    let mut payload = crate::worktrees::op_payload(&pool, &wt).await;
+    payload["title"] = serde_json::json!("");
+    payload["description"] = serde_json::json!("");
 
     bridge
         .post(&pool, crate::approvals::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))

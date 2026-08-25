@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, PanelsTopLeft, Pencil, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
-import { KIND_LABEL, openTask, priorityRank, rowKey, summarize } from './helpers';
+import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
+import { providerCopy } from '../shared/lib/taskProvider';
+
 import type { HomeEntry } from '../shared/ipc/ipc';
+
+/** The fields a Live row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'forge', 'repo', 'branch', 'mr'];
 
 // Fold state per entry, persisted so Home reopens the way it was left.
 const EXPAND_KEY = 'wb.homeExpanded';
@@ -20,10 +26,8 @@ function saveExpanded(ids: Set<string>) {
 
 /** Everything checked out locally: tasks, explorers and reviews with a worktree.
  *  Rendered as the body of the Home "Live" tab — toolbar over the list. */
-export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
-  const homeLoading = useStore((s) => s.homeLoading);
-  const refreshHome = useStore((s) => s.refreshHome);
 
   // Attention first, then the busiest working trees; the shared filter narrows.
   const entries = useMemo(() => {
@@ -31,29 +35,30 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
       const s = summarize(e);
       return (s.attention ? 1000 : 0) + s.dirty;
     };
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     return [...(snapshot ?? [])]
-      .filter((e) => !needle || `${e.short_id} ${e.title} ${e.kind}`.toLowerCase().includes(needle))
+      .filter((e) => matchesQuery(q, `${e.short_id} ${e.title} ${e.kind}`, {
+        id: e.short_id,
+        title: e.title,
+        kind: e.kind,
+        status: e.status,
+        priority: e.priority,
+        provider: e.provider,
+        repo: e.repos.map((r) => r.project),
+        branch: e.repos.map((r) => r.branch ?? ''),
+        mr: e.repos.map((r) => r.mr?.remote_id ?? ''),
+        // Where the code is hosted, not where the task came from.
+        forge: e.repos.map((r) => r.mr?.platform ?? ''),
+      }))
       .sort((a, b) => score(b) - score(a) || priorityRank(a.priority) - priorityRank(b.priority));
   }, [snapshot, filter]);
 
-  useEffect(() => { onCount?.(entries.length); }, [entries.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  // Report the filter the count belongs to: Home must not route on a stale count.
+  useEffect(() => { onCount?.(entries.length, applicable, filter); }, [entries.length, applicable, filter, onCount]);
 
   return (
     <>
-      <div className="home-toolbar">
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          title="Refresh (also re-checks CI)"
-          onClick={() => refreshHome(true)}
-          disabled={homeLoading}
-        >
-          <RefreshCw size={11} strokeWidth={2} className={homeLoading ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
-
       {snapshot === null ? (
         <p className="home-empty">Loading…</p>
       ) : entries.length === 0 ? (
@@ -84,6 +89,9 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
   // Two-click confirm: the first click arms; the confirm row does the deed.
   const [confirm, setConfirm] = useState<LiveConfirm>(null);
   const [expanded, setExpanded] = useState(() => loadExpanded().has(entry.short_id));
+  // Copy that names this task's own source, so a confirm says "in Notion"
+  // rather than "at its source".
+  const src = providerCopy(entry);
 
   // Folded, the row states only what it is and how many repos it holds.
   const repoCount = useMemo(
@@ -117,7 +125,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     }
   };
 
-  // Finish (task → Notion done + teardown), delete (task, no Notion change) and
+  // Finish (task → done at its source + teardown), delete (local only) and
   // discard (explorer/review) all end in the same place: session gone, Home fresh.
   const runConfirmed = async (action: Exclude<LiveConfirm, null>) => {
     setConfirm(null);
@@ -156,7 +164,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
           {expanded ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />}
         </button>
         <span className={`type-badge type-${entry.kind}`}>{KIND_LABEL[entry.kind]}</span>
-        <span className="row-key">{rowKey(entry)}</span>
         {renaming ? (
           <input
             className="explorer-rename-input"
@@ -175,6 +182,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
             <span className="row-title">{entry.title}</span>
           </span>
         )}
+        <span className="row-provider">{rowProvider(entry)}</span>
 
         <span className="row-summary">
           {repoCount > 0 && (
@@ -186,19 +194,31 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
       {expanded && (
         <div className="live-detail">
           <div className="detail-actions">
-            <button className="live-btn" onClick={() => openTask(entry.short_id)}>Open workspace</button>
+            <button className="live-btn live-btn--icon" title="Open workspace" onClick={() => openTask(entry.short_id)}>
+              <PanelsTopLeft size={15} strokeWidth={1.75} />
+            </button>
             {entry.kind === 'explorer' && (
-              <button className="live-btn" onClick={() => { setName(entry.title); setRenaming(true); }}>Rename</button>
+              <button className="live-btn live-btn--icon" title="Rename" onClick={() => { setName(entry.title); setRenaming(true); }}>
+                <Pencil size={15} strokeWidth={1.75} />
+              </button>
             )}
             {entry.kind === 'task' && (
               <>
-                <button className="live-btn go" onClick={() => setConfirm('finish')}>Finish</button>
-                <button className="live-btn danger" onClick={() => setConfirm('delete')}>Delete</button>
+                <button className="live-btn live-btn--icon go" title="Finish" onClick={() => setConfirm('finish')}>
+                  <Check size={16} strokeWidth={2} />
+                </button>
+                <button className="live-btn live-btn--icon danger" title="Delete" onClick={() => setConfirm('delete')}>
+                  <Trash2 size={15} strokeWidth={1.75} />
+                </button>
               </>
             )}
             {entry.kind !== 'task' && (
-              <button className="live-btn danger" onClick={() => setConfirm('discard')}>
-                {entry.kind === 'review' ? 'Finish review' : 'Discard'}
+              <button
+                className="live-btn live-btn--icon danger"
+                title={entry.kind === 'review' ? 'Finish review' : 'Discard'}
+                onClick={() => setConfirm('discard')}
+              >
+                {entry.kind === 'review' ? <Check size={16} strokeWidth={2} /> : <Trash2 size={15} strokeWidth={1.75} />}
               </button>
             )}
           </div>
@@ -212,11 +232,13 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
 
       {confirm && (
         <div className="detail-row confirm">
+          {/* Name what happens AT THE SOURCE: this is the last step before an
+              action that reaches outside the app. */}
           <span>
             {confirm === 'finish'
-              ? `Finish ${entry.short_id}? Marks it done in Notion and removes its worktrees.`
+              ? `Finish ${entry.short_id}? ${src.finish} Its worktrees are removed.`
               : confirm === 'delete'
-                ? `Delete ${entry.short_id} locally? Notion is untouched; the worktrees are removed.`
+                ? `Delete ${entry.short_id}? ${src.discard} Its worktrees are removed.`
                 : `Discard ${entry.short_id} and delete its worktrees?`}
           </span>
           <button className="live-btn danger" onClick={() => runConfirmed(confirm)}>

@@ -254,7 +254,7 @@ export function CommandPalette() {
       });
       cmds.push({
         id: 'task-sync',
-        label: 'Sync task from Notion',
+        label: 'Sync task',
         group: 'Task',
         action: async () => {
           close();

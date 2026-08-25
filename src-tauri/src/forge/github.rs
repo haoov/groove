@@ -9,7 +9,7 @@ use reqwest::Method;
 
 use crate::core::db::models::Repo;
 
-use super::api;
+use crate::core::forge::api;
 use super::client::PlatformClient;
 
 /// `owner` and `repo` as GitHub means them: the group path can be nested in the

@@ -1,6 +1,6 @@
 import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
-import type { HomeEntry, ReviewMr } from '../../ipc/ipc';
+import type { HomeEntry, ReviewMr, Task } from '../../ipc/ipc';
 import type { AppState, HomeSlice } from '../types';
 import { sessionTitle } from '../session';
 
@@ -61,6 +61,17 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
 
   // Task list
   tasks: [],
+  refreshTasks: async () => {
+    const { setSyncStatus, setLastError } = get();
+    setSyncStatus('syncing');
+    try {
+      set({ tasks: await invoke<Task[]>('list_tasks') });
+      setSyncStatus('idle');
+    } catch (e) {
+      setSyncStatus('error');
+      setLastError(String(e));
+    }
+  },
   setTasks: (tasks) => set({ tasks }),
   upsertTask: (task) =>
     set((s) => {

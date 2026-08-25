@@ -2,6 +2,6 @@
 
 export type TimeSummary = { session_id: string, tracked_seconds: number, logged_seconds: number, today_seconds: number, 
 /**
- * Measured but not yet written to Notion — what the log button offers.
+ * Measured but not yet logged at the source — what the log button offers.
  */
 unlogged_seconds: number, };

@@ -1,6 +1,6 @@
 //! Tools that change something.
 //!
-//! Anything the user would want to see before it happens (git, MRs, Notion) goes
+//! Anything the user would want to see before it happens (git, MRs, tasks) goes
 //! through the confirmation bridge via `post_and_wait`; annotations are local and
 //! reversible, so they apply immediately and are pushed to the UI instead.
 
@@ -47,6 +47,11 @@ async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpStat
     if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
         payload["worktree_path"] = serde_json::json!(wt.path);
         payload["branch"] = serde_json::json!(wt.branch);
+        // The project name, for display: the path's last segment is the branch
+        // leaf now that worktree dirs carry the branch's slashes.
+        if let Ok(Some(repo)) = store::repos::get_opt(&state.pool, &wt.repo_id).await {
+            payload["repo"] = serde_json::json!(repo.project);
+        }
     }
 }
 
@@ -58,7 +63,7 @@ pub(super) async fn via_bridge(
 ) -> anyhow::Result<ToolCallResponse> {
     // Explorer sessions are scratch by policy: committing locally is fine, but
     // publishing (push, MR) means the work is real — convert to a task first so
-    // it exists in Notion. Scoped to those ops specifically: Notion writes and
+    // it is a real task. Scoped to those ops specifically: task writes and
     // task filing work fine from an explorer.
     const NEEDS_BRANCH: [&str; 4] = [
         crate::approvals::ops::GIT_PUSH,
@@ -130,7 +135,7 @@ async fn check_convertible(
     })
 }
 
-/// Draft + create a Notion task from the active explorer session (gated by the
+/// Draft + file a task from the active explorer session (gated by the
 /// confirmation bridge), then point the backend's active task at the new id so
 /// subsequent agent tool calls resolve to the real task.
 pub(super) async fn create_task_from_explorer(
@@ -148,23 +153,26 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    let cfg = crate::core::config::require()?;
-    let n = &cfg.notion;
+    // The source's own settings are read by the executor, not carried here: a
+    // payload is persisted and emitted, and the token must never sit in one.
+    let provider = crate::provider::commands::draft_provider(&input)?;
 
-    // NOTE: no notion token here — secrets are injected by `execute_op` at
-    // execution time so they never sit in persisted/emitted confirmation payloads.
+    // A GitHub issue needs a repo. Default to the explorer's own, which is what
+    // the work was done in.
+    let repo = match input["repo"].as_str() {
+        Some(r) => Some(r.to_string()),
+        None => store::repos::attached_to(&state.pool, &explorer_id)
+            .await
+            .ok()
+            .and_then(|rs| rs.first().map(|r| format!("{}/{}", r.group_path, r.project))),
+    };
+
     let payload = serde_json::json!({
         "explorer_id": explorer_id,
-        "database_id": n.database_id,
+        "provider": provider.as_str(),
         "title": title,
         "body_markdown": body_markdown,
-        "status_prop": n.properties.status,
-        "status_value": n.status_map.ready,
-        "assignee_prop": n.properties.assignee,
-        "user_id": n.user_id,
-        "sprint_prop": n.properties.sprint,
-        "project_prop": n.properties.project,
-        "project_id": n.default_project_id,
+        "repo": repo,
     });
 
     let outcome = post_and_wait(
@@ -262,21 +270,22 @@ pub(super) async fn resolve_annotation(
     })))
 }
 
-// ─── Notion task writes ───────────────────────────────────────────────────────
+// ─── Task writes ──────────────────────────────────────────────────────────────
 
-/// File a task in Notion. Nothing is opened or provisioned — it lands in the
-/// queue for later, which is what "file a task" means.
+/// File a task. Nothing is opened or provisioned — it lands in the queue for
+/// later, which is what "file a task" means.
 pub(super) async fn create_task(
     input: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let title = str_field(&input, "title")?;
-    let body_markdown = input["body_markdown"].as_str().unwrap_or("");
-    let cfg = crate::core::config::require()?;
-
-    // Same payload the UI composer builds; the token is injected at execution.
-    let payload = crate::notion::new_task_payload(&cfg.notion, &title, body_markdown);
+    let payload = serde_json::json!({
+        "title": title,
+        "body_markdown": input["body_markdown"].as_str().unwrap_or(""),
+        "provider": input["provider"].as_str(),
+        "repo": input["repo"].as_str(),
+    });
     let task_id = state.task_for(mcp_session);
 
     match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
@@ -323,12 +332,13 @@ pub(super) async fn add_task_repo(
     }
 }
 
-/// Resolve the caller's task to the ids a Notion write needs.
-async fn notion_target(
+/// The task a write applies to. The provider resolves it at execution time, so
+/// the payload only ever carries the short id.
+async fn task_target(
     state: &McpState,
     mcp_session: &str,
     input: &serde_json::Value,
-) -> anyhow::Result<Result<(String, String), ToolCallResponse>> {
+) -> anyhow::Result<Result<String, ToolCallResponse>> {
     // An explicit task_id wins, so an agent can update a task it isn't sitting in.
     let task_id = match input["task_id"].as_str() {
         Some(id) => id.to_string(),
@@ -337,13 +347,14 @@ async fn notion_target(
             None => return Ok(Err(ToolCallResponse::err("no task in scope"))),
         },
     };
-    let page = store::sessions::get_opt(&state.pool, &task_id)
+    let has_source = store::sessions::get_opt(&state.pool, &task_id)
         .await?
-        .and_then(|s| s.notion_page_id);
-    match page {
-        Some(page_id) => Ok(Ok((task_id, page_id))),
-        None => Ok(Err(ToolCallResponse::err(format!(
-            "{task_id} has no Notion page — explorer and review sessions aren't Notion tasks"
+        .and_then(|s| s.external_id)
+        .is_some();
+    match has_source {
+        true => Ok(Ok(task_id)),
+        false => Ok(Err(ToolCallResponse::err(format!(
+            "{task_id} has no task behind it — explorer and review sessions aren't tasks"
         )))),
     }
 }
@@ -357,17 +368,16 @@ pub(super) async fn update_task_property(
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let property = str_field(&input, "property")?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
-        "notion_page_id": page_id,
         "task_id": task_id,
         "property": property,
         "value": input["value"].clone(),
     });
-    bridged(state, crate::approvals::ops::NOTION_PROPERTY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, &task_id).await
 }
 
 /// Add hours to the task's "Hours spent". Adds — never replaces.
@@ -379,14 +389,12 @@ pub(super) async fn log_task_hours(
     let hours = input["hours"]
         .as_f64()
         .ok_or_else(|| anyhow::anyhow!("hours must be a number"))?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
-    let payload = serde_json::json!({
-        "notion_page_id": page_id, "task_id": task_id, "hours": hours,
-    });
-    bridged(state, crate::approvals::ops::NOTION_HOURS, payload, &task_id).await
+    let payload = serde_json::json!({ "task_id": task_id, "hours": hours });
+    bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
 }
 
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
@@ -397,17 +405,16 @@ pub(super) async fn update_task_body(
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let markdown = str_field(&input, "markdown")?;
-    let (task_id, page_id) = match notion_target(state, mcp_session, &input).await? {
-        Ok(pair) => pair,
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
-        "notion_page_id": page_id,
         "task_id": task_id,
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),
     });
-    bridged(state, crate::approvals::ops::NOTION_BODY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_BODY, payload, &task_id).await
 }
 
 /// Post a pre-built payload and map the outcome — the tail every gated write

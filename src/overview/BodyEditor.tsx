@@ -7,16 +7,16 @@ import { Markdown } from '../shared/ui/Markdown';
 /**
  * The task body: rendered markdown, or the raw markdown to edit by hand.
  *
- * Saving does NOT write directly. It queues a confirmation (op `notion.body`)
+ * Saving does NOT write directly. It queues a confirmation (op `task.body`)
  * because replacing a page's children can destroy blocks markdown cannot express
  * — the modal is where you see what is about to change, and the backend refuses
  * outright if the page holds anything unrepresentable.
  */
 export function BodyEditor({
-  taskId, notionPageId, markdown, loading, onSaved,
+  taskId, source, markdown, loading, onSaved,
 }: {
   taskId: string;
-  notionPageId: string;
+  source: { label: string; bodyWarning: string | null };
   markdown: string;
   loading: boolean;
   onSaved: () => void;
@@ -36,14 +36,14 @@ export function BodyEditor({
     setSaving(true);
     try {
       await invoke('request_task_body_update', {
-        notionPageId, taskId, markdown: draft, force: false,
+        shortId: taskId, markdown: draft, force: false,
       });
       notify({
         kind: 'info',
-        source: 'notion',
+        source: 'task',
         taskId,
         title: 'Body update queued for approval',
-        detail: 'Review the change, then approve it to write to Notion.',
+        detail: `Review the change, then approve it to write to ${source.label}.`,
       });
       setEditing(false);
       onSaved();
@@ -65,7 +65,7 @@ export function BodyEditor({
             <>
               <button className="home-link" disabled={saving || !dirty} onClick={save}>
                 {saving ? <Loader2 size={11} className="spin" /> : null}
-                save to Notion
+                save to {source.label}
               </button>
               <button className="home-link" onClick={() => setEditing(false)}>
                 <X size={11} strokeWidth={2} />
@@ -92,9 +92,8 @@ export function BodyEditor({
           />
           <p className="body-editor-hint">
             <Eye size={10} strokeWidth={2} />
-            Markdown. Saving replaces the page body — anything Notion holds that
-            markdown can&rsquo;t express (images, embeds, sub-databases) would be
-            lost, so the save is refused if the page has any.
+            Markdown. Saving replaces the whole body.
+            {source.bodyWarning && <> {source.bodyWarning}</>}
           </p>
         </>
       ) : loading ? (

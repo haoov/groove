@@ -10,10 +10,9 @@
 //!   relation                      → string[]  (page ids)
 //!   rich_text                     → string
 
-use serde::Serialize;
 
 use crate::core::config::NotionConfig;
-use crate::core::db::models::NotionTask;
+use crate::core::db::models::ProviderTask;
 
 /// The page's title text, found by TYPE: every database names its title property
 /// differently, and the type is unambiguous.
@@ -54,7 +53,7 @@ pub(super) fn extract_unique_id(props: &serde_json::Value) -> Option<String> {
     })
 }
 
-pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<NotionTask> {
+pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Result<ProviderTask> {
     let page_id = page["id"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("page missing id"))?
@@ -76,38 +75,23 @@ pub fn page_to_task(page: &serde_json::Value, cfg: &NotionConfig) -> anyhow::Res
         .as_deref()
         .and_then(|k| extract_select(props, k));
 
-    Ok(NotionTask {
-        page_id,
+    Ok(ProviderTask {
+        url: Some(format!("https://www.notion.so/{}", page_id.replace('-', ""))),
+        external_id: page_id,
         short_id,
         title,
         status,
         priority,
         synced_at: chrono::Utc::now().timestamp(),
+        provider: "notion".to_string(),
+        board: None,
+        branch_tag: None,
     })
-}
-
-/// "PLAT-42" → 42,  "42" → 42.
-pub(super) fn parse_short_id_number(short_id: &str) -> Option<u64> {
-    short_id.rsplit('-').next().and_then(|s| s.parse().ok())
 }
 
 // ─── Canonical property values ────────────────────────────────────────────────
 
-/// One property as the panel sees it: what it is, its current value, and a
-/// human rendering for the types we can display but not edit.
-#[derive(Debug, Clone, Serialize, ts_rs::TS)]
-#[ts(export, export_to = "../../src/shared/ipc/generated/")]
-pub struct PropertyValue {
-    pub name: String,
-    pub kind: String,
-    /// Canonical value (see the module docs). `null` when unset.
-    // `unknown` on the TS side: the default JsonValue binding imports from
-    // outside the Vite root, and the frontend treats it as opaque anyway.
-    #[ts(type = "unknown")]
-    pub value: serde_json::Value,
-    /// Read-only rendering, used for formulas, rollups, people, timestamps.
-    pub display: String,
-}
+pub use crate::provider::types::PropertyValue;
 
 /// Pull one property out of a Notion page into the canonical shape.
 pub(super) fn read_value(kind: &str, prop: &serde_json::Value) -> (serde_json::Value, String) {

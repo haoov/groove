@@ -11,7 +11,7 @@ import type { TaskTime } from '../shared/ipc/ipc';
  *
  * The bar's filled portion is unlogged ÷ total known work: a real ratio, no
  * invented denominator. Logging is always explicit (see hours.rs) — a timer that
- * quietly wrote to a shared Notion number would produce data nobody could trust.
+ * quietly wrote to a shared number field would produce data nobody could trust.
  */
 
 /** Hours are logged to the quarter — nobody means 1.37 hours. */
@@ -27,11 +27,12 @@ function human(seconds: number): string {
 }
 
 export function HoursWidget({
-  taskId, notionPageId, logged, onLogged,
+  taskId, hoursProperty, logged, onLogged,
 }: {
   taskId: string;
-  notionPageId: string;
-  /** Current Notion value, read by the property strip. */
+  /** The field hours are logged to, or null when the source has none. */
+  hoursProperty: string | null;
+  /** Current value at the source, read by the property strip. */
   logged: string;
   onLogged: () => void;
 }) {
@@ -57,14 +58,16 @@ export function HoursWidget({
     if (!(hours > 0) || busy) return;
     setBusy(true);
     try {
-      const r = await invoke<{ before: number; after: number }>('log_task_hours', {
-        taskId, notionPageId, hours,
+      const r = await invoke<{ before: number | null; after: number | null }>('log_task_hours', {
+        shortId: taskId, hours,
       });
       notify({
         kind: 'success',
-        source: 'notion',
+        source: 'task',
         taskId,
-        title: `Logged ${hours}h — Hours spent ${r.before} → ${r.after}`,
+        title: r.after !== null && hoursProperty
+          ? `Logged ${hours}h — ${hoursProperty} ${r.before} → ${r.after}`
+          : `Logged ${hours}h`,
       });
       setManual('');
       refresh();
@@ -79,7 +82,12 @@ export function HoursWidget({
   const unlogged = time?.unlogged_seconds ?? 0;
   const today = time?.today_seconds ?? 0;
   const suggestion = roundHours(unlogged);
-  const loggedSeconds = (Number(logged) || 0) * 3600;
+  // The source's own total where there is one, the local ledger otherwise — with
+  // no external field that ledger IS the record.
+  const loggedSeconds = hoursProperty
+    ? (Number(logged) || 0) * 3600
+    : (time?.logged_seconds ?? 0);
+  const loggedLabel = hoursProperty ? (logged || '0') : roundHours(loggedSeconds).toString();
   const fraction = unlogged > 0 ? unlogged / (loggedSeconds + unlogged) : 0;
 
   return (
@@ -92,7 +100,7 @@ export function HoursWidget({
       <div className="time-body">
         <div className="time-figures">
           <span className="time-logged">
-            <strong>{logged || '0'}</strong>
+            <strong>{loggedLabel}</strong>
             <span className="time-unit">h</span>
             <span className="time-caption">logged</span>
           </span>
@@ -114,7 +122,13 @@ export function HoursWidget({
             className="time-log"
             disabled={busy || suggestion <= 0}
             onClick={() => log(suggestion)}
-            title={suggestion > 0 ? `Add ${suggestion}h to Hours spent in Notion` : 'Nothing tracked to log'}
+            title={
+              suggestion <= 0
+                ? 'Nothing tracked to log'
+                : hoursProperty
+                  ? `Add ${suggestion}h to ${hoursProperty}`
+                  : `Record ${suggestion}h as logged`
+            }
           >
             {busy ? <Loader2 size={12} className="spin" /> : null}
             {suggestion > 0 ? `Log ${suggestion}h` : 'Nothing to log'}

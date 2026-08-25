@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { mrSigil } from '../shared/lib/forge';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 
 // Reviews = open MRs where you are a reviewer, not yet checked out. Columns:
 // id · name · repo · owner · last update.
+
+/** The fields a Reviews row can answer — see `appliesTo`. */
+// No `provider`: an MR has no task source. Where the code is hosted is `forge`.
+const FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
 
 const HIDDEN_KEY = 'wb.homeHiddenReviews';
 function loadHidden(): Set<string> {
@@ -17,7 +22,7 @@ function saveHidden(keys: Set<string>) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
 }
 
-const sigil = (mr: ReviewMr) => (mr.platform === 'github' ? '#' : '!');
+const sigil = (mr: ReviewMr) => mrSigil(mr.platform);
 
 /** Rough "how long ago" for the last-update column. */
 function timeAgo(iso: string): string {
@@ -30,13 +35,12 @@ function timeAgo(iso: string): string {
   return `${Math.round(s / 86_400 / 7)}w`;
 }
 
-export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
   const reviewQueue = useStore((s) => s.reviewQueue);
   const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
   const setLastError = useStore((s) => s.setLastError);
   const [busy, setBusy] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; mr: ReviewMr; key: string } | null>(null);
   const [showApproved, setShowApproved] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(loadHidden);
@@ -66,10 +70,21 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
       (mr) => !startedReviews.has(`${mr.project_full.split('/').pop()}!${mr.iid}`),
     );
     const approvedCount = pending.filter((mr) => mr.approved).length;
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     const all = pending
       .filter((mr) => showApproved || !mr.approved)
-      .filter((mr) => !needle || `${sigil(mr)}${mr.iid} ${mr.title} ${mr.project_full} ${mr.author}`.toLowerCase().includes(needle))
+      .filter((mr) => matchesQuery(q, `${sigil(mr)}${mr.iid} ${mr.title} ${mr.project_full} ${mr.author}`, {
+        id: String(mr.iid),
+        mr: String(mr.iid),
+        title: mr.title,
+        forge: mr.platform,
+        repo: mr.project_full,
+        branch: mr.source_branch,
+        owner: mr.author,
+        author: mr.author,
+        approved: mr.approved,
+        draft: mr.draft,
+      }))
       .map((mr) => ({ mr, key: `${mr.project_full}!${mr.iid}` }));
     const hiddenN = all.filter((i) => hidden.has(i.key)).length;
     return {
@@ -79,7 +94,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
     };
   }, [reviewQueue, startedReviews, filter, showApproved, hidden, showHidden]);
 
-  useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  useEffect(() => { onCount?.(items.length, applicable, filter); }, [items.length, applicable, filter, onCount]);
 
   const openReview = async (mr: ReviewMr) => {
     const key = `${mr.project_full}!${mr.iid}`;
@@ -111,7 +127,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
 
   return (
     <div className="upnext-root" onClick={() => setMenu(null)}>
-      <div className="home-toolbar">
+      {(approvedHidden > 0 || showApproved || hiddenCount > 0 || showHidden) && (
+        <div className="home-toolbar">
         {(approvedHidden > 0 || showApproved) && (
           <button
             className={`home-link${showApproved ? ' active' : ''}`}
@@ -130,20 +147,8 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
             {showHidden ? 'done' : `hidden (${hiddenCount})`}
           </button>
         )}
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          onClick={async () => {
-            if (refreshing) return;
-            setRefreshing(true);
-            try { await refreshReviewQueue(); } finally { setRefreshing(false); }
-          }}
-          title="Refresh review requests"
-        >
-          <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="home-empty">

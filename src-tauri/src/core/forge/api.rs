@@ -8,7 +8,7 @@
 
 use crate::core::timing::timed;
 
-use super::client::Platform;
+use super::Platform;
 
 /// One request, with a single retry after a 401 (token rotated or re-issued —
 /// forget the cached one and ask the CLI again).
@@ -98,7 +98,7 @@ fn api_error(body: &str) -> String {
 // ─── GitLab (REST v4) ─────────────────────────────────────────────────────────
 
 /// `path` is relative to `/api/v4/`, already query-encoded by the caller.
-pub(super) async fn gitlab(
+pub(crate) async fn gitlab(
     host: &str,
     method: reqwest::Method,
     path: &str,
@@ -109,14 +109,14 @@ pub(super) async fn gitlab(
 }
 
 /// A project's URL-encoded full path — the `{id}` of every project endpoint.
-pub(super) fn gitlab_project_ref(group_path: &str, project: &str) -> String {
+pub(crate) fn gitlab_project_ref(group_path: &str, project: &str) -> String {
     format!("{group_path}/{project}").replace('/', "%2F")
 }
 
 /// Percent-encode one query-string VALUE (branch names, usernames). Everything
 /// outside the RFC 3986 unreserved set is encoded, so `&`, `=`, `#`, `+` and
 /// spaces cannot restructure the query.
-pub(super) fn pct(value: &str) -> String {
+pub(crate) fn pct(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for b in value.bytes() {
         match b {
@@ -148,7 +148,7 @@ fn github_graphql_url(host: &str) -> String {
 }
 
 /// `path` is relative to the REST root, e.g. `repos/{owner}/{repo}/pulls/1`.
-pub(super) async fn github(
+pub(crate) async fn github(
     host: &str,
     method: reqwest::Method,
     path: &str,
@@ -160,7 +160,7 @@ pub(super) async fn github(
 
 /// One GraphQL call. Variables are real JSON, so types survive without the
 /// CLI's `-f`/`-F` string-vs-typed dance.
-pub(super) async fn github_graphql(
+pub(crate) async fn github_graphql(
     host: &str,
     query: &str,
     variables: serde_json::Value,
@@ -212,5 +212,29 @@ mod tests {
         assert_eq!(api_error(r#"{"message":["a is bad","b too"]}"#), "a is bad; b too");
         assert_eq!(api_error(r#"{"error":"invalid_token"}"#), "invalid_token");
         assert_eq!(api_error("plain text"), "plain text");
+    }
+
+    /// The API host may be named nowhere else: outside this file, GitHub is
+    /// reached through named functions only. Same style as the other guards.
+    #[test]
+    fn no_github_api_outside_core_forge_api() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut offenders = vec![];
+        visit(&src, &mut offenders);
+        assert!(offenders.is_empty(), "api.github.com outside core/forge/api.rs: {offenders:?}");
+
+        fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    visit(&path, offenders);
+                } else if path.extension().is_some_and(|e| e == "rs")
+                    && !path.to_string_lossy().ends_with("/core/forge/api.rs")
+                    && std::fs::read_to_string(&path).unwrap().contains("api.github.com")
+                {
+                    offenders.push(path.display().to_string());
+                }
+            }
+        }
     }
 }

@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { openTask, priorityLabel, priorityRank } from './helpers';
+import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { Task } from '../shared/ipc/ipc';
 
-// Up next = the queued Notion tasks not yet checked out. Columns: id · name ·
+// Up next = the queued tasks not yet checked out. Columns: id · name ·
 // priority · status. Reviews live in their own tab now.
+
+/** The fields an Up next row can answer — see `appliesTo`. */
+const FIELDS = ['id', 'title', 'status', 'priority', 'provider'];
 
 const HIDDEN_KEY = 'wb.homeHiddenTasks';
 function loadHidden(): Set<string> {
@@ -19,14 +22,12 @@ function saveHidden(keys: Set<string>) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
 }
 
-export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: (n: number) => void }) {
+export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const tasks = useStore((s) => s.tasks);
-  const setTasks = useStore((s) => s.setTasks);
+  const refreshTasks = useStore((s) => s.refreshTasks);
   const snapshot = useStore((s) => s.homeSnapshot);
-  const setSyncStatus = useStore((s) => s.setSyncStatus);
   const setLastError = useStore((s) => s.setLastError);
   const [menu, setMenu] = useState<{ x: number; y: number; task: Task } | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(loadHidden);
   const [showHidden, setShowHidden] = useState(false);
 
@@ -39,27 +40,22 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
     });
   };
 
-  const loadTasks = useCallback(async () => {
-    setSyncStatus('syncing');
-    try {
-      setTasks(await invoke<Task[]>('list_tasks'));
-      setSyncStatus('idle');
-    } catch (e) {
-      setSyncStatus('error');
-      setLastError(String(e));
-    }
-  }, [setSyncStatus, setTasks, setLastError]);
-
   useEffect(() => {
-    if (tasks.length === 0) loadTasks();
-  }, [tasks.length, loadTasks]);
+    if (tasks.length === 0) refreshTasks();
+  }, [tasks.length, refreshTasks]);
 
   const { items, hiddenCount } = useMemo(() => {
     const live = new Set((snapshot ?? []).map((e) => e.short_id));
-    const needle = filter.trim().toLowerCase();
+    const q = parseQuery(filter);
     const all = tasks
       .filter((t) => !live.has(t.short_id) && statusKey(t.status) !== 'done')
-      .filter((t) => !needle || `${t.short_id} ${t.title} ${t.status} ${t.priority ?? ''}`.toLowerCase().includes(needle))
+      .filter((t) => matchesQuery(q, `${t.short_id} ${t.title} ${t.status} ${t.priority ?? ''}`, {
+        id: t.short_id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        provider: t.provider,
+      }))
       .sort((a, b) => {
         const s = (STATUS_RANK[statusKey(a.status)] ?? 9) - (STATUS_RANK[statusKey(b.status)] ?? 9);
         return s !== 0 ? s : priorityRank(a.priority) - priorityRank(b.priority);
@@ -68,12 +64,13 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
     return { items: showHidden ? all : all.filter((t) => !hidden.has(t.short_id)), hiddenCount: hiddenN };
   }, [tasks, snapshot, filter, hidden, showHidden]);
 
-  useEffect(() => { onCount?.(items.length); }, [items.length, onCount]);
+  const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
+  useEffect(() => { onCount?.(items.length, applicable, filter); }, [items.length, applicable, filter, onCount]);
 
   return (
     <div className="upnext-root" onClick={() => setMenu(null)}>
-      <div className="home-toolbar">
-        {(hiddenCount > 0 || showHidden) && (
+      {(hiddenCount > 0 || showHidden) && (
+        <div className="home-toolbar">
           <button
             className={`home-link${showHidden ? ' active' : ''}`}
             onClick={() => setShowHidden((v) => !v)}
@@ -81,21 +78,8 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
           >
             {showHidden ? 'done' : `hidden (${hiddenCount})`}
           </button>
-        )}
-        <span className="home-toolbar-spring" />
-        <button
-          className="home-link"
-          onClick={async () => {
-            if (refreshing) return;
-            setRefreshing(true);
-            try { await loadTasks(); } finally { setRefreshing(false); }
-          }}
-          title="Refresh tasks from Notion"
-        >
-          <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />
-          refresh
-        </button>
-      </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="home-empty">
@@ -104,10 +88,10 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
       ) : (
         <div className="upnext-table tasks-table">
           <div className="upnext-head">
-            <span>code</span>
             <span>name</span>
             <span>priority</span>
             <span>status</span>
+            <span>provider</span>
           </div>
           {items.map((task) => (
             <button
@@ -117,7 +101,6 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, task }); }}
               title={task.title}
             >
-              <span className="row-key">{task.short_id}</span>
               <span className="row-titleline"><span className="row-title">{task.title}</span></span>
               <span className="upnext-prio">
                 {task.priority
@@ -127,6 +110,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               <span className="upnext-status">
                 <span className={`row-status status-${statusKey(task.status)}`}>{task.status}</span>
               </span>
+              <span className="row-provider">{task.provider ?? '—'}</span>
             </button>
           ))}
         </div>
@@ -145,7 +129,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
               setMenu(null);
             }}
           >
-            Sync from Notion
+            Sync
           </button>
           <button className="context-item" onClick={() => { toggleHidden(menu.task.short_id); setMenu(null); }}>
             {hidden.has(menu.task.short_id) ? 'Unhide' : 'Hide from Up next'}

@@ -21,7 +21,7 @@
 /* Big tabbed panel on the left, ambient rail on the right; one column when narrow. */
 .home-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
+  grid-template-columns: minmax(0, 1fr) 17rem;
   align-items: start;
   gap: var(--space-5);
   padding: var(--space-5) var(--space-6) var(--space-6);
@@ -33,13 +33,139 @@
 
 .home-rail { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
 
+/* Title row, filter bar, then the panel — the issue-list shape. */
+.home-main-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.home-pagehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 2rem;
+}
+
+.home-pagetitle {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xl);
+  font-weight: 600;
+  color: var(--gl-text-color-strong);
+}
+
+/* Full-width filter bar: icon, the query, a clear button once it has content. */
+.home-searchbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  min-height: 2.2rem;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-default);
+  transition: border-color 0.12s;
+}
+.home-searchbar:focus-within { border-color: var(--gl-focus-border); }
+
+/* The input and its mirror stack here; both must use the same metrics. */
+.home-searchbar-field { position: relative; flex: 1; min-width: 0; }
+
+.home-filter-mirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre;
+  pointer-events: none;
+  color: var(--gl-text-color-default);
+}
+
+/* The value carries the highlight — that is what you are filtering ON; the key
+   just names the field and stays quiet. Colour and background only: any change
+   to weight, size or spacing here widens the mirror past the real input and the
+   highlight slides off the caret. */
+.flt-key { color: var(--gl-text-color-muted); }
+.flt-value {
+  color: var(--gl-color-blue-300);
+  background: color-mix(in srgb, var(--ctp-blue) 14%, transparent);
+  border-radius: 3px;
+}
+
+/* Suggestion list — hangs under the token being completed (its `left` is set
+   inline from the measured text width), sized to its content. */
+.home-ac {
+  position: absolute;
+  top: calc(100% + 6px);
+  /* Keep min-width in step with AC_MIN_WIDTH in index.tsx. */
+  min-width: 260px;
+  width: max-content;
+  max-width: 100%;
+  z-index: 40;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  background: var(--gl-background-color-overlap);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.home-ac-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 5px var(--space-2);
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.home-ac-item.active { background: var(--gl-background-color-hover); }
+
+.home-ac-icon { flex-shrink: 0; color: var(--gl-text-color-disabled); }
+.home-ac-item.active .home-ac-icon { color: var(--gl-color-blue-300); }
+
+.home-ac-key,
+.home-ac-value {
+  font-family: var(--font-ui);
+  font-size: var(--home-text);
+  white-space: nowrap;
+}
+.home-ac-key { color: var(--gl-text-color-default); font-weight: 400; }
+.home-ac-value { color: var(--gl-color-blue-300); font-weight: 400; }
+
+.home-ac-hint {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-disabled);
+  white-space: nowrap;
+}
+
+.home-searchbar-clear,
+.home-searchbar-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  background: none;
+  color: var(--gl-text-color-muted);
+  cursor: pointer;
+}
+.home-searchbar-clear:hover,
+.home-searchbar-go:hover { background: var(--gl-background-color-hover); color: var(--gl-text-color-default); }
+
 /* ── Tab bar (the main panel's header strip) ────────────────────────────────── */
 
 .home-tabbar {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: 2.75rem;
+  min-height: 2.4rem;
   padding: 0 var(--space-3);
   border-bottom: 1px solid var(--gl-border-color-default);
   background: var(--gl-background-color-mantle);
@@ -51,43 +177,82 @@
   align-items: center;
   gap: 6px;
   align-self: stretch;
-  padding: 0 var(--space-2);
+  padding: var(--space-2) var(--space-2);
   border: none;
   border-bottom: 2px solid transparent;
+  border-radius: var(--gl-border-radius-medium);
   background: none;
   color: var(--gl-text-color-subtle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }
 .home-tab:hover { color: var(--gl-text-color-default); }
-.home-tab.active { color: var(--gl-text-color-default); border-bottom-color: var(--gl-color-blue-400); }
+.home-tab.active {
+  color: var(--gl-text-color-default);
+  font-weight: 600;
+}
 
 .home-tab-count {
   font-family: var(--font-mono);
   font-size: var(--gl-font-size-xs);
   font-weight: 500;
-  color: var(--gl-text-color-disabled);
-  background: var(--gl-background-color-strong);
+  background: var(--gl-background-color-subtle);
   border-radius: 100px;
   padding: 0 6px;
 }
 .home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
+/* A dash, not a number: the query names a field this tab has no column for. */
+.home-tab-count.na,
+.home-tab.active .home-tab-count.na { color: var(--gl-text-color-disabled); opacity: 0.6; }
 
-.home-filter {
-  width: 12rem;
-  height: 1.7rem;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-default);
-  color: var(--gl-text-color-default);
+.home-nomatch {
+  margin: 0;
+  padding: 0 var(--space-1);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
+  color: var(--gl-text-color-muted);
 }
-.home-filter:focus { outline: none; border-color: var(--gl-focus-border); }
+
+/* The query itself — the bar owns the border, the mirror owns the colour, so the
+   text here is transparent and only the caret shows. Both layers MUST keep the
+   same font, size and metrics or the highlight drifts off the characters. */
+.home-filter,
+.home-filter-mirror,
+.home-filter-measure {
+  height: 1.9rem;
+  line-height: 1.9rem;
+  padding: 0;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: var(--home-text-sm);
+  letter-spacing: 0;
+}
+
+.home-filter,
+.home-filter-mirror { display: block; width: 100%; }
+
+/* Measures the text before the token; never seen, so it must not affect layout. */
+.home-filter-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+}
+
+.home-filter {
+  position: relative;
+  background: none;
+  color: transparent;
+  caret-color: var(--gl-text-color-default);
+}
+.home-filter:focus { outline: none; }
+.home-filter::placeholder { color: var(--gl-text-color-disabled); }
+.home-filter::selection { background: var(--gl-color-blue-100); }
 
 .home-tabpanel.is-hidden { display: none; }
 
@@ -115,7 +280,7 @@
   min-width: 0;
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
+  background: var(--gl-background-color-default);
   overflow: hidden;
 }
 
@@ -124,14 +289,13 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  min-height: 2.75rem;
+  min-height: 2.4rem;
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--gl-border-color-default);
   background: var(--gl-background-color-mantle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--gl-text-color-subtle);
 }
@@ -157,6 +321,7 @@
   background: none;
   border: none;
   padding: 0;
+  padding-right: var(--space-2);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
   font-weight: 500;
@@ -213,12 +378,23 @@
   color: var(--gl-text-color-subtle);
 }
 
+/* Where a Live row came from, in place of its id. */
+.row-provider {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--home-text-sm);
+  color: var(--gl-text-color-subtle);
+}
+
 .row-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .row-note {
@@ -237,7 +413,7 @@
 
 /* caret · type · id · title(fills) · summary. Live and Up next share the leading
    tracks (caret/spacer · type · id · title) so their columns line up. */
-.live-row { grid-template-columns: 1.5rem 5rem 7rem minmax(0, 1fr) auto; }
+.live-row { grid-template-columns: 0.5rem 5rem minmax(0, 1fr) 8rem 8rem; }
 
 /* ── Live: fold/expand ──────────────────────────────────────────────────────── */
 
@@ -288,16 +464,16 @@
   padding: 7px var(--space-2);
 }
 
-/* Up next (tasks): code · name · priority · status. */
+/* Up next (tasks): name · priority · status · provider */
 .tasks-table .upnext-head,
-.tasks-table .upnext-tr { grid-template-columns: 7rem minmax(0, 1fr) 7rem 10rem; }
+.tasks-table .upnext-tr { grid-template-columns: 43rem minmax(0, 1fr) 15rem 8rem; }
 
 /* Reviews: code · name · repo · owner · last update. */
 .reviews-table .upnext-head,
 .reviews-table .upnext-tr { grid-template-columns: 5rem minmax(0, 1fr) 12rem 8rem 6rem; }
 
 .upnext-head {
-  padding-top: 2px;
+  padding-top: 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--gl-border-color-subtle);
   font-family: var(--font-mono);
@@ -444,7 +620,7 @@
   flex-direction: column;
   gap: var(--space-3);
   /* Indented to sit under the row's title, so the detail reads as nested. */
-  padding: var(--space-2) var(--space-2) var(--space-2) 3.75rem;
+  padding: var(--space-2) var(--space-2) var(--space-2) 2rem;
 }
 
 .live-repos { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -462,7 +638,7 @@
   align-items: center;
   gap: 6px;
   background: var(--gl-background-color-subtle);
-  border: 1px solid color-mix(in srgb, var(--ctp-green) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ctp-blue) 35%, transparent);
   border-radius: var(--gl-border-radius-base);
   color: var(--gl-text-color-default);
   font-family: var(--font-ui);
@@ -490,6 +666,17 @@
   border-color: color-mix(in srgb, var(--gl-color-red-400) 45%, transparent);
   color: var(--gl-color-red-400);
 }
+
+/* Icon-only actions stay quiet: no background or border until hover. Declared
+   after the .go/.danger variants so it wins at equal specificity. */
+.live-btn--icon { padding: 5px; color: var(--gl-text-color-muted); }
+.live-btn--icon svg { display: block; }
+.live-btn--icon,
+.live-btn--icon.go,
+.live-btn--icon.danger { background: none; border-color: transparent; }
+.live-btn--icon:hover:not(:disabled) { background: var(--gl-background-color-hover); border-color: transparent; }
+.live-btn--icon.go:hover:not(:disabled) { background: var(--gl-color-green-100); border-color: transparent; color: var(--gl-color-green-400); }
+.live-btn--icon.danger:hover:not(:disabled) { background: var(--gl-color-red-100); border-color: transparent; color: var(--gl-color-red-400); }
 
 /* Provision link on an unprovisioned worktree row. */
 .live-wt-provision {

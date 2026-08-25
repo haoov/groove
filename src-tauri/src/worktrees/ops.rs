@@ -3,6 +3,27 @@ use tauri::Emitter;
 
 use crate::core::git;
 
+/// The fields every git-op confirmation carries. `repo` is the project name for
+/// display: worktree paths embed the branch's slashes now, so the path's last
+/// segment is the branch leaf, not the repo.
+pub(crate) async fn op_payload(
+    pool: &SqlitePool,
+    wt: &crate::core::db::models::Worktree,
+) -> serde_json::Value {
+    let repo = crate::core::db::store::repos::get_opt(pool, &wt.repo_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|r| r.project)
+        .unwrap_or_default();
+    serde_json::json!({
+        "worktree_id": wt.id,
+        "worktree_path": wt.path,
+        "branch": wt.branch,
+        "repo": repo,
+    })
+}
+
 #[tauri::command]
 pub async fn commit(
     worktree_id: String,
@@ -13,12 +34,8 @@ pub async fn commit(
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
-    let payload = serde_json::json!({
-        "worktree_id": worktree_id,
-        "worktree_path": wt.path,
-        "branch": wt.branch,
-        "message": message,
-    });
+    let mut payload = op_payload(&pool, &wt).await;
+    payload["message"] = serde_json::json!(message);
 
     bridge
         .post(&pool, crate::approvals::ops::GIT_COMMIT, payload, "ui", Some(&wt.session_id))
@@ -167,11 +184,7 @@ pub async fn push(
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
-    let payload = serde_json::json!({
-        "worktree_id": worktree_id,
-        "worktree_path": wt.path,
-        "branch": wt.branch,
-    });
+    let payload = op_payload(&pool, &wt).await;
 
     bridge
         .post(&pool, crate::approvals::ops::GIT_PUSH, payload, "ui", Some(&wt.session_id))
@@ -188,11 +201,7 @@ pub async fn pull(
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
-    let payload = serde_json::json!({
-        "worktree_id": worktree_id,
-        "worktree_path": wt.path,
-        "branch": wt.branch,
-    });
+    let payload = op_payload(&pool, &wt).await;
 
     bridge
         .post(&pool, crate::approvals::ops::GIT_PULL, payload, "ui", Some(&wt.session_id))
@@ -210,12 +219,8 @@ pub async fn rebase_on_main(
     let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
         .map_err(|e| e.to_string())?;
 
-    let payload = serde_json::json!({
-        "worktree_id": worktree_id,
-        "worktree_path": wt.path,
-        "branch": wt.branch,
-        "default_branch": default_branch.unwrap_or_else(|| "main".to_string()),
-    });
+    let mut payload = op_payload(&pool, &wt).await;
+    payload["default_branch"] = serde_json::json!(default_branch.unwrap_or_else(|| "main".to_string()));
 
     bridge
         .post(&pool, crate::approvals::ops::GIT_REBASE, payload, "ui", Some(&wt.session_id))

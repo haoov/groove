@@ -6,8 +6,9 @@ export type TaskSchema = { database_id: string,
 /**
  * The title property's name — it differs per database ("Task name" here).
  */
-title_property: string, properties: Array<PropertySchema>, 
+title_property: string, properties: Array<PropertySchema>, status_groups: Array<StatusGroup>, 
 /**
- * Groups of the first `status` property, empty when the database has none.
+ * The number field hours are logged to, when this source has one. None means
+ * time is tracked locally and written nowhere else.
  */
-status_groups: Array<StatusGroup>, };
+hours_property: string | null, };

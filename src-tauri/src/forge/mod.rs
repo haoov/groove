@@ -1,8 +1,6 @@
-//! The forge feature: MRs/PRs on GitLab and GitHub, over their APIs directly.
-//! The CLIs (`glab`, `gh`) are consulted only for tokens — see `auth`.
+//! The forge feature: MRs/PRs on GitLab and GitHub. Transport and tokens live
+//! in `core::forge`.
 
-mod api;
-mod auth;
 mod client;
 mod commands;
 mod github;

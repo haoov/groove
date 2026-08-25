@@ -1,8 +1,8 @@
 //! Synthetic, task-less sessions: explorers and MR reviews.
 //!
-//! Both are `sessions` rows with no Notion page behind them, which is what lets
+//! Both are `sessions` rows with no task behind them, which is what lets
 //! them reuse the entire task machinery (worktrees, agent, diff, add-repo)
-//! without ever appearing in Notion. `sessions.kind` is the discriminator.
+//! without ever appearing in a task source. `sessions.kind` is the discriminator.
 
 use sqlx::SqlitePool;
 use tauri::Emitter;

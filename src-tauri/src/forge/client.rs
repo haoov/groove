@@ -1,11 +1,5 @@
 use crate::core::db::models::Repo;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Platform {
-    Gitlab,
-    Github,
-}
-
 #[async_trait::async_trait]
 pub(super) trait PlatformClient: Send + Sync {
     fn platform_name(&self) -> &'static str;

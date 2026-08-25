@@ -46,7 +46,7 @@ pub(super) async fn get_worktrees(
 /// sessions are excluded: an explorer or a review is not something picked off
 /// a queue.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
-    let tasks: Vec<crate::core::db::models::TaskView> = store::notion_tasks::all(&state.pool)
+    let tasks: Vec<crate::core::db::models::TaskView> = store::provider_tasks::all(&state.pool)
         .await?
         .into_iter()
         .map(Into::into)
@@ -159,32 +159,56 @@ pub(super) async fn get_file_content(
     Ok(ToolCallResponse::ok(serde_json::json!({ "content": content })))
 }
 
-pub(super) async fn get_task_body(input: serde_json::Value) -> anyhow::Result<ToolCallResponse> {
-    let notion_page_id = str_field(&input, "notion_page_id")?;
-    let cfg = crate::core::config::require()?;
-    let blocks =
-        crate::notion::get_task_body_impl(&notion_page_id, &cfg.notion.token).await?;
-    Ok(ToolCallResponse::ok(
-        serde_json::json!({ "blocks": blocks, "count": blocks.len() }),
-    ))
+pub(super) async fn get_task_body(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = str_field(&input, "task_id")?;
+    let (provider, key) = crate::provider::resolve(&state.pool, &task_id).await?;
+    let markdown = provider.body_markdown(&key).await?;
+    Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
 }
 
-pub(super) async fn get_task_template() -> anyhow::Result<ToolCallResponse> {
-    let cfg = crate::core::config::require()?;
-    let page_id = cfg
-        .notion
-        .task_template_page_id
-        .clone()
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("notion.task_template_page_id is not set in config"))?;
+/// Markdown is what the agent mirrors, and what create_task_from_explorer takes
+/// back — raw block JSON was easy to misread.
+pub(super) async fn get_task_template(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    // The template belongs to: the source the caller names, else the source of the
+    // task in scope, else the one configured source. An explorer or review session
+    // has an id in scope but no source — that falls through rather than erroring,
+    // since filing FROM an explorer is this tool's main use.
+    let named = input["provider"]
+        .as_str()
+        .map(|_| crate::provider::commands::draft_provider(&input));
+    let in_scope = match (&named, state.task_for(mcp_session)) {
+        (None, Some(task_id)) => crate::provider::resolve(&state.pool, &task_id)
+            .await
+            .ok()
+            .map(|(p, _)| Ok(p.id())),
+        _ => None,
+    };
+    let provider = named
+        .or(in_scope)
+        .unwrap_or_else(|| crate::provider::commands::draft_provider(&serde_json::json!({})))
+        .and_then(crate::provider::get);
+    let provider = match provider {
+        Ok(p) => p,
+        Err(e) => return Ok(ToolCallResponse::err(e.to_string())),
+    };
 
-    // Markdown is what the agent mirrors (and what create_task_from_explorer takes
-    // back) — raw block JSON was easy to misread. The impl validates the configured
-    // id and returns actionable errors (database id, no access, empty).
-    match crate::notion::body::template_markdown(&page_id, &cfg.notion.token).await {
-        Ok(markdown) => Ok(ToolCallResponse::ok(
+    match provider.template_markdown().await {
+        Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),
+        // No template is an answer, not a failure — the tool contract says empty.
+        // An error here stalled the create-task flow for sources without one.
+        Ok(None) => Ok(ToolCallResponse::ok(serde_json::json!({
+            "template_markdown": "",
+            "note": "this task source has no template — structure the body yourself",
+        }))),
         Err(e) => Ok(ToolCallResponse::err(e.to_string())),
     }
 }

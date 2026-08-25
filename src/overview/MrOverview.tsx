@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { forgeName, mrRef } from '../shared/lib/forge';
 import { invoke } from '../shared/ipc/invoke';
 import {
   GitPullRequest, GitMerge, GitPullRequestClosed, ExternalLink, GitBranch, ThumbsUp, Send, Check,
@@ -41,7 +42,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
       await invoke('edit_mr_text', { mrId, description: draft });
       setEditingDesc(false);
       // Re-read so the rendered markdown matches what the forge now holds
-      // (the backend re-appends the Notion footer, so it is not what we sent).
+      // (the backend re-appends the task footer, so it is not what we sent).
       bumpMrs();
     } catch (e) {
       setError(String(e));
@@ -55,7 +56,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     setApproving(true);
     try {
       await invoke('approve_mr', { mrId });
-      notify({ kind: 'success', source: 'mr', title: `Approved ${mr?.platform === 'github' ? '#' : '!'}${mr?.remote_id}` });
+      notify({ kind: 'success', source: 'mr', title: `Approved ${mrRef(mr?.platform ?? '', mr?.remote_id ?? '')}` });
       // Re-read details (and Home's cached signals were just invalidated), so the
       // approved badge appears without a manual refresh.
       bumpMrs();
@@ -106,7 +107,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
 
   const isGithub = mr.platform === 'github';
   const shortKind = isGithub ? 'PR' : 'MR';
-  const num = `${isGithub ? '#' : '!'}${mr.remote_id}`;
+  const num = mrRef(mr.platform, mr.remote_id);
   const state = details?.state ?? mr.state;
   const url = details?.web_url || mr.url;
   const StateIcon = state === 'merged' ? GitMerge : state === 'closed' ? GitPullRequestClosed : GitPullRequest;
@@ -139,7 +140,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
             )}
             <button className="finish-task-btn ov-update mr-open-btn" onClick={() => openExternal(url)}>
               <ExternalLink size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-              Open in {isGithub ? 'GitHub' : 'GitLab'}
+              Open in {forgeName(mr.platform)}
             </button>
           </div>
         </header>
@@ -200,7 +201,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
                     placeholder="Markdown — ## What then ## Why"
                   />
                   <div className="mr-desc-actions">
-                    {/* The Notion link is re-appended by the backend, so it survives
+                    {/* The task link is re-appended by the backend, so it survives
                         an edit even though it is not in the box. */}
                     <span className="composer-note">Saved straight to the merge request.</span>
                     <button className="btn-secondary" onClick={() => setEditingDesc(false)} disabled={savingDesc}>
@@ -270,7 +271,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
                 )}
                 <div className="mr-fact">
                   <dt>Platform</dt>
-                  <dd>{isGithub ? 'GitHub' : 'GitLab'}</dd>
+                  <dd>{forgeName(mr.platform)}</dd>
                 </div>
               </dl>
             </section>

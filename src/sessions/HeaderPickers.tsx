@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { mrRef } from '../shared/lib/forge';
 import { createPortal } from 'react-dom';
 import {
   Boxes, Check, Code2, Eye, FolderGit2, GitBranch, ListTodo, Plus, X,
@@ -35,7 +36,7 @@ const KIND_LABEL: Record<SessionKind, string> = {
 function sessionIdLabel(s: SessionState): string | null {
   if (s.kind === 'review') {
     const mr = s.mrs?.[0];
-    if (mr) return `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+    if (mr) return mrRef(mr.platform, mr.remote_id);
   }
   return s.task?.short_id ?? null;
 }
@@ -350,7 +351,7 @@ export function HeaderPickers() {
 
   // Reviews get the MR number, not their long title/short_id.
   const reviewNum = sessionKind === 'review' && sessionMrs[0]
-    ? `${sessionMrs[0].platform === 'github' ? '#' : '!'}${sessionMrs[0].remote_id}`
+    ? mrRef(sessionMrs[0].platform, sessionMrs[0].remote_id)
     : null;
   const sessionValue = inWorkspace
     ? <span className="hp-chip-id">{reviewNum ?? sessionShortId ?? sessionTitle}</span>

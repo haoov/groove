@@ -129,7 +129,7 @@ mod tests {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = vec![];
         visit(&src, &mut offenders);
-        assert!(offenders.is_empty(), "api.notion.com outside notion/api.rs: {offenders:?}");
+        assert!(offenders.is_empty(), "api.notion.com outside provider/notion/api.rs: {offenders:?}");
 
         fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).unwrap().flatten() {
@@ -137,7 +137,7 @@ mod tests {
                 if path.is_dir() {
                     visit(&path, offenders);
                 } else if path.extension().is_some_and(|e| e == "rs")
-                    && !path.to_string_lossy().ends_with("/notion/api.rs")
+                    && !path.to_string_lossy().ends_with("/provider/notion/api.rs")
                     && std::fs::read_to_string(&path).unwrap().contains("api.notion.com")
                 {
                     offenders.push(path.display().to_string());

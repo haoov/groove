@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STATUS_RANK, statusKey } from './taskStatus';
 
-// Notion boards name statuses freely, so every label the team actually uses has to
+// Sources name statuses freely, so every label the team actually uses has to
 // land on a known key — anything unrecognized silently becomes "ready" and sorts
 // into the queue as if it were actionable.
 

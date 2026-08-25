@@ -3,7 +3,7 @@ import { invoke } from '../ipc/invoke';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { statusKey } from '../lib/taskStatus';
 import { priorityRank } from '../lib/taskStatus';
-import type { PropertySchema, PropertyValue, RelationOption } from '../ipc/ipc';
+import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
 
 /**
  * The property controls themselves — pills, chip rows, popovers.
@@ -13,7 +13,7 @@ import type { PropertySchema, PropertyValue, RelationOption } from '../ipc/ipc';
  * this would drift, and a task filed through a different-looking editor is exactly
  * the kind of seam that makes an app feel assembled rather than designed.
  *
- * Nothing here talks to a Notion page: every control takes a value and reports a
+ * Nothing here talks to a task source: every control takes a value and reports a
  * new one. The overview writes each change through immediately; the modal holds
  * them until the task exists.
  */
@@ -22,14 +22,6 @@ const RELATION_DEBOUNCE_MS = 800;
 
 export const SINGLE_KINDS = ['status', 'select', 'date', 'number'];
 export const MULTI_KINDS = ['relation', 'multi_select'];
-/** Read-only Notion meta fields — never a "property you set", so the overview
- *  strip leaves them out (created/edited time, the unique id, formulas, rollups). */
-export const META_KINDS = ['title', 'formula', 'unique_id', 'created_time', 'last_edited_time', 'rollup'];
-
-/** Hours has its own block — it's measured, not just stored (see hours.rs). */
-export const isHoursProperty = (name: string, kind: string) =>
-  kind === 'number' && /^(hours spent|hours|time spent)$/i.test(name);
-
 export function hasValue(v: PropertyValue | undefined): boolean {
   if (!v) return false;
   if (v.value === null || v.value === undefined || v.value === '') return false;
@@ -116,7 +108,7 @@ export function Pill({
           <div className="ppop-head">{prop.name}</div>
           {prop.kind === 'status' || prop.kind === 'select' ? (
             <OptionList
-              options={prop.options.map((o) => ({ id: o, title: o }))}
+              options={prop.options}
               selected={raw ? [String(raw)] : []}
               onPick={(id, on) => { onChange(on ? id : null); setOpen(false); }}
               allowClear={!!raw}
@@ -178,19 +170,20 @@ export function ValueEditor({
 
 /** A labelled set of chips: components, tags. */
 export function MultiRow({
-  row, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
+  row, shortId, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
 }: {
   row: Row;
   busy: boolean;
   onChange: (v: string[]) => void;
+  shortId: string;
   onError: (e: string) => void;
   /** 0 reports every change straight away — right when nothing is being written yet. */
   debounce?: number;
 }) {
   const { prop, current } = row;
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<RelationOption[] | null>(
-    prop.kind === 'multi_select' ? prop.options.map((o) => ({ id: o, title: o })) : null,
+  const [options, setOptions] = useState<PropertyOption[] | null>(
+    prop.kind === 'multi_select' ? prop.options : null,
   );
   const selected = (current?.value as string[]) ?? [];
   const [draft, setDraft] = useState<string[]>(selected);
@@ -204,12 +197,12 @@ export function MultiRow({
   // Relation choices come from the target database, fetched once.
   useEffect(() => {
     if (options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { databaseId: prop.relation_db })
+    invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions)
       .catch((e) => onError(String(e)));
-  }, [options, prop.kind, prop.relation_db, onError]);
+  }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
 
-  /** One write per burst of ticking, not one per tick (Notion allows ~3 req/s). */
+  /** One write per burst of ticking, not one per tick — sources rate-limit. */
   const stage = (ids: string[]) => {
     setDraft(ids);
     if (debounce === 0) return onChange(ids);
@@ -257,11 +250,12 @@ export function MultiRow({
  *  small uppercase key over an editable value that opens the same popover the
  *  pills use. Multi-value kinds join their titles; read-only kinds show text. */
 export function PropField({
-  row, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
+  row, shortId, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
 }: {
   row: Row;
   busy: boolean;
   onChange: (v: unknown) => void;
+  shortId: string;
   onError: (e: string) => void;
   debounce?: number;
 }) {
@@ -275,8 +269,8 @@ export function PropField({
   useOutsideClose(box, open, () => setOpen(false));
 
   // Multi-value state (relation / multi_select): fetched options + debounced write.
-  const [options, setOptions] = useState<RelationOption[] | null>(
-    prop.kind === 'multi_select' ? prop.options.map((o) => ({ id: o, title: o })) : null,
+  const [options, setOptions] = useState<PropertyOption[] | null>(
+    prop.kind === 'multi_select' ? prop.options : null,
   );
   const selected = isMulti ? ((raw as string[]) ?? []) : [];
   const [draft, setDraft] = useState<string[]>(selected);
@@ -285,9 +279,9 @@ export function PropField({
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   useEffect(() => {
     if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;
-    invoke<RelationOption[]>('list_relation_options', { databaseId: prop.relation_db })
+    invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions).catch((e) => onError(String(e)));
-  }, [open, options, prop.kind, prop.relation_db, onError]);
+  }, [open, options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
   const stageMulti = (ids: string[]) => {
     setDraft(ids);
     if (debounce === 0) return onChange(ids);
@@ -299,7 +293,7 @@ export function PropField({
   let display: string;
   if (isMulti) {
     // Before the options are fetched, titleOf can only echo the id, so fall back
-    // to the backend-resolved display (Notion already gave us the titles).
+    // to the backend-resolved display (the titles came with the schema).
     const joined = draft.map(titleOf).join(', ');
     display = draft.length ? (options ? joined : (current?.display || joined)) : '—';
   }
@@ -350,7 +344,7 @@ export function PropField({
               />
             ) : prop.kind === 'status' || prop.kind === 'select' ? (
               <OptionList
-                options={prop.options.map((o) => ({ id: o, title: o }))}
+                options={prop.options}
                 selected={raw ? [String(raw)] : []}
                 onPick={(id, on) => { onChange(on ? id : null); setOpen(false); }}
                 allowClear={!!raw}

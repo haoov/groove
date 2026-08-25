@@ -16,7 +16,7 @@ use std::{
 /// failure: a machine with no `glab` is a machine with no GitLab repos, and the
 /// review queue must stay quiet about it instead of showing an error.
 #[derive(Debug)]
-pub(super) struct CliMissing(pub &'static str);
+pub(crate) struct CliMissing(pub &'static str);
 
 impl std::fmt::Display for CliMissing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -30,7 +30,7 @@ impl std::fmt::Display for CliMissing {
 impl std::error::Error for CliMissing {}
 
 /// True when the failure is only that the CLI is absent.
-pub(super) fn is_cli_missing(e: &anyhow::Error) -> bool {
+pub(crate) fn is_cli_missing(e: &anyhow::Error) -> bool {
     e.downcast_ref::<CliMissing>().is_some()
 }
 
@@ -40,7 +40,7 @@ fn cache() -> &'static Mutex<HashMap<String, String>> {
 }
 
 /// The token for a host, from cache or from its CLI.
-pub(super) async fn token(platform: super::client::Platform, host: &str) -> anyhow::Result<String> {
+pub(crate) async fn token(platform: super::Platform, host: &str) -> anyhow::Result<String> {
     if let Ok(map) = cache().lock() {
         if let Some(t) = map.get(host) {
             return Ok(t.clone());
@@ -55,15 +55,15 @@ pub(super) async fn token(platform: super::client::Platform, host: &str) -> anyh
 
 /// Drop a host's cached token — called on a 401 so the next request re-asks the
 /// CLI (the user may have re-logged in, or the token rotated).
-pub(super) fn forget(host: &str) {
+pub(crate) fn forget(host: &str) {
     if let Ok(mut map) = cache().lock() {
         map.remove(host);
     }
 }
 
-async fn fetch_token(platform: super::client::Platform, host: &str) -> anyhow::Result<String> {
+async fn fetch_token(platform: super::Platform, host: &str) -> anyhow::Result<String> {
     match platform {
-        super::client::Platform::Github => {
+        super::Platform::Github => {
             let out = run_cli("gh", &["auth", "token", "--hostname", host]).await?;
             let token = out.stdout.trim().to_string();
             if token.is_empty() {
@@ -73,7 +73,7 @@ async fn fetch_token(platform: super::client::Platform, host: &str) -> anyhow::R
             }
             Ok(token)
         }
-        super::client::Platform::Gitlab => {
+        super::Platform::Gitlab => {
             // `glab auth status -t` prints every configured host with its token.
             // Historically on stderr, sometimes stdout — parse both.
             let out = run_cli("glab", &["auth", "status", "-t"]).await?;

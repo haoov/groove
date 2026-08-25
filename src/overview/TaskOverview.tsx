@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { openExternal } from '../shared/lib/openExternal';
 import { invoke } from '../shared/ipc/invoke';
-import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
+import { providerCopy } from '../shared/lib/taskProvider';
+import type { TaskSchema } from '../shared/ipc/ipc';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
@@ -27,13 +30,14 @@ export function TaskOverview() {
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
   /** Which ending is awaiting confirmation. Finishing marks the task Done;
-   *  deleting sends the Notion page to the trash. Both then tear the local
+   *  deleting discards it at the source. Both then tear the local
    *  workspace down, so they share one banner and one busy flag. */
   const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
-  /** Bumped after a Notion write so the panel and hours re-read the page. */
+  /** Bumped after a write so the panel and hours re-read the task. */
   const [hoursLogged, setHoursLogged] = useState('');
-  const [hoursAvailable, setHoursAvailable] = useState(false);
+  const [schema, setSchema] = useState<TaskSchema | null>(null);
+  const src = providerCopy(activeTask);
   const [reloadNonce, setReloadNonce] = useState(0);
   const reload = () => setReloadNonce((n) => n + 1);
 
@@ -41,12 +45,20 @@ export function TaskOverview() {
     if (!activeTask) return;
     setLoading(true);
     // Markdown, not raw blocks: same renderer as MR descriptions, and markdown
-    // typed literally into Notion (backticks, **bold**) then displays properly.
-    invoke<string>('get_task_body_markdown', { notionPageId: activeTask.notion_page_id })
+    // typed literally into the source (backticks, **bold**) then displays properly.
+    invoke<string>('get_task_body_markdown', { shortId: activeTask.short_id })
       .then(setBody)
       .catch(() => setBody(''))
       .finally(() => setLoading(false));
-  }, [activeTask?.notion_page_id, reloadNonce]);
+  }, [activeTask?.short_id, reloadNonce]);
+
+  // Per task, not per mount: a schema belongs to the source the task came from.
+  useEffect(() => {
+    if (!activeTask) return;
+    invoke<TaskSchema>('get_task_schema', { shortId: activeTask.short_id })
+      .then(setSchema)
+      .catch(() => setSchema(null));
+  }, [activeTask?.short_id]);
 
   // Load MRs for all worktrees into local state — independent of the sidebar's
   // per-repo store so switching repos in the sidebar never clears this list.
@@ -88,10 +100,20 @@ export function TaskOverview() {
           <h1 className="overview-title">{activeTask.title}</h1>
           <span className="overview-spring" />
           <div className="overview-header-actions">
+            {activeTask.external_url && (
+              <button
+                className="finish-task-btn ov-update"
+                onClick={() => openExternal(activeTask.external_url!)}
+                title={activeTask.external_url}
+              >
+                <ExternalLink size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+                Open in {src.label}
+              </button>
+            )}
             <button
               className="finish-task-btn ov-update"
               onClick={reload}
-              title="Re-read this task from Notion"
+              title={`Re-read this task from ${src.label}`}
             >
               <RefreshCw size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Update
@@ -108,7 +130,7 @@ export function TaskOverview() {
               className="finish-task-btn delete-task-btn"
               onClick={() => setEnding('delete')}
               disabled={finishing}
-              title="Send the Notion page to the trash and close the task here"
+              title={`Discard the ${src.item} and close the task here`}
             >
               <Trash2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Delete task
@@ -119,13 +141,13 @@ export function TaskOverview() {
         {/* Properties — the framed metadata card under the title. */}
         <PropertyStrip
           key={reloadNonce}
-          notionPageId={activeTask.notion_page_id}
+          shortId={activeTask.short_id}
+          schema={schema}
           onHoursValue={setHoursLogged}
-          onHoursAvailable={setHoursAvailable}
         />
 
         {/* One banner for both endings — the local half is identical, so only the
-            sentence about Notion changes. */}
+            sentence about what changes at the source. */}
         {ending && (
           <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
             <div className="finish-confirm-icon">
@@ -139,8 +161,8 @@ export function TaskOverview() {
                 This will remove all local worktrees and delete task data from the local
                 database.{' '}
                 {ending === 'delete'
-                  ? 'The Notion page goes to your workspace trash, where it can be restored for 30 days.'
-                  : 'The task is marked Done in Notion.'}
+                  ? src.discard
+                  : src.finish}
               </p>
             </div>
             <div className="finish-confirm-actions">
@@ -163,7 +185,7 @@ export function TaskOverview() {
           <main className="overview-main">
             <BodyEditor
               taskId={activeTask.short_id}
-              notionPageId={activeTask.notion_page_id}
+              source={src}
               markdown={body}
               loading={loading}
               onSaved={reload}
@@ -171,14 +193,14 @@ export function TaskOverview() {
           </main>
 
           <aside className="overview-side">
-            {hoursAvailable && (
-              <HoursWidget
-                taskId={activeTask.short_id}
-                notionPageId={activeTask.notion_page_id}
-                logged={hoursLogged}
-                onLogged={reload}
-              />
-            )}
+            {/* Always rendered: time is tracked locally whatever the source has.
+                hoursProperty null means there is nowhere to log it to. */}
+            <HoursWidget
+              taskId={activeTask.short_id}
+              hoursProperty={schema?.hours_property ?? null}
+              logged={hoursLogged}
+              onLogged={reload}
+            />
 
             {activeRepos.length > 0 && (
               <section className="overview-section">

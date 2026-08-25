@@ -39,7 +39,7 @@
 
 /* ── Activity rail ────────────────────────────────────────────────────────── */
 .activity-rail {
-  width: 2.75rem;            /* 44px */
+  width: 2.2rem;            /* 35px */
   flex-shrink: 0;
   background: var(--gl-background-color-overlap);
   border-right: 1px solid var(--gl-border-color-default);
@@ -361,7 +361,7 @@
 /* ── Header context pickers (session · repo · worktree) ─────────────────────── */
 /* Header context pickers — quiet Zed-style chips that open a filterable list. */
 
-.header-pickers { display: inline-flex; align-items: center; gap: 1px; margin-left: var(--space-2); }
+.header-pickers { display: inline-flex; align-items: center; gap: var(--space-3); margin-left: var(--space-2); }
 .hp { position: relative; display: inline-flex; }
 .hp-chip {
   display: inline-flex;
@@ -410,14 +410,15 @@
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-raised);
   box-shadow: var(--shadow-float);
+  padding: var(--space-1);
 }
 
-.hp-rows { display: flex; flex-direction: column; overflow-y: auto; outline: none; }
+.hp-rows { display: flex; flex-direction: column; overflow-y: auto; outline: none; gap: 3px; }
 .hp-empty { padding: var(--space-4) var(--space-3); margin: 0; color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-md); text-align: center; }
 
 .hp-row { display: flex; align-items: stretch; }
-.hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); }
-.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); }
+.hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); border-radius: var(--gl-border-radius-medium); }
+.hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium);}
 .hp-row-main {
   flex: 1;
   min-width: 0;

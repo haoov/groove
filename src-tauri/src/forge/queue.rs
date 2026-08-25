@@ -1,7 +1,7 @@
 //! The review queue: every open MR/PR where the current user is a requested
 //! reviewer, across every forge host present in the clone pool.
 
-use super::api::pct;
+use crate::core::forge::api::pct;
 
 /// An open MR where the current user is a reviewer, matched (by pool slug) to
 /// its MAIN clone when one exists. TS mirror in types/ipc.ts.
@@ -69,7 +69,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
         match result {
             Ok(mut mrs) => out.append(&mut mrs),
             // No CLI for that forge means no repos on it — not something to report.
-            Err(e) if super::auth::is_cli_missing(&e) => {
+            Err(e) if crate::core::forge::auth::is_cli_missing(&e) => {
                 tracing::debug!("{host} review queue skipped: {e}");
             }
             Err(e) => errors.push(format!("{host}: {e}")),
@@ -120,7 +120,7 @@ async fn gitlab_reviews(
         "merge_requests?reviewer_username={}&state=opened&scope=all&per_page=50",
         pct(&username)
     );
-    let v = super::api::gitlab(host, reqwest::Method::GET, &path, None).await?;
+    let v = crate::core::forge::api::gitlab(host, reqwest::Method::GET, &path, None).await?;
     let items = v.as_array().cloned().unwrap_or_default();
 
     let mut result = vec![];

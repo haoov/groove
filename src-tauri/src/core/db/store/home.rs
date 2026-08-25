@@ -12,6 +12,8 @@ pub struct HomeRow {
     pub title: String,
     pub status: Option<String>,
     pub priority: Option<String>,
+    /// "notion" | "github"; None for a session with no task behind it.
+    pub provider: Option<String>,
     pub repo_id: Option<String>,
     pub project: Option<String>,
     pub repo_host: Option<String>,
@@ -31,13 +33,13 @@ pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>
     Ok(sqlx::query_as(
         "SELECT
            s.id AS session_id, s.kind, s.title,
-           nt.status, nt.priority,
+           nt.status, nt.priority, nt.provider,
            r.id AS repo_id, r.project, r.host AS repo_host, r.local_path AS repo_local_path,
            w.id AS worktree_id, w.branch, w.path AS worktree_path, w.base_ref,
            m.id AS mr_id, m.platform AS mr_platform, m.remote_id AS mr_remote_id,
            m.url AS mr_url, m.state AS mr_state
          FROM sessions s
-         LEFT JOIN notion_tasks nt ON nt.page_id = s.notion_page_id
+         LEFT JOIN provider_tasks nt ON nt.external_id = s.external_id
          LEFT JOIN session_repos sr ON sr.session_id = s.id
          LEFT JOIN repos r ON r.id = sr.repo_id
          LEFT JOIN worktrees w ON w.session_id = s.id AND w.repo_id = r.id

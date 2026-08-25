@@ -5,46 +5,51 @@ use super::client::make_client;
 
 /// Separator before the ticket link. Also the marker that finds an existing
 /// footer, so re-describing an MR replaces the link instead of stacking copies.
-const FOOTER_MARK: &str = "\n\n---\nNotion: ";
+const FOOTER_MARK: &str = "\n\n---\nTask: ";
+/// What the marker was while Notion was the only source. Still recognised, so an
+/// MR described before this stops accumulating footers.
+const LEGACY_FOOTER_MARK: &str = "\n\n---\nNotion: ";
 
 /// Put the footer on a description, replacing one that is already there.
 ///
-/// `page_id` is None for synthetic sessions (explorer / review), which have no
-/// Notion page — those get the body back with any stray footer removed.
-fn apply_footer(description: &str, task_id: &str, page_id: Option<&str>) -> String {
+/// `url` is None for synthetic sessions (explorer / review), which have no task
+/// behind them — those get the body back with any stray footer removed.
+fn apply_footer(description: &str, task_id: &str, url: Option<&str>) -> String {
     // An agent told "the link is appended automatically" occasionally writes one
     // anyway, and an update resends the body we produced last time. Either way,
     // cut at the marker so the link cannot stack up.
-    let body = match description.find(FOOTER_MARK) {
+    let cut = [FOOTER_MARK, LEGACY_FOOTER_MARK]
+        .iter()
+        .filter_map(|m| description.find(m))
+        .min();
+    let body = match cut {
         Some(at) => &description[..at],
         None => description,
     }
     .trim_end();
 
-    match page_id {
-        Some(page) => format!(
-            "{body}{FOOTER_MARK}[{task_id}](https://www.notion.so/{})",
-            page.replace('-', "")
-        ),
+    match url {
+        Some(url) => format!("{body}{FOOTER_MARK}[{task_id}]({url})"),
         None => body.to_string(),
     }
 }
 
-/// Append the task's Notion link to a description.
+/// Append the task's link to a description.
 ///
 /// The link is derived, never written by the agent — the tool descriptions say so,
 /// and both create and update go through here, so an agent that rewrites a whole
 /// description cannot drop it.
-async fn with_notion_footer(
+async fn with_task_footer(
     description: &str,
     task_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<String> {
-    let page_id = store::sessions::get_opt(pool, task_id)
-        .await?
-        .and_then(|s| s.notion_page_id);
-
-    Ok(apply_footer(description, task_id, page_id.as_deref()))
+    let url = match crate::provider::resolve(pool, task_id).await {
+        Ok((provider, key)) => Some(provider.task_url(&key)),
+        // Explorer and review sessions have no task behind them.
+        Err(_) => None,
+    };
+    Ok(apply_footer(description, task_id, url.as_deref()))
 }
 
 pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> anyhow::Result<()> {
@@ -57,7 +62,7 @@ pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     let wt = store::worktrees::get(pool, worktree_id).await?;
     let repo = store::repos::get(pool, &wt.repo_id).await?;
 
-    let described = with_notion_footer(description, &wt.session_id, pool).await?;
+    let described = with_task_footer(description, &wt.session_id, pool).await?;
 
     let client = make_client(&repo);
     let (remote_id, url) = client
@@ -82,7 +87,7 @@ pub async fn update_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     // A description update REPLACES the whole body, so the footer has to be
     // re-appended here or the ticket link vanishes on every edit.
     let described = match description {
-        Some(d) => Some(with_notion_footer(d, &wt.session_id, pool).await?),
+        Some(d) => Some(with_task_footer(d, &wt.session_id, pool).await?),
         None => None,
     };
 
@@ -113,8 +118,8 @@ pub async fn close_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> any
 mod tests {
     use super::apply_footer;
 
-    const PAGE: &str = "24f1a2b3-c4d5-6789-abcd-ef0123456789";
-    const LINK: &str = "Notion: [TASKS2-42](https://www.notion.so/24f1a2b3c4d56789abcdef0123456789)";
+    const PAGE: &str = "https://www.notion.so/24f1a2b3c4d56789abcdef0123456789";
+    const LINK: &str = "Task: [TASKS2-42](https://www.notion.so/24f1a2b3c4d56789abcdef0123456789)";
 
     #[test]
     fn appends_the_link() {
@@ -128,15 +133,24 @@ mod tests {
         let once = apply_footer("## What\nCuts retention.", "TASKS2-42", Some(PAGE));
         let twice = apply_footer(&once, "TASKS2-42", Some(PAGE));
         assert_eq!(once, twice);
-        assert_eq!(twice.matches("Notion: ").count(), 1);
+        assert_eq!(twice.matches("Task: ").count(), 1);
     }
 
     #[test]
     fn strips_a_footer_the_agent_wrote_itself() {
-        let hand_written = "## What\nCuts retention.\n\n---\nNotion: [wrong](https://x)".to_string();
+        let hand_written = "## What\nCuts retention.\n\n---\nTask: [wrong](https://x)".to_string();
         let out = apply_footer(&hand_written, "TASKS2-42", Some(PAGE));
         assert!(out.ends_with(LINK), "{out}");
         assert!(!out.contains("wrong"), "{out}");
+    }
+
+    /// An MR described before the rename must not end up with two footers.
+    #[test]
+    fn replaces_the_pre_provider_footer() {
+        let old = "## What\nCuts retention.\n\n---\nNotion: [TASKS2-42](https://www.notion.so/x)";
+        let out = apply_footer(old, "TASKS2-42", Some(PAGE));
+        assert!(out.ends_with(LINK), "{out}");
+        assert!(!out.contains("Notion: "), "{out}");
     }
 
     #[test]

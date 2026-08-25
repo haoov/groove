@@ -187,3 +187,15 @@
   cursor: pointer;
 }
 .firstrun-signin:hover { background: color-mix(in srgb, var(--gl-color-blue-400) 24%, transparent); }
+
+/* A source is opt-in: the heading carries its own switch. */
+.firstrun-source-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.firstrun-source-toggle input {
+  accent-color: var(--gl-text-color-link);
+  cursor: pointer;
+}

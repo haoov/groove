@@ -2,7 +2,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub notion: NotionConfig,
+    /// Absent when Notion is not set up. Every file written before providers
+    /// existed has it, so an older config still lands in Some.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notion: Option<NotionConfig>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github: Option<GithubConfig>,
     pub git: GitConfig,
     #[serde(default)]
     pub ui: UiConfig,
@@ -65,6 +70,30 @@ pub struct NotionConfig {
     pub default_project_id: Option<String>,
 }
 
+/// No token: `gh auth token` owns it, and check_environment already reports gh's
+/// state. That also means GithubConfig needs no token-stripped view type.
+///
+/// No boards either: a task is an issue assigned to you that sits on any board, so
+/// there is nothing to nominate.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct GithubConfig {
+    /// github.com, or a GitHub Enterprise hostname.
+    pub host: String,
+    pub properties: GithubPropertyNames,
+    /// A fallback for the labels the app writes. Each board has its own vocabulary,
+    /// so a write reads the board's own options first and only falls back here.
+    pub status_map: StatusMap,
+}
+
+/// The board fields the app drives, by name. Everything else is just a property.
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct GithubPropertyNames {
+    pub status: String,
+    pub priority: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct PropertyNames {
@@ -121,7 +150,8 @@ pub struct GitConfig {
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ConfigView {
-    pub notion: NotionView,
+    pub notion: Option<NotionView>,
+    pub github: Option<GithubConfig>,
     pub git: GitConfig,
     pub ui: UiConfig,
 }
@@ -141,15 +171,16 @@ pub struct NotionView {
 impl From<Config> for ConfigView {
     fn from(c: Config) -> Self {
         Self {
-            notion: NotionView {
-                database_id: c.notion.database_id,
-                user_id: c.notion.user_id,
-                properties: c.notion.properties,
-                status_map: c.notion.status_map,
-                filters: c.notion.filters,
-                task_template_page_id: c.notion.task_template_page_id,
-                default_project_id: c.notion.default_project_id,
-            },
+            notion: c.notion.map(|n| NotionView {
+                database_id: n.database_id,
+                user_id: n.user_id,
+                properties: n.properties,
+                status_map: n.status_map,
+                filters: n.filters,
+                task_template_page_id: n.task_template_page_id,
+                default_project_id: n.default_project_id,
+            }),
+            github: c.github,
             git: c.git,
             ui: c.ui,
         }
@@ -222,6 +253,19 @@ fn persist(cfg: &Config) -> anyhow::Result<()> {
     save_config_to_dir(dir, cfg)
 }
 
+/// The Notion config, or the one error that says it is not set up.
+pub fn notion() -> anyhow::Result<NotionConfig> {
+    require()?
+        .notion
+        .ok_or_else(|| anyhow::anyhow!("Notion is not set up — add it in Settings"))
+}
+
+pub fn github() -> anyhow::Result<GithubConfig> {
+    require()?
+        .github
+        .ok_or_else(|| anyhow::anyhow!("GitHub is not set up — add it in Settings"))
+}
+
 pub(crate) fn load_config_from_dir(config_dir: &Path) -> anyhow::Result<Config> {
     let path = config_dir.join(CONFIG_FILE);
     let content = std::fs::read_to_string(&path)
@@ -259,7 +303,8 @@ mod tests {
 
     fn sample() -> Config {
         Config {
-            notion: NotionConfig {
+            github: None,
+            notion: Some(NotionConfig {
                 token: "ntn_secret".into(),
                 database_id: "db".into(),
                 user_id: "user".into(),
@@ -278,7 +323,7 @@ mod tests {
                 filters: FilterConfig { exclude_statuses: vec![], filter_by_assignee: true },
                 task_template_page_id: None,
                 default_project_id: None,
-            },
+            }),
             git: GitConfig { worktree_root: "/tmp/wt".into() },
             ui: UiConfig::default(),
         }
@@ -318,9 +363,10 @@ mod tests {
           "git": { "worktree_root": "~/worktrees" }
         }"#;
         let cfg: Config = serde_json::from_str(json).expect("an existing config must still parse");
-        assert_eq!(cfg.notion.status_map.done, "Done");
-        assert_eq!(cfg.notion.properties.assignee.as_deref(), Some("Assignee"));
-        assert_eq!(cfg.notion.task_template_page_id.as_deref(), Some("c9bff477d2f944fba9846567745a77ec"));
+        let n = cfg.notion.as_ref().expect("notion block");
+        assert_eq!(n.status_map.done, "Done");
+        assert_eq!(n.properties.assignee.as_deref(), Some("Assignee"));
+        assert_eq!(n.task_template_page_id.as_deref(), Some("c9bff477d2f944fba9846567745a77ec"));
         // `ui` is absent in older files and must default rather than fail.
         assert_eq!(cfg.ui.font_size, default_font_size());
     }
@@ -337,15 +383,51 @@ mod tests {
         assert_eq!(mode & 0o777, 0o600, "mode was {mode:o}");
         assert!(!dir.join(format!("{CONFIG_FILE}.tmp")).exists(), "temp file cleaned up");
         let back = load_config_from_dir(&dir).unwrap();
-        assert_eq!(back.notion.token, "ntn_secret");
+        assert_eq!(back.notion.expect("notion block").token, "ntn_secret");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A config written before providers existed has no `github` key and must
+    /// still load, with its notion block landing in Some.
+    #[test]
+    fn a_pre_provider_config_still_loads() {
+        let json = r#"{
+          "notion": {
+            "token": "ntn_x", "database_id": "db", "user_id": "u",
+            "properties": { "status": "Status" },
+            "status_map": { "ready": "Ready", "in_progress": "Doing", "done": "Done" },
+            "filters": { "exclude_statuses": [], "filter_by_assignee": true }
+          },
+          "git": { "worktree_root": "~/worktrees" }
+        }"#;
+        let cfg: Config = serde_json::from_str(json).expect("must parse");
+        assert!(cfg.notion.is_some());
+        assert!(cfg.github.is_none());
+    }
+
+    /// And a config with neither source is legal — that is a fresh install.
+    #[test]
+    fn a_config_with_no_task_source_loads() {
+        let json = r#"{ "git": { "worktree_root": "~/worktrees" } }"#;
+        let cfg: Config = serde_json::from_str(json).expect("must parse");
+        assert!(cfg.notion.is_none() && cfg.github.is_none());
+    }
+
+    /// An absent source must not be written back as an explicit null.
+    #[test]
+    fn an_absent_source_is_omitted_on_save() {
+        let mut cfg = sample();
+        cfg.notion = None;
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(!json.contains("notion"), "{json}");
+        assert!(!json.contains("github"), "{json}");
     }
 
     #[test]
     fn a_saved_config_round_trips() {
         let json = serde_json::to_string(&sample()).unwrap();
         let back: Config = serde_json::from_str(&json).unwrap();
-        assert_eq!(back.notion.token, "ntn_secret");
+        assert_eq!(back.notion.expect("notion block").token, "ntn_secret");
         assert_eq!(back.ui.font_family, sample().ui.font_family);
     }
 }

@@ -30,20 +30,3 @@ pub async fn add_hours(
     Ok((before, after))
 }
 
-/// The number property hours go into. Found in the schema rather than configured:
-/// there is exactly one plausible name, and guessing wrong would silently write to
-/// the wrong column.
-pub async fn hours_property(token: &str, database_id: &str) -> anyhow::Result<String> {
-    const CANDIDATES: [&str; 3] = ["Hours spent", "Hours", "Time spent"];
-    let schema = super::schema::load(token, database_id).await?;
-    for name in CANDIDATES {
-        if let Some(p) = schema.property(name) {
-            if p.kind == "number" {
-                return Ok(p.name.clone());
-            }
-        }
-    }
-    Err(anyhow::anyhow!(
-        "no number property named any of {CANDIDATES:?} in this database — nothing to log hours into"
-    ))
-}

@@ -12,7 +12,7 @@ import {
   type NotificationSource,
 } from '../../shared/store';
 import { EVENT } from '../../shared/ipc/events';
-import { OP, OP_GIT_PREFIX, OP_MR_PREFIX } from '../../shared/ipc/ops';
+import { OP, OP_GIT_PREFIX, OP_MR_PREFIX, OP_TASK_PREFIX } from '../../shared/ipc/ops';
 import { disposeHost } from '../../shared/lib/terminalHost';
 import { deliverPtyOutput } from '../../shared/lib/ptyRegistry';
 import { endSession } from '../../shared/lib/endSession';
@@ -48,9 +48,9 @@ function opLabel(opType: string): string {
     case OP.MR_CREATE: return 'Create merge request';
     case OP.MR_UPDATE: return 'Update merge request';
     case OP.MR_CLOSE: return 'Close merge request';
-    case OP.NOTION_PROPERTY: return 'Notion property update';
-    case OP.NOTION_HOURS: return 'Hours log';
-    case OP.NOTION_BODY: return 'Task description update';
+    case OP.TASK_PROPERTY: return 'Task property update';
+    case OP.TASK_HOURS: return 'Hours log';
+    case OP.TASK_BODY: return 'Task description update';
     case OP.TASK_CREATE: return 'Task creation';
     case OP.TASK_ADD_REPO: return 'Add repo';
     case OP.TASK_CREATE_FROM_EXPLORER: return 'Task creation';
@@ -62,7 +62,7 @@ function opLabel(opType: string): string {
 function opSource(opType: string): NotificationSource {
   if (opType.startsWith(OP_GIT_PREFIX)) return 'git';
   if (opType.startsWith(OP_MR_PREFIX)) return 'mr';
-  if (opType.startsWith('notion.') || opType === OP.TASK_CREATE || opType === OP.TASK_CREATE_FROM_EXPLORER) return 'notion';
+  if (opType.startsWith(OP_TASK_PREFIX)) return 'task';
   return 'app';
 }
 
@@ -96,9 +96,9 @@ function successToastFor(opType: string, result: unknown): string | null {
     case OP.MR_CREATE: return 'Merge request created';
     case OP.MR_UPDATE: return 'Merge request updated';
     case OP.MR_CLOSE: return 'Merge request closed';
-    case OP.NOTION_PROPERTY: return 'Notion property updated';
-    case OP.NOTION_HOURS: return 'Hours logged to Notion';
-    case OP.NOTION_BODY: return 'Task description updated';
+    case OP.TASK_PROPERTY: return 'Task property updated';
+    case OP.TASK_HOURS: return 'Hours logged';
+    case OP.TASK_BODY: return 'Task description updated';
     case OP.TASK_ADD_REPO: return 'Repo added to the task';
     case OP.TASK_CREATE: {
       const t = result as { short_id?: string } | null;
@@ -140,7 +140,7 @@ export function useIpc() {
         await listen<WorkspaceReadyEvent>(EVENT.WORKSPACE_READY, ({ payload }) => {
           const s = useStore.getState();
           // Explorer sessions are local-only; keep their synthetic task out of the
-          // global task list so they never show on the Notion board.
+          // global task list so they never show in the queue.
           if ((payload.kind ?? 'task') === 'task') s.upsertTask(payload.task);
           s.openSession({
             kind: payload.kind ?? 'task',
@@ -248,7 +248,7 @@ export function useIpc() {
             return;
           }
 
-          // Success line for git/forge/notion actions.
+          // Success line for git/forge/task actions.
           const done = successToastFor(payload.op_type, payload.result);
           if (done) {
             s.notify({

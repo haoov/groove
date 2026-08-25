@@ -12,7 +12,12 @@ import { bytesToB64 } from '../shared/lib/ptyRegistry';
 /** Typed at the prompt without a newline: the command is the same for everyone but
  *  its flags are not — a self-managed GitLab needs `--hostname`, and which login
  *  method works there is the user's call. */
-const LOGIN_COMMAND = { glab: 'glab auth login', gh: 'gh auth login' } as const;
+const COMMAND = {
+  glab: { login: 'glab auth login', scope: 'glab auth login' },
+  gh: { login: 'gh auth login', scope: 'gh auth refresh -s project' },
+} as const;
+
+export type AuthMode = 'login' | 'scope';
 
 /** Quiet from the PTY before the command is typed. A shell's startup arrives in
  *  bursts, and quiet is the only signal it gives that the prompt is ready. */
@@ -33,7 +38,14 @@ const SETTLE_MS = 400;
  *
  * The PTY is not bound to a session, so this owns it: it dies with the login.
  */
-export function AuthModal({ tool, onDone }: { tool: 'glab' | 'gh'; onDone: () => void }) {
+export function AuthModal({
+  tool, mode = 'login', onDone,
+}: {
+  tool: 'glab' | 'gh';
+  /** `scope` widens an existing login instead of starting one. */
+  mode?: AuthMode;
+  onDone: () => void;
+}) {
   const setLastError = useStore((s) => s.setLastError);
   const [pty, setPty] = useState<string | null>(null);
   const termRef = useRef<HTMLDivElement>(null);
@@ -64,7 +76,7 @@ export function AuthModal({ tool, onDone }: { tool: 'glab' | 'gh'; onDone: () =>
       quiet = window.setTimeout(() => {
         if (typed.current) return;
         typed.current = true;
-        const dataB64 = bytesToB64(new TextEncoder().encode(LOGIN_COMMAND[tool]));
+        const dataB64 = bytesToB64(new TextEncoder().encode(COMMAND[tool][mode]));
         invoke('write_pty', { sessionId: pty, dataB64 }).catch(() => { /* the user can type it */ });
         focusHost(pty);
       }, SETTLE_MS);
@@ -86,7 +98,7 @@ export function AuthModal({ tool, onDone }: { tool: 'glab' | 'gh'; onDone: () =>
         <div className="wizard-header">
           <div className="wizard-title">Sign in to {tool === 'glab' ? 'GitLab' : 'GitHub'}</div>
           <div className="wizard-subtitle">
-            <code>{LOGIN_COMMAND[tool]}</code> is ready below — add any flags you need,
+            <code>{COMMAND[tool][mode]}</code> is ready below — add any flags you need,
             then press Enter.
           </div>
           <button className="wizard-close" onClick={onDone}>×</button>

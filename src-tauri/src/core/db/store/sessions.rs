@@ -4,7 +4,7 @@ use super::super::error::{StoreError, StoreResult};
 use super::super::models::{Session, SessionKind, TaskView};
 
 const COLUMNS: &str =
-    "id, kind, title, notion_page_id, review_project, review_iid, created_at";
+    "id, kind, title, external_id, review_project, review_iid, created_at";
 
 pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Session> {
     get_opt(exec, id)
@@ -31,16 +31,18 @@ pub async fn view_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Op
     #[derive(sqlx::FromRow)]
     struct ViewRow {
         id: String,
-        notion_page_id: Option<String>,
+        external_id: Option<String>,
         title: String,
         status: Option<String>,
         priority: Option<String>,
+        provider: Option<String>,
+        url: Option<String>,
         created_at: i64,
     }
     let row: Option<ViewRow> = sqlx::query_as(
-        "SELECT s.id, s.notion_page_id, s.title, nt.status, nt.priority, s.created_at
+        "SELECT s.id, s.external_id, s.title, pt.status, pt.priority, pt.provider, pt.url, s.created_at
          FROM sessions s
-         LEFT JOIN notion_tasks nt ON nt.page_id = s.notion_page_id
+         LEFT JOIN provider_tasks pt ON pt.external_id = s.external_id
          WHERE s.id = ?",
     )
     .bind(id)
@@ -48,7 +50,9 @@ pub async fn view_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Op
     .await?;
     Ok(row.map(|r| TaskView {
         short_id: r.id,
-        notion_page_id: r.notion_page_id.unwrap_or_default(),
+        external_id: r.external_id.unwrap_or_default(),
+        provider: r.provider,
+        external_url: r.url,
         title: r.title,
         status: r.status.unwrap_or_else(|| "in_progress".to_string()),
         priority: r.priority,
@@ -56,19 +60,19 @@ pub async fn view_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Op
     }))
 }
 
-/// Open (or re-open) a session for a mirrored Notion task.
+/// Open (or re-open) a session for a mirrored task.
 pub async fn open_task(exec: impl SqliteExecutor<'_> + Copy, short_id: &str) -> StoreResult<Session> {
-    let task = super::notion_tasks::get_by_short_id(exec, short_id)
+    let task = super::provider_tasks::get_by_short_id(exec, short_id)
         .await?
-        .ok_or_else(|| StoreError::not_found("notion task", short_id))?;
+        .ok_or_else(|| StoreError::not_found("task", short_id))?;
     sqlx::query(
-        "INSERT INTO sessions (id, kind, title, notion_page_id, created_at)
+        "INSERT INTO sessions (id, kind, title, external_id, created_at)
          VALUES (?, 'task', ?, ?, unixepoch())
          ON CONFLICT(id) DO UPDATE SET title = excluded.title",
     )
     .bind(short_id)
     .bind(&task.title)
-    .bind(&task.page_id)
+    .bind(&task.external_id)
     .execute(exec)
     .await?;
     get(exec, short_id).await
@@ -149,19 +153,19 @@ pub async fn remove(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<()> 
 pub async fn adopt_explorer(
     pool: &SqlitePool,
     explorer_id: &str,
-    task: &super::super::models::NotionTask,
+    task: &super::super::models::ProviderTask,
     switched: &[(String, String)],
     new_branch: &str,
 ) -> StoreResult<()> {
     let mut tx = pool.begin().await?;
 
-    super::notion_tasks::upsert(&mut *tx, task).await?;
+    super::provider_tasks::upsert(&mut *tx, task).await?;
     let updated = sqlx::query(
-        "UPDATE sessions SET id = ?, kind = 'task', notion_page_id = ?, title = ?
+        "UPDATE sessions SET id = ?, kind = 'task', external_id = ?, title = ?
          WHERE id = ? AND kind = 'explorer'",
     )
     .bind(&task.short_id)
-    .bind(&task.page_id)
+    .bind(&task.external_id)
     .bind(&task.title)
     .bind(explorer_id)
     .execute(&mut *tx)

@@ -12,9 +12,9 @@ const OP_LABELS: Record<string, string> = {
   [OP.MR_CREATE]:   'Create MR',
   [OP.MR_UPDATE]:   'Update MR',
   [OP.MR_CLOSE]:    'Close MR',
-  [OP.NOTION_PROPERTY]: 'Update Notion property',
-  [OP.NOTION_HOURS]: 'Log hours to Notion',
-  [OP.NOTION_BODY]: 'Update task description',
+  [OP.TASK_PROPERTY]: 'Update task property',
+  [OP.TASK_HOURS]: 'Log hours',
+  [OP.TASK_BODY]: 'Update task description',
   [OP.TASK_CREATE]: 'Create task',
   [OP.TASK_ADD_REPO]: 'Add repo to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
@@ -34,9 +34,9 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.MR_CREATE]:   <GitPullRequest size={14} strokeWidth={1.75} />,
   [OP.MR_UPDATE]:   <RefreshCw    size={14} strokeWidth={1.75} />,
   [OP.MR_CLOSE]:    <X            size={14} strokeWidth={1.75} />,
-  [OP.NOTION_PROPERTY]: <Tag size={14} strokeWidth={1.75} />,
-  [OP.NOTION_HOURS]: <Clock size={14} strokeWidth={1.75} />,
-  [OP.NOTION_BODY]: <FileText size={14} strokeWidth={1.75} />,
+  [OP.TASK_PROPERTY]: <Tag size={14} strokeWidth={1.75} />,
+  [OP.TASK_HOURS]: <Clock size={14} strokeWidth={1.75} />,
+  [OP.TASK_BODY]: <FileText size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
@@ -89,7 +89,13 @@ function EditableField({ label, value, onChange, multiline = false, placeholder 
   );
 }
 
-function repoName(path: string): string {
+// Payloads carry the project name; the path's last segment is only a fallback
+// for rows queued before they did (it is the branch leaf, not the repo, now that
+// worktree dirs embed the branch's slashes).
+function repoName(payload: Record<string, unknown>): string {
+  const repo = payload.repo;
+  if (typeof repo === 'string' && repo) return repo;
+  const path = (payload.worktree_path as string | undefined) ?? '';
   return path.split('/').filter(Boolean).pop() ?? path;
 }
 
@@ -105,7 +111,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_COMMIT:
       return (
         <>
-          <Field label="Repo"    value={repoName(str('worktree_path'))} />
+          <Field label="Repo"    value={repoName(payload)} />
           <Field label="Branch"  value={str('branch')} mono />
           <EditableField
             label="Message"
@@ -120,7 +126,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_PUSH:
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <div className="cp-hint">Pushes local commits to origin.</div>
         </>
@@ -129,7 +135,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_PULL:
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <div className="cp-hint">Pulls and rebases from origin.</div>
         </>
@@ -139,7 +145,7 @@ function PayloadView({ op, payload, edits, setField }: {
       const onto = str('default_branch') || 'main';
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <Field label="Onto"   value={`origin/${onto}`} mono />
         </>
@@ -154,7 +160,7 @@ function PayloadView({ op, payload, edits, setField }: {
               so it's clear what this MR will be opened from. */}
           {op === OP.MR_CREATE && (
             <>
-              <Field label="Repo"   value={repoName(str('worktree_path'))} />
+              <Field label="Repo"   value={repoName(payload)} />
               <Field label="Branch" value={str('branch')} mono />
             </>
           )}
@@ -200,12 +206,12 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_DISCARD_ALL:
       return (
         <>
-          <Field label="Repo" value={repoName(str('worktree_path'))} />
+          <Field label="Repo" value={repoName(payload)} />
           <div className="cp-hint cp-hint--danger">Permanently discards ALL local changes (reverts tracked files and removes untracked ones) — this cannot be undone.</div>
         </>
       );
 
-    case OP.NOTION_PROPERTY: {
+    case OP.TASK_PROPERTY: {
       const v = payload.value;
       return (
         <>
@@ -216,7 +222,7 @@ function PayloadView({ op, payload, edits, setField }: {
       );
     }
 
-    case OP.NOTION_HOURS:
+    case OP.TASK_HOURS:
       return (
         <>
           <Field label="Hours" value={String(payload.hours ?? '')} mono />
@@ -224,7 +230,7 @@ function PayloadView({ op, payload, edits, setField }: {
         </>
       );
 
-    case OP.NOTION_BODY:
+    case OP.TASK_BODY:
       return (
         <>
           <Field label="Task" value={str('task_id')} mono />
@@ -236,7 +242,7 @@ function PayloadView({ op, payload, edits, setField }: {
             placeholder="Page body (markdown)"
           />
           <div className="cp-hint cp-hint--danger">
-            Replaces the whole Notion page body. Blocks markdown cannot represent are lost.
+            Replaces the whole task body. Anything markdown cannot represent is lost.
           </div>
         </>
       );
@@ -281,7 +287,7 @@ function PayloadView({ op, payload, edits, setField }: {
               BEFORE approval — it moves that session's worktrees and repos. */}
           <Field label="Converting" value={str('explorer_id')} mono />
           <div className="cp-hint">
-            Creates a Notion task, then moves this session's worktrees, repos, and annotations onto it.
+            Files a task, then moves this session's worktrees, repos, and annotations onto it.
           </div>
         </>
       );
@@ -325,7 +331,7 @@ export function ConfirmModal() {
       seed.title = String(p.title ?? '');
       seed.body_markdown = String(p.body_markdown ?? '');
     }
-    if (current.op_type === OP.NOTION_BODY) seed.markdown = String(p.markdown ?? '');
+    if (current.op_type === OP.TASK_BODY) seed.markdown = String(p.markdown ?? '');
     setEdits(seed);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 

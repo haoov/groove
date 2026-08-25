@@ -89,7 +89,7 @@ export default function App() {
   }, [hydrateAgentActivity]);
 
   // Three states, not two: loading, configured, and never-configured. Without the
-  // third, a new machine showed an empty Home and a Notion error in the corner.
+  // third, a new machine showed an empty Home and a sync error in the corner.
   const [configured, setConfigured] = useState<boolean | null>(null);
 
   const applyConfig = useCallback((cfg: Config) => {
