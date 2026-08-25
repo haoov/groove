@@ -116,7 +116,7 @@ export function TaskOverview() {
               title={`Re-read this task from ${src.label}`}
             >
               <RefreshCw size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-              Update
+              Refresh
             </button>
             <button
               className="finish-task-btn"
