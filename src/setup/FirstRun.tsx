@@ -3,12 +3,11 @@ import { invoke } from '../shared/ipc/invoke';
 import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
-import { GithubSetup } from './sources/GithubSetup';
-import { DetectedPanel } from './sources/DetectedPanel';
+import { SOURCES, SOURCE_IDS } from './sources';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
-import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type DetectedSchema } from '../shared/ipc/ipc';
-import { looksLikeNotionId } from '../shared/lib/notionUser';
-import type { NotionUser } from '../shared/ipc/ipc';
+import {
+  DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type ProviderId,
+} from '../shared/ipc/ipc';
 
 /**
  * What a new machine sees: the dependency list, and the four values only the user
@@ -24,18 +23,13 @@ import type { NotionUser } from '../shared/ipc/ipc';
 export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const setLastError = useStore((s) => s.setLastError);
   const [env, setEnv] = useState<Environment | null>(null);
-  const [token, setToken] = useState('');
-  const [databaseId, setDatabaseId] = useState('');
   const [root, setRoot] = useState('~/worktrees');
-  const [found, setFound] = useState<NotionUser | null>(null);
-  const [who, setWho] = useState('');
-  const [template, setTemplate] = useState('');
-  const [detected, setDetected] = useState<DetectedSchema | null>(null);
+  // Per source: is it on, and the payload its form reports (null = incomplete).
+  const [on, setOn] = useState<Partial<Record<ProviderId, boolean>>>({});
+  const [payloads, setPayloads] = useState<Partial<Record<ProviderId, unknown>>>({});
   /** Which forge CLI is being signed in, if any. */
-  const [notionOn, setNotionOn] = useState(false);
-  const [githubOn, setGithubOn] = useState(false);
   const [authing, setAuthing] = useState<{ tool: 'glab' | 'gh'; mode: 'login' | 'scope' } | null>(null);
-  const [busy, setBusy] = useState<'users' | 'detect' | 'save' | null>(null);
+  const [busy, setBusy] = useState<'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadEnv = () => {
@@ -43,59 +37,17 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   };
   useEffect(loadEnv, []);
 
-  // The token is checked by using it: looking yourself up by email is both the
-  // check and the way to get your user id without hunting a UUID in the API.
-  // (The backend replaced the whole-workspace people list with this lookup.)
-  const lookupUser = async () => {
-    if (!token.trim() || !who.trim() || looksLikeNotionId(who)) return;
-    setBusy('users');
-    setError(null);
-    try {
-      setFound(await invoke<NotionUser>('find_notion_user', { token: token.trim(), email: who.trim() }));
-    } catch (e) {
-      setFound(null);
-      // Could be a bad token OR a missing capability OR an unknown email — the
-      // backend message says which.
-      setError(String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  // Reading the schema replaces asking for eleven property names. It also proves
-  // the integration can see the database, so it doubles as the id check.
-  const detect = async () => {
-    if (!token.trim() || !databaseId.trim()) return;
-    setBusy('detect');
-    setError(null);
-    try {
-      setDetected(await invoke<DetectedSchema>('detect_notion_database', {
-        token: token.trim(),
-        databaseId: databaseId.trim(),
-      }));
-    } catch (e) {
-      setDetected(null);
-      setError(String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const save = async () => {
     setBusy('save');
     setError(null);
     try {
+      // SetupRequest's field names ARE the ProviderId strings, so the enabled
+      // payloads splice straight in.
+      const sources = Object.fromEntries(
+        SOURCE_IDS.filter((id) => on[id]).map((id) => [id, payloads[id] ?? null]),
+      );
       await invoke('write_initial_config', {
-        setup: {
-          worktree_root: root.trim(),
-          notion: notionOn ? {
-            token: token.trim(),
-            database_id: databaseId.trim(),
-            user_id: whoMatch.kind === 'user' || whoMatch.kind === 'raw' ? whoMatch.id : '',
-            template_page_id: template.trim() || null,
-          } : null,
-          github: githubOn ? { host: null } : null,
-        },
+        setup: { worktree_root: root.trim(), ...sources },
       });
       const cfg = await invoke<Config | null>('get_config');
       if (!cfg) throw new Error('Config saved but not readable — check the path below.');
@@ -111,21 +63,16 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     }
   };
 
-  // Empty → no assignee filter; a found user or a pasted Notion id → that id.
-  const whoMatch = !who.trim()
-    ? { kind: 'empty' as const }
-    : found
-      ? { kind: 'user' as const, id: found.id, user: found }
-      : looksLikeNotionId(who)
-        ? { kind: 'raw' as const, id: who.trim() }
-        : { kind: 'unknown' as const };
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
 
-  // An enabled-but-empty source blocks saving; at least one must be on. GitHub has
-  // nothing to fill in, so enabling it is enough.
-  const notionFilled = !!token.trim() && !!databaseId.trim();
-  const anySource = (notionOn && notionFilled) || githubOn;
-  const canSave = (!notionOn || notionFilled) && anySource && !!root.trim() && busy === null;
+  // An enabled-but-incomplete source blocks saving; at least one must be on. A
+  // form with nothing to fill in reports its payload on mount.
+  const enabled = SOURCE_IDS.filter((id) => on[id]);
+  const canSave =
+    enabled.length > 0 &&
+    enabled.every((id) => payloads[id] != null) &&
+    !!root.trim() &&
+    busy === null;
 
   return (
     <div className="firstrun">
@@ -139,8 +86,8 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
       <div className="firstrun-card">
         <h1 className="firstrun-title">Set up Groove</h1>
         <p className="firstrun-lead">
-          Groove drives your Notion task database and a pool of git worktrees. It needs four
-          things it cannot work out on its own.
+          Groove pulls tasks from the sources you connect and drives a pool of git
+          worktrees. It only asks for what it cannot work out on its own.
         </p>
 
         {env?.config_error && (
@@ -217,132 +164,30 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
           )}
         </section>
 
-        <section className="firstrun-section">
-          <h2 className="firstrun-h2">
-            <label className="firstrun-source-toggle">
-              <input
-                type="checkbox"
-                checked={notionOn}
-                onChange={(e) => setNotionOn(e.target.checked)}
-              />
-              Notion
-            </label>
-          </h2>
-          {notionOn && (<>
-          <label className="firstrun-field">
-            <span className="firstrun-label">Integration token</span>
-            <input
-              className="firstrun-input"
-              type="password"
-              autoFocus
-              placeholder="ntn_…"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-            />
-            <span className="firstrun-hint">
-              notion.so/my-integrations → your integration → Internal Integration Secret. The task
-              database must be shared with that integration.
-            </span>
-          </label>
-
-          <label className="firstrun-field">
-            <span className="firstrun-label">Task database id</span>
-            <div className="firstrun-row">
-              <input
-                className="firstrun-input"
-                placeholder="32 hex characters, from the database URL"
-                value={databaseId}
-                onChange={(e) => { setDatabaseId(e.target.value); setDetected(null); }}
-                onBlur={detect}
-              />
-              <button
-                className="btn-secondary"
-                onClick={detect}
-                disabled={!token.trim() || !databaseId.trim() || busy !== null}
-              >
-                {busy === 'detect' ? <Loader2 size={11} className="spin" /> : null}
-                read schema
-              </button>
-            </div>
-            <span className="firstrun-hint">
-              Open the database as a full page: the id is the last path segment before <code>?v=</code>.
-            </span>
-          </label>
-
-          {detected && (
-            <DetectedPanel
-              detected={detected}
-              note="Detected from the property types and Notion's own status groups."
-            />
-          )}
-
-          <label className="firstrun-field">
-            <span className="firstrun-label">Task template page id <span className="firstrun-optional">optional</span></span>
-            <input
-              className="firstrun-input"
-              placeholder="Page whose body seeds a new task"
-              value={template}
-              onChange={(e) => setTemplate(e.target.value)}
-            />
-            <span className="firstrun-hint">
-              Required to turn an explorer session into a task, and used as the body of a
-              hand-filed one. Open the database's template as a full page and copy its link —
-              the id is the last path segment. Checked when you save.
-            </span>
-          </label>
-
-          <label className="firstrun-field">
-            <span className="firstrun-label">You, in Notion <span className="firstrun-optional">optional</span></span>
-            <div className="firstrun-row">
-              {/* A filterable input, not a dropdown: a workspace has hundreds of
-                  people, and a pasted id still has to work when the list fails. */}
-              <input
-                className="firstrun-input"
-                placeholder={token.trim() ? 'Your Notion email, or paste a user id' : 'Enter the token first'}
-                value={who}
-                onChange={(e) => { setWho(e.target.value); setFound(null); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') lookupUser(); }}
-              />
-              <button
-                className="btn-secondary"
-                onClick={lookupUser}
-                disabled={!token.trim() || !who.trim() || looksLikeNotionId(who) || busy !== null}
-              >
-                {busy === 'users' ? <Loader2 size={11} className="spin" /> : null}
-                find me
-              </button>
-            </div>
-            <span className="firstrun-hint">
-              {whoMatch.kind === 'user' && (
-                <>Matched <strong>{whoMatch.user.name}</strong> · <code>{whoMatch.id}</code>. </>
+        {SOURCE_IDS.map((id) => {
+          const src = SOURCES[id];
+          const Form = src.SetupForm;
+          return (
+            <section key={id} className="firstrun-section">
+              <h2 className="firstrun-h2">
+                <label className="firstrun-source-toggle">
+                  <input
+                    type="checkbox"
+                    checked={!!on[id]}
+                    onChange={(e) => setOn((prev) => ({ ...prev, [id]: e.target.checked }))}
+                  />
+                  {src.label}
+                </label>
+              </h2>
+              {on[id] && (
+                <Form
+                  onChange={(payload) => setPayloads((prev) => ({ ...prev, [id]: payload }))}
+                  onNeedsScope={loadEnv}
+                />
               )}
-              {whoMatch.kind === 'raw' && (
-                <>Using <code>{whoMatch.id}</code> as-is — it cannot be checked, so make sure it is
-                  a USER id and not a page id. </>
-              )}
-              {whoMatch.kind === 'unknown' && <>Type your email and press find me, or paste a user id. </>}
-              Used to show only your tasks and to assign the ones you file. Leave empty to see the
-              whole database.
-            </span>
-          </label>
-          </>)}
-        </section>
-
-        <section className="firstrun-section">
-          <h2 className="firstrun-h2">
-            <label className="firstrun-source-toggle">
-              <input
-                type="checkbox"
-                checked={githubOn}
-                onChange={(e) => setGithubOn(e.target.checked)}
-              />
-              GitHub Projects
-            </label>
-          </h2>
-          {githubOn && (
-            <GithubSetup onNeedsScope={loadEnv} />
-          )}
-        </section>
+            </section>
+          );
+        })}
 
         <section className="firstrun-section">
           <h2 className="firstrun-h2">Worktrees</h2>
