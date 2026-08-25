@@ -1,4 +1,5 @@
-import { Compass, Plus, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronUp, Compass, Plus, Sparkles } from 'lucide-react';
 import { SOURCE_IDS } from '../setup/sources';
 import { useStore, useSession } from '../shared/store';
 import { sendToAgent } from '../shared/lib/agentSend';
@@ -14,6 +15,23 @@ export function ExplorerOverview() {
   const setLastError = useStore((s) => s.setLastError);
 
   const setShowAddRepo = useStore((s) => s.setAddRepoOpen);
+
+  // The "file where?" drop-up. Closes on any outside click or Escape.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('mousedown', onDown, true);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [menuOpen]);
 
   // The prompt itself lives in lib/prompts (shared with the agent pill), and
   // sendToAgent starts the agent if there isn't one — waiting on its SessionStart
@@ -53,17 +71,31 @@ export function ExplorerOverview() {
           <span className="overview-badge">explorer</span>
           <span className="overview-spring" />
           {sources.length > 1 ? (
-            sources.map((src) => (
+            <span className="create-task-menu" ref={menuRef}>
               <button
-                key={src}
                 className="finish-task-btn"
-                onClick={() => createTaskFromSession(src)}
-                title={`Draft a task in ${providerCopy({ provider: src }).label} from this session via the agent`}
+                onClick={() => setMenuOpen((v) => !v)}
+                title="Draft a task from this session via the agent — pick where to file it"
               >
                 <Sparkles size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-                Create task in {providerCopy({ provider: src }).label}
+                Create task
+                <ChevronUp size={12} strokeWidth={2} style={{ marginLeft: 6 }} />
               </button>
-            ))
+              {menuOpen && (
+                <div className="ctx-menu create-task-menu-panel">
+                  {sources.map((src) => (
+                    <button
+                      key={src}
+                      className="ctx-menu-item"
+                      onClick={() => { setMenuOpen(false); createTaskFromSession(src); }}
+                    >
+                      <Sparkles size={13} strokeWidth={1.75} />
+                      File in {providerCopy({ provider: src }).label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
           ) : (
             <button
               className="finish-task-btn"
