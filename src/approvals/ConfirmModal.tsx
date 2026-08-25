@@ -89,7 +89,13 @@ function EditableField({ label, value, onChange, multiline = false, placeholder 
   );
 }
 
-function repoName(path: string): string {
+// Payloads carry the project name; the path's last segment is only a fallback
+// for rows queued before they did (it is the branch leaf, not the repo, now that
+// worktree dirs embed the branch's slashes).
+function repoName(payload: Record<string, unknown>): string {
+  const repo = payload.repo;
+  if (typeof repo === 'string' && repo) return repo;
+  const path = (payload.worktree_path as string | undefined) ?? '';
   return path.split('/').filter(Boolean).pop() ?? path;
 }
 
@@ -105,7 +111,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_COMMIT:
       return (
         <>
-          <Field label="Repo"    value={repoName(str('worktree_path'))} />
+          <Field label="Repo"    value={repoName(payload)} />
           <Field label="Branch"  value={str('branch')} mono />
           <EditableField
             label="Message"
@@ -120,7 +126,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_PUSH:
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <div className="cp-hint">Pushes local commits to origin.</div>
         </>
@@ -129,7 +135,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_PULL:
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <div className="cp-hint">Pulls and rebases from origin.</div>
         </>
@@ -139,7 +145,7 @@ function PayloadView({ op, payload, edits, setField }: {
       const onto = str('default_branch') || 'main';
       return (
         <>
-          <Field label="Repo"   value={repoName(str('worktree_path'))} />
+          <Field label="Repo"   value={repoName(payload)} />
           <Field label="Branch" value={str('branch')} mono />
           <Field label="Onto"   value={`origin/${onto}`} mono />
         </>
@@ -154,7 +160,7 @@ function PayloadView({ op, payload, edits, setField }: {
               so it's clear what this MR will be opened from. */}
           {op === OP.MR_CREATE && (
             <>
-              <Field label="Repo"   value={repoName(str('worktree_path'))} />
+              <Field label="Repo"   value={repoName(payload)} />
               <Field label="Branch" value={str('branch')} mono />
             </>
           )}
@@ -200,7 +206,7 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.GIT_DISCARD_ALL:
       return (
         <>
-          <Field label="Repo" value={repoName(str('worktree_path'))} />
+          <Field label="Repo" value={repoName(payload)} />
           <div className="cp-hint cp-hint--danger">Permanently discards ALL local changes (reverts tracked files and removes untracked ones) — this cannot be undone.</div>
         </>
       );

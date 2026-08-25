@@ -57,8 +57,13 @@ fn op_ok(op: &str, message: impl Into<String>) -> serde_json::Value {
     serde_json::json!({ "ok": true, "op": op, "message": message.into() })
 }
 
-/// Repo name for readable messages: the last segment of the worktree path.
+/// Repo name for readable messages. Payloads carry the project name; the path
+/// heuristic only covers rows queued before they did — its last segment is the
+/// branch leaf now that worktree dirs embed the branch's slashes.
 fn repo_of(payload: &serde_json::Value) -> String {
+    if let Some(repo) = payload["repo"].as_str().filter(|s| !s.is_empty()) {
+        return repo.to_string();
+    }
     payload["worktree_path"]
         .as_str()
         .unwrap_or("")

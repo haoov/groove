@@ -177,8 +177,7 @@
   align-items: center;
   gap: 6px;
   align-self: stretch;
-  padding: 0 var(--space-2);
-  margin: var(--space-1) 0;
+  padding: var(--space-2) var(--space-2);
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: var(--gl-border-radius-medium);
@@ -186,23 +185,23 @@
   color: var(--gl-text-color-subtle);
   font-family: var(--font-ui);
   font-size: var(--home-text-sm);
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
 }
 .home-tab:hover { color: var(--gl-text-color-default); }
 .home-tab.active {
   color: var(--gl-text-color-default);
-  background: var(--gl-background-color-strong);
+  font-weight: 600;
 }
 
 .home-tab-count {
   font-family: var(--font-mono);
   font-size: var(--gl-font-size-xs);
   font-weight: 500;
-  color: var(--gl-text-color-disabled);
+  background: var(--gl-background-color-subtle);
   border-radius: 100px;
-  padding-left: 3px;
+  padding: 0 6px;
 }
 .home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
 /* A dash, not a number: the query names a field this tab has no column for. */

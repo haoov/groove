@@ -47,6 +47,11 @@ async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpStat
     if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
         payload["worktree_path"] = serde_json::json!(wt.path);
         payload["branch"] = serde_json::json!(wt.branch);
+        // The project name, for display: the path's last segment is the branch
+        // leaf now that worktree dirs carry the branch's slashes.
+        if let Ok(Some(repo)) = store::repos::get_opt(&state.pool, &wt.repo_id).await {
+            payload["repo"] = serde_json::json!(repo.project);
+        }
     }
 }
 
