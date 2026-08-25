@@ -39,6 +39,31 @@ async fn post_and_wait(
         .map_err(|_| anyhow::anyhow!("confirmation channel closed"))
 }
 
+/// Refuse a request identical to one already awaiting approval.
+///
+/// The wait in `post_and_wait` has no deadline of its own, so a caller that gave
+/// up — an MCP idle timeout, a reload, an agent simply trying again — leaves its
+/// confirmation queued and approvable. Without this, the retry queues a SECOND
+/// one, and for the create ops that means a duplicate task filed at the source.
+async fn already_pending(
+    state: &McpState,
+    op_type: &str,
+    task_id: Option<&str>,
+    payload: &serde_json::Value,
+) -> Option<ToolCallResponse> {
+    state
+        .bridge
+        .has_identical_pending(&state.pool, op_type, task_id, payload)
+        .await
+        .then(|| {
+            ToolCallResponse::err(
+                "An identical request is already waiting for the user's approval. It stays \
+                 queued until they decide — do not retry; continue with other work or ask \
+                 the user.",
+            )
+        })
+}
+
 /// Git ops need `worktree_path` and `branch`, but MCP callers only know ids.
 async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpState) {
     let Some(wt_id) = payload["worktree_id"].as_str().map(|s| s.to_string()) else {
@@ -90,15 +115,8 @@ pub(super) async fn via_bridge(
     // Asking twice for the same thing means the first call is still queued (the
     // user deferred it). Tell the caller to wait rather than posting a second row
     // the user would have to decide twice.
-    if state
-        .bridge
-        .has_identical_pending(&state.pool, op_type, task_id.as_deref(), &payload)
-        .await
-    {
-        return Ok(ToolCallResponse::err(
-            "An identical action is already waiting for the user's approval. It stays queued \
-             until they decide — do not retry; continue with other work or ask the user.",
-        ));
+    if let Some(refusal) = already_pending(state, op_type, task_id.as_deref(), &payload).await {
+        return Ok(refusal);
     }
 
     match post_and_wait(state, op_type, payload, task_id.as_deref()).await? {
@@ -174,6 +192,10 @@ pub(super) async fn create_task_from_explorer(
         "body_markdown": body_markdown,
         "repo": repo,
     });
+
+    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE_FROM_EXPLORER, Some(explorer_id.as_str()), &payload).await {
+        return Ok(refusal);
+    }
 
     let outcome = post_and_wait(
         state,
@@ -288,6 +310,10 @@ pub(super) async fn create_task(
     });
     let task_id = state.task_for(mcp_session);
 
+    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE, task_id.as_deref(), &payload).await {
+        return Ok(refusal);
+    }
+
     match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
         ResolveOutcome::Approved(task) => Ok(ToolCallResponse::ok(task)),
         ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
@@ -325,6 +351,10 @@ pub(super) async fn add_task_worktree(
         "repo": input["repo"].as_str(),
     });
 
+    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_WORKTREE, Some(&task_id), &payload).await {
+        return Ok(refusal);
+    }
+
     match post_and_wait(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await? {
         ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
         ResolveOutcome::Rejected => {
@@ -359,6 +389,10 @@ pub(super) async fn add_task_repo(
         "repo": repo,
         "branch": input["branch"].as_str(),
     });
+
+    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_REPO, Some(&task_id), &payload).await {
+        return Ok(refusal);
+    }
 
     match post_and_wait(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await? {
         ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
@@ -462,14 +496,8 @@ async fn bridged(
     payload: serde_json::Value,
     task_id: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    if state
-        .bridge
-        .has_identical_pending(&state.pool, op_type, Some(task_id), &payload)
-        .await
-    {
-        return Ok(ToolCallResponse::err(
-            "An identical change is already waiting for the user's approval — do not retry.",
-        ));
+    if let Some(refusal) = already_pending(state, op_type, Some(task_id), &payload).await {
+        return Ok(refusal);
     }
     match post_and_wait(state, op_type, payload, Some(task_id)).await? {
         ResolveOutcome::Approved(v) if v.is_null() => Ok(ToolCallResponse::ok(

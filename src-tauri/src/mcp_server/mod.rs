@@ -264,6 +264,56 @@ async fn message_handler(
     StatusCode::ACCEPTED
 }
 
+/// How often a blocked call reports that it is still blocked. The client's idle
+/// timeout is 5 minutes on SSE, so this leaves several missed ticks of margin.
+const PROGRESS_EVERY: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Keep a blocked tool call alive on the client side.
+///
+/// A gated write waits for a human to approve it, and `post_and_wait` has no
+/// deadline of its own — but Claude Code aborts a call that has gone silent for
+/// its idle timeout, and the retry that follows queues the request a second time.
+/// Progress notifications reset that idle timer (they do NOT extend the overall
+/// wall clock), which is exactly the one a human-paced approval trips.
+///
+/// Only sent when the caller supplied a progressToken, per the MCP spec.
+fn spawn_progress(
+    state: &McpState,
+    mcp_session: &str,
+    token: serde_json::Value,
+) -> tokio::task::JoinHandle<()> {
+    let tx = state
+        .connections
+        .lock()
+        .ok()
+        .and_then(|m| m.get(mcp_session).map(|c| c.tx.clone()));
+    tokio::spawn(async move {
+        let Some(tx) = tx else { return };
+        let mut ticks: u64 = 0;
+        loop {
+            tokio::time::sleep(PROGRESS_EVERY).await;
+            ticks += 1;
+            let note = serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "notifications/progress",
+                "params": {
+                    "progressToken": token,
+                    "progress": ticks,
+                    "message": "still waiting for the user to decide in Groove",
+                }
+            });
+            // A closed stream means the agent is gone; stop rather than spin.
+            if tx
+                .send(Event::default().event("message").data(note.to_string()))
+                .await
+                .is_err()
+            {
+                return;
+            }
+        }
+    })
+}
+
 // ─── JSON-RPC 2.0 dispatch ────────────────────────────────────────────────────
 
 async fn handle_jsonrpc(
@@ -295,7 +345,14 @@ async fn handle_jsonrpc(
         "tools/call" => {
             let name = params["name"].as_str().unwrap_or("").to_string();
             let args = params["arguments"].clone();
-            match dispatch(&name, args, state, mcp_session).await {
+            // A gated write can sit on a human for minutes; say we are alive.
+            let token = params["_meta"]["progressToken"].clone();
+            let beat = (!token.is_null()).then(|| spawn_progress(state, mcp_session, token));
+            let outcome = dispatch(&name, args, state, mcp_session).await;
+            if let Some(beat) = beat {
+                beat.abort();
+            }
+            match outcome {
                 Ok(resp) => serde_json::json!({
                     "jsonrpc": "2.0",
                     "id": id,
