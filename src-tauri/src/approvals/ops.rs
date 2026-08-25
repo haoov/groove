@@ -155,6 +155,9 @@ pub(super) async fn execute(
                     "op": op_type,
                     "message": format!("Merge request !{} created from {branch}", mr.remote_id),
                     "iid": mr.remote_id,
+                    // The exact key update_mr/close_mr want. Without it the only
+                    // handle the caller had was the number, which is ambiguous.
+                    "mr_id": mr.id,
                     "url": mr.url,
                 }),
                 None => op_ok(op_type, format!("Merge request created from {branch}")),

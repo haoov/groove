@@ -8,11 +8,21 @@ use super::client::make_client;
 // ─── Shared lookups ───────────────────────────────────────────────────────────
 
 /// Load the mr → worktree → repo chain for an MR id.
+///
+/// The id is the local uuid, and deliberately ONLY that: the forge number is unique
+/// per worktree, not globally, so `!42` can name two merge requests in different
+/// repos — and this chain ends in a write to the real one. An ambiguous key is worse
+/// than an error here. Callers get the id from the create reply or get_mr_state.
 pub(super) async fn load_mr_context(
     mr_id: &str,
     pool: &SqlitePool,
 ) -> anyhow::Result<(Mr, Worktree, Repo)> {
-    let mr = store::mrs::get(pool, mr_id).await?;
+    let mr = store::mrs::get(pool, mr_id).await.map_err(|_| {
+        anyhow::anyhow!(
+            "no merge request with id {mr_id}. That is the id from get_mr_state or the \
+             create reply — not the !42 number, which does not identify one on its own"
+        )
+    })?;
     let wt = store::worktrees::get(pool, &mr.worktree_id).await?;
     let repo = store::repos::get(pool, &wt.repo_id).await?;
     Ok((mr, wt, repo))
