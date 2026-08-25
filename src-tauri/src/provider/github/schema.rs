@@ -17,10 +17,6 @@ const NOT_A_FIELD: [&str; 7] = [
     "Parent issue",
     "Sub-issues progress",
 ];
-/// Number fields hours are logged into, matched case-insensitively — a board is
-/// named by hand and "Time spent" is as likely as "Hours".
-const HOURS_NAMES: [&str; 4] = ["Hours spent", "Hours", "Time spent", "Time spent (H)"];
-
 /// Board columns GitHub maintains itself.
 const TIMESTAMPS: [&str; 3] = ["Created", "Updated", "Closed"];
 
@@ -40,7 +36,7 @@ pub(super) async fn board_schema(
     cfg: &GithubConfig,
     project_id: &str,
 ) -> anyhow::Result<TaskSchema> {
-    let nodes = super::fields::board_fields(cfg, project_id).await?;
+    let nodes = super::fields::board_fields(&cfg.host, project_id).await?;
 
     let mut properties: Vec<PropertySchema> = nodes
         .as_array()
@@ -99,7 +95,7 @@ pub(super) async fn board_schema(
 
     let hours_property = properties
         .iter()
-        .find(|p| p.kind == "number" && HOURS_NAMES.iter().any(|h| p.name.eq_ignore_ascii_case(h)))
+        .find(|p| p.kind == "number" && crate::provider::detect::is_hours_property(&p.name))
         .map(|p| p.name.clone());
 
     Ok(TaskSchema {

@@ -17,6 +17,16 @@ pub struct GithubPreview {
     /// Assigned issues on no board, which are deliberately not tasks.
     #[ts(type = "number")]
     pub unboarded: i64,
+    /// Each board's Status columns. Boards name their states freely, and a wrong
+    /// status_map makes Finish fail — show what is really there.
+    pub status_columns: Vec<BoardColumns>,
+}
+
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct BoardColumns {
+    pub board: String,
+    pub columns: Vec<String>,
 }
 
 #[tauri::command]
@@ -36,10 +46,24 @@ pub async fn preview_github(host: Option<String>) -> Result<GithubPreview, Strin
 
     let unboarded = super::projects::assigned_count(&host).await.unwrap_or(0) - items.len() as i64;
 
+    // One row per board the tasks came from, deduplicated by project id.
+    let mut seen: Vec<(String, String)> = vec![];
+    for i in &items {
+        if !seen.iter().any(|(id, _)| id == &i.project_id) {
+            seen.push((i.project_id.clone(), i.board.clone()));
+        }
+    }
+    let mut status_columns = Vec::with_capacity(seen.len());
+    for (project_id, board) in seen {
+        let columns = super::fields::status_columns(&host, &project_id).await;
+        status_columns.push(BoardColumns { board, columns });
+    }
+
     Ok(GithubPreview {
         tasks: items.len() as i64,
         boards,
         fields,
         unboarded: unboarded.max(0),
+        status_columns,
     })
 }

@@ -4,6 +4,7 @@ export type { AgentActivity } from './AgentActivity';
 export type { AgentState } from './AgentState';
 export type { Annotation } from './Annotation';
 export type { BlameLine } from './BlameLine';
+export type { BoardColumns } from './BoardColumns';
 export type { CommitEntry } from './CommitEntry';
 export type { ConfigView } from './ConfigView';
 export type { DetectedSchema } from './DetectedSchema';

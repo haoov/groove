@@ -22,10 +22,6 @@ const CACHE_TTL_SECS: i64 = 300;
 /// Property types we can render AND write. Anything else is shown read-only
 /// rather than hidden — seeing a value you can't edit beats pretending it isn't
 /// there.
-/// Number properties hours are logged into. There is exactly one plausible name,
-/// and guessing wrong would silently write to the wrong column.
-pub(super) const HOURS_NAMES: [&str; 3] = ["Hours spent", "Hours", "Time spent"];
-
 /// Not fields the user sets: an id, a timestamp, a computed value.
 const META_KINDS: [&str; 6] =
     ["title", "formula", "unique_id", "created_time", "last_edited_time", "rollup"];
@@ -121,7 +117,7 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
 
     let hours_property = properties
         .iter()
-        .find(|p| p.kind == "number" && HOURS_NAMES.contains(&p.name.as_str()))
+        .find(|p| p.kind == "number" && crate::provider::detect::is_hours_property(&p.name))
         .map(|p| p.name.clone());
 
     Ok(TaskSchema {

@@ -39,7 +39,7 @@ impl GithubProvider {
             status: field(status_field).unwrap_or_else(|| "Backlog".to_string()),
             priority: priority_field.and_then(field),
             url: item.url.clone(),
-            // No natural short id: the store mints gh-<repo>-<number>.
+            // No natural short id: short_id() below builds one.
             natural_short_id: None,
             // Only the issue number goes in the branch — a branch is scoped to one
             // repo, so the rest of the id would be noise.
@@ -154,7 +154,7 @@ impl TaskProvider for GithubProvider {
         if label.is_empty() {
             // Name the board's real columns: the fix is one config line, and
             // without the list the user cannot know what to put there.
-            let columns = fields::field_def(&cfg, &item.project_id, &cfg.properties.status)
+            let columns = fields::field_def(&cfg.host, &item.project_id, &cfg.properties.status)
                 .await
                 .map(|d| d.options.into_iter().map(|(n, _)| n).collect::<Vec<_>>())
                 .unwrap_or_default();

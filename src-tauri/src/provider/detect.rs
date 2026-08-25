@@ -16,6 +16,17 @@ pub(super) fn norm(s: &str) -> String {
     s.chars().filter(|c| c.is_alphanumeric()).flat_map(|c| c.to_lowercase()).collect()
 }
 
+/// Number fields hours are logged into, matched case-insensitively — a board or
+/// database is named by hand and "Time spent" is as likely as "Hours". ONE list
+/// for every provider: two copies had already drifted apart.
+const HOURS_NAMES: [&str; 4] = ["Hours spent", "Hours", "Time spent", "Time spent (H)"];
+
+/// Whether `name` is where hours are logged. Exact names only (normalized): a
+/// contains-match would silently write into "Hours estimate".
+pub(super) fn is_hours_property(name: &str) -> bool {
+    HOURS_NAMES.iter().any(|h| norm(h) == norm(name))
+}
+
 /// Options in the group whose name normalizes to `group`.
 fn group_options<'a>(groups: &'a [StatusGroup], group: &str) -> &'a [String] {
     groups
@@ -66,3 +77,19 @@ pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
     }
 }
 
+
+#[cfg(test)]
+mod hours_tests {
+    use super::is_hours_property;
+
+    /// Case and separators must not matter; near-misses must.
+    #[test]
+    fn hours_names_match_exactly_but_loosely() {
+        for yes in ["Hours spent", "hours SPENT", "Time spent (h)", "Hours"] {
+            assert!(is_hours_property(yes), "{yes}");
+        }
+        for no in ["Hours estimate", "Spent", "Time"] {
+            assert!(!is_hours_property(no), "{no}");
+        }
+    }
+}

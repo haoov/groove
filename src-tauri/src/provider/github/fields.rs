@@ -47,14 +47,14 @@ pub(super) struct FieldDef {
 /// The board's field definitions, cached: `board_schema` and every write want the
 /// same payload, and it changes about as often as the board is redesigned.
 pub(super) async fn board_fields(
-    cfg: &GithubConfig,
+    host: &str,
     project_id: &str,
 ) -> anyhow::Result<serde_json::Value> {
     if let Some(hit) = super::cache::fields(project_id) {
         return Ok(hit);
     }
     let res = api::github_graphql(
-        &cfg.host,
+        host,
         FIELD_IDS,
         serde_json::json!({ "project": project_id }),
     )
@@ -64,12 +64,13 @@ pub(super) async fn board_fields(
     Ok(nodes)
 }
 
+// `host` rather than the whole config: the setup preview runs before one exists.
 pub(super) async fn field_def(
-    cfg: &GithubConfig,
+    host: &str,
     project_id: &str,
     name: &str,
 ) -> anyhow::Result<FieldDef> {
-    let nodes = board_fields(cfg, project_id).await?;
+    let nodes = board_fields(host, project_id).await?;
 
     for f in nodes.as_array().unwrap_or(&vec![]) {
         if f["name"].as_str() != Some(name) {
@@ -147,7 +148,7 @@ pub(super) async fn set_field(
     name: &str,
     value: &serde_json::Value,
 ) -> anyhow::Result<String> {
-    let def = field_def(cfg, project_id, name).await?;
+    let def = field_def(&cfg.host, project_id, name).await?;
 
     if value.is_null() {
         let vars = serde_json::json!({ "project": project_id, "item": item_id, "field": def.id });
@@ -183,11 +184,27 @@ pub(super) async fn status_for(
         StatusIntent::Done => ("done", &cfg.status_map.done),
     };
 
-    let Ok(def) = field_def(cfg, project_id, &cfg.properties.status).await else {
+    let Ok(def) = field_def(&cfg.host, project_id, &cfg.properties.status).await else {
         return configured.clone();
     };
     let options: Vec<String> = def.options.iter().map(|(n, _)| n.clone()).collect();
     pick_status(&options, hint, configured)
+}
+
+/// The names of a board's Status columns, for the setup preview: the user must
+/// see what the board calls its states before status_map can name one.
+pub(super) async fn status_columns(host: &str, project_id: &str) -> Vec<String> {
+    let Ok(nodes) = board_fields(host, project_id).await else { return vec![] };
+    nodes
+        .as_array()
+        .and_then(|fields| {
+            fields.iter().find(|f| {
+                f["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case("Status"))
+            })
+        })
+        .and_then(|f| f["options"].as_array())
+        .map(|opts| opts.iter().filter_map(|o| o["name"].as_str().map(str::to_string)).collect())
+        .unwrap_or_default()
 }
 
 /// The error for a board whose status columns match neither the intent nor the
