@@ -1,4 +1,5 @@
 // Shared, presentation-free logic for Home: opening sessions, ranking, labels.
+import { mrRef } from '../shared/lib/forge';
 
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, sessionActions } from '../shared/store';
@@ -58,7 +59,7 @@ export const KIND_LABEL = { task: 'task', explorer: 'expl', review: 'review' } a
 export function rowProvider(entry: HomeEntry): string {
   if (entry.kind === 'review') {
     const mr = entry.repos.find((r) => r.mr)?.mr;
-    if (mr) return `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+    if (mr) return mrRef(mr.platform, mr.remote_id);
   }
   if (entry.kind === 'explorer') return 'local';
   return entry.provider ?? '—';

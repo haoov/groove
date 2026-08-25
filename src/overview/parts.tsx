@@ -1,4 +1,5 @@
 import { GitBranch, GitPullRequest } from 'lucide-react';
+import { forgeName, mrRef } from '../shared/lib/forge';
 import type { Mr, Repo, Worktree } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 
@@ -7,12 +8,12 @@ import { openExternal } from '../shared/lib/openExternal';
 
 /** One MR, beside its worktree: number + state, opening the forge. */
 function MrLine({ mr }: { mr: Mr }) {
-  const num = `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+  const num = mrRef(mr.platform, mr.remote_id);
   return (
     <a
       className="overview-wt-mr"
       href={mr.url}
-      title={`${num} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+      title={`${num} — open in ${forgeName(mr.platform)}`}
       // Stop the click reaching the worktree row (which opens the editor).
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
     >

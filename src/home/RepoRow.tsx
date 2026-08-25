@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { forgeName, mrRef } from '../shared/lib/forge';
 import { GitBranch, GitMerge, GitPullRequest, GitPullRequestClosed } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
@@ -8,13 +9,13 @@ import type { HomeEntry, HomeMr, HomeRepo } from '../shared/ipc/ipc';
 
 /** The MR beside a worktree: number + state (+ CI dot, unresolved count). */
 function MrLine({ mr }: { mr: HomeMr }) {
-  const num = `${mr.platform === 'github' ? '#' : '!'}${mr.remote_id}`;
+  const num = mrRef(mr.platform, mr.remote_id);
   const Icon = mr.state === 'merged' ? GitMerge : mr.state === 'closed' ? GitPullRequestClosed : GitPullRequest;
   return (
     <a
       className="overview-wt-mr"
       href={mr.url}
-      title={`${num} ${mr.state} — open in ${mr.platform === 'github' ? 'GitHub' : 'GitLab'}`}
+      title={`${num} ${mr.state} — open in ${forgeName(mr.platform)}`}
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
     >
       <Icon size={11} strokeWidth={1.75} />

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { openExternal } from '../shared/lib/openExternal';
 import { invoke } from '../shared/ipc/invoke';
 import { providerCopy } from '../shared/lib/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
-import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
@@ -99,6 +100,16 @@ export function TaskOverview() {
           <h1 className="overview-title">{activeTask.title}</h1>
           <span className="overview-spring" />
           <div className="overview-header-actions">
+            {activeTask.external_url && (
+              <button
+                className="finish-task-btn ov-update"
+                onClick={() => openExternal(activeTask.external_url!)}
+                title={activeTask.external_url}
+              >
+                <ExternalLink size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
+                Open in {src.label}
+              </button>
+            )}
             <button
               className="finish-task-btn ov-update"
               onClick={reload}

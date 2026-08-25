@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { mrSigil } from '../shared/lib/forge';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -21,7 +22,7 @@ function saveHidden(keys: Set<string>) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
 }
 
-const sigil = (mr: ReviewMr) => (mr.platform === 'github' ? '#' : '!');
+const sigil = (mr: ReviewMr) => mrSigil(mr.platform);
 
 /** Rough "how long ago" for the last-update column. */
 function timeAgo(iso: string): string {

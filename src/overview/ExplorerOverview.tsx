@@ -1,4 +1,5 @@
 import { Compass, Plus, Sparkles } from 'lucide-react';
+import { SOURCE_IDS } from '../setup/sources';
 import { useStore, useSession } from '../shared/store';
 import { sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from '../agent/prompts';
@@ -19,10 +20,7 @@ export function ExplorerOverview() {
   // hook rather than guessing how long Claude takes to boot.
   // Naming the source is only needed when there is a choice; with one set up the
   // backend infers it.
-  const sources = useStore((s) => {
-    const c = s.config;
-    return [c?.notion ? 'notion' : null, c?.github ? 'github' : null].filter(Boolean) as string[];
-  });
+  const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
 
   const createTaskFromSession = async (provider?: string) => {
     if (!activeTask) return;
