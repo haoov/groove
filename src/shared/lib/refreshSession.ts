@@ -3,7 +3,7 @@ import { useStore, findSessionByTask } from '../store';
 import type { AgentState } from '../ipc/ipc';
 
 /**
- * The refresh contract (REWORK.md): flush the backend git caches, then refetch
+ * The refresh contract: flush the backend git caches, then refetch
  * the session's diff + status — and Home, when it's on screen. The ONE named
  * path shared by the agent-activity handler and the sidebar refresh button, so
  * neither can skip the cache flush and read 5s-stale refs.
