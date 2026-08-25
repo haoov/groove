@@ -5,10 +5,7 @@
 //! patch is built. Adding a property in Notion makes it editable here with no
 //! code change. Value shapes are canonical — see page.rs.
 
-use sqlx::SqlitePool;
-
 use crate::core::config::NotionConfig;
-use crate::core::db::store;
 
 use super::page::{property_patch, read_value, PropertyValue};
 
@@ -49,43 +46,4 @@ pub(crate) async fn patch_property(
     let updated = super::api::patch(&cfg.token, &format!("v1/pages/{page_id}"), &body).await?;
     let (_, display) = read_value(&prop.kind, &updated["properties"][property]);
     Ok(display)
-}
-
-#[tauri::command]
-pub async fn update_task_property(
-    short_id: String,
-    property: String,
-    value: serde_json::Value,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    write_property(&short_id, &property, &value, &pool)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// Confirmation-bridge path for `task.property` (agent-initiated).
-pub async fn update_property_impl(
-    payload: serde_json::Value,
-    pool: &SqlitePool,
-) -> anyhow::Result<serde_json::Value> {
-    let field = |k: &str| payload[k].as_str().unwrap_or_default().to_string();
-    let display =
-        write_property(&field("task_id"), &field("property"), &payload["value"], pool).await?;
-    Ok(serde_json::json!({ "property": field("property"), "value": display }))
-}
-
-/// Set one property through the task's own provider, then re-mirror it: Home and
-/// the queue read status and priority from the local row.
-pub(crate) async fn write_property(
-    short_id: &str,
-    property: &str,
-    value: &serde_json::Value,
-    pool: &SqlitePool,
-) -> anyhow::Result<String> {
-    let (provider, key) = crate::provider::resolve(pool, short_id).await?;
-    let written = provider.set_property(&key, property, value).await?;
-    if let Ok(task) = provider.fetch_task(&key).await {
-        let _ = store::provider_tasks::upsert(pool, &crate::provider::mirror_row(short_id, &task)).await;
-    }
-    Ok(written.display)
 }

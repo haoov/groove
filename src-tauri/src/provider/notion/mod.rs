@@ -17,11 +17,9 @@ pub mod schema;
 pub mod tasks;
 pub mod users;
 
-// Glob re-exports: tauri::generate_handler! looks up __cmd__* symbols at the
-// same path as the command function, and `pub use` of the fn alone misses them.
-pub use body::*;
+// The provider-GENERIC commands (body/property writes) moved to provider::write;
+// find_notion_user is re-exported at provider:: directly from users. Only NewTask
+// still flows up from create for the provider impl.
 pub use create::*;
-pub use properties::*;
-pub use users::*;
 
 pub use provider::NotionProvider;

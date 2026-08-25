@@ -7,7 +7,6 @@
 //! So the replace refuses by default when the page holds something it cannot
 //! faithfully rebuild, and names what it found; `force` accepts the loss.
 
-use sqlx::SqlitePool;
 
 
 use super::markdown::{blocks_to_markdown, markdown_to_blocks};
@@ -115,29 +114,6 @@ fn lossy_types(blocks: &[serde_json::Value]) -> Vec<String> {
     found
 }
 
-/// Confirmation-bridge path for `task.body`.
-///
-/// Gated even when it comes from the UI: it is the one Notion write that can
-/// destroy content the app never showed you.
-pub async fn update_body_impl(
-    payload: serde_json::Value,
-    _pool: &SqlitePool,
-) -> anyhow::Result<serde_json::Value> {
-    let task_id = payload["task_id"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("missing task_id"))?;
-    let markdown = payload["markdown"].as_str().unwrap_or_default();
-    let force = payload["force"].as_bool().unwrap_or(false);
-
-    let (provider, key) = crate::provider::resolve(_pool, task_id).await?;
-    let written = provider.replace_body(&key, markdown, force).await?;
-    Ok(serde_json::json!({
-        "ok": true,
-        "blocks_written": written.blocks_written,
-        "message": format!("Task body updated ({} blocks)", written.blocks_written),
-    }))
-}
-
 /// Replace the page body from markdown. Refuses when the page holds blocks
 /// markdown cannot rebuild, unless forced.
 pub(crate) async fn replace(
@@ -193,54 +169,6 @@ pub(crate) async fn replace(
 
     let _ = removed;
     Ok(crate::provider::types::BodyWrite { blocks_written: appended })
-}
-
-// ─── IPC ──────────────────────────────────────────────────────────────────────
-
-/// The ticket body as markdown — what the overview renders. Going through
-/// markdown (rather than a bespoke Notion-block renderer) means one renderer for
-/// task and MR descriptions, Notion's inline annotations survive, AND markdown
-/// typed literally into Notion (`**bold**`, backticks) displays as intended.
-#[tauri::command]
-pub async fn get_task_body_markdown(
-    short_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    async {
-        let (provider, key) = crate::provider::resolve(&pool, &short_id).await?;
-        provider.body_markdown(&key).await
-    }
-    .await
-    .map_err(|e: anyhow::Error| e.to_string())
-}
-
-/// Queue a body replacement from the UI.
-///
-/// Goes through the confirmation bridge even though a human asked for it: this is
-/// the one write that can delete blocks the app never displayed, so it gets a
-/// preview and an explicit yes like an agent's write would.
-#[tauri::command]
-pub async fn request_task_body_update(
-    short_id: String,
-    markdown: String,
-    force: bool,
-    bridge: tauri::State<'_, crate::approvals::Bridge>,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    bridge
-        .post(
-            &pool,
-            crate::approvals::ops::TASK_BODY,
-            serde_json::json!({
-                "task_id": short_id,
-                "markdown": markdown,
-                "force": force,
-            }),
-            "ui",
-            Some(&short_id),
-        )
-        .await
-        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

@@ -169,7 +169,7 @@ pub(super) async fn execute(
             Ok(op_ok(op_type, "Merge request closed"))
         }
         TASK_PROPERTY => {
-            let out = crate::provider::notion::update_property_impl(payload, pool).await?;
+            let out = crate::provider::update_property_impl(payload, pool).await?;
             let prop = out["property"].as_str().unwrap_or("property").to_string();
             let value = out["value"].as_str().unwrap_or("").to_string();
             Ok(op_ok(op_type, if value.is_empty() {
@@ -186,7 +186,7 @@ pub(super) async fn execute(
         }
         TASK_BODY => {
             // Carries its own message (block counts).
-            crate::provider::notion::update_body_impl(payload, pool).await
+            crate::provider::update_body_impl(payload, pool).await
         }
         TASK_CREATE => crate::provider::create_task_impl(payload, pool).await,
         TASK_ADD_REPO => {

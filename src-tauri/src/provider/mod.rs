@@ -5,6 +5,7 @@ pub mod detect;
 pub mod github;
 pub mod notion;
 pub mod types;
+pub mod write;
 
 use types::*;
 
@@ -12,7 +13,8 @@ use types::*;
 // at the same path as the function.
 pub use commands::*;
 pub use github::setup::*;
-pub use notion::*;
+pub use notion::users::*;
+pub use write::*;
 
 #[async_trait::async_trait]
 pub(crate) trait TaskProvider: Send + Sync {

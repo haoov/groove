@@ -118,7 +118,7 @@ impl TaskProvider for NotionProvider {
 
     async fn body_markdown(&self, key: &TaskKey) -> anyhow::Result<String> {
         let cfg = config::notion()?;
-        let blocks = super::get_task_body_impl(page_of(key)?, &cfg.token).await?;
+        let blocks = super::body::get_task_body_impl(page_of(key)?, &cfg.token).await?;
         Ok(super::markdown::blocks_to_markdown(&blocks))
     }
 
