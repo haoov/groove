@@ -99,6 +99,21 @@ pub async fn set_status(
 /// Drop mirror rows for `provider` that the latest sync did not return, so a task
 /// that left the queue stops showing up. Sessions are untouched: an open task keeps
 /// its session whether or not it is still queued.
+/// Every mirror row of one provider, except tasks that are checked out — used
+/// when the source is disabled, since its sync loop (the usual pruner) no
+/// longer runs.
+pub async fn prune_provider(exec: impl SqliteExecutor<'_>, provider: &str) -> StoreResult<u64> {
+    Ok(sqlx::query(
+        "DELETE FROM provider_tasks
+          WHERE provider = ?
+            AND short_id NOT IN (SELECT id FROM sessions)",
+    )
+    .bind(provider)
+    .execute(exec)
+    .await?
+    .rows_affected())
+}
+
 pub async fn prune_missing(
     exec: impl SqliteExecutor<'_>,
     provider: &str,

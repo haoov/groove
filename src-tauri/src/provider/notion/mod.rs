@@ -14,6 +14,7 @@ pub mod page;
 pub mod properties;
 mod provider;
 pub mod schema;
+pub mod setup;
 pub mod tasks;
 pub mod users;
 

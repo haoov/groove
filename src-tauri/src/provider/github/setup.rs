@@ -2,6 +2,40 @@
 
 const DEFAULT_HOST: &str = "github.com";
 
+#[derive(Debug, serde::Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct GithubSetup {
+    /// github.com unless a GitHub Enterprise host is given.
+    pub host: Option<String>,
+}
+
+/// Nothing to validate: there is no board to nominate, and gh already holds the
+/// credential. The field names are Projects v2's own defaults and are corrected
+/// in the config file if a board names them differently. Reconnecting keeps
+/// `existing` — the hand-corrected values live nowhere else.
+pub fn build_config(
+    g: &GithubSetup,
+    existing: Option<crate::core::config::GithubConfig>,
+) -> crate::core::config::GithubConfig {
+    if let Some(existing) = existing {
+        return existing;
+    }
+    crate::core::config::GithubConfig {
+        host: g.host.clone().unwrap_or_else(|| DEFAULT_HOST.to_string()),
+        properties: crate::core::config::GithubPropertyNames {
+            status: "Status".into(),
+            priority: Some("Priority".into()),
+        },
+        // Each board names its own columns, so a write reads them off the board
+        // and only falls back to this.
+        status_map: crate::core::config::StatusMap {
+            ready: "Ready".into(),
+            in_progress: "In progress".into(),
+            done: "Done".into(),
+        },
+    }
+}
+
 /// What GitHub would give the queue right now, so the setup screen can show it
 /// before anything is saved. Nothing to configure — this is the whole answer.
 #[derive(Debug, serde::Serialize, ts_rs::TS)]
@@ -66,4 +100,22 @@ pub async fn preview_github(host: Option<String>) -> Result<GithubPreview, Strin
         unboarded: unboarded.max(0),
         status_columns,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_fresh_github_config_defaults_and_a_reconnect_keeps_corrections() {
+        let fresh = build_config(&GithubSetup { host: None }, None);
+        assert_eq!(fresh.host, "github.com");
+        assert_eq!(fresh.properties.status, "Status");
+
+        // Hand-corrected values live only in the config file — keep them.
+        let mut corrected = fresh.clone();
+        corrected.status_map.done = "Shipped".to_string();
+        let kept = build_config(&GithubSetup { host: None }, Some(corrected));
+        assert_eq!(kept.status_map.done, "Shipped");
+    }
 }

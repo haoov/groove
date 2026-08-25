@@ -286,3 +286,24 @@ async fn the_provider_column_takes_any_value() {
     let back = provider_tasks::get_by_short_id(&pool, "SOME-1").await.unwrap().unwrap();
     assert_eq!(back.provider, "someday");
 }
+
+/// Disabling a source prunes its mirror, sparing checked-out tasks — same
+/// protection as the sync-loop pruner.
+#[tokio::test]
+async fn disabling_a_provider_prunes_only_its_sessionless_rows() {
+    let pool = test_pool().await;
+    provider_tasks::upsert(&pool, &mirror_task("N-1")).await.unwrap();
+    provider_tasks::upsert(&pool, &mirror_task("N-2")).await.unwrap();
+    let mut gh = mirror_task("gh-a-b-1");
+    gh.provider = "github".into();
+    gh.external_id = "github.com/a/b#1".into();
+    provider_tasks::upsert(&pool, &gh).await.unwrap();
+    sessions::open_task(&pool, "N-1").await.unwrap();
+
+    let pruned = provider_tasks::prune_provider(&pool, "notion").await.unwrap();
+
+    assert_eq!(pruned, 1, "only the sessionless notion row goes");
+    assert!(provider_tasks::get_by_short_id(&pool, "N-1").await.unwrap().is_some());
+    assert!(provider_tasks::get_by_short_id(&pool, "N-2").await.unwrap().is_none());
+    assert!(provider_tasks::get_by_short_id(&pool, "gh-a-b-1").await.unwrap().is_some());
+}

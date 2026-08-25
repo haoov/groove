@@ -77,7 +77,7 @@ pub fn run() {
             task_manager::set_task_repos,
             task_manager::get_config,
             task_manager::check_environment,
-            task_manager::detect_database,
+            provider::detect_notion_database,
             task_manager::start_auth_session,
             task_manager::write_initial_config,
             task_manager::get_task_time,
@@ -101,8 +101,7 @@ pub fn run() {
             provider::update_task_property,
             provider::request_task_body_update,
             provider::preview_github,
-            task_manager::set_github_source,
-            task_manager::set_notion_source,
+            task_manager::set_task_source,
             // worktrees
             worktrees::register_repo,
             worktrees::list_main_repos,

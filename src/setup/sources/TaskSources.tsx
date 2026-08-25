@@ -24,7 +24,7 @@ export function TaskSources({
     setBusy('github');
     setError(null);
     try {
-      await invoke('set_github_source', { enabled, host: null });
+      await invoke('set_task_source', { provider: 'github', enabled, options: null });
       onChanged();
     } catch (e) {
       setError(String(e));
@@ -37,7 +37,7 @@ export function TaskSources({
     setBusy('notion');
     setError(null);
     try {
-      await invoke('set_notion_source', { setup: null });
+      await invoke('set_task_source', { provider: 'notion', enabled: false, options: null });
       onChanged();
     } catch (e) {
       setError(String(e));

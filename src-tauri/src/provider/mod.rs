@@ -13,6 +13,7 @@ use types::*;
 // at the same path as the function.
 pub use commands::*;
 pub use github::setup::*;
+pub use notion::setup::*;
 pub use notion::users::*;
 pub use write::*;
 

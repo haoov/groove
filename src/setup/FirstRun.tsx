@@ -69,7 +69,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     setBusy('detect');
     setError(null);
     try {
-      setDetected(await invoke<DetectedSchema>('detect_database', {
+      setDetected(await invoke<DetectedSchema>('detect_notion_database', {
         token: token.trim(),
         databaseId: databaseId.trim(),
       }));
