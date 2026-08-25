@@ -1078,17 +1078,3 @@
 .mr-comment-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
 
 .mr-comment-post { display: inline-flex; align-items: center; flex-shrink: 0; }
-
-/* "Create task" drop-up: the sources to file in, anchored above the button —
-   the header sits low enough that downward would cover the actions. */
-.create-task-menu { position: relative; display: inline-flex; }
-/* Two classes on purpose: .ctx-menu says position:fixed, and this must win
-   regardless of stylesheet import order. */
-.create-task-menu .create-task-menu-panel {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  top: auto;
-  right: 0;
-  left: auto;
-  z-index: 40;
-}

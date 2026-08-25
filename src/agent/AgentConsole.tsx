@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Play, X } from 'lucide-react';
+import { ChevronUp, Loader2, Play, Sparkles, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
 import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
 import { actionsFor } from './prompts';
+import { SOURCE_IDS } from '../setup/sources';
+import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
 import type { AgentActivity } from '../shared/ipc/ipc';
@@ -53,6 +55,24 @@ export function AgentConsole() {
 
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+
+  // Where a filed task can go; drives the create-task drop-up.
+  const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('mousedown', onDown, true);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [menuOpen]);
   const [width, setWidth] = useState(() => {
     const saved = Number(localStorage.getItem(WIDTH_KEY));
     return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : DEFAULT_WIDTH;
@@ -172,25 +192,62 @@ export function AgentConsole() {
 
         {/* Canned asks below the terminal — the conversation is the main thing. */}
         <div className="console-actions">
-          {actionsFor(kind).map((a) => (
-            <button
-              key={a.id}
-              className="console-action"
-              title={a.title}
-              disabled={!!sending}
-              onClick={() =>
-                runAction(a.id, a.build({
-                  shortId: activeTask.short_id,
-                  kind,
-                  project: repos[0]?.project,
-                  mrNumber: mrs[0] ? `!${mrs[0].remote_id}` : undefined,
-                }))
-              }
-            >
-              {sending === a.id && <Loader2 size={11} className="spin" />}
-              {a.label}
-            </button>
-          ))}
+          {actionsFor(kind).map((a) => {
+            const ctx = {
+              shortId: activeTask.short_id,
+              kind,
+              project: repos[0]?.project,
+              mrNumber: mrs[0] ? `!${mrs[0].remote_id}` : undefined,
+            };
+            // Filing a task needs a source; with several configured the pill
+            // opens UPWARD (the bar sits at the bottom) and the pick rides
+            // along in the prompt. One source needs no menu — the backend infers.
+            if (a.id === 'create-task' && sources.length > 1) {
+              return (
+                <span key={a.id} className="create-task-menu" ref={menuRef}>
+                  <button
+                    className="console-action"
+                    title={`${a.title} — pick where to file it`}
+                    disabled={!!sending}
+                    onClick={() => setMenuOpen((v) => !v)}
+                  >
+                    {sending === a.id && <Loader2 size={11} className="spin" />}
+                    {a.label}
+                    <ChevronUp size={11} strokeWidth={2} />
+                  </button>
+                  {menuOpen && (
+                    <div className="ctx-menu create-task-menu-panel">
+                      {sources.map((src) => (
+                        <button
+                          key={src}
+                          className="ctx-menu-item"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            runAction(a.id, a.build({ ...ctx, provider: src }));
+                          }}
+                        >
+                          <Sparkles size={13} strokeWidth={1.75} />
+                          File in {providerCopy({ provider: src }).label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </span>
+              );
+            }
+            return (
+              <button
+                key={a.id}
+                className="console-action"
+                title={a.title}
+                disabled={!!sending}
+                onClick={() => runAction(a.id, a.build(ctx))}
+              >
+                {sending === a.id && <Loader2 size={11} className="spin" />}
+                {a.label}
+              </button>
+            );
+          })}
           {/* Auto-approve, as a real switch — warm while on, so approving blind is
               never a hidden state. Sits apart from the canned asks. */}
           <button
