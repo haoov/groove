@@ -3,7 +3,7 @@ import { openExternal } from '../shared/lib/openExternal';
 import { invoke } from '../shared/ipc/invoke';
 import { providerCopy } from '../shared/lib/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
-import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
@@ -19,6 +19,7 @@ export function TaskOverview() {
   const setActiveWorktreeId = useSession((s) => s.setActiveWorktreeId);
   const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const setLastError = useStore((s) => s.setLastError);
+  const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
 
   // Clicking a worktree scopes the editor to it and leaves the overview.
   const openWorktree = (repoId: string, worktreeId: string) => {
@@ -202,9 +203,23 @@ export function TaskOverview() {
               onLogged={reload}
             />
 
-            {activeRepos.length > 0 && (
-              <section className="overview-section">
-                <h3 className="overview-section-title">Repositories</h3>
+            {/* Always shown, empty included: a task opened before any repo was
+                attached has to offer the way to attach one. */}
+            <section className="overview-section">
+              <h3 className="overview-section-title">
+                Repositories
+                <span className="overview-section-head-actions">
+                  <button className="overview-add-repo" onClick={() => setAddRepoOpen(true)}>
+                    <Plus size={12} strokeWidth={2} style={{ marginRight: 4 }} />
+                    Add repo
+                  </button>
+                </span>
+              </h3>
+              {activeRepos.length === 0 ? (
+                <p className="overview-empty-body">
+                  No repos yet — add one to check out a branch and start working.
+                </p>
+              ) : (
                 <div className="overview-repos">
                   {activeRepos.map((repo) => {
                     const wtIds = new Set(
@@ -221,8 +236,8 @@ export function TaskOverview() {
                     );
                   })}
                 </div>
-              </section>
-            )}
+              )}
+            </section>
           </aside>
         </div>
       </div>

@@ -55,23 +55,6 @@
 
 .wizard-close:hover { color: var(--gl-text-color-default); }
 
-.wizard-steps {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  background: var(--gl-panel-header-bg);
-  border-bottom: 1px solid var(--gl-border-color-subtle);
-  font-size: var(--gl-font-size-xs);
-}
-
-.wizard-step { color: var(--gl-text-color-disabled); font-weight: 500; }
-
-.wizard-step.active { color: var(--gl-color-blue-300); font-weight: 600; }
-
-.wizard-step.done { color: var(--gl-color-green-400); }
-
-.wizard-step-sep { color: var(--gl-text-color-disabled); }
 
 .wizard-body {
   padding: var(--space-5);
@@ -110,7 +93,7 @@
   outline: none;
 }
 
-.wizard-repo-list, .wizard-branch-list, .wizard-confirm-list {
+.wizard-repo-list, .wizard-branch-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -156,7 +139,7 @@
   color: var(--gl-text-color-muted);
 }
 
-.wizard-repo-item, .wizard-branch-item, .wizard-confirm-item {
+.wizard-repo-item, .wizard-branch-item {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -219,9 +202,7 @@ button.wizard-repo-item.selected {
 
 .wizard-branch-repo { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); min-width: 100px; }
 
-.wizard-confirm-repo { font-size: var(--gl-font-size-sm); font-weight: 500; color: var(--gl-text-color-default); flex: 1; }
 
-.wizard-confirm-branch { font-size: var(--gl-font-size-sm); font-family: var(--font-mono); color: var(--gl-color-teal-400); }
 
 .wizard-error { color: var(--gl-color-red-400); font-size: var(--gl-font-size-sm); margin-bottom: var(--space-2); }
 
@@ -234,16 +215,6 @@ button.wizard-repo-item.selected {
   margin-top: var(--space-2);
 }
 
-.wizard-done {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-height: 130px;
-}
-
-.wizard-done-icon { font-size: 2rem; color: var(--gl-color-green-400); }
 
 /* ── Settings modal ───────────────────────────────────────────────────────── */
 

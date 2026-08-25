@@ -93,8 +93,6 @@ export interface UiSlice {
   setVimMode: (v: boolean) => void;
 
   // ── Task open wizard ──────────────────────────────────────────────────────
-  wizardTask: Task | null;
-  setWizardTask: (t: Task | null) => void;
 }
 
 export interface HomeSlice {

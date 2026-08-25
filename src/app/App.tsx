@@ -12,7 +12,6 @@ import { Home } from '../home';
 import { SessionWorkspaces } from '../workspace/SessionWorkspaces';
 import { ConfirmModal } from '../approvals/ConfirmModal';
 import { CommandPalette } from '../command/CommandPalette';
-import { TaskOpenWizard } from '../setup/TaskOpenWizard';
 import { AddRepoModal } from '../setup/AddRepoModal';
 import { AddWorktreeModal } from '../setup/AddWorktreeModal';
 import { ResizeHandles } from './chrome/ResizeHandles';
@@ -145,7 +144,6 @@ export default function App() {
       {/* Overlays */}
       <ConfirmModal />
       <CommandPalette />
-      <TaskOpenWizard />
       {addRepoOpen && <AddRepoModal onClose={() => setAddRepoOpen(false)} />}
       {addWorktreeOpen && <AddWorktreeModal onClose={() => setAddWorktreeOpen(false)} />}
       <SettingsModal />

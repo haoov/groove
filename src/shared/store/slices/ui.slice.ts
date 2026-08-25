@@ -80,6 +80,4 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   },
 
   // Task wizard
-  wizardTask: null,
-  setWizardTask: (t) => set({ wizardTask: t }),
 });
