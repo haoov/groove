@@ -87,28 +87,22 @@ impl TaskProvider for NotionProvider {
         }
     }
 
-    fn status_label(&self, intent: StatusIntent) -> Option<String> {
-        let cfg = config::notion().ok()?;
+    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<String> {
+        let cfg = config::notion()?;
         let map = &cfg.status_map;
-        Some(match intent {
+        let label = match intent {
             StatusIntent::Ready => map.ready.clone(),
             StatusIntent::InProgress => map.in_progress.clone(),
             StatusIntent::Done => map.done.clone(),
-        })
-    }
-
-    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()> {
-        let cfg = config::notion()?;
-        let label = self
-            .status_label(intent)
-            .ok_or_else(|| anyhow::anyhow!("no status configured for {intent:?}"))?;
+        };
         super::tasks::set_status(
             &cfg.token,
             page_of(key)?,
             &cfg.properties.status,
             &label,
         )
-        .await
+        .await?;
+        Ok(label)
     }
 
     async fn discard(&self, key: &TaskKey) -> anyhow::Result<()> {

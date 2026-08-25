@@ -138,17 +138,7 @@ impl TaskProvider for GithubProvider {
             .collect())
     }
 
-    fn status_label(&self, intent: StatusIntent) -> Option<String> {
-        let cfg = config::github().ok()?;
-        let map = &cfg.status_map;
-        Some(match intent {
-            StatusIntent::Ready => map.ready.clone(),
-            StatusIntent::InProgress => map.in_progress.clone(),
-            StatusIntent::Done => map.done.clone(),
-        })
-    }
-
-    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()> {
+    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<String> {
         let cfg = config::github()?;
         let item = self.item_for(&cfg, key).await?;
         // The board's own columns, not the config: every board names them
@@ -165,7 +155,7 @@ impl TaskProvider for GithubProvider {
             &serde_json::json!(label),
         )
         .await?;
-        Ok(())
+        Ok(label)
     }
 
     async fn discard(&self, key: &TaskKey) -> anyhow::Result<()> {

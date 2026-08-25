@@ -200,11 +200,11 @@ async fn finish_task_impl(
     // Mark it done at the source BEFORE any destructive teardown — if that
     // fails, the workspace is still intact.
     let (provider, key) = crate::provider::resolve(pool, short_id).await?;
-    provider.set_status(&key, crate::provider::types::StatusIntent::Done).await?;
+    // The label the provider ACTUALLY wrote is what the mirror records — the
+    // config's guess of it could differ (GitHub picks the column off the board).
+    let done_status =
+        provider.set_status(&key, crate::provider::types::StatusIntent::Done).await?;
 
-    let done_status = provider
-        .status_label(crate::provider::types::StatusIntent::Done)
-        .unwrap_or_else(|| "Done".to_string());
     store::provider_tasks::set_status(pool, short_id, &done_status).await?;
     tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
@@ -236,10 +236,9 @@ async fn delete_task_impl(
     let (provider, key) = crate::provider::resolve(pool, short_id).await?;
     provider.discard(&key).await?;
 
-    let done_status = provider
-        .status_label(crate::provider::types::StatusIntent::Done)
-        .unwrap_or_else(|| "Done".to_string());
-    tear_down_session(app, short_id, &done_status, task_state, pool).await
+    // The row is deleted with the session, so the status in the teardown event
+    // is cosmetic — a literal beats asking the provider for a label it never wrote.
+    tear_down_session(app, short_id, "Done", task_state, pool).await
 }
 
 /// Close a session locally: its worktree directories, its rows (one cascading

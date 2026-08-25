@@ -354,10 +354,9 @@ mod tests {
             async fn set_property(
                 &self, _: &TaskKey, _: &str, _: &serde_json::Value,
             ) -> anyhow::Result<super::super::types::PropertyWrite> { anyhow::bail!("no") }
-            fn status_label(&self, _: super::super::types::StatusIntent) -> Option<String> { None }
             async fn set_status(
                 &self, _: &TaskKey, _: super::super::types::StatusIntent,
-            ) -> anyhow::Result<()> { Ok(()) }
+            ) -> anyhow::Result<String> { Ok(String::new()) }
             async fn discard(&self, _: &TaskKey) -> anyhow::Result<()> { Ok(()) }
             async fn body_markdown(&self, _: &TaskKey) -> anyhow::Result<String> { Ok(String::new()) }
             async fn replace_body(

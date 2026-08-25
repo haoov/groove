@@ -16,6 +16,13 @@ pub use github::setup::*;
 pub use notion::users::*;
 pub use write::*;
 
+/// One task source.
+///
+/// The defaulted methods ARE the capability signal: `reference_options → []`,
+/// `template_markdown`/`add_hours` → `Ok(None)`, `create_task` → error. A
+/// provider without the feature inherits the default and the app treats the
+/// answer as "this source has none", never as a failure. `replace_body` may
+/// ignore `force` when its body format loses nothing in a round trip.
 #[async_trait::async_trait]
 pub(crate) trait TaskProvider: Send + Sync {
     fn id(&self) -> ProviderId;
@@ -55,8 +62,9 @@ pub(crate) trait TaskProvider: Send + Sync {
         Ok(vec![])
     }
 
-    fn status_label(&self, intent: StatusIntent) -> Option<String>;
-    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<()>;
+    /// Write the status the intent maps to, and return the label ACTUALLY
+    /// written — the caller mirrors that, never its own guess of it.
+    async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<String>;
     async fn discard(&self, key: &TaskKey) -> anyhow::Result<()>;
 
     async fn body_markdown(&self, key: &TaskKey) -> anyhow::Result<String>;
