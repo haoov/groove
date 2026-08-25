@@ -172,16 +172,28 @@ pub(super) async fn get_task_body(
 /// Markdown is what the agent mirrors, and what create_task_from_explorer takes
 /// back — raw block JSON was easy to misread.
 pub(super) async fn get_task_template(
+    input: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // The template belongs to whichever source the task in scope came from; with no
-    // task in scope, the one that is configured.
-    let provider = match state.task_for(mcp_session) {
-        Some(task_id) => crate::provider::resolve(&state.pool, &task_id).await.map(|(p, _)| p),
-        None => crate::provider::commands::draft_provider(&serde_json::json!({}))
-            .and_then(crate::provider::get),
+    // The template belongs to: the source the caller names, else the source of the
+    // task in scope, else the one configured source. An explorer or review session
+    // has an id in scope but no source — that falls through rather than erroring,
+    // since filing FROM an explorer is this tool's main use.
+    let named = input["provider"]
+        .as_str()
+        .map(|_| crate::provider::commands::draft_provider(&input));
+    let in_scope = match (&named, state.task_for(mcp_session)) {
+        (None, Some(task_id)) => crate::provider::resolve(&state.pool, &task_id)
+            .await
+            .ok()
+            .map(|(p, _)| Ok(p.id())),
+        _ => None,
     };
+    let provider = named
+        .or(in_scope)
+        .unwrap_or_else(|| crate::provider::commands::draft_provider(&serde_json::json!({})))
+        .and_then(crate::provider::get);
     let provider = match provider {
         Ok(p) => p,
         Err(e) => return Ok(ToolCallResponse::err(e.to_string())),
@@ -191,9 +203,12 @@ pub(super) async fn get_task_template(
         Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),
-        Ok(None) => Ok(ToolCallResponse::err(
-            "this task source has no template configured",
-        )),
+        // No template is an answer, not a failure — the tool contract says empty.
+        // An error here stalled the create-task flow for sources without one.
+        Ok(None) => Ok(ToolCallResponse::ok(serde_json::json!({
+            "template_markdown": "",
+            "note": "this task source has no template — structure the body yourself",
+        }))),
         Err(e) => Ok(ToolCallResponse::err(e.to_string())),
     }
 }
