@@ -274,3 +274,15 @@ async fn pruning_spares_a_task_with_a_session() {
 
     assert!(provider_tasks::get_by_short_id(&pool, "A-1").await.unwrap().is_some());
 }
+
+/// 0009 opened the provider set: a value the app has never heard of stores fine
+/// (ProviderId::parse rejects it at resolve time — that is where validation lives).
+#[tokio::test]
+async fn the_provider_column_takes_any_value() {
+    let pool = test_pool().await;
+    let mut row = mirror_task("SOME-1");
+    row.provider = "someday".to_string();
+    provider_tasks::upsert(&pool, &row).await.expect("no CHECK constraint remains");
+    let back = provider_tasks::get_by_short_id(&pool, "SOME-1").await.unwrap().unwrap();
+    assert_eq!(back.provider, "someday");
+}
