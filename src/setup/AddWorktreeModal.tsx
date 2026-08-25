@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 
@@ -7,8 +7,10 @@ import { useSession, useStore } from '../shared/store';
  * branch. Sibling of AddRepoModal: that one attaches a NEW repo, this one only
  * takes a branch, because the repo is the one you are looking at.
  *
- * The task id is appended so the branch stays traceable to its task, the way
- * provisioning's own default (`<type>/<slug>-<id>`) does.
+ * The field starts from the branch provisioning itself would derive (asked for,
+ * never rebuilt here), stepped `-2`, `-3`… past the branches this repo already
+ * has. Within one task a numeric suffix is unambiguous — it separates worktrees,
+ * not tasks.
  */
 export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   const activeTask = useSession((s) => s.activeTask);
@@ -20,24 +22,35 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const seeded = useRef(false);
 
   const repo = activeRepos.find((r) => r.id === activeRepoId) ?? activeRepos[0];
-  const taskId = (activeTask?.short_id ?? '').toLowerCase();
-
-  // What will actually be created. Shown live, so the suffix rule needs no prose.
-  const branch = useMemo(() => {
-    const name = typed.trim().toLowerCase().replace(/\s+/g, '-').replace(/-+$/, '');
-    if (!name) return '';
-    // Do not append twice when the name already carries the id.
-    return name.endsWith(taskId) ? name : `${name}-${taskId}`;
-  }, [typed, taskId]);
 
   // The branches this repo already has here: a repeat would silently land on the
-  // existing worktree (the row upserts on session+repo+branch) and look like a no-op.
-  const taken = activeWorktrees
-    .filter((w) => w.repo_id === repo?.id)
-    .map((w) => w.branch);
+  // existing worktree (the row upserts on session+repo+branch) and read as a no-op.
+  const taken = useMemo(
+    () => activeWorktrees.filter((w) => w.repo_id === repo?.id).map((w) => w.branch),
+    [activeWorktrees, repo?.id],
+  );
 
+  // Seeded once from the backend's own convention — the same value the first
+  // worktree got, stepped past whatever is already checked out.
+  useEffect(() => {
+    const shortId = activeTask?.short_id;
+    if (!shortId || seeded.current) return;
+    invoke<string>('default_branch_for_session', { shortId })
+      .then((base) => {
+        const root = base.trim();
+        if (seeded.current || !root) return;
+        seeded.current = true;
+        let candidate = root;
+        for (let n = 2; taken.includes(candidate); n++) candidate = `${root}-${n}`;
+        setTyped(candidate);
+      })
+      .catch(() => { /* leave it empty; the user types their own */ });
+  }, [activeTask?.short_id, taken]);
+
+  const branch = typed.trim();
   const clash = !!branch && taken.includes(branch);
 
   const submit = async () => {
@@ -56,7 +69,7 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
         return;
       }
       await invoke('provision_worktrees', {
-        shortId: activeTask.short_id,
+        taskId: activeTask.short_id,
         branches: [{ repo_id: repo.id, branch_name: branch }],
       });
       notify({ kind: 'success', source: 'git', title: `Added ${repo.project} on ${branch}` });
@@ -82,7 +95,7 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
         <div className="wizard-body">
           <p className="wizard-desc">
             Another branch of <code>{repo.project}</code>, checked out beside the ones this
-            session already has. The task id is appended so the branch stays traceable.
+            session already has. Creation is blocked if the branch already exists on origin.
           </p>
 
           <label className="firstrun-field">
@@ -95,11 +108,11 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => { setTyped(e.target.value); setError(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter' && branch && !clash) submit(); }}
             />
-            <span className="firstrun-hint">
-              {branch
-                ? <>Creates <code>{branch}</code>{clash && <> — already checked out here.</>}</>
-                : <>Creation is blocked if the branch already exists on origin.</>}
-            </span>
+            {clash && (
+              <span className="firstrun-hint">
+                <code>{branch}</code> is already checked out here.
+              </span>
+            )}
           </label>
 
           {taken.length > 0 && (
