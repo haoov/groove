@@ -384,10 +384,19 @@ pub(super) async fn add_task_repo(
         ));
     };
 
+    // Resolve the branch NOW rather than letting provisioning derive it: the
+    // approval dialog has to name the branch it is about to create.
+    let branch = match input["branch"].as_str().map(str::trim).filter(|b| !b.is_empty()) {
+        Some(b) => b.to_string(),
+        None => crate::worktrees::default_branch_for(&task_id, &state.pool)
+            .await
+            .map_err(|e| anyhow::anyhow!("cannot work out a branch for {task_id}: {e}"))?,
+    };
+
     let payload = serde_json::json!({
         "task_id": task_id,
         "repo": repo,
-        "branch": input["branch"].as_str(),
+        "branch": branch,
     });
 
     if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_REPO, Some(&task_id), &payload).await {

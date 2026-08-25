@@ -107,6 +107,7 @@ pub fn run() {
             worktrees::list_main_repos,
             worktrees::clone_repo,
             worktrees::provision_worktrees,
+            worktrees::default_branch_for_session,
             worktrees::close_worktree,
             worktrees::remote_branch_exists,
             worktrees::get_worktree_status,
