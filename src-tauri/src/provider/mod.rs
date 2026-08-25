@@ -1,4 +1,28 @@
 //! Where tasks come from. One module per source, behind a shared trait.
+//!
+//! # Adding a provider
+//!
+//! Every sanctioned edit site, in order. Start at 1 — the compiler walks you
+//! through the rest; the two frontend records are tsc-enforced the same way.
+//!
+//! 1. `types.rs`: a `ProviderId` variant + its `ALL` entry and `as_str` arm.
+//! 2. `types.rs`: a `TaskKey` variant + its `parse`/`external_id`/`provider` arms.
+//! 3. This file: the provider module, its static instance, and a `REGISTRY` row
+//!    (the array is sized by `ALL`, so it refuses to compile until then).
+//! 4. `core/config/mod.rs`: a `Config` field. A token-bearing provider also
+//!    needs a `ConfigView` mapping that strips the secret, and an accessor.
+//! 5. `provider/<name>/setup.rs`: the setup payload struct + `build_config`;
+//!    then the `set_task_source` match (task_manager/setup.rs) and
+//!    `write_initial_config` gain their arms.
+//! 6. `task_manager/setup.rs`: a `SetupRequest` field, named EXACTLY
+//!    `ProviderId::as_str()` — the setup screen splices payloads in by id.
+//! 7. Frontend: `src/setup/sources/index.tsx` (`SOURCES`) and
+//!    `src/shared/lib/taskProvider.ts` (`PROVIDERS`) — both `Record<ProviderId,…>`.
+//! 8. `pnpm gen:types`.
+//!
+//! What needs NO edit: MCP tool prose (built from the registry), the DB schema
+//! (`provider` is an open TEXT column), resolve/minting/mirroring, approvals,
+//! and the Home filter.
 
 pub mod commands;
 pub mod detect;
