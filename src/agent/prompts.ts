@@ -49,12 +49,6 @@ const createTask = (ctx: PromptContext) =>
   (ctx.provider ? ` and provider "${ctx.provider}"` : '') +
   '.\n';
 
-// Chat output, not a tool field — so the shape guidance has to be here.
-const summarize = (ctx: PromptContext) =>
-  `In session ${ctx.shortId}: read the current change with get_task_diff and tell me ` +
-  'in the chat what it does and why. Cover the change as a whole, no file-by-file ' +
-  'walkthrough.\n';
-
 const openMr = (ctx: PromptContext) =>
   `In session ${ctx.shortId}: open an MR for the work on this branch. Read ` +
   'get_task_diff and get_commit_log first so the description matches what actually ' +
@@ -74,7 +68,6 @@ const ACTIONS: Record<SessionKind, AgentAction[]> = {
   ],
   explorer: [
     { id: 'create-task', label: 'create task', title: 'Draft a task from this session', build: createTask },
-    { id: 'summarize', label: 'summarize', title: 'Explain the current change', build: summarize },
   ],
   task: [
     { id: 'open-mr', label: 'open MR', title: 'Draft an MR for this branch (you approve it)', build: openMr },
