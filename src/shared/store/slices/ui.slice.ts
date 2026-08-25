@@ -59,6 +59,8 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   setPickerCursor: (n) => set({ pickerCursor: n }),
   addRepoOpen: false,
   setAddRepoOpen: (v) => set({ addRepoOpen: v }),
+  addWorktreeOpen: false,
+  setAddWorktreeOpen: (v) => set({ addWorktreeOpen: v }),
 
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v }),
@@ -78,6 +80,4 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   },
 
   // Task wizard
-  wizardTask: null,
-  setWizardTask: (t) => set({ wizardTask: t }),
 });

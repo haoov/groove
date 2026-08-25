@@ -33,6 +33,41 @@ pub async fn provision_worktrees(
         .map_err(|e| e.to_string())
 }
 
+/// The branch a new worktree gets when the caller names none — the same value
+/// provisioning derives.
+///
+/// Exposed so a caller can SHOW it before the branch exists: an approval that
+/// cannot name the branch it is about to create is asking the user to approve
+/// something they cannot see, and a prefilled field that disagrees with what gets
+/// created is worse than an empty one.
+pub(crate) async fn default_branch_for(
+    session_id: &str,
+    pool: &SqlitePool,
+) -> anyhow::Result<String> {
+    let session = store::sessions::get(pool, session_id).await?;
+    let tag = branch_tag_of(&session.id, pool).await;
+    Ok(naming::default_branch(&session, tag.as_deref()))
+}
+
+/// What the task calls itself at its source, appended to the branch.
+async fn branch_tag_of(session_id: &str, pool: &SqlitePool) -> Option<String> {
+    store::provider_tasks::get_by_short_id(pool, session_id)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|t| t.branch_tag)
+}
+
+/// The branch a new worktree would get, for a caller that wants to SHOW it (and
+/// let the user edit it) before anything is created.
+#[tauri::command]
+pub async fn default_branch_for_session(
+    short_id: String,
+    pool: tauri::State<'_, SqlitePool>,
+) -> Result<String, String> {
+    default_branch_for(&short_id, &pool).await.map_err(|e| e.to_string())
+}
+
 /// Provision one worktree per spec, concurrently — each repo's fetch is
 /// network-bound and independent.
 pub(crate) async fn provision_worktrees_impl(
@@ -42,11 +77,7 @@ pub(crate) async fn provision_worktrees_impl(
 ) -> anyhow::Result<Vec<Worktree>> {
     let session = store::sessions::get(pool, session_id).await?;
 
-    let tag = store::provider_tasks::get_by_short_id(pool, &session.id)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|t| t.branch_tag);
+    let tag = branch_tag_of(&session.id, pool).await;
 
     futures_util::future::try_join_all(branches.iter().map(|spec| {
         let session = &session;

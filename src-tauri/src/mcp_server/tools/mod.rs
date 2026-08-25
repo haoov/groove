@@ -93,6 +93,7 @@ pub(super) async fn dispatch(
         "log_task_hours" => write::log_task_hours(input, state, mcp_session).await,
         "update_task_body" => write::update_task_body(input, state, mcp_session).await,
         "add_task_repo" => write::add_task_repo(input, state, mcp_session).await,
+        "add_task_worktree" => write::add_task_worktree(input, state, mcp_session).await,
 
         // Writes the user never has to approve (local, reversible, UI-visible)
         "create_annotation" => write::create_annotation(input, state).await,

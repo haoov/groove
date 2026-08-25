@@ -307,3 +307,25 @@ async fn disabling_a_provider_prunes_only_its_sessionless_rows() {
     assert!(provider_tasks::get_by_short_id(&pool, "N-2").await.unwrap().is_none());
     assert!(provider_tasks::get_by_short_id(&pool, "gh-a-b-1").await.unwrap().is_some());
 }
+
+/// An MR is addressed by its local id ONLY. The forge number is unique per
+/// worktree, not globally, so `42` can name two MRs in different repos — and the
+/// callers of this lookup go on to write to the real one.
+#[tokio::test]
+async fn an_mr_is_addressed_by_its_local_id() {
+    let pool = test_pool().await;
+    repos::upsert(&pool, &repo("g/a")).await.unwrap();
+    repos::upsert(&pool, &repo("g/b")).await.unwrap();
+    sessions::create_explorer(&pool, "explorer-9", "X").await.unwrap();
+    let one = worktrees::upsert(&pool, "explorer-9", "g/a", "b", "/wt/9/a").await.unwrap();
+    let two = worktrees::upsert(&pool, "explorer-9", "g/b", "b", "/wt/9/b").await.unwrap();
+
+    // The same number in two repos — which is why the number is not a key.
+    let mr = mrs::upsert(&pool, &one.id, "gitlab", "42", "https://x/42", "open").await.unwrap();
+    let other = mrs::upsert(&pool, &two.id, "gitlab", "42", "https://y/42", "open").await.unwrap();
+    assert_ne!(mr.id, other.id, "distinct MRs despite the shared number");
+
+    assert_eq!(mrs::get(&pool, &mr.id).await.unwrap().url, "https://x/42");
+    assert_eq!(mrs::get(&pool, &other.id).await.unwrap().url, "https://y/42");
+    assert!(mrs::get(&pool, "42").await.is_err(), "the number is not an id");
+}

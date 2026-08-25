@@ -125,12 +125,12 @@ export function useIpc() {
     };
 
     const setup = async () => {
-      // workspace_stub — first open, backend wants us to show the wizard
+      // workspace_stub — first open: the task has no worktrees yet, so the
+      // session lands on its Overview, where Repositories offers Add repo.
       track(
         await listen<WorkspaceStubEvent>(EVENT.WORKSPACE_STUB, ({ payload }) => {
           const s = useStore.getState();
           s.upsertTask(payload.task);
-          s.setWizardTask(payload.task);
           s.openSession({ kind: payload.kind ?? 'task', task: payload.task, worktrees: [], repos: [] });
         })
       );

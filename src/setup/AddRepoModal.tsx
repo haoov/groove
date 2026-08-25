@@ -14,7 +14,17 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
   const activeRepos = useSession((s) => s.activeRepos);
   const isExplorer = useSession((s) => s.kind === 'explorer');
   const notify = useStore((s) => s.notify);
-  const defaultBranch = (activeTask?.short_id ?? '').toLowerCase();
+  // The branch provisioning would actually create. Asked for rather than guessed:
+  // the convention lives in the backend (`<type>/<slug>-<id>`), and a prefill that
+  // disagrees with what gets created is worse than no prefill.
+  const [defaultBranch, setDefaultBranch] = useState((activeTask?.short_id ?? '').toLowerCase());
+  useEffect(() => {
+    const shortId = activeTask?.short_id;
+    if (!shortId) return;
+    invoke<string>('default_branch_for_session', { shortId })
+      .then((b) => { if (b.trim()) setDefaultBranch(b.trim()); })
+      .catch(() => { /* keep the short-id fallback */ });
+  }, [activeTask?.short_id]);
 
   // repo.id → branch name. Seeded with the task branch when a repo is selected so
   // the field holds real text you can prepend or append to; a placeholder gave
@@ -62,7 +72,8 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         // Resolve each repo's target branch (typed override, or the task default).
         const specs = selectedRepos.map((r) => {
           const typed = (branchByRepo[r.id] ?? '').trim();
-          return { repo: r, branch: typed || defaultBranch, custom: typed || null };
+          const branch = typed || defaultBranch;
+          return { repo: r, branch };
         });
 
         // Refuse if any target branch already exists on the repo's origin.
@@ -82,7 +93,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         await invoke('set_task_repos', { shortId, repoIds: mergedIds });
         await invoke('provision_worktrees', {
           taskId: shortId,
-          branches: specs.map((s) => ({ repo_id: s.repo.id, branch_name: s.custom })),
+          branches: specs.map((s) => ({ repo_id: s.repo.id, branch_name: s.branch })),
         });
       }
       // The repos are attached and provisioned by this point, so a failed refresh
@@ -124,8 +135,8 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
               branch, renamed to the task branch if you turn this into a task.</>
             ) : (
               <>Select repositories to add, then name each branch (defaults to{' '}
-              <code>{activeTask.short_id.toLowerCase()}</code>). Creation is blocked if the
-              branch already exists on the repo's origin.</>
+              <code>{defaultBranch}</code>). Creation is blocked if the branch already
+              exists on the repo's origin.</>
             )}
           </p>
 

@@ -101,11 +101,16 @@ async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeE
     .await)
 }
 
-/// Fold the flat snapshot rows into one entry per session, keeping row order.
+/// Fold the flat snapshot rows into ONE entry per session, in first-seen order.
+///
+/// Looks the session up rather than trusting that its rows are adjacent: they are
+/// only adjacent while the query's ORDER BY happens to group them, and a tie there
+/// used to interleave two sessions and list one of them twice.
 fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
     let mut entries: Vec<(HomeEntry, Vec<HomeRow>)> = vec![];
+    let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for row in rows {
-        if entries.last().map(|(e, _)| e.short_id.as_str()) != Some(row.session_id.as_str()) {
+        let at = *seen.entry(row.session_id.clone()).or_insert_with(|| {
             entries.push((
                 HomeEntry {
                     short_id: row.session_id.clone(),
@@ -118,9 +123,10 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
                 },
                 vec![],
             ));
-        }
+            entries.len() - 1
+        });
         if row.repo_id.is_some() {
-            entries.last_mut().unwrap().1.push(row);
+            entries[at].1.push(row);
         }
     }
     entries
@@ -205,4 +211,58 @@ async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<Home
         unresolved: 0,
         approved: false,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(session: &str, project: Option<&str>) -> HomeRow {
+        HomeRow {
+            session_id: session.to_string(),
+            kind: SessionKind::Task,
+            title: format!("Title of {session}"),
+            status: None,
+            priority: None,
+            provider: None,
+            repo_id: project.map(|p| format!("repo-{p}")),
+            project: project.map(str::to_string),
+            repo_host: None,
+            repo_local_path: None,
+            worktree_id: None,
+            branch: None,
+            worktree_path: None,
+            base_ref: None,
+            mr_id: None,
+            mr_platform: None,
+            mr_remote_id: None,
+            mr_url: None,
+            mr_state: None,
+        }
+    }
+
+    /// Two sessions opened in the same second share created_at, so the query's
+    /// secondary sort used to interleave their rows — and a session whose rows
+    /// were split appeared TWICE on Home.
+    #[test]
+    fn interleaved_rows_still_yield_one_entry_per_session() {
+        let entries = group_rows(vec![
+            row("B", Some("alpha")),
+            row("A", Some("beta")),
+            row("B", Some("charlie")),
+        ]);
+
+        let ids: Vec<&str> = entries.iter().map(|(e, _)| e.short_id.as_str()).collect();
+        assert_eq!(ids, ["B", "A"], "one entry per session, in first-seen order");
+        assert_eq!(entries[0].1.len(), 2, "both of B's repos land on B");
+        assert_eq!(entries[1].1.len(), 1);
+    }
+
+    /// A session with no repos is still an entry, with no repo rows.
+    #[test]
+    fn a_session_with_no_repos_is_kept() {
+        let entries = group_rows(vec![row("solo", None)]);
+        assert_eq!(entries.len(), 1);
+        assert!(entries[0].1.is_empty());
+    }
 }

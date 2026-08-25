@@ -1,4 +1,4 @@
-// "Commit & Push" chaining (REWORK N5). The push must be posted only AFTER the
+// "Commit & Push" chaining. The push must be posted only AFTER the
 // commit's confirmation resolves approved — posting both at once let the user
 // deny the commit and still approve a push of a not-yet-committed tree.
 

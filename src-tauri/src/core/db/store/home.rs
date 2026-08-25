@@ -45,7 +45,10 @@ pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>
          LEFT JOIN worktrees w ON w.session_id = s.id AND w.repo_id = r.id
          LEFT JOIN mrs m ON m.id =
            (SELECT id FROM mrs WHERE worktree_id = w.id ORDER BY rowid DESC LIMIT 1)
-         ORDER BY s.created_at DESC, r.project",
+         -- s.id breaks the created_at tie: unixepoch() is whole seconds, so two
+         -- sessions opened in the same second would otherwise interleave their
+         -- repo rows and the caller would see one session twice.
+         ORDER BY s.created_at DESC, s.id, r.project",
     )
     .fetch_all(exec)
     .await?)

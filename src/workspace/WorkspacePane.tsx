@@ -264,7 +264,8 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
 
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const wt = activeWorktreeFor(activeWorktrees, tab.repoId, activeWorktreeId);
-  // Worktree-keyed (falls back to the repo while provisioning) — REWORK re-key.
+  // Worktree-keyed (falls back to the repo while provisioning): one repo can have
+  // several worktrees in a session, so a repo key would collide across branches.
   const key = `${wt?.id ?? tab.repoId}/${tab.filePath}`;
   const hunks = diffHunks[key];
   const expand = useDiffExpand({

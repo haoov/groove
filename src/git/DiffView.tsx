@@ -86,7 +86,7 @@ export function RepoDiffSection({
 }) {
   const openAnns = annotations.filter((a) => a.repo_id === repo.repo_id && a.status === 'open');
   // Cache/expansion key base: the worktree, not the repo — two worktrees of one
-  // repo must not share hunks (REWORK ledger re-key).
+  // repo must not share hunks.
   const keyBase = worktreeId ?? repo.repo_id;
 
   // File-level keyboard navigation. The editors inside expanded files own j/k for

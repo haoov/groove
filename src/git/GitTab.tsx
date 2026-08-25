@@ -206,7 +206,12 @@ export function ChangedFilesList({
 }) {
   const diff = useSession((s) => s.diff);
   const panelFocusNonce = useStore((s) => s.panelFocusNonce);
-  const files = repoId ? (diff?.repos.find((r) => r.repo_id === repoId)?.files ?? []) : [];
+  // Memoized because the row model below keys on it: the `?? []` fallback is a new
+  // array every render, which would rebuild the tree on every keystroke.
+  const files = useMemo(
+    () => (repoId ? (diff?.repos.find((r) => r.repo_id === repoId)?.files ?? []) : []),
+    [diff, repoId],
+  );
 
   // Flat by default; tree groups files by folder. The choice is per-user and
   // persisted; right-click the list to switch.

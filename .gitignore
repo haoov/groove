@@ -20,6 +20,13 @@ dist
 dist-ssr
 *.local
 
+# Emitted by the composite tsconfig on `pnpm build`
+*.tsbuildinfo
+# Secrets: the app handles Notion and forge tokens
+.env
+# vitest --coverage
+coverage/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

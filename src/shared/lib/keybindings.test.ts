@@ -105,9 +105,9 @@ describe('loadKeymap', () => {
   it('writes the migrated map back, so the migration runs once', () => {
     localStorage.setItem('workbench.keymap.v4', JSON.stringify(defaultKeymap()));
     loadKeymap();
-    expect(store.has('workbench.keymap.v6')).toBe(true);
+    expect(store.has('workbench.keymap.v7')).toBe(true);
   });
-});
+
 
 describe('assignBinding', () => {
   it('takes the chord off whichever command had it', () => {
@@ -265,5 +265,20 @@ describe('Linux defaults are untouched by the port', () => {
     expect(linux['workspace.toggleTerminal']).toEqual([{ key: "'", alt: true }]);
     expect(linux['pane.splitRight']).toEqual([{ key: '|', alt: true, shift: true }]);
     expect(linux['pane.splitDown']).toEqual([{ key: '-', alt: true }]);
+  });
+});
+
+  /// Alt+O moved from pane.next to panel.overview. A customised map must not keep
+  /// it for both — the conflict resolver would silently unbind one.
+  it('releases Alt+O to Overview when upgrading a customised map', () => {
+    const saved = defaultKeymap();
+    saved['pane.next'] = [{ key: 'o', alt: true }];
+    delete (saved as Partial<Keymap>)['panel.overview'];
+    localStorage.setItem('workbench.keymap.v6', JSON.stringify(saved));
+
+    const map = loadKeymap();
+
+    expect(map['panel.overview']?.[0].key).toBe('o');
+    expect(map['pane.next']?.[0].key).toBe('i');
   });
 });
