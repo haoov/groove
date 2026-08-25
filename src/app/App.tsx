@@ -14,6 +14,7 @@ import { ConfirmModal } from '../approvals/ConfirmModal';
 import { CommandPalette } from '../command/CommandPalette';
 import { TaskOpenWizard } from '../setup/TaskOpenWizard';
 import { AddRepoModal } from '../setup/AddRepoModal';
+import { AddWorktreeModal } from '../setup/AddWorktreeModal';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import { SettingsModal } from '../setup/SettingsModal';
 import { Toasts } from '../notifications/Toasts';
@@ -80,7 +81,9 @@ export default function App() {
   // Mounted once here rather than twice with local state, so Alt+R and both
   // buttons open the same instance.
   const addRepoOpen = useStore((s) => s.addRepoOpen);
+  const addWorktreeOpen = useStore((s) => s.addWorktreeOpen);
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
+  const setAddWorktreeOpen = useStore((s) => s.setAddWorktreeOpen);
 
   // Agent state lives in memory on the backend, so after a reload the app knows
   // nothing until the next hook fires — ask once for whatever is already known.
@@ -144,6 +147,7 @@ export default function App() {
       <CommandPalette />
       <TaskOpenWizard />
       {addRepoOpen && <AddRepoModal onClose={() => setAddRepoOpen(false)} />}
+      {addWorktreeOpen && <AddWorktreeModal onClose={() => setAddWorktreeOpen(false)} />}
       <SettingsModal />
       <Toasts />
 

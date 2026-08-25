@@ -80,7 +80,9 @@ export interface UiSlice {
   /** Alt+Shift+R add-repo wizard. One flag, so the two buttons that used to hold
    *  their own local state and the keybinding all open the same instance. */
   addRepoOpen: boolean;
+  addWorktreeOpen: boolean;
   setAddRepoOpen: (v: boolean) => void;
+  setAddWorktreeOpen: (v: boolean) => void;
 
   // ── Settings ──────────────────────────────────────────────────────────────
   settingsOpen: boolean;

@@ -290,12 +290,13 @@ function RepoRows({
 }
 
 function WorktreeRows({
-  worktrees, activeWorktreeId, onSelect, onClose,
+  worktrees, activeWorktreeId, onSelect, onClose, onAddWorktree,
 }: {
   worktrees: WtLite[];
   activeWorktreeId: string | null;
   onSelect: (id: string) => void;
   onClose: () => void;
+  onAddWorktree: () => void;
 }) {
   const select = (w: WtLite) => { onSelect(w.id); onClose(); };
   const activeIdx = worktrees.findIndex((w) => w.id === activeWorktreeId);
@@ -317,6 +318,12 @@ function WorktreeRows({
           <span className="hp-row-title">{w.branch}</span>
         </button>
       ))}
+      {/* Another branch of THIS repo — the repo picker's Add repo attaches a new
+          one, this adds a worktree to the one in scope. */}
+      <button className="hp-row hp-row-add" onClick={() => { onAddWorktree(); onClose(); }}>
+        <span className="hp-tick"><Plus size={12} strokeWidth={2} /></span>
+        Add worktree…
+      </button>
     </div>
   );
 }
@@ -326,6 +333,7 @@ export function HeaderPickers() {
   const sessionCount = useStore((s) => s.sessionOrder.length);
   const setOpenPicker = useStore((s) => s.setOpenPicker);
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
+  const setAddWorktreeOpen = useStore((s) => s.setAddWorktreeOpen);
 
   const sessionId = useSession((s) => s.id);
   const sessionKind = useSession((s) => s.kind);
@@ -401,6 +409,7 @@ export function HeaderPickers() {
             activeWorktreeId={activeWorktreeId}
             onSelect={setActiveWorktreeId}
             onClose={close}
+            onAddWorktree={() => setAddWorktreeOpen(true)}
           />
         </Picker>
       )}
