@@ -82,11 +82,14 @@ async fn relocate_worktree(
     session_dir: &std::path::Path,
     new_branch: &str,
 ) -> Result<String, String> {
-    let dest = session_dir
-        .join(crate::worktrees::naming::worktree_dir(&repo.project, new_branch))
-        .to_string_lossy()
-        .to_string();
-    let _ = std::fs::create_dir_all(session_dir);
+    let dest_path =
+        session_dir.join(crate::worktrees::naming::worktree_dir(&repo.project, new_branch));
+    let dest = dest_path.to_string_lossy().to_string();
+    // worktree_dir keeps the branch's slashes as real directories, and
+    // `git worktree move` does not create the missing parents itself.
+    if let Some(parent) = dest_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
     match crate::core::git::output(
         &repo.local_path,
         &["worktree", "move", &wt.path, &dest],
