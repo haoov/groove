@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, RotateCcw, Clock, FileText, Tag } from 'lucide-react';
+import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
 
@@ -17,6 +17,7 @@ const OP_LABELS: Record<string, string> = {
   [OP.TASK_BODY]: 'Update task description',
   [OP.TASK_CREATE]: 'Create task',
   [OP.TASK_ADD_REPO]: 'Add repo to task',
+  [OP.TASK_ADD_WORKTREE]: 'Add worktree to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
   [OP.GIT_DISCARD]: 'Discard changes',
   [OP.GIT_DISCARD_ALL]: 'Discard all changes',
@@ -39,6 +40,7 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.TASK_BODY]: <FileText size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
+  [OP.TASK_ADD_WORKTREE]: <GitBranch size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD]: <RotateCcw   size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD_ALL]: <RotateCcw size={14} strokeWidth={1.75} />,
@@ -188,6 +190,19 @@ function PayloadView({ op, payload, edits, setField }: {
           {str('branch') && <Field label="Branch" value={str('branch')} mono />}
           <div className="cp-hint">
             Attaches the repo and creates its worktree. Repos already on the task stay.
+          </div>
+        </>
+      );
+
+    case OP.TASK_ADD_WORKTREE:
+      return (
+        <>
+          <Field label="Repo"   value={str('repo') || 'the task\u2019s only repo'} mono />
+          <Field label="Task"   value={str('task_id')} mono />
+          <Field label="Branch" value={str('branch')} mono />
+          <div className="cp-hint">
+            Checks out another branch of a repo the task already has, beside the
+            worktrees it holds now. Nothing existing is touched.
           </div>
         </>
       );

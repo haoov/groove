@@ -301,6 +301,43 @@ pub(super) async fn create_task(
 ///
 /// Defaults to the caller's OWN task, like the other task-scoped writes — an agent
 /// adding a repo means its own session, not whatever the user is looking at.
+/// A second worktree on a repo the task already holds. Separate from
+/// add_task_repo: the repo is not the question, the branch is.
+pub(super) async fn add_task_worktree(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let branch = str_field(&input, "branch")?;
+    let Some(task_id) = input["task_id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| state.task_for(mcp_session))
+    else {
+        return Ok(ToolCallResponse::err(
+            "No task to add the worktree to — open a task session first.",
+        ));
+    };
+
+    let payload = serde_json::json!({
+        "task_id": task_id,
+        "branch": branch,
+        "repo": input["repo"].as_str(),
+    });
+
+    match post_and_wait(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await? {
+        ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
+        ResolveOutcome::Rejected => {
+            Ok(ToolCallResponse::err("Adding the worktree was rejected by the user"))
+        }
+        // Unknown repo, a branch already checked out, wrong session kind — each
+        // message says what to do instead.
+        ResolveOutcome::Failed(e) => {
+            Ok(ToolCallResponse::err(format!("Could not add the worktree: {e}")))
+        }
+    }
+}
+
 pub(super) async fn add_task_repo(
     input: serde_json::Value,
     state: &McpState,

@@ -28,11 +28,13 @@ pub const TASK_BODY: &str = "task.body";
 pub const TASK_CREATE: &str = "task.create";
 /// Attach an already-cloned repo to a task and provision its worktree.
 pub const TASK_ADD_REPO: &str = "task.add_repo";
+/// A second worktree on a repo the session already has.
+pub const TASK_ADD_WORKTREE: &str = "task.add_worktree";
 pub const TASK_CREATE_FROM_EXPLORER: &str = "task.create_from_explorer";
 
 /// Every op, for the mirror test below.
 #[cfg(test)]
-const ALL: [&str; 15] = [
+const ALL: [&str; 16] = [
     GIT_COMMIT,
     GIT_PUSH,
     GIT_PULL,
@@ -47,6 +49,7 @@ const ALL: [&str; 15] = [
     TASK_BODY,
     TASK_CREATE,
     TASK_ADD_REPO,
+    TASK_ADD_WORKTREE,
     TASK_CREATE_FROM_EXPLORER,
 ];
 
@@ -196,6 +199,9 @@ pub(super) async fn execute(
             // Local git and DB work only. The handle is for the workspace_ready
             // refresh the add ends with.
             crate::task_manager::add_repo_impl(payload, pool, handle).await
+        }
+        TASK_ADD_WORKTREE => {
+            crate::task_manager::add_worktree_impl(payload, pool, handle).await
         }
         TASK_CREATE_FROM_EXPLORER => {
             // Already returns the created task (short_id, page id, …).

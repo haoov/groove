@@ -10,6 +10,6 @@ mod setup;
 pub use commands::*;
 pub use conversion::create_task_from_explorer_impl;
 pub use hours::*;
-pub use repos::add_repo_impl;
+pub use repos::{add_repo_impl, add_worktree_impl};
 pub use sessions::*;
 pub use setup::*;

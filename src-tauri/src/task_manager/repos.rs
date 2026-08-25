@@ -143,6 +143,101 @@ pub async fn add_repo_impl(
     }))
 }
 
+/// Add ANOTHER worktree for a repo the session already holds — the same repo, a
+/// different branch. The confirmation-bridge path for `task.add_worktree`.
+///
+/// Separate from `add_repo_impl` on purpose: that one attaches a repo the session
+/// does not have and may derive the branch, while this one requires the branch (a
+/// second worktree with the same branch is the first one) and requires the repo to
+/// be attached already. One op, one meaning — the approval dialog says which.
+pub async fn add_worktree_impl(
+    payload: serde_json::Value,
+    pool: &SqlitePool,
+    app: &tauri::AppHandle,
+) -> anyhow::Result<serde_json::Value> {
+    let task_id = payload["task_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("missing task_id"))?;
+    let branch = payload["branch"]
+        .as_str()
+        .map(str::trim)
+        .filter(|b| !b.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("a branch name is required — that is what makes it a second worktree"))?;
+
+    let kind = store::sessions::kind_of(pool, task_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("no session {task_id}"))?;
+    if let Some(why) = refusal_for(kind) {
+        anyhow::bail!("{why}");
+    }
+
+    // The repo must already be on the session: attaching one is add_task_repo's job.
+    let attached = store::repos::attached_to(pool, task_id).await?;
+    let repo = match payload["repo"].as_str().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(name) => attached
+            .iter()
+            .find(|r| {
+                r.project.eq_ignore_ascii_case(name)
+                    || format!("{}/{}", r.group_path, r.project).eq_ignore_ascii_case(name)
+            })
+            .cloned()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "{task_id} has no repo '{name}'. It has: {}. Use add_task_repo to attach a new one.",
+                    attached.iter().map(|r| r.project.as_str()).collect::<Vec<_>>().join(", ")
+                )
+            })?,
+        // One repo needs no naming; several do.
+        None => match attached.as_slice() {
+            [only] => only.clone(),
+            [] => anyhow::bail!("{task_id} has no repos yet — use add_task_repo"),
+            many => anyhow::bail!(
+                "{task_id} has {} repos — say which: {}",
+                many.len(),
+                many.iter().map(|r| r.project.as_str()).collect::<Vec<_>>().join(", ")
+            ),
+        },
+    };
+
+    // A worktree already on this branch IS this request's outcome, so say so
+    // rather than reporting a no-op as success.
+    if let Some(existing) = store::worktrees::for_repo(pool, task_id, &repo.id)
+        .await?
+        .into_iter()
+        .find(|wt| wt.branch == branch)
+    {
+        anyhow::bail!(
+            "{} already has a worktree on {branch} at {}",
+            repo.project,
+            existing.path
+        );
+    }
+
+    let spec = crate::worktrees::BranchSpec {
+        repo_id: repo.id.clone(),
+        branch_name: Some(branch.to_string()),
+    };
+    let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
+    let wt = worktrees
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("no worktree was created for {}", repo.project))?
+        .clone();
+
+    // Same reason as add_repo_impl: the workspace holds its worktrees in memory.
+    let task_state = app.state::<super::State>();
+    if let Err(e) = super::open_task_impl(app, task_id, &task_state, pool).await {
+        tracing::warn!("added {branch} to {task_id} but could not refresh the workspace: {e}");
+    }
+
+    Ok(serde_json::json!({
+        "repo": { "id": repo.id, "project": repo.project },
+        "branch": wt.branch,
+        "worktree_id": wt.id,
+        "worktree_path": wt.path,
+        "message": format!("Added a {} worktree on {branch}", repo.project),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
