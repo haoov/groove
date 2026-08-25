@@ -85,33 +85,60 @@ pub(crate) trait TaskProvider: Send + Sync {
 static NOTION: notion::NotionProvider = notion::NotionProvider;
 static GITHUB: github::GithubProvider = github::GithubProvider;
 
+/// One row per provider: its instance, and whether the config carries it. THE
+/// enumeration point — nothing else may list providers.
+struct Entry {
+    id: ProviderId,
+    instance: &'static dyn TaskProvider,
+    configured: fn(&crate::core::config::Config) -> bool,
+}
+
+/// Sized by `ProviderId::ALL`, so a new variant refuses to compile until its
+/// row exists. Keep the order of `ALL`.
+static REGISTRY: [Entry; ProviderId::ALL.len()] = [
+    Entry { id: ProviderId::Notion, instance: &NOTION, configured: |c| c.notion.is_some() },
+    Entry { id: ProviderId::Github, instance: &GITHUB, configured: |c| c.github.is_some() },
+];
+
+fn entry(id: ProviderId) -> &'static Entry {
+    REGISTRY.iter().find(|e| e.id == id).expect("REGISTRY covers every ProviderId")
+}
+
 /// A provider, if it is configured. Asking for one that is not set up is the
 /// error the caller wants, not a client that fails on its first call.
 pub(crate) fn get(id: ProviderId) -> anyhow::Result<&'static dyn TaskProvider> {
-    let configured = crate::core::config::get().is_some_and(|c| match id {
-        ProviderId::Notion => c.notion.is_some(),
-        ProviderId::Github => c.github.is_some(),
-    });
+    let e = entry(id);
+    let configured = crate::core::config::get().is_some_and(|c| (e.configured)(&c));
     if !configured {
         anyhow::bail!("{} is not set up — add it in Settings", id.as_str());
     }
-    match id {
-        ProviderId::Notion => Ok(&NOTION),
-        ProviderId::Github => Ok(&GITHUB),
-    }
+    Ok(e.instance)
 }
 
 /// Every configured provider, for the queue fan-out.
 pub(crate) fn enabled() -> Vec<&'static dyn TaskProvider> {
     let Some(cfg) = crate::core::config::get() else { return vec![] };
-    let mut out: Vec<&'static dyn TaskProvider> = vec![];
-    if cfg.notion.is_some() {
-        out.push(&NOTION);
+    REGISTRY
+        .iter()
+        .filter(|e| (e.configured)(&cfg))
+        .map(|e| e.instance)
+        .collect()
+}
+
+/// At least one task source is set up. The one guard for "would leave none".
+pub(crate) fn has_task_source(cfg: &crate::core::config::Config) -> bool {
+    REGISTRY.iter().any(|e| (e.configured)(cfg))
+}
+
+/// The provider names as prose — "notion or github" — for tool descriptions
+/// that must name the real set, not a stale copy of it.
+pub(crate) fn names_prose() -> String {
+    let names: Vec<&str> = ProviderId::ALL.iter().map(|p| p.as_str()).collect();
+    match names.as_slice() {
+        [] => String::new(),
+        [one] => (*one).to_string(),
+        [head @ .., last] => format!("{} or {last}", head.join(", ")),
     }
-    if cfg.github.is_some() {
-        out.push(&GITHUB);
-    }
-    out
 }
 
 /// The mirror row for a task the provider just reported.
@@ -151,4 +178,51 @@ pub(crate) async fn resolve(
     let id = ProviderId::parse(&row.provider)?;
     let key = TaskKey::parse(id, &row.external_id)?;
     Ok((get(id)?, key))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg(json: &str) -> crate::core::config::Config {
+        serde_json::from_str(json).expect("must parse")
+    }
+
+    const NOTION_ONLY: &str = r#"{
+      "notion": {
+        "token": "t", "database_id": "db", "user_id": "u",
+        "properties": { "status": "Status" },
+        "status_map": { "ready": "Ready", "in_progress": "Doing", "done": "Done" },
+        "filters": { "exclude_statuses": [], "filter_by_assignee": true }
+      },
+      "git": { "worktree_root": "~/w" }
+    }"#;
+
+    #[test]
+    fn the_registry_covers_every_provider_in_order() {
+        for (i, id) in ProviderId::ALL.into_iter().enumerate() {
+            assert_eq!(REGISTRY[i].id, id, "REGISTRY must keep ProviderId::ALL's order");
+        }
+    }
+
+    #[test]
+    fn has_task_source_reads_any_configured_provider() {
+        assert!(has_task_source(&cfg(NOTION_ONLY)));
+        assert!(has_task_source(&cfg(
+            r#"{ "github": { "host": "github.com",
+                 "properties": { "status": "Status" },
+                 "status_map": { "ready": "Ready", "in_progress": "Doing", "done": "Done" } },
+                 "git": { "worktree_root": "~/w" } }"#
+        )));
+        assert!(!has_task_source(&cfg(r#"{ "git": { "worktree_root": "~/w" } }"#)));
+    }
+
+    /// Tool descriptions interpolate this — it must name every provider.
+    #[test]
+    fn names_prose_names_them_all() {
+        let prose = names_prose();
+        for id in ProviderId::ALL {
+            assert!(prose.contains(id.as_str()), "{prose} misses {}", id.as_str());
+        }
+    }
 }

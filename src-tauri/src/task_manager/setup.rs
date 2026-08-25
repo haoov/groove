@@ -301,9 +301,6 @@ pub async fn detect_database(token: String, database_id: String) -> Result<Detec
 /// to the file, so a wrong detection can be corrected without a rebuild.
 #[tauri::command]
 pub async fn write_initial_config(setup: SetupRequest) -> Result<(), String> {
-    if setup.notion.is_none() && setup.github.is_none() {
-        return Err("Set up at least one task source.".into());
-    }
     let root = crate::core::fs::expand_tilde(setup.worktree_root.trim());
     if root.is_empty() {
         return Err("A worktree root is required — the directory repos are cloned into.".into());
@@ -322,6 +319,9 @@ pub async fn write_initial_config(setup: SetupRequest) -> Result<(), String> {
         git: GitConfig { worktree_root: root },
         ui: UiConfig::default(),
     };
+    if !crate::provider::has_task_source(&cfg) {
+        return Err("Set up at least one task source.".into());
+    }
     crate::core::config::replace(cfg).map_err(|e| e.to_string())
 }
 
@@ -438,7 +438,7 @@ pub async fn set_github_source(enabled: bool, host: Option<String>) -> Result<()
         (true, Some(existing)) => Some(existing),
         (true, None) => Some(github_config(&GithubSetup { host })),
     };
-    if cfg.notion.is_none() && cfg.github.is_none() {
+    if !crate::provider::has_task_source(&cfg) {
         return Err("That would leave no task source at all.".into());
     }
     crate::core::config::replace(cfg).map_err(|e| e.to_string())
@@ -452,7 +452,7 @@ pub async fn set_notion_source(setup: Option<NotionSetup>) -> Result<(), String>
         Some(n) => Some(notion_config(n).await?),
         None => None,
     };
-    if cfg.notion.is_none() && cfg.github.is_none() {
+    if !crate::provider::has_task_source(&cfg) {
         return Err("That would leave no task source at all.".into());
     }
     crate::core::config::replace(cfg).map_err(|e| e.to_string())
