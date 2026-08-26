@@ -1,0 +1,107 @@
+/* The agent actions manager, inside the Settings modal. */
+
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  overflow: hidden;
+}
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  background: var(--gl-background-color-default);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+}
+
+.skill-row:hover { background: var(--gl-background-color-hover); }
+.skill-lock { color: var(--gl-text-color-disabled); flex-shrink: 0; }
+
+.skill-id {
+  font-family: var(--font-mono);
+  color: var(--gl-text-color-default);
+  flex-shrink: 0;
+}
+
+/* The description is the least important thing in the row and the longest, so it
+   takes what is left and truncates rather than wrapping every row to two lines. */
+.skill-desc {
+  color: var(--gl-text-color-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-new { margin-top: var(--space-2); }
+
+.skill-editor {
+  margin-top: var(--space-3);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  padding: var(--space-3);
+  background: var(--gl-background-color-overlap);
+}
+
+.skill-editor-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.skill-prefix {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+}
+
+.skill-name { max-width: 200px; }
+.skill-readonly {
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+  margin-right: auto;
+}
+
+.skill-body {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1.55;
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  outline: none;
+}
+
+.skill-body:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+.skill-body[readonly] { color: var(--gl-text-color-subtle); }
+
+.skill-report {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  white-space: pre-wrap;
+}
+
+/* Two classes, so it must sit after .btn-secondary:hover to win on hover. */
+.btn-secondary.danger { color: var(--gl-color-red-400); }
+.btn-secondary.danger:hover { color: var(--gl-color-red-500); border-color: var(--gl-color-red-400); }

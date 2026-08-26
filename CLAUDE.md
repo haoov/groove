@@ -41,6 +41,7 @@ src-tauri/src/
   approvals/       the confirmation bridge — every outward write passes here
   mcp_server/      the tools the agent calls
   agent_manager/   agent + terminal PTYs      agent_hooks/  activity callbacks
+  skills/          the agent's core prompt, its skills, and the plugin dirs for them
   home/            the Home snapshot          annotation_store/  line notes
   editor_host/     file reads and writes for the editor
 src/
@@ -50,7 +51,7 @@ src/
     store/         zustand barrel · types.ts · session.ts (pure reducers) · slices/
     lib/  ui/  styles/
   home/ sessions/ workspace/ files/ git/ notes/ editor/ overview/ agent/ terminal/
-  approvals/ notifications/ command/ setup/     — each owns its components + css
+  approvals/ notifications/ command/ setup/ actions/   — each owns its components + css
 ```
 
 ## Contracts
@@ -67,10 +68,21 @@ payloads, UI constants).
 - approval ops — `approvals/ops.rs` ↔ `shared/ipc/ops.ts` (a Rust test guards both directions)
 - MCP tool descriptions — `mcp_server/tools/definitions.rs` is the ONE place that tells
   the agent how to write a commit message, MR text, an annotation or a task body. Do not
-  restate those rules in `agent/prompts.ts` or here; saying it in three places got it
-  ignored in all three.
+  restate those rules in `agent/prompts.ts`, in a skill, or here; saying it in three
+  places got it ignored in all three.
 
-**Commands**: 102, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
+**Canned asks are skills, not strings.** The pill renders `list_agent_skills` and sends
+`/groove:<name>` through `sendSkill`. Add an action by adding a `SKILL.md` under
+`skills/core/` and a row in `CORE_SKILLS` — there is no prompt table in the frontend.
+A user's own live in `<config>/user-skills/skills/` and are written by the Settings
+manager (`src/actions/`); a skill file is a LOCAL write, so it does not pass approvals.
+
+**Groove suggests, it never auto-sends.** A trigger renders a chip the user clicks
+(`TaskOverview`'s scaffold offer). Opening a session must never start an agent by
+itself — that spends tokens on a glance. `ui.suggest_actions` hides every offer, and
+hides nothing else: the skill stays a button and a slash command.
+
+**Commands**: 105, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules
 is fine as long as a `pub use` keeps the registered path resolving.
 
@@ -102,7 +114,16 @@ path segment is the BRANCH leaf, not the repo. Use the payload's `repo` for disp
 `create_dir_all` the parent before `git worktree move`.
 
 **Agents always start at the worktree ROOT**, never inside a repo or task directory, so
-every prompt must name its session explicitly (`shared/lib/agentSend`, `agent/prompts.ts`).
+cwd carries no session context. The core prompt (`skills/prompt.md`, passed per launch
+with `--append-system-prompt-file`) names the session, so a skill does not repeat it.
+It is appended per launch and never baked into the conversation — edit it and every
+session already open picks it up on its next start. Interpolate only STABLE identity;
+repos, worktrees and MRs drift, and `get_active_task` is read when it is needed.
+
+**Skills are gated by the launch flag.** `--plugin-dir` loads a plugin for ONE
+session, and that is the only thing keeping Groove's skills out of the agents the user
+starts from a terminal. Never install them into `~/.claude/skills` or the worktree root
+instead — the root is the user's own directory and already holds their `CLAUDE.md`.
 
 **Every outward write goes through the approvals bridge** — git commit/push/pull/rebase/
 discard, MR create/update/close, and all task writes. Requests survive a crash and

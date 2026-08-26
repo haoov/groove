@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronUp, Loader2, Play, Sparkles, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
-import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
-import { actionsFor } from './prompts';
+import { ensureAgentSession, sendSkill } from '../shared/lib/agentSend';
 import { SOURCE_IDS } from '../setup/sources';
 import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import type { AgentActivity } from '../shared/ipc/ipc';
+import type { AgentActivity, AgentSkill } from '../shared/ipc/ipc';
 
 /**
  * The agent, as a full-height column on the right of the work.
@@ -41,8 +40,7 @@ export function AgentConsole() {
   const kind = useSession((s) => s.kind);
   const autoApprove = useSession((s) => s.autoApprove);
   const setAutoApprove = useSession((s) => s.setAutoApprove);
-  const repos = useSession((s) => s.activeRepos);
-  const mrs = useSession((s) => s.mrs);
+  const skills = useStore((s) => s.skills);
   const open = useStore((s) => s.consoleOpen);
   const setOpen = useStore((s) => s.setConsoleOpen);
   const focusNonce = useStore((s) => s.consoleFocusNonce);
@@ -137,10 +135,10 @@ export function AgentConsole() {
 
   if (!visible || !activeTask) return null;
 
-  const runAction = async (id: string, prompt: string) => {
-    setSending(id);
+  const runSkill = async (skill: AgentSkill, args?: string) => {
+    setSending(skill.id);
     try {
-      await sendToAgent(sessionKey, prompt);
+      await sendSkill(sessionKey, skill.id, args);
     } catch (e) {
       setLastError(String(e));
     } finally {
@@ -189,24 +187,20 @@ export function AgentConsole() {
           )}
         </div>
 
-        {/* Canned asks below the terminal — the conversation is the main thing. */}
+        {/* The skills below the terminal — the conversation is the main thing.
+            An empty `kinds` offers the skill everywhere, which is what a user
+            skill gets when they name no kind. */}
         <div className="console-actions">
-          {actionsFor(kind).map((a) => {
-            const ctx = {
-              shortId: activeTask.short_id,
-              kind,
-              project: repos[0]?.project,
-              mrNumber: mrs[0] ? `!${mrs[0].remote_id}` : undefined,
-            };
+          {skills.filter((a) => a.kinds.length === 0 || a.kinds.includes(kind)).map((a) => {
             // Filing a task needs a source; with several configured the pill
-            // opens UPWARD (the bar sits at the bottom) and the pick rides
-            // along in the prompt. One source needs no menu — the backend infers.
-            if (a.id === 'create-task' && sources.length > 1) {
+            // opens UPWARD (the bar sits at the bottom) and the pick rides along
+            // as the skill's argument. One source needs no menu — the agent infers.
+            if (a.name === 'create-task' && sources.length > 1) {
               return (
                 <span key={a.id} className="create-task-menu" ref={menuRef}>
                   <button
                     className="console-action"
-                    title={`${a.title} — pick where to file it`}
+                    title={`${a.description} — pick where to file it`}
                     disabled={!!sending}
                     onClick={() => setMenuOpen((v) => !v)}
                   >
@@ -222,7 +216,7 @@ export function AgentConsole() {
                           className="ctx-menu-item"
                           onClick={() => {
                             setMenuOpen(false);
-                            runAction(a.id, a.build({ ...ctx, provider: src }));
+                            runSkill(a, src);
                           }}
                         >
                           <Sparkles size={13} strokeWidth={1.75} />
@@ -237,10 +231,10 @@ export function AgentConsole() {
             return (
               <button
                 key={a.id}
-                className="console-action"
-                title={a.title}
+                className={`console-action ${a.editable ? 'mine' : ''}`}
+                title={a.description}
                 disabled={!!sending}
-                onClick={() => runAction(a.id, a.build(ctx))}
+                onClick={() => runSkill(a)}
               >
                 {sending === a.id && <Loader2 size={11} className="spin" />}
                 {a.label}

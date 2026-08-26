@@ -127,6 +127,7 @@ pub async fn start_agent_session(
     app: tauri::AppHandle,
     task_id: String,
     ptys: tauri::State<'_, Ptys>,
+    pool: tauri::State<'_, sqlx::SqlitePool>,
 ) -> Result<String, String> {
     let cwd = resolve_root_cwd();
 
@@ -180,6 +181,29 @@ pub async fn start_agent_session(
     // app. See agent_hooks for why hooks rather than reading the terminal.
     args.push("--settings".to_string());
     args.push(write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id)).map_err(|e| e.to_string())?);
+
+    // Who this agent is, and how Groove behaves around it. Undocumented in
+    // `--help` but real as of 2.1.245; `--append-system-prompt` takes the text
+    // inline if it ever goes away. A missing session row costs the title, not the
+    // launch.
+    let session = crate::core::db::store::sessions::get_opt(&*pool, &task_id)
+        .await
+        .ok()
+        .flatten();
+    args.push("--append-system-prompt-file".to_string());
+    args.push(
+        write_launch_file(&app, &task_id, "prompt.md", &crate::skills::core_prompt(&task_id, session.as_ref()))
+            .map_err(|e| e.to_string())?,
+    );
+
+    // Skills, gated by the flag itself: `--plugin-dir` loads a plugin for THIS
+    // session only, so a Groove skill never reaches an agent the user starts from
+    // a plain terminal. Verified against Claude Code 2.1.245 — it applies on
+    // `--resume` too, and asks for no trust confirmation.
+    for dir in crate::skills::plugin_dirs(&app) {
+        args.push("--plugin-dir".to_string());
+        args.push(dir);
+    }
 
     // Drop the reported activity with the process, so a "waiting on you" can
     // never outlive the agent it described.

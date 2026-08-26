@@ -3,12 +3,13 @@ import { openExternal } from '../shared/lib/openExternal';
 import { invoke } from '../shared/ipc/invoke';
 import { providerCopy } from '../shared/lib/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
-import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus, Sparkles } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
 import { BodyEditor } from './BodyEditor';
+import { sendSkill } from '../shared/lib/agentSend';
 
 export function TaskOverview() {
   const activeTask = useSession((s) => s.activeTask);
@@ -19,6 +20,24 @@ export function TaskOverview() {
   const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const setLastError = useStore((s) => s.setLastError);
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
+  const sessionId = useSession((s) => s.id);
+  const suggests = useStore((s) => s.config?.ui.suggest_actions ?? true);
+  const hasScaffold = useStore((s) => s.skills.some((k) => k.id === 'groove:scaffold-task'));
+  const [scaffolding, setScaffolding] = useState(false);
+
+  // A suggestion, never an auto-send: opening a task must not spend tokens, and
+  // starting an agent per glance is what an automatic trigger would cost.
+  const scaffold = async () => {
+    setScaffolding(true);
+    useStore.getState().requestConsoleFocus(); // the proposal lands in the chat
+    try {
+      await sendSkill(sessionId, 'groove:scaffold-task');
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      setScaffolding(false);
+    }
+  };
 
   // Clicking a worktree scopes the editor to it and leaves the overview.
   const openWorktree = (repoId: string, worktreeId: string) => {

@@ -7,7 +7,7 @@
 import type {
   Task, Repo, Worktree, Mr, MrThread, Annotation, DiffResult, Hunk, CommitEntry,
   WorktreeStatus, BlameLine, AgentActivity, ConfirmationDto, Config, ThemeName,
-  ReviewMr, HomeEntry,
+  ReviewMr, HomeEntry, AgentSkill,
 } from '../ipc/ipc';
 import type { LayoutNode, SplitDir } from '../lib/layout';
 import type { Chord } from '../lib/keys';
@@ -193,12 +193,20 @@ export interface ConfigSlice {
   setTheme: (theme: ThemeName) => void;
   setFontSize: (px: number) => void;
   setFontFamily: (family: string) => void;
+  setSuggestActions: (v: boolean) => void;
 
   // ── Status ────────────────────────────────────────────────────────────────
   syncStatus: 'idle' | 'syncing' | 'error';
   setSyncStatus: (s: 'idle' | 'syncing' | 'error') => void;
   lastError: string | null;
   setLastError: (e: string | null) => void;
+}
+
+export interface SkillsSlice {
+  /** What the agent can be asked to do, core first. Loaded once at startup and
+   *  after the user edits their own; the pill filters it by session kind. */
+  skills: AgentSkill[];
+  loadSkills: () => Promise<void>;
 }
 
 export interface NotificationsSlice {
@@ -220,7 +228,7 @@ export interface NotificationsSlice {
 /** The composed store: every slice, one state. Slice creators are typed over the
  *  whole AppState (cross-slice writes go through the shared set/get). */
 export type AppState = UiSlice & HomeSlice & SessionsSlice & ConfirmationsSlice &
-  AgentSlice & KeybindingsSlice & ConfigSlice & NotificationsSlice;
+  AgentSlice & KeybindingsSlice & ConfigSlice & NotificationsSlice & SkillsSlice;
 
 /** Enough history to scroll back through a work session, not a log file. */
 

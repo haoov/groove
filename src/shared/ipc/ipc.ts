@@ -60,6 +60,7 @@ export type {
   FileLines,
   SessionKind,
   ProviderId,
+  AgentSkill,
 } from './generated';
 
 // ── Deliberate narrowings (rebuilt over the generated shapes) ─────────────────

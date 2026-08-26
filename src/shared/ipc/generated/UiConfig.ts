@@ -6,4 +6,10 @@ export type UiConfig = { font_size: number, theme: string,
  * fontconfig reports (`fc-list : family`) — a name nothing matches falls
  * silently through to the next family in the CSS stack.
  */
-font_family: string, };
+font_family: string, 
+/**
+ * One switch for every agent suggestion Groove offers — today the chip on a
+ * task with no repos. Off means the app never proposes an action, not that
+ * the skill is gone: it is still a button and a slash command.
+ */
+suggest_actions: boolean, };

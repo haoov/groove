@@ -274,6 +274,30 @@
   margin: 0;
 }
 
+/* The offer to let the agent scaffold the task. Its own line under the empty
+   sentence, so it reads as an option rather than part of the sentence. */
+.overview-suggest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-subtle);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  cursor: pointer;
+}
+
+.overview-suggest:hover:not(:disabled) {
+  color: var(--gl-text-color-default);
+  border-color: var(--gl-color-blue-300);
+}
+
+.overview-suggest:disabled { opacity: 0.5; cursor: default; }
+
 /* ── MR overview tab (same page language as the task overview) ────────────── */
 
 /* "Open in GitLab/GitHub" reuses the header-button slot but neutral, not green. */

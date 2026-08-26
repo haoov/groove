@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { GitPullRequest, Sparkles, Check, X, Trash2 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { sendToAgent } from '../shared/lib/agentSend';
-import { actionsFor } from '../agent/prompts';
+import { sendSkill } from '../shared/lib/agentSend';
 import { endSession } from '../shared/lib/endSession';
 import { MrOverview } from './MrOverview';
 
@@ -25,21 +24,14 @@ export function ReviewOverview() {
     [activeWorktrees, activeRepos, mr],
   );
 
-  // The co-review ask lives in lib/prompts (shared with the agent pill), and
-  // sendToAgent starts the agent if there isn't one — waiting on its SessionStart
-  // hook rather than guessing how long Claude takes to boot.
+  // The same skill the agent pill sends. sendSkill starts the agent if there
+  // isn't one — waiting on its SessionStart hook rather than guessing how long
+  // Claude takes to boot.
   const coReview = async () => {
     if (!activeTask) return;
-    const action = actionsFor('review').find((a) => a.id === 'co-review');
-    if (!action) return;
     useStore.getState().requestConsoleFocus(); // surface the conversation
     try {
-      await sendToAgent(sessionId, action.build({
-        shortId: activeTask.short_id,
-        kind: 'review',
-        project: activeRepos[0]?.project,
-        mrNumber: mr ? `!${mr.remote_id}` : undefined,
-      }));
+      await sendSkill(sessionId, 'groove:co-review');
     } catch (e) {
       setLastError(String(e));
     }

@@ -75,6 +75,7 @@ export default function App() {
 
   const view = useStore((s) => s.view);
   const setConfig = useStore((s) => s.setConfig);
+  const loadSkills = useStore((s) => s.loadSkills);
   const setLastError = useStore((s) => s.setLastError);
   const hydrateAgentActivity = useStore((s) => s.hydrateAgentActivity);
   // Mounted once here rather than twice with local state, so Alt+R and both
@@ -99,8 +100,10 @@ export default function App() {
     applyFontSize(cfg.ui?.font_size ?? DEFAULT_FONT_SIZE);
     applyFontFamily(cfg.ui?.font_family);
     applyTheme(cfg.ui?.theme ?? DEFAULT_THEME);
+    // After the config, which decides where the user's own skills live.
+    void loadSkills();
     setConfigured(true);
-  }, [setConfig]);
+  }, [setConfig, loadSkills]);
 
   useEffect(() => {
     invoke<Config | null>('get_config')

@@ -86,12 +86,26 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
   const pty = await ensureAgentSession(sessionKey, { waitReady: true });
   const write = (bytes: Uint8Array) => invoke('write_pty', { sessionId: pty, dataB64: bytesToB64(bytes) });
 
-  // Trailing whitespace would become blank lines in the draft.
-  const body = text.replace(/\s+$/, '');
+  // Trailing newlines would become blank lines in the draft. A trailing SPACE
+  // survives: `sendSkill` needs it to close Claude's slash menu before the CR.
+  const body = text.replace(/[^\S ]+$/, '');
   await write(new TextEncoder().encode(body));
 
   // Long enough that the TUI has finished handling the paste, so the CR arrives as
   // its own keypress instead of being folded into it.
   await sleep(SUBMIT_DELAY_MS);
   await write(new Uint8Array([CARRIAGE_RETURN]));
+}
+
+/**
+ * Invoke a skill on a session's agent: `/groove:open-mr `, then Enter.
+ *
+ * The TRAILING SPACE is load-bearing. Typing `/` opens Claude's slash menu, and
+ * with the menu open Enter acts on the highlighted row — which is not always the
+ * skill we named, since the menu ranks by prefix and past use. A space closes the
+ * menu, so the CR submits the literal text. Verified against a real PTY: with two
+ * skills sharing a prefix, the menu is still open at the CR without it.
+ */
+export function sendSkill(sessionKey: string, skillId: string, args?: string): Promise<void> {
+  return sendToAgent(sessionKey, `/${skillId} ${args ?? ''}`);
 }

@@ -1,8 +1,9 @@
-import { Palette, SquareCode, Keyboard, Inbox, GitBranch, MonitorCog, type LucideIcon } from 'lucide-react';
+import { Palette, SquareCode, Sparkles, Keyboard, Inbox, GitBranch, MonitorCog, type LucideIcon } from 'lucide-react';
 
 export type SettingsGroupId =
   | 'appearance'
   | 'editor'
+  | 'actions'
   | 'shortcuts'
   | 'sources'
   | 'git'
@@ -20,6 +21,7 @@ export interface SettingsGroup {
 export const SETTINGS_GROUPS: SettingsGroup[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette, blurb: 'Theme, font and size' },
   { id: 'editor', label: 'Editor', icon: SquareCode, blurb: 'Editing behaviour' },
+  { id: 'actions', label: 'Agent actions', icon: Sparkles, blurb: "Groove's actions and your own" },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard, blurb: 'Every global keybinding' },
   { id: 'sources', label: 'Task sources', icon: Inbox, blurb: 'Notion and GitHub' },
   { id: 'git', label: 'Git & forge', icon: GitBranch, blurb: 'Worktree root and sign-in' },

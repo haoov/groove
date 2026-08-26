@@ -134,6 +134,9 @@
   border-color: var(--gl-color-blue-300);
 }
 .console-action:disabled { opacity: 0.5; cursor: default; }
+/* A user's own skill. Dashed, not coloured — the row has to say whose a skill is
+   without competing with the status dot for attention. */
+.console-action.mine { border-style: dashed; }
 
 /* ── Terminal on Home ──────────────────────────────────────────────────────────
    The bottom counterpart to the agent's right column: full width, above the status
