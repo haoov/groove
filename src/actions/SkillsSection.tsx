@@ -21,9 +21,10 @@ import './actions.css';
  *  front-matter keys are passed through by Claude Code untouched. */
 const TEMPLATE = `---
 name: NAME
-description: One line saying when to use this. The slash menu shows it.
+description: What this does, then "Use when …" with the words you would type to ask for it. Claude Code matches this to invoke the skill on its own.
 groove-kinds: task
 groove-label: NAME
+groove-hint: One line. Groove shows it beside the action.
 ---
 
 # What to do
@@ -117,17 +118,19 @@ export function SkillsSection() {
       <div className="settings-section-title">Agent actions</div>
 
       <div className="skill-list">
+        {/* The hint, not the description: the description is written for the model
+            to match the user's words against, and it is a paragraph. */}
         {core.map((s) => (
-          <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.description}>
+          <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.hint}>
             <Lock size={12} strokeWidth={1.75} className="skill-lock" />
             <span className="skill-id">{s.id}</span>
-            <span className="skill-desc">{s.description}</span>
+            <span className="skill-desc">{s.hint}</span>
           </button>
         ))}
         {mine.map((s) => (
-          <button key={s.id} className="skill-row mine" onClick={() => void open(s)} title={s.description}>
+          <button key={s.id} className="skill-row mine" onClick={() => void open(s)} title={s.hint}>
             <span className="skill-id">{s.id}</span>
-            <span className="skill-desc">{s.description}</span>
+            <span className="skill-desc">{s.hint}</span>
           </button>
         ))}
       </div>

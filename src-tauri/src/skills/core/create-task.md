@@ -1,8 +1,9 @@
 ---
 name: create-task
-description: File a task from this exploration, and turn the session into it.
+description: File a task from this exploration and turn the session into it. Use when the user asks to file, open or create a task, ticket or issue out of what you have been looking at.
 groove-kinds: explorer
 groove-label: create task
+groove-hint: File a task from this exploration.
 ---
 
 # File a task from this exploration

@@ -43,8 +43,13 @@ pub struct AgentSkill {
     pub id: String,
     pub plugin: String,
     pub name: String,
-    /// Also rendered by Claude Code's own slash menu, so it is user-facing text.
+    /// Written for the MODEL: what the skill does and when to reach for it, so
+    /// Claude Code can invoke it off what the user typed. Its slash menu renders
+    /// it too, so it stays readable — but it is too long for a tooltip.
     pub description: String,
+    /// The one line the UI shows. `groove-hint`, falling back to the description
+    /// for a user skill that sets none.
+    pub hint: String,
     pub label: String,
     /// Kinds whose UI offers it. Empty means every kind.
     pub kinds: Vec<SessionKind>,
@@ -215,6 +220,9 @@ fn parse(plugin: &str, name: &str, body: &str, editable: bool) -> AgentSkill {
         plugin: plugin.to_string(),
         name: name.to_string(),
         description: field(front, "description").unwrap_or_default(),
+        hint: field(front, "groove-hint")
+            .or_else(|| field(front, "description"))
+            .unwrap_or_default(),
         label: field(front, "groove-label").unwrap_or_else(|| name.replace('-', " ")),
         kinds,
         editable,
@@ -431,6 +439,14 @@ mod tests {
         for (name, body) in CORE_SKILLS {
             let s = parse(CORE_PLUGIN, name, body, false);
             assert!(!s.description.is_empty(), "{name} has no description");
+            // The description is what Claude Code matches the user's words against,
+            // so it has to say WHEN to reach for the skill and not only what it does.
+            assert!(
+                s.description.contains("Use when"),
+                "{name}'s description names no trigger"
+            );
+            assert!(!s.hint.is_empty(), "{name} has no groove-hint");
+            assert!(s.hint.len() <= 60, "{name}'s hint is too long for a tooltip");
             assert!(!s.kinds.is_empty(), "{name} declares no groove-kinds");
             let declared = field(front_matter(body), "groove-kinds").unwrap();
             assert_eq!(
@@ -446,15 +462,24 @@ mod tests {
         let s = parse(
             "groove",
             "open-mr",
-            "---\nname: open-mr\ndescription: Open an MR: for this branch.\ngroove-kinds: task, review\ngroove-label: open MR\n---\n\nBody.\n",
+            "---\nname: open-mr\ndescription: Open an MR: for this branch.\ngroove-kinds: task, review\ngroove-label: open MR\ngroove-hint: Open an MR.\n---\n\nBody.\n",
             false,
         );
         assert_eq!(s.id, "groove:open-mr");
         // Split on the FIRST colon, so a description keeps its own.
         assert_eq!(s.description, "Open an MR: for this branch.");
+        assert_eq!(s.hint, "Open an MR.");
         assert_eq!(s.label, "open MR");
         assert_eq!(s.kinds, vec![SessionKind::Task, SessionKind::Review]);
         assert!(!s.editable);
+    }
+
+    /// A user skill that sets no `groove-hint` still needs a tooltip, and its
+    /// description is the only line it has.
+    #[test]
+    fn the_hint_falls_back_to_the_description() {
+        let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
+        assert_eq!(s.hint, "Check it.");
     }
 
     #[test]

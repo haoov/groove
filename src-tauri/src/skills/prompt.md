@@ -41,3 +41,13 @@ back what it shows. Say what you did and what you need.
 - `task` — work on a ticket. It has a branch and usually ends in an MR.
 - `review` — someone else's MR, checked out to read and annotate.
 - `explorer` — no ticket yet. `create_task_from_explorer` files one.
+
+## The skills are the procedures
+
+`groove:*` skills are the app's own procedure for the work it asks for —
+scaffolding a task, reviewing an MR, opening one, fixing the notes, writing the
+task up. When what the user asks for matches one, invoke it instead of
+improvising the same tool calls: the skill carries rules the ask does not repeat.
+
+It says WHAT to do. How to word a commit message, MR text, an annotation or a
+task body belongs to the tool you are calling, and it tells you at the call.

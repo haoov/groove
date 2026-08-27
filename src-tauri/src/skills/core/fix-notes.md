@@ -1,8 +1,9 @@
 ---
 name: fix-notes
-description: Fix the open annotations on this session.
+description: Fix the open annotations on this session. Use when the user asks you to address the notes, the comments or the review feedback on this session, or to fix what a reviewer flagged.
 groove-kinds: task, review
 groove-label: fix notes
+groove-hint: Fix the open notes on this session.
 ---
 
 # Fix the open notes

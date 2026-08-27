@@ -1,8 +1,9 @@
 ---
 name: scaffold-task
-description: Read the task and attach the repos and branch it needs.
+description: Attach the repos and branch a task needs before work starts. Use when the user asks to set the task up, to scaffold it, or to add the repos it needs, and when a task has none yet.
 groove-kinds: task
 groove-label: scaffold
+groove-hint: Attach the repos this task needs.
 ---
 
 # Set the task up to work in

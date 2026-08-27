@@ -1,8 +1,9 @@
 ---
 name: start-task
-description: Orient on this task before writing code — read it, survey what exists, propose a plan.
+description: Orient on a task before writing code: read it, survey what the branches already hold, propose a plan. Use when the user asks where to start, what the plan is, or to look at the task before touching anything.
 groove-kinds: task
 groove-label: start task
+groove-hint: Read the task and propose a plan.
 ---
 
 # Orient before writing code

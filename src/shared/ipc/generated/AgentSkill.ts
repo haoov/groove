@@ -7,9 +7,16 @@ export type AgentSkill = {
  */
 id: string, plugin: string, name: string, 
 /**
- * Also rendered by Claude Code's own slash menu, so it is user-facing text.
+ * Written for the MODEL: what the skill does and when to reach for it, so
+ * Claude Code can invoke it off what the user typed. Its slash menu renders
+ * it too, so it stays readable — but it is too long for a tooltip.
  */
-description: string, label: string, 
+description: string, 
+/**
+ * The one line the UI shows. `groove-hint`, falling back to the description
+ * for a user skill that sets none.
+ */
+hint: string, label: string, 
 /**
  * Kinds whose UI offers it. Empty means every kind.
  */

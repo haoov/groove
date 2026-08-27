@@ -1,8 +1,9 @@
 ---
 name: update-task
-description: Bring the task's body and properties up to date with the work done.
+description: Bring the task's body and properties up to date with the work done. Use when the user asks to update the task, the ticket or the issue, or to write up on it what was done.
 groove-kinds: task
 groove-label: update task
+groove-hint: Update the task with what was done.
 ---
 
 # Update the task

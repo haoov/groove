@@ -1,8 +1,9 @@
 ---
 name: open-mr
-description: Open a merge request for the work on this session's branch.
+description: Open a merge request for the work on this session's branch. Use when the user asks to open, raise or submit an MR, a PR or a pull request for what is on the branch.
 groove-kinds: task
 groove-label: open MR
+groove-hint: Open an MR for this branch.
 ---
 
 # Open an MR

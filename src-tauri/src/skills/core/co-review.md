@@ -1,8 +1,9 @@
 ---
 name: co-review
-description: Summarize this MR and annotate the real problems in it.
+description: Summarize an MR and annotate the real problems in it. Use when the user asks you to review this MR or PR, look over someone else's change, do a code review, or say what is wrong with it.
 groove-kinds: review
 groove-label: co-review
+groove-hint: Review this MR and note what is wrong.
 ---
 
 # Co-review this MR

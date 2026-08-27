@@ -76,6 +76,12 @@ payloads, UI constants).
 pill each, so the bar does not grow with the skill list. Add an action by adding a
 `SKILL.md` under `skills/core/` and a row in `CORE_SKILLS` — there is no prompt table
 in the frontend.
+
+**A skill's `description:` is written for the MODEL** — what it does, then `Use when …`
+with the words a user types — because that is what Claude Code matches to invoke the
+skill on its own, off the chat, with no button pressed. A test guards the phrase. The UI
+shows `groove-hint` and never the description: writing the description short enough for a
+tooltip is exactly what kills auto-invocation.
 A user's own live in `<config>/user-skills/skills/` and are written by the Settings
 manager (`src/actions/`); a skill file is a LOCAL write, so it does not pass approvals.
 

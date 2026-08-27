@@ -157,7 +157,7 @@ export function AgentConsole() {
     <button
       key={src ? `${a.id}:${src}` : a.id}
       className="ctx-menu-item"
-      title={a.description}
+      title={a.hint}
       onClick={() => {
         setMenuOpen(false);
         void runSkill(a, src);
