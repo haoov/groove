@@ -106,6 +106,13 @@ pub async fn get_mr_details(
         .await
         .map_err(|e| e.to_string())?;
 
+    // Home reads the stored state; keep it in step with what the overview just saw.
+    if let Some(fresh) = details["state"].as_str() {
+        if fresh != mr.state {
+            let _ = store::mrs::set_state(&*pool, &mr.id, fresh).await;
+        }
+    }
+
     // Approval lives on a separate endpoint; fold it into the same payload so the
     // overview renders it without a second round trip of its own.
     if let Ok(approval) = client.get_mr_approval(&repo, &mr.remote_id).await {

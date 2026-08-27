@@ -188,7 +188,7 @@ async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<Home
         let repo = crate::core::db::models::Repo {
             id: row.repo_id.clone()?,
             host: row.repo_host.clone()?,
-            group_path: String::new(),
+            group_path: row.repo_group_path.clone().unwrap_or_default(),
             project: row.project.clone().unwrap_or_default(),
             local_path: row.repo_local_path.clone()?,
         };
@@ -228,6 +228,7 @@ mod tests {
             repo_id: project.map(|p| format!("repo-{p}")),
             project: project.map(str::to_string),
             repo_host: None,
+            repo_group_path: None,
             repo_local_path: None,
             worktree_id: None,
             branch: None,
