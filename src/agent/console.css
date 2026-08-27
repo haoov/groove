@@ -134,9 +134,6 @@
   border-color: var(--gl-color-blue-300);
 }
 .console-action:disabled { opacity: 0.5; cursor: default; }
-/* A user's own skill. Dashed, not coloured — the row has to say whose a skill is
-   without competing with the status dot for attention. */
-.console-action.mine { border-style: dashed; }
 
 /* ── Terminal on Home ──────────────────────────────────────────────────────────
    The bottom counterpart to the agent's right column: full width, above the status
@@ -165,17 +162,23 @@
 }
 .home-terminal .console-term { flex: 1; min-height: 0; }
 
-/* "create task" drop-up: the sources to file in, anchored ABOVE the pill — the
-   action bar is the console's bottom edge. */
-.create-task-menu { position: relative; display: inline-flex; }
+/* The Actions drop-up: every skill on offer, anchored ABOVE the pill — the
+   action bar is the console's bottom edge. One menu rather than a pill each,
+   because the row grew with every skill and wrapped to three lines. */
+.actions-menu { position: relative; display: inline-flex; }
 /* Two classes on purpose: .ctx-menu says position:fixed, and this must win
    regardless of stylesheet import order. */
-.create-task-menu .create-task-menu-panel {
+.actions-menu .actions-menu-panel {
   position: absolute;
   bottom: calc(100% + 6px);
   top: auto;
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
   z-index: 40;
+  /* Taller than the pane can be with enough user skills; it scrolls rather than
+     running off the top of the window. */
+  max-height: 60vh;
+  overflow-y: auto;
+  min-width: 200px;
 }
-.create-task-menu .console-action { display: inline-flex; align-items: center; gap: 4px; }
+.actions-menu .console-action { display: inline-flex; align-items: center; gap: 4px; }

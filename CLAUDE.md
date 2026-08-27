@@ -71,9 +71,11 @@ payloads, UI constants).
   restate those rules in `agent/prompts.ts`, in a skill, or here; saying it in three
   places got it ignored in all three.
 
-**Canned asks are skills, not strings.** The pill renders `list_agent_skills` and sends
-`/groove:<name>` through `sendSkill`. Add an action by adding a `SKILL.md` under
-`skills/core/` and a row in `CORE_SKILLS` — there is no prompt table in the frontend.
+**Canned asks are skills, not strings.** The console's Actions drop-up renders
+`list_agent_skills` and sends `/groove:<name>` through `sendSkill` — one menu, not a
+pill each, so the bar does not grow with the skill list. Add an action by adding a
+`SKILL.md` under `skills/core/` and a row in `CORE_SKILLS` — there is no prompt table
+in the frontend.
 A user's own live in `<config>/user-skills/skills/` and are written by the Settings
 manager (`src/actions/`); a skill file is a LOCAL write, so it does not pass approvals.
 

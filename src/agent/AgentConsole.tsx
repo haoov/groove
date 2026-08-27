@@ -7,7 +7,7 @@ import { SOURCE_IDS } from '../setup/sources';
 import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import type { AgentActivity, AgentSkill } from '../shared/ipc/ipc';
+import type { AgentActivity, AgentSkill, ProviderId } from '../shared/ipc/ipc';
 
 /**
  * The agent, as a full-height column on the right of the work.
@@ -53,7 +53,7 @@ export function AgentConsole() {
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
 
-  // Where a filed task can go; drives the create-task drop-up.
+  // Where a filed task can go; the create-task rows of the Actions menu.
   const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
@@ -146,6 +146,34 @@ export function AgentConsole() {
     }
   };
 
+  const offered = skills.filter((a) => a.kinds.length === 0 || a.kinds.includes(kind));
+  const core = offered.filter((a) => !a.editable);
+  const mine = offered.filter((a) => a.editable);
+
+  // Filing a task needs a source; with several configured each one is its own
+  // row and the pick rides along as the skill's argument. One source needs no
+  // row of its own — the agent infers it.
+  const skillRow = (a: AgentSkill, src?: ProviderId) => (
+    <button
+      key={src ? `${a.id}:${src}` : a.id}
+      className="ctx-menu-item"
+      title={a.description}
+      onClick={() => {
+        setMenuOpen(false);
+        void runSkill(a, src);
+      }}
+    >
+      <Sparkles size={13} strokeWidth={1.75} />
+      {src ? `File in ${providerCopy({ provider: src }).label}` : a.label}
+    </button>
+  );
+  const skillRows = (list: AgentSkill[]) =>
+    list.flatMap((a) =>
+      a.name === 'create-task' && sources.length > 1
+        ? sources.map((src) => skillRow(a, src))
+        : [skillRow(a)],
+    );
+
   const state = activity?.state ?? (agentPty ? 'working' : 'idle');
 
   return (
@@ -187,60 +215,34 @@ export function AgentConsole() {
           )}
         </div>
 
-        {/* The skills below the terminal — the conversation is the main thing.
+        {/* The skills below the terminal — the conversation is the main thing,
+            and all of them behind one menu so the bar stays a single line however
+            many skills the user has written.
             An empty `kinds` offers the skill everywhere, which is what a user
             skill gets when they name no kind. */}
         <div className="console-actions">
-          {skills.filter((a) => a.kinds.length === 0 || a.kinds.includes(kind)).map((a) => {
-            // Filing a task needs a source; with several configured the pill
-            // opens UPWARD (the bar sits at the bottom) and the pick rides along
-            // as the skill's argument. One source needs no menu — the agent infers.
-            if (a.name === 'create-task' && sources.length > 1) {
-              return (
-                <span key={a.id} className="create-task-menu" ref={menuRef}>
-                  <button
-                    className="console-action"
-                    title={`${a.description} — pick where to file it`}
-                    disabled={!!sending}
-                    onClick={() => setMenuOpen((v) => !v)}
-                  >
-                    {sending === a.id && <Loader2 size={11} className="spin" />}
-                    {a.label}
-                    <ChevronUp size={11} strokeWidth={2} />
-                  </button>
-                  {menuOpen && (
-                    <div className="ctx-menu create-task-menu-panel">
-                      {sources.map((src) => (
-                        <button
-                          key={src}
-                          className="ctx-menu-item"
-                          onClick={() => {
-                            setMenuOpen(false);
-                            runSkill(a, src);
-                          }}
-                        >
-                          <Sparkles size={13} strokeWidth={1.75} />
-                          File in {providerCopy({ provider: src }).label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </span>
-              );
-            }
-            return (
-              <button
-                key={a.id}
-                className={`console-action ${a.editable ? 'mine' : ''}`}
-                title={a.description}
-                disabled={!!sending}
-                onClick={() => runSkill(a)}
-              >
-                {sending === a.id && <Loader2 size={11} className="spin" />}
-                {a.label}
-              </button>
-            );
-          })}
+          <span className="actions-menu" ref={menuRef}>
+            <button
+              className="console-action"
+              title="What you can ask this agent for"
+              disabled={!!sending || offered.length === 0}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {sending ? <Loader2 size={11} className="spin" /> : <Sparkles size={11} strokeWidth={2} />}
+              Actions
+              <ChevronUp size={11} strokeWidth={2} />
+            </button>
+            {/* Opens UPWARD: the bar is the console's bottom edge. */}
+            {menuOpen && (
+              <div className="ctx-menu actions-menu-panel">
+                {skillRows(core)}
+                {/* The user's own sit below the line — the grouping is what says
+                    whose a skill is, so a row needs no badge of its own. */}
+                {core.length > 0 && mine.length > 0 && <div className="ctx-menu-sep" />}
+                {skillRows(mine)}
+              </div>
+            )}
+          </span>
           {/* Auto-approve, as a real switch — warm while on, so approving blind is
               never a hidden state. Sits apart from the canned asks. */}
           <button
