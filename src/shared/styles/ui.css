@@ -311,3 +311,6 @@
   font-weight: 600;
   color: var(--gl-text-color-strong);
 }
+
+.groove-mark-branch { stroke: var(--gl-color-teal-400); }
+.groove-mark-node { fill: var(--gl-color-teal-400); }

@@ -121,7 +121,7 @@
 .header-logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   font-family: var(--font-display);
   font-size: var(--gl-font-size-sm);
   font-weight: 600;
