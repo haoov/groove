@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation, Hunk, RepoDiff, Mr, MrThread } from '../shared/ipc/ipc';
-import { mrForWorktree, activeWorktreeFor } from '../shared/lib/workspace';
+import { mrForWorktree, activeWorktreeFor, repoDiffFor } from '../shared/lib/workspace';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
@@ -29,10 +29,7 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
 
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const wt = activeWorktreeFor(activeWorktrees, repoId, activeWorktreeId);
-  // The summary emits one entry PER WORKTREE (same repo_id, different branch) —
-  // pick the entry for the targeted worktree's branch.
-  const repo = diff?.repos.find((r) => r.repo_id === repoId && (!wt || r.branch === wt.branch))
-    ?? diff?.repos.find((r) => r.repo_id === repoId);
+  const repo = repoDiffFor(diff, wt?.id, repoId);
 
   // Lazily fetch line content for expanded files not yet cached.
   useEffect(() => {
@@ -196,7 +193,8 @@ function ExpandableFileDiff({
   mr: Mr | null;
 }) {
   const setDiffHunks = useSession((s) => s.setDiffHunks);
-  const key = `${repoId}/${filePath}`;
+  // Same key as the section above, or the expanded hunks land in a slot nobody reads.
+  const key = `${worktreeId ?? repoId}/${filePath}`;
   const expand = useDiffExpand({
     worktreeId, filePath, hunks,
     onHunks: (h) => setDiffHunks(key, h),

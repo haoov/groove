@@ -3,7 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
-import { worktreeFor, activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
+import { activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } from '../shared/lib/workspace';
 import { ensureTerminalTab } from '../shared/lib/panes';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
@@ -333,7 +333,8 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   const [modified, setModified] = useState(false);
   const saveFnRef = useRef<() => void>(() => {});
 
-  const wt = worktreeFor(activeWorktrees, tab.repoId);
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
+  const wt = activeWorktreeFor(activeWorktrees, tab.repoId, activeWorktreeId);
   const languageId = guessLang(tab.filePath);
   const { blameOn, blame, openCommit } = useBlame({
     worktreeId: wt?.id, repoId: tab.repoId, filePath: tab.filePath,
@@ -362,6 +363,7 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   return (
     <div className="edit-tab">
       <CodeEditor
+        key={wt.id}
         worktreePath={wt.path}
         filePath={tab.filePath}
         repoId={tab.repoId}

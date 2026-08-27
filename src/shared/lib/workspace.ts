@@ -2,7 +2,7 @@
 // inline `activeWorktrees.find(...)`, `mrs.find(...)`, and per-file annotation/
 // thread filters. Plain functions (not hooks) so they work inside render loops.
 
-import type { Worktree, Mr, Annotation, MrThread } from '../ipc/ipc';
+import type { Worktree, Mr, Annotation, MrThread, DiffResult } from '../ipc/ipc';
 
 /** The worktree for a repo (the one git ops target). */
 export const worktreeFor = (worktrees: Worktree[], repoId: string | null | undefined) =>
@@ -19,6 +19,13 @@ export const activeWorktreeFor = (
   const selected = activeWorktreeId ? worktrees.find((w) => w.id === activeWorktreeId) : undefined;
   return selected?.repo_id === repoId ? selected : worktrees.find((w) => w.repo_id === repoId);
 };
+
+/** The diff summary entry for one worktree. The summary carries one entry PER
+ *  WORKTREE (same repo_id, different branch); the repo match is the fallback
+ *  while a worktree is still provisioning. */
+export const repoDiffFor = (diff: DiffResult | null | undefined, worktreeId: string | undefined, repoId: string) =>
+  (worktreeId ? diff?.repos.find((r) => r.worktree_id === worktreeId) : undefined)
+    ?? diff?.repos.find((r) => r.repo_id === repoId);
 
 /** The MR attached to a worktree, if any. */
 export const mrForWorktree = (mrs: Mr[], worktreeId: string | undefined) =>

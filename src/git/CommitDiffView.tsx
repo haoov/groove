@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { GitCommit } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { worktreeFor } from '../shared/lib/workspace';
+import { activeWorktreeFor } from '../shared/lib/workspace';
 import type { FileDiff, Hunk } from '../shared/ipc/ipc';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
@@ -27,7 +27,8 @@ export function CommitDiffView({ repoId, sha, ann }: { repoId: string; sha: stri
   const commits = useSession((s) => s.commits);
   const setLastError = useStore((s) => s.setLastError);
 
-  const wt = worktreeFor(activeWorktrees, repoId);
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
+  const wt = activeWorktreeFor(activeWorktrees, repoId, activeWorktreeId);
   const cacheKey = wt ? `${wt.id}:${sha}` : sha;
 
   const [files, setFiles] = useState<FileDiff[] | null>(() => commitDiffCache.get(cacheKey) ?? null);

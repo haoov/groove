@@ -208,6 +208,7 @@ pub(super) async fn get_task_diff_impl(task_id: &str, mode: &str, pool: &SqliteP
         }
 
         repo_diffs.push(RepoDiff {
+            worktree_id: wt.id,
             repo_id: wt.repo_id,
             branch: wt.branch,
             fetch_status: "ok".to_string(),
@@ -285,6 +286,7 @@ pub async fn get_task_diff_summary(
         }
 
         repo_diffs.push(RepoDiff {
+            worktree_id: wt.id,
             repo_id: wt.repo_id,
             branch: wt.branch,
             fetch_status: "ok".to_string(),

@@ -10,6 +10,7 @@ pub struct DiffResult {
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct RepoDiff {
+    pub worktree_id: String,
     pub repo_id: String,
     pub branch: String,
     pub fetch_status: String,

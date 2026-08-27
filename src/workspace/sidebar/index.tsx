@@ -77,19 +77,19 @@ export function Sidebar() {
     if (sidebarTab === 'git' && gitSubTab === 'forge') bumpMrs();
   }, [sidebarTab, gitSubTab, bumpMrs]);
 
-  // Commit history follows the active repo (falls back to all repos if it has
-  // no worktree). Reloads when the active repo changes, and when the list asks
+  // Commit history follows the active worktree (falls back to all repos if the
+  // repo has none). Reloads when the active worktree changes, and when the list asks
   // for another page — one `git log` with a bigger limit, so pages never overlap
   // or interleave.
   useEffect(() => {
     if (!activeTask || sidebarTab !== 'git') return;
-    const wt = activeWorktrees.find((w) => w.repo_id === activeRepoId);
+    const wt = activeRepoId ? worktreeForRepo(activeRepoId) : undefined;
     let cancelled = false;
     invoke<CommitEntry[]>('get_commit_log', { taskId: activeTask.short_id, worktreeId: wt?.id, limit: commitLimit })
       .then((c) => { if (!cancelled) setCommits(c, c.length >= commitLimit); })
       .catch((e) => { if (!cancelled) setLastError(String(e)); });
     return () => { cancelled = true; };
-  }, [sidebarTab, activeTask, activeRepoId, activeWorktrees, commitLimit, setCommits, setLastError]);
+  }, [sidebarTab, activeTask, activeRepoId, worktreeForRepo, commitLimit, setCommits, setLastError]);
 
   // Files and Source control focus their own keyboard list; Annotations has none,
   // so without this the panel shortcut could never tell it was already focused and
@@ -332,6 +332,7 @@ export function Sidebar() {
               {/* Stage-all / discard-all live on the All-changes row now. */}
               <ChangedFilesList
                 repoId={repoId}
+                worktreeId={activeWt?.id}
                 onOpenFile={(path, rid) => openFileInDiff(path, rid)}
                 onOpenFileAlt={openFileInEditor}
                 onOpenAll={(rid) => openTab({ repoId: rid, filePath: '', view: 'diff', kind: 'changes' })}

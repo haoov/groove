@@ -3,7 +3,7 @@ import { invoke } from '../../shared/ipc/invoke';
 import { Terminal } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
 import { shortcutLabel } from '../../shared/lib/keybindings';
-import { worktreeFor } from '../../shared/lib/workspace';
+import { activeWorktreeFor } from '../../shared/lib/workspace';
 import { toggleTerminal } from '../../shared/lib/panes';
 
 export function StatusBar() {
@@ -11,6 +11,7 @@ export function StatusBar() {
   const termHint = useStore((s) => shortcutLabel(s.keymap, 'workspace.toggleTerminal'));
   const activeRepos = useSession((s) => s.activeRepos);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
+  const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const worktreeStatus = useSession((s) => s.worktreeStatus);
   const setActiveRepoId = useSession((s) => s.setActiveRepoId);
   const panes = useSession((s) => s.panes);
@@ -40,7 +41,7 @@ export function StatusBar() {
 
         {/* At-a-glance per-repo git status (replaces the old sidebar chip dashboard). */}
         {activeTask && activeRepos.map((repo) => {
-          const wt = worktreeFor(activeWorktrees, repo.id);
+          const wt = activeWorktreeFor(activeWorktrees, repo.id, activeWorktreeId);
           const st = wt ? worktreeStatus[wt.id] : undefined;
           const dirty = st ? st.modified + st.staged : 0;
           const title = st
