@@ -17,6 +17,7 @@ pub struct HomeRow {
     pub repo_id: Option<String>,
     pub project: Option<String>,
     pub repo_host: Option<String>,
+    pub repo_group_path: Option<String>,
     pub repo_local_path: Option<String>,
     pub worktree_id: Option<String>,
     pub branch: Option<String>,
@@ -34,7 +35,8 @@ pub async fn snapshot(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<HomeRow>
         "SELECT
            s.id AS session_id, s.kind, s.title,
            nt.status, nt.priority, nt.provider,
-           r.id AS repo_id, r.project, r.host AS repo_host, r.local_path AS repo_local_path,
+           r.id AS repo_id, r.project, r.host AS repo_host, r.group_path AS repo_group_path,
+           r.local_path AS repo_local_path,
            w.id AS worktree_id, w.branch, w.path AS worktree_path, w.base_ref,
            m.id AS mr_id, m.platform AS mr_platform, m.remote_id AS mr_remote_id,
            m.url AS mr_url, m.state AS mr_state
