@@ -464,7 +464,7 @@ export function FilesTab({
   if (!wt) return <div className="sidebar-empty">No active worktree</div>;
 
   const changedPaths = new Set(
-    diff?.repos.find((r) => r.repo_id === repoId)?.files.map((f) => f.path) ?? []
+    (diff?.repos.find((r) => r.worktree_id === wt.id) ?? diff?.repos.find((r) => r.repo_id === repoId))?.files.map((f) => f.path) ?? []
   );
 
   return (

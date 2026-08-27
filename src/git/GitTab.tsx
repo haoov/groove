@@ -12,6 +12,7 @@ import { guessLang } from '../shared/lib/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
 import { registerCommitPush } from '../shared/lib/gitChain';
 import { Highlighted, matchRanges } from '../shared/lib/match';
+import { repoDiffFor } from '../shared/lib/workspace';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {
@@ -190,9 +191,11 @@ function buildRows(files: FileDiff[], tree: boolean, collapsed: Set<string>): Ro
 }
 
 export function ChangedFilesList({
-  repoId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard, onStageAll, onDiscardAll,
+  repoId, worktreeId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard, onStageAll, onDiscardAll,
 }: {
   repoId: string | null;
+  /** The active worktree of `repoId` — the diff summary has one entry per worktree. */
+  worktreeId?: string;
   onOpenFile: (path: string, repoId: string, lang: string) => void;
   onOpenFileAlt: (path: string, repoId: string, lang: string) => void;
   /** Open the whole repo's changes as one review tab. */
@@ -209,8 +212,8 @@ export function ChangedFilesList({
   // Memoized because the row model below keys on it: the `?? []` fallback is a new
   // array every render, which would rebuild the tree on every keystroke.
   const files = useMemo(
-    () => (repoId ? (diff?.repos.find((r) => r.repo_id === repoId)?.files ?? []) : []),
-    [diff, repoId],
+    () => (repoId ? (repoDiffFor(diff, worktreeId, repoId)?.files ?? []) : []),
+    [diff, worktreeId, repoId],
   );
 
   // Flat by default; tree groups files by folder. The choice is per-user and
