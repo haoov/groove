@@ -1,10 +1,11 @@
 import { invoke } from '../../shared/ipc/invoke';
-import { Layers, RefreshCw, ShieldAlert, Settings } from 'lucide-react';
+import { RefreshCw, ShieldAlert, Settings } from 'lucide-react';
 import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';
 import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
 import { isMac } from '../../shared/lib/platform';
+import { GrooveMark } from '../../shared/ui/GrooveMark';
 
 export function Header() {
   // The active session's title (task title, or MR name for reviews), centered as
@@ -40,8 +41,8 @@ export function Header() {
     <header className="header" data-tauri-drag-region>
       <div className="header-left" data-tauri-drag-region>
         <span className="header-logo" data-tauri-drag-region>
-          <Layers size={14} strokeWidth={1.75} style={{ marginRight: 7, opacity: 0.7, verticalAlign: 'middle' }} />
-          Groove
+          <GrooveMark size={16} />
+          roove
         </span>
 
         <HeaderPickers />
