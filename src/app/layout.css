@@ -375,6 +375,9 @@
 .hp-row { display: flex; align-items: stretch; }
 .hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); border-radius: var(--gl-border-radius-medium); }
 .hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium);}
+/* On the row, not the main button: the close × sits outside it. */
+.hp-row:hover:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium); }
+.hp-row.active:hover { background: color-mix(in srgb, var(--ctp-blue) 20%, transparent); }
 .hp-row-main {
   flex: 1;
   min-width: 0;
@@ -433,7 +436,6 @@
   text-align: left;
   border-radius: var(--gl-border-radius-base);
 }
-.hp-row-simple:hover { background: var(--gl-background-color-hover); }
 .hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
