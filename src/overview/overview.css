@@ -811,22 +811,44 @@
   background: var(--gl-color-blue-100);
 }
 
-/* ── Time: two columns in the property strip, logging behind a popover ─────── */
+/* ── Time: one column in the property strip, logging behind a popover ─────── */
 
 /* Time reads as a property because that is what it is — the block it used to be
    cost the description half the page's width. */
 
-.prop-time .prop-v-text { font-family: var(--font-mono); }
+.prop-time .prop-v { gap: var(--space-2); }
 
-.prop-v-pending { color: var(--gl-color-blue-300); }
+.prop-time .prop-v-text { font-family: var(--font-mono); white-space: nowrap; }
 
-/* The "+ time" button is a control, not a key/value pair, so it centres. */
+.time-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 100px;
+  border: 1px dashed var(--gl-border-color-default);
+  background: none;
+  color: var(--gl-text-color-muted);
+  cursor: pointer;
+}
 
-.prop-time-add { justify-content: center; }
+.time-add:hover { color: var(--gl-color-blue-300); border-color: var(--gl-color-blue-300); }
+
+/* Solid and blue when tracked time is waiting — the dashed outline reads as
+   "nothing here yet", which is exactly wrong when something is. */
+
+.time-add.pending {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
+  background: var(--gl-color-blue-100);
+  color: var(--gl-color-blue-300);
+}
 
 /* Last column in a full-width strip: the menu opens leftwards or it clips. */
 
-.prop-time-add .ppop { left: auto; right: 0; }
+.prop-time .ppop { left: auto; right: 0; }
 
 .time-menu {
   display: flex;

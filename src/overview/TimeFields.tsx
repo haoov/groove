@@ -6,8 +6,8 @@ import { useStore } from '../shared/store';
 import type { TaskTime } from '../shared/ipc/ipc';
 
 /**
- * Time as two property columns in the strip — logged and tracked — plus a
- * "+ time" popover holding every way to log it.
+ * Time as one property column in the strip: the logged total, and a "+" that
+ * opens every way to log more. The "+" turns blue when tracked time is waiting.
  *
  * It reads as a property because that is what it is; the block it used to be
  * cost the description half the page's width. Logging stays explicit (see
@@ -94,35 +94,25 @@ export function TimeFields({
     : roundHours(time?.logged_seconds ?? 0).toString();
 
   return (
-    <>
-      <div className="prop prop-time">
-        <span className="prop-k">Logged</span>
-        <span className="prop-v">
-          <span className="prop-v-text">{loggedLabel}h</span>
-        </span>
-      </div>
+    <div className="prop prop-time">
+      <span className="prop-k">Time</span>
+      <span className="prop-v">
+        <span className="prop-v-text">{loggedLabel}h</span>
 
-      <div className="prop prop-time">
-        <span className="prop-k">Tracked</span>
-        <span
-          className="prop-v"
-          title={
-            unlogged > 0
-              ? 'Tracked here and not logged yet'
-              : today > 0 ? 'Tracked today, all logged' : 'Nothing tracked yet'
-          }
-        >
-          <span className={`prop-v-text${unlogged > 0 ? ' prop-v-pending' : ''}`}>
-            {unlogged > 0 ? human(unlogged) : today > 0 ? `${human(today)} today` : '—'}
-          </span>
-        </span>
-      </div>
-
-      <div className="prop prop-time prop-time-add">
         <span className="ppop-anchor" ref={box}>
-          <button className="padd" onClick={() => setOpen(!open)} title="Log time on this task">
-            {busy ? <Loader2 size={11} className="spin" /> : <Plus size={11} strokeWidth={3} />}
-            time
+          {/* Blue when there is tracked time waiting: the only cue that the
+              number beside it is behind. */}
+          <button
+            className={`time-add${unlogged > 0 ? ' pending' : ''}`}
+            onClick={() => setOpen(!open)}
+            title={
+              unlogged > 0
+                ? `${human(unlogged)} tracked, not logged yet`
+                : today > 0 ? 'Tracked today, all logged' : 'Log time on this task'
+            }
+            aria-label="Log time on this task"
+          >
+            {busy ? <Loader2 size={11} className="spin" /> : <Plus size={12} strokeWidth={2.5} />}
           </button>
 
           {open && (
@@ -164,7 +154,7 @@ export function TimeFields({
             </div>
           )}
         </span>
-      </div>
-    </>
+      </span>
+    </div>
   );
 }
