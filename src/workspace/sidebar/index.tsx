@@ -317,7 +317,6 @@ export function Sidebar() {
                       onClick={() => setDiffMode(m.id)}
                     >
                       <m.Icon size={12} strokeWidth={1.75} />
-                      <span>{m.label}</span>
                     </button>
                   ))}
                 </div>

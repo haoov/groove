@@ -5,49 +5,18 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin: var(--space-2) var(--space-2) 0;
+  margin: var(--space-2) var(--space-2) var(--space-2);
 }
 
 .diff-mode-seg {
   flex: 1;
   display: flex;
-  align-items: stretch;
-  gap: 2px;
-  padding: 2px;
-  background: var(--gl-background-color-default);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  min-width: 0;
-}
-
-.diff-mode-btn {
-  flex: 1;
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  border-radius: var(--gl-border-radius-sm);
-  color: var(--gl-text-color-disabled);
-  font-family: var(--font-ui);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 500;
-  padding: 3px 4px;
-  cursor: pointer;
+  gap: 2px;
   min-width: 0;
-  transition: color 0.12s, background 0.12s;
 }
 
-.diff-mode-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.diff-mode-btn:hover { color: var(--gl-text-color-subtle); }
-
-.diff-mode-btn.active {
-  color: var(--gl-color-blue-300);
-  background: var(--gl-color-blue-100);
-}
-
+.diff-mode-btn,
 .diff-mode-refresh {
   flex-shrink: 0;
   display: inline-flex;
@@ -62,7 +31,13 @@
   transition: color 0.12s, background 0.12s;
 }
 
+.diff-mode-btn:hover,
 .diff-mode-refresh:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.diff-mode-btn.active {
+  color: var(--gl-color-blue-300);
+  background: var(--gl-color-blue-100);
+}
 
 /* "Review all changes" entry in the sidebar Changes sub-tab. */
 
