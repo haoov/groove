@@ -10,7 +10,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 84px;
+  padding-top: 56px;
   animation: wb-overlay-in 0.14s ease-out both;
 }
 
@@ -74,7 +74,7 @@
 
 .confirm-payload {
   padding: var(--space-4);
-  max-height: 65vh;
+  max-height: calc(100vh - 190px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -103,7 +103,7 @@
 }
 
 .cp-field-textarea {
-  min-height: 150px;
+  min-height: 620px;
   resize: vertical;
   font-family: var(--font-mono);
 }
