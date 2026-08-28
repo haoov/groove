@@ -31,8 +31,7 @@ const MAX_WIDTH = 900;
 const DEFAULT_WIDTH = 460;
 const WIDTH_KEY = 'wb.agentPaneWidth';
 
-// Claude Code's TUI needs a fixed monospace; keep the Plex family, force mono.
-const AGENT_FONT = "'IBM Plex Mono', ui-monospace, monospace";
+const AGENT_FONT = "'Lilex', 'IBM Plex Mono', ui-monospace, monospace";
 
 export function AgentConsole() {
   const sessionKey = useSession((s) => s.id);
