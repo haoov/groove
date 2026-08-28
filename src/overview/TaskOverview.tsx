@@ -8,7 +8,6 @@ import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
-import { HoursWidget } from './HoursWidget';
 import { BodyEditor } from './BodyEditor';
 
 export function TaskOverview() {
@@ -35,8 +34,6 @@ export function TaskOverview() {
    *  workspace down, so they share one banner and one busy flag. */
   const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
-  /** Bumped after a write so the panel and hours re-read the task. */
-  const [hoursLogged, setHoursLogged] = useState('');
   const [schema, setSchema] = useState<TaskSchema | null>(null);
   const src = providerCopy(activeTask);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -144,7 +141,6 @@ export function TaskOverview() {
           key={reloadNonce}
           shortId={activeTask.short_id}
           schema={schema}
-          onHoursValue={setHoursLogged}
         />
 
         {/* One banner for both endings — the local half is identical, so only the
@@ -181,64 +177,52 @@ export function TaskOverview() {
           </div>
         )}
 
-        {/* Body left, context (time · repos · MRs) right. */}
-        <div className="overview-grid">
-          <main className="overview-main">
-            <BodyEditor
-              taskId={activeTask.short_id}
-              source={src}
-              markdown={body}
-              loading={loading}
-              onSaved={reload}
-            />
-          </main>
+        {/* Repos over the body, both full width: a long description needs the
+            whole page, and the repo list is short. */}
+        <div className="overview-main">
+          {/* Always shown, empty included: a task opened before any repo was
+              attached has to offer the way to attach one. */}
+          <section className="overview-section">
+            <h3 className="overview-section-title">
+              Repositories
+              <span className="overview-section-head-actions">
+                <button className="overview-add-repo" onClick={() => setAddRepoOpen(true)}>
+                  <Plus size={12} strokeWidth={2} style={{ marginRight: 4 }} />
+                  Add repo
+                </button>
+              </span>
+            </h3>
+            {activeRepos.length === 0 ? (
+              <p className="overview-empty-body">
+                No repos yet — add one to check out a branch and start working.
+              </p>
+            ) : (
+              <div className="overview-repos">
+                {activeRepos.map((repo) => {
+                  const wtIds = new Set(
+                    activeWorktrees.filter((w) => w.repo_id === repo.id).map((w) => w.id),
+                  );
+                  return (
+                    <RepoRow
+                      key={repo.id}
+                      repo={repo}
+                      worktrees={activeWorktrees}
+                      mrs={allMrs.filter((m) => wtIds.has(m.worktree_id))}
+                      onOpenWorktree={openWorktree}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-          <aside className="overview-side">
-            {/* Always rendered: time is tracked locally whatever the source has.
-                hoursProperty null means there is nowhere to log it to. */}
-            <HoursWidget
-              taskId={activeTask.short_id}
-              hoursProperty={schema?.hours_property ?? null}
-              logged={hoursLogged}
-              onLogged={reload}
-            />
-
-            {/* Always shown, empty included: a task opened before any repo was
-                attached has to offer the way to attach one. */}
-            <section className="overview-section">
-              <h3 className="overview-section-title">
-                Repositories
-                <span className="overview-section-head-actions">
-                  <button className="overview-add-repo" onClick={() => setAddRepoOpen(true)}>
-                    <Plus size={12} strokeWidth={2} style={{ marginRight: 4 }} />
-                    Add repo
-                  </button>
-                </span>
-              </h3>
-              {activeRepos.length === 0 ? (
-                <p className="overview-empty-body">
-                  No repos yet — add one to check out a branch and start working.
-                </p>
-              ) : (
-                <div className="overview-repos">
-                  {activeRepos.map((repo) => {
-                    const wtIds = new Set(
-                      activeWorktrees.filter((w) => w.repo_id === repo.id).map((w) => w.id),
-                    );
-                    return (
-                      <RepoRow
-                        key={repo.id}
-                        repo={repo}
-                        worktrees={activeWorktrees}
-                        mrs={allMrs.filter((m) => wtIds.has(m.worktree_id))}
-                        onOpenWorktree={openWorktree}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          </aside>
+          <BodyEditor
+            taskId={activeTask.short_id}
+            source={src}
+            markdown={body}
+            loading={loading}
+            onSaved={reload}
+          />
         </div>
       </div>
     </div>

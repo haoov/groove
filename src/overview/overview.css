@@ -811,78 +811,34 @@
   background: var(--gl-color-blue-100);
 }
 
-/* ── Time: its own block, because it is the one you use daily ───────────────── */
+/* ── Time: two columns in the property strip, logging behind a popover ─────── */
 
-.time {
-  position: relative;
-  width: 100%;
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
+/* Time reads as a property because that is what it is — the block it used to be
+   cost the description half the page's width. */
+
+.prop-time .prop-v-text { font-family: var(--font-mono); }
+
+.prop-v-pending { color: var(--gl-color-blue-300); }
+
+/* The "+ time" button is a control, not a key/value pair, so it centres. */
+
+.prop-time-add { justify-content: center; }
+
+/* Last column in a full-width strip: the menu opens leftwards or it clips. */
+
+.prop-time-add .ppop { left: auto; right: 0; }
+
+.time-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
-
-/* Legend sits on the border, fieldset-style — names the block without a heading row. */
-
-.time-legend {
-  position: absolute;
-  top: -8px;
-  left: var(--space-3);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 6px;
-  background: var(--gl-background-color-default);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gl-text-color-muted);
-}
-
-.time-body { display: flex; flex-direction: column; gap: var(--space-2); }
-
-.time-figures { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
-
-.time-logged { display: inline-flex; align-items: baseline; gap: 3px; }
-
-.time-logged strong {
-  font-family: var(--font-mono);
-  font-size: 1.375rem;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--gl-text-color-default);
-}
-
-.time-unit { font-family: var(--font-mono); font-size: var(--gl-font-size-md); color: var(--gl-text-color-subtle); }
-
-.time-caption { margin-left: 5px; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
-
-.time-tracked { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-subtle); min-width: 0; overflow-wrap: anywhere; }
-
-.time-tracked strong { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
-
-/* Filled portion = unlogged ÷ total known work. */
-
-.time-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(var(--gl-elevate), 0.1);
-  overflow: hidden;
-}
-
-.time-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--gl-color-blue-400);
-  transition: width 0.4s ease-out;
-}
-
-.time-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 
 .time-log {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 5px 14px;
   border-radius: var(--gl-border-radius-base);
@@ -904,7 +860,7 @@
   cursor: default;
 }
 
-.time-quick { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.time-quick { display: flex; align-items: center; gap: var(--space-2); }
 
 .time-btn, .time-input {
   padding: 3px 8px;
@@ -918,17 +874,15 @@
   outline: none;
 }
 
+.time-btn { flex: 1; }
+
 .time-btn:hover:not(:disabled) { color: var(--gl-text-color-default); border-color: var(--gl-color-blue-300); }
 
 .time-btn:disabled { opacity: 0.5; cursor: default; }
 
-.time-input { width: 3.4rem; cursor: text; text-align: center; }
+.time-input { flex: 1; min-width: 0; cursor: text; text-align: center; }
 
 .time-input:focus { border-color: var(--gl-focus-border); background: var(--gl-background-color-default); }
-
-@media (prefers-reduced-motion: reduce) {
-  .time-bar-fill { transition: none; }
-}
 
 /* ── Body editor ───────────────────────────────────────────────────────────── */
 
