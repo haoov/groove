@@ -5,6 +5,8 @@ import type { AppState, SkillsSlice } from '../types';
 
 export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set) => ({
   skills: [],
+  skillsStale: false,
+  setSkillsStale: (skillsStale) => set({ skillsStale }),
   loadSkills: async () => {
     // A failure here costs the buttons, never the app: the skills still exist in
     // the agent, reachable by typing the slash command.

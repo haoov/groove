@@ -27,6 +27,7 @@ const CORE_SKILLS: &[(&str, &str)] = &[
     ("co-review", include_str!("core/co-review.md")),
     ("create-task", include_str!("core/create-task.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),
+    ("new-skill", include_str!("core/new-skill.md")),
     ("open-mr", include_str!("core/open-mr.md")),
     ("scaffold-task", include_str!("core/scaffold-task.md")),
     ("start-task", include_str!("core/start-task.md")),
@@ -344,6 +345,47 @@ async fn validate_user_plugin() -> Option<String> {
     );
     let text = text.trim().to_string();
     (!text.is_empty()).then_some(text)
+}
+
+// ─── What the agent writes ────────────────────────────────────────────────────
+
+/// One user skill's raw `SKILL.md`, for an agent about to edit it.
+///
+/// The user's own only. The core plugin is rewritten from `CORE_SKILLS` at every
+/// startup, so handing the agent a core skill to edit would promise an edit the
+/// next launch silently erases.
+pub fn read_user_skill(name: &str) -> anyhow::Result<String> {
+    if !valid_name(name) {
+        anyhow::bail!("not a skill name: `{name}`");
+    }
+    let path = user_skills_dir()?.join(name).join("SKILL.md");
+    std::fs::read_to_string(&path)
+        .map_err(|e| anyhow::anyhow!("no user skill `{name}`: {e}"))
+}
+
+/// The approved `skill.save` op. Returns what `claude plugin validate` said.
+///
+/// Writing over an existing name is refused unless the call says it is REPLACING
+/// that skill: an agent picking a name that happens to be taken would otherwise
+/// overwrite something the user wrote, with the same confirmation text either way.
+pub(crate) async fn save_user_skill_impl(
+    payload: serde_json::Value,
+) -> anyhow::Result<Option<String>> {
+    let name = payload["name"].as_str().unwrap_or_default();
+    let body = payload["body"].as_str().unwrap_or_default();
+    let previous = payload["previous"].as_str().filter(|p| !p.is_empty());
+    if body.trim().is_empty() {
+        anyhow::bail!("a skill with no body is not a skill");
+    }
+
+    let root = user_skills_dir()?;
+    if root.join(name).join("SKILL.md").exists() && previous != Some(name) {
+        anyhow::bail!(
+            "a user skill named `{name}` already exists — pass previous: \"{name}\" to replace it, or choose another name"
+        );
+    }
+    save_user_skill_at(&root, name, body, previous)?;
+    Ok(validate_user_plugin().await)
 }
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────

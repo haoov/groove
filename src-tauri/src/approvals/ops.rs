@@ -32,9 +32,15 @@ pub const TASK_ADD_REPO: &str = "task.add_repo";
 pub const TASK_ADD_WORKTREE: &str = "task.add_worktree";
 pub const TASK_CREATE_FROM_EXPLORER: &str = "task.create_from_explorer";
 
+/// Write one of the user's own agent skills. Gated even though it never leaves the
+/// machine: a skill is an instruction the agent invokes on its own later, so the
+/// user reads it once, here, before it can act. The Settings editor writes
+/// directly — that is the user typing, which is its own consent.
+pub const SKILL_SAVE: &str = "skill.save";
+
 /// Every op, for the mirror test below.
 #[cfg(test)]
-const ALL: [&str; 16] = [
+const ALL: [&str; 17] = [
     GIT_COMMIT,
     GIT_PUSH,
     GIT_PULL,
@@ -51,6 +57,7 @@ const ALL: [&str; 16] = [
     TASK_ADD_REPO,
     TASK_ADD_WORKTREE,
     TASK_CREATE_FROM_EXPLORER,
+    SKILL_SAVE,
 ];
 
 /// The success payload every write op returns. A bare `null` is what an agent
@@ -202,6 +209,21 @@ pub(super) async fn execute(
         }
         TASK_ADD_WORKTREE => {
             crate::task_manager::add_worktree_impl(payload, pool, handle).await
+        }
+        SKILL_SAVE => {
+            let name = payload["name"].as_str().unwrap_or("").to_string();
+            let report = crate::skills::save_user_skill_impl(payload).await?;
+            let mut v = op_ok(
+                op_type,
+                // The restart is the part the agent gets wrong on its own: it would
+                // offer the new skill in the same breath, and the slash command
+                // would not exist yet.
+                format!("Wrote user:{name} — it loads when the agent restarts, not before"),
+            );
+            if let (Some(obj), Some(report)) = (v.as_object_mut(), report) {
+                obj.insert("validate".into(), serde_json::json!(report));
+            }
+            Ok(v)
         }
         TASK_CREATE_FROM_EXPLORER => {
             // Already returns the created task (short_id, page id, …).

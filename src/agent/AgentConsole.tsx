@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronUp, Loader2, Play, Sparkles, X } from 'lucide-react';
+import { ChevronUp, Loader2, Play, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
-import { ensureAgentSession, sendSkill } from '../shared/lib/agentSend';
+import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
 import { SOURCE_IDS } from '../setup/sources';
 import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
@@ -41,6 +41,7 @@ export function AgentConsole() {
   const autoApprove = useSession((s) => s.autoApprove);
   const setAutoApprove = useSession((s) => s.setAutoApprove);
   const skills = useStore((s) => s.skills);
+  const skillsStale = useStore((s) => s.skillsStale);
   const open = useStore((s) => s.consoleOpen);
   const setOpen = useStore((s) => s.setConsoleOpen);
   const focusNonce = useStore((s) => s.consoleFocusNonce);
@@ -52,6 +53,7 @@ export function AgentConsole() {
 
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [reloading, setReloading] = useState(false);
 
   // Where a filed task can go; the create-task rows of the Actions menu.
   const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
@@ -174,6 +176,14 @@ export function AgentConsole() {
         : [skillRow(a)],
     );
 
+  const reload = () => {
+    if (reloading) return;
+    setReloading(true);
+    reloadAgent(sessionKey)
+      .catch((e) => setLastError(String(e)))
+      .finally(() => setReloading(false));
+  };
+
   const state = activity?.state ?? (agentPty ? 'working' : 'idle');
 
   return (
@@ -243,6 +253,21 @@ export function AgentConsole() {
               </div>
             )}
           </span>
+          {/* A skill changed on disk. `--plugin-dir` is read at launch, so the
+              running agent cannot see it — and the skills list deliberately does
+              not refresh until it can, or the menu would offer a slash command
+              the agent answers with "unknown command". */}
+          {skillsStale && agentPty && (
+            <button
+              className="console-action"
+              disabled={reloading}
+              onClick={reload}
+              title="Restart the agent so it loads the skills — the conversation is resumed"
+            >
+              {reloading ? <Loader2 size={11} className="spin" /> : <RefreshCw size={11} strokeWidth={2} />}
+              Reload skills
+            </button>
+          )}
           {/* Auto-approve, as a real switch — warm while on, so approving blind is
               never a hidden state. Sits apart from the canned asks. */}
           <button

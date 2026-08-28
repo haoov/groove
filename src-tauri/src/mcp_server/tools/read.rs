@@ -212,3 +212,15 @@ pub(super) async fn get_task_template(
         Err(e) => Ok(ToolCallResponse::err(e.to_string())),
     }
 }
+
+/// The raw `SKILL.md` of one of the user's own skills, so an edit rewrites a
+/// whole file instead of guessing at what the rest of it said.
+pub(super) async fn read_user_skill(
+    input: serde_json::Value,
+) -> anyhow::Result<ToolCallResponse> {
+    let name = str_field(&input, "name")?;
+    Ok(match crate::skills::read_user_skill(&name) {
+        Ok(body) => ToolCallResponse::ok(serde_json::json!({ "name": name, "body": body })),
+        Err(e) => ToolCallResponse::err(e.to_string()),
+    })
+}

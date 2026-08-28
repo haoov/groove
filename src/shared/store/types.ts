@@ -207,6 +207,10 @@ export interface SkillsSlice {
    *  after the user edits their own; the pill filters it by session kind. */
   skills: AgentSkill[];
   loadSkills: () => Promise<void>;
+  /** A skill file changed since the agents started. They load skills with
+   *  `--plugin-dir` at launch, so until one restarts the change is on disk only. */
+  skillsStale: boolean;
+  setSkillsStale: (stale: boolean) => void;
 }
 
 export interface NotificationsSlice {

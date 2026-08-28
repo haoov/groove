@@ -109,3 +109,18 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
 export function sendSkill(sessionKey: string, skillId: string, args?: string): Promise<void> {
   return sendToAgent(sessionKey, `/${skillId} ${args ?? ''}`);
 }
+
+/**
+ * Restart a session's agent so it loads the skills that are on disk now.
+ *
+ * `--plugin-dir` is read at launch, so a skill written mid-session is invisible
+ * to the agent that wrote it. `start_agent_session` resumes the same Claude
+ * conversation, so the restart costs the process, not the thread.
+ */
+export async function reloadAgent(sessionKey: string): Promise<void> {
+  const pty = agentPtyFor(sessionKey);
+  if (pty) await invoke('stop_agent_session', { sessionId: pty });
+  await ensureAgentSession(sessionKey);
+  await useStore.getState().loadSkills();
+  useStore.getState().setSkillsStale(false);
+}

@@ -39,6 +39,8 @@ export function SkillsSection() {
   const skills = useStore((s) => s.skills);
   const loadSkills = useStore((s) => s.loadSkills);
   const setLastError = useStore((s) => s.setLastError);
+  // Editing here changes the same files the agents loaded at launch.
+  const setSkillsStale = useStore((s) => s.setSkillsStale);
 
   const [editing, setEditing] = useState<Editing | null>(null);
   const [viewing, setViewing] = useState<AgentSkill | null>(null);
@@ -93,6 +95,7 @@ export function SkillsSection() {
       });
       setReport(out);
       await loadSkills();
+      setSkillsStale(true);
       setEditing({ ...editing, previous: editing.name });
     } catch (e) {
       setLastError(String(e));
@@ -106,6 +109,7 @@ export function SkillsSection() {
     try {
       await invoke('delete_user_skill', { name: editing.previous });
       await loadSkills();
+      setSkillsStale(true);
       setEditing(null);
       setReport(null);
     } catch (e) {

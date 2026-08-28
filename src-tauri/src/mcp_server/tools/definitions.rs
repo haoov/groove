@@ -50,6 +50,23 @@ fn task_body_description(specifics: &str) -> String {
 
 const TARGET_BRANCH: &str = "Branch this work is based on and will be merged back into. Omit for the repo default; name it for a maintenance, release or backport branch, or for the branch a stacked MR sits on. It must already exist on origin. The branch is cut from it, the diff is measured against it, and create_mr targets it.";
 
+/// What a `SKILL.md` has to contain. The description rule is the load-bearing one:
+/// Claude Code matches it against the chat to invoke the skill with no button
+/// pressed, so a label-shaped description is a skill that never fires.
+fn skill_body_description() -> String {
+    "The whole SKILL.md. Front matter between `---` lines, every value on ONE line: \
+     `name` (matches the name field), `description`, `groove-kinds` (comma list of \
+     task, review, explorer), `groove-label` (two or three words, the button), \
+     `groove-hint` (one short line under 60 chars, shown beside the button). \
+     `description` is what the app matches the user's words against to invoke the \
+     skill unprompted: say what it does, then `Use when …` with the words they would \
+     type. Keep that trigger narrow — a broad one fires on unrelated turns. Then the \
+     procedure, as numbered steps, and the judgment the steps need. Nothing about how \
+     to word a commit message, an MR, an annotation or a task body: the tools say that \
+     at the call."
+        .to_string()
+}
+
 pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
     vec![
         mcp_tool("get_active_task", "Get the currently open task, its worktrees, and repos.", serde_json::json!({"type":"object","properties":{}})),
@@ -80,6 +97,8 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("log_task_hours", "ADD hours to the task's \"Hours spent\" (never replaces it). Requires confirmation. Only log time the user asked you to log.", serde_json::json!({"type":"object","required":["hours"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"hours":{"type":"number","description":"Hours to add, e.g. 1.5."}}})),
         mcp_tool("update_task_body", "Replace the task page's body with markdown. Requires confirmation. Read the current body with get_task_body first and send the WHOLE new body — this replaces, it does not append. Fails if the page holds blocks markdown can't rebuild.", serde_json::json!({"type":"object","required":["markdown"],"properties":{"task_id":{"type":"string","description":"Defaults to your own task."},"markdown":{"type":"string","description":format!("The complete new body — this REPLACES the page. Keep what the user wrote unless asked to change it. {LISTS}")},"force":{"type":"boolean","description":"Only after the user accepts losing unsupported blocks."}}})),
         mcp_tool("get_task_template", "Fetch the task template as markdown (template_markdown), empty when the source has none. Mirror its headings when drafting body_markdown for create_task_from_explorer — but keep each section to a line or two.", serde_json::json!({"type":"object","properties":{"provider":{"type":"string","description":format!("{}. Only needed when more than one source is set up and the session has no task.", crate::provider::names_prose())}}})),
+        mcp_tool("read_user_skill", "The raw SKILL.md of one of the USER's own skills (`user:<name>`). Read it before editing one — save_user_skill replaces the whole file. Groove's own `groove:` skills are compiled into the app and cannot be read or written.", serde_json::json!({"type":"object","required":["name"],"properties":{"name":{"type":"string","description":"The skill's name, without the `user:` prefix."}}})),
+        mcp_tool("save_user_skill", "Create or replace one of the USER's own skills. Requires confirmation, and the confirmation shows them the file — do not paste it into the chat as well. The user says what the skill should do and you draft the whole thing; ask when the name, the trigger or the kinds are genuinely open, and never infer the skill from what this session happens to be doing. A skill loads at agent startup, so a new one cannot be invoked until the agent restarts — say so instead of offering it.", serde_json::json!({"type":"object","required":["name","body"],"properties":{"name":{"type":"string","description":"Lowercase letters, digits and dashes. It is the directory name and the slash command (`/user:<name>`)."},"body":{"type":"string","description":skill_body_description()},"previous":{"type":"string","description":"The name of the skill being REPLACED. Required to overwrite an existing one, and it is what renames a skill (pass the old name with a new `name`)."}}})),
         mcp_tool("create_task_from_explorer", "Draft and file a task from the current explorer session, then convert the session into a task (requires user confirmation). First call get_task_template and mirror its headings. Provide a title and a SHORT markdown body.", serde_json::json!({"type":"object","required":["title","body_markdown"],"properties":{"title":{"type":"string","description":"One line naming the outcome, not the investigation, in plain language. NOT a conventional-commit subject — no \"type(scope):\" prefix."},"body_markdown":{"type":"string","description":task_body_description("Drop headings with nothing real to say. No narration of the exploration.")},"provider":{"type":"string","description":format!("{}. Only needed when more than one is set up.", crate::provider::names_prose())}}})),
     ]
 }

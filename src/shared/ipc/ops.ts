@@ -20,6 +20,8 @@ export const OP = {
   TASK_ADD_REPO: 'task.add_repo',
   TASK_ADD_WORKTREE: 'task.add_worktree',
   TASK_CREATE_FROM_EXPLORER: 'task.create_from_explorer',
+
+  SKILL_SAVE: 'skill.save',
 } as const;
 
 /** Op_type prefix for git operations (commit/push/pull/rebase). */

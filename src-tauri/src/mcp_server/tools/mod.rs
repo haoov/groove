@@ -76,6 +76,7 @@ pub(super) async fn dispatch(
         "get_file_content" => read::get_file_content(input).await,
         "get_task_body" => read::get_task_body(input, state).await,
         "get_task_template" => read::get_task_template(input, state, mcp_session).await,
+        "read_user_skill" => read::read_user_skill(input).await,
 
         // Writes gated by the confirmation bridge
         "git_commit" => write::via_bridge(ops::GIT_COMMIT, input, state, mcp_session).await,
@@ -94,6 +95,7 @@ pub(super) async fn dispatch(
         "update_task_body" => write::update_task_body(input, state, mcp_session).await,
         "add_task_repo" => write::add_task_repo(input, state, mcp_session).await,
         "add_task_worktree" => write::add_task_worktree(input, state, mcp_session).await,
+        "save_user_skill" => write::via_bridge(ops::SKILL_SAVE, input, state, mcp_session).await,
 
         // Writes the user never has to approve (local, reversible, UI-visible)
         "create_annotation" => write::create_annotation(input, state).await,

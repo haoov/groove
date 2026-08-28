@@ -82,8 +82,17 @@ with the words a user types — because that is what Claude Code matches to invo
 skill on its own, off the chat, with no button pressed. A test guards the phrase. The UI
 shows `groove-hint` and never the description: writing the description short enough for a
 tooltip is exactly what kills auto-invocation.
-A user's own live in `<config>/user-skills/skills/` and are written by the Settings
-manager (`src/actions/`); a skill file is a LOCAL write, so it does not pass approvals.
+A user's own live in `<config>/user-skills/skills/` and are written two ways: the
+Settings manager (`src/actions/`) writes them directly, because that is the user typing,
+and the agent writes them through `save_user_skill` — the one LOCAL write that is gated,
+since a skill is an instruction it will later invoke unprompted. The bridge covers what
+leaves the machine PLUS what authors the agent's future behaviour.
+
+**A skill on disk is not a skill the agent has.** `--plugin-dir` is read at launch, so a
+write marks `skillsStale` and the console offers a reload (`reloadAgent` — stop the PTY,
+start it again, `--resume` keeps the conversation). The skills LIST deliberately does not
+refresh until then: a pill for a skill the running agent cannot resolve answers with
+"unknown command".
 
 **Groove suggests, it never auto-sends.** A trigger renders a chip the user clicks
 (`TaskOverview`'s scaffold offer). Opening a session must never start an agent by
