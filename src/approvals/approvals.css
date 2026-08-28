@@ -103,7 +103,7 @@
 }
 
 .cp-field-textarea {
-  min-height: 620px;
+  min-height: 520px;
   resize: vertical;
   font-family: var(--font-mono);
 }
