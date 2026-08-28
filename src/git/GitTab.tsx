@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
   GitCommit, Upload, Download, ChevronsUp, ChevronDown, ChevronRight, Plus, Minus, Circle, Trash2,
-  AlertTriangle, GitPullRequest, GitCompare, Search, X, Check,
+  AlertTriangle, GitPullRequest, GitCompare, Search, X, Check, ExternalLink,
 } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
 import { useListNav } from '../shared/lib/useListNav';
 import { ContextMenu } from '../shared/ui/ContextMenu';
-import type { CommitEntry, WorktreeStatus, FileDiff } from '../shared/ipc/ipc';
+import type { CommitEntry, WorktreeStatus, FileDiff, Mr } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
 import { registerCommitPush } from '../shared/lib/gitChain';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 import { repoDiffFor } from '../shared/lib/workspace';
+import { forgeName, mrSigil } from '../shared/lib/forge';
+import { openExternal } from '../shared/lib/openExternal';
+import { ciGroup } from '../shared/lib/mr';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {
@@ -408,8 +411,40 @@ const GIT_MENU: { key: ActionKey; label: string; icon: typeof GitCommit; needsMe
  * button (Commit → Push → Pull, derived from message + git status) with a ▾
  * menu for every action, plus inline status chips.
  */
+/** The MR's pipeline status; grey when the forge reports none. */
+function MrCiChip({ mr }: { mr: Mr }) {
+  const [ci, setCi] = useState<{ status: string; url: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    invoke<{ status: string; url: string } | null>('get_mr_ci', { mrId: mr.id })
+      .then((r) => { if (!cancelled) setCi(r ?? null); })
+      .catch(() => { if (!cancelled) setCi(null); });
+    return () => { cancelled = true; };
+  }, [mr.id]);
+
+  if (!ci) {
+    return (
+      <span className="git-commit-mr-ci forge-ci-idle" title="No pipeline reported">
+        <span className="forge-ci-dot" />
+        CI
+      </span>
+    );
+  }
+  return (
+    <button
+      className={`git-commit-mr-ci forge-ci-${ciGroup(ci.status)}`}
+      onClick={() => openExternal(ci.url)}
+      title={`Pipeline: ${ci.status} — open in ${forgeName(mr.platform)}`}
+    >
+      <span className="forge-ci-dot" />
+      CI
+    </button>
+  );
+}
+
 export function GitCommitPanel({
-  status, branch, worktreeId, commitOnly = false, hasMr = false, onCommit, onAction,
+  status, branch, worktreeId, commitOnly = false, mr, onCommit, onAction,
 }: {
   status?: WorktreeStatus;
   branch?: string;
@@ -417,8 +452,8 @@ export function GitCommitPanel({
   worktreeId?: string;
   /** Explorer sessions: only commit is available (no push/pull/rebase). */
   commitOnly?: boolean;
-  /** This branch already has an MR — hides "Create MR…". */
-  hasMr?: boolean;
+  /** This branch's merge request, when it has one. Hides "Create MR…". */
+  mr?: Mr;
   /** Resolves to the commit confirmation's id (chains Commit & Push). */
   onCommit: (message: string) => Promise<string | undefined | void>;
   onAction: (cmd: string) => void;
@@ -427,6 +462,7 @@ export function GitCommitPanel({
   const [menuOpen, setMenuOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const hasMr = !!mr;
   const menu = commitOnly
     ? GIT_MENU.filter((a) => a.key === 'commit')
     : GIT_MENU.filter((a) => a.key !== 'create-mr' || !hasMr);
@@ -520,6 +556,20 @@ export function GitCommitPanel({
           <button className="git-warn-close-btn" onClick={() => runRebaseAction('rebase_abort')}>
             Abort rebase
           </button>
+        </div>
+      )}
+      {mr && (
+        <div className="git-commit-mr">
+          <button
+            className="git-commit-mr-num"
+            onClick={() => openExternal(mr.url)}
+            title={`${mr.url} — open in ${forgeName(mr.platform)}`}
+          >
+            {mrSigil(mr.platform)}{mr.remote_id}
+            <ExternalLink size={11} strokeWidth={1.75} />
+          </button>
+          <span className={`git-commit-mr-state mr-state-${mr.state}`}>{mr.state}</span>
+          <MrCiChip mr={mr} />
         </div>
       )}
       <textarea

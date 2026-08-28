@@ -313,86 +313,75 @@
 
 .git-split-item.active { color: var(--gl-color-blue-300); }
 
-/* GIT → Forge */
+/* GIT → the branch's MR, above the commit box */
 
-.forge { padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
-
-/* Compact selectable MR rows — details live in the MR overview tab. */
-
-.forge-mr-row {
+.git-commit-mr {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--gl-border-radius-base);
-  padding: 5px var(--space-2);
-  cursor: pointer;
-  transition: background 0.1s, border-color 0.1s;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--gl-background-color-default);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+  min-width: 0;
 }
 
-.forge-mr-row:hover {
-  background: rgba(var(--gl-elevate), 0.04);
-  border-color: var(--gl-border-color-default);
-}
-
-.forge-mr-num {
+.git-commit-mr-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
   font-family: var(--font-mono);
   font-size: var(--gl-font-size-xs);
   color: var(--gl-color-blue-300);
   background: var(--gl-color-blue-100);
-  padding: 1px 6px;
-  border-radius: var(--gl-border-radius-sm);
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.12s;
 }
 
-.forge-mr-repo {
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-disabled);
+.git-commit-mr-num:hover { background: color-mix(in srgb, var(--gl-color-blue-400) 22%, transparent); }
+
+.git-commit-mr-state {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.forge-mr-right { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
-
-.forge-mr-unresolved {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
   font-size: var(--gl-font-size-xs);
-  color: var(--gl-color-orange-400);
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--gl-text-color-disabled);
 }
 
-.forge-state {
+.git-commit-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
+
+.git-commit-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
+
+.git-commit-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
+
+.git-commit-mr-ci {
+  margin-left: auto;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: var(--gl-font-size-sm);
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.forge-state-open   { color: var(--gl-color-green-400); }
-
-.forge-state-merged { color: var(--gl-color-purple-400); }
-
-.forge-state-closed { color: var(--gl-color-red-400); }
-
-/* CI / pipeline status pill */
-
-.forge-ci {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
+  padding: 1px 7px;
+  border: 1px solid var(--gl-border-color-subtle);
+  border-radius: 100px;
+  background: rgba(var(--gl-elevate), 0.05);
+  font-family: var(--font-ui);
   font-size: var(--gl-font-size-xs);
   font-weight: 500;
-  text-decoration: none;
-  text-transform: capitalize;
+  cursor: pointer;
+  transition: border-color 0.12s;
 }
+
+button.git-commit-mr-ci:hover { border-color: currentColor; }
+
+span.git-commit-mr-ci { cursor: default; }
+
+/* CI / pipeline status pill */
 
 .forge-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
@@ -411,8 +400,6 @@
 .forge-ci-idle { color: var(--gl-text-color-disabled); }
 
 .forge-ci-idle .forge-ci-dot { background: var(--gl-text-color-disabled); }
-
-.forge-ci:hover { text-decoration: underline; }
 
 /* Commits tab */
 /* `.git-subcontent` is the scroller (as for every other sub-tab), so the filter
