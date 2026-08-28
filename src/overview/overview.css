@@ -813,9 +813,6 @@
 
 /* ── Time: one column in the property strip, logging behind a popover ─────── */
 
-/* Time reads as a property because that is what it is — the block it used to be
-   cost the description half the page's width. */
-
 .prop-time .prop-v { gap: var(--space-2); }
 
 .prop-time .prop-v-text { font-family: var(--font-mono); white-space: nowrap; }
@@ -836,8 +833,7 @@
 
 .time-add:hover { color: var(--gl-color-blue-300); border-color: var(--gl-color-blue-300); }
 
-/* Solid and blue when tracked time is waiting — the dashed outline reads as
-   "nothing here yet", which is exactly wrong when something is. */
+/* Tracked time waiting to be logged. */
 
 .time-add.pending {
   border-style: solid;
@@ -846,7 +842,7 @@
   color: var(--gl-color-blue-300);
 }
 
-/* Last column in a full-width strip: the menu opens leftwards or it clips. */
+/* Last column in the strip: the menu opens leftwards. */
 
 .prop-time .ppop { left: auto; right: 0; }
 

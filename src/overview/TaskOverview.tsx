@@ -177,11 +177,8 @@ export function TaskOverview() {
           </div>
         )}
 
-        {/* Repos over the body, both full width: a long description needs the
-            whole page, and the repo list is short. */}
         <div className="overview-main">
-          {/* Always shown, empty included: a task opened before any repo was
-              attached has to offer the way to attach one. */}
+          {/* Shown even with no repos: it carries the only way to attach one. */}
           <section className="overview-section">
             <h3 className="overview-section-title">
               Repositories

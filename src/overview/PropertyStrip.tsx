@@ -15,9 +15,7 @@ import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
  *
  * Shown = properties that have a value (or were just revealed via + field), plus
  * read-only computed fields; empty editable properties live behind + field.
- * Time is the last pair of columns — logged and tracked, with its own popover to
- * log more; it renders even with no schema, because time is tracked locally
- * whatever the source has.
+ * Time is the last column, and renders with no schema too.
  */
 
 export function PropertyStrip({
@@ -88,7 +86,6 @@ export function PropertyStrip({
           />
         ))}
 
-        {/* Logging writes the hours property at the source, so re-read the values. */}
         <TimeFields
           taskId={shortId}
           hoursProperty={hoursProperty}

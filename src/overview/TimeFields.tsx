@@ -7,12 +7,7 @@ import type { TaskTime } from '../shared/ipc/ipc';
 
 /**
  * Time as one property column in the strip: the logged total, and a "+" that
- * opens every way to log more. The "+" turns blue when tracked time is waiting.
- *
- * It reads as a property because that is what it is; the block it used to be
- * cost the description half the page's width. Logging stays explicit (see
- * hours.rs) — a timer that quietly wrote to a shared number field would produce
- * data nobody could trust.
+ * opens every way to log more. Logging is always explicit (see hours.rs).
  */
 
 /** Hours are logged to the quarter — nobody means 1.37 hours. */
@@ -100,8 +95,6 @@ export function TimeFields({
         <span className="prop-v-text">{loggedLabel}h</span>
 
         <span className="ppop-anchor" ref={box}>
-          {/* Blue when there is tracked time waiting: the only cue that the
-              number beside it is behind. */}
           <button
             className={`time-add${unlogged > 0 ? ' pending' : ''}`}
             onClick={() => setOpen(!open)}

@@ -149,9 +149,9 @@ leaf feature.
   must keep **identical font, size, weight and spacing** — changing weight alone drifts
   the highlight off the caret.
 
-**Comments**: say WHAT and why-it-must-be-this-way, not what the line already says. One
-line is usually enough. Existing long explanatory blocks are legacy; do not copy that
-density into new code.
+**Comments**: say WHAT, and only where the code is not already explicit — not why. One
+line is enough when one is needed, and none is often right. Existing long explanatory
+blocks are legacy; do not copy that density into new code.
 
 ## Gotchas
 
