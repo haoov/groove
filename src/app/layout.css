@@ -184,28 +184,6 @@
 .resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
 .resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
 
-.btn-sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;              /* match the settings gear + window controls */
-  background: transparent;
-  border: none;
-  border-radius: var(--gl-border-radius-base);
-  color: var(--gl-text-color-subtle);
-  font-size: var(--gl-font-size-sm);
-  font-family: var(--font-ui);
-  font-weight: 500;
-  padding: 0 10px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.btn-sync:hover:not(:disabled) {
-  color: var(--gl-text-color-default);
-  background: var(--gl-hover-overlay);
-}
-.btn-sync:disabled { opacity: 0.55; cursor: default; }
-
 .header-settings-btn {
   display: inline-flex;
   align-items: center;
@@ -220,17 +198,6 @@
   transition: color 0.15s, background 0.15s;
 }
 .header-settings-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
-
-.btn-sync-spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: wb-spin 0.65s linear infinite;
-  flex-shrink: 0;
-}
 
 /* ── StatusBar ────────────────────────────────────────────────────────────── */
 
