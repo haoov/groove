@@ -74,7 +74,7 @@ export function WorkspacePane({
           {pane.tabs.map((t) => (
             <div
               key={t.id}
-              className={`ws-tab ${t.id === pane.activeTabId ? 'active' : ''} ${t.preview ? 'preview' : ''}`}
+              className={`ws-tab ${t.id === pane.activeTabId ? 'active' : ''} ${t.preview ? 'preview' : ''} ${t.kind === 'terminal' ? 'term' : ''}`}
               onMouseDown={(e) => { if (e.button === 0) setActiveTab(pane.id, t.id); }}
               onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(pane.id, t.id); } }}
               onContextMenu={(e) => { e.preventDefault(); setTabMenu({ x: e.clientX, y: e.clientY, tab: t }); }}

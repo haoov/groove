@@ -74,7 +74,7 @@
   display: flex;
   align-items: stretch;
   height: 38px;
-  background: var(--gl-background-color-overlap);
+  background: var(--gl-background-color-mantle);
   flex-shrink: 0;
 }
 .ws-tabs { display: flex; align-items: stretch; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
@@ -100,6 +100,8 @@
   background: var(--gl-background-color-default);
   border-bottom-color: transparent;
 }
+/* An active tab carries its content's background; a terminal's is --term-bg. */
+.ws-tab.active.term { background: var(--term-bg); }
 .ws-tab-icon { flex-shrink: 0; }
 /* Transient preview tab (file-search) — italic, like VS Code. */
 .ws-tab.preview .ws-tab-name { font-style: italic; }
