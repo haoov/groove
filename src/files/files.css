@@ -25,7 +25,7 @@
 
 .file-item-modified { color: var(--gl-color-orange-400); }
 
-.file-icon { flex-shrink: 0; display: inline-flex; align-items: center;}
+.file-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 16px; }
 
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-ui); font-size: var(--gl-font-size-sm); flex: 1; }
 

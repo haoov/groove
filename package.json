@@ -47,6 +47,7 @@
     "react-dom": "^18",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "simple-icons": "^16.29.0",
     "zustand": "^4"
   },
   "devDependencies": {

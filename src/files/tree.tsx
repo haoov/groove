@@ -3,6 +3,7 @@ import {
   Folder, FolderOpen,
 } from 'lucide-react';
 import { fileIconColor } from '../shared/lib/icons';
+import { brandFor, type Brand } from './fileIcons';
 import { guessLang } from '../shared/lib/lang';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -72,9 +73,27 @@ export function collectDirPaths(nodes: TreeNode[], acc: string[] = []): string[]
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
+function BrandIcon({ brand, color }: { brand: Brand; color: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={14}
+      height={14}
+      fill="currentColor"
+      style={{ color, flexShrink: 0 }}
+      role="img"
+      aria-label={brand.title}
+    >
+      <path d={brand.path} />
+    </svg>
+  );
+}
+
 export function FileTypeIcon({ name }: { name: string }) {
   const ext = (name.split('/').pop() ?? name).split('.').pop()?.toLowerCase() ?? '';
   const color = fileIconColor(name);
+  const brand = brandFor(name);
+  if (brand) return <BrandIcon brand={brand} color={color} />;
   const props = { size: 16, strokeWidth: 1.5, style: { color, flexShrink: 0 } } as const;
   const codeExts = new Set(['ts','tsx','js','jsx','rs','py','go','c','cpp','cs','java','kt','swift','rb','html','css','scss','vue','svelte','php','dart']);
   if (codeExts.has(ext)) return <FileCode {...props} />;
