@@ -60,9 +60,9 @@
 
 .changed-file:hover { background: rgba(var(--gl-elevate), 0.04); color: var(--gl-text-color-default); }
 
-.changed-file-name { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); white-space: nowrap; flex-shrink: 0; }
+.changed-file-name { font-family: var(--font-ui); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-default); white-space: nowrap; flex-shrink: 0; }
 
-.changed-file-dir { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.changed-file-dir { font-family: var(--font-ui); font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 
 .changed-file .file-tree-stats { margin-left: auto; flex-shrink: 0; }
 
