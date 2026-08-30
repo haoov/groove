@@ -12,7 +12,7 @@
 }
 
 .overview-inner {
-  max-width: 80%;
+  max-width: 90%;
   margin: 0 auto;
   margin-top: 1%;
   padding: var(--space-6);
@@ -842,9 +842,9 @@
   color: var(--gl-color-blue-300);
 }
 
-/* Last column in the strip: the menu opens leftwards. */
+/* Portalled to <body>, fixed position, right edge under the "+". */
 
-.prop-time .ppop { left: auto; right: 0; }
+.time-pop { position: fixed; z-index: 200; width: 240px; }
 
 .time-menu {
   display: flex;

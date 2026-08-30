@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { invoke } from '../shared/ipc/invoke';
 import { Loader2, Plus } from 'lucide-react';
-import { useOutsideClose } from '../shared/ui/propertyControls';
 import { useStore } from '../shared/store';
 import type { TaskTime } from '../shared/ipc/ipc';
 
@@ -12,6 +12,9 @@ import type { TaskTime } from '../shared/ipc/ipc';
 
 /** Hours are logged to the quarter — nobody means 1.37 hours. */
 const ROUND_TO = 0.25;
+
+/** Matches .time-pop's width, so the popover can be placed before it renders. */
+const POP_WIDTH = 240;
 
 const roundHours = (seconds: number) => Math.round(seconds / 3600 / ROUND_TO) * ROUND_TO;
 
@@ -38,8 +41,34 @@ export function TimeFields({
   const [manual, setManual] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
-  const box = useRef<HTMLSpanElement | null>(null);
-  useOutsideClose(box, open, () => setOpen(false));
+  const btn = useRef<HTMLButtonElement | null>(null);
+  const pop = useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  // Portalled to <body>: .app-main clips its own overflow at the activity rail.
+  useLayoutEffect(() => {
+    if (!open) { setPos(null); return; }
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const left = Math.min(Math.max(8, r.right - POP_WIDTH), window.innerWidth - POP_WIDTH - 8);
+    setPos({ left, top: r.bottom + 4 });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btn.current?.contains(t) || pop.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   const refresh = () => {
     invoke<TaskTime>('get_task_time', { taskId }).then(setTime).catch(() => setTime(null));
@@ -94,8 +123,9 @@ export function TimeFields({
       <span className="prop-v">
         <span className="prop-v-text">{loggedLabel}h</span>
 
-        <span className="ppop-anchor" ref={box}>
+        <span className="ppop-anchor">
           <button
+            ref={btn}
             className={`time-add${unlogged > 0 ? ' pending' : ''}`}
             onClick={() => setOpen(!open)}
             title={
@@ -108,8 +138,8 @@ export function TimeFields({
             {busy ? <Loader2 size={11} className="spin" /> : <Plus size={12} strokeWidth={2.5} />}
           </button>
 
-          {open && (
-            <div className="ppop">
+          {open && pos && createPortal(
+            <div className="ppop time-pop" ref={pop} style={{ left: pos.left, top: pos.top }}>
               <div className="ppop-head">Log time</div>
               <div className="time-menu">
                 <button
@@ -144,7 +174,8 @@ export function TimeFields({
                   />
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
         </span>
       </span>
