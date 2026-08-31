@@ -54,10 +54,13 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  padding-top: var(--space-2);
+  padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--gl-border-color-subtle);
   width: 100%;
 }
+
+/* Home is top-level navigation; the groups under it are the session. */
+.rail-group:first-child { border-bottom-color: var(--gl-border-color-strong); }
 .rail-btn {
   position: relative;
   display: flex;
@@ -148,15 +151,6 @@
   justify-content: center;
   overflow: hidden;
 }
-.header-title {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--gl-font-size-sm);
-  font-weight: 500;
-  color: var(--gl-text-color-subtle);
-}
 
 .header-right { display: flex; align-items: center; gap: var(--space-2); }
 
@@ -190,28 +184,6 @@
 .resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
 .resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
 
-.btn-sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;              /* match the settings gear + window controls */
-  background: transparent;
-  border: none;
-  border-radius: var(--gl-border-radius-base);
-  color: var(--gl-text-color-subtle);
-  font-size: var(--gl-font-size-sm);
-  font-family: var(--font-ui);
-  font-weight: 500;
-  padding: 0 10px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-.btn-sync:hover:not(:disabled) {
-  color: var(--gl-text-color-default);
-  background: var(--gl-hover-overlay);
-}
-.btn-sync:disabled { opacity: 0.55; cursor: default; }
-
 .header-settings-btn {
   display: inline-flex;
   align-items: center;
@@ -227,33 +199,24 @@
 }
 .header-settings-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
 
-.btn-sync-spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: wb-spin 0.65s linear infinite;
-  flex-shrink: 0;
-}
-
 /* ── StatusBar ────────────────────────────────────────────────────────────── */
 
 .statusbar {
   height: var(--wb-statusbar-height);
   background: var(--gl-background-color-overlap);
   border-top: 1px solid var(--gl-border-color-default);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 var(--space-4);
   font-size: var(--gl-font-size-sm);
   color: var(--gl-text-color-disabled);
   flex-shrink: 0;
   letter-spacing: 0.01em;
 }
-.statusbar-left, .statusbar-right { display: flex; align-items: center; gap: var(--space-3); }
+.statusbar-left, .statusbar-center, .statusbar-right { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.statusbar-center { justify-content: center; }
+.statusbar-right { justify-content: flex-end; }
 
 .statusbar-dot {
   display: inline-block;
@@ -268,40 +231,17 @@
   background: var(--gl-color-green-400);
 }
 
-.statusbar-task { display: flex; align-items: center; color: var(--gl-text-color-subtle); font-family: var(--font-mono); }
+.statusbar-task {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 60ch;
+  color: var(--gl-text-color-subtle);
+}
+
+.statusbar-task-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusbar-idle { color: var(--gl-text-color-disabled); }
 
-.statusbar-dot.dirty { background: var(--gl-color-orange-400); }
-.statusbar-dot.clean { background: var(--gl-color-green-400); }
-
-.statusbar-repo {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-subtle);
-  transition: color 0.12s;
-}
-.statusbar-repo:hover { color: var(--gl-text-color-default); }
-.statusbar-repo-dirty { color: var(--gl-color-orange-400); }
-.statusbar-repo-ahead { color: var(--gl-color-blue-400); }
-.statusbar-repo-behind { color: var(--gl-color-red-400); }
-.statusbar-error {
-  color: var(--gl-color-red-400);
-  font-weight: 500;
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: inherit;
-  font-family: inherit;
-  cursor: pointer;
-}
-.statusbar-error:hover { text-decoration: underline; }
 .statusbar-syncing { color: var(--gl-color-orange-400); }
 .statusbar-ok { color: var(--gl-text-color-disabled); font-family: var(--font-mono); }
 
@@ -338,24 +278,6 @@
   .header-approvals.deferred { animation: none; }
 }
 
-/* ── Dock toggles (bottom-right, Zed-style). Agent = the blue half. ───────── */
-.statusbar-docks { display: inline-flex; align-items: center; gap: 2px; }
-.statusbar-dock-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 20px;
-  padding: 0 7px;
-  background: none;
-  border: none;
-  border-radius: var(--gl-border-radius-sm);
-  color: var(--gl-text-color-disabled);
-  cursor: pointer;
-  transition: color 0.12s, background 0.12s;
-}
-.statusbar-dock-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
-.statusbar-dock-btn.active { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.08); }
 
 
 /* ── Header context pickers (session · repo · worktree) ─────────────────────── */
@@ -383,8 +305,9 @@
   border-color: var(--gl-border-color-subtle);
 }
 .hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; display: inline-flex; align-items: center; }
-/* One line-height and size across all three chips, so id and name align the same. */
-.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1; }
+/* One line-height and size across all three chips, so id and name align the same.
+   Room for descenders: .hp-chip-name clips to this box. */
+.hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1.45; }
 .hp-chip-id {
   flex-shrink: 0;
   font-weight: 600;
@@ -419,6 +342,9 @@
 .hp-row { display: flex; align-items: stretch; }
 .hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); border-radius: var(--gl-border-radius-medium); }
 .hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium);}
+/* On the row, not the main button: the close × sits outside it. */
+.hp-row:hover:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium); }
+.hp-row.active:hover { background: color-mix(in srgb, var(--ctp-blue) 20%, transparent); }
 .hp-row-main {
   flex: 1;
   min-width: 0;
@@ -477,7 +403,6 @@
   text-align: left;
   border-radius: var(--gl-border-radius-base);
 }
-.hp-row-simple:hover { background: var(--gl-background-color-hover); }
 .hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }

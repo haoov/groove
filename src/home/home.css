@@ -466,7 +466,7 @@
 
 /* Up next (tasks): name · priority · status · provider */
 .tasks-table .upnext-head,
-.tasks-table .upnext-tr { grid-template-columns: 43rem minmax(0, 1fr) 15rem 8rem; }
+.tasks-table .upnext-tr { grid-template-columns: minmax(0, 43rem) minmax(6rem, 1fr) 15rem 8rem; }
 
 /* Reviews: code · name · repo · owner · last update. */
 .reviews-table .upnext-head,
@@ -506,6 +506,8 @@
 .upnext-tr.dimmed:hover { opacity: 0.7; }
 
 .upnext-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.upnext-prio, .upnext-status { min-width: 0; overflow: hidden; }
 
 .upnext-owner { justify-self: start; }
 
@@ -807,7 +809,7 @@
 /* Title + its priority pill share one grid cell, so the badge sits right beside
    the text instead of in a column of its own. */
 
-.row-titleline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.row-titleline { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 
 .row-titleline .row-title { flex: 0 1 auto; }
 

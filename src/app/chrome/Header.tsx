@@ -1,5 +1,4 @@
-import { invoke } from '../../shared/ipc/invoke';
-import { RefreshCw, ShieldAlert, Settings } from 'lucide-react';
+import { ShieldAlert, Settings } from 'lucide-react';
 import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';
 import { HeaderPickers } from '../../sessions/HeaderPickers';
@@ -8,34 +7,11 @@ import { isMac } from '../../shared/lib/platform';
 import { GrooveMark } from '../../shared/ui/GrooveMark';
 
 export function Header() {
-  // The active session's title (task title, or MR name for reviews), centered as
-  // the header label. Only in a workspace — Home has no single subject.
-  const title = useStore((s) => {
-    if (s.view !== 'workspace') return null;
-    const sess = s.activeSessionId ? s.sessions[s.activeSessionId] : null;
-    return sess ? (sess.task?.title || sess.title || null) : null;
-  });
-  const syncStatus = useStore((s) => s.syncStatus);
-  const setSyncStatus = useStore((s) => s.setSyncStatus);
-  const setTasks = useStore((s) => s.setTasks);
-  const setLastError = useStore((s) => s.setLastError);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   // Deferred approvals belong next to the other "waiting for you" counter, not
   // in the status bar where a parked agent write was easy to forget.
   const approvals = useStore((s) => s.pendingConfirmations.length);
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);
-
-  const handleSync = async () => {
-    setSyncStatus('syncing');
-    try {
-      const tasks = await invoke<import('../../shared/ipc/ipc').Task[]>('list_tasks');
-      setTasks(tasks);
-      setSyncStatus('idle');
-    } catch (e) {
-      setSyncStatus('error');
-      setLastError(String(e));
-    }
-  };
 
   return (
     <header className="header" data-tauri-drag-region>
@@ -48,22 +24,9 @@ export function Header() {
         <HeaderPickers />
       </div>
 
-      <div className="header-center" data-tauri-drag-region>
-        {title && <span className="header-title" title={title}>{title}</span>}
-      </div>
+      <div className="header-center" data-tauri-drag-region />
 
       <div className="header-right" data-tauri-drag-region>
-        <button
-          className="btn-sync"
-          onClick={handleSync}
-          disabled={syncStatus === 'syncing'}
-          title="Sync tasks"
-        >
-          {syncStatus === 'syncing'
-            ? <span className="btn-sync-spinner" />
-            : <RefreshCw size={13} strokeWidth={2} />}
-          {syncStatus === 'syncing' ? 'Syncing…' : 'Sync'}
-        </button>
         {approvals > 0 && (
           <button
             className="header-approvals"

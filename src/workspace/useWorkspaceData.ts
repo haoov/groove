@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
-import type { Annotation, DiffResult, Mr, MrThread } from '../shared/ipc/ipc';
+import type { Annotation, DiffResult, Mr } from '../shared/ipc/ipc';
 
 /**
  * Owns the per-task background data that several views depend on: git status,
@@ -80,11 +80,4 @@ export function useWorkspaceData() {
       .then(setAnnotations)
       .catch((e) => setLastError(String(e)));
   }, [activeTask, setAnnotations, setLastError]);
-}
-
-/** Count of unresolved, resolvable threads in a discussion list. */
-export function countUnresolved(threads: MrThread[]): number {
-  return threads.filter(
-    (d: MrThread) => d.notes?.[0]?.resolvable === true && d.notes?.[0]?.resolved === false
-  ).length;
 }

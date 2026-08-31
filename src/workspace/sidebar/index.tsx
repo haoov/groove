@@ -6,10 +6,8 @@ import { refreshSession } from '../../shared/lib/refreshSession';
 import { activeWorktreeFor } from '../../shared/lib/workspace';
 import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
-import { countUnresolved } from '../useWorkspaceData';
 import { FilesTab } from '../../files/FilesTab';
 import { CommitsTab, ChangedFilesList, GitCommitPanel } from '../../git/GitTab';
-import { ForgeSection } from '../../git/ForgeSection';
 import { AnnotationsTab } from '../../notes/AnnotationsTab';
 import { MrThreadsSection } from '../../notes/MrThreads';
 
@@ -71,11 +69,11 @@ export function Sidebar() {
     [activeWorktrees, activeWorktreeId]
   );
 
-  // Opening the Forge sub-tab refreshes MRs + threads, so it never shows a
-  // stale view of remote state (mr.* ops also refresh via useIpc).
+  // Opening the git tab refreshes MRs + threads, so the MR above the commit box
+  // is never a stale view of remote state (mr.* ops also refresh via useIpc).
   useEffect(() => {
-    if (sidebarTab === 'git' && gitSubTab === 'forge') bumpMrs();
-  }, [sidebarTab, gitSubTab, bumpMrs]);
+    if (sidebarTab === 'git') bumpMrs();
+  }, [sidebarTab, bumpMrs]);
 
   // Commit history follows the active worktree (falls back to all repos if the
   // repo has none). Reloads when the active worktree changes, and when the list asks
@@ -178,7 +176,6 @@ export function Sidebar() {
 
   // Git sub-tab badges, scoped to the active repo (the chips show every repo).
   const activeDirty = activeStatus ? activeStatus.modified + activeStatus.staged : 0;
-  const activeUnresolved = countUnresolved(mrThreadsByRepo[activeRepoId ?? ''] ?? []);
 
   const renderContent = () => {
     if (!activeRepo) {
@@ -275,8 +272,8 @@ export function Sidebar() {
     return (
       <div className="git-tab">
         <div className="git-subtabs">
-          {(isExplorer ? (['changes', 'commits'] as const) : (['changes', 'commits', 'forge'] as const)).map((sub) => {
-            const badge = sub === 'changes' ? activeDirty : sub === 'forge' ? activeUnresolved : 0;
+          {(['changes', 'commits'] as const).map((sub) => {
+            const badge = sub === 'changes' ? activeDirty : 0;
             return (
               <button
                 key={sub}
@@ -285,7 +282,6 @@ export function Sidebar() {
               >
                 {sub === 'changes' && 'Changes'}
                 {sub === 'commits' && 'Commits'}
-                {sub === 'forge' && 'Forge'}
                 {badge > 0 && <span className="git-subtab-badge">{badge}</span>}
               </button>
             );
@@ -317,7 +313,6 @@ export function Sidebar() {
                       onClick={() => setDiffMode(m.id)}
                     >
                       <m.Icon size={12} strokeWidth={1.75} />
-                      <span>{m.label}</span>
                     </button>
                   ))}
                 </div>
@@ -343,23 +338,6 @@ export function Sidebar() {
               />
             </>
           )}
-          {gitSubTab === 'forge' && !isExplorer && (() => {
-            // All of the task's MRs across repos — a row opens the MR on the
-            // forge (MR links always open GitLab/GitHub; reviews get the in-app
-            // overview through their session's Overview instead).
-            const items = mrs.flatMap((m) => {
-              const wt = activeWorktrees.find((w) => w.id === m.worktree_id);
-              if (!wt) return [];
-              const repo = activeRepos.find((r) => r.id === wt.repo_id);
-              return [{
-                mr: m,
-                repoId: wt.repo_id,
-                repoName: repo?.project ?? wt.repo_id,
-                unresolved: countUnresolved(mrThreadsByRepo[wt.repo_id] ?? []),
-              }];
-            });
-            return <ForgeSection items={items} />;
-          })()}
         </div>
       </div>
     );
@@ -382,7 +360,7 @@ export function Sidebar() {
             branch={activeWt.branch}
             worktreeId={activeWt.id}
             commitOnly={isExplorer}
-            hasMr={mrs.some((m) => m.worktree_id === activeWt.id)}
+            mr={mrs.find((m) => m.worktree_id === activeWt.id)}
             onCommit={makeCommit(activeWt.id)}
             onAction={makeGitAction(activeWt.id)}
           />

@@ -25,9 +25,9 @@
 
 .file-item-modified { color: var(--gl-color-orange-400); }
 
-.file-icon { flex-shrink: 0; display: inline-flex; align-items: center;}
+.file-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 16px; }
 
-.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: var(--gl-font-size-sm); flex: 1; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-ui); font-size: var(--gl-font-size-sm); flex: 1; }
 
 .file-dot-modified { width: 6px; height: 6px; border-radius: 50%; background: var(--gl-color-orange-400); flex-shrink: 0; }
 
@@ -59,7 +59,7 @@
   border: none;
   outline: none;
   color: var(--gl-text-color-default);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: var(--gl-font-size-sm);
 }
 
@@ -127,7 +127,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: var(--gl-font-size-xs);
   color: var(--gl-text-color-disabled);
 }
@@ -151,7 +151,7 @@
   cursor: pointer;
   color: var(--gl-text-color-default);
   font-size: var(--gl-font-size-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   text-align: left;
   user-select: none;
   transition: color 0.1s, background 0.1s;

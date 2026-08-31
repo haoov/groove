@@ -4,6 +4,7 @@ import { useStore } from '../shared/store';
 import {
   AddField, PropField, hasValue, type Row,
 } from '../shared/ui/propertyControls';
+import { TimeFields } from './TimeFields';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
 /**
@@ -14,15 +15,14 @@ import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
  *
  * Shown = properties that have a value (or were just revealed via + field), plus
  * read-only computed fields; empty editable properties live behind + field.
- * Hours is not here — it has its own block in the overview side column.
+ * Time is the last column, and renders with no schema too.
  */
 
 export function PropertyStrip({
-  shortId, schema, onHoursValue,
+  shortId, schema,
 }: {
   shortId: string;
   schema: TaskSchema | null;
-  onHoursValue?: (display: string) => void;
 }) {
   const setLastError = useStore((s) => s.setLastError);
   const [values, setValues] = useState<PropertyValue[]>([]);
@@ -31,11 +31,7 @@ export function PropertyStrip({
 
   const load = () => {
     invoke<PropertyValue[]>('get_task_properties', { shortId })
-      .then((vs) => {
-        setValues(vs);
-        const h = schema?.hours_property && vs.find((v) => v.name === schema.hours_property);
-        if (h && onHoursValue) onHoursValue(h.display);
-      })
+      .then(setValues)
       .catch((e) => setLastError(String(e)));
   };
 
@@ -71,7 +67,10 @@ export function PropertyStrip({
     return { shown: shownRows, unset: unsetRows };
   }, [schema, values, revealed]);
 
-  if (!schema) return null;
+  const hoursProperty = schema?.hours_property ?? null;
+  const loggedDisplay = hoursProperty
+    ? (values.find((v) => v.name === hoursProperty)?.display ?? '')
+    : '';
 
   return (
     <div className="props">
@@ -86,6 +85,13 @@ export function PropertyStrip({
             onError={setLastError}
           />
         ))}
+
+        <TimeFields
+          taskId={shortId}
+          hoursProperty={hoursProperty}
+          logged={loggedDisplay}
+          onLogged={load}
+        />
       </div>
       {unset.length > 0 && (
         <div className="props-add">

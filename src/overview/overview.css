@@ -12,7 +12,7 @@
 }
 
 .overview-inner {
-  max-width: 80%;
+  max-width: 90%;
   margin: 0 auto;
   margin-top: 1%;
   padding: var(--space-6);
@@ -811,78 +811,52 @@
   background: var(--gl-color-blue-100);
 }
 
-/* ── Time: its own block, because it is the one you use daily ───────────────── */
+/* ── Time: one column in the property strip, logging behind a popover ─────── */
 
-.time {
-  position: relative;
-  width: 100%;
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
-}
+.prop-time .prop-v { gap: var(--space-2); }
 
-/* Legend sits on the border, fieldset-style — names the block without a heading row. */
+.prop-time .prop-v-text { font-family: var(--font-mono); white-space: nowrap; }
 
-.time-legend {
-  position: absolute;
-  top: -8px;
-  left: var(--space-3);
+.time-add {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 6px;
-  background: var(--gl-background-color-default);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 100px;
+  border: 1px dashed var(--gl-border-color-default);
+  background: none;
   color: var(--gl-text-color-muted);
+  cursor: pointer;
 }
 
-.time-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.time-add:hover { color: var(--gl-color-blue-300); border-color: var(--gl-color-blue-300); }
 
-.time-figures { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; min-width: 0; }
+/* Tracked time waiting to be logged. */
 
-.time-logged { display: inline-flex; align-items: baseline; gap: 3px; }
-
-.time-logged strong {
-  font-family: var(--font-mono);
-  font-size: 1.375rem;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--gl-text-color-default);
+.time-add.pending {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
+  background: var(--gl-color-blue-100);
+  color: var(--gl-color-blue-300);
 }
 
-.time-unit { font-family: var(--font-mono); font-size: var(--gl-font-size-md); color: var(--gl-text-color-subtle); }
+/* Portalled to <body>, fixed position, right edge under the "+". */
 
-.time-caption { margin-left: 5px; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
+.time-pop { position: fixed; z-index: 200; width: 240px; }
 
-.time-tracked { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-subtle); min-width: 0; overflow-wrap: anywhere; }
-
-.time-tracked strong { font-family: var(--font-mono); font-weight: 600; color: var(--gl-color-blue-300); }
-
-/* Filled portion = unlogged ÷ total known work. */
-
-.time-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(var(--gl-elevate), 0.1);
-  overflow: hidden;
+.time-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
-
-.time-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--gl-color-blue-400);
-  transition: width 0.4s ease-out;
-}
-
-.time-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 
 .time-log {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 5px 14px;
   border-radius: var(--gl-border-radius-base);
@@ -904,7 +878,7 @@
   cursor: default;
 }
 
-.time-quick { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.time-quick { display: flex; align-items: center; gap: var(--space-2); }
 
 .time-btn, .time-input {
   padding: 3px 8px;
@@ -918,17 +892,15 @@
   outline: none;
 }
 
+.time-btn { flex: 1; }
+
 .time-btn:hover:not(:disabled) { color: var(--gl-text-color-default); border-color: var(--gl-color-blue-300); }
 
 .time-btn:disabled { opacity: 0.5; cursor: default; }
 
-.time-input { width: 3.4rem; cursor: text; text-align: center; }
+.time-input { flex: 1; min-width: 0; cursor: text; text-align: center; }
 
 .time-input:focus { border-color: var(--gl-focus-border); background: var(--gl-background-color-default); }
-
-@media (prefers-reduced-motion: reduce) {
-  .time-bar-fill { transition: none; }
-}
 
 /* ── Body editor ───────────────────────────────────────────────────────────── */
 
