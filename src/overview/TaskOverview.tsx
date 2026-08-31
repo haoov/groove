@@ -210,9 +210,15 @@ export function TaskOverview() {
               </span>
             </h3>
             {activeRepos.length === 0 ? (
-              <p className="overview-empty-body">
+              <div className="overview-empty-body">
                 No repos yet — add one to check out a branch and start working.
-              </p>
+                {suggests && hasScaffold && (
+                  <button className="overview-suggest" disabled={scaffolding} onClick={() => void scaffold()}>
+                    <Sparkles size={12} strokeWidth={1.75} />
+                    Let the agent read the task and propose the repos
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="overview-repos">
                 {activeRepos.map((repo) => {
