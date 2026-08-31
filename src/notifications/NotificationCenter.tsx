@@ -216,7 +216,7 @@ function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => 
         <div className="wizard-footer">
           <button className="btn-secondary" onClick={copy}>
             {copied
-              ? <><Check size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copied</>
+              ? <><Check size={11} strokeWidth={2} style={{ marginRight: 5 }} />Sent to clipboard</>
               : <><Copy size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copy</>}
           </button>
           <span className="composer-spacer" />

@@ -194,10 +194,10 @@ export function FilesTab({
         break;
       }
       case 'copyRelPath':
-        if (node) copyPath(node.path, 'Relative path copied');
+        if (node) copyPath(node.path, 'Relative path sent to the clipboard');
         break;
       case 'copyAbsPath':
-        if (node) copyPath(joinPath(wtPath, node.path), 'Absolute path copied');
+        if (node) copyPath(joinPath(wtPath, node.path), 'Absolute path sent to the clipboard');
         break;
       case 'delete': if (node) setConfirmDel(node); break;
     }
