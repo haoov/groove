@@ -13,7 +13,7 @@ export async function refreshSession(id: string) {
   const s = useStore.getState();
   s.invalidateDiff(id);
   void s.refreshStatusFor(id);
-  if (s.view !== 'workspace') void s.refreshHome();
+  if (s.view === 'home') void s.refreshHome();
 }
 
 // Agent-activity pacing: a hook fires on EVERY tool call — reads, greps and

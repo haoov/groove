@@ -260,8 +260,9 @@ export function useIpc() {
             });
           }
 
-          // A landed git/forge op changes exactly what Home displays.
-          if (s.view !== 'workspace') s.refreshHome();
+          // A landed git/forge op changes exactly what Home displays — and only
+          // matters while Home is the view actually on screen.
+          if (s.view === 'home') s.refreshHome();
 
           // Explorer → task conversion: flip the owning session to a task session,
           // keeping its mounted PTY (and thus the live agent conversation) intact.

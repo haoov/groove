@@ -62,7 +62,7 @@ export function CommandPalette() {
   const setDiffMode = useSession((s) => s.setDiffMode);
   const setLastError = useStore((s) => s.setLastError);
   const setView = useStore((s) => s.setView);
-  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const openSettings = useStore((s) => s.openSettings);
   const setTheme = useStore((s) => s.setTheme);
   const activeTheme = useStore((s) => s.config?.ui.theme ?? DEFAULT_THEME);
   const keymap = useStore((s) => s.keymap);
@@ -282,7 +282,7 @@ export function CommandPalette() {
       label: 'Open Settings…',
       group: 'Preferences',
       shortcut: shortcutFor(keymap, 'settings.open'),
-      action: () => { setSettingsOpen(true); close(); },
+      action: () => { openSettings(); close(); },
     });
     for (const t of THEMES) {
       cmds.push({

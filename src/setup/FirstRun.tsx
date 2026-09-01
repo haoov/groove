@@ -5,6 +5,7 @@ import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
 import { SOURCES, SOURCE_IDS } from './sources';
 import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
+import { forgeCliState } from '../shared/lib/forge';
 import {
   DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type ProviderId,
 } from '../shared/ipc/ipc';
@@ -115,12 +116,11 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
               {env.tools.map((t) => {
                 // Installed but not logged in is its own state: the tool is there,
                 // and every MR feature still fails until the CLI has credentials.
-                const needsAuth = !!t.path && t.authed === false;
-                // A scopes list we could not read is unknown, not empty: a GH_TOKEN
-                // prints none, and warning those users would be permanent.
-                const needsScope =
-                  t.name === 'gh' && !!t.path && t.authed === true &&
-                  !!t.scopes && !t.scopes.includes('project');
+                // One rule, shared with the settings view — it also knows why an
+                // unreadable scopes list is not a missing one.
+                const state = forgeCliState(t);
+                const needsAuth = state === 'needs-auth';
+                const needsScope = state === 'needs-scope';
                 const cls = !t.path
                   ? (t.required ? 'missing' : 'optional')
                   : needsAuth || needsScope ? 'optional' : 'ok';

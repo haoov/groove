@@ -62,8 +62,20 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   addWorktreeOpen: false,
   setAddWorktreeOpen: (v) => set({ addWorktreeOpen: v }),
 
-  settingsOpen: false,
-  setSettingsOpen: (v) => set({ settingsOpen: v }),
+  settingsReturnTo: 'home',
+  openSettings: () =>
+    set((s) => (s.view === 'settings'
+      ? {}
+      : { view: 'settings', settingsReturnTo: s.view, agentMaximized: false })),
+  closeSettings: () =>
+    set((s) => {
+      if (s.view !== 'settings') return {};
+      // The session it would return to can have been closed while settings was up.
+      const back = s.settingsReturnTo === 'workspace' && !s.activeSessionId
+        ? 'home'
+        : s.settingsReturnTo;
+      return { view: back };
+    }),
 
   // Vim mode — defaults on (the editor + readonly-diff use vim navigation).
   vimMode: (() => {

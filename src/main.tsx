@@ -28,6 +28,7 @@ import './git/git.css';
 import './notes/notes.css';
 import './notifications/notifications.css';
 import './setup/setup.css';
+import './settings/settings.css';
 import './command/command.css';
 import './approvals/approvals.css';
 import './overview/explorer.css';

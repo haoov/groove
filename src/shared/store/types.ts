@@ -85,8 +85,10 @@ export interface UiSlice {
   setAddWorktreeOpen: (v: boolean) => void;
 
   // ── Settings ──────────────────────────────────────────────────────────────
-  settingsOpen: boolean;
-  setSettingsOpen: (v: boolean) => void;
+  /** Which view closing settings returns to — the one it was opened from. */
+  settingsReturnTo: AppView;
+  openSettings: () => void;
+  closeSettings: () => void;
 
   // ── Editor: Vim mode (persisted to localStorage) ───────────────────────────
   vimMode: boolean;
@@ -220,7 +222,7 @@ export type AppState = UiSlice & HomeSlice & SessionsSlice & ConfirmationsSlice 
 
 /** Enough history to scroll back through a work session, not a log file. */
 
-export type AppView = 'home' | 'workspace';
+export type AppView = 'home' | 'workspace' | 'settings';
 export type SidebarTab = 'files' | 'git' | 'annotations';
 
 // ─── Notifications ────────────────────────────────────────────────────────────

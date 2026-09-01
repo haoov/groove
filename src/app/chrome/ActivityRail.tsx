@@ -1,4 +1,4 @@
-import { LayoutGrid, LayoutList, Files, GitBranch, MessageSquare, Command } from 'lucide-react';
+import { LayoutGrid, LayoutList, Files, GitBranch, MessageSquare, Command, Settings } from 'lucide-react';
 import { useStore, useSession, type SidebarTab } from '../../shared/store';
 
 /**
@@ -18,6 +18,7 @@ export function ActivityRail() {
   const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const annotations = useSession((s) => s.annotations);
   const setCommandPaletteOpen = useStore((s) => s.setCommandPaletteOpen);
+  const openSettings = useStore((s) => s.openSettings);
 
   const openCount = annotations.filter((a) => a.status === 'open').length;
   const inWorkspace = view === 'workspace';
@@ -48,7 +49,7 @@ export function ActivityRail() {
       {/* Home: Live · Up next · Reviews tabs (the review count lives in the tab). */}
       <div className="rail-group">
         <button
-          className={`rail-btn ${!inWorkspace ? 'active' : ''}`}
+          className={`rail-btn ${view === 'home' ? 'active' : ''}`}
           onClick={() => setView('home')}
           title="Home"
         >
@@ -96,13 +97,23 @@ export function ActivityRail() {
         </div>
       )}
 
-      <button
-        className="rail-btn rail-btn-bottom"
-        onClick={() => setCommandPaletteOpen(true)}
-        title="Command palette (⌘K)"
-      >
-        <Command size={18} strokeWidth={1.75} />
-      </button>
+      {/* App-level, not the session: settings and the palette sit at the foot. */}
+      <div className="rail-group rail-group-bottom">
+        <button
+          className={`rail-btn ${view === 'settings' ? 'active' : ''}`}
+          onClick={openSettings}
+          title="Settings"
+        >
+          <Settings size={18} strokeWidth={1.75} />
+        </button>
+        <button
+          className="rail-btn"
+          onClick={() => setCommandPaletteOpen(true)}
+          title="Command palette (⌘K)"
+        >
+          <Command size={18} strokeWidth={1.75} />
+        </button>
+      </div>
     </nav>
   );
 }
