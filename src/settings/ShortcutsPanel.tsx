@@ -57,18 +57,12 @@ export function ShortcutsPanel() {
   const onCancel = useCallback(() => setCapturing(null), []);
   useChordCapture(capturing !== null, onCapture, onCancel);
 
-  // Esc dismisses the prompt. On the capture phase, so it does not also reach the
-  // view's own Esc and leave settings entirely.
+  // Esc dismisses the prompt.
   useEffect(() => {
     if (!conflict) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      setConflict(null);
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConflict(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [conflict]);
 
   const startCapture = (id: CommandId) => { setConflict(null); setCapturing(id); };

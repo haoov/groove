@@ -25,11 +25,6 @@ export function SettingsView() {
   const [authing, setAuthing] = useState<{ tool: 'glab' | 'gh'; mode: 'login' | 'scope' } | null>(null);
   const [env, setEnv] = useState<Environment | null>(null);
 
-  /** Something is stacked over the view and owns the keyboard. */
-  const overlaid = useStore((s) =>
-    s.commandPaletteOpen || s.addRepoOpen || s.addWorktreeOpen ||
-    (s.pendingConfirmations.length > 0 && !s.confirmationsMinimized));
-
   const loadEnv = useCallback(() => {
     invoke<Environment>('check_environment').then(setEnv).catch(() => setEnv(null));
   }, []);
@@ -44,16 +39,6 @@ export function SettingsView() {
     invoke<Config | null>('get_config').then((c) => { if (c) setConfig(c); }).catch(() => {});
     loadEnv();
   }, [setConfig, loadEnv]);
-
-  // Esc leaves the view, but only as the top surface: none of the overlays that
-  // stack over it stop the event reaching a window listener. A chord capture in
-  // Shortcuts needs no flag — it listens on the capture phase and stops there.
-  useEffect(() => {
-    if (authing || overlaid) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeSettings(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [authing, overlaid, closeSettings]);
 
   const active = SETTINGS_GROUPS.find((g) => g.id === group) ?? SETTINGS_GROUPS[0];
 
@@ -95,7 +80,7 @@ export function SettingsView() {
             className="settings-close"
             onClick={closeSettings}
             aria-label="Close settings"
-            title="Close (Esc)"
+            title="Close settings"
           >
             <X size={16} strokeWidth={1.75} />
           </button>
