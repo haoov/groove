@@ -264,7 +264,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
                 Finish task
               </button>
               <button className="context-item" onClick={() => { setMenu(null); setConfirm('delete'); }}>
-                Delete locally
+                Delete task
               </button>
             </>
           )}
