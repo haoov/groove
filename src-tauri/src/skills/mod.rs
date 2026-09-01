@@ -54,6 +54,10 @@ pub struct AgentSkill {
     pub label: String,
     /// Kinds whose UI offers it. Empty means every kind.
     pub kinds: Vec<SessionKind>,
+    /// `groove-hidden` — kept out of the action menu. Still a skill: the agent
+    /// invokes it, another skill hands off to it, the user can type it. For the
+    /// steps that belong inside a bigger one rather than beside it.
+    pub hidden: bool,
     /// A user skill — the manager may edit or delete it.
     pub editable: bool,
 }
@@ -226,6 +230,7 @@ fn parse(plugin: &str, name: &str, body: &str, editable: bool) -> AgentSkill {
             .unwrap_or_default(),
         label: field(front, "groove-label").unwrap_or_else(|| name.replace('-', " ")),
         kinds,
+        hidden: field(front, "groove-hidden").as_deref() == Some("true"),
         editable,
     }
 }
@@ -512,6 +517,7 @@ mod tests {
         assert_eq!(s.description, "Open an MR: for this branch.");
         assert_eq!(s.hint, "Open an MR.");
         assert_eq!(s.label, "open MR");
+        assert!(!s.hidden);
         assert_eq!(s.kinds, vec![SessionKind::Task, SessionKind::Review]);
         assert!(!s.editable);
     }
@@ -539,6 +545,14 @@ mod tests {
         let s = parse("user", "raw", "Just a body.\n", true);
         assert_eq!(s.description, "");
         assert_eq!(s.label, "raw");
+    }
+
+    /// Hiding a skill takes it out of the menu and nothing else — it stays
+    /// loaded, invocable and listed in the manager.
+    #[test]
+    fn a_skill_can_be_hidden_from_the_menu() {
+        let s = parse("groove", "scaffold-task", "---\ndescription: D.\ngroove-hidden: true\n---\n", false);
+        assert!(s.hidden);
     }
 
     #[test]

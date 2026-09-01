@@ -22,6 +22,12 @@ hint: string, label: string,
  */
 kinds: Array<SessionKind>, 
 /**
+ * `groove-hidden` — kept out of the action menu. Still a skill: the agent
+ * invokes it, another skill hands off to it, the user can type it. For the
+ * steps that belong inside a bigger one rather than beside it.
+ */
+hidden: boolean, 
+/**
  * A user skill — the manager may edit or delete it.
  */
 editable: boolean, };

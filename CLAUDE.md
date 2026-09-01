@@ -95,9 +95,11 @@ refresh until then: a pill for a skill the running agent cannot resolve answers 
 "unknown command".
 
 **Groove suggests, it never auto-sends.** A trigger renders a chip the user clicks
-(`TaskOverview`'s scaffold offer). Opening a session must never start an agent by
-itself — that spends tokens on a glance. `ui.suggest_actions` hides every offer, and
-hides nothing else: the skill stays a button and a slash command.
+(`TaskOverview` offers `start-task` on a task with no repos — one way in, and step 3 of
+it reaches `scaffold-task`, which is `groove-hidden` and so in no session's menu).
+Opening a session must never start an agent by itself — that spends tokens on a glance.
+`ui.suggest_actions` hides every offer, and hides nothing else: the skill stays a button
+and a slash command.
 
 **Commands**: 105, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules

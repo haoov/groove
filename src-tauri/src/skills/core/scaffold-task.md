@@ -4,6 +4,7 @@ description: Attach the repos and branch a task needs before work starts. Use wh
 groove-kinds: task
 groove-label: scaffold
 groove-hint: Attach the repos this task needs.
+groove-hidden: true
 ---
 
 # Set the task up to work in

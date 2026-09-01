@@ -22,20 +22,20 @@ export function TaskOverview() {
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
   const sessionId = useSession((s) => s.id);
   const suggests = useStore((s) => s.config?.ui.suggest_actions ?? true);
-  const hasScaffold = useStore((s) => s.skills.some((k) => k.id === 'groove:scaffold-task'));
-  const [scaffolding, setScaffolding] = useState(false);
+  const hasStart = useStore((s) => s.skills.some((k) => k.id === 'groove:start-task'));
+  const [starting, setStarting] = useState(false);
 
-  // A suggestion, never an auto-send: opening a task must not spend tokens, and
-  // starting an agent per glance is what an automatic trigger would cost.
-  const scaffold = async () => {
-    setScaffolding(true);
+  // A suggestion, never an auto-send: opening a task must not spend tokens.
+  // start-task, not scaffold-task — its step 3 does the scaffolding.
+  const startTask = async () => {
+    setStarting(true);
     useStore.getState().requestConsoleFocus(); // the proposal lands in the chat
     try {
-      await sendSkill(sessionId, 'groove:scaffold-task');
+      await sendSkill(sessionId, 'groove:start-task');
     } catch (e) {
       setLastError(String(e));
     } finally {
-      setScaffolding(false);
+      setStarting(false);
     }
   };
 
@@ -212,10 +212,10 @@ export function TaskOverview() {
             {activeRepos.length === 0 ? (
               <div className="overview-empty-body">
                 No repos yet — add one to check out a branch and start working.
-                {suggests && hasScaffold && (
-                  <button className="overview-suggest" disabled={scaffolding} onClick={() => void scaffold()}>
+                {suggests && hasStart && (
+                  <button className="overview-suggest" disabled={starting} onClick={() => void startTask()}>
                     <Sparkles size={12} strokeWidth={1.75} />
-                    Let the agent read the task and propose the repos
+                    Let the agent read the task and set it up
                   </button>
                 )}
               </div>

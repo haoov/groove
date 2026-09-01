@@ -148,7 +148,9 @@ export function AgentConsole() {
     }
   };
 
-  const offered = skills.filter((a) => a.kinds.length === 0 || a.kinds.includes(kind));
+  const offered = skills.filter(
+    (a) => !a.hidden && (a.kinds.length === 0 || a.kinds.includes(kind)),
+  );
   const core = offered.filter((a) => !a.editable);
   const mine = offered.filter((a) => a.editable);
 
