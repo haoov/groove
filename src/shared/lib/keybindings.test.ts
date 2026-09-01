@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { COMMANDS, assignBinding, defaultKeymap, loadKeymap, saveKeymap, type CommandId, type Keymap } from './keybindings';
+import {
+  COMMANDS, assignBinding, chordOwner, defaultChordsFor, defaultKeymap, isDefaultBinding,
+  loadKeymap, resetBinding, saveKeymap, searchCommands, type CommandId, type Keymap,
+} from './keybindings';
 import { chordLabel, chordMatches, isTypingCharacter, normalizeKey, type Chord } from './keys';
 import { setPlatform } from './platform';
 
@@ -280,5 +283,119 @@ describe('Linux defaults are untouched by the port', () => {
 
     expect(map['panel.overview']?.[0].key).toBe('o');
     expect(map['pane.next']?.[0].key).toBe('i');
+  });
+});
+
+// The settings table asks three things of the keymap that the runtime never did:
+// find a command, name the command a chord already belongs to, and put one row
+// back to its default.
+
+describe('searchCommands', () => {
+  it('returns every command for an empty query', () => {
+    expect(searchCommands('', defaultKeymap())).toEqual(COMMANDS);
+    expect(searchCommands('   ', defaultKeymap())).toEqual(COMMANDS);
+  });
+
+  it('finds a command by its label, whatever the case', () => {
+    const ids = searchCommands('vim', defaultKeymap()).map((c) => c.id);
+    expect(ids).toEqual(['editor.toggleVim']);
+    expect(searchCommands('VIM', defaultKeymap()).map((c) => c.id)).toEqual(ids);
+  });
+
+  it('finds a command by its group', () => {
+    const ids = searchCommands('editor', defaultKeymap()).map((c) => c.id);
+    expect(ids).toContain('editor.focus');
+    expect(ids).toContain('font.reset');
+  });
+
+  it('finds a command by the chord it is bound to', () => {
+    const ids = searchCommands('alt+e', defaultKeymap()).map((c) => c.id);
+    expect(ids).toEqual(['panel.files']);
+  });
+
+  it('follows a rebind rather than the default', () => {
+    const map = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'q', alt: true }]);
+    expect(searchCommands('alt+q', map).map((c) => c.id)).toEqual(['editor.focus']);
+    expect(searchCommands('alt+c', map).map((c) => c.id)).not.toContain('editor.focus');
+  });
+
+  it('requires every term to match, so two words narrow', () => {
+    const map = defaultKeymap();
+    expect(searchCommands('pane', map).length).toBeGreaterThan(1);
+    expect(searchCommands('pane close', map).map((c) => c.id)).toEqual(['pane.close']);
+  });
+
+  it('returns nothing when a term matches nothing', () => {
+    expect(searchCommands('zzzz', defaultKeymap())).toEqual([]);
+  });
+});
+
+describe('chordOwner', () => {
+  it('names the command already holding a chord', () => {
+    const map = defaultKeymap();
+    expect(chordOwner(map, { key: 'e', alt: true }, 'editor.focus')).toBe('panel.files');
+  });
+
+  it('ignores the command being rebound, so keeping its own chord is not a conflict', () => {
+    const map = defaultKeymap();
+    expect(chordOwner(map, { key: 'e', alt: true }, 'panel.files')).toBeNull();
+  });
+
+  it('returns null for a free chord', () => {
+    expect(chordOwner(defaultKeymap(), { key: 'f9' }, 'editor.focus')).toBeNull();
+  });
+
+  it('distinguishes chords that differ only by a modifier', () => {
+    const map = defaultKeymap();
+    expect(chordOwner(map, { key: 'e', alt: true, shift: true }, 'editor.focus')).toBeNull();
+  });
+});
+
+describe('resetBinding', () => {
+  it('puts one command back on its default', () => {
+    const map = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'q', alt: true }]);
+    expect(isDefaultBinding(map, 'editor.focus')).toBe(false);
+
+    const back = resetBinding(map, 'editor.focus');
+    expect(back['editor.focus']).toEqual(defaultChordsFor('editor.focus'));
+    expect(isDefaultBinding(back, 'editor.focus')).toBe(true);
+  });
+
+  it('takes the default chord off whatever grabbed it meanwhile', () => {
+    // Alt+C is editor.focus by default; give it to another command first.
+    let map = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'q', alt: true }]);
+    map = assignBinding(map, 'pane.maximize', [{ key: 'c', alt: true }]);
+    expect(chordOwner(map, { key: 'c', alt: true }, 'editor.focus')).toBe('pane.maximize');
+
+    const back = resetBinding(map, 'editor.focus');
+    expect(back['editor.focus']).toEqual([{ key: 'c', alt: true }]);
+    expect(back['pane.maximize']).toEqual([]);
+  });
+
+  it('leaves every other command alone', () => {
+    const map = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'q', alt: true }]);
+    const back = resetBinding(map, 'editor.focus');
+    for (const c of COMMANDS) {
+      if (c.id === 'editor.focus') continue;
+      expect(back[c.id], c.id).toEqual(map[c.id]);
+    }
+  });
+});
+
+describe('isDefaultBinding', () => {
+  it('is true for every command in a fresh map', () => {
+    const map = defaultKeymap();
+    for (const c of COMMANDS) expect(isDefaultBinding(map, c.id), c.id).toBe(true);
+  });
+
+  it('reads the defaults for this platform, not the Linux ones', () => {
+    setPlatform('macos');
+    try {
+      const mac = defaultKeymap();
+      expect(isDefaultBinding(mac, 'palette.commands')).toBe(true);
+      expect(defaultChordsFor('palette.commands')).toEqual([{ key: 'k', alt: true, shift: true }]);
+    } finally {
+      setPlatform('linux');
+    }
   });
 });

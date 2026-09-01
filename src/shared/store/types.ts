@@ -178,6 +178,8 @@ export interface KeybindingsSlice {
   // Defaults + user overrides, persisted to localStorage.
   keymap: Keymap;
   setBinding: (id: CommandId, chords: Chord[]) => void;
+  /** Put one command back on this platform's default. */
+  resetBinding: (id: CommandId) => void;
   resetKeymap: () => void;
   /** True while the Settings rebind UI is capturing a keystroke (suspends the
    *  global keymap so the captured chord isn't also run as a command). */

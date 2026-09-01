@@ -292,6 +292,105 @@
 
 .settings-reset-btn:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
 
+/* ── Settings: the shortcut table ─────────────────────────────────────────── */
+
+.settings-key-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: 5px var(--space-3);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+}
+
+.settings-key-search:focus-within { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.settings-key-search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+
+.settings-key-search-input::placeholder { color: var(--gl-text-color-disabled); }
+
+.settings-key-search-clear {
+  display: inline-flex;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+
+.settings-key-search-clear:hover { color: var(--gl-text-color-default); }
+
+/* Fixed width, so Rebind holds its column whether or not the revert button is up. */
+.settings-key-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 88px;
+}
+
+.settings-key-revert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.settings-key-revert:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.settings-key-unbound { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); font-style: italic; }
+
+.settings-key-conflict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+
+.settings-key-conflict span { flex: 1; }
+.settings-key-conflict strong { color: var(--gl-text-color-default); font-weight: 600; }
+
+.settings-key-take {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  background: var(--gl-color-blue-100);
+  border: 1px solid var(--gl-accent-border);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-color-blue-300);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.settings-key-take:hover { background: var(--gl-color-blue-200); }
+
 .settings-keys { display: flex; flex-direction: column; gap: var(--space-4); }
 
 .settings-keys-group-label {

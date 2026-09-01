@@ -220,6 +220,56 @@ export function assignBinding(map: Keymap, id: CommandId, chords: Chord[]): Keym
   return out;
 }
 
+/** A command's spec, by id. */
+export const commandSpec = (id: CommandId): CommandSpec | undefined =>
+  COMMANDS.find((c) => c.id === id);
+
+/** This platform's defaults for one command. */
+export function defaultChordsFor(id: CommandId): Chord[] {
+  const spec = commandSpec(id);
+  if (!spec) return [];
+  const src = isMac() && spec.macDefaults ? spec.macDefaults : spec.defaults;
+  return src.map((d) => ({ ...d }));
+}
+
+/** True when a command still holds this platform's defaults. */
+export function isDefaultBinding(map: Keymap, id: CommandId): boolean {
+  const a = map[id] ?? [];
+  const b = defaultChordsFor(id);
+  return a.length === b.length && a.every((c, i) => chordKey(c) === chordKey(b[i]));
+}
+
+/** Put one command back on its platform default, taking the chord off whatever
+ *  holds it — the same exclusivity `assignBinding` enforces. */
+export function resetBinding(map: Keymap, id: CommandId): Keymap {
+  return assignBinding(map, id, defaultChordsFor(id));
+}
+
+/** The other command already holding `chord`, or null when it is free. Naming it
+ *  is what turns `assignBinding`'s silent steal into a choice. */
+export function chordOwner(map: Keymap, chord: Chord, except: CommandId): CommandId | null {
+  const k = chordKey(chord);
+  for (const id of Object.keys(map) as CommandId[]) {
+    if (id === except) continue;
+    if ((map[id] ?? []).some((c) => chordKey(c) === k)) return id;
+  }
+  return null;
+}
+
+/** Everything a command can be found by: its group, its label, its chords. */
+const searchText = (spec: CommandSpec, chords: Chord[]): string =>
+  [spec.group, spec.label, ...chords.map(chordLabel)].join(' ').toLowerCase();
+
+/** Commands matching every whitespace-separated term in `query`. Empty = all. */
+export function searchCommands(query: string, map: Keymap): CommandSpec[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return COMMANDS;
+  return COMMANDS.filter((spec) => {
+    const text = searchText(spec, map[spec.id] ?? []);
+    return terms.every((t) => text.includes(t));
+  });
+}
+
 export function saveKeymap(m: Keymap): void {
   try { localStorage.setItem(LS_KEY, JSON.stringify(m)); } catch { /* ignore */ }
 }
