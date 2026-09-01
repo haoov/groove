@@ -101,8 +101,8 @@ fn parse_scopes(text: &str) -> Option<Vec<String>> {
     (!scopes.is_empty()).then_some(scopes)
 }
 
-/// One clipboard tool is enough, so they are reported as a group: the app writes to
-/// every one it finds (Wayland and X11 clipboards are separate).
+/// One clipboard tool is enough, so they are reported as a group: the app uses the
+/// first tool that fits the session (wl-clipboard on Wayland, xclip/xsel on X11).
 #[cfg(not(target_os = "macos"))]
 fn clipboard_tools() -> Vec<ToolCheck> {
     vec![

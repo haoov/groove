@@ -135,7 +135,8 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
                         ? 'installed, but not signed in'
                         : needsScope
                           ? 'signed in, but missing the project scope — GitHub tasks stay read-only'
-                          : t.purpose}
+                          // The tick proves a file on $PATH, nothing more — say so.
+                          : t.path ? `installed — ${t.purpose}` : t.purpose}
                     </span>
                     {(needsAuth || needsScope) && (t.name === 'glab' || t.name === 'gh') ? (
                       <button
