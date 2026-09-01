@@ -110,6 +110,14 @@ pub(super) async fn via_bridge(
     }
 
     enrich_worktree_fields(&mut payload, state).await;
+    // The dialog names where the MR lands.
+    if op_type == crate::approvals::ops::MR_CREATE {
+        if let Some(wt_id) = payload["worktree_id"].as_str().map(|s| s.to_string()) {
+            if let Ok(target) = crate::forge::mr_target_for(&state.pool, &wt_id).await {
+                payload["target_branch"] = serde_json::json!(target);
+            }
+        }
+    }
     let task_id = state.task_for(mcp_session);
 
     // Asking twice for the same thing means the first call is still queued (the
@@ -349,6 +357,7 @@ pub(super) async fn add_task_worktree(
         "task_id": task_id,
         "branch": branch,
         "repo": input["repo"].as_str(),
+        "target_branch": input["target_branch"].as_str(),
     });
 
     if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_WORKTREE, Some(&task_id), &payload).await {
@@ -397,6 +406,7 @@ pub(super) async fn add_task_repo(
         "task_id": task_id,
         "repo": repo,
         "branch": branch,
+        "target_branch": input["target_branch"].as_str(),
     });
 
     if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_REPO, Some(&task_id), &payload).await {

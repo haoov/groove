@@ -106,6 +106,17 @@ pub async fn ref_exists(path: &str, git_ref: &str) -> bool {
         .await
 }
 
+/// Whether `branch` exists on origin: the remote-tracking ref, else `ls-remote`.
+pub async fn branch_on_remote(path: &str, branch: &str) -> bool {
+    if ref_exists(path, &format!("origin/{branch}")).await {
+        return true;
+    }
+    run::run(path, &["ls-remote", "--heads", "origin", &format!("refs/heads/{branch}")])
+        .await
+        .map(|out| !out.trim().is_empty())
+        .unwrap_or(false)
+}
+
 /// The repo's real default branch.
 ///
 /// Resolved from `refs/remotes/origin/HEAD`, and NEVER by stripping the
@@ -247,6 +258,38 @@ mod tests {
         let err = upstream_base(&work, Some("main")).await.unwrap_err().to_string();
         assert!(err.contains("origin/main"), "{err}");
         assert!(err.contains("no base branch"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn a_fetched_branch_is_on_the_remote() {
+        let (_fx, work) = Fixture::new("onremote");
+        assert!(branch_on_remote(&work, "release/1.0").await);
+    }
+
+    #[tokio::test]
+    async fn an_unfetched_branch_is_still_on_the_remote() {
+        let (_fx, work) = Fixture::new("unfetched");
+        let dir = PathBuf::from(&work);
+        git(&dir, &["update-ref", "-d", "refs/remotes/origin/release/1.0"]);
+        cache::flush();
+        assert!(!ref_exists(&work, "origin/release/1.0").await);
+        cache::flush();
+        assert!(branch_on_remote(&work, "release/1.0").await);
+    }
+
+    #[tokio::test]
+    async fn a_branch_nobody_has_is_not_on_the_remote() {
+        let (_fx, work) = Fixture::new("nobranch");
+        assert!(!branch_on_remote(&work, "no-such-branch").await);
+    }
+
+    #[tokio::test]
+    async fn a_tail_of_a_branch_name_does_not_count() {
+        let (_fx, work) = Fixture::new("tail");
+        let dir = PathBuf::from(&work);
+        git(&dir, &["update-ref", "-d", "refs/remotes/origin/release/1.0"]);
+        cache::flush();
+        assert!(!branch_on_remote(&work, "1.0").await);
     }
 
     #[tokio::test]

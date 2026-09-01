@@ -1,5 +1,7 @@
 use sqlx::SqlitePool;
+use crate::core::db::models::{Repo, Worktree};
 use crate::core::db::store;
+use crate::core::git;
 use super::commands::load_mr_context;
 use super::client::make_client;
 
@@ -52,6 +54,23 @@ async fn with_task_footer(
     Ok(apply_footer(description, task_id, url.as_deref()))
 }
 
+/// The branch an MR from this worktree would land on.
+pub async fn mr_target_for(pool: &SqlitePool, worktree_id: &str) -> anyhow::Result<String> {
+    let wt = store::worktrees::get(pool, worktree_id).await?;
+    let repo = store::repos::get(pool, &wt.repo_id).await?;
+    Ok(target_for(&repo, &wt).await)
+}
+
+/// The worktree's base, else the repo default.
+async fn target_for(repo: &Repo, wt: &Worktree) -> String {
+    if let Some(base) = wt.base_ref.as_deref().map(str::trim).filter(|b| !b.is_empty()) {
+        return base.to_string();
+    }
+    git::refs::default_branch(&repo.local_path)
+        .await
+        .unwrap_or_else(|| "main".to_string())
+}
+
 pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> anyhow::Result<()> {
     let worktree_id = payload["worktree_id"]
         .as_str()
@@ -62,11 +81,12 @@ pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     let wt = store::worktrees::get(pool, worktree_id).await?;
     let repo = store::repos::get(pool, &wt.repo_id).await?;
 
+    let target = target_for(&repo, &wt).await;
     let described = with_task_footer(description, &wt.session_id, pool).await?;
 
     let client = make_client(&repo);
     let (remote_id, url) = client
-        .create_mr(&repo, &wt.branch, title, &described)
+        .create_mr(&repo, &wt.branch, &target, title, &described)
         .await?;
 
     store::mrs::upsert(pool, worktree_id, client.platform_name(), &remote_id, &url, "open")
@@ -116,7 +136,8 @@ pub async fn close_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> any
 
 #[cfg(test)]
 mod tests {
-    use super::apply_footer;
+    use super::{apply_footer, target_for};
+    use crate::core::db::models::{Repo, Worktree};
 
     const PAGE: &str = "https://www.notion.so/24f1a2b3c4d56789abcdef0123456789";
     const LINK: &str = "Task: [TASKS2-42](https://www.notion.so/24f1a2b3c4d56789abcdef0123456789)";
@@ -151,6 +172,38 @@ mod tests {
         let out = apply_footer(old, "TASKS2-42", Some(PAGE));
         assert!(out.ends_with(LINK), "{out}");
         assert!(!out.contains("Notion: "), "{out}");
+    }
+
+    fn repo() -> Repo {
+        Repo {
+            id: "github.com/haoov/groove".into(),
+            host: "github.com".into(),
+            group_path: "haoov".into(),
+            project: "groove".into(),
+            local_path: "/nowhere".into(),
+        }
+    }
+
+    fn worktree(base_ref: Option<&str>) -> Worktree {
+        Worktree {
+            id: "wt-1".into(),
+            session_id: "gh-haoov-groove-22".into(),
+            repo_id: "github.com/haoov/groove".into(),
+            branch: "fix/x-22".into(),
+            path: "/wt/fix/x-22".into(),
+            base_ref: base_ref.map(str::to_string),
+            created_at: 0,
+        }
+    }
+
+    #[tokio::test]
+    async fn the_mr_targets_the_branch_the_worktree_was_based_on() {
+        assert_eq!(target_for(&repo(), &worktree(Some("release/1.0"))).await, "release/1.0");
+    }
+
+    #[tokio::test]
+    async fn a_blank_base_is_not_a_target() {
+        assert_eq!(target_for(&repo(), &worktree(Some("  "))).await, "main");
     }
 
     #[test]

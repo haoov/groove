@@ -156,12 +156,10 @@ impl PlatformClient for GhClient {
         &self,
         repo: &Repo,
         branch: &str,
+        target: &str,
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)> {
-        let base = crate::core::git::refs::default_branch(&repo.local_path)
-            .await
-            .unwrap_or_else(|| "main".to_string());
         let v = api::github(
             &repo.host,
             Method::POST,
@@ -170,7 +168,7 @@ impl PlatformClient for GhClient {
                 "title": title,
                 "body": description,
                 "head": branch,
-                "base": base,
+                "base": target,
             })),
         )
         .await?;

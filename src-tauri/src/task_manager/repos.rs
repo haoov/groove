@@ -76,6 +76,15 @@ fn refusal_for(kind: SessionKind) -> Option<&'static str> {
         .then_some("a review session tracks one MR and takes no extra repos")
 }
 
+/// Refuse a target branch that is not on origin.
+async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
+    let Some(t) = target else { return Ok(()) };
+    if !crate::core::git::refs::branch_on_remote(&repo.local_path, t).await {
+        anyhow::bail!("{} has no branch '{t}' on origin — check the name", repo.project);
+    }
+    Ok(())
+}
+
 /// Attach `repo` to `task_id` and provision its worktree. The confirmation-bridge
 /// path for `task.add_repo` — the user approves before any of this runs.
 ///
@@ -96,6 +105,7 @@ pub async fn add_repo_impl(
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing repo"))?;
     let branch = payload["branch"].as_str().filter(|s| !s.trim().is_empty());
+    let target = payload["target_branch"].as_str().map(str::trim).filter(|s| !s.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -114,11 +124,13 @@ pub async fn add_repo_impl(
         crate::worktrees::register_repo_impl(&picked.slug, picked.local_path.clone(), pool)
             .await?;
 
+    check_target(&repo, target).await?;
     store::repos::attach(pool, task_id, &repo.id).await?;
 
     let spec = crate::worktrees::BranchSpec {
         repo_id: repo.id.clone(),
         branch_name: branch.map(|b| b.to_string()),
+        target_branch: target.map(|b| b.to_string()),
     };
     let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
 
@@ -138,8 +150,12 @@ pub async fn add_repo_impl(
     Ok(serde_json::json!({
         "repo": { "id": repo.id, "project": repo.project, "local_path": repo.local_path },
         "branch": wt.branch,
+        "target_branch": wt.base_ref,
         "worktree_path": wt.path,
-        "message": format!("Added {} to {task_id}", repo.project),
+        "message": match &wt.base_ref {
+            Some(base) => format!("Added {} to {task_id}, based on {base}", repo.project),
+            None => format!("Added {} to {task_id}", repo.project),
+        },
     }))
 }
 
@@ -163,6 +179,7 @@ pub async fn add_worktree_impl(
         .map(str::trim)
         .filter(|b| !b.is_empty())
         .ok_or_else(|| anyhow::anyhow!("a branch name is required — that is what makes it a second worktree"))?;
+    let target = payload["target_branch"].as_str().map(str::trim).filter(|b| !b.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -213,9 +230,12 @@ pub async fn add_worktree_impl(
         );
     }
 
+    check_target(&repo, target).await?;
+
     let spec = crate::worktrees::BranchSpec {
         repo_id: repo.id.clone(),
         branch_name: Some(branch.to_string()),
+        target_branch: target.map(|b| b.to_string()),
     };
     let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
     let wt = worktrees
@@ -232,9 +252,13 @@ pub async fn add_worktree_impl(
     Ok(serde_json::json!({
         "repo": { "id": repo.id, "project": repo.project },
         "branch": wt.branch,
+        "target_branch": wt.base_ref,
         "worktree_id": wt.id,
         "worktree_path": wt.path,
-        "message": format!("Added a {} worktree on {branch}", repo.project),
+        "message": match &wt.base_ref {
+            Some(base) => format!("Added a {} worktree on {branch}, based on {base}", repo.project),
+            None => format!("Added a {} worktree on {branch}", repo.project),
+        },
     }))
 }
 
