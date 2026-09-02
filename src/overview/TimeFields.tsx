@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../shared/ipc/invoke';
 import { Loader2, Plus } from 'lucide-react';
@@ -46,13 +46,15 @@ export function TimeFields({
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   // Portalled to <body>: .app-main clips its own overflow at the activity rail.
-  useLayoutEffect(() => {
-    if (!open) { setPos(null); return; }
+  // Measured in the click that opens it, so no effect writes state.
+  const toggle = () => {
+    if (open) { setOpen(false); setPos(null); return; }
     const r = btn.current?.getBoundingClientRect();
     if (!r) return;
     const left = Math.min(Math.max(8, r.right - POP_WIDTH), window.innerWidth - POP_WIDTH - 8);
     setPos({ left, top: r.bottom + 4 });
-  }, [open]);
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -70,9 +72,9 @@ export function TimeFields({
     };
   }, [open]);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     invoke<TaskTime>('get_task_time', { taskId }).then(setTime).catch(() => setTime(null));
-  };
+  }, [taskId]);
 
   // The tracker ticks every 30s; a minute is live enough without polling for its
   // own sake.
@@ -80,7 +82,7 @@ export function TimeFields({
     refresh();
     const id = window.setInterval(refresh, 60_000);
     return () => clearInterval(id);
-  }, [taskId]);
+  }, [refresh]);
 
   const log = async (hours: number) => {
     if (!(hours > 0) || busy) return;
@@ -127,7 +129,7 @@ export function TimeFields({
           <button
             ref={btn}
             className={`time-add${unlogged > 0 ? ' pending' : ''}`}
-            onClick={() => setOpen(!open)}
+            onClick={toggle}
             title={
               unlogged > 0
                 ? `${human(unlogged)} tracked, not logged yet`

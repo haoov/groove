@@ -236,7 +236,6 @@ mod tests {
             worktree_id: None,
             branch: None,
             worktree_path: None,
-            base_ref: None,
             mr_id: None,
             mr_platform: None,
             mr_remote_id: None,

@@ -36,27 +36,28 @@ export function TaskOverview() {
   const [finishing, setFinishing] = useState(false);
   const [schema, setSchema] = useState<TaskSchema | null>(null);
   const src = providerCopy(activeTask);
+  const shortId = activeTask?.short_id;
   const [reloadNonce, setReloadNonce] = useState(0);
   const reload = () => setReloadNonce((n) => n + 1);
 
   useEffect(() => {
-    if (!activeTask) return;
+    if (!shortId) return;
     setLoading(true);
     // Markdown, not raw blocks: same renderer as MR descriptions, and markdown
     // typed literally into the source (backticks, **bold**) then displays properly.
-    invoke<string>('get_task_body_markdown', { shortId: activeTask.short_id })
+    invoke<string>('get_task_body_markdown', { shortId })
       .then(setBody)
       .catch(() => setBody(''))
       .finally(() => setLoading(false));
-  }, [activeTask?.short_id, reloadNonce]);
+  }, [shortId, reloadNonce]);
 
   // Per task, not per mount: a schema belongs to the source the task came from.
   useEffect(() => {
-    if (!activeTask) return;
-    invoke<TaskSchema>('get_task_schema', { shortId: activeTask.short_id })
+    if (!shortId) return;
+    invoke<TaskSchema>('get_task_schema', { shortId })
       .then(setSchema)
       .catch(() => setSchema(null));
-  }, [activeTask?.short_id]);
+  }, [shortId]);
 
   // Load MRs for all worktrees into local state — independent of the sidebar's
   // per-repo store so switching repos in the sidebar never clears this list.

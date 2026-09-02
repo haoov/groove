@@ -195,6 +195,9 @@ export interface FileDiffEditorProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/** Blame age is measured when the gutter paints, never during render. */
+const nowSeconds = () => Math.floor(Date.now() / 1000);
+
 export function FileDiffEditor({
   hunks, filePath, repoId, ann, sel, dragRange, fileAnnotations, threads, mr, focusSignal, isPreview,
   allowAnnotations = true, onExpandGap, fileLineCount, blame, onOpenCommit,
@@ -298,7 +301,6 @@ export function FileDiffEditor({
 
     // Blame is keyed by the NEW-side line number, so `del` lines get an empty cell.
     const blameByLine = new Map((blame ?? []).map((b) => [b.line, b]));
-    const now = Math.floor(Date.now() / 1000);
     const blameGutter = gutter({
       class: 'cm-blame-gutter',
       lineMarker(view: EditorView, line: BlockInfo) {
@@ -306,9 +308,9 @@ export function FileDiffEditor({
         if (!info) return null;
         const cls = info.type === 'add' ? 'diff-line-add' : info.type === 'del' ? 'diff-line-del' : '';
         const b = info.type === 'del' ? null : blameByLine.get(info.fileLineNum) ?? null;
-        return new BlameMarker(b, (sha) => openCommitRef.current?.(sha), now, cls);
+        return new BlameMarker(b, (sha) => openCommitRef.current?.(sha), nowSeconds(), cls);
       },
-      initialSpacer: () => new BlameMarker(null, () => {}, now),
+      initialSpacer: () => new BlameMarker(null, () => {}, nowSeconds()),
     });
 
     const lineNumGutter = gutter({
@@ -414,7 +416,8 @@ export function FileDiffEditor({
         annContainers: annContainersRef.current,
       }),
     });
-  }, [sel, dragRange, annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums, inlineAnchorNum, fileAnnotations, annGroups]);
+  }, [sel, dragRange, annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums, inlineAnchorNum, fileAnnotations, annGroups,
+      portalContainerRef, annContainersRef]);
 
   return (
     <div

@@ -191,7 +191,14 @@ export function MultiRow({
   const box = useRef<HTMLSpanElement | null>(null);
   useOutsideClose(box, open, () => setOpen(false));
 
-  useEffect(() => { setDraft(selected); }, [selected.join(',')]);
+  // Re-seed the draft when the stored value changes — adjusted during render
+  // rather than in an effect, which would render once with the stale draft.
+  const selectedKey = selected.join(',');
+  const [seededKey, setSeededKey] = useState(selectedKey);
+  if (seededKey !== selectedKey) {
+    setSeededKey(selectedKey);
+    setDraft(selected);
+  }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
   // Relation choices come from the target database, fetched once.
@@ -275,7 +282,13 @@ export function PropField({
   const selected = isMulti ? ((raw as string[]) ?? []) : [];
   const [draft, setDraft] = useState<string[]>(selected);
   const timer = useRef<number | null>(null);
-  useEffect(() => { if (isMulti) setDraft(selected); }, [selected.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  // See above: seeded during render, not from an effect.
+  const selectedKey = selected.join(',');
+  const [seededKey, setSeededKey] = useState(selectedKey);
+  if (isMulti && seededKey !== selectedKey) {
+    setSeededKey(selectedKey);
+    setDraft(selected);
+  }
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   useEffect(() => {
     if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;

@@ -20,7 +20,7 @@ interface Opts {
  * class (used for scroll-into-view).
  */
 export function useListNav({ count, onEnter, onLeft, onRight, focusNonce }: Opts) {
-  const [index, setIndexState] = useState(0);
+  const [storedIndex, setIndexState] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const gPending = useRef(false);
   const wantFocus = useRef(false);
@@ -28,8 +28,8 @@ export function useListNav({ count, onEnter, onLeft, onRight, focusNonce }: Opts
   const clamp = useCallback((i: number) => Math.max(0, Math.min(i, Math.max(0, count - 1))), [count]);
   const setIndex = useCallback((i: number) => setIndexState(clamp(i)), [clamp]);
 
-  // Keep the cursor in range as the list grows/shrinks.
-  useEffect(() => { setIndexState((i) => clamp(i)); }, [clamp]);
+  // Clamped on read, so a list that grew or shrank needs no correcting effect.
+  const index = clamp(storedIndex);
 
   // A panel shortcut asked for focus; the list may still be loading (the file
   // tree fetches async), so just arm the request here…

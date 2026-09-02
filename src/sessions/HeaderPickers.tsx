@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { mrRef } from '../shared/lib/forge';
 import { createPortal } from 'react-dom';
 import {
@@ -91,16 +91,19 @@ function Picker({
 }) {
   const open = useStore((s) => s.openPicker === kind);
   const setOpenPicker = useStore((s) => s.setOpenPicker);
-  const setOpen = (v: boolean) => setOpenPicker(v ? kind : null);
+  const setOpen = useCallback((v: boolean) => setOpenPicker(v ? kind : null), [setOpenPicker, kind]);
   const chipRef = useRef<HTMLButtonElement>(null);
-  const popRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const popRef = useRef<HTMLDivElement | null>(null);
 
-  useLayoutEffect(() => {
-    if (!open) { setPos(null); return; }
+  // Positioned as it mounts: `open` is store-driven (Alt+S/R/W opens it too), so
+  // there is no click to measure in, and a ref callback needs no state at all.
+  const placePop = useCallback((el: HTMLDivElement | null) => {
+    popRef.current = el;
     const r = chipRef.current?.getBoundingClientRect();
-    if (r) setPos({ left: r.left, top: r.bottom + 6 });
-  }, [open]);
+    if (!el || !r) return;
+    el.style.left = `${r.left}px`;
+    el.style.top = `${r.bottom + 6}px`;
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -135,8 +138,8 @@ function Picker({
         <Icon size={13} strokeWidth={1.75} className="hp-chip-icon" />
         <span className="hp-chip-v">{value}</span>
       </button>
-      {open && pos && createPortal(
-        <div className="hp-pop" ref={popRef} style={{ left: pos.left, top: pos.top }}>
+      {open && createPortal(
+        <div className="hp-pop" ref={placePop}>
           {children}
         </div>,
         document.body,
