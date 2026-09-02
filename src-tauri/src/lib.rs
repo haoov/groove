@@ -110,6 +110,7 @@ pub fn run() {
             worktrees::default_branch_for_session,
             worktrees::close_worktree,
             worktrees::remote_branch_exists,
+            worktrees::list_origin_branches,
             worktrees::get_worktree_status,
             worktrees::commit,
             worktrees::stage_file,

@@ -106,15 +106,22 @@ pub async fn ref_exists(path: &str, git_ref: &str) -> bool {
         .await
 }
 
-/// Whether `branch` exists on origin: the remote-tracking ref, else `ls-remote`.
-pub async fn branch_on_remote(path: &str, branch: &str) -> bool {
-    if ref_exists(path, &format!("origin/{branch}")).await {
-        return true;
-    }
-    run::run(path, &["ls-remote", "--heads", "origin", &format!("refs/heads/{branch}")])
-        .await
-        .map(|out| !out.trim().is_empty())
-        .unwrap_or(false)
+/// Every branch head on origin, asked of the remote itself. Uncached: a stale
+/// `origin/<branch>` ref outlives the branch it names.
+///
+/// `Err` means origin was unreachable, never "no such branch". Do not collapse
+/// the two.
+pub async fn origin_branches(path: &str) -> anyhow::Result<Vec<String>> {
+    let out = run::run(path, &["ls-remote", "--heads", "origin"]).await?;
+    let mut branches: Vec<String> = out
+        .lines()
+        .filter_map(|l| l.split('\t').nth(1))
+        .filter_map(|r| r.strip_prefix("refs/heads/"))
+        .map(str::to_string)
+        .collect();
+    branches.sort();
+    branches.dedup();
+    Ok(branches)
 }
 
 /// The repo's real default branch.
@@ -261,35 +268,50 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_fetched_branch_is_on_the_remote() {
-        let (_fx, work) = Fixture::new("onremote");
-        assert!(branch_on_remote(&work, "release/1.0").await);
+    async fn lists_every_branch_on_origin() {
+        let (_fx, work) = Fixture::new("originlist");
+        assert_eq!(origin_branches(&work).await.unwrap(), vec!["main", "release/1.0"]);
     }
 
     #[tokio::test]
-    async fn an_unfetched_branch_is_still_on_the_remote() {
+    async fn lists_a_branch_no_local_ref_knows() {
         let (_fx, work) = Fixture::new("unfetched");
         let dir = PathBuf::from(&work);
         git(&dir, &["update-ref", "-d", "refs/remotes/origin/release/1.0"]);
         cache::flush();
         assert!(!ref_exists(&work, "origin/release/1.0").await);
-        cache::flush();
-        assert!(branch_on_remote(&work, "release/1.0").await);
+        assert!(origin_branches(&work).await.unwrap().contains(&"release/1.0".to_string()));
     }
 
+    /// The reason this asks origin instead of reading `origin/<branch>`: the
+    /// stale tracking ref outlives the branch, and used to pass the check.
     #[tokio::test]
-    async fn a_branch_nobody_has_is_not_on_the_remote() {
-        let (_fx, work) = Fixture::new("nobranch");
-        assert!(!branch_on_remote(&work, "no-such-branch").await);
-    }
-
-    #[tokio::test]
-    async fn a_tail_of_a_branch_name_does_not_count() {
-        let (_fx, work) = Fixture::new("tail");
+    async fn a_branch_deleted_on_origin_leaves_the_list() {
+        let (_fx, work) = Fixture::new("deleted");
         let dir = PathBuf::from(&work);
-        git(&dir, &["update-ref", "-d", "refs/remotes/origin/release/1.0"]);
+        git(&dir, &["push", "origin", "--delete", "release/1.0"]);
+        git(&dir, &["update-ref", "refs/remotes/origin/release/1.0", "HEAD"]);
         cache::flush();
-        assert!(!branch_on_remote(&work, "1.0").await);
+        assert!(ref_exists(&work, "origin/release/1.0").await, "stale ref is the premise");
+        assert_eq!(origin_branches(&work).await.unwrap(), vec!["main"]);
+    }
+
+    #[tokio::test]
+    async fn full_names_only_never_a_tail() {
+        let (_fx, work) = Fixture::new("tail");
+        let branches = origin_branches(&work).await.unwrap();
+        assert!(branches.contains(&"release/1.0".to_string()));
+        assert!(!branches.contains(&"1.0".to_string()));
+    }
+
+    /// An unreachable origin must error, never read as "no branches" — the
+    /// caller turns an empty list into a refusal.
+    #[tokio::test]
+    async fn an_originless_clone_errors() {
+        let (_fx, work) = Fixture::new("noorigin");
+        let dir = PathBuf::from(&work);
+        git(&dir, &["remote", "remove", "origin"]);
+        assert!(origin_branches(&work).await.is_err());
     }
 
     #[tokio::test]

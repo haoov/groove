@@ -1,7 +1,48 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
-import { useRepoPicker, RepoPickerList, CloneRepoForm } from './repoPicker';
+import { useRepoPicker, RepoPickerSearch, CloneRepoForm } from './repoPicker';
+import { BranchPicker, useOriginBranches } from './branchPicker';
+import type { Repo } from '../shared/ipc/ipc';
+
+/** One repo's row: the branch to create, and the base it cuts from. A component
+ *  per row because the base list is fetched per repo. */
+function RepoBranchRow({
+  repo, branch, onBranch, target, onTarget, defaultBranch, onRemove,
+}: {
+  repo: Repo;
+  branch: string;
+  onBranch: (v: string) => void;
+  target: string;
+  onTarget: (v: string) => void;
+  defaultBranch: string;
+  onRemove: () => void;
+}) {
+  const origin = useOriginBranches(repo.id);
+  return (
+    <div className="wizard-branch-item stacked">
+      <div className="wizard-branch-head">
+        <span className="wizard-branch-repo" title={repo.local_path}>{repo.project}</span>
+        <button type="button" className="wizard-branch-remove" title="Remove" onClick={onRemove}>×</button>
+      </div>
+      <div className="wizard-branch-fields">
+        <label className="wizard-branch-field">
+          <span className="wizard-branch-field-label">Base</span>
+          <BranchPicker state={origin} value={target} onChange={onTarget} />
+        </label>
+        <label className="wizard-branch-field">
+          <span className="wizard-branch-field-label">Branch</span>
+          <input
+            className="wizard-input"
+            placeholder={defaultBranch}
+            value={branch}
+            onChange={(e) => onBranch(e.target.value)}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Add one or more repos to the ALREADY-OPEN task — the post-wizard path.
@@ -30,16 +71,21 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
   // the field holds real text you can prepend or append to; a placeholder gave
   // nothing to edit.
   const [branchByRepo, setBranchByRepo] = useState<Record<string, string>>({});
+  // repo.id → base branch; '' means the repo default.
+  const [targetByRepo, setTargetByRepo] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const {
     mainRepos, selectedRepos,
-    isSelected, isPending, toggleRepo, loadRepos,
+    isSelected, isPending, toggleRepo, deselect, loadRepos,
   } = useRepoPicker({
     onSelect: (repo) =>
       setBranchByRepo((p) => (p[repo.id] ? p : { ...p, [repo.id]: defaultBranch })),
-    onDeselect: (repo) => setBranchByRepo((p) => { const n = { ...p }; delete n[repo.id]; return n; }),
+    onDeselect: (repo) => {
+      setBranchByRepo((p) => { const n = { ...p }; delete n[repo.id]; return n; });
+      setTargetByRepo((p) => { const n = { ...p }; delete n[repo.id]; return n; });
+    },
     onError: (msg) => setError(msg),
   });
 
@@ -73,7 +119,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         const specs = selectedRepos.map((r) => {
           const typed = (branchByRepo[r.id] ?? '').trim();
           const branch = typed || defaultBranch;
-          return { repo: r, branch };
+          return { repo: r, branch, target: (targetByRepo[r.id] ?? '').trim() };
         });
 
         // Refuse if any target branch already exists on the repo's origin.
@@ -93,7 +139,11 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         await invoke('set_task_repos', { shortId, repoIds: mergedIds });
         await invoke('provision_worktrees', {
           taskId: shortId,
-          branches: specs.map((s) => ({ repo_id: s.repo.id, branch_name: s.branch })),
+          branches: specs.map((s) => ({
+            repo_id: s.repo.id,
+            branch_name: s.branch,
+            target_branch: s.target || null,
+          })),
         });
       }
       // The repos are attached and provisioned by this point, so a failed refresh
@@ -121,7 +171,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="wizard-overlay" onClick={onClose}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="wizard-modal wide" onClick={(e) => e.stopPropagation()}>
         <div className="wizard-header">
           <div className="wizard-title">Add repo to {activeTask.short_id}</div>
           <div className="wizard-subtitle">{activeTask.title}</div>
@@ -135,8 +185,8 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
               branch, renamed to the task branch if you turn this into a task.</>
             ) : (
               <>Select repositories to add, then name each branch (defaults to{' '}
-              <code>{defaultBranch}</code>). Creation is blocked if the branch already
-              exists on the repo's origin.</>
+              <code>{defaultBranch}</code>) and pick the base it cuts from. Creation is
+              blocked if the branch already exists on the repo's origin.</>
             )}
           </p>
 
@@ -147,27 +197,27 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
                 : 'Every pooled repo is already on this task. Clone a new one below.'}
             </p>
           ) : (
-            <RepoPickerList
+            <RepoPickerSearch
               repos={addable}
               isSelected={isSelected}
               isPending={isPending}
               onToggle={toggleRepo}
-              onConfirm={submit}
             />
           )}
 
           {!isExplorer && selectedRepos.length > 0 && (
             <div className="wizard-branch-list">
               {selectedRepos.map((r) => (
-                <div key={r.id} className="wizard-branch-item">
-                  <span className="wizard-branch-repo">{r.project}</span>
-                  <input
-                    className="wizard-input"
-                    placeholder={defaultBranch}
-                    value={branchByRepo[r.id] ?? defaultBranch}
-                    onChange={(e) => setBranchByRepo((p) => ({ ...p, [r.id]: e.target.value }))}
-                  />
-                </div>
+                <RepoBranchRow
+                  key={r.id}
+                  repo={r}
+                  defaultBranch={defaultBranch}
+                  branch={branchByRepo[r.id] ?? defaultBranch}
+                  onBranch={(v) => setBranchByRepo((p) => ({ ...p, [r.id]: v }))}
+                  target={targetByRepo[r.id] ?? ''}
+                  onTarget={(v) => setTargetByRepo((p) => ({ ...p, [r.id]: v }))}
+                  onRemove={() => deselect(r.local_path)}
+                />
               ))}
             </div>
           )}

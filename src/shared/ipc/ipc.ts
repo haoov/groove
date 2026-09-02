@@ -29,6 +29,7 @@ export type {
   TaskView as Task,
   Repo,
   Worktree,
+  OriginBranches,
   Mr,
   BlameLine,
   CommitEntry,

@@ -27,6 +27,7 @@ export type { Mr } from './Mr';
 export type { NotionSetup } from './NotionSetup';
 export type { NotionUser } from './NotionUser';
 export type { NotionView } from './NotionView';
+export type { OriginBranches } from './OriginBranches';
 export type { PendingConfirmation } from './PendingConfirmation';
 export type { PropertyNames } from './PropertyNames';
 export type { PropertyOption } from './PropertyOption';

@@ -41,3 +41,67 @@ export function Highlighted({ text, ranges }: { text: string; ranges: [number, n
   if (pos < text.length) out.push(<Fragment key="tail">{text.slice(pos)}</Fragment>);
   return <>{out}</>;
 }
+
+/** A word start: the first character, or one after a separator. */
+function isBoundary(text: string, i: number): boolean {
+  return i === 0 || /[/\-_. ]/.test(text[i - 1]);
+}
+
+/** Contiguous runs the ranges cover, and how far the match spans. */
+function shape(ranges: [number, number][]): { runs: number; span: number } {
+  if (ranges.length === 0) return { runs: 0, span: 0 };
+  return {
+    runs: ranges.length,
+    span: ranges[ranges.length - 1][1] - ranges[0][0],
+  };
+}
+
+/**
+ * A scattered subsequence is a match in name only: `mayo` hits half a repo list
+ * through m…a…y…o. Accept one only when it arrives in few enough runs, which
+ * scales with the query so long queries may still break across words.
+ */
+function tightEnough(query: string, runs: number): boolean {
+  return runs <= Math.max(2, Math.ceil(query.length / 2));
+}
+
+export type Ranked<T> = { item: T; ranges: [number, number][] };
+
+/**
+ * Items that match `query`, best first. Contiguous hits outrank scattered ones,
+ * and a hit at a word start outranks one mid-word.
+ *
+ * Prefer this to calling `matchRanges` in a filter: that keeps every subsequence
+ * however scattered, and leaves the order to chance.
+ */
+export function rankMatches<T>(
+  query: string,
+  items: readonly T[],
+  toText: (item: T) => string,
+): Ranked<T>[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items.map((item) => ({ item, ranges: [] as [number, number][] }));
+
+  const scored: { item: T; ranges: [number, number][]; score: number }[] = [];
+  items.forEach((item) => {
+    const text = toText(item);
+    const ranges = matchRanges(q, text);
+    if (!ranges || ranges.length === 0) return;
+
+    const { runs, span } = shape(ranges);
+    const start = ranges[0][0];
+    const contiguous = runs === 1;
+    if (!contiguous && !tightEnough(q, runs)) return;
+
+    // Bands, so a contiguous match never loses to a scattered one on tie-breaks.
+    let score = contiguous ? 2000 : 1000;
+    if (isBoundary(text, start)) score += 200;
+    score -= runs * 20;
+    score -= span;
+    score -= start;
+    scored.push({ item, ranges, score });
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map(({ item, ranges }) => ({ item, ranges }));
+}

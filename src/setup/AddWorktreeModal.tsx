@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
+import { BranchPicker, useOriginBranches } from './branchPicker';
 
 /**
  * A second worktree on a repo the session already holds — the same repo, another
@@ -20,11 +21,14 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   const notify = useStore((s) => s.notify);
 
   const [typed, setTyped] = useState('');
+  // '' means the repo default.
+  const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const seeded = useRef(false);
 
   const repo = activeRepos.find((r) => r.id === activeRepoId) ?? activeRepos[0];
+  const origin = useOriginBranches(repo?.id);
 
   // The branches this repo already has here: a repeat would silently land on the
   // existing worktree (the row upserts on session+repo+branch) and read as a no-op.
@@ -70,7 +74,7 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
       }
       await invoke('provision_worktrees', {
         taskId: activeTask.short_id,
-        branches: [{ repo_id: repo.id, branch_name: branch }],
+        branches: [{ repo_id: repo.id, branch_name: branch, target_branch: target || null }],
       });
       notify({ kind: 'success', source: 'git', title: `Added ${repo.project} on ${branch}` });
       onClose();
@@ -85,7 +89,7 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="wizard-overlay" onClick={onClose}>
-      <div className="wizard-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="wizard-modal wide" onClick={(e) => e.stopPropagation()}>
         <div className="wizard-header">
           <div className="wizard-title">Add worktree to {activeTask.short_id}</div>
           <div className="wizard-subtitle">{repo.project}</div>
@@ -97,6 +101,14 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
             Another branch of <code>{repo.project}</code>, checked out beside the ones this
             session already has. Creation is blocked if the branch already exists on origin.
           </p>
+
+          <label className="firstrun-field">
+            <span className="firstrun-label">Base branch</span>
+            <BranchPicker state={origin} value={target} onChange={setTarget} />
+            <span className="firstrun-hint">
+              Cut from this branch, and the MR targets it. Empty uses the repo default.
+            </span>
+          </label>
 
           <label className="firstrun-field">
             <span className="firstrun-label">Branch</span>

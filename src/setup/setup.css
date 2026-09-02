@@ -521,3 +521,36 @@ button.wizard-repo-item.selected {
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-base);
 }
+
+/* A branch row carrying two fields stacks them under the repo name; the
+   single-field row keeps the original inline shape. */
+
+.wizard-branch-item.stacked { align-items: flex-start; flex-direction: column; gap: var(--space-2); }
+
+.wizard-branch-fields { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+
+.wizard-branch-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+
+.wizard-branch-field-label {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-muted);
+}
+
+.wizard-modal.wide { width: 720px; }
+
+.wizard-branch-head { display: flex; align-items: center; gap: var(--space-2); width: 100%; }
+
+.wizard-branch-remove {
+  margin-left: auto;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gl-text-color-muted);
+  font-size: var(--gl-font-size-md);
+  line-height: 1;
+}
+
+.wizard-branch-remove:hover { color: var(--gl-color-red-400); }
+
+.repo-search { margin-bottom: var(--space-4); }
