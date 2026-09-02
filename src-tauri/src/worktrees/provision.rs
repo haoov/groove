@@ -1,10 +1,10 @@
 //! One provisioning path for every session kind.
 //!
 //! A task worktree sits on `<type>/<id>-<slug>` (user-overridable), an
-//! explorer's on `explorer/<name-slug>` — both created off the repo's default
-//! branch. A review worktree checks out the MR's source branch (tracking
-//! origin) with the MR's target pinned as the diff/log base. All of them live
-//! at `<session>/<project>@<branch-slug>`.
+//! explorer's on `explorer/<name-slug>` — both off the repo's default branch,
+//! or off the caller's target when there is one. A review worktree checks out
+//! the MR's source branch (tracking origin) with the MR's target pinned as the
+//! diff/log base. All of them live at `<session>/<project>@<branch-slug>`.
 
 use serde::Deserialize;
 use sqlx::SqlitePool;
@@ -20,6 +20,9 @@ pub struct BranchSpec {
     pub repo_id: String,
     /// None → the session-kind default from `naming::default_branch`.
     pub branch_name: Option<String>,
+    /// Branch to cut from and merge back into. None → the repo default.
+    #[serde(default)]
+    pub target_branch: Option<String>,
 }
 
 #[tauri::command]
@@ -89,7 +92,7 @@ pub(crate) async fn provision_worktrees_impl(
                 .clone()
                 .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| naming::default_branch(session, tag));
-            provision_one(pool, session, &repo, &branch, None).await
+            provision_one(pool, session, &repo, &branch, None, spec.target_branch.as_deref()).await
         }
     }))
     .await
@@ -121,7 +124,7 @@ pub(crate) async fn provision_review_worktree(
         ));
     }
 
-    let wt = provision_one(pool, &session, repo, source_branch, Some(source_branch)).await?;
+    let wt = provision_one(pool, &session, repo, source_branch, Some(source_branch), None).await?;
     store::worktrees::set_base_ref(pool, &wt.id, target_branch).await?;
     Ok(Worktree { base_ref: Some(target_branch.to_string()), ..wt })
 }
@@ -136,6 +139,7 @@ async fn provision_one(
     repo: &Repo,
     branch: &str,
     track_remote: Option<&str>,
+    target: Option<&str>,
 ) -> anyhow::Result<Worktree> {
     if let Some(existing) = existing_worktree(pool, session, repo, branch).await? {
         align_checkout(&existing.path, branch).await?;
@@ -150,7 +154,11 @@ async fn provision_one(
     // "missing but already registered worktree" instead of recreating it.
     let _ = git::run(&repo.local_path, &["worktree", "prune"]).await;
 
-    let default_branch = refresh_main_clone(&repo.local_path, &repo.project, &session.id).await;
+    let repo_default = refresh_main_clone(&repo.local_path, &repo.project, &session.id).await;
+    let branch_point = match target {
+        Some(t) => BranchPoint::Exact(t),
+        None => BranchPoint::RepoDefault(repo_default.as_deref()),
+    };
 
     let wt_path = session_dir(&session.id).join(naming::worktree_dir(&repo.project, branch));
     std::fs::create_dir_all(&wt_path)?;
@@ -169,7 +177,7 @@ async fn provision_one(
         }
         _ => {
             if !local_exists {
-                create_branch(branch, &repo.local_path, default_branch.as_deref()).await?;
+                create_branch(branch, &repo.local_path, branch_point).await?;
             }
             git::output(&repo.local_path, &["worktree", "add", &wt_path_str, branch]).await?
         }
@@ -183,7 +191,13 @@ async fn provision_one(
     }
 
     git::cache::flush();
-    Ok(store::worktrees::upsert(pool, &session.id, &repo.id, branch, &wt_path_str).await?)
+    let wt = store::worktrees::upsert(pool, &session.id, &repo.id, branch, &wt_path_str).await?;
+
+    if let Some(t) = target {
+        store::worktrees::set_base_ref(pool, &wt.id, t).await?;
+        return Ok(Worktree { base_ref: Some(t.to_string()), ..wt });
+    }
+    Ok(wt)
 }
 
 /// The session's existing worktree for this (repo, branch), when its directory
@@ -228,21 +242,30 @@ async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Create `branch` off the repo's default branch.
-///
-/// `base_branch` is what `refresh_main_clone` resolved; main/master are only a
-/// fallback for when it couldn't say. Guessing that list alone used to fail on
-/// any repo whose default is something else, e.g. `develop`.
+/// Where a new branch is cut from.
+#[derive(Clone, Copy)]
+enum BranchPoint<'a> {
+    /// The caller's target. Never falls back to another base.
+    Exact(&'a str),
+    /// What `refresh_main_clone` resolved, then main/master.
+    RepoDefault(Option<&'a str>),
+}
+
 async fn create_branch(
     branch: &str,
     repo_path: &str,
-    base_branch: Option<&str>,
+    point: BranchPoint<'_>,
 ) -> anyhow::Result<()> {
     let mut candidates: Vec<String> = vec![];
-    if let Some(base) = base_branch {
-        candidates.push(format!("origin/{base}"));
+    match point {
+        BranchPoint::Exact(base) => candidates.push(format!("origin/{base}")),
+        BranchPoint::RepoDefault(base) => {
+            if let Some(base) = base {
+                candidates.push(format!("origin/{base}"));
+            }
+            candidates.extend(["origin/main".to_string(), "origin/master".to_string()]);
+        }
     }
-    candidates.extend(["origin/main".to_string(), "origin/master".to_string()]);
 
     for base in &candidates {
         if let Ok(out) = git::output(repo_path, &["branch", branch, base]).await {
@@ -316,4 +339,97 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
         );
     }
     Some(default_branch)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// A real clone with a real origin.
+    struct Fixture {
+        root: PathBuf,
+    }
+
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    async fn git(dir: &str, args: &[&str]) -> String {
+        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+        full.extend_from_slice(args);
+        git::run(dir, &full).await.unwrap_or_else(|e| panic!("git {args:?}: {e}")).trim().to_string()
+    }
+
+    impl Fixture {
+        /// `release/1.0` sits one commit behind `main`.
+        async fn new(name: &str) -> (Self, String) {
+            let root =
+                std::env::temp_dir().join(format!("groove-provision-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&root);
+            std::fs::create_dir_all(&root).unwrap();
+            let fixture = Fixture { root: root.clone() };
+
+            let origin = root.join("origin.git");
+            std::fs::create_dir_all(&origin).unwrap();
+            let origin_s = origin.to_string_lossy().to_string();
+            git(&origin_s, &["init", "--bare", "--initial-branch=main", "."]).await;
+
+            let work = root.join("work");
+            std::fs::create_dir_all(&work).unwrap();
+            let work_s = work.to_string_lossy().to_string();
+            git(&work_s, &["init", "--initial-branch=main", "."]).await;
+            std::fs::write(work.join("a.txt"), "one\n").unwrap();
+            git(&work_s, &["add", "."]).await;
+            git(&work_s, &["commit", "-m", "first"]).await;
+            git(&work_s, &["remote", "add", "origin", &origin_s]).await;
+            git(&work_s, &["push", "origin", "main:release/1.0"]).await;
+            std::fs::write(work.join("a.txt"), "two\n").unwrap();
+            git(&work_s, &["commit", "-am", "second"]).await;
+            git(&work_s, &["push", "origin", "main"]).await;
+            git(&work_s, &["fetch", "origin"]).await;
+            git(&work_s, &["remote", "set-head", "origin", "main"]).await;
+
+            (fixture, work_s)
+        }
+    }
+
+    async fn tip(work: &str, git_ref: &str) -> String {
+        git(work, &["rev-parse", git_ref]).await
+    }
+
+    #[tokio::test]
+    async fn a_named_target_is_the_branch_point() {
+        let (_fx, work) = Fixture::new("exact").await;
+        create_branch("fix/x", &work, BranchPoint::Exact("release/1.0")).await.unwrap();
+        assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/release/1.0").await);
+        assert_ne!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
+    }
+
+    #[tokio::test]
+    async fn a_named_target_that_does_not_resolve_never_falls_back() {
+        let (_fx, work) = Fixture::new("nofallback").await;
+        let err = create_branch("fix/x", &work, BranchPoint::Exact("no-such-branch"))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("origin/no-such-branch"), "{err}");
+        assert!(!err.contains("origin/main"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn no_target_branches_from_the_repo_default() {
+        let (_fx, work) = Fixture::new("default").await;
+        create_branch("fix/x", &work, BranchPoint::RepoDefault(Some("main"))).await.unwrap();
+        assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
+    }
+
+    #[tokio::test]
+    async fn an_unresolved_default_falls_back_to_main() {
+        let (_fx, work) = Fixture::new("guess").await;
+        create_branch("fix/x", &work, BranchPoint::RepoDefault(None)).await.unwrap();
+        assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
+    }
 }

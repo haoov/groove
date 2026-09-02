@@ -2,7 +2,6 @@
 
 export type Worktree = { id: string, session_id: string, repo_id: string, branch: string, path: string, 
 /**
- * Review sessions: the MR's target branch — diff/log base becomes
- * `origin/<base_ref>` instead of the repo default.
+ * The branch this work merges into: diff/log base and MR target.
  */
 base_ref: string | null, created_at: number, };

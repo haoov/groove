@@ -106,12 +106,10 @@ impl PlatformClient for GlabClient {
         &self,
         repo: &Repo,
         branch: &str,
+        target: &str,
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)> {
-        let target = crate::core::git::refs::default_branch(&repo.local_path)
-            .await
-            .unwrap_or_else(|| "main".to_string());
         // Self-assignment is best-effort: an MR without an assignee beats no MR.
         let assignee = current_user(&repo.host).await.ok().map(|(id, _)| id);
         let mut body = serde_json::json!({

@@ -162,6 +162,11 @@ pub async fn create_mr(
     let mut payload = crate::worktrees::op_payload(&pool, &wt).await;
     payload["title"] = serde_json::json!("");
     payload["description"] = serde_json::json!("");
+    payload["target_branch"] = serde_json::json!(
+        super::ops::mr_target_for(&pool, &worktree_id)
+            .await
+            .map_err(|e| e.to_string())?
+    );
 
     bridge
         .post(&pool, crate::approvals::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))

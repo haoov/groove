@@ -97,8 +97,7 @@ pub struct Worktree {
     pub repo_id: String,
     pub branch: String,
     pub path: String,
-    /// Review sessions: the MR's target branch — diff/log base becomes
-    /// `origin/<base_ref>` instead of the repo default.
+    /// The branch this work merges into: diff/log base and MR target.
     pub base_ref: Option<String>,
     #[ts(type = "number")]
     pub created_at: i64,

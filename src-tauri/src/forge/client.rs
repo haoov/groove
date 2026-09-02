@@ -3,10 +3,12 @@ use crate::core::db::models::Repo;
 #[async_trait::async_trait]
 pub(super) trait PlatformClient: Send + Sync {
     fn platform_name(&self) -> &'static str;
+    /// `target` is the branch the MR lands on, resolved by `forge::ops`.
     async fn create_mr(
         &self,
         repo: &Repo,
         branch: &str,
+        target: &str,
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)>;
