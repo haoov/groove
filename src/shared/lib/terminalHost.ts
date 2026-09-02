@@ -80,10 +80,8 @@ async function copyText(text: string): Promise<void> {
  * Ctrl+Shift+C / Ctrl+Shift+V, not the bare chords: Ctrl+C is SIGINT and Ctrl+V is
  * a literal keystroke the program may want.
  *
- * Selection needs no modifier. Claude Code turns on bracketed paste (`?2004h`) but
- * NOT mouse tracking — verified by capturing its output in a pty — so xterm never
- * forwards mousedown to the program and an ordinary drag selects, in the agent
- * terminal exactly as in the shell one.
+ * Selection needs no modifier. Claude Code turns on bracketed paste (`?2004h`)
+ * AND mouse tracking, so it answers a middle click itself.
  *
  * A finished selection is also copied automatically, the way most terminals behave:
  * a keystroke that silently does nothing is what made this hard to use at all.
@@ -113,6 +111,15 @@ function attachClipboard(term: Terminal) {
     }
     return true;
   });
+
+  term.element?.addEventListener('paste', (e) => {
+    // xterm never cancels the paste default, so the webview would insert the
+    // text into the helper textarea and send it a second time.
+    e.preventDefault();
+    // With mouse tracking on, the middle click also reaches the program, which
+    // pastes for itself — stop xterm pasting on top of it.
+    if (term.modes.mouseTrackingMode !== 'none') e.stopPropagation();
+  }, true);
 
   // Copy-on-select, debounced so a drag copies once when it settles rather than on
   // every intermediate change.
