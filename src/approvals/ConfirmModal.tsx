@@ -164,6 +164,7 @@ function PayloadView({ op, payload, edits, setField }: {
             <>
               <Field label="Repo"   value={repoName(payload)} />
               <Field label="Branch" value={str('branch')} mono />
+              <Field label="Into"   value={str('target_branch')} mono />
             </>
           )}
           <EditableField
@@ -188,6 +189,7 @@ function PayloadView({ op, payload, edits, setField }: {
           <Field label="Repo"   value={str('repo')} mono />
           <Field label="Task"   value={str('task_id')} mono />
           {str('branch') && <Field label="Branch" value={str('branch')} mono />}
+          {str('target_branch') && <Field label="Based on" value={str('target_branch')} mono />}
           <div className="cp-hint">
             Attaches the repo and creates its worktree. Repos already on the task stay.
           </div>
@@ -200,6 +202,7 @@ function PayloadView({ op, payload, edits, setField }: {
           <Field label="Repo"   value={str('repo') || 'the task\u2019s only repo'} mono />
           <Field label="Task"   value={str('task_id')} mono />
           <Field label="Branch" value={str('branch')} mono />
+          {str('target_branch') && <Field label="Based on" value={str('target_branch')} mono />}
           <div className="cp-hint">
             Checks out another branch of a repo the task already has, beside the
             worktrees it holds now. Nothing existing is touched.

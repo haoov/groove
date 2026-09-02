@@ -76,6 +76,33 @@ fn refusal_for(kind: SessionKind) -> Option<&'static str> {
         .then_some("a review session tracks one MR and takes no extra repos")
 }
 
+/// Refuse a target branch that is not on origin.
+/// Branch names an error lists before it gives only a count.
+const TARGET_SUGGESTIONS: usize = 20;
+
+/// Refuse a target branch origin does not have, naming the ones it does.
+async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
+    let Some(t) = target else { return Ok(()) };
+
+    // An unreachable origin is not a missing branch — do not merge the two.
+    let branches = crate::core::git::refs::origin_branches(&repo.local_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("cannot reach origin for {}: {e}", repo.project))?;
+
+    if branches.iter().any(|b| b == t) {
+        return Ok(());
+    }
+
+    let shown: Vec<&str> = branches.iter().take(TARGET_SUGGESTIONS).map(String::as_str).collect();
+    let rest = branches.len().saturating_sub(shown.len());
+    let listed = match (shown.is_empty(), rest) {
+        (true, _) => "it has none".to_string(),
+        (false, 0) => format!("it has: {}", shown.join(", ")),
+        (false, n) => format!("it has: {}, and {n} more", shown.join(", ")),
+    };
+    anyhow::bail!("{} has no branch '{t}' on origin — {listed}", repo.project);
+}
+
 /// Attach `repo` to `task_id` and provision its worktree. The confirmation-bridge
 /// path for `task.add_repo` — the user approves before any of this runs.
 ///
@@ -96,6 +123,7 @@ pub async fn add_repo_impl(
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing repo"))?;
     let branch = payload["branch"].as_str().filter(|s| !s.trim().is_empty());
+    let target = payload["target_branch"].as_str().map(str::trim).filter(|s| !s.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -114,11 +142,13 @@ pub async fn add_repo_impl(
         crate::worktrees::register_repo_impl(&picked.slug, picked.local_path.clone(), pool)
             .await?;
 
+    check_target(&repo, target).await?;
     store::repos::attach(pool, task_id, &repo.id).await?;
 
     let spec = crate::worktrees::BranchSpec {
         repo_id: repo.id.clone(),
         branch_name: branch.map(|b| b.to_string()),
+        target_branch: target.map(|b| b.to_string()),
     };
     let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
 
@@ -138,8 +168,12 @@ pub async fn add_repo_impl(
     Ok(serde_json::json!({
         "repo": { "id": repo.id, "project": repo.project, "local_path": repo.local_path },
         "branch": wt.branch,
+        "target_branch": wt.base_ref,
         "worktree_path": wt.path,
-        "message": format!("Added {} to {task_id}", repo.project),
+        "message": match &wt.base_ref {
+            Some(base) => format!("Added {} to {task_id}, based on {base}", repo.project),
+            None => format!("Added {} to {task_id}", repo.project),
+        },
     }))
 }
 
@@ -163,6 +197,7 @@ pub async fn add_worktree_impl(
         .map(str::trim)
         .filter(|b| !b.is_empty())
         .ok_or_else(|| anyhow::anyhow!("a branch name is required — that is what makes it a second worktree"))?;
+    let target = payload["target_branch"].as_str().map(str::trim).filter(|b| !b.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -213,9 +248,12 @@ pub async fn add_worktree_impl(
         );
     }
 
+    check_target(&repo, target).await?;
+
     let spec = crate::worktrees::BranchSpec {
         repo_id: repo.id.clone(),
         branch_name: Some(branch.to_string()),
+        target_branch: target.map(|b| b.to_string()),
     };
     let worktrees = crate::worktrees::provision_worktrees_impl(task_id, &[spec], pool).await?;
     let wt = worktrees
@@ -232,15 +270,119 @@ pub async fn add_worktree_impl(
     Ok(serde_json::json!({
         "repo": { "id": repo.id, "project": repo.project },
         "branch": wt.branch,
+        "target_branch": wt.base_ref,
         "worktree_id": wt.id,
         "worktree_path": wt.path,
-        "message": format!("Added a {} worktree on {branch}", repo.project),
+        "message": match &wt.base_ref {
+            Some(base) => format!("Added a {} worktree on {branch}, based on {base}", repo.project),
+            None => format!("Added a {} worktree on {branch}", repo.project),
+        },
     }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use std::path::PathBuf;
+
+    /// A clone whose origin has `main` and `release/1.0`.
+    struct Origin {
+        root: PathBuf,
+        repo: Repo,
+    }
+
+    impl Drop for Origin {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    /// Through `core::git` — spawning git any other way trips the guard test in
+    /// `core/git/run.rs`.
+    async fn git(dir: &PathBuf, args: &[&str]) {
+        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+        full.extend_from_slice(args);
+        crate::core::git::run(&dir.to_string_lossy(), &full)
+            .await
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"));
+    }
+
+    impl Origin {
+        async fn new(name: &str) -> Self {
+            let root =
+                std::env::temp_dir().join(format!("groove-target-{name}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&root);
+            std::fs::create_dir_all(&root).unwrap();
+
+            let origin = root.join("origin.git");
+            std::fs::create_dir_all(&origin).unwrap();
+            git(&origin, &["init", "--bare", "--initial-branch=main", "."]).await;
+
+            let work = root.join("work");
+            std::fs::create_dir_all(&work).unwrap();
+            git(&work, &["init", "--initial-branch=main", "."]).await;
+            std::fs::write(work.join("a.txt"), "one\n").unwrap();
+            git(&work, &["add", "."]).await;
+            git(&work, &["commit", "-m", "first"]).await;
+            git(&work, &["remote", "add", "origin", origin.to_str().unwrap()]).await;
+            git(&work, &["push", "origin", "main"]).await;
+            git(&work, &["push", "origin", "main:release/1.0"]).await;
+            git(&work, &["fetch", "origin"]).await;
+
+            let repo = Repo {
+                id: "r1".into(),
+                host: "example.com".into(),
+                group_path: "g".into(),
+                project: "proj".into(),
+                local_path: work.to_string_lossy().to_string(),
+            };
+            Origin { root, repo }
+        }
+    }
+
+    #[tokio::test]
+    async fn no_target_is_always_fine() {
+        let fx = Origin::new("none").await;
+        check_target(&fx.repo, None).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_branch_origin_has_passes() {
+        let fx = Origin::new("has").await;
+        check_target(&fx.repo, Some("release/1.0")).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_missing_branch_is_refused_with_the_real_ones() {
+        let fx = Origin::new("missing").await;
+        let err = check_target(&fx.repo, Some("nope")).await.unwrap_err().to_string();
+        assert!(err.contains("has no branch 'nope'"), "{err}");
+        assert!(err.contains("release/1.0"), "the refusal must list what origin has: {err}");
+    }
+
+    /// A stale `origin/<branch>` ref used to pass the check on its own.
+    #[tokio::test]
+    async fn a_branch_deleted_on_origin_is_refused() {
+        let fx = Origin::new("stale").await;
+        let work = PathBuf::from(&fx.repo.local_path);
+        git(&work, &["push", "origin", "--delete", "release/1.0"]).await;
+        git(&work, &["update-ref", "refs/remotes/origin/release/1.0", "HEAD"]).await;
+        crate::core::git::cache::flush();
+        let err = check_target(&fx.repo, Some("release/1.0")).await.unwrap_err().to_string();
+        assert!(err.contains("has no branch"), "{err}");
+    }
+
+    /// Unreachable origin must not read as a missing branch.
+    #[tokio::test]
+    async fn an_unreachable_origin_says_so() {
+        let fx = Origin::new("unreachable").await;
+        let work = PathBuf::from(&fx.repo.local_path);
+        git(&work, &["remote", "set-url", "origin", "/nonexistent/origin.git"]).await;
+        let err = check_target(&fx.repo, Some("main")).await.unwrap_err().to_string();
+        assert!(err.contains("cannot reach origin"), "{err}");
+        assert!(!err.contains("has no branch"), "{err}");
+    }
 
     /// `slug` is what the pool reports: host first (see worktrees::pool).
     fn main_repo(slug: &str) -> MainRepo {

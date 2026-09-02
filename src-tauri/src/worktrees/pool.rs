@@ -124,6 +124,29 @@ pub async fn remote_branch_exists(
         .any(|r| r == target))
 }
 
+/// The branches a worktree can be based on, plus which one the repo defaults to.
+#[derive(Debug, Clone, Serialize, ts_rs::TS)]
+#[ts(export, export_to = "../../src/shared/ipc/generated/")]
+pub struct OriginBranches {
+    pub branches: Vec<String>,
+    /// None when origin never set a default; the caller then preselects nothing.
+    pub default_branch: Option<String>,
+}
+
+/// Origin's branch heads, for the base-branch pickers.
+#[tauri::command]
+pub async fn list_origin_branches(
+    repo_id: String,
+    pool: tauri::State<'_, SqlitePool>,
+) -> Result<OriginBranches, String> {
+    let repo = store::repos::get(&*pool, &repo_id).await.map_err(|e| e.to_string())?;
+    let branches = git::refs::origin_branches(&repo.local_path)
+        .await
+        .map_err(|e| e.to_string())?;
+    let default_branch = git::refs::default_branch(&repo.local_path).await;
+    Ok(OriginBranches { branches, default_branch })
+}
+
 /// Every clone in the pool: a pure directory walk, no git calls (searched a
 /// few levels deep, since a host level sits above group paths that nest; never
 /// descends INTO a repo). No pool → empty list.

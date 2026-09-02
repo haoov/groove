@@ -295,8 +295,14 @@ export function FilesTab({
   /** The line a row should open at. */
   const rowLine = (r: GrepRow) => (r.kind === 'match' ? r.match.line : r.file.matches[0]?.line ?? 0);
 
-  // New query → cursor to top.
-  useEffect(() => { setSelectedIdx(0); setGrepCollapsed(new Set()); }, [query]);
+  // New query → cursor to top. Adjusted during render; an effect would paint
+  // one frame with the previous query's cursor.
+  const [cursorQuery, setCursorQuery] = useState(query);
+  if (cursorQuery !== query) {
+    setCursorQuery(query);
+    setSelectedIdx(0);
+    setGrepCollapsed(new Set());
+  }
   // Preview whatever is highlighted (debounced), per mode.
   useEffect(() => {
     if (!searching) return;

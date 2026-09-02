@@ -71,6 +71,7 @@ pub struct HomeEntry {
     pub priority: Option<String>,
     /// Where the task came from; None for explorer and review sessions.
     pub provider: Option<String>,
+    pub external_url: Option<String>,
     pub kind: SessionKind,
     pub repos: Vec<HomeRepo>,
 }
@@ -118,6 +119,7 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
                     status: row.status.clone().unwrap_or_else(|| "in_progress".to_string()),
                     priority: row.priority.clone(),
                     provider: row.provider.clone(),
+                    external_url: row.external_url.clone(),
                     kind: row.kind,
                     repos: vec![],
                 },
@@ -225,6 +227,7 @@ mod tests {
             status: None,
             priority: None,
             provider: None,
+            external_url: None,
             repo_id: project.map(|p| format!("repo-{p}")),
             project: project.map(str::to_string),
             repo_host: None,
@@ -233,7 +236,6 @@ mod tests {
             worktree_id: None,
             branch: None,
             worktree_path: None,
-            base_ref: None,
             mr_id: None,
             mr_platform: None,
             mr_remote_id: None,

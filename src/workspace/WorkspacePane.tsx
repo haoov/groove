@@ -342,10 +342,12 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   const setBlameOn = useSession((s) => s.setBlameOn);
 
   // Tell the backend this is the current open file (cursor-persistence target).
+  const wtId = wt?.id;
+  const taskShortId = activeTask?.short_id;
   useEffect(() => {
-    if (!wt || !activeTask) return;
-    invoke('open_file', { taskId: activeTask.short_id, repoId: tab.repoId, filePath: tab.filePath, languageId }).catch(console.error);
-  }, [wt?.id, activeTask?.short_id, tab.repoId, tab.filePath, languageId]);
+    if (!wtId || !taskShortId) return;
+    invoke('open_file', { taskId: taskShortId, repoId: tab.repoId, filePath: tab.filePath, languageId }).catch(console.error);
+  }, [wtId, taskShortId, tab.repoId, tab.filePath, languageId]);
 
   if (!wt || !activeTask) return <div className="diff-empty"><p>No worktree for this repo</p></div>;
 

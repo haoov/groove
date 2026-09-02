@@ -237,15 +237,16 @@ export function CodeEditor(props: CodeEditorProps) {
   const blameExtension = (blame?: BlameLine[]) => {
     if (!blame) return [];
     const byLine = new Map(blame.map((b) => [b.line, b]));
-    const now = Math.floor(Date.now() / 1000);
+    // Read when the gutter paints: during render this is an impure call.
+    const now = () => Math.floor(Date.now() / 1000);
     return gutter({
       class: 'cm-blame-gutter',
       lineMarker: (view: EditorView, line: BlockInfo) => new BlameMarker(
         byLine.get(view.state.doc.lineAt(line.from).number) ?? null,
         (sha) => propsRef.current.onOpenCommit?.(sha),
-        now,
+        now(),
       ),
-      initialSpacer: () => new BlameMarker(null, () => {}, now),
+      initialSpacer: () => new BlameMarker(null, () => {}, now()),
     });
   };
 
@@ -365,9 +366,10 @@ export function CodeEditor(props: CodeEditorProps) {
   }, [props.blame]);
 
   // Expose save() to the parent.
+  const registerSave = props.registerSave;
   useEffect(() => {
-    props.registerSave?.(() => { saveRef.current(); });
-  }, [props.registerSave]);
+    registerSave?.(() => { saveRef.current(); });
+  }, [registerSave]);
 
   // Load file content whenever the file changes; rebuild state with its language.
   useEffect(() => {
@@ -446,7 +448,8 @@ export function CodeEditor(props: CodeEditorProps) {
         annContainers: annContainersRef.current,
       }),
     });
-  }, [dynSets, props.annotations, thisFileSel?.startLine, thisFileSel?.endLine, portalContainer, annGroups]);
+  }, [dynSets, props.annotations, thisFileSel?.startLine, thisFileSel?.endLine, portalContainer, annGroups,
+      portalContainerRef, annContainersRef]);
 
   return (
     <div

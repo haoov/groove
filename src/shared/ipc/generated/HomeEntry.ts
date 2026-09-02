@@ -10,4 +10,4 @@ priority: string | null,
 /**
  * Where the task came from; None for explorer and review sessions.
  */
-provider: string | null, kind: SessionKind, repos: Array<HomeRepo>, };
+provider: string | null, external_url: string | null, kind: SessionKind, repos: Array<HomeRepo>, };

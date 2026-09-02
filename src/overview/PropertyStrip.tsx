@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import {
@@ -29,13 +29,13 @@ export function PropertyStrip({
   const [busy, setBusy] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
 
-  const load = () => {
+  const load = useCallback(() => {
     invoke<PropertyValue[]>('get_task_properties', { shortId })
       .then(setValues)
       .catch((e) => setLastError(String(e)));
-  };
+  }, [shortId, setLastError]);
 
-  useEffect(load, [shortId]);
+  useEffect(() => { load(); }, [load]);
 
   const write = async (name: string, value: unknown) => {
     setBusy(name);

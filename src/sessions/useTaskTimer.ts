@@ -23,11 +23,13 @@ export function useTaskTimer() {
   const activeShortId = useStore((s) =>
     s.activeSessionId ? s.sessions[s.activeSessionId]?.task?.short_id ?? null : null,
   );
-  const lastInputRef = useRef(Date.now());
+  // Seeded on mount, not during render, where Date.now() is an impure call.
+  const lastInputRef = useRef(0);
   const focusedRef = useRef(true);
 
   // Any interaction anywhere in the app counts as "still here".
   useEffect(() => {
+    lastInputRef.current = Date.now();
     const touch = () => { lastInputRef.current = Date.now(); };
     const events = ['keydown', 'mousedown', 'wheel', 'mousemove'] as const;
     for (const e of events) window.addEventListener(e, touch, { passive: true });

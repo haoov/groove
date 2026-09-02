@@ -314,3 +314,111 @@
 
 .groove-mark-branch { stroke: var(--gl-color-teal-400); }
 .groove-mark-node { fill: var(--gl-color-teal-400); }
+
+/* ── Combobox (shared/ui/Combobox.tsx) ────────────────────────────────────── */
+
+/* Combobox (shared/ui/Combobox.tsx). The list is portalled to <body>, so it is
+   positioned by inline left/top/width and must carry its own stacking context. */
+
+.cbx { position: relative; flex: 1; min-width: 0; }
+
+.cbx-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  background: var(--gl-background-color-float-inset);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+}
+
+.cbx-field:focus-within { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+.cbx-field.disabled { opacity: 0.6; }
+
+.cbx-icon { flex-shrink: 0; color: var(--gl-text-color-muted); }
+
+.cbx-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--gl-text-color-default);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+}
+
+.cbx-input.mono { font-family: var(--font-mono); }
+.cbx-input::placeholder { color: var(--gl-text-color-disabled); }
+
+.cbx-clear {
+  flex-shrink: 0;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gl-text-color-muted);
+  font-size: var(--gl-font-size-sm);
+  line-height: 1;
+}
+
+.cbx-clear:hover { color: var(--gl-text-color-default); }
+
+.cbx-list {
+  position: fixed;
+  z-index: 980;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1);
+  gap: 2px;
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-strong);
+  border-radius: var(--gl-border-radius-medium);
+  box-shadow: var(--shadow-float);
+}
+
+.cbx-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 5px var(--space-2);
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--gl-border-radius-base);
+  cursor: pointer;
+}
+
+.cbx-item.cursor { border-color: var(--gl-accent-border); background: var(--gl-color-blue-50); }
+
+.cbx-check {
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+  color: var(--gl-color-blue-400);
+  font-size: var(--gl-font-size-sm);
+}
+
+.cbx-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+
+.cbx-name.mono { font-family: var(--font-mono); }
+
+.cbx-tag { flex-shrink: 0; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
+
+.cbx-empty {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-disabled);
+}

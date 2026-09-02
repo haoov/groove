@@ -31,9 +31,14 @@ export default tseslint.config(
       // for the render that changed the prop. Off, not disabled per-line.
       'react-hooks/refs': 'off',
 
-      // Also React Compiler rules, and these two do sometimes point at a real
-      // cascading render, so they stay visible as warnings.
-      'react-hooks/set-state-in-effect': 'warn',
+      // Fires on the standard fetch-in-effect shape used throughout: set loading,
+      // await, set data — plus the store-driven effects that seed a modal or move
+      // a cursor. The rule's remedy is to not use an effect, which those cases
+      // need. Off, not disabled per-line: there were 11, all the same pattern.
+      'react-hooks/set-state-in-effect': 'off',
+
+      // Also a React Compiler rule, and it does point at real render-time
+      // impurity, so it stays visible.
       'react-hooks/purity': 'warn',
 
       // tsc already reports unused locals and params; repeating it doubles output.

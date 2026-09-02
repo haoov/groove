@@ -86,7 +86,7 @@ export function AuthModal({
     }).then((un) => { unlisten = un; });
     arm(); // a shell that prints nothing at all still gets the command
     return () => { window.clearTimeout(quiet); unlisten?.(); };
-  }, [pty, tool]);
+  }, [pty, tool, mode]);
 
   // Closing is deliberately the user's call: a shell has no "done", and the login
   // may take a browser round trip. `onDone` re-runs the environment check, so a

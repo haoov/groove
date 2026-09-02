@@ -3,6 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { ChevronDown, ChevronRight, PanelsTopLeft, Pencil, Check, Trash2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
+import { openExternal } from '../shared/lib/openExternal';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
@@ -163,7 +164,17 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
         >
           {expanded ? <ChevronDown size={12} strokeWidth={2} /> : <ChevronRight size={12} strokeWidth={2} />}
         </button>
-        <span className={`type-badge type-${entry.kind}`}>{KIND_LABEL[entry.kind]}</span>
+        {entry.external_url ? (
+          <button
+            className={`type-badge type-${entry.kind} type-badge--link`}
+            title={`Open in ${src.label}`}
+            onClick={(e) => { e.stopPropagation(); openExternal(entry.external_url!); }}
+          >
+            {KIND_LABEL[entry.kind]}
+          </button>
+        ) : (
+          <span className={`type-badge type-${entry.kind}`}>{KIND_LABEL[entry.kind]}</span>
+        )}
         {renaming ? (
           <input
             className="explorer-rename-input"
@@ -253,6 +264,15 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
           <button className="context-item" onClick={() => { setMenu(null); openTask(entry.short_id); }}>
             Open workspace
           </button>
+          {entry.external_url && (
+            <button
+              className="context-item"
+              title={entry.external_url}
+              onClick={() => { setMenu(null); openExternal(entry.external_url!); }}
+            >
+              Open in {src.label}
+            </button>
+          )}
           {entry.kind === 'explorer' && (
             <button className="context-item" onClick={() => { setMenu(null); setName(entry.title); setRenaming(true); }}>
               Rename
@@ -264,7 +284,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
                 Finish task
               </button>
               <button className="context-item" onClick={() => { setMenu(null); setConfirm('delete'); }}>
-                Delete locally
+                Delete task
               </button>
             </>
           )}

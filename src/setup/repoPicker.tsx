@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { Search, GitBranch } from 'lucide-react';
 import type { Repo, MainRepo } from '../shared/ipc/ipc';
-import { matchRanges, Highlighted } from '../shared/lib/match';
+import { Highlighted } from '../shared/lib/match';
+import { Combobox } from '../shared/ui/Combobox';
 
 /**
  * Shared repo selection for the task-open wizard and the add-repo modal.
@@ -59,98 +60,56 @@ export function useRepoPicker(opts?: {
     [pending, selectedRepos, opts],
   );
 
+  /** Drop a selected repo by path — the selected list holds `Repo`, not `MainRepo`. */
+  const deselect = useCallback(
+    (localPath: string) => {
+      const hit = selectedRepos.find((r) => r.local_path === localPath);
+      if (!hit) return;
+      setSelectedRepos((p) => p.filter((r) => r.local_path !== localPath));
+      opts?.onDeselect?.(hit);
+    },
+    [selectedRepos, opts],
+  );
+
   return {
     mainRepos, setMainRepos,
     selectedRepos, setSelectedRepos,
-    isSelected, isPending, toggleRepo, loadRepos,
+    isSelected, isPending, toggleRepo, deselect, loadRepos,
   };
 }
 
-/** Fuzzy-searchable list of the pooled repos (rows disabled while registering). */
-export function RepoPickerList({
-  repos, isSelected, isPending, onToggle, onConfirm,
+/**
+ * Search the clone pool and pick repos from the results. Selected repos are
+ * listed by the caller, which owns the per-repo branch fields.
+ */
+export function RepoPickerSearch({
+  repos, isSelected, isPending, onToggle,
 }: {
   repos: MainRepo[];
   isSelected: (mr: MainRepo) => boolean;
   isPending: (mr: MainRepo) => boolean;
   onToggle: (mr: MainRepo) => void;
-  /** Enter in the filter — submit whatever is selected. */
-  onConfirm?: () => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [cursor, setCursor] = useState(0);
-  const filtered = useMemo(() => {
-    const q = query.trim();
-    if (!q) return repos.map((r) => ({ repo: r, ranges: [] as [number, number][] }));
-    return repos
-      .map((r) => ({ repo: r, ranges: matchRanges(q, r.slug) }))
-      .filter((x): x is { repo: MainRepo; ranges: [number, number][] } => x.ranges !== null);
-  }, [repos, query]);
-
-  // Filtering shrinks the list under the cursor.
-  const at = Math.min(cursor, Math.max(0, filtered.length - 1));
-
-  /**
-   * Ctrl+J/K move, Ctrl+Tab toggles, Enter submits — the whole wizard without
-   * the mouse. Ctrl rather than bare j/k because focus is in a text field.
-   */
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const ctrl = e.ctrlKey || e.metaKey;
-    if (ctrl && (e.key === 'j' || e.key === 'k')) {
-      e.preventDefault();
-      if (!filtered.length) return;
-      const d = e.key === 'j' ? 1 : -1;
-      setCursor((c) => (Math.min(c, filtered.length - 1) + d + filtered.length) % filtered.length);
-    } else if (ctrl && e.key === 'Tab') {
-      e.preventDefault();
-      const hit = filtered[at];
-      if (hit) onToggle(hit.repo);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      onConfirm?.();
-    }
-  };
-
   return (
-    <div className="wizard-repo-pool">
-      <div className="wizard-repo-search">
-        <Search size={13} strokeWidth={1.75} className="file-search-icon" />
-        <input
-          className="wizard-repo-search-input"
-          placeholder="Filter repos…"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
-          onKeyDown={onKeyDown}
-          // Ctrl+J/K would otherwise be eaten by the global capture-phase keymap.
-          data-repo-picker="1"
-          autoFocus
-        />
-        <span className="wizard-repo-count">{filtered.length}/{repos.length}</span>
-      </div>
-      <div className="wizard-repo-list">
-        {filtered.length === 0 && (
-          <p className="wizard-empty">No repo matches “{query}”.</p>
+    <div className="repo-search">
+      <Combobox
+        items={repos}
+        toText={(mr) => mr.slug}
+        onPick={(mr) => { if (!isPending(mr)) onToggle(mr); }}
+        autoFocus
+        icon={Search}
+        placeholder={repos.length ? `Search ${repos.length} repos…` : 'No repo in the pool'}
+        disabled={repos.length === 0}
+        emptyLabel="No repo matches"
+        renderItem={(mr, ranges) => (
+          <>
+            <span className="cbx-check">
+              {isPending(mr) ? '…' : isSelected(mr) ? '✓' : ''}
+            </span>
+            <span className="cbx-name"><Highlighted text={mr.slug} ranges={ranges} /></span>
+          </>
         )}
-        {filtered.map(({ repo: mr, ranges }, i) => {
-          const sel = isSelected(mr);
-          const busy = isPending(mr);
-          return (
-            <button
-              key={mr.local_path}
-              className={`wizard-repo-item ${sel ? 'selected' : ''} ${i === at ? 'cursor' : ''}`}
-              onMouseEnter={() => setCursor(i)}
-              onClick={() => onToggle(mr)}
-              disabled={busy}
-              title={mr.local_path}
-            >
-              <span className="wizard-repo-check">{busy ? '…' : sel ? '✓' : ' '}</span>
-              <span className="wizard-repo-name">
-                {ranges.length ? <Highlighted text={mr.slug} ranges={ranges} /> : mr.slug}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      />
     </div>
   );
 }
