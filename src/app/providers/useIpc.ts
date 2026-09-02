@@ -322,13 +322,17 @@ export function useIpc() {
           if (!sess) return;
           s.updateSession(sess.id, (ss) => {
             const worktrees = ss.worktrees.filter((w) => w.id !== payload.worktree_id);
-            const repos = ss.repos.filter((r) => r.id !== payload.repo_id);
+            // The repo goes only with its LAST worktree; a repo can hold several.
+            const keepRepo = worktrees.some((w) => w.repo_id === payload.repo_id);
+            const repos = keepRepo ? ss.repos : ss.repos.filter((r) => r.id !== payload.repo_id);
             return {
               worktrees,
               repos,
-              activeRepoId: ss.activeRepoId === payload.repo_id ? (repos[0]?.id ?? null) : ss.activeRepoId,
+              activeRepoId: !keepRepo && ss.activeRepoId === payload.repo_id
+                ? (repos[0]?.id ?? null)
+                : ss.activeRepoId,
               activeWorktreeId: ss.activeWorktreeId === payload.worktree_id
-                ? (worktrees[0]?.id ?? null)
+                ? (worktrees.find((w) => w.repo_id === payload.repo_id)?.id ?? worktrees[0]?.id ?? null)
                 : ss.activeWorktreeId,
             };
           });

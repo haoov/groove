@@ -77,6 +77,21 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
         branches: [{ repo_id: repo.id, branch_name: branch, target_branch: target || null }],
       });
       notify({ kind: 'success', source: 'git', title: `Added ${repo.project} on ${branch}` });
+      // The worktree is on disk by now, so a failed refresh must not hold the
+      // modal open — it would read as "nothing happened".
+      try {
+        // Re-hydrates activeWorktrees via workspace_ready; nothing else tells
+        // the header picker the worktree exists.
+        await invoke('open_task', { shortId: activeTask.short_id });
+      } catch (e) {
+        notify({
+          kind: 'attention',
+          source: 'app',
+          taskId: activeTask.short_id,
+          title: 'Worktree added, but the workspace did not refresh',
+          detail: `Reopen the session to see it. ${String(e)}`,
+        });
+      }
       onClose();
     } catch (e) {
       setError(String(e));

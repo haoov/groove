@@ -298,7 +298,19 @@ function WorktreeRows({
   onClose: () => void;
   onAddWorktree: () => void;
 }) {
+  const setLastError = useStore((s) => s.setLastError);
+  const worktreeStatus = useSession((s) => s.worktreeStatus);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
   const select = (w: WtLite) => { onSelect(w.id); onClose(); };
+  // force:true so a dirty worktree still closes — the confirm names what it
+  // costs, matching the repo row beside it.
+  const closeWorktree = async (worktreeId: string) => {
+    try { await invoke('close_worktree', { worktreeId, force: true }); }
+    catch (e) { setLastError(String(e)); }
+    onClose();
+  };
+
   const activeIdx = worktrees.findIndex((w) => w.id === activeWorktreeId);
   const { cursor, setCursor, ref, onKeyDown } = usePickerList(
     worktrees.length, activeIdx, (i) => { const w = worktrees[i]; if (w) select(w); },
@@ -306,18 +318,45 @@ function WorktreeRows({
 
   return (
     <div className="hp-rows" tabIndex={-1} ref={ref} onKeyDown={onKeyDown}>
-      {worktrees.map((w, i) => (
-        <button
-          key={w.id}
-          className={`hp-row hp-row-simple ${w.id === activeWorktreeId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}
-          onClick={() => select(w)}
-          onMouseEnter={() => setCursor(i)}
-        >
-          <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
-          <GitBranch size={12} strokeWidth={1.75} />
-          <span className="hp-row-title">{w.branch}</span>
-        </button>
-      ))}
+      {worktrees.map((w, i) => {
+        if (confirmId === w.id) {
+          const st = worktreeStatus[w.id];
+          const dirty = (st?.modified ?? 0) + (st?.staged ?? 0);
+          return (
+            <div key={w.id} className="hp-row hp-confirm">
+              <span className="hp-confirm-text">
+                Close <strong>{w.branch}</strong>?
+                {dirty > 0 && ` ${dirty} uncommitted change${dirty === 1 ? '' : 's'} lost.`}
+              </span>
+              <button className="hp-confirm-yes" onClick={() => closeWorktree(w.id)}>Close</button>
+              <button className="hp-confirm-no" onClick={() => setConfirmId(null)}>Cancel</button>
+            </div>
+          );
+        }
+        return (
+          <div
+            key={w.id}
+            className={`hp-row ${w.id === activeWorktreeId ? 'active' : ''} ${i === cursor ? 'cursor' : ''}`}
+          >
+            <button
+              className="hp-row-simple hp-row-grow"
+              onClick={() => select(w)}
+              onMouseEnter={() => setCursor(i)}
+            >
+              <span className="hp-tick">{w.id === activeWorktreeId && <Check size={12} strokeWidth={2.5} />}</span>
+              <GitBranch size={12} strokeWidth={1.75} />
+              <span className="hp-row-title">{w.branch}</span>
+            </button>
+            <button
+              className="hp-row-close"
+              title="Close worktree — delete its directory"
+              onClick={(e) => { e.stopPropagation(); setConfirmId(w.id); }}
+            >
+              <X size={11} strokeWidth={2.25} />
+            </button>
+          </div>
+        );
+      })}
       {/* Another branch of THIS repo — the repo picker's Add repo attaches a new
           one, this adds a worktree to the one in scope. */}
       <button className="hp-row hp-row-add" onClick={() => { onAddWorktree(); onClose(); }}>
