@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExternalLink, Wrench } from 'lucide-react';
+import { ChevronDown, ExternalLink, Wrench } from 'lucide-react';
 import { ContextMenu } from './ContextMenu';
 import { ciGroup } from '../lib/mr';
 import { forgeName } from '../lib/forge';
@@ -47,6 +47,7 @@ export function CiChip({ status, url, platform, className, children }: {
         title={`Pipeline: ${status.replace(/_/g, ' ')}`}
       >
         {children}
+        <ChevronDown size={11} strokeWidth={2} className="ci-caret" />
       </button>
       {at && (
         <ContextMenu x={at.x} y={at.y} onClose={() => setAt(null)}>
