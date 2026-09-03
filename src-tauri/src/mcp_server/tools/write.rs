@@ -140,8 +140,8 @@ async fn check_convertible(
         ))),
         Some(SessionKind::Explorer) => None,
         Some(SessionKind::Task) => Some(ToolCallResponse::err(format!(
-            "The focused session is {explorer_id}, a real task — not an explorer. \
-             Ask the user to focus the explorer session they want converted."
+            "This session is {explorer_id}, a real task — not an explorer. Only an \
+             explorer converts; there is nothing here to convert."
         ))),
         Some(kind) => Some(ToolCallResponse::err(format!(
             "{explorer_id} is a {kind:?} session — only explorer sessions convert to tasks."

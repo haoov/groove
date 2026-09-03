@@ -92,10 +92,12 @@ impl Drop for SseReceiver {
 /// The global "active task" follows UI focus, which is wrong for an agent: the
 /// user switches sessions constantly, and an agent working on task A must keep
 /// resolving to A. Each agent is spawned with an `--mcp-config` pointing at
-/// `/sse?task=<short_id>`, so its connection carries its own task for life.
+/// `/sse?task=<short_id>`, so its connection carries its own task for life — and
+/// a connection without one is refused at the handshake, so there is no path by
+/// which a tool call resolves to whatever the user happens to be looking at.
 struct Connection {
     tx: mpsc::Sender<Event>,
-    task: Option<String>,
+    task: String,
 }
 
 type Connections = Arc<Mutex<HashMap<String, Connection>>>;
@@ -112,15 +114,13 @@ struct McpState {
 }
 
 impl McpState {
-    /// The task this CALLER is working on: its connection's binding when it has
-    /// one, else the focused session (a hand-run `claude`, or an older agent).
+    /// The task this CALLER is working on — its connection's binding, nothing else.
+    /// `None` only for a session id the server has never seen.
     fn task_for(&self, mcp_session: &str) -> Option<String> {
-        if let Ok(map) = self.connections.lock() {
-            if let Some(task) = map.get(mcp_session).and_then(|c| c.task.clone()) {
-                return Some(task);
-            }
-        }
-        self.task_state.get_active_task_id()
+        self.connections
+            .lock()
+            .ok()
+            .and_then(|map| map.get(mcp_session).map(|c| c.task.clone()))
     }
 
     /// Re-point a connection (used when an explorer converts into a real task,
@@ -128,7 +128,7 @@ impl McpState {
     fn rebind(&self, mcp_session: &str, task_id: &str) {
         if let Ok(mut map) = self.connections.lock() {
             if let Some(conn) = map.get_mut(mcp_session) {
-                conn.task = Some(task_id.to_string());
+                conn.task = task_id.to_string();
             }
         }
     }
@@ -192,21 +192,24 @@ pub async fn start(
 
 #[derive(Deserialize)]
 struct SseQuery {
-    /// Short id of the task this client works on (agents pass it; humans don't).
+    /// Short id of the task this client works on. Required: every agent Groove
+    /// spawns passes it, and a client without one has no session to act on.
     task: Option<String>,
 }
 
 async fn sse_handler(
     Query(q): Query<SseQuery>,
     State(state): State<McpState>,
-) -> Sse<SseReceiver> {
+) -> Result<Sse<SseReceiver>, (StatusCode, &'static str)> {
+    // Refused here rather than at every tool call, so a misconfigured client sees
+    // one "failed to connect" instead of thirty "no task in scope".
+    let Some(task) = q.task.filter(|t| !t.is_empty()) else {
+        return Err((StatusCode::BAD_REQUEST, "an MCP connection needs ?task=<short_id>"));
+    };
+
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(64);
-
-    let task = q.task.filter(|t| !t.is_empty());
-    if let Some(task) = &task {
-        tracing::info!("[mcp] session {session_id} bound to task {task}");
-    }
+    tracing::info!("[mcp] session {session_id} bound to task {task}");
 
     // First event tells the client where to POST messages
     let endpoint_url = format!("/message?sessionId={session_id}");
@@ -216,12 +219,12 @@ async fn sse_handler(
         map.insert(session_id.clone(), Connection { tx, task });
     }
 
-    Sse::new(SseReceiver {
+    Ok(Sse::new(SseReceiver {
         rx,
         connections: state.connections.clone(),
         session_id,
     })
-    .keep_alive(KeepAlive::default())
+    .keep_alive(KeepAlive::default()))
 }
 
 // ─── POST /message — JSON-RPC 2.0 receiver ───────────────────────────────────

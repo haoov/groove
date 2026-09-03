@@ -35,11 +35,12 @@ function useReviewQueue() {
 }
 
 /**
- * Keep the backend's active task pointed at the focused session. Every MCP tool
- * resolves its target from it (get_active_task / get_task_diff /
- * annotations / the push guard / create_task_from_explorer), and opening a task
- * is not the only way the focus changes — clicking a session tab, closing one,
- * or an explorer→task conversion all move it. Null when no session is open.
+ * Keep the backend's active task pointed at the focused session — the app's own
+ * notion of focus, which a conversion or a finish has to move. MCP tools never
+ * read it: an agent's task is bound to its connection, so no tool call can follow
+ * what the user is looking at. Opening a task is not the only way the focus
+ * changes — clicking a session tab, closing one, or an explorer→task conversion
+ * all move it. Null when no session is open.
  */
 function useActiveTaskSync() {
   const activeShortId = useStore((s) =>
