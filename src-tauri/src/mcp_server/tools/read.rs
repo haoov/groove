@@ -23,24 +23,6 @@ pub(super) async fn get_active_task(
     })))
 }
 
-pub(super) async fn get_worktrees(
-    input: serde_json::Value,
-    state: &McpState,
-    mcp_session: &str,
-) -> anyhow::Result<ToolCallResponse> {
-    let task_id = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session));
-
-    let Some(task_id) = task_id else {
-        return Ok(ToolCallResponse::ok(serde_json::json!({ "worktrees": [] })));
-    };
-
-    let worktrees = store::worktrees::for_session(&state.pool, &task_id).await?;
-
-    Ok(ToolCallResponse::ok(serde_json::to_value(worktrees)?))
-}
 
 /// Every real task the app knows about, from the local mirror. Synthetic
 /// sessions are excluded: an explorer or a review is not something picked off
@@ -94,11 +76,21 @@ pub(super) async fn list_repos(
     ))
 }
 
+/// The task a read is about: the one named, else the caller's own.
+fn task_or_own(input: &serde_json::Value, state: &McpState, mcp_session: &str) -> anyhow::Result<String> {
+    input["task_id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| state.task_for(mcp_session))
+        .ok_or_else(|| anyhow::anyhow!("no task in scope"))
+}
+
 pub(super) async fn get_task_diff(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let result = crate::review::get_task_diff_mcp(&task_id, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(result)?))
 }
@@ -106,9 +98,10 @@ pub(super) async fn get_task_diff(
 pub(super) async fn get_commit_log(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     const DEFAULT_LIMIT: u64 = 20;
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let limit = input["limit"].as_u64().unwrap_or(DEFAULT_LIMIT) as u32;
     let log = crate::review::get_commit_log_mcp(&task_id, limit, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(log)?))
@@ -126,8 +119,9 @@ pub(super) async fn get_mr_state(
 pub(super) async fn get_annotations(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let rows = store::annotations::for_session(&state.pool, &task_id, None).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
 }
@@ -141,11 +135,7 @@ pub(super) async fn get_task_time(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session))
-        .ok_or_else(|| anyhow::anyhow!("no task in scope"))?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
 
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
     let t = store::time::summary(&state.pool, &task_id, &today).await?;
@@ -172,11 +162,7 @@ pub(super) async fn get_task_schema(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session))
-        .ok_or_else(|| anyhow::anyhow!("no task in scope"))?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
 
     let schema = crate::provider::schema_for(&state.pool, &task_id).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(schema)?))
@@ -205,23 +191,6 @@ pub(super) async fn get_open_file(
     ))
 }
 
-pub(super) async fn get_file_content(
-    input: serde_json::Value,
-) -> anyhow::Result<ToolCallResponse> {
-    // 1 MiB — the agent has shell access for anything bigger.
-    const MAX_FILE_BYTES: u64 = 1_048_576;
-
-    let file_path = str_field(&input, "file_path")?;
-    let meta = tokio::fs::metadata(&file_path).await?;
-    if meta.len() > MAX_FILE_BYTES {
-        return Ok(ToolCallResponse::err(format!(
-            "{file_path} is {} bytes (cap {MAX_FILE_BYTES}); read it via the shell instead",
-            meta.len()
-        )));
-    }
-    let content = tokio::fs::read_to_string(&file_path).await?;
-    Ok(ToolCallResponse::ok(serde_json::json!({ "content": content })))
-}
 
 pub(super) async fn get_task_body(
     input: serde_json::Value,

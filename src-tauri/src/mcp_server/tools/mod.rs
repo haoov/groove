@@ -8,7 +8,7 @@ mod definitions;
 mod read;
 mod write;
 
-pub(super) use definitions::mcp_tool_definitions;
+pub(crate) use definitions::mcp_tool_definitions;
 
 use serde::Serialize;
 
@@ -67,15 +67,13 @@ pub(super) async fn dispatch(
         "get_active_task" => read::get_active_task(state, mcp_session).await,
         "list_tasks" => read::list_tasks(state).await,
         "list_repos" => read::list_repos(state, mcp_session).await,
-        "get_worktrees" => read::get_worktrees(input, state, mcp_session).await,
-        "get_task_diff" => read::get_task_diff(input, state).await,
-        "get_commit_log" => read::get_commit_log(input, state).await,
+        "get_task_diff" => read::get_task_diff(input, state, mcp_session).await,
+        "get_commit_log" => read::get_commit_log(input, state, mcp_session).await,
         "get_mr_state" => read::get_mr_state(input, state).await,
         "get_mr_ci" => read::get_mr_ci(input, state).await,
-        "get_annotations" => read::get_annotations(input, state).await,
+        "get_annotations" => read::get_annotations(input, state, mcp_session).await,
         "get_task_time" => read::get_task_time(input, state, mcp_session).await,
         "get_open_file" => read::get_open_file(state, mcp_session).await,
-        "get_file_content" => read::get_file_content(input).await,
         "get_task_body" => read::get_task_body(input, state).await,
         "get_task_schema" => read::get_task_schema(input, state, mcp_session).await,
         "get_task_template" => read::get_task_template(input, state, mcp_session).await,

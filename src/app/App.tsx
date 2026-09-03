@@ -36,7 +36,7 @@ function useReviewQueue() {
 
 /**
  * Keep the backend's active task pointed at the focused session. Every MCP tool
- * resolves its target from it (get_active_task / get_worktrees / get_task_diff /
+ * resolves its target from it (get_active_task / get_task_diff /
  * annotations / the push guard / create_task_from_explorer), and opening a task
  * is not the only way the focus changes — clicking a session tab, closing one,
  * or an explorer→task conversion all move it. Null when no session is open.

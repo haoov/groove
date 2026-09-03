@@ -498,6 +498,33 @@ mod tests {
         }
     }
 
+    /// A skill is prose, and prose does not fail to compile. Rename a tool and every
+    /// skill that names it keeps pointing at nothing until an agent tries it and
+    /// improvises instead. This is the one check a prose-driven feature needs.
+    #[test]
+    fn every_tool_a_core_skill_names_exists() {
+        // Backticked snake_case that is a payload field, not a tool.
+        const FIELDS: &[&str] = &["unlogged_hours"];
+        let tools: Vec<String> = crate::mcp_server::mcp_tool_definitions()
+            .iter()
+            .filter_map(|t| t["name"].as_str().map(str::to_string))
+            .collect();
+
+        for (name, body) in CORE_SKILLS {
+            for token in body.split('`').skip(1).step_by(2) {
+                let looks_like_tool = token.contains('_')
+                    && token.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+                if !looks_like_tool || FIELDS.contains(&token) {
+                    continue;
+                }
+                assert!(
+                    tools.iter().any(|t| t == token),
+                    "{name} names `{token}`, which is not a tool"
+                );
+            }
+        }
+    }
+
     #[test]
     fn parses_front_matter_and_groove_keys() {
         let s = parse(

@@ -26,7 +26,9 @@ use crate::task_manager::State as TaskState;
 pub(crate) mod auth;
 mod tools;
 
-use tools::{dispatch, mcp_tool_definitions};
+use tools::dispatch;
+/// Crate-visible so the skills module can check that every tool a skill names exists.
+pub(crate) use tools::mcp_tool_definitions;
 
 /// The loopback endpoint, defined ONCE here. Agents (`--mcp-config`) and the
 /// status bar derive their URLs from `sse_url`/`endpoint`, so moving the port is

@@ -125,25 +125,7 @@ pub(super) async fn via_bridge(
         payload["index_only"] = serde_json::json!(true);
     }
     let task_id = state.task_for(mcp_session);
-
-    // Asking twice for the same thing means the first call is still queued (the
-    // user deferred it). Tell the caller to wait rather than posting a second row
-    // the user would have to decide twice.
-    if let Some(refusal) = already_pending(state, op_type, task_id.as_deref(), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, op_type, payload, task_id.as_deref()).await? {
-        // Never hand back a bare `null` — it reads as "nothing happened".
-        ResolveOutcome::Approved(value) if value.is_null() => Ok(ToolCallResponse::ok(
-            serde_json::json!({ "ok": true, "op": op_type, "message": "Completed" }),
-        )),
-        ResolveOutcome::Approved(value) => Ok(ToolCallResponse::ok(value)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Operation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Operation approved but failed: {e}"
-        ))),
-    }
+    bridged(state, op_type, payload, task_id.as_deref()).await
 }
 
 /// Reject anything that isn't a live explorer before asking the user to approve
@@ -207,32 +189,21 @@ pub(super) async fn create_task_from_explorer(
         "repo": repo,
     });
 
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE_FROM_EXPLORER, Some(explorer_id.as_str()), &payload).await {
+    let op = crate::approvals::ops::TASK_CREATE_FROM_EXPLORER;
+    if let Some(refusal) = already_pending(state, op, Some(&explorer_id), &payload).await {
         return Ok(refusal);
     }
 
-    let outcome = post_and_wait(
-        state,
-        crate::approvals::ops::TASK_CREATE_FROM_EXPLORER,
-        payload,
-        Some(&explorer_id),
-    )
-    .await?;
-
-    match outcome {
-        ResolveOutcome::Approved(task) => {
-            if let Some(sid) = task["short_id"].as_str() {
-                state.task_state.set_active_task_id(Some(sid.to_string()));
-                // The explorer id this connection was bound to no longer exists.
-                state.rebind(mcp_session, sid);
-            }
-            Ok(ToolCallResponse::ok(task))
+    // The one gated write with work to do AFTER approval: the explorer id this
+    // connection was bound to no longer exists, so re-point it at the new task.
+    let outcome = post_and_wait(state, op, payload, Some(&explorer_id)).await?;
+    if let ResolveOutcome::Approved(task) = &outcome {
+        if let Some(sid) = task["short_id"].as_str() {
+            state.task_state.set_active_task_id(Some(sid.to_string()));
+            state.rebind(mcp_session, sid);
         }
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Task creation approved but failed: {e}"
-        ))),
     }
+    Ok(outcome_response(op, outcome))
 }
 
 /// Stamp `[claude]` into an annotation's Conventional Comment header.
@@ -340,24 +311,9 @@ pub(super) async fn create_task(
         "repo": input["repo"].as_str(),
     });
     let task_id = state.task_for(mcp_session);
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE, task_id.as_deref(), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
-        ResolveOutcome::Approved(task) => Ok(ToolCallResponse::ok(task)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Task creation approved but failed: {e}"
-        ))),
-    }
+    bridged(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await
 }
 
-/// Attach a repo already cloned under MAIN to a task, and provision its worktree.
-///
-/// Defaults to the caller's OWN task, like the other task-scoped writes — an agent
-/// adding a repo means its own session, not whatever the user is looking at.
 /// A second worktree on a repo the task already holds. Separate from
 /// add_task_repo: the repo is not the question, the branch is.
 pub(super) async fn add_task_worktree(
@@ -382,24 +338,13 @@ pub(super) async fn add_task_worktree(
         "repo": input["repo"].as_str(),
         "target_branch": input["target_branch"].as_str(),
     });
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_WORKTREE, Some(&task_id), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await? {
-        ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
-        ResolveOutcome::Rejected => {
-            Ok(ToolCallResponse::err("Adding the worktree was rejected by the user"))
-        }
-        // Unknown repo, a branch already checked out, wrong session kind — each
-        // message says what to do instead.
-        ResolveOutcome::Failed(e) => {
-            Ok(ToolCallResponse::err(format!("Could not add the worktree: {e}")))
-        }
-    }
+    bridged(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await
 }
 
+/// Attach a repo already cloned locally to a task, and provision its worktree.
+///
+/// Defaults to the caller's OWN task, like the other task-scoped writes — an agent
+/// adding a repo means its own session, not whatever the user is looking at.
 pub(super) async fn add_task_repo(
     input: serde_json::Value,
     state: &McpState,
@@ -431,18 +376,7 @@ pub(super) async fn add_task_repo(
         "branch": branch,
         "target_branch": input["target_branch"].as_str(),
     });
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_REPO, Some(&task_id), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await? {
-        ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Adding the repo was rejected by the user")),
-        // The resolution errors (unknown repo, ambiguous name, wrong session kind)
-        // all surface here, and each one tells the agent what to do instead.
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!("Could not add the repo: {e}"))),
-    }
+    bridged(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await
 }
 
 /// The task a write applies to. The provider resolves it at execution time, so
@@ -490,7 +424,7 @@ pub(super) async fn update_task_property(
         "property": property,
         "value": input["value"].clone(),
     });
-    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, Some(&task_id)).await
 }
 
 /// Add hours to the task's "Hours spent". Adds — never replaces.
@@ -507,7 +441,7 @@ pub(super) async fn log_task_hours(
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({ "task_id": task_id, "hours": hours });
-    bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_HOURS, payload, Some(&task_id)).await
 }
 
 /// Mark the task done and tear its workspace down. Destroys every worktree of the
@@ -522,7 +456,7 @@ pub(super) async fn finish_task(
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({ "task_id": task_id });
-    bridged(state, crate::approvals::ops::TASK_FINISH, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_FINISH, payload, Some(&task_id)).await
 }
 
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
@@ -542,27 +476,34 @@ pub(super) async fn update_task_body(
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),
     });
-    bridged(state, crate::approvals::ops::TASK_BODY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_BODY, payload, Some(&task_id)).await
 }
 
-/// Post a pre-built payload and map the outcome — the tail every gated write
-/// shares once its payload is assembled.
+/// Post a pre-built payload and wait for the decision — the tail every gated
+/// write shares once its payload is assembled.
 async fn bridged(
     state: &McpState,
     op_type: &str,
     payload: serde_json::Value,
-    task_id: &str,
+    task_id: Option<&str>,
 ) -> anyhow::Result<ToolCallResponse> {
-    if let Some(refusal) = already_pending(state, op_type, Some(task_id), &payload).await {
+    if let Some(refusal) = already_pending(state, op_type, task_id, &payload).await {
         return Ok(refusal);
     }
-    match post_and_wait(state, op_type, payload, Some(task_id)).await? {
-        ResolveOutcome::Approved(v) if v.is_null() => Ok(ToolCallResponse::ok(
-            serde_json::json!({ "ok": true, "op": op_type }),
-        )),
-        ResolveOutcome::Approved(v) => Ok(ToolCallResponse::ok(v)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!("Approved but failed: {e}"))),
+    let outcome = post_and_wait(state, op_type, payload, task_id).await?;
+    Ok(outcome_response(op_type, outcome))
+}
+
+/// One outcome, one wording. A bare `null` result becomes an explicit success:
+/// handed back as-is it reads as "nothing happened", and the model retries.
+fn outcome_response(op_type: &str, outcome: ResolveOutcome) -> ToolCallResponse {
+    match outcome {
+        ResolveOutcome::Approved(v) if v.is_null() => ToolCallResponse::ok(
+            serde_json::json!({ "ok": true, "op": op_type, "message": "Completed" }),
+        ),
+        ResolveOutcome::Approved(v) => ToolCallResponse::ok(v),
+        ResolveOutcome::Rejected => ToolCallResponse::err("Rejected by the user"),
+        ResolveOutcome::Failed(e) => ToolCallResponse::err(format!("Approved but failed: {e}")),
     }
 }
 
