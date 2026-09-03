@@ -333,18 +333,6 @@ export function FileDiffEditor({
       initialSpacer: () => new LineNumGutterMarker('', false, false, false),
     });
 
-    const domEvents = EditorView.domEventHandlers({
-      mousemove(event: MouseEvent, view: EditorView) {
-        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
-        if (pos === null) return false;
-        const info = lm[view.state.doc.lineAt(pos).number - 1];
-        if (info && info.type !== 'del') {
-          annRef.current.extendDrag(repoId, filePath, info.fileLineNum);
-        }
-        return false;
-      },
-    });
-
     return [
       // Vim (+ editable + caret) lives in a compartment so toggling it never
       // rebuilds these extensions / recreates the view (see the toggle effect).
@@ -356,8 +344,8 @@ export function FileDiffEditor({
       staticField,
       dynField,
       diffIndicatorGutter,
-      // Comment gutter + drag-select only where annotations can anchor.
-      ...(allowAnnotations ? [commentGutter, domEvents] : []),
+      // Comment gutter only where annotations can anchor.
+      ...(allowAnnotations ? [commentGutter] : []),
       lineNumGutter,
       // Registered only while blame is on, so it costs nothing when off. Last of
       // the gutters, which puts it next to the code as in the edit view.
@@ -423,6 +411,18 @@ export function FileDiffEditor({
     <div
       className="diff-cm-host"
       onClick={(e) => e.stopPropagation()}
+      onMouseMove={(e) => {
+        if (!allowAnnotations || !dragRange) return;
+        const view = viewRef.current;
+        if (!view) return;
+        // Hosted on the wrapper, not the view: CM binds domEventHandlers to
+        // contentDOM, which the gutter the drag starts in is outside of.
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
+        const info = lineMap[view.state.doc.lineAt(pos).number - 1];
+        // A del line carries the new-side number of the line above it; 0 means
+        // the file starts with a deletion, which no annotation can anchor to.
+        if (info && info.fileLineNum > 0) ann.extendDrag(repoId, filePath, info.fileLineNum);
+      }}
     >
       <div ref={containerRef} className="diff-cm-editor" />
       <AnnotationPortals
