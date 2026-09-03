@@ -32,20 +32,13 @@ Then once, for the task:
    the page. Cover every repo you touched. Keep what the user wrote and add the
    outcome, not a narration of the work.
 7. `get_task_schema`, then `update_task_property` for every property this work
-   has actually moved — the status it has outgrown, a field the change makes true.
-   The schema gives the exact options each one takes; what you just did says which
-   is now right. Leave the rest alone: a property you cannot justify from the work
-   is one the user should be setting, not you. Never set the status to done —
-   closing the task does that.
+   has actually moved.
+   The schema gives the exact options each one takes, leave the rest alone.
 8. `get_task_time`, then `log_task_hours` with its `unlogged_hours`, when that is
-   above zero. That figure is what Groove measured and has not yet sent, so it is
-   the whole of what to log. Never round it up, pad it, or invent one from the
-   commits — and never log `tracked_hours`, which double-counts what is already
-   there.
+   above zero.
 
 A worktree with nothing to do is skipped, not reported as a failure.
 
 When one worktree fails or is refused, land the others that do not depend on it,
 then stop and say exactly which worktrees are short and what each still needs.
-Where the repos have to move together, stop instead — a change the user believes
-is shipped and is only half there is the worst outcome of this skill.
+Where the repos have to move together, stop instead.
