@@ -312,12 +312,21 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
 
     // Stage-aware: if anything is staged, commit the index only; otherwise commit
     // all tracked changes (the simple "type a message → commit everything" flow).
+    // `index_only` opts out of that second half — see the agent's path in
+    // mcp_server/tools/write.rs.
+    let index_only = payload["index_only"].as_bool().unwrap_or(false);
     let has_staged = git::output(path, &["diff", "--cached", "--quiet"])
         .await
         .map(|o| !o.status.success())
         .unwrap_or(false);
 
-    let args: Vec<&str> = if has_staged {
+    if index_only && !has_staged {
+        return Err(anyhow::anyhow!(
+            "nothing staged. Stage exactly what this commit should contain first —              `git add <paths>` for some files, `git add -A` for everything — then commit."
+        ));
+    }
+
+    let args: Vec<&str> = if index_only || has_staged {
         vec!["commit", "-m", message]
     } else {
         vec!["commit", "-a", "-m", message]

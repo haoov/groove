@@ -151,6 +151,13 @@ discard, MR create/update/close, and all task writes. Requests survive a crash a
 re-surface at startup. `Commit & Push` posts the push only after the commit's
 confirmation resolves approved.
 
+**The agent commits its index; the UI commits everything.** `via_bridge` stamps
+`index_only` on a `git.commit` from an agent, and `commit_impl` then refuses when
+nothing is staged instead of falling back to `-a`. Those two branches are not
+redundant: `-a` skips untracked files, so a new file beside a modified one was
+committed without it, silently — and auto mode has no dialog to catch that. Staging
+is also the only way an agent can commit four files out of ten.
+
 **Git is subprocess-only**, funnelled through `core/git/run.rs` with `LC_ALL=C` forced
 because call sites match English git output. There is no `git2`.
 

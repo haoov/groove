@@ -81,7 +81,7 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("get_open_file", "Currently open file in the editor.", serde_json::json!({"type":"object","properties":{}})),
         mcp_tool("get_file_content", "Read file content by path.", serde_json::json!({"type":"object","required":["file_path"],"properties":{"file_path":{"type":"string"}}})),
         mcp_tool("get_task_body", "Fetch a task's body as markdown.", serde_json::json!({"type":"object","properties":{"task_id":{"type":"string","description":"Defaults to your own task."}}})),
-        mcp_tool("git_commit", "Commit. Requires user confirmation. With anything staged it commits the INDEX only; with nothing staged, every tracked change. It never adds an untracked file — stage a new one yourself first.", serde_json::json!({"type":"object","required":["worktree_id","message"],"properties":{"worktree_id":{"type":"string"},"message":{"type":"string","description":format!("{SUBJECT} Body optional: why, not what. No file lists.")}}})),
+        mcp_tool("git_commit", "Commit what is STAGED, and only that. Requires user confirmation. Stage first and stage deliberately: `git add <paths>` for some files, `git add -A` for everything including new ones. Nothing staged is an error, never a commit of everything.", serde_json::json!({"type":"object","required":["worktree_id","message"],"properties":{"worktree_id":{"type":"string"},"message":{"type":"string","description":format!("{SUBJECT} Body optional: why, not what. No file lists.")}}})),
         mcp_tool("git_push", "Push branch to origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
         mcp_tool("git_pull", "Pull --rebase from origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
         mcp_tool("git_rebase", "Rebase on origin/main. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"},"default_branch":{"type":"string"}}})),
@@ -137,18 +137,23 @@ mod tests {
         }
     }
 
-    /// `commit_impl` is stage-aware and `-a` skips untracked files. An agent that
-    /// staged something (a `git rm`, a `git mv`) and read "stage all" here lost
-    /// every unstaged change from its commit, silently. Twice.
+    /// The agent's commit is `index_only` (mcp_server/tools/write.rs), so this has
+    /// to ask for staging rather than describe a fallback. Three wordings failed
+    /// before that: each described `-a` accurately and each still lost a new file,
+    /// because a description is advice and auto mode has no dialog to catch it.
     #[test]
-    fn git_commit_states_what_it_actually_stages() {
+    fn git_commit_asks_for_a_deliberate_index() {
         let tools = mcp_tool_definitions();
         let d = tools.iter().find(|t| t["name"] == "git_commit").expect("git_commit")["description"]
             .as_str()
             .expect("description text");
-        assert!(d.contains("staged"), "does not say what staging does");
-        assert!(d.contains("untracked"), "does not warn about untracked files");
+        assert!(d.contains("STAGED"), "does not say the index is what lands");
+        assert!(d.contains("git add"), "does not say how to stage");
         assert!(!d.contains("Stage all"), "reinstated the claim that it stages everything");
+        assert!(
+            !d.contains("every tracked change"),
+            "promises the -a fallback the agent no longer gets"
+        );
     }
 
     #[test]

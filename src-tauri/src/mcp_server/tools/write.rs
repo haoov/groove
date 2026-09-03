@@ -118,6 +118,12 @@ pub(super) async fn via_bridge(
             }
         }
     }
+    // An agent commits its index and only its index. It has no dialog to catch a
+    // wrong file list in auto mode, so staging is where it says what it means to
+    // land — and that is also what makes a four-file commit possible.
+    if op_type == crate::approvals::ops::GIT_COMMIT {
+        payload["index_only"] = serde_json::json!(true);
+    }
     let task_id = state.task_for(mcp_session);
 
     // Asking twice for the same thing means the first call is still queued (the
