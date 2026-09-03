@@ -32,7 +32,6 @@ const CORE_SKILLS: &[(&str, &str)] = &[
     ("new-skill", include_str!("core/new-skill.md")),
     ("save-task", include_str!("core/save-task.md")),
     ("start-task", include_str!("core/start-task.md")),
-    ("update-task", include_str!("core/update-task.md")),
 ];
 
 /// Appended to the agent's system prompt at every launch. See `core_prompt`.
