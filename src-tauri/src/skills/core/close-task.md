@@ -19,9 +19,10 @@ on a check you have not run.
 3. `get_annotations` — an unresolved note is a job not finished.
 4. Stop and say so when any of those find something. Offer `groove:save-task`
    to land it first. Closing anyway is the user's call, never yours.
-5. Clean: `get_task_body` then `update_task_body` with the WHOLE new body, saying
-   what shipped. `get_task_time` then `log_task_hours` with its `unlogged_hours`
-   when that is above zero.
+5. Write it up — skip this entirely when `groove:save-task` just ran, because its
+   last steps are these. `get_task_body` then `update_task_body` with the WHOLE
+   new body, saying what shipped. `get_task_time` then `log_task_hours` with its
+   `unlogged_hours` when that is above zero.
 6. `finish_task`. It sets the status done at the source itself, so no
    `update_task_property` for that.
 
