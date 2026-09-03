@@ -83,6 +83,8 @@ pub(super) async fn list_repos(
                 "slug": r.slug,
                 "project": project,
                 "attached": attached.contains(&r.local_path),
+                // The clone itself, for reading a repo the session has not checked out.
+                "local_path": r.local_path,
             })
         })
         .collect();

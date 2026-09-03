@@ -31,6 +31,16 @@ the `repo` field.
 You start at the root, so a repo's own `CLAUDE.md` or `AGENTS.md` is not loaded.
 Read it before editing that repo.
 
+## Never write in a clone
+
+Reading a repo this session has not checked out means reading its clone, whose
+path `list_repos` gives you. Nothing keeps those up to date, so pull it first —
+`git -C <local_path> pull --ff-only` — then read, and write nothing there. No
+edit, no commit, no branch: your work goes in this session's worktrees.
+
+Local commits or a dirty tree stop a clone fast-forwarding, so the next worktree
+the user creates fails on it instead.
+
 ## The user already sees your work
 
 Groove renders the diff, your annotations in the file, and the MR. Do not paste
