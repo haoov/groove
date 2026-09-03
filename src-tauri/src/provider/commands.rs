@@ -152,12 +152,13 @@ pub async fn get_task_schema(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<TaskSchema, String> {
-    async {
-        let (provider, key) = resolve(&pool, &short_id).await?;
-        provider.schema(&key).await
-    }
-    .await
-    .map_err(|e: anyhow::Error| e.to_string())
+    schema_for(&pool, &short_id).await.map_err(|e| e.to_string())
+}
+
+/// The pool-taking form, for callers with no Tauri state — the MCP tool.
+pub async fn schema_for(pool: &SqlitePool, short_id: &str) -> anyhow::Result<TaskSchema> {
+    let (provider, key) = resolve(pool, short_id).await?;
+    provider.schema(&key).await
 }
 
 #[tauri::command]

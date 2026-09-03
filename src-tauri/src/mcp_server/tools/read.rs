@@ -160,6 +160,26 @@ pub(super) async fn get_task_time(
     })))
 }
 
+/// The task source's live schema: every property, its kind, and the options a
+/// select or status accepts.
+///
+/// Live from the provider, never a cached copy — a board's columns are renamed
+/// without telling anyone, and a stale option name is a write that fails.
+pub(super) async fn get_task_schema(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = input["task_id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| state.task_for(mcp_session))
+        .ok_or_else(|| anyhow::anyhow!("no task in scope"))?;
+
+    let schema = crate::provider::schema_for(&state.pool, &task_id).await?;
+    Ok(ToolCallResponse::ok(serde_json::to_value(schema)?))
+}
+
 /// The MR's pipeline status and the URL of the run. Live from the forge, not the
 /// mirror — a chip the user is looking at may already be stale.
 pub(super) async fn get_mr_ci(

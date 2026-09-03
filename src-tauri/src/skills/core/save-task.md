@@ -31,9 +31,10 @@ Then once, for the task:
 6. `get_task_body`, then `update_task_body` with the WHOLE new body — it replaces
    the page. Cover every repo you touched. Keep what the user wrote and add the
    outcome, not a narration of the work.
-7. `update_task_property` for the status — only with a value the user named.
-   Nothing tells you what this board's columns are called, so a guess is a wrong
-   write or a failed one. Closing the task sets it done at the source by itself.
+7. `update_task_property` for the status, when the work has moved past the one it
+   carries. `get_task_schema` names the property and the exact options it takes —
+   read it rather than guessing either. Closing the task sets it done by itself,
+   so this is only for a status on the way there.
 8. `get_task_time`, then `log_task_hours` with its `unlogged_hours`, when that is
    above zero. That figure is what Groove measured and has not yet sent, so it is
    the whole of what to log. Never round it up, pad it, or invent one from the
