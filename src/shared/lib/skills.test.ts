@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { offeredSkills, offers, skillCommand, trimForPty } from './skills';
 import type { AgentSkill, SessionKind } from '../ipc/ipc';
 
-const skill = (id: string, kinds: SessionKind[], hidden = false): AgentSkill => ({
+const skill = (id: string, kinds: SessionKind[]): AgentSkill => ({
   id,
   plugin: id.split(':')[0],
   name: id.split(':')[1],
@@ -10,7 +10,6 @@ const skill = (id: string, kinds: SessionKind[], hidden = false): AgentSkill => 
   hint: 'H',
   label: 'L',
   kinds,
-  hidden,
   editable: false,
 });
 
@@ -39,7 +38,6 @@ describe('which skills a session offers', () => {
     skill('groove:start-task', ['task']),
     skill('groove:co-review', ['review']),
     skill('groove:new-skill', []),
-    skill('groove:a-step', ['task'], true),
   ];
 
   it('offers a skill only to the kinds it declares', () => {
@@ -53,17 +51,12 @@ describe('which skills a session offers', () => {
     ]);
   });
 
-  it('never offers a hidden skill', () => {
-    expect(offeredSkills(all, 'task').some((s) => s.hidden)).toBe(false);
-  });
-
   /// A surface that names its own skill has to ask the same question the menu
   /// does — the CI chip offered `fix-ci` on a review session by checking only
   /// that the skill existed.
   it('answers for one skill the way the menu would', () => {
     expect(offers(all, 'task', 'groove:start-task')).toBe(true);
     expect(offers(all, 'review', 'groove:start-task')).toBe(false);
-    expect(offers(all, 'task', 'groove:a-step')).toBe(false);
     expect(offers(all, 'task', 'groove:nothing')).toBe(false);
   });
 });

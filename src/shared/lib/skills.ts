@@ -24,9 +24,9 @@ export function trimForPty(text: string): string {
   return text.replace(/[^\S ]+$/, '');
 }
 
-/** The skills a session's UI offers: `hidden` never, and empty `kinds` always. */
+/** The skills a session's UI offers. Empty `kinds` means every kind. */
 export function offeredSkills(skills: AgentSkill[], kind: SessionKind): AgentSkill[] {
-  return skills.filter((s) => !s.hidden && (s.kinds.length === 0 || s.kinds.includes(kind)));
+  return skills.filter((s) => s.kinds.length === 0 || s.kinds.includes(kind));
 }
 
 /** Whether one skill is offered here — for a surface that names its own. */

@@ -13,20 +13,15 @@ id: string, plugin: string, name: string,
  */
 description: string, 
 /**
- * The one line the UI shows. `groove-hint`, falling back to the description
- * for a user skill that sets none.
+ * The one line the UI shows — `groove-hint`, and empty when a skill sets
+ * none. Never the description: that is a paragraph written for the model,
+ * and it does not fit a tooltip.
  */
 hint: string, label: string, 
 /**
  * Kinds whose UI offers it. Empty means every kind.
  */
 kinds: Array<SessionKind>, 
-/**
- * `groove-hidden` — kept out of the action menu. Still a skill: the agent
- * invokes it, another skill hands off to it, the user can type it. For the
- * steps that belong inside a bigger one rather than beside it.
- */
-hidden: boolean, 
 /**
  * A user skill — the manager may edit or delete it.
  */

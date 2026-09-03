@@ -48,16 +48,13 @@ pub struct AgentSkill {
     /// Claude Code can invoke it off what the user typed. Its slash menu renders
     /// it too, so it stays readable — but it is too long for a tooltip.
     pub description: String,
-    /// The one line the UI shows. `groove-hint`, falling back to the description
-    /// for a user skill that sets none.
+    /// The one line the UI shows — `groove-hint`, and empty when a skill sets
+    /// none. Never the description: that is a paragraph written for the model,
+    /// and it does not fit a tooltip.
     pub hint: String,
     pub label: String,
     /// Kinds whose UI offers it. Empty means every kind.
     pub kinds: Vec<SessionKind>,
-    /// `groove-hidden` — kept out of the action menu. Still a skill: the agent
-    /// invokes it, another skill hands off to it, the user can type it. For the
-    /// steps that belong inside a bigger one rather than beside it.
-    pub hidden: bool,
     /// A user skill — the manager may edit or delete it.
     pub editable: bool,
 }
@@ -225,12 +222,9 @@ fn parse(plugin: &str, name: &str, body: &str, editable: bool) -> AgentSkill {
         plugin: plugin.to_string(),
         name: name.to_string(),
         description: field(front, "description").unwrap_or_default(),
-        hint: field(front, "groove-hint")
-            .or_else(|| field(front, "description"))
-            .unwrap_or_default(),
+        hint: field(front, "groove-hint").unwrap_or_default(),
         label: field(front, "groove-label").unwrap_or_else(|| name.replace('-', " ")),
         kinds,
-        hidden: field(front, "groove-hidden").as_deref() == Some("true"),
         editable,
     }
 }
@@ -517,17 +511,16 @@ mod tests {
         assert_eq!(s.description, "Do a thing: and another.");
         assert_eq!(s.hint, "Does a thing.");
         assert_eq!(s.label, "do a thing");
-        assert!(!s.hidden);
         assert_eq!(s.kinds, vec![SessionKind::Task, SessionKind::Review]);
         assert!(!s.editable);
     }
 
-    /// A user skill that sets no `groove-hint` still needs a tooltip, and its
-    /// description is the only line it has.
+    /// No hint means no line in the UI. The description is a paragraph aimed at
+    /// the model, so borrowing it fills a tooltip with prose.
     #[test]
-    fn the_hint_falls_back_to_the_description() {
+    fn a_skill_with_no_hint_shows_none() {
         let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
-        assert_eq!(s.hint, "Check it.");
+        assert_eq!(s.hint, "");
     }
 
     #[test]
@@ -545,14 +538,6 @@ mod tests {
         let s = parse("user", "raw", "Just a body.\n", true);
         assert_eq!(s.description, "");
         assert_eq!(s.label, "raw");
-    }
-
-    /// Hiding a skill takes it out of the menu and nothing else — it stays
-    /// loaded, invocable and listed in the manager.
-    #[test]
-    fn a_skill_can_be_hidden_from_the_menu() {
-        let s = parse("groove", "handoff-step", "---\ndescription: D.\ngroove-hidden: true\n---\n", false);
-        assert!(s.hidden);
     }
 
     #[test]

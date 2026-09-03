@@ -80,8 +80,9 @@ in the frontend.
 **A skill's `description:` is written for the MODEL** — what it does, then `Use when …`
 with the words a user types — because that is what Claude Code matches to invoke the
 skill on its own, off the chat, with no button pressed. A test guards the phrase. The UI
-shows `groove-hint` and never the description: writing the description short enough for a
-tooltip is exactly what kills auto-invocation.
+shows `groove-hint` and never the description — writing the description short enough for a
+tooltip is exactly what kills auto-invocation. A skill with no hint shows no line; there is
+no fallback, because the fallback was the description.
 A user's own live in `<config>/user-skills/skills/` and are written two ways: the
 Settings manager (`src/actions/`) writes them directly, because that is the user typing,
 and the agent writes them through `save_user_skill` — the one LOCAL write that is gated,
