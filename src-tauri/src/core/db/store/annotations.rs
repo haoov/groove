@@ -81,6 +81,22 @@ pub async fn for_session(
     Ok(rows)
 }
 
+/// Rewrite a note's body, leaving its author, range and status alone.
+pub async fn update(
+    exec: impl SqliteExecutor<'_>,
+    id: &str,
+    content: &str,
+) -> StoreResult<Annotation> {
+    let row = sqlx::query_as(&format!(
+        "UPDATE annotations SET content = ? WHERE id = ? RETURNING {COLUMNS}"
+    ))
+    .bind(content)
+    .bind(id)
+    .fetch_one(exec)
+    .await?;
+    Ok(row)
+}
+
 pub async fn resolve(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<()> {
     sqlx::query("UPDATE annotations SET status = 'resolved' WHERE id = ?")
         .bind(id)

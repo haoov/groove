@@ -232,6 +232,8 @@ function makeSessionActions(id: string): SessionActions {
     setAnnotations: (a) => upd(() => ({ annotations: a })),
     addAnnotation: (a) =>
       upd((s) => (s.annotations.some((x) => x.id === a.id) ? {} : { annotations: [...s.annotations, a] })),
+    updateAnnotation: (aid, content) =>
+      upd((s) => ({ annotations: s.annotations.map((a) => (a.id === aid ? { ...a, content } : a)) })),
     resolveAnnotation: (aid) =>
       upd((s) => ({ annotations: s.annotations.map((a) => (a.id === aid ? { ...a, status: 'resolved' as const } : a)) })),
     removeAnnotation: (aid) => upd((s) => ({ annotations: s.annotations.filter((a) => a.id !== aid) })),

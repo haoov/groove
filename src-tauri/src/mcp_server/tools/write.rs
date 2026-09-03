@@ -282,6 +282,23 @@ pub(super) async fn create_annotation(
     Ok(ToolCallResponse::ok(serde_json::to_value(row)?))
 }
 
+pub(super) async fn update_annotation(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let id = str_field(&input, "id")?;
+    // The agent wrote this text, whoever drafted the note first.
+    let content = mark_as_agent(&str_field(&input, "content")?);
+    let row = store::annotations::update(&state.pool, &id, &content).await?;
+
+    let _ = state
+        .bridge
+        .app_handle()
+        .emit(crate::core::events::ANNOTATION_UPDATED, serde_json::to_value(&row)?);
+
+    Ok(ToolCallResponse::ok(serde_json::to_value(row)?))
+}
+
 pub(super) async fn resolve_annotation(
     input: serde_json::Value,
     state: &McpState,

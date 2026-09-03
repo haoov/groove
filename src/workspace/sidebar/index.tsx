@@ -32,6 +32,7 @@ export function Sidebar() {
   const openTab = useSession((s) => s.openTab);
   const resolveAnnotation = useSession((s) => s.resolveAnnotation);
   const removeAnnotation = useSession((s) => s.removeAnnotation);
+  const updateAnnotation = useSession((s) => s.updateAnnotation);
   const isExplorer = useSession((s) => s.kind === 'explorer');
   const isReview = useSession((s) => s.kind === 'review');
   const setLastError = useStore((s) => s.setLastError);
@@ -223,6 +224,14 @@ export function Sidebar() {
             try {
               await invoke('delete_annotation', { id });
               removeAnnotation(id);
+            } catch (e) {
+              setLastError(String(e));
+            }
+          }}
+          onEdit={async (id, content) => {
+            try {
+              await invoke('update_annotation', { id, content });
+              updateAnnotation(id, content);
             } catch (e) {
               setLastError(String(e));
             }

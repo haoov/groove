@@ -26,6 +26,16 @@ export interface AnnCtx {
   postPending: Record<string, boolean>;
   /** Promote a local annotation to a positioned MR discussion, then resolve it. */
   postToMr: (a: Annotation, mrId: string) => void;
+  /** The annotation open for editing, and its draft body. */
+  editingId: string | null;
+  editText: string;
+  setEditText: (s: string) => void;
+  beginEdit: (a: Annotation) => void;
+  cancelEdit: () => void;
+  /** Save the draft over the annotation being edited. */
+  saveEdit: () => void;
+  /** Annotation ids with an in-flight edit. */
+  editPending: Record<string, boolean>;
   /** Annotation ids with an in-flight delete. */
   deletePending: Record<string, boolean>;
   /** Delete a note outright (resolve keeps it; this removes it). */
@@ -47,6 +57,7 @@ export function useAnnotations(
 ): { ann: AnnCtx; sel: LineRange | null; dragRange: LineRange | null } {
   const activeTask = useSession((s) => s.activeTask);
   const addAnnotation = useSession((s) => s.addAnnotation);
+  const updateAnnotation = useSession((s) => s.updateAnnotation);
   const setActiveRepoId = useSession((s) => s.setActiveRepoId);
   const resolveAnnotation = useSession((s) => s.resolveAnnotation);
   const removeAnnotation = useSession((s) => s.removeAnnotation);
@@ -69,6 +80,10 @@ export function useAnnotations(
   const [postPending, setPostPending] = useState<Record<string, boolean>>({});
   const deleteInFlight = useRef<Set<string>>(new Set());
   const [deletePending, setDeletePending] = useState<Record<string, boolean>>({});
+  const editInFlight = useRef<Set<string>>(new Set());
+  const [editPending, setEditPending] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Focus the comment input when a range is selected.
   useEffect(() => {
@@ -165,6 +180,34 @@ export function useAnnotations(
     }
   };
 
+  const beginEdit = (a: Annotation) => {
+    setEditingId(a.id);
+    setEditText(a.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const saveEdit = async () => {
+    const id = editingId;
+    const content = editText.trim();
+    if (!id || !content || editInFlight.current.has(id)) return;
+    editInFlight.current.add(id);
+    setEditPending((p) => ({ ...p, [id]: true }));
+    try {
+      await invoke('update_annotation', { id, content });
+      updateAnnotation(id, content);
+      cancelEdit();
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      editInFlight.current.delete(id);
+      setEditPending((p) => { const n = { ...p }; delete n[id]; return n; });
+    }
+  };
+
   const deleteAnnotation = async (id: string) => {
     if (deleteInFlight.current.has(id)) return;
     deleteInFlight.current.add(id);
@@ -211,6 +254,7 @@ export function useAnnotations(
     submit, cancel: () => { setSel(null); setAnnotationText(''); },
     replyTexts, setReplyTexts, replyPending, submitReply,
     postPending, postToMr, deletePending, deleteAnnotation, openInEditor, inputRef,
+    editingId, editText, setEditText, beginEdit, cancelEdit, saveEdit, editPending,
   };
 
   return { ann, sel, dragRange };

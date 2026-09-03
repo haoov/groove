@@ -97,6 +97,7 @@ pub(super) async fn dispatch(
 
         // Writes the user never has to approve (local, reversible, UI-visible)
         "create_annotation" => write::create_annotation(input, state).await,
+        "update_annotation" => write::update_annotation(input, state).await,
         "resolve_annotation" => write::resolve_annotation(input, state).await,
 
         _ => Err(anyhow::anyhow!("Unknown tool: {name}")),

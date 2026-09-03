@@ -1,4 +1,4 @@
-import { MessageSquare, MessageSquarePlus, Send, Trash2 } from 'lucide-react';
+import { MessageSquare, MessageSquarePlus, Pencil, Send, Trash2 } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
 import type { Annotation, Mr, MrThread } from '../shared/ipc/ipc';
 import type { AnnCtx, LineRange } from './useAnnotations';
@@ -61,32 +61,71 @@ export function AnnotationBlock({
       {lineAnnotations.map((a) => (
         <div key={a.id} className="diff-inline-annotation">
           <AnnotationAuthor a={a} />
-          {/* Notes are markdown — the agent writes code spans and lists. */}
-          <div className="diff-inline-content">
-            <Markdown text={a.content} />
-          </div>
-          <div className="diff-inline-annotation-actions">
-            {mr && a.status === 'open' && (
-              <button
-                className="diff-inline-post-mr"
-                disabled={ann.postPending[a.id]}
-                onClick={() => ann.postToMr(a, mr.id)}
-                title="Publish this note as an MR discussion at its line (resolves the local annotation)"
-              >
-                <Send size={11} strokeWidth={1.75} style={{ marginRight: 4 }} />
-                {ann.postPending[a.id] ? 'Posting…' : 'Post to MR'}
-              </button>
-            )}
-            <button
-              className="diff-inline-delete"
-              disabled={ann.deletePending[a.id]}
-              onClick={() => ann.deleteAnnotation(a.id)}
-              title="Delete this annotation"
-            >
-              <Trash2 size={11} strokeWidth={1.75} style={{ marginRight: 4 }} />
-              {ann.deletePending[a.id] ? 'Deleting…' : 'Delete'}
-            </button>
-          </div>
+          {ann.editingId === a.id ? (
+            <>
+              <textarea
+                className="diff-annotation-textarea"
+                autoFocus
+                rows={3}
+                value={ann.editText}
+                disabled={ann.editPending[a.id]}
+                onChange={(e) => ann.setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') ann.saveEdit();
+                  if (e.key === 'Escape') { e.stopPropagation(); ann.cancelEdit(); }
+                }}
+              />
+              <div className="diff-inline-annotation-actions">
+                <button
+                  className="diff-inline-post-mr"
+                  disabled={!ann.editText.trim() || ann.editPending[a.id]}
+                  onClick={ann.saveEdit}
+                >
+                  {ann.editPending[a.id] ? 'Saving…' : 'Save'}
+                </button>
+                <button className="diff-inline-delete" onClick={ann.cancelEdit}>Cancel</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Notes are markdown — the agent writes code spans and lists. */}
+              <div className="diff-inline-content">
+                <Markdown text={a.content} />
+              </div>
+              <div className="diff-inline-annotation-actions">
+                {mr && a.status === 'open' && (
+                  <button
+                    className="diff-inline-post-mr"
+                    disabled={ann.postPending[a.id]}
+                    onClick={() => ann.postToMr(a, mr.id)}
+                    title="Publish this note as an MR discussion at its line (resolves the local annotation)"
+                  >
+                    <Send size={11} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                    {ann.postPending[a.id] ? 'Posting…' : 'Post to MR'}
+                  </button>
+                )}
+                {a.status === 'open' && (
+                  <button
+                    className="diff-inline-edit"
+                    onClick={() => ann.beginEdit(a)}
+                    title="Edit this note before posting it"
+                  >
+                    <Pencil size={11} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                    Edit
+                  </button>
+                )}
+                <button
+                  className="diff-inline-delete"
+                  disabled={ann.deletePending[a.id]}
+                  onClick={() => ann.deleteAnnotation(a.id)}
+                  title="Delete this annotation"
+                >
+                  <Trash2 size={11} strokeWidth={1.75} style={{ marginRight: 4 }} />
+                  {ann.deletePending[a.id] ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ))}
       {lineThreads.map((d, i) => {

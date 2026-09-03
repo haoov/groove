@@ -70,7 +70,7 @@ payloads, UI constants).
   restate those rules in `agent/prompts.ts` or here; saying it in three places got it
   ignored in all three.
 
-**Commands**: 99, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
+**Commands**: 102, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules
 is fine as long as a `pub use` keeps the registered path resolving.
 

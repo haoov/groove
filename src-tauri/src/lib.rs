@@ -152,6 +152,7 @@ pub fn run() {
             forge::list_review_mrs,
             // annotation_store
             annotation_store::create_annotation,
+            annotation_store::update_annotation,
             annotation_store::resolve_annotation,
             annotation_store::get_annotations,
             annotation_store::delete_annotation,

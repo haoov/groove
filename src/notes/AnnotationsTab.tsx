@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Check, MessageSquare, Send, Trash2 } from 'lucide-react';
+import { Check, MessageSquare, Pencil, Send, Trash2 } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
 import type { Annotation, Mr, Repo } from '../shared/ipc/ipc';
 
 export function AnnotationsTab({
-  annotations, repoFor, onResolve, onDelete, onOpen, mr, onPostToMr,
+  annotations, repoFor, onResolve, onDelete, onEdit, onOpen, mr, onPostToMr,
 }: {
   annotations: Annotation[];
   repoFor: (id: string) => Repo | undefined;
   onResolve: (id: string) => void;
   /** Remove the note outright — for a wrong line or a bad agent call. */
   onDelete: (id: string) => void;
+  /** Rewrite the note's body — a draft is editable until it is posted. */
+  onEdit: (id: string, content: string) => Promise<void>;
   /** Jump to the annotated line in the editor. */
   onOpen: (a: Annotation) => void;
   /** The repo's MR, when one exists — enables "Post to MR" per annotation. */
@@ -19,6 +21,9 @@ export function AnnotationsTab({
 }) {
   const [posting, setPosting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
   const open = annotations.filter((a) => a.status === 'open');
   if (open.length === 0) return <div className="sidebar-empty">No open annotations</div>;
 
@@ -29,6 +34,18 @@ export function AnnotationsTab({
       await onPostToMr(a);
     } finally {
       setPosting(null);
+    }
+  };
+
+  const save = async (id: string) => {
+    if (saving || !draft.trim()) return;
+    setSaving(true);
+    try {
+      await onEdit(id, draft.trim());
+      setEditing(null);
+      setDraft('');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -49,12 +66,41 @@ export function AnnotationsTab({
               :{a.start_line !== a.end_line ? `${a.start_line}–${a.end_line}` : a.start_line}
             </span>
           </button>
-          <div className="annotation-content">
-            <Markdown text={a.content} />
-          </div>
+          {editing === a.id ? (
+            <div className="annotation-edit">
+              <textarea
+                className="annotation-edit-input"
+                autoFocus
+                rows={3}
+                value={draft}
+                disabled={saving}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') save(a.id);
+                  if (e.key === 'Escape') { setEditing(null); setDraft(''); }
+                }}
+              />
+              <div className="annotation-edit-actions">
+                <button
+                  className="annotation-resolve"
+                  disabled={saving || !draft.trim()}
+                  onClick={() => save(a.id)}
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button className="annotation-resolve" onClick={() => { setEditing(null); setDraft(''); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="annotation-content">
+              <Markdown text={a.content} />
+            </div>
+          )}
           <div className="annotation-meta">
             {repoFor(a.repo_id)?.project ?? a.repo_id}
-            {confirmDelete === a.id ? (
+            {editing === a.id ? null : confirmDelete === a.id ? (
               <span className="annotation-actions">
                 <span className="annotation-confirm">delete?</span>
                 <button className="annotation-resolve annotation-delete" onClick={() => { setConfirmDelete(null); onDelete(a.id); }}>
@@ -75,6 +121,14 @@ export function AnnotationsTab({
                     {posting === a.id ? 'Posting…' : 'Post to MR'}
                   </button>
                 )}
+                <button
+                  className="annotation-resolve"
+                  onClick={() => { setDraft(a.content); setEditing(a.id); }}
+                  title="Edit this note before posting it"
+                >
+                  <Pencil size={12} strokeWidth={1.75} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                  Edit
+                </button>
                 <button className="annotation-resolve" onClick={() => onResolve(a.id)}>
                   <Check size={12} strokeWidth={2} style={{ marginRight: 4, verticalAlign: 'middle' }} />
                   Resolve

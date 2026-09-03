@@ -24,6 +24,8 @@ pub const ANNOTATION_RESOLVED: &str = "annotation_resolved";
 /// An annotation the AGENT created — the UI adds its own optimistically, but
 /// without this event agent notes only showed up after reopening the session.
 pub const ANNOTATION_CREATED: &str = "annotation_created";
+/// An annotation body the AGENT rewrote — the UI needs the new text.
+pub const ANNOTATION_UPDATED: &str = "annotation_updated";
 
 // ── PTY (agent / terminal) ──────────────────────────────────────────────────
 pub const PTY_STARTED: &str = "pty_started";
