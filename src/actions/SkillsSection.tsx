@@ -133,7 +133,7 @@ export function SkillsSection() {
 
       <div className="skill-group">
         <div className="skill-group-head">
-          <span className="skill-group-label">Groove</span>
+          <span className="skill-group-label">Core</span>
           <span className="skill-group-note">Read-only. Open one to copy it as a starting point.</span>
         </div>
         <div className="skill-list">{core.map(row)}</div>
@@ -141,7 +141,7 @@ export function SkillsSection() {
 
       <div className="skill-group">
         <div className="skill-group-head">
-          <span className="skill-group-label">Yours</span>
+          <span className="skill-group-label">User</span>
           <span className="skill-group-note">Editable, and kept across app updates.</span>
         </div>
         {mine.length > 0 ? (

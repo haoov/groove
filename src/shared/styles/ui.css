@@ -121,6 +121,18 @@
 
 .ctx-menu-item--danger:hover { background: var(--gl-color-red-100); color: var(--gl-color-red-500); }
 
+/* A group heading inside a menu. Not focusable and not an item — it labels the
+   rows under it. */
+.ctx-menu-label {
+  padding: var(--space-2) var(--space-2) 4px;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gl-text-color-muted);
+}
+
 .ctx-menu-item--danger svg,
 .ctx-menu-item--danger:hover svg { color: var(--gl-color-red-400); }
 

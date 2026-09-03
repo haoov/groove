@@ -247,10 +247,11 @@ export function AgentConsole() {
             {/* Opens UPWARD: the bar is the console's bottom edge. */}
             {menuOpen && (
               <div className="ctx-menu actions-menu-panel">
+                {/* A heading per group is what says whose a skill is, so a row
+                    needs no badge of its own. Same words as the Settings panel. */}
+                {core.length > 0 && <div className="ctx-menu-label">Core</div>}
                 {skillRows(core)}
-                {/* The user's own sit below the line — the grouping is what says
-                    whose a skill is, so a row needs no badge of its own. */}
-                {core.length > 0 && mine.length > 0 && <div className="ctx-menu-sep" />}
+                {mine.length > 0 && <div className="ctx-menu-label">User</div>}
                 {skillRows(mine)}
               </div>
             )}
