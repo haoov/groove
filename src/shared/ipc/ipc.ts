@@ -181,6 +181,9 @@ export interface MainRepo {
 export interface WorkspaceStubEvent {
   task: TaskView;
   kind?: SessionKind;
+  /** False when the emit is a refresh of an open session, not a request to
+   *  navigate to it (a landed `task.add_repo`). Absent means focus. */
+  focus?: boolean;
 }
 
 export interface WorkspaceReadyEvent {
@@ -188,6 +191,8 @@ export interface WorkspaceReadyEvent {
   worktrees: Worktree[];
   repos: Repo[];
   kind?: SessionKind;
+  /** See `WorkspaceStubEvent.focus`. */
+  focus?: boolean;
 }
 
 export interface ConfirmationRequestedEvent {

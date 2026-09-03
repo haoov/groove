@@ -161,7 +161,9 @@ pub async fn add_repo_impl(
     // the repo IS attached — so report it rather than turning a done job into an
     // error the agent will try to repeat.
     let task_state = app.state::<super::State>();
-    if let Err(e) = super::open_task_impl(app, task_id, &task_state, pool).await {
+    if let Err(e) =
+        super::open_task_impl(app, task_id, &task_state, pool, super::commands::Open::Refresh).await
+    {
         tracing::warn!("added {} to {task_id} but could not refresh the workspace: {e}", repo.project);
     }
 
@@ -263,7 +265,9 @@ pub async fn add_worktree_impl(
 
     // Same reason as add_repo_impl: the workspace holds its worktrees in memory.
     let task_state = app.state::<super::State>();
-    if let Err(e) = super::open_task_impl(app, task_id, &task_state, pool).await {
+    if let Err(e) =
+        super::open_task_impl(app, task_id, &task_state, pool, super::commands::Open::Refresh).await
+    {
         tracing::warn!("added {branch} to {task_id} but could not refresh the workspace: {e}");
     }
 

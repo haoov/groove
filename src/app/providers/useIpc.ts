@@ -131,11 +131,19 @@ export function useIpc() {
         await listen<WorkspaceStubEvent>(EVENT.WORKSPACE_STUB, ({ payload }) => {
           const s = useStore.getState();
           s.upsertTask(payload.task);
-          s.openSession({ kind: payload.kind ?? 'task', task: payload.task, worktrees: [], repos: [] });
+          s.openSession({
+            kind: payload.kind ?? 'task',
+            task: payload.task,
+            worktrees: [],
+            repos: [],
+            focus: payload.focus ?? true,
+          });
         })
       );
 
-      // workspace_ready — resume (or focus if already open), worktrees exist
+      // workspace_ready — mount or refresh a session that has worktrees. The
+      // payload's `focus` says which: a landed add-repo refreshes in place, so
+      // an approval never moves the user off the session they are reading.
       track(
         await listen<WorkspaceReadyEvent>(EVENT.WORKSPACE_READY, ({ payload }) => {
           const s = useStore.getState();
@@ -147,6 +155,7 @@ export function useIpc() {
             task: payload.task,
             worktrees: payload.worktrees,
             repos: payload.repos,
+            focus: payload.focus ?? true,
           });
         })
       );
@@ -276,7 +285,6 @@ export function useIpc() {
                 title: result.short_id,
                 ptySessions: ss.ptySessions.map((p) => ({ ...p, taskId: result.short_id })),
               }));
-              s.focusSession(owner.id);
               // Conversion relocated the worktrees to <root>/<short_id>/ —
               // re-open so the session gets the fresh paths + watchers.
               invoke('open_task', { shortId: result.short_id }).catch(console.error);
