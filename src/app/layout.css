@@ -77,7 +77,14 @@
 }
 .rail-btn:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
 .rail-btn.active { color: var(--gl-color-blue-300); background: var(--gl-color-blue-100); }
-.rail-btn-bottom { margin-top: auto; }
+/* Two classes so it beats `.rail-group`'s bottom border whatever the order. */
+.rail-group.rail-group-bottom {
+  margin-top: auto;
+  padding-top: var(--space-1);
+  padding-bottom: 0;
+  border-bottom: none;
+  border-top: 1px solid var(--gl-border-color-subtle);
+}
 .rail-badge {
   position: absolute;
   top: 0;

@@ -7,7 +7,7 @@ import { isMac } from '../../shared/lib/platform';
 import { GrooveMark } from '../../shared/ui/GrooveMark';
 
 export function Header() {
-  const setSettingsOpen = useStore((s) => s.setSettingsOpen);
+  const openSettings = useStore((s) => s.openSettings);
   // Deferred approvals belong next to the other "waiting for you" counter, not
   // in the status bar where a parked agent write was easy to forget.
   const approvals = useStore((s) => s.pendingConfirmations.length);
@@ -40,7 +40,7 @@ export function Header() {
         <NotificationCenter />
         <button
           className="header-settings-btn"
-          onClick={() => setSettingsOpen(true)}
+          onClick={openSettings}
           title="Settings"
         >
           <Settings size={14} strokeWidth={1.75} />

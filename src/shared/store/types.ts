@@ -85,8 +85,10 @@ export interface UiSlice {
   setAddWorktreeOpen: (v: boolean) => void;
 
   // ── Settings ──────────────────────────────────────────────────────────────
-  settingsOpen: boolean;
-  setSettingsOpen: (v: boolean) => void;
+  /** Which view closing settings returns to — the one it was opened from. */
+  settingsReturnTo: AppView;
+  openSettings: () => void;
+  closeSettings: () => void;
 
   // ── Editor: Vim mode (persisted to localStorage) ───────────────────────────
   vimMode: boolean;
@@ -176,6 +178,8 @@ export interface KeybindingsSlice {
   // Defaults + user overrides, persisted to localStorage.
   keymap: Keymap;
   setBinding: (id: CommandId, chords: Chord[]) => void;
+  /** Put one command back on this platform's default. */
+  resetBinding: (id: CommandId) => void;
   resetKeymap: () => void;
   /** True while the Settings rebind UI is capturing a keystroke (suspends the
    *  global keymap so the captured chord isn't also run as a command). */
@@ -220,7 +224,7 @@ export type AppState = UiSlice & HomeSlice & SessionsSlice & ConfirmationsSlice 
 
 /** Enough history to scroll back through a work session, not a log file. */
 
-export type AppView = 'home' | 'workspace';
+export type AppView = 'home' | 'workspace' | 'settings';
 export type SidebarTab = 'files' | 'git' | 'annotations';
 
 // ─── Notifications ────────────────────────────────────────────────────────────

@@ -1,0 +1,444 @@
+/* ── Settings view ────────────────────────────────────────────────────────── */
+/* Groups on the left, one group's settings on the right. The control styles
+   below came from the modal this replaced and are unchanged. */
+
+.settings-view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--gl-background-color-default);
+}
+
+.settings-nav {
+  width: 232px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  background: var(--gl-background-color-overlap);
+  border-right: 1px solid var(--gl-border-color-default);
+  overflow-y: auto;
+}
+
+.settings-nav-title {
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  font-size: var(--gl-font-size-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--gl-text-color-default);
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--gl-border-radius-medium);
+  color: var(--gl-text-color-subtle);
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.settings-nav-item svg { flex-shrink: 0; margin-top: 1px; }
+.settings-nav-item:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
+
+.settings-nav-item.selected {
+  color: var(--gl-text-color-default);
+  background: var(--gl-color-blue-100);
+  border-color: var(--gl-accent-border);
+}
+
+.settings-nav-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.settings-nav-label { font-size: var(--gl-font-size-sm); font-weight: 500; }
+.settings-nav-blurb { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
+.settings-nav-item.selected .settings-nav-blurb { color: var(--gl-text-color-subtle); }
+
+.settings-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--gl-panel-header-bg);
+  border-bottom: 1px solid var(--gl-border-color-subtle);
+}
+
+.settings-panel-title {
+  flex: 1;
+  margin: 0;
+  font-size: var(--gl-font-size-lg);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+}
+
+/* Capped to a reading width. */
+.settings-panel-body {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 720px;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  overflow-y: auto;
+}
+
+.settings-value { margin: 0 0 var(--space-2); font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); }
+.settings-value code { font-family: var(--font-mono); }
+
+/* ── Settings controls ────────────────────────────────────────────────────── */
+
+.settings-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.settings-close:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.settings-section-title {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gl-text-color-muted);
+  margin-bottom: var(--space-3);
+}
+
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.settings-theme-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--gl-background-color-float-inset);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-medium);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.settings-theme-card:hover { border-color: var(--gl-accent-border); background: var(--gl-color-blue-50); }
+
+.settings-theme-card.selected { border-color: var(--gl-accent-border); background: var(--gl-color-blue-100); }
+
+.settings-theme-swatches { display: flex; gap: 4px; }
+
+.settings-theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--gl-border-radius-sm);
+  border: 1px solid var(--gl-border-color-subtle);
+}
+
+.settings-theme-label { font-size: var(--gl-font-size-sm); font-weight: 500; color: var(--gl-text-color-default); }
+
+.settings-theme-check { position: absolute; top: var(--space-2); right: var(--space-2); color: var(--gl-color-blue-400); }
+
+/* Font picker: a plain select over the families fontconfig reports, plus a
+   text fallback when there is no fontconfig to ask. */
+
+.settings-select,
+.settings-input {
+  width: 100%;
+  max-width: 340px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+  background: var(--gl-background-color-default);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  outline: none;
+}
+
+.settings-select:focus,
+.settings-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.settings-hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+
+.settings-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.settings-step-btn:hover:not(:disabled) { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+
+.settings-step-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.settings-step-value {
+  min-width: 52px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+
+/* ── Settings: toggle switch ──────────────────────────────────────────────── */
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  cursor: pointer;
+}
+
+.settings-toggle-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+
+.settings-toggle-label { font-size: var(--gl-font-size-sm); font-weight: 500; color: var(--gl-text-color-default); }
+
+.settings-toggle-hint { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-muted); }
+
+.settings-switch {
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--gl-border-color-default);
+  background: var(--gl-background-color-strong);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.settings-switch.on { background: var(--gl-color-blue-400); border-color: var(--gl-color-blue-400); }
+
+.settings-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(var(--gl-elevate), 0.2);
+  box-shadow: 0 1px 2px rgba(var(--gl-elevate), 0.25);
+  transition: transform 0.15s;
+}
+
+.settings-switch.on .settings-switch-knob { transform: translateX(16px); }
+
+/* ── Settings: keyboard shortcuts ─────────────────────────────────────────── */
+
+.settings-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.settings-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.settings-reset-btn:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+
+/* ── Settings: the shortcut table ─────────────────────────────────────────── */
+
+.settings-key-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: 5px var(--space-3);
+  background: var(--gl-background-color-raised);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+}
+
+.settings-key-search:focus-within { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); }
+
+.settings-key-search-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-default);
+}
+
+.settings-key-search-input::placeholder { color: var(--gl-text-color-disabled); }
+
+.settings-key-search-clear {
+  display: inline-flex;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+}
+
+.settings-key-search-clear:hover { color: var(--gl-text-color-default); }
+
+/* Fixed width, so Rebind holds its column whether or not the revert button is up. */
+.settings-key-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 88px;
+}
+
+.settings-key-revert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.settings-key-revert:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
+
+.settings-key-unbound { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); font-style: italic; }
+
+.settings-key-conflict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-subtle);
+}
+
+.settings-key-conflict span { flex: 1; }
+.settings-key-conflict strong { color: var(--gl-text-color-default); font-weight: 600; }
+
+.settings-key-take {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  background: var(--gl-color-blue-100);
+  border: 1px solid var(--gl-accent-border);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-color-blue-300);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.settings-key-take:hover { background: var(--gl-color-blue-200); }
+
+.settings-keys { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.settings-keys-group-label {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  color: var(--gl-text-color-muted);
+  margin-bottom: var(--space-2);
+}
+
+.settings-key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px 0;
+}
+
+.settings-key-label { flex: 1; font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); }
+
+.settings-key-chords { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.settings-key-chord {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+}
+
+.settings-key-capturing {
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-color-blue-400);
+  font-style: italic;
+}
+
+.settings-key-rebind {
+  flex-shrink: 0;
+  width: 58px;
+  padding: 3px 0;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-subtle);
+  font-size: var(--gl-font-size-xs);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.settings-key-rebind:hover:not(:disabled) { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+
+.settings-key-rebind:disabled { opacity: 0.5; cursor: default; }
+
+/* Two classes, so it wins over `.settings-hint` whatever the block order. */
+.settings-hint.settings-error { color: var(--gl-color-red-400); }

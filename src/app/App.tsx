@@ -15,7 +15,7 @@ import { CommandPalette } from '../command/CommandPalette';
 import { AddRepoModal } from '../setup/AddRepoModal';
 import { AddWorktreeModal } from '../setup/AddWorktreeModal';
 import { ResizeHandles } from './chrome/ResizeHandles';
-import { SettingsModal } from '../setup/SettingsModal';
+import { SettingsView } from '../settings/SettingsView';
 import { Toasts } from '../notifications/Toasts';
 import { AgentConsole } from '../agent/AgentConsole';
 import { TerminalConsole } from '../terminal/TerminalConsole';
@@ -53,11 +53,11 @@ function useActiveTaskSync() {
 /**
  * Refresh the Home snapshot whenever Home becomes visible or the set of open
  * sessions changes. Edits and landed git ops refresh it too (useIpc), and both
- * paths no-op while a workspace is showing — Home isn't rendered then, so its
+ * paths no-op while Home isn't rendered — a workspace or settings — since its
  * git calls would be pure waste.
  */
 function useHomeSnapshot() {
-  const visible = useStore((s) => s.view !== 'workspace');
+  const visible = useStore((s) => s.view === 'home');
   const sessionOrder = useStore((s) => s.sessionOrder);
   const refreshHome = useStore((s) => s.refreshHome);
   useEffect(() => {
@@ -126,7 +126,9 @@ export default function App() {
         <ActivityRail />
         <main className="app-main">
           {/* Home (shown when no session is focused): reviews / tasks / explorers. */}
-          {view !== 'workspace' && <Home />}
+          {view === 'home' && <Home />}
+          {/* Preferences: the group rail and one group's panel. */}
+          {view === 'settings' && <SettingsView />}
           {/* Active session workspace — kept mounted across views so
               background sessions' terminals persist. */}
           <SessionWorkspaces hidden={view !== 'workspace'} />
@@ -138,7 +140,7 @@ export default function App() {
       </div>
       {/* A scratch shell on Home (session-less — it owns its PTY). In a
           workspace the panes own the terminals, so this is not mounted there. */}
-      {view !== 'workspace' && <TerminalConsole />}
+      {view === 'home' && <TerminalConsole />}
       <StatusBar />
 
       {/* Overlays */}
@@ -146,7 +148,6 @@ export default function App() {
       <CommandPalette />
       {addRepoOpen && <AddRepoModal onClose={() => setAddRepoOpen(false)} />}
       {addWorktreeOpen && <AddWorktreeModal onClose={() => setAddWorktreeOpen(false)} />}
-      <SettingsModal />
       <Toasts />
 
       {/* Frameless-window resize grips (must be last so they sit on top). Not on

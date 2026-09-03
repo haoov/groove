@@ -31,7 +31,7 @@ export function runCommand(id: CommandId): boolean {
       st.setCommandPaletteOpen(true);
       return true;
     case 'settings.open':
-      st.setSettingsOpen(true);
+      st.openSettings();
       return true;
     case 'view.tasks':
       st.setView('home');

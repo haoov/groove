@@ -85,7 +85,8 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
           const at = s.sessionOrder.indexOf(id);
           const remaining = s.sessionOrder.filter((x) => x !== id);
           activeSessionId = remaining[at] ?? remaining[at - 1] ?? null;
-          if (!activeSessionId) view = 'home';
+          // Only the workspace has nothing left to show; settings stays put.
+          if (!activeSessionId && view === 'workspace') view = 'home';
         }
         return { sessions, sessionOrder, activeSessionId, view };
       }),
