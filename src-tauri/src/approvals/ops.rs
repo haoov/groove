@@ -32,6 +32,11 @@ pub const TASK_ADD_REPO: &str = "task.add_repo";
 pub const TASK_ADD_WORKTREE: &str = "task.add_worktree";
 pub const TASK_CREATE_FROM_EXPLORER: &str = "task.create_from_explorer";
 
+/// Mark the task Done at its source, then tear the local session down — every
+/// worktree goes. The one agent-reachable op that destroys work, so its dialog
+/// says so.
+pub const TASK_FINISH: &str = "task.finish";
+
 /// Write one of the user's own agent skills. Gated even though it never leaves the
 /// machine: a skill is an instruction the agent invokes on its own later, so the
 /// user reads it once, here, before it can act. The Settings editor writes
@@ -40,7 +45,7 @@ pub const SKILL_SAVE: &str = "skill.save";
 
 /// Every op, for the mirror test below.
 #[cfg(test)]
-const ALL: [&str; 17] = [
+const ALL: [&str; 18] = [
     GIT_COMMIT,
     GIT_PUSH,
     GIT_PULL,
@@ -57,6 +62,7 @@ const ALL: [&str; 17] = [
     TASK_ADD_REPO,
     TASK_ADD_WORKTREE,
     TASK_CREATE_FROM_EXPLORER,
+    TASK_FINISH,
     SKILL_SAVE,
 ];
 
@@ -209,6 +215,11 @@ pub(super) async fn execute(
         }
         TASK_ADD_WORKTREE => {
             crate::task_manager::add_worktree_impl(payload, pool, handle).await
+        }
+        TASK_FINISH => {
+            let task = payload["task_id"].as_str().unwrap_or("the task").to_string();
+            crate::task_manager::finish_task_from_payload(payload, pool, handle).await?;
+            Ok(op_ok(op_type, format!("{task} marked done and its workspace torn down")))
         }
         SKILL_SAVE => {
             let name = payload["name"].as_str().unwrap_or("").to_string();

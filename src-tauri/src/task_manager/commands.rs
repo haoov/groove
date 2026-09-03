@@ -225,6 +225,21 @@ pub async fn finish_task(
         .map_err(|e| e.to_string())
 }
 
+/// The approval-gated form, for the agent. Same teardown as the Finish task
+/// button, so it destroys every worktree of the session — `close-task` checks
+/// nothing is unlanded before it asks.
+pub async fn finish_task_from_payload(
+    payload: serde_json::Value,
+    pool: &SqlitePool,
+    handle: &tauri::AppHandle,
+) -> anyhow::Result<()> {
+    use tauri::Manager;
+    let short_id = payload["task_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("task_id is required"))?;
+    finish_task_impl(handle, short_id, &handle.state::<State>(), pool).await
+}
+
 async fn finish_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,

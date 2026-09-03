@@ -20,6 +20,7 @@ export const OP = {
   TASK_ADD_REPO: 'task.add_repo',
   TASK_ADD_WORKTREE: 'task.add_worktree',
   TASK_CREATE_FROM_EXPLORER: 'task.create_from_explorer',
+  TASK_FINISH: 'task.finish',
 
   SKILL_SAVE: 'skill.save',
 } as const;

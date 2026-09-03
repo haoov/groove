@@ -24,6 +24,7 @@ pub const USER_PLUGIN: &str = "user";
 /// directory means an app update replaces them outright — nothing to migrate, and
 /// no half-edited core skill can survive an upgrade.
 const CORE_SKILLS: &[(&str, &str)] = &[
+    ("close-task", include_str!("core/close-task.md")),
     ("co-review", include_str!("core/co-review.md")),
     ("create-task", include_str!("core/create-task.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),

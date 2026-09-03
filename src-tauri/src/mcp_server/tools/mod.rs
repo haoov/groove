@@ -93,6 +93,7 @@ pub(super) async fn dispatch(
         "create_task" => write::create_task(input, state, mcp_session).await,
         "update_task_property" => write::update_task_property(input, state, mcp_session).await,
         "log_task_hours" => write::log_task_hours(input, state, mcp_session).await,
+        "finish_task" => write::finish_task(input, state, mcp_session).await,
         "update_task_body" => write::update_task_body(input, state, mcp_session).await,
         "add_task_repo" => write::add_task_repo(input, state, mcp_session).await,
         "add_task_worktree" => write::add_task_worktree(input, state, mcp_session).await,

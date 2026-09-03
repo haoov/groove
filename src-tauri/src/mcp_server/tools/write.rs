@@ -504,6 +504,21 @@ pub(super) async fn log_task_hours(
     bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
 }
 
+/// Mark the task done and tear its workspace down. Destroys every worktree of the
+/// session, so the caller has to have checked nothing is unlanded first.
+pub(super) async fn finish_task(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
+        Err(refusal) => return Ok(refusal),
+    };
+    let payload = serde_json::json!({ "task_id": task_id });
+    bridged(state, crate::approvals::ops::TASK_FINISH, payload, &task_id).await
+}
+
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
 /// markdown can't rebuild, unless `force` says the loss is accepted.
 pub(super) async fn update_task_body(

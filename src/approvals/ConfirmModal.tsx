@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag, Sparkles } from 'lucide-react';
+import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
 
@@ -19,6 +19,7 @@ const OP_LABELS: Record<string, string> = {
   [OP.TASK_ADD_REPO]: 'Add repo to task',
   [OP.TASK_ADD_WORKTREE]: 'Add worktree to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
+  [OP.TASK_FINISH]: 'Finish task',
   [OP.SKILL_SAVE]: 'Write agent skill',
   [OP.GIT_DISCARD]: 'Discard changes',
   [OP.GIT_DISCARD_ALL]: 'Discard all changes',
@@ -43,6 +44,7 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_WORKTREE]: <GitBranch size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
+  [OP.TASK_FINISH]: <CheckCircle2 size={14} strokeWidth={1.75} />,
   [OP.SKILL_SAVE]: <Sparkles size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD]: <RotateCcw   size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD_ALL]: <RotateCcw size={14} strokeWidth={1.75} />,
@@ -214,6 +216,18 @@ function PayloadView({ op, payload, edits, setField }: {
 
     case OP.MR_CLOSE:
       return <div className="cp-hint">This will close the MR and cannot be undone.</div>;
+
+    case OP.TASK_FINISH:
+      return (
+        <>
+          <Field label="Task" value={str('task_id')} mono />
+          <div className="cp-hint cp-hint--danger">
+            Marks the task done at its source, then removes every worktree of this
+            session and its local data. Anything not committed and pushed is lost —
+            this cannot be undone.
+          </div>
+        </>
+      );
 
     case OP.GIT_DISCARD:
       return (
