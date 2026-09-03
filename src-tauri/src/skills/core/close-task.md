@@ -17,9 +17,8 @@ on a check you have not run.
 2. `get_commit_log` and `get_mr_state` per worktree — a branch ahead of origin,
    or an MR still open, means the work has not landed anywhere but this machine.
 3. `get_annotations` — an unresolved note is a job not finished.
-4. Stop and say so when any of those find something. Offer to land it first;
-   `user:save-work` does that if the user has it. Closing anyway is the user's
-   call, never yours.
+4. Stop and say so when any of those find something. Offer `groove:save-task`
+   to land it first. Closing anyway is the user's call, never yours.
 5. Clean: `get_task_body` then `update_task_body` with the WHOLE new body, saying
    what shipped. `get_task_time` then `log_task_hours` with its `unlogged_hours`
    when that is above zero.

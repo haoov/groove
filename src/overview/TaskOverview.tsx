@@ -24,6 +24,22 @@ export function TaskOverview() {
   const suggests = useStore((s) => s.config?.ui.suggest_actions ?? true);
   const hasStart = useStore((s) => s.skills.some((k) => k.id === 'groove:start-task'));
   const [starting, setStarting] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  // Finishing runs through the agent, which checks for uncommitted, unpushed and
+  // unmerged work first — none of which the button could see. It ends at the same
+  // teardown, behind the approval dialog.
+  const closeTask = async () => {
+    setClosing(true);
+    useStore.getState().requestConsoleFocus();
+    try {
+      await sendSkill(sessionId, 'groove:close-task');
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      setClosing(false);
+    }
+  };
 
   // A suggestion, never an auto-send: opening a task must not spend tokens.
   // start-task reads the task before attaching anything, so it is the one door.
@@ -48,10 +64,9 @@ export function TaskOverview() {
   const [allMrs, setAllMrs] = useState<Mr[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
-  /** Which ending is awaiting confirmation. Finishing marks the task Done;
-   *  deleting discards it at the source. Both then tear the local
-   *  workspace down, so they share one banner and one busy flag. */
-  const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
+  /** Deleting discards the task at its source and tears the local workspace
+   *  down. Finishing goes through the agent instead, so it has no banner. */
+  const [ending, setEnding] = useState<'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [schema, setSchema] = useState<TaskSchema | null>(null);
   const src = providerCopy(activeTask);
@@ -91,15 +106,13 @@ export function TaskOverview() {
     return () => { cancelled = true; };
   }, [activeWorktrees]);
 
-  // No success path to handle: both commands emit task_finished, which closes the
+  // No success path to handle: delete_task emits task_finished, which closes the
   // session — this component goes with it.
   const handleEnd = async () => {
     if (!activeTask || !ending) return;
     setFinishing(true);
     try {
-      await invoke(ending === 'delete' ? 'delete_task' : 'finish_task', {
-        shortId: activeTask.short_id,
-      });
+      await invoke('delete_task', { shortId: activeTask.short_id });
     } catch (e) {
       setLastError(String(e));
       setFinishing(false);
@@ -138,8 +151,9 @@ export function TaskOverview() {
             </button>
             <button
               className="finish-task-btn"
-              onClick={() => setEnding('finish')}
-              disabled={finishing}
+              onClick={() => void closeTask()}
+              disabled={finishing || closing}
+              title="The agent checks nothing is unlanded, writes the task up, then asks to close it"
             >
               <CheckCircle2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Finish task
@@ -163,23 +177,18 @@ export function TaskOverview() {
           schema={schema}
         />
 
-        {/* One banner for both endings — the local half is identical, so only the
-            sentence about what changes at the source. */}
+        {/* Deleting only. Finishing is the agent's `close-task`, which ends at the
+            approval dialog rather than here. */}
         {ending && (
-          <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
+          <div className="finish-confirm-banner destructive">
             <div className="finish-confirm-icon">
               <AlertTriangle size={14} strokeWidth={2} />
             </div>
             <div className="finish-confirm-body">
-              <strong>
-                {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
-              </strong>
+              <strong>Delete &ldquo;{activeTask.title}&rdquo;?</strong>
               <p>
                 This will remove all local worktrees and delete task data from the local
-                database.{' '}
-                {ending === 'delete'
-                  ? src.discard
-                  : src.finish}
+                database. {src.discard}
               </p>
             </div>
             <div className="finish-confirm-actions">
