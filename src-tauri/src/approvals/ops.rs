@@ -89,6 +89,21 @@ fn repo_of(payload: &serde_json::Value) -> String {
         .to_string()
 }
 
+/// What a logged-hours op reports.
+///
+/// `before`/`after` are null for a source with no hours field, which is not a
+/// failure — the local ledger is the whole record there. Reading that null as 0
+/// made a correct write say "Hours spent 0 → 0", which reads as nothing happened.
+fn hours_message(out: &serde_json::Value) -> String {
+    match (out["before"].as_f64(), out["after"].as_f64()) {
+        (Some(before), Some(after)) => format!("Hours spent {before} → {after}"),
+        _ => format!(
+            "Logged {}h — this source has no hours field",
+            out["added"].as_f64().unwrap_or(0.0)
+        ),
+    }
+}
+
 fn branch_of(payload: &serde_json::Value) -> String {
     payload["branch"].as_str().unwrap_or("HEAD").to_string()
 }
@@ -199,9 +214,7 @@ pub(super) async fn execute(
         }
         TASK_HOURS => {
             let out = crate::task_manager::log_hours_impl(payload, pool).await?;
-            let (before, after) =
-                (out["before"].as_f64().unwrap_or(0.0), out["after"].as_f64().unwrap_or(0.0));
-            Ok(op_ok(op_type, format!("Hours spent {before} → {after}")))
+            Ok(op_ok(op_type, hours_message(&out)))
         }
         TASK_BODY => {
             // Carries its own message (block counts).
@@ -282,6 +295,20 @@ mod tests {
                 i + 1
             );
         }
+    }
+
+    /// A GitHub issue has no hours field, so the write returns null and the local
+    /// ledger is the record. Saying "0 → 0" told the user it had failed.
+    #[test]
+    fn hours_with_no_field_at_the_source_does_not_read_as_zero() {
+        let none = serde_json::json!({ "before": null, "after": null, "added": 1.6 });
+        assert_eq!(
+            super::hours_message(&none),
+            "Logged 1.6h — this source has no hours field"
+        );
+
+        let some = serde_json::json!({ "before": 2.0, "after": 3.6, "added": 1.6 });
+        assert_eq!(super::hours_message(&some), "Hours spent 2 → 3.6");
     }
 
     #[test]
