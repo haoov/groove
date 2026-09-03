@@ -80,7 +80,7 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("get_open_file", "Currently open file in the editor.", serde_json::json!({"type":"object","properties":{}})),
         mcp_tool("get_file_content", "Read file content by path.", serde_json::json!({"type":"object","required":["file_path"],"properties":{"file_path":{"type":"string"}}})),
         mcp_tool("get_task_body", "Fetch a task's body as markdown.", serde_json::json!({"type":"object","properties":{"task_id":{"type":"string","description":"Defaults to your own task."}}})),
-        mcp_tool("git_commit", "Stage all and commit. Requires user confirmation.", serde_json::json!({"type":"object","required":["worktree_id","message"],"properties":{"worktree_id":{"type":"string"},"message":{"type":"string","description":format!("{SUBJECT} Body optional: why, not what. No file lists.")}}})),
+        mcp_tool("git_commit", "Commit. Requires user confirmation. With anything staged it commits the INDEX only; with nothing staged, every tracked change. It never adds an untracked file — stage a new one yourself first.", serde_json::json!({"type":"object","required":["worktree_id","message"],"properties":{"worktree_id":{"type":"string"},"message":{"type":"string","description":format!("{SUBJECT} Body optional: why, not what. No file lists.")}}})),
         mcp_tool("git_push", "Push branch to origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
         mcp_tool("git_pull", "Pull --rebase from origin. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
         mcp_tool("git_rebase", "Rebase on origin/main. Requires confirmation.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"},"default_branch":{"type":"string"}}})),
@@ -132,6 +132,20 @@ mod tests {
             assert!(!d.contains("maximum"), "{name}: reintroduced a length cap");
             assert!(!d.contains("sentences"), "{name}: reintroduced a sentence budget");
         }
+    }
+
+    /// `commit_impl` is stage-aware and `-a` skips untracked files. An agent that
+    /// staged something (a `git rm`, a `git mv`) and read "stage all" here lost
+    /// every unstaged change from its commit, silently. Twice.
+    #[test]
+    fn git_commit_states_what_it_actually_stages() {
+        let tools = mcp_tool_definitions();
+        let d = tools.iter().find(|t| t["name"] == "git_commit").expect("git_commit")["description"]
+            .as_str()
+            .expect("description text");
+        assert!(d.contains("staged"), "does not say what staging does");
+        assert!(d.contains("untracked"), "does not warn about untracked files");
+        assert!(!d.contains("Stage all"), "reinstated the claim that it stages everything");
     }
 
     #[test]
