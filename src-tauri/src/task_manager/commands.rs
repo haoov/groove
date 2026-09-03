@@ -38,6 +38,23 @@ impl Default for State {
     }
 }
 
+/// What an `open_task_impl` call MEANS, since the two callers differ: the user
+/// asking for a session, or a landed write pushing new rows into one already on
+/// screen. Only a focusing open may move the user or the active-task pointer.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum Open {
+    /// The user asked for this session — navigate to it.
+    Focus,
+    /// Repos or worktrees changed — refresh in place, do not navigate.
+    Refresh,
+}
+
+impl Open {
+    fn focuses(self) -> bool {
+        self == Open::Focus
+    }
+}
+
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -99,7 +116,7 @@ pub async fn open_task(
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    open_task_impl(&app, &short_id, &task_state, &pool)
+    open_task_impl(&app, &short_id, &task_state, &pool, Open::Focus)
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -123,18 +140,27 @@ pub async fn set_active_task(
 /// its session row on first open. Emits `workspace_ready` — or `workspace_stub`
 /// for a task that still has no worktrees, which sends the frontend to the
 /// repo-picking wizard.
+///
+/// `open` rides along in the payload as `focus`: the frontend uses the same
+/// event to mount a session and to refresh one, and only the caller knows which
+/// it asked for.
 pub(super) async fn open_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,
     task_state: &State,
     pool: &SqlitePool,
+    open: Open,
 ) -> anyhow::Result<Session> {
     let session = match store::sessions::get_opt(pool, short_id).await? {
         Some(session) => session,
         None => store::sessions::open_task(pool, short_id).await?,
     };
 
-    task_state.set_active_task_id(Some(session.id.clone()));
+    // A refresh must not steal the pointer: MCP tools with no binding of their
+    // own resolve from it, and the user is still looking at another session.
+    if open.focuses() {
+        task_state.set_active_task_id(Some(session.id.clone()));
+    }
 
     prune_missing_worktrees(&session.id, pool).await?;
 
@@ -144,7 +170,7 @@ pub(super) async fn open_task_impl(
     if worktrees.is_empty() && session.kind == SessionKind::Task {
         app.emit(
             crate::core::events::WORKSPACE_STUB,
-            serde_json::json!({ "task": task, "kind": session.kind }),
+            serde_json::json!({ "task": task, "kind": session.kind, "focus": open.focuses() }),
         )?;
     } else {
         let repos = store::repos::attached_to(pool, &session.id).await?;
@@ -155,6 +181,7 @@ pub(super) async fn open_task_impl(
                 "worktrees": worktrees,
                 "repos": repos,
                 "kind": session.kind,
+                "focus": open.focuses(),
             }),
         )?;
     }

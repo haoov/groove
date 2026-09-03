@@ -9,7 +9,7 @@ use tauri::Emitter;
 
 use crate::core::db::models::{Repo, SessionKind};
 use crate::core::db::store;
-use super::commands::open_task_impl;
+use super::commands::{open_task_impl, Open};
 use super::State;
 
 fn new_explorer_id() -> String {
@@ -124,7 +124,7 @@ pub async fn open_review_session(
 
         // Hand off to the shared open path so the event carries DB-derived
         // worktrees and repos — first open and resume deliver identical state.
-        open_task_impl(&app, &session.id, &task_state, &pool).await?;
+        open_task_impl(&app, &session.id, &task_state, &pool, Open::Focus).await?;
         anyhow::Ok(session.id)
     };
     open.await.map_err(|e| e.to_string())
