@@ -3,6 +3,7 @@ import { ChevronUp, Loader2, Play, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
 import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
+import { offeredSkills } from '../shared/lib/skills';
 import { SOURCE_IDS } from '../setup/sources';
 import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
@@ -148,9 +149,7 @@ export function AgentConsole() {
     }
   };
 
-  const offered = skills.filter(
-    (a) => !a.hidden && (a.kinds.length === 0 || a.kinds.includes(kind)),
-  );
+  const offered = offeredSkills(skills, kind);
   const core = offered.filter((a) => !a.editable);
   const mine = offered.filter((a) => a.editable);
 

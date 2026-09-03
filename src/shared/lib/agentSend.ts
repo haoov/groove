@@ -8,6 +8,7 @@
 import { invoke } from '../ipc/invoke';
 import { bytesToB64 } from './ptyRegistry';
 import { useStore } from '../store';
+import { skillCommand, trimForPty } from './skills';
 
 /** Give up waiting for a cold agent to report in and just send. */
 const READY_TIMEOUT_MS = 25_000;
@@ -86,9 +87,7 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
   const pty = await ensureAgentSession(sessionKey, { waitReady: true });
   const write = (bytes: Uint8Array) => invoke('write_pty', { sessionId: pty, dataB64: bytesToB64(bytes) });
 
-  // Trailing newlines would become blank lines in the draft. A trailing SPACE
-  // survives: `sendSkill` needs it to close Claude's slash menu before the CR.
-  const body = text.replace(/[^\S ]+$/, '');
+  const body = trimForPty(text);
   await write(new TextEncoder().encode(body));
 
   // Long enough that the TUI has finished handling the paste, so the CR arrives as
@@ -97,17 +96,9 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
   await write(new Uint8Array([CARRIAGE_RETURN]));
 }
 
-/**
- * Invoke a skill on a session's agent: `/groove:start-task `, then Enter.
- *
- * The TRAILING SPACE is load-bearing. Typing `/` opens Claude's slash menu, and
- * with the menu open Enter acts on the highlighted row — which is not always the
- * skill we named, since the menu ranks by prefix and past use. A space closes the
- * menu, so the CR submits the literal text. Verified against a real PTY: with two
- * skills sharing a prefix, the menu is still open at the CR without it.
- */
+/** Invoke a skill on a session's agent: `/groove:start-task `, then Enter. */
 export function sendSkill(sessionKey: string, skillId: string, args?: string): Promise<void> {
-  return sendToAgent(sessionKey, `/${skillId} ${args ?? ''}`);
+  return sendToAgent(sessionKey, skillCommand(skillId, args));
 }
 
 /**

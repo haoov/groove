@@ -10,6 +10,7 @@ import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
 import { BodyEditor } from './BodyEditor';
 import { sendSkill } from '../shared/lib/agentSend';
+import { offers } from '../shared/lib/skills';
 
 export function TaskOverview() {
   const activeTask = useSession((s) => s.activeTask);
@@ -22,7 +23,8 @@ export function TaskOverview() {
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
   const sessionId = useSession((s) => s.id);
   const suggests = useStore((s) => s.config?.ui.suggest_actions ?? true);
-  const hasStart = useStore((s) => s.skills.some((k) => k.id === 'groove:start-task'));
+  const kind = useSession((s) => s.kind);
+  const hasStart = useStore((s) => offers(s.skills, kind, 'groove:start-task'));
   const [starting, setStarting] = useState(false);
   const [closing, setClosing] = useState(false);
 

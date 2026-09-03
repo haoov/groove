@@ -5,6 +5,7 @@ import { ciGroup } from '../lib/mr';
 import { forgeName } from '../lib/forge';
 import { openExternal } from '../lib/openExternal';
 import { sendSkill } from '../lib/agentSend';
+import { offers } from '../lib/skills';
 import { useStore, useSession } from '../store';
 
 /**
@@ -24,7 +25,10 @@ export function CiChip({ status, url, platform, className, children }: {
 }) {
   const sessionId = useSession((s) => s.id);
   const setLastError = useStore((s) => s.setLastError);
-  const hasFixCi = useStore((s) => s.skills.some((k) => k.id === 'groove:fix-ci'));
+  const kind = useSession((s) => s.kind);
+  // The same question the Actions menu asks: fix-ci is task-only, and this chip
+  // renders in a review session too.
+  const hasFixCi = useStore((s) => offers(s.skills, kind, 'groove:fix-ci'));
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
 
   const failed = ciGroup(status) === 'fail';
