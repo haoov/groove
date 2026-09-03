@@ -130,6 +130,36 @@ pub(super) async fn get_annotations(
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
 }
 
+/// The time Groove measured for a task, and how much of it reached the source.
+///
+/// Hours as well as seconds because `log_task_hours` takes hours: the conversion
+/// is the one place an agent would quietly get this wrong.
+pub(super) async fn get_task_time(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = input["task_id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| state.task_for(mcp_session))
+        .ok_or_else(|| anyhow::anyhow!("no task in scope"))?;
+
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let t = store::time::summary(&state.pool, &task_id, &today).await?;
+    let hours = |secs: i64| (secs as f64 / 360.0).round() / 10.0;
+
+    Ok(ToolCallResponse::ok(serde_json::json!({
+        "task_id": task_id,
+        "tracked_hours": hours(t.tracked_seconds),
+        "logged_hours": hours(t.logged_seconds),
+        "unlogged_hours": hours(t.unlogged_seconds),
+        "tracked_seconds": t.tracked_seconds,
+        "logged_seconds": t.logged_seconds,
+        "unlogged_seconds": t.unlogged_seconds,
+    })))
+}
+
 pub(super) async fn get_open_file(
     state: &McpState,
     mcp_session: &str,
