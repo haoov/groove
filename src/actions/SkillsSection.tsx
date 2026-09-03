@@ -117,31 +117,42 @@ export function SkillsSection() {
     }
   };
 
+  // The hint, not the description: the description is a paragraph written for the
+  // model to match the user's words against.
+  const row = (s: AgentSkill) => (
+    <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.hint}>
+      {!s.editable && <Lock size={12} strokeWidth={1.75} className="skill-lock" />}
+      <span className="skill-id">{s.id}</span>
+      <span className="skill-desc">{s.hint}</span>
+    </button>
+  );
+
   return (
     <>
-      <div className="settings-section-title">Agent actions</div>
+      <div className="settings-section-title">Actions</div>
 
-      <div className="skill-list">
-        {/* The hint, not the description: the description is written for the model
-            to match the user's words against, and it is a paragraph. */}
-        {core.map((s) => (
-          <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.hint}>
-            <Lock size={12} strokeWidth={1.75} className="skill-lock" />
-            <span className="skill-id">{s.id}</span>
-            <span className="skill-desc">{s.hint}</span>
-          </button>
-        ))}
-        {mine.map((s) => (
-          <button key={s.id} className="skill-row mine" onClick={() => void open(s)} title={s.hint}>
-            <span className="skill-id">{s.id}</span>
-            <span className="skill-desc">{s.hint}</span>
-          </button>
-        ))}
+      <div className="skill-group">
+        <div className="skill-group-head">
+          <span className="skill-group-label">Groove</span>
+          <span className="skill-group-note">Read-only. Open one to copy it as a starting point.</span>
+        </div>
+        <div className="skill-list">{core.map(row)}</div>
       </div>
 
-      <button className="btn-secondary skill-new" onClick={create}>
-        <Plus size={12} strokeWidth={2} /> New action
-      </button>
+      <div className="skill-group">
+        <div className="skill-group-head">
+          <span className="skill-group-label">Yours</span>
+          <span className="skill-group-note">Editable, and kept across app updates.</span>
+        </div>
+        {mine.length > 0 ? (
+          <div className="skill-list">{mine.map(row)}</div>
+        ) : (
+          <p className="skill-empty">Nothing here yet.</p>
+        )}
+        <button className="btn-secondary skill-new" onClick={create}>
+          <Plus size={12} strokeWidth={2} /> New action
+        </button>
+      </div>
 
       {viewing && (
         <div className="skill-editor">

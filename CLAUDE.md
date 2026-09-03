@@ -95,8 +95,9 @@ refresh until then: a pill for a skill the running agent cannot resolve answers 
 "unknown command".
 
 **Groove suggests, it never auto-sends.** A trigger renders a chip the user clicks
-(`TaskOverview` offers `start-task` on a task with no repos — one way in, and step 3 of
-it reaches `scaffold-task`, which is `groove-hidden` and so in no session's menu).
+(`TaskOverview` offers `start-task` on a task with no repos, which is the one way in:
+its step 3 attaches them, because provisioning a task without reading it first only
+moves the guessing earlier).
 Opening a session must never start an agent by itself — that spends tokens on a glance.
 `ui.suggest_actions` hides every offer, and hides nothing else: the skill stays a button
 and a slash command.

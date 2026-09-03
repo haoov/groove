@@ -26,7 +26,7 @@ export function TaskOverview() {
   const [starting, setStarting] = useState(false);
 
   // A suggestion, never an auto-send: opening a task must not spend tokens.
-  // start-task, not scaffold-task — its step 3 does the scaffolding.
+  // start-task reads the task before attaching anything, so it is the one door.
   const startTask = async () => {
     setStarting(true);
     useStore.getState().requestConsoleFocus(); // the proposal lands in the chat

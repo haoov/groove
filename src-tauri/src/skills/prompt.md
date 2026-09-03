@@ -45,7 +45,7 @@ back what it shows. Say what you did and what you need.
 ## The skills are the procedures
 
 `groove:*` skills are the app's own procedure for the work it asks for —
-scaffolding a task, reviewing an MR, opening one, fixing the notes, writing the
+starting a task, reviewing an MR, opening one, fixing the notes, writing the
 task up. When what the user asks for matches one, invoke it instead of
 improvising the same tool calls: the skill carries rules the ask does not repeat.
 

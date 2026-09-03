@@ -3,7 +3,7 @@ import { Palette, SquareCode, Sparkles, Keyboard, Inbox, GitBranch, MonitorCog, 
 export type SettingsGroupId =
   | 'appearance'
   | 'editor'
-  | 'actions'
+  | 'agents'
   | 'shortcuts'
   | 'sources'
   | 'git'
@@ -21,7 +21,7 @@ export interface SettingsGroup {
 export const SETTINGS_GROUPS: SettingsGroup[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette, blurb: 'Theme, font and size' },
   { id: 'editor', label: 'Editor', icon: SquareCode, blurb: 'Editing behaviour' },
-  { id: 'actions', label: 'Agent actions', icon: Sparkles, blurb: "Groove's actions and your own" },
+  { id: 'agents', label: 'Agents', icon: Sparkles, blurb: 'Actions, and how the agent behaves' },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard, blurb: 'Every global keybinding' },
   { id: 'sources', label: 'Task sources', icon: Inbox, blurb: 'Notion and GitHub' },
   { id: 'git', label: 'Git & forge', icon: GitBranch, blurb: 'Worktree root and sign-in' },

@@ -1,5 +1,39 @@
 /* The agent actions manager, inside the Settings modal. */
 
+/* Two groups, each labelled: whose a skill is decides whether it can be edited,
+   so the split has to be visible before anything is clicked. */
+.skill-group + .skill-group { margin-top: var(--space-4); }
+
+.skill-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.skill-group-label {
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  font-weight: 600;
+  color: var(--gl-text-color-default);
+}
+
+.skill-group-note {
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-muted);
+}
+
+.skill-empty {
+  margin: 0;
+  padding: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-sm);
+  color: var(--gl-text-color-muted);
+  border: 1px dashed var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+}
+
 .skill-list {
   display: flex;
   flex-direction: column;

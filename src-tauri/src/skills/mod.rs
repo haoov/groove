@@ -29,7 +29,6 @@ const CORE_SKILLS: &[(&str, &str)] = &[
     ("fix-notes", include_str!("core/fix-notes.md")),
     ("new-skill", include_str!("core/new-skill.md")),
     ("open-mr", include_str!("core/open-mr.md")),
-    ("scaffold-task", include_str!("core/scaffold-task.md")),
     ("start-task", include_str!("core/start-task.md")),
     ("update-task", include_str!("core/update-task.md")),
 ];
@@ -551,7 +550,7 @@ mod tests {
     /// loaded, invocable and listed in the manager.
     #[test]
     fn a_skill_can_be_hidden_from_the_menu() {
-        let s = parse("groove", "scaffold-task", "---\ndescription: D.\ngroove-hidden: true\n---\n", false);
+        let s = parse("groove", "handoff-step", "---\ndescription: D.\ngroove-hidden: true\n---\n", false);
         assert!(s.hidden);
     }
 
