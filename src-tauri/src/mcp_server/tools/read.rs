@@ -24,9 +24,7 @@ pub(super) async fn get_active_task(
 }
 
 
-/// Every real task the app knows about, from the local mirror. Synthetic
-/// sessions are excluded: an explorer or a review is not something picked off
-/// a queue.
+/// Every real task from the local mirror; explorers and reviews are not tasks.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
     let tasks: Vec<crate::core::db::models::TaskView> = store::provider_tasks::all(&state.pool)
         .await?
@@ -38,10 +36,7 @@ pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallRespo
     ))
 }
 
-/// Repos in the clone pool, flagged with whether they are on the caller's task.
-///
-/// `add_task_repo` takes a slug or project name, so the agent needs to see the
-/// real names rather than guess them.
+/// Repos in the clone pool, flagged `attached` when on the caller's task.
 pub(super) async fn list_repos(
     state: &McpState,
     mcp_session: &str,
@@ -50,8 +45,7 @@ pub(super) async fn list_repos(
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Attached repos are matched on local_path: the pool listing has no repo id
-    // until a repo is registered, and registering is `add_task_repo`'s job.
+    // Matched on local_path: the pool listing has no repo id until registered.
     let attached: Vec<String> = match state.task_for(mcp_session) {
         Some(task_id) => store::repos::attached_paths(&state.pool, &task_id).await?,
         None => vec![],
@@ -126,10 +120,8 @@ pub(super) async fn get_annotations(
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
 }
 
-/// The time Groove measured for a task, and how much of it reached the source.
-///
-/// Hours as well as seconds because `log_task_hours` takes hours: the conversion
-/// is the one place an agent would quietly get this wrong.
+/// Time measured for a task, and how much reached the source. Hours as well as
+/// seconds — `log_task_hours` takes hours.
 pub(super) async fn get_task_time(
     input: serde_json::Value,
     state: &McpState,
@@ -152,11 +144,7 @@ pub(super) async fn get_task_time(
     })))
 }
 
-/// The task source's live schema: every property, its kind, and the options a
-/// select or status accepts.
-///
-/// Live from the provider, never a cached copy — a board's columns are renamed
-/// without telling anyone, and a stale option name is a write that fails.
+/// The task source's live schema — never cached.
 pub(super) async fn get_task_schema(
     input: serde_json::Value,
     state: &McpState,
@@ -168,8 +156,7 @@ pub(super) async fn get_task_schema(
     Ok(ToolCallResponse::ok(serde_json::to_value(schema)?))
 }
 
-/// The MR's pipeline status and the URL of the run. Live from the forge, not the
-/// mirror — a chip the user is looking at may already be stale.
+/// The MR's pipeline status and run URL, live from the forge.
 pub(super) async fn get_mr_ci(
     input: serde_json::Value,
     state: &McpState,
@@ -202,17 +189,14 @@ pub(super) async fn get_task_body(
     Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
 }
 
-/// Markdown is what the agent mirrors, and what create_task_from_explorer takes
-/// back — raw block JSON was easy to misread.
+/// The task template as markdown.
 pub(super) async fn get_task_template(
     input: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // The template belongs to: the source the caller names, else the source of the
-    // task in scope, else the one configured source. An explorer or review session
-    // has an id in scope but no source — that falls through rather than erroring,
-    // since filing FROM an explorer is this tool's main use.
+    // Source: the one named, else the task's, else the only one configured. An
+    // explorer has no source and falls through.
     let named = input["provider"]
         .as_str()
         .map(|_| crate::provider::commands::draft_provider(&input));
@@ -236,8 +220,7 @@ pub(super) async fn get_task_template(
         Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),
-        // No template is an answer, not a failure — the tool contract says empty.
-        // An error here stalled the create-task flow for sources without one.
+        // No template is an answer, not an error.
         Ok(None) => Ok(ToolCallResponse::ok(serde_json::json!({
             "template_markdown": "",
             "note": "this task source has no template — structure the body yourself",

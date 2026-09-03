@@ -13,9 +13,7 @@ const skill = (id: string, kinds: SessionKind[]): AgentSkill => ({
   editable: false,
 });
 
-// The space is what closes Claude's slash menu before the Enter lands, and the
-// trim is the only thing that could eat it. Verified against a real PTY once;
-// this is what keeps it verified.
+// The trailing space closes the slash menu; the trim is the only thing that could eat it.
 describe('the text sent for a skill', () => {
   it('ends in a space when the skill takes no argument', () => {
     expect(skillCommand('groove:start-task')).toBe('/groove:start-task ');
@@ -51,9 +49,7 @@ describe('which skills a session offers', () => {
     ]);
   });
 
-  /// A surface that names its own skill has to ask the same question the menu
-  /// does — the CI chip offered `fix-ci` on a review session by checking only
-  /// that the skill existed.
+  // A surface that names its own skill asks the same question the menu does.
   it('answers for one skill the way the menu would', () => {
     expect(offers(all, 'task', 'groove:start-task')).toBe(true);
     expect(offers(all, 'review', 'groove:start-task')).toBe(false);

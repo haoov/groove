@@ -3,23 +3,14 @@
 
 use crate::core::pty::{PtySpec, Ptys};
 
-/// Every in-app terminal runs bash, deliberately not $SHELL: one shell means one
-/// redraw behavior and one escape-sequence dialect against xterm.js, on every
-/// launch method.
+/// Every in-app terminal runs bash, not $SHELL — one escape-sequence dialect against xterm.js.
 const TERMINAL_SHELL: &str = "/bin/bash";
 
-/// Overall MCP tool-call cap for spawned agents (24h ≈ "no timeout"): a write op
-/// waits for the user's approval, which they may leave queued for as long as they
-/// like.
+/// Overall MCP tool-call cap — 24h, since a gated write waits on a human.
 const MCP_TOOL_TIMEOUT_MS: &str = "86400000";
 
-/// Write ops block on a human approval that can be deferred indefinitely (Esc
-/// parks it in the queue for later review), so the agent's MCP call must be
-/// allowed to wait. With the CLI defaults the call times out and the agent
-/// RETRIES, queueing a duplicate of an action the user hasn't decided on yet.
-/// `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT=0` disables the idle timeout (the CLI
-/// documents 0 as "disabled"); MCP_TOOL_TIMEOUT is the overall cap. Set on every
-/// PTY so `claude` behaves the same started from an in-app terminal.
+/// No MCP idle timeout and a 24h cap: a gated write waits on a human, and a timed-out
+/// call would be retried, queueing a duplicate. Set on every PTY.
 fn claude_env() -> Vec<(&'static str, String)> {
     vec![
         ("CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT", "0".to_string()),
@@ -33,16 +24,12 @@ fn claude_env() -> Vec<(&'static str, String)> {
 /// (A constant random UUID — its only job is to namespace `new_v5`.)
 const SESSION_NS: uuid::Uuid = uuid::uuid!("6f3d8a1c-2b7e-4f5a-9c0d-1e2f3a4b5c6d");
 
-/// The Claude session UUID for a task is derived deterministically from its id,
-/// so we never have to guess which session file belongs to the task: the same
-/// task_id always maps to the same UUID, on every launch, with no persistence.
+/// The Claude session UUID for a task, derived from its id.
 pub fn task_session_uuid(task_id: &str) -> String {
     uuid::Uuid::new_v5(&SESSION_NS, task_id.as_bytes()).to_string()
 }
 
-/// Legacy: the per-task `.agent_session_id` file written by the old watcher
-/// approach. Read-only now — honored as a fallback so existing conversations
-/// keep resuming, but never written.
+/// Legacy `.agent_session_id` file — read as a fallback, never written.
 fn load_legacy_session_id(task_id: &str) -> Option<String> {
     std::fs::read_to_string(crate::worktrees::session_dir(task_id).join(".agent_session_id"))
         .ok()
@@ -50,11 +37,8 @@ fn load_legacy_session_id(task_id: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-/// Encode a CWD path the same way Claude Code does for its session directory:
-/// every character that is not a letter or digit becomes `-`. Replacing only
-/// `/` missed the dots — `gitlab.wiremind.io` encodes as `gitlab-wiremind-io` —
-/// so a cwd containing one never matched, and the conversation forked instead
-/// of resuming.
+/// Encode a cwd the way Claude Code names its session directory: every
+/// non-alphanumeric character becomes `-`.
 fn claude_projects_dir(cwd: &str) -> std::path::PathBuf {
     let encoded: String = cwd
         .trim_end_matches('/')
@@ -75,9 +59,7 @@ fn session_exists(cwd: &str, uuid: &str) -> bool {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/// Return the absolute path to the `claude` binary.
-/// First tries $HOME/.local/bin/claude (most common npm global install),
-/// then falls back to `which` (works when Tauri inherits the user's PATH).
+/// Absolute path to the `claude` binary.
 pub(crate) fn resolve_claude_bin() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     let local = format!("{home}/.local/bin/claude");
@@ -105,9 +87,7 @@ mod tests {
     }
 }
 
-/// The worktree root (from config, tilde-expanded), falling back to $HOME if it
-/// isn't a directory. Used as the cwd for the agent and for terminals that have
-/// no worktree yet (e.g. a fresh explorer with no repos added).
+/// The worktree root from config, or $HOME when it is not a directory.
 fn resolve_root_cwd() -> String {
     let raw = crate::core::config::get()
         .map(|c| c.git.worktree_root)
@@ -131,14 +111,8 @@ pub async fn start_agent_session(
 ) -> Result<String, String> {
     let cwd = resolve_root_cwd();
 
-    // Each task owns one deterministic Claude session UUID. We pick the id
-    // ourselves instead of discovering it after the fact, so a task always maps
-    // to the same conversation and the interactive resume picker never appears.
-    //
-    // - First launch (no session file yet) → create with our chosen `--session-id`.
-    // - Subsequent launches (file exists)  → `--resume` that exact session.
-    // A legacy `.agent_session_id` (from the old watcher approach) is honored as
-    // a fallback when its session file still exists, so old conversations resume.
+    // One deterministic Claude session per task: created on first launch, resumed
+    // after. A legacy `.agent_session_id` is honored while its file still exists.
     let uuid = task_session_uuid(&task_id);
     let mut args: Vec<String> = if session_exists(&cwd, &uuid) {
         vec!["--resume".to_string(), uuid]
@@ -148,23 +122,12 @@ pub async fn start_agent_session(
         vec!["--session-id".to_string(), uuid]
     };
 
-    // Bind THIS agent's MCP connection to THIS task.
-    //
-    // Every agent runs at the same worktree root, so they'd otherwise share one
-    // MCP config and resolve "the active task" through the UI's focus — meaning
-    // an agent working on task A starts answering about task B the moment the
-    // user looks elsewhere. The `?task=` query param makes the server bind the
-    // connection to this task for its lifetime instead.
-    //
-    // Both blobs go through FILES, not inline argv: they carry the loopback
-    // bearer token, and `/proc/<pid>/cmdline` is world-readable. WITHOUT
-    // `--strict-mcp-config` the user's other servers (notion, kubernetes, …)
-    // still load from disk.
+    // Bind this connection to this task via `?task=`. Both blobs go through FILES,
+    // not argv: they carry the bearer token and /proc/<pid>/cmdline is readable.
+    // No `--strict-mcp-config`, so the user's own servers still load.
     let mcp_config = serde_json::json!({
         "mcpServers": {
-            // The server name is the agent's tool PREFIX
-            // (mcp__groove__get_task_diff). Renaming it invalidates any
-            // permission allowlist or hook matcher built on the old prefix.
+            // The server name is the agent's tool prefix (mcp__groove__*).
             "groove": {
                 "type": "sse",
                 "url": crate::mcp_server::sse_url(&task_id),
@@ -177,15 +140,12 @@ pub async fn start_agent_session(
     args.push("--mcp-config".to_string());
     args.push(write_launch_file(&app, &task_id, "mcp.json", &mcp_config.to_string()).map_err(|e| e.to_string())?);
 
-    // Report this agent's state (working / waiting on the user / idle) back to the
-    // app. See agent_hooks for why hooks rather than reading the terminal.
+    // Report the agent's state back through hooks (see agent_hooks).
     args.push("--settings".to_string());
     args.push(write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id)).map_err(|e| e.to_string())?);
 
-    // Who this agent is, and how Groove behaves around it. Undocumented in
-    // `--help` but real as of 2.1.245; `--append-system-prompt` takes the text
-    // inline if it ever goes away. A missing session row costs the title, not the
-    // launch.
+    // The core prompt. `--append-system-prompt-file` is absent from `--help`;
+    // `--append-system-prompt` is the inline fallback.
     let session = crate::core::db::store::sessions::get_opt(&*pool, &task_id)
         .await
         .ok()
@@ -196,17 +156,13 @@ pub async fn start_agent_session(
             .map_err(|e| e.to_string())?,
     );
 
-    // Skills, gated by the flag itself: `--plugin-dir` loads a plugin for THIS
-    // session only, so a Groove skill never reaches an agent the user starts from
-    // a plain terminal. Verified against Claude Code 2.1.245 — it applies on
-    // `--resume` too, and asks for no trust confirmation.
+    // Skills, per session: `--plugin-dir` is launch-scoped.
     for dir in crate::skills::plugin_dirs(&app) {
         args.push("--plugin-dir".to_string());
         args.push(dir);
     }
 
-    // Drop the reported activity with the process, so a "waiting on you" can
-    // never outlive the agent it described.
+    // Drop the reported activity with the process.
     let app_exit = app.clone();
     let task_exit = task_id.clone();
     let on_exit = Box::new(move || {
@@ -257,12 +213,8 @@ fn write_launch_file(
     Ok(path.to_string_lossy().to_string())
 }
 
-/// `--settings` JSON wiring Claude Code's lifecycle hooks to our loopback
-/// server. Verified with Claude Code 2.1.220: these settings MERGE with the
-/// user's own settings files, so their hooks keep running alongside these.
-///
-/// `curl` is best-effort by design — `-m 2` caps the stall if the app is gone,
-/// and a failing hook must never hold up the agent, only cost a status update.
+/// `--settings` wiring Claude Code's hooks to the loopback server; merges with the
+/// user's own. `curl -m 2 … || true`: a failing hook must never hold up the agent.
 fn hook_settings(task_id: &str) -> String {
     let command = format!(
         "curl -s -m 2 -X POST -H 'content-type: application/json' -H 'authorization: Bearer {}' --data-binary @- '{}' >/dev/null 2>&1 || true",

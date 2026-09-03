@@ -20,8 +20,7 @@ pub const MR_CLOSE: &str = "mr.close";
 pub const TASK_PROPERTY: &str = "task.property";
 /// Add hours to the task's hours field.
 pub const TASK_HOURS: &str = "task.hours";
-/// Replace the task's body from markdown — gated even from the UI, because it can
-/// delete content markdown cannot represent.
+/// Replace the task's body from markdown. Gated from the UI too.
 pub const TASK_BODY: &str = "task.body";
 
 /// File a new task without opening or provisioning anything.
@@ -32,15 +31,11 @@ pub const TASK_ADD_REPO: &str = "task.add_repo";
 pub const TASK_ADD_WORKTREE: &str = "task.add_worktree";
 pub const TASK_CREATE_FROM_EXPLORER: &str = "task.create_from_explorer";
 
-/// Mark the task Done at its source, then tear the local session down — every
-/// worktree goes. The one agent-reachable op that destroys work, so its dialog
-/// says so.
+/// Mark the task done at its source, then tear the session down — every worktree goes.
 pub const TASK_FINISH: &str = "task.finish";
 
-/// Write one of the user's own agent skills. Gated even though it never leaves the
-/// machine: a skill is an instruction the agent invokes on its own later, so the
-/// user reads it once, here, before it can act. The Settings editor writes
-/// directly — that is the user typing, which is its own consent.
+/// Write one of the user's skills. Gated although local: a skill is an instruction
+/// the agent later invokes on its own.
 pub const SKILL_SAVE: &str = "skill.save";
 
 /// Every op, for the mirror test below.
@@ -66,16 +61,12 @@ const ALL: [&str; 18] = [
     SKILL_SAVE,
 ];
 
-/// The success payload every write op returns. A bare `null` is what an agent
-/// gets when a tool call does nothing, so ops that "just succeed" must still say
-/// so explicitly — otherwise the model reads success as failure and retries.
+/// The success payload every op returns. Never a bare null — the model reads that as failure.
 fn op_ok(op: &str, message: impl Into<String>) -> serde_json::Value {
     serde_json::json!({ "ok": true, "op": op, "message": message.into() })
 }
 
-/// Repo name for readable messages. Payloads carry the project name; the path
-/// heuristic only covers rows queued before they did — its last segment is the
-/// branch leaf now that worktree dirs embed the branch's slashes.
+/// Repo name for messages; the path fallback covers rows queued before payloads carried it.
 fn repo_of(payload: &serde_json::Value) -> String {
     if let Some(repo) = payload["repo"].as_str().filter(|s| !s.is_empty()) {
         return repo.to_string();
@@ -89,11 +80,8 @@ fn repo_of(payload: &serde_json::Value) -> String {
         .to_string()
 }
 
-/// What a logged-hours op reports.
-///
-/// `before`/`after` are null for a source with no hours field, which is not a
-/// failure — the local ledger is the whole record there. Reading that null as 0
-/// made a correct write say "Hours spent 0 → 0", which reads as nothing happened.
+/// `before`/`after` are null for a source with no hours field — not a failure; the
+/// local ledger is the record there.
 fn hours_message(out: &serde_json::Value) -> String {
     match (out["before"].as_f64(), out["after"].as_f64()) {
         (Some(before), Some(after)) => format!("Hours spent {before} → {after}"),
@@ -174,8 +162,7 @@ pub(super) async fn execute(
             let branch = branch_of(&payload);
             let worktree_id = payload["worktree_id"].as_str().unwrap_or("").to_string();
             crate::forge::create_mr_impl(payload, pool).await?;
-            // Hand back the MR the op just recorded — the agent's next step is
-            // almost always "give me the link".
+            // Hand back the MR just recorded.
             let latest = crate::core::db::store::mrs::latest_for_worktree(pool, &worktree_id)
                 .await
                 .ok()
@@ -186,8 +173,7 @@ pub(super) async fn execute(
                     "op": op_type,
                     "message": format!("Merge request !{} created from {branch}", mr.remote_id),
                     "iid": mr.remote_id,
-                    // The exact key update_mr/close_mr want. Without it the only
-                    // handle the caller had was the number, which is ambiguous.
+                    // The key update_mr/close_mr want.
                     "mr_id": mr.id,
                     "url": mr.url,
                 }),
@@ -239,9 +225,7 @@ pub(super) async fn execute(
             let report = crate::skills::save_user_skill_impl(payload).await?;
             let mut v = op_ok(
                 op_type,
-                // The restart is the part the agent gets wrong on its own: it would
-                // offer the new skill in the same breath, and the slash command
-                // would not exist yet.
+                // The skill loads on the agent's next start, not now.
                 format!("Wrote user:{name} — it loads when the agent restarts, not before"),
             );
             if let (Some(obj), Some(report)) = (v.as_object_mut(), report) {
@@ -297,8 +281,7 @@ mod tests {
         }
     }
 
-    /// A GitHub issue has no hours field, so the write returns null and the local
-    /// ledger is the record. Saying "0 → 0" told the user it had failed.
+    /// A source with no hours field returns null, and null must not read as 0.
     #[test]
     fn hours_with_no_field_at_the_source_does_not_read_as_zero() {
         let none = serde_json::json!({ "before": null, "after": null, "added": 1.6 });

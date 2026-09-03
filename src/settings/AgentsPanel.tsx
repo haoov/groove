@@ -1,8 +1,7 @@
 import { useStore } from '../shared/store';
 import { SkillsSection } from '../actions/SkillsSection';
 
-/** Everything about the agent. Actions today; the rest of its configuration
- *  belongs here as it arrives, rather than in a panel of its own. */
+/** Everything about the agent. */
 export function AgentsPanel() {
   const suggestActions = useStore((s) => s.config?.ui.suggest_actions ?? true);
   const setSuggestActions = useStore((s) => s.setSuggestActions);

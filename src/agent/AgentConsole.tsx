@@ -11,19 +11,8 @@ import { useAttachedHost } from '../shared/lib/useAttachedHost';
 import type { AgentActivity, AgentSkill, ProviderId } from '../shared/ipc/ipc';
 
 /**
- * The agent, as a full-height column on the right of the work.
- *
- * It shows the agent's REAL terminal rather than a re-implementation: no second
- * input to keep in sync, no guessing what Claude is asking, and no state where
- * typing is unsafe, because you are looking at and typing into the actual thing.
- *
- * A column rather than the floating card it used to be — a conversation you keep
- * glancing at wants the height, and a card that hovered over the editor was in the
- * way. It sits between the workspace and the session dock, so the two right-hand
- * columns read as one edge.
- *
- * It addresses whichever session its context names — the focused one in a
- * workspace (App.tsx mounts it there only).
+ * The agent's REAL terminal, as a column on the right — not a re-implementation, so
+ * there is no second input to keep in sync. Addresses the session its context names.
  */
 
 const MIN_WIDTH = 320;
@@ -91,9 +80,8 @@ export function AgentConsole() {
       .finally(() => setStarting(false));
   };
 
-  // Opening the pane IS the request to start an agent. Only on the open
-  // TRANSITION: with it already open, flipping through sessions must not spawn a
-  // Claude process in each one, and a failed start must not retry in a loop.
+  // Start an agent on the open TRANSITION only — not on every session switch, and
+  // not in a loop after a failed start.
   const wasOpen = useRef(false);
   useEffect(() => {
     const justOpened = open && !wasOpen.current;
@@ -114,8 +102,7 @@ export function AgentConsole() {
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    // The rendered width, not the stored one: in a window too narrow for every
-    // column this has been shrunk, and dragging from the stored value would jump.
+    // The rendered width, not the stored one — the pane may have been shrunk.
     const startWidth = paneRef.current?.getBoundingClientRect().width ?? width;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
@@ -153,9 +140,8 @@ export function AgentConsole() {
   const core = offered.filter((a) => !a.editable);
   const mine = offered.filter((a) => a.editable);
 
-  // Filing a task needs a source; with several configured each one is its own
-  // row and the pick rides along as the skill's argument. One source needs no
-  // row of its own — the agent infers it.
+  // With several sources configured, create-task gets one row each; the pick is
+  // the skill's argument.
   const skillRow = (a: AgentSkill, src?: ProviderId) => (
     <button
       key={src ? `${a.id}:${src}` : a.id}
@@ -226,11 +212,7 @@ export function AgentConsole() {
           )}
         </div>
 
-        {/* The skills below the terminal — the conversation is the main thing,
-            and all of them behind one menu so the bar stays a single line however
-            many skills the user has written.
-            An empty `kinds` offers the skill everywhere, which is what a user
-            skill gets when they name no kind. */}
+        {/* The skills, behind one menu. */}
         <div className="console-actions">
           <span className="actions-menu" ref={menuRef}>
             <button
@@ -246,8 +228,7 @@ export function AgentConsole() {
             {/* Opens UPWARD: the bar is the console's bottom edge. */}
             {menuOpen && (
               <div className="ctx-menu actions-menu-panel">
-                {/* A heading per group is what says whose a skill is, so a row
-                    needs no badge of its own. Same words as the Settings panel. */}
+                {/* One heading per group. */}
                 {core.length > 0 && <div className="ctx-menu-label">Core</div>}
                 {skillRows(core)}
                 {mine.length > 0 && <div className="ctx-menu-label">User</div>}
@@ -255,10 +236,7 @@ export function AgentConsole() {
               </div>
             )}
           </span>
-          {/* A skill changed on disk. `--plugin-dir` is read at launch, so the
-              running agent cannot see it — and the skills list deliberately does
-              not refresh until it can, or the menu would offer a slash command
-              the agent answers with "unknown command". */}
+          {/* A skill changed on disk; the running agent needs a restart to see it. */}
           {skillsStale && agentPty && (
             <button
               className="console-action"
@@ -270,8 +248,7 @@ export function AgentConsole() {
               Reload skills
             </button>
           )}
-          {/* Auto-approve, as a real switch — warm while on, so approving blind is
-              never a hidden state. Sits apart from the canned asks. */}
+          {/* Auto-approve — warm while on. */}
           <button
             className={`console-toggle ${autoApprove ? 'on' : ''}`}
             role="switch"
@@ -290,8 +267,7 @@ export function AgentConsole() {
   );
 }
 
-/** One line describing the agent. No activity means nothing has been reported —
- *  said plainly rather than dressed up as idle. */
+/** One line describing the agent. */
 function statusText(a: AgentActivity | null, hasAgent: boolean, starting: boolean): string {
   if (starting) return 'starting…';
   if (!a) return hasAgent ? 'running' : 'no agent yet';

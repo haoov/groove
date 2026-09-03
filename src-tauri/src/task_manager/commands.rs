@@ -225,9 +225,7 @@ pub async fn finish_task(
         .map_err(|e| e.to_string())
 }
 
-/// The approval-gated form, for the agent. Same teardown as the Finish task
-/// button, so it destroys every worktree of the session — `close-task` checks
-/// nothing is unlanded before it asks.
+/// The approval-gated form. Same teardown as the Finish task button.
 pub async fn finish_task_from_payload(
     payload: serde_json::Value,
     pool: &SqlitePool,

@@ -7,15 +7,12 @@ export type AgentSkill = {
  */
 id: string, plugin: string, name: string, 
 /**
- * Written for the MODEL: what the skill does and when to reach for it, so
- * Claude Code can invoke it off what the user typed. Its slash menu renders
- * it too, so it stays readable — but it is too long for a tooltip.
+ * For the MODEL: what the skill does and when to invoke it. Also shown in
+ * Claude's slash menu.
  */
 description: string, 
 /**
- * The one line the UI shows — `groove-hint`, and empty when a skill sets
- * none. Never the description: that is a paragraph written for the model,
- * and it does not fit a tooltip.
+ * The one line the UI shows. Empty when unset — never the description.
  */
 hint: string, label: string, 
 /**

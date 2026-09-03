@@ -15,14 +15,12 @@ use serde::Serialize;
 
 use crate::core::db::models::{Session, SessionKind};
 
-/// Plugin names, which are also the agent-facing namespaces — `groove:start-task`,
-/// `user:deploy-check`. Renaming one breaks every button built on the old prefix.
+/// Plugin names, and the agent-facing namespaces (`groove:start-task`). Renaming one
+/// breaks every button.
 pub const CORE_PLUGIN: &str = "groove";
 pub const USER_PLUGIN: &str = "user";
 
-/// Core skills, compiled in. Shipping them as source rather than seeding a
-/// directory means an app update replaces them outright — nothing to migrate, and
-/// no half-edited core skill can survive an upgrade.
+/// Core skills, compiled in; the on-disk plugin is rewritten from these at startup.
 const CORE_SKILLS: &[(&str, &str)] = &[
     ("close-task", include_str!("core/close-task.md")),
     ("co-review", include_str!("core/co-review.md")),
@@ -44,13 +42,10 @@ pub struct AgentSkill {
     pub id: String,
     pub plugin: String,
     pub name: String,
-    /// Written for the MODEL: what the skill does and when to reach for it, so
-    /// Claude Code can invoke it off what the user typed. Its slash menu renders
-    /// it too, so it stays readable — but it is too long for a tooltip.
+    /// For the MODEL: what the skill does and when to invoke it. Also shown in
+    /// Claude's slash menu.
     pub description: String,
-    /// The one line the UI shows — `groove-hint`, and empty when a skill sets
-    /// none. Never the description: that is a paragraph written for the model,
-    /// and it does not fit a tooltip.
+    /// The one line the UI shows. Empty when unset — never the description.
     pub hint: String,
     pub label: String,
     /// Kinds whose UI offers it. Empty means every kind.
@@ -61,15 +56,8 @@ pub struct AgentSkill {
 
 // ─── The core prompt ──────────────────────────────────────────────────────────
 
-/// What every Groove agent is told about the app it runs inside.
-///
-/// Passed per launch with `--append-system-prompt-file`, never baked into the
-/// conversation, so a resumed session picks up the current text and an app update
-/// reaches every session already open.
-///
-/// Only STABLE identity is interpolated. Repos, worktrees and MRs drift inside a
-/// long session, and a stale system prompt lies louder than a missing one — those
-/// stay in `get_active_task`, which is read at the moment it is needed.
+/// The system prompt appended at every launch, with the session's identity
+/// interpolated. Only STABLE identity — repos, worktrees and MRs drift.
 pub fn core_prompt(task_id: &str, session: Option<&Session>) -> String {
     let who = match session {
         Some(s) => format!("session {} ({}): \"{}\"", s.id, kind_word(s.kind), s.title),
@@ -95,8 +83,7 @@ fn core_dir(app: &tauri::AppHandle) -> anyhow::Result<PathBuf> {
     Ok(app.path().app_data_dir()?.join("plugins").join(CORE_PLUGIN))
 }
 
-/// `<config>/user-skills`. The `skills/` inside it is the plugin format's nesting,
-/// not ours; the manager shows only what lives under it.
+/// `<config>/user-skills`. The `skills/` inside is the plugin format's nesting.
 pub fn user_dir() -> Option<PathBuf> {
     crate::core::config::dir().map(|d| d.join("user-skills"))
 }
@@ -110,10 +97,7 @@ pub fn sync(app: &tauri::AppHandle) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Replace the core plugin from `CORE_SKILLS`.
-///
-/// Stale skill dirs are deleted, not left: a skill renamed or dropped in a release
-/// would otherwise keep loading forever, and the agent would keep being offered it.
+/// Replace the core plugin from `CORE_SKILLS`, deleting skill dirs no longer in it.
 fn sync_core_at(dir: &Path) -> anyhow::Result<()> {
     write_manifest(dir, CORE_PLUGIN, "Groove workbench actions")?;
     let skills = dir.join("skills");
@@ -132,12 +116,7 @@ fn sync_core_at(dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Create the user plugin without touching its skills.
-///
-/// The manifest is rewritten every time and the skills never are: the wrapper is
-/// Groove's, `skills/` is the user's. A missing or edited manifest stops the whole
-/// plugin from loading, which reads as "my actions vanished", so it is not left to
-/// chance.
+/// Create the user plugin. The manifest is rewritten every time; `skills/` never is.
 fn ensure_user_at(dir: &Path) -> anyhow::Result<()> {
     std::fs::create_dir_all(dir.join("skills"))?;
     write_manifest(dir, USER_PLUGIN, "Your own Groove actions")
@@ -156,10 +135,7 @@ fn write_manifest(dir: &Path, name: &str, description: &str) -> anyhow::Result<(
     Ok(())
 }
 
-/// The `--plugin-dir` arguments for one launch.
-///
-/// A plugin with no skill is skipped — loading an empty one costs a startup
-/// warning for nothing, and the user plugin is empty until they write their first.
+/// The `--plugin-dir` arguments for one launch. A plugin with no skills is skipped.
 pub fn plugin_dirs(app: &tauri::AppHandle) -> Vec<String> {
     [core_dir(app).ok(), user_dir()]
         .into_iter()
@@ -206,14 +182,8 @@ fn read_plugin(dir: &Path, plugin: &str, editable: bool) -> Vec<AgentSkill> {
         .collect()
 }
 
-/// Read one `SKILL.md`'s front matter.
-///
-/// A hand parser, not YAML: every key Groove reads is a single-line scalar, with a
-/// comma list where it needs several. Claude Code passes the `groove-*` keys
-/// through untouched — `claude plugin validate` accepts them.
-///
-/// The DIRECTORY name is the identity, never the `name:` key: it is what
-/// `/groove:<name>` resolves against, so a stale key cannot rename a skill.
+/// Read a `SKILL.md`'s front matter. A hand parser: every key is a single-line
+/// scalar. The DIRECTORY name is the identity, never the `name:` key.
 fn parse(plugin: &str, name: &str, body: &str, editable: bool) -> AgentSkill {
     let front = front_matter(body);
     let kinds = parse_kinds(field(front, "groove-kinds").as_deref());
@@ -253,8 +223,7 @@ fn field(front: &str, key: &str) -> Option<String> {
     })
 }
 
-/// Unknown names are dropped rather than failing the skill: a typo should cost the
-/// button, not the whole entry.
+/// Unknown kinds are dropped, not fatal.
 fn parse_kinds(raw: Option<&str>) -> Vec<SessionKind> {
     raw.into_iter()
         .flat_map(|v| v.split(','))
@@ -269,11 +238,7 @@ fn parse_kinds(raw: Option<&str>) -> Vec<SessionKind> {
 
 // ─── The user's own skills ────────────────────────────────────────────────────
 
-/// A skill name as it lands on disk and in `/user:<name>`.
-///
-/// Lowercase, digits and dashes only. It is a directory name joined onto the
-/// plugin dir, so anything else is either a path escape or a slash command the
-/// user cannot type.
+/// Lowercase, digits and dashes only — the name is joined onto the plugin dir as a path.
 fn valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
@@ -283,8 +248,7 @@ fn valid_name(name: &str) -> bool {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-/// The directory of one skill, by `plugin:name`. Errors rather than guessing: an
-/// unknown plugin or a name that is not a plain directory has no path.
+/// The `SKILL.md` path for a `plugin:name` id.
 fn skill_path(app: &tauri::AppHandle, id: &str) -> anyhow::Result<PathBuf> {
     let (plugin, name) = id
         .split_once(':')
@@ -300,17 +264,15 @@ fn skill_path(app: &tauri::AppHandle, id: &str) -> anyhow::Result<PathBuf> {
     Ok(dir.join("skills").join(name).join("SKILL.md"))
 }
 
-/// The user plugin's skills dir, or the error that says the config never loaded.
+/// The user plugin's skills dir.
 fn user_skills_dir() -> anyhow::Result<PathBuf> {
     Ok(user_dir()
         .ok_or_else(|| anyhow::anyhow!("no config directory"))?
         .join("skills"))
 }
 
-/// Write one user skill, optionally replacing the one it was renamed from.
-///
-/// The old directory goes only after the new one is on disk, so a failed write
-/// leaves the original skill intact rather than losing both.
+/// Write one user skill. With `previous`, remove the dir it was renamed from — AFTER
+/// the new one is on disk.
 fn save_user_skill_at(root: &Path, name: &str, body: &str, previous: Option<&str>) -> anyhow::Result<()> {
     if !valid_name(name) {
         anyhow::bail!("a name is lowercase letters, digits and dashes: `{name}`");
@@ -325,11 +287,7 @@ fn save_user_skill_at(root: &Path, name: &str, body: &str, previous: Option<&str
     Ok(())
 }
 
-/// `claude plugin validate` on the user plugin, as text for the UI.
-///
-/// It reads the SKILL.md too, not only the manifest: a missing front-matter block
-/// or description comes back as a warning. Best effort — no `claude` on PATH costs
-/// the check, never the save.
+/// `claude plugin validate` on the user plugin, as text. None when `claude` is not on PATH.
 async fn validate_user_plugin() -> Option<String> {
     let dir = user_dir()?;
     let out = tokio::process::Command::new(crate::agent_manager::resolve_claude_bin())
@@ -348,11 +306,7 @@ async fn validate_user_plugin() -> Option<String> {
 
 // ─── What the agent writes ────────────────────────────────────────────────────
 
-/// One user skill's raw `SKILL.md`, for an agent about to edit it.
-///
-/// The user's own only. The core plugin is rewritten from `CORE_SKILLS` at every
-/// startup, so handing the agent a core skill to edit would promise an edit the
-/// next launch silently erases.
+/// One user skill's raw `SKILL.md`. User skills only — core ones are rewritten at startup.
 pub fn read_user_skill(name: &str) -> anyhow::Result<String> {
     if !valid_name(name) {
         anyhow::bail!("not a skill name: `{name}`");
@@ -362,11 +316,8 @@ pub fn read_user_skill(name: &str) -> anyhow::Result<String> {
         .map_err(|e| anyhow::anyhow!("no user skill `{name}`: {e}"))
 }
 
-/// The approved `skill.save` op. Returns what `claude plugin validate` said.
-///
-/// Writing over an existing name is refused unless the call says it is REPLACING
-/// that skill: an agent picking a name that happens to be taken would otherwise
-/// overwrite something the user wrote, with the same confirmation text either way.
+/// The approved `skill.save` op. Refuses to overwrite an existing name unless
+/// `previous` names it. Returns what `claude plugin validate` said.
 pub(crate) async fn save_user_skill_impl(
     payload: serde_json::Value,
 ) -> anyhow::Result<Option<String>> {
@@ -394,19 +345,14 @@ pub async fn list_agent_skills(app: tauri::AppHandle) -> Result<Vec<AgentSkill>,
     Ok(list(&app))
 }
 
-/// The raw `SKILL.md` behind a skill id. Core skills read too — the manager offers
-/// one as the starting point for a user's own.
+/// The raw `SKILL.md` behind a skill id, core or user.
 #[tauri::command]
 pub async fn read_agent_skill(app: tauri::AppHandle, id: String) -> Result<String, String> {
     let path = skill_path(&app, &id).map_err(|e| e.to_string())?;
     std::fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {e}", path.display()))
 }
 
-/// Create or replace a user skill. Returns what `claude plugin validate` said, or
-/// null when it could not run.
-///
-/// A local file, so it does NOT go through the approvals bridge: that gate is for
-/// writes leaving the machine.
+/// Create or replace a user skill from the Settings editor. A local write — not bridged.
 #[tauri::command]
 pub async fn save_user_skill(
     name: String,
@@ -464,8 +410,7 @@ mod tests {
         assert!(!p.contains("{{"), "a placeholder survived interpolation");
     }
 
-    /// A session row can be missing (a race at first launch); the prompt still has
-    /// to name something, because every tool default is "your own task".
+    /// A missing session row still yields a prompt that names the task.
     #[test]
     fn the_prompt_falls_back_to_the_bare_id() {
         let p = core_prompt("PLAT-42", None);
@@ -473,15 +418,13 @@ mod tests {
         assert!(!p.contains("{{"));
     }
 
-    /// A typo in `groove-kinds` costs a button silently — the skill just shows up
-    /// in every session instead of one. Cheap to guard, invisible to debug.
+    /// A misspelt kind would silently offer the skill everywhere.
     #[test]
     fn every_core_skill_carries_a_description_and_real_kinds() {
         for (name, body) in CORE_SKILLS {
             let s = parse(CORE_PLUGIN, name, body, false);
             assert!(!s.description.is_empty(), "{name} has no description");
-            // The description is what Claude Code matches the user's words against,
-            // so it has to say WHEN to reach for the skill and not only what it does.
+            // The description must say WHEN to invoke, not only what.
             assert!(
                 s.description.contains("Use when"),
                 "{name}'s description names no trigger"
@@ -498,9 +441,7 @@ mod tests {
         }
     }
 
-    /// A skill is prose, and prose does not fail to compile. Rename a tool and every
-    /// skill that names it keeps pointing at nothing until an agent tries it and
-    /// improvises instead. This is the one check a prose-driven feature needs.
+    /// A skill body is prose: a renamed tool leaves it pointing at nothing.
     #[test]
     fn every_tool_a_core_skill_names_exists() {
         // Backticked snake_case that is a payload field, not a tool.
@@ -542,8 +483,7 @@ mod tests {
         assert!(!s.editable);
     }
 
-    /// No hint means no line in the UI. The description is a paragraph aimed at
-    /// the model, so borrowing it fills a tooltip with prose.
+    /// No hint means no line — never the description.
     #[test]
     fn a_skill_with_no_hint_shows_none() {
         let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
@@ -611,8 +551,7 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// The name is joined onto the plugin dir, so a rejected name is a rejected
-    /// path escape — not a style rule.
+    /// A rejected name is a rejected path escape.
     #[test]
     fn a_name_is_a_safe_directory_name() {
         for ok in ["deploy-check", "a", "x2", "check-prod-2"] {

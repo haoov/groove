@@ -6,8 +6,7 @@
 //! MR text, an annotation or a task body. It is the only text present at the moment
 //! of the call, attached to the field it governs, and it reaches every caller — a
 //! skill only fires when invoked. Do NOT restate these rules in a skill, the core
-//! prompt or a CLAUDE.md: saying the same thing in three places got all three
-//! ignored.
+//! prompt or a CLAUDE.md.
 //!
 //! Keep every rule to a short phrase. No examples, no rationale, no length caps —
 //! the agent needs scoping, not an essay.
@@ -21,13 +20,10 @@ const SUBJECT: &str = "Conventional commit subject: `type(scope): subject`, impe
     lower case, no final period, under 72 chars. Types: feat, fix, chore, docs, style, \
     refactor, perf, test, build, ci, revert.";
 
-/// The bar for length. A deletion test, never a number — a sentence budget produces
-/// clipped prose instead of short prose.
+/// The bar for length — a deletion test, never a number.
 const TIGHT: &str = "Only what the reader needs to act on. Cut what adds nothing.";
 
-/// Markdown affordances. Stated because the bans on file lists and per-commit
-/// changelogs otherwise read as "prose only". `- [ ]` becomes a real to-do
-/// block (task_manager/notion.rs) and a GitLab task list.
+/// Markdown affordances; `- [ ]` becomes a real to-do block.
 const LISTS: &str = "Lists where you are listing things. `- [ ]` for anything still open.";
 
 fn mr_description() -> String {
@@ -50,9 +46,8 @@ fn task_body_description(specifics: &str) -> String {
 
 const TARGET_BRANCH: &str = "Branch this work is based on and will be merged back into. Omit for the repo default; name it for a maintenance, release or backport branch, or for the branch a stacked MR sits on. It must already exist on origin. The branch is cut from it, the diff is measured against it, and create_mr targets it.";
 
-/// What a `SKILL.md` has to contain. The description rule is the load-bearing one:
-/// Claude Code matches it against the chat to invoke the skill with no button
-/// pressed, so a label-shaped description is a skill that never fires.
+/// What a `SKILL.md` has to contain. The description is what Claude Code matches to
+/// invoke the skill unprompted.
 fn skill_body_description() -> String {
     "The whole SKILL.md. Front matter between `---` lines, every value on ONE line: \
      `name` (matches the name field), `description`, `groove-kinds` (comma list of \
@@ -135,10 +130,8 @@ mod tests {
         }
     }
 
-    /// The agent's commit is `index_only` (mcp_server/tools/write.rs), so this has
-    /// to ask for staging rather than describe a fallback. Three wordings failed
-    /// before that: each described `-a` accurately and each still lost a new file,
-    /// because a description is advice and auto mode has no dialog to catch it.
+    /// The agent's commit is `index_only`, so this asks for staging rather than
+    /// describing a fallback.
     #[test]
     fn git_commit_asks_for_a_deliberate_index() {
         let tools = mcp_tool_definitions();

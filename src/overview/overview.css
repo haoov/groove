@@ -274,8 +274,7 @@
   margin: 0;
 }
 
-/* The offer to let the agent read the task and set it up. Its own line under the empty
-   sentence, so it reads as an option rather than part of the sentence. */
+/* The offer to let the agent set the task up. */
 .overview-suggest {
   display: flex;
   align-items: center;

@@ -8,13 +8,7 @@ import { sendSkill } from '../lib/agentSend';
 import { offers } from '../lib/skills';
 import { useStore, useSession } from '../store';
 
-/**
- * The MR's pipeline chip, and what you can do about it.
- *
- * Both surfaces that show CI use this one — the commit panel's chip and the MR
- * overview's badge differ only in `className` and label, and a menu written
- * twice drifts.
- */
+/** The MR's pipeline chip and its menu — shared by the commit panel and the MR overview. */
 export function CiChip({ status, url, platform, className, children }: {
   status: string;
   /** The run's URL; the MR's own page when the forge reported none. */
@@ -26,8 +20,7 @@ export function CiChip({ status, url, platform, className, children }: {
   const sessionId = useSession((s) => s.id);
   const setLastError = useStore((s) => s.setLastError);
   const kind = useSession((s) => s.kind);
-  // The same question the Actions menu asks: fix-ci is task-only, and this chip
-  // renders in a review session too.
+  // fix-ci is task-only; this chip renders in review sessions too.
   const hasFixCi = useStore((s) => offers(s.skills, kind, 'groove:fix-ci'));
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
 

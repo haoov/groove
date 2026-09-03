@@ -310,10 +310,8 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
     let path = required_str(&payload, "worktree_path")?;
     let message = required_str(&payload, "message")?;
 
-    // Stage-aware: if anything is staged, commit the index only; otherwise commit
-    // all tracked changes (the simple "type a message → commit everything" flow).
-    // `index_only` opts out of that second half — see the agent's path in
-    // mcp_server/tools/write.rs.
+    // Stage-aware: with anything staged, commit the index; otherwise `-a`. `index_only`
+    // (the agent's path) never falls back to `-a`.
     let index_only = payload["index_only"].as_bool().unwrap_or(false);
     let has_staged = git::output(path, &["diff", "--cached", "--quiet"])
         .await

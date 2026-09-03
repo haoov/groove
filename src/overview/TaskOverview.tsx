@@ -28,9 +28,7 @@ export function TaskOverview() {
   const [starting, setStarting] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  // Finishing runs through the agent, which checks for uncommitted, unpushed and
-  // unmerged work first — none of which the button could see. It ends at the same
-  // teardown, behind the approval dialog.
+  // Finishing runs through close-task, which checks for unlanded work first.
   const closeTask = async () => {
     setClosing(true);
     useStore.getState().requestConsoleFocus();
@@ -43,8 +41,7 @@ export function TaskOverview() {
     }
   };
 
-  // A suggestion, never an auto-send: opening a task must not spend tokens.
-  // start-task reads the task before attaching anything, so it is the one door.
+  // A suggestion, never an auto-send.
   const startTask = async () => {
     setStarting(true);
     useStore.getState().requestConsoleFocus(); // the proposal lands in the chat
@@ -179,8 +176,7 @@ export function TaskOverview() {
           schema={schema}
         />
 
-        {/* Deleting only. Finishing is the agent's `close-task`, which ends at the
-            approval dialog rather than here. */}
+        {/* Deleting only; finishing is close-task. */}
         {ending && (
           <div className="finish-confirm-banner destructive">
             <div className="finish-confirm-icon">

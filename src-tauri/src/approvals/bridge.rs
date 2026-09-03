@@ -79,10 +79,7 @@ impl Bridge {
         Ok(())
     }
 
-    /// True when an identical request is already awaiting the user's decision.
-    /// Approvals can be deferred indefinitely, so a caller that asks twice (an
-    /// agent retrying) must be told to wait instead of stacking a second row for
-    /// the same action — the user would then have to decide it twice.
+    /// True when an identical request already awaits a decision.
     pub async fn has_identical_pending(
         &self,
         pool: &SqlitePool,
@@ -133,8 +130,7 @@ impl Bridge {
         if approved {
             match serde_json::from_str::<serde_json::Value>(&confirmation.payload) {
                 Ok(mut payload) => {
-                    // Apply any field edits made in the confirmation modal (commit
-                    // message, MR title/description) before executing the op.
+                    // Field edits from the confirmation modal override the payload.
                     if let (Some(obj), Some(over)) = (
                         payload.as_object_mut(),
                         overrides.as_ref().and_then(|v| v.as_object()),

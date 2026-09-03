@@ -5,20 +5,10 @@ import { useStore } from '../shared/store';
 import type { AgentSkill } from '../shared/ipc/ipc';
 import './actions.css';
 
-/**
- * The agent's actions, as a Settings section.
- *
- * A skill is a `SKILL.md` the agent reads at the moment it is invoked, so the
- * editor is deliberately the raw file: front matter and prose, the same thing on
- * disk. Anything friendlier would be a second format to keep in sync with a
- * format Claude Code already defines.
- *
- * Core skills are read-only and open as the starting point for the user's own —
- * a working example beats an empty file.
- */
+/** The agent's actions in Settings. The editor is the raw SKILL.md — the same thing
+ *  on disk. Core skills are read-only. */
 
-/** What a new action starts as. The two `groove-*` keys are Groove's, and unknown
- *  front-matter keys are passed through by Claude Code untouched. */
+/** What a new action starts as. */
 const TEMPLATE = `---
 name: NAME
 description: What this does, then "Use when …" with the words you would type to ask for it. Claude Code matches this to invoke the skill on its own.
@@ -76,8 +66,7 @@ export function SkillsSection() {
     setEditing({ name: '', previous: null, body: TEMPLATE });
   };
 
-  // A core skill copied into the user's own: same body, no name yet, so saving
-  // cannot overwrite the original.
+  // A copy with no name yet, so saving cannot overwrite the core skill.
   const copyToMine = () => {
     setViewing(null);
     setReport(null);
@@ -117,8 +106,7 @@ export function SkillsSection() {
     }
   };
 
-  // The hint, not the description: the description is a paragraph written for the
-  // model to match the user's words against.
+  // The hint, not the description — the description is written for the model.
   const row = (s: AgentSkill) => (
     <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.hint}>
       {!s.editable && <Lock size={12} strokeWidth={1.75} className="skill-lock" />}

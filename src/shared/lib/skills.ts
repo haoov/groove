@@ -1,25 +1,14 @@
-// What the agent is sent for a skill, and which skills a session offers.
-//
-// Pure, and separate from `agentSend` on purpose: both halves are details a
-// reader would tidy away, so both are testable without a PTY.
+// What the agent is sent for a skill, and which skills a session offers. Pure.
 
 import type { AgentSkill, SessionKind } from '../ipc/ipc';
 
-/**
- * The literal text typed into the agent for a skill.
- *
- * The TRAILING SPACE is load-bearing. Typing `/` opens Claude's slash menu, and
- * with the menu open Enter acts on the highlighted row — which is not always the
- * skill named, since the menu ranks by prefix and past use. A space closes it.
- */
+/** The text typed for a skill. The TRAILING SPACE closes Claude's slash menu, so Enter
+ *  submits the text instead of picking a menu row. */
 export function skillCommand(skillId: string, args?: string): string {
   return `/${skillId} ${args ?? ''}`;
 }
 
-/**
- * Trailing whitespace to strip before writing to the PTY: newlines and tabs
- * become blank lines in the draft, a SPACE must survive (see `skillCommand`).
- */
+/** Strip trailing newlines and tabs; a trailing SPACE must survive (see skillCommand). */
 export function trimForPty(text: string): string {
   return text.replace(/[^\S ]+$/, '');
 }

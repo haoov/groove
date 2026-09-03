@@ -12,10 +12,8 @@ use crate::core::db::store;
 
 use super::{str_field, McpState, ToolCallResponse};
 
-/// Post a confirmation and block until the user decides.
-///
-/// The sender is registered under a pre-generated id BEFORE the row is posted, so
-/// a resolve can never race ahead of the registration.
+/// Post a confirmation and block until the user decides. The sender is registered
+/// BEFORE the row is posted, so a resolve cannot race it.
 async fn post_and_wait(
     state: &McpState,
     op_type: &str,
@@ -39,12 +37,8 @@ async fn post_and_wait(
         .map_err(|_| anyhow::anyhow!("confirmation channel closed"))
 }
 
-/// Refuse a request identical to one already awaiting approval.
-///
-/// The wait in `post_and_wait` has no deadline of its own, so a caller that gave
-/// up — an MCP idle timeout, a reload, an agent simply trying again — leaves its
-/// confirmation queued and approvable. Without this, the retry queues a SECOND
-/// one, and for the create ops that means a duplicate task filed at the source.
+/// Refuse a request identical to one already awaiting approval — a retry must not
+/// queue a second copy.
 async fn already_pending(
     state: &McpState,
     op_type: &str,
@@ -72,8 +66,7 @@ async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpStat
     if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
         payload["worktree_path"] = serde_json::json!(wt.path);
         payload["branch"] = serde_json::json!(wt.branch);
-        // The project name, for display: the path's last segment is the branch
-        // leaf now that worktree dirs carry the branch's slashes.
+        // The project name for display; the path's last segment is the branch leaf.
         if let Ok(Some(repo)) = store::repos::get_opt(&state.pool, &wt.repo_id).await {
             payload["repo"] = serde_json::json!(repo.project);
         }
@@ -86,10 +79,7 @@ pub(super) async fn via_bridge(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Explorer sessions are scratch by policy: committing locally is fine, but
-    // publishing (push, MR) means the work is real — convert to a task first so
-    // it is a real task. Scoped to those ops specifically: task writes and
-    // task filing work fine from an explorer.
+    // An explorer is scratch: it converts to a task before anything is published.
     const NEEDS_BRANCH: [&str; 4] = [
         crate::approvals::ops::GIT_PUSH,
         crate::approvals::ops::GIT_PULL,
@@ -118,9 +108,7 @@ pub(super) async fn via_bridge(
             }
         }
     }
-    // An agent commits its index and only its index. It has no dialog to catch a
-    // wrong file list in auto mode, so staging is where it says what it means to
-    // land — and that is also what makes a four-file commit possible.
+    // An agent commits exactly its index — see commit_impl.
     if op_type == crate::approvals::ops::GIT_COMMIT {
         payload["index_only"] = serde_json::json!(true);
     }
@@ -128,8 +116,7 @@ pub(super) async fn via_bridge(
     bridged(state, op_type, payload, task_id.as_deref()).await
 }
 
-/// Reject anything that isn't a live explorer before asking the user to approve
-/// anything, instead of re-pointing a real task's worktrees onto a brand-new one.
+/// Only a live explorer converts.
 async fn check_convertible(
     explorer_id: &str,
     state: &McpState,
@@ -149,9 +136,7 @@ async fn check_convertible(
     })
 }
 
-/// Draft + file a task from the active explorer session (gated by the
-/// confirmation bridge), then point the backend's active task at the new id so
-/// subsequent agent tool calls resolve to the real task.
+/// File a task from the explorer session, then rebind this connection to the new id.
 pub(super) async fn create_task_from_explorer(
     input: serde_json::Value,
     state: &McpState,
@@ -167,12 +152,10 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    // The source's own settings are read by the executor, not carried here: a
-    // payload is persisted and emitted, and the token must never sit in one.
+    // A payload is persisted and emitted — it must never carry the source token.
     let provider = crate::provider::commands::draft_provider(&input)?;
 
-    // A GitHub issue needs a repo. Default to the explorer's own, which is what
-    // the work was done in.
+    // A GitHub issue needs a repo; default to the explorer's own.
     let repo = match input["repo"].as_str() {
         Some(r) => Some(r.to_string()),
         None => store::repos::attached_to(&state.pool, &explorer_id)
@@ -194,8 +177,7 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    // The one gated write with work to do AFTER approval: the explorer id this
-    // connection was bound to no longer exists, so re-point it at the new task.
+    // The explorer id this connection is bound to no longer exists once approved.
     let outcome = post_and_wait(state, op, payload, Some(&explorer_id)).await?;
     if let ResolveOutcome::Approved(task) = &outcome {
         if let Some(sid) = task["short_id"].as_str() {
@@ -206,13 +188,8 @@ pub(super) async fn create_task_from_explorer(
     Ok(outcome_response(op, outcome))
 }
 
-/// Stamp `[claude]` into an annotation's Conventional Comment header.
-///
-/// Done here rather than asked of the agent: authorship is a fact the app knows,
-/// and the `author` column does not survive promotion to a GitLab comment — that
-/// posts under the user's own account, so without this the reader cannot tell who
-/// wrote it. Sits after the decoration so the label still parses:
-///   `issue (non-blocking): …` → `issue (non-blocking)[claude]: …`
+/// Stamp `[claude]` into an annotation's Conventional Comment header, after the
+/// decoration: `issue (non-blocking): …` → `issue (non-blocking)[claude]: …`
 fn mark_as_agent(content: &str) -> String {
     if content.contains("[claude]") {
         return content.to_string();
@@ -222,8 +199,7 @@ fn mark_as_agent(content: &str) -> String {
         Some((head, rest)) if !head.contains('\n') && !head.trim().is_empty() => {
             format!("{}[claude]:{rest}", head.trim_end())
         }
-        // Not a Conventional Comment (the hook will reject it anyway) — prefix it
-        // so the marker is never silently dropped.
+        // Not a Conventional Comment — prefix so the marker is never dropped.
         _ => format!("[claude] {content}"),
     }
 }
@@ -232,7 +208,7 @@ pub(super) async fn create_annotation(
     input: serde_json::Value,
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Agents annotate a single line (or an optional [start_line, end_line] range).
+    // A single line, or a [start_line, end_line] range.
     let start_line = input["start_line"]
         .as_i64()
         .unwrap_or_else(|| input["line_num"].as_i64().unwrap_or(0));
@@ -296,8 +272,7 @@ pub(super) async fn resolve_annotation(
 
 // ─── Task writes ──────────────────────────────────────────────────────────────
 
-/// File a task. Nothing is opened or provisioned — it lands in the queue for
-/// later, which is what "file a task" means.
+/// File a task into the queue. Nothing is opened or provisioned.
 pub(super) async fn create_task(
     input: serde_json::Value,
     state: &McpState,
@@ -314,8 +289,7 @@ pub(super) async fn create_task(
     bridged(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await
 }
 
-/// A second worktree on a repo the task already holds. Separate from
-/// add_task_repo: the repo is not the question, the branch is.
+/// A second worktree on a repo the task already holds.
 pub(super) async fn add_task_worktree(
     input: serde_json::Value,
     state: &McpState,
@@ -341,10 +315,7 @@ pub(super) async fn add_task_worktree(
     bridged(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await
 }
 
-/// Attach a repo already cloned locally to a task, and provision its worktree.
-///
-/// Defaults to the caller's OWN task, like the other task-scoped writes — an agent
-/// adding a repo means its own session, not whatever the user is looking at.
+/// Attach a cloned repo to a task and provision its worktree. Defaults to the caller's task.
 pub(super) async fn add_task_repo(
     input: serde_json::Value,
     state: &McpState,
@@ -361,8 +332,7 @@ pub(super) async fn add_task_repo(
         ));
     };
 
-    // Resolve the branch NOW rather than letting provisioning derive it: the
-    // approval dialog has to name the branch it is about to create.
+    // Resolve the branch now so the approval dialog can name it.
     let branch = match input["branch"].as_str().map(str::trim).filter(|b| !b.is_empty()) {
         Some(b) => b.to_string(),
         None => crate::worktrees::default_branch_for(&task_id, &state.pool)
@@ -379,8 +349,8 @@ pub(super) async fn add_task_repo(
     bridged(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await
 }
 
-/// The task a write applies to. The provider resolves it at execution time, so
-/// the payload only ever carries the short id.
+/// The task a write applies to: the one named, else the caller's own. It must have a
+/// source behind it.
 async fn task_target(
     state: &McpState,
     mcp_session: &str,
@@ -406,9 +376,7 @@ async fn task_target(
     }
 }
 
-/// Set one property, whatever its type. The schema decides how the value is
-/// interpreted, so this covers Priority, Platform Components, Tags and anything
-/// added to the database later.
+/// Set one property; the schema decides how the value is interpreted.
 pub(super) async fn update_task_property(
     input: serde_json::Value,
     state: &McpState,
@@ -444,8 +412,7 @@ pub(super) async fn log_task_hours(
     bridged(state, crate::approvals::ops::TASK_HOURS, payload, Some(&task_id)).await
 }
 
-/// Mark the task done and tear its workspace down. Destroys every worktree of the
-/// session, so the caller has to have checked nothing is unlanded first.
+/// Mark the task done and tear its workspace down — every worktree of the session.
 pub(super) async fn finish_task(
     input: serde_json::Value,
     state: &McpState,
@@ -479,8 +446,7 @@ pub(super) async fn update_task_body(
     bridged(state, crate::approvals::ops::TASK_BODY, payload, Some(&task_id)).await
 }
 
-/// Post a pre-built payload and wait for the decision — the tail every gated
-/// write shares once its payload is assembled.
+/// The tail every gated write shares: refuse a duplicate, post, wait, map.
 async fn bridged(
     state: &McpState,
     op_type: &str,
@@ -494,8 +460,8 @@ async fn bridged(
     Ok(outcome_response(op_type, outcome))
 }
 
-/// One outcome, one wording. A bare `null` result becomes an explicit success:
-/// handed back as-is it reads as "nothing happened", and the model retries.
+/// One outcome, one wording. A null result becomes an explicit success — the model
+/// reads a bare null as failure.
 fn outcome_response(op_type: &str, outcome: ResolveOutcome) -> ToolCallResponse {
     match outcome {
         ResolveOutcome::Approved(v) if v.is_null() => ToolCallResponse::ok(
@@ -537,8 +503,7 @@ mod tests {
         assert_eq!(mark_as_agent(&once), once);
     }
 
-    /// Not a Conventional Comment — the hook rejects it, but the marker must not
-    /// vanish in the meantime.
+    /// Unparseable content still gets the marker.
     #[test]
     fn unparseable_content_still_gets_marked() {
         assert_eq!(mark_as_agent("this just panics"), "[claude] this just panics");
