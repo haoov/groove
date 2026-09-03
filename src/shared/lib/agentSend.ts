@@ -98,7 +98,7 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
 }
 
 /**
- * Invoke a skill on a session's agent: `/groove:open-mr `, then Enter.
+ * Invoke a skill on a session's agent: `/groove:start-task `, then Enter.
  *
  * The TRAILING SPACE is load-bearing. Typing `/` opens Claude's slash menu, and
  * with the menu open Enter acts on the highlighted row — which is not always the

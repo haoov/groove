@@ -15,7 +15,7 @@ use serde::Serialize;
 
 use crate::core::db::models::{Session, SessionKind};
 
-/// Plugin names, which are also the agent-facing namespaces — `groove:open-mr`,
+/// Plugin names, which are also the agent-facing namespaces — `groove:start-task`,
 /// `user:deploy-check`. Renaming one breaks every button built on the old prefix.
 pub const CORE_PLUGIN: &str = "groove";
 pub const USER_PLUGIN: &str = "user";
@@ -28,7 +28,6 @@ const CORE_SKILLS: &[(&str, &str)] = &[
     ("create-task", include_str!("core/create-task.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),
     ("new-skill", include_str!("core/new-skill.md")),
-    ("open-mr", include_str!("core/open-mr.md")),
     ("start-task", include_str!("core/start-task.md")),
     ("update-task", include_str!("core/update-task.md")),
 ];
@@ -39,7 +38,7 @@ const CORE_PROMPT: &str = include_str!("prompt.md");
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct AgentSkill {
-    /// `groove:open-mr` — what gets sent to the agent, and the UI's key.
+    /// `groove:start-task` — what gets sent to the agent, and the UI's key.
     pub id: String,
     pub plugin: String,
     pub name: String,
@@ -507,15 +506,15 @@ mod tests {
     fn parses_front_matter_and_groove_keys() {
         let s = parse(
             "groove",
-            "open-mr",
-            "---\nname: open-mr\ndescription: Open an MR: for this branch.\ngroove-kinds: task, review\ngroove-label: open MR\ngroove-hint: Open an MR.\n---\n\nBody.\n",
+            "sample-skill",
+            "---\nname: sample-skill\ndescription: Do a thing: and another.\ngroove-kinds: task, review\ngroove-label: do a thing\ngroove-hint: Does a thing.\n---\n\nBody.\n",
             false,
         );
-        assert_eq!(s.id, "groove:open-mr");
+        assert_eq!(s.id, "groove:sample-skill");
         // Split on the FIRST colon, so a description keeps its own.
-        assert_eq!(s.description, "Open an MR: for this branch.");
-        assert_eq!(s.hint, "Open an MR.");
-        assert_eq!(s.label, "open MR");
+        assert_eq!(s.description, "Do a thing: and another.");
+        assert_eq!(s.hint, "Does a thing.");
+        assert_eq!(s.label, "do a thing");
         assert!(!s.hidden);
         assert_eq!(s.kinds, vec![SessionKind::Task, SessionKind::Review]);
         assert!(!s.editable);

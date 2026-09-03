@@ -3,7 +3,7 @@ import type { SessionKind } from "./SessionKind";
 
 export type AgentSkill = { 
 /**
- * `groove:open-mr` — what gets sent to the agent, and the UI's key.
+ * `groove:start-task` — what gets sent to the agent, and the UI's key.
  */
 id: string, plugin: string, name: string, 
 /**
