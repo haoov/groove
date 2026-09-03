@@ -36,6 +36,7 @@ export function Sidebar() {
   const isExplorer = useSession((s) => s.kind === 'explorer');
   const isReview = useSession((s) => s.kind === 'review');
   const setLastError = useStore((s) => s.setLastError);
+  const invalidateMrs = useStore((s) => s.invalidateMrs);
   const notify = useStore((s) => s.notify);
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -327,8 +328,8 @@ export function Sidebar() {
                 </div>
                 <button
                   className="diff-mode-refresh"
-                  onClick={() => void refreshSession(sessionId)}
-                  title="Refresh diff & git status"
+                  onClick={() => { void refreshSession(sessionId); invalidateMrs(sessionId); }}
+                  title="Refresh diff, git status & CI"
                 >
                   <RefreshCw size={12} strokeWidth={1.75} />
                 </button>

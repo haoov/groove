@@ -163,6 +163,11 @@ spawns.
 file-editing tools (throttled) and turn end, never every hook. There is no filesystem
 watcher.
 
+**Nothing polls the forge.** The CI chip moves on three things and no others: a
+`git.push` or an `mr.*` op landing (`useIpc` bumps `mrNonce`), and the sidebar's refresh
+button. `invalidateMrs` deliberately stays OUT of `refreshSession` — that runs on every
+agent edit burst, and an API call per turn is what "no timers" was avoiding.
+
 **Store**: one zustand store from full-state slices; every consumer imports the barrel.
 The `buildView` WeakMap and bound-action caches are perf invariants — a session object's
 identity changes only on real change.
