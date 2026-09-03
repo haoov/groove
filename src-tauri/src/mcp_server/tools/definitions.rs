@@ -76,6 +76,7 @@ pub(crate) fn mcp_tool_definitions() -> Vec<serde_json::Value> {
         mcp_tool("get_task_diff", "Diff for all worktrees of a task (vs origin/main; for explorer sessions: the uncommitted working-tree changes).", serde_json::json!({"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"}}})),
         mcp_tool("get_commit_log", "Commit history for all worktrees of a task.", serde_json::json!({"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"},"limit":{"type":"integer"}}})),
         mcp_tool("get_mr_state", "MR/PR state for a worktree.", serde_json::json!({"type":"object","required":["worktree_id"],"properties":{"worktree_id":{"type":"string"}}})),
+        mcp_tool("get_mr_ci", "Pipeline status and the run's URL for an MR, live from the forge. Use the forge CLI (glab ci / gh run) to read the failing job's log — this returns the status, not the log.", serde_json::json!({"type":"object","required":["mr_id"],"properties":{"mr_id":{"type":"string","description":"The MR's id from get_mr_state."}}})),
         mcp_tool("get_annotations", "All annotations for a task.", serde_json::json!({"type":"object","required":["task_id"],"properties":{"task_id":{"type":"string"}}})),
         mcp_tool("get_open_file", "Currently open file in the editor.", serde_json::json!({"type":"object","properties":{}})),
         mcp_tool("get_file_content", "Read file content by path.", serde_json::json!({"type":"object","required":["file_path"],"properties":{"file_path":{"type":"string"}}})),

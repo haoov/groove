@@ -27,6 +27,7 @@ const CORE_SKILLS: &[(&str, &str)] = &[
     ("close-task", include_str!("core/close-task.md")),
     ("co-review", include_str!("core/co-review.md")),
     ("create-task", include_str!("core/create-task.md")),
+    ("fix-ci", include_str!("core/fix-ci.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),
     ("new-skill", include_str!("core/new-skill.md")),
     ("save-task", include_str!("core/save-task.md")),

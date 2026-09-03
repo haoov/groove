@@ -160,6 +160,18 @@ pub(super) async fn get_task_time(
     })))
 }
 
+/// The MR's pipeline status and the URL of the run. Live from the forge, not the
+/// mirror — a chip the user is looking at may already be stale.
+pub(super) async fn get_mr_ci(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let mr_id = str_field(&input, "mr_id")?;
+    Ok(ToolCallResponse::ok(
+        crate::forge::mr_ci_for(&state.pool, &mr_id).await?,
+    ))
+}
+
 pub(super) async fn get_open_file(
     state: &McpState,
     mcp_session: &str,

@@ -15,7 +15,7 @@ import { Highlighted, matchRanges } from '../shared/lib/match';
 import { repoDiffFor } from '../shared/lib/workspace';
 import { forgeName, mrSigil } from '../shared/lib/forge';
 import { openExternal } from '../shared/lib/openExternal';
-import { ciGroup } from '../shared/lib/mr';
+import { CiChip } from '../shared/ui/CiChip';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {
@@ -432,14 +432,10 @@ function MrCiChip({ mr }: { mr: Mr }) {
     );
   }
   return (
-    <button
-      className={`git-commit-mr-ci forge-ci-${ciGroup(ci.status)}`}
-      onClick={() => openExternal(ci.url)}
-      title={`Pipeline: ${ci.status} — open in ${forgeName(mr.platform)}`}
-    >
+    <CiChip status={ci.status} url={ci.url || mr.url} platform={mr.platform} className="git-commit-mr-ci">
       <span className="forge-ci-dot" />
       CI
-    </button>
+    </CiChip>
   );
 }
 
