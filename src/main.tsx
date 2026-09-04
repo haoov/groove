@@ -40,12 +40,17 @@ import './notifications/feed.css';
 import './overview/overview.css';
 import './setup/firstrun.css';
 import { initPlatform } from './shared/lib/platform';
+import { AGENT_WINDOW_LABEL } from './shared/lib/agentWindow';
 
-// App is imported dynamically so the platform is known before the store module
-// builds the default keymap.
+// The roots are imported dynamically so the platform is known before the store
+// module builds the default keymap. One bundle, two windows: the label says
+// which root this webview is.
 initPlatform().then(async () => {
-  const { default: App } = await import('./app/App');
+  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+  const { default: Root } = getCurrentWindow().label === AGENT_WINDOW_LABEL
+    ? await import('./app/AgentWindow')
+    : await import('./app/App');
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-    <App />
+    <Root />
   );
 });

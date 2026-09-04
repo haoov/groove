@@ -172,6 +172,10 @@ export interface AgentSlice {
    *  inside the agent, so one shortcut maximizes whichever pane you are in. */
   agentMaximized: boolean;
   setAgentMaximized: (v: boolean) => void;
+  /** The agent lives in its own OS window. The docked column is not rendered,
+   *  so the main window keeps the width. Persisted across restarts. */
+  agentDetached: boolean;
+  setAgentDetached: (v: boolean) => void;
 }
 
 export interface KeybindingsSlice {

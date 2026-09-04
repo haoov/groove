@@ -174,6 +174,12 @@ const MIN_ROWS = 4;
 /** The size each PTY was last told, so a fit that changes nothing costs no IPC. */
 const syncedSize = new Map<string, { cols: number; rows: number }>();
 
+/** Drop the size record, so the next fit tells the shell even an unchanged size.
+ *  Another window can have resized the PTY meanwhile. */
+export function forgetSyncedSize(sessionId: string) {
+  syncedSize.delete(sessionId);
+}
+
 /**
  * Resize a terminal and its shell together — or resize neither.
  *

@@ -18,6 +18,7 @@ import { ResizeHandles } from './chrome/ResizeHandles';
 import { SettingsView } from '../settings/SettingsView';
 import { Toasts } from '../notifications/Toasts';
 import { AgentConsole } from '../agent/AgentConsole';
+import { AgentWindowBridge } from '../agent/AgentWindowBridge';
 import { TerminalConsole } from '../terminal/TerminalConsole';
 import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
 import { isMac } from '../shared/lib/platform';
@@ -146,6 +147,9 @@ export default function App() {
           workspace the panes own the terminals, so this is not mounted there. */}
       {view === 'home' && <TerminalConsole />}
       <StatusBar />
+
+      {/* The detached agent window, when there is one. */}
+      <AgentWindowBridge />
 
       {/* Overlays */}
       <ConfirmModal />

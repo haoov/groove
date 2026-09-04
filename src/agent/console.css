@@ -135,6 +135,28 @@
 }
 .console-action:disabled { opacity: 0.5; cursor: default; }
 
+/* ── Detached agent window ─────────────────────────────────────────────────────
+   The panel alone, in its own OS window. Its head is the title bar: it drags the
+   window and carries the window controls where the platform has none. */
+.agent-window {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--gl-background-color-subtle);
+  font-family: var(--font-ui);
+}
+.agent-window .agent-pane-head {
+  height: var(--wb-header-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  background: var(--gl-background-color-overlap);
+  border-bottom-color: var(--gl-border-color-default);
+}
+/* Clear the traffic lights, which float over the top-left of the head. */
+[data-platform="macos"] .agent-window .agent-pane-head { padding-left: var(--wb-traffic-lights); }
+
 /* ── Terminal on Home ──────────────────────────────────────────────────────────
    The bottom counterpart to the agent's right column: full width, above the status
    bar, and it owns its own height (a shell reads short and wide). */

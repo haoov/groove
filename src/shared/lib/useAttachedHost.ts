@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { ensureHost, fitAndSync } from './terminalHost';
+import { ensureHost, fitAndSync, forgetSyncedSize } from './terminalHost';
 
 /**
  * Show a PTY's terminal inside `containerRef`.
@@ -22,6 +22,9 @@ export function useAttachedHost(
     if (!ptySessionId || !container) return;
     const host = ensureHost(ptySessionId, fontFamily);
     container.appendChild(host.el);
+    // The PTY may have been sized by another window (the detached agent) since
+    // this one last saw it; the record must not short-circuit the first fit.
+    forgetSyncedSize(ptySessionId);
 
     let raf1 = 0;
     let raf2 = 0;
