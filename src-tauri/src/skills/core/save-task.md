@@ -32,8 +32,8 @@ Then once, for the task:
    the page. Cover every repo you touched. Keep what the user wrote and add the
    outcome, not a narration of the work.
 7. `get_task_schema`, then `update_task_property` for every property this work
-   has actually moved.
-   The schema gives the exact options each one takes, leave the rest alone.
+   has moved — including one still unset that the work now gives a value. For a
+   relation, `list_relation_options` gives the page ids. Leave the rest alone.
 8. `get_task_time`, then `log_task_hours` with its `unlogged_hours`, when that is
    above zero.
 

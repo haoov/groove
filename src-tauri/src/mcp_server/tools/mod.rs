@@ -76,6 +76,7 @@ pub(super) async fn dispatch(
         "get_open_file" => read::get_open_file(state, mcp_session).await,
         "get_task_body" => read::get_task_body(input, state, mcp_session).await,
         "get_task_schema" => read::get_task_schema(input, state, mcp_session).await,
+        "list_relation_options" => read::list_relation_options(input, state, mcp_session).await,
         "get_task_template" => read::get_task_template(input, state, mcp_session).await,
         "read_user_skill" => read::read_user_skill(input).await,
 

@@ -153,7 +153,28 @@ pub(super) async fn get_task_schema(
     let task_id = task_or_own(&input, state, mcp_session)?;
 
     let schema = crate::provider::schema_for(&state.pool, &task_id).await?;
-    Ok(ToolCallResponse::ok(serde_json::to_value(schema)?))
+    let values = crate::provider::properties_for(&state.pool, &task_id).await?;
+
+    // Each property carries what it holds beside what it accepts.
+    let mut out = serde_json::to_value(schema)?;
+    if let Some(props) = out["properties"].as_array_mut() {
+        for p in props {
+            let held = values.iter().find(|v| v.name == p["name"]);
+            p["value"] = held.map(|v| v.value.clone()).unwrap_or(serde_json::Value::Null);
+        }
+    }
+    Ok(ToolCallResponse::ok(out))
+}
+
+pub(super) async fn list_relation_options(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = task_or_own(&input, state, mcp_session)?;
+    let property = str_field(&input, "property")?;
+    let options = crate::provider::relation_options_for(&state.pool, &task_id, &property).await?;
+    Ok(ToolCallResponse::ok(serde_json::to_value(options)?))
 }
 
 /// The MR's pipeline status and run URL, live from the forge.
