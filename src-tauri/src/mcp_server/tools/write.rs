@@ -12,10 +12,8 @@ use crate::core::db::store;
 
 use super::{str_field, McpState, ToolCallResponse};
 
-/// Post a confirmation and block until the user decides.
-///
-/// The sender is registered under a pre-generated id BEFORE the row is posted, so
-/// a resolve can never race ahead of the registration.
+/// Post a confirmation and block until the user decides. The sender is registered
+/// BEFORE the row is posted, so a resolve cannot race it.
 async fn post_and_wait(
     state: &McpState,
     op_type: &str,
@@ -39,12 +37,8 @@ async fn post_and_wait(
         .map_err(|_| anyhow::anyhow!("confirmation channel closed"))
 }
 
-/// Refuse a request identical to one already awaiting approval.
-///
-/// The wait in `post_and_wait` has no deadline of its own, so a caller that gave
-/// up — an MCP idle timeout, a reload, an agent simply trying again — leaves its
-/// confirmation queued and approvable. Without this, the retry queues a SECOND
-/// one, and for the create ops that means a duplicate task filed at the source.
+/// Refuse a request identical to one already awaiting approval — a retry must not
+/// queue a second copy.
 async fn already_pending(
     state: &McpState,
     op_type: &str,
@@ -72,8 +66,7 @@ async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpStat
     if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
         payload["worktree_path"] = serde_json::json!(wt.path);
         payload["branch"] = serde_json::json!(wt.branch);
-        // The project name, for display: the path's last segment is the branch
-        // leaf now that worktree dirs carry the branch's slashes.
+        // The project name for display; the path's last segment is the branch leaf.
         if let Ok(Some(repo)) = store::repos::get_opt(&state.pool, &wt.repo_id).await {
             payload["repo"] = serde_json::json!(repo.project);
         }
@@ -86,10 +79,7 @@ pub(super) async fn via_bridge(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Explorer sessions are scratch by policy: committing locally is fine, but
-    // publishing (push, MR) means the work is real — convert to a task first so
-    // it is a real task. Scoped to those ops specifically: task writes and
-    // task filing work fine from an explorer.
+    // An explorer is scratch: it converts to a task before anything is published.
     const NEEDS_BRANCH: [&str; 4] = [
         crate::approvals::ops::GIT_PUSH,
         crate::approvals::ops::GIT_PULL,
@@ -118,30 +108,15 @@ pub(super) async fn via_bridge(
             }
         }
     }
+    // An agent commits exactly its index — see commit_impl.
+    if op_type == crate::approvals::ops::GIT_COMMIT {
+        payload["index_only"] = serde_json::json!(true);
+    }
     let task_id = state.task_for(mcp_session);
-
-    // Asking twice for the same thing means the first call is still queued (the
-    // user deferred it). Tell the caller to wait rather than posting a second row
-    // the user would have to decide twice.
-    if let Some(refusal) = already_pending(state, op_type, task_id.as_deref(), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, op_type, payload, task_id.as_deref()).await? {
-        // Never hand back a bare `null` — it reads as "nothing happened".
-        ResolveOutcome::Approved(value) if value.is_null() => Ok(ToolCallResponse::ok(
-            serde_json::json!({ "ok": true, "op": op_type, "message": "Completed" }),
-        )),
-        ResolveOutcome::Approved(value) => Ok(ToolCallResponse::ok(value)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Operation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Operation approved but failed: {e}"
-        ))),
-    }
+    bridged(state, op_type, payload, task_id.as_deref()).await
 }
 
-/// Reject anything that isn't a live explorer before asking the user to approve
-/// anything, instead of re-pointing a real task's worktrees onto a brand-new one.
+/// Only a live explorer converts.
 async fn check_convertible(
     explorer_id: &str,
     state: &McpState,
@@ -152,8 +127,8 @@ async fn check_convertible(
         ))),
         Some(SessionKind::Explorer) => None,
         Some(SessionKind::Task) => Some(ToolCallResponse::err(format!(
-            "The focused session is {explorer_id}, a real task — not an explorer. \
-             Ask the user to focus the explorer session they want converted."
+            "This session is {explorer_id}, a real task — not an explorer. Only an \
+             explorer converts; there is nothing here to convert."
         ))),
         Some(kind) => Some(ToolCallResponse::err(format!(
             "{explorer_id} is a {kind:?} session — only explorer sessions convert to tasks."
@@ -161,9 +136,7 @@ async fn check_convertible(
     })
 }
 
-/// Draft + file a task from the active explorer session (gated by the
-/// confirmation bridge), then point the backend's active task at the new id so
-/// subsequent agent tool calls resolve to the real task.
+/// File a task from the explorer session, then rebind this connection to the new id.
 pub(super) async fn create_task_from_explorer(
     input: serde_json::Value,
     state: &McpState,
@@ -179,12 +152,10 @@ pub(super) async fn create_task_from_explorer(
         return Ok(refusal);
     }
 
-    // The source's own settings are read by the executor, not carried here: a
-    // payload is persisted and emitted, and the token must never sit in one.
+    // A payload is persisted and emitted — it must never carry the source token.
     let provider = crate::provider::commands::draft_provider(&input)?;
 
-    // A GitHub issue needs a repo. Default to the explorer's own, which is what
-    // the work was done in.
+    // A GitHub issue needs a repo; default to the explorer's own.
     let repo = match input["repo"].as_str() {
         Some(r) => Some(r.to_string()),
         None => store::repos::attached_to(&state.pool, &explorer_id)
@@ -201,41 +172,24 @@ pub(super) async fn create_task_from_explorer(
         "repo": repo,
     });
 
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE_FROM_EXPLORER, Some(explorer_id.as_str()), &payload).await {
+    let op = crate::approvals::ops::TASK_CREATE_FROM_EXPLORER;
+    if let Some(refusal) = already_pending(state, op, Some(&explorer_id), &payload).await {
         return Ok(refusal);
     }
 
-    let outcome = post_and_wait(
-        state,
-        crate::approvals::ops::TASK_CREATE_FROM_EXPLORER,
-        payload,
-        Some(&explorer_id),
-    )
-    .await?;
-
-    match outcome {
-        ResolveOutcome::Approved(task) => {
-            if let Some(sid) = task["short_id"].as_str() {
-                state.task_state.set_active_task_id(Some(sid.to_string()));
-                // The explorer id this connection was bound to no longer exists.
-                state.rebind(mcp_session, sid);
-            }
-            Ok(ToolCallResponse::ok(task))
+    // The explorer id this connection is bound to no longer exists once approved.
+    let outcome = post_and_wait(state, op, payload, Some(&explorer_id)).await?;
+    if let ResolveOutcome::Approved(task) = &outcome {
+        if let Some(sid) = task["short_id"].as_str() {
+            state.task_state.set_active_task_id(Some(sid.to_string()));
+            state.rebind(mcp_session, sid);
         }
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Task creation approved but failed: {e}"
-        ))),
     }
+    Ok(outcome_response(op, outcome))
 }
 
-/// Stamp `[claude]` into an annotation's Conventional Comment header.
-///
-/// Done here rather than asked of the agent: authorship is a fact the app knows,
-/// and the `author` column does not survive promotion to a GitLab comment — that
-/// posts under the user's own account, so without this the reader cannot tell who
-/// wrote it. Sits after the decoration so the label still parses:
-///   `issue (non-blocking): …` → `issue (non-blocking)[claude]: …`
+/// Stamp `[claude]` into an annotation's Conventional Comment header, after the
+/// decoration: `issue (non-blocking): …` → `issue (non-blocking)[claude]: …`
 fn mark_as_agent(content: &str) -> String {
     if content.contains("[claude]") {
         return content.to_string();
@@ -245,8 +199,7 @@ fn mark_as_agent(content: &str) -> String {
         Some((head, rest)) if !head.contains('\n') && !head.trim().is_empty() => {
             format!("{}[claude]:{rest}", head.trim_end())
         }
-        // Not a Conventional Comment (the hook will reject it anyway) — prefix it
-        // so the marker is never silently dropped.
+        // Not a Conventional Comment — prefix so the marker is never dropped.
         _ => format!("[claude] {content}"),
     }
 }
@@ -255,7 +208,7 @@ pub(super) async fn create_annotation(
     input: serde_json::Value,
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Agents annotate a single line (or an optional [start_line, end_line] range).
+    // A single line, or a [start_line, end_line] range.
     let start_line = input["start_line"]
         .as_i64()
         .unwrap_or_else(|| input["line_num"].as_i64().unwrap_or(0));
@@ -319,8 +272,7 @@ pub(super) async fn resolve_annotation(
 
 // ─── Task writes ──────────────────────────────────────────────────────────────
 
-/// File a task. Nothing is opened or provisioned — it lands in the queue for
-/// later, which is what "file a task" means.
+/// File a task into the queue. Nothing is opened or provisioned.
 pub(super) async fn create_task(
     input: serde_json::Value,
     state: &McpState,
@@ -334,26 +286,10 @@ pub(super) async fn create_task(
         "repo": input["repo"].as_str(),
     });
     let task_id = state.task_for(mcp_session);
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_CREATE, task_id.as_deref(), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await? {
-        ResolveOutcome::Approved(task) => Ok(ToolCallResponse::ok(task)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Task creation rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!(
-            "Task creation approved but failed: {e}"
-        ))),
-    }
+    bridged(state, crate::approvals::ops::TASK_CREATE, payload, task_id.as_deref()).await
 }
 
-/// Attach a repo already cloned under MAIN to a task, and provision its worktree.
-///
-/// Defaults to the caller's OWN task, like the other task-scoped writes — an agent
-/// adding a repo means its own session, not whatever the user is looking at.
-/// A second worktree on a repo the task already holds. Separate from
-/// add_task_repo: the repo is not the question, the branch is.
+/// A second worktree on a repo the task already holds.
 pub(super) async fn add_task_worktree(
     input: serde_json::Value,
     state: &McpState,
@@ -376,24 +312,10 @@ pub(super) async fn add_task_worktree(
         "repo": input["repo"].as_str(),
         "target_branch": input["target_branch"].as_str(),
     });
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_WORKTREE, Some(&task_id), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await? {
-        ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
-        ResolveOutcome::Rejected => {
-            Ok(ToolCallResponse::err("Adding the worktree was rejected by the user"))
-        }
-        // Unknown repo, a branch already checked out, wrong session kind — each
-        // message says what to do instead.
-        ResolveOutcome::Failed(e) => {
-            Ok(ToolCallResponse::err(format!("Could not add the worktree: {e}")))
-        }
-    }
+    bridged(state, crate::approvals::ops::TASK_ADD_WORKTREE, payload, Some(&task_id)).await
 }
 
+/// Attach a cloned repo to a task and provision its worktree. Defaults to the caller's task.
 pub(super) async fn add_task_repo(
     input: serde_json::Value,
     state: &McpState,
@@ -410,8 +332,7 @@ pub(super) async fn add_task_repo(
         ));
     };
 
-    // Resolve the branch NOW rather than letting provisioning derive it: the
-    // approval dialog has to name the branch it is about to create.
+    // Resolve the branch now so the approval dialog can name it.
     let branch = match input["branch"].as_str().map(str::trim).filter(|b| !b.is_empty()) {
         Some(b) => b.to_string(),
         None => crate::worktrees::default_branch_for(&task_id, &state.pool)
@@ -425,22 +346,11 @@ pub(super) async fn add_task_repo(
         "branch": branch,
         "target_branch": input["target_branch"].as_str(),
     });
-
-    if let Some(refusal) = already_pending(state, crate::approvals::ops::TASK_ADD_REPO, Some(&task_id), &payload).await {
-        return Ok(refusal);
-    }
-
-    match post_and_wait(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await? {
-        ResolveOutcome::Approved(result) => Ok(ToolCallResponse::ok(result)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Adding the repo was rejected by the user")),
-        // The resolution errors (unknown repo, ambiguous name, wrong session kind)
-        // all surface here, and each one tells the agent what to do instead.
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!("Could not add the repo: {e}"))),
-    }
+    bridged(state, crate::approvals::ops::TASK_ADD_REPO, payload, Some(&task_id)).await
 }
 
-/// The task a write applies to. The provider resolves it at execution time, so
-/// the payload only ever carries the short id.
+/// The task a write applies to: the one named, else the caller's own. It must have a
+/// source behind it.
 async fn task_target(
     state: &McpState,
     mcp_session: &str,
@@ -466,9 +376,7 @@ async fn task_target(
     }
 }
 
-/// Set one property, whatever its type. The schema decides how the value is
-/// interpreted, so this covers Priority, Platform Components, Tags and anything
-/// added to the database later.
+/// Set one property; the schema decides how the value is interpreted.
 pub(super) async fn update_task_property(
     input: serde_json::Value,
     state: &McpState,
@@ -484,7 +392,7 @@ pub(super) async fn update_task_property(
         "property": property,
         "value": input["value"].clone(),
     });
-    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_PROPERTY, payload, Some(&task_id)).await
 }
 
 /// Add hours to the task's "Hours spent". Adds — never replaces.
@@ -501,7 +409,21 @@ pub(super) async fn log_task_hours(
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({ "task_id": task_id, "hours": hours });
-    bridged(state, crate::approvals::ops::TASK_HOURS, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_HOURS, payload, Some(&task_id)).await
+}
+
+/// Mark the task done and tear its workspace down — every worktree of the session.
+pub(super) async fn finish_task(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = match task_target(state, mcp_session, &input).await? {
+        Ok(id) => id,
+        Err(refusal) => return Ok(refusal),
+    };
+    let payload = serde_json::json!({ "task_id": task_id });
+    bridged(state, crate::approvals::ops::TASK_FINISH, payload, Some(&task_id)).await
 }
 
 /// Replace the task's page body with markdown. Refuses when the page holds blocks
@@ -521,27 +443,33 @@ pub(super) async fn update_task_body(
         "markdown": markdown,
         "force": input["force"].as_bool().unwrap_or(false),
     });
-    bridged(state, crate::approvals::ops::TASK_BODY, payload, &task_id).await
+    bridged(state, crate::approvals::ops::TASK_BODY, payload, Some(&task_id)).await
 }
 
-/// Post a pre-built payload and map the outcome — the tail every gated write
-/// shares once its payload is assembled.
+/// The tail every gated write shares: refuse a duplicate, post, wait, map.
 async fn bridged(
     state: &McpState,
     op_type: &str,
     payload: serde_json::Value,
-    task_id: &str,
+    task_id: Option<&str>,
 ) -> anyhow::Result<ToolCallResponse> {
-    if let Some(refusal) = already_pending(state, op_type, Some(task_id), &payload).await {
+    if let Some(refusal) = already_pending(state, op_type, task_id, &payload).await {
         return Ok(refusal);
     }
-    match post_and_wait(state, op_type, payload, Some(task_id)).await? {
-        ResolveOutcome::Approved(v) if v.is_null() => Ok(ToolCallResponse::ok(
-            serde_json::json!({ "ok": true, "op": op_type }),
-        )),
-        ResolveOutcome::Approved(v) => Ok(ToolCallResponse::ok(v)),
-        ResolveOutcome::Rejected => Ok(ToolCallResponse::err("Rejected by user")),
-        ResolveOutcome::Failed(e) => Ok(ToolCallResponse::err(format!("Approved but failed: {e}"))),
+    let outcome = post_and_wait(state, op_type, payload, task_id).await?;
+    Ok(outcome_response(op_type, outcome))
+}
+
+/// One outcome, one wording. A null result becomes an explicit success — the model
+/// reads a bare null as failure.
+fn outcome_response(op_type: &str, outcome: ResolveOutcome) -> ToolCallResponse {
+    match outcome {
+        ResolveOutcome::Approved(v) if v.is_null() => ToolCallResponse::ok(
+            serde_json::json!({ "ok": true, "op": op_type, "message": "Completed" }),
+        ),
+        ResolveOutcome::Approved(v) => ToolCallResponse::ok(v),
+        ResolveOutcome::Rejected => ToolCallResponse::err("Rejected by the user"),
+        ResolveOutcome::Failed(e) => ToolCallResponse::err(format!("Approved but failed: {e}")),
     }
 }
 
@@ -575,16 +503,9 @@ mod tests {
         assert_eq!(mark_as_agent(&once), once);
     }
 
-    /// Not a Conventional Comment — the hook rejects it, but the marker must not
-    /// vanish in the meantime.
+    /// Unparseable content still gets the marker.
     #[test]
     fn unparseable_content_still_gets_marked() {
         assert_eq!(mark_as_agent("this just panics"), "[claude] this just panics");
-    }
-
-    #[test]
-    fn multiline_header_is_not_assumed() {
-        let out = mark_as_agent("no header here\nsecond: line");
-        assert!(out.starts_with("[claude] "), "{out}");
     }
 }

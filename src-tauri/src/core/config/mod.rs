@@ -25,6 +25,11 @@ pub struct UiConfig {
     /// silently through to the next family in the CSS stack.
     #[serde(default = "default_font_family")]
     pub font_family: String,
+    /// One switch for every agent suggestion Groove offers — today the chip on a
+    /// task with no repos. Off means the app never proposes an action, not that
+    /// the skill is gone: it is still a button and a slash command.
+    #[serde(default = "default_true")]
+    pub suggest_actions: bool,
 }
 
 impl Default for UiConfig {
@@ -33,6 +38,7 @@ impl Default for UiConfig {
             font_size: default_font_size(),
             theme: default_theme(),
             font_family: default_font_family(),
+            suggest_actions: default_true(),
         }
     }
 }
@@ -222,6 +228,12 @@ pub fn file_path() -> Option<PathBuf> {
     CONFIG_DIR.get().map(|dir| dir.join(CONFIG_FILE))
 }
 
+/// The config directory itself — also the parent of anything else Groove keeps
+/// per user, such as the user skills plugin.
+pub fn dir() -> Option<PathBuf> {
+    CONFIG_DIR.get().cloned()
+}
+
 /// Mutate the config, persist it, and publish it — one write path for setup
 /// and every preference change.
 pub fn update(edit: impl FnOnce(&mut Config)) -> anyhow::Result<Config> {
@@ -369,6 +381,22 @@ mod tests {
         assert_eq!(n.task_template_page_id.as_deref(), Some("c9bff477d2f944fba9846567745a77ec"));
         // `ui` is absent in older files and must default rather than fail.
         assert_eq!(cfg.ui.font_size, default_font_size());
+        // A switch added later defaults ON, so an existing install gets the
+        // feature rather than silently opting out of it.
+        assert!(cfg.ui.suggest_actions);
+    }
+
+    /// A `ui` block written before the switch existed keeps its own values and
+    /// takes the default for the new one.
+    #[test]
+    fn a_ui_block_without_the_new_switch_still_loads() {
+        let json = r#"{
+          "git": { "worktree_root": "~/worktrees" },
+          "ui": { "font_size": 17, "theme": "frappe", "font_family": "Lilex" }
+        }"#;
+        let cfg: Config = serde_json::from_str(json).expect("must parse");
+        assert_eq!(cfg.ui.font_size, 17);
+        assert!(cfg.ui.suggest_actions);
     }
 
     /// The file holds the Notion token, so it must be owner-only — and written

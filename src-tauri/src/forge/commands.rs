@@ -62,15 +62,13 @@ pub async fn get_mr_threads(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    mr_threads_for(&pool, &mr_id).await.map_err(|e| e.to_string())
+}
 
-    let client = make_client(&repo);
-    client
-        .get_mr_threads(&repo, &mr.remote_id)
-        .await
-        .map_err(|e| e.to_string())
+/// The pool-taking form, for callers with no Tauri state — the MCP tool.
+pub async fn mr_threads_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+    let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
+    make_client(&repo).get_mr_threads(&repo, &mr.remote_id).await
 }
 
 #[tauri::command]
@@ -78,15 +76,13 @@ pub async fn get_mr_ci(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+    mr_ci_for(&pool, &mr_id).await.map_err(|e| e.to_string())
+}
 
-    let client = make_client(&repo);
-    client
-        .get_mr_ci(&repo, &mr.remote_id)
-        .await
-        .map_err(|e| e.to_string())
+/// The pool-taking form, for callers with no Tauri state — the MCP tool.
+pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+    let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
+    make_client(&repo).get_mr_ci(&repo, &mr.remote_id).await
 }
 
 /// Rich MR/PR fields (title, description, author, branches, …) for the overview

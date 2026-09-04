@@ -26,12 +26,12 @@ use crate::task_manager::State as TaskState;
 pub(crate) mod auth;
 mod tools;
 
-use tools::{dispatch, mcp_tool_definitions};
+use tools::dispatch;
+/// Crate-visible for the skills test.
+pub(crate) use tools::mcp_tool_definitions;
 
-/// The loopback endpoint, defined ONCE here. Agents (`--mcp-config`) and the
-/// status bar derive their URLs from `sse_url`/`endpoint`, so moving the port is
-/// a one-line change. Note `127.0.0.1`, not `localhost`: the latter can resolve
-/// to `::1`, which this listener does not bind.
+/// The loopback endpoint, defined once. `127.0.0.1`, not `localhost` — that can
+/// resolve to `::1`, which this does not bind.
 pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 27413;
 
@@ -60,8 +60,7 @@ pub fn get_mcp_endpoint() -> String {
 
 // ─── SSE stream wrapper ───────────────────────────────────────────────────────
 
-/// Wraps the event receiver and unregisters its connection entry when the SSE
-/// stream drops — otherwise every agent reconnect leaks a dead sender.
+/// Unregisters its connection entry when the SSE stream drops.
 struct SseReceiver {
     rx: mpsc::Receiver<Event>,
     connections: Connections,
@@ -85,15 +84,11 @@ impl Drop for SseReceiver {
 
 // ─── Shared connection state ──────────────────────────────────────────────────
 
-/// One live SSE connection: where its responses go, and the task it belongs to.
-///
-/// The global "active task" follows UI focus, which is wrong for an agent: the
-/// user switches sessions constantly, and an agent working on task A must keep
-/// resolving to A. Each agent is spawned with an `--mcp-config` pointing at
-/// `/sse?task=<short_id>`, so its connection carries its own task for life.
+/// One live SSE connection and the task it is bound to for life. A connection
+/// naming no task is refused at the handshake.
 struct Connection {
     tx: mpsc::Sender<Event>,
-    task: Option<String>,
+    task: String,
 }
 
 type Connections = Arc<Mutex<HashMap<String, Connection>>>;
@@ -110,15 +105,12 @@ struct McpState {
 }
 
 impl McpState {
-    /// The task this CALLER is working on: its connection's binding when it has
-    /// one, else the focused session (a hand-run `claude`, or an older agent).
+    /// The task this caller is bound to.
     fn task_for(&self, mcp_session: &str) -> Option<String> {
-        if let Ok(map) = self.connections.lock() {
-            if let Some(task) = map.get(mcp_session).and_then(|c| c.task.clone()) {
-                return Some(task);
-            }
-        }
-        self.task_state.get_active_task_id()
+        self.connections
+            .lock()
+            .ok()
+            .and_then(|map| map.get(mcp_session).map(|c| c.task.clone()))
     }
 
     /// Re-point a connection (used when an explorer converts into a real task,
@@ -126,7 +118,7 @@ impl McpState {
     fn rebind(&self, mcp_session: &str, task_id: &str) {
         if let Ok(mut map) = self.connections.lock() {
             if let Some(conn) = map.get_mut(mcp_session) {
-                conn.task = Some(task_id.to_string());
+                conn.task = task_id.to_string();
             }
         }
     }
@@ -150,9 +142,8 @@ pub async fn start(
         connections: Arc::new(Mutex::new(HashMap::new())),
     };
 
-    // One loopback server for everything agents talk to: MCP tools here, Claude
-    // Code hook callbacks in `agent_hooks`. Every route requires the launch
-    // token — the port is open to any local process otherwise.
+    // One loopback server: MCP tools here, hook callbacks in `agent_hooks`. Every
+    // route requires the launch token.
     let app = Router::new()
         .route("/sse", get(sse_handler))
         .route("/message", post(message_handler))
@@ -161,8 +152,8 @@ pub async fn start(
         .layer(axum::middleware::from_fn(auth::require_auth));
 
     let addr: SocketAddr = endpoint().parse()?;
-    // A taken port is the one startup failure a user cannot diagnose: every agent
-    // tool call then fails with no visible cause. Usually a second Groove instance.
+    // A taken port makes every tool call fail with no visible cause — usually a
+    // second Groove instance.
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
@@ -190,21 +181,26 @@ pub async fn start(
 
 #[derive(Deserialize)]
 struct SseQuery {
-    /// Short id of the task this client works on (agents pass it; humans don't).
+    /// The task this client works on. Required.
     task: Option<String>,
+}
+
+/// Refused at connect, so a misconfigured client fails once.
+fn bound_task(q: SseQuery) -> Result<String, (StatusCode, &'static str)> {
+    q.task
+        .filter(|t| !t.is_empty())
+        .ok_or((StatusCode::BAD_REQUEST, "an MCP connection needs ?task=<short_id>"))
 }
 
 async fn sse_handler(
     Query(q): Query<SseQuery>,
     State(state): State<McpState>,
-) -> Sse<SseReceiver> {
+) -> Result<Sse<SseReceiver>, (StatusCode, &'static str)> {
+    let task = bound_task(q)?;
+
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(64);
-
-    let task = q.task.filter(|t| !t.is_empty());
-    if let Some(task) = &task {
-        tracing::info!("[mcp] session {session_id} bound to task {task}");
-    }
+    tracing::info!("[mcp] session {session_id} bound to task {task}");
 
     // First event tells the client where to POST messages
     let endpoint_url = format!("/message?sessionId={session_id}");
@@ -214,12 +210,12 @@ async fn sse_handler(
         map.insert(session_id.clone(), Connection { tx, task });
     }
 
-    Sse::new(SseReceiver {
+    Ok(Sse::new(SseReceiver {
         rx,
         connections: state.connections.clone(),
         session_id,
     })
-    .keep_alive(KeepAlive::default())
+    .keep_alive(KeepAlive::default()))
 }
 
 // ─── POST /message — JSON-RPC 2.0 receiver ───────────────────────────────────
@@ -268,15 +264,8 @@ async fn message_handler(
 /// timeout is 5 minutes on SSE, so this leaves several missed ticks of margin.
 const PROGRESS_EVERY: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// Keep a blocked tool call alive on the client side.
-///
-/// A gated write waits for a human to approve it, and `post_and_wait` has no
-/// deadline of its own — but Claude Code aborts a call that has gone silent for
-/// its idle timeout, and the retry that follows queues the request a second time.
-/// Progress notifications reset that idle timer (they do NOT extend the overall
-/// wall clock), which is exactly the one a human-paced approval trips.
-///
-/// Only sent when the caller supplied a progressToken, per the MCP spec.
+/// Keep a blocked tool call alive: progress notifications reset the client's idle
+/// timeout while a human decides. Only when the caller supplied a progressToken.
 fn spawn_progress(
     state: &McpState,
     mcp_session: &str,
@@ -374,5 +363,18 @@ async fn handle_jsonrpc(
             "id": id,
             "error": { "code": -32601, "message": format!("Method not found: {method}") }
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{bound_task, SseQuery};
+    use axum::http::StatusCode;
+
+    #[test]
+    fn a_connection_that_names_no_task_is_refused() {
+        assert_eq!(bound_task(SseQuery { task: None }).unwrap_err().0, StatusCode::BAD_REQUEST);
+        assert_eq!(bound_task(SseQuery { task: Some(String::new()) }).unwrap_err().0, StatusCode::BAD_REQUEST);
+        assert_eq!(bound_task(SseQuery { task: Some("gh-groove-3".into()) }).unwrap(), "gh-groove-3");
     }
 }

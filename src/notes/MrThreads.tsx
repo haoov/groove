@@ -6,8 +6,8 @@ import type { Mr, MrThread } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { useSession } from '../shared/store';
 
-/** Review threads with reply counts + resolve flow. Rendered in the MR overview
- *  (moved out of the sidebar Forge section, which is now a compact list). */
+/** The MR's discussion: review threads with a resolve flow, and general comments
+ *  (a CI bot's report, a conversation note) read-only. */
 export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThread[]; mr: Mr; onResolved: () => void }) {
   // A thread carries a diff position, so its header can open the file where the
   // comment is — the same affordance the annotation rows have.
@@ -32,8 +32,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
   const [confirmingResolve, setConfirmingResolve] = useState<Set<string>>(new Set());
   const [resolving, setResolving] = useState<Set<string>>(new Set());
   const [resolveErrors, setResolveErrors] = useState<Record<string, string>>({});
-  const resolvable = threads.filter((d: any) => d.notes?.[0]?.resolvable === true);
-  if (!resolvable.length) return null;
+  if (!threads.length) return null;
 
   const toggleExpand = (id: string) =>
     setExpandedThreads((prev) => {
@@ -75,10 +74,11 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
           #{mr.remote_id}
         </a>
       </div>
-      {resolvable.map((d: any, i: number) => {
+      {threads.map((d: any, i: number) => {
         const key: string = d.id ?? `idx-${i}`;
         const first = d.notes[0];
         const replies = d.notes.slice(1);
+        const resolvable: boolean = first.resolvable === true;
         const resolved: boolean = first.resolved === true;
         const expanded = expandedThreads.has(key);
         const filePart = first.position?.new_path?.split('/').pop() ?? null;
@@ -100,10 +100,12 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
                 ? <><span className="annotation-file">{filePart}</span><span className="annotation-line">{linePart}</span></>
                 : <span className="annotation-file">#{mr.remote_id}</span>
               }
-              <span
-                className="annotation-author-dot"
-                style={{ color: resolved ? 'var(--gl-color-green-400)' : 'var(--gl-color-orange-400)' }}
-              >●</span>
+              {resolvable && (
+                <span
+                  className="annotation-author-dot"
+                  style={{ color: resolved ? 'var(--gl-color-green-400)' : 'var(--gl-color-orange-400)' }}
+                >●</span>
+              )}
             </button>
             <div className="annotation-content mr-thread-body">
               <Markdown text={first.body} />
@@ -114,7 +116,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
                   {expanded ? '▾' : '▸'} {replies.length} repl{replies.length > 1 ? 'ies' : 'y'}
                 </button>
               ) : <span />}
-              {!resolved && (
+              {resolvable && !resolved && (
                 confirmingResolve.has(key) ? (
                   <div className="mr-thread-resolve-confirm">
                     <span className="mr-thread-resolve-prompt">Resolve thread?</span>

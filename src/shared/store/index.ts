@@ -14,6 +14,7 @@ import { confirmationsSlice } from './slices/confirmations.slice';
 import { configSlice } from './slices/config.slice';
 import { keybindingsSlice } from './slices/keybindings.slice';
 import { notificationsSlice } from './slices/notifications.slice';
+import { skillsSlice } from './slices/skills.slice';
 
 export type { LayoutNode, SplitDir };
 // A pane predicate components need (the terminal dock is styled and placed by it).
@@ -30,6 +31,7 @@ export const useStore = create<AppState>((...a) => ({
   ...configSlice(...a),
   ...keybindingsSlice(...a),
   ...notificationsSlice(...a),
+  ...skillsSlice(...a),
 }));
 
 // ─── Session context + hooks ────────────────────────────────────────────────────

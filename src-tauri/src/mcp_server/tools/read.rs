@@ -23,28 +23,8 @@ pub(super) async fn get_active_task(
     })))
 }
 
-pub(super) async fn get_worktrees(
-    input: serde_json::Value,
-    state: &McpState,
-    mcp_session: &str,
-) -> anyhow::Result<ToolCallResponse> {
-    let task_id = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session));
 
-    let Some(task_id) = task_id else {
-        return Ok(ToolCallResponse::ok(serde_json::json!({ "worktrees": [] })));
-    };
-
-    let worktrees = store::worktrees::for_session(&state.pool, &task_id).await?;
-
-    Ok(ToolCallResponse::ok(serde_json::to_value(worktrees)?))
-}
-
-/// Every real task the app knows about, from the local mirror. Synthetic
-/// sessions are excluded: an explorer or a review is not something picked off
-/// a queue.
+/// Every real task from the local mirror; explorers and reviews are not tasks.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
     let tasks: Vec<crate::core::db::models::TaskView> = store::provider_tasks::all(&state.pool)
         .await?
@@ -56,10 +36,7 @@ pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallRespo
     ))
 }
 
-/// Repos in the clone pool, flagged with whether they are on the caller's task.
-///
-/// `add_task_repo` takes a slug or project name, so the agent needs to see the
-/// real names rather than guess them.
+/// Repos in the clone pool, flagged `attached` when on the caller's task.
 pub(super) async fn list_repos(
     state: &McpState,
     mcp_session: &str,
@@ -68,8 +45,7 @@ pub(super) async fn list_repos(
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Attached repos are matched on local_path: the pool listing has no repo id
-    // until a repo is registered, and registering is `add_task_repo`'s job.
+    // Matched on local_path: the pool listing has no repo id until registered.
     let attached: Vec<String> = match state.task_for(mcp_session) {
         Some(task_id) => store::repos::attached_paths(&state.pool, &task_id).await?,
         None => vec![],
@@ -83,6 +59,8 @@ pub(super) async fn list_repos(
                 "slug": r.slug,
                 "project": project,
                 "attached": attached.contains(&r.local_path),
+                // The clone itself, for reading a repo the session has not checked out.
+                "local_path": r.local_path,
             })
         })
         .collect();
@@ -92,11 +70,21 @@ pub(super) async fn list_repos(
     ))
 }
 
+/// The task a read is about: the one named, else the caller's own.
+fn task_or_own(input: &serde_json::Value, state: &McpState, mcp_session: &str) -> anyhow::Result<String> {
+    input["task_id"]
+        .as_str()
+        .map(|s| s.to_string())
+        .or_else(|| state.task_for(mcp_session))
+        .ok_or_else(|| anyhow::anyhow!("no task in scope"))
+}
+
 pub(super) async fn get_task_diff(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let result = crate::review::get_task_diff_mcp(&task_id, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(result)?))
 }
@@ -104,9 +92,10 @@ pub(super) async fn get_task_diff(
 pub(super) async fn get_commit_log(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     const DEFAULT_LIMIT: u64 = 20;
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let limit = input["limit"].as_u64().unwrap_or(DEFAULT_LIMIT) as u32;
     let log = crate::review::get_commit_log_mcp(&task_id, limit, &state.pool).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(log)?))
@@ -124,10 +113,89 @@ pub(super) async fn get_mr_state(
 pub(super) async fn get_annotations(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let rows = store::annotations::for_session(&state.pool, &task_id, None).await?;
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
+}
+
+/// Time measured for a task, and how much reached the source. Hours as well as
+/// seconds — `log_task_hours` takes hours.
+pub(super) async fn get_task_time(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = task_or_own(&input, state, mcp_session)?;
+
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let t = store::time::summary(&state.pool, &task_id, &today).await?;
+    let hours = |secs: i64| (secs as f64 / 360.0).round() / 10.0;
+
+    Ok(ToolCallResponse::ok(serde_json::json!({
+        "task_id": task_id,
+        "tracked_hours": hours(t.tracked_seconds),
+        "logged_hours": hours(t.logged_seconds),
+        "unlogged_hours": hours(t.unlogged_seconds),
+        "tracked_seconds": t.tracked_seconds,
+        "logged_seconds": t.logged_seconds,
+        "unlogged_seconds": t.unlogged_seconds,
+    })))
+}
+
+/// The task source's live schema — never cached.
+pub(super) async fn get_task_schema(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = task_or_own(&input, state, mcp_session)?;
+
+    let schema = crate::provider::schema_for(&state.pool, &task_id).await?;
+    let values = crate::provider::properties_for(&state.pool, &task_id).await?;
+
+    // Each property carries what it holds beside what it accepts.
+    let mut out = serde_json::to_value(schema)?;
+    if let Some(props) = out["properties"].as_array_mut() {
+        for p in props {
+            let held = values.iter().find(|v| v.name == p["name"]);
+            p["value"] = held.map(|v| v.value.clone()).unwrap_or(serde_json::Value::Null);
+        }
+    }
+    Ok(ToolCallResponse::ok(out))
+}
+
+pub(super) async fn list_relation_options(
+    input: serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<ToolCallResponse> {
+    let task_id = task_or_own(&input, state, mcp_session)?;
+    let property = str_field(&input, "property")?;
+    let options = crate::provider::relation_options_for(&state.pool, &task_id, &property).await?;
+    Ok(ToolCallResponse::ok(serde_json::to_value(options)?))
+}
+
+/// The MR's pipeline status and run URL, live from the forge.
+pub(super) async fn get_mr_ci(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let mr_id = str_field(&input, "mr_id")?;
+    Ok(ToolCallResponse::ok(
+        crate::forge::mr_ci_for(&state.pool, &mr_id).await?,
+    ))
+}
+
+pub(super) async fn get_mr_threads(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let mr_id = str_field(&input, "mr_id")?;
+    Ok(ToolCallResponse::ok(
+        crate::forge::mr_threads_for(&state.pool, &mr_id).await?,
+    ))
 }
 
 pub(super) async fn get_open_file(
@@ -141,45 +209,26 @@ pub(super) async fn get_open_file(
     ))
 }
 
-pub(super) async fn get_file_content(
-    input: serde_json::Value,
-) -> anyhow::Result<ToolCallResponse> {
-    // 1 MiB — the agent has shell access for anything bigger.
-    const MAX_FILE_BYTES: u64 = 1_048_576;
-
-    let file_path = str_field(&input, "file_path")?;
-    let meta = tokio::fs::metadata(&file_path).await?;
-    if meta.len() > MAX_FILE_BYTES {
-        return Ok(ToolCallResponse::err(format!(
-            "{file_path} is {} bytes (cap {MAX_FILE_BYTES}); read it via the shell instead",
-            meta.len()
-        )));
-    }
-    let content = tokio::fs::read_to_string(&file_path).await?;
-    Ok(ToolCallResponse::ok(serde_json::json!({ "content": content })))
-}
 
 pub(super) async fn get_task_body(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let (provider, key) = crate::provider::resolve(&state.pool, &task_id).await?;
     let markdown = provider.body_markdown(&key).await?;
     Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
 }
 
-/// Markdown is what the agent mirrors, and what create_task_from_explorer takes
-/// back — raw block JSON was easy to misread.
+/// The task template as markdown.
 pub(super) async fn get_task_template(
     input: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // The template belongs to: the source the caller names, else the source of the
-    // task in scope, else the one configured source. An explorer or review session
-    // has an id in scope but no source — that falls through rather than erroring,
-    // since filing FROM an explorer is this tool's main use.
+    // Source: the one named, else the task's, else the only one configured. An
+    // explorer has no source and falls through.
     let named = input["provider"]
         .as_str()
         .map(|_| crate::provider::commands::draft_provider(&input));
@@ -203,12 +252,23 @@ pub(super) async fn get_task_template(
         Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),
-        // No template is an answer, not a failure — the tool contract says empty.
-        // An error here stalled the create-task flow for sources without one.
+        // No template is an answer, not an error.
         Ok(None) => Ok(ToolCallResponse::ok(serde_json::json!({
             "template_markdown": "",
             "note": "this task source has no template — structure the body yourself",
         }))),
         Err(e) => Ok(ToolCallResponse::err(e.to_string())),
     }
+}
+
+/// The raw `SKILL.md` of one of the user's own skills, so an edit rewrites a
+/// whole file instead of guessing at what the rest of it said.
+pub(super) async fn read_user_skill(
+    input: serde_json::Value,
+) -> anyhow::Result<ToolCallResponse> {
+    let name = str_field(&input, "name")?;
+    Ok(match crate::skills::read_user_skill(&name) {
+        Ok(body) => ToolCallResponse::ok(serde_json::json!({ "name": name, "body": body })),
+        Err(e) => ToolCallResponse::err(e.to_string()),
+    })
 }

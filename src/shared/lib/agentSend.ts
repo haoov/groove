@@ -1,13 +1,9 @@
-// Sending text to a session's agent, from anywhere in the app.
-//
-// The agent is a PTY running Claude Code, so "sending a prompt" is writing bytes
-// to its terminal — the same thing as typing into it. Two consequences shape this
-// module: the text must end in a newline to be submitted, and it must not arrive
-// before Claude's input is ready to receive it.
+// Sending text to a session's agent — writing bytes to its PTY.
 
 import { invoke } from '../ipc/invoke';
 import { bytesToB64 } from './ptyRegistry';
 import { useStore } from '../store';
+import { skillCommand, trimForPty } from './skills';
 
 /** Give up waiting for a cold agent to report in and just send. */
 const READY_TIMEOUT_MS = 25_000;
@@ -29,15 +25,7 @@ export function agentPtyFor(sessionKey: string): string | null {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * Wait for a freshly started agent to be ready for input.
- *
- * Its `SessionStart` hook firing is the signal — that's Claude telling us it is
- * up, which beats guessing at a delay (a cold start is fast, a `--resume` of a
- * long conversation is not). If hooks never arrive (curl missing, older agent),
- * we fall through on the timeout and send anyway rather than silently dropping
- * the user's prompt.
- */
+/** Wait for the agent's `SessionStart` hook; on timeout, send anyway rather than drop the prompt. */
 async function waitUntilReady(taskId: string): Promise<void> {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -49,14 +37,8 @@ async function waitUntilReady(taskId: string): Promise<void> {
   }
 }
 
-/**
- * The session's agent PTY, started if it isn't running yet.
- *
- * Starting does NOT open the agent tab: PTY output is buffered until a terminal
- * host registers (useIpc), so nothing is lost if no surface is showing it yet.
- * When `waitReady` is set, this also waits for the agent to be able to take
- * input — only needed before writing to it.
- */
+/** The session's agent PTY, started if needed. Output buffers until a host attaches, so
+ *  no tab has to be open. */
 export async function ensureAgentSession(
   sessionKey: string,
   opts?: { waitReady?: boolean },
@@ -73,25 +55,30 @@ export async function ensureAgentSession(
   return pty;
 }
 
-/**
- * Send a prompt to a session's agent, starting one if it isn't running.
- *
- * Submitting takes two writes, not one. A canned prompt is multi-line, and Claude
- * Code treats the newlines inside a fast write as newlines in its input box — so a
- * trailing "\n" just left the whole prompt sitting there unsent. The text goes
- * first, then a lone carriage return after a short pause, which the TUI reads as
- * Enter. Verified against a real PTY: without the split the draft never submits.
- */
+/** Send a prompt: the text, a pause, then a lone CR. A trailing "\n" in the same
+ *  write does not submit — the TUI reads it as a newline in the draft. */
 export async function sendToAgent(sessionKey: string, text: string): Promise<void> {
   const pty = await ensureAgentSession(sessionKey, { waitReady: true });
   const write = (bytes: Uint8Array) => invoke('write_pty', { sessionId: pty, dataB64: bytesToB64(bytes) });
 
-  // Trailing whitespace would become blank lines in the draft.
-  const body = text.replace(/\s+$/, '');
+  const body = trimForPty(text);
   await write(new TextEncoder().encode(body));
 
-  // Long enough that the TUI has finished handling the paste, so the CR arrives as
-  // its own keypress instead of being folded into it.
+  // Let the TUI finish the paste before the CR.
   await sleep(SUBMIT_DELAY_MS);
   await write(new Uint8Array([CARRIAGE_RETURN]));
+}
+
+/** Invoke a skill on a session's agent: `/groove:start-task `, then Enter. */
+export function sendSkill(sessionKey: string, skillId: string, args?: string): Promise<void> {
+  return sendToAgent(sessionKey, skillCommand(skillId, args));
+}
+
+/** Restart the agent so it loads the skills on disk; `--resume` keeps the conversation. */
+export async function reloadAgent(sessionKey: string): Promise<void> {
+  const pty = agentPtyFor(sessionKey);
+  if (pty) await invoke('stop_agent_session', { sessionId: pty });
+  await ensureAgentSession(sessionKey);
+  await useStore.getState().loadSkills();
+  useStore.getState().setSkillsStale(false);
 }

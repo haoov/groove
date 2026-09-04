@@ -307,6 +307,8 @@ export function useIpc() {
             // A git action landed (UI or MCP) — reload the diff and status chips.
             s.invalidateDiff(owner.id);
             s.refreshStatusFor(owner.id);
+            // A push starts a new pipeline, so the CI chip is wrong from here.
+            if (payload.op_type === OP.GIT_PUSH) s.invalidateMrs(owner.id);
           }
           if (typeof payload.op_type === 'string' && payload.op_type.startsWith(OP_MR_PREFIX) && owner) {
             // An MR was created/updated/closed — refresh the Forge section.

@@ -15,7 +15,7 @@ import { Highlighted, matchRanges } from '../shared/lib/match';
 import { repoDiffFor } from '../shared/lib/workspace';
 import { forgeName, mrSigil } from '../shared/lib/forge';
 import { openExternal } from '../shared/lib/openExternal';
-import { ciGroup } from '../shared/lib/mr';
+import { CiChip } from '../shared/ui/CiChip';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {
@@ -414,6 +414,9 @@ const GIT_MENU: { key: ActionKey; label: string; icon: typeof GitCommit; needsMe
 /** The MR's pipeline status; grey when the forge reports none. */
 function MrCiChip({ mr }: { mr: Mr }) {
   const [ci, setCi] = useState<{ status: string; url: string } | null>(null);
+  // Nothing polls the forge, so this is the only thing that moves the chip: a
+  // push, an mr.* op, or the sidebar's refresh button.
+  const mrNonce = useSession((s) => s.mrNonce);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,7 +424,7 @@ function MrCiChip({ mr }: { mr: Mr }) {
       .then((r) => { if (!cancelled) setCi(r ?? null); })
       .catch(() => { if (!cancelled) setCi(null); });
     return () => { cancelled = true; };
-  }, [mr.id]);
+  }, [mr.id, mrNonce]);
 
   if (!ci) {
     return (
@@ -432,14 +435,10 @@ function MrCiChip({ mr }: { mr: Mr }) {
     );
   }
   return (
-    <button
-      className={`git-commit-mr-ci forge-ci-${ciGroup(ci.status)}`}
-      onClick={() => openExternal(ci.url)}
-      title={`Pipeline: ${ci.status} — open in ${forgeName(mr.platform)}`}
-    >
+    <CiChip status={ci.status} url={ci.url || mr.url} platform={mr.platform} className="git-commit-mr-ci">
       <span className="forge-ci-dot" />
       CI
-    </button>
+    </CiChip>
   );
 }
 

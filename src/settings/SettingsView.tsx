@@ -6,6 +6,7 @@ import { AuthModal } from '../setup/AuthModal';
 import { SETTINGS_GROUPS, DEFAULT_SETTINGS_GROUP, type SettingsGroupId } from './groups';
 import { AppearancePanel } from './AppearancePanel';
 import { EditorPanel } from './EditorPanel';
+import { AgentsPanel } from './AgentsPanel';
 import { ShortcutsPanel } from './ShortcutsPanel';
 import { SourcesPanel } from './SourcesPanel';
 import { GitForgePanel } from './GitForgePanel';
@@ -89,6 +90,7 @@ export function SettingsView() {
         <div className="settings-panel-body">
           {group === 'appearance' && <AppearancePanel />}
           {group === 'editor' && <EditorPanel />}
+          {group === 'agents' && <AgentsPanel />}
           {group === 'shortcuts' && <ShortcutsPanel />}
           {group === 'sources' && (
             <SourcesPanel

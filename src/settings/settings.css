@@ -84,12 +84,13 @@
   color: var(--gl-text-color-default);
 }
 
-/* Capped to a reading width. */
+/* Capped to a reading width. Wide enough for the skill editor, which shows a
+   SKILL.md at the width it is written in. */
 .settings-panel-body {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 720px;
+  max-width: 960px;
   padding: var(--space-5);
   display: flex;
   flex-direction: column;

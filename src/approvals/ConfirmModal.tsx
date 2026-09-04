@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
-import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag } from 'lucide-react';
+import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
 
@@ -19,6 +19,8 @@ const OP_LABELS: Record<string, string> = {
   [OP.TASK_ADD_REPO]: 'Add repo to task',
   [OP.TASK_ADD_WORKTREE]: 'Add worktree to task',
   [OP.TASK_CREATE_FROM_EXPLORER]: 'Create task from explorer',
+  [OP.TASK_FINISH]: 'Finish task',
+  [OP.SKILL_SAVE]: 'Write agent skill',
   [OP.GIT_DISCARD]: 'Discard changes',
   [OP.GIT_DISCARD_ALL]: 'Discard all changes',
 };
@@ -42,6 +44,8 @@ const OP_ICONS: Record<string, React.ReactNode> = {
   [OP.TASK_ADD_REPO]: <FolderPlus size={14} strokeWidth={1.75} />,
   [OP.TASK_ADD_WORKTREE]: <GitBranch size={14} strokeWidth={1.75} />,
   [OP.TASK_CREATE_FROM_EXPLORER]: <FilePlus size={14} strokeWidth={1.75} />,
+  [OP.TASK_FINISH]: <CheckCircle2 size={14} strokeWidth={1.75} />,
+  [OP.SKILL_SAVE]: <Sparkles size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD]: <RotateCcw   size={14} strokeWidth={1.75} />,
   [OP.GIT_DISCARD_ALL]: <RotateCcw size={14} strokeWidth={1.75} />,
 };
@@ -213,6 +217,18 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.MR_CLOSE:
       return <div className="cp-hint">This will close the MR and cannot be undone.</div>;
 
+    case OP.TASK_FINISH:
+      return (
+        <>
+          <Field label="Task" value={str('task_id')} mono />
+          <div className="cp-hint cp-hint--danger">
+            Marks the task done at its source, then removes every worktree of this
+            session and its local data. Anything not committed and pushed is lost —
+            this cannot be undone.
+          </div>
+        </>
+      );
+
     case OP.GIT_DISCARD:
       return (
         <>
@@ -261,6 +277,26 @@ function PayloadView({ op, payload, edits, setField }: {
           />
           <div className="cp-hint cp-hint--danger">
             Replaces the whole task body. Anything markdown cannot represent is lost.
+          </div>
+        </>
+      );
+
+    // Editable, like a task body: this is a procedure the agent will follow on its
+    // own later, and reading it is the whole point of the confirmation.
+    case OP.SKILL_SAVE:
+      return (
+        <>
+          <Field label="Skill" value={`user:${str('name')}`} mono />
+          {str('previous') && <Field label="Replaces" value={`user:${str('previous')}`} mono />}
+          <EditableField
+            label="SKILL.md"
+            value={edits.body ?? ''}
+            onChange={(v) => setField('body', v)}
+            multiline
+            placeholder="Front matter, then the procedure"
+          />
+          <div className="cp-hint">
+            Agents load skills at startup — this one works after a reload.
           </div>
         </>
       );
@@ -321,6 +357,7 @@ function PayloadView({ op, payload, edits, setField }: {
 
 export function ConfirmModal() {
   const { pendingConfirmations, removeConfirmation, setLastError } = useStore();
+  const setSkillsStale = useStore((s) => s.setSkillsStale);
   const confirmationsMinimized = useStore((s) => s.confirmationsMinimized);
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);
   const [running, setRunning] = useState(false);
@@ -350,6 +387,7 @@ export function ConfirmModal() {
       seed.body_markdown = String(p.body_markdown ?? '');
     }
     if (current.op_type === OP.TASK_BODY) seed.markdown = String(p.markdown ?? '');
+    if (current.op_type === OP.SKILL_SAVE) seed.body = String(p.body ?? '');
     setEdits(seed);
   }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -385,6 +423,7 @@ export function ConfirmModal() {
           approved,
           payloadOverrides: hasOverrides ? overrides : null,
         });
+        if (approved && current.op_type === OP.SKILL_SAVE) setSkillsStale(true);
         removeConfirmation(current.id);
       } catch (e) {
         const msg = String(e);
@@ -394,7 +433,7 @@ export function ConfirmModal() {
         setRunning(false);
       }
     },
-    [current, running, edits, removeConfirmation, setLastError]
+    [current, running, edits, removeConfirmation, setLastError, setSkillsStale]
   );
 
   // Autofocus the approve button when a confirmation opens (or is restored from

@@ -1,6 +1,6 @@
 //! Per-launch bearer token for the loopback server.
 //!
-//! Without it, any local process could read files through `get_file_content`,
+//! Without it, any local process could read a task's diff through `get_task_diff`,
 //! queue write approvals that look like agent requests, or spoof `/hook`
 //! activity. Only processes we spawn receive the token — via launch FILES, never
 //! argv, because `/proc/<pid>/cmdline` is world-readable.

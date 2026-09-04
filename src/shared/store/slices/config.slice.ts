@@ -16,6 +16,10 @@ export const configSlice: StateCreator<AppState, [], [], ConfigSlice> = (set, ge
     invoke('set_font_size', { fontSize: px }).catch((e) => set({ lastError: String(e) }));
     set((s) => (s.config ? { config: { ...s.config, ui: { ...s.config.ui, font_size: px } } } : {}));
   },
+  setSuggestActions: (v) => {
+    invoke('set_suggest_actions', { suggestActions: v }).catch((e) => set({ lastError: String(e) }));
+    set((s) => (s.config ? { config: { ...s.config, ui: { ...s.config.ui, suggest_actions: v } } } : {}));
+  },
   setFontFamily: (family) => {
     applyFontFamily(family);
     invoke('set_font_family', { fontFamily: family }).catch((e) => set({ lastError: String(e) }));

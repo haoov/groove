@@ -1,29 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronUp, Loader2, Play, Sparkles, X } from 'lucide-react';
+import { ChevronUp, Loader2, Play, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
-import { ensureAgentSession, sendToAgent } from '../shared/lib/agentSend';
-import { actionsFor } from './prompts';
+import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
+import { offeredSkills } from '../shared/lib/skills';
 import { SOURCE_IDS } from '../setup/sources';
 import { providerCopy } from '../shared/lib/taskProvider';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import type { AgentActivity } from '../shared/ipc/ipc';
+import type { AgentActivity, AgentSkill, ProviderId } from '../shared/ipc/ipc';
 
 /**
- * The agent, as a full-height column on the right of the work.
- *
- * It shows the agent's REAL terminal rather than a re-implementation: no second
- * input to keep in sync, no guessing what Claude is asking, and no state where
- * typing is unsafe, because you are looking at and typing into the actual thing.
- *
- * A column rather than the floating card it used to be — a conversation you keep
- * glancing at wants the height, and a card that hovered over the editor was in the
- * way. It sits between the workspace and the session dock, so the two right-hand
- * columns read as one edge.
- *
- * It addresses whichever session its context names — the focused one in a
- * workspace (App.tsx mounts it there only).
+ * The agent's REAL terminal, as a column on the right — not a re-implementation, so
+ * there is no second input to keep in sync. Addresses the session its context names.
  */
 
 const MIN_WIDTH = 320;
@@ -41,8 +30,8 @@ export function AgentConsole() {
   const kind = useSession((s) => s.kind);
   const autoApprove = useSession((s) => s.autoApprove);
   const setAutoApprove = useSession((s) => s.setAutoApprove);
-  const repos = useSession((s) => s.activeRepos);
-  const mrs = useSession((s) => s.mrs);
+  const skills = useStore((s) => s.skills);
+  const skillsStale = useStore((s) => s.skillsStale);
   const open = useStore((s) => s.consoleOpen);
   const setOpen = useStore((s) => s.setConsoleOpen);
   const focusNonce = useStore((s) => s.consoleFocusNonce);
@@ -54,8 +43,9 @@ export function AgentConsole() {
 
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [reloading, setReloading] = useState(false);
 
-  // Where a filed task can go; drives the create-task drop-up.
+  // Where a filed task can go; the create-task rows of the Actions menu.
   const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLSpanElement>(null);
@@ -90,9 +80,8 @@ export function AgentConsole() {
       .finally(() => setStarting(false));
   };
 
-  // Opening the pane IS the request to start an agent. Only on the open
-  // TRANSITION: with it already open, flipping through sessions must not spawn a
-  // Claude process in each one, and a failed start must not retry in a loop.
+  // Start an agent on the open TRANSITION only — not on every session switch, and
+  // not in a loop after a failed start.
   const wasOpen = useRef(false);
   useEffect(() => {
     const justOpened = open && !wasOpen.current;
@@ -113,8 +102,7 @@ export function AgentConsole() {
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    // The rendered width, not the stored one: in a window too narrow for every
-    // column this has been shrunk, and dragging from the stored value would jump.
+    // The rendered width, not the stored one — the pane may have been shrunk.
     const startWidth = paneRef.current?.getBoundingClientRect().width ?? width;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
@@ -137,15 +125,50 @@ export function AgentConsole() {
 
   if (!visible || !activeTask) return null;
 
-  const runAction = async (id: string, prompt: string) => {
-    setSending(id);
+  const runSkill = async (skill: AgentSkill, args?: string) => {
+    setSending(skill.id);
     try {
-      await sendToAgent(sessionKey, prompt);
+      await sendSkill(sessionKey, skill.id, args);
     } catch (e) {
       setLastError(String(e));
     } finally {
       setSending(null);
     }
+  };
+
+  const offered = offeredSkills(skills, kind);
+  const core = offered.filter((a) => !a.editable);
+  const mine = offered.filter((a) => a.editable);
+
+  // With several sources configured, create-task gets one row each; the pick is
+  // the skill's argument.
+  const skillRow = (a: AgentSkill, src?: ProviderId) => (
+    <button
+      key={src ? `${a.id}:${src}` : a.id}
+      className="ctx-menu-item"
+      title={a.hint}
+      onClick={() => {
+        setMenuOpen(false);
+        void runSkill(a, src);
+      }}
+    >
+      <Sparkles size={13} strokeWidth={1.75} />
+      {src ? `File in ${providerCopy({ provider: src }).label}` : a.label}
+    </button>
+  );
+  const skillRows = (list: AgentSkill[]) =>
+    list.flatMap((a) =>
+      a.name === 'create-task' && sources.length > 1
+        ? sources.map((src) => skillRow(a, src))
+        : [skillRow(a)],
+    );
+
+  const reload = () => {
+    if (reloading) return;
+    setReloading(true);
+    reloadAgent(sessionKey)
+      .catch((e) => setLastError(String(e)))
+      .finally(() => setReloading(false));
   };
 
   const state = activity?.state ?? (agentPty ? 'working' : 'idle');
@@ -189,66 +212,43 @@ export function AgentConsole() {
           )}
         </div>
 
-        {/* Canned asks below the terminal — the conversation is the main thing. */}
+        {/* The skills, behind one menu. */}
         <div className="console-actions">
-          {actionsFor(kind).map((a) => {
-            const ctx = {
-              shortId: activeTask.short_id,
-              kind,
-              project: repos[0]?.project,
-              mrNumber: mrs[0] ? `!${mrs[0].remote_id}` : undefined,
-            };
-            // Filing a task needs a source; with several configured the pill
-            // opens UPWARD (the bar sits at the bottom) and the pick rides
-            // along in the prompt. One source needs no menu — the backend infers.
-            if (a.id === 'create-task' && sources.length > 1) {
-              return (
-                <span key={a.id} className="create-task-menu" ref={menuRef}>
-                  <button
-                    className="console-action"
-                    title={`${a.title} — pick where to file it`}
-                    disabled={!!sending}
-                    onClick={() => setMenuOpen((v) => !v)}
-                  >
-                    {sending === a.id && <Loader2 size={11} className="spin" />}
-                    {a.label}
-                    <ChevronUp size={11} strokeWidth={2} />
-                  </button>
-                  {menuOpen && (
-                    <div className="ctx-menu create-task-menu-panel">
-                      {sources.map((src) => (
-                        <button
-                          key={src}
-                          className="ctx-menu-item"
-                          onClick={() => {
-                            setMenuOpen(false);
-                            runAction(a.id, a.build({ ...ctx, provider: src }));
-                          }}
-                        >
-                          <Sparkles size={13} strokeWidth={1.75} />
-                          File in {providerCopy({ provider: src }).label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </span>
-              );
-            }
-            return (
-              <button
-                key={a.id}
-                className="console-action"
-                title={a.title}
-                disabled={!!sending}
-                onClick={() => runAction(a.id, a.build(ctx))}
-              >
-                {sending === a.id && <Loader2 size={11} className="spin" />}
-                {a.label}
-              </button>
-            );
-          })}
-          {/* Auto-approve, as a real switch — warm while on, so approving blind is
-              never a hidden state. Sits apart from the canned asks. */}
+          <span className="actions-menu" ref={menuRef}>
+            <button
+              className="console-action"
+              title="What you can ask this agent for"
+              disabled={!!sending || offered.length === 0}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {sending ? <Loader2 size={11} className="spin" /> : <Sparkles size={11} strokeWidth={2} />}
+              Actions
+              <ChevronUp size={11} strokeWidth={2} />
+            </button>
+            {/* Opens UPWARD: the bar is the console's bottom edge. */}
+            {menuOpen && (
+              <div className="ctx-menu actions-menu-panel">
+                {/* One heading per group. */}
+                {core.length > 0 && <div className="ctx-menu-label">Core</div>}
+                {skillRows(core)}
+                {mine.length > 0 && <div className="ctx-menu-label">User</div>}
+                {skillRows(mine)}
+              </div>
+            )}
+          </span>
+          {/* A skill changed on disk; the running agent needs a restart to see it. */}
+          {skillsStale && agentPty && (
+            <button
+              className="console-action"
+              disabled={reloading}
+              onClick={reload}
+              title="Restart the agent so it loads the skills — the conversation is resumed"
+            >
+              {reloading ? <Loader2 size={11} className="spin" /> : <RefreshCw size={11} strokeWidth={2} />}
+              Reload skills
+            </button>
+          )}
+          {/* Auto-approve — warm while on. */}
           <button
             className={`console-toggle ${autoApprove ? 'on' : ''}`}
             role="switch"
@@ -267,8 +267,7 @@ export function AgentConsole() {
   );
 }
 
-/** One line describing the agent. No activity means nothing has been reported —
- *  said plainly rather than dressed up as idle. */
+/** One line describing the agent. */
 function statusText(a: AgentActivity | null, hasAgent: boolean, starting: boolean): string {
   if (starting) return 'starting…';
   if (!a) return hasAgent ? 'running' : 'no agent yet';

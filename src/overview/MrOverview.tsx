@@ -9,7 +9,7 @@ import { useStore, useSession } from '../shared/store';
 import type { MrDetails } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { MrThreadsSection } from '../notes/MrThreads';
-import { ciGroup } from '../shared/lib/mr';
+import { CiChip } from '../shared/ui/CiChip';
 import { Markdown } from '../shared/ui/Markdown';
 
 /** Full-page MR/PR overview — the task overview's layout applied to a merge
@@ -160,14 +160,10 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
             </span>
           )}
           {ci && (
-            <button
-              className={`overview-badge overview-ci forge-ci-${ciGroup(ci.status)}`}
-              onClick={() => openExternal(ci.url || url)}
-              title={`Pipeline: ${ci.status} — open`}
-            >
+            <CiChip status={ci.status} url={ci.url || url} platform={mr.platform} className="overview-badge overview-ci">
               <span className="forge-ci-dot" />
               CI · {ci.status.replace(/_/g, ' ')}
-            </button>
+            </CiChip>
           )}
         </div>
 

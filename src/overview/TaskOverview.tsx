@@ -3,12 +3,14 @@ import { openExternal } from '../shared/lib/openExternal';
 import { invoke } from '../shared/ipc/invoke';
 import { providerCopy } from '../shared/lib/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
-import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus, Sparkles } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
 import { BodyEditor } from './BodyEditor';
+import { sendSkill } from '../shared/lib/agentSend';
+import { offers } from '../shared/lib/skills';
 
 export function TaskOverview() {
   const activeTask = useSession((s) => s.activeTask);
@@ -19,6 +21,38 @@ export function TaskOverview() {
   const setWorkspaceMode = useSession((s) => s.setWorkspaceMode);
   const setLastError = useStore((s) => s.setLastError);
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
+  const sessionId = useSession((s) => s.id);
+  const suggests = useStore((s) => s.config?.ui.suggest_actions ?? true);
+  const kind = useSession((s) => s.kind);
+  const hasStart = useStore((s) => offers(s.skills, kind, 'groove:start-task'));
+  const [starting, setStarting] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  // Finishing runs through close-task, which checks for unlanded work first.
+  const closeTask = async () => {
+    setClosing(true);
+    useStore.getState().requestConsoleFocus();
+    try {
+      await sendSkill(sessionId, 'groove:close-task');
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  // A suggestion, never an auto-send.
+  const startTask = async () => {
+    setStarting(true);
+    useStore.getState().requestConsoleFocus(); // the proposal lands in the chat
+    try {
+      await sendSkill(sessionId, 'groove:start-task');
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      setStarting(false);
+    }
+  };
 
   // Clicking a worktree scopes the editor to it and leaves the overview.
   const openWorktree = (repoId: string, worktreeId: string) => {
@@ -29,10 +63,9 @@ export function TaskOverview() {
   const [allMrs, setAllMrs] = useState<Mr[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
-  /** Which ending is awaiting confirmation. Finishing marks the task Done;
-   *  deleting discards it at the source. Both then tear the local
-   *  workspace down, so they share one banner and one busy flag. */
-  const [ending, setEnding] = useState<'finish' | 'delete' | null>(null);
+  /** Deleting discards the task at its source and tears the local workspace
+   *  down. Finishing goes through the agent instead, so it has no banner. */
+  const [ending, setEnding] = useState<'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [schema, setSchema] = useState<TaskSchema | null>(null);
   const src = providerCopy(activeTask);
@@ -72,15 +105,13 @@ export function TaskOverview() {
     return () => { cancelled = true; };
   }, [activeWorktrees]);
 
-  // No success path to handle: both commands emit task_finished, which closes the
+  // No success path to handle: delete_task emits task_finished, which closes the
   // session — this component goes with it.
   const handleEnd = async () => {
     if (!activeTask || !ending) return;
     setFinishing(true);
     try {
-      await invoke(ending === 'delete' ? 'delete_task' : 'finish_task', {
-        shortId: activeTask.short_id,
-      });
+      await invoke('delete_task', { shortId: activeTask.short_id });
     } catch (e) {
       setLastError(String(e));
       setFinishing(false);
@@ -119,8 +150,9 @@ export function TaskOverview() {
             </button>
             <button
               className="finish-task-btn"
-              onClick={() => setEnding('finish')}
-              disabled={finishing}
+              onClick={() => void closeTask()}
+              disabled={finishing || closing}
+              title="The agent checks nothing is unlanded, writes the task up, then asks to close it"
             >
               <CheckCircle2 size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
               Finish task
@@ -144,23 +176,17 @@ export function TaskOverview() {
           schema={schema}
         />
 
-        {/* One banner for both endings — the local half is identical, so only the
-            sentence about what changes at the source. */}
+        {/* Deleting only; finishing is close-task. */}
         {ending && (
-          <div className={`finish-confirm-banner ${ending === 'delete' ? 'destructive' : ''}`}>
+          <div className="finish-confirm-banner destructive">
             <div className="finish-confirm-icon">
               <AlertTriangle size={14} strokeWidth={2} />
             </div>
             <div className="finish-confirm-body">
-              <strong>
-                {ending === 'delete' ? 'Delete' : 'Finish'} &ldquo;{activeTask.title}&rdquo;?
-              </strong>
+              <strong>Delete &ldquo;{activeTask.title}&rdquo;?</strong>
               <p>
                 This will remove all local worktrees and delete task data from the local
-                database.{' '}
-                {ending === 'delete'
-                  ? src.discard
-                  : src.finish}
+                database. {src.discard}
               </p>
             </div>
             <div className="finish-confirm-actions">
@@ -191,9 +217,15 @@ export function TaskOverview() {
               </span>
             </h3>
             {activeRepos.length === 0 ? (
-              <p className="overview-empty-body">
+              <div className="overview-empty-body">
                 No repos yet — add one to check out a branch and start working.
-              </p>
+                {suggests && hasStart && (
+                  <button className="overview-suggest" disabled={starting} onClick={() => void startTask()}>
+                    <Sparkles size={12} strokeWidth={1.75} />
+                    Let the agent read the task and set it up
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="overview-repos">
                 {activeRepos.map((repo) => {

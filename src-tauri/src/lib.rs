@@ -15,6 +15,7 @@ mod platform;
 mod forge;
 mod provider;
 mod review;
+mod skills;
 mod task_manager;
 mod worktrees;
 
@@ -88,6 +89,7 @@ pub fn run() {
             task_manager::set_font_family,
             task_manager::list_fonts,
             task_manager::set_theme,
+            task_manager::set_suggest_actions,
             task_manager::finish_task,
             task_manager::delete_task,
             // tasks
@@ -159,6 +161,11 @@ pub fn run() {
             // agent_manager + core::pty
             agent_manager::start_agent_session,
             agent_manager::start_terminal_session,
+            // skills
+            skills::list_agent_skills,
+            skills::read_agent_skill,
+            skills::save_user_skill,
+            skills::delete_user_skill,
             core::pty::stop_agent_session,
             core::pty::write_pty,
             core::pty::resize_pty,
@@ -195,6 +202,12 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
         .app_config_dir()
         .map_err(|e| format!("cannot get config dir: {e}"))?;
     crate::core::config::init(config_dir);
+
+    // After the config, which decides where the user plugin lives; before any
+    // agent can launch and ask for its `--plugin-dir` arguments.
+    if let Err(e) = skills::sync(&handle) {
+        tracing::warn!("skills not synced: {e}");
+    }
 
     let pool = crate::core::db::init(&data_dir)
         .await

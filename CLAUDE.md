@@ -41,6 +41,7 @@ src-tauri/src/
   approvals/       the confirmation bridge — every outward write passes here
   mcp_server/      the tools the agent calls
   agent_manager/   agent + terminal PTYs      agent_hooks/  activity callbacks
+  skills/          the agent's core prompt, its skills, and the plugin dirs for them
   home/            the Home snapshot          annotation_store/  line notes
   editor_host/     file reads and writes for the editor
 src/
@@ -50,7 +51,7 @@ src/
     store/         zustand barrel · types.ts · session.ts (pure reducers) · slices/
     lib/  ui/  styles/
   home/ sessions/ workspace/ files/ git/ notes/ editor/ overview/ agent/ terminal/
-  approvals/ notifications/ command/ setup/     — each owns its components + css
+  approvals/ notifications/ command/ setup/ actions/   — each owns its components + css
 ```
 
 ## Contracts
@@ -67,10 +68,42 @@ payloads, UI constants).
 - approval ops — `approvals/ops.rs` ↔ `shared/ipc/ops.ts` (a Rust test guards both directions)
 - MCP tool descriptions — `mcp_server/tools/definitions.rs` is the ONE place that tells
   the agent how to write a commit message, MR text, an annotation or a task body. Do not
-  restate those rules in `agent/prompts.ts` or here; saying it in three places got it
-  ignored in all three.
+  restate those rules in `agent/prompts.ts`, in a skill, or here; saying it in three
+  places got it ignored in all three.
 
-**Commands**: 102, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
+**Canned asks are skills, not strings.** The console's Actions drop-up renders
+`list_agent_skills` and sends `/groove:<name>` through `sendSkill` — one menu, not a
+pill each, so the bar does not grow with the skill list. Add an action by adding a
+`SKILL.md` under `skills/core/` and a row in `CORE_SKILLS` — there is no prompt table
+in the frontend.
+
+**A skill's `description:` is written for the MODEL** — what it does, then `Use when …`
+with the words a user types — because that is what Claude Code matches to invoke the
+skill on its own, off the chat, with no button pressed. A test guards the phrase. The UI
+shows `groove-hint` and never the description — writing the description short enough for a
+tooltip is exactly what kills auto-invocation. A skill with no hint shows no line; there is
+no fallback, because the fallback was the description.
+A user's own live in `<config>/user-skills/skills/` and are written two ways: the
+Settings manager (`src/actions/`) writes them directly, because that is the user typing,
+and the agent writes them through `save_user_skill` — the one LOCAL write that is gated,
+since a skill is an instruction it will later invoke unprompted. The bridge covers what
+leaves the machine PLUS what authors the agent's future behaviour.
+
+**A skill on disk is not a skill the agent has.** `--plugin-dir` is read at launch, so a
+write marks `skillsStale` and the console offers a reload (`reloadAgent` — stop the PTY,
+start it again, `--resume` keeps the conversation). The skills LIST deliberately does not
+refresh until then: a pill for a skill the running agent cannot resolve answers with
+"unknown command".
+
+**Groove suggests, it never auto-sends.** A trigger renders a chip the user clicks
+(`TaskOverview` offers `start-task` on a task with no repos, which is the one way in:
+its step 3 attaches them, because provisioning a task without reading it first only
+moves the guessing earlier).
+Opening a session must never start an agent by itself — that spends tokens on a glance.
+`ui.suggest_actions` hides every offer, and hides nothing else: the skill stays a button
+and a slash command.
+
+**Commands**: 105, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules
 is fine as long as a `pub use` keeps the registered path resolving.
 
@@ -102,12 +135,28 @@ path segment is the BRANCH leaf, not the repo. Use the payload's `repo` for disp
 `create_dir_all` the parent before `git worktree move`.
 
 **Agents always start at the worktree ROOT**, never inside a repo or task directory, so
-every prompt must name its session explicitly (`shared/lib/agentSend`, `agent/prompts.ts`).
+cwd carries no session context. The core prompt (`skills/prompt.md`, passed per launch
+with `--append-system-prompt-file`) names the session, so a skill does not repeat it.
+It is appended per launch and never baked into the conversation — edit it and every
+session already open picks it up on its next start. Interpolate only STABLE identity;
+repos, worktrees and MRs drift, and `get_active_task` is read when it is needed.
+
+**Skills are gated by the launch flag.** `--plugin-dir` loads a plugin for ONE
+session, and that is the only thing keeping Groove's skills out of the agents the user
+starts from a terminal. Never install them into `~/.claude/skills` or the worktree root
+instead — the root is the user's own directory and already holds their `CLAUDE.md`.
 
 **Every outward write goes through the approvals bridge** — git commit/push/pull/rebase/
 discard, MR create/update/close, and all task writes. Requests survive a crash and
 re-surface at startup. `Commit & Push` posts the push only after the commit's
 confirmation resolves approved.
+
+**The agent commits its index; the UI commits everything.** `via_bridge` stamps
+`index_only` on a `git.commit` from an agent, and `commit_impl` then refuses when
+nothing is staged instead of falling back to `-a`. Those two branches are not
+redundant: `-a` skips untracked files, so a new file beside a modified one was
+committed without it, silently — and auto mode has no dialog to catch that. Staging
+is also the only way an agent can commit four files out of ten.
 
 **Git is subprocess-only**, funnelled through `core/git/run.rs` with `LC_ALL=C` forced
 because call sites match English git output. There is no `git2`.
@@ -121,6 +170,11 @@ spawns.
 → `refreshStatusFor` (+ `refreshHome` off-workspace). Driven by agent activity — only on
 file-editing tools (throttled) and turn end, never every hook. There is no filesystem
 watcher.
+
+**Nothing polls the forge.** The CI chip moves on three things and no others: a
+`git.push` or an `mr.*` op landing (`useIpc` bumps `mrNonce`), and the sidebar's refresh
+button. `invalidateMrs` deliberately stays OUT of `refreshSession` — that runs on every
+agent edit burst, and an API call per turn is what "no timers" was avoiding.
 
 **Store**: one zustand store from full-state slices; every consumer imports the barrel.
 The `buildView` WeakMap and bound-action caches are perf invariants — a session object's

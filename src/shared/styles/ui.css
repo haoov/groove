@@ -121,6 +121,22 @@
 
 .ctx-menu-item--danger:hover { background: var(--gl-color-red-100); color: var(--gl-color-red-500); }
 
+/* The caret on a chip that opens a menu (CiChip). The gap is the chip's own, so
+   only the nudge and the weight are here. */
+.ci-caret { margin-left: -1px; opacity: 0.6; flex-shrink: 0; }
+
+/* A group heading inside a menu. Not focusable and not an item — it labels the
+   rows under it. */
+.ctx-menu-label {
+  padding: var(--space-2) var(--space-2) 4px;
+  font-family: var(--font-ui);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gl-text-color-muted);
+}
+
 .ctx-menu-item--danger svg,
 .ctx-menu-item--danger:hover svg { color: var(--gl-color-red-400); }
 
