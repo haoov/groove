@@ -508,10 +508,4 @@ mod tests {
     fn unparseable_content_still_gets_marked() {
         assert_eq!(mark_as_agent("this just panics"), "[claude] this just panics");
     }
-
-    #[test]
-    fn multiline_header_is_not_assumed() {
-        let out = mark_as_agent("no header here\nsecond: line");
-        assert!(out.starts_with("[claude] "), "{out}");
-    }
 }

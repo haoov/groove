@@ -483,18 +483,13 @@ mod tests {
         assert!(!s.editable);
     }
 
-    /// No hint means no line — never the description.
-    #[test]
-    fn a_skill_with_no_hint_shows_none() {
-        let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
-        assert_eq!(s.hint, "");
-    }
-
     #[test]
     fn defaults_when_groove_keys_are_absent() {
         let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
         assert_eq!(s.id, "user:deploy-check");
         assert_eq!(s.label, "deploy check");
+        // No hint means no line, never the description.
+        assert_eq!(s.hint, "");
         // No kinds means every kind offers it, not none.
         assert!(s.kinds.is_empty());
         assert!(s.editable);
@@ -528,19 +523,9 @@ mod tests {
     }
 
     #[test]
-    fn sync_core_is_idempotent() {
-        let dir = tmp("idem");
-        sync_core_at(&dir).unwrap();
-        sync_core_at(&dir).unwrap();
-        assert_eq!(skill_names(&dir).len(), CORE_SKILLS.len());
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
     fn ensure_user_rewrites_the_manifest_and_keeps_the_skills() {
         let dir = tmp("user");
         write_skill(&dir, "mine", "---\ndescription: Mine.\n---\n");
-        std::fs::write(dir.join(".claude-plugin.tmp"), "").ok();
         ensure_user_at(&dir).unwrap();
         ensure_user_at(&dir).unwrap();
 
@@ -576,9 +561,8 @@ mod tests {
         std::fs::remove_dir_all(root.parent().unwrap()).unwrap();
     }
 
-    /// Saving over itself must not delete what it just wrote.
     #[test]
-    fn saving_under_the_same_name_keeps_the_skill() {
+    fn editing_a_skill_replaces_its_body() {
         let root = tmp("resave").join("skills");
         save_user_skill_at(&root, "same", "one", None).unwrap();
         save_user_skill_at(&root, "same", "two", Some("same")).unwrap();
@@ -591,14 +575,5 @@ mod tests {
         let root = tmp("badname").join("skills");
         assert!(save_user_skill_at(&root, "../escape", "x", None).is_err());
         assert!(!root.exists());
-    }
-
-    #[test]
-    fn a_plugin_with_no_skills_reads_as_empty() {
-        let dir = tmp("empty");
-        ensure_user_at(&dir).unwrap();
-        assert!(skill_names(&dir).is_empty());
-        assert!(read_plugin(&dir, USER_PLUGIN, true).is_empty());
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

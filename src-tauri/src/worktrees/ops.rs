@@ -320,7 +320,7 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
 
     if index_only && !has_staged {
         return Err(anyhow::anyhow!(
-            "nothing staged. Stage exactly what this commit should contain first —              `git add <paths>` for some files, `git add -A` for everything — then commit."
+            "nothing staged. Stage exactly what this commit should contain first — `git add <paths>` for some files, `git add -A` for everything — then commit."
         ));
     }
 
@@ -406,4 +406,61 @@ pub async fn rebase_impl(payload: serde_json::Value) -> anyhow::Result<serde_jso
     Ok(serde_json::json!({
         "status": "conflict", "files": conflicts, "worktree_id": worktree_id, "base": base_ref
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::commit_impl;
+    use crate::core::git;
+
+    struct Repo(std::path::PathBuf);
+    impl Drop for Repo {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    async fn run(dir: &str, args: &[&str]) -> String {
+        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+        full.extend_from_slice(args);
+        git::run(dir, &full).await.unwrap_or_else(|e| panic!("git {args:?}: {e}")).trim().to_string()
+    }
+
+    /// One committed file, then that file modified and a new one beside it. Nothing staged.
+    async fn dirty_repo(name: &str) -> (Repo, String) {
+        let root = std::env::temp_dir().join(format!("groove-commit-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let dir = root.to_string_lossy().to_string();
+        run(&dir, &["init", "--initial-branch=main", "."]).await;
+        std::fs::write(root.join("tracked.txt"), "one\n").unwrap();
+        run(&dir, &["add", "."]).await;
+        run(&dir, &["commit", "-m", "first"]).await;
+        std::fs::write(root.join("tracked.txt"), "two\n").unwrap();
+        std::fs::write(root.join("new.txt"), "new\n").unwrap();
+        (Repo(root), dir)
+    }
+
+    fn agent_commit(dir: &str) -> serde_json::Value {
+        serde_json::json!({ "worktree_path": dir, "message": "feat: x", "index_only": true })
+    }
+
+    #[tokio::test]
+    async fn an_agent_commit_with_nothing_staged_is_refused() {
+        let (_repo, dir) = dirty_repo("refused").await;
+        let pool = crate::core::db::test_pool().await;
+        let err = commit_impl(agent_commit(&dir), &pool).await.unwrap_err().to_string();
+        assert!(err.contains("nothing staged"), "{err}");
+        assert_eq!(run(&dir, &["rev-list", "--count", "HEAD"]).await, "1");
+    }
+
+    #[tokio::test]
+    async fn an_agent_commit_is_exactly_the_index() {
+        let (_repo, dir) = dirty_repo("index").await;
+        let pool = crate::core::db::test_pool().await;
+        run(&dir, &["add", "new.txt"]).await;
+        commit_impl(agent_commit(&dir), &pool).await.unwrap();
+        assert_eq!(run(&dir, &["show", "--name-only", "--format=", "HEAD"]).await, "new.txt");
+        assert_eq!(run(&dir, &["diff", "--name-only"]).await, "tracked.txt", "the unstaged edit stays unstaged");
+    }
 }

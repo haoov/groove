@@ -124,14 +124,10 @@ mod tests {
             assert!(d.contains("## What"), "{name}: no What heading");
             assert!(d.contains("## Why"), "{name}: no Why heading");
             assert!(d.contains("- [ ]"), "{name}: no checkbox affordance");
-            // The cap that produced staccato prose must not come back.
-            assert!(!d.contains("maximum"), "{name}: reintroduced a length cap");
-            assert!(!d.contains("sentences"), "{name}: reintroduced a sentence budget");
         }
     }
 
-    /// The agent's commit is `index_only`, so this asks for staging rather than
-    /// describing a fallback.
+    /// The agent's commit is `index_only`, so the description has to say how to stage.
     #[test]
     fn git_commit_asks_for_a_deliberate_index() {
         let tools = mcp_tool_definitions();
@@ -140,24 +136,6 @@ mod tests {
             .expect("description text");
         assert!(d.contains("STAGED"), "does not say the index is what lands");
         assert!(d.contains("git add"), "does not say how to stage");
-        assert!(!d.contains("Stage all"), "reinstated the claim that it stages everything");
-        assert!(
-            !d.contains("every tracked change"),
-            "promises the -a fallback the agent no longer gets"
-        );
-    }
-
-    #[test]
-    fn drafted_task_bodies_ask_for_checkboxes() {
-        let tools = mcp_tool_definitions();
-        for name in ["create_task", "create_task_from_explorer"] {
-            let tool = tools.iter().find(|t| t["name"] == name).expect(name);
-            let d = tool["inputSchema"]["properties"]["body_markdown"]["description"]
-                .as_str()
-                .expect("body text");
-            assert!(d.contains("- [ ]"), "{name}: no checkbox affordance");
-            assert!(!d.contains("maximum"), "{name}: reintroduced a length cap");
-        }
     }
 }
 

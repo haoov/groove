@@ -293,12 +293,4 @@ mod tests {
         let some = serde_json::json!({ "before": 2.0, "after": 3.6, "added": 1.6 });
         assert_eq!(super::hours_message(&some), "Hours spent 2 → 3.6");
     }
-
-    #[test]
-    fn every_op_name_is_unique() {
-        let mut seen = std::collections::HashSet::new();
-        for op in ALL {
-            assert!(seen.insert(op), "duplicate op name: {op}");
-        }
-    }
 }

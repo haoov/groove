@@ -185,14 +185,18 @@ struct SseQuery {
     task: Option<String>,
 }
 
+/// Refused at connect, so a misconfigured client fails once.
+fn bound_task(q: SseQuery) -> Result<String, (StatusCode, &'static str)> {
+    q.task
+        .filter(|t| !t.is_empty())
+        .ok_or((StatusCode::BAD_REQUEST, "an MCP connection needs ?task=<short_id>"))
+}
+
 async fn sse_handler(
     Query(q): Query<SseQuery>,
     State(state): State<McpState>,
 ) -> Result<Sse<SseReceiver>, (StatusCode, &'static str)> {
-    // Refused at connect, so a misconfigured client fails once.
-    let Some(task) = q.task.filter(|t| !t.is_empty()) else {
-        return Err((StatusCode::BAD_REQUEST, "an MCP connection needs ?task=<short_id>"));
-    };
+    let task = bound_task(q)?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(64);
@@ -359,5 +363,18 @@ async fn handle_jsonrpc(
             "id": id,
             "error": { "code": -32601, "message": format!("Method not found: {method}") }
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{bound_task, SseQuery};
+    use axum::http::StatusCode;
+
+    #[test]
+    fn a_connection_that_names_no_task_is_refused() {
+        assert_eq!(bound_task(SseQuery { task: None }).unwrap_err().0, StatusCode::BAD_REQUEST);
+        assert_eq!(bound_task(SseQuery { task: Some(String::new()) }).unwrap_err().0, StatusCode::BAD_REQUEST);
+        assert_eq!(bound_task(SseQuery { task: Some("gh-groove-3".into()) }).unwrap(), "gh-groove-3");
     }
 }

@@ -49,8 +49,7 @@ describe('which skills a session offers', () => {
     ]);
   });
 
-  // A surface that names its own skill asks the same question the menu does.
-  it('answers for one skill the way the menu would', () => {
+  it('offers a named skill only to its kinds', () => {
     expect(offers(all, 'task', 'groove:start-task')).toBe(true);
     expect(offers(all, 'review', 'groove:start-task')).toBe(false);
     expect(offers(all, 'task', 'groove:nothing')).toBe(false);
