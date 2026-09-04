@@ -329,3 +329,22 @@ async fn an_mr_is_addressed_by_its_local_id() {
     assert_eq!(mrs::get(&pool, &other.id).await.unwrap().url, "https://y/42");
     assert!(mrs::get(&pool, "42").await.is_err(), "the number is not an id");
 }
+
+#[tokio::test]
+async fn editing_a_note_changes_only_its_body() {
+    let pool = test_pool().await;
+    repos::upsert(&pool, &repo("g/a")).await.unwrap();
+    sessions::create_explorer(&pool, "explorer-10", "X").await.unwrap();
+    repos::attach(&pool, "explorer-10", "g/a").await.unwrap();
+    let made = annotations::create(&pool, "explorer-10", "g/a", "f.rs", 4, 6, "issue: x", "agent")
+        .await
+        .unwrap();
+
+    let edited = annotations::update(&pool, &made.id, "issue (blocking): y").await.unwrap();
+
+    assert_eq!(edited.content, "issue (blocking): y");
+    assert_eq!(edited.author, "agent", "an edit does not reassign authorship");
+    assert_eq!((edited.start_line, edited.end_line), (4, 6));
+    assert_eq!(edited.status, "open");
+    assert_eq!(edited.created_at, made.created_at);
+}

@@ -444,6 +444,8 @@ export interface SessionActions {
   setAnnotations: (a: Annotation[]) => void;
   /** Add one, ignoring a repeat id (the agent's event can echo a local insert). */
   addAnnotation: (a: Annotation) => void;
+  /** Replace one annotation's body (after `update_annotation` lands). */
+  updateAnnotation: (id: string, content: string) => void;
   resolveAnnotation: (id: string) => void;
   /** Drop an annotation entirely (after `delete_annotation` lands). */
   removeAnnotation: (id: string) => void;

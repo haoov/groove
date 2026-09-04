@@ -466,6 +466,14 @@ export function useIpc() {
         })
       );
 
+      // annotation_updated — the agent rewrote a note's body.
+      track(
+        await listen<Annotation>(EVENT.ANNOTATION_UPDATED, ({ payload }) => {
+          const sess = findSessionByTask(useStore.getState(), payload.session_id);
+          if (sess) sessionActions(sess.id).updateAnnotation(payload.id, payload.content);
+        })
+      );
+
       // explorer_discarded — if that explorer is open as a session, fully end it
       // (stops its PTYs, then removes the session — closeSession alone would leak
       // any live agent/terminal PTYs).

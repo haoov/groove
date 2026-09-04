@@ -17,6 +17,7 @@ export const EVENT = {
 
   ANNOTATION_RESOLVED: 'annotation_resolved',
   ANNOTATION_CREATED: 'annotation_created',
+  ANNOTATION_UPDATED: 'annotation_updated',
 
   PTY_STARTED: 'pty_started',
   PTY_OUTPUT: 'pty_output',

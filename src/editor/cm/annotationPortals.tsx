@@ -85,7 +85,7 @@ export function AnnotationPortals({
     <>
       {[...groups.entries()].map(([line, anns]) => {
         const el = containers.get(line);
-        return el ? createPortal(<InlineAnnotations anns={anns} />, el, `anns-${line}`) : null;
+        return el ? createPortal(<InlineAnnotations anns={anns} ann={ann} mr={mr} />, el, `anns-${line}`) : null;
       })}
       {formEl && sel && createPortal(
         <AnnotationBlock

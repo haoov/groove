@@ -109,6 +109,29 @@
 
 .annotation-actions { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: auto; }
 
+.annotation-resolve:disabled { opacity: 0.5; cursor: default; }
+
+.annotation-edit { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.annotation-edit-input {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  background: var(--gl-background-color-strong);
+  border: 1px solid var(--gl-border-color-default);
+  border-radius: var(--gl-border-radius-base);
+  color: var(--gl-text-color-default);
+  font-size: var(--gl-font-size-sm);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  padding: var(--space-2);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.annotation-edit-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); outline: none; }
+
+.annotation-edit-actions { display: inline-flex; align-items: center; gap: var(--space-3); }
+
 .annotation-delete { color: var(--gl-text-color-disabled); }
 
 .annotation-delete:hover { color: var(--wb-warn, var(--gl-color-red-400)); }
