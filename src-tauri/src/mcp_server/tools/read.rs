@@ -182,8 +182,9 @@ pub(super) async fn get_open_file(
 pub(super) async fn get_task_body(
     input: serde_json::Value,
     state: &McpState,
+    mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = str_field(&input, "task_id")?;
+    let task_id = task_or_own(&input, state, mcp_session)?;
     let (provider, key) = crate::provider::resolve(&state.pool, &task_id).await?;
     let markdown = provider.body_markdown(&key).await?;
     Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
