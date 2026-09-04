@@ -188,6 +188,16 @@ pub(super) async fn get_mr_ci(
     ))
 }
 
+pub(super) async fn get_mr_threads(
+    input: serde_json::Value,
+    state: &McpState,
+) -> anyhow::Result<ToolCallResponse> {
+    let mr_id = str_field(&input, "mr_id")?;
+    Ok(ToolCallResponse::ok(
+        crate::forge::mr_threads_for(&state.pool, &mr_id).await?,
+    ))
+}
+
 pub(super) async fn get_open_file(
     state: &McpState,
     mcp_session: &str,

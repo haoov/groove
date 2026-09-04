@@ -34,7 +34,6 @@ export function Sidebar() {
   const removeAnnotation = useSession((s) => s.removeAnnotation);
   const updateAnnotation = useSession((s) => s.updateAnnotation);
   const isExplorer = useSession((s) => s.kind === 'explorer');
-  const isReview = useSession((s) => s.kind === 'review');
   const setLastError = useStore((s) => s.setLastError);
   const invalidateMrs = useStore((s) => s.invalidateMrs);
   const notify = useStore((s) => s.notify);
@@ -206,8 +205,8 @@ export function Sidebar() {
     if (sidebarTab === 'annotations') {
       const wt = worktreeForRepo(repoId);
       const repoMr = mrs.find((m) => m.worktree_id === wt?.id) ?? null;
-      // Notes = the local annotations, plus (for a review) the MR's own
-      // discussion threads — one panel for everything said about the change.
+      // Notes = the local annotations, plus the MR's own discussion when there is
+      // one — one panel for everything said about the change.
       return (
         <>
         <AnnotationsTab
@@ -264,7 +263,7 @@ export function Sidebar() {
             }
           }}
         />
-        {isReview && repoMr && (
+        {repoMr && (
           <div className="notes-threads">
             <div className="notes-threads-title">MR discussion</div>
             <MrThreadsSection

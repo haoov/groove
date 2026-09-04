@@ -71,6 +71,7 @@ pub(super) async fn dispatch(
         "get_commit_log" => read::get_commit_log(input, state, mcp_session).await,
         "get_mr_state" => read::get_mr_state(input, state).await,
         "get_mr_ci" => read::get_mr_ci(input, state).await,
+        "get_mr_threads" => read::get_mr_threads(input, state).await,
         "get_annotations" => read::get_annotations(input, state, mcp_session).await,
         "get_task_time" => read::get_task_time(input, state, mcp_session).await,
         "get_open_file" => read::get_open_file(state, mcp_session).await,
