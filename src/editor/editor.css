@@ -29,8 +29,8 @@
 .diff-inline-annotation .nb-p { margin: 0 0 4px; }
 .diff-inline-annotation .nb-code { margin: 4px 0; font-size: var(--gl-font-size-xs); }
 .diff-inline-annotation ul, .diff-inline-annotation ol { margin: 2px 0 4px; padding-left: 18px; }
-.diff-inline-annotation-actions { display: flex; align-items: center; gap: var(--space-2); }
-.diff-inline-delete, .diff-inline-edit {
+.diff-inline-annotation-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--space-2); }
+.diff-inline-delete, .diff-inline-edit, .diff-inline-resolve {
   display: inline-flex;
   align-items: center;
   font-size: var(--gl-font-size-xs);
@@ -46,7 +46,11 @@
 .diff-inline-delete:hover { color: var(--wb-warn, var(--gl-color-red-400)); border-color: var(--wb-warn, var(--gl-color-red-400)); }
 .diff-inline-delete:disabled { opacity: 0.6; cursor: default; }
 .diff-inline-edit:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
+.diff-inline-resolve { color: var(--gl-color-green-400); }
+.diff-inline-resolve:hover { border-color: var(--gl-color-green-400); }
+.diff-inline-resolve:disabled { opacity: 0.6; cursor: default; }
 .diff-inline-post-mr:disabled { opacity: 0.6; cursor: default; }
+.diff-inline-confirm { font-size: var(--gl-font-size-xs); font-weight: 600; color: var(--gl-color-red-400); }
 /* Resolved reads as dimmed, not as a coloured edge. */
 .diff-inline-thread.resolved { opacity: 0.55; }
 .diff-inline-author { font-size: var(--gl-font-size-xs); font-weight: 600; flex-shrink: 0; white-space: nowrap; }

@@ -36,6 +36,10 @@ export interface AnnCtx {
   saveEdit: () => void;
   /** Annotation ids with an in-flight edit. */
   editPending: Record<string, boolean>;
+  /** Annotation ids with an in-flight resolve. */
+  resolvePending: Record<string, boolean>;
+  /** Mark a note resolved — it leaves the diff, the record stays. */
+  resolveNote: (id: string) => void;
   /** Annotation ids with an in-flight delete. */
   deletePending: Record<string, boolean>;
   /** Delete a note outright (resolve keeps it; this removes it). */
@@ -80,6 +84,8 @@ export function useAnnotations(
   const [postPending, setPostPending] = useState<Record<string, boolean>>({});
   const deleteInFlight = useRef<Set<string>>(new Set());
   const [deletePending, setDeletePending] = useState<Record<string, boolean>>({});
+  const resolveInFlight = useRef<Set<string>>(new Set());
+  const [resolvePending, setResolvePending] = useState<Record<string, boolean>>({});
   const editInFlight = useRef<Set<string>>(new Set());
   const [editPending, setEditPending] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -208,6 +214,21 @@ export function useAnnotations(
     }
   };
 
+  const resolveNote = async (id: string) => {
+    if (resolveInFlight.current.has(id)) return;
+    resolveInFlight.current.add(id);
+    setResolvePending((p) => ({ ...p, [id]: true }));
+    try {
+      await invoke('resolve_annotation', { id });
+      resolveAnnotation(id);
+    } catch (e) {
+      setLastError(String(e));
+    } finally {
+      resolveInFlight.current.delete(id);
+      setResolvePending((p) => { const n = { ...p }; delete n[id]; return n; });
+    }
+  };
+
   const deleteAnnotation = async (id: string) => {
     if (deleteInFlight.current.has(id)) return;
     deleteInFlight.current.add(id);
@@ -253,7 +274,8 @@ export function useAnnotations(
     beginDrag, extendDrag, selectSingle,
     submit, cancel: () => { setSel(null); setAnnotationText(''); },
     replyTexts, setReplyTexts, replyPending, submitReply,
-    postPending, postToMr, deletePending, deleteAnnotation, openInEditor, inputRef,
+    postPending, postToMr, resolvePending, resolveNote,
+    deletePending, deleteAnnotation, openInEditor, inputRef,
     editingId, editText, setEditText, beginEdit, cancelEdit, saveEdit, editPending,
   };
 
