@@ -12,7 +12,7 @@
 }
 
 .overview-inner {
-  max-width: 90%;
+  max-width: 97%;
   margin: 0 auto;
   margin-top: 1%;
   padding: var(--space-6);
@@ -250,7 +250,8 @@
 .overview-section {
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
-  background: var(--gl-background-color-mantle);
+  box-shadow: var(--shadow-card);
+  background: var(--gl-background-color-default);
   padding: var(--space-3);
   overflow: hidden;
   min-width: 0;
@@ -260,7 +261,7 @@
   margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--gl-border-color-default);
-  background: var(--gl-background-color-subtle);
+  background: var(--gl-background-color-overlap);
   font-size: var(--gl-font-size-xs);
   font-weight: 600;
   text-transform: uppercase;
@@ -477,6 +478,7 @@
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-mantle);
+  box-shadow: var(--shadow-card);
 }
 
 .props-cols {

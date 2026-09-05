@@ -345,7 +345,7 @@
 
 /* ── Rows ───────────────────────────────────────────────────────────────────── */
 
-.home-rows { display: flex; flex-direction: column; padding: var(--space-2); }
+.home-rows { display: flex; flex-direction: column; }
 
 .home-row {
   display: grid;
@@ -353,10 +353,9 @@
   column-gap: var(--space-4);
   width: 100%;
   text-align: left;
-  padding: 7px var(--space-2);
+  padding: var(--space-3) var(--space-2);
   background: none;
   border: none;
-  border-radius: var(--gl-border-radius-base);
   font-family: var(--font-ui);
   font-size: var(--home-text);
   color: var(--gl-text-color-default);
@@ -364,7 +363,7 @@
   transition: background 0.1s;
 }
 
-.home-row:hover { background: var(--gl-background-color-hover); }
+.home-row:hover { background: var(--gl-background-color-subtle); }
 
 .home-row:disabled { opacity: 0.6; cursor: default; }
 
@@ -615,14 +614,10 @@
 .live-group {
   display: flex;
   flex-direction: column;
-  padding-bottom: 2px;
-  border-radius: var(--gl-border-radius-base);
 }
 
 /* A clear break between one live session and the next. */
 .live-group + .live-group {
-  margin-top: var(--space-1);
-  padding-top: var(--space-1);
   border-top: 1px solid var(--gl-border-color-default);
 }
 

@@ -116,7 +116,7 @@ textarea:focus-visible,
 .cm-editor:focus-visible,
 .cm-content:focus-visible,
 .nav-list:focus-visible,
-.dock-list:focus-visible,
+.agents-sidebar:focus-visible,
 .sidebar:focus-visible,
 .diff-repo:focus-visible,
 [contenteditable]:focus-visible {

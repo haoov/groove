@@ -23,10 +23,12 @@ export function AppearancePanel() {
   const setTheme = useStore((s) => s.setTheme);
   const setFontSize = useStore((s) => s.setFontSize);
   const setFontFamily = useStore((s) => s.setFontFamily);
+  const setAgentFontFamily = useStore((s) => s.setAgentFontFamily);
 
   const theme = config?.ui.theme ?? DEFAULT_THEME;
   const fontSize = config?.ui.font_size ?? DEFAULT_FONT_SIZE;
   const fontFamily = config?.ui.font_family ?? '';
+  const agentFontFamily = config?.ui.agent_font_family ?? '';
 
   // Real installed families, so a name that matches nothing can't be picked —
   // CSS falls through silently, which is how the font "didn't apply" at all.
@@ -83,42 +85,60 @@ export function AppearancePanel() {
 
       <section className="settings-section">
         <div className="settings-section-title">Font</div>
-        {fonts && fonts.length > 0 ? (
-          <select
-            className="settings-select"
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
-          >
-            {/* The configured family may not be installed (a config copied
-                from another machine) — keep it selectable rather than
-                silently switching to whatever sorts first. */}
-            {/* Empty = the theme's own stack (Lilex first), which is what a
-                fresh install uses. */}
-            <option value="">Theme default (Lilex)</option>
-            {/* Bundled faces ship with the app, so they are always selectable
-                even though the OS font list never reports them. */}
-            <optgroup label="Bundled">
-              {BUNDLED_FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </optgroup>
-            {fontFamily && !fonts.includes(fontFamily) && !BUNDLED_FONTS.includes(fontFamily) && (
-              <option value={fontFamily}>{fontFamily} (not installed)</option>
-            )}
-            <optgroup label="Installed">
-              {fonts.filter((f) => !BUNDLED_FONTS.includes(f)).map((f) => <option key={f} value={f}>{f}</option>)}
-            </optgroup>
-          </select>
-        ) : (
-          <input
-            className="settings-input"
-            value={fontFamily}
-            placeholder="Monospace family name"
-            onChange={(e) => setFontFamily(e.target.value)}
-          />
-        )}
+        <FontPicker fonts={fonts} value={fontFamily} onChange={setFontFamily} defaultLabel="Theme default (Lilex)" />
         <p className="settings-hint">
           Applies to the editor, the file tree and the terminals.
         </p>
       </section>
+
+      <section className="settings-section">
+        <div className="settings-section-title">Agent font</div>
+        <FontPicker fonts={fonts} value={agentFontFamily} onChange={setAgentFontFamily} defaultLabel="Default (Lilex)" />
+        <p className="settings-hint">
+          Applies to the agent console only. It reads one size smaller than the terminals.
+        </p>
+      </section>
     </>
+  );
+}
+
+/** A monospace family: the installed list when fontconfig reports one, else a text field. */
+function FontPicker({
+  fonts, value, onChange, defaultLabel,
+}: {
+  fonts: string[] | null;
+  value: string;
+  onChange: (family: string) => void;
+  /** The empty choice: the stylesheet's own stack. */
+  defaultLabel: string;
+}) {
+  if (!fonts || fonts.length === 0) {
+    return (
+      <input
+        className="settings-input"
+        value={value}
+        placeholder="Monospace family name"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
+  return (
+    <select className="settings-select" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{defaultLabel}</option>
+      {/* Bundled faces ship with the app, so they are always selectable even
+          though the OS font list never reports them. */}
+      <optgroup label="Bundled">
+        {BUNDLED_FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+      </optgroup>
+      {/* A configured family that is not installed (a config copied from another
+          machine) stays selectable rather than silently switching to whatever
+          sorts first. */}
+      {value && !fonts.includes(value) && !BUNDLED_FONTS.includes(value) && (
+        <option value={value}>{value} (not installed)</option>
+      )}
+      <optgroup label="Installed">
+        {fonts.filter((f) => !BUNDLED_FONTS.includes(f)).map((f) => <option key={f} value={f}>{f}</option>)}
+      </optgroup>
+    </select>
   );
 }

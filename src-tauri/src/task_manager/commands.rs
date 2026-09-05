@@ -78,6 +78,13 @@ pub async fn set_font_family(font_family: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn set_agent_font_family(agent_font_family: String) -> Result<(), String> {
+    config::update(|cfg| cfg.ui.agent_font_family = agent_font_family)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn set_suggest_actions(suggest_actions: bool) -> Result<(), String> {
     config::update(|cfg| cfg.ui.suggest_actions = suggest_actions)
         .map(|_| ())

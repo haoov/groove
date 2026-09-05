@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { ensureHost, fitAndSync } from './terminalHost';
+import { ensureHost, fitAndSync, forgetSyncedSize } from './terminalHost';
 
 /**
  * Show a PTY's terminal inside `containerRef`.
@@ -15,13 +15,17 @@ import { ensureHost, fitAndSync } from './terminalHost';
 export function useAttachedHost(
   ptySessionId: string | null,
   containerRef: RefObject<HTMLDivElement | null>,
-  fontFamily?: string,
+  /** The agent's terminal, with its own font (see terminalHost). */
+  agent = false,
 ) {
   useEffect(() => {
     const container = containerRef.current;
     if (!ptySessionId || !container) return;
-    const host = ensureHost(ptySessionId, fontFamily);
+    const host = ensureHost(ptySessionId, agent);
     container.appendChild(host.el);
+    // The PTY may have been sized by another window (the detached agent) since
+    // this one last saw it; the record must not short-circuit the first fit.
+    forgetSyncedSize(ptySessionId);
 
     let raf1 = 0;
     let raf2 = 0;
@@ -45,5 +49,5 @@ export function useAttachedHost(
       // leave a blank terminal there. Never dispose: the registry owns it.
       if (host.el.parentElement === container) host.el.remove();
     };
-  }, [ptySessionId, containerRef, fontFamily]);
+  }, [ptySessionId, containerRef, agent]);
 }

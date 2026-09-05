@@ -15,8 +15,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-3) 0;
   background: var(--gl-background-color-overlap);
   border-right: 1px solid var(--gl-border-color-default);
   overflow-y: auto;
@@ -38,7 +37,6 @@
   padding: var(--space-2);
   background: none;
   border: 1px solid transparent;
-  border-radius: var(--gl-border-radius-medium);
   color: var(--gl-text-color-subtle);
   text-align: left;
   cursor: pointer;
@@ -50,8 +48,7 @@
 
 .settings-nav-item.selected {
   color: var(--gl-text-color-default);
-  background: var(--gl-color-blue-100);
-  border-color: var(--gl-accent-border);
+  background: var(--gl-background-color-strong);
 }
 
 .settings-nav-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }

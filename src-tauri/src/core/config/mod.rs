@@ -25,6 +25,10 @@ pub struct UiConfig {
     /// silently through to the next family in the CSS stack.
     #[serde(default = "default_font_family")]
     pub font_family: String,
+    /// Monospace family for the agent's terminal only. Same rules as
+    /// `font_family`; empty = the built-in stack.
+    #[serde(default = "default_font_family")]
+    pub agent_font_family: String,
     /// One switch for every agent suggestion Groove offers — today the chip on a
     /// task with no repos. Off means the app never proposes an action, not that
     /// the skill is gone: it is still a button and a slash command.
@@ -38,6 +42,7 @@ impl Default for UiConfig {
             font_size: default_font_size(),
             theme: default_theme(),
             font_family: default_font_family(),
+            agent_font_family: default_font_family(),
             suggest_actions: default_true(),
         }
     }

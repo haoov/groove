@@ -19,8 +19,8 @@ export interface TermHost {
   term: Terminal;
   fit: FitAddon;
   el: HTMLDivElement;
-  /** A fixed font, exempt from the config font-family change (the agent PTY). */
-  fontOverride?: string;
+  /** The agent's terminal: its own family and a smaller size than the shells. */
+  agent: boolean;
 }
 
 const hosts = new Map<string, TermHost>();
@@ -50,14 +50,23 @@ function xtermThemeFromCss() {
 /** Quiet period after the last selection change before copy-on-select fires. */
 const SELECTION_COPY_MS = 180;
 
-/** Terminal reads a touch larger than the editor for glyph legibility. */
-const termFontSize = () => (useStore.getState().config?.ui.font_size ?? DEFAULT_FONT_SIZE) + 1;
+const baseFontSize = () => useStore.getState().config?.ui.font_size ?? DEFAULT_FONT_SIZE;
+/** A shell reads a touch larger than the editor for glyph legibility; the agent's
+ *  TUI is dense and reads a touch smaller. */
+const termFontSize = (agent: boolean) => baseFontSize() + (agent ? -1 : 1);
+
+/** The bundled stack, also the agent's fallback. */
+const MONO_STACK = `'Lilex', 'IBM Plex Mono', ui-monospace, monospace`;
+const agentFontFamily = () => {
+  const configured = useStore.getState().config?.ui.agent_font_family?.trim();
+  return configured ? `'${configured}', ${MONO_STACK}` : MONO_STACK;
+};
 
 /** The configured family, with the same fallbacks as `--font-mono`. xterm cannot
  *  read CSS variables, so this mirrors the token in JS. */
 const termFontFamily = () => {
   const configured = useStore.getState().config?.ui.font_family?.trim();
-  const stack = `'Lilex', 'IBM Plex Mono', ui-monospace, monospace`;
+  const stack = MONO_STACK;
   return configured ? `'${configured}', ${stack}` : stack;
 };
 
@@ -174,6 +183,12 @@ const MIN_ROWS = 4;
 /** The size each PTY was last told, so a fit that changes nothing costs no IPC. */
 const syncedSize = new Map<string, { cols: number; rows: number }>();
 
+/** Drop the size record, so the next fit tells the shell even an unchanged size.
+ *  Another window can have resized the PTY meanwhile. */
+export function forgetSyncedSize(sessionId: string) {
+  syncedSize.delete(sessionId);
+}
+
 /**
  * Resize a terminal and its shell together — or resize neither.
  *
@@ -233,13 +248,13 @@ function reflow(sessionId: string, host: TermHost, opts: { fontSize?: number; fo
   host.term.refresh(0, host.term.rows - 1);
 }
 
-export function ensureHost(sessionId: string, fontFamily?: string): TermHost {
+export function ensureHost(sessionId: string, agent = false): TermHost {
   const existing = hosts.get(sessionId);
   if (existing) return existing;
 
   const term = new Terminal({
-    fontFamily: fontFamily ?? termFontFamily(),
-    fontSize: termFontSize(),
+    fontFamily: agent ? agentFontFamily() : termFontFamily(),
+    fontSize: termFontSize(agent),
     lineHeight: 1.2,
     theme: xtermThemeFromCss(),
     cursorBlink: true,
@@ -265,7 +280,7 @@ export function ensureHost(sessionId: string, fontFamily?: string): TermHost {
     term.write(bytes);
   });
 
-  const host: TermHost = { term, fit, el, fontOverride: fontFamily };
+  const host: TermHost = { term, fit, el, agent };
   hosts.set(sessionId, host);
   return host;
 }
@@ -290,10 +305,12 @@ export function focusHost(sessionId: string) {
 let lastTheme: string | undefined;
 let lastFont: number | undefined;
 let lastFamily: string | undefined;
+let lastAgentFamily: string | undefined;
 useStore.subscribe((state) => {
   const theme = state.config?.ui.theme;
   const font = state.config?.ui.font_size;
   const family = state.config?.ui.font_family;
+  const agentFamily = state.config?.ui.agent_font_family;
   if (theme !== lastTheme) {
     lastTheme = theme;
     // data-theme lands on <html> in the same update; read after paint.
@@ -304,12 +321,16 @@ useStore.subscribe((state) => {
   }
   if (font !== lastFont) {
     lastFont = font;
-    const size = (font ?? DEFAULT_FONT_SIZE) + 1;
-    for (const [id, h] of hosts) reflow(id, h, { fontSize: size });
+    for (const [id, h] of hosts) reflow(id, h, { fontSize: termFontSize(h.agent) });
   }
   if (family !== lastFamily) {
     lastFamily = family;
     const stack = termFontFamily();
-    for (const [id, h] of hosts) if (!h.fontOverride) reflow(id, h, { fontFamily: stack });
+    for (const [id, h] of hosts) if (!h.agent) reflow(id, h, { fontFamily: stack });
+  }
+  if (agentFamily !== lastAgentFamily) {
+    lastAgentFamily = agentFamily;
+    const stack = agentFontFamily();
+    for (const [id, h] of hosts) if (h.agent) reflow(id, h, { fontFamily: stack });
   }
 });
