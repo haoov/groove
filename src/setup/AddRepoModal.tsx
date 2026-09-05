@@ -108,44 +108,36 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
       // set_task_repos replaces the set, so merge with the repos already attached.
       const mergedIds = [...activeRepos.map((r) => r.id), ...newIds];
 
-      if (isExplorer) {
-        await invoke('set_task_repos', { shortId, repoIds: mergedIds });
-        await invoke('provision_worktrees', {
-          taskId: shortId,
-          branches: newIds.map((id) => ({ repo_id: id, branch_name: null })),
-        });
-      } else {
-        // Resolve each repo's target branch (typed override, or the task default).
-        const specs = selectedRepos.map((r) => {
-          const typed = (branchByRepo[r.id] ?? '').trim();
-          const branch = typed || defaultBranch;
-          return { repo: r, branch, target: (targetByRepo[r.id] ?? '').trim() };
-        });
+      // Resolve each repo's branch (typed override, or the session default).
+      const specs = selectedRepos.map((r) => {
+        const typed = (branchByRepo[r.id] ?? '').trim();
+        const branch = typed || defaultBranch;
+        return { repo: r, branch, target: (targetByRepo[r.id] ?? '').trim() };
+      });
 
-        // Refuse if any target branch already exists on the repo's origin.
-        const taken: string[] = [];
-        for (const s of specs) {
-          const exists = await invoke<boolean>('remote_branch_exists', {
-            repoId: s.repo.id,
-            branch: s.branch,
-          });
-          if (exists) taken.push(`${s.repo.project} → ${s.branch}`);
-        }
-        if (taken.length > 0) {
-          setError(`Remote branch already exists on origin: ${taken.join(', ')}. Pick another name.`);
-          return;
-        }
-
-        await invoke('set_task_repos', { shortId, repoIds: mergedIds });
-        await invoke('provision_worktrees', {
-          taskId: shortId,
-          branches: specs.map((s) => ({
-            repo_id: s.repo.id,
-            branch_name: s.branch,
-            target_branch: s.target || null,
-          })),
+      // Refuse if any branch already exists on the repo's origin.
+      const taken: string[] = [];
+      for (const s of specs) {
+        const exists = await invoke<boolean>('remote_branch_exists', {
+          repoId: s.repo.id,
+          branch: s.branch,
         });
+        if (exists) taken.push(`${s.repo.project} → ${s.branch}`);
       }
+      if (taken.length > 0) {
+        setError(`Remote branch already exists on origin: ${taken.join(', ')}. Pick another name.`);
+        return;
+      }
+
+      await invoke('set_task_repos', { shortId, repoIds: mergedIds });
+      await invoke('provision_worktrees', {
+        taskId: shortId,
+        branches: specs.map((s) => ({
+          repo_id: s.repo.id,
+          branch_name: s.branch,
+          target_branch: s.target || null,
+        })),
+      });
       // The repos are attached and provisioned by this point, so a failed refresh
       // must NOT hold the modal open: it would read as "nothing happened" while
       // the worktrees are already on disk. Report it and close either way.
@@ -181,8 +173,9 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
         <div className="wizard-body">
           <p className="wizard-desc">
             {isExplorer ? (
-              <>Select repositories to add — each gets a worktree on this explorer's own
-              branch, renamed to the task branch if you turn this into a task.</>
+              <>Select repositories to add, then pick the base each branch cuts from. The
+              branch defaults to <code>{defaultBranch}</code> and is renamed to the task
+              branch if you turn this into a task.</>
             ) : (
               <>Select repositories to add, then name each branch (defaults to{' '}
               <code>{defaultBranch}</code>) and pick the base it cuts from. Creation is
@@ -205,7 +198,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
             />
           )}
 
-          {!isExplorer && selectedRepos.length > 0 && (
+          {selectedRepos.length > 0 && (
             <div className="wizard-branch-list">
               {selectedRepos.map((r) => (
                 <RepoBranchRow
