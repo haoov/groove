@@ -2,15 +2,16 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { mrRef } from '../shared/lib/forge';
 import { createPortal } from 'react-dom';
 import {
-  Boxes, Check, Code2, Eye, FolderGit2, GitBranch, ListTodo, Plus, X,
+  Check, Code2, FolderGit2, GitBranch, Plus, X,
   type LucideIcon,
 } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
-import { useStore, useSession, type SessionKind, type SessionState } from '../shared/store';
+import { useStore, useSession, type SessionState } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { goToSession } from '../shared/lib/goToSession';
 import { statusKey } from '../shared/lib/taskStatus';
-import type { AgentActivity } from '../shared/ipc/ipc';
+import { sessionIdLabel } from '../shared/lib/agents';
+import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
 
 /**
  * The header context pickers: Active Session · Repo · Worktree. Each chip is
@@ -19,40 +20,6 @@ import type { AgentActivity } from '../shared/ipc/ipc';
  * Esc cancels — nothing switches until you commit. The list is PORTALLED to the
  * body with fixed positioning so the header's overflow can never clip it.
  */
-
-const KIND_ICON: Record<SessionKind, LucideIcon> = {
-  task: ListTodo,
-  explorer: Boxes,
-  review: Eye,
-};
-const KIND_LABEL: Record<SessionKind, string> = {
-  task: 'task',
-  explorer: 'expl',
-  review: 'review',
-};
-
-/** The short id for a session: the MR number for reviews (their short_id is long
- *  and unhelpful), else the task short_id. */
-function sessionIdLabel(s: SessionState): string | null {
-  if (s.kind === 'review') {
-    const mr = s.mrs?.[0];
-    if (mr) return mrRef(mr.platform, mr.remote_id);
-  }
-  return s.task?.short_id ?? null;
-}
-
-/** What the agent is doing, in one line. */
-function agentLine(a: AgentActivity): string {
-  const tool = a.tool ? (a.tool.detail ? `${a.tool.name}(${a.tool.detail})` : a.tool.name) : null;
-  switch (a.state) {
-    case 'waiting':
-      return tool ? `waiting · ${tool}` : 'waiting on you';
-    case 'working':
-      return tool ?? 'working…';
-    case 'idle':
-      return a.last_message ? `idle · ${a.last_message}` : 'idle';
-  }
-}
 
 /** Keyboard-navigable list state, shared by the three dropdowns. The highlight
  *  lives in the store so Alt+S/R/W can drive it; Enter commits the highlighted. */
@@ -152,7 +119,6 @@ function SessionRows({ onClose }: { onClose: () => void }) {
   const sessions = useStore((s) => s.sessions);
   const sessionOrder = useStore((s) => s.sessionOrder);
   const activeId = useStore((s) => s.activeSessionId);
-  const agentActivity = useStore((s) => s.agentActivity);
 
   const rows = useMemo(
     () => sessionOrder.map((id) => sessions[id]).filter((s): s is SessionState => !!s),
@@ -177,9 +143,7 @@ function SessionRows({ onClose }: { onClose: () => void }) {
   return (
     <div className="hp-rows" tabIndex={-1} ref={ref} onKeyDown={onKeyDown}>
       {rows.map((s, i) => {
-        const Icon = KIND_ICON[s.kind] ?? Code2;
-        const taskId = s.task?.short_id;
-        const activity = taskId ? agentActivity[taskId] : undefined;
+        const Icon = SESSION_KIND_ICON[s.kind] ?? Code2;
         const idLabel = sessionIdLabel(s);
         const title = s.task?.title || s.title;
         const status = s.task?.status;
@@ -191,16 +155,10 @@ function SessionRows({ onClose }: { onClose: () => void }) {
                 {idLabel && <span className="hp-row-id">{idLabel}</span>}
                 <span className="hp-row-name">{title}</span>
               </span>
+              {/* The agent's state is the running-agents list's job — one place. */}
               <span className="hp-row-meta">
-                <span className="hp-row-kind">{KIND_LABEL[s.kind]}</span>
-                {activity ? (
-                  <span className={`hp-row-state ${activity.state}`}>
-                    <span className={`pill-dot ${activity.state}`} />
-                    {agentLine(activity)}
-                  </span>
-                ) : status ? (
-                  <span className={`hp-row-status status-${statusKey(status)}`}>{status}</span>
-                ) : null}
+                <span className="hp-row-kind">{SESSION_KIND_LABEL[s.kind]}</span>
+                {status && <span className={`hp-row-status status-${statusKey(status)}`}>{status}</span>}
               </span>
             </button>
             <button
@@ -413,7 +371,7 @@ export function HeaderPickers() {
         kind="session"
         ariaLabel="Sessions"
         value={sessionValue}
-        icon={inWorkspace ? (KIND_ICON[sessionKind] ?? Code2) : Code2}
+        icon={inWorkspace ? (SESSION_KIND_ICON[sessionKind] ?? Code2) : Code2}
         chipTitle="Switch or close sessions (Alt+S)"
       >
         <SessionRows onClose={close} />

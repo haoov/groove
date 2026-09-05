@@ -27,6 +27,11 @@ export const configSlice: StateCreator<AppState, [], [], ConfigSlice> = (set, ge
     // which reads a JS string rather than the CSS variable.
     set((s) => (s.config ? { config: { ...s.config, ui: { ...s.config.ui, font_family: family } } } : {}));
   },
+  setAgentFontFamily: (family) => {
+    // No CSS token to set: only xterm reads it, through terminalHost's subscriber.
+    invoke('set_agent_font_family', { agentFontFamily: family }).catch((e) => set({ lastError: String(e) }));
+    set((s) => (s.config ? { config: { ...s.config, ui: { ...s.config.ui, agent_font_family: family } } } : {}));
+  },
 
   // Status
   syncStatus: 'idle',

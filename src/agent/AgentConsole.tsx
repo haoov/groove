@@ -6,7 +6,12 @@ import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentS
 import { SOURCE_IDS } from '../setup/sources';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import { AgentPanel, AGENT_FONT } from './AgentPanel';
+import { goToSessionById } from '../shared/lib/goToSession';
+import { endSession } from '../shared/lib/endSession';
+import { waitingCount } from '../shared/lib/agents';
+import { AgentPanel } from './AgentPanel';
+import { AgentsToggle } from './AgentsToggle';
+import { useAgentRows } from './useAgentRows';
 
 /**
  * The agent's REAL terminal, as a column on the right — not a re-implementation, so
@@ -39,6 +44,14 @@ export function AgentConsole() {
   const maximized = useStore((s) => s.agentMaximized);
   const detached = useStore((s) => s.agentDetached);
   const setDetached = useStore((s) => s.setAgentDetached);
+  const agentsOpen = useStore((s) => s.agentsSidebarOpen);
+  const setAgentsOpen = useStore((s) => s.setAgentsSidebarOpen);
+  const agentsHint = useStore((s) => shortcutLabel(s.keymap, 'agents.sidebar'));
+  const agentsWidth = useStore((s) => s.agentsSidebarWidth);
+  const setAgentsWidth = useStore((s) => s.setAgentsSidebarWidth);
+  const agents = useAgentRows();
+  // The list adds to the column, so the terminal keeps its width.
+  const extra = agentsOpen ? agentsWidth : 0;
 
   const [starting, setStarting] = useState(false);
 
@@ -75,7 +88,7 @@ export function AgentConsole() {
 
   // Attach the terminal only while actually showing it.
   const holding = visible ? agentPty : null;
-  useAttachedHost(holding, termRef, AGENT_FONT);
+  useAttachedHost(holding, termRef, true);
 
   useEffect(() => {
     if (holding) focusHost(holding);
@@ -85,7 +98,8 @@ export function AgentConsole() {
     e.preventDefault();
     const startX = e.clientX;
     // The rendered width, not the stored one — the pane may have been shrunk.
-    const startWidth = paneRef.current?.getBoundingClientRect().width ?? width;
+    const rendered = paneRef.current?.getBoundingClientRect().width;
+    const startWidth = rendered === undefined ? width : rendered - extra;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
       // The handle is on the pane's inner edge, so dragging left widens it.
@@ -116,7 +130,7 @@ export function AgentConsole() {
       <aside
         ref={paneRef}
         className={`agent-pane ${maximized ? 'maximized' : ''}`}
-        style={maximized ? undefined : { width, minWidth: MIN_WIDTH }}
+        style={maximized ? undefined : { width: width + extra, minWidth: MIN_WIDTH + extra }}
       >
         <AgentPanel
           taskId={activeTask.short_id}
@@ -133,17 +147,29 @@ export function AgentConsole() {
           onRunSkill={(id, args) => report(sendSkill(sessionKey, id, args))}
           onReload={() => report(reloadAgent(sessionKey))}
           onSetAutoApprove={setAutoApprove}
+          agents={agents}
+          agentsOpen={agentsOpen}
+          agentsWidth={agentsWidth}
+          onResizeAgents={setAgentsWidth}
+          onGoToSession={(row) => goToSessionById(row.sessionId, { agent: true })}
+          onCloseSession={(row) => void endSession(row.sessionId)}
           headActions={
             <>
+              <AgentsToggle
+                open={agentsOpen}
+                count={waitingCount(agents)}
+                hint={agentsHint}
+                onClick={() => setAgentsOpen(!agentsOpen)}
+              />
               <button
-                className="dock-close"
+                className="pane-close"
                 onClick={() => setDetached(true)}
                 title="Pop the agent out into its own window"
               >
                 <PictureInPicture2 size={12} strokeWidth={2} />
               </button>
               <button
-                className="dock-close"
+                className="pane-close"
                 onClick={() => setOpen(false)}
                 title={`Hide the agent${agentHint ? ` (${agentHint} reopens)` : ''}`}
               >

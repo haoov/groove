@@ -196,6 +196,6 @@
 
 /* ── Session workspaces host (from session.css) ── */
 /* Session hosts. The tab strip that used to live here went with the header tabs —
-   sessions are listed in the dock now (styles/dock.css). */
+   sessions are switched from the header picker and the running-agents list. */
 .session-workspaces { display: flex; }
 .session-host { display: flex; }

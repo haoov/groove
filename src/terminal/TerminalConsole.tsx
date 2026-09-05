@@ -117,7 +117,7 @@ export function TerminalConsole() {
         <span className="console-target">terminal</span>
         <span className="console-status">scratch</span>
         <button
-          className="dock-close"
+          className="pane-close"
           onClick={() => setOpen(false)}
           title="Hide the terminal (the terminal shortcut reopens it)"
         >

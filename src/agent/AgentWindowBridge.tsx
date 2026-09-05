@@ -3,6 +3,9 @@ import { emitTo, listen } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useStore, sessionActions, type AppState } from '../shared/store';
 import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
+import { buildAgentRows } from '../shared/lib/agents';
+import { endSession } from '../shared/lib/endSession';
+import { goToSessionById } from '../shared/lib/goToSession';
 import { isMac } from '../shared/lib/platform';
 import {
   AGENT_WINDOW_LABEL,
@@ -158,6 +161,8 @@ function buildState(s: AppState): AgentWindowState {
     skills: s.skills,
     skillsStale: s.skillsStale,
     config: s.config,
+    agents: buildAgentRows(s.sessions, s.sessionOrder, s.activeSessionId, s.agentActivity),
+    agentsOpen: s.agentsSidebarOpen,
   };
 }
 
@@ -170,6 +175,15 @@ async function runCommand(cmd: AgentWindowCommand): Promise<void> {
       return;
     case 'bounds':
       writeBounds(cmd.bounds);
+      return;
+    case 'agentsOpen':
+      st.setAgentsSidebarOpen(cmd.value);
+      return;
+    case 'goToSession':
+      if (!goToSessionById(cmd.sessionId, { agent: true })) throw new Error('that session is closed');
+      return;
+    case 'closeSession':
+      await endSession(cmd.sessionId);
       return;
     case 'autoApprove':
       if (sessionKey) sessionActions(sessionKey).setAutoApprove(cmd.value);

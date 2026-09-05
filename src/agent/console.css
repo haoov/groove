@@ -1,18 +1,18 @@
 /* ── Agent pane ────────────────────────────────────────────────────────────────
-   A full-height column between the work and the session dock. It used to be a
+   A full-height column at the right edge of the work. It used to be a
    floating card centred over the editor, which is exactly what you do not want
    from something you keep reading: it covered the code and had nowhere to grow.
    Colour carries the state, as everywhere else: grey nothing, blue working,
    amber wants you.                                                             */
 
 .agent-pane {
-  /* Yields before the panes do — see .session-dock. */
+  /* Yields before the panes do. */
   flex-shrink: 1;
   /* A flex item's automatic minimum is its MIN-CONTENT width, and this column's is
      wide: a header of buttons, a composer, a terminal. Maximized it has no inline
      width either, so that minimum became a floor it forced on the whole row — the
-     row overflowed and the only items able to give, the panel and the dock, were
-     pinned at their own floors and could not be dragged back. It grows to fill the
+     row overflowed and the only item able to give, the panel column, was
+     pinned at its own floor and could not be dragged back. It grows to fill the
      room; it does not get to say how much room there is. */
   min-width: 0;
   display: flex;
@@ -24,7 +24,7 @@
 }
 
 /* Maximized: the column takes the PANE area only.
-   The panel column (files / git / annotations) and the session dock stay put —
+   The panel column (files / git / annotations) stays put —
    maximizing means "give me all the room the editor panes had", not "cover the
    navigation". So only `.workspace-main` steps aside, and `.app-main` stops
    flexing so it shrinks to its sidebar instead of splitting the space.
@@ -36,7 +36,7 @@
 /* The pane area goes; the panel column stays and the agent takes the room. Every
    level between .app-main and the panel has to be content-sized for the panel's
    width to reach up here — SessionWorkspaces does the two it sets inline — and
-   shrinkable, so a narrow window still resolves (see .session-dock). */
+   shrinkable, so a narrow window still resolves. */
 .app-body:has(.agent-pane.maximized) .app-main { flex: 0 1 auto; }
 .app-body:has(.agent-pane.maximized) .workspace { flex: 0 1 auto; }
 .app-body:has(.agent-pane.maximized) .workspace-main { display: none; }
@@ -46,8 +46,9 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  background: var(--gl-panel-header-bg);
-  border-bottom: 1px solid var(--gl-border-color-subtle);
+  /* The actions bar's surface and edge, mirrored at the top. */
+  background: var(--gl-background-color-overlap);
+  border-bottom: 1px solid var(--gl-border-color-default);
   flex-shrink: 0;
   font-size: var(--gl-font-size-sm);
 }
@@ -151,8 +152,6 @@
   height: var(--wb-header-height);
   padding-top: 0;
   padding-bottom: 0;
-  background: var(--gl-background-color-overlap);
-  border-bottom-color: var(--gl-border-color-default);
 }
 /* Clear the traffic lights, which float over the top-left of the head. */
 [data-platform="macos"] .agent-window .agent-pane-head { padding-left: var(--wb-traffic-lights); }

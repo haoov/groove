@@ -2,7 +2,9 @@ import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { AgentActivity } from '../../ipc/ipc';
 import type { AppState, AgentSlice } from '../types';
-import { readDetached, writeDetached } from '../../lib/agentWindow';
+import {
+  readAgentsSidebar, readAgentsWidth, readDetached, writeAgentsSidebar, writeAgentsWidth, writeDetached,
+} from '../../lib/agentWindow';
 
 export const agentSlice: StateCreator<AppState, [], [], AgentSlice> = (set) => ({
   agentActivity: {},
@@ -39,5 +41,15 @@ export const agentSlice: StateCreator<AppState, [], [], AgentSlice> = (set) => (
     // A window has no column to maximize; docking back reopens the column, or
     // the agent would vanish with the window.
     set(v ? { agentDetached: true, agentMaximized: false } : { agentDetached: false, consoleOpen: true });
+  },
+  agentsSidebarOpen: readAgentsSidebar(),
+  setAgentsSidebarOpen: (v) => {
+    writeAgentsSidebar(v);
+    set({ agentsSidebarOpen: v });
+  },
+  agentsSidebarWidth: readAgentsWidth(),
+  setAgentsSidebarWidth: (w) => {
+    writeAgentsWidth(w);
+    set({ agentsSidebarWidth: w });
   },
 });

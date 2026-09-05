@@ -36,6 +36,7 @@ import './git/diff.css';
 import './editor/editor.css';
 import './workspace/workspace.css';
 import './agent/agent.css';
+import './agent/agents.css';
 import './notifications/feed.css';
 import './overview/overview.css';
 import './setup/firstrun.css';

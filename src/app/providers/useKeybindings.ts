@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStore, sessionActions, type GitSubTab, type SidebarTab } from '../../shared/store';
 import { toggleTerminal } from '../../shared/lib/panes';
+import { toggleAgentsSidebar } from '../../shared/lib/agentsSidebar';
 import { DEFAULT_FONT_SIZE, FONT_MIN, FONT_MAX } from '../../shared/ipc/ipc';
 import { COMMANDS, type CommandId } from '../../shared/lib/keybindings';
 import { chordMatches, isModifierOnly, isTypingCharacter } from '../../shared/lib/keys';
@@ -17,7 +18,6 @@ function isAgentFocused(): boolean {
   return !!el?.closest('.agent-pane');
 }
 
-/** True when DOM focus is inside the session dock. */
 /** Run a global command against the current store state. Returns false when the
  *  command was a no-op in this context (so the keystroke can fall through). */
 export function runCommand(id: CommandId): boolean {
@@ -36,6 +36,8 @@ export function runCommand(id: CommandId): boolean {
     case 'view.tasks':
       st.setView('home');
       return true;
+    case 'agents.sidebar':
+      return toggleAgentsSidebar();
     case 'view.notifications':
       // The feed is the bell's popover now: the chord simply toggles it.
       st.setNotificationsOpen(!st.notificationsOpen);

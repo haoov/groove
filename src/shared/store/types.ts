@@ -176,6 +176,13 @@ export interface AgentSlice {
    *  so the main window keeps the width. Persisted across restarts. */
   agentDetached: boolean;
   setAgentDetached: (v: boolean) => void;
+  /** The running-agents list is showing, as a column of the agent panel — in the
+   *  docked console or in the window, whichever is the surface. Persisted. */
+  agentsSidebarOpen: boolean;
+  setAgentsSidebarOpen: (v: boolean) => void;
+  /** Its width, dragged within a small range. Persisted. */
+  agentsSidebarWidth: number;
+  setAgentsSidebarWidth: (w: number) => void;
 }
 
 export interface KeybindingsSlice {
@@ -197,6 +204,7 @@ export interface ConfigSlice {
   setTheme: (theme: ThemeName) => void;
   setFontSize: (px: number) => void;
   setFontFamily: (family: string) => void;
+  setAgentFontFamily: (family: string) => void;
   setSuggestActions: (v: boolean) => void;
 
   // ── Status ────────────────────────────────────────────────────────────────

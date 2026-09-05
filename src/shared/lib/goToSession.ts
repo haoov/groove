@@ -1,7 +1,7 @@
 // "Take me to that session" — one implementation, several entry points.
 //
-// Notifications, the activity rail's agent list and anything else that names a
-// task all mean the same thing by it.
+// Notifications, the running-agents list and anything else that names a task
+// all mean the same thing by it.
 
 import { useStore, findSessionByTask } from '../store';
 
@@ -13,11 +13,16 @@ import { useStore, findSessionByTask } from '../store';
  * navigating somewhere arbitrary.
  */
 export function goToSession(taskId: string, opts?: { agent?: boolean }): boolean {
-  const st = useStore.getState();
-  const sess = findSessionByTask(st, taskId);
-  if (!sess) return false;
+  const sess = findSessionByTask(useStore.getState(), taskId);
+  return !!sess && goToSessionById(sess.id, opts);
+}
 
-  st.focusSession(sess.id);
+/** The same, by session id — for a session that has no task. */
+export function goToSessionById(sessionId: string, opts?: { agent?: boolean }): boolean {
+  const st = useStore.getState();
+  if (!st.sessions[sessionId]) return false;
+
+  st.focusSession(sessionId);
   st.setView('workspace');
   if (opts?.agent) st.requestConsoleFocus();
   return true;

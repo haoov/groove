@@ -94,6 +94,7 @@ pub fn run() {
             task_manager::log_task_hours,
             task_manager::set_font_size,
             task_manager::set_font_family,
+            task_manager::set_agent_font_family,
             task_manager::list_fonts,
             task_manager::set_theme,
             task_manager::set_suggest_actions,

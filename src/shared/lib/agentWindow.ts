@@ -3,6 +3,7 @@
 // Pure — no Tauri import, so the tests run in node.
 
 import type { AgentActivity, AgentSkill, Config, SessionKind } from '../ipc/ipc';
+import { clampAgentsWidth, type AgentRow } from './agents';
 
 export const AGENT_WINDOW_LABEL = 'agent';
 
@@ -30,6 +31,9 @@ export interface AgentWindowState {
   skillsStale: boolean;
   /** The config view (no tokens): theme, fonts and which task sources exist. */
   config: Config | null;
+  /** Every open session and its agent, for the running-agents list. */
+  agents: AgentRow[];
+  agentsOpen: boolean;
 }
 
 export type AgentWindowCommand =
@@ -38,7 +42,10 @@ export type AgentWindowCommand =
   | { type: 'reload' }
   | { type: 'autoApprove'; value: boolean }
   | { type: 'dock' }
-  | { type: 'bounds'; bounds: WindowBounds };
+  | { type: 'bounds'; bounds: WindowBounds }
+  | { type: 'agentsOpen'; value: boolean }
+  | { type: 'goToSession'; sessionId: string }
+  | { type: 'closeSession'; sessionId: string };
 
 export interface CommandEnvelope {
   nonce: number;
@@ -54,6 +61,8 @@ export interface CommandDone {
 
 const DETACHED_KEY = 'wb.agentDetached';
 const BOUNDS_KEY = 'wb.agentWindowBounds';
+const AGENTS_KEY = 'wb.agentsSidebarOpen';
+const AGENTS_WIDTH_KEY = 'wb.agentsSidebarWidth';
 
 /** Logical pixels, as the window API takes them. */
 export interface WindowBounds {
@@ -114,6 +123,38 @@ export function readDetached(): boolean {
 export function writeDetached(v: boolean): void {
   try {
     localStorage.setItem(DETACHED_KEY, String(v));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readAgentsSidebar(): boolean {
+  try {
+    return localStorage.getItem(AGENTS_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function writeAgentsSidebar(v: boolean): void {
+  try {
+    localStorage.setItem(AGENTS_KEY, String(v));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readAgentsWidth(): number {
+  try {
+    return clampAgentsWidth(Number(localStorage.getItem(AGENTS_WIDTH_KEY)));
+  } catch {
+    return clampAgentsWidth(null);
+  }
+}
+
+export function writeAgentsWidth(w: number): void {
+  try {
+    localStorage.setItem(AGENTS_WIDTH_KEY, String(w));
   } catch {
     /* ignore */
   }

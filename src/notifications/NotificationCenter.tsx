@@ -61,7 +61,7 @@ export function NotificationRow({
   /** Navigate when the event says where it belongs. */
   const go = () => {
     if (!n.goTo?.taskId) return;
-    // Shared with the activity rail's agent list.
+    // Shared with the running-agents list.
     if (goToSession(n.goTo.taskId, { agent: n.goTo.agent })) {
       useStore.getState().setNotificationsOpen(false);
     }
@@ -130,7 +130,7 @@ export function NotificationRow({
   );
 }
 
-/** The feed, as the session dock's second tab. */
+/** The feed, inside the bell's popover. */
 export function NotificationFeed() {
   const all = useStore((s) => s.notifications);
   const clear = useStore((s) => s.clearNotifications);
@@ -144,15 +144,15 @@ export function NotificationFeed() {
   const unread = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="dock-notifs">
+    <div className="notif-feed">
       {notifications.length > 0 && (
-        <div className="dock-notifs-actions">
-          {unread > 0 && <button className="dock-notifs-action" onClick={markAllRead}>mark all seen</button>}
-          <button className="dock-notifs-action" onClick={clear}>clear</button>
+        <div className="notif-feed-actions">
+          {unread > 0 && <button className="notif-feed-action" onClick={markAllRead}>mark all seen</button>}
+          <button className="notif-feed-action" onClick={clear}>clear</button>
         </div>
       )}
       {notifications.length === 0 ? (
-        <p className="dock-empty">Nothing to report.</p>
+        <p className="notif-empty">Nothing to report.</p>
       ) : (
         <div className="notif-list">
           {notifications.map((n) => (
@@ -227,8 +227,7 @@ function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => 
   );
 }
 
-/** The header bell: the unread count, and the feed as its own popover (the
- *  session dock that used to host the feed is gone). */
+/** The header bell: the unread count, and the feed as its own popover. */
 export function NotificationCenter() {
   const all = useStore((s) => s.notifications);
   const open = useStore((s) => s.notificationsOpen);
