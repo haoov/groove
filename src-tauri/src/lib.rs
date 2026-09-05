@@ -89,7 +89,6 @@ pub fn run() {
             task_manager::start_auth_session,
             task_manager::write_initial_config,
             task_manager::get_task_time,
-            task_manager::get_activity_days,
             task_manager::add_task_time,
             task_manager::log_task_hours,
             task_manager::set_font_size,

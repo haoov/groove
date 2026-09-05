@@ -8,7 +8,6 @@ import { useStore } from '../shared/store';
 import { LiveSection } from './LiveSection';
 import { UpNextSection } from './UpNextSection';
 import { ReviewsSection } from './ReviewsSection';
-import { ActivityPanel } from './ActivityPanel';
 import { applySuggestion, highlightSegments, suggest, type CountReport, type Suggestion } from './filter';
 import { useFilterValues } from './useFilterValues';
 import { isTypingCharacter } from '../shared/lib/keys';
@@ -16,9 +15,9 @@ import { isTypingCharacter } from '../shared/lib/keys';
 /**
  * Home = what is locally real, not a mirror of the task queue.
  *
- * A big tabbed panel on the left — Live (checked out), Up next (queued tasks)
- * and Reviews (MRs waiting on you), each tab showing its count. A shared filter
- * narrows the active tab. A right rail holds the ambient panels (Activity now).
+ * One tabbed panel — Live (checked out), Up next (queued tasks) and Reviews
+ * (MRs waiting on you), each tab showing its count. A shared filter narrows the
+ * active tab.
  */
 
 /** One icon per filter field, so a line is recognisable before it is read. */
@@ -378,10 +377,6 @@ export function Home() {
             </div>
           </section>
         </div>
-
-        <aside className="home-rail">
-          <ActivityPanel />
-        </aside>
       </div>
     </div>
   );

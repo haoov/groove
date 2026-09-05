@@ -43,7 +43,6 @@ export type {
   PropertyOption,
   PropertyValue,
   TimeSummary as TaskTime,
-  ActivityDay,
   HomeMr,
   HomeRepo,
   HomeEntry,

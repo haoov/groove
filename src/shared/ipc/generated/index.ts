@@ -1,5 +1,4 @@
 // Generated barrel for the ts-rs types — do not edit. Run `pnpm gen:types`.
-export type { ActivityDay } from './ActivityDay';
 export type { AgentActivity } from './AgentActivity';
 export type { AgentSkill } from './AgentSkill';
 export type { AgentState } from './AgentState';
