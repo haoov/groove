@@ -11,12 +11,17 @@ import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme'
 import { isMac } from '../shared/lib/platform';
 import {
   BRIDGE,
+  readAgentsWidth,
+  writeAgentsWidth,
   type AgentWindowCommand,
   type AgentWindowState,
   type CommandDone,
   type CommandEnvelope,
 } from '../shared/lib/agentWindow';
-import { AgentPanel, AGENT_FONT } from '../agent/AgentPanel';
+import { AgentPanel } from '../agent/AgentPanel';
+import { AgentsSidebar } from '../agent/AgentsSidebar';
+import { AgentsToggle } from '../agent/AgentsToggle';
+import { waitingCount, type AgentRow } from '../shared/lib/agents';
 import { SOURCE_IDS } from '../setup/sources';
 import { WindowControls } from './chrome/WindowControls';
 import { ResizeHandles } from './chrome/ResizeHandles';
@@ -105,7 +110,7 @@ export default function AgentWindow() {
     setConfig(config);
   }, [config, setConfig]);
 
-  useAttachedHost(ptyId, termRef, AGENT_FONT);
+  useAttachedHost(ptyId, termRef, true);
   useEffect(() => {
     if (ptyId) focusHost(ptyId);
   }, [ptyId]);
@@ -137,10 +142,22 @@ export default function AgentWindow() {
   }, [send]);
 
   const sources = SOURCE_IDS.filter((id) => !!config?.[id]);
+  const agents = state?.agents ?? [];
+  const agentsOpen = state?.agentsOpen ?? false;
+  // The list's width is this window's own layout, like its bounds — not mirrored.
+  const [agentsWidth, setAgentsWidth] = useState(readAgentsWidth);
+  const resizeAgents = (w: number) => { writeAgentsWidth(w); setAgentsWidth(w); };
+  const goToSession = (row: AgentRow) => void send({ type: 'goToSession', sessionId: row.sessionId });
+  const closeSession = (row: AgentRow) => void send({ type: 'closeSession', sessionId: row.sessionId });
   const headActions = (
     <>
+      <AgentsToggle
+        open={agentsOpen}
+        count={waitingCount(agents)}
+        onClick={() => void send({ type: 'agentsOpen', value: !agentsOpen })}
+      />
       <button
-        className="dock-close"
+        className="pane-close"
         onClick={() => void send({ type: 'dock' })}
         title="Dock the agent back into the main window"
       >
@@ -168,6 +185,12 @@ export default function AgentWindow() {
           onRunSkill={(skillId, args) => send({ type: 'skill', skillId, args })}
           onReload={() => send({ type: 'reload' })}
           onSetAutoApprove={(value) => void send({ type: 'autoApprove', value })}
+          agents={agents}
+          agentsOpen={agentsOpen}
+          agentsWidth={agentsWidth}
+          onResizeAgents={resizeAgents}
+          onGoToSession={goToSession}
+          onCloseSession={closeSession}
           headActions={headActions}
           headIsTitleBar
         />
@@ -178,8 +201,21 @@ export default function AgentWindow() {
             <span className="console-status" data-tauri-drag-region>no session focused</span>
             {headActions}
           </div>
-          <div className="console-term">
-            <span className="console-hint">Focus a session in the main window</span>
+          <div className="agent-body">
+            <div className="console-term">
+              <span className="console-hint">
+                {agents.length > 0 && agentsOpen ? 'Pick a session' : 'Focus a session in the main window'}
+              </span>
+            </div>
+            {agentsOpen && (
+              <AgentsSidebar
+                rows={agents}
+                width={agentsWidth}
+                onResize={resizeAgents}
+                onGo={goToSession}
+                onClose={closeSession}
+              />
+            )}
           </div>
         </>
       )}

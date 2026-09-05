@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'rea
 import { ChevronUp, Loader2, Play, RefreshCw, Sparkles } from 'lucide-react';
 import { offeredSkills } from '../shared/lib/skills';
 import { providerCopy } from '../shared/lib/taskProvider';
+import { agentLine, type AgentRow } from '../shared/lib/agents';
+import { AgentsSidebar } from './AgentsSidebar';
 import type { AgentActivity, AgentSkill, ProviderId, SessionKind } from '../shared/ipc/ipc';
-
-/** The font the agent's terminal always uses, exempt from the config family. */
-export const AGENT_FONT = "'Lilex', 'IBM Plex Mono', ui-monospace, monospace";
 
 export interface AgentPanelProps {
   taskId: string;
@@ -25,6 +24,13 @@ export interface AgentPanelProps {
   onRunSkill: (skillId: string, args?: string) => Promise<unknown>;
   onReload: () => Promise<unknown>;
   onSetAutoApprove: (v: boolean) => void;
+  /** The running-agents list, beside the terminal when `agentsOpen`. */
+  agents: AgentRow[];
+  agentsOpen: boolean;
+  agentsWidth: number;
+  onResizeAgents: (width: number) => void;
+  onGoToSession: (row: AgentRow) => void;
+  onCloseSession: (row: AgentRow) => void;
   /** Buttons at the right end of the head. */
   headActions?: ReactNode;
   /** The head is the window's title bar: it drags the window. */
@@ -111,20 +117,31 @@ export function AgentPanel(p: AgentPanelProps) {
         {p.headActions}
       </div>
 
-      <div className="console-term" ref={p.termRef}>
-        {!p.ptyId && (
-          <span className="console-hint">
-            {busyStarting ? (
-              <>
-                <Loader2 size={12} className="spin" /> Starting the agent…
-              </>
-            ) : (
-              <button className="btn-secondary" onClick={start}>
-                <Play size={11} strokeWidth={2} style={{ marginRight: 5 }} />
-                Start an agent for {p.taskId}
-              </button>
-            )}
-          </span>
+      <div className="agent-body">
+        <div className="console-term" ref={p.termRef}>
+          {!p.ptyId && (
+            <span className="console-hint">
+              {busyStarting ? (
+                <>
+                  <Loader2 size={12} className="spin" /> Starting the agent…
+                </>
+              ) : (
+                <button className="btn-secondary" onClick={start}>
+                  <Play size={11} strokeWidth={2} style={{ marginRight: 5 }} />
+                  Start an agent for {p.taskId}
+                </button>
+              )}
+            </span>
+          )}
+        </div>
+        {p.agentsOpen && (
+          <AgentsSidebar
+            rows={p.agents}
+            width={p.agentsWidth}
+            onResize={p.onResizeAgents}
+            onGo={p.onGoToSession}
+            onClose={p.onCloseSession}
+          />
         )}
       </div>
 
@@ -185,13 +202,5 @@ export function AgentPanel(p: AgentPanelProps) {
 export function statusText(a: AgentActivity | null, hasAgent: boolean, starting: boolean): string {
   if (starting) return 'starting…';
   if (!a) return hasAgent ? 'running' : 'no agent yet';
-  const tool = a.tool ? (a.tool.detail ? `${a.tool.name}(${a.tool.detail})` : a.tool.name) : null;
-  switch (a.state) {
-    case 'waiting':
-      return tool ? `waiting · ${tool}` : 'waiting on you';
-    case 'working':
-      return tool ?? 'working…';
-    case 'idle':
-      return a.last_message ? `idle · ${a.last_message}` : 'idle';
-  }
+  return agentLine(a);
 }

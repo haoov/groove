@@ -1,0 +1,159 @@
+/* ── Running agents ────────────────────────────────────────────────────────────
+   The open sessions, as a column on the OUTER edge of the agent panel — right of
+   the terminal, docked or detached. One surface with the terminal and the actions
+   bar; only the drag handle separates them. Rows are the settings nav's: a padded
+   rounded button, label over a one-line blurb, the selected one filled with the
+   accent and edged, never striped. */
+
+/* Terminal + list, side by side under the head. */
+.agent-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.agent-body .console-term { min-width: 0; }
+
+.agents-sidebar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  outline: none;
+  background: var(--gl-background-color-overlap);
+}
+
+.agents-count {
+  font-family: var(--font-mono);
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  color: var(--gl-text-color-muted);
+}
+
+.agents-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--space-2);
+}
+.agents-empty {
+  margin: var(--space-2);
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-muted);
+}
+
+.agents-row {
+  position: relative;
+  display: flex;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.agents-row:hover { background: rgba(var(--gl-elevate), 0.05); }
+.agents-sidebar:focus-within .agents-row.cursor { border-color: var(--gl-border-color-strong); }
+.agents-row.active {
+  background: var(--gl-background-color-raised);
+}
+
+.agents-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-ui);
+  color: var(--gl-text-color-subtle);
+  cursor: pointer;
+}
+.agents-row:hover .agents-row-main,
+.agents-row.active .agents-row-main { color: var(--gl-text-color-default); }
+.agents-row-icon { flex-shrink: 0; margin-top: 1px; }
+/* Amber icon: the one row that wants you, readable without the blurb. */
+.agents-row.waiting .agents-row-icon { color: var(--wb-warn); }
+
+.agents-row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+
+/* Two lines, then ellipsis: a task title is a sentence. */
+.agents-row-title {
+  font-size: var(--gl-font-size-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Two fixed-height lines under the title: the id, then what the agent is doing
+   (or the task status). Their text changes with every hook; the row's height
+   must not, and the dot must never be pushed out by a long tool call. */
+.agents-row-id,
+.agents-row-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 1.6em;
+  font-size: var(--gl-font-size-xs);
+  color: var(--gl-text-color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.agents-row.active,
+.agents-row.active { color: var(--gl-text-color-subtle); }
+.agents-row-id { font-family: var(--font-mono); color: var(--gl-color-blue-300); }
+.agents-row-state-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.agents-row-state.waiting { color: var(--wb-warn); }
+.agents-row-state.working { color: var(--gl-color-blue-300); }
+.agents-row-state.status-blocked { color: var(--gl-color-red-400); }
+.agents-row-state.status-done { color: var(--gl-color-green-400); }
+/* A task status dot borrows the line's colour. */
+.agents-row-state[class*="status-"] .pill-dot { background: currentColor; }
+
+/* Shown on hover only, over the row's top-right corner. */
+.agents-row-close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: inline-flex;
+  padding: 2px;
+  background: none;
+  border: none;
+  border-radius: var(--gl-border-radius-sm);
+  color: var(--gl-text-color-disabled);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+.agents-row:hover .agents-row-close,
+.agents-row-close:focus-visible { opacity: 1; }
+.agents-row-close:hover { color: var(--gl-color-red-400); background: rgba(var(--gl-elevate), 0.08); }
+
+/* The head toggle, beside the pop-out / dock-back button. */
+.agents-toggle { position: relative; margin-left: 0; }
+.agents-toggle.on { color: var(--gl-color-blue-300); }
+.agents-toggle-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 100px;
+  background: var(--gl-color-orange-400);
+  color: var(--gl-background-color-overlap);
+  font-size: 9px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agents-row, .agents-row-close { transition: none; }
+}

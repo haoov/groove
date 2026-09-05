@@ -103,7 +103,7 @@ Opening a session must never start an agent by itself — that spends tokens on 
 `ui.suggest_actions` hides every offer, and hides nothing else: the skill stays a button
 and a slash command.
 
-**Commands**: 105, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
+**Commands**: 106, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules
 is fine as long as a `pub use` keeps the registered path resolving.
 

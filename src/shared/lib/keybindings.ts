@@ -18,6 +18,7 @@ export type CommandId =
   | 'git.cycleSubTab'
   | 'view.tasks'
   | 'view.notifications'
+  | 'agents.sidebar'
   | 'session.next'
   | 'session.prev'
   | 'workspace.toggleTerminal'
@@ -71,6 +72,7 @@ export const COMMANDS: CommandSpec[] = [
   // Navigation
   { id: 'view.tasks', label: 'Home', group: 'Navigation', defaults: [C('t', { alt: true })] },
   { id: 'view.notifications', label: 'Notifications', group: 'Navigation', defaults: [C('n', { ctrl: true })] },
+  { id: 'agents.sidebar', label: 'Running agents (show / hide)', group: 'Navigation', defaults: [C('a', { alt: true, shift: true })] },
   { id: 'session.next', label: 'Next session tab', group: 'Navigation', defaults: [C('n', { alt: true, shift: true })] },
   { id: 'session.switcher', label: 'Session switcher (open / cycle)', group: 'Navigation', defaults: [C('s', { alt: true })] },
   { id: 'session.prev', label: 'Previous session tab', group: 'Navigation', defaults: [C('p', { alt: true, shift: true })] },

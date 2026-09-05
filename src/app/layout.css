@@ -382,8 +382,6 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
 }
-.hp-row-state { display: inline-flex; align-items: center; gap: 4px; }
-.hp-row-state.waiting { color: var(--ctp-peach); }
 .hp-row-close {
   flex-shrink: 0;
   display: inline-flex;
@@ -472,6 +470,6 @@
   box-shadow: var(--shadow-float);
 }
 
-/* Session-picker row status colours (inherited from the dock rows). */
+/* Session-picker row status colours. */
 .hp-row-status.status-blocked { color: var(--gl-color-red-400); }
 .hp-row-status.status-done { color: var(--gl-color-green-400); }

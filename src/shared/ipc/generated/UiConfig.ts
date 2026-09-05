@@ -8,6 +8,11 @@ export type UiConfig = { font_size: number, theme: string,
  */
 font_family: string, 
 /**
+ * Monospace family for the agent's terminal only. Same rules as
+ * `font_family`; empty = the built-in stack.
+ */
+agent_font_family: string, 
+/**
  * One switch for every agent suggestion Groove offers — today the chip on a
  * task with no repos. Off means the app never proposes an action, not that
  * the skill is gone: it is still a button and a slash command.
