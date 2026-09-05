@@ -9,7 +9,7 @@
 //! logging idempotent.
 use sqlx::SqlitePool;
 
-use crate::core::db::models::{ActivityDay, TimeSummary};
+use crate::core::db::models::TimeSummary;
 use crate::core::db::store;
 
 /// A tick is only credited if it is this recent — the frontend decides when to
@@ -48,14 +48,6 @@ pub async fn get_task_time(
     store::time::summary(&*pool, &task_id, &today())
         .await
         .map_err(|e| e.to_string())
-}
-
-/// Tracked seconds per day across all sessions — feeds the Home activity heatmap.
-#[tauri::command]
-pub async fn get_activity_days(
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<ActivityDay>, String> {
-    store::time::activity(&*pool).await.map_err(|e| e.to_string())
 }
 
 /// Record `hours` in the local ledger, and in the provider's own field when it has

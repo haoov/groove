@@ -1,18 +1,7 @@
 use sqlx::SqliteExecutor;
 
 use super::super::error::StoreResult;
-use super::super::models::{ActivityDay, TimeSummary};
-
-/// Tracked seconds per calendar day, summed across every session — oldest first.
-pub async fn activity(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<ActivityDay>> {
-    let rows = sqlx::query_as::<_, ActivityDay>(
-        "SELECT day, CAST(SUM(seconds) AS INTEGER) AS seconds
-           FROM time_entries GROUP BY day ORDER BY day",
-    )
-    .fetch_all(exec)
-    .await?;
-    Ok(rows)
-}
+use super::super::models::TimeSummary;
 
 pub async fn add(
     exec: impl SqliteExecutor<'_>,

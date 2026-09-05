@@ -19,19 +19,7 @@
 }
 
 /* Big tabbed panel on the left, ambient rail on the right; one column when narrow. */
-.home-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 17rem;
-  align-items: start;
-  gap: var(--space-5);
-  padding: var(--space-5) var(--space-6) var(--space-6);
-}
-
-@media (max-width: 70rem) {
-  .home-layout { grid-template-columns: minmax(0, 1fr); }
-}
-
-.home-rail { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.home-layout { padding: var(--space-5) var(--space-6) var(--space-6); }
 
 /* Title row, filter bar, then the panel — the issue-list shape. */
 .home-main-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
@@ -855,87 +843,6 @@
 }
 
 .upnext-more { align-self: flex-start; padding: var(--space-2); }
-
-/* ── Activity heatmap ──────────────────────────────────────────────────────────
-   The daily time log (get_activity_days) as a GitHub-style grid: 7 weekday rows,
-   one column per week, newest on the right. Green scales with tracked time. */
-
-.activity-body {
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-/* Small title+value chips, centered above the heatmap. */
-.activity-stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
-}
-.activity-stat {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 4px 10px;
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-subtle);
-}
-.activity-stat .k {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--gl-text-color-muted);
-}
-.activity-stat .v {
-  font-family: var(--font-mono);
-  font-size: var(--home-text-sm);
-  font-weight: 600;
-  color: var(--gl-text-color-default);
-}
-
-/* Square 7×7 grid, centered in the panel. */
-.activity-cal { width: max-content; margin: 0 auto; }
-
-/* A week reads left-to-right: 7 weekday columns, one row per week (newest last). */
-.activity-weekdays,
-.activity-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1.5rem);
-  gap: 5px;
-}
-
-.activity-weekdays {
-  margin-bottom: 4px;
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-disabled);
-  text-align: center;
-}
-
-.activity-cell {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--gl-border-radius-sm);
-  background: var(--gl-background-color-strong);
-}
-.activity-cell.lvl-x { background: transparent; }
-.activity-cell.lvl-0 { background: var(--gl-background-color-strong); }
-.activity-cell.lvl-1 { background: color-mix(in srgb, var(--ctp-green) 28%, transparent); }
-.activity-cell.lvl-2 { background: color-mix(in srgb, var(--ctp-green) 50%, transparent); }
-.activity-cell.lvl-3 { background: color-mix(in srgb, var(--ctp-green) 72%, transparent); }
-.activity-cell.lvl-4 { background: var(--gl-color-green-400); }
-
-.activity-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: var(--gl-font-size-xs);
-  color: var(--gl-text-color-disabled);
-}
-.activity-legend .activity-cell { width: 0.85rem; height: 0.85rem; }
 
 /* New-explorer control in the tab bar. */
 .home-new-explorer { margin-left: var(--space-2); }
