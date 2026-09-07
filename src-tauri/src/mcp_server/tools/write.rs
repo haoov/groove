@@ -54,18 +54,52 @@ async fn already_pending(
         })
 }
 
-/// Add `worktree_path`, `branch` and `repo` from the worktree id.
-async fn enrich_worktree_fields(payload: &mut serde_json::Value, state: &McpState) {
+/// Ops that act on a worktree's files. `mr.update` and `mr.close` are absent: they
+/// resolve everything from `mr_id`.
+const WORKTREE_OPS: [&str; 5] = [
+    crate::approvals::ops::GIT_COMMIT,
+    crate::approvals::ops::GIT_PUSH,
+    crate::approvals::ops::GIT_PULL,
+    crate::approvals::ops::GIT_REBASE,
+    crate::approvals::ops::MR_CREATE,
+];
+
+/// Set `worktree_path`, `branch` and `repo` from the row `worktree_id` names, and refuse a
+/// worktree the bound session does not own. The caller's own copies of those three fields are
+/// dropped first: they decide which directory git runs in and what the dialog says.
+async fn bind_worktree(
+    payload: &mut serde_json::Value,
+    pool: &sqlx::SqlitePool,
+    task_id: Option<&str>,
+) -> Option<ToolCallResponse> {
+    if let Some(obj) = payload.as_object_mut() {
+        obj.remove("worktree_path");
+        obj.remove("branch");
+        obj.remove("repo");
+    }
+
     let Some(wt_id) = payload["worktree_id"].as_str().map(|s| s.to_string()) else {
-        return;
+        return Some(ToolCallResponse::err(
+            "worktree_id is required. Read it from get_active_task and pass the worktree to act on.",
+        ));
     };
-    if let Ok(wt) = store::worktrees::get(&state.pool, &wt_id).await {
-        payload["worktree_path"] = serde_json::json!(wt.path);
-        payload["branch"] = serde_json::json!(wt.branch);
-        if let Ok(Some(repo)) = store::repos::get_opt(&state.pool, &wt.repo_id).await {
-            payload["repo"] = serde_json::json!(repo.project);
+    let Ok(wt) = store::worktrees::get(pool, &wt_id).await else {
+        return Some(ToolCallResponse::err(format!("no worktree {wt_id}")));
+    };
+    if let Some(id) = task_id {
+        if wt.session_id != id {
+            return Some(ToolCallResponse::err(format!(
+                "worktree {wt_id} belongs to another session"
+            )));
         }
     }
+
+    payload["worktree_path"] = serde_json::json!(wt.path);
+    payload["branch"] = serde_json::json!(wt.branch);
+    if let Ok(Some(repo)) = store::repos::get_opt(pool, &wt.repo_id).await {
+        payload["repo"] = serde_json::json!(repo.project);
+    }
+    None
 }
 
 pub(super) async fn via_bridge(
@@ -81,9 +115,10 @@ pub(super) async fn via_bridge(
         crate::approvals::ops::GIT_REBASE,
         crate::approvals::ops::MR_CREATE,
     ];
-    let is_explorer = match state.task_for(mcp_session) {
+    let task_id = state.task_for(mcp_session);
+    let is_explorer = match task_id.as_deref() {
         Some(id) => matches!(
-            store::sessions::kind_of(&state.pool, &id).await?,
+            store::sessions::kind_of(&state.pool, id).await?,
             Some(SessionKind::Explorer)
         ),
         None => false,
@@ -94,7 +129,11 @@ pub(super) async fn via_bridge(
         ));
     }
 
-    enrich_worktree_fields(&mut payload, state).await;
+    if WORKTREE_OPS.contains(&op_type) {
+        if let Some(refusal) = bind_worktree(&mut payload, &state.pool, task_id.as_deref()).await {
+            return Ok(refusal);
+        }
+    }
     // The dialog names where the MR lands.
     if op_type == crate::approvals::ops::MR_CREATE {
         if let Some(wt_id) = payload["worktree_id"].as_str().map(|s| s.to_string()) {
@@ -107,7 +146,6 @@ pub(super) async fn via_bridge(
     if op_type == crate::approvals::ops::GIT_COMMIT {
         payload["index_only"] = serde_json::json!(true);
     }
-    let task_id = state.task_for(mcp_session);
     bridged(state, op_type, payload, task_id.as_deref()).await
 }
 
@@ -515,7 +553,64 @@ fn outcome_response(op_type: &str, outcome: ResolveOutcome) -> ToolCallResponse 
 
 #[cfg(test)]
 mod tests {
-    use super::mark_as_agent;
+    use super::{bind_worktree, mark_as_agent};
+    use crate::core::db::models::Repo;
+    use crate::core::db::{store, test_pool};
+
+    #[tokio::test]
+    async fn a_bridged_write_reaches_only_its_own_worktree() {
+        let pool = test_pool().await;
+        let repo = Repo {
+            id: "g/a".into(),
+            host: "gitlab.example.com".into(),
+            group_path: "g".into(),
+            project: "a".into(),
+            local_path: "/pool/g/a".into(),
+        };
+        store::repos::upsert(&pool, &repo).await.unwrap();
+        store::sessions::create_explorer(&pool, "s-1", "One")
+            .await
+            .unwrap();
+        store::sessions::create_explorer(&pool, "s-2", "Two")
+            .await
+            .unwrap();
+        store::repos::attach(&pool, "s-1", "g/a").await.unwrap();
+        let wt = store::worktrees::upsert(&pool, "s-1", "g/a", "fix/x", "/wt/s-1/a/fix/x")
+            .await
+            .unwrap();
+
+        // A caller-supplied path, branch and repo are replaced by the row's own.
+        let mut forged = serde_json::json!({
+            "worktree_id": wt.id,
+            "worktree_path": "/etc",
+            "branch": "main",
+            "repo": "somewhere-else",
+        });
+        assert!(bind_worktree(&mut forged, &pool, Some("s-1"))
+            .await
+            .is_none());
+        assert_eq!(forged["worktree_path"], "/wt/s-1/a/fix/x");
+        assert_eq!(forged["branch"], "fix/x");
+        assert_eq!(forged["repo"], "a");
+
+        // No id: the path is not taken from the caller instead.
+        let mut no_id = serde_json::json!({ "worktree_path": "/etc" });
+        assert!(bind_worktree(&mut no_id, &pool, Some("s-1"))
+            .await
+            .is_some());
+        assert!(no_id["worktree_path"].is_null());
+
+        // Another session's worktree is refused.
+        let mut other = serde_json::json!({ "worktree_id": wt.id });
+        assert!(bind_worktree(&mut other, &pool, Some("s-2"))
+            .await
+            .is_some());
+
+        let mut unknown = serde_json::json!({ "worktree_id": "nope" });
+        assert!(bind_worktree(&mut unknown, &pool, Some("s-1"))
+            .await
+            .is_some());
+    }
 
     #[test]
     fn stamps_after_the_decoration() {

@@ -85,6 +85,18 @@ mod tests {
             .to_string_lossy()
             .ends_with("/.claude/projects/-home-x-worktrees-gitlab-wiremind-io-devops"));
     }
+
+    #[test]
+    fn the_hook_token_stays_out_of_the_command_line() {
+        let token = crate::mcp_server::auth::token();
+        let settings = super::hook_settings("t-1", "/tmp/t-1.hooks.curl");
+        assert!(
+            !settings.contains(token),
+            "the token reaches /proc/<pid>/cmdline: {settings}"
+        );
+        assert!(settings.contains("-K '/tmp/t-1.hooks.curl'"));
+        assert!(super::hook_curl_config().contains(token));
+    }
 }
 
 /// The worktree root from config, or $HOME when it is not a directory.
@@ -144,10 +156,17 @@ pub async fn start_agent_session(
     );
 
     // Hooks report the agent's state; see agent_hooks.
+    let curl_config = write_launch_file(&app, &task_id, "hooks.curl", &hook_curl_config())
+        .map_err(|e| e.to_string())?;
     args.push("--settings".to_string());
     args.push(
-        write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id))
-            .map_err(|e| e.to_string())?,
+        write_launch_file(
+            &app,
+            &task_id,
+            "settings.json",
+            &hook_settings(&task_id, &curl_config),
+        )
+        .map_err(|e| e.to_string())?,
     );
 
     // The core prompt. `--append-system-prompt` is the inline fallback.
@@ -206,7 +225,7 @@ fn write_launch_file(
     contents: &str,
 ) -> anyhow::Result<String> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     use tauri::Manager;
 
     let dir = app.path().app_data_dir()?.join("agent-launch");
@@ -218,16 +237,27 @@ fn write_launch_file(
         .truncate(true)
         .mode(0o600)
         .open(&path)?;
+    // `mode` applies on create only; an existing file keeps whatever it had.
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
     file.write_all(contents.as_bytes())?;
     Ok(path.to_string_lossy().to_string())
 }
 
+/// The bearer header for the hook calls, as a curl config file. Never argv:
+/// `/proc/<pid>/cmdline` is world-readable and a hook runs on every tool call.
+fn hook_curl_config() -> String {
+    format!(
+        "header = \"authorization: Bearer {}\"\n",
+        crate::mcp_server::auth::token()
+    )
+}
+
 /// `--settings` wiring Claude Code's hooks to the loopback server. Keep `-m 2 ... || true`:
 /// a failing hook must never hold up the agent.
-fn hook_settings(task_id: &str) -> String {
+fn hook_settings(task_id: &str, curl_config_path: &str) -> String {
     let command = format!(
-        "curl -s -m 2 -X POST -H 'content-type: application/json' -H 'authorization: Bearer {}' --data-binary @- '{}' >/dev/null 2>&1 || true",
-        crate::mcp_server::auth::token(),
+        "curl -s -m 2 -K '{}' -X POST -H 'content-type: application/json' --data-binary @- '{}' >/dev/null 2>&1 || true",
+        curl_config_path,
         crate::mcp_server::hook_url(task_id)
     );
     let post = serde_json::json!([{ "hooks": [{ "type": "command", "command": command }] }]);
