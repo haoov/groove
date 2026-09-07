@@ -1,7 +1,7 @@
 // The running agents: one row per open session, with what its agent is doing. Pure.
 
-import type { AgentActivity, SessionKind } from '../ipc/ipc';
-import type { SessionState } from '../store';
+import type { AgentActivity, SessionKind } from '../../ipc/ipc';
+import type { SessionState } from '../../store';
 import { mrRef } from './forge';
 
 export interface AgentRow {

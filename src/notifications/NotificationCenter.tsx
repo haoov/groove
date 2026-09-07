@@ -5,7 +5,7 @@ import {
   AlertTriangle, Bell, Bot, Check, CheckCircle2, Copy, Expand, FileText, GitBranch,
   GitPullRequest, Info, ListTodo, Plug, X, type LucideIcon,
 } from 'lucide-react';
-import { goToSession } from '../shared/lib/goToSession';
+import { goToSession } from '../shared/lib/actions/goToSession';
 import { useStore } from '../shared/store';
 import type { AppNotification, NotificationSource } from '../shared/store';
 

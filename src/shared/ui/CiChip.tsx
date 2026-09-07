@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { ChevronDown, ExternalLink, Wrench } from 'lucide-react';
 import { ContextMenu } from './ContextMenu';
-import { ciGroup } from '../lib/mr';
-import { forgeName } from '../lib/forge';
-import { openExternal } from '../lib/openExternal';
-import { sendSkill } from '../lib/agentSend';
-import { offers } from '../lib/skills';
+import { ciGroup } from '../lib/pure/mr';
+import { forgeName } from '../lib/pure/forge';
+import { openExternal } from '../lib/actions/openExternal';
+import { sendSkill } from '../lib/actions/agentSend';
+import { offers } from '../lib/pure/skills';
 import { useStore, useSession } from '../store';
 
 /** The MR's pipeline chip and its menu. */

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import { assignBinding, defaultKeymap, loadKeymap, saveKeymap, clearKeymap, resetBinding } from '../../lib/keybindings';
+import { assignBinding, defaultKeymap, loadKeymap, saveKeymap, clearKeymap, resetBinding } from '../../lib/pure/keybindings';
 import type { AppState, KeybindingsSlice } from '../types';
 
 export const keybindingsSlice: StateCreator<AppState, [], [], KeybindingsSlice> = (set) => ({

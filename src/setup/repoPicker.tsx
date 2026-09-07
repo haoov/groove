@@ -2,9 +2,9 @@ import { useCallback, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { Search, GitBranch } from 'lucide-react';
 import type { Repo, MainRepo } from '../shared/ipc/ipc';
-import { Highlighted } from '../shared/lib/match';
+import { Highlighted } from '../shared/ui/MatchHighlight';
 import { Combobox } from '../shared/ui/Combobox';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /**
  * Shared repo selection for the task wizard and the add-repo modal. The pool is

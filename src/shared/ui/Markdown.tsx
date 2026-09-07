@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { openExternal } from '../lib/openExternal';
+import { openExternal } from '../lib/actions/openExternal';
 
 /** GFM markdown renderer for overview pages. Links open in the system browser, never the webview. No raw HTML. */
 export const Markdown = memo(function Markdown({ text }: { text: string }) {

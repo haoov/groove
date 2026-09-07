@@ -4,8 +4,8 @@ import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { openTask, priorityLabel, priorityRank } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
-import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
-import { usePersisted, SET_CODEC } from '../shared/lib/usePersisted';
+import { statusKey, STATUS_RANK } from '../shared/lib/pure/taskStatus';
+import { usePersisted, SET_CODEC } from '../shared/lib/hooks/usePersisted';
 import type { Task } from '../shared/ipc/ipc';
 
 // Up next: the queued tasks not yet checked out.

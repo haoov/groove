@@ -1,4 +1,4 @@
-import type { Hunk, DiffLine } from '../ipc/ipc';
+import type { Hunk, DiffLine } from '../shared/ipc/ipc';
 
 /**
  * The unshown stretches of a diff, and how to fill one in.

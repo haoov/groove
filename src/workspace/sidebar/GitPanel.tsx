@@ -1,8 +1,8 @@
 import { RefreshCw } from 'lucide-react';
 import { invoke } from '../../shared/ipc/invoke';
 import { useSession, useStore } from '../../shared/store';
-import { refreshSession } from '../../shared/lib/refreshSession';
-import { DIFF_MODES } from '../../shared/lib/diffModes';
+import { refreshSession } from '../../shared/lib/actions/refreshSession';
+import { DIFF_MODES } from '../../shared/lib/pure/diffModes';
 import type { Worktree } from '../../shared/ipc/ipc';
 import { CommitsTab } from '../../git/CommitsTab';
 import { ChangedFilesList } from '../../git/ChangedFilesList';

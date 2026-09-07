@@ -1,7 +1,7 @@
 // Reading a rejected `invoke`. A command rejects with `AppError`; anything else that
 // throws here is a JS error or a string, and both must still render.
 
-import type { AppError, ErrorKind } from '../ipc/ipc';
+import type { AppError, ErrorKind } from '../../ipc/ipc';
 
 function isAppError(e: unknown): e is AppError {
   return (

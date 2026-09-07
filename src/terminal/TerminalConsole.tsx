@@ -3,9 +3,9 @@ import { listen } from '@tauri-apps/api/event';
 import { invoke } from '../shared/ipc/invoke';
 import { Loader2, Play, X } from 'lucide-react';
 import { useStore } from '../shared/store';
-import { focusHost } from '../shared/lib/terminalHost';
-import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import { readStoredSize, useDragResize } from '../shared/lib/useDragResize';
+import { focusHost } from '../shared/lib/hosts/terminalHost';
+import { useAttachedHost } from '../shared/lib/hooks/useAttachedHost';
+import { readStoredSize, useDragResize } from '../shared/lib/hooks/useDragResize';
 import { EVENT } from '../shared/ipc/events';
 import type { PtyExitEvent } from '../shared/ipc/ipc';
 

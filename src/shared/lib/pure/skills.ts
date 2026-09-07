@@ -1,6 +1,6 @@
 // What the agent is sent for a skill, and which skills a session offers. Pure.
 
-import type { AgentSkill, SessionKind } from '../ipc/ipc';
+import type { AgentSkill, SessionKind } from '../../ipc/ipc';
 
 /** The text typed for a skill. Keep the trailing space: it closes Claude's slash menu. */
 export function skillCommand(skillId: string, args?: string): string {

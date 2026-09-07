@@ -2,8 +2,8 @@ import { useEffect, useCallback, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
-import { chordLabel } from '../shared/lib/keys';
-import { errorText } from '../shared/lib/appError';
+import { chordLabel } from '../shared/lib/pure/keys';
+import { errorText } from '../shared/lib/pure/appError';
 import { opSpec } from './ops';
 import type { Edits } from './ops/spec';
 

@@ -1,7 +1,7 @@
 import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
-import { applyTheme, applyFontSize, applyFontFamily } from '../../lib/theme';
-import { errorText } from '../../lib/appError';
+import { applyTheme, applyFontSize, applyFontFamily } from '../../lib/actions/theme';
+import { errorText } from '../../lib/pure/appError';
 import type { AppState, ConfigSlice } from '../types';
 
 /** A config write is fire-and-forget: a failure only shows in the feed. */

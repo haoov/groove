@@ -6,7 +6,7 @@ import {
   type NotificationSource,
 } from '../../../shared/store';
 import { OP, OP_GIT_PREFIX, OP_MR_PREFIX, OP_TASK_PREFIX } from '../../../shared/ipc/ops';
-import { takeCommitPush } from '../../../shared/lib/gitChain';
+import { takeCommitPush } from '../../../shared/lib/actions/gitChain';
 import type {
   Task,
   ConfirmationRequestedEvent,

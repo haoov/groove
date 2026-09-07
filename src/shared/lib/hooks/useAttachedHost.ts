@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { ensureHost, fitAndSync, forgetSyncedSize } from './terminalHost';
+import { ensureHost, fitAndSync, forgetSyncedSize } from '../hosts/terminalHost';
 
 /**
  * Shows a PTY's terminal inside `containerRef` by re-parenting the host element.

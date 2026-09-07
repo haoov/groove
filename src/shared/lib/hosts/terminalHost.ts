@@ -1,11 +1,11 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
-import { invoke } from '../ipc/invoke';
-import { useStore } from '../store';
-import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
+import { invoke } from '../../ipc/invoke';
+import { useStore } from '../../store';
+import { DEFAULT_FONT_SIZE } from '../../ipc/ipc';
 import { registerPtyHandler, unregisterPtyHandler, bytesToB64 } from './ptyRegistry';
-import { errorText } from './appError';
+import { errorText } from '../pure/appError';
 import '@xterm/xterm/css/xterm.css';
 
 /** A terminal that lives for the PTY session, outside React.

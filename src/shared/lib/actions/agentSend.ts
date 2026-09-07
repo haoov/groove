@@ -1,9 +1,9 @@
 // Sending text to a session's agent — writing bytes to its PTY.
 
-import { invoke } from '../ipc/invoke';
-import { bytesToB64 } from './ptyRegistry';
-import { useStore } from '../store';
-import { skillCommand, trimForPty } from './skills';
+import { invoke } from '../../ipc/invoke';
+import { bytesToB64 } from '../hosts/ptyRegistry';
+import { useStore } from '../../store';
+import { skillCommand, trimForPty } from '../pure/skills';
 
 /** Give up waiting for a cold agent and send. */
 const READY_TIMEOUT_MS = 25_000;

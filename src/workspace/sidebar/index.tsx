@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
 import { useStore, useSession } from '../../shared/store';
-import { activeWorktreeFor } from '../../shared/lib/workspace';
+import { activeWorktreeFor } from '../../shared/lib/pure/workspace';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { FilesTab } from '../../files/FilesTab';
 import { GitCommitPanel } from '../../git/GitCommitPanel';

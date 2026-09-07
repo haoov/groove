@@ -12,7 +12,7 @@ import { vim, Vim } from '@replit/codemirror-vim';
 import { setupVimSearch } from './cm/vimSetup';
 import { viewBasics } from './cm/basics';
 import { invoke } from '../shared/ipc/invoke';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 import { useStore, type GrepHighlight } from '../shared/store';
 import { cmLangFor } from './cmLang';
 import { catppuccinHighlight, cmChromeTheme, editorTheme } from './cm/theme';

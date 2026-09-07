@@ -20,6 +20,10 @@ const ONLY_FROM = {
 
 const STORE_INTERNALS = /^shared\/store\/(slices\/|types$|session$)/;
 
+// `shared/lib/pure` runs in a bare node test: no store, no IPC, no DOM host.
+// A type-only import is erased, so it is allowed.
+const IMPURE = /^shared\/(lib\/(actions|hosts|hooks)\/|store$|store\/|ipc\/invoke$)/;
+
 function srcPath(file) {
   const rel = relative(SRC, file).split(sep).join('/');
   return rel.startsWith('..') ? null : rel;
@@ -45,6 +49,7 @@ const boundaries = {
       feature: "'{{from}}' must not import '{{to}}'. Move the code to shared/ or declare the edge in eslint/boundaries.js.",
       onlyFrom: "'{{source}}' is imported only from {{owner}}.",
       storeInternals: "Import the store barrel 'shared/store', not '{{source}}'.",
+      impurePure: "'shared/lib/pure' must not import '{{source}}' for a value: it runs with no store, no IPC and no DOM.",
     },
   },
   create(context) {
@@ -65,6 +70,15 @@ const boundaries = {
       const target = targetOf(context.filename, source);
       if (!target) return;
       const to = featureOf(target);
+
+      if (
+        file.startsWith('shared/lib/pure/') &&
+        node.importKind !== 'type' &&
+        IMPURE.test(target.replace(/\.tsx?$/, ''))
+      ) {
+        context.report({ node, messageId: 'impurePure', data: { source } });
+        return;
+      }
 
       if (STORE_INTERNALS.test(target.replace(/\.tsx?$/, '')) && !file.startsWith('shared/store/')) {
         context.report({ node, messageId: 'storeInternals', data: { source } });

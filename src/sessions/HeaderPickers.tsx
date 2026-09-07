@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { mrRef } from '../shared/lib/forge';
+import { mrRef } from '../shared/lib/pure/forge';
 import { createPortal } from 'react-dom';
 import {
   Check, Code2, FolderGit2, GitBranch, Plus, X,
@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession, useSessionSummaries, type SessionSummary } from '../shared/store';
-import { endSession } from '../shared/lib/endSession';
-import { goToSession } from '../shared/lib/goToSession';
-import { statusKey } from '../shared/lib/taskStatus';
-import { sessionIdLabel } from '../shared/lib/agents';
-import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
+import { endSession } from '../shared/lib/actions/endSession';
+import { goToSession } from '../shared/lib/actions/goToSession';
+import { statusKey } from '../shared/lib/pure/taskStatus';
+import { sessionIdLabel } from '../shared/lib/pure/agents';
+import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/pure/sessionKind';
 
 /**
  * The header context pickers: Active Session, Repo, Worktree. Alt+S/R/W open a list;

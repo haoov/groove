@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../shared/store';
-import { chordFromEvent, isModifierOnly, isTypingCharacter, type Chord } from '../shared/lib/keys';
+import { chordFromEvent, isModifierOnly, isTypingCharacter, type Chord } from '../shared/lib/pure/keys';
 
 /**
  * While `active`, takes the next real keystroke as a chord. Esc cancels.

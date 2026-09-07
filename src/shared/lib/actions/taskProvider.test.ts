@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROVIDER_IDS, configuredSources, providerCopy } from './taskProvider';
-import type { Config } from '../ipc/ipc';
+import type { Config } from '../../ipc/ipc';
 
 const config = (over: Partial<Config> = {}) =>
   ({ notion: null, github: null, git: {}, ui: {}, ...over }) as Config;

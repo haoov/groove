@@ -1,5 +1,5 @@
 import { Boxes, Eye, ListTodo, type LucideIcon } from 'lucide-react';
-import type { SessionKind } from '../ipc/ipc';
+import type { SessionKind } from '../../ipc/ipc';
 
 export const SESSION_KIND_ICON: Record<SessionKind, LucideIcon> = {
   task: ListTodo,

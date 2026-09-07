@@ -1,6 +1,6 @@
-import { invoke } from '../ipc/invoke';
-import { useStore, sessionActions, isTerminalPane, type EditorTab, type SessionState } from '../store';
-import { disposeHost } from './terminalHost';
+import { invoke } from '../../ipc/invoke';
+import { useStore, sessionActions, isTerminalPane, type EditorTab, type SessionState } from '../../store';
+import { disposeHost } from '../hosts/terminalHost';
 
 /** True when DOM focus is currently inside a terminal tab. */
 function isTerminalFocused(): boolean {

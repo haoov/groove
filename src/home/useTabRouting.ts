@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { usePersisted, type Codec } from '../shared/lib/usePersisted';
+import { usePersisted, type Codec } from '../shared/lib/hooks/usePersisted';
 import type { CountReport } from './filter';
 
 export type Tab = 'live' | 'upnext' | 'reviews';

@@ -173,4 +173,24 @@
   --wb-statusbar-height:     1.75rem;   /* 28px */
   --wb-modal-width:          min(64rem, 92vw);
   --wb-tooltip-width:        20rem;      /* 320px */
+
+  /* ── Layers ─────────────────────────────────────────────────────────────── */
+  /* Ordered, and the only place a z-index is written. */
+  --z-raised:        1;     /* stacking inside a scrolling list */
+  --z-pane-chrome:  10;     /* resize handles between panes */
+  --z-backdrop:     40;     /* a local backdrop, and the drop-ups over it */
+  --z-over-backdrop: 41;
+  --z-chrome:       50;     /* the app header */
+  --z-chrome-pop:   60;     /* a popover anchored in the header */
+  --z-popover:     200;     /* a floating panel anchored to a control */
+  --z-menu:        985;     /* context menus, above every panel */
+  --z-listbox:     980;     /* a combobox list inside a modal */
+  --z-overlay:     900;     /* a full-window overlay and its dialog */
+  --z-palette:     950;
+  --z-wizard:      960;
+  --z-prompt:      990;     /* the file-tree prompt, over the wizard */
+  --z-toast:       995;
+  --z-context-menu: 1000;   /* .context-menu, above a toast */
+  --z-window-grip: 1000;    /* the frameless window's own resize edges */
+  --z-window-corner: 1001;
 }

@@ -5,7 +5,7 @@ import {
   siTerraform, siToml, siTypescript, siVuedotjs, siYaml,
 } from 'simple-icons';
 
-import { iconKey } from '../shared/lib/icons';
+import { iconKey } from './icons';
 
 export interface Brand { path: string; title: string }
 

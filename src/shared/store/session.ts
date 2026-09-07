@@ -1,6 +1,6 @@
 // Session construction and the pure per-session reducers. No store access, no IPC.
 
-import { leaf, splitLeaf, removeLeaf, type SplitDir } from '../lib/layout';
+import { leaf, splitLeaf, removeLeaf, type SplitDir } from '../lib/pure/layout';
 import type { Task, Repo, Worktree, DiffResult, FileDiff } from '../ipc/ipc';
 import type {
   EditorTab, OpenTabInput, SessionKind, SessionState, WorkspacePane,

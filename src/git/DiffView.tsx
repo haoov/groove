@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation, Hunk, RepoDiff, Mr, MrThread } from '../shared/ipc/ipc';
-import { mrForWorktree, activeWorktreeFor, repoDiffFor } from '../shared/lib/workspace';
+import { mrForWorktree, activeWorktreeFor, repoDiffFor } from '../shared/lib/pure/workspace';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';

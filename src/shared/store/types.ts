@@ -5,9 +5,9 @@ import type {
   WorktreeStatus, BlameLine, AgentActivity, ConfirmationDto, Config, ThemeName,
   ReviewMr, HomeEntry, AgentSkill,
 } from '../ipc/ipc';
-import type { LayoutNode, SplitDir } from '../lib/layout';
-import type { Chord } from '../lib/keys';
-import type { CommandId, Keymap } from '../lib/keybindings';
+import type { LayoutNode, SplitDir } from '../lib/pure/layout';
+import type { Chord } from '../lib/pure/keys';
+import type { CommandId, Keymap } from '../lib/pure/keybindings';
 
 /** Which header context picker is open, or none. */
 export type PickerKind = 'session' | 'repo' | 'worktree' | null;

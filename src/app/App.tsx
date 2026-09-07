@@ -20,10 +20,10 @@ import { Toasts } from '../notifications/Toasts';
 import { AgentConsole } from '../agent/AgentConsole';
 import { AgentWindowBridge } from '../agent/AgentWindowBridge';
 import { TerminalConsole } from '../terminal/TerminalConsole';
-import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
-import { isMac } from '../shared/lib/platform';
+import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/actions/theme';
+import { isMac } from '../shared/lib/pure/platform';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from '../shared/ipc/ipc';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** Refreshes the review queue on startup and every ~5 min. */
 const REVIEW_POLL_MS = 5 * 60 * 1000;

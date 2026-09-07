@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { offeredSkills, offers, skillCommand, trimForPty } from './skills';
-import type { AgentSkill, SessionKind } from '../ipc/ipc';
+import type { AgentSkill, SessionKind } from '../../ipc/ipc';
 
 const skill = (id: string, kinds: SessionKind[]): AgentSkill => ({
   id,

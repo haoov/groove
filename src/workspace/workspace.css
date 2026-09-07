@@ -12,7 +12,7 @@
   cursor: col-resize;
   background: var(--gl-border-color-default);
   transition: background 0.15s, box-shadow 0.15s, width 0.1s;
-  z-index: 10;
+  z-index: var(--z-pane-chrome);
 }
 .resize-handle:hover,
 .resize-handle:active {
@@ -26,7 +26,7 @@
   cursor: row-resize;
   background: var(--gl-border-color-default);
   transition: background 0.15s, height 0.1s;
-  z-index: 10;
+  z-index: var(--z-pane-chrome);
 }
 .resize-handle-h:hover,
 .resize-handle-h:active {

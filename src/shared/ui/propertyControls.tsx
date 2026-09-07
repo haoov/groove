@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../ipc/invoke';
 import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
-import { statusKey } from '../lib/taskStatus';
-import { priorityRank } from '../lib/taskStatus';
+import { statusKey } from '../lib/pure/taskStatus';
+import { priorityRank } from '../lib/pure/taskStatus';
 import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
-import { errorText } from '../lib/appError';
+import { errorText } from '../lib/pure/appError';
 
 /**
  * The property controls: pills, chip rows, popovers.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchRanges, rankMatches } from './match';
+import { matchRanges, rankMatches } from './MatchHighlight';
 
 const slugs = [
   'github.com/haoov/groove',

@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { ChevronDown, ChevronRight, PanelsTopLeft, Pencil, Check, Trash2 } from 'lucide-react';
 import { findSessionByTask, useStore } from '../shared/store';
-import { endSession } from '../shared/lib/endSession';
-import { openExternal } from '../shared/lib/openExternal';
+import { endSession } from '../shared/lib/actions/endSession';
+import { openExternal } from '../shared/lib/actions/openExternal';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
-import { providerCopy } from '../shared/lib/taskProvider';
-import { readPersisted, writePersisted, SET_CODEC } from '../shared/lib/usePersisted';
+import { providerCopy } from '../shared/lib/actions/taskProvider';
+import { readPersisted, writePersisted, SET_CODEC } from '../shared/lib/hooks/usePersisted';
 
 import type { HomeEntry } from '../shared/ipc/ipc';
 

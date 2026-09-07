@@ -3,8 +3,8 @@ import { GitBranch } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import type { OriginBranches } from '../shared/ipc/ipc';
 import { Combobox } from '../shared/ui/Combobox';
-import { Highlighted } from '../shared/lib/match';
-import { errorText } from '../shared/lib/appError';
+import { Highlighted } from '../shared/ui/MatchHighlight';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** Picks a worktree's base branch (`Worktree::base_ref`, later the MR target) from origin's branches. */
 

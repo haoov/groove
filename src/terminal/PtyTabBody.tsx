@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { RotateCcw } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
-import { fitAndSync, focusHost } from '../shared/lib/terminalHost';
-import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import { errorText } from '../shared/lib/appError';
+import { fitAndSync, focusHost } from '../shared/lib/hosts/terminalHost';
+import { useAttachedHost } from '../shared/lib/hooks/useAttachedHost';
+import { errorText } from '../shared/lib/pure/appError';
 
 /**
  * Body of a terminal tab. Re-parents the xterm host element into its container; the

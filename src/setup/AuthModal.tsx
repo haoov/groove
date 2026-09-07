@@ -6,9 +6,9 @@ import { Loader2, X } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { EVENT } from '../shared/ipc/events';
 import type { PtyOutputEvent } from '../shared/ipc/ipc';
-import { focusHost } from '../shared/lib/terminalHost';
-import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import { bytesToB64 } from '../shared/lib/ptyRegistry';
+import { focusHost } from '../shared/lib/hosts/terminalHost';
+import { useAttachedHost } from '../shared/lib/hooks/useAttachedHost';
+import { bytesToB64 } from '../shared/lib/hosts/ptyRegistry';
 
 /** Typed at the prompt without a newline. */
 const COMMAND = {

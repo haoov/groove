@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { matchRanges, Highlighted } from '../shared/lib/match';
+import { matchRanges, Highlighted } from '../shared/ui/MatchHighlight';
 import { FileTypeIcon } from './tree';
 import { rowLine, type FileSearch } from './useFileSearch';
 

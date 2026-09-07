@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { openExternal } from '../shared/lib/openExternal';
+import { openExternal } from '../shared/lib/actions/openExternal';
 import { invoke } from '../shared/ipc/invoke';
-import { providerCopy } from '../shared/lib/taskProvider';
+import { providerCopy } from '../shared/lib/actions/taskProvider';
 import type { TaskSchema } from '../shared/ipc/ipc';
 import { CheckCircle2, AlertTriangle, Trash2, X, RefreshCw, ExternalLink, Plus, Sparkles } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
@@ -9,8 +9,8 @@ import type { Mr } from '../shared/ipc/ipc';
 import { RepoRow } from './parts';
 import { PropertyStrip } from './PropertyStrip';
 import { BodyEditor } from './BodyEditor';
-import { sendSkill } from '../shared/lib/agentSend';
-import { offers } from '../shared/lib/skills';
+import { sendSkill } from '../shared/lib/actions/agentSend';
+import { offers } from '../shared/lib/pure/skills';
 
 export function TaskOverview() {
   const activeTask = useSession((s) => s.activeTask);

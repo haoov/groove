@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { useStore, sessionActions } from '../../shared/store';
-import { COMMANDS } from '../../shared/lib/keybindings';
-import { chordMatches, isModifierOnly, isTypingCharacter } from '../../shared/lib/keys';
-import { runCommand } from '../../shared/lib/commands';
+import { COMMANDS } from '../../shared/lib/pure/keybindings';
+import { chordMatches, isModifierOnly, isTypingCharacter } from '../../shared/lib/pure/keys';
+import { runCommand } from '../../shared/lib/actions/commands';
 
 /** Installs the global keydown listener in the capture phase; app shortcuts win over CodeMirror/xterm. */
 export function useKeybindings() {

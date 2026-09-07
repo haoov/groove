@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useStore, sessionActions, type AppState } from '../shared/store';
-import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
-import { buildAgentRows, orderedSessions } from '../shared/lib/agents';
-import { endSession } from '../shared/lib/endSession';
-import { goToSessionById } from '../shared/lib/goToSession';
-import { isMac } from '../shared/lib/platform';
+import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/actions/agentSend';
+import { buildAgentRows, orderedSessions } from '../shared/lib/pure/agents';
+import { endSession } from '../shared/lib/actions/endSession';
+import { goToSessionById } from '../shared/lib/actions/goToSession';
+import { isMac } from '../shared/lib/pure/platform';
 import {
   AGENT_WINDOW_LABEL,
   BRIDGE,
@@ -19,8 +19,8 @@ import {
   type AgentWindowState,
   type CommandDone,
   type CommandEnvelope,
-} from '../shared/lib/agentWindow';
-import { errorText } from '../shared/lib/appError';
+} from '../shared/lib/pure/agentWindow';
+import { errorText } from '../shared/lib/pure/appError';
 
 /**
  * The main window's half of the detached agent window: opens and closes it, mirrors the

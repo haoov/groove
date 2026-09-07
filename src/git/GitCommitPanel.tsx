@@ -5,10 +5,10 @@ import {
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 import type { WorktreeStatus, Mr } from '../shared/ipc/ipc';
-import { registerCommitPush } from '../shared/lib/gitChain';
-import { forgeName, mrSigil } from '../shared/lib/forge';
-import { openExternal } from '../shared/lib/openExternal';
-import { errorText } from '../shared/lib/appError';
+import { registerCommitPush } from '../shared/lib/actions/gitChain';
+import { forgeName, mrSigil } from '../shared/lib/pure/forge';
+import { openExternal } from '../shared/lib/actions/openExternal';
+import { errorText } from '../shared/lib/pure/appError';
 import { MrCiChip } from './MrCiChip';
 
 type ActionKey = 'commit' | 'commit-push' | 'push' | 'pull' | 'rebase' | 'create-mr';

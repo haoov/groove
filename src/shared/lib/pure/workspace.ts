@@ -1,6 +1,6 @@
 // Pure lookups shared across workspace components. Plain functions, not hooks.
 
-import type { Worktree, Mr, Annotation, MrThread, DiffResult } from '../ipc/ipc';
+import type { Worktree, Mr, Annotation, MrThread, DiffResult } from '../../ipc/ipc';
 
 /** The worktree for a repo. */
 export const worktreeFor = (worktrees: Worktree[], repoId: string | null | undefined) =>

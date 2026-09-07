@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GitCommit, Search, X } from 'lucide-react';
 import type { CommitEntry } from '../shared/ipc/ipc';
-import { Highlighted, matchRanges } from '../shared/lib/match';
+import { Highlighted, matchRanges } from '../shared/ui/MatchHighlight';
 
 /** The commit log: a local fuzzy filter over the loaded commits, and another page at the end. */
 export function CommitsTab({

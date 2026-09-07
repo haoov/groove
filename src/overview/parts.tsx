@@ -1,7 +1,7 @@
 import { GitBranch, GitPullRequest } from 'lucide-react';
-import { forgeName, mrRef } from '../shared/lib/forge';
+import { forgeName, mrRef } from '../shared/lib/pure/forge';
 import type { Mr, Repo, Worktree } from '../shared/ipc/ipc';
-import { openExternal } from '../shared/lib/openExternal';
+import { openExternal } from '../shared/lib/actions/openExternal';
 
 /** One MR, beside its worktree: number + state, opening the forge. */
 function MrLine({ mr }: { mr: Mr }) {

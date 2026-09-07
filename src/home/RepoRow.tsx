@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { forgeName, mrRef } from '../shared/lib/forge';
+import { forgeName, mrRef } from '../shared/lib/pure/forge';
 import { GitBranch, GitMerge, GitPullRequest, GitPullRequestClosed } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
-import { openExternal } from '../shared/lib/openExternal';
+import { openExternal } from '../shared/lib/actions/openExternal';
 import { openRepo } from './helpers';
 import type { HomeEntry, HomeMr, HomeRepo } from '../shared/ipc/ipc';
 

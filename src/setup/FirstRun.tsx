@@ -4,12 +4,12 @@ import { AlertTriangle, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { AuthModal } from './AuthModal';
 import { SOURCES, SOURCE_IDS } from './sources';
-import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/theme';
-import { forgeCliState } from '../shared/lib/forge';
+import { applyFontFamily, applyFontSize, applyTheme } from '../shared/lib/actions/theme';
+import { forgeCliState } from '../shared/lib/pure/forge';
 import {
   DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type ProviderId,
 } from '../shared/ipc/ipc';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** First-run setup: the dependency list, and the values only the user can supply. */
 

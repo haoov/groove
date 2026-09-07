@@ -101,7 +101,7 @@
   flex-shrink: 0;
   gap: var(--space-3);
   position: relative;
-  z-index: 50;
+  z-index: var(--z-chrome);
 }
 
 .header-left {
@@ -162,15 +162,15 @@
 .win-btn-close:hover { background: var(--gl-color-red-400); color: var(--gl-color-on-accent); }
 
 /* ── Resize grips (frameless) ── */
-.resize-grip { position: fixed; z-index: 1000; }
+.resize-grip { position: fixed; z-index: var(--z-window-grip); }
 .resize-grip-n { top: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
 .resize-grip-s { bottom: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
 .resize-grip-e { top: 0; right: 0; bottom: 0; width: 4px; cursor: ew-resize; }
 .resize-grip-w { top: 0; left: 0; bottom: 0; width: 4px; cursor: ew-resize; }
-.resize-grip-nw { top: 0; left: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
-.resize-grip-ne { top: 0; right: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
-.resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: 1001; }
-.resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: 1001; }
+.resize-grip-nw { top: 0; left: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: var(--z-window-corner); }
+.resize-grip-ne { top: 0; right: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: var(--z-window-corner); }
+.resize-grip-sw { bottom: 0; left: 0; width: 11px; height: 11px; cursor: nesw-resize; z-index: var(--z-window-corner); }
+.resize-grip-se { bottom: 0; right: 0; width: 11px; height: 11px; cursor: nwse-resize; z-index: var(--z-window-corner); }
 
 .header-settings-btn {
   display: inline-flex;
@@ -297,7 +297,7 @@
 /* portalled to <body>; left/top set inline from the chip rect */
 .hp-pop {
   position: fixed;
-  z-index: 200;
+  z-index: var(--z-popover);
   min-width: 300px;
   max-width: 460px;
   display: flex;
@@ -425,7 +425,7 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 60;
+  z-index: var(--z-chrome-pop);
   width: 380px;
   max-height: 65vh;
   overflow: auto;

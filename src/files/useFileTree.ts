@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
-import { useListNav } from '../shared/lib/useListNav';
-import { guessLang } from '../shared/lib/lang';
+import { useListNav } from '../shared/lib/hooks/useListNav';
+import { guessLang } from '../shared/lib/pure/lang';
 import { buildTree, flattenVisible, type TreeNode } from './tree';
 
 /** The worktree's file list, its tree, and the keyboard cursor walking it. */

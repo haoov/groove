@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
-import { rankMatches, Highlighted } from '../lib/match';
+import { rankMatches, Highlighted } from './MatchHighlight';
 
 /**
  * A search field with a ranked result list. The list is portalled to `document.body`,

@@ -4,7 +4,7 @@ import type { AgentActivity } from '../../ipc/ipc';
 import type { AppState, AgentSlice } from '../types';
 import {
   readAgentsSidebar, readAgentsWidth, readDetached, writeAgentsSidebar, writeAgentsWidth, writeDetached,
-} from '../../lib/agentWindow';
+} from '../../lib/pure/agentWindow';
 
 export const agentSlice: StateCreator<AppState, [], [], AgentSlice> = (set) => ({
   agentActivity: {},

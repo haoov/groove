@@ -4,11 +4,11 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PanelRight } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { EVENT } from '../shared/ipc/events';
-import { deliverPtyOutput } from '../shared/lib/ptyRegistry';
-import { disposeHost, focusHost } from '../shared/lib/terminalHost';
-import { useAttachedHost } from '../shared/lib/useAttachedHost';
-import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
-import { isMac } from '../shared/lib/platform';
+import { deliverPtyOutput } from '../shared/lib/hosts/ptyRegistry';
+import { disposeHost, focusHost } from '../shared/lib/hosts/terminalHost';
+import { useAttachedHost } from '../shared/lib/hooks/useAttachedHost';
+import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/actions/theme';
+import { isMac } from '../shared/lib/pure/platform';
 import {
   BRIDGE,
   readAgentsWidth,
@@ -17,16 +17,16 @@ import {
   type AgentWindowState,
   type CommandDone,
   type CommandEnvelope,
-} from '../shared/lib/agentWindow';
+} from '../shared/lib/pure/agentWindow';
 import { AgentPanel } from '../agent/AgentPanel';
 import { AgentsSidebar } from '../agent/AgentsSidebar';
 import { AgentsToggle } from '../agent/AgentsToggle';
-import { waitingCount, type AgentRow } from '../shared/lib/agents';
-import { configuredSources } from '../shared/lib/taskProvider';
+import { waitingCount, type AgentRow } from '../shared/lib/pure/agents';
+import { configuredSources } from '../shared/lib/actions/taskProvider';
 import { WindowControls } from './chrome/WindowControls';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import type { PtyExitEvent, PtyOutputEvent } from '../shared/ipc/ipc';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 const MAIN_WINDOW = 'main';
 /** An unanswered command rejects after this. */

@@ -84,7 +84,7 @@
   min-width: 260px;
   width: max-content;
   max-width: 100%;
-  z-index: 40;
+  z-index: var(--z-backdrop);
   margin: 0;
   padding: var(--space-1);
   list-style: none;

@@ -4,8 +4,8 @@ import { useStore } from '../shared/store';
 import {
   COMMANDS, chordOwner, commandSpec, defaultChordsFor, isDefaultBinding, searchCommands,
   type CommandId,
-} from '../shared/lib/keybindings';
-import { chordLabel, type Chord } from '../shared/lib/keys';
+} from '../shared/lib/pure/keybindings';
+import { chordLabel, type Chord } from '../shared/lib/pure/keys';
 import { useChordCapture } from './useChordCapture';
 
 // Groups in display order; a group missing here still shows, after these.

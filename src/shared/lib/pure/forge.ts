@@ -1,4 +1,4 @@
-import type { ToolCheck } from '../ipc/ipc';
+import type { ToolCheck } from '../../ipc/ipc';
 
 // The forge axis: where code is hosted (github/gitlab). Not `provider`, which is where a task came from.
 

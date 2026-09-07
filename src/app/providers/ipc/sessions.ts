@@ -4,8 +4,8 @@ import {
   type NotificationKind,
   type NotificationSource,
 } from '../../../shared/store';
-import { endSession } from '../../../shared/lib/endSession';
-import { refreshOnAgentActivity } from '../../../shared/lib/refreshSession';
+import { endSession } from '../../../shared/lib/actions/endSession';
+import { refreshOnAgentActivity } from '../../../shared/lib/actions/refreshSession';
 import type {
   AgentActivity,
   WorkspaceStubEvent,

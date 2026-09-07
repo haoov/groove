@@ -3,7 +3,7 @@
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  z-index: 900;
+  z-index: var(--z-overlay);
   background: var(--gl-backdrop);
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);

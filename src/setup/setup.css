@@ -3,7 +3,7 @@
 .wizard-overlay {
   position: fixed;
   inset: 0;
-  z-index: 960;
+  z-index: var(--z-wizard);
   background: var(--gl-backdrop);
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);

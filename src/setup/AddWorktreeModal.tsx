@@ -3,7 +3,7 @@ import { Modal } from '../shared/ui/Modal';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 import { BranchPicker, useOriginBranches } from './branchPicker';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /**
  * A second worktree on a repo the session already holds. The branch field is seeded

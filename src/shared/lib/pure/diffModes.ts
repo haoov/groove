@@ -1,5 +1,5 @@
 import { GitCompare, Cloud, Pencil, type LucideIcon } from 'lucide-react';
-import type { DiffMode } from '../store';
+import type { DiffMode } from '../../store';
 
 /** The diff comparison-base options. */
 export const DIFF_MODES: { id: DiffMode; label: string; title: string; Icon: LucideIcon }[] = [

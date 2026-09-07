@@ -1,5 +1,5 @@
 // ── The command registry ──────────────────────────────────────────────────────
-// One CommandSpec per CommandId. Labels, groups and chords live in shared/lib/keybindings.ts.
+// One CommandSpec per CommandId. Labels, groups and chords live in shared/lib/pure/keybindings.ts.
 
 import {
   ArrowRightLeft, Bell, Bot, ChevronLeft, ChevronRight, Columns2, Command, Compass,
@@ -10,11 +10,11 @@ import {
 import {
   useStore, sessionActions,
   type AppState, type GitSubTab, type SessionState, type SidebarTab,
-} from '../store';
+} from '../../store';
 import { toggleTerminal } from './panes';
 import { toggleAgentsSidebar } from './agentsSidebar';
-import { DEFAULT_FONT_SIZE, FONT_MIN, FONT_MAX } from '../ipc/ipc';
-import { COMMANDS, shortcutLabel, type CommandId, type Keymap } from './keybindings';
+import { DEFAULT_FONT_SIZE, FONT_MIN, FONT_MAX } from '../../ipc/ipc';
+import { COMMANDS, shortcutLabel, type CommandId, type Keymap } from '../pure/keybindings';
 
 export interface CommandContext {
   st: AppState;

@@ -1,4 +1,4 @@
-import type { ThemeName } from '../ipc/ipc';
+import type { ThemeName } from '../../ipc/ipc';
 
 /** Applies a colour theme through the `data-theme` attribute on <html>. */
 export function applyTheme(theme: ThemeName) {

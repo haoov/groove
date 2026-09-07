@@ -1,4 +1,4 @@
-import { useStore } from '../store';
+import { useStore } from '../../store';
 
 /** Shows or folds the running-agents list, opening the console or the detached window as needed.
  *  Returns false when there is no session to list. */

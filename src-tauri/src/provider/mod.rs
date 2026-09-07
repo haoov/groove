@@ -13,7 +13,7 @@
 //! 6. `task_manager/setup.rs`: a `SetupRequest` field, named EXACTLY
 //!    `ProviderId::as_str()`.
 //! 7. Frontend: `src/setup/sources/index.tsx` (`SOURCES`) and
-//!    `src/shared/lib/taskProvider.ts` (`PROVIDERS`).
+//!    `src/shared/lib/actions/taskProvider.ts` (`PROVIDERS`).
 //! 8. `pnpm gen:types`.
 //!
 //! No edit needed: MCP tool prose, the DB schema, resolve/minting/mirroring,

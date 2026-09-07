@@ -1,5 +1,5 @@
 import { Check, Minus, RotateCcw } from 'lucide-react';
-import { FORGE_CLIS } from '../shared/lib/forge';
+import { FORGE_CLIS } from '../shared/lib/pure/forge';
 import type { Environment } from '../shared/ipc/ipc';
 
 /** The first-run tools check, minus the forge CLIs (those are Git & forge's rows). */

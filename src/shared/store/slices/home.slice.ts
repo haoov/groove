@@ -3,7 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { HomeEntry, ReviewMr, Task } from '../../ipc/ipc';
 import type { AppState, HomeSlice } from '../types';
 import { sessionTitle } from '../session';
-import { errorText } from '../../lib/appError';
+import { errorText } from '../../lib/pure/appError';
 
 // One refreshHome fetch at a time; callers landing mid-fetch fold into one trailing re-run.
 let homeInFlight = false;

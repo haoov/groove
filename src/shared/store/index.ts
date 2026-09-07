@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { createContext, useContext } from 'react';
 import type { AppState, SessionState, SessionView } from './types';
-import type { LayoutNode, SplitDir } from '../lib/layout';
+import type { LayoutNode, SplitDir } from '../lib/pure/layout';
 import { uiSlice } from './slices/ui.slice';
 import { homeSlice } from './slices/home.slice';
 import { sessionsSlice, buildView } from './slices/sessions.slice';

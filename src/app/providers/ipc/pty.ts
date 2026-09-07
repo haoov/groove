@@ -1,6 +1,6 @@
 import { useStore, findSessionByTask, findSessionByPty, sessionActions } from '../../../shared/store';
-import { disposeHost } from '../../../shared/lib/terminalHost';
-import { deliverPtyOutput } from '../../../shared/lib/ptyRegistry';
+import { disposeHost } from '../../../shared/lib/hosts/terminalHost';
+import { deliverPtyOutput } from '../../../shared/lib/hosts/ptyRegistry';
 import type { PtyOutputEvent, PtyExitEvent, PtyStartedEvent } from '../../../shared/ipc/ipc';
 
 /** pty_started — route the new PTY into the session for its task */

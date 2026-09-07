@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { mrSigil } from '../shared/lib/forge';
+import { mrSigil } from '../shared/lib/pure/forge';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
-import { usePersisted, SET_CODEC } from '../shared/lib/usePersisted';
+import { usePersisted, SET_CODEC } from '../shared/lib/hooks/usePersisted';
 
 // Reviews: open MRs where you are a reviewer, not yet checked out.
 

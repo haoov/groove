@@ -60,10 +60,24 @@ src/
   shared/          the frontend core — features import DOWN from here only
     ipc/           ipc.ts (THE type surface) · generated/ (ts-rs) · events.ts · ops.ts
     store/         zustand barrel · types.ts · session.ts (pure reducers) · slices/
-    lib/  ui/  styles/
+    lib/           pure/ · actions/ · hosts/ · hooks/ + platform.ts, agentWindow.ts
+    ui/  styles/
   home/ sessions/ workspace/ files/ git/ notes/ editor/ overview/ agent/ terminal/
   approvals/ notifications/ command/ setup/ actions/   — each owns its components + css
 ```
+
+`shared/lib/` is grouped by what a module is allowed to touch:
+
+| Bucket | Rule |
+|---|---|
+| `pure/` | No store, no IPC, no DOM, no xterm — importable from anywhere, tests included |
+| `actions/` | Reads or writes the store, or calls `invoke` |
+| `hosts/` | Stateful runtime objects with a lifecycle |
+| `hooks/` | React hooks |
+
+`platform.ts` and `agentWindow.ts` stay flat: `main.tsx` imports them by path.
+
+A module used by exactly one feature lives in that feature, not here.
 
 ## Contracts
 
@@ -135,7 +149,7 @@ outside `provider/`; go through `resolve()`/`get()`.
 **`provider` is not `forge`.** A provider is where the TASK came from (notion, github);
 a forge is where the CODE is hosted (github, gitlab). An MR has no provider. Both can
 read "github", which is exactly why one key for the two answers the wrong question.
-Frontend sigils and names come from `shared/lib/forge.ts` only.
+Frontend sigils and names come from `shared/lib/pure/forge.ts` only.
 
 **`short_id` is identity.** It is the session's primary key and it lands in branch names
 (`fix/parser-plat-42`) and therefore in worktree paths. Minted once, never recomputed —
@@ -182,7 +196,7 @@ never expands `~` — call `expand_tilde()` on any config path first. A desktop 
 carries no shell PATH, which is why `launch_env::widen_path()` runs before anything
 spawns.
 
-**Refresh contract**: `shared/lib/refreshSession` = `flush_git_caches` → `invalidateDiff`
+**Refresh contract**: `shared/lib/actions/refreshSession` = `flush_git_caches` → `invalidateDiff`
 → `refreshStatusFor` (+ `refreshHome` off-workspace). Driven by agent activity — only on
 file-editing tools (throttled) and turn end, never every hook. There is no filesystem
 watcher.

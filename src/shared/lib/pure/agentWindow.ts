@@ -1,7 +1,7 @@
 // The contract between the main window and the detached agent window: events, mirrored
 // state, commands, persisted layout. Pure: no Tauri import.
 
-import type { AgentActivity, AgentSkill, Config, SessionKind } from '../ipc/ipc';
+import type { AgentActivity, AgentSkill, Config, SessionKind } from '../../ipc/ipc';
 import { clampAgentsWidth, type AgentRow } from './agents';
 
 export const AGENT_WINDOW_LABEL = 'agent';

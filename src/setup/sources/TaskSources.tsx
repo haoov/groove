@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
 import { SOURCES, SOURCE_IDS } from './index';
 import type { Config, Environment, ProviderId } from '../../shared/ipc/ipc';
-import { errorText } from '../../shared/lib/appError';
+import { errorText } from '../../shared/lib/pure/appError';
 
 /** Which sources are on and what they point at. */
 export function TaskSources({

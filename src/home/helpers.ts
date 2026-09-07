@@ -1,9 +1,9 @@
 // Shared, presentation-free logic for Home: opening sessions, ranking, labels.
-import { mrRef } from '../shared/lib/forge';
+import { mrRef } from '../shared/lib/pure/forge';
 
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, sessionActions } from '../shared/store';
-import { ciGroup } from '../shared/lib/mr';
+import { ciGroup } from '../shared/lib/pure/mr';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 
 export const openTask = (shortId: string) =>
@@ -62,4 +62,4 @@ export function rowProvider(entry: HomeEntry): string {
   return entry.provider ?? '—';
 }
 
-export { priorityLabel, priorityRank } from '../shared/lib/taskStatus';
+export { priorityLabel, priorityRank } from '../shared/lib/pure/taskStatus';

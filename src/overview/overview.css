@@ -661,7 +661,7 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  z-index: 40;
+  z-index: var(--z-backdrop);
   min-width: 240px;
   max-width: 360px;
   display: flex;
@@ -809,7 +809,7 @@
 
 /* portalled to <body>; position set inline */
 
-.time-pop { position: fixed; z-index: 200; width: 240px; }
+.time-pop { position: fixed; z-index: var(--z-popover); width: 240px; }
 
 .time-menu {
   display: flex;

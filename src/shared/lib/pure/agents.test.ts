@@ -4,7 +4,7 @@ import {
   agentLine, buildAgentRows, clampAgentsWidth, orderedSessions, waitingCount,
 } from './agents';
 import { mrRef } from './forge';
-import type { AgentActivity } from '../ipc/ipc';
+import type { AgentActivity } from '../../ipc/ipc';
 
 const activity = (state: AgentActivity['state'], extra: Partial<AgentActivity> = {}): AgentActivity => ({
   task_id: 'T-1', state, tool: null, last_message: null, since: 0, ...extra,

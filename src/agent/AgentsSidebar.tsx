@@ -3,10 +3,10 @@ import { X } from 'lucide-react';
 import {
   AGENTS_SIDEBAR_MAX, AGENTS_SIDEBAR_MIN,
   agentLine, clampAgentsWidth, type AgentRow,
-} from '../shared/lib/agents';
-import { useDragResize } from '../shared/lib/useDragResize';
-import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
-import { statusKey } from '../shared/lib/taskStatus';
+} from '../shared/lib/pure/agents';
+import { useDragResize } from '../shared/lib/hooks/useDragResize';
+import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/pure/sessionKind';
+import { statusKey } from '../shared/lib/pure/taskStatus';
 
 /** The open sessions and what each agent is doing, as a column of the agent panel. */
 export function AgentsSidebar({

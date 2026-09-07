@@ -1,6 +1,6 @@
-import { invoke } from '../ipc/invoke';
-import { useStore } from '../store';
-import { disposeHost } from './terminalHost';
+import { invoke } from '../../ipc/invoke';
+import { useStore } from '../../store';
+import { disposeHost } from '../hosts/terminalHost';
 
 /** Fully closes a session: stops its PTYs, drops their output handlers, removes the session from the store. */
 export async function endSession(sessionId: string) {

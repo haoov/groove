@@ -1,15 +1,15 @@
-import { usePersisted, STRING_CODEC } from '../shared/lib/usePersisted';
+import { usePersisted, STRING_CODEC } from '../shared/lib/hooks/usePersisted';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ChevronDown, ChevronRight, Plus, Minus, Circle, Trash2, GitCompare, Check,
 } from 'lucide-react';
 import { useSession, useStore } from '../shared/store';
-import { useListNav } from '../shared/lib/useListNav';
+import { useListNav } from '../shared/lib/hooks/useListNav';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { FileDiff } from '../shared/ipc/ipc';
-import { guessLang } from '../shared/lib/lang';
+import { guessLang } from '../shared/lib/pure/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
-import { repoDiffFor } from '../shared/lib/workspace';
+import { repoDiffFor } from '../shared/lib/pure/workspace';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {

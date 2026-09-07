@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
-import { matchRanges } from '../shared/lib/match';
+import { matchRanges } from '../shared/ui/MatchHighlight';
 import type { SearchMatch } from '../shared/ipc/ipc';
 
 const PREVIEW_DEBOUNCE_MS = 80;

@@ -1,4 +1,4 @@
-import type { Config, ProviderId } from '../ipc/ipc';
+import type { Config, ProviderId } from '../../ipc/ipc';
 
 /** Copy that names a task's source. Only copy; capabilities come from the schema. */
 interface ProviderCopy {

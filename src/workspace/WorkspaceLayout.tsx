@@ -4,7 +4,7 @@ import { useSession } from '../shared/store';
 import { Sidebar } from './sidebar';
 import { Workspace } from './Workspace';
 import { OverviewView } from '../overview/OverviewView';
-import { readPersisted, writePersisted, NUMBER_CODEC } from '../shared/lib/usePersisted';
+import { readPersisted, writePersisted, NUMBER_CODEC } from '../shared/lib/hooks/usePersisted';
 
 // Pixels, not a percentage: a percentage of the content-sized parent resolves to nothing.
 const SIDEBAR_DEFAULT_PX = 300;

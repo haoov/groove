@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // The real module pulls xterm in, which needs a DOM.
 vi.mock('./panes', () => ({ toggleTerminal: () => {} }));
 
-import { COMMANDS, defaultKeymap, shortcutLabel, type CommandId } from './keybindings';
+import { COMMANDS, defaultKeymap, shortcutLabel, type CommandId } from '../pure/keybindings';
 import { COMMAND_REGISTRY, commandRows } from './commands';
 
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;

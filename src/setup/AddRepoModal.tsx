@@ -5,7 +5,7 @@ import { useSession, useStore } from '../shared/store';
 import { useRepoPicker, RepoPickerSearch, CloneRepoForm } from './repoPicker';
 import { BranchPicker, useOriginBranches } from './branchPicker';
 import type { Repo } from '../shared/ipc/ipc';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** One repo's row: the branch to create, and the base it cuts from. */
 function RepoBranchRow({

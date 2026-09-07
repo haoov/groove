@@ -13,7 +13,7 @@ import { viewBasics } from './cm/basics';
 import { buildDocument, buildStaticDecos, type CMLineInfo } from './cm/diffDoc';
 import { useStore } from '../shared/store';
 import { cmLangFor } from './cmLang';
-import { guessLang } from '../shared/lib/lang';
+import { guessLang } from '../shared/lib/pure/lang';
 import { catppuccinHighlight, cmChromeTheme } from './cm/theme';
 import type { Hunk, Annotation, Mr, MrThread, BlameLine } from '../shared/ipc/ipc';
 import type { AnnCtx, LineRange } from './useAnnotations';
@@ -21,7 +21,7 @@ import { CommentGutterMarker, LineNumGutterMarker, BlameMarker, FormWidget, Inli
 import { AnnotationPortals } from './cm/annotationPortals';
 import { useCmHost } from './useCmHost';
 import { useAnnotationSurface, extendDragAt, type Dyn } from './useAnnotationSurface';
-import { gapsFor, type Gap } from '../shared/lib/diffGaps';
+import { gapsFor, type Gap } from './diffGaps';
 
 const setDynEffect = StateEffect.define<Dyn>();
 

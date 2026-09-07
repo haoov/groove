@@ -1,7 +1,7 @@
-import { invoke } from '../ipc/invoke';
-import { useStore, findSessionByTask } from '../store';
-import { errorText, isNotFound } from './appError';
-import type { AgentState } from '../ipc/ipc';
+import { invoke } from '../../ipc/invoke';
+import { useStore, findSessionByTask } from '../../store';
+import { errorText, isNotFound } from '../pure/appError';
+import type { AgentState } from '../../ipc/ipc';
 
 /** Reports a refresh failure. A gone worktree or session is not worth a toast. */
 function reportRefreshFailure(e: unknown) {

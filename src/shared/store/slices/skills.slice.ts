@@ -2,7 +2,7 @@ import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { AgentSkill } from '../../ipc/ipc';
 import type { AppState, SkillsSlice } from '../types';
-import { errorText } from '../../lib/appError';
+import { errorText } from '../../lib/pure/appError';
 
 export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set, get) => ({
   skills: [],

@@ -1,5 +1,5 @@
 import { Check, AlertTriangle, Minus } from 'lucide-react';
-import { FORGE_CLIS, forgeCliState } from '../shared/lib/forge';
+import { FORGE_CLIS, forgeCliState } from '../shared/lib/pure/forge';
 import type { Config, Environment } from '../shared/ipc/ipc';
 
 /** Row text for a CLI that is not ready. */

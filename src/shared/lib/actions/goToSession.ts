@@ -1,6 +1,6 @@
 // Focus the session that owns a task: the one implementation behind every entry point.
 
-import { useStore, findSessionByTask } from '../store';
+import { useStore, findSessionByTask } from '../../store';
 
 /** Focuses the session owning `taskId`, optionally opening the agent console.
  *  Returns false when no session holds that task. */

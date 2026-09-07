@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useSession, type LayoutNode } from '../shared/store';
-import { containsLeaf } from '../shared/lib/layout';
+import { containsLeaf } from '../shared/lib/pure/layout';
 import { WorkspacePane } from './WorkspacePane';
 import { useAnnotations, type AnnCtx } from '../editor/useAnnotations';
 

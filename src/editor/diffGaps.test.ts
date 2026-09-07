@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GAP_STEP, gapsFor, mergeExpansion, stepRange } from './diffGaps';
-import type { DiffLine, Hunk } from '../ipc/ipc';
+import type { DiffLine, Hunk } from '../shared/ipc/ipc';
 
 const ctx = (n: number): DiffLine => ({ num: n, content: `line ${n}`, type: 'ctx' });
 const add = (n: number): DiffLine => ({ num: n, content: `added ${n}`, type: 'add' });

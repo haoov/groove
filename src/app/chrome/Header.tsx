@@ -3,7 +3,7 @@ import { useStore } from '../../shared/store';
 import { NotificationCenter } from '../../notifications/NotificationCenter';
 import { HeaderPickers } from '../../sessions/HeaderPickers';
 import { WindowControls } from './WindowControls';
-import { isMac } from '../../shared/lib/platform';
+import { isMac } from '../../shared/lib/pure/platform';
 import { GrooveMark } from '../../shared/ui/GrooveMark';
 
 export function Header() {

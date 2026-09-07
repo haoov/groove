@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { GitPullRequest, Sparkles, Check, X, Trash2 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { sendSkill } from '../shared/lib/agentSend';
-import { endSession } from '../shared/lib/endSession';
+import { sendSkill } from '../shared/lib/actions/agentSend';
+import { endSession } from '../shared/lib/actions/endSession';
 import { MrOverview } from './MrOverview';
 
 /** Review session overview: the MR overview plus the review action row. */

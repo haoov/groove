@@ -5,11 +5,11 @@ import {
   GitPullRequestArrow, ChevronsUp, PauseCircle, RefreshCw, Palette, type LucideIcon,
 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { ensureTerminalTab } from '../shared/lib/panes';
-import { DIFF_MODES } from '../shared/lib/diffModes';
-import { Highlighted, matchRanges } from '../shared/lib/match';
+import { ensureTerminalTab } from '../shared/lib/actions/panes';
+import { DIFF_MODES } from '../shared/lib/pure/diffModes';
+import { Highlighted, matchRanges } from '../shared/ui/MatchHighlight';
 import { THEMES, DEFAULT_THEME } from '../shared/ipc/ipc';
-import { commandRows, runCommand } from '../shared/lib/commands';
+import { commandRows, runCommand } from '../shared/lib/actions/commands';
 
 interface Command {
   id: string;

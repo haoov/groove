@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { applySuggestion, suggest, type Suggestion } from './filter';
 import { useFilterValues } from './useFilterValues';
-import { isTypingCharacter } from '../shared/lib/keys';
+import { isTypingCharacter } from '../shared/lib/pure/keys';
 
 /** Must equal `min-width` on `.home-ac`. */
 const AC_MIN_WIDTH = 260;

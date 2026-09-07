@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Check, Loader2, Minus } from 'lucide-react';
 import { invoke } from '../../shared/ipc/invoke';
 import { DetectedPanel } from './DetectedPanel';
-import { looksLikeNotionId } from '../../shared/lib/notionUser';
+import { looksLikeNotionId } from '../notionUser';
 import type { DetectedSchema, NotionUser } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
-import { errorText } from '../../shared/lib/appError';
+import { errorText } from '../../shared/lib/pure/appError';
 
 /** The values only the user can supply: token, database, user, and an optional template page. */
 export function NotionSetupForm({ onChange }: SetupFormProps) {

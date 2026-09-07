@@ -73,7 +73,7 @@
   user-select: none;
   position: sticky;
   top: var(--space-2);
-  z-index: 1;
+  z-index: var(--z-raised);
   transition: background 0.12s, border-color 0.12s;
 }
 .diff-file-header:hover { background: var(--gl-background-color-default); border-color: var(--gl-border-color-strong); }

@@ -132,7 +132,7 @@
   left: 0;
   right: 0;
   bottom: var(--wb-statusbar-height);
-  z-index: 900;
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -159,7 +159,7 @@
   top: auto;
   left: 0;
   right: auto;
-  z-index: 40;
+  z-index: var(--z-backdrop);
   max-height: 60vh;
   overflow-y: auto;
   min-width: 200px;

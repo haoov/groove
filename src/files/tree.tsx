@@ -2,9 +2,9 @@ import {
   FileCode, FileJson, FileText, File, Database, Terminal,
   Folder, FolderOpen,
 } from 'lucide-react';
-import { fileIconColor } from '../shared/lib/icons';
+import { fileIconColor } from './icons';
 import { brandFor, type Brand } from './fileIcons';
-import { guessLang } from '../shared/lib/lang';
+import { guessLang } from '../shared/lib/pure/lang';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

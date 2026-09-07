@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { ChevronUp, Loader2, Play, RefreshCw, Sparkles } from 'lucide-react';
-import { offeredSkills } from '../shared/lib/skills';
-import { providerCopy } from '../shared/lib/taskProvider';
-import { agentLine, type AgentRow } from '../shared/lib/agents';
+import { offeredSkills } from '../shared/lib/pure/skills';
+import { providerCopy } from '../shared/lib/actions/taskProvider';
+import { agentLine, type AgentRow } from '../shared/lib/pure/agents';
 import { AgentsSidebar } from './AgentsSidebar';
 import type { AgentActivity, AgentSkill, ProviderId, SessionKind } from '../shared/ipc/ipc';
 

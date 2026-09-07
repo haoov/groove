@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { GitCommit } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import { activeWorktreeFor } from '../shared/lib/workspace';
+import { activeWorktreeFor } from '../shared/lib/pure/workspace';
 import type { FileDiff, Hunk } from '../shared/ipc/ipc';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import type { AnnCtx } from '../editor/useAnnotations';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 // Commit diffs cached across tab switches, capped at `CACHE_MAX`.
 const commitDiffCache = new Map<string, FileDiff[]>();

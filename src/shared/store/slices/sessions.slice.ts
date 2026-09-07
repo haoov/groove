@@ -3,7 +3,7 @@ import type { StateCreator, StoreApi } from 'zustand';
 import type { WorktreeStatus } from '../../ipc/ipc';
 import {
   splitRoot, leafOrder, setRatio as setLayoutRatio,
-} from '../../lib/layout';
+} from '../../lib/pure/layout';
 import type { AppState, SessionActions, SessionState, SessionView, SessionsSlice } from '../types';
 import {
   COMMIT_PAGE, bumpDiffRecipe, closePaneReducer, closeTabReducer, commitPreviewReducer,

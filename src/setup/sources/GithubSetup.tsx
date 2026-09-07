@@ -3,7 +3,7 @@ import { Check, Loader2, Minus } from 'lucide-react';
 import { invoke } from '../../shared/ipc/invoke';
 import type { GithubPreview } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
-import { errorText } from '../../shared/lib/appError';
+import { errorText } from '../../shared/lib/pure/appError';
 
 /** Nothing to configure; the form previews what the GitHub source yields. */
 export function GithubSetupForm({ onChange, onNeedsScope }: SetupFormProps) {

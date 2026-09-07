@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
-import { mergeExpansion, stepRange, type Gap } from '../shared/lib/diffGaps';
+import { mergeExpansion, stepRange, type Gap } from './diffGaps';
 import type { Hunk, FileLines } from '../shared/ipc/ipc';
 
 

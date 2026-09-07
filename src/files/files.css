@@ -207,7 +207,7 @@
 .tree-prompt-overlay {
   position: fixed;
   inset: 0;
-  z-index: 990;
+  z-index: var(--z-prompt);
   display: flex;
   align-items: flex-start;
   justify-content: center;

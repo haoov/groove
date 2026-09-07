@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useStore, useSessionSummaries } from '../shared/store';
-import { buildAgentRows, type AgentRow } from '../shared/lib/agents';
+import { buildAgentRows, type AgentRow } from '../shared/lib/pure/agents';
 
 /** The running-agents rows, rebuilt only when a session or an agent changes. */
 export function useAgentRows(): AgentRow[] {

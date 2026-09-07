@@ -1,7 +1,7 @@
 import { Decoration, WidgetType, type DecorationSet } from '@codemirror/view';
 import { EditorState, RangeSetBuilder } from '@codemirror/state';
-import { wordDiff } from '../../shared/lib/word-diff';
-import { GAP_STEP, type Gap } from '../../shared/lib/diffGaps';
+import { wordDiff } from '../word-diff';
+import { GAP_STEP, type Gap } from '../diffGaps';
 import type { Hunk } from '../../shared/ipc/ipc';
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { forgeName, mrRef } from '../shared/lib/forge';
+import { forgeName, mrRef } from '../shared/lib/pure/forge';
 import { invoke } from '../shared/ipc/invoke';
 import {
   GitPullRequest, GitMerge, GitPullRequestClosed, ExternalLink, GitBranch, ThumbsUp, Send, Check,
@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import type { CiStatus, MrDetails } from '../shared/ipc/ipc';
-import { openExternal } from '../shared/lib/openExternal';
+import { openExternal } from '../shared/lib/actions/openExternal';
 import { MrThreadsSection } from '../notes/MrThreads';
 import { CiChip } from '../shared/ui/CiChip';
 import { Markdown } from '../shared/ui/Markdown';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** Full-page MR/PR overview: header, details column, description, review threads. */
 export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {

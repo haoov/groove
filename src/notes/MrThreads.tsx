@@ -3,9 +3,9 @@ import { invoke } from '../shared/ipc/invoke';
 import { GitPullRequest, Check } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
 import type { Mr, MrNote, MrThread } from '../shared/ipc/ipc';
-import { openExternal } from '../shared/lib/openExternal';
+import { openExternal } from '../shared/lib/actions/openExternal';
 import { useSession } from '../shared/store';
-import { errorText } from '../shared/lib/appError';
+import { errorText } from '../shared/lib/pure/appError';
 
 /** The MR's discussion: review threads with a resolve flow, plus read-only general comments. */
 export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThread[]; mr: Mr; onResolved: () => void }) {
