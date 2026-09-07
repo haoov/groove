@@ -1,6 +1,7 @@
 //! What runs inside a PTY: the Claude agent, the session terminal, the setup
 //! shell. The PTY mechanics live in `core::pty`.
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::core::pty::{PtySpec, Ptys};
 
 /// Every in-app terminal runs bash, not $SHELL: one escape-sequence dialect for xterm.js.
@@ -120,7 +121,7 @@ pub async fn start_agent_session(
     task_id: String,
     ptys: tauri::State<'_, Ptys>,
     pool: tauri::State<'_, sqlx::SqlitePool>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     let cwd = resolve_root_cwd();
 
     // One Claude session per task: created on first launch, resumed after.
@@ -152,12 +153,12 @@ pub async fn start_agent_session(
     args.push("--mcp-config".to_string());
     args.push(
         write_launch_file(&app, &task_id, "mcp.json", &mcp_config.to_string())
-            .map_err(|e| e.to_string())?,
+            .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))?,
     );
 
     // Hooks report the agent's state; see agent_hooks.
     let curl_config = write_launch_file(&app, &task_id, "hooks.curl", &hook_curl_config())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))?;
     args.push("--settings".to_string());
     args.push(
         write_launch_file(
@@ -166,7 +167,7 @@ pub async fn start_agent_session(
             "settings.json",
             &hook_settings(&task_id, &curl_config),
         )
-        .map_err(|e| e.to_string())?,
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))?,
     );
 
     // The core prompt. `--append-system-prompt` is the inline fallback.
@@ -182,7 +183,7 @@ pub async fn start_agent_session(
             "prompt.md",
             &crate::skills::core_prompt(&task_id, session.as_ref()),
         )
-        .map_err(|e| e.to_string())?,
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))?,
     );
 
     // Skills, per session: `--plugin-dir` is launch-scoped.
@@ -214,7 +215,7 @@ pub async fn start_agent_session(
             on_exit: Some(on_exit),
         },
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }
 
 /// Write one agent-launch file (0600; it carries the loopback token) and return its path.
@@ -302,7 +303,7 @@ pub async fn start_terminal_session(
     task_id: String,
     worktree_path: Option<String>,
     ptys: tauri::State<'_, Ptys>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     // The worktree when there is one, else the worktree root.
     let cwd = match worktree_path.as_deref() {
         Some(p) if !p.is_empty() && std::path::Path::new(p).is_dir() => p.to_string(),
@@ -320,5 +321,5 @@ pub async fn start_terminal_session(
             on_exit: None,
         },
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }

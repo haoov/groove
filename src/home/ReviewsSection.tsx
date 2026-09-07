@@ -117,7 +117,7 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
         localPath,
       });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setBusy(null);
     }

@@ -26,6 +26,7 @@ import { configuredSources } from '../shared/lib/taskProvider';
 import { WindowControls } from './chrome/WindowControls';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import type { PtyExitEvent, PtyOutputEvent } from '../shared/ipc/ipc';
+import { errorText } from '../shared/lib/appError';
 
 const MAIN_WINDOW = 'main';
 /** An unanswered command rejects after this. */
@@ -64,7 +65,7 @@ export default function AgentWindow() {
       emitTo(MAIN_WINDOW, BRIDGE.COMMAND, envelope).catch((e) => {
         pending.current.delete(id);
         window.clearTimeout(timer);
-        reject(e instanceof Error ? e : new Error(String(e)));
+        reject(e instanceof Error ? e : new Error(errorText(e)));
       });
     });
   }, []);

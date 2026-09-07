@@ -1,6 +1,7 @@
 //! The review queue: every open MR/PR where the current user is a requested
 //! reviewer, across every forge host present in the clone pool.
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::core::forge::api::pct;
 
 /// An open MR where the current user is a reviewer, matched by pool slug to its MAIN clone.
@@ -28,10 +29,8 @@ pub struct ReviewMr {
 
 /// Ask every forge host in the pool; one host failing does not blank the others.
 #[tauri::command]
-pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
-    let main_repos = crate::worktrees::list_main_repos()
-        .await
-        .map_err(|e| e.to_string())?;
+pub async fn list_review_mrs() -> AppResult<Vec<ReviewMr>> {
+    let main_repos = crate::worktrees::list_main_repos().await?;
 
     // A pool slug is `<host>/<group…>/<project>`.
     let mut hosts: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
@@ -45,7 +44,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
         clone_by_project.insert(r.slug.clone(), r.local_path.clone());
     }
     if hosts.is_empty() {
-        return Err("no repos in the pool — clone one first".to_string());
+        return Err(AppError::conflict("no repos in the pool — clone one first"));
     }
 
     let results = futures_util::future::join_all(hosts.iter().map(|host| {
@@ -75,7 +74,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
         }
     }
     if out.is_empty() && !errors.is_empty() {
-        return Err(errors.join(" · "));
+        return Err(AppError::new(ErrorKind::Forge, errors.join(" · ")));
     }
     out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(out)

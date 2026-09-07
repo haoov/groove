@@ -53,7 +53,7 @@ export function LiveRepos({ entry }: { entry: HomeEntry }) {
       });
       refreshHome();
     } catch (err) {
-      setLastError(String(err));
+      setLastError(err);
     } finally {
       setWorking(null);
     }

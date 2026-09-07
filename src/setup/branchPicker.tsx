@@ -4,6 +4,7 @@ import { invoke } from '../shared/ipc/invoke';
 import type { OriginBranches } from '../shared/ipc/ipc';
 import { Combobox } from '../shared/ui/Combobox';
 import { Highlighted } from '../shared/lib/match';
+import { errorText } from '../shared/lib/appError';
 
 /** Picks a worktree's base branch (`Worktree::base_ref`, later the MR target) from origin's branches. */
 
@@ -30,7 +31,7 @@ export function useOriginBranches(repoId: string | undefined): State {
         }
       })
       .catch((e) => {
-        if (live) setLoaded({ repoId, state: { phase: 'failed', error: String(e) } });
+        if (live) setLoaded({ repoId, state: { phase: 'failed', error: errorText(e) } });
       });
     return () => { live = false; };
   }, [repoId]);

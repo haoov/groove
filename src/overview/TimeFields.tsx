@@ -98,7 +98,7 @@ export function TimeFields({
       refresh();
       onLogged();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setBusy(false);
     }

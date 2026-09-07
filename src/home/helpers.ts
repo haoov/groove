@@ -7,7 +7,7 @@ import { ciGroup } from '../shared/lib/mr';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 
 export const openTask = (shortId: string) =>
-  invoke('open_task', { shortId }).catch((e) => useStore.getState().setLastError(String(e)));
+  invoke('open_task', { shortId }).catch((e) => useStore.getState().setLastError(e));
 
 /** Opens a session on one repo's "all changes" tab when mounted; a cold open routes to the session. */
 export function openRepo(entry: HomeEntry, repo: HomeRepo) {

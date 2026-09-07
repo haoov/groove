@@ -6,6 +6,7 @@ use tauri::Emitter;
 use crate::core::config::{self, ConfigView};
 use crate::core::db::models::{Session, SessionKind, Worktree};
 use crate::core::db::store;
+use crate::core::error::AppResult;
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
@@ -57,49 +58,44 @@ impl Open {
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn get_config() -> Result<Option<ConfigView>, String> {
+pub async fn get_config() -> AppResult<Option<ConfigView>> {
     // Do not return the raw Config: it holds a source token.
     Ok(config::get().map(ConfigView::from))
 }
 
 #[tauri::command]
-pub async fn set_font_size(font_size: u8) -> Result<(), String> {
-    config::update(|cfg| cfg.ui.font_size = font_size)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+pub async fn set_font_size(font_size: u8) -> AppResult<()> {
+    config::update(|cfg| cfg.ui.font_size = font_size)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn set_font_family(font_family: String) -> Result<(), String> {
-    config::update(|cfg| cfg.ui.font_family = font_family)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+pub async fn set_font_family(font_family: String) -> AppResult<()> {
+    config::update(|cfg| cfg.ui.font_family = font_family)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn set_agent_font_family(agent_font_family: String) -> Result<(), String> {
-    config::update(|cfg| cfg.ui.agent_font_family = agent_font_family)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+pub async fn set_agent_font_family(agent_font_family: String) -> AppResult<()> {
+    config::update(|cfg| cfg.ui.agent_font_family = agent_font_family)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn set_suggest_actions(suggest_actions: bool) -> Result<(), String> {
-    config::update(|cfg| cfg.ui.suggest_actions = suggest_actions)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+pub async fn set_suggest_actions(suggest_actions: bool) -> AppResult<()> {
+    config::update(|cfg| cfg.ui.suggest_actions = suggest_actions)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn set_theme(theme: String) -> Result<(), String> {
-    config::update(|cfg| cfg.ui.theme = theme)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+pub async fn set_theme(theme: String) -> AppResult<()> {
+    config::update(|cfg| cfg.ui.theme = theme)?;
+    Ok(())
 }
 
 /// Font families known to fontconfig, for the Settings picker; empty without fontconfig.
 #[tauri::command]
-pub async fn list_fonts() -> Result<Vec<String>, String> {
+pub async fn list_fonts() -> AppResult<Vec<String>> {
     let out = tokio::process::Command::new("fc-list")
         .args([":", "family", "-f", "%{family}\\n"])
         .output()
@@ -124,11 +120,9 @@ pub async fn open_task(
     short_id: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    open_task_impl(&app, &short_id, &task_state, &pool, Open::Focus)
-        .await
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+) -> AppResult<()> {
+    open_task_impl(&app, &short_id, &task_state, &pool, Open::Focus).await?;
+    Ok(())
 }
 
 /// Point the backend at the focused session; `None` when the last session closes.
@@ -136,7 +130,7 @@ pub async fn open_task(
 pub async fn set_active_task(
     short_id: Option<String>,
     task_state: tauri::State<'_, State>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     task_state.set_active_task_id(short_id.filter(|s| !s.is_empty()));
     Ok(())
 }
@@ -207,10 +201,8 @@ pub async fn finish_task(
     short_id: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    finish_task_impl(&app, &short_id, &task_state, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<()> {
+    Ok(finish_task_impl(&app, &short_id, &task_state, &pool).await?)
 }
 
 /// The confirmation-bridge form of `finish_task`.
@@ -249,10 +241,8 @@ pub async fn delete_task(
     short_id: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    delete_task_impl(&app, &short_id, &task_state, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<()> {
+    Ok(delete_task_impl(&app, &short_id, &task_state, &pool).await?)
 }
 
 async fn delete_task_impl(
@@ -297,14 +287,13 @@ pub async fn pause_task(
     app: tauri::AppHandle,
     short_id: String,
     task_state: tauri::State<'_, State>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     task_state.set_active_task_id(None);
 
     app.emit(
         crate::core::events::TASK_PAUSED,
         serde_json::json!({ "short_id": short_id }),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
     Ok(())
 }
@@ -314,8 +303,6 @@ pub async fn set_task_repos(
     short_id: String,
     repo_ids: Vec<String>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    store::repos::set_attached(&*pool, &short_id, &repo_ids)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<()> {
+    Ok(store::repos::set_attached(&*pool, &short_id, &repo_ids).await?)
 }

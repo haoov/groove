@@ -40,7 +40,7 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
       hunksInFlight.current.add(key);
       invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: f.path, mode: diffMode })
         .then((hunks) => setDiffHunks(key, hunks))
-        .catch((e) => setLastError(String(e)))
+        .catch((e) => setLastError(e))
         .finally(() => hunksInFlight.current.delete(key));
     }
   }, [expandedFiles, repo, wt, diffHunks, diffMode, repoId, setDiffHunks, setLastError]);

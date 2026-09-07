@@ -44,7 +44,7 @@ export function AuthModal({
     started.current = true;
     invoke<string>('start_auth_session')
       .then((id) => { setPty(id); focusHost(id); })
-      .catch((e) => { setLastError(String(e)); onDone(); });
+      .catch((e) => { setLastError(e); onDone(); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool]);
 

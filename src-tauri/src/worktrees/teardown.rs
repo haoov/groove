@@ -77,10 +77,8 @@ pub async fn close_worktree(
     worktree_id: String,
     force: Option<bool>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    close_worktree_impl(&app, &worktree_id, force, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> crate::core::error::AppResult<()> {
+    Ok(close_worktree_impl(&app, &worktree_id, force, &pool).await?)
 }
 
 async fn close_worktree_impl(
@@ -98,9 +96,10 @@ async fn close_worktree_impl(
             .map(|o| o.status.success() && !o.stdout.is_empty())
             .unwrap_or(false);
         if dirty {
-            return Err(anyhow::anyhow!(
-                "worktree has uncommitted changes — commit or discard first, or force close"
-            ));
+            return Err(crate::core::error::AppError::conflict(
+                "worktree has uncommitted changes — commit or discard first, or force close",
+            )
+            .into());
         }
     }
 

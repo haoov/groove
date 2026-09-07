@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::core::fs::safe_join;
 
 // ─── Module state ─────────────────────────────────────────────────────────────
@@ -64,11 +65,16 @@ pub struct SearchMatch {
 
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
+/// Resolve a worktree-relative argument; a path that escapes the root is a bad argument.
+fn resolve(worktree_path: &str, rel: &str) -> AppResult<std::path::PathBuf> {
+    safe_join(worktree_path, rel).map_err(|e| AppError::from(e).with_kind(ErrorKind::Invalid))
+}
+
 #[tauri::command]
-pub async fn list_files(worktree_path: String) -> Result<Vec<String>, String> {
+pub async fn list_files(worktree_path: String) -> AppResult<Vec<String>> {
     list_files_impl(&worktree_path)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))
 }
 
 async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
@@ -92,9 +98,14 @@ async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
 }
 
 #[tauri::command]
-pub async fn read_file(worktree_path: String, file_path: String) -> Result<String, String> {
-    let full = safe_join(&worktree_path, &file_path)?;
-    std::fs::read_to_string(&full).map_err(|e| format!("Cannot read {}: {e}", full.display()))
+pub async fn read_file(worktree_path: String, file_path: String) -> AppResult<String> {
+    let full = resolve(&worktree_path, &file_path)?;
+    std::fs::read_to_string(&full).map_err(|e| {
+        AppError::new(
+            ErrorKind::Io,
+            format!("Cannot read {}: {e}", full.display()),
+        )
+    })
 }
 
 #[tauri::command]
@@ -104,7 +115,7 @@ pub async fn open_file(
     file_path: String,
     language_id: String,
     editor_state: tauri::State<'_, State>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     editor_state.set_open_file(Some(OpenFileState {
         task_id,
         repo_id,
@@ -123,7 +134,7 @@ pub async fn update_open_file_state(
     cursor_line: Option<i64>,
     cursor_col: Option<i64>,
     editor_state: tauri::State<'_, State>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     if let Ok(mut guard) = editor_state.inner.open_file.lock() {
         if let Some(ref mut state) = *guard {
             if let Some(s) = scroll_top {
@@ -146,10 +157,8 @@ pub async fn search_files(
     worktree_path: String,
     case_sensitive: Option<bool>,
     max_results: Option<u32>,
-) -> Result<Vec<SearchMatch>, String> {
-    search_files_impl(&query, &worktree_path, case_sensitive, max_results)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<Vec<SearchMatch>> {
+    Ok(search_files_impl(&query, &worktree_path, case_sensitive, max_results).await?)
 }
 
 async fn search_files_impl(
@@ -229,69 +238,73 @@ async fn search_files_impl(
 }
 
 #[tauri::command]
-pub async fn save_file(
-    worktree_path: String,
-    file_path: String,
-    content: String,
-) -> Result<(), String> {
-    let full = safe_join(&worktree_path, &file_path)?;
+pub async fn save_file(worktree_path: String, file_path: String, content: String) -> AppResult<()> {
+    let full = resolve(&worktree_path, &file_path)?;
     if let Some(parent) = full.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(&full, content.as_bytes())
-        .map_err(|e| format!("Cannot write {}: {e}", full.display()))
+    std::fs::write(&full, content.as_bytes()).map_err(|e| {
+        AppError::new(
+            ErrorKind::Io,
+            format!("Cannot write {}: {e}", full.display()),
+        )
+    })
 }
 
 // ─── File tree mutations (create/rename/move/copy/delete) ─────────────────────
 
 #[tauri::command]
-pub async fn create_file(worktree_path: String, path: String) -> Result<(), String> {
-    let full = safe_join(&worktree_path, &path)?;
+pub async fn create_file(worktree_path: String, path: String) -> AppResult<()> {
+    let full = resolve(&worktree_path, &path)?;
     if full.exists() {
-        return Err(format!("{path} already exists"));
+        return Err(AppError::conflict(format!("{path} already exists")));
     }
     if let Some(parent) = full.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
-    std::fs::write(&full, b"").map_err(|e| e.to_string())
+    std::fs::write(&full, b"")?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn create_directory(worktree_path: String, path: String) -> Result<(), String> {
-    let full = safe_join(&worktree_path, &path)?;
+pub async fn create_directory(worktree_path: String, path: String) -> AppResult<()> {
+    let full = resolve(&worktree_path, &path)?;
     if full.exists() {
-        return Err(format!("{path} already exists"));
+        return Err(AppError::conflict(format!("{path} already exists")));
     }
-    std::fs::create_dir_all(&full).map_err(|e| e.to_string())
+    std::fs::create_dir_all(&full)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn rename_path(worktree_path: String, from: String, to: String) -> Result<(), String> {
-    let src = safe_join(&worktree_path, &from)?;
-    let dst = safe_join(&worktree_path, &to)?;
+pub async fn rename_path(worktree_path: String, from: String, to: String) -> AppResult<()> {
+    let src = resolve(&worktree_path, &from)?;
+    let dst = resolve(&worktree_path, &to)?;
     if !src.exists() {
-        return Err(format!("{from} does not exist"));
+        return Err(AppError::not_found(format!("{from} does not exist")));
     }
     if dst.exists() {
-        return Err(format!("{to} already exists"));
+        return Err(AppError::conflict(format!("{to} already exists")));
     }
     if let Some(parent) = dst.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
-    std::fs::rename(&src, &dst).map_err(|e| e.to_string())
+    std::fs::rename(&src, &dst)?;
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn copy_path(worktree_path: String, from: String, to: String) -> Result<(), String> {
-    let src = safe_join(&worktree_path, &from)?;
-    let dst = safe_join(&worktree_path, &to)?;
+pub async fn copy_path(worktree_path: String, from: String, to: String) -> AppResult<()> {
+    let src = resolve(&worktree_path, &from)?;
+    let dst = resolve(&worktree_path, &to)?;
     if dst.exists() {
-        return Err(format!("{to} already exists"));
+        return Err(AppError::conflict(format!("{to} already exists")));
     }
     if let Some(parent) = dst.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
-    copy_recursive(&src, &dst).map_err(|e| e.to_string())
+    copy_recursive(&src, &dst)?;
+    Ok(())
 }
 
 fn copy_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
@@ -308,12 +321,13 @@ fn copy_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Resu
 }
 
 #[tauri::command]
-pub async fn delete_path(worktree_path: String, path: String) -> Result<(), String> {
-    let full = safe_join(&worktree_path, &path)?;
-    let meta = std::fs::symlink_metadata(&full).map_err(|e| e.to_string())?;
+pub async fn delete_path(worktree_path: String, path: String) -> AppResult<()> {
+    let full = resolve(&worktree_path, &path)?;
+    let meta = std::fs::symlink_metadata(&full)?;
     if meta.is_dir() {
-        std::fs::remove_dir_all(&full).map_err(|e| e.to_string())
+        std::fs::remove_dir_all(&full)?;
     } else {
-        std::fs::remove_file(&full).map_err(|e| e.to_string())
+        std::fs::remove_file(&full)?;
     }
+    Ok(())
 }

@@ -252,9 +252,8 @@ pub async fn resolve_confirmation(
     payload_overrides: Option<serde_json::Value>,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, Bridge>,
-) -> Result<(), String> {
-    bridge
+) -> crate::core::error::AppResult<()> {
+    Ok(bridge
         .resolve(&pool, &id, approved, payload_overrides)
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }

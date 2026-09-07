@@ -124,7 +124,7 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
             className="context-item"
             onClick={async () => {
               try { await invoke('sync_task', { shortId: menu.task.short_id }); }
-              catch (e) { setLastError(String(e)); }
+              catch (e) { setLastError(e); }
               setMenu(null);
             }}
           >

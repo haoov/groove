@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
+
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct WorktreeStatus {
@@ -19,16 +21,14 @@ pub struct WorktreeStatus {
 pub async fn get_worktree_status(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<WorktreeStatus, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<WorktreeStatus> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let (status_out, (ahead, behind)) = tokio::join!(
         crate::core::git::output(&wt.path, &["status", "--porcelain"]),
         ahead_behind(&wt),
     );
-    let status_out = status_out.map_err(|e| e.to_string())?;
+    let status_out = status_out.map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
 
     let mut modified = 0usize;
     let mut staged = 0usize;

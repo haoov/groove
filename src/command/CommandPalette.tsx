@@ -190,7 +190,7 @@ export function CommandPalette() {
             try {
               await invoke('push', { worktreeId: wt.id });
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           },
         });
@@ -203,7 +203,7 @@ export function CommandPalette() {
             try {
               await invoke('pull', { worktreeId: wt.id });
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           },
         });
@@ -217,7 +217,7 @@ export function CommandPalette() {
               // Opens the confirmation pre-filled except the text.
               await invoke('create_mr', { worktreeId: wt.id });
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           },
         });
@@ -230,7 +230,7 @@ export function CommandPalette() {
             try {
               await invoke('rebase_on_main', { worktreeId: wt.id });
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           },
         });
@@ -245,7 +245,7 @@ export function CommandPalette() {
           try {
             await invoke('pause_task', { shortId: activeTask.short_id });
           } catch (e) {
-            setLastError(String(e));
+            setLastError(e);
           }
         },
       });
@@ -258,7 +258,7 @@ export function CommandPalette() {
           try {
             await invoke('sync_task', { shortId: activeTask.short_id });
           } catch (e) {
-            setLastError(String(e));
+            setLastError(e);
           }
         },
       });

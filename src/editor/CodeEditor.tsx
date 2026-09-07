@@ -12,6 +12,7 @@ import { vim, Vim } from '@replit/codemirror-vim';
 import { setupVimSearch } from './cm/vimSetup';
 import { viewBasics } from './cm/basics';
 import { invoke } from '../shared/ipc/invoke';
+import { errorText } from '../shared/lib/appError';
 import { useStore, type GrepHighlight } from '../shared/store';
 import { cmLangFor } from './cmLang';
 import { catppuccinHighlight, cmChromeTheme, editorTheme } from './cm/theme';
@@ -211,7 +212,7 @@ export function CodeEditor(props: CodeEditorProps) {
       await propsRef.current.onSaveContent(view.state.doc.toString());
       propsRef.current.onModifiedChange(false);
     } catch (e) {
-      useStore.getState().notify({ kind: 'error', source: 'files', title: `Save failed: ${e}` });
+      useStore.getState().notify({ kind: 'error', source: 'files', title: 'Save failed', detail: errorText(e) });
     }
   };
   const saveRef = useRef(doSave);
@@ -384,7 +385,7 @@ export function CodeEditor(props: CodeEditorProps) {
       })
       .catch((e) => {
         if (cancelled || !viewRef.current) return;
-        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: `// Error loading file: ${e}` } });
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: `// Error loading file: ${errorText(e)}` } });
         loadingRef.current = false;
       });
     return () => { cancelled = true; };

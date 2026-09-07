@@ -4,6 +4,7 @@ use sqlx::SqlitePool;
 
 use crate::core::db::models::{ActivityDay, TimeSummary};
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 /// Largest tick accepted; a larger one is rejected as stale or replayed.
 const MAX_TICK_SECONDS: i64 = 120;
@@ -18,37 +19,29 @@ pub async fn add_task_time(
     task_id: String,
     seconds: i64,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TimeSummary, String> {
+) -> AppResult<TimeSummary> {
     if !(0..=MAX_TICK_SECONDS).contains(&seconds) {
-        return Err(format!("implausible tick of {seconds}s ignored"));
+        return Err(AppError::invalid(format!(
+            "implausible tick of {seconds}s ignored"
+        )));
     }
     let day = today();
-    store::time::add(&*pool, &task_id, &day, seconds)
-        .await
-        .map_err(|e| e.to_string())?;
-    store::time::summary(&*pool, &task_id, &day)
-        .await
-        .map_err(|e| e.to_string())
+    store::time::add(&*pool, &task_id, &day, seconds).await?;
+    Ok(store::time::summary(&*pool, &task_id, &day).await?)
 }
 
 #[tauri::command]
 pub async fn get_task_time(
     task_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TimeSummary, String> {
-    store::time::summary(&*pool, &task_id, &today())
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<TimeSummary> {
+    Ok(store::time::summary(&*pool, &task_id, &today()).await?)
 }
 
 /// Tracked seconds per day across all sessions — feeds the Home activity heatmap.
 #[tauri::command]
-pub async fn get_activity_days(
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<ActivityDay>, String> {
-    store::time::activity(&*pool)
-        .await
-        .map_err(|e| e.to_string())
+pub async fn get_activity_days(pool: tauri::State<'_, SqlitePool>) -> AppResult<Vec<ActivityDay>> {
+    Ok(store::time::activity(&*pool).await?)
 }
 
 /// Record `hours` in the local ledger and in the provider's hours field when it has one.
@@ -77,10 +70,10 @@ pub async fn log_task_hours(
     short_id: String,
     hours: f64,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
+) -> AppResult<serde_json::Value> {
     log_hours(hours, &short_id, &pool)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 /// Confirmation-bridge path for `task.hours` (agent-initiated).

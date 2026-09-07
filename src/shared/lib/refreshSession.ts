@@ -1,16 +1,31 @@
 import { invoke } from '../ipc/invoke';
 import { useStore, findSessionByTask } from '../store';
+import { errorText, isNotFound } from './appError';
 import type { AgentState } from '../ipc/ipc';
+
+/** Reports a refresh failure. A gone worktree or session is not worth a toast. */
+function reportRefreshFailure(e: unknown) {
+  if (isNotFound(e)) {
+    console.debug('[refresh] target is gone:', errorText(e));
+    return;
+  }
+  useStore.getState().notify({
+    kind: 'error',
+    source: 'git',
+    title: 'Could not refresh the session',
+    detail: errorText(e),
+  });
+}
 
 /** Refetches the session's diff and status, and Home when on screen. `flushCaches` also drops the
  *  backend ref caches: needed when refs moved, not when only the working tree did. */
 export async function refreshSession(id: string, flushCaches = true) {
   if (flushCaches) {
-    await invoke('flush_git_caches').catch(() => { /* best-effort */ });
+    await invoke('flush_git_caches').catch(reportRefreshFailure);
   }
   const s = useStore.getState();
   s.invalidateDiff(id);
-  void s.refreshStatusFor(id);
+  void s.refreshStatusFor(id, reportRefreshFailure);
   if (s.view === 'home') void s.refreshHome();
 }
 

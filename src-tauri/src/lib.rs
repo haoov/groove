@@ -51,7 +51,7 @@ pub fn run() {
             let handle = app.handle().clone();
 
             // Block the main thread until async init finishes.
-            let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
+            let (tx, rx) = std::sync::mpsc::channel::<anyhow::Result<()>>();
 
             tauri::async_runtime::spawn(async move {
                 let result = async_init(handle, data_dir).await;
@@ -193,12 +193,12 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> Result<(), String> {
+async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> anyhow::Result<()> {
     // Config first: the worktree root and agent cwd resolve from it.
     let config_dir = handle
         .path()
         .app_config_dir()
-        .map_err(|e| format!("cannot get config dir: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("cannot get config dir: {e}"))?;
     crate::core::config::init(config_dir);
 
     // After the config, before any agent launches.
@@ -208,7 +208,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
 
     let pool = crate::core::db::init(&data_dir)
         .await
-        .map_err(|e| format!("DB init failed: {e}"))?;
+        .map_err(|e| anyhow::anyhow!("DB init failed: {e}"))?;
 
     core::events::set_app(handle.clone());
 

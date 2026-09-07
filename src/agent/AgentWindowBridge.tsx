@@ -20,6 +20,7 @@ import {
   type CommandDone,
   type CommandEnvelope,
 } from '../shared/lib/agentWindow';
+import { errorText } from '../shared/lib/appError';
 
 /**
  * The main window's half of the detached agent window: opens and closes it, mirrors the
@@ -48,7 +49,11 @@ export function AgentWindowBridge() {
         else unlisten = u;
       })
       .catch((e) => {
-        useStore.getState().setLastError(`Agent window: ${String(e)}`);
+        useStore.getState().notify({
+          kind: 'error',
+          title: 'Could not open the agent window',
+          detail: errorText(e),
+        });
         useStore.getState().setAgentDetached(false);
       });
     return () => {
@@ -96,7 +101,7 @@ export function AgentWindowBridge() {
       try {
         await runCommand(payload);
       } catch (e) {
-        error = String(e);
+        error = errorText(e);
         useStore.getState().setLastError(error);
       }
       const done: CommandDone = { nonce: payload.nonce, error };

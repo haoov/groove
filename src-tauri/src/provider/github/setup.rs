@@ -1,5 +1,7 @@
 //! GitHub setup payload, config defaults and the first-run preview.
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
+
 const DEFAULT_HOST: &str = "github.com";
 
 #[derive(Debug, serde::Deserialize, ts_rs::TS)]
@@ -58,12 +60,12 @@ pub struct BoardColumns {
 }
 
 #[tauri::command]
-pub async fn preview_github(host: Option<String>) -> Result<GithubPreview, String> {
+pub async fn preview_github(host: Option<String>) -> AppResult<GithubPreview> {
     let host = host.unwrap_or_else(|| DEFAULT_HOST.to_string());
 
     let items = super::projects::assigned_issues(&host)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))?;
 
     let mut boards: Vec<String> = items.iter().map(|i| i.board.clone()).collect();
     boards.sort();

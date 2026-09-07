@@ -4,6 +4,7 @@ use super::client::make_client;
 use super::gitlab::fetch_and_upsert_mrs;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 // ─── Shared lookups ───────────────────────────────────────────────────────────
 
@@ -28,16 +29,9 @@ pub(super) async fn load_mr_context(
 
 /// MRs for the worktree's branch: live from GitLab and upserted, else the DB rows.
 #[tauri::command]
-pub async fn get_mr(
-    worktree_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<Mr>, String> {
-    let wt = store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    let repo = store::repos::get(&*pool, &wt.repo_id)
-        .await
-        .map_err(|e| e.to_string())?;
+pub async fn get_mr(worktree_id: String, pool: tauri::State<'_, SqlitePool>) -> AppResult<Vec<Mr>> {
+    let wt = store::worktrees::get(&*pool, &worktree_id).await?;
+    let repo = store::repos::get(&*pool, &wt.repo_id).await?;
 
     if !repo.host.contains("github") {
         match fetch_and_upsert_mrs(&wt, &repo, &pool).await {
@@ -46,19 +40,17 @@ pub async fn get_mr(
         }
     }
 
-    store::mrs::for_worktree(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())
+    Ok(store::mrs::for_worktree(&*pool, &worktree_id).await?)
 }
 
 #[tauri::command]
 pub async fn get_mr_threads(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
+) -> AppResult<serde_json::Value> {
     mr_threads_for(&pool, &mr_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
 /// The pool-taking form, for the MCP tool.
@@ -73,8 +65,10 @@ pub async fn mr_threads_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<se
 pub async fn get_mr_ci(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
-    mr_ci_for(&pool, &mr_id).await.map_err(|e| e.to_string())
+) -> AppResult<serde_json::Value> {
+    mr_ci_for(&pool, &mr_id)
+        .await
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
 /// The pool-taking form, for the MCP tool.
@@ -88,16 +82,14 @@ pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_j
 pub async fn get_mr_details(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<serde_json::Value, String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<serde_json::Value> {
+    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
     let mut details = client
         .get_mr_details(&repo, &mr.remote_id)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))?;
 
     // Keep the stored state in step with the live one.
     if let Some(fresh) = details["state"].as_str() {
@@ -123,16 +115,14 @@ pub async fn reply_to_thread(
     thread_id: String,
     body: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
     client
         .reply_to_thread(&repo, &mr.remote_id, &thread_id, &body)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
 /// Post the MR-create confirmation from the UI. Title and description stay
@@ -142,19 +132,16 @@ pub async fn create_mr(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = store::worktrees::get(&*pool, &worktree_id).await?;
 
     let mut payload = crate::worktrees::op_payload(&pool, &wt).await;
     payload["title"] = serde_json::json!("");
     payload["description"] = serde_json::json!("");
-    payload["target_branch"] = serde_json::json!(super::ops::mr_target_for(&pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?);
+    payload["target_branch"] =
+        serde_json::json!(super::ops::mr_target_for(&pool, &worktree_id).await?);
 
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::MR_CREATE,
@@ -162,8 +149,7 @@ pub async fn create_mr(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 /// Rewrite the MR's title or description from the UI, ungated. Goes through
@@ -174,7 +160,7 @@ pub async fn edit_mr_text(
     title: Option<String>,
     description: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let payload = serde_json::json!({
         "mr_id": mr_id,
         "title": title,
@@ -182,22 +168,20 @@ pub async fn edit_mr_text(
     });
     super::ops::update_mr_impl(payload, &pool)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))?;
     Ok(())
 }
 
 /// Approve the MR as the current user, ungated.
 #[tauri::command]
-pub async fn approve_mr(mr_id: String, pool: tauri::State<'_, SqlitePool>) -> Result<(), String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+pub async fn approve_mr(mr_id: String, pool: tauri::State<'_, SqlitePool>) -> AppResult<()> {
+    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
     client
         .approve_mr(&repo, &mr.remote_id)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))?;
     Ok(())
 }
 
@@ -209,10 +193,8 @@ pub async fn post_mr_comment(
     file_path: Option<String>,
     line: Option<i64>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
     let position = match (&file_path, line) {
@@ -222,7 +204,7 @@ pub async fn post_mr_comment(
     client
         .post_mr_comment(&repo, &mr.remote_id, &body, position)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
 // ─── MR state for Home ────────────────────────────────────────────────────────
@@ -241,14 +223,12 @@ pub async fn resolve_mr_thread(
     mr_id: String,
     thread_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
     client
         .resolve_mr_thread(&repo, &mr.remote_id, &thread_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }

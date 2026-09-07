@@ -3,6 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { GitCommit, Upload, Download, ChevronsUp, GitPullRequest, X, RefreshCw, FilePlus, FolderPlus, GitBranch, RotateCcw, Clock, FileText, Tag, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { OP } from '../shared/ipc/ops';
+import { errorText } from '../shared/lib/appError';
 
 const OP_LABELS: Record<string, string> = {
   [OP.GIT_COMMIT]:  'Git commit',
@@ -412,7 +413,7 @@ export function ConfirmModal() {
         if (approved && current.op_type === OP.SKILL_SAVE) setSkillsStale(true);
         removeConfirmation(current.id);
       } catch (e) {
-        const msg = String(e);
+        const msg = errorText(e);
         setError(msg);
         setLastError(msg);
       } finally {

@@ -11,6 +11,7 @@ import { openExternal } from '../shared/lib/openExternal';
 import { MrThreadsSection } from '../notes/MrThreads';
 import { CiChip } from '../shared/ui/CiChip';
 import { Markdown } from '../shared/ui/Markdown';
+import { errorText } from '../shared/lib/appError';
 
 /** Full-page MR/PR overview: header, details column, description, review threads. */
 export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
@@ -43,7 +44,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
       // Re-read: the backend re-appends the task footer.
       bumpMrs();
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setSavingDesc(false);
     }
@@ -57,7 +58,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
       notify({ kind: 'success', source: 'mr', title: `Approved ${mrRef(mr?.platform ?? '', mr?.remote_id ?? '')}` });
       bumpMrs();
     } catch (e) {
-      notify({ kind: 'error', source: 'mr', title: `Approve failed: ${e}` });
+      notify({ kind: 'error', source: 'mr', title: 'Approve failed', detail: errorText(e) });
     } finally {
       setApproving(false);
     }
@@ -72,7 +73,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
       setComment('');
       bumpMrs();
     } catch (e) {
-      notify({ kind: 'error', source: 'mr', title: `Comment failed: ${e}` });
+      notify({ kind: 'error', source: 'mr', title: 'Comment failed', detail: errorText(e) });
     } finally {
       setPosting(false);
     }
@@ -82,7 +83,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     let stale = false;
     invoke<MrDetails>('get_mr_details', { mrId })
       .then((d) => { if (!stale) { setDetails(d); setError(null); } })
-      .catch((e) => { if (!stale) setError(String(e)); });
+      .catch((e) => { if (!stale) setError(errorText(e)); });
     invoke<{ status: string; url: string } | null>('get_mr_ci', { mrId })
       .then((r) => { if (!stale) setCi(r ?? null); })
       .catch(() => { if (!stale) setCi(null); });

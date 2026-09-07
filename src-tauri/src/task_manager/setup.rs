@@ -3,6 +3,7 @@
 use serde::Serialize;
 
 use crate::core::config::{Config, GitConfig, UiConfig};
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::provider::github::setup::GithubSetup;
 use crate::provider::notion::setup::NotionSetup;
 
@@ -132,9 +133,9 @@ fn notification_tools() -> Vec<ToolCheck> {
 }
 
 #[tauri::command]
-pub async fn check_environment() -> Result<Environment, String> {
-    let path =
-        crate::core::config::file_path().ok_or_else(|| "config dir not initialised".to_string())?;
+pub async fn check_environment() -> AppResult<Environment> {
+    let path = crate::core::config::file_path()
+        .ok_or_else(|| AppError::internal("config dir not initialised"))?;
     let exists = path.is_file();
     // A config that fails to parse is not a first run.
     let config_error = if exists {
@@ -229,19 +230,23 @@ mod tests {
 pub async fn start_auth_session(
     app: tauri::AppHandle,
     ptys: tauri::State<'_, crate::core::pty::Ptys>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    crate::agent_manager::start_login_pty(&app, &home, &ptys).map_err(|e| e.to_string())
+    crate::agent_manager::start_login_pty(&app, &home, &ptys)
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }
 
 /// Write the initial config. Notion property names are detected, then written to the file.
 #[tauri::command]
-pub async fn write_initial_config(setup: SetupRequest) -> Result<(), String> {
+pub async fn write_initial_config(setup: SetupRequest) -> AppResult<()> {
     let root = crate::core::fs::expand_tilde(setup.worktree_root.trim());
     if root.is_empty() {
-        return Err("A worktree root is required — the directory repos are cloned into.".into());
+        return Err(AppError::invalid(
+            "A worktree root is required — the directory repos are cloned into.",
+        ));
     }
-    std::fs::create_dir_all(&root).map_err(|e| format!("Cannot create {root}: {e}"))?;
+    std::fs::create_dir_all(&root)
+        .map_err(|e| AppError::new(ErrorKind::Io, format!("Cannot create {root}: {e}")))?;
 
     let notion = match &setup.notion {
         Some(n) => Some(crate::provider::notion::setup::build_config(n).await?),
@@ -261,9 +266,10 @@ pub async fn write_initial_config(setup: SetupRequest) -> Result<(), String> {
         ui: UiConfig::default(),
     };
     if !crate::provider::has_task_source(&cfg) {
-        return Err("Set up at least one task source.".into());
+        return Err(AppError::invalid("Set up at least one task source."));
     }
-    crate::core::config::replace(cfg).map_err(|e| e.to_string())
+    crate::core::config::replace(cfg)?;
+    Ok(())
 }
 
 /// What the setup screen sends: a worktree root plus the sources filled in.
@@ -283,14 +289,15 @@ pub async fn set_task_source(
     enabled: bool,
     options: serde_json::Value,
     pool: tauri::State<'_, sqlx::SqlitePool>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     use crate::provider::types::ProviderId;
 
-    let mut cfg = crate::core::config::require().map_err(|e| e.to_string())?;
+    let mut cfg = crate::core::config::require()?;
     match (provider, enabled) {
         (ProviderId::Notion, true) => {
             let setup: crate::provider::notion::setup::NotionSetup =
-                serde_json::from_value(options).map_err(|e| format!("bad Notion setup: {e}"))?;
+                serde_json::from_value(options)
+                    .map_err(|e| AppError::invalid(format!("bad Notion setup: {e}")))?;
             cfg.notion = Some(crate::provider::notion::setup::build_config(&setup).await?);
         }
         (ProviderId::Notion, false) => cfg.notion = None,
@@ -307,15 +314,15 @@ pub async fn set_task_source(
         (ProviderId::Github, false) => cfg.github = None,
     }
     if !crate::provider::has_task_source(&cfg) {
-        return Err("That would leave no task source at all.".into());
+        return Err(AppError::conflict(
+            "That would leave no task source at all.",
+        ));
     }
-    crate::core::config::replace(cfg).map_err(|e| e.to_string())?;
+    crate::core::config::replace(cfg)?;
 
     // Prune the disabled source's mirror rows; its sync loop stops. Checked-out tasks stay.
     if !enabled {
-        crate::core::db::store::provider_tasks::prune_provider(&*pool, provider.as_str())
-            .await
-            .map_err(|e| e.to_string())?;
+        crate::core::db::store::provider_tasks::prune_provider(&*pool, provider.as_str()).await?;
     }
     Ok(())
 }

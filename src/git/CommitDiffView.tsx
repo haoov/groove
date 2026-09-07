@@ -7,6 +7,7 @@ import type { FileDiff, Hunk } from '../shared/ipc/ipc';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import type { AnnCtx } from '../editor/useAnnotations';
+import { errorText } from '../shared/lib/appError';
 
 // Commit diffs cached across tab switches, capped at `CACHE_MAX`.
 const commitDiffCache = new Map<string, FileDiff[]>();
@@ -47,8 +48,8 @@ export function CommitDiffView({ repoId, sha, ann }: { repoId: string; sha: stri
       })
       .catch((e) => {
         if (stale) return;
-        setError(String(e));
-        setLastError(String(e));
+        setError(errorText(e));
+        setLastError(e);
       });
     return () => { stale = true; };
   }, [wt, sha, cacheKey, files, setLastError]);

@@ -170,7 +170,7 @@ function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => 
     // WebKitGTK has no clipboard API outside a secure context.
     invoke('copy_to_clipboard', { text: [n.title, n.detail ?? ''].join('\n\n').trim() })
       .then(() => setCopied(true))
-      .catch((e) => useStore.getState().setLastError(String(e)));
+      .catch((e) => useStore.getState().setLastError(e));
   };
 
   return (

@@ -3,6 +3,8 @@
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
+use crate::core::error::AppResult;
+
 /// A tool that has not answered by then is killed and the next one runs.
 const TOOL_TIMEOUT: Duration = Duration::from_secs(2);
 
@@ -52,15 +54,15 @@ fn missing_tools(candidates: &[(&str, &[&str])]) -> String {
 /// Write `text` to the clipboard with the first tool that succeeds. One write only:
 /// under mutter a second write through xclip makes a later `wl-paste` block for ever.
 #[tauri::command]
-pub async fn copy_to_clipboard(text: String) -> Result<(), String> {
-    write_first(&session_tools(&WRITERS, is_wayland()), TOOL_TIMEOUT, &text).await
+pub async fn copy_to_clipboard(text: String) -> AppResult<()> {
+    Ok(write_first(&session_tools(&WRITERS, is_wayland()), TOOL_TIMEOUT, &text).await?)
 }
 
 async fn write_first(
     candidates: &[(&str, &[&str])],
     limit: Duration,
     text: &str,
-) -> Result<(), String> {
+) -> anyhow::Result<()> {
     let mut errors: Vec<String> = vec![];
 
     for (bin, args) in candidates {
@@ -82,36 +84,33 @@ async fn write_first(
         }
     }
 
-    Err(if errors.is_empty() {
+    Err(anyhow::anyhow!(if errors.is_empty() {
         missing_tools(candidates)
     } else {
         errors.join("; ")
-    })
+    }))
 }
 
-async fn feed_and_wait(child: &mut tokio::process::Child, text: &str) -> Result<(), String> {
+async fn feed_and_wait(child: &mut tokio::process::Child, text: &str) -> anyhow::Result<()> {
     if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(text.as_bytes())
-            .await
-            .map_err(|e| e.to_string())?;
+        stdin.write_all(text.as_bytes()).await?;
         // The tool copies until stdin closes.
         drop(stdin);
     }
     match child.wait().await {
         Ok(status) if status.success() => Ok(()),
-        Ok(status) => Err(format!("exited with {status}")),
-        Err(e) => Err(e.to_string()),
+        Ok(status) => Err(anyhow::anyhow!("exited with {status}")),
+        Err(e) => Err(e.into()),
     }
 }
 
 /// Read the system clipboard. Empty string when it holds nothing usable.
 #[tauri::command]
-pub async fn read_clipboard() -> Result<String, String> {
-    read_first(&session_tools(&READERS, is_wayland()), TOOL_TIMEOUT).await
+pub async fn read_clipboard() -> AppResult<String> {
+    Ok(read_first(&session_tools(&READERS, is_wayland()), TOOL_TIMEOUT).await?)
 }
 
-async fn read_first(candidates: &[(&str, &[&str])], limit: Duration) -> Result<String, String> {
+async fn read_first(candidates: &[(&str, &[&str])], limit: Duration) -> anyhow::Result<String> {
     let mut timed_out = false;
 
     for (bin, args) in candidates {
@@ -133,9 +132,9 @@ async fn read_first(candidates: &[(&str, &[&str])], limit: Duration) -> Result<S
     }
 
     if timed_out {
-        Err(format!("clipboard read timed out after {limit:?}"))
+        Err(anyhow::anyhow!("clipboard read timed out after {limit:?}"))
     } else {
-        Err(missing_tools(candidates))
+        Err(anyhow::anyhow!(missing_tools(candidates)))
     }
 }
 
@@ -166,7 +165,7 @@ mod tests {
     #[tokio::test]
     async fn read_reports_a_timeout_over_a_missing_tool() {
         let out = read_first(&[SLOW], Duration::from_millis(100)).await;
-        assert!(out.unwrap_err().contains("timed out"));
+        assert!(out.unwrap_err().to_string().contains("timed out"));
     }
 
     #[tokio::test]

@@ -43,7 +43,7 @@ async fn validate_source(explorer_id: &str, pool: &SqlitePool) -> anyhow::Result
 }
 
 /// Rename the explorer branch to the task's branch name.
-async fn rename_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
+async fn rename_branch(wt: &Worktree, new_branch: &str) -> anyhow::Result<()> {
     // A stray local branch named "HEAD" makes `branch -m` fail as ambiguous.
     crate::worktrees::repair_head_branch(&wt.path).await;
 
@@ -52,28 +52,28 @@ async fn rename_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
             crate::core::git::cache::flush();
             Ok(())
         }
-        Ok(o) => Err(format!(
+        Ok(o) => Err(anyhow::anyhow!(
             "could not rename the branch of {} to {new_branch}: {}",
             wt.path,
             String::from_utf8_lossy(&o.stderr).trim()
         )),
-        Err(e) => Err(format!("git branch -m failed for {}: {e}", wt.path)),
+        Err(e) => Err(anyhow::anyhow!("git branch -m failed for {}: {e}", wt.path)),
     }
 }
 
 /// `git worktree move`, parents created first.
-async fn move_worktree(repo_local_path: &str, from: &str, to: &str) -> Result<(), String> {
+async fn move_worktree(repo_local_path: &str, from: &str, to: &str) -> anyhow::Result<()> {
     // `git worktree move` does not create missing parent directories.
     if let Some(parent) = std::path::Path::new(to).parent() {
         let _ = std::fs::create_dir_all(parent);
     }
     match crate::core::git::output(repo_local_path, &["worktree", "move", from, to]).await {
         Ok(o) if o.status.success() => Ok(()),
-        Ok(o) => Err(format!(
+        Ok(o) => Err(anyhow::anyhow!(
             "could not move {from} to {to}: {}",
             String::from_utf8_lossy(&o.stderr).trim()
         )),
-        Err(e) => Err(format!("worktree move failed for {from}: {e}")),
+        Err(e) => Err(anyhow::anyhow!("worktree move failed for {from}: {e}")),
     }
 }
 
@@ -83,7 +83,7 @@ async fn relocate_worktree(
     repo: &Repo,
     session_dir: &std::path::Path,
     new_branch: &str,
-) -> Result<String, String> {
+) -> anyhow::Result<String> {
     let dest = session_dir
         .join(crate::worktrees::naming::worktree_dir(
             &repo.project,
@@ -120,7 +120,7 @@ async fn promote_worktrees(
     for wt in &worktrees {
         if let Err(msg) = rename_branch(wt, new_branch).await {
             tracing::error!("[convert] {msg}");
-            warnings.push(msg);
+            warnings.push(msg.to_string());
             continue;
         }
 
@@ -131,7 +131,7 @@ async fn promote_worktrees(
                 Ok(dest) => final_path = dest,
                 Err(msg) => {
                     tracing::warn!("[convert] {msg}");
-                    warnings.push(msg);
+                    warnings.push(msg.to_string());
                 }
             }
         }

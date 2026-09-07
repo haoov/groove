@@ -26,7 +26,7 @@ export function PropertyStrip({
   const load = useCallback(() => {
     invoke<PropertyValue[]>('get_task_properties', { shortId })
       .then(setValues)
-      .catch((e) => setLastError(String(e)));
+      .catch((e) => setLastError(e));
   }, [shortId, setLastError]);
 
   useEffect(() => { load(); }, [load]);
@@ -37,7 +37,7 @@ export function PropertyStrip({
     try {
       await invoke<string>('update_task_property', { shortId, property: name, value });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
       load();
     } finally {
       setBusy(null);

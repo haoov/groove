@@ -81,7 +81,7 @@ export function Sidebar() {
     let cancelled = false;
     invoke<CommitEntry[]>('get_commit_log', { taskId: activeTask.short_id, worktreeId: wt?.id, limit: commitLimit })
       .then((c) => { if (!cancelled) setCommits(c, c.length >= commitLimit); })
-      .catch((e) => { if (!cancelled) setLastError(String(e)); });
+      .catch((e) => { if (!cancelled) setLastError(e); });
     return () => { cancelled = true; };
   }, [sidebarTab, activeTask, activeRepoId, worktreeForRepo, commitLimit, setCommits, setLastError]);
 
@@ -116,7 +116,7 @@ export function Sidebar() {
       await invoke(cmd, { worktreeId });
       setTimeout(refreshStatus, 1500);
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 
@@ -128,7 +128,7 @@ export function Sidebar() {
       setTimeout(refreshStatus, 1500);
       return confirmationId;
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
       throw e;
     }
   };
@@ -142,7 +142,7 @@ export function Sidebar() {
       await invoke(staged ? 'stage_file' : 'unstage_file', { worktreeId: wt.id, filePath: path });
       refreshAfterStage();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
   const stageAll = (cmd: 'stage_all' | 'unstage_all') => async () => {
@@ -151,7 +151,7 @@ export function Sidebar() {
       await invoke(cmd, { worktreeId: activeWt.id });
       refreshAfterStage();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 
@@ -159,11 +159,11 @@ export function Sidebar() {
   const discardFile = (path: string, repoId: string) => {
     const wt = worktreeForRepo(repoId);
     if (!wt) return;
-    invoke('discard_file', { worktreeId: wt.id, filePath: path }).catch((e) => setLastError(String(e)));
+    invoke('discard_file', { worktreeId: wt.id, filePath: path }).catch((e) => setLastError(e));
   };
   const discardAll = () => {
     if (!activeWt) return;
-    invoke('discard_all', { worktreeId: activeWt.id }).catch((e) => setLastError(String(e)));
+    invoke('discard_all', { worktreeId: activeWt.id }).catch((e) => setLastError(e));
   };
 
   // Git sub-tab badges, scoped to the active repo (the chips show every repo).
@@ -207,7 +207,7 @@ export function Sidebar() {
               await invoke('resolve_annotation', { id });
               resolveAnnotation(id);
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           }}
           onDelete={async (id) => {
@@ -215,7 +215,7 @@ export function Sidebar() {
               await invoke('delete_annotation', { id });
               removeAnnotation(id);
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           }}
           onEdit={async (id, content) => {
@@ -223,7 +223,7 @@ export function Sidebar() {
               await invoke('update_annotation', { id, content });
               updateAnnotation(id, content);
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           }}
           // Open the file at the annotated line (the editor takes cursorLine).
@@ -249,7 +249,7 @@ export function Sidebar() {
               bumpMrs();
               notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
             } catch (e) {
-              setLastError(String(e));
+              setLastError(e);
             }
           }}
         />

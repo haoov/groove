@@ -7,6 +7,7 @@ use super::parse::{parse_unified_diff, unquote_path};
 use super::types::{DiffLine, DiffResult, FileDiff, Hunk, RepoDiff};
 use crate::core::db::models::Worktree;
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use sqlx::SqlitePool;
 
 /// Minimum interval between fire-and-forget `git fetch origin` calls per repo.
@@ -45,20 +46,16 @@ fn commit_diff_args<'a>(sha: &'a str, rest: &[&'a str]) -> Vec<&'a str> {
 }
 
 /// A file's text from inside the worktree, refusing an escaping path or an oversized file.
-async fn read_worktree_text(root: &str, rel: &str) -> Result<String, String> {
+async fn read_worktree_text(root: &str, rel: &str) -> anyhow::Result<String> {
     let full = crate::core::fs::safe_join(root, rel)?;
-    let meta = tokio::fs::metadata(&full)
-        .await
-        .map_err(|e| e.to_string())?;
+    let meta = tokio::fs::metadata(&full).await?;
     if meta.len() > UNTRACKED_MAX_BYTES {
-        return Err(format!(
+        anyhow::bail!(
             "{rel} is {} bytes (cap {UNTRACKED_MAX_BYTES}) — too large to expand",
             meta.len()
-        ));
+        );
     }
-    tokio::fs::read_to_string(&full)
-        .await
-        .map_err(|e| e.to_string())
+    Ok(tokio::fs::read_to_string(&full).await?)
 }
 
 /// Kick off a throttled, fire-and-forget `git fetch origin` for a worktree.
@@ -277,11 +274,9 @@ pub async fn get_task_diff_summary(
     task_id: String,
     mode: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<DiffResult, String> {
+) -> AppResult<DiffResult> {
     let mode = mode.as_deref().unwrap_or("vs-main");
-    let worktrees: Vec<Worktree> = store::worktrees::for_session(&*pool, &task_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let worktrees: Vec<Worktree> = store::worktrees::for_session(&*pool, &task_id).await?;
 
     let repos = futures_util::future::try_join_all(
         worktrees.into_iter().map(|wt| summarize_worktree(wt, mode)),
@@ -292,7 +287,7 @@ pub async fn get_task_diff_summary(
 }
 
 /// One worktree's summary; every read that does not need another's answer runs alongside it.
-async fn summarize_worktree(wt: Worktree, mode: &str) -> Result<RepoDiff, String> {
+async fn summarize_worktree(wt: Worktree, mode: &str) -> AppResult<RepoDiff> {
     if mode != "working" {
         spawn_throttled_fetch(&wt.repo_id, &wt.path);
     }
@@ -300,7 +295,7 @@ async fn summarize_worktree(wt: Worktree, mode: &str) -> Result<RepoDiff, String
     let base_ref =
         crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
 
     let numstat_args = diff_args("diff", &[&base_ref, "--numstat"]);
     let (statuses, staged, numstat, untracked) = tokio::join!(
@@ -310,11 +305,14 @@ async fn summarize_worktree(wt: Worktree, mode: &str) -> Result<RepoDiff, String
         list_untracked(&wt.path),
     );
 
-    let out = numstat.map_err(|e| e.to_string())?;
+    let out = numstat.map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     if !out.status.success() {
-        return Err(format!(
-            "git diff {base_ref} failed: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
+        return Err(AppError::new(
+            ErrorKind::Git,
+            format!(
+                "git diff {base_ref} failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ),
         ));
     }
 
@@ -377,10 +375,8 @@ pub async fn get_file_diff(
     file_path: String,
     mode: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<Hunk>, String> {
-    let wt = store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<Vec<Hunk>> {
+    let wt = store::worktrees::get(&*pool, &worktree_id).await?;
 
     let base_ref = crate::core::git::refs::diff_base(
         &wt.path,
@@ -389,17 +385,20 @@ pub async fn get_file_diff(
         wt.base_ref.as_deref(),
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     let out = crate::core::git::output(
         &wt.path,
         &diff_args("diff", &[&base_ref, "--unified=3", "--", &file_path]),
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     if !out.status.success() {
-        return Err(format!(
-            "git diff {base_ref} failed: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
+        return Err(AppError::new(
+            ErrorKind::Git,
+            format!(
+                "git diff {base_ref} failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ),
         ));
     }
 
@@ -423,18 +422,19 @@ pub async fn get_commit_diff(
     worktree_id: String,
     sha: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<FileDiff>, String> {
-    let wt = store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<Vec<FileDiff>> {
+    let wt = store::worktrees::get(&*pool, &worktree_id).await?;
 
     let out = crate::core::git::output(&wt.path, &commit_diff_args(&sha, &["--unified=3"]))
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     if !out.status.success() {
-        return Err(format!(
-            "git show {sha} failed: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
+        return Err(AppError::new(
+            ErrorKind::Git,
+            format!(
+                "git show {sha} failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ),
         ));
     }
 
@@ -502,20 +502,21 @@ pub async fn read_file_lines(
     end: u32,
     rev: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<FileLines, String> {
-    let wt = store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<FileLines> {
+    let wt = store::worktrees::get(&*pool, &worktree_id).await?;
 
     let text = match rev {
         Some(sha) => {
             let out = crate::core::git::output(&wt.path, &["show", &format!("{sha}:{file_path}")])
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
             if !out.status.success() {
-                return Err(format!(
-                    "git show {sha}:{file_path} failed: {}",
-                    String::from_utf8_lossy(&out.stderr).trim()
+                return Err(AppError::new(
+                    ErrorKind::Git,
+                    format!(
+                        "git show {sha}:{file_path} failed: {}",
+                        String::from_utf8_lossy(&out.stderr).trim()
+                    ),
                 ));
             }
             String::from_utf8_lossy(&out.stdout).to_string()

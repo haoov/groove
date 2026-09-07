@@ -16,6 +16,7 @@ import { repoDiffFor } from '../shared/lib/workspace';
 import { forgeName, mrSigil } from '../shared/lib/forge';
 import { openExternal } from '../shared/lib/openExternal';
 import { CiChip } from '../shared/ui/CiChip';
+import { errorText } from '../shared/lib/appError';
 
 /** Git status indicator: green + (added), yellow dot (modified), red − (deleted). */
 function FileStatusIcon({ status }: { status: string }) {
@@ -459,7 +460,7 @@ export function GitCommitPanel({
     try {
       await invoke(cmd, { worktreeId: conflict.worktreeId });
     } catch (e) {
-      setRebaseError(String(e));
+      setRebaseError(errorText(e));
     }
   };
 

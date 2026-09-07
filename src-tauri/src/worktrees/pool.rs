@@ -7,6 +7,7 @@ use sqlx::SqlitePool;
 
 use crate::core::db::models::Repo;
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::core::git;
 
 /// A clone living under `<worktree_root>/main` — what the pickers list.
@@ -62,10 +63,8 @@ pub async fn register_repo(
     slug: String,
     local_path: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Repo, String> {
-    register_repo_impl(&slug, local_path, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<Repo> {
+    Ok(register_repo_impl(&slug, local_path, &pool).await?)
 }
 
 /// Record a pool clone in the DB. The one git call checks that it has an `origin`.
@@ -99,17 +98,15 @@ pub async fn remote_branch_exists(
     repo_id: String,
     branch: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<bool, String> {
-    let repo = store::repos::get(&*pool, &repo_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<bool> {
+    let repo = store::repos::get(&*pool, &repo_id).await?;
 
     let out = git::output(
         &repo.local_path,
         &["ls-remote", "--heads", "origin", &branch],
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
 
     let target = format!("refs/heads/{branch}");
     Ok(String::from_utf8_lossy(&out.stdout)
@@ -132,13 +129,11 @@ pub struct OriginBranches {
 pub async fn list_origin_branches(
     repo_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<OriginBranches, String> {
-    let repo = store::repos::get(&*pool, &repo_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<OriginBranches> {
+    let repo = store::repos::get(&*pool, &repo_id).await?;
     let branches = git::refs::origin_branches(&repo.local_path)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     let default_branch = git::refs::default_branch(&repo.local_path).await;
     Ok(OriginBranches {
         branches,
@@ -148,7 +143,7 @@ pub async fn list_origin_branches(
 
 /// Every clone in the pool, by directory walk; no pool gives an empty list.
 #[tauri::command]
-pub async fn list_main_repos() -> Result<Vec<MainRepo>, String> {
+pub async fn list_main_repos() -> AppResult<Vec<MainRepo>> {
     let root = main_root();
     let mut repos: Vec<MainRepo> = tokio::task::spawn_blocking(move || {
         fn walk(
@@ -186,28 +181,32 @@ pub async fn list_main_repos() -> Result<Vec<MainRepo>, String> {
         acc
     })
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::internal(e.to_string()))?;
     repos.sort_by(|a, b| a.slug.to_lowercase().cmp(&b.slug.to_lowercase()));
     Ok(repos)
 }
 
 /// Clone a repo into the pool and return it.
 #[tauri::command]
-pub async fn clone_repo(url: String) -> Result<MainRepo, String> {
-    let (host, group_path, project) = git::parse_git_url(&url).map_err(|e| e.to_string())?;
+pub async fn clone_repo(url: String) -> AppResult<MainRepo> {
+    let (host, group_path, project) =
+        git::parse_git_url(&url).map_err(|e| AppError::from(e).with_kind(ErrorKind::Invalid))?;
     let dest = repo_dir(&host, &group_path, &project);
     if dest.exists() {
-        return Err(format!("{} already exists", dest.display()));
+        return Err(AppError::conflict(format!(
+            "{} already exists",
+            dest.display()
+        )));
     }
     if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(parent)?;
     }
 
     let dest_str = dest.to_string_lossy().to_string();
     let parent = dest.parent().unwrap_or(&dest).to_string_lossy().to_string();
     git::run(&parent, &["clone", &url, &dest_str])
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
 
     Ok(MainRepo {
         local_path: dest_str,

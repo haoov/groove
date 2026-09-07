@@ -4,6 +4,7 @@
 use sqlx::SqlitePool;
 
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 #[tauri::command]
 pub async fn update_task_property(
@@ -11,10 +12,10 @@ pub async fn update_task_property(
     property: String,
     value: serde_json::Value,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     write_property(&short_id, &property, &value, &pool)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 /// Confirmation-bridge path for `task.property` (agent-initiated).
@@ -54,13 +55,13 @@ pub(crate) async fn write_property(
 pub async fn get_task_body_markdown(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     async {
         let (provider, key) = crate::provider::resolve(&pool, &short_id).await?;
         provider.body_markdown(&key).await
     }
     .await
-    .map_err(|e: anyhow::Error| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 /// Queue a body replacement from the UI through the confirmation bridge.
@@ -71,8 +72,8 @@ pub async fn request_task_body_update(
     force: bool,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    bridge
+) -> AppResult<String> {
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::TASK_BODY,
@@ -84,8 +85,7 @@ pub async fn request_task_body_update(
             "ui",
             Some(&short_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 /// Confirmation-bridge path for `task.body`.

@@ -23,6 +23,7 @@ import { TerminalConsole } from '../terminal/TerminalConsole';
 import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme';
 import { isMac } from '../shared/lib/platform';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from '../shared/ipc/ipc';
+import { errorText } from '../shared/lib/appError';
 
 /** Refreshes the review queue on startup and every ~5 min. */
 const REVIEW_POLL_MS = 5 * 60 * 1000;
@@ -66,7 +67,7 @@ export default function App() {
   const view = useStore((s) => s.view);
   const setConfig = useStore((s) => s.setConfig);
   const loadSkills = useStore((s) => s.loadSkills);
-  const setLastError = useStore((s) => s.setLastError);
+  const notify = useStore((s) => s.notify);
   const hydrateAgentActivity = useStore((s) => s.hydrateAgentActivity);
   const addRepoOpen = useStore((s) => s.addRepoOpen);
   const addWorktreeOpen = useStore((s) => s.addWorktreeOpen);
@@ -99,9 +100,9 @@ export default function App() {
       .catch((e) => {
         // An unreadable config goes to the setup screen, not a toast.
         setConfigured(false);
-        setLastError(`Failed to load config: ${String(e)}`);
+        notify({ kind: 'error', title: 'Could not load the config', detail: errorText(e) });
       });
-  }, [applyConfig, setLastError]);
+  }, [applyConfig, notify]);
 
   if (configured === null) return <div className="app app-booting" />;
   if (!configured) return <FirstRun onReady={applyConfig} />;

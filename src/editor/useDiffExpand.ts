@@ -55,7 +55,7 @@ export function useDiffExpand(opts: {
         const current = hunksRef.current;
         if (current) applyRef.current(mergeExpansion(current, gap, start, r.lines));
       } catch (e) {
-        setLastError(String(e));
+        setLastError(e);
       } finally {
         busy.current = false;
       }

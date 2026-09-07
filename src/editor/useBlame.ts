@@ -24,7 +24,7 @@ export function useBlame(opts: {
     inFlight.current = true;
     invoke<BlameLine[]>('blame_file', { worktreeId, filePath })
       .then((lines) => setBlame(key, lines))
-      .catch((e) => setLastError(String(e)))
+      .catch((e) => setLastError(e))
       .finally(() => { inFlight.current = false; });
   }, [blameOn, worktreeId, filePath, blame, key, setBlame, setLastError]);
 

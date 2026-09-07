@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
 import { SOURCES, SOURCE_IDS } from './index';
 import type { Config, Environment, ProviderId } from '../../shared/ipc/ipc';
+import { errorText } from '../../shared/lib/appError';
 
 /** Which sources are on and what they point at. */
 export function TaskSources({
@@ -22,7 +23,7 @@ export function TaskSources({
       await invoke('set_task_source', { provider, enabled, options });
       onChanged();
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(null);
     }

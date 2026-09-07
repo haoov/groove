@@ -32,7 +32,7 @@ export function CiChip({ status, url, platform, className, children }: {
     try {
       await sendSkill(sessionId, 'groove:fix-ci');
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 

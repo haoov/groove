@@ -49,6 +49,8 @@ export type {
   AgentActivity,
   Environment,
   ToolCheck,
+  AppError,
+  ErrorKind,
   DetectedSchema,
   GithubPreview,
   NotionUser,

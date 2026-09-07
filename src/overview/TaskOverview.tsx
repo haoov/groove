@@ -34,7 +34,7 @@ export function TaskOverview() {
     try {
       await sendSkill(sessionId, 'groove:close-task');
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setClosing(false);
     }
@@ -47,7 +47,7 @@ export function TaskOverview() {
     try {
       await sendSkill(sessionId, 'groove:start-task');
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setStarting(false);
     }
@@ -104,7 +104,7 @@ export function TaskOverview() {
     try {
       await invoke('delete_task', { shortId: activeTask.short_id });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
       setFinishing(false);
       setEnding(null);
     }

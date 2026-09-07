@@ -29,7 +29,7 @@ export function useWorkspaceData() {
     let stale = false;
     invoke<DiffResult>('get_task_diff_summary', { taskId: activeTask.short_id, mode: diffMode })
       .then((d) => { if (!stale) setDiff(d); })
-      .catch((e) => { if (!stale) setLastError(String(e)); });
+      .catch((e) => { if (!stale) setLastError(e); });
     return () => { stale = true; };
   }, [activeTask, diffMode, diffNonce, setDiff, setLastError]);
 
@@ -66,6 +66,6 @@ export function useWorkspaceData() {
     if (!activeTask) return;
     invoke<Annotation[]>('get_annotations', { sessionId: activeTask.short_id, repoId: null })
       .then(setAnnotations)
-      .catch((e) => setLastError(String(e)));
+      .catch((e) => setLastError(e));
   }, [activeTask, setAnnotations, setLastError]);
 }

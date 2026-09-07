@@ -1,5 +1,7 @@
 //! Desktop notifications.
 
+use crate::core::error::{AppError, AppResult};
+
 /// Quote and escape a string as one AppleScript literal.
 #[cfg(target_os = "macos")]
 fn applescript_string(s: &str) -> String {
@@ -9,11 +11,7 @@ fn applescript_string(s: &str) -> String {
 /// Send one desktop notification. `urgency` is accepted and ignored on macOS.
 #[cfg(target_os = "macos")]
 #[tauri::command]
-pub async fn notify_desktop(
-    title: String,
-    body: String,
-    urgency: Option<String>,
-) -> Result<(), String> {
+pub async fn notify_desktop(title: String, body: String, urgency: Option<String>) -> AppResult<()> {
     let _ = urgency;
 
     let script = format!(
@@ -26,27 +24,23 @@ pub async fn notify_desktop(
         .args(["-e", &script])
         .output()
         .await
-        .map_err(|e| format!("osascript: {e}"))?;
+        .map_err(|e| AppError::internal(format!("osascript: {e}")))?;
 
     if out.status.success() {
         Ok(())
     } else {
-        Err(format!(
+        Err(AppError::internal(format!(
             "osascript exited with {}: {}",
             out.status,
             String::from_utf8_lossy(&out.stderr).trim()
-        ))
+        )))
     }
 }
 
 /// Send one desktop notification. `urgency` is `low`, `normal` or `critical`.
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
-pub async fn notify_desktop(
-    title: String,
-    body: String,
-    urgency: Option<String>,
-) -> Result<(), String> {
+pub async fn notify_desktop(title: String, body: String, urgency: Option<String>) -> AppResult<()> {
     let urgency = match urgency.as_deref() {
         Some("low") => "low",
         Some("critical") => "critical",
@@ -57,16 +51,16 @@ pub async fn notify_desktop(
         .args(["-a", "Groove", "-u", urgency, &title, &body])
         .output()
         .await
-        .map_err(|e| format!("notify-send: {e} (install libnotify-bin)"))?;
+        .map_err(|e| AppError::internal(format!("notify-send: {e} (install libnotify-bin)")))?;
 
     if out.status.success() {
         Ok(())
     } else {
-        Err(format!(
+        Err(AppError::internal(format!(
             "notify-send exited with {}: {}",
             out.status,
             String::from_utf8_lossy(&out.stderr).trim()
-        ))
+        )))
     }
 }
 

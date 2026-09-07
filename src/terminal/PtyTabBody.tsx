@@ -4,6 +4,7 @@ import { RotateCcw } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
 import { fitAndSync, focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
+import { errorText } from '../shared/lib/appError';
 
 /**
  * Body of a terminal tab. Re-parents the xterm host element into its container; the
@@ -48,7 +49,7 @@ export function PtyTabBody({
       setTabPty(paneId, tab.id, sid);
       hadSessionRef.current = true;
     } catch (e) {
-      reportError(String(e));
+      reportError(errorText(e));
     } finally {
       setStarting(false);
     }

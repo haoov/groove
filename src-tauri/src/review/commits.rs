@@ -1,6 +1,7 @@
 use super::types::CommitEntry;
 use crate::core::db::models::Worktree;
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 
@@ -104,10 +105,10 @@ pub async fn get_commit_log(
     worktree_id: Option<String>,
     limit: Option<u32>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<CommitEntry>, String> {
+) -> AppResult<Vec<CommitEntry>> {
     get_commit_log_impl(&task_id, worktree_id.as_deref(), limit.unwrap_or(50), &pool)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))
 }
 
 pub async fn get_commit_log_mcp(

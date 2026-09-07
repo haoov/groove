@@ -55,7 +55,7 @@ export function SkillsSection() {
         setBody(text);
       }
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 
@@ -86,7 +86,7 @@ export function SkillsSection() {
       setSkillsStale(true);
       setEditing({ ...editing, previous: editing.name });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setSaving(false);
     }
@@ -101,7 +101,7 @@ export function SkillsSection() {
       setEditing(null);
       setReport(null);
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 

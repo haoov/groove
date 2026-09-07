@@ -88,7 +88,7 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
       }),
     updateSession: (id, patch) =>
       updateSessionState(id, typeof patch === 'function' ? patch : () => patch),
-    refreshStatusFor: (id) => doRefreshStatus(id),
+    refreshStatusFor: (id, onError) => doRefreshStatus(id, onError),
     invalidateDiff: (id) => updateSessionState(id, bumpDiffRecipe),
     invalidateMrs: (id) => updateSessionState(id, (s) => ({ mrNonce: s.mrNonce + 1 })),
   };
@@ -111,7 +111,7 @@ const statusInFlight = new Set<string>();
 const statusQueued = new Set<string>();
 
 /** Recomputes git status for a session's worktrees. */
-async function doRefreshStatus(id: string) {
+async function doRefreshStatus(id: string, onError?: (e: unknown) => void) {
   if (statusInFlight.has(id)) {
     statusQueued.add(id);
     return;
@@ -126,6 +126,7 @@ async function doRefreshStatus(id: string) {
     const next: Record<string, WorktreeStatus> = {};
     for (const r of entries) {
       if (r.status === 'fulfilled') next[r.value.worktree_id] = r.value;
+      else onError?.(r.reason);
     }
     updateSessionState(id, () => ({ worktreeStatus: next }));
   } finally {

@@ -133,7 +133,7 @@ export function useAnnotations(
       setAnnotationText('');
       setSel(null);
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       submittingRef.current = false;
     }
@@ -147,7 +147,7 @@ export function useAnnotations(
       await invoke('reply_to_thread', { mrId, threadId, body: body.trim() });
       setReplyTexts((prev) => { const n = { ...prev }; delete n[replyKey]; return n; });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       replyInFlight.current.delete(replyKey);
       setReplyPending((p) => { const n = { ...p }; delete n[replyKey]; return n; });
@@ -171,7 +171,7 @@ export function useAnnotations(
       bumpMrs();
       notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       postInFlight.current.delete(a.id);
       setPostPending((p) => { const n = { ...p }; delete n[a.id]; return n; });
@@ -199,7 +199,7 @@ export function useAnnotations(
       updateAnnotation(id, content);
       cancelEdit();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       editInFlight.current.delete(id);
       setEditPending((p) => { const n = { ...p }; delete n[id]; return n; });
@@ -214,7 +214,7 @@ export function useAnnotations(
       await invoke('resolve_annotation', { id });
       resolveAnnotation(id);
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       resolveInFlight.current.delete(id);
       setResolvePending((p) => { const n = { ...p }; delete n[id]; return n; });
@@ -229,7 +229,7 @@ export function useAnnotations(
       await invoke('delete_annotation', { id });
       removeAnnotation(id);
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       deleteInFlight.current.delete(id);
       setDeletePending((p) => { const n = { ...p }; delete n[id]; return n; });

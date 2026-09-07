@@ -113,7 +113,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
       await invoke('rename_explorer', { shortId: entry.short_id, name: next });
       refreshHome();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 
@@ -129,7 +129,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
       }
       refreshHome();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 

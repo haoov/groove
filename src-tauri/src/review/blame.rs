@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use super::types::BlameLine;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 /// Who last touched each line of a file, one entry per line in order.
 #[tauri::command]
@@ -8,18 +9,19 @@ pub async fn blame_file(
     worktree_id: String,
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<BlameLine>, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<Vec<BlameLine>> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let out = crate::core::git::output(&wt.path, &["blame", "--porcelain", "--", &file_path])
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     if !out.status.success() {
-        return Err(format!(
-            "git blame {file_path} failed: {}",
-            String::from_utf8_lossy(&out.stderr).trim()
+        return Err(AppError::new(
+            ErrorKind::Git,
+            format!(
+                "git blame {file_path} failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ),
         ));
     }
     Ok(parse_porcelain(&String::from_utf8_lossy(&out.stdout)))

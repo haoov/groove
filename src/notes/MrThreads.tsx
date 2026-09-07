@@ -5,6 +5,7 @@ import { Markdown } from '../shared/ui/Markdown';
 import type { Mr, MrThread } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { useSession } from '../shared/store';
+import { errorText } from '../shared/lib/appError';
 
 /** The MR's discussion: review threads with a resolve flow, plus read-only general comments. */
 export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThread[]; mr: Mr; onResolved: () => void }) {
@@ -48,7 +49,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
       await invoke('resolve_mr_thread', { mrId: mr.id, threadId });
       await onResolved();
     } catch (e) {
-      setResolveErrors((prev) => ({ ...prev, [id]: String(e) }));
+      setResolveErrors((prev) => ({ ...prev, [id]: errorText(e) }));
     } finally {
       setResolving((prev) => { const n = new Set(prev); n.delete(id); return n; });
       setConfirmingResolve((prev) => { const n = new Set(prev); n.delete(id); return n; });

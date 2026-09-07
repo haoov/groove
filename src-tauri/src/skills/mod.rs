@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
+
 use crate::core::db::models::{Session, SessionKind};
 
 /// Plugin names and agent-facing namespaces (`groove:start-task`). Renaming one breaks every button.
@@ -340,15 +342,21 @@ pub(crate) async fn save_user_skill_impl(
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn list_agent_skills(app: tauri::AppHandle) -> Result<Vec<AgentSkill>, String> {
+pub async fn list_agent_skills(app: tauri::AppHandle) -> AppResult<Vec<AgentSkill>> {
     Ok(list(&app))
 }
 
 /// The raw `SKILL.md` behind a skill id, core or user.
 #[tauri::command]
-pub async fn read_agent_skill(app: tauri::AppHandle, id: String) -> Result<String, String> {
-    let path = skill_path(&app, &id).map_err(|e| e.to_string())?;
-    std::fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {e}", path.display()))
+pub async fn read_agent_skill(app: tauri::AppHandle, id: String) -> AppResult<String> {
+    let path =
+        skill_path(&app, &id).map_err(|e| AppError::from(e).with_kind(ErrorKind::Invalid))?;
+    std::fs::read_to_string(&path).map_err(|e| {
+        AppError::new(
+            ErrorKind::Io,
+            format!("Cannot read {}: {e}", path.display()),
+        )
+    })
 }
 
 /// Create or replace a user skill from the Settings editor. Not bridged.
@@ -357,19 +365,24 @@ pub async fn save_user_skill(
     name: String,
     body: String,
     previous_name: Option<String>,
-) -> Result<Option<String>, String> {
-    let root = user_skills_dir().map_err(|e| e.to_string())?;
-    save_user_skill_at(&root, &name, &body, previous_name.as_deref()).map_err(|e| e.to_string())?;
+) -> AppResult<Option<String>> {
+    let root = user_skills_dir()?;
+    save_user_skill_at(&root, &name, &body, previous_name.as_deref())?;
     Ok(validate_user_plugin().await)
 }
 
 #[tauri::command]
-pub async fn delete_user_skill(name: String) -> Result<(), String> {
+pub async fn delete_user_skill(name: String) -> AppResult<()> {
     if !valid_name(&name) {
-        return Err(format!("not a skill name: {name}"));
+        return Err(AppError::invalid(format!("not a skill name: {name}")));
     }
-    let dir = user_skills_dir().map_err(|e| e.to_string())?.join(&name);
-    std::fs::remove_dir_all(&dir).map_err(|e| format!("Cannot delete {}: {e}", dir.display()))
+    let dir = user_skills_dir()?.join(&name);
+    std::fs::remove_dir_all(&dir).map_err(|e| {
+        AppError::new(
+            ErrorKind::Io,
+            format!("Cannot delete {}: {e}", dir.display()),
+        )
+    })
 }
 
 #[cfg(test)]

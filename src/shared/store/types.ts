@@ -109,8 +109,8 @@ export interface SessionsSlice {
   closeSession: (id: string) => void;
   /** Patches one session's state with an object patch or a recipe. */
   updateSession: (id: string, patch: Partial<SessionState> | ((s: SessionState) => Partial<SessionState>)) => void;
-  /** Recomputes a session's worktree git status. */
-  refreshStatusFor: (id: string) => Promise<void>;
+  /** Recomputes a session's worktree git status. Without `onError` a failed worktree is skipped silently. */
+  refreshStatusFor: (id: string, onError?: (e: unknown) => void) => Promise<void>;
   /** Bumps diffNonce and clears cached hunks. The current diff stays visible until the refetch lands. */
   invalidateDiff: (id: string) => void;
   /** Forces an MR + threads reload for a session. */
@@ -176,7 +176,8 @@ export interface ConfigSlice {
   // ── Status ────────────────────────────────────────────────────────────────
   syncStatus: 'idle' | 'syncing' | 'error';
   setSyncStatus: (s: 'idle' | 'syncing' | 'error') => void;
-  setLastError: (e: string | null) => void;
+  /** Takes a caught value as it comes: the message is extracted here. */
+  setLastError: (e: unknown) => void;
 }
 
 export interface SkillsSlice {

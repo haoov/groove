@@ -277,7 +277,7 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
     let stale = false;
     invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: tab.filePath, mode: diffMode })
       .then((h) => { if (!stale) setDiffHunks(key, h); })
-      .catch((e) => { if (!stale) setLastError(String(e)); });
+      .catch((e) => { if (!stale) setLastError(e); });
     return () => { stale = true; };
   }, [key, wt, hunks, diffMode, tab.filePath, setDiffHunks, setLastError]);
 

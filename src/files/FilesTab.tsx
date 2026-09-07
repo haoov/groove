@@ -141,7 +141,7 @@ export function FilesTab({
   const runFsOp = useCallback((cmd: string, args: Record<string, unknown>, okMsg: string, after?: () => void) => {
     invoke(cmd, args)
       .then(() => { loadFiles(); notify({ kind: 'success', source: 'files', title: okMsg }); after?.(); })
-      .catch((e) => setLastError(String(e)));
+      .catch((e) => setLastError(e));
   }, [loadFiles, notify, setLastError]);
 
   const onMenuAction = (a: MenuAction, node: TreeNode | null) => {
@@ -200,7 +200,7 @@ export function FilesTab({
   const copyPath = (text: string, done: string) => {
     invoke('copy_to_clipboard', { text })
       .then(() => notify({ kind: 'success', source: 'files', title: done, detail: text }))
-      .catch((e) => setLastError(String(e)));
+      .catch((e) => setLastError(e));
   };
 
   const doDelete = () => {

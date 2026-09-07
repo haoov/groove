@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 use tauri::Emitter;
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
 use crate::core::git;
 
 /// The fields every git-op confirmation carries. `repo` is the project name for
@@ -29,15 +30,13 @@ pub async fn commit(
     message: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let mut payload = op_payload(&pool, &wt).await;
     payload["message"] = serde_json::json!(message);
 
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_COMMIT,
@@ -45,24 +44,21 @@ pub async fn commit(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 // ─── Staging ──────────────────────────────────────────────────────────────────
 
-async fn worktree_path(worktree_id: &str, pool: &SqlitePool) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(pool, worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+async fn worktree_path(worktree_id: &str, pool: &SqlitePool) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(pool, worktree_id).await?;
     Ok(wt.path)
 }
 
-async fn run_git_in(path: &str, args: &[&str]) -> Result<(), String> {
+async fn run_git_in(path: &str, args: &[&str]) -> AppResult<()> {
     crate::core::git::run(path, args)
         .await
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))
 }
 
 #[tauri::command]
@@ -70,7 +66,7 @@ pub async fn stage_file(
     worktree_id: String,
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let path = worktree_path(&worktree_id, &pool).await?;
     run_git_in(&path, &["add", "--", &file_path]).await
 }
@@ -80,25 +76,19 @@ pub async fn unstage_file(
     worktree_id: String,
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let path = worktree_path(&worktree_id, &pool).await?;
     run_git_in(&path, &["restore", "--staged", "--", &file_path]).await
 }
 
 #[tauri::command]
-pub async fn stage_all(
-    worktree_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+pub async fn stage_all(worktree_id: String, pool: tauri::State<'_, SqlitePool>) -> AppResult<()> {
     let path = worktree_path(&worktree_id, &pool).await?;
     run_git_in(&path, &["add", "-A"]).await
 }
 
 #[tauri::command]
-pub async fn unstage_all(
-    worktree_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+pub async fn unstage_all(worktree_id: String, pool: tauri::State<'_, SqlitePool>) -> AppResult<()> {
     let path = worktree_path(&worktree_id, &pool).await?;
     run_git_in(&path, &["reset", "-q", "HEAD"]).await
 }
@@ -111,17 +101,15 @@ pub async fn discard_file(
     file_path: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let payload = serde_json::json!({
         "worktree_id": worktree_id,
         "worktree_path": wt.path,
         "file_path": file_path,
     });
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_DISCARD,
@@ -129,8 +117,7 @@ pub async fn discard_file(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
@@ -138,16 +125,14 @@ pub async fn discard_all(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let payload = serde_json::json!({
         "worktree_id": worktree_id,
         "worktree_path": wt.path,
     });
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_DISCARD_ALL,
@@ -155,8 +140,7 @@ pub async fn discard_all(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 /// Discard local changes to one file: an index path is restored from HEAD, an untracked file is deleted.
@@ -208,14 +192,12 @@ pub async fn push(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let payload = op_payload(&pool, &wt).await;
 
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_PUSH,
@@ -223,8 +205,7 @@ pub async fn push(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
@@ -232,14 +213,12 @@ pub async fn pull(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let payload = op_payload(&pool, &wt).await;
 
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_PULL,
@@ -247,8 +226,7 @@ pub async fn pull(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
@@ -257,16 +235,14 @@ pub async fn rebase_on_main(
     default_branch: Option<String>,
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
-) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<String> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let mut payload = op_payload(&pool, &wt).await;
     payload["default_branch"] =
         serde_json::json!(default_branch.unwrap_or_else(|| "main".to_string()));
 
-    bridge
+    Ok(bridge
         .post(
             &pool,
             crate::approvals::ops::GIT_REBASE,
@@ -274,8 +250,7 @@ pub async fn rebase_on_main(
             "ui",
             Some(&wt.session_id),
         )
-        .await
-        .map_err(|e| e.to_string())
+        .await?)
 }
 
 #[tauri::command]
@@ -283,10 +258,8 @@ pub async fn rebase_continue(
     app: tauri::AppHandle,
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     // `-c core.editor=true` stops `rebase --continue` from opening an editor.
     let output = crate::core::git::output(
@@ -294,22 +267,20 @@ pub async fn rebase_continue(
         &["-c", "core.editor=true", "rebase", "--continue"],
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     crate::core::git::cache::flush();
 
     if output.status.success() {
         app.emit(
             crate::core::events::REBASE_DONE,
             serde_json::json!({ "worktree_id": worktree_id }),
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
     } else {
         let conflicts = get_conflict_files(&wt.path).await;
         app.emit(
             crate::core::events::REBASE_CONFLICT,
             serde_json::json!({ "worktree_id": worktree_id, "files": conflicts }),
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
     }
 
     Ok(())
@@ -320,27 +291,27 @@ pub async fn rebase_abort(
     app: tauri::AppHandle,
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await?;
 
     let output = crate::core::git::output(&wt.path, &["rebase", "--abort"])
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))?;
     crate::core::git::cache::flush();
     if !output.status.success() {
-        return Err(format!(
-            "git rebase --abort failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
+        return Err(AppError::new(
+            ErrorKind::Git,
+            format!(
+                "git rebase --abort failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ),
         ));
     }
 
     app.emit(
         crate::core::events::REBASE_DONE,
         serde_json::json!({ "worktree_id": worktree_id, "aborted": true }),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
     Ok(())
 }

@@ -80,10 +80,8 @@ pub struct HomeEntry {
 pub async fn get_home_snapshot(
     force_mr: Option<bool>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<HomeEntry>, String> {
-    snapshot(force_mr.unwrap_or(false), &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> crate::core::error::AppResult<Vec<HomeEntry>> {
+    Ok(snapshot(force_mr.unwrap_or(false), &pool).await?)
 }
 
 async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeEntry>> {

@@ -7,6 +7,7 @@ use super::naming;
 use super::pool::session_dir;
 use crate::core::db::models::{Repo, Session, Worktree};
 use crate::core::db::store;
+use crate::core::error::AppResult;
 use crate::core::git;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -24,10 +25,8 @@ pub async fn provision_worktrees(
     task_id: String,
     branches: Vec<BranchSpec>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<Worktree>, String> {
-    provision_worktrees_impl(&task_id, &branches, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<Vec<Worktree>> {
+    Ok(provision_worktrees_impl(&task_id, &branches, &pool).await?)
 }
 
 /// The branch a new worktree gets when the caller names none.
@@ -54,10 +53,8 @@ async fn branch_tag_of(session_id: &str, pool: &SqlitePool) -> Option<String> {
 pub async fn default_branch_for_session(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
-    default_branch_for(&short_id, &pool)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<String> {
+    Ok(default_branch_for(&short_id, &pool).await?)
 }
 
 /// Provision one worktree per spec, concurrently.

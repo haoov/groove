@@ -3,6 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { HomeEntry, ReviewMr, Task } from '../../ipc/ipc';
 import type { AppState, HomeSlice } from '../types';
 import { sessionTitle } from '../session';
+import { errorText } from '../../lib/appError';
 
 // One refreshHome fetch at a time; callers landing mid-fetch fold into one trailing re-run.
 let homeInFlight = false;
@@ -20,7 +21,7 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
         kind: 'error',
         source: 'mr',
         title: 'Could not load the review queue',
-        detail: String(e),
+        detail: errorText(e),
       });
     }
   },
@@ -42,7 +43,7 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
         kind: 'error',
         source: 'app',
         title: 'Could not refresh Home',
-        detail: String(e),
+        detail: errorText(e),
       });
     } finally {
       homeInFlight = false;
@@ -65,7 +66,7 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
       setSyncStatus('idle');
     } catch (e) {
       setSyncStatus('error');
-      setLastError(String(e));
+      setLastError(e);
     }
   },
   setTasks: (tasks) => set({ tasks }),

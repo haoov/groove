@@ -30,7 +30,7 @@ export function ReviewOverview() {
     try {
       await sendSkill(sessionId, 'groove:co-review');
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 
@@ -41,7 +41,7 @@ export function ReviewOverview() {
       await endSession(sessionId);
       await invoke('discard_explorer', { shortId: activeTask.short_id });
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 

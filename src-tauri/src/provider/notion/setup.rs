@@ -1,6 +1,7 @@
 //! Notion's half of setup: the setup payload and the config built from it.
 
 use crate::core::config::{FilterConfig, NotionConfig};
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 #[derive(Debug, serde::Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
@@ -34,10 +35,15 @@ pub struct DetectedSchema {
 pub async fn detect_notion_database(
     token: String,
     database_id: String,
-) -> Result<DetectedSchema, String> {
+) -> AppResult<DetectedSchema> {
     let schema = super::schema::load(&token, database_id.trim())
         .await
-        .map_err(|e| format!("Cannot read that database: {e}"))?;
+        .map_err(|e| {
+            AppError::new(
+                ErrorKind::Provider,
+                format!("Cannot read that database: {e}"),
+            )
+        })?;
     let props = super::detect::detect_properties(&schema);
     let status = super::detect::detect_status_map(&schema);
     Ok(DetectedSchema {
@@ -61,16 +67,21 @@ pub async fn detect_notion_database(
 
 /// The Notion config from the setup payload. Reading the schema also checks
 /// that the integration can see the database.
-pub async fn build_config(n: &NotionSetup) -> Result<NotionConfig, String> {
+pub async fn build_config(n: &NotionSetup) -> AppResult<NotionConfig> {
     let token = n.token.trim();
     let database_id = n.database_id.trim();
     if token.is_empty() || database_id.is_empty() {
-        return Err("A Notion token and database id are both required.".into());
+        return Err(AppError::invalid(
+            "A Notion token and database id are both required.",
+        ));
     }
 
-    let schema = super::schema::load(token, database_id)
-        .await
-        .map_err(|e| format!("Notion rejected the database: {e}"))?;
+    let schema = super::schema::load(token, database_id).await.map_err(|e| {
+        AppError::new(
+            ErrorKind::Provider,
+            format!("Notion rejected the database: {e}"),
+        )
+    })?;
     let properties = super::detect::detect_properties(&schema);
     let status_map = super::detect::detect_status_map(&schema);
 
@@ -88,7 +99,12 @@ pub async fn build_config(n: &NotionSetup) -> Result<NotionConfig, String> {
     if let Some(id) = &template {
         super::body::template_markdown(id, token)
             .await
-            .map_err(|e| format!("That template page could not be read: {e}"))?;
+            .map_err(|e| {
+                AppError::new(
+                    ErrorKind::Provider,
+                    format!("That template page could not be read: {e}"),
+                )
+            })?;
     }
 
     let user_id = n.user_id.trim().to_string();

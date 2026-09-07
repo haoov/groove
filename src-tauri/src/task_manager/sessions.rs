@@ -7,6 +7,7 @@ use super::commands::{open_task_impl, Open};
 use super::State;
 use crate::core::db::models::{Repo, SessionKind};
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult};
 
 fn new_explorer_id() -> String {
     let uid = uuid::Uuid::new_v4().simple().to_string();
@@ -19,18 +20,14 @@ pub async fn open_explorer_session(
     name: Option<String>,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     let short_id = new_explorer_id();
     let title = name
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| format!("Explorer {}", &short_id["explorer-".len()..]));
 
-    let session = store::sessions::create_explorer(&*pool, &short_id, &title)
-        .await
-        .map_err(|e| e.to_string())?;
-    let task = store::sessions::view(&*pool, &session.id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let session = store::sessions::create_explorer(&*pool, &short_id, &title).await?;
+    let task = store::sessions::view(&*pool, &session.id).await?;
 
     task_state.set_active_task_id(Some(short_id.clone()));
 
@@ -42,8 +39,7 @@ pub async fn open_explorer_session(
             "repos": [],
             "kind": SessionKind::Explorer,
         }),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
     Ok(short_id)
 }
@@ -83,7 +79,7 @@ pub async fn open_review_session(
     local_path: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<String, String> {
+) -> AppResult<String> {
     // First open and resume run the same idempotent provisioning.
     let open = async {
         let session = store::sessions::upsert_review(
@@ -117,7 +113,7 @@ pub async fn open_review_session(
         open_task_impl(&app, &session.id, &task_state, &pool, Open::Focus).await?;
         anyhow::Ok(session.id)
     };
-    open.await.map_err(|e| e.to_string())
+    Ok(open.await?)
 }
 
 #[tauri::command]
@@ -125,10 +121,8 @@ pub async fn rename_explorer(
     short_id: String,
     name: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    store::sessions::rename_explorer(&*pool, &short_id, &name)
-        .await
-        .map_err(|e| e.to_string())
+) -> AppResult<()> {
+    Ok(store::sessions::rename_explorer(&*pool, &short_id, &name).await?)
 }
 
 /// Discard an explorer or review session: worktree directories, then the session row.
@@ -138,23 +132,19 @@ pub async fn discard_explorer(
     short_id: String,
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
-    let kind = store::sessions::kind_of(&*pool, &short_id)
-        .await
-        .map_err(|e| e.to_string())?;
+) -> AppResult<()> {
+    let kind = store::sessions::kind_of(&*pool, &short_id).await?;
     if !matches!(
         kind,
         Some(SessionKind::Explorer) | Some(SessionKind::Review)
     ) {
-        return Err(format!("{short_id} is not an explorer or review session"));
+        return Err(AppError::conflict(format!(
+            "{short_id} is not an explorer or review session"
+        )));
     }
 
-    crate::worktrees::cleanup_session_worktrees(&short_id, &pool)
-        .await
-        .map_err(|e| e.to_string())?;
-    store::sessions::remove(&*pool, &short_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    crate::worktrees::cleanup_session_worktrees(&short_id, &pool).await?;
+    store::sessions::remove(&*pool, &short_id).await?;
 
     if task_state.get_active_task_id().as_deref() == Some(short_id.as_str()) {
         task_state.set_active_task_id(None);
@@ -162,7 +152,6 @@ pub async fn discard_explorer(
     app.emit(
         crate::core::events::EXPLORER_DISCARDED,
         serde_json::json!({ "short_id": short_id }),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     Ok(())
 }

@@ -41,7 +41,7 @@ export function BodyEditor({
       setEditing(false);
       onSaved();
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     } finally {
       setSaving(false);
     }

@@ -5,6 +5,7 @@ import { DetectedPanel } from './DetectedPanel';
 import { looksLikeNotionId } from '../../shared/lib/notionUser';
 import type { DetectedSchema, NotionUser } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
+import { errorText } from '../../shared/lib/appError';
 
 /** The values only the user can supply: token, database, user, and an optional template page. */
 export function NotionSetupForm({ onChange }: SetupFormProps) {
@@ -45,7 +46,7 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
       setFound(await invoke<NotionUser>('find_notion_user', { token: token.trim(), email: who.trim() }));
     } catch (e) {
       setFound(null);
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(null);
     }
@@ -62,7 +63,7 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
       }));
     } catch (e) {
       setDetected(null);
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(null);
     }

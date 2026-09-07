@@ -70,7 +70,7 @@ export function AgentConsole() {
     if (starting) return Promise.resolve();
     setStarting(true);
     return ensureAgentSession(sessionKey)
-      .catch((e) => setLastError(String(e)))
+      .catch((e) => setLastError(e))
       .finally(() => setStarting(false));
   };
 
@@ -93,7 +93,7 @@ export function AgentConsole() {
 
   if (!visible || !activeTask) return null;
 
-  const report = (p: Promise<unknown>) => p.catch((e) => { setLastError(String(e)); throw e; });
+  const report = (p: Promise<unknown>) => p.catch((e) => { setLastError(e); throw e; });
 
   return (
     <>

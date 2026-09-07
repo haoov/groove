@@ -207,7 +207,7 @@ export function Home() {
       await invoke<string>('open_explorer_session', { name: name || null });
       setTab('live');
     } catch (e) {
-      setLastError(String(e));
+      setLastError(e);
     }
   };
 

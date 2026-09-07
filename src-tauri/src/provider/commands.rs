@@ -8,6 +8,7 @@ use super::types::{ProviderId, TaskDraft};
 use super::{enabled, get, mirror_row, resolve};
 use crate::core::db::models::TaskView;
 use crate::core::db::store;
+use crate::core::error::{AppError, AppResult, ErrorKind};
 
 /// The task's short id: the session id, worktree directory and branch segment.
 /// Minted once, never recomputed. A clash gets a numeric suffix.
@@ -75,7 +76,7 @@ pub(crate) fn segment(text: &str) -> String {
 }
 
 #[tauri::command]
-pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskView>, String> {
+pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> AppResult<Vec<TaskView>> {
     let mut out = Vec::new();
     let mut failed: Vec<String> = vec![];
 
@@ -98,29 +99,23 @@ pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskVi
         let mut rows = Vec::with_capacity(fetched.len());
         let mut minted = std::collections::HashSet::new();
         for task in &fetched {
-            let short_id = mint_short_id(&pool, provider, task, &mut minted)
-                .await
-                .map_err(|e| e.to_string())?;
+            let short_id = mint_short_id(&pool, provider, task, &mut minted).await?;
             rows.push(mirror_row(&short_id, task));
         }
 
         let keep: Vec<String> = rows.iter().map(|r| r.external_id.clone()).collect();
-        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-        store::provider_tasks::prune_missing(&mut *tx, provider.id().as_str(), &keep)
-            .await
-            .map_err(|e| e.to_string())?;
+        let mut tx = pool.begin().await?;
+        store::provider_tasks::prune_missing(&mut *tx, provider.id().as_str(), &keep).await?;
         for row in &rows {
-            store::provider_tasks::upsert(&mut *tx, row)
-                .await
-                .map_err(|e| e.to_string())?;
+            store::provider_tasks::upsert(&mut *tx, row).await?;
         }
-        tx.commit().await.map_err(|e| e.to_string())?;
+        tx.commit().await?;
 
         out.extend(rows.into_iter().map(Into::into));
     }
 
     if out.is_empty() && !failed.is_empty() {
-        return Err(failed.join("; "));
+        return Err(AppError::new(ErrorKind::Provider, failed.join("; ")));
     }
     Ok(out)
 }
@@ -129,26 +124,26 @@ pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskVi
 pub async fn sync_task(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskView, String> {
+) -> AppResult<TaskView> {
     async {
         let (provider, key) = resolve(&pool, &short_id).await?;
         let task = provider.fetch_task(&key).await?;
         let row = mirror_row(&short_id, &task);
         store::provider_tasks::upsert(&*pool, &row).await?;
-        Ok(row.into())
+        anyhow::Ok(row.into())
     }
     .await
-    .map_err(|e: anyhow::Error| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 #[tauri::command]
 pub async fn get_task_schema(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<TaskSchema, String> {
+) -> AppResult<TaskSchema> {
     schema_for(&pool, &short_id)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 /// Pool-taking forms for callers without Tauri state.
@@ -178,13 +173,13 @@ pub async fn relation_options_for(
 pub async fn get_task_properties(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<PropertyValue>, String> {
+) -> AppResult<Vec<PropertyValue>> {
     async {
         let (provider, key) = resolve(&pool, &short_id).await?;
         provider.properties(&key).await
     }
     .await
-    .map_err(|e: anyhow::Error| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 #[tauri::command]
@@ -192,13 +187,13 @@ pub async fn list_relation_options(
     short_id: String,
     property: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> Result<Vec<PropertyOption>, String> {
+) -> AppResult<Vec<PropertyOption>> {
     async {
         let (provider, key) = resolve(&pool, &short_id).await?;
         provider.reference_options(&key, &property).await
     }
     .await
-    .map_err(|e: anyhow::Error| e.to_string())
+    .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))
 }
 
 /// The source a draft is filed at. Defaults to the only configured provider.

@@ -3,6 +3,7 @@ import { Check, Loader2, Minus } from 'lucide-react';
 import { invoke } from '../../shared/ipc/invoke';
 import type { GithubPreview } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
+import { errorText } from '../../shared/lib/appError';
 
 /** Nothing to configure; the form previews what the GitHub source yields. */
 export function GithubSetupForm({ onChange, onNeedsScope }: SetupFormProps) {
@@ -14,7 +15,7 @@ export function GithubSetupForm({ onChange, onNeedsScope }: SetupFormProps) {
     invoke<GithubPreview>('preview_github', {})
       .then((p) => { setPreview(p); setError(null); })
       .catch((e) => {
-        const msg = String(e);
+        const msg = errorText(e);
         if (/required scopes|not logged|auth/i.test(msg)) onNeedsScope();
         setError(msg);
       });

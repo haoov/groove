@@ -11,17 +11,17 @@ pub fn expand_tilde(path: &str) -> String {
 }
 
 /// Join a worktree-relative path; rejects absolute paths and `..` segments.
-pub fn safe_join(worktree_path: &str, rel: &str) -> Result<std::path::PathBuf, String> {
+pub fn safe_join(worktree_path: &str, rel: &str) -> anyhow::Result<std::path::PathBuf> {
     let rel = rel.trim().trim_start_matches('/');
     if rel.is_empty() {
-        return Err("empty path".to_string());
+        anyhow::bail!("empty path");
     }
     let mut p = std::path::PathBuf::from(worktree_path);
     for comp in std::path::Path::new(rel).components() {
         match comp {
             std::path::Component::Normal(s) => p.push(s),
             std::path::Component::CurDir => {}
-            _ => return Err(format!("invalid path: {rel}")),
+            _ => anyhow::bail!("invalid path: {rel}"),
         }
     }
     Ok(p)

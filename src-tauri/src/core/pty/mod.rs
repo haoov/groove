@@ -10,6 +10,8 @@ use std::{
 
 use tauri::Emitter;
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
+
 /// Output batching window: a burst emits at most one event per window.
 const OUTPUT_WINDOW: Duration = Duration::from_millis(12);
 /// A batch this big goes out at once, window or not.
@@ -165,47 +167,45 @@ impl Ptys {
         Ok(session_id)
     }
 
-    pub async fn write(&self, session_id: &str, data: Vec<u8>) -> Result<(), String> {
+    pub async fn write(&self, session_id: &str, data: Vec<u8>) -> anyhow::Result<()> {
         let writer = self
             .entries
             .lock()
             .ok()
             .and_then(|map| map.get(session_id).map(|e| Arc::clone(&e.writer)))
-            .ok_or_else(|| format!("session {session_id} not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("session {session_id} not found"))?;
 
         // The write can block on a full PTY buffer; run it off the async runtime.
-        tokio::task::spawn_blocking(move || {
+        tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
             writer
                 .lock()
-                .map_err(|_| "writer lock poisoned".to_string())?
-                .write_all(&data)
-                .map_err(|e| e.to_string())
+                .map_err(|_| anyhow::anyhow!("writer lock poisoned"))?
+                .write_all(&data)?;
+            Ok(())
         })
-        .await
-        .map_err(|e| e.to_string())?
+        .await?
     }
 
-    pub fn resize(&self, session_id: &str, rows: u16, cols: u16) -> Result<(), String> {
+    pub fn resize(&self, session_id: &str, rows: u16, cols: u16) -> anyhow::Result<()> {
         let master = self
             .entries
             .lock()
             .ok()
             .and_then(|map| map.get(session_id).map(|e| Arc::clone(&e.master)))
-            .ok_or_else(|| format!("session {session_id} not found"))?;
-        let guard = master.lock().map_err(|_| "lock poisoned".to_string())?;
-        guard
-            .0
-            .resize(portable_pty::PtySize {
-                rows,
-                cols,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|e| e.to_string())
+            .ok_or_else(|| anyhow::anyhow!("session {session_id} not found"))?;
+        let guard = master
+            .lock()
+            .map_err(|_| anyhow::anyhow!("lock poisoned"))?;
+        guard.0.resize(portable_pty::PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
     }
 
     /// SIGTERM the child and drop the entry. The reader thread reaps the process and runs the exit hook.
-    pub fn kill(&self, app: &tauri::AppHandle, session_id: &str) -> Result<(), String> {
+    pub fn kill(&self, app: &tauri::AppHandle, session_id: &str) -> anyhow::Result<()> {
         if let Ok(mut map) = self.entries.lock() {
             if let Some(entry) = map.remove(session_id) {
                 if let Some(pid) = entry.pid {
@@ -216,8 +216,8 @@ impl Ptys {
         app.emit(
             crate::core::events::PTY_EXIT,
             serde_json::json!({ "session_id": session_id }),
-        )
-        .map_err(|e| e.to_string())
+        )?;
+        Ok(())
     }
 }
 
@@ -291,8 +291,9 @@ pub async fn stop_agent_session(
     app: tauri::AppHandle,
     session_id: String,
     ptys: tauri::State<'_, Ptys>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     ptys.kill(&app, &session_id)
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }
 
 #[tauri::command]
@@ -301,10 +302,12 @@ pub async fn write_pty(
     // Base64, not Vec<u8>; symmetric with pty_output.
     data_b64: String,
     ptys: tauri::State<'_, Ptys>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let data = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &data_b64)
-        .map_err(|e| format!("bad base64 pty payload: {e}"))?;
-    ptys.write(&session_id, data).await
+        .map_err(|e| AppError::invalid(format!("bad base64 pty payload: {e}")))?;
+    ptys.write(&session_id, data)
+        .await
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }
 
 #[tauri::command]
@@ -313,8 +316,9 @@ pub async fn resize_pty(
     rows: u16,
     cols: u16,
     ptys: tauri::State<'_, Ptys>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     ptys.resize(&session_id, rows, cols)
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Agent))
 }
 
 #[cfg(test)]

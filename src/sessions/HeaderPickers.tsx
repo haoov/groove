@@ -182,7 +182,7 @@ function RepoRows({
   // `force: true`: the confirm row is the guard for a dirty worktree.
   const closeRepo = async (worktreeId: string) => {
     try { await invoke('close_worktree', { worktreeId, force: true }); }
-    catch (e) { setLastError(String(e)); }
+    catch (e) { setLastError(e); }
     onClose();
   };
 
@@ -253,7 +253,7 @@ function WorktreeRows({
   // `force: true`: the confirm row is the guard for a dirty worktree.
   const closeWorktree = async (worktreeId: string) => {
     try { await invoke('close_worktree', { worktreeId, force: true }); }
-    catch (e) { setLastError(String(e)); }
+    catch (e) { setLastError(e); }
     onClose();
   };
 

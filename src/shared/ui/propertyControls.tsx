@@ -4,6 +4,7 @@ import { Check, ChevronDown, Loader2, Plus, Search, X } from 'lucide-react';
 import { statusKey } from '../lib/taskStatus';
 import { priorityRank } from '../lib/taskStatus';
 import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
+import { errorText } from '../lib/appError';
 
 /**
  * The property controls: pills, chip rows, popovers.
@@ -197,7 +198,7 @@ export function MultiRow({
     if (options || prop.kind !== 'relation' || !prop.relation_db) return;
     invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
       .then(setOptions)
-      .catch((e) => onError(String(e)));
+      .catch((e) => onError(errorText(e)));
   }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
 
   /** One write per burst, not one per tick. */
@@ -282,7 +283,7 @@ export function PropField({
   useEffect(() => {
     if (!open || options || prop.kind !== 'relation' || !prop.relation_db) return;
     invoke<PropertyOption[]>('list_relation_options', { shortId, property: prop.name })
-      .then(setOptions).catch((e) => onError(String(e)));
+      .then(setOptions).catch((e) => onError(errorText(e)));
   }, [open, options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
   const stageMulti = (ids: string[]) => {
     setDraft(ids);

@@ -4,6 +4,7 @@ import { Search, GitBranch } from 'lucide-react';
 import type { Repo, MainRepo } from '../shared/ipc/ipc';
 import { Highlighted } from '../shared/lib/match';
 import { Combobox } from '../shared/ui/Combobox';
+import { errorText } from '../shared/lib/appError';
 
 /**
  * Shared repo selection for the task wizard and the add-repo modal. The pool is
@@ -22,7 +23,7 @@ export function useRepoPicker(opts?: {
   const loadRepos = useCallback(() => {
     invoke<MainRepo[]>('list_main_repos')
       .then(setMainRepos)
-      .catch((e) => opts?.onError?.(String(e)));
+      .catch((e) => opts?.onError?.(errorText(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -50,7 +51,7 @@ export function useRepoPicker(opts?: {
         setSelectedRepos((p) => (p.some((r) => r.local_path === repo.local_path) ? p : [...p, repo]));
         opts?.onSelect?.(repo);
       } catch (e) {
-        opts?.onError?.(`Could not register ${mr.slug}: ${e}`);
+        opts?.onError?.(`Could not register ${mr.slug}: ${errorText(e)}`);
       } finally {
         setPending((p) => { const n = new Set(p); n.delete(mr.local_path); return n; });
       }
@@ -127,7 +128,7 @@ export function CloneRepoForm({ onCloned }: { onCloned: (repo: MainRepo) => void
       setUrl('');
       setShowForm(false);
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setCloning(false);
     }

@@ -1,11 +1,12 @@
 import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import { applyTheme, applyFontSize, applyFontFamily } from '../../lib/theme';
+import { errorText } from '../../lib/appError';
 import type { AppState, ConfigSlice } from '../types';
 
 /** A config write is fire-and-forget: a failure only shows in the feed. */
 const fail = (get: () => AppState, title: string) => (e: unknown) =>
-  get().notify({ kind: 'error', title, detail: String(e) });
+  get().notify({ kind: 'error', title, detail: errorText(e) });
 
 export const configSlice: StateCreator<AppState, [], [], ConfigSlice> = (set, get) => ({
   config: null,
@@ -41,6 +42,8 @@ export const configSlice: StateCreator<AppState, [], [], ConfigSlice> = (set, ge
   setSyncStatus: (s) => set({ syncStatus: s }),
   setLastError: (e) => {
     // Every error lands in the feed. Call sites that know more should `notify` directly.
-    if (e) get().notify({ kind: 'error', title: e });
+    if (e === null || e === undefined) return;
+    const title = errorText(e);
+    if (title) get().notify({ kind: 'error', title });
   },
 });

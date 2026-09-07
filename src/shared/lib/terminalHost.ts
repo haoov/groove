@@ -5,6 +5,7 @@ import { invoke } from '../ipc/invoke';
 import { useStore } from '../store';
 import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
 import { registerPtyHandler, unregisterPtyHandler, bytesToB64 } from './ptyRegistry';
+import { errorText } from './appError';
 import '@xterm/xterm/css/xterm.css';
 
 /** A terminal that lives for the PTY session, outside React.
@@ -77,14 +78,14 @@ function attachClipboard(term: Terminal) {
       if (!selection) return true;
       // Returning false stops xterm only; preventDefault stops the webview's native copy.
       e.preventDefault();
-      copyText(selection).catch((err) => useStore.getState().setLastError(String(err)));
+      copyText(selection).catch((err) => useStore.getState().setLastError(err));
       return false;
     }
     if (e.code === 'KeyV') {
       e.preventDefault();
       invoke<string>('read_clipboard')
         .then((text) => { if (text) term.paste(text); })
-        .catch((err) => useStore.getState().setLastError(String(err)));
+        .catch((err) => useStore.getState().setLastError(err));
       return false;
     }
     return true;
@@ -109,7 +110,7 @@ function attachClipboard(term: Terminal) {
         // Report once per session.
         if (reported) return;
         reported = true;
-        useStore.getState().setLastError(`Clipboard: ${String(err)}`);
+        useStore.getState().setLastError(`Clipboard: ${errorText(err)}`);
       });
     }, SELECTION_COPY_MS);
   });

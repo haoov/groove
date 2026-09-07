@@ -4,6 +4,7 @@ import { useSession, useStore } from '../shared/store';
 import { useRepoPicker, RepoPickerSearch, CloneRepoForm } from './repoPicker';
 import { BranchPicker, useOriginBranches } from './branchPicker';
 import type { Repo } from '../shared/ipc/ipc';
+import { errorText } from '../shared/lib/appError';
 
 /** One repo's row: the branch to create, and the base it cuts from. */
 function RepoBranchRow({
@@ -143,12 +144,12 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
           source: 'app',
           taskId: shortId,
           title: 'Repo added, but the workspace did not refresh',
-          detail: `Reopen the session to see it. ${String(e)}`,
+          detail: `Reopen the session to see it. ${errorText(e)}`,
         });
       }
       onClose();
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setLoading(false);
     }

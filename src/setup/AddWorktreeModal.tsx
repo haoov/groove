@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 import { BranchPicker, useOriginBranches } from './branchPicker';
+import { errorText } from '../shared/lib/appError';
 
 /**
  * A second worktree on a repo the session already holds. The branch field is seeded
@@ -77,12 +78,12 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
           source: 'app',
           taskId: activeTask.short_id,
           title: 'Worktree added, but the workspace did not refresh',
-          detail: `Reopen the session to see it. ${String(e)}`,
+          detail: `Reopen the session to see it. ${errorText(e)}`,
         });
       }
       onClose();
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e));
     } finally {
       setBusy(false);
     }

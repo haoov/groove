@@ -49,7 +49,7 @@ export function TerminalConsole() {
     // No worktree: the backend uses the worktree root as cwd.
     invoke<string>('start_terminal_session', { taskId: SCRATCH_TASK_ID, worktreePath: null })
       .then((id) => { scratchPty = id; setPty(id); })
-      .catch((e) => setLastError(String(e)))
+      .catch((e) => setLastError(e))
       .finally(() => setStarting(false));
   };
 

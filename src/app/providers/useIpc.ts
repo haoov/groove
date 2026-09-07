@@ -192,7 +192,7 @@ export function useIpc() {
                   goTo: { taskId: payload.session_id ?? undefined },
                 });
               })
-              .catch((e) => useStore.getState().setLastError(String(e)));
+              .catch((e) => useStore.getState().setLastError(e));
             return;
           }
 
@@ -219,7 +219,7 @@ export function useIpc() {
           const chainedPushWt = payload.op_type === OP.GIT_COMMIT ? takeCommitPush(payload.id) : undefined;
           if (!payload.approved) return;
           if (chainedPushWt && !payload.error) {
-            invoke('push', { worktreeId: chainedPushWt }).catch((e) => s.setLastError(String(e)));
+            invoke('push', { worktreeId: chainedPushWt }).catch((e) => s.setLastError(e));
           }
 
           // Approved but failed: surface the error, then refresh.

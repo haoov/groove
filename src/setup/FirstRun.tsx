@@ -9,6 +9,7 @@ import { forgeCliState } from '../shared/lib/forge';
 import {
   DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type ProviderId,
 } from '../shared/ipc/ipc';
+import { errorText } from '../shared/lib/appError';
 
 /** First-run setup: the dependency list, and the values only the user can supply. */
 
@@ -25,7 +26,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const loadEnv = () => {
-    invoke<Environment>('check_environment').then(setEnv).catch((e) => setError(String(e)));
+    invoke<Environment>('check_environment').then(setEnv).catch((e) => setError(errorText(e)));
   };
   useEffect(loadEnv, []);
 
@@ -47,8 +48,8 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
       applyTheme(cfg.ui?.theme ?? DEFAULT_THEME);
       onReady(cfg);
     } catch (e) {
-      setError(String(e));
-      setLastError(String(e));
+      setError(errorText(e));
+      setLastError(e);
     } finally {
       setBusy(null);
     }

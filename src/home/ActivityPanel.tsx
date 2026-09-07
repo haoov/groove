@@ -32,7 +32,7 @@ export function ActivityPanel() {
   const setLastError = useStore((s) => s.setLastError);
 
   useEffect(() => {
-    invoke<ActivityDay[]>('get_activity_days').then(setDays).catch((e) => setLastError(String(e)));
+    invoke<ActivityDay[]>('get_activity_days').then(setDays).catch((e) => setLastError(e));
   }, [setLastError]);
 
   const { cells, activeDays, streak, totalSeconds } = useMemo(() => {

@@ -2,6 +2,8 @@
 
 use serde::Serialize;
 
+use crate::core::error::{AppError, AppResult, ErrorKind};
+
 #[derive(Debug, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct NotionUser {
@@ -15,15 +17,15 @@ const MAX_USER_PAGES: usize = 30;
 /// The workspace person with this email. Needs the integration's
 /// "user information with email" capability, else every email is null.
 #[tauri::command]
-pub async fn find_notion_user(token: String, email: String) -> Result<NotionUser, String> {
+pub async fn find_notion_user(token: String, email: String) -> AppResult<NotionUser> {
     let wanted = email.trim().to_lowercase();
     if wanted.is_empty() {
-        return Err("An email is required.".into());
+        return Err(AppError::invalid("An email is required."));
     }
 
     let users = super::api::paginate_get(&token, "v1/users", MAX_USER_PAGES)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| AppError::from(e).with_kind(ErrorKind::Provider))?;
 
     users
         .iter()
@@ -39,9 +41,9 @@ pub async fn find_notion_user(token: String, email: String) -> Result<NotionUser
             email: u["person"]["email"].as_str().map(str::to_string),
         })
         .ok_or_else(|| {
-            format!(
+            AppError::not_found(format!(
                 "No Notion user with email {email} — check the address, and that the \
                  integration has the \"user information with email\" capability enabled."
-            )
+            ))
         })
 }
