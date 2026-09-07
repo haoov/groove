@@ -5,7 +5,9 @@ use reqwest::Method;
 
 use crate::core::db::models::Repo;
 
-use super::client::PlatformClient;
+use super::client::{
+    CiStatus, MrApproval, MrDetails, MrNote, MrThread, NotePosition, PlatformClient,
+};
 use crate::core::forge::api;
 
 /// GitHub's `owner`: the last segment of the group path.
@@ -90,8 +92,8 @@ fn rollup_status(rollup: &serde_json::Value) -> Option<(String, String)> {
     Some((status.to_string(), url))
 }
 
-/// GraphQL review threads → the `[{ id, notes: [...] }]` shape the UI reads.
-fn threads_from_graphql(pr: &serde_json::Value) -> serde_json::Value {
+/// GraphQL review threads and conversation comments → the UI's threads.
+fn threads_from_graphql(pr: &serde_json::Value) -> Vec<MrThread> {
     let mut threads = vec![];
     for t in pr["reviewThreads"]["nodes"]
         .as_array()
@@ -102,36 +104,36 @@ fn threads_from_graphql(pr: &serde_json::Value) -> serde_json::Value {
         // The UI anchors new-side lines only; a LEFT-side note keeps no position.
         let on_new_side = t["diffSide"].as_str().unwrap_or("RIGHT") == "RIGHT";
         let path = t["path"].as_str().unwrap_or("").to_string();
-        let notes: Vec<serde_json::Value> = t["comments"]["nodes"]
+        let notes: Vec<MrNote> = t["comments"]["nodes"]
             .as_array()
             .cloned()
             .unwrap_or_default()
             .iter()
             .map(|c| {
                 let line = c["line"].as_i64().or(c["originalLine"].as_i64());
-                let mut note = serde_json::json!({
-                    "id": c["databaseId"],
-                    "body": c["body"].as_str().unwrap_or(""),
-                    "author": { "username": c["author"]["login"].as_str().unwrap_or("") },
-                    "created_at": c["createdAt"].as_str().unwrap_or(""),
-                    "resolved": resolved,
-                    "resolvable": true,
-                });
-                if on_new_side {
-                    if let Some(line) = line {
-                        note["position"] = serde_json::json!({
-                            "new_path": path,
-                            "new_line": line,
-                        });
-                    }
+                MrNote {
+                    author: c["author"]["login"].as_str().unwrap_or("").to_string(),
+                    body: c["body"].as_str().unwrap_or("").to_string(),
+                    created_at: c["createdAt"].as_str().unwrap_or("").to_string(),
+                    resolved,
+                    resolvable: true,
+                    position: line.filter(|_| on_new_side).map(|line| NotePosition {
+                        new_path: Some(path.clone()),
+                        new_line: Some(line),
+                        old_path: None,
+                        old_line: None,
+                        end_new_line: None,
+                    }),
                 }
-                note
             })
             .collect();
         if notes.is_empty() {
             continue;
         }
-        threads.push(serde_json::json!({ "id": t["id"], "notes": notes }));
+        threads.push(MrThread {
+            id: t["id"].as_str().unwrap_or("").to_string(),
+            notes,
+        });
     }
 
     // Conversation comments: no position, not resolvable.
@@ -140,19 +142,19 @@ fn threads_from_graphql(pr: &serde_json::Value) -> serde_json::Value {
         .cloned()
         .unwrap_or_default()
     {
-        threads.push(serde_json::json!({
-            "id": c["databaseId"].to_string(),
-            "notes": [{
-                "id": c["databaseId"],
-                "body": c["body"].as_str().unwrap_or(""),
-                "author": { "username": c["author"]["login"].as_str().unwrap_or("") },
-                "created_at": c["createdAt"].as_str().unwrap_or(""),
-                "resolved": true,
-                "resolvable": false,
+        threads.push(MrThread {
+            id: c["databaseId"].to_string(),
+            notes: vec![MrNote {
+                author: c["author"]["login"].as_str().unwrap_or("").to_string(),
+                body: c["body"].as_str().unwrap_or("").to_string(),
+                created_at: c["createdAt"].as_str().unwrap_or("").to_string(),
+                resolved: true,
+                resolvable: false,
+                position: None,
             }],
-        }));
+        });
     }
-    serde_json::Value::Array(threads)
+    threads
 }
 
 pub(super) struct GhClient;
@@ -241,11 +243,7 @@ impl PlatformClient for GhClient {
         Ok(())
     }
 
-    async fn get_mr_details(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_details(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<MrDetails> {
         let v = api::github(&repo.host, Method::GET, &pr_path(repo, remote_id), None).await?;
         // REST has no "merged" state; it is "closed" with a merged flag.
         let state = if v["merged"].as_bool() == Some(true) {
@@ -253,20 +251,21 @@ impl PlatformClient for GhClient {
         } else {
             v["state"].as_str().unwrap_or("open").to_lowercase()
         };
-        Ok(serde_json::json!({
-            "title": v["title"].as_str().unwrap_or(""),
-            "description": v["body"].as_str().unwrap_or(""),
-            "author": v["user"]["login"].as_str().unwrap_or(""),
-            "source_branch": v["head"]["ref"].as_str().unwrap_or(""),
-            "target_branch": v["base"]["ref"].as_str().unwrap_or(""),
-            "state": state,
-            "draft": v["draft"].as_bool().unwrap_or(false),
-            "created_at": v["created_at"].as_str().unwrap_or(""),
-            "web_url": v["html_url"].as_str().unwrap_or(""),
-        }))
+        Ok(MrDetails {
+            title: v["title"].as_str().unwrap_or("").to_string(),
+            description: v["body"].as_str().unwrap_or("").to_string(),
+            author: v["user"]["login"].as_str().unwrap_or("").to_string(),
+            source_branch: v["head"]["ref"].as_str().unwrap_or("").to_string(),
+            target_branch: v["base"]["ref"].as_str().unwrap_or("").to_string(),
+            state,
+            draft: v["draft"].as_bool().unwrap_or(false),
+            created_at: v["created_at"].as_str().unwrap_or("").to_string(),
+            web_url: v["html_url"].as_str().unwrap_or("").to_string(),
+            approval: None,
+        })
     }
 
-    async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<Option<CiStatus>> {
         const QUERY: &str = r#"
 query($owner:String!, $name:String!, $number:Int!) {
   repository(owner:$owner, name:$name) {
@@ -285,20 +284,19 @@ query($owner:String!, $name:String!, $number:Int!) {
         let contexts =
             &pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["contexts"]["nodes"];
         let Some((status, url)) = rollup_status(contexts) else {
-            return Ok(serde_json::Value::Null);
+            return Ok(None);
         };
-        Ok(serde_json::json!({
-            "status": status,
-            "url": if url.is_empty() { pr["url"].as_str().unwrap_or("") } else { &url },
+        Ok(Some(CiStatus {
+            url: if url.is_empty() {
+                pr["url"].as_str().unwrap_or("").to_string()
+            } else {
+                url
+            },
+            status,
         }))
     }
 
-    /// Review threads, in the shape the UI reads (`[{ id, notes: [...] }]`).
-    async fn get_mr_threads(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_threads(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<Vec<MrThread>> {
         const QUERY: &str = r#"
 query($owner:String!, $name:String!, $number:Int!) {
   repository(owner:$owner, name:$name) {
@@ -380,11 +378,7 @@ mutation($threadId:ID!) {
         Ok(())
     }
 
-    async fn get_mr_approval(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_approval(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<MrApproval> {
         const QUERY: &str = r#"
 query($owner:String!, $name:String!, $number:Int!) {
   repository(owner:$owner, name:$name) {
@@ -420,11 +414,11 @@ query($owner:String!, $name:String!, $number:Int!) {
             .map(|(l, _)| l.clone())
             .collect();
         let me = gh_login(&repo.host).await;
-        Ok(serde_json::json!({
-            "approved": pr["reviewDecision"].as_str() == Some("APPROVED") || !by.is_empty(),
-            "approved_by_me": me.map(|m| by.contains(&m)).unwrap_or(false),
-            "approved_by": by,
-        }))
+        Ok(MrApproval {
+            approved: pr["reviewDecision"].as_str() == Some("APPROVED") || !by.is_empty(),
+            approved_by_me: me.map(|m| by.contains(&m)).unwrap_or(false),
+            approved_by: by,
+        })
     }
 
     async fn post_mr_comment(
@@ -594,49 +588,58 @@ mod tests {
       ] }
     }"#;
 
-    fn threads() -> serde_json::Value {
+    fn threads() -> Vec<MrThread> {
         threads_from_graphql(&serde_json::from_str(THREADS).unwrap())
     }
 
     #[test]
     fn every_thread_and_the_conversation_become_rows() {
-        let out = threads();
-        assert_eq!(out.as_array().unwrap().len(), 3);
+        assert_eq!(threads().len(), 3);
     }
 
     #[test]
     fn a_thread_keeps_its_node_id() {
         let out = threads();
-        assert_eq!(out[0]["id"], "PRRT_kwDODKw3uc48Rk4m");
-        assert_eq!(out[1]["id"], "PRRT_kwDODKw3uc48RxjH");
+        assert_eq!(out[0].id, "PRRT_kwDODKw3uc48Rk4m");
+        assert_eq!(out[1].id, "PRRT_kwDODKw3uc48RxjH");
     }
 
     #[test]
     fn a_note_carries_its_author_and_new_side_position() {
         let out = threads();
-        let note = &out[0]["notes"][0];
-        assert_eq!(note["author"]["username"], "williammartin");
+        let note = &out[0].notes[0];
+        assert_eq!(note.author, "williammartin");
+        let pos = note.position.as_ref().unwrap();
         assert_eq!(
-            note["position"]["new_path"],
-            "pkg/cmd/attestation/verify/verify.go"
+            pos.new_path.as_deref(),
+            Some("pkg/cmd/attestation/verify/verify.go")
         );
-        assert_eq!(note["position"]["new_line"], 130);
-        assert_eq!(note["resolved"], true);
-        assert_eq!(note["resolvable"], true);
+        assert_eq!(pos.new_line, Some(130));
+        assert!(note.resolved);
+        assert!(note.resolvable);
+    }
+
+    #[test]
+    fn github_notes_carry_no_old_side_and_no_range() {
+        let out = threads();
+        let pos = out[0].notes[0].position.as_ref().unwrap();
+        assert_eq!(pos.old_path, None);
+        assert_eq!(pos.old_line, None);
+        assert_eq!(pos.end_new_line, None);
     }
 
     #[test]
     fn an_open_thread_reads_as_unresolved() {
-        assert_eq!(threads()[1]["notes"][0]["resolved"], false);
+        assert!(!threads()[1].notes[0].resolved);
     }
 
     #[test]
     fn a_conversation_comment_has_no_position_and_no_resolve() {
         let out = threads();
-        let note = &out[2]["notes"][0];
-        assert!(note["position"].is_null());
-        assert_eq!(note["resolvable"], false);
-        assert_eq!(note["author"]["username"], "andyfeller");
+        let note = &out[2].notes[0];
+        assert!(note.position.is_none());
+        assert!(!note.resolvable);
+        assert_eq!(note.author, "andyfeller");
     }
 
     #[test]
@@ -651,23 +654,17 @@ mod tests {
           "comments": { "nodes": [] }
         });
         let out = threads_from_graphql(&raw);
-        assert_eq!(out[0]["notes"][0]["body"], "b");
-        assert!(out[0]["notes"][0]["position"].is_null());
+        assert_eq!(out[0].notes[0].body, "b");
+        assert!(out[0].notes[0].position.is_none());
     }
 
     #[test]
     fn an_empty_pull_request_yields_no_threads() {
         let raw =
             serde_json::json!({ "reviewThreads": { "nodes": [] }, "comments": { "nodes": [] } });
-        assert_eq!(threads_from_graphql(&raw).as_array().unwrap().len(), 0);
+        assert!(threads_from_graphql(&raw).is_empty());
         // A payload with no keys must not panic.
-        assert_eq!(
-            threads_from_graphql(&serde_json::json!({}))
-                .as_array()
-                .unwrap()
-                .len(),
-            0
-        );
+        assert!(threads_from_graphql(&serde_json::json!({})).is_empty());
     }
 
     #[test]

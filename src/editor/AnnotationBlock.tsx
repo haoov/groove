@@ -151,18 +151,18 @@ export function AnnotationBlock({
         <AnnotationRow key={a.id} a={a} ann={ann} mr={mr} />
       ))}
       {lineThreads.map((d, i) => {
-        const first = d.notes?.[0];
+        const first = d.notes[0];
         const resolved = first?.resolved === true;
         const replyKey = `${repoId}/${filePath}/${lineNum}/${i}`;
-        const noteCount = d.notes?.length ?? 0;
+        const noteCount = d.notes.length;
         const replyPending = ann.replyPending[replyKey] ?? false;
         return (
-          <div key={d.id ?? i}>
+          <div key={d.id || i}>
             <div className={`diff-inline-thread ${resolved ? 'resolved' : ''}`}>
               <span className="diff-inline-author"
                 style={{ color: resolved ? 'var(--gl-text-color-disabled)' : 'var(--gl-color-orange-400)' }}
               >
-                ● {first?.author?.username ?? '?'}
+                ● {first?.author || '?'}
               </span>
               <span className="diff-inline-content">{first?.body}</span>
               {noteCount > 1 && (
@@ -179,14 +179,14 @@ export function AnnotationBlock({
                   onChange={(e) => ann.setReplyTexts((prev) => ({ ...prev, [replyKey]: e.target.value }))}
                   onKeyDown={(e) => {
                     if (replyPending) return;
-                    if (e.key === 'Enter') ann.submitReply(mr.id, d.id!, ann.replyTexts[replyKey] ?? '', replyKey);
+                    if (e.key === 'Enter') ann.submitReply(mr.id, d.id, ann.replyTexts[replyKey] ?? '', replyKey);
                     if (e.key === 'Escape') ann.cancel();
                   }}
                 />
                 {(ann.replyTexts[replyKey] ?? '').trim() && (
                   <button className="diff-inline-reply-send btn-secondary"
                     disabled={replyPending}
-                    onClick={() => ann.submitReply(mr.id, d.id!, ann.replyTexts[replyKey] ?? '', replyKey)}
+                    onClick={() => ann.submitReply(mr.id, d.id, ann.replyTexts[replyKey] ?? '', replyKey)}
                   >
                     Send
                   </button>

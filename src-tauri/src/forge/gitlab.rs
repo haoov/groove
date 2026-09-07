@@ -6,7 +6,9 @@ use sqlx::SqlitePool;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
 
-use super::client::PlatformClient;
+use super::client::{
+    CiStatus, MrApproval, MrDetails, MrNote, MrThread, NotePosition, PlatformClient,
+};
 use crate::core::forge::api::{self, gitlab_project_ref, pct};
 
 fn project_ref(repo: &Repo) -> String {
@@ -68,28 +70,56 @@ pub(super) async fn mr_approved(host: &str, project_full: &str, iid: u64) -> boo
         .unwrap_or(false)
 }
 
-/// Discussions → the UI's `[{ id, notes: [...] }]`; system notes are dropped.
-fn threads_from_discussions(discussions: &serde_json::Value) -> serde_json::Value {
-    let threads: Vec<serde_json::Value> = discussions
+/// A note's `position` object → where it is anchored.
+fn position_from_note(pos: &serde_json::Value) -> Option<NotePosition> {
+    if !pos.is_object() {
+        return None;
+    }
+    Some(NotePosition {
+        new_path: pos["new_path"].as_str().map(str::to_string),
+        new_line: pos["new_line"].as_i64(),
+        old_path: pos["old_path"].as_str().map(str::to_string),
+        old_line: pos["old_line"].as_i64(),
+        end_new_line: pos["line_range"]["end"]["new_line"].as_i64(),
+    })
+}
+
+/// Discussions → the UI's threads; system notes are dropped.
+fn threads_from_discussions(discussions: &serde_json::Value) -> Vec<MrThread> {
+    discussions
         .as_array()
         .cloned()
         .unwrap_or_default()
         .iter()
         .filter_map(|d| {
-            let notes: Vec<serde_json::Value> = d["notes"]
+            let notes: Vec<MrNote> = d["notes"]
                 .as_array()
                 .cloned()
                 .unwrap_or_default()
-                .into_iter()
+                .iter()
                 .filter(|n| n["system"].as_bool() != Some(true))
+                .map(|n| MrNote {
+                    author: n["author"]["username"]
+                        .as_str()
+                        .or(n["author"]["name"].as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    body: n["body"].as_str().unwrap_or("").to_string(),
+                    created_at: n["created_at"].as_str().unwrap_or("").to_string(),
+                    resolved: n["resolved"].as_bool().unwrap_or(false),
+                    resolvable: n["resolvable"].as_bool().unwrap_or(false),
+                    position: position_from_note(&n["position"]),
+                })
                 .collect();
             if notes.is_empty() {
                 return None;
             }
-            Some(serde_json::json!({ "id": d["id"], "notes": notes }))
+            Some(MrThread {
+                id: d["id"].as_str().unwrap_or("").to_string(),
+                notes,
+            })
         })
-        .collect();
-    serde_json::Value::Array(threads)
+        .collect()
 }
 
 pub(super) struct GlabClient;
@@ -172,11 +202,7 @@ impl PlatformClient for GlabClient {
         Ok(())
     }
 
-    async fn get_mr_threads(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_threads(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<Vec<MrThread>> {
         let v = api::gitlab(
             &repo.host,
             Method::GET,
@@ -187,7 +213,7 @@ impl PlatformClient for GlabClient {
         Ok(threads_from_discussions(&v))
     }
 
-    async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<Option<CiStatus>> {
         let v = mr_json(repo, remote_id).await?;
         let p = if v["head_pipeline"].is_object() {
             &v["head_pipeline"]
@@ -195,31 +221,35 @@ impl PlatformClient for GlabClient {
             &v["pipeline"]
         };
         if !p.is_object() {
-            return Ok(serde_json::Value::Null);
+            return Ok(None);
         }
-        Ok(serde_json::json!({
-            "status": p["status"].as_str().unwrap_or("unknown"),
-            "url": p["web_url"].as_str().unwrap_or(""),
+        Ok(Some(CiStatus {
+            status: p["status"].as_str().unwrap_or("unknown").to_string(),
+            url: p["web_url"].as_str().unwrap_or("").to_string(),
         }))
     }
 
-    async fn get_mr_details(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_details(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<MrDetails> {
         let v = mr_json(repo, remote_id).await?;
-        Ok(serde_json::json!({
-            "title": v["title"].as_str().unwrap_or(""),
-            "description": v["description"].as_str().unwrap_or(""),
-            "author": v["author"]["username"].as_str().or(v["author"]["name"].as_str()).unwrap_or(""),
-            "source_branch": v["source_branch"].as_str().unwrap_or(""),
-            "target_branch": v["target_branch"].as_str().unwrap_or(""),
-            "state": glab_state(v["state"].as_str().unwrap_or("opened")),
-            "draft": v["draft"].as_bool().or(v["work_in_progress"].as_bool()).unwrap_or(false),
-            "created_at": v["created_at"].as_str().unwrap_or(""),
-            "web_url": v["web_url"].as_str().unwrap_or(""),
-        }))
+        Ok(MrDetails {
+            title: v["title"].as_str().unwrap_or("").to_string(),
+            description: v["description"].as_str().unwrap_or("").to_string(),
+            author: v["author"]["username"]
+                .as_str()
+                .or(v["author"]["name"].as_str())
+                .unwrap_or("")
+                .to_string(),
+            source_branch: v["source_branch"].as_str().unwrap_or("").to_string(),
+            target_branch: v["target_branch"].as_str().unwrap_or("").to_string(),
+            state: glab_state(v["state"].as_str().unwrap_or("opened")),
+            draft: v["draft"]
+                .as_bool()
+                .or(v["work_in_progress"].as_bool())
+                .unwrap_or(false),
+            created_at: v["created_at"].as_str().unwrap_or("").to_string(),
+            web_url: v["web_url"].as_str().unwrap_or("").to_string(),
+            approval: None,
+        })
     }
 
     async fn reply_to_thread(
@@ -271,11 +301,7 @@ impl PlatformClient for GlabClient {
         Ok(())
     }
 
-    async fn get_mr_approval(
-        &self,
-        repo: &Repo,
-        remote_id: &str,
-    ) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_approval(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<MrApproval> {
         let v = api::gitlab(
             &repo.host,
             Method::GET,
@@ -291,12 +317,12 @@ impl PlatformClient for GlabClient {
                     .collect()
             })
             .unwrap_or_default();
-        Ok(serde_json::json!({
-            "approved": v["approved"].as_bool().unwrap_or(!by.is_empty()),
+        Ok(MrApproval {
+            approved: v["approved"].as_bool().unwrap_or(!by.is_empty()),
             // `user_has_approved` is per token.
-            "approved_by_me": v["user_has_approved"].as_bool().unwrap_or(false),
-            "approved_by": by,
-        }))
+            approved_by_me: v["user_has_approved"].as_bool().unwrap_or(false),
+            approved_by: by,
+        })
     }
 
     async fn post_mr_comment(
@@ -620,12 +646,45 @@ mod tests {
                   "author": { "username": "b" } }
             ]}
         ]);
-        let out = threads_from_discussions(&raw);
-        let threads = out.as_array().unwrap();
+        let threads = threads_from_discussions(&raw);
         assert_eq!(threads.len(), 2, "the system discussion is gone");
-        assert_eq!(threads[0]["id"], "abc123");
-        assert_eq!(threads[0]["notes"][0]["author"]["username"], "arthur");
-        assert_eq!(threads[0]["notes"][0]["position"]["new_line"], 4);
-        assert_eq!(threads[1]["notes"][0]["body"], "nice");
+        assert_eq!(threads[0].id, "abc123");
+        assert_eq!(threads[0].notes[0].author, "arthur");
+        let pos = threads[0].notes[0].position.as_ref().unwrap();
+        assert_eq!(pos.new_line, Some(4));
+        assert_eq!(pos.new_path.as_deref(), Some("a.rs"));
+        assert_eq!(threads[1].notes[0].body, "nice");
+        assert!(threads[1].notes[0].position.is_none());
+    }
+
+    #[test]
+    fn a_multi_line_note_keeps_the_range_end_and_the_old_side() {
+        let raw = serde_json::json!([
+            { "id": "d1", "notes": [
+                { "id": 1, "body": "issue: x", "system": false, "resolvable": true,
+                  "resolved": false, "author": { "username": "arthur" },
+                  "position": { "new_path": "a.rs", "old_path": "b.rs", "old_line": 7,
+                                "line_range": { "end": { "new_line": 12 } } } }
+            ]}
+        ]);
+        let threads = threads_from_discussions(&raw);
+        let pos = threads[0].notes[0].position.as_ref().unwrap();
+        assert_eq!(pos.new_line, None);
+        assert_eq!(pos.end_new_line, Some(12));
+        assert_eq!(pos.old_path.as_deref(), Some("b.rs"));
+        assert_eq!(pos.old_line, Some(7));
+    }
+
+    #[test]
+    fn an_author_falls_back_to_the_display_name() {
+        let raw = serde_json::json!([
+            { "id": "d1", "notes": [
+                { "id": 1, "body": "x", "system": false, "author": { "name": "Arthur Dent" } }
+            ]}
+        ]);
+        assert_eq!(
+            threads_from_discussions(&raw)[0].notes[0].author,
+            "Arthur Dent"
+        );
     }
 }

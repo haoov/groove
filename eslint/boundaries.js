@@ -13,6 +13,7 @@ const ALLOWED = {
 };
 
 const ONLY_FROM = {
+  'shared/ipc/generated/eventNames': 'shared/ipc/events.ts',
   'shared/ipc/generated': 'shared/ipc/ipc.ts',
   '@tauri-apps/api/core': 'shared/ipc/invoke.ts',
 };

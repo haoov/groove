@@ -398,7 +398,7 @@ async fn report_adopted_branch(repo_path: &str, repo_label: &str, branch: &str, 
         format!("It is at {tip}.\n\nDelete or rename {branch} if this session should start from the base branch.")
     };
     crate::core::events::notice(
-        "attention",
+        crate::core::events::NoticeKind::Attention,
         "git",
         format!("{repo_label}: continuing on the existing branch {branch}"),
         Some(detail),
@@ -412,7 +412,7 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
     git::cache::flush();
     if let Err(e) = fetched {
         crate::core::events::notice(
-            "error",
+            crate::core::events::NoticeKind::Error,
             "git",
             format!("Could not fetch {repo_label} — its worktree may be based on stale history"),
             Some(e.to_string()),
@@ -444,7 +444,7 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
     };
     if let Err(e) = result {
         crate::core::events::notice(
-            "attention",
+            crate::core::events::NoticeKind::Attention,
             "git",
             format!("{repo_label}: {default_branch} in MAIN could not fast-forward"),
             Some(format!("{e}\n\nNew branches still come from origin/{default_branch}, so this only affects MAIN's own checkout.")),

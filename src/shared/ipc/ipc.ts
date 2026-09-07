@@ -58,6 +58,12 @@ export type {
   SessionKind,
   ProviderId,
   AgentSkill,
+  MrDetails,
+  MrApproval,
+  MrThread,
+  MrNote,
+  NotePosition,
+  CiStatus,
 } from './generated';
 
 // ── Deliberate narrowings (rebuilt over the generated shapes) ─────────────────
@@ -108,46 +114,7 @@ export interface Config {
   ui: UiConfig;
 }
 
-// ── No Rust struct behind these (forge JSON, pool scan, confirmation events) ──
-
-/** One note within an MR discussion thread (GitLab/GitHub-normalized, loose). */
-export interface ThreadNote {
-  id?: number;
-  created_at?: string;
-  author?: { username?: string; name?: string };
-  body?: string;
-  resolved?: boolean;
-  resolvable?: boolean;
-  position?: {
-    new_path?: string;
-    new_line?: number;
-    line_range?: { end?: { new_line?: number } };
-  };
-}
-
-/** An MR discussion thread as returned by `get_mr_threads`. */
-export interface MrThread {
-  id?: string;
-  notes?: ThreadNote[];
-}
-
-/** Rich MR/PR fields from `get_mr_details` — normalized across GitLab/GitHub. */
-export interface MrDetails {
-  title: string;
-  description: string;
-  author: string;
-  source_branch: string;
-  target_branch: string;
-  state: string;
-  draft: boolean;
-  created_at: string;
-  web_url: string;
-  /** Approval state, folded in from the approvals endpoint. */
-  approved?: boolean;
-  /** True when the CURRENT user is among the approvers (GitLab only). */
-  approved_by_me?: boolean;
-  approved_by?: string[];
-}
+// ── No Rust struct behind these (pool scan, confirmation events) ──────────────
 
 export interface SearchMatch {
   file: string;

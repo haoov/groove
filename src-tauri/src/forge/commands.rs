@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use super::client::make_client;
+use super::client::{make_client, CiStatus, MrDetails, MrThread};
 use super::gitlab::fetch_and_upsert_mrs;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
@@ -47,34 +47,42 @@ pub async fn get_mr(worktree_id: String, pool: tauri::State<'_, SqlitePool>) -> 
 pub async fn get_mr_threads(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> AppResult<serde_json::Value> {
-    mr_threads_for(&pool, &mr_id)
+) -> AppResult<Vec<MrThread>> {
+    mr_threads(&pool, &mr_id)
         .await
         .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
-/// The pool-taking form, for the MCP tool.
-pub async fn mr_threads_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+async fn mr_threads(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<Vec<MrThread>> {
     let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
     make_client(&repo)
         .get_mr_threads(&repo, &mr.remote_id)
         .await
 }
 
+/// The JSON form, for the MCP tool.
+pub async fn mr_threads_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+    Ok(serde_json::to_value(mr_threads(pool, mr_id).await?)?)
+}
+
 #[tauri::command]
 pub async fn get_mr_ci(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> AppResult<serde_json::Value> {
-    mr_ci_for(&pool, &mr_id)
+) -> AppResult<Option<CiStatus>> {
+    mr_ci(&pool, &mr_id)
         .await
         .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))
 }
 
-/// The pool-taking form, for the MCP tool.
-pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+async fn mr_ci(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<Option<CiStatus>> {
     let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
     make_client(&repo).get_mr_ci(&repo, &mr.remote_id).await
+}
+
+/// The JSON form, for the MCP tool.
+pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
+    Ok(serde_json::to_value(mr_ci(pool, mr_id).await?)?)
 }
 
 /// Live MR/PR fields for the overview page.
@@ -82,7 +90,7 @@ pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_j
 pub async fn get_mr_details(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<MrDetails> {
     let (mr, _wt, repo) = load_mr_context(&mr_id, &pool).await?;
 
     let client = make_client(&repo);
@@ -92,20 +100,11 @@ pub async fn get_mr_details(
         .map_err(|e| AppError::from(e).with_kind(ErrorKind::Forge))?;
 
     // Keep the stored state in step with the live one.
-    if let Some(fresh) = details["state"].as_str() {
-        if fresh != mr.state {
-            let _ = store::mrs::set_state(&*pool, &mr.id, fresh).await;
-        }
+    if details.state != mr.state {
+        let _ = store::mrs::set_state(&*pool, &mr.id, &details.state).await;
     }
 
-    // Fold the approval endpoint into the same payload.
-    if let Ok(approval) = client.get_mr_approval(&repo, &mr.remote_id).await {
-        if let Some(obj) = details.as_object_mut() {
-            obj.insert("approved".into(), approval["approved"].clone());
-            obj.insert("approved_by_me".into(), approval["approved_by_me"].clone());
-            obj.insert("approved_by".into(), approval["approved_by"].clone());
-        }
-    }
+    details.approval = client.get_mr_approval(&repo, &mr.remote_id).await.ok();
     Ok(details)
 }
 
@@ -215,7 +214,7 @@ pub(crate) async fn mr_state(repo: &Repo, remote_id: &str) -> Option<String> {
         .get_mr_details(repo, remote_id)
         .await
         .ok()
-        .and_then(|v| v["state"].as_str().map(|s| s.to_string()))
+        .map(|d| d.state)
 }
 
 #[tauri::command]

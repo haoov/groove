@@ -26,14 +26,23 @@ use crate::task_manager::State as TaskState;
 pub(crate) mod auth;
 mod tools;
 
-use tools::dispatch;
 pub(crate) use tools::mcp_tool_definitions;
+use tools::{dispatch, InvalidParams, UnknownTool};
 
 /// Keep `127.0.0.1`, not `localhost`: `localhost` can resolve to `::1`, which is not bound.
 pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 27413;
 
 const PROTOCOL_VERSION: &str = "2024-11-05";
+
+/// Revisions that define the HTTP+SSE transport this server speaks.
+const SUPPORTED_PROTOCOLS: [&str; 2] = [PROTOCOL_VERSION, "2025-03-26"];
+
+// JSON-RPC 2.0 error codes.
+const INVALID_REQUEST: i64 = -32600;
+const METHOD_NOT_FOUND: i64 = -32601;
+const INVALID_PARAMS: i64 = -32602;
+const INTERNAL_ERROR: i64 = -32603;
 
 /// `host:port`, for display.
 pub fn endpoint() -> String {
@@ -110,6 +119,14 @@ impl McpState {
             .and_then(|map| map.get(mcp_session).map(|c| c.task.clone()))
     }
 
+    /// The SSE channel a response goes back on. `None` once the stream drops.
+    fn sender_for(&self, mcp_session: &str) -> Option<mpsc::Sender<Event>> {
+        self.connections
+            .lock()
+            .ok()
+            .and_then(|map| map.get(mcp_session).map(|c| c.tx.clone()))
+    }
+
     /// Re-point a connection to another task id.
     fn rebind(&self, mcp_session: &str, task_id: &str) {
         if let Ok(mut map) = self.connections.lock() {
@@ -151,7 +168,7 @@ pub async fn start(
         Ok(l) => l,
         Err(e) => {
             crate::core::events::notice(
-                "error",
+                crate::core::events::NoticeKind::Error,
                 "mcp",
                 format!("Agent tools are unavailable: {} is busy", endpoint()),
                 Some(format!(
@@ -192,6 +209,20 @@ async fn sse_handler(
 ) -> Result<Sse<SseReceiver>, (StatusCode, &'static str)> {
     let task = bound_task(q)?;
 
+    // Bind only a session that exists; an unknown id would answer every tool with "no task".
+    let known = crate::core::db::store::sessions::get_opt(&state.pool, &task)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "cannot read the session store",
+            )
+        })?
+        .is_some();
+    if !known {
+        return Err((StatusCode::NOT_FOUND, "?task= names no open session"));
+    }
+
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(64);
     tracing::info!("[mcp] session {session_id} bound to task {task}");
@@ -225,6 +256,11 @@ async fn message_handler(
     State(state): State<McpState>,
     body: String,
 ) -> StatusCode {
+    // No live stream to answer on.
+    if state.sender_for(&q.session_id).is_none() {
+        return StatusCode::NOT_FOUND;
+    }
+
     let request: serde_json::Value = match serde_json::from_str(&body) {
         Ok(v) => v,
         Err(_) => return StatusCode::BAD_REQUEST,
@@ -235,20 +271,17 @@ async fn message_handler(
         return StatusCode::ACCEPTED;
     }
 
-    let response = handle_jsonrpc(request, &state, &q.session_id).await;
-
-    let event_data = serde_json::to_string(&response).unwrap_or_default();
-    let event = Event::default().event("message").data(event_data);
-
-    let tx = state
-        .connections
-        .lock()
-        .ok()
-        .and_then(|s| s.get(&q.session_id).map(|c| c.tx.clone()));
-
-    if let Some(tx) = tx {
-        let _ = tx.send(event).await;
-    }
+    // The answer travels on the SSE stream, so a call blocked on the user holds no request.
+    let state = state.clone();
+    let mcp_session = q.session_id.clone();
+    tokio::spawn(async move {
+        let response = handle_jsonrpc(request, &state, &mcp_session).await;
+        let data = serde_json::to_string(&response).unwrap_or_default();
+        // Looked up now, not before: the stream may have dropped while the call ran.
+        if let Some(tx) = state.sender_for(&mcp_session) {
+            let _ = tx.send(Event::default().event("message").data(data)).await;
+        }
+    });
 
     StatusCode::ACCEPTED
 }
@@ -295,12 +328,55 @@ fn spawn_progress(
 
 // ─── JSON-RPC 2.0 dispatch ────────────────────────────────────────────────────
 
+fn result(id: &serde_json::Value, result: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({ "jsonrpc": "2.0", "id": id, "result": result })
+}
+
+fn error(id: &serde_json::Value, code: i64, message: String) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": { "code": code, "message": message },
+    })
+}
+
+/// The revision to answer `initialize` with: the client's when we speak it.
+fn negotiated_protocol(params: &serde_json::Value) -> &str {
+    let asked = params["protocolVersion"].as_str().unwrap_or_default();
+    SUPPORTED_PROTOCOLS
+        .into_iter()
+        .find(|v| *v == asked)
+        .unwrap_or(PROTOCOL_VERSION)
+}
+
+/// A tool-call failure's JSON-RPC code. Bad arguments are the caller's, not ours.
+fn tool_error_code(e: &anyhow::Error) -> i64 {
+    match e.downcast_ref::<InvalidParams>().is_some() || e.downcast_ref::<UnknownTool>().is_some() {
+        true => INVALID_PARAMS,
+        false => INTERNAL_ERROR,
+    }
+}
+
+/// A malformed envelope: `jsonrpc` is not "2.0", or `method` is not a string.
+fn envelope_error(request: &serde_json::Value) -> Option<&'static str> {
+    if request["jsonrpc"].as_str() != Some("2.0") {
+        return Some("jsonrpc must be the string \"2.0\"");
+    }
+    if !request["method"].is_string() {
+        return Some("method must be a string");
+    }
+    None
+}
+
 async fn handle_jsonrpc(
     request: serde_json::Value,
     state: &McpState,
     mcp_session: &str,
 ) -> serde_json::Value {
     let id = request["id"].clone();
+    if let Some(why) = envelope_error(&request) {
+        return error(&id, INVALID_REQUEST, why.to_string());
+    }
     let method = request["method"].as_str().unwrap_or("").to_string();
     let params = request
         .get("params")
@@ -308,24 +384,27 @@ async fn handle_jsonrpc(
         .unwrap_or(serde_json::json!({}));
 
     match method.as_str() {
-        "initialize" => serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": {
-                "protocolVersion": PROTOCOL_VERSION,
+        "initialize" => result(
+            &id,
+            serde_json::json!({
+                "protocolVersion": negotiated_protocol(&params),
                 "capabilities": { "tools": {} },
                 "serverInfo": { "name": "groove", "version": "1.0" }
-            }
-        }),
+            }),
+        ),
 
-        "tools/list" => serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "result": { "tools": mcp_tool_definitions() }
-        }),
+        "ping" => result(&id, serde_json::json!({})),
+
+        "tools/list" => result(&id, serde_json::json!({ "tools": mcp_tool_definitions() })),
 
         "tools/call" => {
-            let name = params["name"].as_str().unwrap_or("").to_string();
+            let Some(name) = params["name"].as_str().map(str::to_string) else {
+                return error(
+                    &id,
+                    INVALID_PARAMS,
+                    "tools/call needs a string name".to_string(),
+                );
+            };
             let args = params["arguments"].clone();
             let token = params["_meta"]["progressToken"].clone();
             let beat = (!token.is_null()).then(|| spawn_progress(state, mcp_session, token));
@@ -334,34 +413,75 @@ async fn handle_jsonrpc(
                 beat.abort();
             }
             match outcome {
-                Ok(resp) => serde_json::json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "result": {
+                Ok(resp) => result(
+                    &id,
+                    serde_json::json!({
                         "content": resp.content,
                         "isError": resp.is_error.unwrap_or(false)
-                    }
-                }),
-                Err(e) => serde_json::json!({
-                    "jsonrpc": "2.0",
-                    "id": id,
-                    "error": { "code": -32603, "message": e.to_string() }
-                }),
+                    }),
+                ),
+                Err(e) => error(&id, tool_error_code(&e), format!("{name}: {e}")),
             }
         }
 
-        _ => serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": id,
-            "error": { "code": -32601, "message": format!("Method not found: {method}") }
-        }),
+        _ => error(&id, METHOD_NOT_FOUND, format!("Method not found: {method}")),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{bound_task, SseQuery};
+    use super::{
+        bound_task, envelope_error, negotiated_protocol, tool_error_code, InvalidParams, SseQuery,
+        UnknownTool, INTERNAL_ERROR, INVALID_PARAMS, PROTOCOL_VERSION,
+    };
     use axum::http::StatusCode;
+
+    #[test]
+    fn a_broken_envelope_is_an_invalid_request() {
+        let good = serde_json::json!({ "jsonrpc": "2.0", "method": "ping", "id": 1 });
+        assert!(envelope_error(&good).is_none());
+
+        for bad in [
+            serde_json::json!({ "method": "ping", "id": 1 }),
+            serde_json::json!({ "jsonrpc": "1.0", "method": "ping", "id": 1 }),
+            serde_json::json!({ "jsonrpc": 2.0, "method": "ping", "id": 1 }),
+        ] {
+            assert_eq!(
+                envelope_error(&bad),
+                Some("jsonrpc must be the string \"2.0\"")
+            );
+        }
+
+        let no_method = serde_json::json!({ "jsonrpc": "2.0", "id": 1 });
+        assert_eq!(envelope_error(&no_method), Some("method must be a string"));
+        let numeric = serde_json::json!({ "jsonrpc": "2.0", "method": 7, "id": 1 });
+        assert_eq!(envelope_error(&numeric), Some("method must be a string"));
+    }
+
+    #[test]
+    fn a_supported_protocol_is_echoed_back() {
+        let asked = serde_json::json!({ "protocolVersion": "2025-03-26" });
+        assert_eq!(negotiated_protocol(&asked), "2025-03-26");
+
+        let unknown = serde_json::json!({ "protocolVersion": "1999-01-01" });
+        assert_eq!(negotiated_protocol(&unknown), PROTOCOL_VERSION);
+        assert_eq!(
+            negotiated_protocol(&serde_json::json!({})),
+            PROTOCOL_VERSION
+        );
+    }
+
+    #[test]
+    fn bad_arguments_are_the_callers_fault() {
+        let params = anyhow::Error::new(InvalidParams("missing field `worktree_id`".into()));
+        assert_eq!(tool_error_code(&params), INVALID_PARAMS);
+        let unknown = anyhow::Error::new(UnknownTool("get_the_moon".into()));
+        assert_eq!(tool_error_code(&unknown), INVALID_PARAMS);
+        assert_eq!(
+            tool_error_code(&anyhow::anyhow!("the forge said no")),
+            INTERNAL_ERROR
+        );
+    }
 
     #[test]
     fn a_connection_that_names_no_task_is_refused() {

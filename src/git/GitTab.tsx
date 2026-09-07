@@ -7,7 +7,7 @@ import {
 import { useSession, useStore } from '../shared/store';
 import { useListNav } from '../shared/lib/useListNav';
 import { ContextMenu } from '../shared/ui/ContextMenu';
-import type { CommitEntry, WorktreeStatus, FileDiff, Mr } from '../shared/ipc/ipc';
+import type { CiStatus, CommitEntry, WorktreeStatus, FileDiff, Mr } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
 import { StatBadge } from '../shared/ui/StatBadge';
 import { registerCommitPush } from '../shared/lib/gitChain';
@@ -387,13 +387,13 @@ const GIT_MENU: { key: ActionKey; label: string; icon: typeof GitCommit; needsMe
 
 /** The MR's pipeline status; grey when the forge reports none. */
 function MrCiChip({ mr }: { mr: Mr }) {
-  const [ci, setCi] = useState<{ status: string; url: string } | null>(null);
+  const [ci, setCi] = useState<CiStatus | null>(null);
   // The only trigger: a push, an mr.* op, or the sidebar refresh. Nothing polls the forge.
   const mrNonce = useSession((s) => s.mrNonce);
 
   useEffect(() => {
     let cancelled = false;
-    invoke<{ status: string; url: string } | null>('get_mr_ci', { mrId: mr.id })
+    invoke<CiStatus | null>('get_mr_ci', { mrId: mr.id })
       .then((r) => { if (!cancelled) setCi(r ?? null); })
       .catch(() => { if (!cancelled) setCi(null); });
     return () => { cancelled = true; };

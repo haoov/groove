@@ -3,7 +3,8 @@ import { readdirSync, writeFileSync } from 'node:fs';
 
 const dir = 'src/shared/ipc/generated';
 const types = readdirSync(dir)
-  .filter((f) => f.endsWith('.ts') && f !== 'index.ts')
+  // A lower-case name is a value module (eventNames), not a ts-rs type.
+  .filter((f) => f.endsWith('.ts') && f !== 'index.ts' && /^[A-Z]/.test(f))
   .map((f) => f.replace(/\.ts$/, ''))
   .sort();
 

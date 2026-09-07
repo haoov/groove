@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { GitPullRequest, Check } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
-import type { Mr, MrThread } from '../shared/ipc/ipc';
+import type { Mr, MrNote, MrThread } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { useSession } from '../shared/store';
 import { errorText } from '../shared/lib/appError';
@@ -14,7 +14,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
   const repoId = worktrees.find((w) => w.id === mr.worktree_id)?.repo_id ?? null;
 
   /** Where a note points: the new side first, then the old. */
-  const locate = (note: any): { path: string; line: number } | null => {
+  const locate = (note: MrNote | undefined): { path: string; line: number } | null => {
     const pos = note?.position;
     if (!pos) return null;
     if (pos.new_path && pos.new_line) return { path: pos.new_path, line: pos.new_line };
@@ -69,15 +69,15 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
           #{mr.remote_id}
         </a>
       </div>
-      {threads.map((d: any, i: number) => {
-        const key: string = d.id ?? `idx-${i}`;
+      {threads.map((d, i) => {
+        const key = d.id || `idx-${i}`;
         const first = d.notes[0];
         const replies = d.notes.slice(1);
-        const resolvable: boolean = first.resolvable === true;
-        const resolved: boolean = first.resolved === true;
+        const resolvable = first?.resolvable === true;
+        const resolved = first?.resolved === true;
         const expanded = expandedThreads.has(key);
-        const filePart = first.position?.new_path?.split('/').pop() ?? null;
-        const linePart = first.position?.new_line ? `:${first.position.new_line}` : null;
+        const filePart = first?.position?.new_path?.split('/').pop() ?? null;
+        const linePart = first?.position?.new_line ? `:${first.position.new_line}` : null;
         return (
           <div key={key} className={`mr-thread-item ${resolved ? 'mr-thread-resolved' : ''}`}>
             <button
@@ -90,7 +90,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
                 openTab({ repoId, filePath: at.path, view: 'edit', cursorLine: at.line });
               }}
             >
-              <span className="thread-loc-author">{first.author?.username ?? '?'}</span>
+              <span className="thread-loc-author">{first?.author || '?'}</span>
               {filePart
                 ? <><span className="annotation-file">{filePart}</span><span className="annotation-line">{linePart}</span></>
                 : <span className="annotation-file">#{mr.remote_id}</span>
@@ -103,7 +103,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
               )}
             </button>
             <div className="annotation-content mr-thread-body">
-              <Markdown text={first.body} />
+              <Markdown text={first?.body ?? ''} />
             </div>
             <div className="annotation-meta">
               {replies.length > 0 ? (
@@ -137,9 +137,9 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
             )}
             {expanded && replies.length > 0 && (
               <div className="mr-thread-replies">
-                {replies.map((r: any, j: number) => (
+                {replies.map((r, j) => (
                   <div key={j} className="mr-thread-reply">
-                    <span className="mr-thread-author">{r.author?.username ?? '?'}</span>
+                    <span className="mr-thread-author">{r.author || '?'}</span>
                     <div className="mr-thread-body">
                       <Markdown text={r.body} />
                     </div>

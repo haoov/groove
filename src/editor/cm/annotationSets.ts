@@ -23,12 +23,12 @@ export function deriveAnnotationSets(
   const threadNums = new Set<number>();
   const unresolvedThreadNums = new Set<number>();
   for (const d of threads) {
-    const pos = d.notes?.[0]?.position;
+    const pos = d.notes[0]?.position;
     if (pos?.new_path !== filePath) continue;
-    const n: number | undefined = pos.new_line ?? pos.line_range?.end?.new_line;
+    const n = pos.new_line ?? pos.end_new_line;
     if (!n) continue;
     threadNums.add(n);
-    if (d.notes?.some((note) => note.resolved !== true)) unresolvedThreadNums.add(n);
+    if (d.notes.some((note) => !note.resolved)) unresolvedThreadNums.add(n);
   }
   return { annStartNums, annotatedLineNums, threadNums, unresolvedThreadNums };
 }
@@ -41,8 +41,8 @@ export function annotationsForStartLine(annotations: Annotation[], startLine: nu
 /** MR threads positioned at `startLine` of `filePath`. */
 export function threadsForStartLine(threads: MrThread[], filePath: string, startLine: number): MrThread[] {
   return threads.filter((d) => {
-    const pos = d.notes?.[0]?.position;
+    const pos = d.notes[0]?.position;
     return pos?.new_path === filePath
-      && (pos.new_line === startLine || pos.line_range?.end?.new_line === startLine);
+      && (pos.new_line === startLine || pos.end_new_line === startLine);
   });
 }

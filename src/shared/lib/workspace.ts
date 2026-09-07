@@ -32,4 +32,4 @@ export const openFileAnnotations = (annotations: Annotation[], repoId: string, f
 
 /** MR threads anchored in one file. */
 export const fileThreads = (threads: MrThread[], filePath: string) =>
-  threads.filter((d) => d.notes?.[0]?.position?.new_path === filePath);
+  threads.filter((d) => d.notes[0]?.position?.new_path === filePath);

@@ -243,3 +243,69 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> a
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    /// A command with no `generate_handler!` row does not exist to the frontend, and
+    /// nothing else says so.
+    #[test]
+    fn every_command_is_registered() {
+        let registered = include_str!("lib.rs")
+            .split_once("generate_handler![")
+            .expect("the handler list")
+            .1
+            .split_once("])")
+            .expect("the end of the handler list")
+            .0
+            .to_string();
+        let rows: Vec<&str> = registered
+            .lines()
+            .map(|l| {
+                l.split("//")
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .trim_end_matches(',')
+            })
+            .filter(|l| !l.is_empty())
+            .collect();
+
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut missing = vec![];
+        visit(&src, &mut |text| {
+            // On its own line: prose and doc comments name the attribute too.
+            for block in text.split("\n#[tauri::command]\n").skip(1) {
+                let Some(name) = block
+                    .split_once("fn ")
+                    .and_then(|(_, rest)| rest.split(['(', '<']).next())
+                    .map(str::trim)
+                else {
+                    continue;
+                };
+                if !rows
+                    .iter()
+                    .any(|r| *r == name || r.ends_with(&format!("::{name}")))
+                {
+                    missing.push(name.to_string());
+                }
+            }
+        });
+        assert!(
+            missing.is_empty(),
+            "commands with no handler row: {missing:?}"
+        );
+
+        fn visit(dir: &std::path::Path, f: &mut impl FnMut(&str)) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    visit(&path, f);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    let text = std::fs::read_to_string(&path).unwrap();
+                    // Test modules hold this attribute as a string; only real code counts.
+                    f(text.split("#[cfg(test)]").next().unwrap_or(""));
+                }
+            }
+        }
+    }
+}

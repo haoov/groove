@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
-import type { Annotation, DiffResult, Mr } from '../shared/ipc/ipc';
+import type { Annotation, DiffResult, Mr, MrThread } from '../shared/ipc/ipc';
 
 /** Owns the per-task background data: git status, the diff summary, MRs with their threads, and annotations. */
 export function useWorkspaceData() {
@@ -45,8 +45,8 @@ export function useWorkspaceData() {
         if (mr) {
           upsertMr(mr);
           try {
-            const raw = await invoke<unknown>('get_mr_threads', { mrId: mr.id });
-            if (!stale) setMrThreadsForRepo(wt.repo_id, Array.isArray(raw) ? raw : []);
+            const fetched = await invoke<MrThread[]>('get_mr_threads', { mrId: mr.id });
+            if (!stale) setMrThreadsForRepo(wt.repo_id, fetched);
           } catch (e) {
             console.error('[get_mr_threads]', e);
           }

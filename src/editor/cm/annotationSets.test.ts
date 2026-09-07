@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { annotationsForStartLine, deriveAnnotationSets, threadsForStartLine } from './annotationSets';
-import type { Annotation, MrThread } from '../../shared/ipc/ipc';
+import type { Annotation, MrNote, MrThread, NotePosition } from '../../shared/ipc/ipc';
 
 const ann = (start: number, end = start, file = 'a.ts'): Annotation => ({
   id: `a${start}-${end}`, session_id: 't', repo_id: 'r', file_path: file,
@@ -8,13 +8,21 @@ const ann = (start: number, end = start, file = 'a.ts'): Annotation => ({
   content: 'note', author: 'me', status: 'open', created_at: 0,
 });
 
+const note = (body: string, over: Partial<MrNote> = {}): MrNote => ({
+  author: 'me', body, created_at: '', resolved: false, resolvable: true, position: null, ...over,
+});
+
+const pos = (over: Partial<NotePosition> = {}): NotePosition => ({
+  new_path: null, new_line: null, old_path: null, old_line: null, end_new_line: null, ...over,
+});
+
 const thread = (
   file: string,
-  pos: { new_line?: number; line_range?: { end?: { new_line?: number } } },
-  resolved?: boolean,
+  at: { new_line?: number; end_new_line?: number },
+  resolved = false,
 ): MrThread => ({
   id: 'd1',
-  notes: [{ body: 'x', resolved, position: { new_path: file, ...pos } }],
+  notes: [note('x', { resolved, position: pos({ new_path: file, ...at }) })],
 });
 
 describe('deriveAnnotationSets', () => {
@@ -42,12 +50,12 @@ describe('deriveAnnotationSets', () => {
   });
 
   it('takes a multi-line thread at the end of its range, where GitLab anchors it', () => {
-    const s = deriveAnnotationSets([], [thread('a.ts', { line_range: { end: { new_line: 12 } } })], 'a.ts');
+    const s = deriveAnnotationSets([], [thread('a.ts', { end_new_line: 12 })], 'a.ts');
     expect([...s.threadNums]).toEqual([12]);
   });
 
   it('prefers new_line over the range end when both are present', () => {
-    const t = thread('a.ts', { new_line: 5, line_range: { end: { new_line: 12 } } });
+    const t = thread('a.ts', { new_line: 5, end_new_line: 12 });
     const s = deriveAnnotationSets([], [t], 'a.ts');
     expect([...s.threadNums]).toEqual([5]);
   });
@@ -70,8 +78,8 @@ describe('deriveAnnotationSets', () => {
     const mixed: MrThread = {
       id: 'd',
       notes: [
-        { body: 'a', resolved: true, position: { new_path: 'a.ts', new_line: 9 } },
-        { body: 'b', resolved: false },
+        note('a', { resolved: true, position: pos({ new_path: 'a.ts', new_line: 9 }) }),
+        note('b'),
       ],
     };
     const s = deriveAnnotationSets([], [mixed], 'a.ts');
@@ -82,15 +90,15 @@ describe('deriveAnnotationSets', () => {
     const t: MrThread = {
       id: 'd',
       notes: [
-        { body: 'a', position: { new_path: 'a.ts', new_line: 3 } },
-        { body: 'reply', position: { new_path: 'a.ts', new_line: 99 } },
+        note('a', { position: pos({ new_path: 'a.ts', new_line: 3 }) }),
+        note('reply', { position: pos({ new_path: 'a.ts', new_line: 99 }) }),
       ],
     };
     expect([...deriveAnnotationSets([], [t], 'a.ts').threadNums]).toEqual([3]);
   });
 
   it('survives a thread with no notes at all', () => {
-    expect(() => deriveAnnotationSets([], [{ id: 'd' }], 'a.ts')).not.toThrow();
+    expect(() => deriveAnnotationSets([], [{ id: 'd', notes: [] }], 'a.ts')).not.toThrow();
   });
 });
 
@@ -105,7 +113,7 @@ describe('threadsForStartLine', () => {
   it('matches either the line or the end of a range, in the right file', () => {
     const threads = [
       thread('a.ts', { new_line: 5 }),
-      thread('a.ts', { line_range: { end: { new_line: 9 } } }),
+      thread('a.ts', { end_new_line: 9 }),
       thread('b.ts', { new_line: 5 }),
     ];
     expect(threadsForStartLine(threads, 'a.ts', 5)).toHaveLength(1);

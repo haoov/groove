@@ -6,7 +6,7 @@ import {
   Pencil, Loader2,
 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
-import type { MrDetails } from '../shared/ipc/ipc';
+import type { CiStatus, MrDetails } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { MrThreadsSection } from '../notes/MrThreads';
 import { CiChip } from '../shared/ui/CiChip';
@@ -26,7 +26,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
   const threads = mrThreadsByRepo[repoId] ?? [];
 
   const [details, setDetails] = useState<MrDetails | null>(null);
-  const [ci, setCi] = useState<{ status: string; url: string } | null>(null);
+  const [ci, setCi] = useState<CiStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [comment, setComment] = useState('');
@@ -84,7 +84,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     invoke<MrDetails>('get_mr_details', { mrId })
       .then((d) => { if (!stale) { setDetails(d); setError(null); } })
       .catch((e) => { if (!stale) setError(errorText(e)); });
-    invoke<{ status: string; url: string } | null>('get_mr_ci', { mrId })
+    invoke<CiStatus | null>('get_mr_ci', { mrId })
       .then((r) => { if (!stale) setCi(r ?? null); })
       .catch(() => { if (!stale) setCi(null); });
     return () => { stale = true; };
@@ -122,15 +122,15 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
               <button
                 className="finish-task-btn mr-approve-btn"
                 onClick={approve}
-                disabled={approving || details?.approved_by_me === true}
+                disabled={approving || details?.approval?.approved_by_me === true}
                 title={
-                  details?.approved_by_me
+                  details?.approval?.approved_by_me
                     ? 'You already approved this'
                     : `Approve this ${shortKind} as reviewer`
                 }
               >
                 <ThumbsUp size={13} strokeWidth={1.75} style={{ marginRight: 6 }} />
-                {approving ? 'Approving…' : details?.approved_by_me ? 'Approved' : 'Approve'}
+                {approving ? 'Approving…' : details?.approval?.approved_by_me ? 'Approved' : 'Approve'}
               </button>
             )}
             <button className="finish-task-btn ov-update mr-open-btn" onClick={() => openExternal(url)}>
@@ -143,14 +143,14 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
         <div className="mr-badges">
           <span className={`overview-badge mr-state-${state}`}>{state}</span>
           {details?.draft && <span className="overview-badge">draft</span>}
-          {details?.approved && (
+          {details?.approval?.approved && (
             <span className="overview-badge mr-approved" title={
-              details.approved_by?.length
-                ? `Approved by ${details.approved_by.join(', ')}`
+              details.approval.approved_by.length
+                ? `Approved by ${details.approval.approved_by.join(', ')}`
                 : 'Approved'
             }>
               <Check size={11} strokeWidth={2.5} />
-              {details.approved_by_me ? 'approved by you' : 'approved'}
+              {details.approval.approved_by_me ? 'approved by you' : 'approved'}
             </span>
           )}
           {ci && (

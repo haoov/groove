@@ -68,14 +68,18 @@ src/
 ## Contracts
 
 **Types are generated, one way.** Rust `#[ts(export)]` → `src/shared/ipc/generated/`
-(51 types). Features import `shared/ipc/ipc` and **never** `generated/` — `ipc.ts`
+(63 types). Features import `shared/ipc/ipc` and **never** `generated/` — `ipc.ts`
 re-exports the mechanical truth and rebuilds the deliberate narrowings (`DiffLine.type`,
 `Annotation.status`, `UiConfig.theme`). Hand-write a type only where the frontend
-narrows a field Rust cannot express, or no Rust struct exists (forge JSON, event
-payloads, UI constants).
+narrows a field Rust cannot express, or no Rust struct exists (event payloads,
+UI constants).
 
-**Three hand-mirrored files.** Change one side, change the other in the same edit:
-- events — `core/events.rs` ↔ `shared/ipc/events.ts` (18 names)
+**Event names are generated too.** `core/events.rs`'s `events!` list is the only one;
+`export_bindings_event_names` writes `generated/eventNames.ts`, and `shared/ipc/events.ts`
+re-exports it. `ts-rs` emits types, not values, which is why a test writes this one. The
+`backend_notice` payload is `BackendNotice` with a `NoticeKind`, generated like any type.
+
+**Two hand-mirrored files.** Change one side, change the other in the same edit:
 - approval ops — `approvals/ops.rs` ↔ `shared/ipc/ops.ts` (a Rust test guards both directions)
 - MCP tool descriptions — `mcp_server/tools/definitions.rs` is the ONE place that tells
   the agent how to write a commit message, MR text, an annotation or a task body. Do not
@@ -114,7 +118,8 @@ Opening a session must never start an agent by itself — that spends tokens on 
 `ui.suggest_actions` hides every offer, and hides nothing else: the skill stays a button
 and a slash command.
 
-**Commands**: 106, registered in `lib.rs`'s `generate_handler!`. `generate_handler!`
+**Commands**: 108, registered in `lib.rs`'s `generate_handler!` — a test asserts every
+`#[tauri::command]` has a row, since an unregistered one simply does not exist. `generate_handler!`
 resolves `__cmd__*` symbols at the path you name, so moving a command between modules
 is fine as long as a `pub use` keeps the registered path resolving.
 

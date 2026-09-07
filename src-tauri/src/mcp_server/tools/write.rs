@@ -7,7 +7,11 @@ use crate::approvals::ResolveOutcome;
 use crate::core::db::models::SessionKind;
 use crate::core::db::store;
 
-use super::{str_field, McpState, ToolCallResponse};
+use super::args::{
+    self, AddRepoArgs, AddWorktreeArgs, AnnotationArgs, CreateAnnotationArgs, CreateTaskArgs,
+    FromExplorerArgs, HoursArgs, PropertyArgs, TaskArgs, TaskBodyArgs, UpdateAnnotationArgs,
+};
+use super::{McpState, ToolCallResponse};
 
 /// Post a confirmation and block until the user decides. Registers the sender
 /// before posting; keep that order.
@@ -177,8 +181,7 @@ pub(super) async fn create_task_from_explorer(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let title = str_field(&input, "title")?;
-    let body_markdown = input["body_markdown"].as_str().unwrap_or("").to_string();
+    let input: FromExplorerArgs = args::parse(input)?;
 
     let explorer_id = state
         .task_for(mcp_session)
@@ -188,11 +191,13 @@ pub(super) async fn create_task_from_explorer(
     }
 
     // The payload is persisted and emitted; it must never carry the source token.
-    let provider = crate::provider::commands::draft_provider(&input)?;
+    let provider = crate::provider::commands::draft_provider(&serde_json::json!({
+        "provider": input.provider,
+    }))?;
 
     // Default `repo` to the explorer's first attached repo.
-    let repo = match input["repo"].as_str() {
-        Some(r) => Some(r.to_string()),
+    let repo = match input.repo {
+        Some(r) => Some(r),
         None => store::repos::attached_to(&state.pool, &explorer_id)
             .await
             .ok()
@@ -205,8 +210,8 @@ pub(super) async fn create_task_from_explorer(
     let payload = serde_json::json!({
         "explorer_id": explorer_id,
         "provider": provider.as_str(),
-        "title": title,
-        "body_markdown": body_markdown,
+        "title": input.title,
+        "body_markdown": input.body_markdown,
         "repo": repo,
     });
 
@@ -246,21 +251,18 @@ pub(super) async fn create_annotation(
     input: serde_json::Value,
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
-    // A single line, or a [start_line, end_line] range.
-    let start_line = input["start_line"]
-        .as_i64()
-        .unwrap_or_else(|| input["line_num"].as_i64().unwrap_or(0));
-    let end_line = input["end_line"].as_i64().unwrap_or(start_line);
+    let input: CreateAnnotationArgs = args::parse(input)?;
+    let (start_line, end_line) = input.range();
 
     let row = store::annotations::create(
         &state.pool,
-        &str_field(&input, "task_id")?,
-        &str_field(&input, "repo_id")?,
-        &str_field(&input, "file_path")?,
+        &input.task_id,
+        &input.repo_id,
+        &input.file_path,
         start_line,
         end_line,
-        &mark_as_agent(&str_field(&input, "content")?),
-        &str_field(&input, "author").unwrap_or_else(|_| "agent".to_string()),
+        &mark_as_agent(&input.content),
+        input.author.as_deref().unwrap_or("agent"),
     )
     .await?;
 
@@ -276,9 +278,9 @@ pub(super) async fn update_annotation(
     input: serde_json::Value,
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
-    let id = str_field(&input, "id")?;
-    let content = mark_as_agent(&str_field(&input, "content")?);
-    let row = store::annotations::update(&state.pool, &id, &content).await?;
+    let input: UpdateAnnotationArgs = args::parse(input)?;
+    let content = mark_as_agent(&input.content);
+    let row = store::annotations::update(&state.pool, &input.id, &content).await?;
 
     let _ = state.bridge.app_handle().emit(
         crate::core::events::ANNOTATION_UPDATED,
@@ -292,10 +294,7 @@ pub(super) async fn resolve_annotation(
     input: serde_json::Value,
     state: &McpState,
 ) -> anyhow::Result<ToolCallResponse> {
-    let id = input["id"].as_str().unwrap_or("").to_string();
-    if id.is_empty() {
-        return Err(anyhow::anyhow!("missing id"));
-    }
+    let id = args::parse::<AnnotationArgs>(input)?.id;
     store::annotations::resolve(&state.pool, &id).await?;
     let _ = state.bridge.app_handle().emit(
         crate::core::events::ANNOTATION_RESOLVED,
@@ -314,12 +313,12 @@ pub(super) async fn create_task(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let title = str_field(&input, "title")?;
+    let input: CreateTaskArgs = args::parse(input)?;
     let payload = serde_json::json!({
-        "title": title,
-        "body_markdown": input["body_markdown"].as_str().unwrap_or(""),
-        "provider": input["provider"].as_str(),
-        "repo": input["repo"].as_str(),
+        "title": input.title,
+        "body_markdown": input.body_markdown.unwrap_or_default(),
+        "provider": input.provider,
+        "repo": input.repo,
     });
     let task_id = state.task_for(mcp_session);
     bridged(
@@ -337,12 +336,8 @@ pub(super) async fn add_task_worktree(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let branch = str_field(&input, "branch")?;
-    let Some(task_id) = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session))
-    else {
+    let input: AddWorktreeArgs = args::parse(input)?;
+    let Some(task_id) = input.task_id.or_else(|| state.task_for(mcp_session)) else {
         return Ok(ToolCallResponse::err(
             "No task to add the worktree to — open a task session first.",
         ));
@@ -350,9 +345,9 @@ pub(super) async fn add_task_worktree(
 
     let payload = serde_json::json!({
         "task_id": task_id,
-        "branch": branch,
-        "repo": input["repo"].as_str(),
-        "target_branch": input["target_branch"].as_str(),
+        "branch": input.branch,
+        "repo": input.repo,
+        "target_branch": input.target_branch,
     });
     bridged(
         state,
@@ -369,20 +364,17 @@ pub(super) async fn add_task_repo(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let repo = str_field(&input, "repo")?;
-    let Some(task_id) = input["task_id"]
-        .as_str()
-        .map(|s| s.to_string())
-        .or_else(|| state.task_for(mcp_session))
-    else {
+    let input: AddRepoArgs = args::parse(input)?;
+    let Some(task_id) = input.task_id.or_else(|| state.task_for(mcp_session)) else {
         return Ok(ToolCallResponse::err(
             "No task to add the repo to — open a task session first.",
         ));
     };
 
     // Resolve the branch for the approval dialog.
-    let branch = match input["branch"]
-        .as_str()
+    let branch = match input
+        .branch
+        .as_deref()
         .map(str::trim)
         .filter(|b| !b.is_empty())
     {
@@ -394,9 +386,9 @@ pub(super) async fn add_task_repo(
 
     let payload = serde_json::json!({
         "task_id": task_id,
-        "repo": repo,
+        "repo": input.repo,
         "branch": branch,
-        "target_branch": input["target_branch"].as_str(),
+        "target_branch": input.target_branch,
     });
     bridged(
         state,
@@ -411,14 +403,11 @@ pub(super) async fn add_task_repo(
 async fn task_target(
     state: &McpState,
     mcp_session: &str,
-    input: &serde_json::Value,
+    named: Option<String>,
 ) -> anyhow::Result<Result<String, ToolCallResponse>> {
-    let task_id = match input["task_id"].as_str() {
-        Some(id) => id.to_string(),
-        None => match state.task_for(mcp_session) {
-            Some(id) => id,
-            None => return Ok(Err(ToolCallResponse::err("no task in scope"))),
-        },
+    let task_id = match named.or_else(|| state.task_for(mcp_session)) {
+        Some(id) => id,
+        None => return Ok(Err(ToolCallResponse::err("no task in scope"))),
     };
     let has_source = store::sessions::get_opt(&state.pool, &task_id)
         .await?
@@ -438,15 +427,15 @@ pub(super) async fn update_task_property(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let property = str_field(&input, "property")?;
-    let task_id = match task_target(state, mcp_session, &input).await? {
+    let input: PropertyArgs = args::parse(input)?;
+    let task_id = match task_target(state, mcp_session, input.task_id).await? {
         Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
         "task_id": task_id,
-        "property": property,
-        "value": input["value"].clone(),
+        "property": input.property,
+        "value": input.value,
     });
     bridged(
         state,
@@ -463,14 +452,12 @@ pub(super) async fn log_task_hours(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let hours = input["hours"]
-        .as_f64()
-        .ok_or_else(|| anyhow::anyhow!("hours must be a number"))?;
-    let task_id = match task_target(state, mcp_session, &input).await? {
+    let input: HoursArgs = args::parse(input)?;
+    let task_id = match task_target(state, mcp_session, input.task_id).await? {
         Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
-    let payload = serde_json::json!({ "task_id": task_id, "hours": hours });
+    let payload = serde_json::json!({ "task_id": task_id, "hours": input.hours });
     bridged(
         state,
         crate::approvals::ops::TASK_HOURS,
@@ -486,7 +473,8 @@ pub(super) async fn finish_task(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let task_id = match task_target(state, mcp_session, &input).await? {
+    let named = args::parse::<TaskArgs>(input)?.task_id;
+    let task_id = match task_target(state, mcp_session, named).await? {
         Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
@@ -506,15 +494,15 @@ pub(super) async fn update_task_body(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    let markdown = str_field(&input, "markdown")?;
-    let task_id = match task_target(state, mcp_session, &input).await? {
+    let input: TaskBodyArgs = args::parse(input)?;
+    let task_id = match task_target(state, mcp_session, input.task_id).await? {
         Ok(id) => id,
         Err(refusal) => return Ok(refusal),
     };
     let payload = serde_json::json!({
         "task_id": task_id,
-        "markdown": markdown,
-        "force": input["force"].as_bool().unwrap_or(false),
+        "markdown": input.markdown,
+        "force": input.force,
     });
     bridged(
         state,
