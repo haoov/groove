@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { openExternal } from '../lib/openExternal';
 
 /** GFM markdown renderer for overview pages. Links open in the system browser, never the webview. No raw HTML. */
-export function Markdown({ text }: { text: string }) {
+export const Markdown = memo(function Markdown({ text }: { text: string }) {
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -51,4 +52,4 @@ export function Markdown({ text }: { text: string }) {
       </ReactMarkdown>
     </div>
   );
-}
+});

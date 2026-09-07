@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use futures_util::StreamExt;
+
 use super::parse::{parse_unified_diff, unquote_path};
 use super::types::{DiffLine, DiffResult, FileDiff, Hunk, RepoDiff};
 use crate::core::db::models::Worktree;
@@ -14,6 +16,8 @@ const FETCH_THROTTLE: Duration = Duration::from_secs(60);
 const UNTRACKED_MAX_BYTES: u64 = 512 * 1024;
 /// Untracked files longer than this many lines are truncated in the rendered hunk.
 const UNTRACKED_MAX_LINES: usize = 2000;
+/// Untracked-file reads in flight at once per worktree.
+const UNTRACKED_CONCURRENCY: usize = 6;
 
 /// Args for a diff-producing git call, pinned to the format the parser reads.
 /// `-c` is git-level, so the config overrides precede the subcommand.
@@ -112,15 +116,14 @@ async fn name_status_map(path: &str, base_ref: &str) -> HashMap<String, String> 
 async fn staged_map(path: &str) -> HashMap<String, bool> {
     let mut map = HashMap::new();
     if let Ok(out) = crate::core::git::output(path, &["status", "--porcelain"]).await {
-        for line in String::from_utf8_lossy(&out.stdout).lines() {
-            if line.len() < 4 {
+        for change in crate::core::git::porcelain::parse(&String::from_utf8_lossy(&out.stdout)) {
+            if change.path.is_empty() {
                 continue;
             }
-            let x = line.chars().next().unwrap_or(' ');
-            let rest = &line[3..];
-            // A rename entry reads "orig -> new"; key on the new path.
-            let p = rest.rsplit(" -> ").next().unwrap_or(rest);
-            map.insert(unquote_path(p), x != ' ' && x != '?');
+            map.insert(
+                unquote_path(&change.path),
+                change.x != ' ' && change.x != '?',
+            );
         }
     }
     map
@@ -280,75 +283,90 @@ pub async fn get_task_diff_summary(
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut repo_diffs = vec![];
-    for wt in worktrees {
-        if mode != "working" {
-            spawn_throttled_fetch(&wt.repo_id, &wt.path);
-        }
+    let repos = futures_util::future::try_join_all(
+        worktrees.into_iter().map(|wt| summarize_worktree(wt, mode)),
+    )
+    .await?;
 
-        let base_ref =
-            crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
-                .await
-                .map_err(|e| e.to_string())?;
-        let statuses = name_status_map(&wt.path, &base_ref).await;
-        let staged = staged_map(&wt.path).await;
-        let out = crate::core::git::output(&wt.path, &diff_args("diff", &[&base_ref, "--numstat"]))
+    Ok(DiffResult { task_id, repos })
+}
+
+/// One worktree's summary; every read that does not need another's answer runs alongside it.
+async fn summarize_worktree(wt: Worktree, mode: &str) -> Result<RepoDiff, String> {
+    if mode != "working" {
+        spawn_throttled_fetch(&wt.repo_id, &wt.path);
+    }
+
+    let base_ref =
+        crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
             .await
             .map_err(|e| e.to_string())?;
-        if !out.status.success() {
-            return Err(format!(
-                "git diff {base_ref} failed: {}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            ));
-        }
 
-        let text = String::from_utf8_lossy(&out.stdout);
-        let mut files = vec![];
-        for line in text.lines() {
-            // Format: "<added>\t<deleted>\t<path>"; binary files show "-\t-\t<path>".
-            let mut parts = line.splitn(3, '\t');
-            let added = parts.next().unwrap_or("0");
-            let deleted = parts.next().unwrap_or("0");
-            let Some(path) = parts.next() else { continue };
-            let path = unquote_path(path);
-            files.push(FileDiff {
-                status: statuses
-                    .get(&path)
-                    .cloned()
-                    .unwrap_or_else(|| "M".to_string()),
-                staged: staged.get(&path).copied(),
-                added: added.parse().unwrap_or(0),
-                deleted: deleted.parse().unwrap_or(0),
-                path,
-                hunks: vec![],
-            });
-        }
+    let numstat_args = diff_args("diff", &[&base_ref, "--numstat"]);
+    let (statuses, staged, numstat, untracked) = tokio::join!(
+        name_status_map(&wt.path, &base_ref),
+        staged_map(&wt.path),
+        crate::core::git::output(&wt.path, &numstat_args),
+        list_untracked(&wt.path),
+    );
 
-        // Untracked files are not in `git diff`.
-        for f in list_untracked(&wt.path).await {
-            let added = untracked_added_count(&wt.path, &f).await;
-            files.push(FileDiff {
-                path: f,
-                added,
-                deleted: 0,
-                status: "A".to_string(),
-                staged: Some(false),
-                hunks: vec![],
-            });
-        }
+    let out = numstat.map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(format!(
+            "git diff {base_ref} failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
 
-        repo_diffs.push(RepoDiff {
-            worktree_id: wt.id,
-            repo_id: wt.repo_id,
-            branch: wt.branch,
-            fetch_status: "ok".to_string(),
-            files,
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut files = vec![];
+    for line in text.lines() {
+        // Format: "<added>\t<deleted>\t<path>"; binary files show "-\t-\t<path>".
+        let mut parts = line.splitn(3, '\t');
+        let added = parts.next().unwrap_or("0");
+        let deleted = parts.next().unwrap_or("0");
+        let Some(path) = parts.next() else { continue };
+        let path = unquote_path(path);
+        files.push(FileDiff {
+            status: statuses
+                .get(&path)
+                .cloned()
+                .unwrap_or_else(|| "M".to_string()),
+            staged: staged.get(&path).copied(),
+            added: added.parse().unwrap_or(0),
+            deleted: deleted.parse().unwrap_or(0),
+            path,
+            hunks: vec![],
         });
     }
 
-    Ok(DiffResult {
-        task_id,
-        repos: repo_diffs,
+    // Untracked files are not in `git diff`; their line counts read a few at a time.
+    let root = wt.path.as_str();
+    let mut counted: Vec<(usize, String, i64)> =
+        futures_util::stream::iter(untracked.into_iter().enumerate())
+            .map(|(at, f)| async move { (at, untracked_added_count(root, &f).await, f) })
+            .buffer_unordered(UNTRACKED_CONCURRENCY)
+            .map(|(at, added, f)| (at, f, added))
+            .collect()
+            .await;
+    counted.sort_by_key(|(at, _, _)| *at);
+    for (_, f, added) in counted {
+        files.push(FileDiff {
+            path: f,
+            added,
+            deleted: 0,
+            status: "A".to_string(),
+            staged: Some(false),
+            hunks: vec![],
+        });
+    }
+
+    Ok(RepoDiff {
+        worktree_id: wt.id,
+        repo_id: wt.repo_id,
+        branch: wt.branch,
+        fetch_status: "ok".to_string(),
+        files,
     })
 }
 

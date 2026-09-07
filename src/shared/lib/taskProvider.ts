@@ -1,4 +1,4 @@
-import type { ProviderId } from '../ipc/ipc';
+import type { Config, ProviderId } from '../ipc/ipc';
 
 /** Copy that names a task's source. Only copy; capabilities come from the schema. */
 interface ProviderCopy {
@@ -45,4 +45,12 @@ export function providerCopy(
 ): ProviderCopy {
   const id = task?.provider;
   return (id && (PROVIDERS as Record<string, ProviderCopy>)[id]) || FALLBACK;
+}
+
+/** Every provider id, in registry order. */
+export const PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
+
+/** The task sources that are set up. */
+export function configuredSources(config: Config | null | undefined): ProviderId[] {
+  return PROVIDER_IDS.filter((id) => !!config?.[id]);
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { PanelRight } from 'lucide-react';
@@ -22,7 +22,7 @@ import { AgentPanel } from '../agent/AgentPanel';
 import { AgentsSidebar } from '../agent/AgentsSidebar';
 import { AgentsToggle } from '../agent/AgentsToggle';
 import { waitingCount, type AgentRow } from '../shared/lib/agents';
-import { SOURCE_IDS } from '../setup/sources';
+import { configuredSources } from '../shared/lib/taskProvider';
 import { WindowControls } from './chrome/WindowControls';
 import { ResizeHandles } from './chrome/ResizeHandles';
 import type { PtyExitEvent, PtyOutputEvent } from '../shared/ipc/ipc';
@@ -139,7 +139,7 @@ export default function AgentWindow() {
     };
   }, [send]);
 
-  const sources = SOURCE_IDS.filter((id) => !!config?.[id]);
+  const sources = useMemo(() => configuredSources(config), [config]);
   const agents = state?.agents ?? [];
   const agentsOpen = state?.agentsOpen ?? false;
   // The list's width is this window's own layout, not mirrored.

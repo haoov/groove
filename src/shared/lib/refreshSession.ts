@@ -2,10 +2,12 @@ import { invoke } from '../ipc/invoke';
 import { useStore, findSessionByTask } from '../store';
 import type { AgentState } from '../ipc/ipc';
 
-/** Flushes the backend git caches, then refetches the session's diff and status, and Home when on screen.
- *  The one refresh path: never skip the cache flush. */
-export async function refreshSession(id: string) {
-  await invoke('flush_git_caches').catch(() => { /* best-effort */ });
+/** Refetches the session's diff and status, and Home when on screen. `flushCaches` also drops the
+ *  backend ref caches: needed when refs moved, not when only the working tree did. */
+export async function refreshSession(id: string, flushCaches = true) {
+  if (flushCaches) {
+    await invoke('flush_git_caches').catch(() => { /* best-effort */ });
+  }
   const s = useStore.getState();
   s.invalidateDiff(id);
   void s.refreshStatusFor(id);
@@ -25,9 +27,10 @@ export function refreshOnAgentActivity(taskId: string, state: AgentState, tool?:
   const owner = findSessionByTask(s, taskId);
   if (!owner) return;
   const id = owner.id;
+  // An agent edit moves the working tree, never a ref: the ref caches stay.
   const fire = () => {
     lastRefreshAt.set(id, Date.now());
-    void refreshSession(id);
+    void refreshSession(id, false);
   };
   // Turn done: refresh once and drop any pending edit-triggered refresh.
   if (state === 'idle') {

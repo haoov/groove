@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Check, MessageSquare, MessageSquarePlus, Pencil, Send, Trash2 } from 'lucide-react';
 import { Markdown } from '../shared/ui/Markdown';
 import type { Annotation, Mr, MrThread } from '../shared/ipc/ipc';
@@ -18,7 +18,9 @@ function AnnotationAuthor({ a }: { a: Annotation }) {
 }
 
 /** One note with its controls: post, edit, resolve, delete. */
-export function AnnotationRow({ a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: Mr | null }) {
+export const AnnotationRow = memo(function AnnotationRow(
+  { a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: Mr | null },
+) {
   const editing = ann.editingId === a.id;
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
@@ -113,7 +115,7 @@ export function AnnotationRow({ a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: 
       )}
     </div>
   );
-}
+});
 
 /** The always-visible annotations under a line, portalled into `InlineAnnotationsWidget`. */
 export function InlineAnnotations({ anns, ann, mr }: { anns: Annotation[]; ann: AnnCtx; mr: Mr | null }) {

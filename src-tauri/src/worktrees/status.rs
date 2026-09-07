@@ -24,38 +24,44 @@ pub async fn get_worktree_status(
         .await
         .map_err(|e| e.to_string())?;
 
-    let status_out = crate::core::git::output(&wt.path, &["status", "--porcelain"])
-        .await
-        .map_err(|e| e.to_string())?;
+    let (status_out, (ahead, behind)) = tokio::join!(
+        crate::core::git::output(&wt.path, &["status", "--porcelain"]),
+        ahead_behind(&wt),
+    );
+    let status_out = status_out.map_err(|e| e.to_string())?;
 
     let mut modified = 0usize;
     let mut staged = 0usize;
-    for line in String::from_utf8_lossy(&status_out.stdout).lines() {
-        if line.len() >= 2 {
-            let x = line.chars().next().unwrap_or(' ');
-            let y = line.chars().nth(1).unwrap_or(' ');
-            if x == '?' && y == '?' {
-                // An untracked file counts as a working-tree change.
+    for change in crate::core::git::porcelain::parse(&String::from_utf8_lossy(&status_out.stdout)) {
+        if change.x == '?' && change.y == '?' {
+            // An untracked file counts as a working-tree change.
+            modified += 1;
+        } else {
+            if change.x != ' ' {
+                staged += 1;
+            }
+            if change.y != ' ' {
                 modified += 1;
-            } else {
-                if x != ' ' {
-                    staged += 1;
-                }
-                if y != ' ' {
-                    modified += 1;
-                }
             }
         }
     }
 
+    Ok(WorktreeStatus {
+        worktree_id,
+        modified,
+        staged,
+        ahead,
+        behind,
+    })
+}
+
+/// Commits `HEAD` leads and trails its upstream by.
+async fn ahead_behind(wt: &crate::core::db::models::Worktree) -> (i64, i64) {
     // Ahead/behind against `origin/<branch>`, not the base branch.
     let upstream = format!("origin/{}", wt.branch);
-    let has_upstream = crate::core::git::output(&wt.path, &["rev-parse", "--verify", &upstream])
-        .await
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+    let has_upstream = crate::core::git::refs::ref_exists(&wt.path, &upstream).await;
 
-    let (ahead, behind) = if has_upstream {
+    if has_upstream {
         let range = format!("HEAD...{upstream}");
         crate::core::git::output(&wt.path, &["rev-list", "--left-right", "--count", &range])
             .await
@@ -93,13 +99,5 @@ pub async fn get_worktree_status(
                 Err(_) => 0,
             };
         (ahead, 0)
-    };
-
-    Ok(WorktreeStatus {
-        worktree_id,
-        modified,
-        staged,
-        ahead,
-        behind,
-    })
+    }
 }

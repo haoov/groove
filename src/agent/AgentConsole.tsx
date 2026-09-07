@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PictureInPicture2, X } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { shortcutLabel } from '../shared/lib/keybindings';
 import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
-import { SOURCE_IDS } from '../setup/sources';
+import { configuredSources } from '../shared/lib/taskProvider';
+import { readStoredSize, useDragResize } from '../shared/lib/useDragResize';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
 import { goToSessionById } from '../shared/lib/goToSession';
@@ -50,13 +51,17 @@ export function AgentConsole() {
 
   const [starting, setStarting] = useState(false);
 
-  const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
-  const [width, setWidth] = useState(() => {
-    const saved = Number(localStorage.getItem(WIDTH_KEY));
-    return Number.isFinite(saved) && saved >= MIN_WIDTH ? saved : DEFAULT_WIDTH;
+  const config = useStore((s) => s.config);
+  const sources = useMemo(() => configuredSources(config), [config]);
+  const { size: width, ref: paneRef, startDrag } = useDragResize<HTMLElement>({
+    axis: 'x',
+    min: MIN_WIDTH,
+    max: MAX_WIDTH,
+    initial: () => readStoredSize(WIDTH_KEY, MIN_WIDTH, DEFAULT_WIDTH),
+    storageKey: WIDTH_KEY,
+    offset: extra,
   });
   const termRef = useRef<HTMLDivElement>(null);
-  const paneRef = useRef<HTMLElement>(null);
 
   const agentPty = ptySessions.find((p) => p.ptyType === 'agent')?.sessionId ?? null;
   const visible = !!activeTask && open && !detached;
@@ -85,30 +90,6 @@ export function AgentConsole() {
   useEffect(() => {
     if (holding) focusHost(holding);
   }, [focusNonce, holding]);
-
-  const startDrag = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const rendered = paneRef.current?.getBoundingClientRect().width;
-    const startWidth = rendered === undefined ? width : rendered - extra;
-    let latest = startWidth;
-    const move = (ev: MouseEvent) => {
-      // Dragging left widens the pane.
-      latest = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + (startX - ev.clientX)));
-      setWidth(latest);
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      localStorage.setItem(WIDTH_KEY, String(Math.round(latest)));
-    };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  };
 
   if (!visible || !activeTask) return null;
 

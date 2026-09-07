@@ -45,49 +45,57 @@ pub(super) async fn get_commit_log_impl(
         None => store::worktrees::for_session(pool, task_id).await?,
     };
 
-    let mut all = vec![];
-    for wt in worktrees {
-        let log_ref = wt.branch.as_str();
+    let per_worktree =
+        futures_util::future::try_join_all(worktrees.iter().map(|wt| log_of(wt, limit))).await?;
+    Ok(per_worktree.into_iter().flatten().collect())
+}
 
-        // A pinned `base_ref` is the base; `None` means the remote has no base branch.
-        let base = crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref())
-            .await
-            .ok();
+/// One worktree's rows: the log and the task's own range are read together.
+async fn log_of(wt: &Worktree, limit: u32) -> anyhow::Result<Vec<CommitEntry>> {
+    let log_ref = wt.branch.as_str();
+    let max_count = format!("--max-count={limit}");
 
-        let max_count = format!("--max-count={limit}");
-        let output =
-            crate::core::git::output(&wt.path, &["log", &max_count, LOG_FORMAT, log_ref]).await?;
+    let log_args = ["log", &max_count, LOG_FORMAT, log_ref];
+    let (output, task_shas) = tokio::join!(
+        crate::core::git::output(&wt.path, &log_args),
+        task_shas(wt, log_ref),
+    );
 
-        if !output.status.success() {
-            return Err(anyhow::anyhow!(
-                "git log {log_ref} failed: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            ));
-        }
-
-        // The task's own commits: `base..ref`.
-        let range = match &base {
-            Some(b) => format!("{b}..{log_ref}"),
-            None => log_ref.to_string(),
-        };
-        let task_shas: HashSet<String> = crate::core::git::output(&wt.path, &["rev-list", &range])
-            .await
-            .ok()
-            .filter(|o| o.status.success())
-            .map(|o| {
-                String::from_utf8_lossy(&o.stdout)
-                    .lines()
-                    .map(|l| l.trim().to_string())
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        all.extend(parse_log(
-            &String::from_utf8_lossy(&output.stdout),
-            &task_shas,
+    let output = output?;
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "git log {log_ref} failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
-    Ok(all)
+
+    Ok(parse_log(
+        &String::from_utf8_lossy(&output.stdout),
+        &task_shas,
+    ))
+}
+
+/// The task's own commits: `base..ref`. A pinned `base_ref` is the base; `None`
+/// means the remote has no base branch.
+async fn task_shas(wt: &Worktree, log_ref: &str) -> HashSet<String> {
+    let base = crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref())
+        .await
+        .ok();
+    let range = match &base {
+        Some(b) => format!("{b}..{log_ref}"),
+        None => log_ref.to_string(),
+    };
+    crate::core::git::output(&wt.path, &["rev-list", &range])
+        .await
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .map(|l| l.trim().to_string())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[tauri::command]

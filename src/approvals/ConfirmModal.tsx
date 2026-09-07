@@ -347,7 +347,9 @@ function PayloadView({ op, payload, edits, setField }: {
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 export function ConfirmModal() {
-  const { pendingConfirmations, removeConfirmation, setLastError } = useStore();
+  const pendingConfirmations = useStore((s) => s.pendingConfirmations);
+  const removeConfirmation = useStore((s) => s.removeConfirmation);
+  const setLastError = useStore((s) => s.setLastError);
   const setSkillsStale = useStore((s) => s.setSkillsStale);
   const confirmationsMinimized = useStore((s) => s.confirmationsMinimized);
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);

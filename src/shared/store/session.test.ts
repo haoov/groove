@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   closePaneReducer, closeTabReducer, commitPreviewReducer, discardPreviewReducer,
-  isTerminalPane, newWorkspaceSession, openTabReducer, sessionTitle, splitPaneReducer,
+  isTerminalPane, newWorkspaceSession, openTabReducer, pruneFileCache, sessionTitle, splitPaneReducer,
 } from './session';
 import type { SessionState } from './types';
-import type { Task } from '../ipc/ipc';
+import type { DiffResult, Task } from '../ipc/ipc';
 
 const task = (short = 'TASKS2-1'): Task => ({
   short_id: short, page_id: 'p', title: 'Some task', status: 'In progress',
@@ -334,5 +334,36 @@ describe('closePaneReducer', () => {
     let s = fresh();
     s = apply(s, splitPaneReducer(s, 'row'));
     expect(closePaneReducer(s, 'pane-nope')).toEqual({});
+  });
+});
+
+describe('pruneFileCache', () => {
+  const file = (path: string, added: number, deleted = 0, staged: boolean | null = false) =>
+    ({ path, added, deleted, status: 'M', staged, hunks: [] });
+  const diff = (files: ReturnType<typeof file>[]): DiffResult =>
+    ({ task_id: 't', repos: [{ worktree_id: 'wt1', repo_id: 'r1', branch: 'b', fetch_status: 'ok', files }] } as DiffResult);
+
+  it('keeps a file whose numbers did not move', () => {
+    const before = diff([file('a.ts', 3), file('b.ts', 1)]);
+    const after = diff([file('a.ts', 3), file('b.ts', 9)]);
+    const cache = { 'wt1/a.ts': ['keep'], 'wt1/b.ts': ['stale'] };
+    expect(pruneFileCache(cache, before, after)).toEqual({ 'wt1/a.ts': ['keep'] });
+  });
+
+  it('drops a file that left the diff', () => {
+    const before = diff([file('a.ts', 3)]);
+    const after = diff([]);
+    expect(pruneFileCache({ 'wt1/a.ts': [1] }, before, after)).toEqual({});
+  });
+
+  it('drops everything when the previous summary is unknown', () => {
+    const after = diff([file('a.ts', 3)]);
+    expect(pruneFileCache({ 'wt1/a.ts': [1] }, null, after)).toEqual({});
+  });
+
+  it('notices a staged flag flip', () => {
+    const before = diff([file('a.ts', 3, 0, false)]);
+    const after = diff([file('a.ts', 3, 0, true)]);
+    expect(pruneFileCache({ 'wt1/a.ts': [1] }, before, after)).toEqual({});
   });
 });

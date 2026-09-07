@@ -2,6 +2,7 @@
 // This barrel is the only import surface; components never reach into ./slices, ./types or ./session.
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { createContext, useContext } from 'react';
 import type { AppState, SessionState, SessionView } from './types';
 import type { LayoutNode, SplitDir } from '../lib/layout';
@@ -42,6 +43,47 @@ export const SessionIdContext = createContext<string | null>(null);
 export function useSession<T>(selector: (s: SessionView) => T): T {
   const ctx = useContext(SessionIdContext);
   return useStore((root) => selector(buildView(root, ctx ?? root.activeSessionId)));
+}
+
+// ─── Session summaries ──────────────────────────────────────────────────────────
+
+/** What a session row needs: identity only, never its diff, panes or status. */
+export interface SessionSummary {
+  id: string;
+  kind: SessionState['kind'];
+  title: string;
+  task: SessionState['task'];
+  mrs: SessionState['mrs'];
+}
+
+// Kept by id while the fields hold, so `useShallow` sees an unchanged array.
+const summaryCache = new Map<string, SessionSummary>();
+
+function summaryOf(s: SessionState): SessionSummary {
+  const prev = summaryCache.get(s.id);
+  if (prev && prev.kind === s.kind && prev.title === s.title && prev.task === s.task && prev.mrs === s.mrs) {
+    return prev;
+  }
+  const next: SessionSummary = { id: s.id, kind: s.kind, title: s.title, task: s.task, mrs: s.mrs };
+  summaryCache.set(s.id, next);
+  return next;
+}
+
+/** One row per open session, in order. */
+export function useSessionSummaries(): SessionSummary[] {
+  return useStore(
+    useShallow((s: AppState) => {
+      const rows = s.sessionOrder
+        .map((id) => s.sessions[id])
+        .filter((x): x is SessionState => !!x)
+        .map(summaryOf);
+      if (summaryCache.size > rows.length) {
+        const live = new Set(rows.map((r) => r.id));
+        for (const id of summaryCache.keys()) if (!live.has(id)) summaryCache.delete(id);
+      }
+      return rows;
+    }),
+  );
 }
 
 // ─── Non-hook accessors ─────────────────────────────────────────────────────────

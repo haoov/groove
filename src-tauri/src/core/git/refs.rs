@@ -1,11 +1,16 @@
 //! Cached ref answers: `upstream_base` (the branch the work forks from) and
 //! `diff_base` (the point a diff compares against).
 
+use std::time::Duration;
+
 use super::cache;
 use super::run;
 
 /// Fallbacks, in order, when a worktree has no pinned base.
 const DEFAULT_CANDIDATES: [&str; 3] = ["origin/HEAD", "origin/main", "origin/master"];
+
+/// Minimum interval between `git remote set-head` repairs per repo.
+const SET_HEAD_THROTTLE: Duration = Duration::from_secs(60);
 
 /// The upstream ref this worktree's work branches from. `pinned` is the MR
 /// target branch (`Worktree::base_ref`), taken when it resolves on origin.
@@ -99,7 +104,7 @@ pub async fn origin_branches(path: &str) -> anyhow::Result<Vec<String>> {
     Ok(branches)
 }
 
-/// The repo's default branch, from `refs/remotes/origin/HEAD`; writes the symref when it is missing.
+/// The repo's default branch, from `refs/remotes/origin/HEAD`; a missing symref schedules a throttled repair.
 /// Never strip the "origin/HEAD" shorthand: that yields "HEAD", and `fetch HEAD:HEAD` poisons a local branch.
 pub async fn default_branch(repo_path: &str) -> Option<String> {
     cache::shared()
@@ -127,10 +132,12 @@ async fn resolve_default_branch(repo_path: &str) -> Option<String> {
         return Some(name);
     }
 
-    // Ask the remote and record the answer.
-    let _ = run::run(repo_path, &["remote", "set-head", "origin", "-a"]).await;
-    if let Some(name) = read_symref(repo_path).await {
-        return Some(name);
+    // Repairing the symref talks to the remote; at most once a window per repo.
+    if cache::shared().due(&format!("set-head:{repo_path}"), SET_HEAD_THROTTLE) {
+        let _ = run::run(repo_path, &["remote", "set-head", "origin", "-a"]).await;
+        if let Some(name) = read_symref(repo_path).await {
+            return Some(name);
+        }
     }
 
     for name in ["main", "master"] {
@@ -396,5 +403,18 @@ mod tests {
     async fn default_branch_reads_the_symref_not_the_shorthand() {
         let (_fx, work) = Fixture::new("default");
         assert_eq!(default_branch(&work).await.as_deref(), Some("main"));
+    }
+
+    #[tokio::test]
+    async fn the_set_head_repair_stamps_its_throttle() {
+        let (_fx, work) = Fixture::new("sethead");
+        let dir = PathBuf::from(&work);
+        git(&dir, &["remote", "set-head", "origin", "--delete"]);
+        cache::flush();
+        assert_eq!(default_branch(&work).await.as_deref(), Some("main"));
+        assert!(
+            !cache::shared().due(&format!("set-head:{work}"), SET_HEAD_THROTTLE),
+            "a second miss inside the window must not reach the remote"
+        );
     }
 }

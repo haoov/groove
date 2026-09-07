@@ -52,16 +52,18 @@ export function agentLine(a: AgentActivity): string {
   }
 }
 
+/** Sessions in tab order, skipping an id with no session behind it. */
+export function orderedSessions<T>(sessions: Record<string, T>, sessionOrder: string[]): T[] {
+  return sessionOrder.map((id) => sessions[id]).filter((s): s is T => !!s);
+}
+
 /** Waiting agents first, then session order. */
 export function buildAgentRows(
-  sessions: Record<string, SessionLite>,
-  sessionOrder: string[],
+  sessions: SessionLite[],
   activeSessionId: string | null,
   activity: Record<string, AgentActivity>,
 ): AgentRow[] {
-  const rows = sessionOrder
-    .map((id) => sessions[id])
-    .filter((s): s is SessionLite => !!s)
+  const rows = sessions
     .map((s): AgentRow => {
       const taskId = s.task?.short_id ?? null;
       return {

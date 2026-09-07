@@ -182,6 +182,15 @@ spawns.
 file-editing tools (throttled) and turn end, never every hook. There is no filesystem
 watcher.
 
+The flush is the sidebar button's, not the agent's: `refreshSession(id, false)` skips it,
+because an agent edit moves the working tree and never a ref. Ref-moving ops — commit, push,
+pull, rebase — flush in the backend where they run.
+
+**A refresh keeps the diff it already has.** `invalidateDiff` bumps the nonce only; `setDiff`
+then prunes `diffHunks` and `blameByFile` per file with `pruneFileCache`, keeping every file
+whose `added`/`deleted`/`status`/`staged` did not move. Clearing them wholesale sent every
+expanded file back to "Loading diff…" on each edit burst, and refetched a `git diff` per file.
+
 **Nothing polls the forge.** The CI chip moves on three things and no others: a
 `git.push` or an `mr.*` op landing (`useIpc` bumps `mrNonce`), and the sidebar's refresh
 button. `invalidateMrs` deliberately stays OUT of `refreshSession` — that runs on every

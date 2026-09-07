@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { mrRef } from '../shared/lib/forge';
 import { createPortal } from 'react-dom';
 import {
@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { invoke } from '../shared/ipc/invoke';
-import { useStore, useSession, type SessionState } from '../shared/store';
+import { useStore, useSession, useSessionSummaries, type SessionSummary } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { goToSession } from '../shared/lib/goToSession';
 import { statusKey } from '../shared/lib/taskStatus';
@@ -110,16 +110,10 @@ function Picker({
 }
 
 function SessionRows({ onClose }: { onClose: () => void }) {
-  const sessions = useStore((s) => s.sessions);
-  const sessionOrder = useStore((s) => s.sessionOrder);
   const activeId = useStore((s) => s.activeSessionId);
+  const rows = useSessionSummaries();
 
-  const rows = useMemo(
-    () => sessionOrder.map((id) => sessions[id]).filter((s): s is SessionState => !!s),
-    [sessionOrder, sessions],
-  );
-
-  const pick = (s: SessionState) => {
+  const pick = (s: SessionSummary) => {
     if (s.task?.short_id) goToSession(s.task.short_id);
     else useStore.getState().focusSession(s.id);
     onClose();

@@ -5,9 +5,15 @@ use std::{
     collections::HashMap,
     io::Write,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use tauri::Emitter;
+
+/// Output batching window: a burst emits at most one event per window.
+const OUTPUT_WINDOW: Duration = Duration::from_millis(12);
+/// A batch this big goes out at once, window or not.
+const OUTPUT_MAX_BATCH: usize = 64 * 1024;
 
 // SAFETY: PTY master fd (TIOCSWINSZ ioctl) is safe to call from any thread on Unix.
 struct SendableMasterPty(Box<dyn portable_pty::MasterPty>);
@@ -87,26 +93,40 @@ impl Ptys {
         let entries = Arc::clone(&self.entries);
         let on_exit = spec.on_exit;
         tokio::task::spawn_blocking(move || {
-            let mut reader = reader;
-            let mut buf = [0u8; 4096];
-            loop {
-                match std::io::Read::read(&mut reader, &mut buf) {
-                    Ok(0) | Err(_) => break,
-                    // Base64, not a JSON number array; this is the busiest IPC path.
-                    Ok(n) => {
-                        let _ = app_reader.emit(
+            let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
+            let emitter = {
+                let app = app_reader.clone();
+                let sid = sid.clone();
+                std::thread::spawn(move || {
+                    coalesce(&rx, OUTPUT_WINDOW, OUTPUT_MAX_BATCH, |bytes| {
+                        // Base64, not a JSON number array; this is the busiest IPC path.
+                        let _ = app.emit(
                             crate::core::events::PTY_OUTPUT,
                             serde_json::json!({
                                 "session_id": sid,
                                 "b64": base64::Engine::encode(
                                     &base64::engine::general_purpose::STANDARD,
-                                    &buf[..n],
+                                    bytes,
                                 ),
                             }),
                         );
+                    });
+                })
+            };
+
+            let mut reader = reader;
+            let mut buf = [0u8; 4096];
+            loop {
+                match std::io::Read::read(&mut reader, &mut buf) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        if tx.send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
                     }
                 }
             }
+            drop(tx);
             let _ = child.wait();
             if let Ok(mut map) = entries.lock() {
                 map.remove(&sid);
@@ -114,6 +134,8 @@ impl Ptys {
             if let Some(hook) = on_exit {
                 hook();
             }
+            // Every batch is emitted before the exit event.
+            let _ = emitter.join();
             let _ = app_reader.emit(
                 crate::core::events::PTY_EXIT,
                 serde_json::json!({ "session_id": sid }),
@@ -205,6 +227,53 @@ impl Default for Ptys {
     }
 }
 
+/// Batch PTY reads into one emit per window. The first chunk after an idle
+/// period is emitted with no wait; later ones coalesce until the window ends or
+/// `max_batch` is reached. Returns when the sender is dropped, tail flushed.
+fn coalesce(
+    rx: &std::sync::mpsc::Receiver<Vec<u8>>,
+    window: Duration,
+    max_batch: usize,
+    mut emit: impl FnMut(&[u8]),
+) {
+    use std::sync::mpsc::RecvTimeoutError;
+
+    let mut buf: Vec<u8> = Vec::new();
+    let mut window_ends: Option<Instant> = None;
+    loop {
+        let next = match window_ends {
+            Some(end) => match end.checked_duration_since(Instant::now()) {
+                Some(left) => rx.recv_timeout(left),
+                None => Err(RecvTimeoutError::Timeout),
+            },
+            None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
+        };
+        match next {
+            Ok(chunk) => {
+                buf.extend_from_slice(&chunk);
+                if window_ends.is_none() || buf.len() >= max_batch {
+                    emit(&buf);
+                    buf.clear();
+                    window_ends = Some(Instant::now() + window);
+                }
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                if buf.is_empty() {
+                    window_ends = None;
+                } else {
+                    emit(&buf);
+                    buf.clear();
+                    window_ends = Some(Instant::now() + window);
+                }
+            }
+            Err(RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    if !buf.is_empty() {
+        emit(&buf);
+    }
+}
+
 /// Set `TERM`/`COLORTERM` for xterm.js and sever the child from the launcher's multiplexer.
 /// An inherited `$TMUX`/`$STY` makes the shell a client of the launcher's session; a tmux-aware startup then detaches it.
 fn describe_terminal(cmd: &mut portable_pty::CommandBuilder) {
@@ -259,5 +328,50 @@ mod tests {
         describe_terminal(&mut cmd);
         assert_eq!(cmd.get_env("TERM").unwrap(), "xterm-256color");
         assert_eq!(cmd.get_env("COLORTERM").unwrap(), "truecolor");
+    }
+
+    /// Run `coalesce` over `chunks`, returning what each emit carried.
+    fn batches(chunks: &[&[u8]], window: Duration, max_batch: usize) -> Vec<Vec<u8>> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        for chunk in chunks {
+            tx.send(chunk.to_vec()).unwrap();
+        }
+        drop(tx);
+        let mut out = vec![];
+        coalesce(&rx, window, max_batch, |bytes| out.push(bytes.to_vec()));
+        out
+    }
+
+    #[test]
+    fn the_first_chunk_of_a_burst_is_never_held_back() {
+        let out = batches(&[b"a", b"b", b"c"], Duration::from_secs(60), 1 << 20);
+        assert_eq!(out, [b"a".to_vec(), b"bc".to_vec()], "a went out alone");
+    }
+
+    #[test]
+    fn a_full_batch_goes_out_before_the_window_ends() {
+        let out = batches(&[b"a", b"bb", b"cc"], Duration::from_secs(60), 4);
+        assert_eq!(out, [b"a".to_vec(), b"bbcc".to_vec()]);
+    }
+
+    #[test]
+    fn a_chunk_after_an_idle_period_is_emitted_at_once() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let feeder = std::thread::spawn(move || {
+            tx.send(b"a".to_vec()).unwrap();
+            std::thread::sleep(Duration::from_millis(30));
+            tx.send(b"b".to_vec()).unwrap();
+        });
+        let mut out = vec![];
+        coalesce(&rx, Duration::from_millis(1), 1 << 20, |bytes| {
+            out.push(bytes.to_vec())
+        });
+        feeder.join().unwrap();
+        assert_eq!(out, [b"a".to_vec(), b"b".to_vec()], "neither was batched");
+    }
+
+    #[test]
+    fn nothing_is_emitted_for_no_output() {
+        assert!(batches(&[], Duration::from_millis(1), 16).is_empty());
     }
 }

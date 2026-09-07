@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation } from '../shared/ipc/ipc';
@@ -115,7 +115,7 @@ export function useAnnotations(
     return () => window.removeEventListener('keydown', onKey);
   }, [sel]);
 
-  const submit = async () => {
+  const submit = useCallback(async () => {
     if (submittingRef.current) return;
     if (!sel || !annotationText.trim() || !activeTask) return;
     submittingRef.current = true;
@@ -137,9 +137,9 @@ export function useAnnotations(
     } finally {
       submittingRef.current = false;
     }
-  };
+  }, [sel, annotationText, activeTask, addAnnotation, setLastError]);
 
-  const submitReply = async (mrId: string, threadId: string, body: string, replyKey: string) => {
+  const submitReply = useCallback(async (mrId: string, threadId: string, body: string, replyKey: string) => {
     if (!body.trim() || replyInFlight.current.has(replyKey)) return;
     replyInFlight.current.add(replyKey);
     setReplyPending((p) => ({ ...p, [replyKey]: true }));
@@ -152,10 +152,10 @@ export function useAnnotations(
       replyInFlight.current.delete(replyKey);
       setReplyPending((p) => { const n = { ...p }; delete n[replyKey]; return n; });
     }
-  };
+  }, [setLastError]);
 
   // Positions reference the remote MR head: post before local commits in a review worktree.
-  const postToMr = async (a: Annotation, mrId: string) => {
+  const postToMr = useCallback(async (a: Annotation, mrId: string) => {
     if (postInFlight.current.has(a.id)) return;
     postInFlight.current.add(a.id);
     setPostPending((p) => ({ ...p, [a.id]: true }));
@@ -176,19 +176,19 @@ export function useAnnotations(
       postInFlight.current.delete(a.id);
       setPostPending((p) => { const n = { ...p }; delete n[a.id]; return n; });
     }
-  };
+  }, [resolveAnnotation, bumpMrs, notify, setLastError]);
 
-  const beginEdit = (a: Annotation) => {
+  const beginEdit = useCallback((a: Annotation) => {
     setEditingId(a.id);
     setEditText(a.content);
-  };
+  }, []);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditingId(null);
     setEditText('');
-  };
+  }, []);
 
-  const saveEdit = async () => {
+  const saveEdit = useCallback(async () => {
     const id = editingId;
     const content = editText.trim();
     if (!id || !content || editInFlight.current.has(id)) return;
@@ -204,9 +204,9 @@ export function useAnnotations(
       editInFlight.current.delete(id);
       setEditPending((p) => { const n = { ...p }; delete n[id]; return n; });
     }
-  };
+  }, [editingId, editText, updateAnnotation, cancelEdit, setLastError]);
 
-  const resolveNote = async (id: string) => {
+  const resolveNote = useCallback(async (id: string) => {
     if (resolveInFlight.current.has(id)) return;
     resolveInFlight.current.add(id);
     setResolvePending((p) => ({ ...p, [id]: true }));
@@ -219,9 +219,9 @@ export function useAnnotations(
       resolveInFlight.current.delete(id);
       setResolvePending((p) => { const n = { ...p }; delete n[id]; return n; });
     }
-  };
+  }, [resolveAnnotation, setLastError]);
 
-  const deleteAnnotation = async (id: string) => {
+  const deleteAnnotation = useCallback(async (id: string) => {
     if (deleteInFlight.current.has(id)) return;
     deleteInFlight.current.add(id);
     setDeletePending((p) => ({ ...p, [id]: true }));
@@ -234,24 +234,24 @@ export function useAnnotations(
       deleteInFlight.current.delete(id);
       setDeletePending((p) => { const n = { ...p }; delete n[id]; return n; });
     }
-  };
+  }, [removeAnnotation, setLastError]);
 
-  const beginDrag = (repoId: string, filePath: string, line: number, e: React.MouseEvent) => {
+  const beginDrag = useCallback((repoId: string, filePath: string, line: number, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setActiveRepoId(repoId);
     dragRef.current = { repoId, filePath, anchor: line, head: line };
     setDragRange({ repoId, filePath, startLine: line, endLine: line });
-  };
+  }, [setActiveRepoId]);
 
-  const extendDrag = (repoId: string, filePath: string, line: number) => {
+  const extendDrag = useCallback((repoId: string, filePath: string, line: number) => {
     const d = dragRef.current;
     if (!d || d.repoId !== repoId || d.filePath !== filePath) return;
     d.head = line;
     setDragRange({ repoId, filePath, startLine: Math.min(d.anchor, line), endLine: Math.max(d.anchor, line) });
-  };
+  }, []);
 
-  const selectSingle = (repoId: string, filePath: string, line: number) => {
+  const selectSingle = useCallback((repoId: string, filePath: string, line: number) => {
     setActiveRepoId(repoId);
     setSel((prev) =>
       prev && prev.repoId === repoId && prev.filePath === filePath && prev.startLine === line && prev.endLine === line
@@ -259,17 +259,27 @@ export function useAnnotations(
         : { repoId, filePath, startLine: line, endLine: line }
     );
     setAnnotationText('');
-  };
+  }, [setActiveRepoId]);
 
-  const ann: AnnCtx = {
+  const cancel = useCallback(() => { setSel(null); setAnnotationText(''); }, []);
+
+  const ann: AnnCtx = useMemo(() => ({
     sel, dragRange, annotationText, setAnnotationText,
     beginDrag, extendDrag, selectSingle,
-    submit, cancel: () => { setSel(null); setAnnotationText(''); },
+    submit, cancel,
     replyTexts, setReplyTexts, replyPending, submitReply,
     postPending, postToMr, resolvePending, resolveNote,
     deletePending, deleteAnnotation, openInEditor, inputRef,
     editingId, editText, setEditText, beginEdit, cancelEdit, saveEdit, editPending,
-  };
+  }), [
+    sel, dragRange, annotationText,
+    beginDrag, extendDrag, selectSingle,
+    submit, cancel,
+    replyTexts, replyPending, submitReply,
+    postPending, postToMr, resolvePending, resolveNote,
+    deletePending, deleteAnnotation, openInEditor,
+    editingId, editText, beginEdit, cancelEdit, saveEdit, editPending,
+  ]);
 
   return { ann, sel, dragRange };
 }

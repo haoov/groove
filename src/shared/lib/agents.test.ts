@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AGENTS_SIDEBAR_DEFAULT, AGENTS_SIDEBAR_MAX, AGENTS_SIDEBAR_MIN,
-  agentLine, buildAgentRows, clampAgentsWidth, waitingCount,
+  agentLine, buildAgentRows, clampAgentsWidth, orderedSessions, waitingCount,
 } from './agents';
 import { mrRef } from './forge';
 import type { AgentActivity } from '../ipc/ipc';
@@ -47,7 +47,7 @@ describe('buildAgentRows', () => {
   const sessions = { a: task('a', 'T-1'), b: task('b', 'T-2'), c: task('c', 'T-3') };
 
   it('puts waiting agents first and keeps session order otherwise', () => {
-    const rows = buildAgentRows(sessions, ['a', 'b', 'c'], 'a', {
+    const rows = buildAgentRows(orderedSessions(sessions, ['a', 'b', 'c']), 'a', {
       'T-1': activity('working'),
       'T-3': activity('waiting'),
     });
@@ -57,7 +57,7 @@ describe('buildAgentRows', () => {
   });
 
   it('skips a session id with no session behind it', () => {
-    expect(buildAgentRows(sessions, ['a', 'gone'], null, {})).toHaveLength(1);
+    expect(buildAgentRows(orderedSessions(sessions, ['a', 'gone']), null, {})).toHaveLength(1);
   });
 
   it('labels a review by its MR number', () => {
@@ -65,7 +65,7 @@ describe('buildAgentRows', () => {
       id: 'r', kind: 'review' as const, title: 'long review title', task: null,
       mrs: [{ platform: 'gitlab', remote_id: '42' } as never],
     };
-    const [row] = buildAgentRows({ r: review }, ['r'], null, {});
+    const [row] = buildAgentRows([review], null, {});
     expect(row.idLabel).toBe(mrRef('gitlab' as never, '42' as never));
     expect(row.title).toBe('long review title');
   });

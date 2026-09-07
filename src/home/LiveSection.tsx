@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { ChevronDown, ChevronRight, PanelsTopLeft, Pencil, Check, Trash2 } from 'lucide-react';
-import { useStore } from '../shared/store';
+import { findSessionByTask, useStore } from '../shared/store';
 import { endSession } from '../shared/lib/endSession';
 import { openExternal } from '../shared/lib/openExternal';
 import { ContextMenu } from '../shared/ui/ContextMenu';
@@ -79,8 +79,7 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
 type LiveConfirm = 'finish' | 'delete' | 'discard' | null;
 
 function LiveRow({ entry }: { entry: HomeEntry }) {
-  const sessions = useStore((s) => s.sessions);
-  const sessionOrder = useStore((s) => s.sessionOrder);
+  const sessionId = useStore((s) => findSessionByTask(s, entry.short_id)?.id ?? null);
   const refreshHome = useStore((s) => s.refreshHome);
   const setLastError = useStore((s) => s.setLastError);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -106,10 +105,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     });
   };
 
-  const session = sessionOrder
-    .map((id) => sessions[id])
-    .find((x) => x?.task?.short_id === entry.short_id);
-
   const rename = async () => {
     const next = name.trim();
     setRenaming(false);
@@ -127,7 +122,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     setConfirm(null);
     try {
       if (action === 'discard') {
-        if (session) await endSession(session.id);
+        if (sessionId) await endSession(sessionId);
         await invoke('discard_explorer', { shortId: entry.short_id });
       } else {
         await invoke(action === 'finish' ? 'finish_task' : 'delete_task', { shortId: entry.short_id });

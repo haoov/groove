@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { X, GitCompare, Code2, Columns2, Rows2, Maximize2, Minimize2, GitCommit, Terminal as TerminalIcon, Skull } from 'lucide-react';
 import { useStore, useSession, type EditorTab } from '../shared/store';
@@ -7,7 +7,7 @@ import { activeWorktreeFor, mrForWorktree, openFileAnnotations, fileThreads } fr
 import { ensureTerminalTab } from '../shared/lib/panes';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
-import type { Hunk } from '../shared/ipc/ipc';
+import type { Hunk, MrThread } from '../shared/ipc/ipc';
 import { guessLang } from '../shared/lib/lang';
 import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { ChangesView } from '../git/DiffView';
@@ -17,6 +17,8 @@ import { ContextMenu } from '../shared/ui/ContextMenu';
 import { CodeEditor } from '../editor/CodeEditor';
 import { killPtyTab } from '../shared/lib/panes';
 import type { AnnCtx } from '../editor/useAnnotations';
+
+const NO_THREADS: MrThread[] = [];
 
 const isPtyKind = (k?: EditorTab['kind']) => k === 'terminal';
 
@@ -279,10 +281,17 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
     return () => { stale = true; };
   }, [key, wt, hunks, diffMode, tab.filePath, setDiffHunks, setLastError]);
 
+  const fileAnns = useMemo(
+    () => openFileAnnotations(annotations, tab.repoId, tab.filePath),
+    [annotations, tab.repoId, tab.filePath],
+  );
+  const threads = useMemo(
+    () => mrThreadsByRepo[tab.repoId] ?? NO_THREADS,
+    [mrThreadsByRepo, tab.repoId],
+  );
+
   if (!wt) return <div className="diff-empty"><p>No worktree for this repo</p></div>;
 
-  const fileAnns = openFileAnnotations(annotations, tab.repoId, tab.filePath);
-  const threads = mrThreadsByRepo[tab.repoId] ?? [];
   const mr = mrForWorktree(mrs, wt.id);
 
   return (
@@ -343,10 +352,17 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
     invoke('open_file', { taskId: taskShortId, repoId: tab.repoId, filePath: tab.filePath, languageId }).catch(console.error);
   }, [wtId, taskShortId, tab.repoId, tab.filePath, languageId]);
 
+  const fileAnns = useMemo(
+    () => openFileAnnotations(annotations, tab.repoId, tab.filePath),
+    [annotations, tab.repoId, tab.filePath],
+  );
+  const threadsForFile = useMemo(
+    () => fileThreads(mrThreadsByRepo[tab.repoId] ?? NO_THREADS, tab.filePath),
+    [mrThreadsByRepo, tab.repoId, tab.filePath],
+  );
+
   if (!wt || !activeTask) return <div className="diff-empty"><p>No worktree for this repo</p></div>;
 
-  const fileAnns = openFileAnnotations(annotations, tab.repoId, tab.filePath);
-  const threadsForFile = fileThreads(mrThreadsByRepo[tab.repoId] ?? [], tab.filePath);
   const mr = mrForWorktree(mrs, wt.id);
 
   const onSaveContent = async (content: string) => {

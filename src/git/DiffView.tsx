@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation, Hunk, RepoDiff, Mr, MrThread } from '../shared/ipc/ipc';
@@ -7,6 +7,9 @@ import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
 import type { AnnCtx } from '../editor/useAnnotations';
+
+const NO_THREADS: MrThread[] = [];
+const NO_ANNOTATIONS: Annotation[] = [];
 
 /** The "All changes" tab: one repo's changed files, stacked and expandable. Hunks load per file. */
 export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
@@ -42,6 +45,8 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
     }
   }, [expandedFiles, repo, wt, diffHunks, diffMode, repoId, setDiffHunks, setLastError]);
 
+  const threads = useMemo(() => mrThreadsByRepo[repoId] ?? NO_THREADS, [mrThreadsByRepo, repoId]);
+
   if (!repo || repo.files.length === 0) {
     return <div className="diff-empty"><p>No changes in this repo</p></div>;
   }
@@ -55,7 +60,7 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
         onToggleFile={toggleFile}
         diffHunks={diffHunks}
         annotations={annotations}
-        threads={mrThreadsByRepo[repoId] ?? []}
+        threads={threads}
         mr={mrForWorktree(mrs, wt?.id)}
         ann={ann}
       />
@@ -78,7 +83,16 @@ export function RepoDiffSection({
   mr: Mr | null;
   ann: AnnCtx;
 }) {
-  const openAnns = annotations.filter((a) => a.repo_id === repo.repo_id && a.status === 'open');
+  const annsByFile = useMemo(() => {
+    const byFile = new Map<string, Annotation[]>();
+    for (const a of annotations) {
+      if (a.repo_id !== repo.repo_id || a.status !== 'open') continue;
+      const list = byFile.get(a.file_path);
+      if (list) list.push(a); else byFile.set(a.file_path, [a]);
+    }
+    return byFile;
+  }, [annotations, repo.repo_id]);
+
   // Keyed by worktree, not repo: two worktrees of one repo must not share hunks.
   const keyBase = worktreeId ?? repo.repo_id;
 
@@ -126,7 +140,7 @@ export function RepoDiffSection({
       {repo.files.map((file, i) => {
         const key = `${keyBase}/${file.path}`;
         const expanded = expandedFiles.has(key);
-        const fileAnns = openAnns.filter((a) => a.file_path === file.path);
+        const fileAnns = annsByFile.get(file.path) ?? NO_ANNOTATIONS;
 
         return (
           <div key={file.path} className="diff-file">

@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { agentLine, clampAgentsWidth, type AgentRow } from '../shared/lib/agents';
+import {
+  AGENTS_SIDEBAR_MAX, AGENTS_SIDEBAR_MIN,
+  agentLine, clampAgentsWidth, type AgentRow,
+} from '../shared/lib/agents';
+import { useDragResize } from '../shared/lib/useDragResize';
 import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
 import { statusKey } from '../shared/lib/taskStatus';
 
@@ -16,7 +20,14 @@ export function AgentsSidebar({
   onClose: (row: AgentRow) => void;
 }) {
   const [cursor, setCursor] = useState(() => Math.max(0, rows.findIndex((r) => r.active)));
-  const asideRef = useRef<HTMLElement>(null);
+  const commit = useCallback((w: number) => onResize(clampAgentsWidth(w)), [onResize]);
+  const { ref: asideRef, startDrag } = useDragResize<HTMLElement>({
+    axis: 'x',
+    min: AGENTS_SIDEBAR_MIN,
+    max: AGENTS_SIDEBAR_MAX,
+    initial: width,
+    onCommit: commit,
+  });
 
   // Clamp the cursor after a session closes.
   useEffect(() => {
@@ -36,26 +47,6 @@ export function AgentsSidebar({
       const row = rows[cursor];
       if (row) onGo(row);
     }
-  };
-
-  const startDrag = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = asideRef.current?.getBoundingClientRect().width ?? width;
-    const move = (ev: MouseEvent) => {
-      // Dragging left widens.
-      onResize(clampAgentsWidth(startWidth + (startX - ev.clientX)));
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
   };
 
   return (

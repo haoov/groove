@@ -5,6 +5,7 @@ import { Loader2, Play, X } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
+import { readStoredSize, useDragResize } from '../shared/lib/useDragResize';
 import { EVENT } from '../shared/ipc/events';
 import type { PtyExitEvent } from '../shared/ipc/ipc';
 
@@ -31,9 +32,12 @@ export function TerminalConsole() {
 
   const [pty, setPty] = useState<string | null>(scratchPty);
   const [starting, setStarting] = useState(false);
-  const [height, setHeight] = useState(() => {
-    const saved = Number(localStorage.getItem(HEIGHT_KEY));
-    return Number.isFinite(saved) && saved >= MIN_HEIGHT ? saved : DEFAULT_HEIGHT;
+  const { size: height, ref: dockRef, startDrag } = useDragResize<HTMLDivElement>({
+    axis: 'y',
+    min: MIN_HEIGHT,
+    max: MAX_HEIGHT,
+    initial: () => readStoredSize(HEIGHT_KEY, MIN_HEIGHT, DEFAULT_HEIGHT),
+    storageKey: HEIGHT_KEY,
   });
   const termRef = useRef<HTMLDivElement>(null);
 
@@ -75,33 +79,10 @@ export function TerminalConsole() {
     if (open && pty && focusReq) focusHost(pty);
   }, [open, pty, focusReq]);
 
-  const startDrag = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startHeight = height;
-    let latest = startHeight;
-    const move = (ev: MouseEvent) => {
-      // Dragging up grows it.
-      latest = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + (startY - ev.clientY)));
-      setHeight(latest);
-    };
-    const up = () => {
-      document.removeEventListener('mousemove', move);
-      document.removeEventListener('mouseup', up);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      localStorage.setItem(HEIGHT_KEY, String(Math.round(latest)));
-    };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-    document.body.style.cursor = 'row-resize';
-    document.body.style.userSelect = 'none';
-  };
-
   if (!open) return null;
 
   return (
-    <div className="home-terminal" style={{ height }} data-dock="terminal">
+    <div className="home-terminal" ref={dockRef} style={{ height }} data-dock="terminal">
       <div className="resize-handle-h" onMouseDown={startDrag} />
       <div className="home-terminal-head">
         <span className="console-target">terminal</span>

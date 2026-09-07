@@ -3,7 +3,7 @@ import { emitTo, listen } from '@tauri-apps/api/event';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { useStore, sessionActions, type AppState } from '../shared/store';
 import { ensureAgentSession, reloadAgent, sendSkill } from '../shared/lib/agentSend';
-import { buildAgentRows } from '../shared/lib/agents';
+import { buildAgentRows, orderedSessions } from '../shared/lib/agents';
 import { endSession } from '../shared/lib/endSession';
 import { goToSessionById } from '../shared/lib/goToSession';
 import { isMac } from '../shared/lib/platform';
@@ -160,7 +160,7 @@ function buildState(s: AppState): AgentWindowState {
     skills: s.skills,
     skillsStale: s.skillsStale,
     config: s.config,
-    agents: buildAgentRows(s.sessions, s.sessionOrder, s.activeSessionId, s.agentActivity),
+    agents: buildAgentRows(orderedSessions(s.sessions, s.sessionOrder), s.activeSessionId, s.agentActivity),
     agentsOpen: s.agentsSidebarOpen,
   };
 }

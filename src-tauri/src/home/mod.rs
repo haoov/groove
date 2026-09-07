@@ -1,12 +1,16 @@
 //! The Home snapshot: checked-out sessions, their repos and worktrees, and each
 //! MR's id and state. `force_mr` re-reads each MR's live state.
 
+use futures_util::StreamExt;
 use serde::Serialize;
 use sqlx::SqlitePool;
 
 use crate::core::db::models::SessionKind;
 use crate::core::db::store;
 use crate::core::db::store::home::HomeRow;
+
+/// Repo rows read at once; a forced read spawns one `gh`/`glab` per MR.
+const MR_CONCURRENCY: usize = 4;
 
 #[derive(Debug, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
@@ -84,20 +88,27 @@ pub async fn get_home_snapshot(
 
 async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeEntry>> {
     let rows = store::home::snapshot(pool).await?;
-    let entries = group_rows(rows);
 
-    Ok(
-        futures_util::future::join_all(entries.into_iter().map(|(entry, repo_rows)| async move {
-            let repos = futures_util::future::join_all(
-                repo_rows
-                    .into_iter()
-                    .map(|row| repo_state(row, force_mr, pool)),
-            )
-            .await;
-            HomeEntry { repos, ..entry }
-        }))
-        .await,
-    )
+    let mut entries: Vec<HomeEntry> = vec![];
+    let mut jobs = vec![];
+    for (at, (entry, repo_rows)) in group_rows(rows).into_iter().enumerate() {
+        entries.push(entry);
+        for (slot, row) in repo_rows.into_iter().enumerate() {
+            jobs.push((at, slot, row));
+        }
+    }
+
+    let mut done: Vec<(usize, usize, HomeRepo)> = futures_util::stream::iter(jobs)
+        .map(|(at, slot, row)| async move { (at, slot, repo_state(row, force_mr, pool).await) })
+        .buffer_unordered(MR_CONCURRENCY)
+        .collect()
+        .await;
+    done.sort_by_key(|(at, slot, _)| (*at, *slot));
+    for (at, _, repo) in done {
+        entries[at].repos.push(repo);
+    }
+
+    Ok(entries)
 }
 
 /// Fold the flat rows into one entry per session, in first-seen order. Look the
