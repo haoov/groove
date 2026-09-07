@@ -53,6 +53,7 @@ export function AuthModal({
   useEffect(() => {
     if (!pty) return;
     let quiet: number | undefined;
+    let cancelled = false;
     let unlisten: (() => void) | undefined;
     const arm = () => {
       window.clearTimeout(quiet);
@@ -66,9 +67,12 @@ export function AuthModal({
     };
     listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) => {
       if (payload.session_id === pty) arm();
-    }).then((un) => { unlisten = un; });
+    }).then((un) => {
+      if (cancelled) un();
+      else unlisten = un;
+    });
     arm(); // a silent shell still gets the command
-    return () => { window.clearTimeout(quiet); unlisten?.(); };
+    return () => { cancelled = true; window.clearTimeout(quiet); unlisten?.(); };
   }, [pty, tool, mode]);
 
   return (

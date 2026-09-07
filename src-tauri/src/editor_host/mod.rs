@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
+use crate::core::fs::safe_join;
+
 // ─── Module state ─────────────────────────────────────────────────────────────
 
 #[derive(Clone)]
@@ -241,23 +243,6 @@ pub async fn save_file(
 }
 
 // ─── File tree mutations (create/rename/move/copy/delete) ─────────────────────
-
-/// Join a worktree-relative path; rejects absolute paths and `..` segments.
-fn safe_join(worktree_path: &str, rel: &str) -> Result<std::path::PathBuf, String> {
-    let rel = rel.trim().trim_start_matches('/');
-    if rel.is_empty() {
-        return Err("empty path".to_string());
-    }
-    let mut p = std::path::PathBuf::from(worktree_path);
-    for comp in std::path::Path::new(rel).components() {
-        match comp {
-            std::path::Component::Normal(s) => p.push(s),
-            std::path::Component::CurDir => {}
-            _ => return Err(format!("invalid path: {rel}")),
-        }
-    }
-    Ok(p)
-}
 
 #[tauri::command]
 pub async fn create_file(worktree_path: String, path: String) -> Result<(), String> {

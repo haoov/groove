@@ -176,7 +176,6 @@ export interface ConfigSlice {
   // ── Status ────────────────────────────────────────────────────────────────
   syncStatus: 'idle' | 'syncing' | 'error';
   setSyncStatus: (s: 'idle' | 'syncing' | 'error') => void;
-  lastError: string | null;
   setLastError: (e: string | null) => void;
 }
 

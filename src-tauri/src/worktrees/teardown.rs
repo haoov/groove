@@ -8,16 +8,68 @@ use crate::core::git;
 use std::path::{Path, PathBuf};
 
 /// Delete a worktree's directory and prune its clone's registration. Disk only.
-async fn remove_worktree_dir(wt_path: String, repo_local_path: Option<String>, stop_at: PathBuf) {
-    let _ = tokio::task::spawn_blocking(move || {
-        let path = PathBuf::from(&wt_path);
-        let _ = std::fs::remove_dir_all(&path);
-        prune_empty_parents(&path, &stop_at);
+async fn remove_worktree_dir(
+    wt_path: String,
+    repo_local_path: Option<String>,
+    stop_at: PathBuf,
+) -> anyhow::Result<()> {
+    let removed = PathBuf::from(&wt_path);
+    tokio::task::spawn_blocking(move || {
+        remove_tree(&removed)?;
+        prune_empty_parents(&removed, &stop_at);
+        Ok::<(), std::io::Error>(())
     })
-    .await;
+    .await?
+    .map_err(|e| anyhow::anyhow!("could not remove worktree directory {wt_path}: {e}"))?;
+
     if let Some(local_path) = repo_local_path {
         let _ = git::run(&local_path, &["worktree", "prune"]).await;
     }
+    Ok(())
+}
+
+/// Delete a tree. An absent directory is success; anything else is an error the caller must see.
+fn remove_tree(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_dir_all(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        other => other,
+    }
+}
+
+/// Delete the local branch once no worktree holds it. A failure is logged, never fatal.
+async fn delete_local_branch(repo_local_path: &str, branch: &str) {
+    if branch.is_empty() {
+        return;
+    }
+    let listing = match git::run(repo_local_path, &["worktree", "list", "--porcelain"]).await {
+        Ok(out) => out,
+        Err(e) => {
+            tracing::warn!("[worktree] cannot list the worktrees of {repo_local_path}: {e}");
+            return;
+        }
+    };
+    if branch_is_held(&listing, branch) {
+        tracing::info!("[worktree] keeping branch {branch}: another worktree holds it");
+        return;
+    }
+    // `-d`, never `-D`: a branch holding unmerged commits is kept, not destroyed.
+    match git::output(repo_local_path, &["branch", "-d", branch]).await {
+        Ok(o) if o.status.success() => tracing::info!("[worktree] deleted local branch {branch}"),
+        Ok(o) => tracing::info!(
+            "[worktree] keeping branch {branch}: {}",
+            String::from_utf8_lossy(&o.stderr).trim()
+        ),
+        Err(e) => tracing::warn!("[worktree] could not delete local branch {branch}: {e}"),
+    }
+}
+
+/// True when a `git worktree list --porcelain` listing has `branch` checked out.
+fn branch_is_held(listing: &str, branch: &str) -> bool {
+    let wanted = format!("refs/heads/{branch}");
+    listing
+        .lines()
+        .filter_map(|line| line.strip_prefix("branch "))
+        .any(|found| found.trim() == wanted)
 }
 
 /// Remove empty parents of `removed` up to `stop_at`. Keep `remove_dir`: it refuses
@@ -39,12 +91,21 @@ fn prune_empty_parents(removed: &Path, stop_at: &Path) {
 pub async fn cleanup_session_worktrees(session_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
     let stop_at = super::pool::session_dir(session_id);
     for wt in store::worktrees::for_session(pool, session_id).await? {
-        let repo = store::repos::get_opt(pool, &wt.repo_id).await?;
-        remove_worktree_dir(wt.path, repo.map(|r| r.local_path), stop_at.clone()).await;
+        let repo_local = store::repos::get_opt(pool, &wt.repo_id)
+            .await?
+            .map(|r| r.local_path);
+        remove_worktree_dir(wt.path, repo_local.clone(), stop_at.clone()).await?;
+        // The session is going: a later one deriving this branch must start from origin.
+        if let Some(local_path) = repo_local {
+            delete_local_branch(&local_path, &wt.branch).await;
+        }
     }
 
     let dir = super::pool::session_dir(session_id);
-    let _ = tokio::task::spawn_blocking(move || std::fs::remove_dir_all(dir)).await;
+    let reported = dir.clone();
+    tokio::task::spawn_blocking(move || remove_tree(&dir))
+        .await?
+        .map_err(|e| anyhow::anyhow!("could not remove {}: {e}", reported.display()))?;
     git::cache::flush();
 
     Ok(())
@@ -85,7 +146,7 @@ async fn close_worktree_impl(
 
     let repo = store::repos::get_opt(pool, &wt.repo_id).await?;
     let stop_at = super::pool::session_dir(&wt.session_id);
-    remove_worktree_dir(wt.path.clone(), repo.map(|r| r.local_path), stop_at).await;
+    remove_worktree_dir(wt.path.clone(), repo.map(|r| r.local_path), stop_at).await?;
     git::cache::flush();
 
     let closed = store::worktrees::close(pool, worktree_id).await?;
@@ -104,7 +165,7 @@ async fn close_worktree_impl(
 
 #[cfg(test)]
 mod tests {
-    use super::prune_empty_parents;
+    use super::{branch_is_held, delete_local_branch, prune_empty_parents, remove_worktree_dir};
     use std::path::PathBuf;
 
     struct Tmp(PathBuf);
@@ -118,6 +179,158 @@ mod tests {
         let root = std::env::temp_dir().join(format!("groove-prune-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         Tmp(root)
+    }
+
+    /// A clone with one commit on `main`, ready for `git worktree add`.
+    async fn clone_fixture(name: &str) -> (Tmp, String) {
+        let t = tree(name);
+        let repo = t.0.join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        let repo_s = repo.to_string_lossy().to_string();
+        git(&repo_s, &["init", "--initial-branch=main", "."]).await;
+        std::fs::write(repo.join("a.txt"), "one\n").unwrap();
+        git(&repo_s, &["add", "."]).await;
+        git(&repo_s, &["commit", "-m", "first"]).await;
+        (t, repo_s)
+    }
+
+    async fn git(dir: &str, args: &[&str]) -> String {
+        let mut full = vec![
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=T",
+            "-c",
+            "commit.gpgsign=false",
+        ];
+        full.extend_from_slice(args);
+        crate::core::git::run(dir, &full)
+            .await
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"))
+            .trim()
+            .to_string()
+    }
+
+    #[tokio::test]
+    async fn a_directory_that_cannot_be_removed_fails_the_teardown() {
+        let t = tree("undeletable");
+        let session = t.0.join("gh-groove-1");
+        let wt = session.join("groove/feat/lsp-1");
+        std::fs::create_dir_all(wt.parent().unwrap()).unwrap();
+        // A non-directory in the worktree's place: `remove_dir_all` cannot take it.
+        std::fs::write(&wt, "not a directory").unwrap();
+
+        let err = remove_worktree_dir(wt.to_string_lossy().to_string(), None, session.clone())
+            .await
+            .unwrap_err()
+            .to_string();
+
+        assert!(err.contains("could not remove worktree directory"), "{err}");
+        assert!(wt.exists(), "the path is still there");
+    }
+
+    #[tokio::test]
+    async fn a_worktree_that_is_already_gone_is_not_an_error() {
+        let t = tree("absent");
+        let session = t.0.join("gh-groove-1");
+        std::fs::create_dir_all(&session).unwrap();
+
+        remove_worktree_dir(
+            session.join("groove/feat/x").to_string_lossy().to_string(),
+            None,
+            session,
+        )
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_local_branch_goes_with_the_session() {
+        let (t, repo) = clone_fixture("branch").await;
+        let session = t.0.join("gh-groove-1");
+        let wt = session.join("repo/feat/lsp-1");
+        std::fs::create_dir_all(wt.parent().unwrap()).unwrap();
+        git(
+            &repo,
+            &[
+                "worktree",
+                "add",
+                "-b",
+                "feat/lsp-1",
+                &wt.to_string_lossy(),
+                "main",
+            ],
+        )
+        .await;
+        assert!(!git(&repo, &["branch", "--list", "feat/lsp-1"])
+            .await
+            .is_empty());
+
+        remove_worktree_dir(
+            wt.to_string_lossy().to_string(),
+            Some(repo.clone()),
+            session,
+        )
+        .await
+        .unwrap();
+        delete_local_branch(&repo, "feat/lsp-1").await;
+
+        assert!(
+            git(&repo, &["branch", "--list", "feat/lsp-1"])
+                .await
+                .is_empty(),
+            "the local branch outlived its worktree"
+        );
+    }
+
+    /// Teardown must never destroy work that exists nowhere else.
+    #[tokio::test]
+    async fn a_branch_with_unmerged_commits_is_kept() {
+        let (t, repo) = clone_fixture("unmerged").await;
+        let session = t.0.join("gh-groove-1");
+        let wt = session.join("repo/feat/unpushed");
+        std::fs::create_dir_all(wt.parent().unwrap()).unwrap();
+        git(
+            &repo,
+            &[
+                "worktree",
+                "add",
+                "-b",
+                "feat/unpushed",
+                &wt.to_string_lossy(),
+                "main",
+            ],
+        )
+        .await;
+        std::fs::write(wt.join("only-here.txt"), "work").unwrap();
+        let wt_s = wt.to_string_lossy().to_string();
+        git(&wt_s, &["add", "-A"]).await;
+        git(&wt_s, &["commit", "-m", "unpushed work"]).await;
+
+        remove_worktree_dir(
+            wt.to_string_lossy().to_string(),
+            Some(repo.clone()),
+            session,
+        )
+        .await
+        .unwrap();
+        delete_local_branch(&repo, "feat/unpushed").await;
+
+        assert!(
+            !git(&repo, &["branch", "--list", "feat/unpushed"])
+                .await
+                .is_empty(),
+            "teardown destroyed an unmerged commit"
+        );
+    }
+
+    #[test]
+    fn a_branch_another_worktree_holds_is_recognised() {
+        let listing = "worktree /w/main\nHEAD abc\nbranch refs/heads/main\n\nworktree /w/other\nHEAD def\nbranch refs/heads/feat/lsp-1\n";
+        assert!(branch_is_held(listing, "feat/lsp-1"));
+        assert!(branch_is_held(listing, "main"));
+        assert!(!branch_is_held(listing, "feat/lsp"));
+        assert!(!branch_is_held("worktree /w/main\ndetached\n", "main"));
     }
 
     #[test]

@@ -2,32 +2,53 @@
 
 use super::types::{DiffLine, FileDiff, Hunk};
 
-/// Strip git's C-style quoting from a path.
+/// Strip git's C-style quoting from a path. `core.quotePath` writes a non-ASCII
+/// byte as `\ooo`, so decoding runs over bytes and UTF-8 comes last.
 pub(super) fn unquote_path(s: &str) -> String {
     let s = s.trim();
-    if s.len() >= 2 && s.starts_with('"') && s.ends_with('"') {
-        let inner = &s[1..s.len() - 1];
-        let mut out = String::with_capacity(inner.len());
-        let mut chars = inner.chars();
-        while let Some(c) = chars.next() {
-            if c == '\\' {
-                match chars.next() {
-                    Some('n') => out.push('\n'),
-                    Some('t') => out.push('\t'),
-                    Some('r') => out.push('\r'),
-                    Some('\\') => out.push('\\'),
-                    Some('"') => out.push('"'),
-                    Some(other) => out.push(other),
-                    None => {}
-                }
-            } else {
-                out.push(c);
-            }
-        }
-        out
-    } else {
-        s.to_string()
+    if !(s.len() >= 2 && s.starts_with('"') && s.ends_with('"')) {
+        return s.to_string();
     }
+    let inner = &s.as_bytes()[1..s.len() - 1];
+    let mut out: Vec<u8> = Vec::with_capacity(inner.len());
+    let mut i = 0;
+    while i < inner.len() {
+        if inner[i] != b'\\' {
+            out.push(inner[i]);
+            i += 1;
+            continue;
+        }
+        i += 1;
+        let Some(&esc) = inner.get(i) else { break };
+        i += 1;
+        match esc {
+            b'n' => out.push(b'\n'),
+            b't' => out.push(b'\t'),
+            b'r' => out.push(b'\r'),
+            b'\\' => out.push(b'\\'),
+            b'"' => out.push(b'"'),
+            b'0'..=b'7' => match octal_byte(esc, inner.get(i), inner.get(i + 1)) {
+                Some(byte) => {
+                    out.push(byte);
+                    i += 2;
+                }
+                None => out.push(esc),
+            },
+            other => out.push(other),
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Three octal digits as one byte; `None` when the escape is not three digits.
+fn octal_byte(first: u8, second: Option<&u8>, third: Option<&u8>) -> Option<u8> {
+    let digit = |d: Option<&u8>| {
+        d.copied()
+            .filter(|d| (b'0'..=b'7').contains(d))
+            .map(|d| u32::from(d - b'0'))
+    };
+    let value = digit(Some(&first))? * 64 + digit(second)? * 8 + digit(third)?;
+    u8::try_from(value).ok()
 }
 
 /// The path from a `--- a/…` / `+++ b/…` header body; `None` for /dev/null.
@@ -115,6 +136,10 @@ pub(super) fn parse_unified_diff(diff: &str) -> Vec<FileDiff> {
         } else if let Some(c) = raw_line.strip_prefix(' ') {
             line_num += 1;
             ("ctx", c.to_string())
+        } else if raw_line.is_empty() {
+            // `diff.suppressBlankEmpty` drops the marker of a blank context line.
+            line_num += 1;
+            ("ctx", String::new())
         } else {
             continue;
         };
@@ -324,6 +349,54 @@ diff --git a/a.txt b/a.txt
         assert_eq!(unquote_path("\"a\\tb.rs\""), "a\tb.rs");
         assert_eq!(unquote_path("\"quote\\\"inside.rs\""), "quote\"inside.rs");
         assert_eq!(unquote_path("plain/path.rs"), "plain/path.rs");
+    }
+
+    #[test]
+    fn unquotes_octal_escaped_non_ascii_bytes() {
+        assert_eq!(unquote_path("\"caf\\303\\251.txt\""), "café.txt");
+        assert_eq!(unquote_path("\"dir/\\346\\226\\207/a.rs\""), "dir/文/a.rs");
+        assert_eq!(
+            unquote_path("\"\\360\\237\\232\\200.md\""),
+            "\u{1f680}.md",
+            "four bytes rebuild one character"
+        );
+        // A digit that is not part of a three-digit escape stays a literal digit.
+        assert_eq!(unquote_path("\"a\\12.txt\""), "a12.txt");
+    }
+
+    #[test]
+    fn reads_an_octal_quoted_path_from_the_header() {
+        let diff = "\
+diff --git \"a/caf\\303\\251.txt\" \"b/caf\\303\\251.txt\"
+--- \"a/caf\\303\\251.txt\"
++++ \"b/caf\\303\\251.txt\"
+@@ -1,1 +1,1 @@
+-x
++y
+";
+        let files = parse_unified_diff(diff);
+        assert_eq!(files[0].path, "café.txt");
+    }
+
+    // `diff.suppressBlankEmpty` writes a blank context line with no leading space.
+    #[test]
+    fn a_blank_context_line_keeps_the_later_numbers_aligned() {
+        let diff = "\
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1,4 +1,4 @@
+ one
+
+-three
++THREE
+ four
+";
+        let files = parse_unified_diff(diff);
+        let h = &files[0].hunks[0];
+        assert_eq!(nums(h, "ctx"), vec![1, 2, 4]);
+        assert_eq!(nums(h, "add"), vec![3]);
+        assert_eq!(h.lines[1].content, "");
     }
 
     #[test]

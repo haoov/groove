@@ -394,6 +394,7 @@ export function FileDiffEditor({
         if (!view) return;
         // On the wrapper, not the view: CM's domEventHandlers do not cover the gutter.
         const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
+        if (pos === null) return;
         const info = lineMap[view.state.doc.lineAt(pos).number - 1];
         // A del line carries the new-side number of the line above it; 0 has no anchor.
         if (info && info.fileLineNum > 0) ann.extendDrag(repoId, filePath, info.fileLineNum);

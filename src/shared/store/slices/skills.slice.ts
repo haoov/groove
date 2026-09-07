@@ -3,7 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { AgentSkill } from '../../ipc/ipc';
 import type { AppState, SkillsSlice } from '../types';
 
-export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set) => ({
+export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set, get) => ({
   skills: [],
   skillsStale: false,
   setSkillsStale: (skillsStale) => set({ skillsStale }),
@@ -11,7 +11,7 @@ export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set) =>
     try {
       set({ skills: await invoke<AgentSkill[]>('list_agent_skills') });
     } catch (e) {
-      set({ lastError: `Failed to load skills: ${String(e)}` });
+      get().notify({ kind: 'error', title: 'Could not load the skills', detail: String(e) });
     }
   },
 });

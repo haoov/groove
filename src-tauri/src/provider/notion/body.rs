@@ -75,8 +75,9 @@ pub async fn template_markdown(page_id: &str, token: &str) -> anyhow::Result<Str
 
 // ─── Replace ──────────────────────────────────────────────────────────────────
 
-/// Block types that survive markdown -> Notion -> markdown unchanged.
-const ROUND_TRIPPABLE: [&str; 11] = [
+/// Block types that survive markdown -> Notion -> markdown unchanged. `table` is
+/// absent: the reader renders one, `markdown_to_blocks` cannot build one back.
+const ROUND_TRIPPABLE: [&str; 10] = [
     "paragraph",
     "heading_1",
     "heading_2",
@@ -87,23 +88,31 @@ const ROUND_TRIPPABLE: [&str; 11] = [
     "quote",
     "divider",
     "to_do",
-    "table",
 ];
 
 /// Notion accepts at most 100 children per append.
 const APPEND_BATCH: usize = 100;
 
-/// Block types on the page that markdown cannot represent, deduplicated.
+/// What a markdown rewrite of the page would destroy, deduplicated: block types
+/// markdown cannot represent, and nested children, which the reader never fetched.
 fn lossy_types(blocks: &[serde_json::Value]) -> Vec<String> {
     let mut found: Vec<String> = vec![];
+    let mut push = |what: String| {
+        if !found.contains(&what) {
+            found.push(what);
+        }
+    };
     for b in blocks {
         let Some(kind) = b["type"].as_str() else {
             continue;
         };
-        if ROUND_TRIPPABLE.contains(&kind) || found.iter().any(|f| f == kind) {
+        if !ROUND_TRIPPABLE.contains(&kind) {
+            push(kind.to_string());
             continue;
         }
-        found.push(kind.to_string());
+        if b["has_children"].as_bool() == Some(true) {
+            push(format!("{kind} with nested blocks"));
+        }
     }
     found
 }
@@ -198,5 +207,23 @@ mod tests {
     fn a_callout_counts_as_loss() {
         let blocks = vec![serde_json::json!({ "type": "callout", "id": "1" })];
         assert_eq!(lossy_types(&blocks), vec!["callout"]);
+    }
+
+    #[test]
+    fn a_table_counts_as_loss() {
+        let blocks = vec![serde_json::json!({ "type": "table", "id": "1" })];
+        assert_eq!(lossy_types(&blocks), vec!["table"]);
+    }
+
+    #[test]
+    fn nested_children_count_as_loss() {
+        let blocks = vec![
+            serde_json::json!({ "type": "bulleted_list_item", "id": "1", "has_children": true }),
+            serde_json::json!({ "type": "paragraph", "id": "2", "has_children": false }),
+        ];
+        assert_eq!(
+            lossy_types(&blocks),
+            vec!["bulleted_list_item with nested blocks"]
+        );
     }
 }

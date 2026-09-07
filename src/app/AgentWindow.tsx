@@ -42,6 +42,9 @@ export default function AgentWindow() {
   const ptyId = state?.ptyId ?? null;
   const ptyIdRef = useRef<string | null>(null);
   ptyIdRef.current = ptyId;
+  // Every command carries this session id.
+  const sessionIdRef = useRef<string | null>(null);
+  sessionIdRef.current = state?.sessionId ?? null;
 
   // Pending commands, resolved by the main window's DONE.
   const pending = useRef(new Map<number, { resolve: () => void; reject: (e: Error) => void }>());
@@ -57,7 +60,7 @@ export default function AgentWindow() {
         resolve: () => { window.clearTimeout(timer); resolve(); },
         reject: (e) => { window.clearTimeout(timer); reject(e); },
       });
-      const envelope: CommandEnvelope = { nonce: id, command };
+      const envelope: CommandEnvelope = { nonce: id, command, sessionId: sessionIdRef.current };
       emitTo(MAIN_WINDOW, BRIDGE.COMMAND, envelope).catch((e) => {
         pending.current.delete(id);
         window.clearTimeout(timer);

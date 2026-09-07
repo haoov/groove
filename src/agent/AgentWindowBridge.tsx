@@ -14,8 +14,8 @@ import {
   MIN_WINDOW_HEIGHT,
   MIN_WINDOW_WIDTH,
   readBounds,
+  sessionScopeError,
   writeBounds,
-  type AgentWindowCommand,
   type AgentWindowState,
   type CommandDone,
   type CommandEnvelope,
@@ -94,7 +94,7 @@ export function AgentWindowBridge() {
     listen<CommandEnvelope>(BRIDGE.COMMAND, async ({ payload }) => {
       let error: string | null = null;
       try {
-        await runCommand(payload.command);
+        await runCommand(payload);
       } catch (e) {
         error = String(e);
         useStore.getState().setLastError(error);
@@ -151,6 +151,7 @@ function buildState(s: AppState): AgentWindowState {
   const sess = s.activeSessionId ? s.sessions[s.activeSessionId] : null;
   const taskId = sess?.task?.short_id ?? null;
   return {
+    sessionId: s.activeSessionId,
     taskId,
     ptyId: sess?.ptySessions.find((p) => p.ptyType === 'agent')?.sessionId ?? null,
     kind: sess?.kind ?? 'task',
@@ -164,9 +165,12 @@ function buildState(s: AppState): AgentWindowState {
   };
 }
 
-async function runCommand(cmd: AgentWindowCommand): Promise<void> {
+async function runCommand(envelope: CommandEnvelope): Promise<void> {
   const st = useStore.getState();
-  const sessionKey = st.activeSessionId;
+  const drifted = sessionScopeError(envelope, st.activeSessionId);
+  if (drifted) throw new Error(drifted);
+  const sessionKey = envelope.sessionId;
+  const cmd = envelope.command;
   switch (cmd.type) {
     case 'dock':
       st.setAgentDetached(false);

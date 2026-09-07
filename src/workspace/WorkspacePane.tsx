@@ -196,7 +196,7 @@ export function WorkspacePane({
         ) : activeTab.kind === 'commit' ? (
           <CommitDiffView repoId={activeTab.repoId} sha={activeTab.sha!} ann={ann} />
         ) : activeTab.view === 'diff' ? (
-          <DiffTab tab={activeTab} ann={ann} focusSignal={focusSignal} />
+          <DiffTab key={activeTab.id} tab={activeTab} ann={ann} focusSignal={focusSignal} />
         ) : (
           <EditTab tab={activeTab} ann={ann} focusSignal={focusSignal} />
         )}
@@ -256,7 +256,6 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   const mrThreadsByRepo = useSession((s) => s.mrThreadsByRepo);
   const mrs = useSession((s) => s.mrs);
   const setLastError = useStore((s) => s.setLastError);
-  const inFlight = useRef(false);
 
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const wt = activeWorktreeFor(activeWorktrees, tab.repoId, activeWorktreeId);
@@ -272,12 +271,12 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   });
 
   useEffect(() => {
-    if (!wt || hunks !== undefined || inFlight.current) return;
-    inFlight.current = true;
+    if (!wt || hunks !== undefined) return;
+    let stale = false;
     invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: tab.filePath, mode: diffMode })
-      .then((h) => setDiffHunks(key, h))
-      .catch((e) => setLastError(String(e)))
-      .finally(() => { inFlight.current = false; });
+      .then((h) => { if (!stale) setDiffHunks(key, h); })
+      .catch((e) => { if (!stale) setLastError(String(e)); });
+    return () => { stale = true; };
   }, [key, wt, hunks, diffMode, tab.filePath, setDiffHunks, setLastError]);
 
   if (!wt) return <div className="diff-empty"><p>No worktree for this repo</p></div>;

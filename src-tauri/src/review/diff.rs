@@ -15,6 +15,48 @@ const UNTRACKED_MAX_BYTES: u64 = 512 * 1024;
 /// Untracked files longer than this many lines are truncated in the rendered hunk.
 const UNTRACKED_MAX_LINES: usize = 2000;
 
+/// Args for a diff-producing git call, pinned to the format the parser reads.
+/// `-c` is git-level, so the config overrides precede the subcommand.
+fn diff_args<'a>(subcommand: &'a str, rest: &[&'a str]) -> Vec<&'a str> {
+    let mut args = vec![
+        "-c",
+        "diff.suppressBlankEmpty=false",
+        subcommand,
+        "--no-ext-diff",
+        "--src-prefix=a/",
+        "--dst-prefix=b/",
+        "--submodule=short",
+        "--no-color",
+        "--no-renames",
+    ];
+    args.extend_from_slice(rest);
+    args
+}
+
+/// Args for one commit's diff; `--diff-merges` keeps a merge off the combined format.
+fn commit_diff_args<'a>(sha: &'a str, rest: &[&'a str]) -> Vec<&'a str> {
+    let mut head = vec![sha, "--format=", "--diff-merges=first-parent"];
+    head.extend_from_slice(rest);
+    diff_args("show", &head)
+}
+
+/// A file's text from inside the worktree, refusing an escaping path or an oversized file.
+async fn read_worktree_text(root: &str, rel: &str) -> Result<String, String> {
+    let full = crate::core::fs::safe_join(root, rel)?;
+    let meta = tokio::fs::metadata(&full)
+        .await
+        .map_err(|e| e.to_string())?;
+    if meta.len() > UNTRACKED_MAX_BYTES {
+        return Err(format!(
+            "{rel} is {} bytes (cap {UNTRACKED_MAX_BYTES}) — too large to expand",
+            meta.len()
+        ));
+    }
+    tokio::fs::read_to_string(&full)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Kick off a throttled, fire-and-forget `git fetch origin` for a worktree.
 fn spawn_throttled_fetch(repo_id: &str, wt_path: &str) {
     if !crate::core::git::cache::shared().due(repo_id, FETCH_THROTTLE) {
@@ -49,17 +91,8 @@ async fn list_untracked(path: &str) -> Vec<String> {
 /// Map of `path → status letter` ("A"/"M"/"D"/…) from `git diff <base> --name-status`.
 async fn name_status_map(path: &str, base_ref: &str) -> HashMap<String, String> {
     let mut map = HashMap::new();
-    if let Ok(out) = crate::core::git::output(
-        path,
-        &[
-            "diff",
-            base_ref,
-            "--name-status",
-            "--no-renames",
-            "--no-color",
-        ],
-    )
-    .await
+    if let Ok(out) =
+        crate::core::git::output(path, &diff_args("diff", &[base_ref, "--name-status"])).await
     {
         for line in String::from_utf8_lossy(&out.stdout).lines() {
             let mut parts = line.splitn(2, '\t');
@@ -109,7 +142,9 @@ async fn is_untracked(path: &str, file: &str) -> bool {
 /// An all-additions hunk for an untracked text file, capped by size and line
 /// count; empty for a binary or unreadable file.
 async fn untracked_hunks(path: &str, file: &str) -> Vec<Hunk> {
-    let full = std::path::Path::new(path).join(file);
+    let Ok(full) = crate::core::fs::safe_join(path, file) else {
+        return vec![];
+    };
 
     // An oversized file lists with one placeholder line.
     if let Ok(meta) = tokio::fs::metadata(&full).await {
@@ -155,14 +190,10 @@ async fn untracked_hunks(path: &str, file: &str) -> Vec<Hunk> {
 
 /// Line count of an untracked file for the summary, skipping oversized files.
 async fn untracked_added_count(path: &str, file: &str) -> i64 {
-    let full = std::path::Path::new(path).join(file);
-    match tokio::fs::metadata(&full).await {
-        Ok(m) if m.len() > UNTRACKED_MAX_BYTES => 0,
-        _ => tokio::fs::read_to_string(&full)
-            .await
-            .map(|c| c.lines().count() as i64)
-            .unwrap_or(0),
-    }
+    read_worktree_text(path, file)
+        .await
+        .map(|c| c.lines().count() as i64)
+        .unwrap_or(0)
 }
 
 pub(super) async fn get_task_diff_impl(
@@ -184,17 +215,9 @@ pub(super) async fn get_task_diff_impl(
             crate::core::git::refs::diff_base(&wt.path, &wt.branch, mode, wt.base_ref.as_deref())
                 .await?;
 
-        let diff_output = crate::core::git::output(
-            &wt.path,
-            &[
-                "diff",
-                &base_ref,
-                "--unified=3",
-                "--no-color",
-                "--no-renames",
-            ],
-        )
-        .await?;
+        let diff_output =
+            crate::core::git::output(&wt.path, &diff_args("diff", &[&base_ref, "--unified=3"]))
+                .await?;
         if !diff_output.status.success() {
             return Err(anyhow::anyhow!(
                 "git diff {base_ref} failed: {}",
@@ -269,12 +292,9 @@ pub async fn get_task_diff_summary(
                 .map_err(|e| e.to_string())?;
         let statuses = name_status_map(&wt.path, &base_ref).await;
         let staged = staged_map(&wt.path).await;
-        let out = crate::core::git::output(
-            &wt.path,
-            &["diff", &base_ref, "--numstat", "--no-renames", "--no-color"],
-        )
-        .await
-        .map_err(|e| e.to_string())?;
+        let out = crate::core::git::output(&wt.path, &diff_args("diff", &[&base_ref, "--numstat"]))
+            .await
+            .map_err(|e| e.to_string())?;
         if !out.status.success() {
             return Err(format!(
                 "git diff {base_ref} failed: {}",
@@ -354,15 +374,7 @@ pub async fn get_file_diff(
     .map_err(|e| e.to_string())?;
     let out = crate::core::git::output(
         &wt.path,
-        &[
-            "diff",
-            &base_ref,
-            "--unified=3",
-            "--no-color",
-            "--no-renames",
-            "--",
-            &file_path,
-        ],
+        &diff_args("diff", &[&base_ref, "--unified=3", "--", &file_path]),
     )
     .await
     .map_err(|e| e.to_string())?;
@@ -398,19 +410,9 @@ pub async fn get_commit_diff(
         .await
         .map_err(|e| e.to_string())?;
 
-    let out = crate::core::git::output(
-        &wt.path,
-        &[
-            "show",
-            &sha,
-            "--format=",
-            "--unified=3",
-            "--no-color",
-            "--no-renames",
-        ],
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    let out = crate::core::git::output(&wt.path, &commit_diff_args(&sha, &["--unified=3"]))
+        .await
+        .map_err(|e| e.to_string())?;
     if !out.status.success() {
         return Err(format!(
             "git show {sha} failed: {}",
@@ -420,11 +422,8 @@ pub async fn get_commit_diff(
 
     // Status letters (A/M/D) per path for the file headers.
     let mut statuses: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    if let Ok(ns) = crate::core::git::output(
-        &wt.path,
-        &["show", &sha, "--format=", "--name-status", "--no-renames"],
-    )
-    .await
+    if let Ok(ns) =
+        crate::core::git::output(&wt.path, &commit_diff_args(&sha, &["--name-status"])).await
     {
         for line in String::from_utf8_lossy(&ns.stdout).lines() {
             let mut parts = line.splitn(2, '\t');
@@ -503,22 +502,7 @@ pub async fn read_file_lines(
             }
             String::from_utf8_lossy(&out.stdout).to_string()
         }
-        None => {
-            let full = std::path::Path::new(&wt.path).join(&file_path);
-            // Same cap as the untracked-file path.
-            let meta = tokio::fs::metadata(&full)
-                .await
-                .map_err(|e| e.to_string())?;
-            if meta.len() > UNTRACKED_MAX_BYTES {
-                return Err(format!(
-                    "{file_path} is {} bytes (cap {UNTRACKED_MAX_BYTES}) — too large to expand",
-                    meta.len()
-                ));
-            }
-            tokio::fs::read_to_string(&full)
-                .await
-                .map_err(|e| e.to_string())?
-        }
+        None => read_worktree_text(&wt.path, &file_path).await?,
     };
 
     let all: Vec<&str> = text.lines().collect();
@@ -532,4 +516,71 @@ pub async fn read_file_lines(
         all[from - 1..to].iter().map(|s| s.to_string()).collect()
     };
     Ok(FileLines { lines, total })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diff_args_pin_the_output_format() {
+        let args = diff_args("diff", &["HEAD", "--unified=3"]);
+        assert_eq!(
+            &args[..3],
+            &["-c", "diff.suppressBlankEmpty=false", "diff"],
+            "a -c override must precede the subcommand"
+        );
+        for flag in [
+            "--no-ext-diff",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "--submodule=short",
+        ] {
+            assert!(args.contains(&flag), "missing {flag} in {args:?}");
+        }
+        assert_eq!(&args[args.len() - 2..], &["HEAD", "--unified=3"]);
+    }
+
+    #[test]
+    fn a_merge_commit_diff_follows_the_first_parent() {
+        for args in [
+            commit_diff_args("deadbeef", &["--unified=3"]),
+            commit_diff_args("deadbeef", &["--name-status"]),
+        ] {
+            assert!(
+                args.contains(&"--diff-merges=first-parent"),
+                "combined-diff format survives in {args:?}"
+            );
+            assert!(args.contains(&"--no-ext-diff"));
+        }
+    }
+
+    #[tokio::test]
+    async fn the_untracked_helpers_refuse_a_path_outside_the_worktree() {
+        let root = std::env::temp_dir()
+            .join("groove-diff-scope")
+            .display()
+            .to_string();
+        for escape in ["/etc/passwd", "../../etc/passwd"] {
+            assert!(
+                untracked_hunks(&root, escape).await.is_empty(),
+                "{escape} rendered"
+            );
+            assert_eq!(
+                untracked_added_count(&root, escape).await,
+                0,
+                "{escape} counted"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn reading_worktree_text_refuses_a_path_outside_the_worktree() {
+        let root = std::env::temp_dir()
+            .join("groove-diff-scope")
+            .display()
+            .to_string();
+        assert!(read_worktree_text(&root, "/etc/passwd").await.is_err());
+        assert!(read_worktree_text(&root, "../../etc/passwd").await.is_err());
+    }
 }

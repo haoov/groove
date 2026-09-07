@@ -134,6 +134,48 @@ pub(crate) async fn provision_review_worktree(
     })
 }
 
+/// Characters `git check-ref-format` refuses outright.
+const FORBIDDEN_CHARS: &str = " ~^:?*[\\";
+
+/// Reject a branch name git would refuse, before it can name a directory.
+pub(crate) fn validate_branch_name(branch: &str) -> anyhow::Result<()> {
+    let bad = |reason: &str| anyhow::anyhow!("invalid branch name '{branch}': {reason}");
+
+    if branch.is_empty() {
+        return Err(bad("empty"));
+    }
+    if branch.starts_with('/') || branch.ends_with('/') {
+        return Err(bad("leading or trailing '/'"));
+    }
+    if branch.contains("//") {
+        return Err(bad("empty path component"));
+    }
+    if branch.starts_with('-') {
+        return Err(bad("leading '-'"));
+    }
+    if branch.contains("..") {
+        return Err(bad("'..'"));
+    }
+    if let Some(c) = branch
+        .chars()
+        .find(|c| c.is_ascii_control() || FORBIDDEN_CHARS.contains(*c))
+    {
+        return Err(bad(&format!("forbidden character {c:?}")));
+    }
+    for component in branch.split('/') {
+        if component.starts_with('.') {
+            return Err(bad("component starting with '.'"));
+        }
+        if component.ends_with(".lock") {
+            return Err(bad("component ending in '.lock'"));
+        }
+        if component.ends_with('.') {
+            return Err(bad("component ending in '.'"));
+        }
+    }
+    Ok(())
+}
+
 /// Fetch the clone, create the branch if needed, add the worktree, record it.
 /// Idempotent: an existing worktree for this branch is reused wherever its directory sits.
 async fn provision_one(
@@ -144,6 +186,8 @@ async fn provision_one(
     track_remote: Option<&str>,
     target: Option<&str>,
 ) -> anyhow::Result<Worktree> {
+    validate_branch_name(branch)?;
+
     if let Some(existing) = existing_worktree(pool, session, repo, branch).await? {
         align_checkout(&existing.path, branch).await?;
         return Ok(existing);
@@ -448,6 +492,46 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
+    }
+
+    #[test]
+    fn a_branch_name_git_would_refuse_never_reaches_the_disk() {
+        for good in [
+            "fix/parser-42",
+            "explorer/try-sqlite-vacuum",
+            "release/1.0",
+            "feat/a_b-c.d",
+            "main",
+        ] {
+            assert!(validate_branch_name(good).is_ok(), "{good}");
+        }
+
+        for bad in [
+            "",
+            "/etc/cron.d/x",
+            "..",
+            "../../etc/passwd",
+            "fix/../../../etc",
+            "fix/x\n",
+            "fix/x\u{7f}",
+            "fix/two words",
+            "-fix/x",
+            "fix//x",
+            "fix/x/",
+            "fix/x~1",
+            "fix/x^",
+            "fix/x:y",
+            "fix/x?",
+            "fix/x*",
+            "fix/x[0]",
+            "fix/x\\y",
+            "fix/x.lock",
+            "fix/.hidden",
+            ".hidden/x",
+            "fix/x.",
+        ] {
+            assert!(validate_branch_name(bad).is_err(), "{bad:?} was accepted");
+        }
     }
 
     #[tokio::test]

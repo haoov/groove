@@ -8,6 +8,11 @@ use tauri::{AppHandle, Emitter};
 
 use crate::core::db::store;
 
+/// What a caller is told when the unique index refuses a second copy of a pending request.
+pub const ALREADY_PENDING: &str =
+    "An identical request is already waiting for the user's approval. It stays queued until \
+     they decide — do not retry; continue with other work or ask the user.";
+
 /// Outcome of a resolved confirmation, delivered to the waiting MCP handler.
 pub enum ResolveOutcome {
     Approved(serde_json::Value),
@@ -62,8 +67,12 @@ impl Bridge {
         origin: &str,
         task_id: Option<&str>,
     ) -> anyhow::Result<()> {
-        store::confirmations::insert(pool, id, task_id, op_type, &payload.to_string(), origin)
-            .await?;
+        let queued =
+            store::confirmations::insert(pool, id, task_id, op_type, &payload.to_string(), origin)
+                .await?;
+        if !queued {
+            return Err(anyhow::anyhow!("{ALREADY_PENDING}"));
+        }
 
         self.inner.handle.emit(
             crate::core::events::CONFIRMATION_REQUESTED,
@@ -79,7 +88,8 @@ impl Bridge {
         Ok(())
     }
 
-    /// True when an identical request already awaits a decision.
+    /// True when an identical request already awaits a decision. The unique index, not this
+    /// check, is what keeps a duplicate out.
     pub async fn has_identical_pending(
         &self,
         pool: &SqlitePool,
@@ -87,9 +97,15 @@ impl Bridge {
         task_id: Option<&str>,
         payload: &serde_json::Value,
     ) -> bool {
-        store::confirmations::identical_pending(pool, op_type, task_id, &payload.to_string())
+        match store::confirmations::identical_pending(pool, op_type, task_id, &payload.to_string())
             .await
-            .unwrap_or(false)
+        {
+            Ok(found) => found,
+            Err(e) => {
+                tracing::error!("[approvals] duplicate check for {op_type} failed: {e}");
+                false
+            }
+        }
     }
 
     /// Register a oneshot sender; it receives the outcome when the user decides.
@@ -176,6 +192,11 @@ impl Bridge {
             }
         }
 
+        // The claimed row goes only once the outcome is out; a crash before this re-surfaces it.
+        if let Err(e) = store::confirmations::delete(pool, id).await {
+            tracing::error!("[approvals] could not clear confirmation {id}: {e}");
+        }
+
         match op_error {
             Some(e) => Err(anyhow::anyhow!("{} failed: {e}", confirmation.op_type)),
             None => Ok(()),
@@ -187,8 +208,28 @@ impl Bridge {
     }
 }
 
-/// Re-emit every pending confirmation, oldest first.
+/// Fail whatever a crash left claimed, then re-emit every pending confirmation, oldest first.
 pub async fn surface_pending(pool: &SqlitePool, handle: &AppHandle) {
+    for row in store::confirmations::claimed(pool)
+        .await
+        .unwrap_or_default()
+    {
+        let _ = handle.emit(
+            crate::core::events::CONFIRMATION_RESOLVED,
+            serde_json::json!({
+                "id": row.id,
+                "session_id": row.session_id,
+                "approved": true,
+                "op_type": row.op_type,
+                "result": serde_json::Value::Null,
+                "error": "interrupted before it finished — check whether it applied",
+            }),
+        );
+        if let Err(e) = store::confirmations::delete(pool, &row.id).await {
+            tracing::error!("[approvals] could not clear confirmation {}: {e}", row.id);
+        }
+    }
+
     for row in store::confirmations::all(pool).await.unwrap_or_default() {
         let payload: serde_json::Value = serde_json::from_str(&row.payload).unwrap_or_default();
         let _ = handle.emit(

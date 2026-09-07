@@ -20,6 +20,8 @@ export const BRIDGE = {
 
 /** Everything the detached window renders. The main window is the source of truth. */
 export interface AgentWindowState {
+  /** The focused session a session-scoped command is answered against. */
+  sessionId: string | null;
   taskId: string | null;
   ptyId: string | null;
   kind: SessionKind;
@@ -48,6 +50,25 @@ export type AgentWindowCommand =
 export interface CommandEnvelope {
   nonce: number;
   command: AgentWindowCommand;
+  /** The session the detached window was showing when the command was sent. */
+  sessionId: string | null;
+}
+
+/** Commands that act on the focused session. The rest are window-wide. */
+export function isSessionScoped(command: AgentWindowCommand): boolean {
+  return command.type === 'start' || command.type === 'skill'
+    || command.type === 'reload' || command.type === 'autoApprove';
+}
+
+/** The refusal for a session-scoped command whose session is no longer the focused one. */
+export function sessionScopeError(
+  envelope: CommandEnvelope,
+  activeSessionId: string | null,
+): string | null {
+  if (!isSessionScoped(envelope.command)) return null;
+  if (!envelope.sessionId || !activeSessionId) return 'no session is focused';
+  if (envelope.sessionId !== activeSessionId) return 'the focused session changed';
+  return null;
 }
 
 export interface CommandDone {

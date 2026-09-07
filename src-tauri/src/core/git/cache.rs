@@ -1,6 +1,7 @@
 //! Short-TTL cache for ref answers; `flush()` empties it after every git operation the app performs.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
@@ -8,6 +9,8 @@ const TTL: Duration = Duration::from_secs(5);
 
 pub struct RefCache {
     ttl: Duration,
+    /// Bumped by `clear()`; an answer computed under an older one is dropped.
+    generation: AtomicU64,
     texts: Mutex<HashMap<String, (Instant, Option<String>)>>,
     flags: Mutex<HashMap<String, (Instant, bool)>>,
     /// Per-key throttle stamps for fire-and-forget fetches; no TTL.
@@ -29,6 +32,7 @@ impl RefCache {
     pub fn new(ttl: Duration) -> Self {
         Self {
             ttl,
+            generation: AtomicU64::new(0),
             texts: Mutex::new(HashMap::new()),
             flags: Mutex::new(HashMap::new()),
             stamps: Mutex::new(HashMap::new()),
@@ -47,9 +51,12 @@ impl RefCache {
                 }
             }
         }
+        let started_at = self.generation.load(Ordering::SeqCst);
         let value = compute().await;
-        if let Ok(mut map) = self.texts.lock() {
-            map.insert(key, (Instant::now(), value.clone()));
+        if self.unchanged(started_at) {
+            if let Ok(mut map) = self.texts.lock() {
+                map.insert(key, (Instant::now(), value.clone()));
+            }
         }
         value
     }
@@ -66,9 +73,12 @@ impl RefCache {
                 }
             }
         }
+        let started_at = self.generation.load(Ordering::SeqCst);
         let value = compute().await;
-        if let Ok(mut map) = self.flags.lock() {
-            map.insert(key, (Instant::now(), value));
+        if self.unchanged(started_at) {
+            if let Ok(mut map) = self.flags.lock() {
+                map.insert(key, (Instant::now(), value));
+            }
         }
         value
     }
@@ -88,7 +98,13 @@ impl RefCache {
         }
     }
 
+    /// True when no `clear()` happened since `started_at` was read.
+    fn unchanged(&self, started_at: u64) -> bool {
+        self.generation.load(Ordering::SeqCst) == started_at
+    }
+
     pub fn clear(&self) {
+        self.generation.fetch_add(1, Ordering::SeqCst);
         if let Ok(mut map) = self.texts.lock() {
             map.clear();
         }
@@ -159,6 +175,34 @@ mod tests {
         long.clear();
         long.flag("k".into(), compute).await;
         assert_eq!(n.load(Ordering::SeqCst), 2, "clear() drops the entry");
+    }
+
+    #[tokio::test]
+    async fn a_flush_during_a_compute_drops_its_answer() {
+        let cache = RefCache::new(Duration::from_secs(60));
+        let calls = AtomicU32::new(0);
+
+        let stale = cache
+            .text("k".into(), || async {
+                calls.fetch_add(1, Ordering::SeqCst);
+                cache.clear();
+                Some("stale".to_string())
+            })
+            .await;
+        assert_eq!(stale.as_deref(), Some("stale"), "the caller still answers");
+
+        let fresh = cache
+            .text("k".into(), || async {
+                calls.fetch_add(1, Ordering::SeqCst);
+                Some("fresh".to_string())
+            })
+            .await;
+        assert_eq!(
+            fresh.as_deref(),
+            Some("fresh"),
+            "the pre-flush answer stuck"
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
     }
 
     #[test]
