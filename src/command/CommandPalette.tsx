@@ -1,52 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '../shared/ipc/invoke';
 import {
-  Search, Compass, LayoutGrid, PanelsTopLeft, LayoutPanelLeft, PanelRight, SquareTerminal,
-  GitBranch, GitCommitVertical, ArrowUpFromLine, ArrowDownToLine, GitPullRequestArrow,
-  ListTodo, PauseCircle, RefreshCw, Circle, Settings, Palette, Keyboard, type LucideIcon,
+  Search, PanelsTopLeft, Compass, FileCode, Plus, ArrowUpFromLine, ArrowDownToLine,
+  GitPullRequestArrow, ChevronsUp, PauseCircle, RefreshCw, Palette, type LucideIcon,
 } from 'lucide-react';
 import { useStore, useSession } from '../shared/store';
 import { ensureTerminalTab } from '../shared/lib/panes';
 import { DIFF_MODES } from '../shared/lib/diffModes';
 import { Highlighted, matchRanges } from '../shared/lib/match';
 import { THEMES, DEFAULT_THEME } from '../shared/ipc/ipc';
-import { shortcutLabel } from '../shared/lib/keybindings';
+import { commandRows, runCommand } from '../shared/lib/commands';
 
 interface Command {
   id: string;
   label: string;
   group: string;
+  icon: LucideIcon;
   action: () => void | Promise<void>;
   /** Shortcut hint shown on the right of the row. */
   shortcut?: string;
 }
-
-const shortcutFor = shortcutLabel;
-
-const ICON_BY_ID: Record<string, LucideIcon> = {
-  'nav-tasks-board': LayoutGrid,
-  'nav-workspace': PanelsTopLeft,
-  'mode-workspace': LayoutPanelLeft,
-  'toggle-agent': PanelRight,
-  'toggle-terminal': SquareTerminal,
-  'git-commit': GitCommitVertical,
-  'git-push': ArrowUpFromLine,
-  'git-pull': ArrowDownToLine,
-  'git-rebase': GitPullRequestArrow,
-  'task-pause': PauseCircle,
-  'task-sync': RefreshCw,
-  'toggle-vim': Keyboard,
-};
-const ICON_BY_GROUP: Record<string, LucideIcon> = {
-  Navigation: Compass,
-  Workspace: LayoutPanelLeft,
-  Git: GitBranch,
-  Task: ListTodo,
-  Editor: Keyboard,
-  Preferences: Settings,
-  Theme: Palette,
-};
-const cmdIcon = (c: Command): LucideIcon => ICON_BY_ID[c.id] ?? ICON_BY_GROUP[c.group] ?? Circle;
 
 export function CommandPalette() {
   const commandPaletteOpen = useStore((s) => s.commandPaletteOpen);
@@ -61,12 +34,11 @@ export function CommandPalette() {
   const setDiffMode = useSession((s) => s.setDiffMode);
   const setLastError = useStore((s) => s.setLastError);
   const setView = useStore((s) => s.setView);
-  const openSettings = useStore((s) => s.openSettings);
   const setTheme = useStore((s) => s.setTheme);
   const activeTheme = useStore((s) => s.config?.ui.theme ?? DEFAULT_THEME);
   const keymap = useStore((s) => s.keymap);
-  const vimMode = useStore((s) => s.vimMode);
-  const setVimMode = useStore((s) => s.setVimMode);
+  const hasSession = useStore((s) => !!s.activeSessionId);
+  const inWorkspace = useStore((s) => s.view === 'workspace');
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
@@ -95,6 +67,14 @@ export function CommandPalette() {
     }
   }, [commandPaletteOpen]);
 
+  /** The keybound commands, straight from the registry. */
+  const boundCommands = (): Command[] =>
+    commandRows(keymap, { session: hasSession, workspace: inWorkspace }).map((row) => ({
+      ...row,
+      action: () => { close(); runCommand(row.id); },
+    }));
+
+  /** Palette-only actions: no keybinding, so no registry row. */
   const buildCommands = (): Command[] => {
     // The focused repo's worktree.
     const wt = activeWorktrees.find((w) => w.id === activeWorktreeId)
@@ -104,27 +84,29 @@ export function CommandPalette() {
     const scope = activeRepos.find((r) => r.id === wt?.repo_id)?.project ?? null;
     const inRepo = (label: string) => (scope ? `${label} — ${scope}` : label);
     const cmds: Command[] = [];
-
-    // Navigation
-    cmds.push({
-      id: 'nav-tasks-board',
-      label: 'Go to Home',
-      group: 'Navigation',
-      shortcut: shortcutFor(keymap, 'view.tasks'),
-      action: () => { setView('home'); close(); },
-    });
+    /** Closes the palette, runs a backend command, reports a failure in the status bar. */
+    const send = async (name: string, args: Record<string, unknown>) => {
+      close();
+      try {
+        await invoke(name, args);
+      } catch (e) {
+        setLastError(e);
+      }
+    };
 
     if (activeTask) {
       cmds.push({
         id: 'nav-workspace',
         label: 'Go to Workspace',
         group: 'Navigation',
+        icon: PanelsTopLeft,
         action: () => { setView('workspace'); close(); },
       });
       cmds.push({
         id: 'mode-overview',
         label: 'View: Session overview',
         group: 'Workspace',
+        icon: Compass,
         action: () => {
           setView('workspace');
           setWorkspaceMode('overview');
@@ -135,6 +117,7 @@ export function CommandPalette() {
         id: 'mode-code',
         label: 'View: Editor & diff',
         group: 'Workspace',
+        icon: FileCode,
         action: () => {
           setView('workspace');
           setWorkspaceMode('code');
@@ -146,93 +129,47 @@ export function CommandPalette() {
           id: `diff-mode-${m.id}`,
           label: `Diff base: ${m.title}`,
           group: 'Workspace',
+          icon: m.Icon,
           action: () => { setDiffMode(m.id); close(); },
         });
       }
       cmds.push({
-        id: 'toggle-agent',
-        label: 'Agent: Open / focus',
-        group: 'Workspace',
-        shortcut: shortcutFor(keymap, 'agent.console'),
-        action: () => { close(); useStore.getState().requestConsoleFocus(); },
-      });
-      cmds.push({
-        id: 'toggle-terminal',
-        label: 'Terminal: Open / focus',
-        group: 'Workspace',
-        shortcut: shortcutFor(keymap, 'workspace.toggleTerminal'),
-        action: () => { close(); ensureTerminalTab(); },
-      });
-      cmds.push({
         id: 'terminal-new',
         label: 'Terminal: New',
         group: 'Workspace',
+        icon: Plus,
         action: () => { close(); ensureTerminalTab({ fresh: true }); },
       });
 
       if (wt) {
         cmds.push({
-          id: 'git-commit',
-          label: inRepo('Git: Commit changes…'),
-          group: 'Git',
-          action: () => {
-            // Focus the composer: wry's `window.prompt` returns null.
-            close();
-            useStore.getState().requestCommitFocus();
-          },
-        });
-        cmds.push({
           id: 'git-push',
           label: inRepo('Git: Push'),
           group: 'Git',
-          action: async () => {
-            close();
-            try {
-              await invoke('push', { worktreeId: wt.id });
-            } catch (e) {
-              setLastError(e);
-            }
-          },
+          icon: ArrowUpFromLine,
+          action: () => send('push', { worktreeId: wt.id }),
         });
         cmds.push({
           id: 'git-pull',
           label: inRepo('Git: Pull'),
           group: 'Git',
-          action: async () => {
-            close();
-            try {
-              await invoke('pull', { worktreeId: wt.id });
-            } catch (e) {
-              setLastError(e);
-            }
-          },
+          icon: ArrowDownToLine,
+          action: () => send('pull', { worktreeId: wt.id }),
         });
         cmds.push({
           id: 'git-create-mr',
           label: inRepo('Git: Create merge request…'),
           group: 'Git',
-          action: async () => {
-            close();
-            try {
-              // Opens the confirmation pre-filled except the text.
-              await invoke('create_mr', { worktreeId: wt.id });
-            } catch (e) {
-              setLastError(e);
-            }
-          },
+          icon: GitPullRequestArrow,
+          // Opens the confirmation pre-filled except the text.
+          action: () => send('create_mr', { worktreeId: wt.id }),
         });
         cmds.push({
           id: 'git-rebase',
           label: inRepo('Git: Rebase on main'),
           group: 'Git',
-          action: async () => {
-            close();
-            try {
-              await invoke('rebase_on_main', { worktreeId: wt.id });
-            } catch (e) {
-              setLastError(e);
-            }
-          },
+          icon: ChevronsUp,
+          action: () => send('rebase_on_main', { worktreeId: wt.id }),
         });
       }
 
@@ -240,52 +177,24 @@ export function CommandPalette() {
         id: 'task-pause',
         label: 'Pause task',
         group: 'Task',
-        action: async () => {
-          close();
-          try {
-            await invoke('pause_task', { shortId: activeTask.short_id });
-          } catch (e) {
-            setLastError(e);
-          }
-        },
+        icon: PauseCircle,
+        action: () => send('pause_task', { shortId: activeTask.short_id }),
       });
       cmds.push({
         id: 'task-sync',
         label: 'Sync task',
         group: 'Task',
-        action: async () => {
-          close();
-          try {
-            await invoke('sync_task', { shortId: activeTask.short_id });
-          } catch (e) {
-            setLastError(e);
-          }
-        },
+        icon: RefreshCw,
+        action: () => send('sync_task', { shortId: activeTask.short_id }),
       });
     }
 
-    // Editor — always available
-    cmds.push({
-      id: 'toggle-vim',
-      label: vimMode ? 'Disable Vim mode' : 'Enable Vim mode',
-      group: 'Editor',
-      shortcut: shortcutFor(keymap, 'editor.toggleVim'),
-      action: () => { setVimMode(!vimMode); close(); },
-    });
-
-    // Preferences — always available
-    cmds.push({
-      id: 'open-settings',
-      label: 'Open Settings…',
-      group: 'Preferences',
-      shortcut: shortcutFor(keymap, 'settings.open'),
-      action: () => { openSettings(); close(); },
-    });
     for (const t of THEMES) {
       cmds.push({
         id: `theme-${t.id}`,
         label: `Theme: ${t.label}${activeTheme === t.id ? '  ✓' : ''}`,
         group: 'Theme',
+        icon: Palette,
         action: () => { setTheme(t.id); close(); },
       });
     }
@@ -293,7 +202,7 @@ export function CommandPalette() {
     return cmds;
   };
 
-  const commands = buildCommands();
+  const commands = [...boundCommands(), ...buildCommands()];
 
   // Fuzzy, via the same matcher the file finder and repo picker use: a substring
   // filter meant "gcm" found nothing and every command had to be typed in full.
@@ -354,7 +263,7 @@ export function CommandPalette() {
                 <div className="palette-group-label">{group}</div>
                 {cmds.map((cmd) => {
                   const idx = flatFiltered.indexOf(cmd);
-                  const Icon = cmdIcon(cmd);
+                  const Icon = cmd.icon;
                   return (
                     <button
                       key={cmd.id}

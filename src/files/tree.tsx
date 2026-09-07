@@ -22,19 +22,19 @@ import { StatBadge, type DiffStat } from '../shared/ui/StatBadge';
 
 export function buildTree(paths: string[]): TreeNode[] {
   const root: TreeNode = { name: '', path: '', isDir: true, children: [] };
+  const byPath = new Map<string, TreeNode>();
   for (const filePath of paths) {
     const parts = filePath.split('/');
     let cur = root;
     for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
       const nodePath = parts.slice(0, i + 1).join('/');
-      const isLast = i === parts.length - 1;
-      let child = cur.children.find((c) => c.name === part);
+      let child = byPath.get(nodePath);
       if (!child) {
-        child = { name: part, path: nodePath, isDir: !isLast, children: [] };
+        child = { name: parts[i], path: nodePath, isDir: i < parts.length - 1, children: [] };
+        byPath.set(nodePath, child);
         cur.children.push(child);
       }
-      if (!isLast) cur = child;
+      cur = child;
     }
   }
   const sort = (nodes: TreeNode[]) => {

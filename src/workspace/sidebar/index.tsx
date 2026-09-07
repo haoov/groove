@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { invoke } from '../../shared/ipc/invoke';
-import { RefreshCw } from 'lucide-react';
 import { useStore, useSession } from '../../shared/store';
-import { refreshSession } from '../../shared/lib/refreshSession';
 import { activeWorktreeFor } from '../../shared/lib/workspace';
-import { DIFF_MODES } from '../../shared/lib/diffModes';
 import type { CommitEntry } from '../../shared/ipc/ipc';
 import { FilesTab } from '../../files/FilesTab';
-import { CommitsTab, ChangedFilesList, GitCommitPanel } from '../../git/GitTab';
-import { AnnotationsTab } from '../../notes/AnnotationsTab';
-import { MrThreadsSection } from '../../notes/MrThreads';
+import { GitCommitPanel } from '../../git/GitCommitPanel';
+import { NotesPanel } from './NotesPanel';
+import { GitPanel } from './GitPanel';
 
 export function Sidebar() {
   const activeTask = useSession((s) => s.activeTask);
@@ -18,25 +15,13 @@ export function Sidebar() {
   const sidebarTab = useSession((s) => s.sidebarTab);
   const activeRepoId = useSession((s) => s.activeRepoId);
   const worktreeStatus = useSession((s) => s.worktreeStatus);
-  const sessionId = useSession((s) => s.id);
-  const refreshStatus = useSession((s) => s.refreshStatus);
-  const bumpDiff = useSession((s) => s.bumpDiff);
   const bumpMrs = useSession((s) => s.bumpMrs);
-  const diffMode = useSession((s) => s.diffMode);
-  const setDiffMode = useSession((s) => s.setDiffMode);
-  const annotations = useSession((s) => s.annotations);
-  const commits = useSession((s) => s.commits);
+  const commitLimit = useSession((s) => s.commitLimit);
   const setCommits = useSession((s) => s.setCommits);
   const mrs = useSession((s) => s.mrs);
-  const mrThreadsByRepo = useSession((s) => s.mrThreadsByRepo);
   const openTab = useSession((s) => s.openTab);
-  const resolveAnnotation = useSession((s) => s.resolveAnnotation);
-  const removeAnnotation = useSession((s) => s.removeAnnotation);
-  const updateAnnotation = useSession((s) => s.updateAnnotation);
   const isExplorer = useSession((s) => s.kind === 'explorer');
   const setLastError = useStore((s) => s.setLastError);
-  const invalidateMrs = useStore((s) => s.invalidateMrs);
-  const notify = useStore((s) => s.notify);
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
@@ -55,12 +40,6 @@ export function Sidebar() {
       return next;
     });
   }, [revealDir]);
-  // Git sub-mode lives in the session store: the cycle shortcut and these buttons write one field.
-  const gitSubTab = useSession((s) => s.gitSubTab);
-  const setGitSubTab = useSession((s) => s.setGitSubTab);
-  const commitLimit = useSession((s) => s.commitLimit);
-  const commitsHasMore = useSession((s) => s.commitsHasMore);
-  const loadMoreCommits = useSession((s) => s.loadMoreCommits);
 
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const worktreeForRepo = useCallback(
@@ -107,14 +86,9 @@ export function Sidebar() {
     openTab({ repoId, filePath: path, view: 'edit' });
   };
 
-  const openFileInDiff = (path: string, repoId: string) => {
-    openTab({ repoId, filePath: path, view: 'diff' });
-  };
-
   const makeGitAction = (worktreeId: string) => async (cmd: string) => {
     try {
       await invoke(cmd, { worktreeId });
-      setTimeout(refreshStatus, 1500);
     } catch (e) {
       setLastError(e);
     }
@@ -124,50 +98,12 @@ export function Sidebar() {
     if (!message.trim()) return undefined;
     try {
       // Confirmation id: Commit & Push chains off it.
-      const confirmationId = await invoke<string>('commit', { worktreeId, message: message.trim() });
-      setTimeout(refreshStatus, 1500);
-      return confirmationId;
+      return await invoke<string>('commit', { worktreeId, message: message.trim() });
     } catch (e) {
       setLastError(e);
       throw e;
     }
   };
-
-  // Stages one file or the whole active repo, then refreshes the status counts and the diff.
-  const refreshAfterStage = () => { refreshStatus(); bumpDiff(); };
-  const toggleStage = async (path: string, repoId: string, staged: boolean) => {
-    const wt = worktreeForRepo(repoId);
-    if (!wt) return;
-    try {
-      await invoke(staged ? 'stage_file' : 'unstage_file', { worktreeId: wt.id, filePath: path });
-      refreshAfterStage();
-    } catch (e) {
-      setLastError(e);
-    }
-  };
-  const stageAll = (cmd: 'stage_all' | 'unstage_all') => async () => {
-    if (!activeWt) return;
-    try {
-      await invoke(cmd, { worktreeId: activeWt.id });
-      refreshAfterStage();
-    } catch (e) {
-      setLastError(e);
-    }
-  };
-
-  // Discard is destructive: it goes through the confirmation bridge.
-  const discardFile = (path: string, repoId: string) => {
-    const wt = worktreeForRepo(repoId);
-    if (!wt) return;
-    invoke('discard_file', { worktreeId: wt.id, filePath: path }).catch((e) => setLastError(e));
-  };
-  const discardAll = () => {
-    if (!activeWt) return;
-    invoke('discard_all', { worktreeId: activeWt.id }).catch((e) => setLastError(e));
-  };
-
-  // Git sub-tab badges, scoped to the active repo (the chips show every repo).
-  const activeDirty = activeStatus ? activeStatus.modified + activeStatus.staged : 0;
 
   const renderContent = () => {
     if (!activeRepo) {
@@ -194,150 +130,18 @@ export function Sidebar() {
     }
 
     if (sidebarTab === 'annotations') {
-      const wt = worktreeForRepo(repoId);
-      const repoMr = mrs.find((m) => m.worktree_id === wt?.id) ?? null;
-      // Notes: the local annotations plus the MR discussion when one exists.
-      return (
-        <>
-        <AnnotationsTab
-          annotations={annotations.filter((a) => a.repo_id === repoId)}
-          repoFor={(id) => activeRepos.find((r) => r.id === id)}
-          onResolve={async (id) => {
-            try {
-              await invoke('resolve_annotation', { id });
-              resolveAnnotation(id);
-            } catch (e) {
-              setLastError(e);
-            }
-          }}
-          onDelete={async (id) => {
-            try {
-              await invoke('delete_annotation', { id });
-              removeAnnotation(id);
-            } catch (e) {
-              setLastError(e);
-            }
-          }}
-          onEdit={async (id, content) => {
-            try {
-              await invoke('update_annotation', { id, content });
-              updateAnnotation(id, content);
-            } catch (e) {
-              setLastError(e);
-            }
-          }}
-          // Open the file at the annotated line (the editor takes cursorLine).
-          onOpen={(a) =>
-            openTab({
-              repoId: a.repo_id,
-              filePath: a.file_path,
-              view: 'edit',
-              cursorLine: a.start_line,
-            })
-          }
-          mr={repoMr}
-          onPostToMr={async (a) => {
-            try {
-              await invoke('post_mr_comment', {
-                mrId: repoMr!.id,
-                body: a.content,
-                filePath: a.file_path,
-                line: a.start_line,
-              });
-              await invoke('resolve_annotation', { id: a.id });
-              resolveAnnotation(a.id);
-              bumpMrs();
-              notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
-            } catch (e) {
-              setLastError(e);
-            }
-          }}
-        />
-        {repoMr && (
-          <div className="notes-threads">
-            <div className="notes-threads-title">MR discussion</div>
-            <MrThreadsSection
-              threads={mrThreadsByRepo[repoId] ?? []}
-              mr={repoMr}
-              onResolved={bumpMrs}
-            />
-          </div>
-        )}
-        </>
-      );
+      return <NotesPanel repoId={repoId} worktreeForRepo={worktreeForRepo} />;
     }
 
-    // git
     return (
-      <div className="git-tab">
-        <div className="git-subtabs">
-          {(['changes', 'commits'] as const).map((sub) => {
-            const badge = sub === 'changes' ? activeDirty : 0;
-            return (
-              <button
-                key={sub}
-                className={`git-subtab ${gitSubTab === sub ? 'active' : ''}`}
-                onClick={() => setGitSubTab(sub)}
-              >
-                {sub === 'changes' && 'Changes'}
-                {sub === 'commits' && 'Commits'}
-                {badge > 0 && <span className="git-subtab-badge">{badge}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="git-subcontent">
-          {gitSubTab === 'commits' && (
-            <CommitsTab
-              commits={commits}
-              hasMore={commitsHasMore}
-              onLoadMore={loadMoreCommits}
-              onSelect={(c) =>
-                openTab({ repoId, filePath: '', view: 'diff', kind: 'commit', sha: c.sha, label: c.short_sha })
-              }
-            />
-          )}
-          {gitSubTab === 'changes' && (
-            <>
-              {/* Diff base and refresh. This list and every diff tab follow the selected base. */}
-              <div className="diff-mode-row">
-                <div className="diff-mode-seg">
-                  {DIFF_MODES.map((m) => (
-                    <button
-                      key={m.id}
-                      className={`diff-mode-btn ${diffMode === m.id ? 'active' : ''}`}
-                      title={m.title}
-                      onClick={() => setDiffMode(m.id)}
-                    >
-                      <m.Icon size={12} strokeWidth={1.75} />
-                    </button>
-                  ))}
-                </div>
-                <button
-                  className="diff-mode-refresh"
-                  onClick={() => { void refreshSession(sessionId); invalidateMrs(sessionId); }}
-                  title="Refresh diff, git status & CI"
-                >
-                  <RefreshCw size={12} strokeWidth={1.75} />
-                </button>
-              </div>
-              {/* Stage-all and discard-all live on the All-changes row. */}
-              <ChangedFilesList
-                repoId={repoId}
-                worktreeId={activeWt?.id}
-                onOpenFile={(path, rid) => openFileInDiff(path, rid)}
-                onOpenFileAlt={openFileInEditor}
-                onOpenAll={(rid) => openTab({ repoId: rid, filePath: '', view: 'diff', kind: 'changes' })}
-                onToggleStage={toggleStage}
-                onDiscard={discardFile}
-                onStageAll={(stage) => stageAll(stage ? 'stage_all' : 'unstage_all')()}
-                onDiscardAll={discardAll}
-              />
-            </>
-          )}
-        </div>
-      </div>
+      <GitPanel
+        repoId={repoId}
+        activeWt={activeWt}
+        // Scoped to the active repo (the chips show every repo).
+        activeDirty={activeStatus ? activeStatus.modified + activeStatus.staged : 0}
+        worktreeForRepo={worktreeForRepo}
+        onOpenFileInEditor={openFileInEditor}
+      />
     );
   };
 
@@ -348,18 +152,16 @@ export function Sidebar() {
 
       {/* Docked footer for the active repo: the commit composer, on whichever tab shows. */}
       {activeWt && (
-        <>
-          <GitCommitPanel
-            key={activeWt.id}
-            status={activeStatus}
-            branch={activeWt.branch}
-            worktreeId={activeWt.id}
-            commitOnly={isExplorer}
-            mr={mrs.find((m) => m.worktree_id === activeWt.id)}
-            onCommit={makeCommit(activeWt.id)}
-            onAction={makeGitAction(activeWt.id)}
-          />
-        </>
+        <GitCommitPanel
+          key={activeWt.id}
+          status={activeStatus}
+          branch={activeWt.branch}
+          worktreeId={activeWt.id}
+          commitOnly={isExplorer}
+          mr={mrs.find((m) => m.worktree_id === activeWt.id)}
+          onCommit={makeCommit(activeWt.id)}
+          onAction={makeGitAction(activeWt.id)}
+        />
       )}
     </aside>
   );

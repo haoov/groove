@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   Plus, RefreshCw, Search, X, Hash, Type, Boxes, Shapes, CircleDot, Flag, FolderGit2,
   GitBranch, GitFork, User, CircleCheck, PencilLine, GitPullRequest, Tag, type LucideIcon,
@@ -9,9 +9,9 @@ import { LiveSection } from './LiveSection';
 import { UpNextSection } from './UpNextSection';
 import { ReviewsSection } from './ReviewsSection';
 import { ActivityPanel } from './ActivityPanel';
-import { applySuggestion, highlightSegments, suggest, type CountReport, type Suggestion } from './filter';
-import { useFilterValues } from './useFilterValues';
-import { isTypingCharacter } from '../shared/lib/keys';
+import { highlightSegments } from './filter';
+import { useFilterAutocomplete } from './useFilterAutocomplete';
+import { useTabRouting, type Tab, type TabState } from './useTabRouting';
 
 /**
  * Home: the Live, Up next and Reviews tabs under a shared filter, plus a right rail of panels.
@@ -35,47 +35,39 @@ const KEY_ICON: Record<string, LucideIcon> = {
   mr: GitPullRequest,
 };
 
-/** Must equal `min-width` on `.home-ac`. */
-const AC_MIN_WIDTH = 260;
-
-/** What a tab last reported for a given query. */
-interface TabState {
-  n: number;
-  /** False when the query names a field this tab has no column for. */
-  applicable: boolean;
-  /** The query the numbers belong to. */
-  forFilter: string;
+function HomeTab({
+  id, label, state, active, onSelect,
+}: {
+  id: Tab;
+  label: string;
+  state: TabState;
+  active: boolean;
+  onSelect: (t: Tab) => void;
+}) {
+  return (
+    <button className={`home-tab ${active ? 'active' : ''}`} onClick={() => onSelect(id)}>
+      {label}{' '}
+      {/* A dash: the query names a field this tab has no column for. */}
+      <span
+        className={`home-tab-count${state.applicable ? '' : ' na'}`}
+        title={state.applicable ? undefined : 'This query filters on a field this tab does not have'}
+      >
+        {state.applicable ? state.n : '–'}
+      </span>
+    </button>
+  );
 }
-const EMPTY_TAB: TabState = { n: 0, applicable: true, forFilter: '' };
-
-type Tab = 'live' | 'upnext' | 'reviews';
-const TAB_KEY = 'wb.homeTab';
-const loadTab = (): Tab => {
-  const t = localStorage.getItem(TAB_KEY);
-  return t === 'upnext' || t === 'reviews' ? t : 'live';
-};
 
 export function Home() {
-  const [tab, setTabState] = useState<Tab>(loadTab);
-  // `draft` is the typed text; `filter` is what the tabs apply. Enter commits.
-  const [draft, setDraft] = useState('');
-  const [filter, setFilter] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
-  // Autocomplete: the caret drives which token is being completed.
-  const [caret, setCaret] = useState(0);
-  const [acOpen, setAcOpen] = useState(false);
-  const [acIndex, setAcIndex] = useState(0);
-  const pendingCaret = useRef<number | null>(null);
-  const acListRef = useRef<HTMLUListElement>(null);
-  const measureRef = useRef<HTMLSpanElement>(null);
-  const [acLeft, setAcLeft] = useState(0);
-  const filterValues = useFilterValues();
-  const ac = useMemo(() => suggest(draft, caret, filterValues), [draft, caret, filterValues]);
-  const [live, setLive] = useState<TabState>(EMPTY_TAB);
-  const [upnext, setUpnext] = useState<TabState>(EMPTY_TAB);
-  const [reviews, setReviews] = useState<TabState>(EMPTY_TAB);
-  const [routePending, setRoutePending] = useState(false);
+  const {
+    draft, filter, commits, ac, acOpen, setAcOpen, acIndex, setAcIndex, acLeft, setCaret,
+    inputRef, mirrorRef, measureRef, acListRef,
+    syncMirror, clearFilter, commitFilter, onDraftChange, accept, onFilterKeyDown,
+  } = useFilterAutocomplete();
+  const {
+    tab, setTab, live, upnext, reviews, noMatches, onLiveCount, onUpnextCount, onReviewsCount,
+  } = useTabRouting(filter, commits);
+
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const setLastError = useStore((s) => s.setLastError);
@@ -83,121 +75,6 @@ export function Home() {
   const refreshTasks = useStore((s) => s.refreshTasks);
   const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
   const [refreshing, setRefreshing] = useState(false);
-
-  const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* ignore */ } };
-
-  // The mirror scrolls with the input.
-  const syncMirror = () => {
-    if (mirrorRef.current && inputRef.current) {
-      mirrorRef.current.scrollLeft = inputRef.current.scrollLeft;
-    }
-  };
-  useEffect(syncMirror, [draft]);
-
-  const clearFilter = () => { setDraft(''); setFilter(''); setCaret(0); inputRef.current?.focus(); };
-
-  // `/` focuses the filter, except while typing elsewhere.
-  useEffect(() => {
-    const onSlash = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || isTypingCharacter(e)) return;
-      const el = e.target as HTMLElement | null;
-      if (el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? '')) return;
-      e.preventDefault();
-      inputRef.current?.focus();
-      setAcOpen(true);
-    };
-    window.addEventListener('keydown', onSlash);
-    return () => window.removeEventListener('keydown', onSlash);
-  }, []);
-
-  const commitFilter = () => { setFilter(draft); setAcOpen(false); setRoutePending(true); };
-
-  const onLiveCount = useCallback<CountReport>((n, applicable, forFilter) => setLive({ n, applicable, forFilter }), []);
-  const onUpnextCount = useCallback<CountReport>((n, applicable, forFilter) => setUpnext({ n, applicable, forFilter }), []);
-  const onReviewsCount = useCallback<CountReport>((n, applicable, forFilter) => setReviews({ n, applicable, forFilter }), []);
-
-  // True once every tab has answered for the current query.
-  const counted = live.forFilter === filter && upnext.forFilter === filter && reviews.forFilter === filter;
-  const noMatches = counted && filter.trim() !== '' && live.n === 0 && upnext.n === 0 && reviews.n === 0;
-
-  // Route a committed query to a tab with results, once per commit; the current tab wins when it has any.
-  useEffect(() => {
-    if (!routePending || !counted) return;
-    setRoutePending(false);
-    const order: [Tab, TabState][] = [['live', live], ['upnext', upnext], ['reviews', reviews]];
-    const current = order.find(([id]) => id === tab)?.[1];
-    if (current && current.n > 0) return;
-    const target = order.find(([, s]) => s.n > 0);
-    if (target) setTab(target[0]);
-  }, [routePending, counted, live, upnext, reviews, tab]);
-
-  // Restore the caret after a completion is spliced in.
-  useEffect(() => {
-    const at = pendingCaret.current;
-    if (at === null) return;
-    pendingCaret.current = null;
-    inputRef.current?.setSelectionRange(at, at);
-    setCaret(at);
-  }, [draft]);
-
-  // Position the list under the token being completed, clamped to the input width.
-  useEffect(() => {
-    const field = inputRef.current;
-    const width = measureRef.current?.offsetWidth ?? 0;
-    if (!field) return;
-    const max = Math.max(0, field.clientWidth - AC_MIN_WIDTH);
-    setAcLeft(Math.min(Math.max(0, width - field.scrollLeft), max));
-  }, [draft, ac.start, acOpen]);
-
-  // Keep the highlighted line visible.
-  useEffect(() => {
-    acListRef.current?.querySelector('.home-ac-item.active')?.scrollIntoView({ block: 'nearest' });
-  }, [acIndex, acOpen]);
-
-  const accept = (s: Suggestion) => {
-    const { text, caret: at } = applySuggestion(draft, ac.start, ac.end, s.insert);
-    setDraft(text);
-    pendingCaret.current = at;
-    setAcIndex(0);
-    // A key keeps the list open; a value closes it.
-    setAcOpen(s.kind === 'key');
-    inputRef.current?.focus();
-  };
-
-  const onFilterKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const open = acOpen && ac.items.length > 0;
-    switch (e.key) {
-      case 'ArrowDown':
-        if (!open) return;
-        e.preventDefault();
-        setAcIndex((i) => (i + 1) % ac.items.length);
-        return;
-      case 'ArrowUp':
-        if (!open) return;
-        e.preventDefault();
-        setAcIndex((i) => (i - 1 + ac.items.length) % ac.items.length);
-        return;
-      case 'Tab':
-        if (!open) return;
-        e.preventDefault();
-        accept(ac.items[acIndex]);
-        return;
-      case 'Enter':
-        e.preventDefault();
-        // Enter accepts the highlighted suggestion first, then applies the query.
-        if (open) { accept(ac.items[acIndex]); return; }
-        commitFilter();
-        return;
-      case 'Escape':
-        e.preventDefault();
-        if (open) { setAcOpen(false); return; }
-        clearFilter();
-        return;
-      default:
-        // Arrow/Home/End move the caret; read it after the browser has.
-        requestAnimationFrame(() => setCaret(inputRef.current?.selectionStart ?? 0));
-    }
-  };
 
   const createExplorer = async () => {
     const name = newName.trim();
@@ -223,19 +100,6 @@ export function Home() {
     setRefreshing(true);
     try { await REFRESH[tab].run(); } finally { setRefreshing(false); }
   };
-
-  const Tab = ({ id, label, state }: { id: Tab; label: string; state: TabState }) => (
-    <button className={`home-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
-      {label}{' '}
-      {/* A dash: the query names a field this tab has no column for. */}
-      <span
-        className={`home-tab-count${state.applicable ? '' : ' na'}`}
-        title={state.applicable ? undefined : 'This query filters on a field this tab does not have'}
-      >
-        {state.applicable ? state.n : '–'}
-      </span>
-    </button>
-  );
 
   return (
     <div className="home">
@@ -286,7 +150,7 @@ export function Home() {
                 value={draft}
                 autoComplete="off"
                 spellCheck={false}
-                onChange={(e) => { setDraft(e.target.value); setCaret(e.target.selectionStart ?? 0); setAcOpen(true); setAcIndex(0); }}
+                onChange={(e) => onDraftChange(e.target.value, e.target.selectionStart ?? 0)}
                 onScroll={syncMirror}
                 onClick={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
                 onFocus={() => setAcOpen(true)}
@@ -338,9 +202,9 @@ export function Home() {
 
           <section className="home-section home-main">
             <div className="home-tabbar">
-              <Tab id="live" label="Live" state={live} />
-              <Tab id="upnext" label="Up next" state={upnext} />
-              <Tab id="reviews" label="Reviews" state={reviews} />
+              <HomeTab id="live" label="Live" state={live} active={tab === 'live'} onSelect={setTab} />
+              <HomeTab id="upnext" label="Up next" state={upnext} active={tab === 'upnext'} onSelect={setTab} />
+              <HomeTab id="reviews" label="Reviews" state={reviews} active={tab === 'reviews'} onSelect={setTab} />
               <span className="home-tabbar-spring" />
               <button className="home-link" onClick={refresh} title={REFRESH[tab].title}>
                 <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? 'spin' : undefined} />

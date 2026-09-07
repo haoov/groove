@@ -3,7 +3,7 @@ import {
   EditorView, Decoration, DecorationSet, GutterMarker,
   gutter, keymap, BlockInfo,
 } from '@codemirror/view';
-import { EditorState, StateField, StateEffect, RangeSetBuilder, Transaction, Compartment } from '@codemirror/state';
+import { EditorState, StateField, StateEffect, RangeSetBuilder, Transaction } from '@codemirror/state';
 import { syntaxHighlighting } from '@codemirror/language';
 import { searchKeymap } from '@codemirror/search';
 import { indentationMarkers } from '@replit/codemirror-indentation-markers';
@@ -18,27 +18,12 @@ import { catppuccinHighlight, cmChromeTheme } from './cm/theme';
 import type { Hunk, Annotation, Mr, MrThread, BlameLine } from '../shared/ipc/ipc';
 import type { AnnCtx, LineRange } from './useAnnotations';
 import { CommentGutterMarker, LineNumGutterMarker, BlameMarker, FormWidget, InlineAnnotationsWidget } from './cm/gutters';
-import { deriveAnnotationSets } from './cm/annotationSets';
-import { AnnotationPortals, useAnnotationPortals } from './cm/annotationPortals';
+import { AnnotationPortals } from './cm/annotationPortals';
+import { useCmHost } from './useCmHost';
+import { useAnnotationSurface, extendDragAt, type Dyn } from './useAnnotationSurface';
 import { gapsFor, type Gap } from '../shared/lib/diffGaps';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface DynState {
-  sel: LineRange | null;
-  dragRange: LineRange | null;
-  annotatedLineNums: Set<number>;
-  annStartNums: Set<number>;
-  threadNums: Set<number>;
-  unresolvedThreadNums: Set<number>;
-  inlineContainer: HTMLDivElement | null;
-  inlineAnchorNum: number | null;
-  fileAnnotations: Annotation[];
-  /** Portal target per annotated end-line for the always-visible notes. */
-  annContainers: Map<number, HTMLDivElement>;
-}
-
-const setDynEffect = StateEffect.define<DynState>();
+const setDynEffect = StateEffect.define<Dyn>();
 
 // ── Diff indicator gutter marker (far-left colored stripe) ───────────────────
 
@@ -63,7 +48,7 @@ class DiffIndicatorMarker extends GutterMarker {
 function buildDynDecos(
   state: EditorState,
   lineMap: CMLineInfo[],
-  dyn: DynState,
+  dyn: Dyn,
   repoId: string,
   filePath: string,
 ): DecorationSet {
@@ -97,7 +82,7 @@ function buildDynDecos(
       // Inline annotations under their end line; hidden where the form is open.
       const lineAnns = annsByEndLine.get(fn);
       const annContainer = dyn.annContainers.get(fn);
-      if (lineAnns && lineAnns.length > 0 && annContainer && fn !== dyn.inlineAnchorNum) {
+      if (lineAnns && lineAnns.length > 0 && annContainer && fn !== dyn.anchorLine) {
         builder.add(docLine.to, docLine.to, Decoration.widget({
           widget: new InlineAnnotationsWidget(annContainer, lineAnns.map((a) => a.id).join(',')),
           block: true,
@@ -106,9 +91,9 @@ function buildDynDecos(
       }
 
       // Comment form at the selection's end line.
-      if (dyn.inlineContainer && fn === dyn.inlineAnchorNum) {
+      if (dyn.formEl && fn === dyn.anchorLine) {
         builder.add(docLine.to, docLine.to,
-          Decoration.widget({ widget: new FormWidget(dyn.inlineContainer), block: true, side: 1 }));
+          Decoration.widget({ widget: new FormWidget(dyn.formEl), block: true, side: 1 }));
       }
     }
   }
@@ -197,8 +182,6 @@ export function FileDiffEditor({
   useEffect(() => { setupVimSearch(); }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // Reconfigured in place; recreating the view would drop selection and scroll.
-  const vimCompartment = useRef(new Compartment());
   const annRef = useRef(ann);
   annRef.current = ann;
   // Refs: a new callback identity must not rebuild the extensions.
@@ -210,36 +193,30 @@ export function FileDiffEditor({
   const { doc, lineMap, hunkFirstCMLines } = useMemo(() => buildDocument(hunks), [hunks]);
   const gaps = useMemo(() => gapsFor(hunks, fileLineCount), [hunks, fileLineCount]);
 
-  const { annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums } = useMemo(
-    () => deriveAnnotationSets(fileAnnotations, threads, filePath),
-    [fileAnnotations, threads, filePath],
-  );
-
-  const thisFileSel =
-    allowAnnotations && sel?.repoId === repoId && sel?.filePath === filePath ? sel : null;
-  const inlineAnchorNum = thisFileSel?.endLine ?? null;
-
-  const { groups: annGroups, containersRef: annContainersRef, formRef: portalContainerRef, formEl: portalContainer } =
-    useAnnotationPortals(fileAnnotations, inlineAnchorNum, 'diff-inline-portal');
+  const { sets, anchorLine, groups, containersRef, formRef, formEl, portalProps } =
+    useAnnotationSurface({
+      ann, sel: allowAnnotations ? sel : null, annotations: fileAnnotations, threads, mr,
+      repoId, filePath, formClass: 'diff-inline-portal',
+    });
 
   const extensions = useMemo(() => {
     const lang = cmLangFor(guessLang(filePath));
     const lm = lineMap;
     const hfcl = hunkFirstCMLines;
 
-    const dynField = StateField.define<{ dyn: DynState; decos: DecorationSet }>({
+    const dynField = StateField.define<{ dyn: Dyn; decos: DecorationSet }>({
       create() {
-        const empty: DynState = {
+        const empty: Dyn = {
           sel: null, dragRange: null,
           annotatedLineNums: new Set(), annStartNums: new Set(),
           threadNums: new Set(), unresolvedThreadNums: new Set(),
-          inlineContainer: null, inlineAnchorNum: null,
+          formEl: null, anchorLine: null,
           fileAnnotations: [],
           annContainers: new Map(),
         };
         return { dyn: empty, decos: Decoration.none };
       },
-      update(prev: { dyn: DynState; decos: DecorationSet }, tr: Transaction) {
+      update(prev: { dyn: Dyn; decos: DecorationSet }, tr: Transaction) {
         for (const e of tr.effects) {
           if (e.is(setDynEffect)) {
             return { dyn: e.value, decos: buildDynDecos(tr.state, lm, e.value, repoId, filePath) };
@@ -247,8 +224,8 @@ export function FileDiffEditor({
         }
         return prev;
       },
-      provide: (f: StateField<{ dyn: DynState; decos: DecorationSet }>) =>
-        EditorView.decorations.from(f, (v: { dyn: DynState; decos: DecorationSet }) => v.decos),
+      provide: (f: StateField<{ dyn: Dyn; decos: DecorationSet }>) =>
+        EditorView.decorations.from(f, (v: { dyn: Dyn; decos: DecorationSet }) => v.decos),
     });
 
     const staticField = StateField.define<DecorationSet>({
@@ -322,7 +299,6 @@ export function FileDiffEditor({
     });
 
     return [
-      vimCompartment.current.of(vimExtensions(useStore.getState().vimMode)),
       EditorState.readOnly.of(true),
       cmChromeTheme,
       cmTheme,
@@ -343,76 +319,34 @@ export function FileDiffEditor({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filePath, lineMap, hunkFirstCMLines, hunks, gaps, blame, allowAnnotations]);
 
-  // Mount the editor; remount on doc or extension change.
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const view = new EditorView({
-      state: EditorState.create({ doc, extensions }),
-      parent: containerRef.current,
-    });
-    viewRef.current = view;
-    // The container can still have no height at the first measure.
-    view.requestMeasure();
-    return () => { view.destroy(); viewRef.current = null; };
-  }, [doc, extensions]);
-
-  // Toggle vim in place.
-  useEffect(() => {
-    viewRef.current?.dispatch({ effects: vimCompartment.current.reconfigure(vimExtensions(vimMode)) });
-  }, [vimMode]);
-
-  // With vim on, focus the diff on a real open.
-  useEffect(() => {
-    if (focusSignal === undefined || isPreview || !vimMode) return;
-    viewRef.current?.focus();
-  }, [focusSignal, isPreview, vimMode]);
+  useCmHost({
+    containerRef, viewRef, doc, extensions, vimExt: vimExtensions, measureOnMount: true,
+    canFocus: vimMode, focusSignal, isPreview,
+  });
 
   // Push dynamic state into CM.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
+    viewRef.current?.dispatch({
       effects: setDynEffect.of({
-        sel, dragRange,
-        annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums,
-        inlineContainer: portalContainerRef.current,
-        inlineAnchorNum,
-        fileAnnotations,
-        annContainers: annContainersRef.current,
+        ...sets, fileAnnotations, sel, dragRange, anchorLine,
+        formEl: formRef.current, annContainers: containersRef.current,
       }),
     });
-  }, [sel, dragRange, annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums, inlineAnchorNum, fileAnnotations, annGroups,
-      portalContainerRef, annContainersRef]);
+  }, [sets, fileAnnotations, sel, dragRange, anchorLine, formEl, groups, formRef, containersRef]);
 
   return (
     <div
       className="diff-cm-host"
       onClick={(e) => e.stopPropagation()}
       onMouseMove={(e) => {
-        if (!allowAnnotations || !dragRange) return;
-        const view = viewRef.current;
-        if (!view) return;
-        // On the wrapper, not the view: CM's domEventHandlers do not cover the gutter.
-        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
-        if (pos === null) return;
-        const info = lineMap[view.state.doc.lineAt(pos).number - 1];
         // A del line carries the new-side number of the line above it; 0 has no anchor.
-        if (info && info.fileLineNum > 0) ann.extendDrag(repoId, filePath, info.fileLineNum);
+        if (allowAnnotations && dragRange) {
+          extendDragAt(viewRef.current, e, ann, repoId, filePath, (n) => lineMap[n - 1]?.fileLineNum ?? 0);
+        }
       }}
     >
       <div ref={containerRef} className="diff-cm-editor" />
-      <AnnotationPortals
-        groups={annGroups}
-        containers={annContainersRef.current}
-        formEl={portalContainer}
-        sel={thisFileSel}
-        annotations={fileAnnotations}
-        threads={threads}
-        mr={mr}
-        ann={ann}
-        repoId={repoId}
-        filePath={filePath}
-      />
+      <AnnotationPortals {...portalProps} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Modal } from '../shared/ui/Modal';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 import { useRepoPicker, RepoPickerSearch, CloneRepoForm } from './repoPicker';
@@ -156,76 +157,73 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="wizard-overlay" onClick={onClose}>
-      <div className="wizard-modal wide" onClick={(e) => e.stopPropagation()}>
-        <div className="wizard-header">
-          <div className="wizard-title">Add repo to {activeTask.short_id}</div>
-          <div className="wizard-subtitle">{activeTask.title}</div>
-          <button className="wizard-close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="wizard-body">
-          <p className="wizard-desc">
-            {isExplorer ? (
-              <>Select repositories to add — each gets a worktree on this explorer's own
-              branch, renamed to the task branch if you turn this into a task.</>
-            ) : (
-              <>Select repositories to add, then name each branch (defaults to{' '}
-              <code>{defaultBranch}</code>) and pick the base it cuts from. Creation is
-              blocked if the branch already exists on the repo's origin.</>
-            )}
-          </p>
-
-          {addable.length === 0 ? (
-            <p className="wizard-empty">
-              {mainRepos.length === 0
-                ? 'No repos in the pool yet — clone one below.'
-                : 'Every pooled repo is already on this task. Clone a new one below.'}
-            </p>
+    <Modal
+      className="wide"
+      title={`Add repo to ${activeTask.short_id}`}
+      subtitle={activeTask.title}
+      onClose={onClose}
+    >
+      <div className="wizard-body">
+        <p className="wizard-desc">
+          {isExplorer ? (
+            <>Select repositories to add — each gets a worktree on this explorer's own
+            branch, renamed to the task branch if you turn this into a task.</>
           ) : (
-            <RepoPickerSearch
-              repos={addable}
-              isSelected={isSelected}
-              isPending={isPending}
-              onToggle={toggleRepo}
-            />
+            <>Select repositories to add, then name each branch (defaults to{' '}
+            <code>{defaultBranch}</code>) and pick the base it cuts from. Creation is
+            blocked if the branch already exists on the repo's origin.</>
           )}
+        </p>
 
-          {!isExplorer && selectedRepos.length > 0 && (
-            <div className="wizard-branch-list">
-              {selectedRepos.map((r) => (
-                <RepoBranchRow
-                  key={r.id}
-                  repo={r}
-                  defaultBranch={defaultBranch}
-                  branch={branchByRepo[r.id] ?? defaultBranch}
-                  onBranch={(v) => setBranchByRepo((p) => ({ ...p, [r.id]: v }))}
-                  target={targetByRepo[r.id] ?? ''}
-                  onTarget={(v) => setTargetByRepo((p) => ({ ...p, [r.id]: v }))}
-                  onRemove={() => deselect(r.local_path)}
-                />
-              ))}
-            </div>
-          )}
+        {addable.length === 0 ? (
+          <p className="wizard-empty">
+            {mainRepos.length === 0
+              ? 'No repos in the pool yet — clone one below.'
+              : 'Every pooled repo is already on this task. Clone a new one below.'}
+          </p>
+        ) : (
+          <RepoPickerSearch
+            repos={addable}
+            isSelected={isSelected}
+            isPending={isPending}
+            onToggle={toggleRepo}
+          />
+        )}
 
-          <CloneRepoForm onCloned={(repo) => { loadRepos(); toggleRepo(repo); }} />
-
-          {error && <div className="wizard-error">{error}</div>}
-
-          <div className="wizard-footer">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button
-              className="btn-primary"
-              onClick={submit}
-              disabled={loading || selectedRepos.length === 0}
-            >
-              {loading
-                ? 'Adding…'
-                : `Add ${selectedRepos.length || ''} repo${selectedRepos.length === 1 ? '' : 's'}`.trim()}
-            </button>
+        {!isExplorer && selectedRepos.length > 0 && (
+          <div className="wizard-branch-list">
+            {selectedRepos.map((r) => (
+              <RepoBranchRow
+                key={r.id}
+                repo={r}
+                defaultBranch={defaultBranch}
+                branch={branchByRepo[r.id] ?? defaultBranch}
+                onBranch={(v) => setBranchByRepo((p) => ({ ...p, [r.id]: v }))}
+                target={targetByRepo[r.id] ?? ''}
+                onTarget={(v) => setTargetByRepo((p) => ({ ...p, [r.id]: v }))}
+                onRemove={() => deselect(r.local_path)}
+              />
+            ))}
           </div>
+        )}
+
+        <CloneRepoForm onCloned={(repo) => { loadRepos(); toggleRepo(repo); }} />
+
+        {error && <div className="wizard-error">{error}</div>}
+
+        <div className="wizard-footer">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button
+            className="btn-primary"
+            onClick={submit}
+            disabled={loading || selectedRepos.length === 0}
+          >
+            {loading
+              ? 'Adding…'
+              : `Add ${selectedRepos.length || ''} repo${selectedRepos.length === 1 ? '' : 's'}`.trim()}
+          </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

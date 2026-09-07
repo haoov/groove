@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Modal } from '../shared/ui/Modal';
 import { invoke } from '../shared/ipc/invoke';
 import {
   AlertTriangle, Bell, Bot, Check, CheckCircle2, Copy, Expand, FileText, GitBranch,
@@ -174,36 +175,34 @@ function NotificationModal({ n, onClose }: { n: AppNotification; onClose: () => 
   };
 
   return (
-    <div className="wizard-overlay" onClick={onClose}>
-      <div className={`wizard-modal notif-modal notif--${n.kind}`} onClick={(e) => e.stopPropagation()}>
-        <div className="wizard-header">
-          <div className="wizard-title">
-            <KindIcon className="notif-icon" size={15} strokeWidth={2} />
-            {n.title}
-          </div>
-          <div className="wizard-subtitle notif-modal-meta">
-            <span>{n.source ?? 'app'}</span>
-            {n.taskId && <span className="notif-chip">{n.taskId}</span>}
-            {n.repo && <span className="notif-chip repo">{n.repo}</span>}
-            <span className="notif-time">{relativeTime(n.at)}</span>
-            {n.count > 1 && <span className="notif-count">×{n.count}</span>}
-          </div>
-          <button className="wizard-close" onClick={onClose}>×</button>
-        </div>
-        {n.detail
-          ? <pre className="notif-modal-detail">{n.detail}</pre>
-          : <p className="notif-modal-empty">No further detail was reported.</p>}
-        <div className="wizard-footer">
-          <button className="btn-secondary" onClick={copy}>
-            {copied
-              ? <><Check size={11} strokeWidth={2} style={{ marginRight: 5 }} />Sent to clipboard</>
-              : <><Copy size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copy</>}
-          </button>
-          <span className="composer-spacer" />
-          <button className="btn-primary" onClick={onClose}>Close</button>
-        </div>
+    <Modal
+      className={`notif-modal notif--${n.kind}`}
+      title={<><KindIcon className="notif-icon" size={15} strokeWidth={2} />{n.title}</>}
+      subtitleClassName="notif-modal-meta"
+      subtitle={
+        <>
+          <span>{n.source ?? 'app'}</span>
+          {n.taskId && <span className="notif-chip">{n.taskId}</span>}
+          {n.repo && <span className="notif-chip repo">{n.repo}</span>}
+          <span className="notif-time">{relativeTime(n.at)}</span>
+          {n.count > 1 && <span className="notif-count">×{n.count}</span>}
+        </>
+      }
+      onClose={onClose}
+    >
+      {n.detail
+        ? <pre className="notif-modal-detail">{n.detail}</pre>
+        : <p className="notif-modal-empty">No further detail was reported.</p>}
+      <div className="wizard-footer">
+        <button className="btn-secondary" onClick={copy}>
+          {copied
+            ? <><Check size={11} strokeWidth={2} style={{ marginRight: 5 }} />Sent to clipboard</>
+            : <><Copy size={11} strokeWidth={2} style={{ marginRight: 5 }} />Copy</>}
+        </button>
+        <span className="composer-spacer" />
+        <button className="btn-primary" onClick={onClose}>Close</button>
       </div>
-    </div>
+    </Modal>
   );
 }
 

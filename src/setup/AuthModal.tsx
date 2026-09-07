@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Modal } from '../shared/ui/Modal';
 import { invoke } from '../shared/ipc/invoke';
 import { listen } from '@tauri-apps/api/event';
 import { Loader2, X } from 'lucide-react';
@@ -76,34 +77,34 @@ export function AuthModal({
   }, [pty, tool, mode]);
 
   return (
-    <div className="wizard-overlay" onClick={onDone}>
-      <div className="wizard-modal auth-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="wizard-header">
-          <div className="wizard-title">Sign in to {tool === 'glab' ? 'GitLab' : 'GitHub'}</div>
-          <div className="wizard-subtitle">
-            <code>{COMMAND[tool][mode]}</code> is ready below — add any flags you need,
-            then press Enter.
-          </div>
-          <button className="wizard-close" onClick={onDone}>×</button>
-        </div>
-        <div className="auth-term console-term" ref={termRef}>
-          {!pty && (
-            <span className="console-hint">
-              <Loader2 size={12} className="spin" /> Starting a shell…
-            </span>
-          )}
-        </div>
-        <div className="wizard-footer">
-          <span className="firstrun-hint" style={{ margin: 0 }}>
-            Close this when the CLI says you are logged in; the check re-runs.
+    <Modal
+      className="auth-modal"
+      title={`Sign in to ${tool === 'glab' ? 'GitLab' : 'GitHub'}`}
+      subtitle={
+        <>
+          <code>{COMMAND[tool][mode]}</code> is ready below — add any flags you need,
+          then press Enter.
+        </>
+      }
+      onClose={onDone}
+    >
+      <div className="auth-term console-term" ref={termRef}>
+        {!pty && (
+          <span className="console-hint">
+            <Loader2 size={12} className="spin" /> Starting a shell…
           </span>
-          <span className="composer-spacer" />
-          <button className="btn-primary" onClick={onDone}>
-            <X size={11} strokeWidth={2} style={{ marginRight: 5 }} />
-            Done
-          </button>
-        </div>
+        )}
       </div>
-    </div>
+      <div className="wizard-footer">
+        <span className="firstrun-hint" style={{ margin: 0 }}>
+          Close this when the CLI says you are logged in; the check re-runs.
+        </span>
+        <span className="composer-spacer" />
+        <button className="btn-primary" onClick={onDone}>
+          <X size={11} strokeWidth={2} style={{ marginRight: 5 }} />
+          Done
+        </button>
+      </div>
+    </Modal>
   );
 }

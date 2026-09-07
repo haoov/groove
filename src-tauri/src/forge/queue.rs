@@ -27,46 +27,35 @@ pub struct ReviewMr {
     pub approved: bool,
 }
 
-/// Ask every forge host in the pool; one host failing does not blank the others.
-#[tauri::command]
-pub async fn list_review_mrs() -> AppResult<Vec<ReviewMr>> {
-    let main_repos = crate::worktrees::list_main_repos().await?;
-
-    // A pool slug is `<host>/<group…>/<project>`.
-    let mut hosts: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    let mut clone_by_project: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    for r in &main_repos {
+/// The pool's hosts, and the clone path of every slug. A pool slug is `<host>/<group…>/<project>`.
+fn clone_index(
+    repos: &[crate::worktrees::MainRepo],
+) -> (
+    std::collections::BTreeSet<String>,
+    std::collections::HashMap<String, String>,
+) {
+    let mut hosts = std::collections::BTreeSet::new();
+    let mut clone_by_project = std::collections::HashMap::new();
+    for r in repos {
         let Some((host, _)) = r.slug.split_once('/') else {
             continue;
         };
         hosts.insert(host.to_string());
         clone_by_project.insert(r.slug.clone(), r.local_path.clone());
     }
-    if hosts.is_empty() {
-        return Err(AppError::conflict("no repos in the pool — clone one first"));
-    }
+    (hosts, clone_by_project)
+}
 
-    let results = futures_util::future::join_all(hosts.iter().map(|host| {
-        let clones = &clone_by_project;
-        async move {
-            // Same rule as `client::make_client`.
-            let mrs = if host.contains("github") {
-                github_reviews(host, clones).await
-            } else {
-                gitlab_reviews(host, clones).await
-            };
-            (host.clone(), mrs)
-        }
-    }))
-    .await;
-
+/// Merge the per-host answers: an absent CLI is skipped, and an error surfaces only when
+/// no host produced a row. Newest first.
+fn merge_reviews(
+    results: Vec<(String, anyhow::Result<Vec<ReviewMr>>)>,
+) -> AppResult<Vec<ReviewMr>> {
     let mut out = vec![];
     let mut errors = vec![];
     for (host, result) in results {
         match result {
             Ok(mut mrs) => out.append(&mut mrs),
-            // A missing CLI is not reported.
             Err(e) if crate::core::forge::auth::is_cli_missing(&e) => {
                 tracing::debug!("{host} review queue skipped: {e}");
             }
@@ -78,6 +67,30 @@ pub async fn list_review_mrs() -> AppResult<Vec<ReviewMr>> {
     }
     out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(out)
+}
+
+/// Ask every forge host in the pool; one host failing does not blank the others.
+#[tauri::command]
+pub async fn list_review_mrs() -> AppResult<Vec<ReviewMr>> {
+    let main_repos = crate::worktrees::list_main_repos().await?;
+    let (hosts, clone_by_project) = clone_index(&main_repos);
+    if hosts.is_empty() {
+        return Err(AppError::conflict("no repos in the pool — clone one first"));
+    }
+
+    let results = futures_util::future::join_all(hosts.iter().map(|host| {
+        let clones = &clone_by_project;
+        async move {
+            let mrs = match super::client::Forge::of_host(host) {
+                super::client::Forge::Github => github_reviews(host, clones).await,
+                super::client::Forge::Gitlab => gitlab_reviews(host, clones).await,
+            };
+            (host.clone(), mrs)
+        }
+    }))
+    .await;
+
+    merge_reviews(results)
 }
 
 async fn github_reviews(
@@ -168,4 +181,128 @@ async fn gitlab_reviews(
     }
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::worktrees::MainRepo;
+
+    fn repo(slug: &str) -> MainRepo {
+        MainRepo {
+            local_path: format!("/pool/{slug}"),
+            slug: slug.to_string(),
+        }
+    }
+
+    fn mr(host: &str, project: &str, iid: u64, updated_at: &str) -> ReviewMr {
+        ReviewMr {
+            platform: "gitlab".into(),
+            project_full: project.into(),
+            iid,
+            title: format!("MR {iid}"),
+            author: "someone".into(),
+            source_branch: "feat/x".into(),
+            target_branch: "main".into(),
+            draft: false,
+            web_url: format!("https://{host}/{project}/-/merge_requests/{iid}"),
+            updated_at: updated_at.into(),
+            local_path: None,
+            approved: false,
+        }
+    }
+
+    #[test]
+    fn the_pool_index_keys_a_clone_by_its_slug() {
+        let repos = vec![
+            repo("gitlab.example.com/group/api"),
+            repo("github.com/owner/tool"),
+            repo("no-slash"),
+        ];
+        let (hosts, clones) = clone_index(&repos);
+        assert_eq!(
+            hosts.iter().map(String::as_str).collect::<Vec<_>>(),
+            vec!["github.com", "gitlab.example.com"],
+            "hosts are unique and ordered"
+        );
+        assert_eq!(
+            clones
+                .get("gitlab.example.com/group/api")
+                .map(String::as_str),
+            Some("/pool/gitlab.example.com/group/api")
+        );
+        assert!(
+            !clones.contains_key("no-slash"),
+            "a slug with no host is skipped"
+        );
+    }
+
+    #[test]
+    fn merged_rows_are_newest_first() {
+        let merged = merge_reviews(vec![
+            (
+                "a".into(),
+                Ok(vec![mr("a", "g/p", 1, "2026-01-01T00:00:00Z")]),
+            ),
+            (
+                "b".into(),
+                Ok(vec![
+                    mr("b", "g/q", 2, "2026-03-01T00:00:00Z"),
+                    mr("b", "g/r", 3, "2026-02-01T00:00:00Z"),
+                ]),
+            ),
+        ])
+        .unwrap();
+        assert_eq!(
+            merged.iter().map(|m| m.iid).collect::<Vec<_>>(),
+            vec![2, 3, 1]
+        );
+    }
+
+    #[test]
+    fn an_absent_cli_is_not_a_failure() {
+        let missing = anyhow::Error::new(crate::core::forge::auth::CliMissing("glab"));
+        let merged = merge_reviews(vec![
+            ("gitlab.example.com".into(), Err(missing)),
+            (
+                "github.com".into(),
+                Ok(vec![mr("github.com", "o/t", 7, "2026-01-01T00:00:00Z")]),
+            ),
+        ])
+        .unwrap();
+        assert_eq!(merged.len(), 1, "the reachable host still answers");
+    }
+
+    /// One host failing while another answers must not hide the rows that arrived.
+    #[test]
+    fn a_partial_failure_keeps_what_arrived() {
+        let merged = merge_reviews(vec![
+            ("gitlab.example.com".into(), Err(anyhow::anyhow!("500"))),
+            (
+                "github.com".into(),
+                Ok(vec![mr("github.com", "o/t", 7, "2026-01-01T00:00:00Z")]),
+            ),
+        ])
+        .unwrap();
+        assert_eq!(merged.len(), 1);
+    }
+
+    #[test]
+    fn every_host_failing_is_reported() {
+        let err = merge_reviews(vec![
+            ("a".into(), Err(anyhow::anyhow!("boom"))),
+            ("b".into(), Err(anyhow::anyhow!("bang"))),
+        ])
+        .unwrap_err();
+        assert_eq!(err.kind, ErrorKind::Forge);
+        assert!(err.message.contains("a: boom"), "{err}");
+        assert!(err.message.contains("b: bang"), "{err}");
+    }
+
+    #[test]
+    fn no_reviews_anywhere_is_an_empty_list() {
+        assert!(merge_reviews(vec![("a".into(), Ok(vec![]))])
+            .unwrap()
+            .is_empty());
+    }
 }

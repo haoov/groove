@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Modal } from '../shared/ui/Modal';
 import { invoke } from '../shared/ipc/invoke';
 import { useSession, useStore } from '../shared/store';
 import { BranchPicker, useOriginBranches } from './branchPicker';
@@ -92,63 +93,60 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   if (!activeTask || !repo) return null;
 
   return (
-    <div className="wizard-overlay" onClick={onClose}>
-      <div className="wizard-modal wide" onClick={(e) => e.stopPropagation()}>
-        <div className="wizard-header">
-          <div className="wizard-title">Add worktree to {activeTask.short_id}</div>
-          <div className="wizard-subtitle">{repo.project}</div>
-          <button className="wizard-close" onClick={onClose}>×</button>
-        </div>
+    <Modal
+      className="wide"
+      title={`Add worktree to ${activeTask.short_id}`}
+      subtitle={repo.project}
+      onClose={onClose}
+    >
+      <div className="wizard-body">
+        <p className="wizard-desc">
+          Another branch of <code>{repo.project}</code>, checked out beside the ones this
+          session already has. Creation is blocked if the branch already exists on origin.
+        </p>
 
-        <div className="wizard-body">
-          <p className="wizard-desc">
-            Another branch of <code>{repo.project}</code>, checked out beside the ones this
-            session already has. Creation is blocked if the branch already exists on origin.
-          </p>
+        <label className="firstrun-field">
+          <span className="firstrun-label">Base branch</span>
+          <BranchPicker state={origin} value={target} onChange={setTarget} />
+          <span className="firstrun-hint">
+            Cut from this branch, and the MR targets it. Empty uses the repo default.
+          </span>
+        </label>
 
-          <label className="firstrun-field">
-            <span className="firstrun-label">Base branch</span>
-            <BranchPicker state={origin} value={target} onChange={setTarget} />
+        <label className="firstrun-field">
+          <span className="firstrun-label">Branch</span>
+          <input
+            className="firstrun-input"
+            autoFocus
+            placeholder="fix/parser"
+            value={typed}
+            onChange={(e) => { setTyped(e.target.value); setError(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && branch && !clash) submit(); }}
+          />
+          {clash && (
             <span className="firstrun-hint">
-              Cut from this branch, and the MR targets it. Empty uses the repo default.
+              <code>{branch}</code> is already checked out here.
             </span>
-          </label>
-
-          <label className="firstrun-field">
-            <span className="firstrun-label">Branch</span>
-            <input
-              className="firstrun-input"
-              autoFocus
-              placeholder="fix/parser"
-              value={typed}
-              onChange={(e) => { setTyped(e.target.value); setError(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && branch && !clash) submit(); }}
-            />
-            {clash && (
-              <span className="firstrun-hint">
-                <code>{branch}</code> is already checked out here.
-              </span>
-            )}
-          </label>
-
-          {taken.length > 0 && (
-            <p className="wizard-desc">
-              Already checked out: {taken.map((b, i) => (
-                <span key={b}>{i > 0 && ', '}<code>{b}</code></span>
-              ))}
-            </p>
           )}
+        </label>
 
-          {error && <div className="wizard-error">{error}</div>}
+        {taken.length > 0 && (
+          <p className="wizard-desc">
+            Already checked out: {taken.map((b, i) => (
+              <span key={b}>{i > 0 && ', '}<code>{b}</code></span>
+            ))}
+          </p>
+        )}
 
-          <div className="wizard-footer">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" onClick={submit} disabled={!branch || clash || busy}>
-              {busy ? 'Adding…' : 'Add worktree'}
-            </button>
-          </div>
+        {error && <div className="wizard-error">{error}</div>}
+
+        <div className="wizard-footer">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={submit} disabled={!branch || clash || busy}>
+            {busy ? 'Adding…' : 'Add worktree'}
+          </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

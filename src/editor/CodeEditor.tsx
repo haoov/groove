@@ -19,36 +19,24 @@ import { catppuccinHighlight, cmChromeTheme, editorTheme } from './cm/theme';
 import type { Annotation, MrThread, Mr, BlameLine } from '../shared/ipc/ipc';
 import type { AnnCtx } from './useAnnotations';
 import { CommentGutterMarker, LineNumGutterMarker, BlameMarker, FormWidget, InlineAnnotationsWidget } from './cm/gutters';
-import { deriveAnnotationSets } from './cm/annotationSets';
-import { AnnotationPortals, useAnnotationPortals } from './cm/annotationPortals';
+import { AnnotationPortals } from './cm/annotationPortals';
+import { useCmHost } from './useCmHost';
+import { useAnnotationSurface, extendDragAt, type Dyn } from './useAnnotationSurface';
 
 // ── Dynamic state (gutter indicators, in-range highlight, inline widgets) ─────
 
-interface EditorDyn {
-  annStartNums: Set<number>;     // lines that START an annotation (gutter icon)
-  annotatedLineNums: Set<number>; // every line covered by an annotation (highlight)
-  threadNums: Set<number>;
-  unresolvedThreadNums: Set<number>;
-  fileAnnotations: Annotation[];
-  selStart: number | null;
-  selEnd: number | null;
-  portalEl: HTMLDivElement | null;
-  /** Portal target per annotated end-line for the always-visible notes. */
-  annContainers: Map<number, HTMLDivElement>;
-}
-
-const emptyDyn: EditorDyn = {
+const emptyDyn: Dyn = {
   annStartNums: new Set(), annotatedLineNums: new Set(), threadNums: new Set(),
-  unresolvedThreadNums: new Set(), fileAnnotations: [], selStart: null, selEnd: null, portalEl: null,
+  unresolvedThreadNums: new Set(), fileAnnotations: [], sel: null, anchorLine: null, formEl: null,
   annContainers: new Map(),
 };
 
-const setEditorDyn = StateEffect.define<EditorDyn>();
+const setEditorDyn = StateEffect.define<Dyn>();
 
-function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
+function buildDecos(state: EditorState, dyn: Dyn): DecorationSet {
   const b = new RangeSetBuilder<Decoration>();
   const lines = state.doc.lines;
-  const anchor = dyn.selEnd;
+  const anchor = dyn.anchorLine;
 
   const annsByEndLine = new Map<number, Annotation[]>();
   for (const ann of dyn.fileAnnotations) {
@@ -58,7 +46,7 @@ function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
 
   for (let n = 1; n <= lines; n++) {
     const line = state.doc.line(n);
-    const inRange = dyn.selStart && dyn.selEnd && n >= dyn.selStart && n <= dyn.selEnd;
+    const inRange = dyn.sel && n >= dyn.sel.startLine && n <= dyn.sel.endLine;
     if (inRange) {
       b.add(line.from, line.from, Decoration.line({ class: 'diff-line-in-range' }));
     } else if (dyn.annotatedLineNums.has(n)) {
@@ -75,8 +63,8 @@ function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
       }));
     }
     // Comment form at the selection's end line.
-    if (dyn.portalEl && n === anchor) {
-      b.add(line.to, line.to, Decoration.widget({ widget: new FormWidget(dyn.portalEl), block: true, side: 1 }));
+    if (dyn.formEl && n === anchor) {
+      b.add(line.to, line.to, Decoration.widget({ widget: new FormWidget(dyn.formEl), block: true, side: 1 }));
     }
   }
   return b.finish();
@@ -126,7 +114,7 @@ const grepPlugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
-const dynField = StateField.define<{ dyn: EditorDyn; decos: DecorationSet }>({
+const dynField = StateField.define<{ dyn: Dyn; decos: DecorationSet }>({
   create() { return { dyn: emptyDyn, decos: Decoration.none }; },
   update(prev, tr) {
     for (const e of tr.effects) {
@@ -139,6 +127,8 @@ const dynField = StateField.define<{ dyn: EditorDyn; decos: DecorationSet }>({
   },
   provide: (f) => EditorView.decorations.from(f, (v) => v.decos),
 });
+
+const vimExt = (on: boolean) => (on ? vim() : []);
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -175,12 +165,9 @@ export interface CodeEditorProps {
 
 export function CodeEditor(props: CodeEditorProps) {
   const { ann, repoId, filePath } = props;
-  const vimMode = useStore((s) => s.vimMode);
   const grepHighlight = useStore((s) => s.grepHighlight);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // Reconfigured in place; recreating the view would drop unsaved edits and undo.
-  const vimCompartment = useRef(new Compartment());
   const blameCompartment = useRef(new Compartment());
   const loadingRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
@@ -190,20 +177,13 @@ export function CodeEditor(props: CodeEditorProps) {
   const annRef = useRef(ann);
   annRef.current = ann;
 
-
-  // The selection in this file.
-  const thisFileSel = ann.sel?.repoId === repoId && ann.sel?.filePath === filePath ? ann.sel : null;
-  const anchorLine = thisFileSel?.endLine ?? null;
-
-  const dynSets = useMemo(
-    () => deriveAnnotationSets(props.annotations, props.threads, filePath),
-    [props.annotations, props.threads, filePath],
-  );
-  const dynSetsRef = useRef(dynSets);
-  dynSetsRef.current = dynSets;
-
-  const { groups: annGroups, containersRef: annContainersRef, formRef: portalContainerRef, formEl: portalContainer } =
-    useAnnotationPortals(props.annotations, anchorLine, 'editor-inline-portal');
+  const { sets, thisFileSel, anchorLine, groups, containersRef, formRef, formEl, portalProps } =
+    useAnnotationSurface({
+      ann, sel: ann.sel, annotations: props.annotations, threads: props.threads, mr: props.mr,
+      repoId, filePath, formClass: 'editor-inline-portal',
+    });
+  const setsRef = useRef(sets);
+  setsRef.current = sets;
 
   const doSave = async () => {
     const view = viewRef.current;
@@ -248,7 +228,7 @@ export function CodeEditor(props: CodeEditorProps) {
   };
 
   // Stable extensions; handlers read refs.
-  const baseExtensions = useMemo(() => {
+  const extensions = useMemo(() => {
     // Gutter order mirrors the diff editor: comment button, then line numbers.
     const commentGutter = gutter({
       class: 'cm-comment-gutter',
@@ -300,6 +280,8 @@ export function CodeEditor(props: CodeEditorProps) {
         if (update.docChanged) propsRef.current.onModifiedChange(true);
         if (update.docChanged || update.selectionSet || update.geometryChanged) schedulePersist();
       }),
+      // Keep after the gutters above: extension order is gutter order.
+      blameCompartment.current.of(blameExtension(propsRef.current.blame)),
     ];
   // deps stay empty: a rebuild recreates the view and drops the buffer.
   }, []);
@@ -311,33 +293,16 @@ export function CodeEditor(props: CodeEditorProps) {
     setupVimSearch();
   }, []);
 
-  // Mount the editor once.
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const view = new EditorView({
-      state: EditorState.create({
-        doc: '',
-        extensions: [
-          vimCompartment.current.of(useStore.getState().vimMode ? vim() : []),
-          ...baseExtensions,
-          // Keep after the baseExtensions gutters: extension order is gutter order.
-          blameCompartment.current.of(blameExtension(propsRef.current.blame)),
-        ],
-      }),
-      parent: containerRef.current,
-    });
-    viewRef.current = view;
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-      if (persistTimer.current !== null) clearTimeout(persistTimer.current);
-    };
-  }, [baseExtensions]);
-
-  // Toggle vim in place.
-  useEffect(() => {
-    viewRef.current?.dispatch({ effects: vimCompartment.current.reconfigure(vimMode ? vim() : []) });
-  }, [vimMode]);
+  const { vimCompartment } = useCmHost({
+    containerRef,
+    viewRef,
+    doc: '',
+    extensions,
+    vimExt,
+    focusSignal: props.focusSignal,
+    isPreview: props.isPreview,
+    onDestroy: () => { if (persistTimer.current !== null) clearTimeout(persistTimer.current); },
+  });
 
   // Toggle blame in place.
   useEffect(() => {
@@ -361,10 +326,8 @@ export function CodeEditor(props: CodeEditorProps) {
       .then((content) => {
         if (cancelled || !viewRef.current) return;
         const lang = cmLangFor(props.languageId);
-        const vimExt = vimCompartment.current.of(useStore.getState().vimMode ? vim() : []);
-        // Both compartments must be re-declared; `setState` drops any left out.
-        const blameExt = blameCompartment.current.of(blameExtension(propsRef.current.blame));
-        const base = [vimExt, ...baseExtensions, blameExt];
+        // The vim compartment must be re-declared; `setState` drops any left out.
+        const base = [vimCompartment.of(vimExt(useStore.getState().vimMode)), ...extensions];
         const state = EditorState.create({
           doc: content,
           extensions: lang ? [...base, lang] : base,
@@ -375,7 +338,7 @@ export function CodeEditor(props: CodeEditorProps) {
         const lineObj = state.doc.line(lineNo);
         const pos = Math.min(lineObj.from + Math.max(0, (props.initialCursorCol || 1) - 1), lineObj.to);
         const effects: StateEffect<any>[] = [
-          setEditorDyn.of({ ...dynSetsRef.current, fileAnnotations: propsRef.current.annotations, selStart: null, selEnd: null, portalEl: null, annContainers: annContainersRef.current }),
+          setEditorDyn.of({ ...setsRef.current, fileAnnotations: propsRef.current.annotations, sel: null, anchorLine: null, formEl: null, annContainers: containersRef.current }),
           setGrepQuery.of(useStore.getState().grepHighlight),
         ];
         if (props.initialCursorLine > 0) effects.push(EditorView.scrollIntoView(pos, { y: 'center' }));
@@ -391,13 +354,7 @@ export function CodeEditor(props: CodeEditorProps) {
     return () => { cancelled = true; };
   // deps omit the cursor and language props: a change there would reload the file.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.worktreePath, props.filePath, baseExtensions]);
-
-  // Focus on a real open.
-  useEffect(() => {
-    if (props.focusSignal === undefined || props.isPreview) return;
-    viewRef.current?.focus();
-  }, [props.focusSignal, props.isPreview]);
+  }, [props.worktreePath, props.filePath, extensions]);
 
   // Push the content-search query into the highlight and scroll to the selected match.
   useEffect(() => {
@@ -412,46 +369,23 @@ export function CodeEditor(props: CodeEditorProps) {
 
   // Push dynamic state into CM whenever annotations/threads or the selection change.
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
-    view.dispatch({
+    viewRef.current?.dispatch({
       effects: setEditorDyn.of({
-        ...dynSets,
-        fileAnnotations: props.annotations,
-        selStart: thisFileSel?.startLine ?? null,
-        selEnd: thisFileSel?.endLine ?? null,
-        portalEl: portalContainerRef.current,
-        annContainers: annContainersRef.current,
+        ...sets, fileAnnotations: props.annotations, sel: thisFileSel, anchorLine,
+        formEl: formRef.current, annContainers: containersRef.current,
       }),
     });
-  }, [dynSets, props.annotations, thisFileSel?.startLine, thisFileSel?.endLine, portalContainer, annGroups,
-      portalContainerRef, annContainersRef]);
+  }, [sets, props.annotations, thisFileSel, anchorLine, formEl, groups, formRef, containersRef]);
 
   return (
     <div
       className="code-editor-host"
       onMouseMove={(e) => {
-        if (!ann.dragRange) return;
-        const view = viewRef.current;
-        if (!view) return;
-        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
-        if (pos === null) return;
-        ann.extendDrag(repoId, filePath, view.state.doc.lineAt(pos).number);
+        if (ann.dragRange) extendDragAt(viewRef.current, e, ann, repoId, filePath, (n) => n);
       }}
     >
       <div ref={containerRef} className="code-editor" />
-      <AnnotationPortals
-        groups={annGroups}
-        containers={annContainersRef.current}
-        formEl={portalContainer}
-        sel={thisFileSel}
-        annotations={props.annotations}
-        threads={props.threads}
-        mr={props.mr}
-        ann={ann}
-        repoId={repoId}
-        filePath={filePath}
-      />
+      <AnnotationPortals {...portalProps} />
     </div>
   );
 }

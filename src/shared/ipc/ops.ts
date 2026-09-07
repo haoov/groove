@@ -25,6 +25,9 @@ export const OP = {
   SKILL_SAVE: 'skill.save',
 } as const;
 
+/** Every op the confirmation bridge can raise. */
+export type OpType = (typeof OP)[keyof typeof OP];
+
 /** Op_type prefix for git operations. */
 export const OP_GIT_PREFIX = 'git.';
 /** Op_type prefix for merge-request operations. */

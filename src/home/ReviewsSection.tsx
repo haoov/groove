@@ -5,6 +5,7 @@ import { useStore } from '../shared/store';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
+import { usePersisted, SET_CODEC } from '../shared/lib/usePersisted';
 
 // Reviews: open MRs where you are a reviewer, not yet checked out.
 
@@ -12,13 +13,6 @@ import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter'
 const FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
 
 const HIDDEN_KEY = 'wb.homeHiddenReviews';
-function loadHidden(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')); }
-  catch { return new Set(); }
-}
-function saveHidden(keys: Set<string>) {
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
-}
 
 const sigil = (mr: ReviewMr) => mrSigil(mr.platform);
 
@@ -41,14 +35,13 @@ export function ReviewsSection({ filter = '', onCount }: { filter?: string; onCo
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; mr: ReviewMr; key: string } | null>(null);
   const [showApproved, setShowApproved] = useState(false);
-  const [hidden, setHidden] = useState<Set<string>>(loadHidden);
+  const [hidden, setHidden] = usePersisted(HIDDEN_KEY, new Set<string>(), SET_CODEC);
   const [showHidden, setShowHidden] = useState(false);
 
   const toggleHidden = (key: string) => {
     setHidden((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
-      saveHidden(next);
       return next;
     });
   };

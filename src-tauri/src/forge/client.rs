@@ -129,9 +129,78 @@ pub(super) trait PlatformClient: Send + Sync {
 
 /// The API client for the repo's host.
 pub(super) fn make_client(repo: &Repo) -> Box<dyn PlatformClient> {
-    if repo.host.contains("github") {
-        Box::new(super::github::GhClient)
-    } else {
-        Box::new(super::gitlab::GlabClient)
+    match Forge::of_host(&repo.host) {
+        Forge::Github => Box::new(super::github::GhClient),
+        Forge::Gitlab => Box::new(super::gitlab::GlabClient),
+    }
+}
+
+/// Which forge hosts a repo. The one place that reads a host name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Forge {
+    Github,
+    Gitlab,
+}
+
+impl Forge {
+    pub(crate) fn of_host(host: &str) -> Self {
+        if host.contains("github") {
+            Self::Github
+        } else {
+            Self::Gitlab
+        }
+    }
+
+    /// The name stored on an MR row and read by the frontend sigil.
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Github => "github",
+            Self::Gitlab => "gitlab",
+        }
+    }
+
+    /// The forge of a merge-request web URL.
+    pub(crate) fn of_url(url: &str) -> Self {
+        let host = url
+            .split_once("://")
+            .map(|(_, rest)| rest)
+            .unwrap_or(url)
+            .split('/')
+            .next()
+            .unwrap_or("");
+        Self::of_host(host)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Forge;
+
+    #[test]
+    fn a_host_names_its_forge() {
+        assert_eq!(Forge::of_host("github.com"), Forge::Github);
+        assert_eq!(Forge::of_host("github.acme.dev"), Forge::Github);
+        assert_eq!(Forge::of_host("gitlab.example.com"), Forge::Gitlab);
+        assert_eq!(Forge::of_host("git.internal"), Forge::Gitlab);
+        assert_eq!(Forge::Github.as_str(), "github");
+        assert_eq!(Forge::Gitlab.as_str(), "gitlab");
+    }
+
+    /// A path segment must never decide the forge: only the host does.
+    #[test]
+    fn a_url_names_its_forge_by_host_only() {
+        assert_eq!(
+            Forge::of_url("https://github.com/o/r/pull/4"),
+            Forge::Github
+        );
+        assert_eq!(
+            Forge::of_url("https://gitlab.example.com/g/p/-/merge_requests/7"),
+            Forge::Gitlab
+        );
+        assert_eq!(
+            Forge::of_url("https://gitlab.example.com/team/github-actions/-/merge_requests/1"),
+            Forge::Gitlab,
+            "a repo named github does not make it a GitHub MR"
+        );
     }
 }

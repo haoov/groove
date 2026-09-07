@@ -4,6 +4,7 @@ import { useSession } from '../shared/store';
 import { Sidebar } from './sidebar';
 import { Workspace } from './Workspace';
 import { OverviewView } from '../overview/OverviewView';
+import { readPersisted, writePersisted, NUMBER_CODEC } from '../shared/lib/usePersisted';
 
 // Pixels, not a percentage: a percentage of the content-sized parent resolves to nothing.
 const SIDEBAR_DEFAULT_PX = 300;
@@ -14,12 +15,8 @@ const SIDEBAR_WIDTH_KEY = 'wb.sidebarWidth';
 const clampSidebar = (px: number) => Math.round(Math.max(SIDEBAR_MIN_PX, Math.min(SIDEBAR_MAX_PX, px)));
 
 function readSidebarWidth(): number {
-  try {
-    const saved = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
-    return Number.isFinite(saved) && saved > 0 ? clampSidebar(saved) : SIDEBAR_DEFAULT_PX;
-  } catch {
-    return SIDEBAR_DEFAULT_PX;
-  }
+  const saved = readPersisted(SIDEBAR_WIDTH_KEY, 0, NUMBER_CODEC);
+  return Number.isFinite(saved) && saved > 0 ? clampSidebar(saved) : SIDEBAR_DEFAULT_PX;
 }
 
 /** One session's workspace: the Overview page, or the sidebar with the recursive pane
@@ -50,7 +47,7 @@ export function WorkspaceLayout() {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       const w = wrapRef.current?.getBoundingClientRect().width;
-      if (w) { try { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(Math.round(w))); } catch { /* ignore */ } }
+      if (w) writePersisted(SIDEBAR_WIDTH_KEY, Math.round(w), NUMBER_CODEC);
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);

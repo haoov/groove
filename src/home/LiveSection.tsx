@@ -9,6 +9,7 @@ import { LiveRepos } from './RepoRow';
 import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 import { providerCopy } from '../shared/lib/taskProvider';
+import { readPersisted, writePersisted, SET_CODEC } from '../shared/lib/usePersisted';
 
 import type { HomeEntry } from '../shared/ipc/ipc';
 
@@ -17,13 +18,7 @@ const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'forge'
 
 // Fold state per entry, persisted.
 const EXPAND_KEY = 'wb.homeExpanded';
-function loadExpanded(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(EXPAND_KEY) ?? '[]')); }
-  catch { return new Set(); }
-}
-function saveExpanded(ids: Set<string>) {
-  try { localStorage.setItem(EXPAND_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
-}
+const loadExpanded = () => readPersisted(EXPAND_KEY, new Set<string>(), SET_CODEC);
 
 /** Everything checked out locally: tasks, explorers and reviews with a worktree. */
 export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
@@ -100,7 +95,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     setExpanded((v) => {
       const ids = loadExpanded();
       if (v) ids.delete(entry.short_id); else ids.add(entry.short_id);
-      saveExpanded(ids);
+      writePersisted(EXPAND_KEY, ids, SET_CODEC);
       return !v;
     });
   };

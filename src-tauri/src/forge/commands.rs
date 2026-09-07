@@ -33,7 +33,7 @@ pub async fn get_mr(worktree_id: String, pool: tauri::State<'_, SqlitePool>) -> 
     let wt = store::worktrees::get(&*pool, &worktree_id).await?;
     let repo = store::repos::get(&*pool, &wt.repo_id).await?;
 
-    if !repo.host.contains("github") {
+    if super::client::Forge::of_host(&repo.host) != super::client::Forge::Github {
         match fetch_and_upsert_mrs(&wt, &repo, &pool).await {
             Ok(mrs) => return Ok(mrs),
             Err(e) => tracing::warn!("glab mr list failed: {e}"),

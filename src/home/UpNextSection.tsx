@@ -5,6 +5,7 @@ import { ContextMenu } from '../shared/ui/ContextMenu';
 import { openTask, priorityLabel, priorityRank } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
+import { usePersisted, SET_CODEC } from '../shared/lib/usePersisted';
 import type { Task } from '../shared/ipc/ipc';
 
 // Up next: the queued tasks not yet checked out.
@@ -13,13 +14,6 @@ import type { Task } from '../shared/ipc/ipc';
 const FIELDS = ['id', 'title', 'status', 'priority', 'provider'];
 
 const HIDDEN_KEY = 'wb.homeHiddenTasks';
-function loadHidden(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')); }
-  catch { return new Set(); }
-}
-function saveHidden(keys: Set<string>) {
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...keys])); } catch { /* ignore */ }
-}
 
 export function UpNextSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const tasks = useStore((s) => s.tasks);
@@ -27,14 +21,13 @@ export function UpNextSection({ filter = '', onCount }: { filter?: string; onCou
   const snapshot = useStore((s) => s.homeSnapshot);
   const setLastError = useStore((s) => s.setLastError);
   const [menu, setMenu] = useState<{ x: number; y: number; task: Task } | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(loadHidden);
+  const [hidden, setHidden] = usePersisted(HIDDEN_KEY, new Set<string>(), SET_CODEC);
   const [showHidden, setShowHidden] = useState(false);
 
   const toggleHidden = (key: string) => {
     setHidden((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
-      saveHidden(next);
       return next;
     });
   };

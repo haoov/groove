@@ -102,12 +102,7 @@ pub async fn open_review_session(
         )
         .await?;
 
-        // Bind the MR; the forge is read from the URL.
-        let platform = if web_url.contains("github") {
-            "github"
-        } else {
-            "gitlab"
-        };
+        let platform = crate::forge::Forge::of_url(&web_url).as_str();
         store::mrs::upsert(&*pool, &wt.id, platform, &iid.to_string(), &web_url, "open").await?;
 
         open_task_impl(&app, &session.id, &task_state, &pool, Open::Focus).await?;
