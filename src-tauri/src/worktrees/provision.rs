@@ -75,11 +75,12 @@ pub(crate) async fn provision_worktrees_impl(
         let tag = tag.as_deref();
         async move {
             let repo = store::repos::get(pool, &spec.repo_id).await?;
-            let branch = spec
-                .branch_name
+            let asked = spec.branch_name.clone().filter(|b| !b.trim().is_empty());
+            let branch = asked
                 .clone()
-                .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| naming::default_branch(session, tag));
+            // A typed name is a deliberate choice; a derived one must name this session.
+            let own = asked.is_some() || names_session(&branch, session, tag);
             provision_one(
                 pool,
                 session,
@@ -87,6 +88,7 @@ pub(crate) async fn provision_worktrees_impl(
                 &branch,
                 None,
                 spec.target_branch.as_deref(),
+                own,
             )
             .await
         }
@@ -118,6 +120,7 @@ pub(crate) async fn provision_review_worktree(
         ));
     }
 
+    // The MR's own source branch is the target here.
     let wt = provision_one(
         pool,
         &session,
@@ -125,6 +128,7 @@ pub(crate) async fn provision_review_worktree(
         source_branch,
         Some(source_branch),
         None,
+        true,
     )
     .await?;
     store::worktrees::set_base_ref(pool, &wt.id, target_branch).await?;
@@ -185,6 +189,7 @@ async fn provision_one(
     branch: &str,
     track_remote: Option<&str>,
     target: Option<&str>,
+    branch_is_own: bool,
 ) -> anyhow::Result<Worktree> {
     validate_branch_name(branch)?;
 
@@ -231,7 +236,11 @@ async fn provision_one(
             .await?
         }
         _ => {
-            if !local_exists {
+            if local_exists {
+                refuse_foreign_branch(&repo.local_path, &repo.project, branch, branch_is_own)
+                    .await?;
+                report_adopted_branch(&repo.local_path, &repo.project, branch, &session.id).await;
+            } else {
                 create_branch(branch, &repo.local_path, branch_point).await?;
             }
             git::output(&repo.local_path, &["worktree", "add", &wt_path_str, branch]).await?
@@ -343,6 +352,63 @@ pub(crate) async fn repair_head_branch(repo_or_wt_path: &str) {
     }
 }
 
+/// Whether `branch` names this session: a derived task branch carries its short id or tag.
+/// An explorer branch is only its title slug, so two same-titled explorers derive one name.
+fn names_session(branch: &str, session: &Session, tag: Option<&str>) -> bool {
+    let hay = branch.to_lowercase();
+    if hay.contains(&session.id.to_lowercase()) {
+        return true;
+    }
+    tag.is_some_and(|t| !t.is_empty() && hay.contains(&t.to_lowercase()))
+}
+
+/// Refuse a local branch this session did not derive: its commits belong to other work.
+async fn refuse_foreign_branch(
+    repo_path: &str,
+    repo_label: &str,
+    branch: &str,
+    branch_is_own: bool,
+) -> anyhow::Result<()> {
+    if branch_is_own {
+        return Ok(());
+    }
+    let tip = git::run(repo_path, &["log", "-1", "--format=%h %s", branch])
+        .await
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let at = if tip.is_empty() {
+        String::new()
+    } else {
+        format!(" at {tip}")
+    };
+    anyhow::bail!(
+        "{repo_label} already has a local branch {branch}{at}, and this session derived that name \
+         rather than being given it. To continue that branch on purpose, add the worktree and name \
+         the branch. To start fresh, rename this session, or rename or delete that branch."
+    )
+}
+
+/// Say that a branch of this name already existed and the session continues from it.
+/// Provisioning reuses it; a silent reuse looks like a fresh branch.
+async fn report_adopted_branch(repo_path: &str, repo_label: &str, branch: &str, session_id: &str) {
+    let tip = git::run(repo_path, &["log", "-1", "--format=%h %s", branch])
+        .await
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let detail = if tip.is_empty() {
+        format!("Delete or rename {branch} if this session should start from the base branch.")
+    } else {
+        format!("It is at {tip}.\n\nDelete or rename {branch} if this session should start from the base branch.")
+    };
+    crate::core::events::notice(
+        "attention",
+        "git",
+        format!("{repo_label}: continuing on the existing branch {branch}"),
+        Some(detail),
+        Some(session_id),
+    );
+}
+
 /// Fetch the MAIN clone and return its default branch. A fetch failure is reported, not swallowed.
 async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str) -> Option<String> {
     let fetched = git::run(repo_path, &["fetch", "origin"]).await;
@@ -394,7 +460,47 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::db::models::SessionKind;
     use std::path::PathBuf;
+
+    fn session_of(kind: SessionKind, id: &str, title: &str) -> Session {
+        Session {
+            id: id.to_string(),
+            kind,
+            title: title.to_string(),
+            external_id: None,
+            review_project: None,
+            review_iid: None,
+            created_at: 0,
+        }
+    }
+
+    /// A derived task branch carries its id, so reopening the task resumes its own work.
+    /// An explorer branch is only a title slug: a second explorer of that title must not
+    /// inherit the first one's commits.
+    #[test]
+    fn only_this_sessions_own_branch_is_adopted() {
+        let task = session_of(SessionKind::Task, "gh-groove-50", "Harden Groove");
+        let derived = naming::default_branch(&task, None);
+        assert!(derived.contains("gh-groove-50"), "{derived}");
+        assert!(names_session(&derived, &task, None));
+
+        // The same task with a source tag on its branch.
+        let tagged = session_of(SessionKind::Task, "notion-abc", "Fix parser");
+        let with_tag = naming::default_branch(&tagged, Some("PLAT-42"));
+        assert!(names_session(&with_tag, &tagged, Some("PLAT-42")));
+
+        let explorer = session_of(SessionKind::Explorer, "explorer-1234", "front end v2");
+        let ex_branch = naming::default_branch(&explorer, None);
+        assert_eq!(ex_branch, "explorer/front-end-v2");
+        assert!(
+            !names_session(&ex_branch, &explorer, None),
+            "an explorer branch does not identify its session, so it must be refused"
+        );
+
+        // Another session's branch is never this session's.
+        assert!(!names_session("fix/other-gh-groove-49", &task, None));
+    }
 
     /// A real clone with a real origin.
     struct Fixture {

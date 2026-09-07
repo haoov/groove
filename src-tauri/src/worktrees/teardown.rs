@@ -36,42 +36,6 @@ fn remove_tree(path: &Path) -> std::io::Result<()> {
     }
 }
 
-/// Delete the local branch once no worktree holds it. A failure is logged, never fatal.
-async fn delete_local_branch(repo_local_path: &str, branch: &str) {
-    if branch.is_empty() {
-        return;
-    }
-    let listing = match git::run(repo_local_path, &["worktree", "list", "--porcelain"]).await {
-        Ok(out) => out,
-        Err(e) => {
-            tracing::warn!("[worktree] cannot list the worktrees of {repo_local_path}: {e}");
-            return;
-        }
-    };
-    if branch_is_held(&listing, branch) {
-        tracing::info!("[worktree] keeping branch {branch}: another worktree holds it");
-        return;
-    }
-    // `-d`, never `-D`: a branch holding unmerged commits is kept, not destroyed.
-    match git::output(repo_local_path, &["branch", "-d", branch]).await {
-        Ok(o) if o.status.success() => tracing::info!("[worktree] deleted local branch {branch}"),
-        Ok(o) => tracing::info!(
-            "[worktree] keeping branch {branch}: {}",
-            String::from_utf8_lossy(&o.stderr).trim()
-        ),
-        Err(e) => tracing::warn!("[worktree] could not delete local branch {branch}: {e}"),
-    }
-}
-
-/// True when a `git worktree list --porcelain` listing has `branch` checked out.
-fn branch_is_held(listing: &str, branch: &str) -> bool {
-    let wanted = format!("refs/heads/{branch}");
-    listing
-        .lines()
-        .filter_map(|line| line.strip_prefix("branch "))
-        .any(|found| found.trim() == wanted)
-}
-
 /// Remove empty parents of `removed` up to `stop_at`. Keep `remove_dir`: it refuses
 /// a non-empty directory, which ends the walk.
 fn prune_empty_parents(removed: &Path, stop_at: &Path) {
@@ -94,11 +58,7 @@ pub async fn cleanup_session_worktrees(session_id: &str, pool: &SqlitePool) -> a
         let repo_local = store::repos::get_opt(pool, &wt.repo_id)
             .await?
             .map(|r| r.local_path);
-        remove_worktree_dir(wt.path, repo_local.clone(), stop_at.clone()).await?;
-        // The session is going: a later one deriving this branch must start from origin.
-        if let Some(local_path) = repo_local {
-            delete_local_branch(&local_path, &wt.branch).await;
-        }
+        remove_worktree_dir(wt.path, repo_local, stop_at.clone()).await?;
     }
 
     let dir = super::pool::session_dir(session_id);
@@ -165,7 +125,7 @@ async fn close_worktree_impl(
 
 #[cfg(test)]
 mod tests {
-    use super::{branch_is_held, delete_local_branch, prune_empty_parents, remove_worktree_dir};
+    use super::{prune_empty_parents, remove_worktree_dir};
     use std::path::PathBuf;
 
     struct Tmp(PathBuf);
@@ -244,49 +204,10 @@ mod tests {
         .unwrap();
     }
 
+    /// Teardown removes directories. Branches are the user's; it never deletes one.
     #[tokio::test]
-    async fn the_local_branch_goes_with_the_session() {
+    async fn teardown_leaves_the_local_branch_alone() {
         let (t, repo) = clone_fixture("branch").await;
-        let session = t.0.join("gh-groove-1");
-        let wt = session.join("repo/feat/lsp-1");
-        std::fs::create_dir_all(wt.parent().unwrap()).unwrap();
-        git(
-            &repo,
-            &[
-                "worktree",
-                "add",
-                "-b",
-                "feat/lsp-1",
-                &wt.to_string_lossy(),
-                "main",
-            ],
-        )
-        .await;
-        assert!(!git(&repo, &["branch", "--list", "feat/lsp-1"])
-            .await
-            .is_empty());
-
-        remove_worktree_dir(
-            wt.to_string_lossy().to_string(),
-            Some(repo.clone()),
-            session,
-        )
-        .await
-        .unwrap();
-        delete_local_branch(&repo, "feat/lsp-1").await;
-
-        assert!(
-            git(&repo, &["branch", "--list", "feat/lsp-1"])
-                .await
-                .is_empty(),
-            "the local branch outlived its worktree"
-        );
-    }
-
-    /// Teardown must never destroy work that exists nowhere else.
-    #[tokio::test]
-    async fn a_branch_with_unmerged_commits_is_kept() {
-        let (t, repo) = clone_fixture("unmerged").await;
         let session = t.0.join("gh-groove-1");
         let wt = session.join("repo/feat/unpushed");
         std::fs::create_dir_all(wt.parent().unwrap()).unwrap();
@@ -307,30 +228,16 @@ mod tests {
         git(&wt_s, &["add", "-A"]).await;
         git(&wt_s, &["commit", "-m", "unpushed work"]).await;
 
-        remove_worktree_dir(
-            wt.to_string_lossy().to_string(),
-            Some(repo.clone()),
-            session,
-        )
-        .await
-        .unwrap();
-        delete_local_branch(&repo, "feat/unpushed").await;
+        remove_worktree_dir(wt_s, Some(repo.clone()), session)
+            .await
+            .unwrap();
 
         assert!(
             !git(&repo, &["branch", "--list", "feat/unpushed"])
                 .await
                 .is_empty(),
-            "teardown destroyed an unmerged commit"
+            "teardown deleted a branch"
         );
-    }
-
-    #[test]
-    fn a_branch_another_worktree_holds_is_recognised() {
-        let listing = "worktree /w/main\nHEAD abc\nbranch refs/heads/main\n\nworktree /w/other\nHEAD def\nbranch refs/heads/feat/lsp-1\n";
-        assert!(branch_is_held(listing, "feat/lsp-1"));
-        assert!(branch_is_held(listing, "main"));
-        assert!(!branch_is_held(listing, "feat/lsp"));
-        assert!(!branch_is_held("worktree /w/main\ndetached\n", "main"));
     }
 
     #[test]
