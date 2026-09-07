@@ -136,6 +136,7 @@ pub async fn set_active_task(
 }
 
 /// Open a session and emit `workspace_ready`, or `workspace_stub` for a task with no worktrees.
+#[tracing::instrument(skip_all, fields(session = short_id))]
 pub(super) async fn open_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,
@@ -218,6 +219,7 @@ pub async fn finish_task_from_payload(
     finish_task_impl(handle, short_id, &handle.state::<State>(), pool).await
 }
 
+#[tracing::instrument(skip_all, fields(session = short_id))]
 async fn finish_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,
@@ -245,6 +247,7 @@ pub async fn delete_task(
     Ok(delete_task_impl(&app, &short_id, &task_state, &pool).await?)
 }
 
+#[tracing::instrument(skip_all, fields(session = short_id))]
 async fn delete_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,

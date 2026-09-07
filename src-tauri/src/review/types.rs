@@ -13,7 +13,6 @@ pub struct RepoDiff {
     pub worktree_id: String,
     pub repo_id: String,
     pub branch: String,
-    pub fetch_status: String,
     pub files: Vec<FileDiff>,
 }
 

@@ -196,6 +196,7 @@ async fn untracked_added_count(path: &str, file: &str) -> i64 {
         .unwrap_or(0)
 }
 
+#[tracing::instrument(skip_all, fields(session = task_id, mode))]
 pub(super) async fn get_task_diff_impl(
     task_id: &str,
     mode: &str,
@@ -257,7 +258,6 @@ pub(super) async fn get_task_diff_impl(
             worktree_id: wt.id,
             repo_id: wt.repo_id,
             branch: wt.branch,
-            fetch_status: "ok".to_string(),
             files,
         });
     }
@@ -363,7 +363,6 @@ async fn summarize_worktree(wt: Worktree, mode: &str) -> AppResult<RepoDiff> {
         worktree_id: wt.id,
         repo_id: wt.repo_id,
         branch: wt.branch,
-        fetch_status: "ok".to_string(),
         files,
     })
 }

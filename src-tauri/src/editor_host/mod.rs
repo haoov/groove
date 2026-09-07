@@ -77,6 +77,7 @@ pub async fn list_files(worktree_path: String) -> AppResult<Vec<String>> {
         .map_err(|e| AppError::from(e).with_kind(ErrorKind::Git))
 }
 
+#[tracing::instrument(skip_all, fields(worktree = worktree_path))]
 async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
     let tracked = crate::core::git::run(worktree_path, &["ls-files"]).await?;
     let untracked = crate::core::git::run(
@@ -161,6 +162,7 @@ pub async fn search_files(
     Ok(search_files_impl(&query, &worktree_path, case_sensitive, max_results).await?)
 }
 
+#[tracing::instrument(skip_all, fields(worktree = path))]
 async fn search_files_impl(
     query: &str,
     path: &str,

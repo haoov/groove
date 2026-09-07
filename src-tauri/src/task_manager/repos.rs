@@ -95,6 +95,7 @@ async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
 
 /// Attach `repo` to `task_id`, provision its worktree, and refresh the workspace.
 /// Bridge path for `task.add_repo`.
+#[tracing::instrument(skip_all, fields(session = payload["task_id"].as_str(), repo = payload["repo"].as_str()))]
 pub async fn add_repo_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -175,6 +176,7 @@ pub async fn add_repo_impl(
 
 /// Add a worktree on another branch for a repo the session already holds.
 /// Bridge path for `task.add_worktree`.
+#[tracing::instrument(skip_all, fields(session = payload["task_id"].as_str(), branch = payload["branch"].as_str()))]
 pub async fn add_worktree_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

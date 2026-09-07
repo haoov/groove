@@ -246,6 +246,54 @@ mod tests {
         )));
     }
 
+    /// A provider name outside `provider/` and `forge/` branches on the provider
+    /// instead of going through `resolve()` / `get()`.
+    #[test]
+    fn only_provider_and_forge_name_a_provider() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut offenders = vec![];
+        visit(&src, &mut offenders);
+        assert!(
+            offenders.is_empty(),
+            "a provider is named outside provider/ and forge/: {offenders:?}"
+        );
+
+        fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
+            for entry in std::fs::read_dir(dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    visit(&path, offenders);
+                    continue;
+                }
+                let shown = path.to_string_lossy().to_string();
+                if path.extension().is_none_or(|e| e != "rs")
+                    || shown.contains("/provider/")
+                    || shown.contains("/forge/")
+                    || shown.ends_with("/tests.rs")
+                {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                // A test module and a comment may both name one.
+                for (at, line) in text
+                    .split("#[cfg(test)]")
+                    .next()
+                    .unwrap_or("")
+                    .lines()
+                    .enumerate()
+                {
+                    let code = line.split("//").next().unwrap_or("");
+                    if ProviderId::ALL
+                        .iter()
+                        .any(|id| code.contains(&format!("\"{}\"", id.as_str())))
+                    {
+                        offenders.push(format!("{shown}:{}", at + 1));
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn names_prose_names_them_all() {
         let prose = names_prose();

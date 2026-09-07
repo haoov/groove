@@ -341,7 +341,7 @@ describe('pruneFileCache', () => {
   const file = (path: string, added: number, deleted = 0, staged: boolean | null = false) =>
     ({ path, added, deleted, status: 'M', staged, hunks: [] });
   const diff = (files: ReturnType<typeof file>[]): DiffResult =>
-    ({ task_id: 't', repos: [{ worktree_id: 'wt1', repo_id: 'r1', branch: 'b', fetch_status: 'ok', files }] } as DiffResult);
+    ({ task_id: 't', repos: [{ worktree_id: 'wt1', repo_id: 'r1', branch: 'b', files }] } as DiffResult);
 
   it('keeps a file whose numbers did not move', () => {
     const before = diff([file('a.ts', 3), file('b.ts', 1)]);

@@ -77,6 +77,7 @@ pub async fn log_task_hours(
 }
 
 /// Confirmation-bridge path for `task.hours` (agent-initiated).
+#[tracing::instrument(skip_all, fields(session = payload["task_id"].as_str()))]
 pub async fn log_hours_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

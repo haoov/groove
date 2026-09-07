@@ -210,6 +210,7 @@ pub(crate) fn draft_provider(payload: &serde_json::Value) -> anyhow::Result<Prov
 
 /// Confirmation-bridge path for `task.create`. Files the task; opens no session
 /// and provisions no worktree.
+#[tracing::instrument(skip_all, fields(provider = payload["provider"].as_str()))]
 pub async fn create_task_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

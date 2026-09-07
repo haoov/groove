@@ -65,6 +65,7 @@ async fn target_for(repo: &Repo, wt: &Worktree) -> String {
         .unwrap_or_else(|| "main".to_string())
 }
 
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_id"].as_str()))]
 pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> anyhow::Result<()> {
     let worktree_id = payload["worktree_id"]
         .as_str()
@@ -96,6 +97,7 @@ pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(mr = payload["mr_id"].as_str()))]
 pub async fn update_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> anyhow::Result<()> {
     let mr_id = payload["mr_id"]
         .as_str()
@@ -119,6 +121,7 @@ pub async fn update_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(mr = payload["mr_id"].as_str()))]
 pub async fn close_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> anyhow::Result<()> {
     let mr_id = payload["mr_id"]
         .as_str()

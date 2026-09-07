@@ -21,12 +21,6 @@ pub struct HomeMr {
     pub remote_id: String,
     pub state: String,
     pub url: String,
-    /// Pipeline status; None when unknown or the MR has no pipeline.
-    pub ci: Option<String>,
-    #[ts(type = "number")]
-    pub unresolved: i64,
-    /// Carries at least one approval.
-    pub approved: bool,
 }
 
 #[derive(Debug, Serialize, ts_rs::TS)]
@@ -40,24 +34,6 @@ pub struct HomeRepo {
     pub provisioned: bool,
     /// Provisioned, but the directory is gone.
     pub missing: bool,
-    /// Working-tree changes, untracked files included.
-    #[ts(type = "number")]
-    pub modified: i64,
-    #[ts(type = "number")]
-    pub staged: i64,
-    #[ts(type = "number")]
-    pub conflicted: i64,
-    #[ts(type = "number")]
-    pub ahead: i64,
-    #[ts(type = "number")]
-    pub behind: i64,
-    /// Line delta against the diff base (the MR target for review sessions).
-    #[ts(type = "number")]
-    pub added: i64,
-    #[ts(type = "number")]
-    pub deleted: i64,
-    #[ts(type = "number")]
-    pub files_changed: i64,
     pub mr: Option<HomeMr>,
 }
 
@@ -149,14 +125,6 @@ async fn repo_state(row: HomeRow, force_mr: bool, pool: &SqlitePool) -> HomeRepo
         branch: None,
         provisioned: false,
         missing: false,
-        modified: 0,
-        staged: 0,
-        conflicted: 0,
-        ahead: 0,
-        behind: 0,
-        added: 0,
-        deleted: 0,
-        files_changed: 0,
         mr: None,
     };
 
@@ -168,7 +136,6 @@ async fn repo_state(row: HomeRow, force_mr: bool, pool: &SqlitePool) -> HomeRepo
         return base;
     };
 
-    // The snapshot stays local; the git-stat fields keep their zero defaults.
     let mr = mr_for(&row, force_mr, pool).await;
 
     HomeRepo {
@@ -213,9 +180,6 @@ async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<Home
         remote_id,
         state,
         url,
-        ci: None,
-        unresolved: 0,
-        approved: false,
     })
 }
 

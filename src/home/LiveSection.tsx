@@ -6,7 +6,7 @@ import { endSession } from '../shared/lib/actions/endSession';
 import { openExternal } from '../shared/lib/actions/openExternal';
 import { ContextMenu } from '../shared/ui/ContextMenu';
 import { LiveRepos } from './RepoRow';
-import { KIND_LABEL, openTask, priorityRank, rowProvider, summarize } from './helpers';
+import { KIND_LABEL, needsAttention, openTask, priorityRank, rowProvider } from './helpers';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 import { providerCopy } from '../shared/lib/actions/taskProvider';
 import { readPersisted, writePersisted, SET_CODEC } from '../shared/lib/hooks/usePersisted';
@@ -24,12 +24,9 @@ const loadExpanded = () => readPersisted(EXPAND_KEY, new Set<string>(), SET_CODE
 export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
 
-  // Attention first, then the busiest working trees.
+  // Attention first.
   const entries = useMemo(() => {
-    const score = (e: HomeEntry) => {
-      const s = summarize(e);
-      return (s.attention ? 1000 : 0) + s.dirty;
-    };
+    const score = (e: HomeEntry) => (needsAttention(e) ? 1 : 0);
     const q = parseQuery(filter);
     return [...(snapshot ?? [])]
       .filter((e) => matchesQuery(q, `${e.short_id} ${e.title} ${e.kind}`, {

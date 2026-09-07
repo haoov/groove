@@ -4,12 +4,4 @@ export type HomeMr = { id: string,
 /**
  * "gitlab" | "github".
  */
-platform: string, remote_id: string, state: string, url: string, 
-/**
- * Pipeline status; None when unknown or the MR has no pipeline.
- */
-ci: string | null, unresolved: number, 
-/**
- * Carries at least one approval.
- */
-approved: boolean, };
+platform: string, remote_id: string, state: string, url: string, };

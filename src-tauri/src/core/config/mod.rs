@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+/// Stands in for every secret in a `Debug` rendering.
+pub const REDACTED: &str = "<redacted>";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     /// Absent when Notion is not set up.
@@ -57,7 +60,7 @@ fn default_theme() -> String {
     "latte".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NotionConfig {
     pub token: String,
     pub database_id: String,
@@ -71,6 +74,22 @@ pub struct NotionConfig {
     /// Default Project relation id for tasks created from explorers.
     #[serde(default)]
     pub default_project_id: Option<String>,
+}
+
+/// Manual so no `{:?}` anywhere — `Config`'s included — can print the token.
+impl std::fmt::Debug for NotionConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotionConfig")
+            .field("token", &REDACTED)
+            .field("database_id", &self.database_id)
+            .field("user_id", &self.user_id)
+            .field("properties", &self.properties)
+            .field("status_map", &self.status_map)
+            .field("filters", &self.filters)
+            .field("task_template_page_id", &self.task_template_page_id)
+            .field("default_project_id", &self.default_project_id)
+            .finish()
+    }
 }
 
 /// GitHub task source. The token comes from `gh auth token`, not from here.
@@ -317,6 +336,19 @@ mod tests {
             },
             ui: UiConfig::default(),
         }
+    }
+
+    #[test]
+    fn debug_output_never_carries_the_token() {
+        let rendered = format!("{:?}", sample());
+        assert!(
+            !rendered.contains("ntn_secret"),
+            "token reached a Debug rendering: {rendered}"
+        );
+        assert!(
+            rendered.contains(REDACTED),
+            "no redaction marker: {rendered}"
+        );
     }
 
     #[test]

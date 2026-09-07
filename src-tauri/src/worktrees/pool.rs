@@ -68,6 +68,7 @@ pub async fn register_repo(
 }
 
 /// Record a pool clone in the DB. The one git call checks that it has an `origin`.
+#[tracing::instrument(skip_all, fields(repo = slug))]
 pub(crate) async fn register_repo_impl(
     slug: &str,
     local_path: String,

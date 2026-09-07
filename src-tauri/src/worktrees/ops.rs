@@ -144,6 +144,7 @@ pub async fn discard_all(
 }
 
 /// Discard local changes to one file: an index path is restored from HEAD, an untracked file is deleted.
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str(), file = payload["file_path"].as_str()))]
 pub async fn discard_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     let file = required_str(&payload, "file_path")?;
@@ -179,6 +180,7 @@ fn required_str<'a>(payload: &'a serde_json::Value, key: &str) -> anyhow::Result
 }
 
 /// Discard ALL local changes: revert tracked files to HEAD and remove untracked.
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str()))]
 pub async fn discard_all_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     git::run(path, &["reset", "-q", "--hard", "HEAD"]).await?;
@@ -330,6 +332,7 @@ async fn get_conflict_files(path: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str()))]
 pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     let message = required_str(&payload, "message")?;
@@ -377,6 +380,7 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str(), branch = payload["branch"].as_str()))]
 pub async fn push_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     let branch = required_str(&payload, "branch")?;
@@ -395,6 +399,7 @@ pub async fn push_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str()))]
 pub async fn pull_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     git::run(path, &["pull", "--rebase"]).await?;
@@ -402,6 +407,7 @@ pub async fn pull_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(worktree = payload["worktree_path"].as_str()))]
 pub async fn rebase_impl(payload: serde_json::Value) -> anyhow::Result<serde_json::Value> {
     let path = payload["worktree_path"]
         .as_str()

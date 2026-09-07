@@ -1,15 +1,27 @@
 //! Notion's half of setup: the setup payload and the config built from it.
 
-use crate::core::config::{FilterConfig, NotionConfig};
+use crate::core::config::{FilterConfig, NotionConfig, REDACTED};
 use crate::core::error::{AppError, AppResult, ErrorKind};
 
-#[derive(Debug, serde::Deserialize, ts_rs::TS)]
+#[derive(serde::Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct NotionSetup {
     pub token: String,
     pub database_id: String,
     pub user_id: String,
     pub template_page_id: Option<String>,
+}
+
+/// Manual so no `{:?}` can print the token.
+impl std::fmt::Debug for NotionSetup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotionSetup")
+            .field("token", &REDACTED)
+            .field("database_id", &self.database_id)
+            .field("user_id", &self.user_id)
+            .field("template_page_id", &self.template_page_id)
+            .finish()
+    }
 }
 
 /// The detected schema, for the setup screen.
@@ -121,4 +133,28 @@ pub async fn build_config(n: &NotionSetup) -> AppResult<NotionConfig> {
         task_template_page_id: template,
         default_project_id: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug_output_never_carries_the_token() {
+        let setup = NotionSetup {
+            token: "ntn_secret".into(),
+            database_id: "db".into(),
+            user_id: "user".into(),
+            template_page_id: None,
+        };
+        let rendered = format!("{setup:?}");
+        assert!(
+            !rendered.contains("ntn_secret"),
+            "token reached a Debug rendering: {rendered}"
+        );
+        assert!(
+            rendered.contains(REDACTED),
+            "no redaction marker: {rendered}"
+        );
+    }
 }

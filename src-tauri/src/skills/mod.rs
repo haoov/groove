@@ -319,6 +319,7 @@ pub fn read_user_skill(name: &str) -> anyhow::Result<String> {
 
 /// The approved `skill.save` op. Refuses to overwrite an existing name unless
 /// `previous` names it. Returns what `claude plugin validate` said.
+#[tracing::instrument(skip_all, fields(skill = payload["name"].as_str()))]
 pub(crate) async fn save_user_skill_impl(
     payload: serde_json::Value,
 ) -> anyhow::Result<Option<String>> {

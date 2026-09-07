@@ -81,6 +81,7 @@ pub async fn close_worktree(
     Ok(close_worktree_impl(&app, &worktree_id, force, &pool).await?)
 }
 
+#[tracing::instrument(skip_all, fields(worktree = worktree_id))]
 async fn close_worktree_impl(
     app: &tauri::AppHandle,
     worktree_id: &str,

@@ -310,21 +310,26 @@ fn no_raw_sql_outside_the_store() {
     visit(&src, &mut offenders);
     assert!(
         offenders.is_empty(),
-        "sqlx::query outside core/db: {offenders:?}"
+        "raw SQL outside core/db: {offenders:?}"
     );
 
     fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
+        const MARKERS: [&str; 3] = ["sqlx::query", "SELECT ", "INSERT INTO"];
         for entry in std::fs::read_dir(dir).unwrap().flatten() {
             let path = entry.path();
             if path.is_dir() {
                 visit(&path, offenders);
-            } else if path.extension().is_some_and(|e| e == "rs")
-                && !path.to_string_lossy().contains("/core/db/")
-                && std::fs::read_to_string(&path)
-                    .unwrap()
-                    .contains("sqlx::query")
-            {
-                offenders.push(path.display().to_string());
+                continue;
+            }
+            let shown = path.display().to_string();
+            if path.extension().is_none_or(|e| e != "rs") || shown.contains("/core/db/") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap();
+            for (at, line) in text.lines().enumerate() {
+                if MARKERS.iter().any(|m| line.contains(m)) {
+                    offenders.push(format!("{shown}:{}", at + 1));
+                }
             }
         }
     }

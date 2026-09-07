@@ -3,7 +3,6 @@ import { mrRef } from '../shared/lib/pure/forge';
 
 import { invoke } from '../shared/ipc/invoke';
 import { useStore, sessionActions } from '../shared/store';
-import { ciGroup } from '../shared/lib/pure/mr';
 import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 
 export const openTask = (shortId: string) =>
@@ -23,31 +22,9 @@ export function openRepo(entry: HomeEntry, repo: HomeRepo) {
   st.focusSession(sid);
 }
 
-/** Rolled-up repo state for the Live order and the folded row's chips. */
-export function summarize(entry: HomeEntry) {
-  let dirty = 0;
-  let added = 0;
-  let deleted = 0;
-  let ahead = 0;
-  let behind = 0;
-  let mrs = 0;
-  let unresolved = 0;
-  let ciFail = false;
-  let attention = false;
-  for (const r of entry.repos) {
-    dirty += r.modified + r.staged;
-    added += r.added;
-    deleted += r.deleted;
-    ahead += r.ahead;
-    behind += r.behind;
-    if (r.mr) {
-      mrs += 1;
-      unresolved += r.mr.unresolved;
-      if (r.mr.ci && ciGroup(r.mr.ci) === 'fail') { ciFail = true; attention = true; }
-    }
-    if (r.conflicted > 0 || r.missing) attention = true;
-  }
-  return { dirty, added, deleted, ahead, behind, mrs, unresolved, ciFail, attention };
+/** A provisioned worktree whose directory is gone sorts first in Live. */
+export function needsAttention(entry: HomeEntry): boolean {
+  return entry.repos.some((r) => r.missing);
 }
 
 export const KIND_LABEL = { task: 'task', explorer: 'expl', review: 'review' } as const;

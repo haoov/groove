@@ -9,12 +9,4 @@ provisioned: boolean,
 /**
  * Provisioned, but the directory is gone.
  */
-missing: boolean, 
-/**
- * Working-tree changes, untracked files included.
- */
-modified: number, staged: number, conflicted: number, ahead: number, behind: number, 
-/**
- * Line delta against the diff base (the MR target for review sessions).
- */
-added: number, deleted: number, files_changed: number, mr: HomeMr | null, };
+missing: boolean, mr: HomeMr | null, };

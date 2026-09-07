@@ -19,6 +19,7 @@ async fn fetch_block_children(
 }
 
 /// Fetch the page blocks. Table rows are attached to their table as `__children`.
+#[tracing::instrument(skip_all, fields(page = notion_page_id))]
 pub async fn get_task_body_impl(
     notion_page_id: &str,
     token: &str,

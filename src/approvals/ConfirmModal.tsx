@@ -72,8 +72,13 @@ export function ConfirmModal() {
     [current, running, edits, invalid, removeConfirmation, setLastError, setSkillsStale]
   );
 
+  // The panel takes focus when Approve cannot: `focus()` on a disabled button does nothing,
+  // and every keyboard shortcut here needs focus inside the dialog.
   useEffect(() => {
-    if (current && !confirmationsMinimized) approveRef.current?.focus();
+    if (!current || confirmationsMinimized) return;
+    const approve = approveRef.current;
+    if (approve && !approve.disabled) approve.focus();
+    else modalRef.current?.focus();
   }, [current?.id, confirmationsMinimized]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -126,7 +131,7 @@ export function ConfirmModal() {
 
   return (
     <div className="confirm-overlay">
-      <div className="confirm-modal" role="dialog" aria-modal="true" ref={modalRef}>
+      <div className="confirm-modal" role="dialog" aria-modal="true" tabIndex={-1} ref={modalRef}>
 
         <div className="confirm-header">
           <span className="confirm-op-icon">{Icon && <Icon size={14} strokeWidth={1.75} />}</span>

@@ -58,6 +58,7 @@ pub async fn default_branch_for_session(
 }
 
 /// Provision one worktree per spec, concurrently.
+#[tracing::instrument(skip_all, fields(session = session_id, branches = branches.len()))]
 pub(crate) async fn provision_worktrees_impl(
     session_id: &str,
     branches: &[BranchSpec],

@@ -28,6 +28,7 @@ fn parse_log(text: &str, task_shas: &HashSet<String>) -> Vec<CommitEntry> {
     rows
 }
 
+#[tracing::instrument(skip_all, fields(session = task_id, worktree = worktree_id))]
 pub(super) async fn get_commit_log_impl(
     task_id: &str,
     worktree_id: Option<&str>,

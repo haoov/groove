@@ -96,14 +96,25 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
 
 // ─── Session state mutation + bound actions ─────────────────────────────────────
 
-/** Immutably patch one session, merging only the changed fields. */
+/** Immutably patch one session, merging only the changed fields. A patch that changes
+ *  nothing keeps the session's identity: `buildView` caches on it. */
 function updateSessionState(id: string, recipe: (s: SessionState) => Partial<SessionState>) {
   if (!id) return;
   _set((st) => {
     const sess = st.sessions[id];
     if (!sess) return {};
-    return { sessions: { ...st.sessions, [id]: { ...sess, ...recipe(sess) } } };
+    const patch = recipe(sess);
+    if (!changesAnything(sess, patch)) return {};
+    return { sessions: { ...st.sessions, [id]: { ...sess, ...patch } } };
   });
+}
+
+/** Whether any patched field differs from what the session already holds. */
+function changesAnything(sess: SessionState, patch: Partial<SessionState>): boolean {
+  for (const key of Object.keys(patch) as (keyof SessionState)[]) {
+    if (!Object.is(sess[key], patch[key])) return true;
+  }
+  return false;
 }
 
 // One run per session at a time; overlapping callers fold into one trailing re-run.

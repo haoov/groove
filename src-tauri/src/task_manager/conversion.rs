@@ -227,6 +227,7 @@ fn adopted_session(short_id: &str, title: &str) -> crate::core::db::models::Sess
 }
 
 /// Convert an explorer session into a task; bridge op `task.create_from_explorer`.
+#[tracing::instrument(skip_all, fields(session = payload["explorer_id"].as_str()))]
 pub async fn create_task_from_explorer_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

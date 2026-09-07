@@ -19,6 +19,7 @@ pub async fn update_task_property(
 }
 
 /// Confirmation-bridge path for `task.property` (agent-initiated).
+#[tracing::instrument(skip_all, fields(session = payload["task_id"].as_str(), property = payload["property"].as_str()))]
 pub async fn update_property_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -89,6 +90,7 @@ pub async fn request_task_body_update(
 }
 
 /// Confirmation-bridge path for `task.body`.
+#[tracing::instrument(skip_all, fields(session = payload["task_id"].as_str()))]
 pub async fn update_body_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
