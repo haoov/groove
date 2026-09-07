@@ -13,7 +13,7 @@ const skill = (id: string, kinds: SessionKind[]): AgentSkill => ({
   editable: false,
 });
 
-// The trailing space closes the slash menu; the trim is the only thing that could eat it.
+// The trailing space closes the slash menu.
 describe('the text sent for a skill', () => {
   it('ends in a space when the skill takes no argument', () => {
     expect(skillCommand('groove:start-task')).toBe('/groove:start-task ');

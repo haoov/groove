@@ -13,11 +13,7 @@ import { AgentPanel } from './AgentPanel';
 import { AgentsToggle } from './AgentsToggle';
 import { useAgentRows } from './useAgentRows';
 
-/**
- * The agent's REAL terminal, as a column on the right — not a re-implementation, so
- * there is no second input to keep in sync. Addresses the session its context names.
- * Detached, the column is not rendered at all: the agent window is the surface.
- */
+/** The agent terminal as a column on the right of the main window. Not rendered while detached. */
 
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 900;
@@ -50,12 +46,10 @@ export function AgentConsole() {
   const agentsWidth = useStore((s) => s.agentsSidebarWidth);
   const setAgentsWidth = useStore((s) => s.setAgentsSidebarWidth);
   const agents = useAgentRows();
-  // The list adds to the column, so the terminal keeps its width.
   const extra = agentsOpen ? agentsWidth : 0;
 
   const [starting, setStarting] = useState(false);
 
-  // Where a filed task can go; the create-task rows of the Actions menu.
   const sources = useStore((s) => SOURCE_IDS.filter((id) => !!s.config?.[id]));
   const [width, setWidth] = useState(() => {
     const saved = Number(localStorage.getItem(WIDTH_KEY));
@@ -75,8 +69,7 @@ export function AgentConsole() {
       .finally(() => setStarting(false));
   };
 
-  // Start an agent on the open TRANSITION only — not on every session switch, and
-  // not in a loop after a failed start.
+  // Start an agent on the open transition only, never on a session switch.
   const wasOpen = useRef(false);
   useEffect(() => {
     const justOpened = open && !wasOpen.current;
@@ -86,7 +79,6 @@ export function AgentConsole() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeTask, agentPty]);
 
-  // Attach the terminal only while actually showing it.
   const holding = visible ? agentPty : null;
   useAttachedHost(holding, termRef, true);
 
@@ -97,12 +89,11 @@ export function AgentConsole() {
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;
-    // The rendered width, not the stored one — the pane may have been shrunk.
     const rendered = paneRef.current?.getBoundingClientRect().width;
     const startWidth = rendered === undefined ? width : rendered - extra;
     let latest = startWidth;
     const move = (ev: MouseEvent) => {
-      // The handle is on the pane's inner edge, so dragging left widens it.
+      // Dragging left widens the pane.
       latest = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + (startX - ev.clientX)));
       setWidth(latest);
     };
@@ -125,7 +116,6 @@ export function AgentConsole() {
 
   return (
     <>
-      {/* Maximized, the width and its handle are meaningless — it takes the body. */}
       {!maximized && <div className="resize-handle" onMouseDown={startDrag} />}
       <aside
         ref={paneRef}

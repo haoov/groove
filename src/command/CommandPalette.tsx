@@ -53,8 +53,7 @@ export function CommandPalette() {
   const setCommandPaletteOpen = useStore((s) => s.setCommandPaletteOpen);
   const activeTask = useSession((s) => s.activeTask);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
-  // Which repo the user is actually in. Git commands used to take the session's
-  // FIRST active worktree, so on a multi-repo task they hit an arbitrary repo.
+  // The focused repo. A git command must never act on an arbitrary worktree of the session.
   const activeRepoId = useSession((s) => s.activeRepoId);
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const activeRepos = useSession((s) => s.activeRepos);
@@ -97,11 +96,11 @@ export function CommandPalette() {
   }, [commandPaletteOpen]);
 
   const buildCommands = (): Command[] => {
-    // The focused repo's worktree, falling back to the only sensible default.
+    // The focused repo's worktree.
     const wt = activeWorktrees.find((w) => w.id === activeWorktreeId)
       ?? activeWorktrees.find((w) => w.repo_id === activeRepoId)
       ?? activeWorktrees[0];
-    // Named in the label so a git command can never act on a repo you did not mean.
+    // Named in the label: the row says which repo it acts on.
     const scope = activeRepos.find((r) => r.id === wt?.repo_id)?.project ?? null;
     const inRepo = (label: string) => (scope ? `${label} — ${scope}` : label);
     const cmds: Command[] = [];
@@ -177,8 +176,7 @@ export function CommandPalette() {
           label: inRepo('Git: Commit changes…'),
           group: 'Git',
           action: () => {
-            // Focus the sidebar's commit composer (wry's window.prompt returns
-            // null, so a prompt-based flow was a silent no-op).
+            // Focus the composer: wry's `window.prompt` returns null.
             close();
             useStore.getState().requestCommitFocus();
           },
@@ -216,8 +214,7 @@ export function CommandPalette() {
           action: async () => {
             close();
             try {
-              // Opens the confirmation with everything but the text pre-filled —
-              // the same path as the sidebar's create-MR action.
+              // Opens the confirmation pre-filled except the text.
               await invoke('create_mr', { worktreeId: wt.id });
             } catch (e) {
               setLastError(String(e));

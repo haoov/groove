@@ -4,9 +4,7 @@ import type { HomeEntry, ReviewMr, Task } from '../../ipc/ipc';
 import type { AppState, HomeSlice } from '../types';
 import { sessionTitle } from '../session';
 
-// Coalesce refreshHome: agent ticks, event handlers and the visibility effect
-// all call it — one snapshot fetch runs at a time, and callers landing mid-fetch
-// fold into ONE trailing re-run (keeping the strongest forceMr).
+// One refreshHome fetch at a time; callers landing mid-fetch fold into one trailing re-run.
 let homeInFlight = false;
 let homeQueued: { forceMr: boolean } | null = null;
 
@@ -18,8 +16,6 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
       const queue = await invoke<ReviewMr[]>('list_review_mrs');
       set({ reviewQueue: queue });
     } catch (e) {
-      // Used to be a console warning only, which meant an empty review list was
-      // indistinguishable from a broken `glab`.
       get().notify({
         kind: 'error',
         source: 'mr',
@@ -78,7 +74,7 @@ export const homeSlice: StateCreator<AppState, [], [], HomeSlice> = (set, get) =
       const tasks = s.tasks.some((t) => t.short_id === task.short_id)
         ? s.tasks.map((t) => (t.short_id === task.short_id ? task : t))
         : [...s.tasks, task];
-      // Keep any open session showing this task in sync (task object + tab label).
+      // Keep any open session showing this task in sync.
       let sessions = s.sessions;
       for (const id of s.sessionOrder) {
         const sess = s.sessions[id];

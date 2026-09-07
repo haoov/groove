@@ -3,8 +3,7 @@ use sqlx::{SqliteExecutor, SqlitePool};
 use super::super::error::{StoreError, StoreResult};
 use super::super::models::{Session, SessionKind, TaskView};
 
-const COLUMNS: &str =
-    "id, kind, title, external_id, review_project, review_iid, created_at";
+const COLUMNS: &str = "id, kind, title, external_id, review_project, review_iid, created_at";
 
 pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Session> {
     get_opt(exec, id)
@@ -13,14 +12,15 @@ pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Session
 }
 
 pub async fn get_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Option<Session>> {
-    Ok(sqlx::query_as(&format!("SELECT {COLUMNS} FROM sessions WHERE id = ?"))
-        .bind(id)
-        .fetch_optional(exec)
-        .await?)
+    Ok(
+        sqlx::query_as(&format!("SELECT {COLUMNS} FROM sessions WHERE id = ?"))
+            .bind(id)
+            .fetch_optional(exec)
+            .await?,
+    )
 }
 
-/// The session as the frontend's task shape: real tasks read status/priority
-/// from the mirror, synthetic sessions synthesize them.
+/// The session as the frontend's task shape.
 pub async fn view(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<TaskView> {
     view_opt(exec, id)
         .await?
@@ -60,8 +60,11 @@ pub async fn view_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Op
     }))
 }
 
-/// Open (or re-open) a session for a mirrored task.
-pub async fn open_task(exec: impl SqliteExecutor<'_> + Copy, short_id: &str) -> StoreResult<Session> {
+/// Open or re-open a session for a mirrored task.
+pub async fn open_task(
+    exec: impl SqliteExecutor<'_> + Copy,
+    short_id: &str,
+) -> StoreResult<Session> {
     let task = super::provider_tasks::get_by_short_id(exec, short_id)
         .await?
         .ok_or_else(|| StoreError::not_found("task", short_id))?;
@@ -94,8 +97,7 @@ pub async fn create_explorer(
     get(exec, id).await
 }
 
-/// Create or refresh the session tracking one MR review. `(project, iid)` is
-/// the identity; reopening the same MR resumes the session.
+/// Create or refresh the session for one MR review, keyed by `(project, iid)`.
 pub async fn upsert_review(
     exec: impl SqliteExecutor<'_> + Copy,
     id: &str,
@@ -138,7 +140,7 @@ pub async fn rename_explorer(
     Ok(())
 }
 
-/// Delete a session and, through the cascades, everything it owns.
+/// Delete a session and everything it owns.
 pub async fn remove(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<()> {
     sqlx::query("DELETE FROM sessions WHERE id = ?")
         .bind(id)
@@ -147,9 +149,8 @@ pub async fn remove(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<()> 
     Ok(())
 }
 
-/// Turn an explorer into a real task in one transaction: mirror the new task,
-/// re-key the session (children follow via ON UPDATE CASCADE), and persist the
-/// new branch/path of every worktree that switched.
+/// Turn an explorer into a task in one transaction: mirror the task, re-key the
+/// session and persist the new branch/path of every switched worktree.
 pub async fn adopt_explorer(
     pool: &SqlitePool,
     explorer_id: &str,
@@ -187,8 +188,7 @@ pub async fn adopt_explorer(
     Ok(())
 }
 
-/// Session kind without loading the row — the discriminator several commands
-/// branch on.
+/// Session kind without loading the row.
 pub async fn kind_of(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Option<SessionKind>> {
     Ok(sqlx::query_scalar("SELECT kind FROM sessions WHERE id = ?")
         .bind(id)

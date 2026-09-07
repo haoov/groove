@@ -2,20 +2,13 @@ import { useStore, SessionIdContext } from '../shared/store';
 import { WorkspaceLayout } from './WorkspaceLayout';
 
 /**
- * Hosts every open session's workspace at once, showing only the active one
- * (the rest are kept mounted but hidden via `display:none`). Keeping them
- * mounted is what lets each session's agent/terminal xterm — and its tabs,
- * diff, and scroll state — survive switching away. Stays mounted even while
- * Home is showing so popping back to a session never loses its terminal.
+ * Hosts every open session's workspace at once. Inactive ones stay mounted but hidden,
+ * so terminals, tabs and scroll state survive switching.
  */
 export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
   const allSessions = useStore((s) => s.sessionOrder);
   const activeSessionId = useStore((s) => s.activeSessionId);
-  // A maximized agent hides the pane area (styles/console.css), leaving this column
-  // holding nothing but the panel — so it has to be as wide as the panel and no
-  // wider. `flex: 1` cannot express that: its zero basis, with min-width 0, gives
-  // the panel's own width nothing to travel up through, and the column resolved to
-  // nothing instead. Content-sized in that mode, and still shrinkable.
+  // With the agent maximized the column must be content-sized: `flex: 1` resolves it to zero width.
   const agentMaximized = useStore((s) => s.agentMaximized);
   const grow = agentMaximized ? ('0 1 auto' as const) : 1;
   const sessionOrder = allSessions;
@@ -36,8 +29,6 @@ export function SessionWorkspaces({ hidden }: { hidden: boolean }) {
             style={{ display: active ? 'flex' : 'none', flex: grow, minWidth: 0, minHeight: 0 }}
           >
             <SessionIdContext.Provider value={id}>
-              {/* Every kind (task / explorer / review) is a full workspace over
-                  its synthetic-or-real task. */}
               <WorkspaceLayout />
             </SessionIdContext.Provider>
           </div>

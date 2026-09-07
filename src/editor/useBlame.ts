@@ -3,21 +3,14 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { BlameLine } from '../shared/ipc/ipc';
 
-/**
- * Per-line authorship for one file, fetched only while the blame gutter is on.
- *
- * `git blame` reads the file on disk, so an unsaved buffer keeps the attribution
- * git last saw. The cache is cleared with the diff cache, which covers commits and
- * external edits.
- */
+/** Per-line authorship for one file, fetched only while the blame gutter is on. */
 export function useBlame(opts: {
   worktreeId: string | undefined;
   repoId: string;
   filePath: string;
 }) {
   const { worktreeId, repoId, filePath } = opts;
-  // Worktree-keyed (falls back to the repo while provisioning): one repo can have
-  // several worktrees in a session, so a repo key would collide across branches.
+  // Keyed by worktree; falls back to the repo while provisioning.
   const key = `${worktreeId ?? repoId}/${filePath}`;
   const blameOn = useSession((s) => s.blameOn);
   const blame = useSession((s) => s.blameByFile[key]);

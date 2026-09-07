@@ -3,11 +3,10 @@
 use crate::core::config::GithubConfig;
 use crate::provider::types::{PropertyOption, PropertySchema, StatusGroup, TaskSchema};
 
-/// Columns that come off the issue rather than the board, so they are shown but
-/// cannot be set here. `properties()` fills their values.
+/// Issue columns, shown but not settable here. `properties()` fills their values.
 const DISPLAY_ONLY: [&str; 2] = ["Labels", "Assignees"];
 
-/// Not fields at all: the title is the row, and the rest is board plumbing.
+/// Board plumbing, not fields.
 const NOT_A_FIELD: [&str; 7] = [
     "Title",
     "Repository",
@@ -19,7 +18,6 @@ const NOT_A_FIELD: [&str; 7] = [
 ];
 /// Board columns GitHub maintains itself.
 const TIMESTAMPS: [&str; 3] = ["Created", "Updated", "Closed"];
-
 
 /// GitHub's dataType, in the shared vocabulary.
 fn kind_of(data_type: &str) -> &'static str {
@@ -47,9 +45,7 @@ pub(super) async fn board_schema(
             let data_type = f["dataType"].as_str().unwrap_or("TEXT");
             let kind = kind_of(data_type).to_string();
 
-            // `id` is the value the app sends back, not the node id: a write
-            // resolves the option id from the name (see fields::field_value), the
-            // same shape Notion uses.
+            // `id` is the option name, not the node id; `fields::field_value` resolves it.
             let mut options: Vec<PropertyOption> = f["options"]
                 .as_array()
                 .map(|o| {
@@ -58,20 +54,19 @@ pub(super) async fn board_schema(
                         .collect()
                 })
                 .unwrap_or_default();
-            // An iteration's "options" are its iterations; completed ones stay
-            // listed so an existing value still resolves to a name.
+            // An iteration's options are its iterations, completed ones included.
             for key in ["iterations", "completedIterations"] {
                 if let Some(iters) = f["configuration"][key].as_array() {
                     options.extend(
-                        iters.iter().filter_map(|i| Some(PropertyOption::named(i["title"].as_str()?))),
+                        iters
+                            .iter()
+                            .filter_map(|i| Some(PropertyOption::named(i["title"].as_str()?))),
                     );
                 }
             }
 
             let display_only = DISPLAY_ONLY.contains(&name.as_str());
             let meta = TIMESTAMPS.contains(&name.as_str()) || NOT_A_FIELD.contains(&name.as_str());
-            // The board's Status column is a status, not a plain select: the strip
-            // gives that kind the coloured dot and the tone.
             let kind = match name.eq_ignore_ascii_case("Status") && kind == "select" {
                 true => "status".to_string(),
                 false => kind,
@@ -88,9 +83,7 @@ pub(super) async fn board_schema(
         .collect();
     properties.sort_by(|a, b| a.name.cmp(&b.name));
 
-    // The board's Status options are a flat list — Projects v2 has no equivalent of
-    // Notion's To-do / In progress / Complete grouping, so detection falls back to
-    // matching over every option.
+    // Projects v2 has no status groups.
     let status_groups: Vec<StatusGroup> = vec![];
 
     let hours_property = properties

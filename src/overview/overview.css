@@ -1,8 +1,4 @@
-/* ── Overview ─────────────────────────────────────────────────────────────── */
-
-/* The overview is the app's one reading page: a single scrolling surface with a
-   centered document column (~62rem). Header, properties, then a two-column grid —
-   the body on the left, task context (time · repos · MRs) on the right. */
+/* ── Overview ── */
 
 .overview-view {
   flex: 1;
@@ -54,8 +50,6 @@
 
 .finish-task-btn:disabled { opacity: 0.5; cursor: default; }
 
-/* Neutral action (Update / Open in GitLab): reads as a control, not a decision. */
-
 .finish-task-btn.ov-update {
   background: var(--gl-background-color-strong);
   border-color: var(--gl-border-color-default);
@@ -67,9 +61,6 @@
   border-color: var(--gl-border-color-strong);
   color: var(--gl-text-color-default);
 }
-
-/* Both endings sit together. The destructive one keeps its neighbour's shape — it
-   is the same kind of action — and says so in red. */
 
 .overview-header-actions {
   display: inline-flex;
@@ -89,7 +80,7 @@
   border-color: color-mix(in srgb, var(--gl-color-red-400) 55%, transparent);
 }
 
-/* ── Finish confirmation banner ───────────────────────────────────────────── */
+/* ── Finish confirmation banner ── */
 
 .finish-confirm-banner {
   display: flex;
@@ -100,8 +91,6 @@
   border-radius: var(--gl-border-radius-medium);
   padding: var(--space-3) var(--space-4);
 }
-
-/* Deleting reads red, so the banner cannot be mistaken for the Done one. */
 
 .finish-confirm-banner.destructive {
   background: var(--gl-color-red-100);
@@ -214,8 +203,6 @@
   text-wrap: balance;
 }
 
-/* Metadata chips are quiet — color is reserved for the human/agent duet. */
-
 .overview-badge {
   font-size: var(--gl-font-size-xs);
   font-weight: 600;
@@ -227,8 +214,6 @@
   border: 1px solid var(--gl-border-color-default);
   background: rgba(var(--gl-elevate), 0.03);
 }
-
-/* Two-column body: document left, context right; collapses under 60rem. */
 
 .overview-grid {
   display: grid;
@@ -244,8 +229,6 @@
 @media (max-width: 60rem) {
   .overview-grid { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* Sections are panels: a hairline card with a full-bleed header strip. */
 
 .overview-section {
   border: 1px solid var(--gl-border-color-default);
@@ -275,7 +258,6 @@
   margin: 0;
 }
 
-/* The offer to let the agent set the task up. */
 .overview-suggest {
   display: flex;
   align-items: center;
@@ -298,9 +280,7 @@
 
 .overview-suggest:disabled { opacity: 0.5; cursor: default; }
 
-/* ── MR overview tab (same page language as the task overview) ────────────── */
-
-/* "Open in GitLab/GitHub" reuses the header-button slot but neutral, not green. */
+/* ── MR overview tab ── */
 
 .finish-task-btn.mr-open-btn {
   background: var(--gl-background-color-strong);
@@ -314,8 +294,6 @@
   color: var(--gl-text-color-default);
 }
 
-/* State chips keep platform colors (green open / purple merged / red closed). */
-
 .overview-badge.mr-state-open   { color: var(--gl-color-green-400); border-color: color-mix(in srgb, var(--ctp-green) 35%, transparent); background: var(--gl-color-green-100); }
 
 .overview-badge.mr-state-merged { color: var(--gl-color-purple-400); border-color: color-mix(in srgb, var(--ctp-mauve) 35%, transparent); background: var(--gl-color-purple-100); }
@@ -324,23 +302,7 @@
 
 .overview-ci { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 
-.mr-meta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-  font-size: var(--gl-font-size-sm);
-  color: var(--gl-text-color-subtle);
-  flex-wrap: wrap;
-}
-
-.mr-meta-author { font-weight: 500; color: var(--gl-text-color-strong); }
-
-.mr-meta-branches { display: inline-flex; align-items: center; gap: 6px; color: var(--gl-text-color-disabled); }
-
 .mr-meta-arrow { color: var(--gl-text-color-disabled); }
-
-/* MR badges under the title, and the Details panel in the side column. */
 
 .mr-badges { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 
@@ -362,11 +324,9 @@
 
 .mr-fact-branches .overview-repo-branch { margin-left: 0; }
 
-/* ── Markdown / rich blocks (shared: task body + MR descriptions) ─────────── */
+/* ── Markdown blocks ── */
 
 .markdown-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-
-/* Repos — the project name over its worktrees, each branch indented with its MR. */
 
 .overview-repos { display: flex; flex-direction: column; gap: var(--space-2); }
 
@@ -391,7 +351,6 @@
   white-space: nowrap;
 }
 
-/* Kept for the MR Details panel (mr-fact-branches) — no longer used by RepoRow. */
 .overview-repo-branch {
   font-size: var(--gl-font-size-xs);
   font-family: var(--font-mono);
@@ -401,8 +360,6 @@
   border-radius: var(--gl-border-radius-sm);
 }
 
-/* Worktree row: branch on the left, its MR beside it — tabbed under the repo,
-   bound by a hairline guide like Home's expanded sessions. */
 .overview-wt {
   display: flex;
   align-items: center;
@@ -456,8 +413,6 @@
 
 .overview-wt-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
 
-/* Approved MR — green, next to the state/draft/CI badges. */
-
 .overview-badge.mr-approved {
   display: inline-flex;
   align-items: center;
@@ -467,10 +422,7 @@
   background: var(--gl-color-green-100);
 }
 
-/* ── Task properties: a framed strip of labelled columns (the mockup) ──────────
-   Each property is a small uppercase key over its value, divided by hairlines;
-   the value opens a popover to edit. The "+ field" button is pinned to the right.
-   (The pill controls below are still used by the new-task modal.)             */
+/* ── Task properties strip ── */
 
 .props {
   display: flex;
@@ -543,7 +495,7 @@
   border-left: 1px solid var(--gl-border-color-subtle);
 }
 
-/* ── Pills ──────────────────────────────────────────────────────────────────── */
+/* ── Pills ── */
 
 .ppill {
   display: inline-flex;
@@ -572,8 +524,6 @@
 
 .ppill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
 
-/* Neutral: dates, numbers, plain selects. A visible border does the affordance. */
-
 .ppill.neutral {
   color: var(--gl-text-color-subtle);
   background: rgba(var(--gl-elevate), 0.05);
@@ -585,7 +535,7 @@
 
 .ppill.neutral:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
 
-/* Status — same colours as the queue rows on Home. */
+/* mirrors .row-status colours in home.css */
 
 .ppill.status { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.07); }
 
@@ -609,17 +559,13 @@
   background: color-mix(in srgb, var(--gl-color-green-400) 16%, transparent);
 }
 
-/* Priority — the exact tints Home uses, so High means the same thing in both. */
+/* mirrors .prio-badge tints in home.css */
 
 .ppill.prio.p0 { color: var(--gl-color-red-400);    background: color-mix(in srgb, var(--gl-color-red-400) 15%, transparent); }
 
 .ppill.prio.p1 { color: var(--gl-color-orange-400); background: color-mix(in srgb, var(--gl-color-orange-400) 15%, transparent); }
 
 .ppill.prio.p2 { color: var(--gl-color-blue-300);   background: color-mix(in srgb, var(--gl-color-blue-400) 14%, transparent); }
-
-.ppill.prio.p3 { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.07); }
-
-/* A flag states itself: nearly invisible off, green on. */
 
 .ppill.flag {
   font-size: var(--gl-font-size-xs);
@@ -636,9 +582,7 @@
   border-color: transparent;
 }
 
-/* ── Labelled sets: components, tags ────────────────────────────────────────── */
-
-.props-sets { display: flex; flex-direction: column; gap: var(--space-2); }
+/* ── Labelled sets ── */
 
 .props-set {
   display: grid;
@@ -709,7 +653,7 @@
 
 .padd.rail { padding: 3px 10px; font-size: var(--gl-font-size-sm); }
 
-/* ── Popovers (every pill opens one) ────────────────────────────────────────── */
+/* ── Popovers ── */
 
 .ppop-anchor { position: relative; display: inline-flex; max-width: 100%; }
 
@@ -781,8 +725,6 @@
 
 .ppop-item.on { color: var(--gl-color-blue-300); }
 
-/* Fixed tick column so labels align selected or not. */
-
 .ppop-tick { width: 12px; flex-shrink: 0; display: inline-flex; }
 
 .ppop-empty {
@@ -836,7 +778,7 @@
   background: var(--gl-color-blue-100);
 }
 
-/* ── Time: one column in the property strip, logging behind a popover ─────── */
+/* ── Time ── */
 
 .prop-time .prop-v { gap: var(--space-2); }
 
@@ -858,8 +800,6 @@
 
 .time-add:hover { color: var(--gl-color-blue-300); border-color: var(--gl-color-blue-300); }
 
-/* Tracked time waiting to be logged. */
-
 .time-add.pending {
   border-style: solid;
   border-color: color-mix(in srgb, var(--gl-color-blue-400) 45%, transparent);
@@ -867,7 +807,7 @@
   color: var(--gl-color-blue-300);
 }
 
-/* Portalled to <body>, fixed position, right edge under the "+". */
+/* portalled to <body>; position set inline */
 
 .time-pop { position: fixed; z-index: 200; width: 240px; }
 
@@ -927,7 +867,7 @@
 
 .time-input:focus { border-color: var(--gl-focus-border); background: var(--gl-background-color-default); }
 
-/* ── Body editor ───────────────────────────────────────────────────────────── */
+/* ── Body editor ── */
 
 .overview-section-head-actions { display: inline-flex; align-items: center; gap: var(--space-3); margin-left: auto; }
 
@@ -962,10 +902,7 @@
 
 .body-editor-hint svg { flex-shrink: 0; margin-top: 2px; }
 
-/* ── MR description editor ─────────────────────────────────────────────────────
-   Editing by hand goes straight to the forge (the agent's path still goes through
-   the confirmation). The task footer is re-appended by the backend, so it is
-   deliberately not in the box.                                                 */
+/* ── MR description editor ── */
 
 .overview-section-action { margin-left: var(--space-3); font-weight: 400; }
 
@@ -982,23 +919,7 @@
 
 .mr-desc-actions .composer-note { margin-right: auto; }
 
-/* ── from home.css (split) ── */
-
-.review-progress { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--gl-text-color-subtle); }
-
-.review-bar {
-  width: 120px;
-  height: 3px;
-  border-radius: 100px;
-  background: rgba(var(--gl-elevate), 0.1);
-  overflow: hidden;
-}
-
-.review-fill { display: block; height: 100%; background: var(--gl-color-green-400); transition: width 0.25s ease-out; }
-
-/* ── Review workspace ─────────────────────────────────────────────────────── */
-
-/* ReviewOverview = action bar over the MR overview. */
+/* ── Review workspace ── */
 
 .review-overview {
   flex: 1;
@@ -1040,15 +961,11 @@
 
 .review-finish-btn:hover { color: var(--wb-warn, var(--gl-color-red-400)); border-color: var(--wb-warn, var(--gl-color-red-400)); }
 
-/* MR overview header actions (Approve + Open in …). */
-
 .mr-header-actions { display: inline-flex; align-items: center; gap: var(--space-2); }
 
 .mr-approve-btn { color: var(--gl-color-green-400); }
 
 .mr-approve-btn:hover { border-color: var(--gl-color-green-400); }
-
-/* General comment composer under Discussion. */
 
 .mr-comment-composer {
   display: flex;

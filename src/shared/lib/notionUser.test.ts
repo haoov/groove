@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { looksLikeNotionId } from './notionUser';
 
-// A pasted id goes into the config as `notion.user_id`, and a wrong one there means
-// "no tasks" with no error — Notion happily filters on an id that matches nobody.
-
 describe('looksLikeNotionId', () => {
   it('takes both spellings Notion uses', () => {
     expect(looksLikeNotionId('227dcbda9c358221ad2201f823195954')).toBe(true);

@@ -28,13 +28,18 @@ pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Repo> {
 }
 
 pub async fn get_opt(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Option<Repo>> {
-    Ok(sqlx::query_as(&format!("SELECT {COLUMNS} FROM repos WHERE id = ?"))
-        .bind(id)
-        .fetch_optional(exec)
-        .await?)
+    Ok(
+        sqlx::query_as(&format!("SELECT {COLUMNS} FROM repos WHERE id = ?"))
+            .bind(id)
+            .fetch_optional(exec)
+            .await?,
+    )
 }
 
-pub async fn attached_to(exec: impl SqliteExecutor<'_>, session_id: &str) -> StoreResult<Vec<Repo>> {
+pub async fn attached_to(
+    exec: impl SqliteExecutor<'_>,
+    session_id: &str,
+) -> StoreResult<Vec<Repo>> {
     Ok(sqlx::query_as(
         "SELECT r.id, r.host, r.group_path, r.project, r.local_path
          FROM repos r
@@ -78,7 +83,7 @@ pub async fn attach(
     Ok(())
 }
 
-/// Replace the session's whole repo set — the picker submits the full selection.
+/// Replace the session's whole repo set.
 pub async fn set_attached(
     exec: impl SqliteExecutor<'_> + Copy,
     session_id: &str,

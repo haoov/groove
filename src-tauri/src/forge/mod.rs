@@ -8,8 +8,7 @@ mod gitlab;
 mod ops;
 mod queue;
 
-// Glob re-export is required: tauri::generate_handler! looks up __cmd__* symbols
-// at the same path as the function, so they must be re-exported from this module too.
+// Keep the glob re-exports: `generate_handler!` resolves `__cmd__*` symbols at this path.
 pub use commands::*;
 pub use ops::{close_mr_impl, create_mr_impl, mr_target_for, update_mr_impl};
 pub use queue::*;

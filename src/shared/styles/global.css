@@ -68,10 +68,7 @@ input, textarea {
   outline: none;
 }
 
-/* WebKitGTK draws a NATIVE select widget and ignores the CSS background until the
-   appearance is reset — which is why themed selects showed up with the platform's
-   light background. Reset once here so every picker in the app inherits the theme;
-   the caret has to be drawn back by hand as a result. */
+/* WebKitGTK: reset appearance to theme the select; the gradients draw the caret */
 select {
   appearance: none;
   -webkit-appearance: none;
@@ -90,7 +87,6 @@ select {
   outline: none;
   cursor: pointer;
 }
-/* The popup list is drawn by the platform, so it needs telling too. */
 select option {
   background-color: var(--gl-background-color-raised);
   color: var(--gl-text-color-default);
@@ -101,16 +97,12 @@ select option {
   color: var(--gl-selection-text);
 }
 
-/* Keyboard focus — visible indigo ring, never on mouse press */
 :focus-visible {
   outline: none;
   box-shadow: var(--ring-accent);
   border-radius: var(--gl-border-radius-base);
 }
 
-/* …but not on surfaces that already signal focus themselves (text caret,
-   selection highlight, or the list cursor row) — the extra ring just reads as
-   noise on the editor, inputs/textareas, and the keyboard-navigable lists. */
 input:focus-visible,
 textarea:focus-visible,
 .cm-editor:focus-visible,
@@ -123,7 +115,7 @@ textarea:focus-visible,
   box-shadow: none;
 }
 
-/* ── Thin scrollbars ──────────────────────────────────────────────────────── */
+/* ── Scrollbars ── */
 ::-webkit-scrollbar            { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track      { background: transparent; }
 ::-webkit-scrollbar-thumb      {
@@ -135,8 +127,7 @@ textarea:focus-visible,
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); background-clip: padding-box; }
 ::-webkit-scrollbar-corner     { background: transparent; }
 
-/* ── Shared motion ──────────────────────────────────────────────────────────
-   High-impact on entrances only; everything else uses snappy hover transitions. */
+/* ── Shared motion ── */
 @keyframes wb-overlay-in {
   from { opacity: 0; }
   to   { opacity: 1; }

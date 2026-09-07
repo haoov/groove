@@ -5,8 +5,7 @@ mod repos;
 mod sessions;
 mod setup;
 
-// Glob re-export is required: tauri::generate_handler! looks up __cmd__* symbols
-// at the same path as the function, so they must be re-exported from this module too.
+// Keep the glob re-exports: `generate_handler!` resolves `__cmd__*` symbols at this path.
 pub use commands::*;
 pub use conversion::create_task_from_explorer_impl;
 pub use hours::*;

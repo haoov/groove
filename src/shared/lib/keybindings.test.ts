@@ -6,9 +6,7 @@ import {
 import { chordLabel, chordMatches, isTypingCharacter, normalizeKey, type Chord } from './keys';
 import { setPlatform } from './platform';
 
-// The keymap is the one piece of state that survives upgrades: a stored map from an
-// older version is merged over new defaults. Every bug here has been the same
-// shape — a chord ending up on two commands, or a command silently losing its key.
+// Stored maps from older versions merge over the new defaults.
 
 const store = new Map<string, string>();
 
@@ -46,8 +44,6 @@ describe('defaultKeymap', () => {
   it('leaves every command bound except tab.close', () => {
     const m = defaultKeymap();
     const unbound = COMMANDS.filter((c) => (m[c.id] ?? []).length === 0).map((c) => c.id);
-    // tab.close is intentionally unbound: Alt+W now cycles worktrees, and a tab
-    // closes with middle-click or its × button.
     expect(unbound).toEqual(['tab.close']);
   });
 });
@@ -96,7 +92,7 @@ describe('loadKeymap', () => {
   });
 
   it('migrates a v3 map and drops the chords that changed owner', () => {
-    // v3 had repo.add on Alt+R; repo.switch owns it now.
+    // A v3 map with repo.add on Alt+R.
     const v3 = { ...defaultKeymap(), 'repo.add': [{ key: 'r', alt: true }] };
     localStorage.setItem('workbench.keymap.v3', JSON.stringify(v3));
     const m = loadKeymap();
@@ -134,7 +130,7 @@ describe('assignBinding', () => {
 
   it('distinguishes chords that differ only by a modifier', () => {
     const m = assignBinding(defaultKeymap(), 'editor.focus', [{ key: 'w', alt: true, shift: true }]);
-    // Alt+Shift+W belonged to pane.close; Alt+W (worktree.switch) is untouched.
+    // Alt+Shift+W belonged to pane.close; Alt+W is untouched.
     expect(m['worktree.switch'].some((c) => c.key === 'w' && c.alt && !c.shift)).toBe(true);
     expect((m['pane.close'] ?? []).some((c) => c.key === 'w' && c.alt && c.shift)).toBe(false);
   });
@@ -174,9 +170,6 @@ describe('chord model', () => {
   });
 });
 
-// The keymap listens in the capture phase, ahead of whatever has focus. On an
-// international layout that is where characters go missing: the reported case was
-// `´` then space, which is how you type a bare apostrophe there.
 describe('isTypingCharacter', () => {
   const ev = (o: Partial<KeyboardEvent> & { altGraph?: boolean }) =>
     ({ getModifierState: (m: string) => m === 'AltGraph' && !!o.altGraph, ...o }) as KeyboardEvent;
@@ -271,8 +264,6 @@ describe('Linux defaults are untouched by the port', () => {
   });
 });
 
-  /// Alt+O moved from pane.next to panel.overview. A customised map must not keep
-  /// it for both — the conflict resolver would silently unbind one.
   it('releases Alt+O to Overview when upgrading a customised map', () => {
     const saved = defaultKeymap();
     saved['pane.next'] = [{ key: 'o', alt: true }];
@@ -285,10 +276,6 @@ describe('Linux defaults are untouched by the port', () => {
     expect(map['pane.next']?.[0].key).toBe('i');
   });
 });
-
-// The settings table asks three things of the keymap that the runtime never did:
-// find a command, name the command a chord already belongs to, and put one row
-// back to its default.
 
 describe('searchCommands', () => {
   it('returns every command for an empty query', () => {

@@ -18,7 +18,7 @@ export interface AgentPanelProps {
   autoApprove: boolean;
   /** The element the terminal host is re-parented into. */
   termRef: RefObject<HTMLDivElement>;
-  /** A start already in flight outside the panel (the docked auto-start). */
+  /** A start in flight outside the panel. */
   starting?: boolean;
   onStart: () => Promise<unknown>;
   onRunSkill: (skillId: string, args?: string) => Promise<unknown>;
@@ -38,10 +38,8 @@ export interface AgentPanelProps {
 }
 
 /**
- * The agent surface: head, terminal, actions bar. Rendered docked as a column in
- * the main window and alone in the detached window; the container is the caller's.
- * The callbacks return promises so the panel can show what is in flight — errors
- * are the caller's to surface.
+ * The agent surface: head, terminal, actions bar. Rendered docked in the main window
+ * or alone in the detached window. Errors from the callbacks are the caller's to surface.
  */
 export function AgentPanel(p: AgentPanelProps) {
   const [starting, setStarting] = useState(false);
@@ -145,7 +143,6 @@ export function AgentPanel(p: AgentPanelProps) {
         )}
       </div>
 
-      {/* The skills, behind one menu. */}
       <div className="console-actions">
         <span className="actions-menu" ref={menuRef}>
           <button
@@ -158,7 +155,6 @@ export function AgentPanel(p: AgentPanelProps) {
             Actions
             <ChevronUp size={11} strokeWidth={2} />
           </button>
-          {/* Opens UPWARD: the bar is the console's bottom edge. */}
           {menuOpen && (
             <div className="ctx-menu actions-menu-panel">
               {core.length > 0 && <div className="ctx-menu-label">Core</div>}
@@ -168,7 +164,7 @@ export function AgentPanel(p: AgentPanelProps) {
             </div>
           )}
         </span>
-        {/* A skill changed on disk; the running agent needs a restart to see it. */}
+        {/* The running agent loads a changed skill only after a restart. */}
         {p.skillsStale && p.ptyId && (
           <button
             className="console-action"
@@ -180,7 +176,6 @@ export function AgentPanel(p: AgentPanelProps) {
             Reload skills
           </button>
         )}
-        {/* Auto-approve — warm while on. */}
         <button
           className={`console-toggle ${p.autoApprove ? 'on' : ''}`}
           role="switch"

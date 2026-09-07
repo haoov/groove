@@ -1,13 +1,5 @@
-//! Attaching a repo to a task on the agent's behalf.
-//!
-//! The UI path is `set_task_repos` + `provision_worktrees`, driven by a picker
-//! where the user has already chosen from a list. An agent has neither, so this
-//! module answers the two questions the picker answered implicitly: WHICH repo did
-//! it mean, and is attaching one to THIS session even meaningful.
-//!
-//! Attaching is additive here. `set_task_repos` deletes the whole set before
-//! re-inserting, which is right for a picker that submits the full selection and
-//! wrong for "add one more" — it would silently detach every other repo.
+//! Attaching a repo or a worktree to a session on the agent's behalf.
+//! Attaching is additive here; `set_task_repos` replaces the whole set.
 
 use sqlx::SqlitePool;
 use tauri::Manager;
@@ -16,22 +8,12 @@ use crate::core::db::models::{Repo, SessionKind};
 use crate::core::db::store;
 use crate::worktrees::MainRepo;
 
-/// Every name a slug answers to: itself, and each run of trailing segments. So
-/// `gitlab.example.com/wiremind/devops/foo` is named by that, by
-/// `wiremind/devops/foo`, by `devops/foo`, and by `foo`.
-///
-/// The host is a segment like any other, which is what keeps the forge path — the
-/// name a person or an agent actually knows — working now that the pool puts the
-/// host in front of it.
+/// Every name a slug answers to: `host/a/b` is named by `host/a/b`, `a/b` and `b`.
 fn names_of(slug: &str) -> impl Iterator<Item = &str> {
     std::iter::once(slug).chain(slug.match_indices('/').map(|(i, _)| &slug[i + 1..]))
 }
 
-/// Pick the repo an agent meant from the clones in the pool.
-///
-/// The whole slug first, then any name it answers to. A name matching several slugs
-/// is an error rather than a guess: attaching the wrong repo provisions a worktree
-/// and a branch under it.
+/// Pick the repo an agent meant: the whole slug first, then a unique short name.
 fn resolve<'a>(name: &str, available: &'a [MainRepo]) -> anyhow::Result<&'a MainRepo> {
     let wanted = name.trim().trim_matches('/');
     if wanted.is_empty() {
@@ -56,7 +38,10 @@ fn resolve<'a>(name: &str, available: &'a [MainRepo]) -> anyhow::Result<&'a Main
         ),
         many => anyhow::bail!(
             "'{wanted}' matches several repos: {}. Pass the full slug.",
-            many.iter().map(|r| r.slug.as_str()).collect::<Vec<_>>().join(", ")
+            many.iter()
+                .map(|r| r.slug.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
     }
 }
@@ -65,26 +50,27 @@ fn slug_list(repos: &[MainRepo]) -> String {
     if repos.is_empty() {
         return "none".to_string();
     }
-    repos.iter().map(|r| r.slug.as_str()).collect::<Vec<_>>().join(", ")
+    repos
+        .iter()
+        .map(|r| r.slug.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
-/// Whether this session can take a new repo. A review's worktree is the MR's
-/// source branch; a second repo would get a worktree on a branch named after
-/// the review, which is meaningless.
+/// Why this session refuses a new repo, if it does.
 fn refusal_for(kind: SessionKind) -> Option<&'static str> {
     (kind == SessionKind::Review)
         .then_some("a review session tracks one MR and takes no extra repos")
 }
 
-/// Refuse a target branch that is not on origin.
-/// Branch names an error lists before it gives only a count.
+/// Branch names listed in the refusal before it falls back to a count.
 const TARGET_SUGGESTIONS: usize = 20;
 
 /// Refuse a target branch origin does not have, naming the ones it does.
 async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
     let Some(t) = target else { return Ok(()) };
 
-    // An unreachable origin is not a missing branch — do not merge the two.
+    // An unreachable origin is not a missing branch.
     let branches = crate::core::git::refs::origin_branches(&repo.local_path)
         .await
         .map_err(|e| anyhow::anyhow!("cannot reach origin for {}: {e}", repo.project))?;
@@ -93,7 +79,11 @@ async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let shown: Vec<&str> = branches.iter().take(TARGET_SUGGESTIONS).map(String::as_str).collect();
+    let shown: Vec<&str> = branches
+        .iter()
+        .take(TARGET_SUGGESTIONS)
+        .map(String::as_str)
+        .collect();
     let rest = branches.len().saturating_sub(shown.len());
     let listed = match (shown.is_empty(), rest) {
         (true, _) => "it has none".to_string(),
@@ -103,14 +93,8 @@ async fn check_target(repo: &Repo, target: Option<&str>) -> anyhow::Result<()> {
     anyhow::bail!("{} has no branch '{t}' on origin — {listed}", repo.project);
 }
 
-/// Attach `repo` to `task_id` and provision its worktree. The confirmation-bridge
-/// path for `task.add_repo` — the user approves before any of this runs.
-///
-/// Re-opens the task at the end. Writing the rows is not enough: the workspace
-/// holds its repos and worktrees in memory, so without the `workspace_ready` that
-/// `open_task_impl` emits, an added repo stays invisible until the session is
-/// reopened by hand. The UI's own add-repo modal invokes `open_task` for exactly
-/// this reason; doing it here means every caller gets the refresh.
+/// Attach `repo` to `task_id`, provision its worktree, and refresh the workspace.
+/// Bridge path for `task.add_repo`.
 pub async fn add_repo_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -123,7 +107,10 @@ pub async fn add_repo_impl(
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("missing repo"))?;
     let branch = payload["branch"].as_str().filter(|s| !s.trim().is_empty());
-    let target = payload["target_branch"].as_str().map(str::trim).filter(|s| !s.is_empty());
+    let target = payload["target_branch"]
+        .as_str()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -137,10 +124,8 @@ pub async fn add_repo_impl(
         .map_err(|e| anyhow::anyhow!(e))?;
     let picked = resolve(name, &available)?;
 
-    // Idempotent: a repo already registered keeps its id, so re-attaching is safe.
     let repo: Repo =
-        crate::worktrees::register_repo_impl(&picked.slug, picked.local_path.clone(), pool)
-            .await?;
+        crate::worktrees::register_repo_impl(&picked.slug, picked.local_path.clone(), pool).await?;
 
     check_target(&repo, target).await?;
     store::repos::attach(pool, task_id, &repo.id).await?;
@@ -154,17 +139,26 @@ pub async fn add_repo_impl(
 
     let wt = worktrees
         .first()
-        .ok_or_else(|| anyhow::anyhow!("{} was attached but no worktree was created", repo.project))?
+        .ok_or_else(|| {
+            anyhow::anyhow!("{} was attached but no worktree was created", repo.project)
+        })?
         .clone();
 
-    // Push the new state to the workspace. Failing here does not undo the add —
-    // the repo IS attached — so report it rather than turning a done job into an
-    // error the agent will try to repeat.
+    // A failed refresh does not undo the add.
     let task_state = app.state::<super::State>();
-    if let Err(e) =
-        super::open_task_impl(app, task_id, &task_state, pool, super::commands::Open::Refresh).await
+    if let Err(e) = super::open_task_impl(
+        app,
+        task_id,
+        &task_state,
+        pool,
+        super::commands::Open::Refresh,
+    )
+    .await
     {
-        tracing::warn!("added {} to {task_id} but could not refresh the workspace: {e}", repo.project);
+        tracing::warn!(
+            "added {} to {task_id} but could not refresh the workspace: {e}",
+            repo.project
+        );
     }
 
     Ok(serde_json::json!({
@@ -179,13 +173,8 @@ pub async fn add_repo_impl(
     }))
 }
 
-/// Add ANOTHER worktree for a repo the session already holds — the same repo, a
-/// different branch. The confirmation-bridge path for `task.add_worktree`.
-///
-/// Separate from `add_repo_impl` on purpose: that one attaches a repo the session
-/// does not have and may derive the branch, while this one requires the branch (a
-/// second worktree with the same branch is the first one) and requires the repo to
-/// be attached already. One op, one meaning — the approval dialog says which.
+/// Add a worktree on another branch for a repo the session already holds.
+/// Bridge path for `task.add_worktree`.
 pub async fn add_worktree_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -198,8 +187,13 @@ pub async fn add_worktree_impl(
         .as_str()
         .map(str::trim)
         .filter(|b| !b.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("a branch name is required — that is what makes it a second worktree"))?;
-    let target = payload["target_branch"].as_str().map(str::trim).filter(|b| !b.is_empty());
+        .ok_or_else(|| {
+            anyhow::anyhow!("a branch name is required — that is what makes it a second worktree")
+        })?;
+    let target = payload["target_branch"]
+        .as_str()
+        .map(str::trim)
+        .filter(|b| !b.is_empty());
 
     let kind = store::sessions::kind_of(pool, task_id)
         .await?
@@ -208,7 +202,6 @@ pub async fn add_worktree_impl(
         anyhow::bail!("{why}");
     }
 
-    // The repo must already be on the session: attaching one is add_task_repo's job.
     let attached = store::repos::attached_to(pool, task_id).await?;
     let repo = match payload["repo"].as_str().map(str::trim).filter(|s| !s.is_empty()) {
         Some(name) => attached
@@ -224,7 +217,6 @@ pub async fn add_worktree_impl(
                     attached.iter().map(|r| r.project.as_str()).collect::<Vec<_>>().join(", ")
                 )
             })?,
-        // One repo needs no naming; several do.
         None => match attached.as_slice() {
             [only] => only.clone(),
             [] => anyhow::bail!("{task_id} has no repos yet — use add_task_repo"),
@@ -236,8 +228,6 @@ pub async fn add_worktree_impl(
         },
     };
 
-    // A worktree already on this branch IS this request's outcome, so say so
-    // rather than reporting a no-op as success.
     if let Some(existing) = store::worktrees::for_repo(pool, task_id, &repo.id)
         .await?
         .into_iter()
@@ -263,10 +253,15 @@ pub async fn add_worktree_impl(
         .ok_or_else(|| anyhow::anyhow!("no worktree was created for {}", repo.project))?
         .clone();
 
-    // Same reason as add_repo_impl: the workspace holds its worktrees in memory.
     let task_state = app.state::<super::State>();
-    if let Err(e) =
-        super::open_task_impl(app, task_id, &task_state, pool, super::commands::Open::Refresh).await
+    if let Err(e) = super::open_task_impl(
+        app,
+        task_id,
+        &task_state,
+        pool,
+        super::commands::Open::Refresh,
+    )
+    .await
     {
         tracing::warn!("added {branch} to {task_id} but could not refresh the workspace: {e}");
     }
@@ -302,10 +297,16 @@ mod tests {
         }
     }
 
-    /// Through `core::git` — spawning git any other way trips the guard test in
-    /// `core/git/run.rs`.
-    async fn git(dir: &PathBuf, args: &[&str]) {
-        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+    /// Spawn git through `core::git`; a guard test in `core/git/run.rs` rejects any other path.
+    async fn git(dir: &std::path::Path, args: &[&str]) {
+        let mut full = vec![
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=T",
+            "-c",
+            "commit.gpgsign=false",
+        ];
         full.extend_from_slice(args);
         crate::core::git::run(&dir.to_string_lossy(), &full)
             .await
@@ -329,7 +330,11 @@ mod tests {
             std::fs::write(work.join("a.txt"), "one\n").unwrap();
             git(&work, &["add", "."]).await;
             git(&work, &["commit", "-m", "first"]).await;
-            git(&work, &["remote", "add", "origin", origin.to_str().unwrap()]).await;
+            git(
+                &work,
+                &["remote", "add", "origin", origin.to_str().unwrap()],
+            )
+            .await;
             git(&work, &["push", "origin", "main"]).await;
             git(&work, &["push", "origin", "main:release/1.0"]).await;
             git(&work, &["fetch", "origin"]).await;
@@ -360,35 +365,53 @@ mod tests {
     #[tokio::test]
     async fn a_missing_branch_is_refused_with_the_real_ones() {
         let fx = Origin::new("missing").await;
-        let err = check_target(&fx.repo, Some("nope")).await.unwrap_err().to_string();
+        let err = check_target(&fx.repo, Some("nope"))
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("has no branch 'nope'"), "{err}");
-        assert!(err.contains("release/1.0"), "the refusal must list what origin has: {err}");
+        assert!(
+            err.contains("release/1.0"),
+            "the refusal must list what origin has: {err}"
+        );
     }
 
-    /// A stale `origin/<branch>` ref used to pass the check on its own.
     #[tokio::test]
     async fn a_branch_deleted_on_origin_is_refused() {
         let fx = Origin::new("stale").await;
         let work = PathBuf::from(&fx.repo.local_path);
         git(&work, &["push", "origin", "--delete", "release/1.0"]).await;
-        git(&work, &["update-ref", "refs/remotes/origin/release/1.0", "HEAD"]).await;
+        git(
+            &work,
+            &["update-ref", "refs/remotes/origin/release/1.0", "HEAD"],
+        )
+        .await;
         crate::core::git::cache::flush();
-        let err = check_target(&fx.repo, Some("release/1.0")).await.unwrap_err().to_string();
+        let err = check_target(&fx.repo, Some("release/1.0"))
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("has no branch"), "{err}");
     }
 
-    /// Unreachable origin must not read as a missing branch.
     #[tokio::test]
     async fn an_unreachable_origin_says_so() {
         let fx = Origin::new("unreachable").await;
         let work = PathBuf::from(&fx.repo.local_path);
-        git(&work, &["remote", "set-url", "origin", "/nonexistent/origin.git"]).await;
-        let err = check_target(&fx.repo, Some("main")).await.unwrap_err().to_string();
+        git(
+            &work,
+            &["remote", "set-url", "origin", "/nonexistent/origin.git"],
+        )
+        .await;
+        let err = check_target(&fx.repo, Some("main"))
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("cannot reach origin"), "{err}");
         assert!(!err.contains("has no branch"), "{err}");
     }
 
-    /// `slug` is what the pool reports: host first (see worktrees::pool).
+    /// A pool slug: host first.
     fn main_repo(slug: &str) -> MainRepo {
         MainRepo {
             local_path: format!("/home/u/worktrees/main/{slug}"),
@@ -408,18 +431,24 @@ mod tests {
     #[test]
     fn exact_slug_wins() {
         let repos = fixture();
-        let hit = resolve("gitlab.example.com/wiremind/platform/testack-deploy", &repos).unwrap();
-        assert_eq!(hit.slug, "gitlab.example.com/wiremind/platform/testack-deploy");
+        let hit = resolve(
+            "gitlab.example.com/wiremind/platform/testack-deploy",
+            &repos,
+        )
+        .unwrap();
+        assert_eq!(
+            hit.slug,
+            "gitlab.example.com/wiremind/platform/testack-deploy"
+        );
     }
 
-    /// The forge path, which is the name anyone actually knows — and the one the
-    /// ambiguity error tells an agent to pass. The pool prefixes the host, so this
-    /// is no longer the whole slug and has to resolve all the same.
     #[test]
     fn the_forge_path_resolves_without_its_host() {
         let repos = fixture();
         assert_eq!(
-            resolve("wiremind/platform/testack-deploy", &repos).unwrap().slug,
+            resolve("wiremind/platform/testack-deploy", &repos)
+                .unwrap()
+                .slug,
             "gitlab.example.com/wiremind/platform/testack-deploy"
         );
         assert_eq!(
@@ -446,15 +475,19 @@ mod tests {
         );
     }
 
-    /// The important failure: two repos share a project name, so guessing would
-    /// provision a branch on the wrong one.
     #[test]
     fn ambiguous_project_name_is_refused() {
         let repos = fixture();
         let err = resolve("testack-deploy", &repos).unwrap_err().to_string();
         assert!(err.contains("matches several"), "{err}");
-        assert!(err.contains("gitlab.example.com/wiremind/devops/testack-deploy"), "{err}");
-        assert!(err.contains("gitlab.example.com/wiremind/platform/testack-deploy"), "{err}");
+        assert!(
+            err.contains("gitlab.example.com/wiremind/devops/testack-deploy"),
+            "{err}"
+        );
+        assert!(
+            err.contains("gitlab.example.com/wiremind/platform/testack-deploy"),
+            "{err}"
+        );
     }
 
     #[test]

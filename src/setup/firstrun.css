@@ -1,5 +1,4 @@
-/* First run: the only screen a new machine sees, so it stands alone rather than
-   reusing the app chrome (there is no session, no repo, nothing to frame). */
+/* ── First run ── */
 
 .app-booting { background: var(--gl-background-color-default); }
 
@@ -13,7 +12,6 @@
   padding: var(--space-6) var(--space-4);
 }
 
-/* No header here, so reserve the band the traffic lights sit in. */
 [data-platform="macos"] .firstrun {
   padding-top: var(--wb-header-height);
 }
@@ -49,8 +47,6 @@
   color: var(--gl-text-color-muted);
 }
 
-/* Dependency list: present is quiet, missing is loud, and each line says what
-   breaks without it. */
 .firstrun-tools { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .firstrun-tools li {
   display: flex;
@@ -136,8 +132,6 @@
 }
 .firstrun-path { flex: 1; min-width: 0; font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); overflow-wrap: anywhere; }
 
-/* What the database said about itself. Shown before saving, because a wrong guess
-   about which property holds the status must be visible, not silent. */
 .firstrun-detected {
   margin: 0 0 var(--space-4);
   padding: var(--space-3);
@@ -154,7 +148,6 @@
   margin-bottom: var(--space-2);
 }
 .firstrun-detected-list + .firstrun-detected-head { margin-top: var(--space-3); }
-/* Two columns: label, value. */
 .firstrun-detected-list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -174,7 +167,6 @@
   color: var(--gl-text-color-disabled);
 }
 
-/* Offered on the row that reports the problem, so the fix is where the news is. */
 .firstrun-signin {
   margin-left: auto;
   padding: 1px var(--space-2);
@@ -188,7 +180,6 @@
 }
 .firstrun-signin:hover { background: color-mix(in srgb, var(--gl-color-blue-400) 24%, transparent); }
 
-/* A source is opt-in: the heading carries its own switch. */
 .firstrun-source-toggle {
   display: inline-flex;
   align-items: center;

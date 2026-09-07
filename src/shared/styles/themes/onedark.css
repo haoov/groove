@@ -1,5 +1,4 @@
-/* One Dark (Atom) — dark.  Atom One Dark palette mapped onto the palette slots.
-   Slot names stay catppuccin-flavoured; values hold One Dark's nearest hue. */
+/* One Dark (Atom), dark: One Dark hues in the palette slots */
 :root[data-theme='onedark'] {
   --ctp-rosewater: #e06c75;
   --ctp-flamingo:  #be5046;

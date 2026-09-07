@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forgeName, mrRef, mrSigil } from './forge';
 
-// One place for the sigil/name pair — these lock the mapping, "not github" = GitLab.
 describe('forge helpers', () => {
   it('maps each forge to its sigil and name', () => {
     expect(mrSigil('github')).toBe('#');

@@ -7,11 +7,11 @@ export type HomeRepo = { repo_id: string, project: string, worktree_id: string |
  */
 provisioned: boolean, 
 /**
- * Provisioned, but the directory is gone (deleted by hand / stale row).
+ * Provisioned, but the directory is gone.
  */
 missing: boolean, 
 /**
- * Working-tree changes (untracked files included, matching the sidebar chips).
+ * Working-tree changes, untracked files included.
  */
 modified: number, staged: number, conflicted: number, ahead: number, behind: number, 
 /**

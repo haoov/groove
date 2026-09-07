@@ -1,17 +1,11 @@
-//! Which issues are tasks, and the board fields they carry.
-//!
-//! Issue-first, not board-first: a task is an open issue assigned to you that
-//! somebody has put on a board. Asking that way needs no board configured, costs
-//! one query rather than one per board, and a new board starts working on its own.
+//! Which issues are tasks, and the board fields they carry. A task is an open
+//! issue assigned to the viewer that sits on a board.
 
 use crate::core::forge::api;
 
-/// A board with more items than this is paginated; the cap stops one runaway
-/// board from stalling the whole queue.
 const MAX_PAGES: usize = 20;
 
-/// The per-issue selection both queries share. One fragment, formatted into
-/// each, so the search path and the single-issue path cannot drift apart.
+/// The per-issue selection shared by both queries.
 const ISSUE_FIELDS: &str = r#"
         number title url body
         repository { name owner { login } }
@@ -76,10 +70,9 @@ query($owner: String!, $repo: String!, $number: Int!) {{
     )
 }
 
-/// One board item that is a task: an open issue assigned to the viewer.
+/// One board item that is a task.
 #[derive(Clone)]
 pub(super) struct BoardItem {
-    /// Addresses a field write, together with `project_id`.
     pub item_id: String,
     pub project_id: String,
     pub board: String,
@@ -91,7 +84,6 @@ pub(super) struct BoardItem {
     pub body: String,
     pub labels: Vec<String>,
     pub assignees: Vec<String>,
-    /// Field name -> value, as the board reports it.
     pub fields: Vec<FieldValue>,
 }
 
@@ -119,7 +111,10 @@ fn field_value(node: &serde_json::Value) -> Option<FieldValue> {
         }
         "ProjectV2ItemFieldNumberValue" => {
             let n = node["number"].as_f64();
-            (serde_json::json!(n), n.map(|v| v.to_string()).unwrap_or_default())
+            (
+                serde_json::json!(n),
+                n.map(|v| v.to_string()).unwrap_or_default(),
+            )
         }
         "ProjectV2ItemFieldDateValue" => {
             let d = node["date"].as_str().unwrap_or_default().to_string();
@@ -127,23 +122,21 @@ fn field_value(node: &serde_json::Value) -> Option<FieldValue> {
         }
         _ => return None,
     };
-    Some(FieldValue { name, value, display })
+    Some(FieldValue {
+        name,
+        value,
+        display,
+    })
 }
 
-/// Every task: an open issue assigned to you that sits on some board.
-///
-/// An issue on no board is deliberately not a task — that is the whole filter, and
-/// it is what "has a project" meant. When an issue is on several, the first one
-/// GitHub returns supplies its fields; the board is recorded so the choice is
-/// visible rather than silently flipping between syncs.
+/// Every task, fetched from GitHub and cached.
 pub(super) async fn assigned_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     let items = fetch_assigned(host).await?;
     super::cache::put_issues(&items);
     Ok(items)
 }
 
-/// The same list, reused if it was fetched moments ago. For single-task work,
-/// where re-running the whole search to pick one item out is the wrong trade.
+/// The same list from the cache, else fetched.
 pub(super) async fn cached_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     match super::cache::issues() {
         Some(items) => Ok(items),
@@ -151,29 +144,49 @@ pub(super) async fn cached_issues(host: &str) -> anyhow::Result<Vec<BoardItem>> 
     }
 }
 
-/// An issue node into a task, or `None` when it sits on no board — an issue off
-/// every board is deliberately not a task. When it is on several, the first one
-/// GitHub returns supplies the fields; the board is recorded so the choice is
-/// visible rather than silently flipping between syncs.
+/// An issue node into a task, or `None` when it sits on no board. On several
+/// boards, the first one GitHub returns supplies the fields.
 fn board_item(issue: &serde_json::Value) -> Option<BoardItem> {
-    let item = issue["projectItems"]["nodes"].as_array().and_then(|n| n.first())?;
+    let item = issue["projectItems"]["nodes"]
+        .as_array()
+        .and_then(|n| n.first())?;
     Some(BoardItem {
         item_id: item["id"].as_str().unwrap_or_default().to_string(),
-        project_id: item["project"]["id"].as_str().unwrap_or_default().to_string(),
-        board: item["project"]["title"].as_str().unwrap_or_default().to_string(),
-        owner: issue["repository"]["owner"]["login"].as_str().unwrap_or_default().to_string(),
-        repo: issue["repository"]["name"].as_str().unwrap_or_default().to_string(),
+        project_id: item["project"]["id"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        board: item["project"]["title"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        owner: issue["repository"]["owner"]["login"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        repo: issue["repository"]["name"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
         number: issue["number"].as_i64().unwrap_or_default(),
         title: issue["title"].as_str().unwrap_or_default().to_string(),
         url: issue["url"].as_str().unwrap_or_default().to_string(),
         body: issue["body"].as_str().unwrap_or_default().to_string(),
         labels: issue["labels"]["nodes"]
             .as_array()
-            .map(|l| l.iter().filter_map(|n| n["name"].as_str().map(str::to_string)).collect())
+            .map(|l| {
+                l.iter()
+                    .filter_map(|n| n["name"].as_str().map(str::to_string))
+                    .collect()
+            })
             .unwrap_or_default(),
         assignees: issue["assignees"]["nodes"]
             .as_array()
-            .map(|a| a.iter().filter_map(|n| n["login"].as_str().map(str::to_string)).collect())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|n| n["login"].as_str().map(str::to_string))
+                    .collect()
+            })
             .unwrap_or_default(),
         fields: item["fieldValues"]["nodes"]
             .as_array()
@@ -188,11 +201,16 @@ async fn fetch_assigned(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     let query = assigned_query();
 
     for _ in 0..MAX_PAGES {
-        let res =
-            api::github_graphql(host, &query, serde_json::json!({ "after": after })).await?;
+        let res = api::github_graphql(host, &query, serde_json::json!({ "after": after })).await?;
         let search = &res["data"]["search"];
 
-        out.extend(search["nodes"].as_array().unwrap_or(&vec![]).iter().filter_map(board_item));
+        out.extend(
+            search["nodes"]
+                .as_array()
+                .unwrap_or(&vec![])
+                .iter()
+                .filter_map(board_item),
+        );
 
         if !search["pageInfo"]["hasNextPage"].as_bool().unwrap_or(false) {
             break;
@@ -203,11 +221,7 @@ async fn fetch_assigned(host: &str) -> anyhow::Result<Vec<BoardItem>> {
     Ok(out)
 }
 
-/// One issue by address, on a board or not — closed and unassigned included.
-///
-/// The queue's search only returns OPEN issues ASSIGNED TO YOU, so a task whose
-/// issue was closed or reassigned vanished from it and every per-task operation
-/// failed for a session already open. `None` means the issue is on no board.
+/// One issue by address, closed and unassigned included. `None` when it is on no board.
 pub(super) async fn fetch_item(
     host: &str,
     owner: &str,
@@ -231,7 +245,7 @@ const ASSIGNED_COUNT: &str = r#"
 query { search(query: "assignee:@me is:issue is:open", type: ISSUE, first: 1) { issueCount } }
 "#;
 
-/// Every open issue assigned to you, boarded or not.
+/// Count of open issues assigned to the viewer, boarded or not.
 pub(super) async fn assigned_count(host: &str) -> anyhow::Result<i64> {
     let res = api::github_graphql(host, ASSIGNED_COUNT, serde_json::json!({})).await?;
     Ok(res["data"]["search"]["issueCount"].as_i64().unwrap_or(0))
@@ -239,7 +253,7 @@ pub(super) async fn assigned_count(host: &str) -> anyhow::Result<i64> {
 
 const VIEWER: &str = r#"query { viewer { login } }"#;
 
-/// The signed-in login, which issue creation needs so the queue can find it again.
+/// The signed-in login.
 pub(super) async fn viewer_login(host: &str) -> anyhow::Result<String> {
     let res = api::github_graphql(host, VIEWER, serde_json::json!({})).await?;
     res["data"]["viewer"]["login"]
@@ -265,7 +279,6 @@ mod tests {
         })
     }
 
-    /// The parse both the search path and the single-issue fetch share.
     #[test]
     fn an_issue_on_a_board_becomes_a_task() {
         let item = board_item(&issue(serde_json::json!([{
@@ -277,12 +290,14 @@ mod tests {
             }] },
         }])))
         .expect("on a board = a task");
-        assert_eq!((item.owner.as_str(), item.repo.as_str(), item.number), ("acme", "api", 42));
+        assert_eq!(
+            (item.owner.as_str(), item.repo.as_str(), item.number),
+            ("acme", "api", 42)
+        );
         assert_eq!(item.board, "Platform");
         assert_eq!(item.fields[0].display, "In progress");
     }
 
-    /// An issue off every board is not a task — the whole filter.
     #[test]
     fn a_boardless_issue_is_not_a_task() {
         assert!(board_item(&issue(serde_json::json!([]))).is_none());

@@ -2,16 +2,7 @@ import type { Hunk, DiffLine } from '../ipc/ipc';
 
 /**
  * The unshown stretches of a diff, and how to fill one in.
- *
- * Pure on purpose: this is line arithmetic, and getting it wrong moves every
- * annotation below the gap. Kept out of the editor so it can be tested directly.
- *
- * The one fact that makes this safe: `DiffLine.num` is the NEW-side line number for
- * `ctx` and `add` (the backend only advances it for `+` and ` ` lines — see
- * git_engine/diff.rs). So a gap is a range of new-side lines, filling it needs
- * nothing but those lines, and every line that already existed keeps its number.
- * `del` lines carry the new-side number of the line they were removed after, which
- * is why the bounds below use the MAX num in a hunk rather than its last line.
+ * `DiffLine.num` is the new-side number; a `del` line carries the number of the line it follows.
  */
 
 /** A stretch of the new-side file that the diff does not show. */
@@ -31,14 +22,8 @@ const firstNum = (h: Hunk): number =>
 const lastNum = (h: Hunk): number =>
   Math.max(...h.lines.map((l) => l.num));
 
-/**
- * Every gap in the diff: above the first hunk, between each pair, and after the
- * last (only when `total` — the file's line count — is known).
- *
- * A hunk with no new-side line at all (a whole-file deletion) occupies no new-side
- * range, so it is skipped. `beforeHunk` still indexes the ORIGINAL array — callers
- * place the widget and splice the lines by that index.
- */
+/** Every gap in the diff: above the first hunk, between each pair, and after the last when `total` is known.
+ *  Hunks with no new-side line are skipped; `beforeHunk` indexes the original array. */
 export function gapsFor(hunks: Hunk[], total?: number): Gap[] {
   const idx = hunks
     .map((h, i) => (h.lines.some((l) => l.type !== 'del') ? i : -1))
@@ -67,21 +52,13 @@ export function stepRange(gap: Gap, whole: boolean): { start: number; end: numbe
   if (whole || gap.endLine - gap.startLine + 1 <= GAP_STEP) {
     return { start: gap.startLine, end: gap.endLine };
   }
-  // The gap at the top of the file grows UPWARD from the hunk below it, so the
-  // lines nearest the change arrive first — as GitHub expands towards the diff.
+  // The gap at the top of the file grows upward from the hunk below it.
   return gap.startLine === 1
     ? { start: gap.endLine - GAP_STEP + 1, end: gap.endLine }
     : { start: gap.startLine, end: gap.startLine + GAP_STEP - 1 };
 }
 
-/**
- * Splice fetched context into the hunk list.
- *
- * The result is still just hunks, so everything downstream — the document builder,
- * the line map, the decorations, the comment gutter — keeps working untouched. When
- * the fill closes a gap completely the two hunks become one; otherwise the lines
- * attach to whichever hunk they now touch.
- */
+/** Splices fetched context into the hunk list. A fill that closes a gap merges the two hunks. */
 export function mergeExpansion(
   hunks: Hunk[],
   gap: Gap,
@@ -100,8 +77,7 @@ export function mergeExpansion(
   const above = gap.beforeHunk - 1;
   const below = gap.beforeHunk;
 
-  // Prefer appending to the hunk above (it keeps its header, which the widget
-  // placement keys off); the leading gap has no hunk above it.
+  // Prefer the hunk above; the leading gap has none.
   if (above >= 0 && out[above]) {
     out[above].lines.push(...filled);
   } else if (out[below]) {
@@ -110,8 +86,7 @@ export function mergeExpansion(
     return hunks;
   }
 
-  // Closed the gap? Fold the two hunks together so no separator is drawn between
-  // lines that are now contiguous.
+  // A closed gap folds the two hunks together.
   const closed = startLine === gap.startLine && startLine + lines.length - 1 === gap.endLine;
   if (closed && above >= 0 && out[below]) {
     out[above].lines.push(...out[below].lines);

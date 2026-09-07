@@ -24,7 +24,7 @@ import { applyTheme, applyFontSize, applyFontFamily } from '../shared/lib/theme'
 import { isMac } from '../shared/lib/platform';
 import { DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config } from '../shared/ipc/ipc';
 
-/** Refresh the review queue on startup and every ~5 min (rail badge + strip). */
+/** Refreshes the review queue on startup and every ~5 min. */
 const REVIEW_POLL_MS = 5 * 60 * 1000;
 function useReviewQueue() {
   const refreshReviewQueue = useStore((s) => s.refreshReviewQueue);
@@ -35,14 +35,7 @@ function useReviewQueue() {
   }, [refreshReviewQueue]);
 }
 
-/**
- * Keep the backend's active task pointed at the focused session — the app's own
- * notion of focus, which a conversion or a finish has to move. MCP tools never
- * read it: an agent's task is bound to its connection, so no tool call can follow
- * what the user is looking at. Opening a task is not the only way the focus
- * changes — clicking a session tab, closing one, or an explorer→task conversion
- * all move it. Null when no session is open.
- */
+/** Keeps the backend's active task pointed at the focused session. Null when no session is open. */
 function useActiveTaskSync() {
   const activeShortId = useStore((s) =>
     s.activeSessionId ? s.sessions[s.activeSessionId]?.task?.short_id ?? null : null,
@@ -52,12 +45,7 @@ function useActiveTaskSync() {
   }, [activeShortId]);
 }
 
-/**
- * Refresh the Home snapshot whenever Home becomes visible or the set of open
- * sessions changes. Edits and landed git ops refresh it too (useIpc), and both
- * paths no-op while Home isn't rendered — a workspace or settings — since its
- * git calls would be pure waste.
- */
+/** Refreshes the Home snapshot when Home becomes visible or the set of open sessions changes. */
 function useHomeSnapshot() {
   const visible = useStore((s) => s.view === 'home');
   const sessionOrder = useStore((s) => s.sessionOrder);
@@ -80,21 +68,17 @@ export default function App() {
   const loadSkills = useStore((s) => s.loadSkills);
   const setLastError = useStore((s) => s.setLastError);
   const hydrateAgentActivity = useStore((s) => s.hydrateAgentActivity);
-  // Mounted once here rather than twice with local state, so Alt+R and both
-  // buttons open the same instance.
   const addRepoOpen = useStore((s) => s.addRepoOpen);
   const addWorktreeOpen = useStore((s) => s.addWorktreeOpen);
   const setAddRepoOpen = useStore((s) => s.setAddRepoOpen);
   const setAddWorktreeOpen = useStore((s) => s.setAddWorktreeOpen);
 
-  // Agent state lives in memory on the backend, so after a reload the app knows
-  // nothing until the next hook fires — ask once for whatever is already known.
+  // Hydrate agent state once after a reload.
   useEffect(() => {
     hydrateAgentActivity();
   }, [hydrateAgentActivity]);
 
-  // Three states, not two: loading, configured, and never-configured. Without the
-  // third, a new machine showed an empty Home and a sync error in the corner.
+  // Three states: loading, configured, never-configured.
   const [configured, setConfigured] = useState<boolean | null>(null);
 
   const applyConfig = useCallback((cfg: Config) => {
@@ -102,7 +86,6 @@ export default function App() {
     applyFontSize(cfg.ui?.font_size ?? DEFAULT_FONT_SIZE);
     applyFontFamily(cfg.ui?.font_family);
     applyTheme(cfg.ui?.theme ?? DEFAULT_THEME);
-    // After the config, which decides where the user's own skills live.
     void loadSkills();
     setConfigured(true);
   }, [setConfig, loadSkills]);
@@ -114,8 +97,7 @@ export default function App() {
         applyConfig(cfg);
       })
       .catch((e) => {
-        // An unreadable config is a setup problem, so it goes to the setup screen
-        // (which prints the path and the parse error) rather than a toast.
+        // An unreadable config goes to the setup screen, not a toast.
         setConfigured(false);
         setLastError(`Failed to load config: ${String(e)}`);
       });
@@ -130,21 +112,14 @@ export default function App() {
       <div className="app-body">
         <ActivityRail />
         <main className="app-main">
-          {/* Home (shown when no session is focused): reviews / tasks / explorers. */}
           {view === 'home' && <Home />}
-          {/* Preferences: the group rail and one group's panel. */}
           {view === 'settings' && <SettingsView />}
-          {/* Active session workspace — kept mounted across views so
-              background sessions' terminals persist. */}
+          {/* Kept mounted across views: background sessions' terminals live here. */}
           <SessionWorkspaces hidden={view !== 'workspace'} />
         </main>
-        {/* The agent's own column, between the work and the session list, so the
-            two right-hand columns read as one edge. It addresses the focused
-            session; Home is a pure dashboard — no agent there. */}
         {view === 'workspace' && <AgentConsole />}
       </div>
-      {/* A scratch shell on Home (session-less — it owns its PTY). In a
-          workspace the panes own the terminals, so this is not mounted there. */}
+      {/* A session-less scratch shell on Home; it owns its PTY. */}
       {view === 'home' && <TerminalConsole />}
       <StatusBar />
 
@@ -158,8 +133,7 @@ export default function App() {
       {addWorktreeOpen && <AddWorktreeModal onClose={() => setAddWorktreeOpen(false)} />}
       <Toasts />
 
-      {/* Frameless-window resize grips (must be last so they sit on top). Not on
-          macOS: the window is decorated, and these would cover the traffic lights. */}
+      {/* Resize grips. Keep them last so they sit on top. Not on macOS: the window is decorated. */}
       {!isMac() && <ResizeHandles />}
     </div>
   );

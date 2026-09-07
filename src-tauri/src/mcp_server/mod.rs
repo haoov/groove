@@ -27,11 +27,9 @@ pub(crate) mod auth;
 mod tools;
 
 use tools::dispatch;
-/// Crate-visible for the skills test.
 pub(crate) use tools::mcp_tool_definitions;
 
-/// The loopback endpoint, defined once. `127.0.0.1`, not `localhost` — that can
-/// resolve to `::1`, which this does not bind.
+/// Keep `127.0.0.1`, not `localhost`: `localhost` can resolve to `::1`, which is not bound.
 pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 27413;
 
@@ -52,7 +50,7 @@ pub fn hook_url(task_id: &str) -> String {
     format!("http://{HOST}:{PORT}/hook?task={task_id}")
 }
 
-/// Lets the status bar display the real endpoint instead of a stale copy of it.
+/// The endpoint, for the status bar.
 #[tauri::command]
 pub fn get_mcp_endpoint() -> String {
     endpoint()
@@ -84,8 +82,7 @@ impl Drop for SseReceiver {
 
 // ─── Shared connection state ──────────────────────────────────────────────────
 
-/// One live SSE connection and the task it is bound to for life. A connection
-/// naming no task is refused at the handshake.
+/// One live SSE connection and the task it is bound to.
 struct Connection {
     tx: mpsc::Sender<Event>,
     task: String,
@@ -113,8 +110,7 @@ impl McpState {
             .and_then(|map| map.get(mcp_session).map(|c| c.task.clone()))
     }
 
-    /// Re-point a connection (used when an explorer converts into a real task,
-    /// which changes the id underneath the agent).
+    /// Re-point a connection to another task id.
     fn rebind(&self, mcp_session: &str, task_id: &str) {
         if let Ok(mut map) = self.connections.lock() {
             if let Some(conn) = map.get_mut(mcp_session) {
@@ -142,8 +138,7 @@ pub async fn start(
         connections: Arc::new(Mutex::new(HashMap::new())),
     };
 
-    // One loopback server: MCP tools here, hook callbacks in `agent_hooks`. Every
-    // route requires the launch token.
+    // MCP routes plus the hook routes from `agent_hooks`; every route requires the launch token.
     let app = Router::new()
         .route("/sse", get(sse_handler))
         .route("/message", post(message_handler))
@@ -152,8 +147,6 @@ pub async fn start(
         .layer(axum::middleware::from_fn(auth::require_auth));
 
     let addr: SocketAddr = endpoint().parse()?;
-    // A taken port makes every tool call fail with no visible cause — usually a
-    // second Groove instance.
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,
         Err(e) => {
@@ -185,11 +178,12 @@ struct SseQuery {
     task: Option<String>,
 }
 
-/// Refused at connect, so a misconfigured client fails once.
+/// The task a connection is bound to. Missing or empty is refused.
 fn bound_task(q: SseQuery) -> Result<String, (StatusCode, &'static str)> {
-    q.task
-        .filter(|t| !t.is_empty())
-        .ok_or((StatusCode::BAD_REQUEST, "an MCP connection needs ?task=<short_id>"))
+    q.task.filter(|t| !t.is_empty()).ok_or((
+        StatusCode::BAD_REQUEST,
+        "an MCP connection needs ?task=<short_id>",
+    ))
 }
 
 async fn sse_handler(
@@ -236,8 +230,7 @@ async fn message_handler(
         Err(_) => return StatusCode::BAD_REQUEST,
     };
 
-    // Notifications carry no id (a JSON-RPC request must not use a null one
-    // either) — fire and forget, no response needed.
+    // Notifications carry no id and get no response.
     if request.get("id").is_none_or(|v| v.is_null()) {
         return StatusCode::ACCEPTED;
     }
@@ -260,12 +253,10 @@ async fn message_handler(
     StatusCode::ACCEPTED
 }
 
-/// How often a blocked call reports that it is still blocked. The client's idle
-/// timeout is 5 minutes on SSE, so this leaves several missed ticks of margin.
+/// Progress interval for a blocked call. Keep it well under the client's 5-minute SSE idle timeout.
 const PROGRESS_EVERY: std::time::Duration = std::time::Duration::from_secs(60);
 
-/// Keep a blocked tool call alive: progress notifications reset the client's idle
-/// timeout while a human decides. Only when the caller supplied a progressToken.
+/// Send progress notifications while a tool call is blocked on the user.
 fn spawn_progress(
     state: &McpState,
     mcp_session: &str,
@@ -291,7 +282,6 @@ fn spawn_progress(
                     "message": "still waiting for the user to decide in Groove",
                 }
             });
-            // A closed stream means the agent is gone; stop rather than spin.
             if tx
                 .send(Event::default().event("message").data(note.to_string()))
                 .await
@@ -312,7 +302,10 @@ async fn handle_jsonrpc(
 ) -> serde_json::Value {
     let id = request["id"].clone();
     let method = request["method"].as_str().unwrap_or("").to_string();
-    let params = request.get("params").cloned().unwrap_or(serde_json::json!({}));
+    let params = request
+        .get("params")
+        .cloned()
+        .unwrap_or(serde_json::json!({}));
 
     match method.as_str() {
         "initialize" => serde_json::json!({
@@ -334,7 +327,6 @@ async fn handle_jsonrpc(
         "tools/call" => {
             let name = params["name"].as_str().unwrap_or("").to_string();
             let args = params["arguments"].clone();
-            // A gated write can sit on a human for minutes; say we are alive.
             let token = params["_meta"]["progressToken"].clone();
             let beat = (!token.is_null()).then(|| spawn_progress(state, mcp_session, token));
             let outcome = dispatch(&name, args, state, mcp_session).await;
@@ -373,8 +365,24 @@ mod tests {
 
     #[test]
     fn a_connection_that_names_no_task_is_refused() {
-        assert_eq!(bound_task(SseQuery { task: None }).unwrap_err().0, StatusCode::BAD_REQUEST);
-        assert_eq!(bound_task(SseQuery { task: Some(String::new()) }).unwrap_err().0, StatusCode::BAD_REQUEST);
-        assert_eq!(bound_task(SseQuery { task: Some("gh-groove-3".into()) }).unwrap(), "gh-groove-3");
+        assert_eq!(
+            bound_task(SseQuery { task: None }).unwrap_err().0,
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            bound_task(SseQuery {
+                task: Some(String::new())
+            })
+            .unwrap_err()
+            .0,
+            StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            bound_task(SseQuery {
+                task: Some("gh-groove-3".into())
+            })
+            .unwrap(),
+            "gh-groove-3"
+        );
     }
 }

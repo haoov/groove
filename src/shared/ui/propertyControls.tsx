@@ -6,16 +6,8 @@ import { priorityRank } from '../lib/taskStatus';
 import type { PropertySchema, PropertyValue, PropertyOption } from '../ipc/ipc';
 
 /**
- * The property controls themselves — pills, chip rows, popovers.
- *
- * Extracted from PropertyStrip so the new-task modal edits properties with the
- * SAME controls it will be edited with afterwards on the overview. Two copies of
- * this would drift, and a task filed through a different-looking editor is exactly
- * the kind of seam that makes an app feel assembled rather than designed.
- *
- * Nothing here talks to a task source: every control takes a value and reports a
- * new one. The overview writes each change through immediately; the modal holds
- * them until the task exists.
+ * The property controls: pills, chip rows, popovers.
+ * Every control takes a value and reports a new one; nothing here talks to a task source.
  */
 
 const RELATION_DEBOUNCE_MS = 800;
@@ -30,7 +22,7 @@ export function hasValue(v: PropertyValue | undefined): boolean {
   return true;
 }
 
-/** Unit a number wears so the pill doesn't need a separate label. */
+/** Unit suffix for a number pill. */
 function unitFor(name: string): string {
   if (/hours?|time/i.test(name)) return 'h';
   if (/days?/i.test(name)) return 'd';
@@ -49,7 +41,7 @@ function shortDate(iso: string): string {
 
 export type Row = { prop: PropertySchema; current?: PropertyValue };
 
-/** Build the `Row` a control expects from a plain draft value (modal path). */
+/** Builds the `Row` a control expects from a plain draft value. */
 export function draftRow(prop: PropertySchema, value: unknown): Row {
   return {
     prop,
@@ -177,7 +169,7 @@ export function MultiRow({
   onChange: (v: string[]) => void;
   shortId: string;
   onError: (e: string) => void;
-  /** 0 reports every change straight away — right when nothing is being written yet. */
+  /** 0 reports every change straight away. */
   debounce?: number;
 }) {
   const { prop, current } = row;
@@ -191,8 +183,7 @@ export function MultiRow({
   const box = useRef<HTMLSpanElement | null>(null);
   useOutsideClose(box, open, () => setOpen(false));
 
-  // Re-seed the draft when the stored value changes — adjusted during render
-  // rather than in an effect, which would render once with the stale draft.
+  // Re-seed the draft during render, not in an effect, when the stored value changes.
   const selectedKey = selected.join(',');
   const [seededKey, setSeededKey] = useState(selectedKey);
   if (seededKey !== selectedKey) {
@@ -209,7 +200,7 @@ export function MultiRow({
       .catch((e) => onError(String(e)));
   }, [options, prop.kind, prop.relation_db, prop.name, shortId, onError]);
 
-  /** One write per burst of ticking, not one per tick — sources rate-limit. */
+  /** One write per burst, not one per tick. */
   const stage = (ids: string[]) => {
     setDraft(ids);
     if (debounce === 0) return onChange(ids);
@@ -253,9 +244,7 @@ export function MultiRow({
   );
 }
 
-/** A property as a labelled column (the overview's mockup strip): the name as a
- *  small uppercase key over an editable value that opens the same popover the
- *  pills use. Multi-value kinds join their titles; read-only kinds show text. */
+/** A property as a labelled column: the name over an editable value that opens the pill popover. */
 export function PropField({
   row, shortId, busy, onChange, onError, debounce = RELATION_DEBOUNCE_MS,
 }: {
@@ -275,7 +264,7 @@ export function PropField({
   const box = useRef<HTMLSpanElement | null>(null);
   useOutsideClose(box, open, () => setOpen(false));
 
-  // Multi-value state (relation / multi_select): fetched options + debounced write.
+  // Multi-value state: fetched options + debounced write.
   const [options, setOptions] = useState<PropertyOption[] | null>(
     prop.kind === 'multi_select' ? prop.options : null,
   );
@@ -305,8 +294,7 @@ export function PropField({
 
   let display: string;
   if (isMulti) {
-    // Before the options are fetched, titleOf can only echo the id, so fall back
-    // to the backend-resolved display (the titles came with the schema).
+    // Before the options are fetched, fall back to the backend-resolved display.
     const joined = draft.map(titleOf).join(', ');
     display = draft.length ? (options ? joined : (current?.display || joined)) : '—';
   }
@@ -318,12 +306,12 @@ export function PropField({
 
   const label = <span className="prop-k">{prop.name}</span>;
 
-  // Read-only: a formula/rollup/people field the app can't edit — just show it.
+  // Read-only kinds only display.
   if (!canEdit) {
     return <div className="prop">{label}<span className="prop-v">{display}</span></div>;
   }
 
-  // Checkbox toggles in place; no popover needed.
+  // Checkbox toggles in place.
   if (prop.kind === 'checkbox') {
     return (
       <div className="prop">

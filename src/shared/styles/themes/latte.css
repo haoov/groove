@@ -1,5 +1,4 @@
-/* Catppuccin Latte — light (DEFAULT theme; applies with or without data-theme).
-   Palette + light-mode polarity overrides. */
+/* Catppuccin Latte (light), default theme */
 :root,
 :root[data-theme='latte'] {
   --ctp-rosewater: #dc8a78;
@@ -29,8 +28,8 @@
   --ctp-mantle:    #e6e9ef;
   --ctp-crust:     #dce0e8;
 
-  /* ── light-mode polarity ──────────────────────────────────────────────── */
-  --gl-elevate: 0, 0, 0;                /* elevation tints darken instead of lighten */
+  /* ── Light-mode polarity ── */
+  --gl-elevate: 0, 0, 0;                /* elevation tints darken */
   --gl-selection-text: var(--ctp-text);
   --gl-backdrop: rgba(40, 42, 54, 0.30);
   --gl-panel-header-bg: rgba(0, 0, 0, 0.035);
@@ -38,7 +37,7 @@
   --shadow-modal: 0 16px 44px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05) inset;
   --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.10);
 
-  /* terminal black/white ramp flips for a light background */
+  /* terminal black/white ramp, flipped */
   --term-black:        var(--ctp-subtext1);
   --term-bright-black: var(--ctp-subtext0);
   --term-white:        var(--ctp-surface1);

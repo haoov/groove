@@ -1,6 +1,5 @@
-//! The op catalog: every approval-gated write's name AND its executor, side by
-//! side. Adding an op is one constant plus one `execute` arm here — the frontend
-//! renders it by the same name (`src/shared/ipc/ops.ts`, checked by the mirror test).
+//! The op catalog: every approval-gated write's name and its executor. The
+//! frontend mirror is `src/shared/ipc/ops.ts`, checked by the mirror test.
 
 use sqlx::SqlitePool;
 use tauri::AppHandle;
@@ -16,7 +15,7 @@ pub const MR_CREATE: &str = "mr.create";
 pub const MR_UPDATE: &str = "mr.update";
 pub const MR_CLOSE: &str = "mr.close";
 
-/// Set any editable task property (agent-initiated; the UI writes directly).
+/// Set any editable task property.
 pub const TASK_PROPERTY: &str = "task.property";
 /// Add hours to the task's hours field.
 pub const TASK_HOURS: &str = "task.hours";
@@ -34,8 +33,7 @@ pub const TASK_CREATE_FROM_EXPLORER: &str = "task.create_from_explorer";
 /// Mark the task done at its source, then tear the session down — every worktree goes.
 pub const TASK_FINISH: &str = "task.finish";
 
-/// Write one of the user's skills. Gated although local: a skill is an instruction
-/// the agent later invokes on its own.
+/// Write one of the user's skills.
 pub const SKILL_SAVE: &str = "skill.save";
 
 /// Every op, for the mirror test below.
@@ -61,12 +59,12 @@ const ALL: [&str; 18] = [
     SKILL_SAVE,
 ];
 
-/// The success payload every op returns. Never a bare null — the model reads that as failure.
+/// The success payload every op returns. Never a bare null.
 fn op_ok(op: &str, message: impl Into<String>) -> serde_json::Value {
     serde_json::json!({ "ok": true, "op": op, "message": message.into() })
 }
 
-/// Repo name for messages; the path fallback covers rows queued before payloads carried it.
+/// Repo name for messages, from `repo` or the worktree path.
 fn repo_of(payload: &serde_json::Value) -> String {
     if let Some(repo) = payload["repo"].as_str().filter(|s| !s.is_empty()) {
         return repo.to_string();
@@ -80,8 +78,7 @@ fn repo_of(payload: &serde_json::Value) -> String {
         .to_string()
 }
 
-/// `before`/`after` are null for a source with no hours field — not a failure; the
-/// local ledger is the record there.
+/// `before`/`after` are null for a source with no hours field.
 fn hours_message(out: &serde_json::Value) -> String {
     match (out["before"].as_f64(), out["after"].as_f64()) {
         (Some(before), Some(after)) => format!("Hours spent {before} → {after}"),
@@ -114,22 +111,30 @@ pub(super) async fn execute(
                 .unwrap_or("")
                 .to_string();
             crate::worktrees::commit_impl(payload, pool).await?;
-            Ok(op_ok(op_type, format!("Committed \"{subject}\" on {branch} in {repo}")))
+            Ok(op_ok(
+                op_type,
+                format!("Committed \"{subject}\" on {branch} in {repo}"),
+            ))
         }
         GIT_PUSH => {
             let (repo, branch) = (repo_of(&payload), branch_of(&payload));
             crate::worktrees::push_impl(payload).await?;
-            Ok(op_ok(op_type, format!("Pushed {branch} to origin in {repo}")))
+            Ok(op_ok(
+                op_type,
+                format!("Pushed {branch} to origin in {repo}"),
+            ))
         }
         GIT_PULL => {
             let (repo, branch) = (repo_of(&payload), branch_of(&payload));
             crate::worktrees::pull_impl(payload).await?;
-            Ok(op_ok(op_type, format!("Pulled origin/{branch} into {repo}")))
+            Ok(op_ok(
+                op_type,
+                format!("Pulled origin/{branch} into {repo}"),
+            ))
         }
         GIT_REBASE => {
             let (repo, branch) = (repo_of(&payload), branch_of(&payload));
-            // rebase_impl already reports status/files (the UI keys on
-            // `status == "conflict"`); enrich it rather than replace it.
+            // Keep rebase_impl's `status`/`files`: the UI keys on `status == "conflict"`.
             let mut v = crate::worktrees::rebase_impl(payload).await?;
             let conflicted = v["status"].as_str() == Some("conflict");
             let files = v["files"].as_array().map(|a| a.len()).unwrap_or(0);
@@ -149,20 +154,28 @@ pub(super) async fn execute(
         }
         GIT_DISCARD => {
             let repo = repo_of(&payload);
-            let file = payload["file_path"].as_str().unwrap_or("the file").to_string();
+            let file = payload["file_path"]
+                .as_str()
+                .unwrap_or("the file")
+                .to_string();
             crate::worktrees::discard_impl(payload).await?;
-            Ok(op_ok(op_type, format!("Discarded local changes in {file} ({repo})")))
+            Ok(op_ok(
+                op_type,
+                format!("Discarded local changes in {file} ({repo})"),
+            ))
         }
         GIT_DISCARD_ALL => {
             let repo = repo_of(&payload);
             crate::worktrees::discard_all_impl(payload).await?;
-            Ok(op_ok(op_type, format!("Discarded ALL local changes in {repo}")))
+            Ok(op_ok(
+                op_type,
+                format!("Discarded ALL local changes in {repo}"),
+            ))
         }
         MR_CREATE => {
             let branch = branch_of(&payload);
             let worktree_id = payload["worktree_id"].as_str().unwrap_or("").to_string();
             crate::forge::create_mr_impl(payload, pool).await?;
-            // Hand back the MR just recorded.
             let latest = crate::core::db::store::mrs::latest_for_worktree(pool, &worktree_id)
                 .await
                 .ok()
@@ -192,11 +205,14 @@ pub(super) async fn execute(
             let out = crate::provider::update_property_impl(payload, pool).await?;
             let prop = out["property"].as_str().unwrap_or("property").to_string();
             let value = out["value"].as_str().unwrap_or("").to_string();
-            Ok(op_ok(op_type, if value.is_empty() {
-                format!("Cleared {prop}")
-            } else {
-                format!("{prop} set to \"{value}\"")
-            }))
+            Ok(op_ok(
+                op_type,
+                if value.is_empty() {
+                    format!("Cleared {prop}")
+                } else {
+                    format!("{prop} set to \"{value}\"")
+                },
+            ))
         }
         TASK_HOURS => {
             let out = crate::task_manager::log_hours_impl(payload, pool).await?;
@@ -208,24 +224,26 @@ pub(super) async fn execute(
         }
         TASK_CREATE => crate::provider::create_task_impl(payload, pool).await,
         TASK_ADD_REPO => {
-            // Local git and DB work only. The handle is for the workspace_ready
-            // refresh the add ends with.
+            // `handle` drives the workspace_ready refresh.
             crate::task_manager::add_repo_impl(payload, pool, handle).await
         }
-        TASK_ADD_WORKTREE => {
-            crate::task_manager::add_worktree_impl(payload, pool, handle).await
-        }
+        TASK_ADD_WORKTREE => crate::task_manager::add_worktree_impl(payload, pool, handle).await,
         TASK_FINISH => {
-            let task = payload["task_id"].as_str().unwrap_or("the task").to_string();
+            let task = payload["task_id"]
+                .as_str()
+                .unwrap_or("the task")
+                .to_string();
             crate::task_manager::finish_task_from_payload(payload, pool, handle).await?;
-            Ok(op_ok(op_type, format!("{task} marked done and its workspace torn down")))
+            Ok(op_ok(
+                op_type,
+                format!("{task} marked done and its workspace torn down"),
+            ))
         }
         SKILL_SAVE => {
             let name = payload["name"].as_str().unwrap_or("").to_string();
             let report = crate::skills::save_user_skill_impl(payload).await?;
             let mut v = op_ok(
                 op_type,
-                // The skill loads on the agent's next start, not now.
                 format!("Wrote user:{name} — it loads when the agent restarts, not before"),
             );
             if let (Some(obj), Some(report)) = (v.as_object_mut(), report) {
@@ -234,7 +252,6 @@ pub(super) async fn execute(
             Ok(v)
         }
         TASK_CREATE_FROM_EXPLORER => {
-            // Already returns the created task (short_id, page id, …).
             crate::task_manager::create_task_from_explorer_impl(payload, pool).await
         }
         _ => Err(anyhow::anyhow!("unknown op_type: {op_type}")),
@@ -245,32 +262,36 @@ pub(super) async fn execute(
 mod tests {
     use super::ALL;
 
-    /// The frontend renders each op by name from its own mirror. A backend op
-    /// missing there is a raw-JSON dialog — silent, so it fails here instead.
     #[test]
     fn every_op_exists_in_the_frontend_mirror() {
         let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/shared/ipc/ops.ts");
         let ts = std::fs::read_to_string(&ts).expect("src/shared/ipc/ops.ts must exist");
         for op in ALL {
-            assert!(ts.contains(&format!("'{op}'")), "op {op} missing from src/shared/ipc/ops.ts");
+            assert!(
+                ts.contains(&format!("'{op}'")),
+                "op {op} missing from src/shared/ipc/ops.ts"
+            );
         }
     }
 
-    /// The reverse: a frontend op name the backend does not execute is dead UI —
-    /// approving it would hit "unknown op_type". Parses every quoted dotted name
-    /// out of ops.ts and demands the backend knows it.
     #[test]
     fn frontend_mirror_has_no_dead_ops() {
         let ts = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/shared/ipc/ops.ts");
         let ts = std::fs::read_to_string(&ts).expect("src/shared/ipc/ops.ts must exist");
         for (i, line) in ts.lines().enumerate() {
-            let Some(start) = line.find('\'') else { continue };
+            let Some(start) = line.find('\'') else {
+                continue;
+            };
             let rest = &line[start + 1..];
             let Some(end) = rest.find('\'') else { continue };
             let name = &rest[..end];
-            // Op names are dotted lowercase ("git.commit"); prefixes ("git.") and
-            // other strings are not op names.
-            if !name.contains('.') || name.ends_with('.') || !name.chars().all(|c| c.is_ascii_lowercase() || c == '.' || c == '_') {
+            // Op names are dotted lowercase ("git.commit"); a prefix ("git.") is not one.
+            if !name.contains('.')
+                || name.ends_with('.')
+                || !name
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c == '.' || c == '_')
+            {
                 continue;
             }
             assert!(
@@ -281,7 +302,6 @@ mod tests {
         }
     }
 
-    /// A source with no hours field returns null, and null must not read as 0.
     #[test]
     fn hours_with_no_field_at_the_source_does_not_read_as_zero() {
         let none = serde_json::json!({ "before": null, "after": null, "added": 1.6 });

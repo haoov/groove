@@ -6,8 +6,7 @@ mod diff;
 mod parse;
 pub mod types;
 
-// Glob re-exports are required: tauri::generate_handler! looks up __cmd__*
-// symbols at the same path as the function.
+// Keep the glob re-exports: `generate_handler!` resolves `__cmd__*` symbols at this path.
 pub use blame::*;
 pub use commits::*;
 pub use diff::*;

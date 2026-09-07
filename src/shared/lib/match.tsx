@@ -1,8 +1,7 @@
 import { Fragment, type ReactNode } from 'react';
 
-/** Case-insensitive match ranges for highlighting.
- *  Prefers a contiguous substring; falls back to a fuzzy subsequence.
- *  Returns matched [start, end) ranges, [] for an empty query, or null when there's no match. */
+/** Case-insensitive match ranges: a contiguous substring, else a fuzzy subsequence.
+ *  Returns [start, end) ranges, [] for an empty query, null for no match. */
 export function matchRanges(query: string, text: string): [number, number][] | null {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -11,7 +10,7 @@ export function matchRanges(query: string, text: string): [number, number][] | n
   const sub = t.indexOf(q);
   if (sub !== -1) return [[sub, sub + q.length]];
 
-  // subsequence — group contiguous hits into runs
+  // Subsequence: group contiguous hits into runs.
   const ranges: [number, number][] = [];
   let qi = 0;
   let runStart = -1;
@@ -28,7 +27,7 @@ export function matchRanges(query: string, text: string): [number, number][] | n
   return qi === q.length ? ranges : null;
 }
 
-/** Render text with matched ranges wrapped in <mark className="hl-match">. */
+/** Renders text with matched ranges wrapped in <mark className="hl-match">. */
 export function Highlighted({ text, ranges }: { text: string; ranges: [number, number][] | null }) {
   if (!ranges || ranges.length === 0) return <>{text}</>;
   const out: ReactNode[] = [];
@@ -56,24 +55,15 @@ function shape(ranges: [number, number][]): { runs: number; span: number } {
   };
 }
 
-/**
- * A scattered subsequence is a match in name only: `mayo` hits half a repo list
- * through m…a…y…o. Accept one only when it arrives in few enough runs, which
- * scales with the query so long queries may still break across words.
- */
+/** Accepts a scattered subsequence only when it arrives in few runs, scaled by query length. */
 function tightEnough(query: string, runs: number): boolean {
   return runs <= Math.max(2, Math.ceil(query.length / 2));
 }
 
 export type Ranked<T> = { item: T; ranges: [number, number][] };
 
-/**
- * Items that match `query`, best first. Contiguous hits outrank scattered ones,
- * and a hit at a word start outranks one mid-word.
- *
- * Prefer this to calling `matchRanges` in a filter: that keeps every subsequence
- * however scattered, and leaves the order to chance.
- */
+/** Items that match `query`, best first: contiguous hits outrank scattered ones, word-start hits outrank mid-word.
+ *  Prefer this to `matchRanges` in a filter. */
 export function rankMatches<T>(
   query: string,
   items: readonly T[],
@@ -93,7 +83,7 @@ export function rankMatches<T>(
     const contiguous = runs === 1;
     if (!contiguous && !tightEnough(q, runs)) return;
 
-    // Bands, so a contiguous match never loses to a scattered one on tie-breaks.
+    // Bands: a contiguous match never loses to a scattered one.
     let score = contiguous ? 2000 : 1000;
     if (isBoundary(text, start)) score += 200;
     score -= runs * 20;

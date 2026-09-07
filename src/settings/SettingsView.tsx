@@ -30,7 +30,7 @@ export function SettingsView() {
     invoke<Environment>('check_environment').then(setEnv).catch(() => setEnv(null));
   }, []);
 
-  // Loaded on demand — each check shells out to `gh` / `glab auth status`.
+  // Loaded on demand: check_environment shells out to the forge CLIs.
   const needsEnv = ENV_GROUPS.includes(group);
   useEffect(() => {
     if (needsEnv && !env) loadEnv();

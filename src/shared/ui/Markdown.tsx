@@ -2,11 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { openExternal } from '../lib/openExternal';
 
-/**
- * GFM markdown renderer for overview pages (MR descriptions etc.), styled with
- * the overview's `nb-*` typography. Links always open in the system browser —
- * never navigate the webview. Safe by construction (no raw HTML rendering).
- */
+/** GFM markdown renderer for overview pages. Links open in the system browser, never the webview. No raw HTML. */
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="markdown-body">

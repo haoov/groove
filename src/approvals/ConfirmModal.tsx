@@ -25,8 +25,7 @@ const OP_LABELS: Record<string, string> = {
   [OP.GIT_DISCARD_ALL]: 'Discard all changes',
 };
 
-/** Starting point for a hand-written MR description. Mirrors the headings the
- *  agent's create_mr contract requires (MR_DESCRIPTION in definitions.rs). */
+/** Mirrors the headings the create_mr contract requires (MR_DESCRIPTION in definitions.rs). */
 const MR_SKELETON = '## What\n\n\n## Why\n\n';
 
 const OP_ICONS: Record<string, React.ReactNode> = {
@@ -95,9 +94,7 @@ function EditableField({ label, value, onChange, multiline = false, placeholder 
   );
 }
 
-// Payloads carry the project name; the path's last segment is only a fallback
-// for rows queued before they did (it is the branch leaf, not the repo, now that
-// worktree dirs embed the branch's slashes).
+// The path's last segment is the branch leaf, not the repo: a fallback only.
 function repoName(payload: Record<string, unknown>): string {
   const repo = payload.repo;
   if (typeof repo === 'string' && repo) return repo;
@@ -162,8 +159,6 @@ function PayloadView({ op, payload, edits, setField }: {
     case OP.MR_UPDATE:
       return (
         <>
-          {/* Everything except the text is already decided — show it, read-only,
-              so it's clear what this MR will be opened from. */}
           {op === OP.MR_CREATE && (
             <>
               <Field label="Repo"   value={repoName(payload)} />
@@ -281,8 +276,6 @@ function PayloadView({ op, payload, edits, setField }: {
         </>
       );
 
-    // Editable, like a task body: this is a procedure the agent will follow on its
-    // own later, and reading it is the whole point of the confirmation.
     case OP.SKILL_SAVE:
       return (
         <>
@@ -336,9 +329,7 @@ function PayloadView({ op, payload, edits, setField }: {
             multiline
             placeholder="Task description (markdown)"
           />
-          {/* Name the source session explicitly: the agent targets whichever
-              session is focused, so a mis-aimed conversion must be visible
-              BEFORE approval — it moves that session's worktrees and repos. */}
+          {/* The source session must be visible before approval. */}
           <Field label="Converting" value={str('explorer_id')} mono />
           <div className="cp-hint">
             Files a task, then moves this session's worktrees, repos, and annotations onto it.
@@ -362,14 +353,12 @@ export function ConfirmModal() {
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Editable field values (commit message, MR title/description), seeded from the payload.
   const [edits, setEdits] = useState<Record<string, string>>({});
   const modalRef = useRef<HTMLDivElement>(null);
   const approveRef = useRef<HTMLButtonElement>(null);
 
   const current = pendingConfirmations[0];
 
-  // Reset error + seed editable fields whenever the active confirmation changes.
   useEffect(() => {
     setError(null);
     if (!current) { setEdits({}); return; }
@@ -378,8 +367,6 @@ export function ConfirmModal() {
     if (current.op_type === OP.GIT_COMMIT) seed.message = String(p.message ?? '');
     if (current.op_type === OP.MR_CREATE || current.op_type === OP.MR_UPDATE) {
       seed.title = String(p.title ?? '');
-      // The git buttons open this dialog with no text at all, so hand-written MRs
-      // start from the same two headings the agent's contract requires.
       seed.description = String(p.description ?? '') || MR_SKELETON;
     }
     if (current.op_type === OP.TASK_CREATE_FROM_EXPLORER || current.op_type === OP.TASK_CREATE) {
@@ -395,14 +382,12 @@ export function ConfirmModal() {
     setEdits((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // An MR needs a title from the user; everything else arrives complete.
   const missingTitle = current?.op_type === OP.MR_CREATE && !(edits.title ?? '').trim();
 
   const resolve = useCallback(
     async (approved: boolean) => {
       if (!current || running) return;
-      // create_mr_impl falls back to a "WIP" title, so an empty field would
-      // silently open a nameless MR — the text is the whole point of asking.
+      // create_mr_impl falls back to a "WIP" title on an empty field.
       if (approved && current.op_type === OP.MR_CREATE && !(edits.title ?? '').trim()) {
         setError('Give the merge request a title first.');
         return;
@@ -410,8 +395,7 @@ export function ConfirmModal() {
       setRunning(true);
       setError(null);
       try {
-        // Send only the fields the user actually changed, so untouched ops execute
-        // with their original payload (and we never blank an MR field by accident).
+        // Send only the changed fields.
         const p = (current.payload ?? {}) as Record<string, unknown>;
         const overrides: Record<string, string> = {};
         for (const [k, v] of Object.entries(edits)) {
@@ -436,34 +420,27 @@ export function ConfirmModal() {
     [current, running, edits, removeConfirmation, setLastError, setSkillsStale]
   );
 
-  // Autofocus the approve button when a confirmation opens (or is restored from
-  // the statusbar), so keyboard actions (Enter / Tab) are scoped to the modal.
   useEffect(() => {
     if (current && !confirmationsMinimized) approveRef.current?.focus();
   }, [current?.id, confirmationsMinimized]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // While deferred the modal is unmounted — no shortcut may decide invisibly.
+      // No shortcut resolves while the modal is deferred.
       if (!current || useStore.getState().confirmationsMinimized) return;
       const modal = modalRef.current;
       const insideModal = !!modal && modal.contains(document.activeElement);
       const active = document.activeElement as HTMLElement | null;
-      // A field is a text input, textarea, OR a contenteditable region (e.g. CodeMirror).
       const inField =
         active instanceof HTMLInputElement ||
         active instanceof HTMLTextAreaElement ||
         active?.isContentEditable === true;
 
-      // ⌘/Ctrl+Enter always approves.
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); resolve(true); return; }
-      // Plain Enter approves ONLY when focus is inside the modal and not in a field
-      // (so Enter while typing in CodeMirror / the message box never approves).
+      // Plain Enter never approves from inside a field.
       if (e.key === 'Enter' && insideModal && !inField) { e.preventDefault(); resolve(true); return; }
 
-      // Esc is scoped to the modal — never leaks to stacked overlays. First Esc in
-      // a field blurs it; otherwise it DEFERS the queue (nothing is denied — the
-      // statusbar badge keeps it pending). Denying is always an explicit click.
+      // Esc blurs a field or defers the queue; it never denies.
       if (e.key === 'Escape') {
         if (!insideModal) return;
         if (inField) { e.preventDefault(); active?.blur(); return; }
@@ -472,7 +449,7 @@ export function ConfirmModal() {
         return;
       }
 
-      // Basic focus trap: Tab / Shift+Tab cycle within the dialog.
+      // Focus trap: Tab cycles within the dialog.
       if (e.key === 'Tab' && insideModal && modal) {
         const focusables = Array.from(
           modal.querySelectorAll<HTMLElement>('button, textarea, input, [tabindex]:not([tabindex="-1"])'),
@@ -488,12 +465,11 @@ export function ConfirmModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [current, resolve, setConfirmationsMinimized]);
 
-  // Deferred: the queue stays pending; the statusbar badge is the way back in.
   if (!current || confirmationsMinimized) return null;
 
   const label    = OP_LABELS[current.op_type] ?? current.op_type;
   const icon     = OP_ICONS[current.op_type]  ?? null;
-  // At runtime the confirmation bridge tags agent-originated ops as 'mcp'.
+  // The bridge tags agent-originated ops as 'mcp'.
   const isAgent  = current.origin === 'mcp';
   const payload  = current.payload as Record<string, unknown>;
 

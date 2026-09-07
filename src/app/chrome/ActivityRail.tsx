@@ -1,11 +1,7 @@
 import { LayoutGrid, LayoutList, Files, GitBranch, MessageSquare, Command, Settings } from 'lucide-react';
 import { useStore, useSession, type SidebarTab } from '../../shared/store';
 
-/**
- * Far-left activity rail (Zed/VS Code style). Owns top-level navigation
- * (Home) and, when a session is open, the sidebar panel switch
- * (Files / Git / Notes) that used to live as tabs inside the sidebar.
- */
+/** Far-left activity rail: Home, and the sidebar panel switch when a session is open. */
 export function ActivityRail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
@@ -22,12 +18,11 @@ export function ActivityRail() {
 
   const openCount = annotations.filter((a) => a.status === 'open').length;
   const inWorkspace = view === 'workspace';
-  // The Files/Git/Notes panel applies to any real workspace session
-  // (task / explorer / review) — all have a non-null active task.
+  // Every workspace session kind has a non-null active task.
   const showPanels = !!activeTask;
 
   const selectPanel = (tab: SidebarTab) => {
-    // Clicking the panel you are already on folds it away, like Zed's dock icons.
+    // Clicking the panel you are already on folds it away.
     const here = inWorkspace && workspaceMode === 'code' && sidebarTab === tab && !sidebarCollapsed;
     if (here) {
       setSidebarCollapsed(true);
@@ -46,7 +41,6 @@ export function ActivityRail() {
 
   return (
     <nav className="activity-rail">
-      {/* Home: Live · Up next · Reviews tabs (the review count lives in the tab). */}
       <div className="rail-group">
         <button
           className={`rail-btn ${view === 'home' ? 'active' : ''}`}
@@ -57,7 +51,7 @@ export function ActivityRail() {
         </button>
       </div>
 
-      {/* The session's Overview MODE — the ticket / explorer / MR page. */}
+      {/* The session's Overview mode. */}
       {showPanels && (
         <div className="rail-group">
           <button
@@ -97,7 +91,7 @@ export function ActivityRail() {
         </div>
       )}
 
-      {/* App-level, not the session: settings and the palette sit at the foot. */}
+      {/* App-level: settings and the palette. */}
       <div className="rail-group rail-group-bottom">
         <button
           className={`rail-btn ${view === 'settings' ? 'active' : ''}`}

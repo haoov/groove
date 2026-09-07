@@ -1,18 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-/**
- * A positioned popup menu: keeps itself inside the viewport, closes on Escape
- * and on any outside click. Callers render their own item buttons as children
- * and pass a `className` so the existing CSS (`.ctx-menu`, `.context-menu`, …)
- * keeps applying — this only owns positioning + dismissal.
- */
+/** A positioned popup menu: stays inside the viewport, closes on Escape and outside click.
+ *  Owns positioning and dismissal only; callers render the items. */
 export function ContextMenu({
   x, y, onClose, className = 'ctx-menu', children,
 }: {
   x: number;
   y: number;
   onClose: () => void;
-  /** CSS class for the menu container (defaults to the file-tree `.ctx-menu`). */
+  /** CSS class for the menu container. */
   className?: string;
   children: React.ReactNode;
 }) {

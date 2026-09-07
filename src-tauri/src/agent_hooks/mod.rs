@@ -1,7 +1,5 @@
-//! What each agent is doing, reported by Claude Code's own hooks — not by reading
-//! the PTY, whose byte stream is not the text on screen. A tool awaiting approval
-//! emits `PreToolUse` then `Notification`, and nothing else until the user answers.
-//! Everything here is best-effort.
+//! Per-agent activity, reported by Claude Code's hooks. A tool awaiting approval
+//! emits `PreToolUse` then `Notification`. Everything here is best-effort.
 
 use std::{
     collections::HashMap,
@@ -20,7 +18,7 @@ use tauri::{AppHandle, Emitter};
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct AgentActivity {
-    /// Task short id — the key, repeated in the payload for the frontend.
+    /// Task short id.
     pub task_id: String,
     pub state: AgentState,
     /// The tool in flight, or the one awaiting approval when `state` is Waiting.
@@ -60,9 +58,7 @@ pub fn new_state() -> ActivityState {
 
 /// Snapshot for the frontend's initial hydration.
 #[tauri::command]
-pub fn get_agent_activity(
-    activity: tauri::State<'_, ActivityState>,
-) -> Vec<AgentActivity> {
+pub fn get_agent_activity(activity: tauri::State<'_, ActivityState>) -> Vec<AgentActivity> {
     activity
         .lock()
         .map(|m| m.values().cloned().collect())
@@ -105,7 +101,7 @@ pub fn router(app: AppHandle, activity: ActivityState) -> Router {
         .with_state(HookState { app, activity })
 }
 
-/// Must be quick — anything slow here stalls the agent.
+/// Keep this fast: a slow hook stalls the agent.
 async fn hook_handler(
     Query(q): Query<HookQuery>,
     State(state): State<HookState>,
@@ -133,7 +129,9 @@ async fn hook_handler(
         entry.clone()
     };
 
-    let _ = state.app.emit(crate::core::events::AGENT_ACTIVITY, &updated);
+    let _ = state
+        .app
+        .emit(crate::core::events::AGENT_ACTIVITY, &updated);
     axum::http::StatusCode::OK
 }
 
@@ -141,12 +139,10 @@ async fn hook_handler(
 fn apply(entry: &mut AgentActivity, event: &str, payload: &HookPayload) {
     let previous = entry.state;
     match event {
-        // A session is ready but between turns.
         "SessionStart" => {
             entry.state = AgentState::Idle;
             entry.tool = None;
         }
-        // A prompt was submitted — the turn has started.
         "UserPromptSubmit" => {
             entry.state = AgentState::Working;
             entry.tool = None;
@@ -159,12 +155,11 @@ fn apply(entry: &mut AgentActivity, event: &str, payload: &HookPayload) {
                 detail: summarize_tool_input(name, payload.tool_input.as_ref()),
             });
         }
-        // The tool ran, so whatever it was is no longer pending approval.
         "PostToolUse" => {
             entry.state = AgentState::Working;
             entry.tool = None;
         }
-        // Claude wants the user; the pending tool stays — it is what the question is about.
+        // The pending tool stays: it is what the question is about.
         "Notification" => entry.state = AgentState::Waiting,
         "Stop" => {
             entry.state = AgentState::Idle;
@@ -201,11 +196,15 @@ fn summarize_tool_input(name: &str, input: Option<&serde_json::Value>) -> Option
 }
 
 fn first_line(s: &str) -> String {
-    let line = s.lines().find(|l| !l.trim().is_empty()).unwrap_or("").trim();
+    let line = s
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .unwrap_or("")
+        .trim();
     shorten(line, 140)
 }
 
-/// Truncate on a char boundary (paths and messages are not always ASCII).
+/// Truncate on a char boundary.
 fn shorten(s: &str, max: usize) -> String {
     let flat = s.split_whitespace().collect::<Vec<_>>().join(" ");
     if flat.chars().count() <= max {
@@ -242,7 +241,6 @@ mod tests {
         }
     }
 
-    /// PreToolUse then Notification: the pending tool survives into Waiting.
     #[test]
     fn permission_prompt_keeps_the_pending_tool() {
         let mut e = entry();
@@ -252,7 +250,10 @@ mod tests {
         apply(
             &mut e,
             "PreToolUse",
-            &payload(Some("Write"), Some(serde_json::json!({ "file_path": "a/b.rs" }))),
+            &payload(
+                Some("Write"),
+                Some(serde_json::json!({ "file_path": "a/b.rs" })),
+            ),
         );
         apply(&mut e, "Notification", &payload(None, None));
 
@@ -262,11 +263,17 @@ mod tests {
         assert_eq!(tool.detail.as_deref(), Some("a/b.rs"));
     }
 
-    /// An approved tool clears the pending one; Stop ends idle with the closing line.
     #[test]
     fn approved_tool_then_turn_end() {
         let mut e = entry();
-        apply(&mut e, "PreToolUse", &payload(Some("Bash"), Some(serde_json::json!({ "command": "cargo test" }))));
+        apply(
+            &mut e,
+            "PreToolUse",
+            &payload(
+                Some("Bash"),
+                Some(serde_json::json!({ "command": "cargo test" })),
+            ),
+        );
         apply(&mut e, "PostToolUse", &payload(Some("Bash"), None));
         assert_eq!(e.state, AgentState::Working);
         assert!(e.tool.is_none());
@@ -278,11 +285,14 @@ mod tests {
         assert_eq!(e.last_message.as_deref(), Some("Fixed the parser."));
     }
 
-    /// Unknown events leave the state alone.
     #[test]
     fn unknown_event_is_inert() {
         let mut e = entry();
-        apply(&mut e, "PreToolUse", &payload(Some("Read"), Some(serde_json::json!({ "file_path": "x" }))));
+        apply(
+            &mut e,
+            "PreToolUse",
+            &payload(Some("Read"), Some(serde_json::json!({ "file_path": "x" }))),
+        );
         let before = e.state;
         apply(&mut e, "PreCompact", &payload(None, None));
         assert_eq!(e.state, before);

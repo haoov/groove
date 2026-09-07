@@ -3,44 +3,37 @@
 use sqlx::SqlitePool;
 
 use super::types::FetchedTask;
+use super::types::{PropertyOption, PropertyValue, TaskSchema};
 use super::types::{ProviderId, TaskDraft};
 use super::{enabled, get, mirror_row, resolve};
-use super::types::{PropertyValue, PropertyOption, TaskSchema};
 use crate::core::db::models::TaskView;
 use crate::core::db::store;
 
-/// The identifier a task is known by everywhere: the session id, its worktree
-/// directory, and part of its branch. Minted once and never recomputed — it names
-/// things that already exist on disk.
-///
-/// A task keeps the id its source gave it, or takes the one its provider builds
-/// (`TaskProvider::short_id`). A clash — which the UNIQUE column would otherwise
-/// reject — gets a numeric suffix. This function names no provider: every format
-/// lives with the provider that owns it.
+/// The task's short id: the session id, worktree directory and branch segment.
+/// Minted once, never recomputed. A clash gets a numeric suffix.
 pub(crate) async fn mint_short_id(
     pool: &SqlitePool,
     provider: &dyn super::TaskProvider,
     task: &FetchedTask,
     minted: &mut std::collections::HashSet<String>,
 ) -> anyhow::Result<String> {
-    // An id already minted for this task is the only correct answer: it names a
-    // branch and a directory that may already exist.
+    // An id already minted for this task names a branch and a directory. Keep it.
     let external_id = task.key.external_id();
     if let Some(existing) = store::provider_tasks::get_by_external_id(pool, &external_id).await? {
         return Ok(existing.short_id);
     }
 
-    // The source's own id when it has one, else the one the provider builds.
-    // Never the raw external_id: that is an API handle, not a name for a session.
+    // Never fall back to the raw external_id.
     let wanted = match &task.natural_short_id {
         Some(natural) => natural.clone(),
-        None => provider
-            .short_id(task)
-            .ok_or_else(|| anyhow::anyhow!("{} gave no short id for {external_id}", provider.id().as_str()))?,
+        None => provider.short_id(task).ok_or_else(|| {
+            anyhow::anyhow!(
+                "{} gave no short id for {external_id}",
+                provider.id().as_str()
+            )
+        })?,
     };
 
-    // `short_id` is UNIQUE, and a clash used to surface as a constraint error that
-    // aborted the whole sync. Suffixing is safe: nothing carries this id yet.
     let suffixed = (2..=99).map(|n| format!("{wanted}-{n}"));
     for candidate in std::iter::once(wanted.clone()).chain(suffixed) {
         if is_free(pool, minted, &candidate).await? {
@@ -51,8 +44,7 @@ pub(crate) async fn mint_short_id(
     anyhow::bail!("cannot mint a short id for {wanted}: every form is taken")
 }
 
-/// `minted` covers the rest of this sync: two tasks can collide inside one batch,
-/// before either has been written for the store to see.
+/// Free in the store and not yet minted in this batch.
 async fn is_free(
     pool: &SqlitePool,
     minted: &std::collections::HashSet<String>,
@@ -61,7 +53,9 @@ async fn is_free(
     if minted.contains(candidate) {
         return Ok(false);
     }
-    Ok(store::provider_tasks::get_by_short_id(pool, candidate).await?.is_none())
+    Ok(store::provider_tasks::get_by_short_id(pool, candidate)
+        .await?
+        .is_none())
 }
 
 /// Lowercase, alphanumerics joined by single dashes, truncated to 16 characters.
@@ -85,17 +79,16 @@ pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskVi
     let mut out = Vec::new();
     let mut failed: Vec<String> = vec![];
 
-    // One provider being down must not blank the others' half of Home, so a
-    // failure is logged and skipped. Same policy as the review queue.
     for provider in enabled() {
         let fetched = match provider.list_tasks().await {
             Ok(tasks) => tasks,
             Err(e) => {
-                // Keep the others, and keep this one's last known tasks: showing
-                // fewer rows with no explanation reads as "you have none".
+                // A failed provider keeps its last known tasks.
                 tracing::warn!("{} queue unavailable: {e}", provider.id().as_str());
                 failed.push(format!("{}: {e}", provider.id().as_str()));
-                if let Ok(stale) = store::provider_tasks::for_provider(&*pool, provider.id().as_str()).await {
+                if let Ok(stale) =
+                    store::provider_tasks::for_provider(&*pool, provider.id().as_str()).await
+                {
                     out.extend(stale.into_iter().map(Into::into));
                 }
                 continue;
@@ -117,14 +110,15 @@ pub async fn list_tasks(pool: tauri::State<'_, SqlitePool>) -> Result<Vec<TaskVi
             .await
             .map_err(|e| e.to_string())?;
         for row in &rows {
-            store::provider_tasks::upsert(&mut *tx, row).await.map_err(|e| e.to_string())?;
+            store::provider_tasks::upsert(&mut *tx, row)
+                .await
+                .map_err(|e| e.to_string())?;
         }
         tx.commit().await.map_err(|e| e.to_string())?;
 
         out.extend(rows.into_iter().map(Into::into));
     }
 
-    // Every source down is a failure, not an empty queue.
     if out.is_empty() && !failed.is_empty() {
         return Err(failed.join("; "));
     }
@@ -152,16 +146,21 @@ pub async fn get_task_schema(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<TaskSchema, String> {
-    schema_for(&pool, &short_id).await.map_err(|e| e.to_string())
+    schema_for(&pool, &short_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-/// The pool-taking forms, for callers with no Tauri state — the MCP tools.
+/// Pool-taking forms for callers without Tauri state.
 pub async fn schema_for(pool: &SqlitePool, short_id: &str) -> anyhow::Result<TaskSchema> {
     let (provider, key) = resolve(pool, short_id).await?;
     provider.schema(&key).await
 }
 
-pub async fn properties_for(pool: &SqlitePool, short_id: &str) -> anyhow::Result<Vec<PropertyValue>> {
+pub async fn properties_for(
+    pool: &SqlitePool,
+    short_id: &str,
+) -> anyhow::Result<Vec<PropertyValue>> {
     let (provider, key) = resolve(pool, short_id).await?;
     provider.properties(&key).await
 }
@@ -202,8 +201,7 @@ pub async fn list_relation_options(
     .map_err(|e: anyhow::Error| e.to_string())
 }
 
-/// Which source a draft is filed at. Missing means the only one configured; with
-/// both set up the caller has to say.
+/// The source a draft is filed at. Defaults to the only configured provider.
 pub(crate) fn draft_provider(payload: &serde_json::Value) -> anyhow::Result<ProviderId> {
     match payload["provider"].as_str() {
         Some(name) => ProviderId::parse(name),
@@ -215,10 +213,8 @@ pub(crate) fn draft_provider(payload: &serde_json::Value) -> anyhow::Result<Prov
     }
 }
 
-/// Confirmation-bridge path for `task.create`: file the task and nothing else.
-///
-/// Deliberately does NOT open a session or provision worktrees — filing a task you
-/// intend to pick up later should not clone repositories.
+/// Confirmation-bridge path for `task.create`. Files the task; opens no session
+/// and provisions no worktree.
 pub async fn create_task_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -240,9 +236,7 @@ pub async fn create_task_impl(
     Ok(out)
 }
 
-/// What a caller gets back for a task that was just filed. Shared with the
-/// explorer conversion, which is this plus adopting the session onto the result —
-/// two copies of these keys had already drifted apart.
+/// The response for a task that was just filed. Shared with the explorer conversion.
 pub(crate) fn filed_response(
     short_id: &str,
     filed: &FetchedTask,
@@ -284,10 +278,12 @@ mod tests {
         }
     }
 
-    /// A task carrying its source's own id, to exercise the natural path.
+    /// A task carrying its source's own id.
     fn natural(short_id: &str) -> FetchedTask {
         FetchedTask {
-            key: TaskKey::Notion { page_id: "24f1a2b3c4d56789abcdef0123456789".into() },
+            key: TaskKey::Notion {
+                page_id: "24f1a2b3c4d56789abcdef0123456789".into(),
+            },
             title: String::new(),
             status: String::new(),
             priority: None,
@@ -298,23 +294,23 @@ mod tests {
         }
     }
 
-    /// The owner is in the id, so the common case — one repo name under two
-    /// owners — cannot collide at all.
     #[tokio::test]
     async fn two_owners_sharing_a_repo_name_do_not_collide() {
         let pool = test_pool().await;
         let github = crate::provider::github::GithubProvider;
         let mut minted = std::collections::HashSet::new();
 
-        let first = mint_short_id(&pool, &github, &gh("acme", "api", 42), &mut minted).await.unwrap();
-        let second = mint_short_id(&pool, &github, &gh("beta", "api", 42), &mut minted).await.unwrap();
+        let first = mint_short_id(&pool, &github, &gh("acme", "api", 42), &mut minted)
+            .await
+            .unwrap();
+        let second = mint_short_id(&pool, &github, &gh("beta", "api", 42), &mut minted)
+            .await
+            .unwrap();
 
         assert_eq!(first, "gh-acme-api-42");
         assert_eq!(second, "gh-beta-api-42");
     }
 
-    /// Truncation can still collide. Nothing is written to the store until the
-    /// batch ends, so the store cannot be what catches it.
     #[tokio::test]
     async fn a_collision_inside_one_sync_still_gets_two_ids() {
         let pool = test_pool().await;
@@ -322,68 +318,110 @@ mod tests {
         let mut minted = std::collections::HashSet::new();
 
         let long = "kubernetes-operator-controller";
-        let first = mint_short_id(&pool, &github, &gh("acme", long, 42), &mut minted).await.unwrap();
-        let second = mint_short_id(&pool, &github, &gh("acme", &format!("{long}-extra"), 42), &mut minted)
+        let first = mint_short_id(&pool, &github, &gh("acme", long, 42), &mut minted)
             .await
             .unwrap();
+        let second = mint_short_id(
+            &pool,
+            &github,
+            &gh("acme", &format!("{long}-extra"), 42),
+            &mut minted,
+        )
+        .await
+        .unwrap();
 
         assert_ne!(first, second, "two tasks must never share a short_id");
         assert_eq!(second, format!("{first}-2"), "the collider is suffixed");
     }
 
-    /// `short_id` is UNIQUE, so a natural id that clashes must be disambiguated.
-    /// It used to be returned as-is and surface as a constraint error that failed
-    /// the entire sync.
     #[tokio::test]
     async fn a_clashing_natural_id_is_disambiguated() {
         let pool = test_pool().await;
         let notion = crate::provider::notion::NotionProvider;
         let mut minted = std::collections::HashSet::new();
 
-        let first = mint_short_id(&pool, &notion, &natural("PLAT-42"), &mut minted).await.unwrap();
+        let first = mint_short_id(&pool, &notion, &natural("PLAT-42"), &mut minted)
+            .await
+            .unwrap();
         assert_eq!(first, "PLAT-42");
 
-        // A different task at the same id: the second must not reuse it.
         let mut other = natural("PLAT-42");
-        other.key = TaskKey::Notion { page_id: "0123456789abcdef0123456789abcdef".into() };
-        let second = mint_short_id(&pool, &notion, &other, &mut minted).await.unwrap();
-        assert_eq!(second, "PLAT-42-2", "the collider is suffixed, not repeated");
+        other.key = TaskKey::Notion {
+            page_id: "0123456789abcdef0123456789abcdef".into(),
+        };
+        let second = mint_short_id(&pool, &notion, &other, &mut minted)
+            .await
+            .unwrap();
+        assert_eq!(
+            second, "PLAT-42-2",
+            "the collider is suffixed, not repeated"
+        );
     }
 
-    /// A provider that supplies neither a natural id nor one of its own must fail
-    /// loudly. Falling back to the raw external_id would make an API handle the
-    /// session's primary key, and part of a branch name.
     #[tokio::test]
     async fn no_short_id_is_an_error_not_a_raw_external_id() {
         struct Silent;
         #[async_trait::async_trait]
         impl crate::provider::TaskProvider for Silent {
-            fn id(&self) -> ProviderId { ProviderId::Github }
-            fn task_url(&self, _: &TaskKey) -> String { String::new() }
-            async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> { Ok(vec![]) }
+            fn id(&self) -> ProviderId {
+                ProviderId::Github
+            }
+            fn task_url(&self, _: &TaskKey) -> String {
+                String::new()
+            }
+            async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> {
+                Ok(vec![])
+            }
             async fn fetch_task(&self, _: &TaskKey) -> anyhow::Result<FetchedTask> {
                 anyhow::bail!("no")
             }
-            async fn schema(&self, _: &TaskKey) -> anyhow::Result<TaskSchema> { anyhow::bail!("no") }
-            async fn properties(&self, _: &TaskKey) -> anyhow::Result<Vec<PropertyValue>> { Ok(vec![]) }
+            async fn schema(&self, _: &TaskKey) -> anyhow::Result<TaskSchema> {
+                anyhow::bail!("no")
+            }
+            async fn properties(&self, _: &TaskKey) -> anyhow::Result<Vec<PropertyValue>> {
+                Ok(vec![])
+            }
             async fn set_property(
-                &self, _: &TaskKey, _: &str, _: &serde_json::Value,
-            ) -> anyhow::Result<super::super::types::PropertyWrite> { anyhow::bail!("no") }
+                &self,
+                _: &TaskKey,
+                _: &str,
+                _: &serde_json::Value,
+            ) -> anyhow::Result<super::super::types::PropertyWrite> {
+                anyhow::bail!("no")
+            }
             async fn set_status(
-                &self, _: &TaskKey, _: super::super::types::StatusIntent,
-            ) -> anyhow::Result<String> { Ok(String::new()) }
-            async fn discard(&self, _: &TaskKey) -> anyhow::Result<()> { Ok(()) }
-            async fn body_markdown(&self, _: &TaskKey) -> anyhow::Result<String> { Ok(String::new()) }
+                &self,
+                _: &TaskKey,
+                _: super::super::types::StatusIntent,
+            ) -> anyhow::Result<String> {
+                Ok(String::new())
+            }
+            async fn discard(&self, _: &TaskKey) -> anyhow::Result<()> {
+                Ok(())
+            }
+            async fn body_markdown(&self, _: &TaskKey) -> anyhow::Result<String> {
+                Ok(String::new())
+            }
             async fn replace_body(
-                &self, _: &TaskKey, _: &str, _: bool,
-            ) -> anyhow::Result<super::super::types::BodyWrite> { anyhow::bail!("no") }
+                &self,
+                _: &TaskKey,
+                _: &str,
+                _: bool,
+            ) -> anyhow::Result<super::super::types::BodyWrite> {
+                anyhow::bail!("no")
+            }
         }
 
         let pool = test_pool().await;
-        let err = mint_short_id(&pool, &Silent, &gh("acme", "repo", 7), &mut Default::default())
-            .await
-            .unwrap_err()
-            .to_string();
+        let err = mint_short_id(
+            &pool,
+            &Silent,
+            &gh("acme", "repo", 7),
+            &mut Default::default(),
+        )
+        .await
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("gave no short id"), "{err}");
     }
 }

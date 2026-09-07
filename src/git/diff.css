@@ -1,4 +1,4 @@
-/* ── Diff View ────────────────────────────────────────────────────────────── */
+/* ── Diff view ── */
 
 .diff-view {
   flex: 1;
@@ -22,7 +22,7 @@
 
 .diff-repo { border-bottom: 1px solid var(--gl-border-color-default); padding-bottom: var(--space-1); }
 
-/* ── Commit diff tab header (mini overview above the file list) ───────────── */
+/* ── Commit diff header ── */
 .commit-view-header {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--gl-border-color-default);
@@ -52,7 +52,7 @@
   gap: var(--space-2);
   font-size: var(--gl-font-size-xs);
   color: var(--gl-text-color-disabled);
-  padding-left: calc(14px + var(--space-2)); /* align under the message, past the icon */
+  padding-left: calc(14px + var(--space-2));
 }
 .commit-view-dot { opacity: 0.6; }
 
@@ -107,9 +107,7 @@
   font-style: italic;
 }
 
-/* Fixed-height box with a centered hairline. Height must live in the box model
-   (not margin) — CodeMirror measures block-widget height excluding margins, so a
-   margin here would desync the gutter from the content (code drifts down). */
+/* height in the box model, not margin: CodeMirror measures widget height without margins */
 .diff-hunk-sep {
   height: 13px;
   display: flex;
@@ -123,8 +121,7 @@
   opacity: 0.5;
 }
 
-/* The clickable band over hidden lines. Same height rule as .diff-hunk-sep: the
-   20px must match GapWidget.estimatedHeight, and it stays in the box model. */
+/* 20px must match GapWidget.estimatedHeight; height in the box model */
 .diff-gap {
   height: 20px;
   display: flex;
@@ -148,9 +145,6 @@
   color: var(--gl-text-color-subtle);
 }
 
-/* Keyboard cursor over the file headers (j/k). Drawn only while the list holds
-   focus, so it never lingers as a stray highlight, and it is a background rather
-   than an edge accent. */
 .diff-repo { outline: none; }
 .diff-repo:focus-within .diff-file-header.cursor {
   background: var(--gl-background-color-hover);
@@ -181,10 +175,9 @@
 .diff-line-add .diff-word-mark { background: color-mix(in srgb, var(--ctp-green) 75%, transparent); }
 .diff-line-del .diff-word-mark { background: color-mix(in srgb, var(--ctp-red) 75%, transparent); }
 
-/* Per-repo stats line (commit diff header). */
 .diff-repo-stats { display: inline-flex; gap: var(--space-2); flex-shrink: 0; font-family: var(--font-mono); font-weight: 500; font-size: var(--gl-font-size-xs); }
 
-/* ── Comment affordance (leading gutter column, before line numbers) + range ─ */
+/* ── Comment affordance ── */
 .diff-add-comment {
   display: inline-flex;
   align-items: center;
@@ -200,19 +193,14 @@
   opacity: 0;
   transition: opacity 0.1s, color 0.12s, background 0.12s;
 }
-.diff-line:hover .diff-add-comment { opacity: 1; }
 .diff-add-comment:hover { background: var(--gl-color-blue-100); color: var(--gl-color-blue-300); }
 
-/* Existing-annotation indicator (message icon) in the line-number gutter slot. */
 .diff-annotation-icon { color: var(--wb-annotation-human); flex-shrink: 0; display: inline-flex; }
 
-/* Active multiline selection (background only — no inset left accent). */
 .diff-line-in-range { background: var(--gl-color-blue-200) !important; }
-/* Lines covered by an existing open annotation: tinted background. */
 .diff-line-annotated { background: color-mix(in srgb, var(--ctp-peach) 15%, transparent); }
 .diff-line-add.diff-line-annotated { background: color-mix(in srgb, var(--wb-annotation-human) 14%, var(--gl-diff-add-bg)); }
 
-/* GitLab-style multiline comment form */
 .diff-inline-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .diff-inline-form-head {
   display: flex; align-items: center; gap: 6px;
@@ -248,25 +236,19 @@
 .diff-inline-form-cancel:hover { color: var(--gl-text-color-default); }
 .diff-inline-icon { vertical-align: -2px; margin-right: 3px; flex-shrink: 0; }
 
-/* ── CodeMirror 6 diff host ──────────────────────────────────────────────── */
+/* ── CodeMirror diff host ── */
 .diff-cm-host { position: relative; }
 
 .diff-cm-editor .cm-editor { display: block; }
-/* No scroller of its own: the editor grows to its full height and the pane around it
-   does the scrolling, so several files read as one document. */
+/* the pane scrolls, not the editor */
 .diff-cm-editor .cm-scroller { overflow: visible !important; }
-/* Which also means it cannot scroll SIDEWAYS — so the 80-column floor in editor.css
-   put the right-hand side of every diff out of reach in a pane narrower than that,
-   and opening the panel or the agent column was enough to do it. Wrap at whatever
-   width the pane has instead: tighter than 80 columns beats unreachable. */
+/* overrides the 80-column floor in editor.css */
 .diff-cm-editor .cm-content { min-width: 0; }
 
-/* Gutter widths */
 .diff-cm-editor .cm-comment-gutter { width: 26px; }
 .diff-cm-editor .cm-linenum-gutter  { width: 48px; color: color-mix(in srgb, var(--gl-text-color-subtle) 55%, transparent); }
 
-/* Blame gutter. One fixed width in both hosts, ellipsized rather than wrapped —
-   a growing gutter would shift the code every time a longer name appears. */
+/* blame gutter: same width in both hosts */
 .cm-blame-gutter { width: 108px; }
 .cm-blame-cell {
   display: block;
@@ -282,11 +264,9 @@
 .cm-blame-cell.clickable:hover { color: var(--gl-text-color-link); }
 .cm-blame-cell.uncommitted { font-style: italic; }
 
-/* Show add-comment button — visible on gutter hover */
 .diff-cm-editor .diff-add-comment { opacity: 0; transition: opacity 0.12s; }
 .diff-cm-editor .cm-comment-gutter .cm-gutterElement:hover .diff-add-comment { opacity: 1; }
 
-/* Word mark in CM context */
 .diff-cm-editor .diff-word-mark {
   display: inline;
   padding: 1px 2px;
@@ -295,8 +275,4 @@
 .diff-cm-editor .diff-line-add .diff-word-mark { background: color-mix(in srgb, var(--ctp-green) 45%, transparent); }
 .diff-cm-editor .diff-line-del .diff-word-mark { background: color-mix(in srgb, var(--ctp-red) 45%, transparent); }
 
-/* Inline portal block */
 .diff-inline-portal { display: block; }
-
-
-

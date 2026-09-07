@@ -4,13 +4,11 @@ import { invoke } from '../../shared/ipc/invoke';
 import type { GithubPreview } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
 
-/** Nothing to configure: a task is an open issue assigned to you that somebody has
- *  put on a board. The form is just a preview of what that comes to. */
+/** Nothing to configure; the form previews what the GitHub source yields. */
 export function GithubSetupForm({ onChange, onNeedsScope }: SetupFormProps) {
   const [preview, setPreview] = useState<GithubPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Enabling is enough — gh already holds the credential.
   useEffect(() => {
     onChange({ host: null });
     invoke<GithubPreview>('preview_github', {})
@@ -41,8 +39,6 @@ export function GithubSetupForm({ onChange, onNeedsScope }: SetupFormProps) {
             <dd>{preview.boards.length ? preview.boards.join(' · ') : <em>none</em>}</dd>
             <dt>Fields</dt>
             <dd>{preview.fields.length ? preview.fields.join(' · ') : <em>none</em>}</dd>
-            {/* A board with no Ready/In progress/Done-like column makes Finish
-                fail; showing the real names is what makes that fixable. */}
             {preview.status_columns.map((b) => (
               <span key={b.board} style={{ display: 'contents' }}>
                 <dt>{b.board} states</dt>

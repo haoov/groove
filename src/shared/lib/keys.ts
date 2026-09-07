@@ -1,11 +1,7 @@
 // ── Keyboard chord model ──────────────────────────────────────────────────────
-// A chord is one key plus modifiers, matched against KeyboardEvent.key (the
-// CHARACTER produced, normalized) rather than .code (a physical position). This
-// keeps shortcuts correct across layouts (AZERTY/QWERTY): the binding follows the
-// letter/symbol you actually type. `ctrl` matches Ctrl (Win/Linux) OR Cmd (mac).
-//
-// On macOS, Option composes a character, so Option chords resolve through `keyCode`.
-// Do not use `.code` — it names a physical position and breaks non-QWERTY layouts.
+// A chord is one key plus modifiers, matched against KeyboardEvent.key. `ctrl` matches Ctrl or Cmd.
+// On macOS, Option chords resolve through `keyCode`.
+// Do not use `.code`: it names a physical position and breaks non-QWERTY layouts.
 
 import { isMac } from './platform';
 
@@ -13,8 +9,7 @@ import { isMac } from './platform';
 let keyDebug = false;
 try { keyDebug = localStorage.getItem('wb.keyDebug') === '1'; } catch { /* tests */ }
 
-/** Letters and digits only — punctuation's VK_OEM_* codes are US-layout-specific,
- *  so those chords use `macDefaults` in keybindings.ts instead. */
+/** Letters and digits only; punctuation chords use `macDefaults` in keybindings.ts. */
 function letterOrDigitFromKeyCode(keyCode: number): string | null {
   if (keyCode >= 65 && keyCode <= 90) return String.fromCharCode(keyCode + 32);
   if (keyCode >= 48 && keyCode <= 57) return String.fromCharCode(keyCode);
@@ -39,7 +34,7 @@ export interface Chord {
   shift?: boolean;
 }
 
-/** Normalize a KeyboardEvent.key for storage/matching (case- and space-stable). */
+/** Normalizes a KeyboardEvent.key for storage and matching. */
 export function normalizeKey(raw: string): string {
   if (raw === ' ' || raw === 'Spacebar') return 'space';
   return raw.toLowerCase();
@@ -79,28 +74,15 @@ export function chordFromEvent(e: KeyboardEvent): Chord {
   };
 }
 
-/** True while only a modifier key is held (no "real" key yet). */
+/** True while only a modifier key is held. */
 export function isModifierOnly(e: KeyboardEvent): boolean {
   return e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta' || e.key === 'AltGraph';
 }
 
-/**
- * True when a keystroke is producing a CHARACTER rather than asking for a command.
- * It belongs to whatever has focus, and no shortcut may take it.
- *
- * Both cases are invisible on a US layout and constant on an international one:
- *
- * - A dead key composing. `´` then `e` is one `é`, and `´` then space is one `'`;
- *   every keydown in between carries `isComposing`, and the first one arrives as
- *   the key `Dead`. Cancelling any of them loses the character.
- * - AltGr held. It is how those layouts type `´ @ € ~`, and browsers report it as
- *   Alt — or as Ctrl+Alt — so an `Alt+<letter>` binding matches a letter the user
- *   was typing and swallows it. AltGr is a character modifier, not a command one,
- *   which is why no binding may use it.
- */
+/** True when a keystroke produces a character: a dead key composing, or AltGr held.
+ *  No shortcut may take it. */
 export function isTypingCharacter(e: KeyboardEvent): boolean {
-  // macOS Option+E/I/N/U/` are dead keys, so they arrive as `Dead` even though
-  // `keyCode` names the letter. A resolvable Option chord is a command, not typing.
+  // macOS Option+E/I/N/U/` arrive as `Dead`; a resolvable Option chord is a command, not typing.
   if (isMac() && e.altKey && letterOrDigitFromKeyCode(e.keyCode)) return false;
 
   return (

@@ -1,15 +1,12 @@
-// Small pure lookups shared across workspace components, replacing the repeated
-// inline `activeWorktrees.find(...)`, `mrs.find(...)`, and per-file annotation/
-// thread filters. Plain functions (not hooks) so they work inside render loops.
+// Pure lookups shared across workspace components. Plain functions, not hooks.
 
 import type { Worktree, Mr, Annotation, MrThread, DiffResult } from '../ipc/ipc';
 
-/** The worktree for a repo (the one git ops target). */
+/** The worktree for a repo. */
 export const worktreeFor = (worktrees: Worktree[], repoId: string | null | undefined) =>
   repoId ? worktrees.find((w) => w.repo_id === repoId) : undefined;
 
-/** The worktree git ops target for a repo, honoring the session's selected
- *  worktree when it belongs to that repo (a repo can hold several worktrees). */
+/** The worktree git ops target for a repo; the session's selected worktree when it belongs to that repo. */
 export const activeWorktreeFor = (
   worktrees: Worktree[],
   repoId: string | null | undefined,
@@ -20,9 +17,7 @@ export const activeWorktreeFor = (
   return selected?.repo_id === repoId ? selected : worktrees.find((w) => w.repo_id === repoId);
 };
 
-/** The diff summary entry for one worktree. The summary carries one entry PER
- *  WORKTREE (same repo_id, different branch); the repo match is the fallback
- *  while a worktree is still provisioning. */
+/** The diff summary entry for one worktree. The repo match is the fallback while a worktree provisions. */
 export const repoDiffFor = (diff: DiffResult | null | undefined, worktreeId: string | undefined, repoId: string) =>
   (worktreeId ? diff?.repos.find((r) => r.worktree_id === worktreeId) : undefined)
     ?? diff?.repos.find((r) => r.repo_id === repoId);

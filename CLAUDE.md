@@ -9,13 +9,24 @@ server the agent talks to.
 
 ## Verify
 
-Run all four before claiming done. There is no CI.
+Run everything before claiming done. CI (`.github/workflows/ci.yml`) runs the same
+list on every push and pull request; a red pipeline blocks the merge.
 
 ```sh
-pnpm test                    # vitest — 12 files, pure logic, node env
+pnpm check                   # tsc, eslint, stylelint, dead-CSS check, vitest, vite build
+cd src-tauri && cargo fmt --check
+cd src-tauri && cargo clippy --lib --all-targets -- -D warnings
+cd src-tauri && cargo test --lib   # all inline #[cfg(test)]
+```
+
+The pieces of `pnpm check`, when one is enough:
+
+```sh
 npx tsc --noEmit             # types
-pnpm lint                    # eslint (src only; formatting is not linted)
-cd src-tauri && cargo test --lib   # ~193 tests, all inline #[cfg(test)]
+pnpm lint                    # eslint: defects + `groove/boundaries` (eslint/boundaries.js)
+pnpm lint:css                # stylelint: no raw colour outside shared/styles
+pnpm check:css               # every CSS class is referenced by a .ts/.tsx file
+pnpm test                    # vitest — pure logic, node env
 npx vite build               # catches what tsc alone does not
 ```
 
@@ -189,11 +200,18 @@ prefer ALTER there.
 
 **Dependency direction**: features import from `shared/` and themselves. Declared
 exceptions: `app/ → *` (composition root); `workspace/ → files|git|notes|editor|overview|
-terminal` (tab/sidebar host); `git/ → editor/` (data → renderer); a host may import a
-leaf feature.
+terminal` (tab/sidebar host); `git/ → editor/` (data → renderer); `settings/ → setup|
+actions`; `agent/ → setup`; `overview/ → notes`. The list lives in
+`eslint/boundaries.js` and `pnpm lint` fails on any other edge. The same rule keeps
+`shared/ipc/generated` behind `ipc.ts`, `@tauri-apps/api/core` behind `invoke.ts`, and
+the store internals behind the `shared/store` barrel.
 
 **CSS**
-- Tokens and themes only — Catppuccin, Latte default, config wins. Never a raw hex.
+- Tokens and themes only — Catppuccin, Latte default, config wins. Never a raw hex,
+  named colour or numeric `rgb()` outside `shared/styles/tokens.css` and
+  `shared/styles/themes/` — stylelint (`.stylelintrc.json`) fails on one.
+- Every class selector must be referenced by a `.ts/.tsx` file. `pnpm check:css` lists
+  the orphans; delete the rule, or add a runtime-built prefix to the script's allowlist.
 - **No inset box-shadow left-border** for selected or active states. Use border +
   background.
 - Watch cascade ORDER, not just specificity: `.x.variant` and `.y.variant` are both two
@@ -204,8 +222,9 @@ leaf feature.
   the highlight off the caret.
 
 **Comments**: say WHAT, and only where the code is not already explicit — not why. One
-line is enough when one is needed, and none is often right. Existing long explanatory
-blocks are legacy; do not copy that density into new code.
+line is enough when one is needed, and none is often right. Keep a trap, a pin or a
+guard (`do not change this until <condition>`) as one line. The why goes in the commit
+body. The whole tree follows this rule; a multi-line why-block in a diff is a defect.
 
 ## Gotchas
 

@@ -13,11 +13,8 @@ interface Opts {
 }
 
 /**
- * Keyboard navigation for a vertical list (file tree / changed files): a cursor
- * row driven by j/k + arrows (at the system key-repeat rate), gg/G to jump, Enter
- * to open, and optional h/l for tree expand-collapse. The owning element gets
- * `containerRef`/`onKeyDown` and marks its cursor row with the `nav-selected`
- * class (used for scroll-into-view).
+ * Keyboard navigation for a vertical list: j/k + arrows, gg/G, Enter, optional h/l.
+ * The owner takes `containerRef`/`onKeyDown` and marks its cursor row with the `nav-selected` class.
  */
 export function useListNav({ count, onEnter, onLeft, onRight, focusNonce }: Opts) {
   const [storedIndex, setIndexState] = useState(0);
@@ -28,17 +25,15 @@ export function useListNav({ count, onEnter, onLeft, onRight, focusNonce }: Opts
   const clamp = useCallback((i: number) => Math.max(0, Math.min(i, Math.max(0, count - 1))), [count]);
   const setIndex = useCallback((i: number) => setIndexState(clamp(i)), [clamp]);
 
-  // Clamped on read, so a list that grew or shrank needs no correcting effect.
+  // Clamped on read; no correcting effect.
   const index = clamp(storedIndex);
 
-  // A panel shortcut asked for focus; the list may still be loading (the file
-  // tree fetches async), so just arm the request here…
+  // Arm the focus request; the list may still be loading.
   useEffect(() => {
     if (focusNonce) wantFocus.current = true;
   }, [focusNonce]);
 
-  // …and claim it as soon as the container is actually in the DOM (this runs
-  // after every render, so it catches the late mount once files have loaded).
+  // Claim it once the container is in the DOM; runs after every render.
   useEffect(() => {
     if (wantFocus.current && containerRef.current) {
       containerRef.current.focus();

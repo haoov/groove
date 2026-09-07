@@ -8,8 +8,7 @@ import { FileDiffEditor } from '../editor/FileDiffEditor';
 import { useDiffExpand } from '../editor/useDiffExpand';
 import type { AnnCtx } from '../editor/useAnnotations';
 
-// Commits are immutable, so their diffs cache safely across tab switches
-// (tab bodies unmount when inactive). Small LRU-ish cap keeps memory bounded.
+// Commit diffs cached across tab switches, capped at `CACHE_MAX`.
 const commitDiffCache = new Map<string, FileDiff[]>();
 const CACHE_MAX = 24;
 function cachePut(key: string, files: FileDiff[]) {
@@ -20,8 +19,7 @@ function cachePut(key: string, files: FileDiff[]) {
   commitDiffCache.set(key, files);
 }
 
-/** One commit's diff — the "All changes" layout, minus everything that only
- *  makes sense against the working tree (annotations, staging). */
+/** One commit's diff: the "All changes" layout without annotations or staging. */
 export function CommitDiffView({ repoId, sha, ann }: { repoId: string; sha: string; ann: AnnCtx }) {
   const activeWorktrees = useSession((s) => s.activeWorktrees);
   const commits = useSession((s) => s.commits);
@@ -33,7 +31,7 @@ export function CommitDiffView({ repoId, sha, ann }: { repoId: string; sha: stri
 
   const [files, setFiles] = useState<FileDiff[] | null>(() => commitDiffCache.get(cacheKey) ?? null);
   const [error, setError] = useState<string | null>(null);
-  // Default expanded: a commit is a finished snapshot — you came to read it.
+  // All files start expanded.
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const meta = useMemo(() => commits.find((c) => c.sha === sha) ?? null, [commits, sha]);
@@ -131,8 +129,7 @@ export function CommitDiffView({ repoId, sha, ann }: { repoId: string; sha: stri
   );
 }
 
-/** One file of a commit. Context comes from that commit, not the working tree, so
- *  the expansion is keyed on the sha. */
+/** One file of a commit; expansion reads context at `sha`. */
 function CommitFileDiff({
   file, worktreeId, repoId, sha, ann, onHunks,
 }: {

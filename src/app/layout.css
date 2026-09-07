@@ -1,19 +1,4 @@
-/* Platform Workbench — Component styles "Pure Zed"
-   Flat cool-gray chrome · single sky-blue accent · no brand gradients/glows.
-   Class names are stable contracts with the React tree; only the visual layer changes. */
-
-/* ── SVG icon helpers ─────────────────────────────────────────────────────── */
-
-.tab-icon {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  opacity: 0.7;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-/* ── App shell ────────────────────────────────────────────────────────────── */
+/* ── App shell ── */
 
 .app {
   display: flex;
@@ -37,7 +22,7 @@
   display: flex;
 }
 
-/* ── Activity rail ────────────────────────────────────────────────────────── */
+/* ── Activity rail ── */
 .activity-rail {
   width: 2.2rem;            /* 35px */
   flex-shrink: 0;
@@ -59,7 +44,6 @@
   width: 100%;
 }
 
-/* Home is top-level navigation; the groups under it are the session. */
 .rail-group:first-child { border-bottom-color: var(--gl-border-color-strong); }
 .rail-btn {
   position: relative;
@@ -77,7 +61,7 @@
 }
 .rail-btn:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.05); }
 .rail-btn.active { color: var(--gl-color-blue-300); background: var(--gl-color-blue-100); }
-/* Two classes so it beats `.rail-group`'s bottom border whatever the order. */
+/* two classes: outranks .rail-group border-bottom */
 .rail-group.rail-group-bottom {
   margin-top: auto;
   padding-top: var(--space-1);
@@ -104,7 +88,7 @@
   line-height: 1;
 }
 
-/* ── Header ───────────────────────────────────────────────────────────────── */
+/* ── Header ── */
 
 .header {
   height: var(--wb-header-height);
@@ -144,13 +128,10 @@
   color: var(--gl-text-color-subtle);
 }
 
-/* Clear the traffic lights, which float over the top-left of the header. */
 [data-platform="macos"] .header {
   padding-left: var(--wb-traffic-lights);
 }
 
-/* Center label: the active session's title, truncating so it never shoves the
-   left pickers or the right controls. */
 .header-center {
   flex: 1 1 auto;
   min-width: 0;
@@ -161,7 +142,7 @@
 
 .header-right { display: flex; align-items: center; gap: var(--space-2); }
 
-/* ── Custom window controls (frameless window) ────────────────────────────── */
+/* ── Window controls (frameless) ── */
 .window-controls { display: flex; align-items: center; gap: 2px; margin-left: var(--space-1); }
 .win-btn {
   display: inline-flex;
@@ -178,9 +159,9 @@
   transition: background 0.12s, color 0.12s;
 }
 .win-btn:hover { background: rgba(var(--gl-elevate), 0.08); color: var(--gl-text-color-default); }
-.win-btn-close:hover { background: var(--gl-color-red-400); color: #fff; }
+.win-btn-close:hover { background: var(--gl-color-red-400); color: var(--gl-color-on-accent); }
 
-/* ── Frameless resize grips (overlay the window edges/corners) ────────────── */
+/* ── Resize grips (frameless) ── */
 .resize-grip { position: fixed; z-index: 1000; }
 .resize-grip-n { top: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
 .resize-grip-s { bottom: 0; left: 0; right: 0; height: 4px; cursor: ns-resize; }
@@ -206,7 +187,7 @@
 }
 .header-settings-btn:hover { color: var(--gl-text-color-default); background: var(--gl-hover-overlay); }
 
-/* ── StatusBar ────────────────────────────────────────────────────────────── */
+/* ── StatusBar ── */
 
 .statusbar {
   height: var(--wb-statusbar-height);
@@ -252,9 +233,7 @@
 .statusbar-syncing { color: var(--gl-color-orange-400); }
 .statusbar-ok { color: var(--gl-text-color-disabled); font-family: var(--font-mono); }
 
-/* ── Approvals badge — the human (peach) half of the duet ─────────────────────
-   Lives in the header beside the notification bell: both answer "what is waiting
-   for me?", and a parked agent write was easy to miss down in the status bar.  */
+/* ── Approvals badge ── */
 .header-approvals {
   display: inline-flex;
   align-items: center;
@@ -275,7 +254,6 @@
   background: color-mix(in srgb, var(--wb-annotation-human) 28%, transparent);
   border-color: color-mix(in srgb, var(--wb-annotation-human) 60%, transparent);
 }
-/* Deferred queue: keep gently pulsing so "your turn" is never lost. */
 .header-approvals.deferred { animation: wb-approvals-pulse 2.4s ease-in-out infinite; }
 @keyframes wb-approvals-pulse {
   0%, 100% { border-color: color-mix(in srgb, var(--wb-annotation-human) 40%, transparent); }
@@ -285,11 +263,7 @@
   .header-approvals.deferred { animation: none; }
 }
 
-
-
-/* ── Header context pickers (session · repo · worktree) ─────────────────────── */
-/* Header context pickers — quiet Zed-style chips that open a filterable list. */
-
+/* ── Header context pickers ── */
 .header-pickers { display: inline-flex; align-items: center; gap: var(--space-3); margin-left: var(--space-2); }
 .hp { position: relative; display: inline-flex; }
 .hp-chip {
@@ -312,8 +286,7 @@
   border-color: var(--gl-border-color-subtle);
 }
 .hp-chip-icon { color: var(--gl-text-color-subtle); flex-shrink: 0; display: inline-flex; align-items: center; }
-/* One line-height and size across all three chips, so id and name align the same.
-   Room for descenders: .hp-chip-name clips to this box. */
+/* shared line box for the three chips; .hp-chip-name clips to it */
 .hp-chip-v { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--gl-font-size-sm); line-height: 1.45; }
 .hp-chip-id {
   flex-shrink: 0;
@@ -321,12 +294,7 @@
   color: var(--gl-color-blue-300);
 }
 .hp-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Caret stays faint until the chip is touched — one accent per row, no clutter. */
-.hp-chip-caret { color: var(--gl-text-color-disabled); flex-shrink: 0; opacity: 0.5; }
-.hp-chip:hover .hp-chip-caret, .hp-chip.open .hp-chip-caret { opacity: 1; }
-
-/* Portalled to <body> with fixed position (set inline from the chip rect), so
-   the header's overflow:hidden can never clip it. */
+/* portalled to <body>; left/top set inline from the chip rect */
 .hp-pop {
   position: fixed;
   z-index: 200;
@@ -349,7 +317,6 @@
 .hp-row { display: flex; align-items: stretch; }
 .hp-row.active { background: color-mix(in srgb, var(--ctp-blue) 12%, transparent); border-radius: var(--gl-border-radius-medium); }
 .hp-row.cursor:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium);}
-/* On the row, not the main button: the close × sits outside it. */
 .hp-row:hover:not(.active) { background: var(--gl-background-color-hover); border-radius: var(--gl-border-radius-medium); }
 .hp-row.active:hover { background: color-mix(in srgb, var(--ctp-blue) 20%, transparent); }
 .hp-row-main {
@@ -411,10 +378,8 @@
 .hp-tick { width: 14px; flex-shrink: 0; display: inline-flex; align-items: center; color: var(--gl-color-blue-300); }
 .hp-row-simple .hp-row-title { flex: 1; }
 .hp-row-simple .hp-row-kind { color: var(--gl-text-color-disabled); font-family: var(--font-mono); font-size: 10.5px; }
-/* Repo main button sits beside a close ×, so it grows to fill the row width. */
 .hp-row-grow { flex: 1; min-width: 0; }
 
-/* "＋ Add repo…" footer row and the close-repo confirm, in the repo dropdown. */
 .hp-row-add {
   display: flex;
   align-items: center;
@@ -454,7 +419,7 @@
 .hp-confirm-yes:hover { background: var(--gl-color-red-100); }
 .hp-confirm-no:hover { background: var(--gl-background-color-hover); }
 
-/* ── Notification popover (the bell owns its feed now) ──────────────────────── */
+/* ── Notification popover ── */
 .notif-center { position: relative; display: inline-flex; }
 .notif-popover {
   position: absolute;
@@ -470,6 +435,5 @@
   box-shadow: var(--shadow-float);
 }
 
-/* Session-picker row status colours. */
 .hp-row-status.status-blocked { color: var(--gl-color-red-400); }
 .hp-row-status.status-done { color: var(--gl-color-green-400); }

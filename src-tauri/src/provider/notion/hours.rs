@@ -1,11 +1,7 @@
 //! The Notion half of hour logging: read the current number, add, write back.
-//! The local time ledger (what was measured vs what was sent) lives in
-//! `task_manager::hours`, which calls this.
 
-/// Add `hours` to the page's number property. ADDS rather than replaces:
-/// "Hours spent" is cumulative, and the value may have been edited in Notion
-/// since we last read it, so the current value is re-read immediately before
-/// the write. Returns `(before, after)`.
+/// Add `hours` to the page's number property. Re-reads the current value first.
+/// Returns `(before, after)`.
 pub async fn add_hours(
     token: &str,
     notion_page_id: &str,
@@ -13,11 +9,15 @@ pub async fn add_hours(
     hours: f64,
 ) -> anyhow::Result<(f64, f64)> {
     if !(hours.is_finite() && hours > 0.0 && hours < 1000.0) {
-        return Err(anyhow::anyhow!("{hours} is not a plausible number of hours"));
+        return Err(anyhow::anyhow!(
+            "{hours} is not a plausible number of hours"
+        ));
     }
 
     let page = super::api::get(token, &format!("v1/pages/{notion_page_id}")).await?;
-    let before = page["properties"][property]["number"].as_f64().unwrap_or(0.0);
+    let before = page["properties"][property]["number"]
+        .as_f64()
+        .unwrap_or(0.0);
     let after = ((before + hours) * 100.0).round() / 100.0;
 
     super::api::patch(
@@ -29,4 +29,3 @@ pub async fn add_hours(
 
     Ok((before, after))
 }
-

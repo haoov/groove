@@ -1,6 +1,4 @@
-//! The process-wide HTTP client. One client means one connection pool: every
-//! request to the same host reuses a live TLS connection instead of paying a
-//! fresh handshake.
+//! The process-wide HTTP client and its single connection pool.
 
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -18,14 +16,15 @@ pub fn client() -> &'static reqwest::Client {
 
 #[cfg(test)]
 mod tests {
-    /// The client above is the only one — a second pool is a second set of
-    /// handshakes. Same style as the git-spawn and raw-SQL guards.
     #[test]
     fn no_http_client_outside_core_http() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = vec![];
         visit(&src, &mut offenders);
-        assert!(offenders.is_empty(), "reqwest::Client built outside core/http: {offenders:?}");
+        assert!(
+            offenders.is_empty(),
+            "reqwest::Client built outside core/http: {offenders:?}"
+        );
 
         fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).unwrap().flatten() {

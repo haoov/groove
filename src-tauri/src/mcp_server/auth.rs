@@ -1,9 +1,5 @@
-//! Per-launch bearer token for the loopback server.
-//!
-//! Without it, any local process could read a task's diff through `get_task_diff`,
-//! queue write approvals that look like agent requests, or spoof `/hook`
-//! activity. Only processes we spawn receive the token — via launch FILES, never
-//! argv, because `/proc/<pid>/cmdline` is world-readable.
+//! Per-launch bearer token for the loopback server. Pass it to spawned processes
+//! through launch files, never argv: `/proc/<pid>/cmdline` is world-readable.
 
 use std::sync::OnceLock;
 
@@ -13,16 +9,20 @@ use axum::response::IntoResponse;
 pub(crate) fn token() -> &'static str {
     static TOKEN: OnceLock<String> = OnceLock::new();
     TOKEN.get_or_init(|| {
-        format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
+        format!(
+            "{}{}",
+            uuid::Uuid::new_v4().simple(),
+            uuid::Uuid::new_v4().simple()
+        )
     })
 }
 
-/// `Authorization: Bearer <token>` or `?token=<token>` — the query form exists
-/// for clients that cannot set headers on an SSE connection.
+/// `Authorization: Bearer <token>` or `?token=<token>`.
 fn authorized(auth_header: Option<&str>, query: Option<&str>) -> bool {
     let expected = token();
     if let Some(bearer) = auth_header.and_then(|a| {
-        a.strip_prefix("Bearer ").or_else(|| a.strip_prefix("bearer "))
+        a.strip_prefix("Bearer ")
+            .or_else(|| a.strip_prefix("bearer "))
     }) {
         if bearer.trim() == expected {
             return true;
@@ -47,8 +47,6 @@ pub(super) async fn require_auth(
     if ok {
         next.run(req).await
     } else {
-        // A failed check is either a stale agent from a previous launch or a
-        // foreign local process probing the port — both worth a trace.
         tracing::warn!("[mcp] unauthorized request to {}", req.uri().path());
         axum::http::StatusCode::UNAUTHORIZED.into_response()
     }
@@ -67,6 +65,9 @@ mod tests {
         assert!(!authorized(None, None), "no credential");
         assert!(!authorized(Some("Bearer nope"), None), "wrong bearer");
         assert!(!authorized(None, Some("token=nope")), "wrong query token");
-        assert!(!authorized(Some(t), None), "raw token without the Bearer scheme");
+        assert!(
+            !authorized(Some(t), None),
+            "raw token without the Bearer scheme"
+        );
     }
 }

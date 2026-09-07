@@ -1,7 +1,5 @@
-/* The agent actions manager, inside the Settings modal. */
+/* ── Agent actions manager ── */
 
-/* Two groups, each labelled: whose a skill is decides whether it can be edited,
-   so the split has to be visible before anything is clicked. */
 .skill-group + .skill-group { margin-top: var(--space-4); }
 
 .skill-group-head {
@@ -66,8 +64,6 @@
   flex-shrink: 0;
 }
 
-/* The description is the least important thing in the row and the longest, so it
-   takes what is left and truncates rather than wrapping every row to two lines. */
 .skill-desc {
   color: var(--gl-text-color-subtle);
   overflow: hidden;
@@ -136,6 +132,6 @@
   white-space: pre-wrap;
 }
 
-/* Two classes, so it must sit after .btn-secondary:hover to win on hover. */
+/* loads after ui.css: .btn-secondary.danger relies on order */
 .btn-secondary.danger { color: var(--gl-color-red-400); }
 .btn-secondary.danger:hover { color: var(--gl-color-red-500); border-color: var(--gl-color-red-400); }

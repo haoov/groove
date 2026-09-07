@@ -8,8 +8,6 @@ import { GrooveMark } from '../../shared/ui/GrooveMark';
 
 export function Header() {
   const openSettings = useStore((s) => s.openSettings);
-  // Deferred approvals belong next to the other "waiting for you" counter, not
-  // in the status bar where a parked agent write was easy to forget.
   const approvals = useStore((s) => s.pendingConfirmations.length);
   const setConfirmationsMinimized = useStore((s) => s.setConfirmationsMinimized);
 

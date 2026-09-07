@@ -1,7 +1,5 @@
-//! Tauri event names — the single source of truth for backend→frontend events.
-//!
-//! This is a hand-mirrored contract with the frontend: every name here must match
-//! `src/shared/ipc/events.ts`. Keep the two files in sync.
+//! Tauri event names for backend→frontend events.
+//! Every name must match `src/shared/ipc/events.ts`.
 
 // ── Workspace / task lifecycle ──────────────────────────────────────────────
 pub const WORKSPACE_STUB: &str = "workspace_stub";
@@ -21,10 +19,9 @@ pub const REBASE_CONFLICT: &str = "rebase_conflict";
 
 // ── Annotations ─────────────────────────────────────────────────────────────
 pub const ANNOTATION_RESOLVED: &str = "annotation_resolved";
-/// An annotation the AGENT created — the UI adds its own optimistically, but
-/// without this event agent notes only showed up after reopening the session.
+/// An annotation the agent created.
 pub const ANNOTATION_CREATED: &str = "annotation_created";
-/// An annotation body the AGENT rewrote — the UI needs the new text.
+/// An annotation body the agent rewrote.
 pub const ANNOTATION_UPDATED: &str = "annotation_updated";
 
 // ── PTY (agent / terminal) ──────────────────────────────────────────────────
@@ -37,28 +34,26 @@ pub const PTY_EXIT: &str = "pty_exit";
 pub const AGENT_ACTIVITY: &str = "agent_activity";
 
 // ── Backend notices ─────────────────────────────────────────────────────────
-/// An operational warning from work the user didn't directly trigger — payload
-/// mirrors the frontend's `NotificationInput`, so it lands in the feed as-is.
+/// A warning from background work; payload mirrors the frontend's `NotificationInput`.
 pub const BACKEND_NOTICE: &str = "backend_notice";
 
 use std::sync::OnceLock;
 
-/// The app handle, for modules with no `AppHandle`/`State` access.
-///
-/// Same pattern as `core::config`: git provisioning runs deep
-/// inside call chains that never needed a handle, and silently swallowing a failed
-/// fetch is worse than a global. Set once during init.
+/// The app handle for modules with no `AppHandle`/`State` access. Set once during init.
 static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
 
 pub fn set_app(handle: tauri::AppHandle) {
     let _ = APP.set(handle);
 }
 
-/// Tell the user something went sideways in background work.
-///
-/// Best-effort: before `set_app` (or in tests) this is a no-op, because a missing
-/// notification must never fail the operation that tried to report it.
-pub fn notice(kind: &str, source: &str, title: String, detail: Option<String>, task_id: Option<&str>) {
+/// Emit a backend notice. No-op before `set_app`.
+pub fn notice(
+    kind: &str,
+    source: &str,
+    title: String,
+    detail: Option<String>,
+    task_id: Option<&str>,
+) {
     use tauri::Emitter;
     let Some(app) = APP.get() else { return };
     let _ = app.emit(

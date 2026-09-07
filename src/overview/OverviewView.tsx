@@ -3,8 +3,7 @@ import { TaskOverview } from './TaskOverview';
 import { ExplorerOverview } from './ExplorerOverview';
 import { ReviewOverview } from './ReviewOverview';
 
-/** The main panel's "overview" surface — task metadata for task sessions, a
- *  repo list + "create task" for explorers, the MR + review actions for reviews. */
+/** The main panel's overview surface, by session kind. */
 export function OverviewView() {
   const kind = useSession((s) => s.kind);
   if (kind === 'explorer') return <ExplorerOverview />;

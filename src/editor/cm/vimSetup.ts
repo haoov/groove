@@ -4,13 +4,8 @@ import { Vim } from '@replit/codemirror-vim';
 let done = false;
 
 /**
- * Replace vim's bare in-buffer `/` search with CodeMirror's search panel, which
- * supports regex, case toggles, and replace — while keeping every other vim
- * motion. `n`/`N` navigate the CM matches so the vim search-flow still works.
- *
- * Global + idempotent: `Vim.mapCommand` mutates the shared vim keymap, so one
- * call covers every vim editor (diff + edit). The action adapter exposes the
- * underlying EditorView as `cm.cm6`.
+ * Maps vim `/`, `?`, `n` and `N` to CodeMirror's search panel.
+ * Idempotent: `Vim.mapCommand` mutates the vim keymap shared by every editor.
  */
 export function setupVimSearch() {
   if (done) return;

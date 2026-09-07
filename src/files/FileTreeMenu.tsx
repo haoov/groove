@@ -81,7 +81,7 @@ export function TreePrompt({
 
   useEffect(() => {
     inputRef.current?.focus();
-    // Select the base name (before the extension) for a rename.
+    // Select the base name, before the extension.
     const dot = initialValue.lastIndexOf('.');
     inputRef.current?.setSelectionRange(0, dot > 0 ? dot : initialValue.length);
   }, [initialValue]);
@@ -124,14 +124,12 @@ export function TreeConfirmDelete({
   const popoverRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
-  // Focus the Delete button on mount so keyboard confirm is scoped here.
   useEffect(() => { confirmRef.current?.focus(); }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onCancel(); return; }
-      // Enter must confirm ONLY when focus is inside this popover — otherwise
-      // Enter in the editor would trigger a permanent delete.
+      // Enter confirms only with focus inside the popover; an editor Enter must not delete.
       if (e.key === 'Enter' && popoverRef.current?.contains(document.activeElement)) onConfirm();
     };
     window.addEventListener('keydown', onKey, true);

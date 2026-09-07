@@ -7,14 +7,8 @@ import { DEFAULT_FONT_SIZE } from '../ipc/ipc';
 import { registerPtyHandler, unregisterPtyHandler, bytesToB64 } from './ptyRegistry';
 import '@xterm/xterm/css/xterm.css';
 
-/**
- * Terminal ownership lives OUTSIDE React: xterm cannot be re-`open()`ed into a
- * new element and its scrollback lives in the Terminal object, so hosts persist
- * for the PTY session's lifetime. Components only re-parent `el` into their
- * container on mount and detach it on unmount — moving a PTY tab between panes,
- * hiding it, or closing its tab never loses the terminal or its output (the PTY
- * handler writes into the Terminal even while no tab shows it).
- */
+/** A terminal that lives for the PTY session, outside React.
+ *  Do not re-`open()` a Terminal; components only re-parent `el`. */
 export interface TermHost {
   term: Terminal;
   fit: FitAddon;
@@ -25,8 +19,7 @@ export interface TermHost {
 
 const hosts = new Map<string, TermHost>();
 
-/** Resolve the active theme's palette (CSS custom properties) into a concrete
- *  xterm theme object — xterm can't read CSS variables. */
+/** Resolves the active theme's CSS custom properties into an xterm theme object. */
 function xtermThemeFromCss() {
   const cs = getComputedStyle(document.documentElement);
   const v = (name: string) => cs.getPropertyValue(name).trim();
@@ -51,8 +44,6 @@ function xtermThemeFromCss() {
 const SELECTION_COPY_MS = 180;
 
 const baseFontSize = () => useStore.getState().config?.ui.font_size ?? DEFAULT_FONT_SIZE;
-/** A shell reads a touch larger than the editor for glyph legibility; the agent's
- *  TUI is dense and reads a touch smaller. */
 const termFontSize = (agent: boolean) => baseFontSize() + (agent ? -1 : 1);
 
 /** The bundled stack, also the agent's fallback. */
@@ -62,50 +53,29 @@ const agentFontFamily = () => {
   return configured ? `'${configured}', ${MONO_STACK}` : MONO_STACK;
 };
 
-/** The configured family, with the same fallbacks as `--font-mono`. xterm cannot
- *  read CSS variables, so this mirrors the token in JS. */
+/** The configured family with the `--font-mono` fallbacks. Keep the two in sync. */
 const termFontFamily = () => {
   const configured = useStore.getState().config?.ui.font_family?.trim();
   const stack = MONO_STACK;
   return configured ? `'${configured}', ${stack}` : stack;
 };
 
-/**
- * Clipboard for the terminals, through the backend.
- *
- * Not `navigator.clipboard` and not `execCommand('copy')`: the first is absent in
- * WebKitGTK unless the origin is a secure context, and the second needs a real DOM
- * selection, which a terminal never has — xterm draws its own. Both failed
- * silently. The backend shells out to the OS clipboard tool instead
- * (src-tauri/src/clipboard.rs), which is verifiable and reports errors.
- */
+/** Clipboard through the backend. `navigator.clipboard` and `execCommand('copy')`
+ *  both fail silently in WebKitGTK. */
 async function copyText(text: string): Promise<void> {
   await invoke('copy_to_clipboard', { text });
 }
 
-/**
- * Copy and paste inside a terminal.
- *
- * Ctrl+Shift+C / Ctrl+Shift+V, not the bare chords: Ctrl+C is SIGINT and Ctrl+V is
- * a literal keystroke the program may want.
- *
- * Selection needs no modifier. Claude Code turns on bracketed paste (`?2004h`)
- * AND mouse tracking, so it answers a middle click itself.
- *
- * A finished selection is also copied automatically, the way most terminals behave:
- * a keystroke that silently does nothing is what made this hard to use at all.
- */
+/** Copy and paste inside a terminal: Ctrl+Shift+C / Ctrl+Shift+V, plus copy-on-select. */
 function attachClipboard(term: Terminal) {
   term.attachCustomKeyEventHandler((e) => {
     if (e.type !== 'keydown' || !e.ctrlKey || !e.shiftKey) return true;
 
     if (e.code === 'KeyC') {
       const selection = term.getSelection();
-      // Nothing selected: fall through, so the chord still reaches the program.
+      // Nothing selected: the chord reaches the program.
       if (!selection) return true;
-      // Returning false stops XTERM handling the key, not the BROWSER: without
-      // this the webview also runs its native copy/paste for the same chord, so
-      // the text was written twice (and pasted twice).
+      // Returning false stops xterm only; preventDefault stops the webview's native copy.
       e.preventDefault();
       copyText(selection).catch((err) => useStore.getState().setLastError(String(err)));
       return false;
@@ -113,7 +83,6 @@ function attachClipboard(term: Terminal) {
     if (e.code === 'KeyV') {
       e.preventDefault();
       invoke<string>('read_clipboard')
-        // paste() goes through onData, so bracketed paste is honoured.
         .then((text) => { if (text) term.paste(text); })
         .catch((err) => useStore.getState().setLastError(String(err)));
       return false;
@@ -122,16 +91,13 @@ function attachClipboard(term: Terminal) {
   });
 
   term.element?.addEventListener('paste', (e) => {
-    // xterm never cancels the paste default, so the webview would insert the
-    // text into the helper textarea and send it a second time.
+    // The webview also pastes on this event; cancel it.
     e.preventDefault();
-    // With mouse tracking on, the middle click also reaches the program, which
-    // pastes for itself — stop xterm pasting on top of it.
+    // With mouse tracking on, the program pastes the middle click itself.
     if (term.modes.mouseTrackingMode !== 'none') e.stopPropagation();
   }, true);
 
-  // Copy-on-select, debounced so a drag copies once when it settles rather than on
-  // every intermediate change.
+  // Copy-on-select, debounced.
   let settle: number | undefined;
   let reported = false;
   term.onSelectionChange(() => {
@@ -140,8 +106,7 @@ function attachClipboard(term: Terminal) {
       const selection = term.getSelection();
       if (!selection.trim()) return;
       copyText(selection).catch((err) => {
-        // Once per session, not per drag: swallowing this entirely is what made a
-        // broken clipboard look like a broken selection.
+        // Report once per session.
         if (reported) return;
         reported = true;
         useStore.getState().setLastError(`Clipboard: ${String(err)}`);
@@ -150,23 +115,11 @@ function attachClipboard(term: Terminal) {
   });
 }
 
-/**
- * Draw on the GPU where the machine allows it.
- *
- * xterm's default renderer builds DOM for what it paints, which is the slowest part
- * of a terminal an agent is streaming into — it redraws its whole screen as it
- * thinks. The WebGL renderer draws from one texture atlas instead.
- *
- * Must be loaded AFTER `open`, and it can fail for reasons that are the machine's
- * rather than ours: no WebGL2, a driver that refuses, a context lost later on. Every
- * one of those falls back to the DOM renderer, which is what this app shipped with,
- * so the terminal is never worse off for having tried.
- */
+/** Loads the WebGL renderer. Load it after `open`; any failure falls back to the DOM renderer. */
 function attachGpuRenderer(term: Terminal) {
   try {
     const gpu = new WebglAddon();
     gpu.onContextLoss(() => {
-      // Nothing to retry against: the addon disposes itself and xterm reverts.
       console.warn('terminal: WebGL context lost, falling back to the DOM renderer');
       gpu.dispose();
     });
@@ -176,43 +129,31 @@ function attachGpuRenderer(term: Terminal) {
   }
 }
 
-/** Below this, a measurement is layout noise rather than a terminal. */
+/** Below this, a measurement is layout noise. */
 const MIN_COLS = 20;
 const MIN_ROWS = 4;
 
 /** The size each PTY was last told, so a fit that changes nothing costs no IPC. */
 const syncedSize = new Map<string, { cols: number; rows: number }>();
 
-/** Drop the size record, so the next fit tells the shell even an unchanged size.
- *  Another window can have resized the PTY meanwhile. */
+/** Drops the size record; the next fit resends the size. Another window can have resized the PTY. */
 export function forgetSyncedSize(sessionId: string) {
   syncedSize.delete(sessionId);
 }
 
-/**
- * Resize a terminal and its shell together — or resize neither.
- *
- * `fit()` on its own is a bug, not a shortcut: it calls `term.resize`, which
- * REWRAPS the buffer and recomputes where the cursor sits. A shell that hears no
- * SIGWINCH keeps the old geometry, so its next redraw addresses a row that has
- * moved, and the line accumulates the characters it meant to overwrite. A prompt
- * long enough to wrap makes it happen on the very first keystroke.
- *
- * So the size is measured, checked, and applied to both sides here, and `fit()` is
- * called nowhere else.
- */
+/** Resizes a terminal and its shell together, or neither.
+ *  Never call `fit()` elsewhere: a rewrapped buffer with an un-notified shell corrupts the screen. */
 export function fitAndSync(sessionId: string) {
   const host = hosts.get(sessionId);
   const container = host?.el.parentElement;
-  // Hidden panes and inactive sessions stay mounted at `display: none`, which
-  // measures 0×0; fitting to that would rewrap every line for nothing.
+  // Hidden panes measure 0×0; do not fit to that.
   if (!host || !container || container.clientWidth < 2 || container.clientHeight < 2) return;
 
   let dims: { cols?: number; rows?: number } | undefined;
   try {
     dims = host.fit.proposeDimensions();
   } catch {
-    return; // detached — it refits when it is next shown
+    return; // detached; refits when next shown
   }
   const { cols, rows } = dims ?? {};
   if (!cols || !rows || cols < MIN_COLS || rows < MIN_ROWS) return;
@@ -223,25 +164,18 @@ export function fitAndSync(sessionId: string) {
 
   host.term.resize(cols, rows);
   invoke('resize_pty', { sessionId, rows, cols }).catch((e) => {
-    // Leaving the shell on a stale size is the corruption above, so this must not
-    // be swallowed: drop the record so the next fit tries again.
+    // Drop the record; the next fit retries.
     syncedSize.delete(sessionId);
     console.warn('resize_pty failed', e);
   });
 }
 
-/**
- * Change a metric-affecting option and make xterm redraw from scratch.
- *
- * A new size or family changes the cell box, and xterm caches glyph widths: after
- * only a resize the rows keep the OLD metrics, which paints characters at the
- * wrong offsets — a glyph can appear twice, most visibly at the start of a line.
- * Dropping the glyph cache and repainting every row is what discards that.
- */
+/** Applies a metric-affecting option, refits, and repaints every row.
+ *  Keep `clearTextureAtlas`: xterm caches glyph widths and paints stale offsets after a resize. */
 function reflow(sessionId: string, host: TermHost, opts: { fontSize?: number; fontFamily?: string }) {
   if (opts.fontSize !== undefined) host.term.options.fontSize = opts.fontSize;
   if (opts.fontFamily !== undefined) host.term.options.fontFamily = opts.fontFamily;
-  // New metrics mean a new column count, so the shell has to hear about it.
+  // New metrics change the column count; force a resync.
   syncedSize.delete(sessionId);
   fitAndSync(sessionId);
   host.term.clearTextureAtlas();
@@ -274,8 +208,7 @@ export function ensureHost(sessionId: string, agent = false): TermHost {
     invoke('write_pty', { sessionId, dataB64 }).catch(console.error);
   });
 
-  // Registered for the SESSION lifetime (not a component's): output keeps
-  // flowing into the terminal's buffer even while no tab displays it.
+  // Registered for the session lifetime, not a component's.
   registerPtyHandler(sessionId, (bytes: Uint8Array) => {
     term.write(bytes);
   });
@@ -285,7 +218,7 @@ export function ensureHost(sessionId: string, agent = false): TermHost {
   return host;
 }
 
-/** Tear a host down — on kill, endSession, or natural pty_exit. */
+/** Tears a host down: kill, endSession, or pty_exit. */
 export function disposeHost(sessionId: string) {
   const host = hosts.get(sessionId);
   if (!host) return;
@@ -301,7 +234,7 @@ export function focusHost(sessionId: string) {
   requestAnimationFrame(() => { try { host?.term.focus(); } catch { /* ignore */ } });
 }
 
-// Live re-skin on theme / font-size changes (no React needed).
+// Live re-skin on theme / font changes.
 let lastTheme: string | undefined;
 let lastFont: number | undefined;
 let lastFamily: string | undefined;

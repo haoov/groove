@@ -16,8 +16,7 @@ export const MSG_SVG = makeSvg(20, 20,
 
 // ── Gutter markers (shared by the diff editor and the code editor) ────────────
 
-/** Add-comment button. `fileLineNum === 0` renders an empty cell (e.g. diff del
- *  lines or spacers). `elementClass` carries the diff line-type background. */
+/** Add-comment button; `fileLineNum === 0` renders an empty cell. */
 export class CommentGutterMarker extends GutterMarker {
   elementClass: string;
   constructor(
@@ -54,9 +53,7 @@ export class CommentGutterMarker extends GutterMarker {
   }
 }
 
-/** Line-number cell that shows the annotation icon + thread dot in place of the
- *  number when the line has annotations/threads. `numLabel` is the text shown
- *  otherwise (empty for diff deleted lines). */
+/** Line-number cell; shows the annotation icon and thread dot in place of the number. */
 export class LineNumGutterMarker extends GutterMarker {
   elementClass: string;
   constructor(
@@ -114,18 +111,12 @@ function shortAge(epochSeconds: number, now: number): string {
   return `${Math.floor(d / 365)}y`;
 }
 
-/** First name only — a gutter cell has room for one word, not a full name. */
+/** First name only. */
 function shortAuthor(author: string): string {
   return author.split(' ')[0] ?? author;
 }
 
-/**
- * One line's blame: author and age, clicking opens that commit.
- *
- * Blame reads the file on disk, so an unsaved buffer attributes lines to whatever
- * git last saw there. `null` line data renders an empty cell (diff `del` lines and
- * the spacer).
- */
+/** One line's blame: author and age; click opens the commit. `null` renders an empty cell. */
 export class BlameMarker extends GutterMarker {
   elementClass: string;
   constructor(
@@ -178,17 +169,9 @@ export class FormWidget extends WidgetType {
   ignoreEvent(): boolean { return true; }
 }
 
-/**
- * Permanent, always-visible annotations below a line.
- *
- * Like `FormWidget`, this is only a React portal target. Note bodies are
- * markdown (agents write code spans and lists), so they render through the
- * shared `<Markdown>` component — assembling the DOM here would mean a second,
- * diverging renderer.
- */
+/** Always-visible annotations below a line; a React portal target. */
 export class InlineAnnotationsWidget extends WidgetType {
-  /** `ids` makes the widget compare unequal when the line's annotation set
-   *  changes, so CodeMirror re-measures the block. */
+  /** `ids` changes the widget identity when the line's annotation set changes. */
   constructor(public container: HTMLDivElement, private ids: string) { super(); }
 
   toDOM(): HTMLElement { return this.container; }
@@ -199,7 +182,7 @@ export class InlineAnnotationsWidget extends WidgetType {
       && other.ids === this.ids;
   }
 
-  /** -1 = unknown: markdown bodies vary in height, so let CM measure. */
+  /** -1: unknown height, CodeMirror measures. */
   get estimatedHeight(): number { return -1; }
   ignoreEvent(): boolean { return true; }
 }

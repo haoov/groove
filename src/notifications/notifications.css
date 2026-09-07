@@ -1,12 +1,4 @@
-/* ── Notifications ────────────────────────────────────────────────────────────
-   One record, two views: the toast stack interrupts (top right, above the work,
-   under the modals), the centre panel keeps the history. Both render the same
-   .notif row so they can never drift apart.                                   */
-/* Top right, newest FIRST: each new toast takes the top slot and pushes the older
-   ones down. `column-reverse` over an append-ordered list does that without the
-   component having to reverse anything. Above every other layer — the expanded
-   agent console used to cover them. */
-
+/* ── Notifications ── */
 .toast-stack {
   position: fixed;
   right: var(--space-4);
@@ -36,8 +28,6 @@
   animation: notif-in 0.16s ease-out;
 }
 
-/* Drops in from above, matching where a new toast arrives. */
-
 @keyframes notif-in {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -55,9 +45,6 @@
 .notif.clickable { cursor: pointer; }
 
 .notif.clickable:hover { background: var(--gl-background-color-hover); }
-
-/* Not yet seen. The count only drops when a row is acted on, so "new" has to stay
-   visible in the list — otherwise the badge and the rows would disagree. */
 
 .notif--feed.unread { background: rgba(var(--gl-elevate), 0.05); }
 
@@ -89,9 +76,6 @@
 
 .notif-seen:hover { color: var(--gl-color-green-400); background: var(--gl-background-color-hover); }
 
-/* Same shape as the seen and dismiss buttons — appears on hover, so a quiet feed
-   stays quiet. */
-
 .notif-expand {
   flex-shrink: 0;
   display: flex;
@@ -110,7 +94,7 @@
 
 .notif-expand:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 
-/* ── One notification, in full ─────────────────────────────────────────────── */
+/* ── One notification, in full ── */
 
 .notif-modal { width: 720px; }
 
@@ -122,9 +106,6 @@
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-
-/* The message as it was reported: wrapped, never truncated, and scrolled once it
-   outgrows the modal — a stack trace is the case that matters here. */
 
 .notif-modal-detail {
   margin: 0 var(--space-5);
@@ -149,9 +130,6 @@
   color: var(--gl-text-color-disabled);
 }
 
-/* The icon alone carries the kind — no border accent (see the app's badge
-   language: colour goes on the mark, not on an edge). */
-
 .notif--success   .notif-icon { color: var(--gl-color-green-400); }
 
 .notif--error     .notif-icon { color: var(--gl-color-red-400); }
@@ -161,9 +139,6 @@
 .notif--info      .notif-icon { color: var(--gl-color-blue-400); }
 
 .notif-icon { flex-shrink: 0; margin-top: 1px; }
-
-/* A toast is read at a glance from across the screen, so it gets the larger type.
-   The feed stays dense — twenty rows of this would be a wall. */
 
 .notif--toast .notif-title { font-size: var(--gl-font-size-md); line-height: 1.4; }
 
@@ -185,9 +160,6 @@
   font-size: var(--gl-font-size-xs);
   color: var(--gl-text-color-subtle);
 }
-
-/* The specifics — an error message, the tool being asked about, a file list.
-   Wraps to a few lines, then clips: the full text belongs in its own surface. */
 
 .notif-detail {
   font-family: var(--font-mono);
@@ -238,7 +210,7 @@
 
 .notif-close:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 
-/* ── Bell + panel (header) ─────────────────────────────────────────────────── */
+/* ── Bell and panel ── */
 
 .notif-bell {
   position: relative;

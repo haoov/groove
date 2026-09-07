@@ -10,7 +10,7 @@ pub struct State {
 }
 
 struct StateInner {
-    // Track the currently visible file for MCP `get_open_file`
+    // The visible file, read by MCP `get_open_file`.
     open_file: Mutex<Option<OpenFileState>>,
 }
 
@@ -64,14 +64,18 @@ pub struct SearchMatch {
 
 #[tauri::command]
 pub async fn list_files(worktree_path: String) -> Result<Vec<String>, String> {
-    list_files_impl(&worktree_path).await.map_err(|e| e.to_string())
+    list_files_impl(&worktree_path)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
     let tracked = crate::core::git::run(worktree_path, &["ls-files"]).await?;
-    let untracked =
-        crate::core::git::run(worktree_path, &["ls-files", "--others", "--exclude-standard"])
-            .await?;
+    let untracked = crate::core::git::run(
+        worktree_path,
+        &["ls-files", "--others", "--exclude-standard"],
+    )
+    .await?;
 
     let mut files: Vec<String> = tracked
         .lines()
@@ -88,8 +92,7 @@ async fn list_files_impl(worktree_path: &str) -> anyhow::Result<Vec<String>> {
 #[tauri::command]
 pub async fn read_file(worktree_path: String, file_path: String) -> Result<String, String> {
     let full = safe_join(&worktree_path, &file_path)?;
-    std::fs::read_to_string(&full)
-        .map_err(|e| format!("Cannot read {}: {e}", full.display()))
+    std::fs::read_to_string(&full).map_err(|e| format!("Cannot read {}: {e}", full.display()))
 }
 
 #[tauri::command]
@@ -158,17 +161,22 @@ async fn search_files_impl(
     let case_sensitive = case_sensitive == Some(true);
     let cap = max_results.unwrap_or(200) as usize;
 
-    // Run ripgrep off the async runtime and STREAM its output so we can stop as
-    // soon as we've collected `cap` matches (rg's --max-count is per-file, so it
-    // can't bound the total; reading the whole output for a common term was the
-    // source of the "very slow" feel). Search from the worktree root so the paths
-    // come back relative — matching the file tree's ids.
+    // Stream rg and stop at `cap` matches; `--max-count` is per file, not total.
+    // Search from the worktree root so paths come back relative.
     tokio::task::spawn_blocking(move || -> anyhow::Result<Vec<SearchMatch>> {
         use std::io::{BufRead, BufReader};
         use std::process::{Command, Stdio};
 
         let mut cmd = Command::new("rg");
-        cmd.args(["--json", "--line-number", "--with-filename", "--max-columns", "400", "--max-count", "50"]);
+        cmd.args([
+            "--json",
+            "--line-number",
+            "--with-filename",
+            "--max-columns",
+            "400",
+            "--max-count",
+            "50",
+        ]);
         if !case_sensitive {
             cmd.arg("--ignore-case");
         }
@@ -177,28 +185,40 @@ async fn search_files_impl(
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
 
-        let mut child = cmd.spawn().map_err(|e| anyhow::anyhow!("ripgrep not found: {e}"))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| anyhow::anyhow!("ripgrep not found: {e}"))?;
         let stdout = child.stdout.take().expect("piped stdout");
         let mut results = Vec::new();
 
         for line in BufReader::new(stdout).lines() {
             let Ok(line) = line else { break };
-            let Ok(item) = serde_json::from_str::<serde_json::Value>(&line) else { continue };
+            let Ok(item) = serde_json::from_str::<serde_json::Value>(&line) else {
+                continue;
+            };
             if item["type"].as_str() != Some("match") {
                 continue;
             }
             let data = &item["data"];
             results.push(SearchMatch {
-                file: data["path"]["text"].as_str().unwrap_or("").trim_start_matches("./").to_string(),
+                file: data["path"]["text"]
+                    .as_str()
+                    .unwrap_or("")
+                    .trim_start_matches("./")
+                    .to_string(),
                 line: data["line_number"].as_u64().unwrap_or(0),
-                content: data["lines"]["text"].as_str().unwrap_or("").trim_end().to_string(),
+                content: data["lines"]["text"]
+                    .as_str()
+                    .unwrap_or("")
+                    .trim_end()
+                    .to_string(),
             });
             if results.len() >= cap {
                 break;
             }
         }
 
-        // Stop rg once we have enough (it may still be scanning a huge tree).
+        // Stop rg once there are enough matches.
         let _ = child.kill();
         let _ = child.wait();
         Ok(results)
@@ -207,18 +227,22 @@ async fn search_files_impl(
 }
 
 #[tauri::command]
-pub async fn save_file(worktree_path: String, file_path: String, content: String) -> Result<(), String> {
+pub async fn save_file(
+    worktree_path: String,
+    file_path: String,
+    content: String,
+) -> Result<(), String> {
     let full = safe_join(&worktree_path, &file_path)?;
     if let Some(parent) = full.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&full, content.as_bytes()).map_err(|e| format!("Cannot write {}: {e}", full.display()))
+    std::fs::write(&full, content.as_bytes())
+        .map_err(|e| format!("Cannot write {}: {e}", full.display()))
 }
 
 // ─── File tree mutations (create/rename/move/copy/delete) ─────────────────────
 
-/// Join a worktree-relative path safely: rejects absolute paths and any `..`
-/// segment so a mutation can never escape the worktree root.
+/// Join a worktree-relative path; rejects absolute paths and `..` segments.
 fn safe_join(worktree_path: &str, rel: &str) -> Result<std::path::PathBuf, String> {
     let rel = rel.trim().trim_start_matches('/');
     if rel.is_empty() {

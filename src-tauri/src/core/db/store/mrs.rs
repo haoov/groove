@@ -13,11 +13,16 @@ pub async fn get(exec: impl SqliteExecutor<'_>, id: &str) -> StoreResult<Mr> {
         .ok_or_else(|| StoreError::not_found("mr", id))
 }
 
-pub async fn for_worktree(exec: impl SqliteExecutor<'_>, worktree_id: &str) -> StoreResult<Vec<Mr>> {
-    Ok(sqlx::query_as(&format!("SELECT {COLUMNS} FROM mrs WHERE worktree_id = ?"))
-        .bind(worktree_id)
-        .fetch_all(exec)
-        .await?)
+pub async fn for_worktree(
+    exec: impl SqliteExecutor<'_>,
+    worktree_id: &str,
+) -> StoreResult<Vec<Mr>> {
+    Ok(
+        sqlx::query_as(&format!("SELECT {COLUMNS} FROM mrs WHERE worktree_id = ?"))
+            .bind(worktree_id)
+            .fetch_all(exec)
+            .await?,
+    )
 }
 
 pub async fn latest_for_worktree(

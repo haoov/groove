@@ -33,3 +33,10 @@ ts-rs       = { version = "10", features = ["serde-compat", "serde-json-impl"] }
 async-trait = "0.1"
 tracing     = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+print_stdout = "deny"
+print_stderr = "deny"

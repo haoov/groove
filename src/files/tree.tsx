@@ -119,9 +119,9 @@ export function FileTreeNodes({
   statsByPath?: Record<string, DiffStat>;
   /** Path of the keyboard-cursor row (gets `nav-selected`). */
   selectedPath?: string | null;
-  /** Notify the owner that a row was clicked, so it can sync its cursor. */
+  /** Called when a row is clicked. */
   onSelect?: (path: string) => void;
-  /** Right-click a node → open the file-ops context menu. */
+  /** Right-click on a node. */
   onContextMenu?: (node: TreeNode, e: React.MouseEvent) => void;
 }) {
   const indent = depth * 12;

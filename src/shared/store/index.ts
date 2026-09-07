@@ -1,6 +1,5 @@
-// The app store: feature slices composed into one state (contracts in ./types,
-// pure session reducers in ./session). This barrel is the ONLY import surface —
-// components never reach into ./slices, ./types or ./session directly.
+// The app store: feature slices composed into one state.
+// This barrel is the only import surface; components never reach into ./slices, ./types or ./session.
 
 import { create } from 'zustand';
 import { createContext, useContext } from 'react';
@@ -17,7 +16,6 @@ import { notificationsSlice } from './slices/notifications.slice';
 import { skillsSlice } from './slices/skills.slice';
 
 export type { LayoutNode, SplitDir };
-// A pane predicate components need (the terminal dock is styled and placed by it).
 export { isTerminalPane } from './session';
 export { sessionActions } from './slices/sessions.slice';
 export type * from './types';
@@ -36,22 +34,17 @@ export const useStore = create<AppState>((...a) => ({
 
 // ─── Session context + hooks ────────────────────────────────────────────────────
 
-/** Provided by SessionWorkspaces so descendants read *their* session, even when
- *  hidden. When absent (app-level chrome), hooks fall back to the active session. */
+/** The session descendants read. Absent: hooks fall back to the active session. */
 export const SessionIdContext = createContext<string | null>(null);
 
-/**
- * Read from (or act on) the contextual session. The selector receives the
- * session's fields merged with its bound actions. Always select a single value
- * (e.g. `useSession((s) => s.diff)`), never the whole view, to keep subscriptions
- * fine-grained and avoid render loops.
- */
+/** Reads from the contextual session: its fields merged with its bound actions.
+ *  Always select a single value, never the whole view. */
 export function useSession<T>(selector: (s: SessionView) => T): T {
   const ctx = useContext(SessionIdContext);
   return useStore((root) => selector(buildView(root, ctx ?? root.activeSessionId)));
 }
 
-// ─── Non-hook accessors (for event handlers using getState) ──────────────────────
+// ─── Non-hook accessors ─────────────────────────────────────────────────────────
 
 export function getSession(state: AppState, id: string | null): SessionState | null {
   return id ? state.sessions[id] ?? null : null;

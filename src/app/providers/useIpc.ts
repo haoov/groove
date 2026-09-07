@@ -66,8 +66,7 @@ function opSource(opType: string): NotificationSource {
   return 'app';
 }
 
-/** Record a rebase conflict on the owning session + announce it. Shared by the
- *  rebase_conflict event and the initial-rebase confirmation result. */
+/** Records a rebase conflict on the owning session and announces it. */
 function applyRebaseConflict(sessionId: string, worktreeId: string, files: string[]) {
   sessionActions(sessionId).setRebaseConflict({ worktreeId, files });
   const st = useStore.getState();
@@ -115,8 +114,7 @@ function successToastFor(opType: string, result: unknown): string | null {
 
 export function useIpc() {
   useEffect(() => {
-    // `listen()` is async, so a fast unmount can resolve a registration *after*
-    // cleanup ran — those would leak. `track` unlistens immediately once cancelled.
+    // `listen()` can resolve after cleanup on a fast unmount; `track` unlistens those at once.
     let cancelled = false;
     const unlisten: Array<() => void> = [];
     const track = (fn: () => void) => {
@@ -125,8 +123,7 @@ export function useIpc() {
     };
 
     const setup = async () => {
-      // workspace_stub — first open: the task has no worktrees yet, so the
-      // session lands on its Overview, where Repositories offers Add repo.
+      // workspace_stub — first open: the task has no worktrees yet.
       track(
         await listen<WorkspaceStubEvent>(EVENT.WORKSPACE_STUB, ({ payload }) => {
           const s = useStore.getState();
@@ -141,14 +138,11 @@ export function useIpc() {
         })
       );
 
-      // workspace_ready — mount or refresh a session that has worktrees. The
-      // payload's `focus` says which: a landed add-repo refreshes in place, so
-      // an approval never moves the user off the session they are reading.
+      // workspace_ready — mount or refresh a session that has worktrees; `focus` says which.
       track(
         await listen<WorkspaceReadyEvent>(EVENT.WORKSPACE_READY, ({ payload }) => {
           const s = useStore.getState();
-          // Explorer sessions are local-only; keep their synthetic task out of the
-          // global task list so they never show in the queue.
+          // An explorer's synthetic task stays out of the global task list.
           if ((payload.kind ?? 'task') === 'task') s.upsertTask(payload.task);
           s.openSession({
             kind: payload.kind ?? 'task',
@@ -179,16 +173,12 @@ export function useIpc() {
         })
       );
 
-      // confirmation_requested — attribute to the task the backend named (never
-      // guess from the active session, which may not own it — e.g. MCP-origin).
+      // confirmation_requested — attribute to the task the backend named, never the active session.
       track(
         await listen<ConfirmationRequestedEvent>(EVENT.CONFIRMATION_REQUESTED, ({ payload }) => {
           const s = useStore.getState();
 
-          // "Allow everything from this session": approve without queueing, so the
-          // agent never blocks. Scoped to the owning session — another session's
-          // agent still has to ask. A notification is posted for each one, because
-          // an op that happened without being seen must still be reviewable.
+          // autoApprove on the owning session: approve without queueing, then notify.
           const owner = payload.session_id ? findSessionByTask(s, payload.session_id) : null;
           if (owner?.autoApprove) {
             invoke('resolve_confirmation', { id: payload.id, approved: true })
@@ -213,9 +203,6 @@ export function useIpc() {
             payload: payload.payload,
             origin: payload.origin,
           });
-          // No notification: the modal is unmissable, and a deferred approval is
-          // already counted by the header's approvals button, which is where you
-          // go back to it. A feed entry as well was the same thing said twice.
         })
       );
 
@@ -224,21 +211,18 @@ export function useIpc() {
         await listen<ConfirmationResolvedEvent>(EVENT.CONFIRMATION_RESOLVED, ({ payload }) => {
           const s = useStore.getState();
           const conf = s.pendingConfirmations.find((c) => c.id === payload.id);
-          // Route to the owning session: prefer the payload's session_id, fall back to
-          // the pending row's, then the active session.
+          // Owner: the payload's session_id, then the pending row's, then the active session.
           const ownerTaskId = payload.session_id ?? conf?.session_id ?? null;
           const owner = ownerTaskId ? findSessionByTask(s, ownerTaskId) : getActiveSession(s);
           s.removeConfirmation(payload.id);
-          // Commit & Push: the chained push exists only for a commit that landed.
+          // Commit & Push: the chained push, if one was queued.
           const chainedPushWt = payload.op_type === OP.GIT_COMMIT ? takeCommitPush(payload.id) : undefined;
           if (!payload.approved) return;
           if (chainedPushWt && !payload.error) {
             invoke('push', { worktreeId: chainedPushWt }).catch((e) => s.setLastError(String(e)));
           }
 
-          // Approved but the op FAILED (the row is already gone — no retry): surface
-          // the error instead of a success toast, but still refresh so any partial
-          // work shows.
+          // Approved but failed: surface the error, then refresh.
           if (payload.error) {
             s.notify({
               kind: 'error',
@@ -251,13 +235,11 @@ export function useIpc() {
             if (owner) {
               s.invalidateDiff(owner.id);
               s.refreshStatusFor(owner.id);
-              // A failed mr.* op may still have partially landed remotely.
               if (payload.op_type.startsWith(OP_MR_PREFIX)) s.invalidateMrs(owner.id);
             }
             return;
           }
 
-          // Success line for git/forge/task actions.
           const done = successToastFor(payload.op_type, payload.result);
           if (done) {
             s.notify({
@@ -269,12 +251,9 @@ export function useIpc() {
             });
           }
 
-          // A landed git/forge op changes exactly what Home displays — and only
-          // matters while Home is the view actually on screen.
           if (s.view === 'home') s.refreshHome();
 
-          // Explorer → task conversion: flip the owning session to a task session,
-          // keeping its mounted PTY (and thus the live agent conversation) intact.
+          // Explorer → task conversion: flip the owning session to a task session, PTYs kept.
           if (payload.op_type === OP.TASK_CREATE_FROM_EXPLORER) {
             const result = payload.result as (Task & { branch_warnings?: string[] }) | null;
             if (result && owner) {
@@ -285,11 +264,9 @@ export function useIpc() {
                 title: result.short_id,
                 ptySessions: ss.ptySessions.map((p) => ({ ...p, taskId: result.short_id })),
               }));
-              // Conversion relocated the worktrees to <root>/<short_id>/ —
-              // re-open so the session gets the fresh paths + watchers.
+              // Conversion relocated the worktrees; re-open for the fresh paths and watchers.
               invoke('open_task', { shortId: result.short_id }).catch(console.error);
             }
-            // Some worktrees couldn't switch to the new branch — flag it.
             const warnings = result?.branch_warnings ?? [];
             if (warnings.length) {
               s.notify({
@@ -304,18 +281,15 @@ export function useIpc() {
           }
 
           if (typeof payload.op_type === 'string' && payload.op_type.startsWith(OP_GIT_PREFIX) && owner) {
-            // A git action landed (UI or MCP) — reload the diff and status chips.
             s.invalidateDiff(owner.id);
             s.refreshStatusFor(owner.id);
-            // A push starts a new pipeline, so the CI chip is wrong from here.
+            // A push also changes the MR's CI state.
             if (payload.op_type === OP.GIT_PUSH) s.invalidateMrs(owner.id);
           }
           if (typeof payload.op_type === 'string' && payload.op_type.startsWith(OP_MR_PREFIX) && owner) {
-            // An MR was created/updated/closed — refresh the Forge section.
             s.invalidateMrs(owner.id);
           }
-          // Initial rebase that stopped on conflicts. (rebase --continue / --abort
-          // arrive later via the rebase_conflict / rebase_done events.)
+          // Initial rebase that stopped on conflicts.
           if (payload.op_type === OP.GIT_REBASE) {
             const res = payload.result as { status?: string; files?: string[]; worktree_id?: string } | null;
             if (res?.status === 'conflict' && owner) {
@@ -333,7 +307,7 @@ export function useIpc() {
           if (!sess) return;
           s.updateSession(sess.id, (ss) => {
             const worktrees = ss.worktrees.filter((w) => w.id !== payload.worktree_id);
-            // The repo goes only with its LAST worktree; a repo can hold several.
+            // The repo goes only with its last worktree.
             const keepRepo = worktrees.some((w) => w.repo_id === payload.repo_id);
             const repos = keepRepo ? ss.repos : ss.repos.filter((r) => r.id !== payload.repo_id);
             return {
@@ -353,7 +327,7 @@ export function useIpc() {
       // pty_started — route the new PTY into the session for its task
       track(
         await listen<PtyStartedEvent>(EVENT.PTY_STARTED, ({ payload }) => {
-          // The sign-in shell (AuthModal) owns its PTY directly — no session.
+          // The sign-in shell owns its PTY; no session.
           if (payload.pty_type === 'auth') return;
           const ptyType = payload.pty_type;
           const s = useStore.getState();
@@ -372,15 +346,13 @@ export function useIpc() {
         })
       );
 
-      // pty_output — dispatch to the session's xterm handler, buffering anything
-      // that arrives before the handler registers.
+      // pty_output — dispatch to the session's xterm handler.
       track(
         await listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) =>
           deliverPtyOutput(payload.session_id, payload.b64))
       );
 
-      // pty_exit — dispose the terminal host (the PTY is gone for real) and drop
-      // the store row; the tab body shows its "session ended / restart" state.
+      // pty_exit — dispose the terminal host and drop the store row.
       track(
         await listen<PtyExitEvent>(EVENT.PTY_EXIT, ({ payload }) => {
           disposeHost(payload.session_id);
@@ -389,14 +361,11 @@ export function useIpc() {
           if (!owner) return;
           const pty = owner.ptySessions.find((p) => p.sessionId === payload.session_id);
           sessionActions(owner.id).removePtySession(payload.session_id);
-          // The agent is gone, so its reported state must go with it.
           if (pty?.ptyType === 'agent' && owner.task) s.dropAgentActivity(owner.task.short_id);
         })
       );
 
-      // backend_notice — a problem in work the user didn't trigger (a fetch that
-      // failed during provisioning, say). It has no other surface, which is why
-      // these used to be tracing warnings nobody ever read.
+      // backend_notice — a problem in work the user did not trigger.
       track(
         await listen<{
           kind: NotificationKind;
@@ -416,18 +385,14 @@ export function useIpc() {
         })
       );
 
-      // agent_activity — what an agent is doing, from its Claude Code hooks.
-      // Toast only on the transition INTO waiting, and only for a session the
-      // user isn't looking at: an agent blocked in a closed tab is the case with
-      // no other surface (a visible one already shows its own prompt).
+      // agent_activity — from Claude Code hooks. Toast only on the transition into
+      // waiting, and only for an unfocused session.
       track(
         await listen<AgentActivity>(EVENT.AGENT_ACTIVITY, ({ payload }) => {
           const s = useStore.getState();
           const previous = s.agentActivity[payload.task_id]?.state;
           s.setAgentActivity(payload);
-          // The agent touching the worktree is the diff-staleness signal now
-          // that the filesystem watcher is gone: throttled while working,
-          // immediate once the turn ends.
+          // Agent activity drives the diff refresh: throttled while working, immediate once the turn ends.
           refreshOnAgentActivity(payload.task_id, payload.state, payload.tool?.name);
           if (payload.state !== 'waiting' || previous === 'waiting') return;
           const owner = findSessionByTask(s, payload.task_id);
@@ -441,7 +406,6 @@ export function useIpc() {
             detail: payload.tool
               ? `${payload.tool.name}${payload.tool.detail ? `(${payload.tool.detail})` : ''}`
               : 'Waiting for input',
-            // Answering happens in the agent's own terminal, so go there.
             goTo: { taskId: payload.task_id, agent: true },
           });
         })
@@ -459,8 +423,7 @@ export function useIpc() {
         })
       );
 
-      // annotation_created — the agent left a note. The UI adds its own
-      // optimistically, so `addAnnotation` dedupes by id.
+      // annotation_created — the agent left a note; `addAnnotation` dedupes by id.
       track(
         await listen<Annotation>(EVENT.ANNOTATION_CREATED, ({ payload }) => {
           const sess = findSessionByTask(useStore.getState(), payload.session_id);
@@ -476,9 +439,7 @@ export function useIpc() {
         })
       );
 
-      // explorer_discarded — if that explorer is open as a session, fully end it
-      // (stops its PTYs, then removes the session — closeSession alone would leak
-      // any live agent/terminal PTYs).
+      // explorer_discarded — end the open session, PTYs included.
       track(
         await listen<{ short_id: string }>(EVENT.EXPLORER_DISCARDED, ({ payload }) => {
           const sess = findSessionByTask(useStore.getState(), payload.short_id);
@@ -486,8 +447,7 @@ export function useIpc() {
         })
       );
 
-      // rebase_conflict — a `rebase --continue` stopped on conflicts. Record it on
-      // the owning session (drives the resolve UI) + toast.
+      // rebase_conflict — a `rebase --continue` stopped on conflicts.
       track(
         await listen<RebaseConflictEvent>(EVENT.REBASE_CONFLICT, ({ payload }) => {
           const sess = findSessionByWorktree(useStore.getState(), payload.worktree_id);
@@ -495,8 +455,7 @@ export function useIpc() {
         })
       );
 
-      // rebase_done — the rebase finished (or was aborted). Clear the conflict
-      // state, toast, and refresh the diff + status for that session.
+      // rebase_done — the rebase finished or was aborted.
       track(
         await listen<RebaseDoneEvent>(EVENT.REBASE_DONE, ({ payload }) => {
           const s = useStore.getState();

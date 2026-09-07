@@ -5,15 +5,12 @@ import { Loader2, Plus } from 'lucide-react';
 import { useStore } from '../shared/store';
 import type { TaskTime } from '../shared/ipc/ipc';
 
-/**
- * Time as one property column in the strip: the logged total, and a "+" that
- * opens every way to log more. Logging is always explicit (see hours.rs).
- */
+/** Time as one property column: the logged total, and a "+" that opens the ways to log more. */
 
-/** Hours are logged to the quarter — nobody means 1.37 hours. */
+/** Hours are logged to the quarter. */
 const ROUND_TO = 0.25;
 
-/** Matches .time-pop's width, so the popover can be placed before it renders. */
+/** Matches .time-pop's width. */
 const POP_WIDTH = 240;
 
 const roundHours = (seconds: number) => Math.round(seconds / 3600 / ROUND_TO) * ROUND_TO;
@@ -45,8 +42,7 @@ export function TimeFields({
   const pop = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
-  // Portalled to <body>: .app-main clips its own overflow at the activity rail.
-  // Measured in the click that opens it, so no effect writes state.
+  // Portalled to <body>: .app-main clips its overflow.
   const toggle = () => {
     if (open) { setOpen(false); setPos(null); return; }
     const r = btn.current?.getBoundingClientRect();
@@ -76,8 +72,6 @@ export function TimeFields({
     invoke<TaskTime>('get_task_time', { taskId }).then(setTime).catch(() => setTime(null));
   }, [taskId]);
 
-  // The tracker ticks every 30s; a minute is live enough without polling for its
-  // own sake.
   useEffect(() => {
     refresh();
     const id = window.setInterval(refresh, 60_000);
@@ -113,8 +107,6 @@ export function TimeFields({
   const unlogged = time?.unlogged_seconds ?? 0;
   const today = time?.today_seconds ?? 0;
   const suggestion = roundHours(unlogged);
-  // The source's own total where there is one, the local ledger otherwise — with
-  // no external field that ledger IS the record.
   const loggedLabel = hoursProperty
     ? (logged || '0')
     : roundHours(time?.logged_seconds ?? 0).toString();

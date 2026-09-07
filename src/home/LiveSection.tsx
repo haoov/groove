@@ -15,7 +15,7 @@ import type { HomeEntry } from '../shared/ipc/ipc';
 /** The fields a Live row can answer — see `appliesTo`. */
 const FIELDS = ['id', 'title', 'kind', 'status', 'priority', 'provider', 'forge', 'repo', 'branch', 'mr'];
 
-// Fold state per entry, persisted so Home reopens the way it was left.
+// Fold state per entry, persisted.
 const EXPAND_KEY = 'wb.homeExpanded';
 function loadExpanded(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(EXPAND_KEY) ?? '[]')); }
@@ -25,12 +25,11 @@ function saveExpanded(ids: Set<string>) {
   try { localStorage.setItem(EXPAND_KEY, JSON.stringify([...ids])); } catch { /* ignore */ }
 }
 
-/** Everything checked out locally: tasks, explorers and reviews with a worktree.
- *  Rendered as the body of the Home "Live" tab — toolbar over the list. */
+/** Everything checked out locally: tasks, explorers and reviews with a worktree. */
 export function LiveSection({ filter = '', onCount }: { filter?: string; onCount?: CountReport }) {
   const snapshot = useStore((s) => s.homeSnapshot);
 
-  // Attention first, then the busiest working trees; the shared filter narrows.
+  // Attention first, then the busiest working trees.
   const entries = useMemo(() => {
     const score = (e: HomeEntry) => {
       const s = summarize(e);
@@ -55,7 +54,7 @@ export function LiveSection({ filter = '', onCount }: { filter?: string; onCount
   }, [snapshot, filter]);
 
   const applicable = useMemo(() => appliesTo(parseQuery(filter), FIELDS), [filter]);
-  // Report the filter the count belongs to: Home must not route on a stale count.
+  // Report the filter the count belongs to.
   useEffect(() => { onCount?.(entries.length, applicable, filter); }, [entries.length, applicable, filter, onCount]);
 
   return (
@@ -87,14 +86,11 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(entry.title);
-  // Two-click confirm: the first click arms; the confirm row does the deed.
+  // Two-click confirm.
   const [confirm, setConfirm] = useState<LiveConfirm>(null);
   const [expanded, setExpanded] = useState(() => loadExpanded().has(entry.short_id));
-  // Copy that names this task's own source, so a confirm says "in Notion"
-  // rather than "at its source".
   const src = providerCopy(entry);
 
-  // Folded, the row states only what it is and how many repos it holds.
   const repoCount = useMemo(
     () => new Set(entry.repos.map((r) => r.repo_id)).size,
     [entry.repos],
@@ -126,8 +122,7 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
     }
   };
 
-  // Finish (task → done at its source + teardown), delete (local only) and
-  // discard (explorer/review) all end in the same place: session gone, Home fresh.
+  // Finish, delete and discard all end the session and refresh Home.
   const runConfirmed = async (action: Exclude<LiveConfirm, null>) => {
     setConfirm(null);
     try {
@@ -243,8 +238,6 @@ function LiveRow({ entry }: { entry: HomeEntry }) {
 
       {confirm && (
         <div className="detail-row confirm">
-          {/* Name what happens AT THE SOURCE: this is the last step before an
-              action that reaches outside the app. */}
           <span>
             {confirm === 'finish'
               ? `Finish ${entry.short_id}? ${src.finish} Its worktrees are removed.`

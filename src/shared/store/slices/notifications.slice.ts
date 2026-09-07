@@ -2,9 +2,7 @@ import { invoke } from '../../ipc/invoke';
 import type { StateCreator } from 'zustand';
 import type { AppNotification, AppState, NotificationsSlice } from '../types';
 
-// The notification feed: one place decides what collapses, what is kept, and what
-// escalates to the desktop. Everything that reports to the user goes through
-// `notify`, so those three rules live here rather than at 40 call sites.
+// The notification feed: dedupe, cap and desktop escalation live here.
 
 const NOTIFICATION_CAP = 200;
 /** Identical events inside this window collapse into one row with a count. */
@@ -17,8 +15,7 @@ export const notificationsSlice: StateCreator<AppState, [], [], NotificationsSli
   notify: (input) =>
     set((s) => {
       const at = Date.now();
-      // Collapse a repeat of the same event: bump its count and re-surface it,
-      // rather than stacking twenty identical rows.
+      // Collapse a repeat of the same event.
       const dupe = s.notifications.find(
         (n) =>
           n.title === input.title &&
@@ -41,15 +38,10 @@ export const notificationsSlice: StateCreator<AppState, [], [], NotificationsSli
         at,
         read: false,
         count: 1,
-        // A success is an acknowledgement, not a record: it says "that worked",
-        // which is worth a glance and nothing more. It lives exactly as long as
-        // its toast (see dismissToast) and never reaches the feed or the badge.
+        // A success lives as long as its toast; never in the feed or the badge.
         ephemeral: input.kind === 'success',
       };
-      // A desktop notification is for when the app is NOT what you are looking
-      // at; while it has focus the toast already said it. Scoped to the two kinds
-      // that actually need a person — an agent that cannot continue, and a
-      // failure — so the desktop never becomes a feed.
+      // Desktop notification only while the app lacks focus, for attention and error.
       if ((entry.kind === 'attention' || entry.kind === 'error') && !document.hasFocus()) {
         invoke('notify_desktop', {
           title: entry.title,
@@ -65,8 +57,7 @@ export const notificationsSlice: StateCreator<AppState, [], [], NotificationsSli
   dismissToast: (id) =>
     set((s) => ({
       toastIds: s.toastIds.filter((t) => t !== id),
-      // An ephemeral entry exists only to be shown once, so drop the record with
-      // the toast rather than letting successes pile up unseen.
+      // An ephemeral entry goes with its toast.
       notifications: s.notifications.filter((n) => n.id !== id || !n.ephemeral),
     })),
   notificationsOpen: false,

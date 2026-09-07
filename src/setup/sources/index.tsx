@@ -4,10 +4,9 @@ import { NotionSetupForm, NotionSettingsRow } from './NotionSetup';
 import { GithubSetupForm, GithubSettingsRow } from './GithubSetup';
 
 export interface SetupFormProps {
-  /** The provider's setup payload as `set_task_source`/`write_initial_config`
-   *  take it; null while the form is incomplete (which blocks saving). */
+  /** The provider's setup payload; null while the form is incomplete. */
   onChange: (payload: unknown | null) => void;
-  /** The gh CLI needs a login or a wider scope — reopen the auth flow. */
+  /** The gh CLI needs a login or a wider scope. */
   onNeedsScope: () => void;
 }
 
@@ -21,15 +20,13 @@ export interface SettingsRowProps {
 }
 
 interface SourceModule {
-  /** Display name — the first-run section heading. */
+  /** Display name. */
   label: string;
   SetupForm: ComponentType<SetupFormProps>;
   SettingsRow: ComponentType<SettingsRowProps>;
 }
 
-/** Every task source the app can connect. Keyed by ProviderId so a provider
- *  added on the Rust side fails the build here until its components exist —
- *  same pattern as PROVIDERS in shared/lib/taskProvider.ts. */
+/** Every task source, keyed by ProviderId: a new provider fails the build until its components exist. */
 export const SOURCES: Record<ProviderId, SourceModule> = {
   notion: { label: 'Notion', SetupForm: NotionSetupForm, SettingsRow: NotionSettingsRow },
   github: { label: 'GitHub Projects', SetupForm: GithubSetupForm, SettingsRow: GithubSettingsRow },

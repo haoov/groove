@@ -8,9 +8,7 @@ import {
 import { chordLabel, type Chord } from '../shared/lib/keys';
 import { useChordCapture } from './useChordCapture';
 
-// Command groups in display order. A group missing from this list still shows,
-// after these — this is the only place a shortcut can be rebound, so nothing may
-// fall out of the table.
+// Groups in display order; a group missing here still shows, after these.
 const GROUP_ORDER = ['General', 'Panels', 'Navigation', 'Workspace', 'Editor'];
 
 const groupOrder = (): string[] => {
@@ -43,8 +41,7 @@ export function ShortcutsPanel() {
   const [capturing, setCapturing] = useState<CommandId | null>(null);
   const [conflict, setConflict] = useState<Conflict | null>(null);
 
-  // A chord another command holds is a choice, not a silent steal: `setBinding`
-  // takes it off the previous owner, so the user is asked first.
+  // `setBinding` takes the chord off its previous owner; the conflict prompt comes first.
   const onCapture = useCallback((chord: Chord) => {
     const id = capturing;
     if (!id) return;
@@ -57,7 +54,6 @@ export function ShortcutsPanel() {
   const onCancel = useCallback(() => setCapturing(null), []);
   useChordCapture(capturing !== null, onCapture, onCancel);
 
-  // Esc dismisses the prompt.
   useEffect(() => {
     if (!conflict) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setConflict(null); };

@@ -81,7 +81,7 @@ pub async fn for_session(
     Ok(rows)
 }
 
-/// Rewrite a note's body, leaving its author, range and status alone.
+/// Rewrite a note's body; author, range and status stay.
 pub async fn update(
     exec: impl SqliteExecutor<'_>,
     id: &str,

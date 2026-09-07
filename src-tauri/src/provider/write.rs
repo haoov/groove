@@ -1,7 +1,5 @@
-//! Task reads and writes that work for ANY provider: everything here goes
-//! through `resolve`, so nothing in this file may name one. These lived under
-//! `notion/` from before tasks could come from anywhere — which routed every
-//! provider's writes through a module named notion.
+//! Provider-agnostic task reads and writes. Everything goes through `resolve`;
+//! nothing in this file may name a provider.
 
 use sqlx::SqlitePool;
 
@@ -25,13 +23,17 @@ pub async fn update_property_impl(
     pool: &SqlitePool,
 ) -> anyhow::Result<serde_json::Value> {
     let field = |k: &str| payload[k].as_str().unwrap_or_default().to_string();
-    let display =
-        write_property(&field("task_id"), &field("property"), &payload["value"], pool).await?;
+    let display = write_property(
+        &field("task_id"),
+        &field("property"),
+        &payload["value"],
+        pool,
+    )
+    .await?;
     Ok(serde_json::json!({ "property": field("property"), "value": display }))
 }
 
-/// Set one property through the task's own provider, then re-mirror it: Home and
-/// the queue read status and priority from the local row.
+/// Set one property through the task's provider, then re-mirror the task.
 pub(crate) async fn write_property(
     short_id: &str,
     property: &str,
@@ -41,17 +43,13 @@ pub(crate) async fn write_property(
     let (provider, key) = crate::provider::resolve(pool, short_id).await?;
     let written = provider.set_property(&key, property, value).await?;
     if let Ok(task) = provider.fetch_task(&key).await {
-        let _ =
-            store::provider_tasks::upsert(pool, &crate::provider::mirror_row(short_id, &task))
-                .await;
+        let _ = store::provider_tasks::upsert(pool, &crate::provider::mirror_row(short_id, &task))
+            .await;
     }
     Ok(written.display)
 }
 
-/// The ticket body as markdown — what the overview renders. Going through
-/// markdown (rather than a bespoke block renderer) means one renderer for task
-/// and MR descriptions, and markdown typed literally into the source displays
-/// as intended.
+/// The task body as markdown.
 #[tauri::command]
 pub async fn get_task_body_markdown(
     short_id: String,
@@ -65,11 +63,7 @@ pub async fn get_task_body_markdown(
     .map_err(|e: anyhow::Error| e.to_string())
 }
 
-/// Queue a body replacement from the UI.
-///
-/// Goes through the confirmation bridge even though a human asked for it: this is
-/// the one write that can delete blocks the app never displayed, so it gets a
-/// preview and an explicit yes like an agent's write would.
+/// Queue a body replacement from the UI through the confirmation bridge.
 #[tauri::command]
 pub async fn request_task_body_update(
     short_id: String,
@@ -95,9 +89,6 @@ pub async fn request_task_body_update(
 }
 
 /// Confirmation-bridge path for `task.body`.
-///
-/// Gated even when it comes from the UI: it is the one write that can destroy
-/// content the app never showed you.
 pub async fn update_body_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,

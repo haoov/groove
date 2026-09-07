@@ -7,8 +7,7 @@ export type AgentSkill = {
  */
 id: string, plugin: string, name: string, 
 /**
- * For the MODEL: what the skill does and when to invoke it. Also shown in
- * Claude's slash menu.
+ * What the skill does and when to invoke it. Shown in Claude's slash menu.
  */
 description: string, 
 /**

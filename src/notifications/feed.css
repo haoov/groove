@@ -1,4 +1,4 @@
-/* Notification feed rows + the shared .pane-close head button (agent panel, Home terminal). */
+/* ── Notification feed; .pane-close is shared with the agent panel and Home terminal ── */
 .notif-feed { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
 
 .notif-feed-actions {
@@ -37,4 +37,3 @@
   font-size: var(--gl-font-size-xs);
   color: var(--gl-text-color-disabled);
 }
-

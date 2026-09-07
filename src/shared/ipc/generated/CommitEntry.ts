@@ -2,8 +2,6 @@
 
 export type CommitEntry = { sha: string, short_sha: string, message: string, author: string, timestamp: number, 
 /**
- * True = upstream base history (reachable from origin/HEAD); false = the
- * task's own commits (base..branch). The UI dims base commits and draws
- * the divergence divider before the first one.
+ * True for upstream base history, false for the task's own commits.
  */
 is_base: boolean, };

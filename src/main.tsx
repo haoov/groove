@@ -1,7 +1,5 @@
 import ReactDOM from 'react-dom/client';
-// Bundle the type system locally so the app renders identically regardless of
-// installed system fonts and with no remote font dependency:
-//   IBM Plex Sans → UI chrome, Lilex (IBM Plex Mono fallback) → editor / code.
+// Bundled fonts: IBM Plex Sans for the UI chrome, Lilex for the editor and code.
 import '@fontsource/lilex/300.css';
 import '@fontsource/lilex/400.css';
 import '@fontsource/lilex/500.css';
@@ -16,9 +14,6 @@ import '@fontsource/ibm-plex-mono/500.css';
 import '@fontsource/ibm-plex-mono/600.css';
 import '@fontsource/ibm-plex-mono/700.css';
 import './shared/styles/global.css';
-// Feature-owned stylesheets (the multi-owner files — home, sidebar, console,
-// overlays — still load from global.css until their split). Order preserved
-// from the old monolith; the cascade audit found no order dependence.
 import './app/layout.css';
 import './home/home.css';
 import './agent/console.css';
@@ -43,9 +38,7 @@ import './setup/firstrun.css';
 import { initPlatform } from './shared/lib/platform';
 import { AGENT_WINDOW_LABEL } from './shared/lib/agentWindow';
 
-// The roots are imported dynamically so the platform is known before the store
-// module builds the default keymap. One bundle, two windows: the label says
-// which root this webview is.
+// initPlatform runs before the store module builds the default keymap. The window label picks the root.
 initPlatform().then(async () => {
   const { getCurrentWindow } = await import('@tauri-apps/api/window');
   const { default: Root } = getCurrentWindow().label === AGENT_WINDOW_LABEL

@@ -6,8 +6,8 @@ use sqlx::SqlitePool;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
 
-use crate::core::forge::api::{self, gitlab_project_ref, pct};
 use super::client::PlatformClient;
+use crate::core::forge::api::{self, gitlab_project_ref, pct};
 
 fn project_ref(repo: &Repo) -> String {
     gitlab_project_ref(&repo.group_path, &repo.project)
@@ -24,8 +24,7 @@ pub(super) fn glab_state(raw: &str) -> String {
     }
 }
 
-/// The logged-in user, per host: id for assignment, username for the review
-/// queue. One `/user` call per host per run.
+/// The logged-in user per host: id and username, cached for the run.
 pub(super) async fn current_user(host: &str) -> anyhow::Result<(i64, String)> {
     static USERS: std::sync::Mutex<Vec<(String, i64, String)>> = std::sync::Mutex::new(Vec::new());
     if let Ok(cache) = USERS.lock() {
@@ -34,7 +33,9 @@ pub(super) async fn current_user(host: &str) -> anyhow::Result<(i64, String)> {
         }
     }
     let v = api::gitlab(host, Method::GET, "user", None).await?;
-    let id = v["id"].as_i64().ok_or_else(|| anyhow::anyhow!("no id in {host}'s /user"))?;
+    let id = v["id"]
+        .as_i64()
+        .ok_or_else(|| anyhow::anyhow!("no id in {host}'s /user"))?;
     let username = v["username"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("no username in {host}'s /user"))?
@@ -50,8 +51,7 @@ async fn mr_json(repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Val
     api::gitlab(&repo.host, Method::GET, &mr_path(repo, remote_id), None).await
 }
 
-/// Approval state for an MR addressed by project path — used by the review
-/// queue, which lists MRs across projects with no `Repo` row to hand a client.
+/// Approval state for an MR addressed by project path, for the review queue.
 pub(super) async fn mr_approved(host: &str, project_full: &str, iid: u64) -> bool {
     let path = format!(
         "projects/{}/merge_requests/{iid}/approvals",
@@ -68,9 +68,7 @@ pub(super) async fn mr_approved(host: &str, project_full: &str, iid: u64) -> boo
         .unwrap_or(false)
 }
 
-/// Discussions → the UI's `[{ id, notes: [...] }]`. System notes ("added 1
-/// commit") are noise, not review content, and are dropped with any discussion
-/// they empty out. Pure, so a captured payload pins it.
+/// Discussions → the UI's `[{ id, notes: [...] }]`; system notes are dropped.
 fn threads_from_discussions(discussions: &serde_json::Value) -> serde_json::Value {
     let threads: Vec<serde_json::Value> = discussions
         .as_array()
@@ -110,7 +108,7 @@ impl PlatformClient for GlabClient {
         title: &str,
         description: &str,
     ) -> anyhow::Result<(String, String)> {
-        // Self-assignment is best-effort: an MR without an assignee beats no MR.
+        // Self-assignment is best-effort.
         let assignee = current_user(&repo.host).await.ok().map(|(id, _)| id);
         let mut body = serde_json::json!({
             "source_branch": branch,
@@ -174,8 +172,6 @@ impl PlatformClient for GlabClient {
         Ok(())
     }
 
-    /// The stable discussions endpoint — `glab mr note list`, which this
-    /// replaced, is documented by glab itself as experimental.
     async fn get_mr_threads(
         &self,
         repo: &Repo,
@@ -193,7 +189,11 @@ impl PlatformClient for GlabClient {
 
     async fn get_mr_ci(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
         let v = mr_json(repo, remote_id).await?;
-        let p = if v["head_pipeline"].is_object() { &v["head_pipeline"] } else { &v["pipeline"] };
+        let p = if v["head_pipeline"].is_object() {
+            &v["head_pipeline"]
+        } else {
+            &v["pipeline"]
+        };
         if !p.is_object() {
             return Ok(serde_json::Value::Null);
         }
@@ -203,7 +203,11 @@ impl PlatformClient for GlabClient {
         }))
     }
 
-    async fn get_mr_details(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_details(
+        &self,
+        repo: &Repo,
+        remote_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
         let v = mr_json(repo, remote_id).await?;
         Ok(serde_json::json!({
             "title": v["title"].as_str().unwrap_or(""),
@@ -225,14 +229,18 @@ impl PlatformClient for GlabClient {
         thread_id: &str,
         body: &str,
     ) -> anyhow::Result<()> {
-        // Into the thread itself — the CLI path could only leave a general note.
         let path = if thread_id.is_empty() {
             format!("{}/notes", mr_path(repo, remote_id))
         } else {
             format!("{}/discussions/{thread_id}/notes", mr_path(repo, remote_id))
         };
-        api::gitlab(&repo.host, Method::POST, &path, Some(&serde_json::json!({ "body": body })))
-            .await?;
+        api::gitlab(
+            &repo.host,
+            Method::POST,
+            &path,
+            Some(&serde_json::json!({ "body": body })),
+        )
+        .await?;
         Ok(())
     }
 
@@ -263,7 +271,11 @@ impl PlatformClient for GlabClient {
         Ok(())
     }
 
-    async fn get_mr_approval(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_approval(
+        &self,
+        repo: &Repo,
+        remote_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
         let v = api::gitlab(
             &repo.host,
             Method::GET,
@@ -281,7 +293,7 @@ impl PlatformClient for GlabClient {
             .unwrap_or_default();
         Ok(serde_json::json!({
             "approved": v["approved"].as_bool().unwrap_or(!by.is_empty()),
-            // GitLab reports this per-token, so it answers "did I approve?".
+            // `user_has_approved` is per token.
             "approved_by_me": v["user_has_approved"].as_bool().unwrap_or(false),
             "approved_by": by,
         }))
@@ -305,9 +317,7 @@ impl PlatformClient for GlabClient {
             return Ok(());
         };
 
-        // Positioned discussion: GitLab needs the MR's diff_refs shas. Caveat:
-        // positions reference the REMOTE MR head — local commits in the review
-        // worktree can drift line numbers, so post before editing.
+        // Positions reference the remote MR head; local commits can drift line numbers.
         let v = mr_json(repo, remote_id).await?;
         let refs = &v["diff_refs"];
         if !refs.is_object() || refs["head_sha"].is_null() {
@@ -316,10 +326,7 @@ impl PlatformClient for GlabClient {
             ));
         }
 
-        // Read the MR's diff to learn what kind of line this is before posting.
-        // Guessing can't work: GitLab needs old+new for an unchanged line, only
-        // one of them for an added or deleted line, and refuses the request with
-        // `line_code: must be a valid line code` when the pair doesn't match.
+        // GitLab needs old+new for an unchanged line and one number for an added or deleted line.
         let anchor = locate_line(repo, remote_id, new_path, new_line).await?;
         let mut pos = serde_json::json!({
             "position_type": "text",
@@ -344,9 +351,7 @@ impl PlatformClient for GlabClient {
         )
         .await?;
 
-        // Verify the anchor actually landed. A note without a `position` IS the
-        // context-less comment this method exists to avoid, so roll it back and
-        // report rather than leaving it on the MR.
+        // A note that landed without a `position` is rolled back and reported.
         if created["notes"][0]["position"].is_object() {
             return Ok(());
         }
@@ -368,16 +373,8 @@ impl PlatformClient for GlabClient {
     }
 }
 
-/// Where one line of a file sits in an MR's diff.
-///
-/// GitLab derives a comment's `line_code` from the PAIR of line numbers, so which
-/// fields a position must carry depends on what kind of line it is:
-///   added     → `new_line` only (there is no old line)
-///   deleted   → `old_line` only (there is no new line)
-///   unchanged → BOTH, because a context line exists on both sides
-/// Sending one number for an unchanged line is what produced
-/// `Note {:line_code=>["can't be blank", "must be a valid line code"]}` — and most
-/// review comments land on context lines, so this is the common case, not an edge.
+/// Where one line sits in an MR's diff. An unchanged line carries both numbers,
+/// an added line `new_line` only, a deleted line `old_line` only.
 struct DiffAnchor {
     old_line: Option<i64>,
     new_line: Option<i64>,
@@ -385,12 +382,8 @@ struct DiffAnchor {
     new_path: String,
 }
 
-/// Locate `line` in the MR's diff for `path`.
-///
-/// `line` is a new-side number by our own convention, but an annotation on a
-/// DELETED line can only carry an old-side one, so the new side is tried first and
-/// the old side second. Returns the paths from the diff too, which is what makes
-/// comments work on files renamed inside the MR.
+/// Locate `line` in the MR's diff for `path`: new side first, old side second.
+/// Returns the diff's own paths, so a renamed file works.
 async fn locate_line(
     repo: &Repo,
     remote_id: &str,
@@ -420,7 +413,12 @@ async fn locate_line(
     let diff = file["diff"].as_str().unwrap_or_default();
 
     match resolve_in_diff(diff, line) {
-        Ok((old_line, new_line)) => Ok(DiffAnchor { old_line, new_line, old_path, new_path }),
+        Ok((old_line, new_line)) => Ok(DiffAnchor {
+            old_line,
+            new_line,
+            old_path,
+            new_path,
+        }),
         Err(commentable) => Err(anyhow::anyhow!(
             "line {line} of {path} is not in MR !{remote_id}'s diff, so GitLab has nothing to \
              anchor to — comment on one of its changed regions instead ({}). Nothing was posted.",
@@ -429,12 +427,8 @@ async fn locate_line(
     }
 }
 
-/// Find `line` in a unified diff and return the `(old_line, new_line)` pair
-/// GitLab needs. On failure, hands back every new-side line that IS commentable.
-///
-/// `line` is treated as a new-side number first (our convention) and as an
-/// old-side one second, which is the only way to anchor a comment on a line the
-/// MR deleted.
+/// Find `line` in a unified diff, new side first, and return the `(old_line, new_line)`
+/// pair. On failure, returns every commentable new-side line.
 #[allow(clippy::type_complexity)]
 fn resolve_in_diff(diff: &str, line: i64) -> Result<(Option<i64>, Option<i64>), Vec<i64>> {
     let mut old_no = 0i64;
@@ -459,7 +453,7 @@ fn resolve_in_diff(diff: &str, line: i64) -> Result<(Option<i64>, Option<i64>), 
             }
             // `\ No newline at end of file` is metadata, not a line.
             Some('\\') => {}
-            // A context line — present on both sides, so it carries both numbers.
+            // A context line carries both numbers.
             Some(_) | None => {
                 by_new.push((new_no, Some(old_no)));
                 old_no += 1;
@@ -495,7 +489,11 @@ fn describe_ranges(lines: &[i64]) -> String {
         match start {
             None => start = Some(n),
             Some(s) if n != prev + 1 => {
-                out.push(if s == prev { s.to_string() } else { format!("{s}-{prev}") });
+                out.push(if s == prev {
+                    s.to_string()
+                } else {
+                    format!("{s}-{prev}")
+                });
                 start = Some(n);
             }
             _ => {}
@@ -503,9 +501,17 @@ fn describe_ranges(lines: &[i64]) -> String {
         prev = n;
     }
     if let Some(s) = start {
-        out.push(if s == prev { s.to_string() } else { format!("{s}-{prev}") });
+        out.push(if s == prev {
+            s.to_string()
+        } else {
+            format!("{s}-{prev}")
+        });
     }
-    if out.is_empty() { "none".to_string() } else { out.join(", ") }
+    if out.is_empty() {
+        "none".to_string()
+    } else {
+        out.join(", ")
+    }
 }
 
 /// Live MR fetch + DB upsert for GitLab repos.
@@ -540,9 +546,7 @@ pub(super) async fn fetch_and_upsert_mrs(
 mod tests {
     use super::*;
 
-    /// The real hunk from wiremind/devops/cluster-manager!1828 that exposed this:
-    /// commenting on new line 114 (a CONTEXT line, old 87) was rejected with
-    /// `line_code: must be a valid line code` because only one number was sent.
+    /// A real hunk: new line 114 is a context line at old 87.
     const HUNK: &str = concat!(
         "@@ -82,11 +106,14 @@ class GitlabSetCRPolicies(GitlabHelper):\n",
         "             logger.debug(f\"disabled\")\n",
@@ -558,31 +562,23 @@ mod tests {
 
     #[test]
     fn context_line_carries_both_numbers() {
-        // new 114 == old 87 in this hunk: header starts at old 82 / new 106, and
-        // three added lines shift the two sides apart by 27.
         assert_eq!(resolve_in_diff(HUNK, 114), Ok((Some(87), Some(114))));
     }
 
     #[test]
     fn added_line_has_no_old_number() {
-        // new 109-111 are the '+' lines.
         assert_eq!(resolve_in_diff(HUNK, 109), Ok((None, Some(109))));
     }
 
     #[test]
     fn deleted_line_is_found_on_the_old_side() {
-        // Only new line 50 survives here, so 52 can only be the old-side deletion.
         let diff = "@@ -50,4 +50,1 @@\n ctx\n-gone1\n-gone2\n-gone3\n";
         assert_eq!(resolve_in_diff(diff, 52), Ok((Some(52), None)));
     }
 
-    /// A number that is valid on BOTH sides must resolve as the new side — that is
-    /// our convention for what an annotation's line means, and guessing otherwise
-    /// would move comments to unrelated code.
     #[test]
     fn the_new_side_wins_when_a_number_exists_on_both() {
         let diff = "@@ -10,3 +10,2 @@\n ctx\n-gone\n ctx2\n";
-        // new 11 is the context line `ctx2` (old 12); old 11 is the deleted `gone`.
         assert_eq!(resolve_in_diff(diff, 11), Ok((Some(12), Some(11))));
     }
 
@@ -594,7 +590,10 @@ mod tests {
 
     #[test]
     fn hunk_headers_parse_with_and_without_counts() {
-        assert_eq!(parse_hunk_header("@@ -82,11 +106,14 @@ class X:"), Some((82, 106)));
+        assert_eq!(
+            parse_hunk_header("@@ -82,11 +106,14 @@ class X:"),
+            Some((82, 106))
+        );
         assert_eq!(parse_hunk_header("@@ -1 +1 @@"), Some((1, 1)));
         assert_eq!(parse_hunk_header(" not a header"), None);
     }
@@ -605,8 +604,6 @@ mod tests {
         assert_eq!(describe_ranges(&[]), "none");
     }
 
-    /// Captured shape of `GET …/discussions`: a review thread, a system
-    /// discussion ("added 1 commit"), and a general note.
     #[test]
     fn discussions_reshape_and_system_noise_is_dropped() {
         let raw = serde_json::json!([

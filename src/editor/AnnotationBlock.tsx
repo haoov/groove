@@ -4,7 +4,7 @@ import { Markdown } from '../shared/ui/Markdown';
 import type { Annotation, Mr, MrThread } from '../shared/ipc/ipc';
 import type { AnnCtx, LineRange } from './useAnnotations';
 
-/** Author line for one annotation, colored by the human/agent duet. */
+/** Author line for one annotation, colored by author kind. */
 function AnnotationAuthor({ a }: { a: Annotation }) {
   return (
     <span
@@ -17,11 +17,7 @@ function AnnotationAuthor({ a }: { a: Annotation }) {
   );
 }
 
-/**
- * One note with its full control set: post, edit, resolve, delete — and the edit
- * box in place of the body while it is being rewritten. Shared so the note reads
- * and behaves the same wherever it appears.
- */
+/** One note with its controls: post, edit, resolve, delete. */
 export function AnnotationRow({ a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: Mr | null }) {
   const editing = ann.editingId === a.id;
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -55,7 +51,6 @@ export function AnnotationRow({ a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: 
         </>
       ) : (
         <>
-          {/* Notes are markdown — the agent writes code spans and lists. */}
           <div className="diff-inline-content">
             <Markdown text={a.content} />
           </div>
@@ -120,11 +115,7 @@ export function AnnotationRow({ a, ann, mr }: { a: Annotation; ann: AnnCtx; mr: 
   );
 }
 
-/**
- * The always-visible annotations under an annotated line. Rendered into a
- * CodeMirror block widget through a portal (see `InlineAnnotationsWidget`), and
- * carrying the same controls as the selected-line panel.
- */
+/** The always-visible annotations under a line, portalled into `InlineAnnotationsWidget`. */
 export function InlineAnnotations({ anns, ann, mr }: { anns: Annotation[]; ann: AnnCtx; mr: Mr | null }) {
   return (
     <div className="diff-inline-block" onClick={(e) => e.stopPropagation()}>
@@ -136,11 +127,8 @@ export function InlineAnnotations({ anns, ann, mr }: { anns: Annotation[]; ann: 
 }
 
 /**
- * The inline annotation panel shown when a line/range is selected in either
- * editor: existing annotations for the range, MR threads (with reply), and the
- * comment form. Shared by the diff editor and the code editor so both surfaces
- * have an identical annotation experience, all driven by the `useAnnotations`
- * context (`AnnCtx`).
+ * The inline panel at a selected range: its annotations, MR threads with reply,
+ * and the comment form.
  */
 export function AnnotationBlock({
   range, lineAnnotations, lineThreads, mr, ann, repoId, filePath, lineNum,

@@ -9,9 +9,7 @@ import { focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
 import { bytesToB64 } from '../shared/lib/ptyRegistry';
 
-/** Typed at the prompt without a newline: the command is the same for everyone but
- *  its flags are not — a self-managed GitLab needs `--hostname`, and which login
- *  method works there is the user's call. */
+/** Typed at the prompt without a newline. */
 const COMMAND = {
   glab: { login: 'glab auth login', scope: 'glab auth login' },
   gh: { login: 'gh auth login', scope: 'gh auth refresh -s project' },
@@ -19,24 +17,12 @@ const COMMAND = {
 
 export type AuthMode = 'login' | 'scope';
 
-/** Quiet from the PTY before the command is typed. A shell's startup arrives in
- *  bursts, and quiet is the only signal it gives that the prompt is ready. */
+/** PTY quiet time that signals the prompt is ready. */
 const SETTLE_MS = 400;
 
 /**
- * A shell for signing the forge CLIs in.
- *
- * Both flows are interactive by nature — a device code to copy, a browser to open, a
- * token to paste — so there is nothing to wrap in a form. Showing the CLI itself is
- * both less work and more honest: the user sees exactly what it asked and what it
- * answered, and the same commands work outside the app.
- *
- * A shell rather than the login command itself, because the command varies: a
- * self-managed GitLab needs its host, and `--hostname` is only the first flag someone
- * will need. So the command is typed at the prompt without its newline — ready to run,
- * still open to editing.
- *
- * The PTY is not bound to a session, so this owns it: it dies with the login.
+ * A shell for signing the forge CLIs in. The command is typed at the prompt without
+ * its newline. The PTY is owned here and dies with the modal.
  */
 export function AuthModal({
   tool, mode = 'login', onDone,
@@ -51,7 +37,7 @@ export function AuthModal({
   const termRef = useRef<HTMLDivElement>(null);
   useAttachedHost(pty, termRef);
 
-  // One login per open — a second start would leave the first PTY orphaned.
+  // One start per open; a second orphans the first PTY.
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
@@ -62,10 +48,7 @@ export function AuthModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool]);
 
-  // Type the command at the prompt, leaving the newline to the user so they can add
-  // flags first. Waiting for the PTY to fall quiet rather than firing on the first
-  // chunk: startup output comes in bursts, and text written into the middle of it is
-  // simply lost.
+  // Type the command once the PTY falls quiet: text written mid-burst is lost.
   const typed = useRef(false);
   useEffect(() => {
     if (!pty) return;
@@ -84,13 +67,9 @@ export function AuthModal({
     listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) => {
       if (payload.session_id === pty) arm();
     }).then((un) => { unlisten = un; });
-    arm(); // a shell that prints nothing at all still gets the command
+    arm(); // a silent shell still gets the command
     return () => { window.clearTimeout(quiet); unlisten?.(); };
   }, [pty, tool, mode]);
-
-  // Closing is deliberately the user's call: a shell has no "done", and the login
-  // may take a browser round trip. `onDone` re-runs the environment check, so a
-  // half-finished login simply shows as still not authenticated.
 
   return (
     <div className="wizard-overlay" onClick={onDone}>

@@ -2,7 +2,7 @@
 
 export type HomeMr = { id: string, 
 /**
- * "gitlab" | "github" — the UI picks `!42` or `#42` from it.
+ * "gitlab" | "github".
  */
 platform: string, remote_id: string, state: string, url: string, 
 /**
@@ -10,6 +10,6 @@ platform: string, remote_id: string, state: string, url: string,
  */
 ci: string | null, unresolved: number, 
 /**
- * Carries at least one approval — surfaced as a pill on Home.
+ * Carries at least one approval.
  */
 approved: boolean, };

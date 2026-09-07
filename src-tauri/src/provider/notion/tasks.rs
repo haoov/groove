@@ -1,25 +1,19 @@
-//! The task queue: querying the tasks database, syncing one task, and the two
-//! status writes the session lifecycle needs.
+//! The task queue: querying the tasks database, syncing one task, and status writes.
 
 use std::{
     collections::HashMap,
     sync::{OnceLock, RwLock},
 };
 
-
 use crate::core::config::{self, NotionConfig};
 use crate::core::db::models::ProviderTask;
 
 use super::page::page_to_task;
 
-/// A runaway-pagination backstop far above any real queue.
 const MAX_TASK_PAGES: usize = 30;
 
 // ─── Sprint filter ────────────────────────────────────────────────────────────
 
-/// Current-sprint page ids are re-read this often. Same TTL as the schema cache:
-/// sprints change per week, not per query, and without this every task listing
-/// pays two extra Notion round-trips before the real query starts.
 const SPRINT_TTL_SECS: i64 = 300;
 
 type SprintCache = RwLock<HashMap<String, (i64, Vec<String>)>>;
@@ -29,9 +23,7 @@ fn sprint_cache() -> &'static SprintCache {
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
-/// The sprint database, read off the Sprint relation rather than configured: the
-/// property already says where it points. `None` when the task database has no
-/// sprint relation, in which case there is nothing to filter by.
+/// The sprint database: the Sprint relation's target. `None` without a sprint relation.
 async fn sprint_database_id(token: &str, database_id: &str, sprint_prop: &str) -> Option<String> {
     super::schema::load(token, database_id)
         .await
@@ -40,8 +32,7 @@ async fn sprint_database_id(token: &str, database_id: &str, sprint_prop: &str) -
         .map(str::to_string)
 }
 
-/// Page ids of the sprint database's rows whose status property says "Current",
-/// cached. The property is found by TYPE in the sprint database's own schema.
+/// Page ids of the sprint database's rows whose status is "Current", cached.
 pub(super) async fn current_sprint_ids(token: &str, sprint_db_id: &str) -> Vec<String> {
     let now = chrono::Utc::now().timestamp();
     if let Ok(map) = sprint_cache().read() {
@@ -70,13 +61,22 @@ async fn fetch_current_sprint_ids(token: &str, sprint_db_id: &str) -> Vec<String
             "status": { "equals": "Current" }
         }
     });
-    match super::api::paginate_post(token, &format!("v1/databases/{sprint_db_id}/query"), &body, 2).await {
+    match super::api::paginate_post(
+        token,
+        &format!("v1/databases/{sprint_db_id}/query"),
+        &body,
+        2,
+    )
+    .await
+    {
         Ok(rows) => rows
             .iter()
             .filter_map(|p| p["id"].as_str().map(str::to_string))
             .collect(),
         Err(e) => {
-            tracing::warn!("[sprint filter] sprint DB query failed — check integration permissions: {e}");
+            tracing::warn!(
+                "[sprint filter] sprint DB query failed — check integration permissions: {e}"
+            );
             vec![]
         }
     }
@@ -114,8 +114,7 @@ async fn queue_filter(cfg: &NotionConfig) -> serde_json::Value {
         }));
     }
 
-    // Sprint filtering only applies when a sprint property is configured —
-    // filtering on a property the database doesn't have 400s the whole query.
+    // A filter on a property the database lacks fails the whole query with 400.
     if let Some(sprint_prop) = n.properties.sprint.as_deref() {
         let sprint_ids = match sprint_database_id(&n.token, &n.database_id, sprint_prop).await {
             Some(db) => current_sprint_ids(&n.token, &db).await,
@@ -124,10 +123,12 @@ async fn queue_filter(cfg: &NotionConfig) -> serde_json::Value {
         if !sprint_ids.is_empty() {
             let mut per_sprint: Vec<serde_json::Value> = sprint_ids
                 .iter()
-                .map(|id| serde_json::json!({
-                    "property": sprint_prop,
-                    "relation": { "contains": id }
-                }))
+                .map(|id| {
+                    serde_json::json!({
+                        "property": sprint_prop,
+                        "relation": { "contains": id }
+                    })
+                })
                 .collect();
             conditions.push(if per_sprint.len() == 1 {
                 per_sprint.remove(0)
@@ -178,7 +179,12 @@ pub(crate) async fn fetch_page(page_id: &str) -> anyhow::Result<ProviderTask> {
 // ─── Status writes ────────────────────────────────────────────────────────────
 
 /// Set the configured status property of a page.
-pub async fn set_status(token: &str, page_id: &str, prop_name: &str, status: &str) -> anyhow::Result<()> {
+pub async fn set_status(
+    token: &str,
+    page_id: &str,
+    prop_name: &str,
+    status: &str,
+) -> anyhow::Result<()> {
     super::api::patch(
         token,
         &format!("v1/pages/{page_id}"),
@@ -190,8 +196,7 @@ pub async fn set_status(token: &str, page_id: &str, prop_name: &str, status: &st
     Ok(())
 }
 
-/// Move a page to the workspace trash (Notion has no hard delete; it keeps
-/// trashed pages for thirty days).
+/// Move a page to the workspace trash.
 pub async fn trash(token: &str, page_id: &str) -> anyhow::Result<()> {
     super::api::patch(
         token,

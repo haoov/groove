@@ -4,8 +4,7 @@ use tauri::Emitter;
 use crate::core::git;
 
 /// The fields every git-op confirmation carries. `repo` is the project name for
-/// display: worktree paths embed the branch's slashes now, so the path's last
-/// segment is the branch leaf, not the repo.
+/// display; the path's last segment is the branch leaf, not the repo.
 pub(crate) async fn op_payload(
     pool: &SqlitePool,
     wt: &crate::core::db::models::Worktree,
@@ -31,14 +30,21 @@ pub async fn commit(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let mut payload = op_payload(&pool, &wt).await;
     payload["message"] = serde_json::json!(message);
 
     bridge
-        .post(&pool, crate::approvals::ops::GIT_COMMIT, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_COMMIT,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -46,14 +52,12 @@ pub async fn commit(
 // ─── Staging ──────────────────────────────────────────────────────────────────
 
 async fn worktree_path(worktree_id: &str, pool: &SqlitePool) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(pool, worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(pool, worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
     Ok(wt.path)
 }
 
-/// Run `git <args>` in `path` off the async runtime, mapping any failure to a
-/// user-facing string. Thin wrapper over the shared `run_git` for the command
-/// layer (which returns `Result<(), String>`).
 async fn run_git_in(path: &str, args: &[&str]) -> Result<(), String> {
     crate::core::git::run(path, args)
         .await
@@ -108,7 +112,8 @@ pub async fn discard_file(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -117,7 +122,13 @@ pub async fn discard_file(
         "file_path": file_path,
     });
     bridge
-        .post(&pool, crate::approvals::ops::GIT_DISCARD, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_DISCARD,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -128,7 +139,8 @@ pub async fn discard_all(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let payload = serde_json::json!({
@@ -136,13 +148,18 @@ pub async fn discard_all(
         "worktree_path": wt.path,
     });
     bridge
-        .post(&pool, crate::approvals::ops::GIT_DISCARD_ALL, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_DISCARD_ALL,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
 
-/// Discard local changes for one file. Tracked/staged paths are restored from
-/// HEAD (a staged-new file is removed); a purely untracked file is deleted.
+/// Discard local changes to one file: an index path is restored from HEAD, an untracked file is deleted.
 pub async fn discard_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     let file = required_str(&payload, "file_path")?;
@@ -153,7 +170,18 @@ pub async fn discard_impl(payload: serde_json::Value) -> anyhow::Result<()> {
         .unwrap_or(false);
 
     if in_index {
-        git::run(path, &["restore", "--source=HEAD", "--staged", "--worktree", "--", file]).await?;
+        git::run(
+            path,
+            &[
+                "restore",
+                "--source=HEAD",
+                "--staged",
+                "--worktree",
+                "--",
+                file,
+            ],
+        )
+        .await?;
     } else {
         git::run(path, &["clean", "-fd", "--", file]).await?;
     }
@@ -181,13 +209,20 @@ pub async fn push(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let payload = op_payload(&pool, &wt).await;
 
     bridge
-        .post(&pool, crate::approvals::ops::GIT_PUSH, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_PUSH,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -198,13 +233,20 @@ pub async fn pull(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let payload = op_payload(&pool, &wt).await;
 
     bridge
-        .post(&pool, crate::approvals::ops::GIT_PULL, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_PULL,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -216,14 +258,22 @@ pub async fn rebase_on_main(
     pool: tauri::State<'_, SqlitePool>,
     bridge: tauri::State<'_, crate::approvals::Bridge>,
 ) -> Result<String, String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let mut payload = op_payload(&pool, &wt).await;
-    payload["default_branch"] = serde_json::json!(default_branch.unwrap_or_else(|| "main".to_string()));
+    payload["default_branch"] =
+        serde_json::json!(default_branch.unwrap_or_else(|| "main".to_string()));
 
     bridge
-        .post(&pool, crate::approvals::ops::GIT_REBASE, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::GIT_REBASE,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
@@ -234,15 +284,17 @@ pub async fn rebase_continue(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
-        .map_err(|e| e.to_string())?;
-
-    // `-c core.editor=true` stands in for the old `GIT_EDITOR=true` env: it stops
-    // `rebase --continue` from popping an editor for the commit message. run_git_output
-    // keeps this (potentially slow) call off the tokio runtime.
-    let output = crate::core::git::output(&wt.path, &["-c", "core.editor=true", "rebase", "--continue"])
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
         .await
         .map_err(|e| e.to_string())?;
+
+    // `-c core.editor=true` stops `rebase --continue` from opening an editor.
+    let output = crate::core::git::output(
+        &wt.path,
+        &["-c", "core.editor=true", "rebase", "--continue"],
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     crate::core::git::cache::flush();
 
     if output.status.success() {
@@ -269,7 +321,8 @@ pub async fn rebase_abort(
     worktree_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<(), String> {
-    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id).await
+    let wt = crate::core::db::store::worktrees::get(&*pool, &worktree_id)
+        .await
         .map_err(|e| e.to_string())?;
 
     let output = crate::core::git::output(&wt.path, &["rebase", "--abort"])
@@ -310,8 +363,7 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
     let path = required_str(&payload, "worktree_path")?;
     let message = required_str(&payload, "message")?;
 
-    // Stage-aware: with anything staged, commit the index; otherwise `-a`. `index_only`
-    // (the agent's path) never falls back to `-a`.
+    // `index_only` never falls back to `-a`.
     let index_only = payload["index_only"].as_bool().unwrap_or(false);
     let has_staged = git::output(path, &["diff", "--cached", "--quiet"])
         .await
@@ -332,9 +384,7 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
     let output = git::output(path, &args).await?;
 
     if !output.status.success() {
-        // `git commit` writes "nothing to commit" / "Untracked files present" to
-        // STDOUT with a non-zero exit, so surfacing stderr alone yields an empty
-        // "git commit failed:" message. Include both streams.
+        // `git commit` writes "nothing to commit" to stdout with a non-zero exit.
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let detail = [stderr.trim(), stdout.trim()]
@@ -345,7 +395,11 @@ pub async fn commit_impl(payload: serde_json::Value, _pool: &SqlitePool) -> anyh
             .join(" — ");
         return Err(anyhow::anyhow!(
             "git commit failed: {}",
-            if detail.is_empty() { "no output (nothing to commit?)".to_string() } else { detail }
+            if detail.is_empty() {
+                "no output (nothing to commit?)".to_string()
+            } else {
+                detail
+            }
         ));
     }
     git::cache::flush();
@@ -356,7 +410,16 @@ pub async fn push_impl(payload: serde_json::Value) -> anyhow::Result<()> {
     let path = required_str(&payload, "worktree_path")?;
     let branch = required_str(&payload, "branch")?;
 
-    git::run(path, &["push", "origin", &format!("{branch}:{branch}"), "--set-upstream"]).await?;
+    git::run(
+        path,
+        &[
+            "push",
+            "origin",
+            &format!("{branch}:{branch}"),
+            "--set-upstream",
+        ],
+    )
+    .await?;
     git::cache::flush();
     Ok(())
 }
@@ -382,8 +445,7 @@ pub async fn rebase_impl(payload: serde_json::Value) -> anyhow::Result<serde_jso
     let _ = git::run(&path, &["fetch", "origin"]).await;
     git::cache::flush();
 
-    // Rebase onto the base BRANCH, never a merge-base: the point of the rebase is
-    // to move onto the branch tip.
+    // Rebase onto the base branch tip, never a merge-base.
     let base_ref = git::refs::upstream_base(&path, Some(&default_branch)).await?;
 
     let output = git::output(&path, &["rebase", &base_ref]).await?;
@@ -400,7 +462,11 @@ pub async fn rebase_impl(payload: serde_json::Value) -> anyhow::Result<serde_jso
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(anyhow::anyhow!(
             "git rebase {base_ref} failed: {}",
-            if stderr.is_empty() { "unknown error".to_string() } else { stderr }
+            if stderr.is_empty() {
+                "unknown error".to_string()
+            } else {
+                stderr
+            }
         ));
     }
     Ok(serde_json::json!({
@@ -421,14 +487,26 @@ mod tests {
     }
 
     async fn run(dir: &str, args: &[&str]) -> String {
-        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+        let mut full = vec![
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=T",
+            "-c",
+            "commit.gpgsign=false",
+        ];
         full.extend_from_slice(args);
-        git::run(dir, &full).await.unwrap_or_else(|e| panic!("git {args:?}: {e}")).trim().to_string()
+        git::run(dir, &full)
+            .await
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"))
+            .trim()
+            .to_string()
     }
 
     /// One committed file, then that file modified and a new one beside it. Nothing staged.
     async fn dirty_repo(name: &str) -> (Repo, String) {
-        let root = std::env::temp_dir().join(format!("groove-commit-{name}-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("groove-commit-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root).unwrap();
         let dir = root.to_string_lossy().to_string();
@@ -449,7 +527,10 @@ mod tests {
     async fn an_agent_commit_with_nothing_staged_is_refused() {
         let (_repo, dir) = dirty_repo("refused").await;
         let pool = crate::core::db::test_pool().await;
-        let err = commit_impl(agent_commit(&dir), &pool).await.unwrap_err().to_string();
+        let err = commit_impl(agent_commit(&dir), &pool)
+            .await
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("nothing staged"), "{err}");
         assert_eq!(run(&dir, &["rev-list", "--count", "HEAD"]).await, "1");
     }
@@ -460,7 +541,14 @@ mod tests {
         let pool = crate::core::db::test_pool().await;
         run(&dir, &["add", "new.txt"]).await;
         commit_impl(agent_commit(&dir), &pool).await.unwrap();
-        assert_eq!(run(&dir, &["show", "--name-only", "--format=", "HEAD"]).await, "new.txt");
-        assert_eq!(run(&dir, &["diff", "--name-only"]).await, "tracked.txt", "the unstaged edit stays unstaged");
+        assert_eq!(
+            run(&dir, &["show", "--name-only", "--format=", "HEAD"]).await,
+            "new.txt"
+        );
+        assert_eq!(
+            run(&dir, &["diff", "--name-only"]).await,
+            "tracked.txt",
+            "the unstaged edit stays unstaged"
+        );
     }
 }

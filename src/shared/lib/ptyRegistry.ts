@@ -1,12 +1,7 @@
-// PTY output routing: xterm hosts register a handler per PTY session; output
-// that arrives before a handler mounts is buffered (capped) and flushed on
-// registration. Infrastructure shared by useIpc (the event listener side) and
-// terminalHost (the xterm side).
+// PTY output routing: one xterm handler per PTY session. Output that arrives before a handler
+// mounts is buffered, capped, and flushed on registration.
 
 const ptyOutputHandlers = new Map<string, (data: Uint8Array) => void>();
-// Output that arrived before an xterm handler registered, buffered per session so
-// the first bytes of a fast-starting PTY aren't lost. Capped to avoid unbounded
-// growth if a handler never mounts.
 const MAX_PTY_BUFFER_CHUNKS = 256;
 const ptyOutputBuffers = new Map<string, Uint8Array[]>();
 
@@ -18,8 +13,7 @@ export function decodeChunk(b64: string): Uint8Array {
   return bytes;
 }
 
-/** Bytes to base64 for `write_pty` — chunked so a large paste can't blow the
- *  argument limit of String.fromCharCode. */
+/** Bytes to base64 for `write_pty`. Chunked: String.fromCharCode has an argument limit. */
 export function bytesToB64(bytes: Uint8Array): string {
   let bin = '';
   const CHUNK = 0x8000;
@@ -31,7 +25,7 @@ export function bytesToB64(bytes: Uint8Array): string {
 
 export function registerPtyHandler(sessionId: string, handler: (data: Uint8Array) => void) {
   ptyOutputHandlers.set(sessionId, handler);
-  // Flush anything that arrived before the handler mounted, in arrival order.
+  // Flush what arrived before the handler mounted, in order.
   const buffered = ptyOutputBuffers.get(sessionId);
   if (buffered) {
     ptyOutputBuffers.delete(sessionId);

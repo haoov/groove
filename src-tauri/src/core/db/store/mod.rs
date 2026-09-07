@@ -1,5 +1,4 @@
-//! The only module that speaks SQL. Every function takes an executor, so it
-//! runs on the pool or inside a transaction unchanged.
+//! The only module that speaks SQL. Every function takes an executor.
 
 pub mod annotations;
 pub mod confirmations;

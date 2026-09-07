@@ -79,8 +79,6 @@ describe('matchesQuery', () => {
     expect(matchesQuery(q('parser'), 'TASK-1 fix the lexer', row)).toBe(false);
   });
 
-  // A field the section cannot answer excludes every row, so the tab reads as
-  // empty and Home routes the query to the tab that owns the field.
   it('excludes every row for a field the section does not answer', () => {
     expect(matchesQuery(q('owner:alice'), 'anything', row)).toBe(false);
   });
@@ -126,7 +124,6 @@ describe('highlightSegments', () => {
     expect(highlightSegments('title:"a b"')[1]).toEqual({ text: '"a b"', kind: 'value' });
   });
 
-  // The mirror sits under the real text: any drift misaligns the highlight.
   it('reproduces the input exactly', () => {
     for (const s of ['', 'a', 'provider:github  priority:high', '  -kind:explorer x ', 'title:"a b" z']) {
       expect(join(s)).toBe(s);
@@ -215,9 +212,6 @@ describe('queryKeys', () => {
   });
 });
 
-// `provider` is where the TASK came from; `forge` is where the CODE is hosted. An
-// MR has no provider. Both can read "github", so one key for the two would answer
-// the wrong question — these lock the split.
 describe('provider and forge are separate axes', () => {
   const REVIEW_FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'owner'];
   const TASK_FIELDS = ['id', 'title', 'status', 'priority', 'provider'];

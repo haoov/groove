@@ -5,10 +5,7 @@ import type { OriginBranches } from '../shared/ipc/ipc';
 import { Combobox } from '../shared/ui/Combobox';
 import { Highlighted } from '../shared/lib/match';
 
-/**
- * Picks a worktree's base branch — `Worktree::base_ref`, later the MR target.
- * The list comes from origin, so it only offers what provisioning accepts.
- */
+/** Picks a worktree's base branch (`Worktree::base_ref`, later the MR target) from origin's branches. */
 
 type State =
   | { phase: 'loading' }
@@ -16,13 +13,10 @@ type State =
   | { phase: 'failed'; error: string };
 
 const LOADING: State = { phase: 'loading' };
-/** Stable identity — a fresh [] each render would rebuild the ranking. */
+/** Stable identity: a fresh [] each render rebuilds the ranking. */
 const NO_BRANCHES: string[] = [];
 
-/**
- * Origin's branches for one repo, fetched once per repo id. The answer carries
- * the id it belongs to, so a previous repo's list is never shown as this one's.
- */
+/** Origin's branches for one repo, fetched once per repo id. The answer carries its repo id. */
 export function useOriginBranches(repoId: string | undefined): State {
   const [loaded, setLoaded] = useState<{ repoId: string; state: State } | null>(null);
 

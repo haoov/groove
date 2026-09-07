@@ -5,12 +5,7 @@ import type { NotionView } from "./NotionView";
 import type { UiConfig } from "./UiConfig";
 
 /**
- * The config as the FRONTEND sees it: everything except the Notion token.
- *
- * The token is a write credential for the whole task database, and nothing in the
- * webview uses it — every Notion call is made in Rust. It cannot just be
- * `skip_serializing` on the field, because `Config` is also what gets written back
- * to `workbench.config.json` (see `save_config_to_dir`), so skipping it there would
- * erase the token from disk on the next preference change.
+ * The config as the frontend sees it: everything except the Notion token.
+ * Do not `skip_serializing` the token on `Config` instead; `Config` is also the on-disk format.
  */
 export type ConfigView = { notion: NotionView | null, github: GithubConfig | null, git: GitConfig, ui: UiConfig, };

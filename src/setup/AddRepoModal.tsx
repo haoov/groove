@@ -5,8 +5,7 @@ import { useRepoPicker, RepoPickerSearch, CloneRepoForm } from './repoPicker';
 import { BranchPicker, useOriginBranches } from './branchPicker';
 import type { Repo } from '../shared/ipc/ipc';
 
-/** One repo's row: the branch to create, and the base it cuts from. A component
- *  per row because the base list is fetched per repo. */
+/** One repo's row: the branch to create, and the base it cuts from. */
 function RepoBranchRow({
   repo, branch, onBranch, target, onTarget, defaultBranch, onRemove,
 }: {
@@ -44,20 +43,13 @@ function RepoBranchRow({
   );
 }
 
-/**
- * Add one or more repos to the ALREADY-OPEN task — the post-wizard path.
- * Reuses the wizard's step-1 repo picker. Branches default to the task branch
- * (same as the task's other worktrees); provisioning is incremental so existing
- * worktrees are left untouched.
- */
+/** Adds repos to the open task. Existing worktrees are left untouched. */
 export function AddRepoModal({ onClose }: { onClose: () => void }) {
   const activeTask = useSession((s) => s.activeTask);
   const activeRepos = useSession((s) => s.activeRepos);
   const isExplorer = useSession((s) => s.kind === 'explorer');
   const notify = useStore((s) => s.notify);
-  // The branch provisioning would actually create. Asked for rather than guessed:
-  // the convention lives in the backend (`<type>/<slug>-<id>`), and a prefill that
-  // disagrees with what gets created is worse than no prefill.
+  // The branch convention lives in the backend; ask for it, never rebuild it here.
   const [defaultBranch, setDefaultBranch] = useState((activeTask?.short_id ?? '').toLowerCase());
   useEffect(() => {
     const shortId = activeTask?.short_id;
@@ -67,9 +59,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
       .catch(() => { /* keep the short-id fallback */ });
   }, [activeTask?.short_id]);
 
-  // repo.id → branch name. Seeded with the task branch when a repo is selected so
-  // the field holds real text you can prepend or append to; a placeholder gave
-  // nothing to edit.
+  // repo.id → branch name.
   const [branchByRepo, setBranchByRepo] = useState<Record<string, string>>({});
   // repo.id → base branch; '' means the repo default.
   const [targetByRepo, setTargetByRepo] = useState<Record<string, string>>({});
@@ -93,7 +83,6 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
 
   if (!activeTask) return null;
 
-  // Only repos not already attached to this task are addable.
   const addable = mainRepos.filter(
     (mr) => !activeRepos.some((r) => r.local_path === mr.local_path)
   );
@@ -105,7 +94,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
     const shortId = activeTask.short_id;
     try {
       const newIds = selectedRepos.map((r) => r.id);
-      // set_task_repos replaces the set, so merge with the repos already attached.
+      // set_task_repos replaces the whole set.
       const mergedIds = [...activeRepos.map((r) => r.id), ...newIds];
 
       if (isExplorer) {
@@ -115,14 +104,12 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
           branches: newIds.map((id) => ({ repo_id: id, branch_name: null })),
         });
       } else {
-        // Resolve each repo's target branch (typed override, or the task default).
         const specs = selectedRepos.map((r) => {
           const typed = (branchByRepo[r.id] ?? '').trim();
           const branch = typed || defaultBranch;
           return { repo: r, branch, target: (targetByRepo[r.id] ?? '').trim() };
         });
 
-        // Refuse if any target branch already exists on the repo's origin.
         const taken: string[] = [];
         for (const s of specs) {
           const exists = await invoke<boolean>('remote_branch_exists', {
@@ -146,9 +133,7 @@ export function AddRepoModal({ onClose }: { onClose: () => void }) {
           })),
         });
       }
-      // The repos are attached and provisioned by this point, so a failed refresh
-      // must NOT hold the modal open: it would read as "nothing happened" while
-      // the worktrees are already on disk. Report it and close either way.
+      // The worktrees are on disk by now: a failed refresh must not hold the modal open.
       try {
         // Re-hydrates activeRepos / activeWorktrees via workspace_ready.
         await invoke('open_task', { shortId });

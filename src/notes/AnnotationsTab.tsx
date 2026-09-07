@@ -9,13 +9,13 @@ export function AnnotationsTab({
   annotations: Annotation[];
   repoFor: (id: string) => Repo | undefined;
   onResolve: (id: string) => void;
-  /** Remove the note outright — for a wrong line or a bad agent call. */
+  /** Removes the note outright. */
   onDelete: (id: string) => void;
-  /** Rewrite the note's body — a draft is editable until it is posted. */
+  /** Rewrites the note's body. */
   onEdit: (id: string, content: string) => Promise<void>;
-  /** Jump to the annotated line in the editor. */
+  /** Jumps to the annotated line in the editor. */
   onOpen: (a: Annotation) => void;
-  /** The repo's MR, when one exists — enables "Post to MR" per annotation. */
+  /** The repo's MR, when one exists. */
   mr?: Mr | null;
   onPostToMr?: (a: Annotation) => Promise<void>;
 }) {
@@ -53,7 +53,6 @@ export function AnnotationsTab({
     <div className="annotations-list">
       {open.map((a) => (
         <div key={a.id} className="annotation-item">
-          {/* The location line is the affordance: it opens the file at the line. */}
           <button className="annotation-loc" onClick={() => onOpen(a)} title="Open at this line">
             <MessageSquare
               size={12}

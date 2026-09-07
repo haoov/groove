@@ -17,13 +17,14 @@ pub async fn for_session(
     exec: impl SqliteExecutor<'_>,
     session_id: &str,
 ) -> StoreResult<Vec<Worktree>> {
-    Ok(sqlx::query_as(&format!("SELECT {COLUMNS} FROM worktrees WHERE session_id = ?"))
-        .bind(session_id)
-        .fetch_all(exec)
-        .await?)
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM worktrees WHERE session_id = ?"
+    ))
+    .bind(session_id)
+    .fetch_all(exec)
+    .await?)
 }
 
-// Production caller arrives with the worktrees phase (multi-worktree pickers).
 #[allow(dead_code)]
 pub async fn for_repo(
     exec: impl SqliteExecutor<'_>,
@@ -78,7 +79,9 @@ pub async fn upsert(
     .await?;
     for_branch(exec, session_id, repo_id, branch)
         .await?
-        .ok_or_else(|| StoreError::not_found("worktree", format!("{session_id}/{repo_id}@{branch}")))
+        .ok_or_else(|| {
+            StoreError::not_found("worktree", format!("{session_id}/{repo_id}@{branch}"))
+        })
 }
 
 pub async fn set_base_ref(
@@ -94,8 +97,7 @@ pub async fn set_base_ref(
     Ok(())
 }
 
-/// Drop the worktree row (its MRs cascade) and detach the repo from the
-/// session when this was its last worktree — one transaction, one invariant.
+/// Delete the worktree row and detach the repo when it was the session's last worktree.
 pub async fn close(pool: &SqlitePool, id: &str) -> StoreResult<Worktree> {
     let mut tx = pool.begin().await?;
     let worktree = get(&mut *tx, id).await?;

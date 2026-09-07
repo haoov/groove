@@ -5,14 +5,14 @@ import { bytesToB64 } from './ptyRegistry';
 import { useStore } from '../store';
 import { skillCommand, trimForPty } from './skills';
 
-/** Give up waiting for a cold agent to report in and just send. */
+/** Give up waiting for a cold agent and send. */
 const READY_TIMEOUT_MS = 25_000;
 const READY_POLL_MS = 200;
-/** Grace after a cold start so the input box is mounted, not just the process. */
+/** Grace after a cold start for the input box to mount. */
 const READY_SETTLE_MS = 600;
 /** Gap between the prompt text and the Enter that submits it. */
 const SUBMIT_DELAY_MS = 150;
-/** What the Enter key actually sends on a TTY — 0x0D, not 0x0A. */
+/** Enter on a TTY is 0x0D, not 0x0A. */
 const CARRIAGE_RETURN = 13;
 
 /** The session's most recent agent PTY, or null when it has none running. */
@@ -25,7 +25,7 @@ export function agentPtyFor(sessionKey: string): string | null {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Wait for the agent's `SessionStart` hook; on timeout, send anyway rather than drop the prompt. */
+/** Waits for the agent's `SessionStart` hook; on timeout, sends anyway. */
 async function waitUntilReady(taskId: string): Promise<void> {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -37,8 +37,7 @@ async function waitUntilReady(taskId: string): Promise<void> {
   }
 }
 
-/** The session's agent PTY, started if needed. Output buffers until a host attaches, so
- *  no tab has to be open. */
+/** The session's agent PTY, started if needed. Output buffers until a host attaches. */
 export async function ensureAgentSession(
   sessionKey: string,
   opts?: { waitReady?: boolean },
@@ -55,8 +54,7 @@ export async function ensureAgentSession(
   return pty;
 }
 
-/** Send a prompt: the text, a pause, then a lone CR. A trailing "\n" in the same
- *  write does not submit — the TUI reads it as a newline in the draft. */
+/** Sends a prompt: the text, a pause, then a lone CR. A trailing "\n" in the same write does not submit. */
 export async function sendToAgent(sessionKey: string, text: string): Promise<void> {
   const pty = await ensureAgentSession(sessionKey, { waitReady: true });
   const write = (bytes: Uint8Array) => invoke('write_pty', { sessionId: pty, dataB64: bytesToB64(bytes) });
@@ -69,12 +67,12 @@ export async function sendToAgent(sessionKey: string, text: string): Promise<voi
   await write(new Uint8Array([CARRIAGE_RETURN]));
 }
 
-/** Invoke a skill on a session's agent: `/groove:start-task `, then Enter. */
+/** Invokes a skill on a session's agent: `/groove:start-task `, then Enter. */
 export function sendSkill(sessionKey: string, skillId: string, args?: string): Promise<void> {
   return sendToAgent(sessionKey, skillCommand(skillId, args));
 }
 
-/** Restart the agent so it loads the skills on disk; `--resume` keeps the conversation. */
+/** Restarts the agent; `--resume` keeps the conversation. */
 export async function reloadAgent(sessionKey: string): Promise<void> {
   const pty = agentPtyFor(sessionKey);
   if (pty) await invoke('stop_agent_session', { sessionId: pty });

@@ -1,18 +1,14 @@
 use sqlx::SqlitePool;
 
+use super::client::make_client;
+use super::gitlab::fetch_and_upsert_mrs;
 use crate::core::db::models::{Mr, Repo, Worktree};
 use crate::core::db::store;
-use super::gitlab::fetch_and_upsert_mrs;
-use super::client::make_client;
 
 // ─── Shared lookups ───────────────────────────────────────────────────────────
 
-/// Load the mr → worktree → repo chain for an MR id.
-///
-/// The id is the local uuid, and deliberately ONLY that: the forge number is unique
-/// per worktree, not globally, so `!42` can name two merge requests in different
-/// repos — and this chain ends in a write to the real one. An ambiguous key is worse
-/// than an error here. Callers get the id from the create reply or get_mr_state.
+/// Load the mr → worktree → repo chain for a local MR uuid. Never accept the
+/// forge number: `!42` is unique per repo only.
 pub(super) async fn load_mr_context(
     mr_id: &str,
     pool: &SqlitePool,
@@ -30,9 +26,7 @@ pub(super) async fn load_mr_context(
 
 // ─── IPC commands ─────────────────────────────────────────────────────────────
 
-/// Returns live MRs for the worktree's branch.
-/// For GitLab repos, queries glab and upserts into DB.
-/// For GitHub or on glab failure, falls back to DB.
+/// MRs for the worktree's branch: live from GitLab and upserted, else the DB rows.
 #[tauri::command]
 pub async fn get_mr(
     worktree_id: String,
@@ -62,13 +56,17 @@ pub async fn get_mr_threads(
     mr_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<serde_json::Value, String> {
-    mr_threads_for(&pool, &mr_id).await.map_err(|e| e.to_string())
+    mr_threads_for(&pool, &mr_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-/// The pool-taking form, for callers with no Tauri state — the MCP tool.
+/// The pool-taking form, for the MCP tool.
 pub async fn mr_threads_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
     let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
-    make_client(&repo).get_mr_threads(&repo, &mr.remote_id).await
+    make_client(&repo)
+        .get_mr_threads(&repo, &mr.remote_id)
+        .await
 }
 
 #[tauri::command]
@@ -79,14 +77,13 @@ pub async fn get_mr_ci(
     mr_ci_for(&pool, &mr_id).await.map_err(|e| e.to_string())
 }
 
-/// The pool-taking form, for callers with no Tauri state — the MCP tool.
+/// The pool-taking form, for the MCP tool.
 pub async fn mr_ci_for(pool: &SqlitePool, mr_id: &str) -> anyhow::Result<serde_json::Value> {
     let (mr, _wt, repo) = load_mr_context(mr_id, pool).await?;
     make_client(&repo).get_mr_ci(&repo, &mr.remote_id).await
 }
 
-/// Rich MR/PR fields (title, description, author, branches, …) for the overview
-/// page — live-fetched so it's always fresh; the local `mrs` row stays skeletal.
+/// Live MR/PR fields for the overview page.
 #[tauri::command]
 pub async fn get_mr_details(
     mr_id: String,
@@ -102,15 +99,14 @@ pub async fn get_mr_details(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Home reads the stored state; keep it in step with what the overview just saw.
+    // Keep the stored state in step with the live one.
     if let Some(fresh) = details["state"].as_str() {
         if fresh != mr.state {
             let _ = store::mrs::set_state(&*pool, &mr.id, fresh).await;
         }
     }
 
-    // Approval lives on a separate endpoint; fold it into the same payload so the
-    // overview renders it without a second round trip of its own.
+    // Fold the approval endpoint into the same payload.
     if let Ok(approval) = client.get_mr_approval(&repo, &mr.remote_id).await {
         if let Some(obj) = details.as_object_mut() {
             obj.insert("approved".into(), approval["approved"].clone());
@@ -139,11 +135,8 @@ pub async fn reply_to_thread(
         .map_err(|e| e.to_string())
 }
 
-/// Open the MR-create confirmation from the UI with the repo and branch already
-/// filled in. Title and description are deliberately left EMPTY: the dialog
-/// collects them and its edits become payload overrides at approve time, so the
-/// text that lands on the MR is always the user's. Mirrors the MCP tool's path —
-/// same op, same executor, same confirmation — only the author differs.
+/// Post the MR-create confirmation from the UI. Title and description stay
+/// empty; the dialog collects them.
 #[tauri::command]
 pub async fn create_mr(
     worktree_id: String,
@@ -154,28 +147,27 @@ pub async fn create_mr(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Shown read-only in the dialog; create_mr_impl re-derives what it needs.
     let mut payload = crate::worktrees::op_payload(&pool, &wt).await;
     payload["title"] = serde_json::json!("");
     payload["description"] = serde_json::json!("");
-    payload["target_branch"] = serde_json::json!(
-        super::ops::mr_target_for(&pool, &worktree_id)
-            .await
-            .map_err(|e| e.to_string())?
-    );
+    payload["target_branch"] = serde_json::json!(super::ops::mr_target_for(&pool, &worktree_id)
+        .await
+        .map_err(|e| e.to_string())?);
 
     bridge
-        .post(&pool, crate::approvals::ops::MR_CREATE, payload, "ui", Some(&wt.session_id))
+        .post(
+            &pool,
+            crate::approvals::ops::MR_CREATE,
+            payload,
+            "ui",
+            Some(&wt.session_id),
+        )
         .await
         .map_err(|e| e.to_string())
 }
 
-/// Rewrite the MR's title and/or description by hand.
-///
-/// Direct, not gated: you typed it and pressed save, the same rule the commit box
-/// and the task composer follow. Agent-initiated updates still go through the
-/// `mr.update` confirmation. Reuses `update_mr_impl`, so the Notion footer is
-/// re-appended rather than lost on every edit.
+/// Rewrite the MR's title or description from the UI, ungated. Goes through
+/// `update_mr_impl`, which re-appends the task footer.
 #[tauri::command]
 pub async fn edit_mr_text(
     mr_id: String,
@@ -194,13 +186,9 @@ pub async fn edit_mr_text(
     Ok(())
 }
 
-/// Approve the MR as the current user. Direct UI invoke (non-destructive,
-/// human-initiated) — like reply_to_thread, no confirmation-bridge round trip.
+/// Approve the MR as the current user, ungated.
 #[tauri::command]
-pub async fn approve_mr(
-    mr_id: String,
-    pool: tauri::State<'_, SqlitePool>,
-) -> Result<(), String> {
+pub async fn approve_mr(mr_id: String, pool: tauri::State<'_, SqlitePool>) -> Result<(), String> {
     let (mr, _wt, repo) = load_mr_context(&mr_id, &pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -213,9 +201,7 @@ pub async fn approve_mr(
     Ok(())
 }
 
-/// Post a comment on the MR: general note, or a positioned diff discussion when
-/// `file_path` + `line` are given (new-side line on the MR head). Human-initiated
-/// only — the agent drafts annotations, publishing them is a human click.
+/// Post a comment on the MR: a general note, or a diff discussion when `file_path` and `line` are given.
 #[tauri::command]
 pub async fn post_mr_comment(
     mr_id: String,
@@ -241,10 +227,7 @@ pub async fn post_mr_comment(
 
 // ─── MR state for Home ────────────────────────────────────────────────────────
 
-/// Live MR state ("open"/"merged"/"closed") — the one forge fact Home still reads
-/// per MR, and only on an explicit refresh. The stored row goes stale after a
-/// merge. Never errors: a forge hiccup returns None and the caller keeps the
-/// stored value.
+/// Live MR state ("open"/"merged"/"closed"); `None` on a forge failure.
 pub(crate) async fn mr_state(repo: &Repo, remote_id: &str) -> Option<String> {
     make_client(repo)
         .get_mr_details(repo, remote_id)

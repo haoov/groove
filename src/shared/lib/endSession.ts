@@ -2,11 +2,7 @@ import { invoke } from '../ipc/invoke';
 import { useStore } from '../store';
 import { disposeHost } from './terminalHost';
 
-/**
- * Fully close a workspace session: stop its agent/terminal PTYs (the explicit
- * "I'm done" signal — switching away never does this), drop their output
- * handlers, then remove the session from the store.
- */
+/** Fully closes a session: stops its PTYs, drops their output handlers, removes the session from the store. */
 export async function endSession(sessionId: string) {
   const sess = useStore.getState().sessions[sessionId];
   if (sess) {
@@ -14,7 +10,7 @@ export async function endSession(sessionId: string) {
       try {
         await invoke('stop_agent_session', { sessionId: p.sessionId });
       } catch {
-        // already dead — clean up frontend state anyway
+        // already dead
       }
       disposeHost(p.sessionId);
     }

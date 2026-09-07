@@ -1,16 +1,12 @@
-//! Synthetic, task-less sessions: explorers and MR reviews.
-//!
-//! Both are `sessions` rows with no task behind them, which is what lets
-//! them reuse the entire task machinery (worktrees, agent, diff, add-repo)
-//! without ever appearing in a task source. `sessions.kind` is the discriminator.
+//! Task-less sessions: explorers and MR reviews. `sessions.kind` is the discriminator.
 
 use sqlx::SqlitePool;
 use tauri::Emitter;
 
-use crate::core::db::models::{Repo, SessionKind};
-use crate::core::db::store;
 use super::commands::{open_task_impl, Open};
 use super::State;
+use crate::core::db::models::{Repo, SessionKind};
+use crate::core::db::store;
 
 fn new_explorer_id() -> String {
     let uid = uuid::Uuid::new_v4().simple().to_string();
@@ -53,17 +49,14 @@ pub async fn open_explorer_session(
 }
 
 // ─── Review sessions ──────────────────────────────────────────────────────────
-// A review session checks out an MR's source branch, with the MR's target
-// pinned as the diff/log base. `(project, iid)` is the identity: reopening the
-// same MR resumes the session, annotations intact. Finishing discards it.
+// A review session checks out the MR's source branch with its target as the
+// diff base. `(project, iid)` is its identity; reopening the MR resumes it.
 
 fn review_session_id(project_full: &str, iid: u64) -> String {
     format!("review-{}-{iid}", project_full.replace('/', "-"))
 }
 
-/// Register the MR's MAIN clone and attach it to the session. The slug is the
-/// clone's place in the pool: the review queue matched it there by
-/// `<host>/<project_full>`.
+/// Register the MR's MAIN clone under `<host>/<project_full>` and attach it to the session.
 async fn attach_review_repo(
     session_id: &str,
     host: &str,
@@ -91,10 +84,7 @@ pub async fn open_review_session(
     task_state: tauri::State<'_, State>,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
-    // Both first open and resume run the same provisioning: every step is
-    // idempotent, and re-running it is what makes closing and reopening a
-    // review reliable — the worktree may have been pruned and the MR has
-    // probably moved on.
+    // First open and resume run the same idempotent provisioning.
     let open = async {
         let session = store::sessions::upsert_review(
             &*pool,
@@ -116,14 +106,14 @@ pub async fn open_review_session(
         )
         .await?;
 
-        // Bind the MR so the Forge / MR-overview machinery works from the first
-        // render. The forge comes from the URL, not a constant: a GitHub review
-        // stored as 'gitlab' is what the UI reads to pick `#42` over `!42`.
-        let platform = if web_url.contains("github") { "github" } else { "gitlab" };
+        // Bind the MR; the forge is read from the URL.
+        let platform = if web_url.contains("github") {
+            "github"
+        } else {
+            "gitlab"
+        };
         store::mrs::upsert(&*pool, &wt.id, platform, &iid.to_string(), &web_url, "open").await?;
 
-        // Hand off to the shared open path so the event carries DB-derived
-        // worktrees and repos — first open and resume deliver identical state.
         open_task_impl(&app, &session.id, &task_state, &pool, Open::Focus).await?;
         anyhow::Ok(session.id)
     };
@@ -141,8 +131,7 @@ pub async fn rename_explorer(
         .map_err(|e| e.to_string())
 }
 
-/// Discard a throwaway session: worktree directories, then the session row —
-/// every DB child goes with it through the cascades.
+/// Discard an explorer or review session: worktree directories, then the session row.
 #[tauri::command]
 pub async fn discard_explorer(
     app: tauri::AppHandle,
@@ -153,7 +142,10 @@ pub async fn discard_explorer(
     let kind = store::sessions::kind_of(&*pool, &short_id)
         .await
         .map_err(|e| e.to_string())?;
-    if !matches!(kind, Some(SessionKind::Explorer) | Some(SessionKind::Review)) {
+    if !matches!(
+        kind,
+        Some(SessionKind::Explorer) | Some(SessionKind::Review)
+    ) {
         return Err(format!("{short_id} is not an explorer or review session"));
     }
 
@@ -167,7 +159,10 @@ pub async fn discard_explorer(
     if task_state.get_active_task_id().as_deref() == Some(short_id.as_str()) {
         task_state.set_active_task_id(None);
     }
-    app.emit(crate::core::events::EXPLORER_DISCARDED, serde_json::json!({ "short_id": short_id }))
-        .map_err(|e| e.to_string())?;
+    app.emit(
+        crate::core::events::EXPLORER_DISCARDED,
+        serde_json::json!({ "short_id": short_id }),
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }

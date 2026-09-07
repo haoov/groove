@@ -3,8 +3,7 @@ import { HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 
 // ── Catppuccin Frappé syntax highlight (shared by the diff + the editor) ──────
-// Hues are referenced through the raw palette tokens (--ctp-*) defined in tokens.css
-// so the editor and the rest of the app draw from one source of truth.
+// Hues come from the --ctp-* tokens in tokens.css.
 export const catppuccinHighlight = HighlightStyle.define([
   { tag: tags.keyword,                   color: 'var(--ctp-mauve)' },
   { tag: [tags.controlKeyword, tags.moduleKeyword], color: 'var(--ctp-mauve)', fontWeight: '600' },
@@ -31,10 +30,7 @@ export const catppuccinHighlight = HighlightStyle.define([
 ]);
 
 // ── Shared CM chrome (both editors) ───────────────────────────────────────────
-// Everything that should look identical in the diff and the code editor: base
-// background/font, indent markers, selection + search-match highlight, the
-// find/replace panel, and the gutter base. Per-editor themes layer cursor/line-metric
-// specifics (readonly vs editable) on top.
+// Base background and font, indent markers, selection, search panel, gutter base.
 export const cmChromeTheme = EditorView.theme({
   '&': {
     background: 'transparent',
@@ -43,7 +39,6 @@ export const cmChromeTheme = EditorView.theme({
     '--indent-marker-active-bg-color': 'var(--cm-indent-marker-active)',
   },
   '&.cm-focused': { outline: 'none' },
-  // Lighter base weight (Lilex Light); highlight tags set their own where bolder.
   '.cm-scroller': { fontFamily: 'var(--font-mono)', fontWeight: '300' },
   '.cm-gutters': { background: 'transparent', border: 'none', color: 'var(--gl-text-color-subtle)' },
   '.cm-foldGutter': { display: 'none' },
@@ -57,7 +52,7 @@ export const cmChromeTheme = EditorView.theme({
   },
   '.cm-searchMatch.cm-searchMatch-selected': { background: 'var(--gl-search-match-active-bg)' },
 
-  // ── Find / replace panel — compact, Zed-flavoured bar ──────────────────────
+  // ── Find / replace panel ───────────────────────────────────────────────────
   '.cm-panels': {
     background: 'var(--gl-background-color-raised)',
     color: 'var(--gl-text-color-default)',
@@ -70,15 +65,14 @@ export const cmChromeTheme = EditorView.theme({
     flexWrap: 'wrap',
     rowGap: '8px',
     columnGap: '6px',
-    padding: '10px 40px 10px 12px', // room for the absolute close button on the right
+    padding: '10px 40px 10px 12px', // 40px right: the absolute close button's slot
     position: 'relative',
     fontFamily: 'var(--font-ui)',
     fontSize: 'var(--gl-font-size-sm)',
   },
-  // force a clean two-row break after the search-row controls
+  // The native `<br>` becomes a full-width flex break.
   '.cm-search br': { flexBasis: '100%', height: '0', margin: '0', border: 'none' },
 
-  // text fields — match the app's input language
   '.cm-search .cm-textfield': {
     height: '28px',
     boxSizing: 'border-box',
@@ -101,7 +95,7 @@ export const cmChromeTheme = EditorView.theme({
   '.cm-search input[name=search]': { order: '1', minWidth: '220px', flex: '1 1 220px' },
   '.cm-search input[name=replace]': { order: '20', minWidth: '220px', flex: '1 1 220px' },
 
-  // option toggles — render the native checkbox+label pairs as compact glyph pills
+  // Option toggles rendered as glyph pills.
   '.cm-search label': {
     order: '2',
     display: 'inline-flex',
@@ -111,7 +105,7 @@ export const cmChromeTheme = EditorView.theme({
     minWidth: '30px',
     padding: '0 8px',
     margin: '0',
-    fontSize: '0', // hide the native "match case" / "regexp" / "by word" text nodes
+    fontSize: '0', // hides the native label text
     color: 'var(--gl-text-color-subtle)',
     background: 'var(--gl-background-color-strong)',
     border: '1px solid var(--gl-border-color-default)',
@@ -125,18 +119,16 @@ export const cmChromeTheme = EditorView.theme({
   '.cm-search label input[type=checkbox]': {
     appearance: 'none', WebkitAppearance: 'none', width: '0', height: '0', margin: '0', position: 'absolute', opacity: '0',
   },
-  // glyphs per toggle (via :has on the contained checkbox name)
+  // One glyph per toggle, keyed on the checkbox name.
   '.cm-search label:has(input[name=case])::after':  { content: '"Aa"', fontSize: 'var(--gl-font-size-xs)', fontWeight: '600' },
   '.cm-search label:has(input[name=re])::after':    { content: '".*"', fontSize: 'var(--gl-font-size-sm)', fontWeight: '600' },
   '.cm-search label:has(input[name=word])::after':  { content: '"\\\\b"', fontSize: 'var(--gl-font-size-xs)', fontWeight: '600' },
-  // checked = accent fill
   '.cm-search label:has(input:checked)': {
     background: 'var(--gl-color-blue-100)',
     borderColor: 'rgba(140,170,238,0.55)',
     color: 'var(--gl-color-blue-300)',
   },
 
-  // buttons — secondary-button language
   '.cm-search .cm-button': {
     height: '28px',
     boxSizing: 'border-box',
@@ -155,7 +147,6 @@ export const cmChromeTheme = EditorView.theme({
   },
   '.cm-search .cm-button:hover': { color: 'var(--gl-text-color-default)', borderColor: 'var(--gl-border-color-strong)', background: 'var(--gl-background-color-strong)' },
   '.cm-search .cm-button:active': { background: 'var(--gl-background-color-raised)' },
-  // prev / next sit right after the toggles as a tight pair
   '.cm-search button[name=prev]': { order: '5' },
   '.cm-search button[name=next]': { order: '6' },
   '.cm-search button[name=select]': { order: '7' },

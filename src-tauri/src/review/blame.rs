@@ -3,9 +3,6 @@ use sqlx::SqlitePool;
 use super::types::BlameLine;
 
 /// Who last touched each line of a file, one entry per line in order.
-///
-/// Blame describes the file as git sees it on disk, so unsaved edits shift the
-/// attribution until the buffer is saved.
 #[tauri::command]
 pub async fn blame_file(
     worktree_id: String,
@@ -36,19 +33,14 @@ struct CommitMeta {
     summary: String,
 }
 
-/// A header is 40 hex characters then a space. Checking the hex matters: a
-/// `committer <long name>` or `filename <path with spaces>` line can also carry a
-/// space at offset 40, and would otherwise be read as a new group.
+/// 40 hex characters then a space. Keep the hex check: a `filename` line can also carry a space at offset 40.
 fn is_group_header(raw: &str) -> bool {
     let b = raw.as_bytes();
     b.len() > 40 && b[40] == b' ' && b[..40].iter().all(|c| c.is_ascii_hexdigit())
 }
 
-/// Parse `git blame --porcelain`.
-///
-/// A line group starts with `<sha> <origLine> <finalLine> [numLines]`, then header
-/// fields, then the content line prefixed by a tab. Git sends a commit's author and
-/// summary only on its FIRST group, so later groups must read them from the map.
+/// Parse `git blame --porcelain`. A commit's metadata arrives on its first group
+/// only; later groups read it from the map.
 fn parse_porcelain(text: &str) -> Vec<BlameLine> {
     let mut meta: std::collections::HashMap<String, CommitMeta> = std::collections::HashMap::new();
     let mut lines: Vec<BlameLine> = vec![];
@@ -87,7 +79,10 @@ fn parse_porcelain(text: &str) -> Vec<BlameLine> {
             let mut parts = raw.split(' ');
             sha = parts.next().unwrap_or_default().to_string();
             let _orig = parts.next();
-            line_no = parts.next().and_then(|s| s.parse().ok()).unwrap_or(line_no + 1);
+            line_no = parts
+                .next()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(line_no + 1);
         }
     }
     lines
@@ -123,7 +118,10 @@ filename a.rs
     fn parses_line_numbers_and_authors() {
         let lines = parse_porcelain(SAMPLE);
         assert_eq!(lines.len(), 3);
-        assert_eq!(lines.iter().map(|l| l.line).collect::<Vec<_>>(), vec![1, 2, 3]);
+        assert_eq!(
+            lines.iter().map(|l| l.line).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
         assert_eq!(lines[0].author, "Ada Lovelace");
         assert_eq!(lines[0].summary, "feat: add the thing");
         assert_eq!(lines[0].time, 1700000000);
@@ -150,7 +148,6 @@ filename a.rs
         assert!(parse_porcelain("").is_empty());
     }
 
-    // A long committer name or a path with a space also puts a space at offset 40.
     #[test]
     fn ignores_fields_that_look_like_a_header() {
         let text = "\

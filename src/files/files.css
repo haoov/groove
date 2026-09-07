@@ -1,4 +1,4 @@
-/* Files tab */
+/* ── Files tab ── */
 
 .files-list { display: flex; flex-direction: column; }
 
@@ -31,13 +31,9 @@
 
 .file-dot-modified { width: 6px; height: 6px; border-radius: 50%; background: var(--gl-color-orange-400); flex-shrink: 0; }
 
-/* ── Files panel: pinned fuzzy search bar over the tree / results ──────────── */
+/* ── Files panel ── */
 
 .files-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-
-/* Both the tree and the result list scroll under the pinned search bar. Use
-   block flow (not the base flex column) so rows keep their height and overflow
-   scrolls — a height-constrained flex column would shrink/overlap the rows. */
 
 .files-panel > .files-list { display: block; flex: 1; min-height: 0; overflow-y: auto; }
 
@@ -81,8 +77,6 @@
 
 .file-search-clear:hover { color: var(--gl-text-color-default); background: rgba(var(--gl-elevate), 0.06); }
 
-/* Name/content search-mode toggle. */
-
 .file-search-modes { display: inline-flex; gap: 1px; flex-shrink: 0; }
 
 .file-search-mode {
@@ -102,8 +96,6 @@
 
 .file-search-mode.active { color: var(--gl-text-color-strong); background: var(--gl-color-blue-100); }
 
-/* Per-file match count in content-search results. */
-
 .file-search-count {
   flex-shrink: 0;
   margin-left: auto;
@@ -116,8 +108,6 @@
 }
 
 .file-search-results .file-item { position: relative; }
-
-/* Result rows: name then a muted, truncated directory. */
 
 .file-search-results .file-name { flex: 0 1 auto; }
 
@@ -132,13 +122,11 @@
   color: var(--gl-text-color-disabled);
 }
 
-/* The cursor row reads as accent even though the input (not the list) is focused. */
-
 .file-search-results .file-item.nav-selected {
 	border: 1px solid var(--gl-text-color-default);
 }
 
-/* File tree directory rows */
+/* ── File tree ── */
 
 .file-tree-dir {
   display: flex;
@@ -161,8 +149,6 @@
 
 .file-tree-arrow { flex-shrink: 0; display: inline-flex; align-items: center; width: 18px; color: var(--gl-text-color-default); }
 
-/* Inline +/- diff counts in the diff-mode file tree */
-
 .file-tree-stats {
   margin-left: auto;
   display: inline-flex;
@@ -179,9 +165,7 @@
 
 .file-tree-stats .diff-del { color: var(--gl-color-red-400); }
 
-/* ── Grep results, VS Code style ───────────────────────────────────────────────
-   The file is a header and its hits are indented under it, so every match is its
-   own row: walking the list previews each one at its own line. */
+/* ── Grep results ── */
 
 .grep-file { font-weight: 500; }
 
@@ -196,7 +180,6 @@
 .grep-collapse:hover { color: var(--gl-text-color-default); }
 
 .grep-match {
-  /* Indented past the header's chevron + icon so the grouping reads at a glance. */
   padding-left: calc(var(--space-3) + 22px);
   gap: var(--space-2);
   font-family: var(--font-mono);
@@ -211,8 +194,6 @@
   flex-shrink: 0;
 }
 
-/* One line each: a wrapped hit would break the row rhythm the cursor moves over. */
-
 .grep-match-text {
   flex: 1;
   min-width: 0;
@@ -221,9 +202,7 @@
   white-space: nowrap;
 }
 
-/* ── from overlays.css (split) ── */
-
-/* ── Tree prompt / confirm (create, rename, delete) ──────────────────────────── */
+/* ── Tree prompt ── */
 
 .tree-prompt-overlay {
   position: fixed;
@@ -308,7 +287,7 @@
   background: var(--gl-color-blue-500);
   border: 1px solid var(--gl-color-blue-400);
   border-radius: var(--gl-border-radius-base);
-  color: #fff;
+  color: var(--gl-color-on-accent);
   font-size: var(--gl-font-size-sm);
   font-family: var(--font-ui);
   font-weight: 500;

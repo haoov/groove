@@ -3,7 +3,6 @@ import { useStore } from '../shared/store';
 import { NotificationRow } from './NotificationCenter';
 import type { AppNotification } from '../shared/store';
 
-/** Errors stay up longer — you may be reading them, not glancing. */
 const DISMISS_MS: Record<AppNotification['kind'], number> = {
   success: 3800,
   info: 3800,
@@ -21,18 +20,12 @@ function Toast({ n }: { n: AppNotification }) {
   return <NotificationRow n={n} variant="toast" onDismiss={() => dismiss(n.id)} />;
 }
 
-/**
- * The interrupting view of the notification feed, top right.
- *
- * Dismissing one only hides it here — the entry stays in the notification centre,
- * so nothing announced becomes unrecoverable.
- */
+/** The toast stack, top right. A dismissed toast keeps its entry in the feed. */
 export function Toasts() {
   const notifications = useStore((s) => s.notifications);
   const toastIds = useStore((s) => s.toastIds);
   const panelOpen = useStore((s) => s.notificationsOpen);
 
-  // No point shouting at someone who is already reading the feed.
   if (panelOpen) return null;
 
   const shown = toastIds

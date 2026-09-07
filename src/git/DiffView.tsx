@@ -8,10 +8,7 @@ import { useDiffExpand } from '../editor/useDiffExpand';
 import { useBlame } from '../editor/useBlame';
 import type { AnnCtx } from '../editor/useAnnotations';
 
-/**
- * "All changes" tab content: one repo's changed files, stacked and individually
- * expandable — the scroll-through review surface. Hunks load lazily per file.
- */
+/** The "All changes" tab: one repo's changed files, stacked and expandable. Hunks load per file. */
 export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
   const diff = useSession((s) => s.diff);
   const diffHunks = useSession((s) => s.diffHunks);
@@ -71,7 +68,7 @@ export function RepoDiffSection({
   repo, worktreeId, expandedFiles, onToggleFile, diffHunks, annotations, threads, mr, ann,
 }: {
   repo: RepoDiff;
-  /** Needed to read more context around a hunk; omit to disable expansion. */
+  /** Omit to disable expansion. */
   worktreeId?: string;
   expandedFiles: Set<string>;
   onToggleFile: (key: string) => void;
@@ -82,14 +79,10 @@ export function RepoDiffSection({
   ann: AnnCtx;
 }) {
   const openAnns = annotations.filter((a) => a.repo_id === repo.repo_id && a.status === 'open');
-  // Cache/expansion key base: the worktree, not the repo — two worktrees of one
-  // repo must not share hunks.
+  // Keyed by worktree, not repo: two worktrees of one repo must not share hunks.
   const keyBase = worktreeId ?? repo.repo_id;
 
-  // File-level keyboard navigation. The editors inside expanded files own j/k for
-  // lines (vim); this moves between the file HEADERS, which was otherwise
-  // mouse-only. Keys are handled on the container and ignored while focus is
-  // inside a CodeMirror instance, so the two never fight.
+  // Keyboard navigation between file headers; ignored while focus is inside CodeMirror.
   const listRef = useRef<HTMLDivElement>(null);
   const [cursor, setCursor] = useState(0);
 
@@ -124,8 +117,7 @@ export function RepoDiffSection({
       ref={listRef}
       tabIndex={-1}
       onKeyDown={onKeyDown}
-      // Clicking a header hands the keyboard to the list, so j/k works without
-      // a separate "focus the diff" step.
+      // A click outside CodeMirror focuses the list.
       onMouseDown={(e) => {
         if ((e.target as HTMLElement).closest('.cm-editor')) return;
         listRef.current?.focus();
@@ -193,7 +185,7 @@ function ExpandableFileDiff({
   mr: Mr | null;
 }) {
   const setDiffHunks = useSession((s) => s.setDiffHunks);
-  // Same key as the section above, or the expanded hunks land in a slot nobody reads.
+  // Must equal the key in `RepoDiffSection`.
   const key = `${worktreeId ?? repoId}/${filePath}`;
   const expand = useDiffExpand({
     worktreeId, filePath, hunks,

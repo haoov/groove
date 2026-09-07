@@ -4,12 +4,8 @@ import type { LucideIcon } from 'lucide-react';
 import { rankMatches, Highlighted } from '../lib/match';
 
 /**
- * A search field with a ranked result list.
- *
- * The list is portalled to `document.body` and positioned against the field:
- * inside a modal it would otherwise be clipped by `overflow: hidden`. It follows
- * the anchor on scroll and resize, and flips above the field when the space
- * below is too small.
+ * A search field with a ranked result list. The list is portalled to `document.body`,
+ * follows the field on scroll and resize, and flips above it when the space below is short.
  */
 
 type Pos = { left: number; top: number; width: number; drop: 'down' | 'up' };
@@ -60,8 +56,7 @@ export function Combobox<T>({
   const hits = rankMatches(query, items, toText);
   const at = Math.min(cursor, Math.max(0, hits.length - 1));
 
-  // Opening happens in an event handler, so the position is never set from an
-  // effect body.
+  // Opening happens in an event handler; never set the position from an effect body.
   const show = useCallback(() => {
     if (disabled || !field.current) return;
     setPos(measure(field.current));
@@ -77,7 +72,7 @@ export function Combobox<T>({
       if (field.current?.contains(t) || list.current?.contains(t)) return;
       hide();
     };
-    // Capture, so a scroll inside the modal body is seen too.
+    // Capture: a scroll inside the modal body counts too.
     window.addEventListener('scroll', follow, true);
     window.addEventListener('resize', follow);
     document.addEventListener('mousedown', onDown);
@@ -88,11 +83,7 @@ export function Combobox<T>({
     };
   }, [open, hide]);
 
-  /**
-   * Keep the cursor row visible. Scrolls the list itself rather than calling
-   * scrollIntoView: that can scroll the modal body behind the portal, which the
-   * follow-on-scroll handler would then answer by repositioning the list.
-   */
+  // Keep the cursor row visible. Do not use scrollIntoView: it scrolls the modal body behind the portal.
   useEffect(() => {
     const box = list.current;
     if (!open || !box || hits.length === 0) return;
@@ -107,7 +98,7 @@ export function Combobox<T>({
   const pick = (item: T) => {
     onPick(item);
     hide();
-    // Without the blur, focus reopens the list — over a modal that just grew.
+    // Without the blur, focus reopens the list.
     input.current?.blur();
   };
 
@@ -119,7 +110,7 @@ export function Combobox<T>({
       const d = e.key === 'ArrowDown' ? 1 : -1;
       setCursor((c) => (Math.min(c, hits.length - 1) + d + hits.length) % hits.length);
     } else if (e.key === 'Enter' && open) {
-      // While the list is open Enter picks; closed, it submits the modal.
+      // Open: Enter picks. Closed: Enter submits the modal.
       e.preventDefault();
       e.stopPropagation();
       const hit = hits[at];

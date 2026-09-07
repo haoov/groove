@@ -2,20 +2,13 @@ import { useEffect, type RefObject } from 'react';
 import { ensureHost, fitAndSync, forgetSyncedSize } from './terminalHost';
 
 /**
- * Show a PTY's terminal inside `containerRef`.
- *
- * The xterm instance lives in the module-level host registry, not in React, so
- * this only re-parents the host's element in and detaches it on unmount — which
- * is what lets a terminal survive tab switches, pane moves, and close/reopen
- * without losing its scrollback.
- *
- * An element can only be in one place at a time, so exactly one mounted consumer
- * may pass a non-null `ptySessionId` for a given session.
+ * Shows a PTY's terminal inside `containerRef` by re-parenting the host element.
+ * Exactly one mounted consumer may pass a non-null `ptySessionId` for a session.
  */
 export function useAttachedHost(
   ptySessionId: string | null,
   containerRef: RefObject<HTMLDivElement | null>,
-  /** The agent's terminal, with its own font (see terminalHost). */
+  /** The agent's terminal, with its own font. */
   agent = false,
 ) {
   useEffect(() => {
@@ -23,8 +16,7 @@ export function useAttachedHost(
     if (!ptySessionId || !container) return;
     const host = ensureHost(ptySessionId, agent);
     container.appendChild(host.el);
-    // The PTY may have been sized by another window (the detached agent) since
-    // this one last saw it; the record must not short-circuit the first fit.
+    // Another window may have resized the PTY; the record must not skip the first fit.
     forgetSyncedSize(ptySessionId);
 
     let raf1 = 0;
@@ -43,10 +35,8 @@ export function useAttachedHost(
       cancelAnimationFrame(raf1);
       cancelAnimationFrame(raf2);
       ro.disconnect();
-      // Detach ONLY if we still hold it. Handing the terminal to another surface
-      // means that surface appends the element before this cleanup runs — an
-      // unconditional remove() would then rip it back out of its new home and
-      // leave a blank terminal there. Never dispose: the registry owns it.
+      // Detach only while this container still holds it: another surface may have appended it already.
+      // Never dispose: the registry owns it.
       if (host.el.parentElement === container) host.el.remove();
     };
   }, [ptySessionId, containerRef, agent]);

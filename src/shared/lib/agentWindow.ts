@@ -1,6 +1,5 @@
-// The contract between the main window and the detached agent window: event
-// names, the mirrored state, the commands sent back, and the persisted layout.
-// Pure — no Tauri import, so the tests run in node.
+// The contract between the main window and the detached agent window: events, mirrored
+// state, commands, persisted layout. Pure: no Tauri import.
 
 import type { AgentActivity, AgentSkill, Config, SessionKind } from '../ipc/ipc';
 import { clampAgentsWidth, type AgentRow } from './agents';
@@ -19,8 +18,7 @@ export const BRIDGE = {
   DONE: 'agent-window:done',
 } as const;
 
-/** Everything the detached window renders. The main window is the source of
- *  truth; the agent window only draws this and owns its xterm. */
+/** Everything the detached window renders. The main window is the source of truth. */
 export interface AgentWindowState {
   taskId: string | null;
   ptyId: string | null;
@@ -76,8 +74,7 @@ export const MIN_WINDOW_WIDTH = 360;
 export const MIN_WINDOW_HEIGHT = 400;
 export const DEFAULT_WINDOW_SIZE = { width: 560, height: 800 };
 
-/** A saved bounds record, or null for anything that is not one. A window
- *  smaller than the minimum cannot have been saved by this app. */
+/** A saved bounds record, or null. A window below the minimum size is rejected. */
 export function parseBounds(raw: string | null): WindowBounds | null {
   if (!raw) return null;
   let v: unknown;

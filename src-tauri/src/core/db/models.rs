@@ -43,17 +43,14 @@ pub struct ProviderTask {
     pub branch_tag: Option<String>,
 }
 
-/// The task shape the frontend and MCP tools consume. Real tasks come from the
-/// mirror; synthetic sessions synthesize status/priority.
+/// The task shape the frontend and MCP tools consume.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct TaskView {
     pub short_id: String,
     /// Opaque handle for the provider's own API. Never parsed by the frontend.
     pub external_id: String,
-    /// Which source the task came from. None for a session with no task behind it
-    /// (explorer, review) — naming one would be a guess, and it used to guess
-    /// "notion".
+    /// The source of the task; None for a session with no task behind it.
     pub provider: Option<String>,
     /// Deep link to the page or issue.
     pub external_url: Option<String>,
@@ -155,17 +152,16 @@ pub struct TimeSummary {
     pub logged_seconds: i64,
     #[ts(type = "number")]
     pub today_seconds: i64,
-    /// Measured but not yet logged at the source — what the log button offers.
+    /// Tracked but not yet logged at the source.
     #[ts(type = "number")]
     pub unlogged_seconds: i64,
 }
 
-/// One day of tracked work, summed across every session — the Home activity
-/// heatmap reads a list of these.
+/// One day of tracked work, summed across every session.
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ActivityDay {
-    /// Local calendar day, `YYYY-MM-DD` (as written by the tracker).
+    /// Local calendar day, `YYYY-MM-DD`.
     pub day: String,
     #[ts(type = "number")]
     pub seconds: i64,

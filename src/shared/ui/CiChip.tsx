@@ -8,7 +8,7 @@ import { sendSkill } from '../lib/agentSend';
 import { offers } from '../lib/skills';
 import { useStore, useSession } from '../store';
 
-/** The MR's pipeline chip and its menu — shared by the commit panel and the MR overview. */
+/** The MR's pipeline chip and its menu. */
 export function CiChip({ status, url, platform, className, children }: {
   status: string;
   /** The run's URL; the MR's own page when the forge reported none. */
@@ -52,8 +52,7 @@ export function CiChip({ status, url, platform, className, children }: {
             <ExternalLink size={13} strokeWidth={1.75} />
             Open on {forgeName(platform)}
           </button>
-          {/* Only for a red pipeline: there is nothing to fix on a green one, and
-              the skill is gone if the user deleted it from the core set. */}
+          {/* Only for a red pipeline, and only while the skill exists. */}
           {failed && hasFixCi && (
             <button className="ctx-menu-item" onClick={() => void fixCi()}>
               <Wrench size={13} strokeWidth={1.75} />

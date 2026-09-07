@@ -27,8 +27,7 @@ pub async fn insert(
     Ok(())
 }
 
-/// Atomically claim one confirmation, so two concurrent resolves can never
-/// execute the same op twice.
+/// Atomically claim one confirmation.
 pub async fn claim(
     exec: impl SqliteExecutor<'_>,
     id: &str,

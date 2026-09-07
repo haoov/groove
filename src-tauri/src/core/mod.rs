@@ -1,7 +1,7 @@
 pub mod config;
 pub mod db;
-pub mod forge;
 pub mod events;
+pub mod forge;
 pub mod fs;
 pub mod git;
 pub mod http;

@@ -1,5 +1,4 @@
-// Recursive pane layout — a binary tree of splits over pane ids. Pure helpers;
-// the pane registry itself (tabs etc.) lives beside it in the session store.
+// Recursive pane layout: a binary tree of splits over pane ids. Pure helpers.
 
 export type SplitDir = 'row' | 'col'; // row = children side-by-side, col = stacked
 
@@ -12,14 +11,12 @@ const newSplitId = () => `split-${++splitSeq}`;
 
 export const leaf = (paneId: string): LayoutNode => ({ kind: 'leaf', paneId });
 
-/** Wrap the WHOLE tree in a split with a new leaf as `b` — the new pane spans
- *  the full width (col) / full height (row), dock-style. */
+/** Wraps the whole tree in a split with a new leaf as `b`; the new pane spans full width (col) or height (row). */
 export function splitRoot(node: LayoutNode, dir: SplitDir, newPaneId: string, ratio = 0.5): LayoutNode {
   return { kind: 'split', id: newSplitId(), dir, ratio, a: node, b: leaf(newPaneId) };
 }
 
-/** Replace the leaf for `paneId` with a split of it and a new leaf for `newPaneId`
- *  (new pane goes to the right / below). Returns the same tree if not found. */
+/** Replaces the leaf for `paneId` with a split of it and a new leaf (right / below). Same tree when not found. */
 export function splitLeaf(node: LayoutNode, paneId: string, dir: SplitDir, newPaneId: string, ratio = 0.5): LayoutNode {
   if (node.kind === 'leaf') {
     if (node.paneId !== paneId) return node;
@@ -32,10 +29,10 @@ export function splitLeaf(node: LayoutNode, paneId: string, dir: SplitDir, newPa
   return node;
 }
 
-/** Remove the leaf for `paneId`, collapsing its parent split into the sibling.
+/** Removes the leaf for `paneId`, collapsing its parent split into the sibling.
  *  Returns [newTree, nearestSurvivingPaneId]. Removing the only leaf is a no-op. */
 export function removeLeaf(node: LayoutNode, paneId: string): [LayoutNode, string | null] {
-  if (node.kind === 'leaf') return [node, null]; // root leaf — never removed
+  if (node.kind === 'leaf') return [node, null]; // root leaf, never removed
   const inA = containsLeaf(node.a, paneId);
   const inB = containsLeaf(node.b, paneId);
   if (!inA && !inB) return [node, null];
@@ -66,7 +63,7 @@ export function leafOrder(node: LayoutNode): string[] {
   return [...leafOrder(node.a), ...leafOrder(node.b)];
 }
 
-/** Update one split's ratio (clamped so neither side collapses). */
+/** Updates one split's ratio, clamped. */
 export function setRatio(node: LayoutNode, splitId: string, ratio: number): LayoutNode {
   if (node.kind === 'leaf') return node;
   if (node.id === splitId) return { ...node, ratio: Math.min(0.85, Math.max(0.15, ratio)) };

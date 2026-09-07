@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { StringStream } from '@codemirror/language';
 import { gotmplParser } from './gotmpl';
 
-// A stream tokenizer is easy to get subtly wrong: one branch that consumes nothing
-// hangs the editor, and a state left set at end-of-line paints the rest of the file
-// as a comment. These drive the parser directly, no editor involved.
-
-/** Tokenize one line, carrying state across lines like CodeMirror does. */
+/** Tokenizes each line, carrying state across lines. */
 function tokenize(lines: string[]) {
   const state = gotmplParser.startState!(2);
   const out: { text: string; tag: string | null }[] = [];
@@ -97,8 +93,6 @@ describe('gotmpl tokenizer', () => {
     expect(inline.some((t) => t.tag === 'comment')).toBe(false);
   });
 
-  // The dangerous one: a template comment spans lines, so the state must clear at
-  // the closing delimiter and not one line later.
   it('carries a multi-line template comment and closes it exactly', () => {
     const toks = tokenize(['{{/*', 'still a comment', '*/}}', 'key: value']);
     expect(toks.filter((t) => t.tag === 'comment').length).toBeGreaterThanOrEqual(3);

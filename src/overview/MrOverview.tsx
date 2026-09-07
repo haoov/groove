@@ -12,8 +12,7 @@ import { MrThreadsSection } from '../notes/MrThreads';
 import { CiChip } from '../shared/ui/CiChip';
 import { Markdown } from '../shared/ui/Markdown';
 
-/** Full-page MR/PR overview — the task overview's layout applied to a merge
- *  request: id + title header, a details column, description, review threads. */
+/** Full-page MR/PR overview: header, details column, description, review threads. */
 export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
   const mrs = useSession((s) => s.mrs);
   const mrThreadsByRepo = useSession((s) => s.mrThreadsByRepo);
@@ -41,8 +40,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     try {
       await invoke('edit_mr_text', { mrId, description: draft });
       setEditingDesc(false);
-      // Re-read so the rendered markdown matches what the forge now holds
-      // (the backend re-appends the task footer, so it is not what we sent).
+      // Re-read: the backend re-appends the task footer.
       bumpMrs();
     } catch (e) {
       setError(String(e));
@@ -57,8 +55,6 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     try {
       await invoke('approve_mr', { mrId });
       notify({ kind: 'success', source: 'mr', title: `Approved ${mrRef(mr?.platform ?? '', mr?.remote_id ?? '')}` });
-      // Re-read details (and Home's cached signals were just invalidated), so the
-      // approved badge appears without a manual refresh.
       bumpMrs();
     } catch (e) {
       notify({ kind: 'error', source: 'mr', title: `Approve failed: ${e}` });
@@ -74,7 +70,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     try {
       await invoke('post_mr_comment', { mrId, body, filePath: null, line: null });
       setComment('');
-      bumpMrs(); // the new note shows up in Discussion
+      bumpMrs();
     } catch (e) {
       notify({ kind: 'error', source: 'mr', title: `Comment failed: ${e}` });
     } finally {
@@ -82,8 +78,6 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
     }
   };
 
-  // Live-fetch the rich fields; refetch when the MR data is invalidated
-  // (mr.* ops, Forge tab opens) so the overview tracks remote state.
   useEffect(() => {
     let stale = false;
     invoke<MrDetails>('get_mr_details', { mrId })
@@ -145,7 +139,6 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
           </div>
         </header>
 
-        {/* State / draft / approval / CI as a badge row under the title. */}
         <div className="mr-badges">
           <span className={`overview-badge mr-state-${state}`}>{state}</span>
           {details?.draft && <span className="overview-badge">draft</span>}
@@ -197,8 +190,7 @@ export function MrOverview({ repoId, mrId }: { repoId: string; mrId: string }) {
                     placeholder="Markdown — ## What then ## Why"
                   />
                   <div className="mr-desc-actions">
-                    {/* The task link is re-appended by the backend, so it survives
-                        an edit even though it is not in the box. */}
+                    {/* The backend re-appends the task link after an edit. */}
                     <span className="composer-note">Saved straight to the merge request.</span>
                     <button className="btn-secondary" onClick={() => setEditingDesc(false)} disabled={savingDesc}>
                       Cancel

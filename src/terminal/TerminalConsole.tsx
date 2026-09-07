@@ -9,16 +9,8 @@ import { EVENT } from '../shared/ipc/events';
 import type { PtyExitEvent } from '../shared/ipc/ipc';
 
 /**
- * The scratch terminal on Home.
- *
- * In a workspace, terminals are panes in the bottom dock — they belong to a task and
- * sit beside its files. Home has no panes, but it is where you land to look at the
- * queue, and needing a shell there meant opening a task you did not want to work on.
- *
- * Session-less by design (the desk is gone from the backend): it owns its PTY
- * directly under the synthetic id "__scratch__", the same pattern as the sign-in
- * shell. The backend falls back to the worktree root as cwd and reaps the row on
- * exit. The shell survives the dock being hidden; only exit clears it.
+ * The scratch terminal on Home. Session-less: it owns its PTY under the synthetic id
+ * "__scratch__", and the backend reaps the row on exit.
  */
 
 const SCRATCH_TASK_ID = '__scratch__';
@@ -28,7 +20,7 @@ const MAX_HEIGHT = 720;
 const DEFAULT_HEIGHT = 260;
 const HEIGHT_KEY = 'wb.homeTerminalHeight';
 
-// Module-level so the PTY survives the dock unmounting (entering a workspace).
+// Module-level: the PTY survives the dock unmounting.
 let scratchPty: string | null = null;
 
 export function TerminalConsole() {
@@ -50,15 +42,14 @@ export function TerminalConsole() {
   const start = () => {
     if (starting) return;
     setStarting(true);
-    // No worktree: the backend falls back to the worktree root — the same cwd an
-    // agent gets.
+    // No worktree: the backend uses the worktree root as cwd.
     invoke<string>('start_terminal_session', { taskId: SCRATCH_TASK_ID, worktreePath: null })
       .then((id) => { scratchPty = id; setPty(id); })
       .catch((e) => setLastError(String(e)))
       .finally(() => setStarting(false));
   };
 
-  // Opening IS the request to start one, but only on the open transition.
+  // Start a shell on the open transition only.
   const wasOpen = useRef(false);
   useEffect(() => {
     const justOpened = open && !wasOpen.current;
@@ -68,8 +59,7 @@ export function TerminalConsole() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pty]);
 
-  // The shell exiting (user typed `exit`, or it died) clears the slot so the
-  // next open starts a fresh one.
+  // A shell exit clears the slot.
   useEffect(() => {
     let cancelled = false;
     const un = listen<PtyExitEvent>(EVENT.PTY_EXIT, ({ payload }) => {
@@ -91,7 +81,7 @@ export function TerminalConsole() {
     const startHeight = height;
     let latest = startHeight;
     const move = (ev: MouseEvent) => {
-      // Dragging UP grows it: the handle is on the dock's top edge.
+      // Dragging up grows it.
       latest = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, startHeight + (startY - ev.clientY)));
       setHeight(latest);
     };

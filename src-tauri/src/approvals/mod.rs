@@ -1,10 +1,8 @@
-//! The approval pipeline: a write op becomes a pending confirmation the user
-//! decides on. `bridge` is the mechanics (post, resolve, unblock the waiting
-//! agent); `ops` is the catalog — every op's name and executor side by side.
+//! The approval pipeline. `bridge` posts and resolves confirmations; `ops`
+//! catalogs every gated op with its executor.
 
 mod bridge;
 pub mod ops;
 
-// Glob re-export: tauri::generate_handler! looks up __cmd__* symbols at the
-// same path as the command function.
+// Keep the glob re-export: tauri::generate_handler! resolves `__cmd__*` at the function's path.
 pub use bridge::*;

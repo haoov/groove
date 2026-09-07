@@ -1,4 +1,4 @@
-//! The issue itself, over REST — body and state.
+//! Issue body, state and creation over the REST and GraphQL APIs.
 
 use crate::core::config::GithubConfig;
 use crate::core::forge::api;
@@ -20,8 +20,7 @@ pub(super) async fn set_body(
     Ok(())
 }
 
-/// Close an issue as not planned — the discard path, which is not the same as
-/// finishing it. Finishing sets the board's Status; this says it will not happen.
+/// Close an issue as not planned.
 pub(super) async fn close_not_planned(
     cfg: &GithubConfig,
     owner: &str,
@@ -46,10 +45,7 @@ mutation($project: ID!, $content: ID!) {
 }
 "#;
 
-/// File an issue and put it on the board. Returns `(number, url, node_id)`.
-///
-/// Assigned to you on the way in: the queue is "issues assigned to me", so an
-/// unassigned one would be filed and then never come back as a task.
+/// File an issue assigned to the viewer. Returns `(number, url, node_id)`.
 pub(super) async fn create(
     cfg: &GithubConfig,
     owner: &str,
@@ -74,8 +70,7 @@ pub(super) async fn create(
     Ok((number, url, node_id))
 }
 
-/// Put an existing issue on a board. Idempotent — GitHub returns the existing
-/// item when it is already there.
+/// Put an existing issue on a board. Idempotent.
 pub(super) async fn add_to_board(
     cfg: &GithubConfig,
     project_id: &str,
@@ -101,8 +96,7 @@ query($owner: String!, $repo: String!) {
 }
 "#;
 
-/// The first board the repo is linked to. A filed issue has to land on one, or it
-/// would never come back from list_tasks.
+/// The first board the repo is linked to.
 pub(super) async fn repo_board(
     cfg: &GithubConfig,
     owner: &str,
@@ -120,6 +114,8 @@ pub(super) async fn repo_board(
         .and_then(|p| p["id"].as_str())
         .map(str::to_string)
         .ok_or_else(|| {
-            anyhow::anyhow!("{owner}/{repo} is not linked to a board, so a new issue would not become a task")
+            anyhow::anyhow!(
+                "{owner}/{repo} is not linked to a board, so a new issue would not become a task"
+            )
         })
 }

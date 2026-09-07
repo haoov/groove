@@ -16,9 +16,7 @@ const GREP_DEBOUNCE_MS = 160;
 const MAX_RESULTS = 50;
 
 type SearchMode = 'name' | 'text';
-/** One file's matches. The list is rendered VS Code style — the file as a header
- *  with its hits indented under it — so every match is individually reachable
- *  instead of only the first one in each file. */
+/** One file's matches, rendered as a header with its hits under it. */
 interface GrepFile { file: string; matches: SearchMatch[] }
 
 /** The flattened list the keyboard walks: a file header, then its matches. */
@@ -61,9 +59,7 @@ export function FilesTab({
   const activePaneTabs = useSession((s) => s.panes.find((p) => p.id === s.activePaneId)?.tabs ?? []);
   const activeTabIdLive = useSession((s) => s.panes.find((p) => p.id === s.activePaneId)?.activeTabId ?? null);
 
-  // Files already open as a real (non-preview) tab — previewing one of these must
-  // NOT switch to it; only Enter (commit) should. Keyed like openTabReducer's file
-  // tabs (`${repoId}::${path}`).
+  // Real (non-preview) open tabs, keyed as openTabReducer keys file tabs: `${repoId}::${path}`.
   const openTabKeys = useMemo(
     () => new Set(activePaneTabs.filter((t) => !t.preview && t.kind !== 'changes').map((t) => t.id)),
     [activePaneTabs],
@@ -78,18 +74,17 @@ export function FilesTab({
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
-  // Live during a search session: where to put focus back on Esc.
+  // Set during a search session: where Esc returns focus.
   const sessionRef = useRef<{ paneId: string; prevTabId: string | null } | null>(null);
 
   const notify = useStore((s) => s.notify);
   const setLastError = useStore((s) => s.setLastError);
   const setGrepHighlight = useStore((s) => s.setGrepHighlight);
 
-  // Search mode: fuzzy filename ('name') or content/grep ('text').
   const [mode, setMode] = useState<SearchMode>('name');
   const [grepFiles, setGrepFiles] = useState<GrepFile[]>([]);
   const [grepLoading, setGrepLoading] = useState(false);
-  // Collapsed file groups, by path. Reset on a new query.
+  // Collapsed file groups, by path.
   const [grepCollapsed, setGrepCollapsed] = useState<Set<string>>(new Set());
   const rows = useMemo(() => grepRows(grepFiles, grepCollapsed), [grepFiles, grepCollapsed]);
 
@@ -104,8 +99,7 @@ export function FilesTab({
       .catch(console.error)
       .finally(() => { if (!isCancelled?.()) setLoadingFiles(false); });
   }, [wtPath]);
-  // Guard against a stale list_files response (from a previous worktree) landing
-  // after a newer one and clobbering the tree.
+  // A stale list_files response from a previous worktree is dropped.
   useEffect(() => {
     let cancelled = false;
     loadFiles(() => cancelled);
@@ -120,7 +114,7 @@ export function FilesTab({
   const [confirmDel, setConfirmDel] = useState<TreeNode | null>(null);
   const [clipboard, setClipboard] = useState<TreeClipboard | null>(null);
 
-  // Every existing path (files + their ancestor dirs) — for collision-free copies.
+  // Every existing path: files and their ancestor dirs.
   const allPaths = useMemo(() => {
     const s = new Set<string>(files);
     for (const p of files) {
@@ -234,14 +228,11 @@ export function FilesTab({
     return scored.slice(0, MAX_RESULTS);
   }, [files, query]);
   const searching = query.trim().length > 0;
-  // Rows currently shown, per mode — drives navigation + Enter.
   const activeCount = mode === 'text' ? rows.length : results.length;
   const clampedSel = Math.min(selectedIdx, Math.max(0, activeCount - 1));
 
   // ── Content search (grep) ─────────────────────────────────────────────────
-  // Runs when in text mode and groups the matches per file. The editor's highlight
-  // is NOT set here: it marks the row the cursor is on, so it follows the selection
-  // (previewGrep / commitGrep) rather than the query.
+  // The editor highlight is set by previewGrep / commitGrep, not here.
   useEffect(() => {
     if (mode !== 'text') { setGrepFiles([]); return; }
     const q = query.trim();
@@ -252,7 +243,7 @@ export function FilesTab({
       invoke<SearchMatch[]>('search_files', { query: q, worktreePath: wtPath, caseSensitive: false, maxResults: 300 })
         .then((matches) => {
           if (cancelled) return;
-          // Insertion order is the ripgrep order, which is already sorted by path.
+          // Insertion order is ripgrep's path order.
           const byFile = new Map<string, SearchMatch[]>();
           for (const m of matches) {
             const e = byFile.get(m.file);
@@ -270,8 +261,7 @@ export function FilesTab({
   // ── Transient preview ─────────────────────────────────────────────────────
   const previewPath = useCallback((path: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Don't preview a file that's already open as a real tab — that would yank
-    // the view to it. It stays put; Enter switches to it (see commitPath).
+    // No preview for a file open as a real tab; Enter switches to it (commitPath).
     if (repoId && openTabKeys.has(`${repoId}::${path}`)) return;
     debounceRef.current = window.setTimeout(() => {
       debounceRef.current = null;
@@ -279,9 +269,7 @@ export function FilesTab({
     }, PREVIEW_DEBOUNCE_MS);
   }, [repoId, openTab, openTabKeys]);
 
-  // Preview a grep hit at ITS line — a file header previews its first match, so
-  // walking the list lands on the matching word either way, and that one match is
-  // what the editor marks.
+  // Preview a grep hit at its line; a file header previews its first match.
   const previewGrep = useCallback((file: string, line: number) => {
     if (!repoId) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -295,15 +283,14 @@ export function FilesTab({
   /** The line a row should open at. */
   const rowLine = (r: GrepRow) => (r.kind === 'match' ? r.match.line : r.file.matches[0]?.line ?? 0);
 
-  // New query → cursor to top. Adjusted during render; an effect would paint
-  // one frame with the previous query's cursor.
+  // New query: cursor to top. Set during render; an effect paints one frame with the stale cursor.
   const [cursorQuery, setCursorQuery] = useState(query);
   if (cursorQuery !== query) {
     setCursorQuery(query);
     setSelectedIdx(0);
     setGrepCollapsed(new Set());
   }
-  // Preview whatever is highlighted (debounced), per mode.
+  // Preview the highlighted row, debounced.
   useEffect(() => {
     if (!searching) return;
     if (mode === 'text') {
@@ -329,21 +316,18 @@ export function FilesTab({
   const commitPath = useCallback((path: string) => {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
     if (!repoId) return;
-    // Already-open file: drop any lingering preview tab, then re-open it as a
-    // normal tab (activates + focuses it — same feel as committing a preview).
+    // An open file: drop any preview tab, then re-open it as a normal tab.
     if (openTabKeys.has(`${repoId}::${path}`)) {
       discardPreview(activePaneId);
       openTab({ repoId, filePath: path, view: 'edit' });
     } else {
-      openTab({ repoId, filePath: path, view: 'edit', preview: true }); // ensure the right file is the preview
+      openTab({ repoId, filePath: path, view: 'edit', preview: true }); // make this file the preview
       commitPreview(activePaneId);
     }
     endSearch();
   }, [repoId, openTab, commitPreview, discardPreview, openTabKeys, activePaneId, endSearch]);
 
-  // Commit a grep result: open it as a real tab at the match line. The highlight is
-  // kept — and re-set, because `endSearch` clears the query this reads — so the match
-  // you chose is still marked in the tab you land in.
+  // Open a grep result as a real tab at its line. Re-set the highlight before `endSearch` clears the query.
   const commitGrep = useCallback((file: string, line: number) => {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
     if (!repoId) return;
@@ -404,16 +388,17 @@ export function FilesTab({
     setMode(fileSearchMode);
     inputRef.current?.focus();
     inputRef.current?.select();
+  // deps omit `fileSearchMode`: the mode applies only on a focus request.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileSearchFocusNonce]);
 
-  // Live mirrors so the repo-switch + unmount cleanups read fresh values.
+  // Refs for the repo-switch and unmount cleanups.
   const activePaneIdRef = useRef(activePaneId);
   activePaneIdRef.current = activePaneId;
   const discardRef = useRef({ discardPreview, setActiveTab });
   discardRef.current = { discardPreview, setActiveTab };
 
-  // Repo switch → abandon any in-flight search/preview.
+  // Repo switch: abandon any search and preview.
   useEffect(() => {
     if (sessionRef.current) discardRef.current.discardPreview(activePaneIdRef.current);
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
@@ -423,8 +408,7 @@ export function FilesTab({
     useStore.getState().setGrepHighlight(null);
   }, [repoId]);
 
-  // Unmount (panel/session switch) → drop a lingering preview + restore + clear
-  // the editor match highlight.
+  // Unmount: drop a lingering preview, restore the tab, clear the highlight.
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     useStore.getState().setGrepHighlight(null);
@@ -535,8 +519,7 @@ export function FilesTab({
                     tabIndex={-1}
                     onMouseEnter={() => setSelectedIdx(i)}
                     onClick={(e) => {
-                      // The chevron collapses; the row itself opens the first match,
-                      // which is what it did before the grouping.
+                      // The chevron collapses; the row opens the first match.
                       if ((e.target as HTMLElement).closest('.grep-collapse')) return;
                       commitGrep(row.file.file, rowLine(row));
                     }}
@@ -570,8 +553,6 @@ export function FilesTab({
                   onClick={() => commitGrep(row.file.file, row.match.line)}
                 >
                   <span className="grep-match-line">{row.match.line}</span>
-                  {/* The matched text is highlighted, so the eye lands on the hit
-                      rather than the middle of a long line. */}
                   <span className="grep-match-text">
                     <Highlighted text={row.match.content.trim()} ranges={matchRanges(query, row.match.content.trim())} />
                   </span>
@@ -622,7 +603,7 @@ export function FilesTab({
             expandedDirs={expandedDirs}
             onToggleDir={onToggleDir}
             onOpenFile={onOpenFile}
-            // Tree files have no diff view, so double-click reuses the open handler.
+            // Tree files have no diff view.
             onOpenFileAlt={onOpenFile}
             selectedPath={selectedPath}
             onSelect={(path) => nav.setIndex(indexByPath.get(path) ?? 0)}

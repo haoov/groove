@@ -3,13 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore, useSession } from '../shared/store';
 import type { Annotation, DiffResult, Mr } from '../shared/ipc/ipc';
 
-/**
- * Owns the per-task background data that several views depend on: git status,
- * merge requests + their threads, and annotations. Previously these lived inside
- * the Sidebar component, so they only ran while the sidebar was mounted / on the
- * right tab. Hosting them here (from WorkspaceLayout) makes them available to the
- * diff repo headers, the grouped sidebar, and the annotation gutter uniformly.
- */
+/** Owns the per-task background data: git status, the diff summary, MRs with their threads, and annotations. */
 export function useWorkspaceData() {
   const activeTask = useSession((s) => s.activeTask);
   const activeWorktrees = useSession((s) => s.activeWorktrees);
@@ -28,13 +22,10 @@ export function useWorkspaceData() {
     if (activeTask) refreshStatus();
   }, [activeTask, activeWorktrees, refreshStatus]);
 
-  // Diff summary (paths + counts) for the whole task. Centralized here so the
-  // sidebar's changed-files list and the workspace diff tabs share it, regardless
-  // of which main view is showing. Reloads on task / mode / manual-refresh change.
+  // Diff summary for the whole task.
   useEffect(() => {
     if (!activeTask) return;
-    // Ordering guard: a mode/nonce change can fire a new fetch before the previous
-    // one resolves; ignore any resolution from a superseded (stale) run.
+    // A superseded fetch is ignored.
     let stale = false;
     invoke<DiffResult>('get_task_diff_summary', { taskId: activeTask.short_id, mode: diffMode })
       .then((d) => { if (!stale) setDiff(d); })
@@ -42,9 +33,7 @@ export function useWorkspaceData() {
     return () => { stale = true; };
   }, [activeTask, diffMode, diffNonce, setDiff, setLastError]);
 
-  // MR + threads per repo. Re-runs when mrNonce bumps — after an mr.* op lands
-  // (create/update/close via the confirmation bridge) and on Forge tab open —
-  // so the Forge section stays in sync without a manual refresh.
+  // MR and threads per repo; re-runs on `mrNonce`.
   useEffect(() => {
     if (!activeTask || !activeWorktrees.length) return;
     let stale = false;
@@ -72,8 +61,7 @@ export function useWorkspaceData() {
   }, [activeTask, activeWorktrees, mrNonce, upsertMr, setMrThreadsForRepo]);
 
 
-  // All annotations for the task (every repo), so the diff gutter shows them
-  // without first visiting the Notes tab.
+  // All annotations for the task, every repo.
   useEffect(() => {
     if (!activeTask) return;
     invoke<Annotation[]>('get_annotations', { sessionId: activeTask.short_id, repoId: null })

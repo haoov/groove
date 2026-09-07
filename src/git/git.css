@@ -1,5 +1,4 @@
-/* Diff base selector + refresh (top of the Changes sub-tab). The segmented
-   control mirrors the per-tab view toggle's visual language. */
+/* ── Diff base selector ── */
 
 .diff-mode-row {
   display: flex;
@@ -39,9 +38,7 @@
   background: var(--gl-color-blue-100);
 }
 
-/* "Review all changes" entry in the sidebar Changes sub-tab. */
-
-/* Flat changed-files list (Diff mode) */
+/* ── Changed-files list ── */
 
 .changed-file {
   display: flex;
@@ -74,12 +71,9 @@
 
 .changed-file-status.st-D { color: var(--gl-color-red-400); }
 
-/* Tree-view folder rows: chevron + folder name, file count pushed to the right. */
 .changed-file-folder > svg { flex-shrink: 0; color: var(--gl-text-color-muted); }
 .changed-file-folder .changed-file-name { color: var(--gl-text-color-subtle); }
 .changed-file-folder .changed-file-dir { flex: 0 0 auto; margin-left: auto; }
-
-/* Per-file stage/unstage checkbox (sits after the +/- stats). */
 
 .changed-file-row { display: flex; align-items: center; gap: 4px; padding-right: 8px; }
 
@@ -119,7 +113,7 @@
 
 .changed-file-discard:hover { opacity: 1; color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
 
-/* GIT tab — sub-tabs (Changes · Commits · Forge) */
+/* ── Git sub-tabs ── */
 
 .git-tab { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
@@ -170,8 +164,7 @@
 
 .git-subcontent { flex: 1; min-height: 0; overflow-y: auto; background: var(--gl-background-color-overlap); }
 
-/* GIT — docked commit composer (Zed-style): flush auto-grow input + a single
-   context-aware primary split button with inline status chips. */
+/* ── Commit composer ── */
 
 .git-commit-panel {
   flex-shrink: 0;
@@ -181,8 +174,6 @@
   flex-direction: column;
   transition: border-color 0.12s;
 }
-
-/* The textarea is borderless by design, so signal focus on the panel edge. */
 
 .git-commit-panel:focus-within {
   border-top-color: var(--gl-focus-border);
@@ -227,7 +218,7 @@
 
 .git-commit-clean { color: var(--gl-text-color-disabled); font-family: var(--font-ui); }
 
-/* Split action button (Commit ▾) */
+/* ── Split action button ── */
 
 .git-split { position: relative; display: flex; flex-shrink: 0; }
 
@@ -313,7 +304,7 @@
 
 .git-split-item.active { color: var(--gl-color-blue-300); }
 
-/* GIT → the branch's MR, above the commit box */
+/* ── Branch MR row ── */
 
 .git-commit-mr {
   display: flex;
@@ -381,7 +372,7 @@ button.git-commit-mr-ci:hover { border-color: currentColor; }
 
 span.git-commit-mr-ci { cursor: default; }
 
-/* CI / pipeline status pill */
+/* ── CI status pill ── */
 
 .forge-ci-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
@@ -401,9 +392,7 @@ span.git-commit-mr-ci { cursor: default; }
 
 .forge-ci-idle .forge-ci-dot { background: var(--gl-text-color-disabled); }
 
-/* Commits tab */
-/* `.git-subcontent` is the scroller (as for every other sub-tab), so the filter
-   sticks to its top instead of introducing a second scrollbar. */
+/* ── Commits tab; .git-subcontent is the scroller for the sticky filter ── */
 
 .commits-tab { display: flex; flex-direction: column; }
 
@@ -447,8 +436,7 @@ span.git-commit-mr-ci { cursor: default; }
 
 .commits-search-clear:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 
-/* The end marker doubles as the lazy-load trigger: seeing it fetches the next
-   page, so it must sit inside the scroll container. */
+/* lazy-load sentinel: stays inside the scroll container */
 
 .commits-end {
   padding: var(--space-3);
@@ -460,7 +448,6 @@ span.git-commit-mr-ci { cursor: default; }
 .commits-list { display: flex; flex-direction: column; }
 
 .commit-item {
-  /* Button reset: rows open the commit's diff tab. */
   width: 100%;
   text-align: left;
   background: none;
@@ -475,8 +462,6 @@ span.git-commit-mr-ci { cursor: default; }
 }
 
 .commit-item:hover { background: rgba(var(--gl-elevate), 0.04); }
-
-/* Upstream base history: dimmed, so the task's own work reads at a glance. */
 
 .commit-item.base .commit-msg { color: var(--gl-text-color-disabled); }
 
@@ -529,10 +514,7 @@ span.git-commit-mr-ci { cursor: default; }
 
 .commit-author { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
 
-/* ── Warning banner in the git footer ─────────────────────────────────────────
-   Used by the rebase-conflict prompt. (It began as a "remote branch deleted"
-   banner, which was removed: a deleted remote branch is the normal state after a
-   merge.) */
+/* ── Warning banner ── */
 
 .git-warn-banner {
   margin: var(--space-3);
@@ -584,62 +566,13 @@ span.git-commit-mr-ci { cursor: default; }
   border-color: color-mix(in srgb, var(--ctp-peach) 60%, transparent);
 }
 
-/* "All changes" as the first row of the changed-files list: same shape as a file
-   row so j/k walks through it, with the repo's totals instead of one file's. It
-   replaced a toolbar button — one place to look, and reachable by keyboard. */
-
 .changed-file-all { border-bottom: 1px solid var(--gl-border-color-subtle); }
 
 .changed-file-all .changed-file-name { color: var(--gl-text-color-default); font-weight: 500; }
 
 .changed-file-all-icon { color: var(--gl-color-blue-300); flex-shrink: 0; }
 
-/* ── from home.css (split) ── */
-
-/* ── Viewed-file tracking (review sessions) ───────────────────────────────── */
-
-.changes-review-progress {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--space-2) var(--space-3) 0;
-}
-
-.changes-review-count {
-  font-family: var(--font-mono);
-  font-size: var(--gl-font-size-xs);
-  font-weight: 600;
-  color: var(--gl-text-color-subtle);
-  background: rgba(var(--gl-elevate), 0.05);
-  border: 1px solid var(--gl-border-color-subtle);
-  border-radius: 100px;
-  padding: 1px 9px;
-}
-
-.changes-review-count.done { color: var(--gl-color-green-400); border-color: color-mix(in srgb, var(--gl-color-green-400) 45%, transparent); }
-
-.diff-viewed-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: var(--space-2);
-  flex-shrink: 0;
-  color: transparent;
-  background: none;
-  border: 1px solid var(--gl-border-color-strong);
-  border-radius: var(--gl-border-radius-sm);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.diff-viewed-check:hover { border-color: var(--gl-color-green-400); color: var(--gl-text-color-disabled); }
-
-.diff-viewed-check.checked {
-  color: var(--gl-background-color-overlap);
-  background: var(--gl-color-green-400);
-  border-color: var(--gl-color-green-400);
-}
+/* ── Viewed-file tracking ── */
 
 .diff-file-header.viewed { opacity: 0.55; }
 

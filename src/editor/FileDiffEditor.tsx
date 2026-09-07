@@ -71,7 +71,6 @@ function buildDynDecos(
   const annotatedDeco = Decoration.line({ class: 'diff-line-annotated' });
   const activeRange = dyn.dragRange ?? dyn.sel;
 
-  // Group annotations by end_line for permanent inline widget placement.
   const annsByEndLine = new Map<number, Annotation[]>();
   for (const ann of dyn.fileAnnotations) {
     const group = annsByEndLine.get(ann.end_line);
@@ -95,8 +94,7 @@ function buildDynDecos(
     }
 
     if (info.type !== 'del') {
-      // Permanent annotation widget — always visible below each annotation's end line.
-      // Suppressed when the comment form is open at this same line (form already shows them).
+      // Inline annotations under their end line; hidden where the form is open.
       const lineAnns = annsByEndLine.get(fn);
       const annContainer = dyn.annContainers.get(fn);
       if (lineAnns && lineAnns.length > 0 && annContainer && fn !== dyn.inlineAnchorNum) {
@@ -107,7 +105,7 @@ function buildDynDecos(
         }));
       }
 
-      // Comment form widget — opens when the user selects/drags on the gutter.
+      // Comment form at the selection's end line.
       if (dyn.inlineContainer && fn === dyn.inlineAnchorNum) {
         builder.add(docLine.to, docLine.to,
           Decoration.widget({ widget: new FormWidget(dyn.inlineContainer), block: true, side: 1 }));
@@ -124,7 +122,6 @@ const cmTheme = EditorView.theme({
   '.cm-scroller': { overflow: 'visible !important' },
   '.cm-content': { padding: '0', color: 'var(--gl-text-color-default)' },
   '.cm-line': { padding: '0px 8px 0 6px', lineHeight: '25px', minHeight: '25px' },
-  // Diff indicator gutter — narrow colored stripe at the far left
   '.cm-diff-indicator-gutter': { width: '8px', minWidth: '6px' },
   '.cm-diff-indicator-gutter .cm-gutterElement': { padding: '0', width: '8px' },
   '.diff-indicator-bar': { width: '8px', minHeight: '25px', height: '100%' },
@@ -140,22 +137,20 @@ const cmTheme = EditorView.theme({
   '.cm-activeLineGutter': { background: 'rgba(140,170,238,0.07)' },
 });
 
-// Hides the caret — applied only when vim navigation is OFF (a plain readonly diff).
+// Applied when vim is off.
 const hideCaretTheme = EditorView.theme({
   '.cm-content': { caretColor: 'transparent' },
   '.cm-cursor, .cm-cursorLayer': { display: 'none !important' },
 });
 
-// Visible cursor for vim navigation in the diff (block caret styled in editor.css).
+// Applied when vim is on; the block caret is styled in editor.css.
 const vimCaretTheme = EditorView.theme({
   '.cm-content': { caretColor: 'var(--gl-text-color-default)' },
   '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--gl-text-color-default)', borderLeftWidth: '2px' },
 });
 
-// The vim-dependent extensions, bundled so they can live in a compartment and be
-// toggled in place. Vim navigation needs the view `editable` (movement + search,
-// no edits — readOnly stays on) and a visible caret; without vim it's a plain,
-// non-focusable, caret-less readonly view.
+// The vim-dependent extensions, bundled for one compartment.
+// Vim needs `editable` true for movement; `readOnly` stays on.
 function vimExtensions(on: boolean) {
   return on
     ? [vim(), EditorView.editable.of(true), vimCaretTheme]
@@ -174,28 +169,24 @@ export interface FileDiffEditorProps {
   fileAnnotations: Annotation[];
   threads: MrThread[];
   mr: Mr | null;
-  /** Changes when a real open/commit asks this editor to take focus (so vim nav
-   *  works); undefined for inactive panes. A preview open never bumps it. */
+  /** Changes when a real open asks this editor to take focus; undefined for inactive panes. */
   focusSignal?: number;
-  /** True while this tab is a transient preview — suppresses auto-focus. */
+  /** True while this tab is a transient preview; suppresses auto-focus. */
   isPreview?: boolean;
-  /** False for historical diffs (commit view): annotations anchor to working-tree
-   *  line numbers, which a past commit doesn't map to — the comment gutter, drag
-   *  select, and inline form are omitted. Default true. */
+  /** False for historical diffs: no comment gutter, drag select or inline form. Default true. */
   allowAnnotations?: boolean;
-  /** Fills a gap with the file's real lines (see `useDiffExpand`). Omit to render
-   *  plain, non-clickable hunk separators. */
+  /** Fills a gap with the file's real lines. Omit to render plain hunk separators. */
   onExpandGap?: (gap: Gap, whole: boolean) => void;
-  /** The file's line count, which decides whether a gap follows the last hunk. */
+  /** The file's line count; decides whether a gap follows the last hunk. */
   fileLineCount?: number;
-  /** Per-line authorship, indexed by new-side line number. Absent = gutter off. */
+  /** Per-line authorship, indexed by new-side line number. Absent: gutter off. */
   blame?: BlameLine[];
   onOpenCommit?: (sha: string) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/** Blame age is measured when the gutter paints, never during render. */
+/** Read when the gutter paints. */
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
 export function FileDiffEditor({
@@ -206,12 +197,11 @@ export function FileDiffEditor({
   useEffect(() => { setupVimSearch(); }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // Toggling vim reconfigures this compartment in place so the readonly diff
-  // keeps its selection/scroll instead of the view being recreated.
+  // Reconfigured in place; recreating the view would drop selection and scroll.
   const vimCompartment = useRef(new Compartment());
   const annRef = useRef(ann);
   annRef.current = ann;
-  // Read through refs so a new callback identity never rebuilds the extensions.
+  // Refs: a new callback identity must not rebuild the extensions.
   const expandRef = useRef(onExpandGap);
   expandRef.current = onExpandGap;
   const openCommitRef = useRef(onOpenCommit);
@@ -220,7 +210,6 @@ export function FileDiffEditor({
   const { doc, lineMap, hunkFirstCMLines } = useMemo(() => buildDocument(hunks), [hunks]);
   const gaps = useMemo(() => gapsFor(hunks, fileLineCount), [hunks, fileLineCount]);
 
-  // Annotation/thread sets derived from props
   const { annotatedLineNums, annStartNums, threadNums, unresolvedThreadNums } = useMemo(
     () => deriveAnnotationSets(fileAnnotations, threads, filePath),
     [fileAnnotations, threads, filePath],
@@ -233,7 +222,6 @@ export function FileDiffEditor({
   const { groups: annGroups, containersRef: annContainersRef, formRef: portalContainerRef, formEl: portalContainer } =
     useAnnotationPortals(fileAnnotations, inlineAnchorNum, 'diff-inline-portal');
 
-  // Build CM extensions (stable per filePath/doc change)
   const extensions = useMemo(() => {
     const lang = cmLangFor(guessLang(filePath));
     const lm = lineMap;
@@ -289,7 +277,7 @@ export function FileDiffEditor({
         const cmLine = view.state.doc.lineAt(line.from).number;
         const info = lm[cmLine - 1];
         if (!info) return null;
-        // del lines: return a marker (for background) but no comment button
+        // del lines: a marker for the background, no button.
         const fileLineNum = info.type !== 'del' ? info.fileLineNum : 0;
         const cls = info.type === 'add' ? 'diff-line-add' : info.type === 'del' ? 'diff-line-del' : '';
         return new CommentGutterMarker(fileLineNum, (n, e) => {
@@ -299,7 +287,7 @@ export function FileDiffEditor({
       initialSpacer: () => new CommentGutterMarker(0, () => {}),
     });
 
-    // Blame is keyed by the NEW-side line number, so `del` lines get an empty cell.
+    // Blame is keyed by the new-side line number; `del` lines get an empty cell.
     const blameByLine = new Map((blame ?? []).map((b) => [b.line, b]));
     const blameGutter = gutter({
       class: 'cm-blame-gutter',
@@ -334,8 +322,6 @@ export function FileDiffEditor({
     });
 
     return [
-      // Vim (+ editable + caret) lives in a compartment so toggling it never
-      // rebuilds these extensions / recreates the view (see the toggle effect).
       vimCompartment.current.of(vimExtensions(useStore.getState().vimMode)),
       EditorState.readOnly.of(true),
       cmChromeTheme,
@@ -344,24 +330,20 @@ export function FileDiffEditor({
       staticField,
       dynField,
       diffIndicatorGutter,
-      // Comment gutter only where annotations can anchor.
       ...(allowAnnotations ? [commentGutter] : []),
       lineNumGutter,
-      // Registered only while blame is on, so it costs nothing when off. Last of
-      // the gutters, which puts it next to the code as in the edit view.
+      // Keep last of the gutters: extension order is gutter order.
       ...(blame ? [blameGutter] : []),
       keymap.of(searchKeymap),
       ...(lang ? [lang] : []),
       syntaxHighlighting(catppuccinHighlight),
       indentationMarkers({ colors: { dark: 'rgba(98,104,128,0.28)', activeDark: 'rgba(186,187,241,0.55)', light: 'rgba(98,104,128,0.28)', activeLight: 'rgba(186,187,241,0.55)' } }),
     ];
-  // Depends on the buildDocument RESULT (lineMap/hunkFirstCMLines identity), not
-  // just the doc string — identical text at shifted line numbers still needs a
-  // fresh lineMap. Vim is compartmentalized, so it's intentionally not a dep.
+  // `lineMap` identity is a dep: identical text at shifted lines needs a rebuild. deps omit `repoId`.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filePath, lineMap, hunkFirstCMLines, hunks, gaps, blame, allowAnnotations]);
 
-  // Mount / remount editor when doc or extensions change
+  // Mount the editor; remount on doc or extension change.
   useEffect(() => {
     if (!containerRef.current) return;
     const view = new EditorView({
@@ -369,28 +351,23 @@ export function FileDiffEditor({
       parent: containerRef.current,
     });
     viewRef.current = view;
-    // The editor is created the moment a file is expanded, so the container may
-    // still have no height when CodeMirror first measures — it then renders a
-    // viewport of almost nothing while the line decorations (the add/del
-    // backgrounds) are already painted, which looks like coloured but empty lines.
-    // Re-measure once the row has its real size.
+    // The container can still have no height at the first measure.
     view.requestMeasure();
     return () => { view.destroy(); viewRef.current = null; };
   }, [doc, extensions]);
 
-  // Toggle vim in place — reconfigure the compartment, never recreate the view.
+  // Toggle vim in place.
   useEffect(() => {
     viewRef.current?.dispatch({ effects: vimCompartment.current.reconfigure(vimExtensions(vimMode)) });
   }, [vimMode]);
 
-  // With vim nav on, the diff is focusable — focus it on a real open/commit so
-  // h/j/k/l work. Suppressed for preview opens (search input keeps focus).
+  // With vim on, focus the diff on a real open.
   useEffect(() => {
     if (focusSignal === undefined || isPreview || !vimMode) return;
     viewRef.current?.focus();
   }, [focusSignal, isPreview, vimMode]);
 
-  // Push dynamic state into CM on every relevant change
+  // Push dynamic state into CM.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
@@ -415,12 +392,10 @@ export function FileDiffEditor({
         if (!allowAnnotations || !dragRange) return;
         const view = viewRef.current;
         if (!view) return;
-        // Hosted on the wrapper, not the view: CM binds domEventHandlers to
-        // contentDOM, which the gutter the drag starts in is outside of.
+        // On the wrapper, not the view: CM's domEventHandlers do not cover the gutter.
         const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
         const info = lineMap[view.state.doc.lineAt(pos).number - 1];
-        // A del line carries the new-side number of the line above it; 0 means
-        // the file starts with a deletion, which no annotation can anchor to.
+        // A del line carries the new-side number of the line above it; 0 has no anchor.
         if (info && info.fileLineNum > 0) ann.extendDrag(repoId, filePath, info.fileLineNum);
       }}
     >

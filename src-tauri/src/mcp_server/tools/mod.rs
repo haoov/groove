@@ -1,8 +1,5 @@
-//! The MCP tool surface: the dispatch table plus the shared result type.
-//!
-//! Tools split by whether they need the user: `read` answers straight from the
-//! DB/filesystem, `write` goes through the confirmation bridge. `dispatch` stays
-//! a flat name → function table so adding a tool never grows a function body.
+//! The MCP tool surface: the dispatch table and the shared result type. `read`
+//! answers from the DB and filesystem; `write` goes through the confirmation bridge.
 
 mod definitions;
 mod read;
@@ -58,7 +55,7 @@ pub(super) async fn dispatch(
     name: &str,
     input: serde_json::Value,
     state: &McpState,
-    // The calling connection — resolves to the agent's OWN task, not the focused one.
+    // The calling connection; resolves to the agent's own task, not the focused one.
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     use crate::approvals::ops;
@@ -101,7 +98,7 @@ pub(super) async fn dispatch(
         "add_task_worktree" => write::add_task_worktree(input, state, mcp_session).await,
         "save_user_skill" => write::via_bridge(ops::SKILL_SAVE, input, state, mcp_session).await,
 
-        // Writes the user never has to approve (local, reversible, UI-visible)
+        // Writes without approval
         "create_annotation" => write::create_annotation(input, state).await,
         "update_annotation" => write::update_annotation(input, state).await,
         "resolve_annotation" => write::resolve_annotation(input, state).await,

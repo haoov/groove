@@ -6,10 +6,8 @@ import { Highlighted } from '../shared/lib/match';
 import { Combobox } from '../shared/ui/Combobox';
 
 /**
- * Shared repo selection for the task-open wizard and the add-repo modal.
- * The repo pool is whatever lives under `<worktree_root>/main/**` (scanned by
- * the backend) — no config list. New repos arrive by cloning a git URL into
- * the pool via `CloneRepoForm`.
+ * Shared repo selection for the task wizard and the add-repo modal. The pool is
+ * `<worktree_root>/main/**`, scanned by the backend.
  */
 export function useRepoPicker(opts?: {
   onSelect?: (repo: Repo) => void;
@@ -36,7 +34,7 @@ export function useRepoPicker(opts?: {
 
   const toggleRepo = useCallback(
     async (mr: MainRepo) => {
-      if (pending.has(mr.local_path)) return; // guard against double-click double-register
+      if (pending.has(mr.local_path)) return;
       const already = selectedRepos.find((r) => r.local_path === mr.local_path);
       if (already) {
         setSelectedRepos((p) => p.filter((r) => r.local_path !== mr.local_path));
@@ -60,7 +58,7 @@ export function useRepoPicker(opts?: {
     [pending, selectedRepos, opts],
   );
 
-  /** Drop a selected repo by path — the selected list holds `Repo`, not `MainRepo`. */
+  /** Drops a selected repo by path. */
   const deselect = useCallback(
     (localPath: string) => {
       const hit = selectedRepos.find((r) => r.local_path === localPath);
@@ -78,10 +76,7 @@ export function useRepoPicker(opts?: {
   };
 }
 
-/**
- * Search the clone pool and pick repos from the results. Selected repos are
- * listed by the caller, which owns the per-repo branch fields.
- */
+/** Searches the clone pool and picks repos from the results. */
 export function RepoPickerSearch({
   repos, isSelected, isPending, onToggle,
 }: {
@@ -114,7 +109,7 @@ export function RepoPickerSearch({
   );
 }
 
-/** Clone a new repo by URL — it lands at main/<host>/<group>/<project>. */
+/** Clones a new repo by URL into main/<host>/<group>/<project>. */
 export function CloneRepoForm({ onCloned }: { onCloned: (repo: MainRepo) => void }) {
   const [showForm, setShowForm] = useState(false);
   const [url, setUrl] = useState('');

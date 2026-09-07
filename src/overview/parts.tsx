@@ -3,9 +3,6 @@ import { forgeName, mrRef } from '../shared/lib/forge';
 import type { Mr, Repo, Worktree } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 
-// Ticket bodies render through the shared Markdown component now (the backend
-// renders the task body), so this file only holds overview parts.
-
 /** One MR, beside its worktree: number + state, opening the forge. */
 function MrLine({ mr }: { mr: Mr }) {
   const num = mrRef(mr.platform, mr.remote_id);
@@ -14,7 +11,6 @@ function MrLine({ mr }: { mr: Mr }) {
       className="overview-wt-mr"
       href={mr.url}
       title={`${num} — open in ${forgeName(mr.platform)}`}
-      // Stop the click reaching the worktree row (which opens the editor).
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openExternal(mr.url); }}
     >
       <GitPullRequest size={11} strokeWidth={1.75} />
@@ -26,9 +22,7 @@ function MrLine({ mr }: { mr: Mr }) {
 
 // ─── Repo row ─────────────────────────────────────────────────────────────────
 
-/** A repo, with each of its worktrees indented beneath it — branch on the left,
- *  the worktree's merge request (if any) beside it. Clicking a worktree opens
- *  the editor scoped to that repo + branch. */
+/** A repo with its worktrees beneath it; clicking a worktree opens the editor scoped to it. */
 export function RepoRow({
   repo, worktrees, mrs = [], onOpenWorktree,
 }: {

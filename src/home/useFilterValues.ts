@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../shared/store';
 
-// The values the filter can suggest. Everything here comes from the rows already
-// loaded, so a suggestion can never match nothing. Booleans and kinds are fixed
-// — they are the field's whole domain, not a sample of it.
+// The values the filter can suggest, drawn from the loaded rows. Booleans and kinds are fixed.
 
 const add = (into: Map<string, Set<string>>, key: string, value: string | null | undefined) => {
   if (!value) return;
@@ -40,8 +38,7 @@ export function useFilterValues(): Record<string, string[]> {
       add(m, 'provider', t.provider);
     }
     for (const mr of reviews ?? []) {
-      // `mr.platform` is a forge. Feeding it to `provider` would offer "gitlab"
-      // as a task source, which no task can ever match.
+      // `mr.platform` is a forge, never a provider.
       add(m, 'forge', mr.platform);
       add(m, 'repo', mr.project_full);
       add(m, 'branch', mr.source_branch);

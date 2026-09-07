@@ -6,8 +6,7 @@ import { looksLikeNotionId } from '../../shared/lib/notionUser';
 import type { DetectedSchema, NotionUser } from '../../shared/ipc/ipc';
 import type { SetupFormProps, SettingsRowProps } from './index';
 
-/** The values only the user can supply: a token, which database, who they are,
- *  and optionally a template page. Everything else is detected on save. */
+/** The values only the user can supply: token, database, user, and an optional template page. */
 export function NotionSetupForm({ onChange }: SetupFormProps) {
   const [token, setToken] = useState('');
   const [databaseId, setDatabaseId] = useState('');
@@ -27,7 +26,6 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
         ? { kind: 'raw' as const, id: who.trim() }
         : { kind: 'unknown' as const };
 
-  // The parent only decides "can this save"; the payload carries the rest.
   const filled = !!token.trim() && !!databaseId.trim();
   useEffect(() => {
     onChange(filled ? {
@@ -39,8 +37,6 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, databaseId, who, found, template]);
 
-  // The token is checked by using it: looking yourself up by email is both the
-  // check and the way to get your user id without hunting a UUID in the API.
   const lookupUser = async () => {
     if (!token.trim() || !who.trim() || looksLikeNotionId(who)) return;
     setBusy('users');
@@ -49,16 +45,12 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
       setFound(await invoke<NotionUser>('find_notion_user', { token: token.trim(), email: who.trim() }));
     } catch (e) {
       setFound(null);
-      // Could be a bad token OR a missing capability OR an unknown email — the
-      // backend message says which.
       setError(String(e));
     } finally {
       setBusy(null);
     }
   };
 
-  // Reading the schema replaces asking for eleven property names. It also proves
-  // the integration can see the database, so it doubles as the id check.
   const detect = async () => {
     if (!token.trim() || !databaseId.trim()) return;
     setBusy('detect');
@@ -143,8 +135,6 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
       <label className="firstrun-field">
         <span className="firstrun-label">You, in Notion <span className="firstrun-optional">optional</span></span>
         <div className="firstrun-row">
-          {/* A filterable input, not a dropdown: a workspace has hundreds of
-              people, and a pasted id still has to work when the list fails. */}
           <input
             className="firstrun-input"
             placeholder={token.trim() ? 'Your Notion email, or paste a user id' : 'Enter the token first'}
@@ -180,8 +170,7 @@ export function NotionSetupForm({ onChange }: SetupFormProps) {
   );
 }
 
-/** Settings: connected state + disconnect. Adding Notion after first run means
- *  the token flow, which stays in the config file for now. */
+/** Settings: connected state and disconnect. */
 export function NotionSettingsRow({ config, busy, setSource }: SettingsRowProps) {
   const on = !!config?.notion;
   return (

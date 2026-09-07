@@ -4,14 +4,8 @@ import { useSession, useStore } from '../shared/store';
 import { BranchPicker, useOriginBranches } from './branchPicker';
 
 /**
- * A second worktree on a repo the session already holds — the same repo, another
- * branch. Sibling of AddRepoModal: that one attaches a NEW repo, this one only
- * takes a branch, because the repo is the one you are looking at.
- *
- * The field starts from the branch provisioning itself would derive (asked for,
- * never rebuilt here), stepped `-2`, `-3`… past the branches this repo already
- * has. Within one task a numeric suffix is unambiguous — it separates worktrees,
- * not tasks.
+ * A second worktree on a repo the session already holds. The branch field is seeded
+ * from the backend's convention, stepped `-2`, `-3`… past the branches already here.
  */
 export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   const activeTask = useSession((s) => s.activeTask);
@@ -30,15 +24,12 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
   const repo = activeRepos.find((r) => r.id === activeRepoId) ?? activeRepos[0];
   const origin = useOriginBranches(repo?.id);
 
-  // The branches this repo already has here: a repeat would silently land on the
-  // existing worktree (the row upserts on session+repo+branch) and read as a no-op.
+  // A repeat branch upserts onto the existing worktree.
   const taken = useMemo(
     () => activeWorktrees.filter((w) => w.repo_id === repo?.id).map((w) => w.branch),
     [activeWorktrees, repo?.id],
   );
 
-  // Seeded once from the backend's own convention — the same value the first
-  // worktree got, stepped past whatever is already checked out.
   useEffect(() => {
     const shortId = activeTask?.short_id;
     if (!shortId || seeded.current) return;
@@ -62,8 +53,7 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError('');
     try {
-      // Refuse a name origin already has: provisioning would check out THEIR
-      // branch, not create yours.
+      // Provisioning a name origin already has checks out that branch.
       const exists = await invoke<boolean>('remote_branch_exists', {
         repoId: repo.id,
         branch,
@@ -77,11 +67,9 @@ export function AddWorktreeModal({ onClose }: { onClose: () => void }) {
         branches: [{ repo_id: repo.id, branch_name: branch, target_branch: target || null }],
       });
       notify({ kind: 'success', source: 'git', title: `Added ${repo.project} on ${branch}` });
-      // The worktree is on disk by now, so a failed refresh must not hold the
-      // modal open — it would read as "nothing happened".
+      // The worktree is on disk by now: a failed refresh must not hold the modal open.
       try {
-        // Re-hydrates activeWorktrees via workspace_ready; nothing else tells
-        // the header picker the worktree exists.
+        // Re-hydrates activeWorktrees via workspace_ready.
         await invoke('open_task', { shortId: activeTask.short_id });
       } catch (e) {
         notify({

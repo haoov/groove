@@ -7,21 +7,14 @@ import type { AnnCtx, LineRange } from '../useAnnotations';
 
 /**
  * The annotation surface both editors show: a note block under every annotated
- * line, plus the comment form at the selection.
- *
- * CodeMirror owns the layout — each block is a widget in the document — but the
- * content is React, so the elements are created here and portalled into the
- * widgets. Both editors had their own copy of this, which is how the blame gutter
- * ended up wired in one and broken in the other.
+ * line, plus the comment form at the selection, portalled into CodeMirror widgets.
  */
 
-/** Creates and reuses one container element per annotated end-line, plus one for
- *  the inline form. The elements must be STABLE across renders: a fresh element
- *  every time would make CodeMirror re-measure and drop the portal's DOM. */
+/** One stable container element per annotated end-line, plus one for the inline form.
+ *  A new element per render makes CodeMirror re-measure and drop the portal's DOM. */
 export function useAnnotationPortals(
   annotations: Annotation[],
   anchorLine: number | null,
-  /** CSS class for the form container — the two editors style it differently. */
   formClass: string,
 ) {
   const containersRef = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -64,8 +57,7 @@ export function useAnnotationPortals(
   return { groups, containersRef, formRef, formEl };
 }
 
-/** Renders into the containers the hook created. Nothing appears where these are
- *  mounted — each portal lands inside its CodeMirror widget. */
+/** Portals the annotation blocks into the containers the hook created. */
 export function AnnotationPortals({
   groups, containers, formEl, sel, annotations, threads, mr, ann, repoId, filePath,
 }: {

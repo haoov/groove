@@ -1,13 +1,7 @@
 //! The skills a Groove agent can invoke, and the plugin dirs that carry them.
-//!
-//! Groove does not run skills — Claude Code does. A skill is a `SKILL.md` inside a
-//! plugin directory, and `--plugin-dir` loads that plugin for ONE session. That
-//! flag is the whole gate: a Groove skill reaches a Groove agent and nothing else,
-//! so a skill may assume `mcp__groove__*` exists without checking for it.
-//!
-//! A skill says WHAT to do. Every rule about how to WRITE a commit message, MR
-//! text, an annotation or a task body stays in `mcp_server/tools/definitions.rs`,
-//! which the agent reads at the moment of the call. Do not restate them here.
+//! `--plugin-dir` loads a plugin for one session, so a skill may assume `mcp__groove__*` exists.
+//! Rules on how to write commits, MR text, annotations or task bodies stay in
+//! `mcp_server/tools/definitions.rs`; do not restate them here.
 
 use std::path::{Path, PathBuf};
 
@@ -15,8 +9,7 @@ use serde::Serialize;
 
 use crate::core::db::models::{Session, SessionKind};
 
-/// Plugin names, and the agent-facing namespaces (`groove:start-task`). Renaming one
-/// breaks every button.
+/// Plugin names and agent-facing namespaces (`groove:start-task`). Renaming one breaks every button.
 pub const CORE_PLUGIN: &str = "groove";
 pub const USER_PLUGIN: &str = "user";
 
@@ -42,8 +35,7 @@ pub struct AgentSkill {
     pub id: String,
     pub plugin: String,
     pub name: String,
-    /// For the MODEL: what the skill does and when to invoke it. Also shown in
-    /// Claude's slash menu.
+    /// What the skill does and when to invoke it. Shown in Claude's slash menu.
     pub description: String,
     /// The one line the UI shows. Empty when unset — never the description.
     pub hint: String,
@@ -57,7 +49,7 @@ pub struct AgentSkill {
 // ─── The core prompt ──────────────────────────────────────────────────────────
 
 /// The system prompt appended at every launch, with the session's identity
-/// interpolated. Only STABLE identity — repos, worktrees and MRs drift.
+/// interpolated. Stable identity only; repos, worktrees and MRs drift.
 pub fn core_prompt(task_id: &str, session: Option<&Session>) -> String {
     let who = match session {
         Some(s) => format!("session {} ({}): \"{}\"", s.id, kind_word(s.kind), s.title),
@@ -131,7 +123,10 @@ fn write_manifest(dir: &Path, name: &str, description: &str) -> anyhow::Result<(
         "description": description,
         "author": { "name": "Groove" },
     });
-    std::fs::write(meta.join("plugin.json"), serde_json::to_string_pretty(&body)?)?;
+    std::fs::write(
+        meta.join("plugin.json"),
+        serde_json::to_string_pretty(&body)?,
+    )?;
     Ok(())
 }
 
@@ -176,14 +171,15 @@ fn read_plugin(dir: &Path, plugin: &str, editable: bool) -> Vec<AgentSkill> {
     skill_names(dir)
         .into_iter()
         .filter_map(|name| {
-            let body = std::fs::read_to_string(dir.join("skills").join(&name).join("SKILL.md")).ok()?;
+            let body =
+                std::fs::read_to_string(dir.join("skills").join(&name).join("SKILL.md")).ok()?;
             Some(parse(plugin, &name, &body, editable))
         })
         .collect()
 }
 
-/// Read a `SKILL.md`'s front matter. A hand parser: every key is a single-line
-/// scalar. The DIRECTORY name is the identity, never the `name:` key.
+/// Read a `SKILL.md`'s front matter: single-line scalars only. The directory name
+/// is the identity, never the `name:` key.
 fn parse(plugin: &str, name: &str, body: &str, editable: bool) -> AgentSkill {
     let front = front_matter(body);
     let kinds = parse_kinds(field(front, "groove-kinds").as_deref());
@@ -211,7 +207,7 @@ fn front_matter(body: &str) -> &str {
     }
 }
 
-/// One `key: value` line. Split on the FIRST colon — a description contains them.
+/// One `key: value` line, split on the first colon.
 fn field(front: &str, key: &str) -> Option<String> {
     front.lines().find_map(|line| {
         let (k, v) = line.split_once(':')?;
@@ -238,7 +234,7 @@ fn parse_kinds(raw: Option<&str>) -> Vec<SessionKind> {
 
 // ─── The user's own skills ────────────────────────────────────────────────────
 
-/// Lowercase, digits and dashes only — the name is joined onto the plugin dir as a path.
+/// Lowercase, digits and dashes only. The name becomes a path segment.
 fn valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 64
@@ -271,9 +267,13 @@ fn user_skills_dir() -> anyhow::Result<PathBuf> {
         .join("skills"))
 }
 
-/// Write one user skill. With `previous`, remove the dir it was renamed from — AFTER
-/// the new one is on disk.
-fn save_user_skill_at(root: &Path, name: &str, body: &str, previous: Option<&str>) -> anyhow::Result<()> {
+/// Write one user skill. With `previous`, remove the old dir after the new one is on disk.
+fn save_user_skill_at(
+    root: &Path,
+    name: &str,
+    body: &str,
+    previous: Option<&str>,
+) -> anyhow::Result<()> {
     if !valid_name(name) {
         anyhow::bail!("a name is lowercase letters, digits and dashes: `{name}`");
     }
@@ -306,14 +306,13 @@ async fn validate_user_plugin() -> Option<String> {
 
 // ─── What the agent writes ────────────────────────────────────────────────────
 
-/// One user skill's raw `SKILL.md`. User skills only — core ones are rewritten at startup.
+/// One user skill's raw `SKILL.md`.
 pub fn read_user_skill(name: &str) -> anyhow::Result<String> {
     if !valid_name(name) {
         anyhow::bail!("not a skill name: `{name}`");
     }
     let path = user_skills_dir()?.join(name).join("SKILL.md");
-    std::fs::read_to_string(&path)
-        .map_err(|e| anyhow::anyhow!("no user skill `{name}`: {e}"))
+    std::fs::read_to_string(&path).map_err(|e| anyhow::anyhow!("no user skill `{name}`: {e}"))
 }
 
 /// The approved `skill.save` op. Refuses to overwrite an existing name unless
@@ -352,7 +351,7 @@ pub async fn read_agent_skill(app: tauri::AppHandle, id: String) -> Result<Strin
     std::fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {e}", path.display()))
 }
 
-/// Create or replace a user skill from the Settings editor. A local write — not bridged.
+/// Create or replace a user skill from the Settings editor. Not bridged.
 #[tauri::command]
 pub async fn save_user_skill(
     name: String,
@@ -410,7 +409,6 @@ mod tests {
         assert!(!p.contains("{{"), "a placeholder survived interpolation");
     }
 
-    /// A missing session row still yields a prompt that names the task.
     #[test]
     fn the_prompt_falls_back_to_the_bare_id() {
         let p = core_prompt("PLAT-42", None);
@@ -418,19 +416,20 @@ mod tests {
         assert!(!p.contains("{{"));
     }
 
-    /// A misspelt kind would silently offer the skill everywhere.
     #[test]
     fn every_core_skill_carries_a_description_and_real_kinds() {
         for (name, body) in CORE_SKILLS {
             let s = parse(CORE_PLUGIN, name, body, false);
             assert!(!s.description.is_empty(), "{name} has no description");
-            // The description must say WHEN to invoke, not only what.
             assert!(
                 s.description.contains("Use when"),
                 "{name}'s description names no trigger"
             );
             assert!(!s.hint.is_empty(), "{name} has no groove-hint");
-            assert!(s.hint.len() <= 60, "{name}'s hint is too long for a tooltip");
+            assert!(
+                s.hint.len() <= 60,
+                "{name}'s hint is too long for a tooltip"
+            );
             assert!(!s.kinds.is_empty(), "{name} declares no groove-kinds");
             let declared = field(front_matter(body), "groove-kinds").unwrap();
             assert_eq!(
@@ -441,7 +440,6 @@ mod tests {
         }
     }
 
-    /// A skill body is prose: a renamed tool leaves it pointing at nothing.
     #[test]
     fn every_tool_a_core_skill_names_exists() {
         // Backticked snake_case that is a payload field, not a tool.
@@ -454,7 +452,9 @@ mod tests {
         for (name, body) in CORE_SKILLS {
             for token in body.split('`').skip(1).step_by(2) {
                 let looks_like_tool = token.contains('_')
-                    && token.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
+                    && token
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
                 if !looks_like_tool || FIELDS.contains(&token) {
                     continue;
                 }
@@ -475,7 +475,6 @@ mod tests {
             false,
         );
         assert_eq!(s.id, "groove:sample-skill");
-        // Split on the FIRST colon, so a description keeps its own.
         assert_eq!(s.description, "Do a thing: and another.");
         assert_eq!(s.hint, "Does a thing.");
         assert_eq!(s.label, "do a thing");
@@ -485,12 +484,15 @@ mod tests {
 
     #[test]
     fn defaults_when_groove_keys_are_absent() {
-        let s = parse("user", "deploy-check", "---\ndescription: Check it.\n---\n", true);
+        let s = parse(
+            "user",
+            "deploy-check",
+            "---\ndescription: Check it.\n---\n",
+            true,
+        );
         assert_eq!(s.id, "user:deploy-check");
         assert_eq!(s.label, "deploy check");
-        // No hint means no line, never the description.
         assert_eq!(s.hint, "");
-        // No kinds means every kind offers it, not none.
         assert!(s.kinds.is_empty());
         assert!(s.editable);
     }
@@ -504,13 +506,20 @@ mod tests {
 
     #[test]
     fn a_typo_in_kinds_drops_only_that_kind() {
-        assert_eq!(parse_kinds(Some("task, tsak, review")), vec![SessionKind::Task, SessionKind::Review]);
+        assert_eq!(
+            parse_kinds(Some("task, tsak, review")),
+            vec![SessionKind::Task, SessionKind::Review]
+        );
     }
 
     #[test]
     fn sync_core_writes_the_manifest_and_removes_a_stale_skill() {
         let dir = tmp("core");
-        write_skill(&dir, "dropped-last-release", "---\ndescription: Gone.\n---\n");
+        write_skill(
+            &dir,
+            "dropped-last-release",
+            "---\ndescription: Gone.\n---\n",
+        );
         sync_core_at(&dir).unwrap();
 
         let manifest = std::fs::read_to_string(dir.join(".claude-plugin/plugin.json")).unwrap();
@@ -536,13 +545,21 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// A rejected name is a rejected path escape.
     #[test]
     fn a_name_is_a_safe_directory_name() {
         for ok in ["deploy-check", "a", "x2", "check-prod-2"] {
             assert!(valid_name(ok), "{ok} should be valid");
         }
-        for bad in ["", "..", "../escape", "a/b", "Caps", "-lead", "sp ace", "dot.name"] {
+        for bad in [
+            "",
+            "..",
+            "../escape",
+            "a/b",
+            "Caps",
+            "-lead",
+            "sp ace",
+            "dot.name",
+        ] {
             assert!(!valid_name(bad), "{bad} should be rejected");
         }
         assert!(!valid_name(&"a".repeat(65)));
@@ -566,7 +583,10 @@ mod tests {
         let root = tmp("resave").join("skills");
         save_user_skill_at(&root, "same", "one", None).unwrap();
         save_user_skill_at(&root, "same", "two", Some("same")).unwrap();
-        assert_eq!(std::fs::read_to_string(root.join("same/SKILL.md")).unwrap(), "two");
+        assert_eq!(
+            std::fs::read_to_string(root.join("same/SKILL.md")).unwrap(),
+            "two"
+        );
         std::fs::remove_dir_all(root.parent().unwrap()).unwrap();
     }
 

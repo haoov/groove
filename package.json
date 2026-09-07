@@ -11,7 +11,10 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q && cd .. && node scripts/gen-index.mjs"
+    "gen:types": "cd src-tauri && cargo test --lib export_bindings -q && cd .. && node scripts/gen-index.mjs",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "check:css": "node scripts/check-css-classes.mjs",
+    "check": "tsc --noEmit && pnpm lint && pnpm lint:css && pnpm check:css && pnpm test && vite build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -58,9 +61,11 @@
     "@vitejs/plugin-react": "^4",
     "eslint": "^10.8.1",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "stylelint": "^16.26.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^7",
     "vitest": "^4.1.10"
-  }
+  },
+  "packageManager": "pnpm@11.5.2"
 }

@@ -3,7 +3,7 @@ import { invoke } from '../../shared/ipc/invoke';
 import { useStore } from '../../shared/store';
 
 export function StatusBar() {
-  // The active session's title (task title, or MR name for reviews); null off-workspace.
+  // The active session's title; null off-workspace.
   const title = useStore((s) => {
     if (s.view !== 'workspace') return null;
     const sess = s.activeSessionId ? s.sessions[s.activeSessionId] : null;
@@ -11,7 +11,6 @@ export function StatusBar() {
   });
   const syncStatus = useStore((s) => s.syncStatus);
 
-  // Read the endpoint from the server that owns it rather than restating it.
   const [mcpEndpoint, setMcpEndpoint] = useState<string | null>(null);
   useEffect(() => {
     invoke<string>('get_mcp_endpoint').then(setMcpEndpoint).catch(() => setMcpEndpoint(null));

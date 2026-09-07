@@ -31,15 +31,7 @@ function FileStatusIcon({ status }: { status: string }) {
 
 // ── Commits tab ───────────────────────────────────────────────────────────────
 
-/**
- * The commit log: a fuzzy filter over what is loaded, and another page whenever
- * the list is scrolled to the end.
- *
- * The filter is local rather than a `git log --grep`: it matches the message, the
- * author and the sha in one pass, tolerates gaps ("fxauth" finds "fix: auth"), and
- * answers instantly. What it cannot see is a commit that has not been fetched yet,
- * so the footer always says how many are loaded and offers the next page.
- */
+/** The commit log: a local fuzzy filter over the loaded commits, and another page at the end. */
 export function CommitsTab({
   commits, hasMore, onLoadMore, onSelect,
 }: {
@@ -55,8 +47,7 @@ export function CommitsTab({
     if (!query.trim()) return commits.map((c) => ({ c, ranges: [] as [number, number][] | null }));
     return commits
       .map((c) => {
-        // One field decides the highlight (the message, where the eye goes), but a
-        // hit on the author or the sha still keeps the row.
+        // Highlight only the message; an author or sha hit still keeps the row.
         const ranges = matchRanges(query, c.message);
         const other = matchRanges(query, c.author) ?? matchRanges(query, c.short_sha);
         return ranges || other ? { c, ranges } : null;
@@ -64,8 +55,7 @@ export function CommitsTab({
       .filter((x): x is { c: CommitEntry; ranges: [number, number][] | null } => x !== null);
   }, [commits, query]);
 
-  // Reaching the end of the list IS the request for more. The observer is rebuilt
-  // when the page grows so it re-arms against the new last row.
+  // Reaching the end of the list requests the next page.
   useEffect(() => {
     const el = endRef.current;
     if (!el || !hasMore) return;
@@ -77,9 +67,7 @@ export function CommitsTab({
     return () => io.disconnect();
   }, [hasMore, onLoadMore, commits.length]);
 
-  // The divergence point: everything from the first base commit down is upstream
-  // history the branch grew from, rendered dimmed under a divider. Filtering hides
-  // the boundary, so the divider is only drawn on the unfiltered list.
+  // Commits from the first base commit down are upstream history; the divider is drawn only unfiltered.
   const filtering = query.trim().length > 0;
   const firstBaseSha = filtering ? null : commits.find((c) => c.is_base)?.sha;
 
@@ -133,7 +121,7 @@ export function CommitsTab({
               </button>
             </div>
           ))}
-          {/* The sentinel: visible = the user reached the end. */}
+          {/* The end-of-list sentinel. */}
           <div ref={endRef} className="commits-end">
             {hasMore ? `${commits.length} loaded — more…` : `${commits.length} commits`}
           </div>
@@ -147,9 +135,7 @@ export function CommitsTab({
 
 const VIEW_KEY = 'wb.gitChangesView';
 
-// One flat row list drives both views and the keyboard nav. "All changes" is
-// always first; a file row carries its folder (flat view shows it as a suffix,
-// tree view as indentation); a dir row groups files under one folder segment.
+// One row list drives both views and the keyboard nav; "All changes" is row 0.
 type Row =
   | { kind: 'all' }
   | { kind: 'dir'; path: string; depth: number; label: string; count: number }
@@ -197,30 +183,28 @@ export function ChangedFilesList({
   repoId, worktreeId, onOpenFile, onOpenFileAlt, onOpenAll, onToggleStage, onDiscard, onStageAll, onDiscardAll,
 }: {
   repoId: string | null;
-  /** The active worktree of `repoId` — the diff summary has one entry per worktree. */
+  /** The active worktree of `repoId`. */
   worktreeId?: string;
   onOpenFile: (path: string, repoId: string, lang: string) => void;
   onOpenFileAlt: (path: string, repoId: string, lang: string) => void;
-  /** Open the whole repo's changes as one review tab. */
+  /** Opens the whole repo's changes as one review tab. */
   onOpenAll: (repoId: string) => void;
   onToggleStage: (path: string, repoId: string, staged: boolean) => void;
   onDiscard: (path: string, repoId: string) => void;
-  /** Stage or unstage every file at once (the All-changes row's checkbox). */
+  /** Stages or unstages every file. */
   onStageAll: (stage: boolean) => void;
-  /** Discard every local change (the All-changes row's trash). */
+  /** Discards every local change. */
   onDiscardAll: () => void;
 }) {
   const diff = useSession((s) => s.diff);
   const panelFocusNonce = useStore((s) => s.panelFocusNonce);
-  // Memoized because the row model below keys on it: the `?? []` fallback is a new
-  // array every render, which would rebuild the tree on every keystroke.
+  // Memoized: a fresh `[]` fallback per render would rebuild the row model.
   const files = useMemo(
     () => (repoId ? (repoDiffFor(diff, worktreeId, repoId)?.files ?? []) : []),
     [diff, worktreeId, repoId],
   );
 
-  // Flat by default; tree groups files by folder. The choice is per-user and
-  // persisted; right-click the list to switch.
+  // Flat or tree view, persisted in localStorage.
   const [treeView, setTreeView] = useState(() => localStorage.getItem(VIEW_KEY) === 'tree');
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -242,12 +226,9 @@ export function ChangedFilesList({
   const anyUnstaged = stageable.some((f) => f.staged === false);
   const openAll = useCallback(() => { if (repoId) onOpenAll(repoId); }, [repoId, onOpenAll]);
 
-  // Both views render the same row list, so keyboard nav is shared. "All changes"
-  // is always row 0; tree rows carry their nesting depth for indentation.
   const rows = useMemo<Row[]>(() => buildRows(files, treeView, collapsed), [files, treeView, collapsed]);
 
-  // Enter stages/unstages a file, toggles a folder, or opens the review on row 0
-  // — the action you repeat while reviewing. Opening a file moves to l / Right.
+  // Enter stages a file, toggles a folder, or opens the review on row 0.
   const onEnter = useCallback((i: number) => {
     const row = rows[i];
     if (!row || row.kind === 'all') return openAll();
@@ -392,9 +373,6 @@ export function ChangedFilesList({
 
 // ── Git commit panel ──────────────────────────────────────────────────────────
 
-// Each menu entry maps to a single primary action. `commit`/`commit-push` need a
-// message; the rest act on the branch. Backend commands: commit · push · pull ·
-// rebase_on_main (there is no dedicated pull-with-rebase).
 type ActionKey = 'commit' | 'commit-push' | 'push' | 'pull' | 'rebase' | 'create-mr';
 
 const GIT_MENU: { key: ActionKey; label: string; icon: typeof GitCommit; needsMessage?: boolean }[] = [
@@ -406,16 +384,10 @@ const GIT_MENU: { key: ActionKey; label: string; icon: typeof GitCommit; needsMe
   { key: 'create-mr',   label: 'Create MR…',     icon: GitPullRequest },
 ];
 
-/**
- * Docked commit composer for the active repo. A single context-aware primary
- * button (Commit → Push → Pull, derived from message + git status) with a ▾
- * menu for every action, plus inline status chips.
- */
 /** The MR's pipeline status; grey when the forge reports none. */
 function MrCiChip({ mr }: { mr: Mr }) {
   const [ci, setCi] = useState<{ status: string; url: string } | null>(null);
-  // Nothing polls the forge, so this is the only thing that moves the chip: a
-  // push, an mr.* op, or the sidebar's refresh button.
+  // The only trigger: a push, an mr.* op, or the sidebar refresh. Nothing polls the forge.
   const mrNonce = useSession((s) => s.mrNonce);
 
   useEffect(() => {
@@ -447,9 +419,9 @@ export function GitCommitPanel({
 }: {
   status?: WorktreeStatus;
   branch?: string;
-  /** The active worktree — scopes the rebase-conflict banner to this repo. */
+  /** The active worktree; scopes the rebase-conflict banner. */
   worktreeId?: string;
-  /** Explorer sessions: only commit is available (no push/pull/rebase). */
+  /** Explorer sessions: only commit is available. */
   commitOnly?: boolean;
   /** This branch's merge request, when it has one. Hides "Create MR…". */
   mr?: Mr;
@@ -472,14 +444,12 @@ export function GitCommitPanel({
   const [rebaseError, setRebaseError] = useState<string | null>(null);
   const initialFocusNonce = useRef(commitFocusNonce);
 
-  // Focus the commit textarea when a commit is requested (e.g. from the command
-  // palette). Skip the value present on the initial mount.
+  // Focus the textarea on a commit request; skip the nonce present at mount.
   useEffect(() => {
     if (commitFocusNonce === initialFocusNonce.current) return;
     taRef.current?.focus();
   }, [commitFocusNonce]);
 
-  // Only surface the banner for the worktree that actually hit the conflict.
   const conflict = rebaseConflict && (!worktreeId || rebaseConflict.worktreeId === worktreeId)
     ? rebaseConflict : null;
 
@@ -493,7 +463,7 @@ export function GitCommitPanel({
     }
   };
 
-  // Auto-grow the textarea between ~1.5 and ~7 lines.
+  // Auto-grow the textarea, 150px maximum.
   const autosize = () => {
     const ta = taRef.current;
     if (!ta) return;
@@ -507,7 +477,7 @@ export function GitCommitPanel({
   const behind = status?.behind ?? 0;
   const dirty = (status?.modified ?? 0) + (status?.staged ?? 0);
 
-  // The smart default that the big button performs.
+  // The primary button's action.
   const primary: ActionKey | null = commitOnly
     ? (hasMsg ? 'commit' : null)
     : hasMsg ? 'commit' : behind > 0 ? 'pull' : ahead > 0 ? 'push' : null;
@@ -520,17 +490,15 @@ export function GitCommitPanel({
       try {
         const confirmationId = await onCommit(message.trim());
         setMessage('');
-        // The push posts only after the commit RESOLVES approved (useIpc) —
-        // posting both at once could push a tree whose commit was denied.
+        // The push posts only after the commit confirmation resolves approved (useIpc).
         if (key === 'commit-push' && typeof confirmationId === 'string' && worktreeId) {
           registerCommitPush(confirmationId, worktreeId);
         }
-      } catch { /* keep the message so it isn't lost */ }
+      } catch { /* the message stays */ }
       finally { setCommitting(false); }
     } else if (key === 'push') onAction('push');
     else if (key === 'pull') onAction('pull');
     else if (key === 'rebase') onAction('rebase_on_main');
-    // Opens the confirmation dialog; the title/description are typed there.
     else if (key === 'create-mr') onAction('create_mr');
   };
 

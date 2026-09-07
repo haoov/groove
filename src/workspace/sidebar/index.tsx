@@ -40,8 +40,7 @@ export function Sidebar() {
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
 
-  // Breadcrumbs reveal a directory: expand it and every ancestor, and make sure
-  // the tree is the visible panel.
+  // Reveals a directory: expands it and every ancestor, and shows the tree panel.
   const revealDir = useStore((s) => s.revealDir);
   useEffect(() => {
     if (!revealDir?.path) return;
@@ -56,8 +55,7 @@ export function Sidebar() {
       return next;
     });
   }, [revealDir]);
-  // Git sub-mode lives in the session store so the global Alt+Shift+Tab shortcut
-  // can cycle it; the buttons below write the same field.
+  // Git sub-mode lives in the session store: the cycle shortcut and these buttons write one field.
   const gitSubTab = useSession((s) => s.gitSubTab);
   const setGitSubTab = useSession((s) => s.setGitSubTab);
   const commitLimit = useSession((s) => s.commitLimit);
@@ -70,16 +68,13 @@ export function Sidebar() {
     [activeWorktrees, activeWorktreeId]
   );
 
-  // Opening the git tab refreshes MRs + threads, so the MR above the commit box
-  // is never a stale view of remote state (mr.* ops also refresh via useIpc).
+  // Opening the git tab refreshes the MRs and their threads.
   useEffect(() => {
     if (sidebarTab === 'git') bumpMrs();
   }, [sidebarTab, bumpMrs]);
 
-  // Commit history follows the active worktree (falls back to all repos if the
-  // repo has none). Reloads when the active worktree changes, and when the list asks
-  // for another page — one `git log` with a bigger limit, so pages never overlap
-  // or interleave.
+  // Commit history follows the active worktree, all repos when it has none.
+  // One `git log` with a bigger limit per page: pages never overlap.
   useEffect(() => {
     if (!activeTask || sidebarTab !== 'git') return;
     const wt = activeRepoId ? worktreeForRepo(activeRepoId) : undefined;
@@ -90,9 +85,7 @@ export function Sidebar() {
     return () => { cancelled = true; };
   }, [sidebarTab, activeTask, activeRepoId, worktreeForRepo, commitLimit, setCommits, setLastError]);
 
-  // Files and Source control focus their own keyboard list; Annotations has none,
-  // so without this the panel shortcut could never tell it was already focused and
-  // would never close. Focus the column itself as a fallback.
+  // Annotations has no keyboard list: focus the column itself, or the panel shortcut cannot close it.
   const panelFocusNonce = useStore((s) => s.panelFocusNonce);
   const rootRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -130,7 +123,7 @@ export function Sidebar() {
   const makeCommit = (worktreeId: string) => async (message: string) => {
     if (!message.trim()) return undefined;
     try {
-      // The id of the posted confirmation — "Commit & Push" chains off it.
+      // Confirmation id: Commit & Push chains off it.
       const confirmationId = await invoke<string>('commit', { worktreeId, message: message.trim() });
       setTimeout(refreshStatus, 1500);
       return confirmationId;
@@ -140,8 +133,7 @@ export function Sidebar() {
     }
   };
 
-  // Staging: toggle one file, or stage/unstage the whole active repo. Refresh the
-  // status counts + re-fetch the diff so the staged flags update.
+  // Stages one file or the whole active repo, then refreshes the status counts and the diff.
   const refreshAfterStage = () => { refreshStatus(); bumpDiff(); };
   const toggleStage = async (path: string, repoId: string, staged: boolean) => {
     const wt = worktreeForRepo(repoId);
@@ -163,8 +155,7 @@ export function Sidebar() {
     }
   };
 
-  // Discard is destructive → routed through the confirmation bridge (modal). The
-  // confirmation_resolved handler refetches the diff + status after approval.
+  // Discard is destructive: it goes through the confirmation bridge.
   const discardFile = (path: string, repoId: string) => {
     const wt = worktreeForRepo(repoId);
     if (!wt) return;
@@ -205,8 +196,7 @@ export function Sidebar() {
     if (sidebarTab === 'annotations') {
       const wt = worktreeForRepo(repoId);
       const repoMr = mrs.find((m) => m.worktree_id === wt?.id) ?? null;
-      // Notes = the local annotations, plus the MR's own discussion when there is
-      // one — one panel for everything said about the change.
+      // Notes: the local annotations plus the MR discussion when one exists.
       return (
         <>
         <AnnotationsTab
@@ -310,8 +300,7 @@ export function Sidebar() {
           )}
           {gitSubTab === 'changes' && (
             <>
-              {/* Diff base + refresh (moved here from the old modebar): this list
-                  and every diff tab follow the selected base. */}
+              {/* Diff base and refresh. This list and every diff tab follow the selected base. */}
               <div className="diff-mode-row">
                 <div className="diff-mode-seg">
                   {DIFF_MODES.map((m) => (
@@ -333,7 +322,7 @@ export function Sidebar() {
                   <RefreshCw size={12} strokeWidth={1.75} />
                 </button>
               </div>
-              {/* Stage-all / discard-all live on the All-changes row now. */}
+              {/* Stage-all and discard-all live on the All-changes row. */}
               <ChangedFilesList
                 repoId={repoId}
                 worktreeId={activeWt?.id}
@@ -357,10 +346,7 @@ export function Sidebar() {
 
       <div className="sidebar-content">{renderContent()}</div>
 
-      {/* Docked footer for the active repo: the commit composer, whatever tab is
-          showing. A "remote branch deleted" banner used to pre-empt it, but a
-          deleted remote branch is the NORMAL state after a merge — the name is free
-          to reuse, and git already refuses a second worktree on one branch. */}
+      {/* Docked footer for the active repo: the commit composer, on whichever tab shows. */}
       {activeWt && (
         <>
           <GitCommitPanel

@@ -4,12 +4,7 @@ import { agentLine, clampAgentsWidth, type AgentRow } from '../shared/lib/agents
 import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
 import { statusKey } from '../shared/lib/taskStatus';
 
-/**
- * The open sessions and what each agent is doing, as a column of the agent
- * panel. Nothing here fetches: the rows come from the store (or, detached, from
- * the state the main window mirrors), so it re-renders as freely as the agents
- * report. Clicking a row goes to that session; the host decides how.
- */
+/** The open sessions and what each agent is doing, as a column of the agent panel. */
 export function AgentsSidebar({
   rows, width, onResize, onGo, onClose,
 }: {
@@ -23,7 +18,7 @@ export function AgentsSidebar({
   const [cursor, setCursor] = useState(() => Math.max(0, rows.findIndex((r) => r.active)));
   const asideRef = useRef<HTMLElement>(null);
 
-  // A closed session can leave the cursor past the end.
+  // Clamp the cursor after a session closes.
   useEffect(() => {
     if (cursor >= rows.length) setCursor(Math.max(0, rows.length - 1));
   }, [rows.length, cursor]);
@@ -48,7 +43,7 @@ export function AgentsSidebar({
     const startX = e.clientX;
     const startWidth = asideRef.current?.getBoundingClientRect().width ?? width;
     const move = (ev: MouseEvent) => {
-      // The handle is on the inner edge, so dragging left widens.
+      // Dragging left widens.
       onResize(clampAgentsWidth(startWidth + (startX - ev.clientX)));
     };
     const up = () => {
@@ -119,7 +114,6 @@ function AgentRowView({
         <span className="agents-row-text">
           <span className="agents-row-title">{row.title}</span>
           <span className="agents-row-id">{row.idLabel ?? SESSION_KIND_LABEL[row.kind]}</span>
-          {/* Its own line, so the dot and the text stay readable however long the tool is. */}
           {a ? (
             <span className={`agents-row-state ${a.state}`}>
               <span className={`pill-dot ${a.state}`} />

@@ -1,26 +1,27 @@
-//! GitHub over REST + GraphQL (see `api`). `gh` only supplies the token.
-//!
-//! Review threads come from GraphQL because REST cannot express them: resolution
-//! state and the thread node id needed to resolve one exist only there. CI and
-//! approval ride GraphQL too (statusCheckRollup / reviewDecision are
-//! GraphQL-only); plain CRUD uses REST.
+//! GitHub over REST and GraphQL (see `api`); `gh` only supplies the token.
+//! Review threads, CI and approval use GraphQL; plain CRUD uses REST.
 
 use reqwest::Method;
 
 use crate::core::db::models::Repo;
 
-use crate::core::forge::api;
 use super::client::PlatformClient;
+use crate::core::forge::api;
 
-/// `owner` and `repo` as GitHub means them: the group path can be nested in the
-/// local MAIN layout, but on GitHub only the last segment before the project is the
-/// owner (`github.com/<owner>/<repo>`).
+/// GitHub's `owner`: the last segment of the group path.
 fn owner_of(repo: &Repo) -> &str {
-    repo.group_path.rsplit('/').next().unwrap_or(&repo.group_path)
+    repo.group_path
+        .rsplit('/')
+        .next()
+        .unwrap_or(&repo.group_path)
 }
 
 fn pr_path(repo: &Repo, remote_id: &str) -> String {
-    format!("repos/{}/{}/pulls/{remote_id}", owner_of(repo), repo.project)
+    format!(
+        "repos/{}/{}/pulls/{remote_id}",
+        owner_of(repo),
+        repo.project
+    )
 }
 
 /// GraphQL variables addressing one PR.
@@ -32,7 +33,7 @@ fn pr_vars(repo: &Repo, remote_id: &str) -> serde_json::Value {
     })
 }
 
-/// The current login, for "did I approve?". Stable for a run.
+/// The current login, cached for the run.
 static GH_LOGIN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
 async fn gh_login(host: &str) -> Option<String> {
@@ -45,8 +46,7 @@ async fn gh_login(host: &str) -> Option<String> {
     Some(login)
 }
 
-/// GitHub reports a check per job; the UI wants one word. Worst state wins, which
-/// is what a reviewer needs to know.
+/// One status word for a rollup of checks; the worst state wins.
 fn rollup_status(rollup: &serde_json::Value) -> Option<(String, String)> {
     let nodes = rollup.as_array()?;
     if nodes.is_empty() {
@@ -56,8 +56,7 @@ fn rollup_status(rollup: &serde_json::Value) -> Option<(String, String)> {
     let mut failed = false;
     let mut url = String::new();
     for n in nodes {
-        // A check run reports `status` + `conclusion`; a legacy commit status
-        // reports `state`. Both appear in the same rollup.
+        // A check run reports `status` + `conclusion`; a commit status reports `state`.
         let status = n["status"].as_str().unwrap_or("");
         let conclusion = n["conclusion"].as_str().unwrap_or("");
         let state = n["state"].as_str().unwrap_or("");
@@ -69,29 +68,38 @@ fn rollup_status(rollup: &serde_json::Value) -> Option<(String, String)> {
             }
         }
         match (status, conclusion, state) {
-            (_, "FAILURE" | "TIMED_OUT" | "CANCELLED" | "ACTION_REQUIRED" | "STARTUP_FAILURE", _)
+            (
+                _,
+                "FAILURE" | "TIMED_OUT" | "CANCELLED" | "ACTION_REQUIRED" | "STARTUP_FAILURE",
+                _,
+            )
             | (_, _, "FAILURE" | "ERROR") => failed = true,
             ("QUEUED" | "IN_PROGRESS" | "PENDING" | "WAITING" | "REQUESTED", _, _)
             | (_, _, "PENDING") => running = true,
             _ => {}
         }
     }
-    // The vocabulary is GitLab's, because the UI groups on it (see ciGroup).
-    let status = if failed { "failed" } else if running { "running" } else { "success" };
+    // Keep GitLab's vocabulary: the UI's `ciGroup` maps these.
+    let status = if failed {
+        "failed"
+    } else if running {
+        "running"
+    } else {
+        "success"
+    };
     Some((status.to_string(), url))
 }
 
 /// GraphQL review threads → the `[{ id, notes: [...] }]` shape the UI reads.
-///
-/// Kept pure and separate from the fetch so a captured payload can pin it: the UI
-/// silently renders nothing when this drifts (which is how the REST version shipped
-/// broken).
 fn threads_from_graphql(pr: &serde_json::Value) -> serde_json::Value {
     let mut threads = vec![];
-    for t in pr["reviewThreads"]["nodes"].as_array().cloned().unwrap_or_default() {
+    for t in pr["reviewThreads"]["nodes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+    {
         let resolved = t["isResolved"].as_bool().unwrap_or(false);
-        // A LEFT-side thread is on the old file; the UI anchors on new-side lines
-        // only, so the note is kept but without a position.
+        // The UI anchors new-side lines only; a LEFT-side note keeps no position.
         let on_new_side = t["diffSide"].as_str().unwrap_or("RIGHT") == "RIGHT";
         let path = t["path"].as_str().unwrap_or("").to_string();
         let notes: Vec<serde_json::Value> = t["comments"]["nodes"]
@@ -126,9 +134,12 @@ fn threads_from_graphql(pr: &serde_json::Value) -> serde_json::Value {
         threads.push(serde_json::json!({ "id": t["id"], "notes": notes }));
     }
 
-    // Conversation comments: no position, not resolvable — the same treatment a
-    // GitLab general note gets.
-    for c in pr["comments"]["nodes"].as_array().cloned().unwrap_or_default() {
+    // Conversation comments: no position, not resolvable.
+    for c in pr["comments"]["nodes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+    {
         threads.push(serde_json::json!({
             "id": c["databaseId"].to_string(),
             "notes": [{
@@ -178,12 +189,16 @@ impl PlatformClient for GhClient {
             .to_string();
         let url = v["html_url"].as_str().unwrap_or("").to_string();
 
-        // Self-assignment is best-effort: a PR without an assignee beats no PR.
+        // Self-assignment is best-effort.
         if let Some(login) = gh_login(&repo.host).await {
             let _ = api::github(
                 &repo.host,
                 Method::POST,
-                &format!("repos/{}/{}/issues/{number}/assignees", owner_of(repo), repo.project),
+                &format!(
+                    "repos/{}/{}/issues/{number}/assignees",
+                    owner_of(repo),
+                    repo.project
+                ),
                 Some(&serde_json::json!({ "assignees": [login] })),
             )
             .await;
@@ -226,9 +241,13 @@ impl PlatformClient for GhClient {
         Ok(())
     }
 
-    async fn get_mr_details(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_details(
+        &self,
+        repo: &Repo,
+        remote_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
         let v = api::github(&repo.host, Method::GET, &pr_path(repo, remote_id), None).await?;
-        // REST has no "merged" state — it stays "closed" with a merged flag.
+        // REST has no "merged" state; it is "closed" with a merged flag.
         let state = if v["merged"].as_bool() == Some(true) {
             "merged".to_string()
         } else {
@@ -299,7 +318,9 @@ query($owner:String!, $name:String!, $number:Int!) {
   }
 }"#;
         let v = api::github_graphql(&repo.host, QUERY, pr_vars(repo, remote_id)).await?;
-        Ok(threads_from_graphql(&v["data"]["repository"]["pullRequest"]))
+        Ok(threads_from_graphql(
+            &v["data"]["repository"]["pullRequest"],
+        ))
     }
 
     async fn reply_to_thread(
@@ -343,7 +364,9 @@ mutation($threadId:ID!) {
         if v["data"]["resolveReviewThread"]["thread"]["isResolved"].as_bool() == Some(true) {
             return Ok(());
         }
-        Err(anyhow::anyhow!("GitHub did not report the thread as resolved"))
+        Err(anyhow::anyhow!(
+            "GitHub did not report the thread as resolved"
+        ))
     }
 
     async fn approve_mr(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<()> {
@@ -357,7 +380,11 @@ mutation($threadId:ID!) {
         Ok(())
     }
 
-    async fn get_mr_approval(&self, repo: &Repo, remote_id: &str) -> anyhow::Result<serde_json::Value> {
+    async fn get_mr_approval(
+        &self,
+        repo: &Repo,
+        remote_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
         const QUERY: &str = r#"
 query($owner:String!, $name:String!, $number:Int!) {
   repository(owner:$owner, name:$name) {
@@ -369,11 +396,17 @@ query($owner:String!, $name:String!, $number:Int!) {
 }"#;
         let v = api::github_graphql(&repo.host, QUERY, pr_vars(repo, remote_id)).await?;
         let pr = &v["data"]["repository"]["pullRequest"];
-        // Latest review per author wins: an APPROVED then CHANGES_REQUESTED must
-        // not still count as an approval.
-        let mut latest: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-        for r in pr["reviews"]["nodes"].as_array().cloned().unwrap_or_default() {
-            let Some(login) = r["author"]["login"].as_str() else { continue };
+        // The latest review per author wins.
+        let mut latest: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+        for r in pr["reviews"]["nodes"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default()
+        {
+            let Some(login) = r["author"]["login"].as_str() else {
+                continue;
+            };
             let state = r["state"].as_str().unwrap_or("");
             // COMMENTED does not change an earlier verdict.
             if state == "COMMENTED" || state == "PENDING" {
@@ -405,15 +438,18 @@ query($owner:String!, $name:String!, $number:Int!) {
             api::github(
                 &repo.host,
                 Method::POST,
-                &format!("repos/{}/{}/issues/{remote_id}/comments", owner_of(repo), repo.project),
+                &format!(
+                    "repos/{}/{}/issues/{remote_id}/comments",
+                    owner_of(repo),
+                    repo.project
+                ),
                 Some(&serde_json::json!({ "body": body })),
             )
             .await?;
             return Ok(());
         };
 
-        // A positioned review comment needs the PR head sha. Like GitLab, the
-        // position references the REMOTE head, so local commits can drift it.
+        // A positioned review comment needs the remote PR head sha.
         let pr = api::github(&repo.host, Method::GET, &pr_path(repo, remote_id), None).await?;
         let head_sha = pr["head"]["sha"]
             .as_str()
@@ -437,10 +473,6 @@ query($owner:String!, $name:String!, $number:Int!) {
 }
 
 /// Open PRs where the current user is a requested reviewer, for the review queue.
-///
-/// One GraphQL search: `reviewDecision` comes back in the same call, so approval
-/// costs no extra round-trip (GitLab needs one per MR), and REST search has no
-/// branch names — the review session needs both refs to check the PR out.
 pub(super) async fn review_requested_prs(host: &str) -> anyhow::Result<Vec<serde_json::Value>> {
     const QUERY: &str = r#"
 query {
@@ -456,7 +488,10 @@ query {
   }
 }"#;
     let v = api::github_graphql(host, QUERY, serde_json::json!({})).await?;
-    Ok(v["data"]["search"]["nodes"].as_array().cloned().unwrap_or_default())
+    Ok(v["data"]["search"]["nodes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -473,14 +508,12 @@ mod tests {
         }
     }
 
-    // The MAIN layout can nest a group path, but GitHub owns exactly one segment.
     #[test]
     fn owner_is_the_last_group_segment() {
         assert_eq!(owner_of(&repo("cli", "cli")), "cli");
         assert_eq!(owner_of(&repo("acme/team", "svc")), "team");
     }
 
-    /// GraphQL takes the PR number as an Int — a string would fail the type check.
     #[test]
     fn pr_vars_carry_a_numeric_number() {
         let v = pr_vars(&repo("cli", "cli"), "9000");
@@ -505,8 +538,6 @@ mod tests {
         assert_eq!(url, "https://ci/1");
     }
 
-    // Worst state wins: a reviewer needs to know something is broken even when
-    // most jobs passed.
     #[test]
     fn one_failure_fails_the_rollup() {
         let r = serde_json::json!([
@@ -526,19 +557,20 @@ mod tests {
         assert_eq!(rollup_status(&r).unwrap().0, "running");
     }
 
-    /// Legacy commit statuses report `state`, not `status`/`conclusion`.
     #[test]
     fn reads_legacy_commit_statuses_too() {
         let failed = serde_json::json!([{ "state": "FAILURE", "targetUrl": "https://ci/2" }]);
-        assert_eq!(rollup_status(&failed).unwrap(), ("failed".into(), "https://ci/2".into()));
+        assert_eq!(
+            rollup_status(&failed).unwrap(),
+            ("failed".into(), "https://ci/2".into())
+        );
         let pending = serde_json::json!([{ "state": "PENDING" }]);
         assert_eq!(rollup_status(&pending).unwrap().0, "running");
         let ok = serde_json::json!([{ "state": "SUCCESS" }]);
         assert_eq!(rollup_status(&ok).unwrap().0, "success");
     }
 
-    /// Captured from the GraphQL API against cli/cli#9000 — a resolved thread, an
-    /// open one, and a conversation comment.
+    /// Captured from cli/cli#9000: a resolved thread, an open one, and a conversation comment.
     const THREADS: &str = r#"{
       "reviewThreads": { "nodes": [
         { "id": "PRRT_kwDODKw3uc48Rk4m", "isResolved": true, "isOutdated": false,
@@ -572,8 +604,6 @@ mod tests {
         assert_eq!(out.as_array().unwrap().len(), 3);
     }
 
-    /// The thread id must be the GraphQL NODE id: `resolve_mr_thread` and
-    /// `reply_to_thread` both address the thread by it.
     #[test]
     fn a_thread_keeps_its_node_id() {
         let out = threads();
@@ -581,13 +611,15 @@ mod tests {
         assert_eq!(out[1]["id"], "PRRT_kwDODKw3uc48RxjH");
     }
 
-    // The shape the UI reads: notes[0].author.username + position.new_path/new_line.
     #[test]
     fn a_note_carries_its_author_and_new_side_position() {
         let out = threads();
         let note = &out[0]["notes"][0];
         assert_eq!(note["author"]["username"], "williammartin");
-        assert_eq!(note["position"]["new_path"], "pkg/cmd/attestation/verify/verify.go");
+        assert_eq!(
+            note["position"]["new_path"],
+            "pkg/cmd/attestation/verify/verify.go"
+        );
         assert_eq!(note["position"]["new_line"], 130);
         assert_eq!(note["resolved"], true);
         assert_eq!(note["resolvable"], true);
@@ -598,8 +630,6 @@ mod tests {
         assert_eq!(threads()[1]["notes"][0]["resolved"], false);
     }
 
-    /// A conversation comment is a position-less, non-resolvable note — otherwise
-    /// the UI offers a Resolve button that GitHub would reject.
     #[test]
     fn a_conversation_comment_has_no_position_and_no_resolve() {
         let out = threads();
@@ -609,7 +639,6 @@ mod tests {
         assert_eq!(note["author"]["username"], "andyfeller");
     }
 
-    /// LEFT-side threads are on the old file, which the UI cannot anchor.
     #[test]
     fn an_old_side_thread_keeps_the_note_but_drops_the_position() {
         let raw = serde_json::json!({
@@ -628,13 +657,19 @@ mod tests {
 
     #[test]
     fn an_empty_pull_request_yields_no_threads() {
-        let raw = serde_json::json!({ "reviewThreads": { "nodes": [] }, "comments": { "nodes": [] } });
+        let raw =
+            serde_json::json!({ "reviewThreads": { "nodes": [] }, "comments": { "nodes": [] } });
         assert_eq!(threads_from_graphql(&raw).as_array().unwrap().len(), 0);
-        // A payload missing the keys entirely (an errored query) must not panic.
-        assert_eq!(threads_from_graphql(&serde_json::json!({})).as_array().unwrap().len(), 0);
+        // A payload with no keys must not panic.
+        assert_eq!(
+            threads_from_graphql(&serde_json::json!({}))
+                .as_array()
+                .unwrap()
+                .len(),
+            0
+        );
     }
 
-    // The vocabulary is GitLab's on purpose — the UI's ciGroup() maps these.
     #[test]
     fn statuses_are_the_ones_the_ui_groups_on() {
         for r in [
@@ -643,7 +678,10 @@ mod tests {
             serde_json::json!([{ "conclusion": "SUCCESS" }]),
         ] {
             let (status, _) = rollup_status(&r).unwrap();
-            assert!(["failed", "running", "success"].contains(&status.as_str()), "{status}");
+            assert!(
+                ["failed", "running", "success"].contains(&status.as_str()),
+                "{status}"
+            );
         }
     }
 }

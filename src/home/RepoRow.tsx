@@ -25,7 +25,7 @@ function MrLine({ mr }: { mr: HomeMr }) {
   );
 }
 
-/** Group the flat repo+worktree rows by repo, preserving first-seen order. */
+/** Groups the flat repo+worktree rows by repo, in first-seen order. */
 function byRepo(repos: HomeRepo[]) {
   const order: string[] = [];
   const map = new Map<string, HomeRepo[]>();
@@ -36,8 +36,7 @@ function byRepo(repos: HomeRepo[]) {
   return order.map((id) => ({ repoId: id, project: map.get(id)![0].project, worktrees: map.get(id)! }));
 }
 
-/** A live session's repos, expanded: the project name over its worktrees, each
- *  branch a clickable row (opens the editor there) with its MR beside it. */
+/** A live session's repos, expanded: each branch a clickable row with its MR beside it. */
 export function LiveRepos({ entry }: { entry: HomeEntry }) {
   const refreshHome = useStore((s) => s.refreshHome);
   const setLastError = useStore((s) => s.setLastError);

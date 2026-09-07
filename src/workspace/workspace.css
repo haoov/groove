@@ -1,4 +1,4 @@
-/* ── Workspace ────────────────────────────────────────────────────────────── */
+/* ── Workspace ── */
 
 .workspace {
   flex: 1;
@@ -20,7 +20,6 @@
   background: var(--gl-color-blue-400);
 }
 
-/* Horizontal divider above the bottom terminal dock */
 .resize-handle-h {
   height: 1px;
   flex-shrink: 0;
@@ -43,7 +42,7 @@
   overflow: hidden;
 }
 
-/* ── Unified workspace surface (tabbed + splittable) ──────────────────────── */
+/* ── Workspace surface ── */
 
 .workspace-surface {
   flex: 1;
@@ -65,11 +64,10 @@
   flex-direction: column;
   overflow: hidden;
 }
-/* When split, mark the focused pane (top accent — never a left inset border). */
 .ws-split .ws-pane { border-top: 2px solid transparent; }
 .ws-split .ws-pane.active { border-top-color: var(--gl-color-blue-400); }
 
-/* Tab strip */
+/* ── Tab strip ── */
 .ws-tabstrip {
   display: flex;
   align-items: stretch;
@@ -100,12 +98,9 @@
   background: var(--gl-background-color-default);
   border-bottom-color: transparent;
 }
-/* An active tab carries its content's background; a terminal's is --term-bg. */
 .ws-tab.active.term { background: var(--term-bg); }
 .ws-tab-icon { flex-shrink: 0; }
-/* Transient preview tab (file-search) — italic, like VS Code. */
 .ws-tab.preview .ws-tab-name { font-style: italic; }
-/* Label stack: filename on top, repo name as a subtitle below (multi-repo). */
 .ws-tab-labels { display: flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.15; }
 .ws-tab-name { font-family: var(--font-mono); font-size: var(--gl-font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-tab-repo {
@@ -121,7 +116,7 @@
 .ws-tab:hover .ws-tab-close { opacity: 1; }
 .ws-tab-close:hover { color: var(--gl-color-red-400); background: var(--gl-color-red-100); }
 
-/* Per-tab Diff⇄Edit toggle */
+/* ── View toggle ── */
 .ws-view-toggle { display: flex; align-items: center; gap: 2px; padding: 0 var(--space-2); flex-shrink: 0; }
 .ws-view-btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -137,7 +132,7 @@
 }
 .ws-toggle-sep { width: 1px; height: 14px; background: var(--gl-border-color-default); margin: 0 4px; flex-shrink: 0; }
 
-/* ── Recursive pane splits ─────────────────────────────────────────────────── */
+/* ── Pane splits ── */
 .ws-split { flex: 1; display: flex; min-width: 0; min-height: 0; }
 .ws-split.row { flex-direction: row; }
 .ws-split.col { flex-direction: column; }
@@ -149,7 +144,7 @@
   gap: var(--space-3); color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-md);
 }
 
-/* Edit tab: CodeMirror editor + a thin footer (lang · path · save). */
+/* ── Edit tab ── */
 .edit-tab { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .edit-tab .code-editor-host { flex: 1; min-height: 0; }
 .edit-tab-foot {
@@ -159,9 +154,7 @@
   color: var(--gl-text-color-disabled);
 }
 
-/* ── Breadcrumbs ───────────────────────────────────────────────────────────────
-   Shares the tab strip's background so it reads as one piece of chrome rather
-   than a band across the editor. File tabs only — nothing else has a path. */
+/* ── Breadcrumbs ── */
 .ws-crumbs {
   display: flex;
   align-items: center;
@@ -169,8 +162,6 @@
   overflow-x: auto;
   gap: 2px;
   padding: var(--space-2) var(--space-3);
-  /* Transparent, so it sits on the editor's own surface rather than reading as a
-     second header bar above it. */
   background: transparent;
   border-bottom: 1px solid var(--gl-border-color-subtle);
   font-size: var(--gl-font-size-sm);
@@ -194,8 +185,6 @@
 .ws-crumb-dir:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 .ws-crumb-file { color: var(--gl-text-color-default); padding: 2px 4px; }
 
-/* ── Session workspaces host (from session.css) ── */
-/* Session hosts. The tab strip that used to live here went with the header tabs —
-   sessions are switched from the header picker and the running-agents list. */
+/* ── Session hosts ── */
 .session-workspaces { display: flex; }
 .session-host { display: flex; }

@@ -1,7 +1,4 @@
-//! Notion's half of setup: what the user fills in, and the config built from it.
-//!
-//! Lives with the provider — task_manager/setup.rs stays source-agnostic and
-//! only assembles whichever sources were filled in.
+//! Notion's half of setup: the setup payload and the config built from it.
 
 use crate::core::config::{FilterConfig, NotionConfig};
 
@@ -14,11 +11,7 @@ pub struct NotionSetup {
     pub template_page_id: Option<String>,
 }
 
-/// What the database says about itself, for the setup screen to show before
-/// saving.
-///
-/// The point is that the user can SEE what was detected: a silent wrong guess
-/// about which property holds the status is worse than a visible one.
+/// The detected schema, for the setup screen.
 #[derive(Debug, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct DetectedSchema {
@@ -32,7 +25,7 @@ pub struct DetectedSchema {
     pub status_ready: String,
     pub status_in_progress: String,
     pub status_done: String,
-    /// Every status option, so a wrong pick is obvious in context.
+    /// Every status option.
     pub status_options: Vec<String>,
 }
 
@@ -66,9 +59,8 @@ pub async fn detect_notion_database(
     })
 }
 
-/// Reading the schema is both the detection and the check that the integration
-/// can see this database — the most likely mistake, and one that would otherwise
-/// surface later as an empty task list.
+/// The Notion config from the setup payload. Reading the schema also checks
+/// that the integration can see the database.
 pub async fn build_config(n: &NotionSetup) -> Result<NotionConfig, String> {
     let token = n.token.trim();
     let database_id = n.database_id.trim();
@@ -82,8 +74,6 @@ pub async fn build_config(n: &NotionSetup) -> Result<NotionConfig, String> {
     let properties = super::detect::detect_properties(&schema);
     let status_map = super::detect::detect_status_map(&schema);
 
-    // Excluding the completion state is what keeps finished work off Home. Detected
-    // rather than assumed to be called "Done".
     let exclude_statuses = if status_map.done.is_empty() {
         vec![]
     } else {
@@ -95,8 +85,6 @@ pub async fn build_config(n: &NotionSetup) -> Result<NotionConfig, String> {
         .as_ref()
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty());
-    // Validate it now: a template id that cannot be read fails at explorer→task
-    // conversion, long after setup, with nothing pointing back here.
     if let Some(id) = &template {
         super::body::template_markdown(id, token)
             .await

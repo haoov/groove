@@ -1,5 +1,4 @@
-/* One Light (Atom) — light.  Atom One Light palette + light-mode polarity overrides.
-   Slot names stay catppuccin-flavoured; values hold One Light's nearest hue. */
+/* One Light (Atom), light: One Light hues in the palette slots */
 :root[data-theme='onelight'] {
   --ctp-rosewater: #e45649;
   --ctp-flamingo:  #ca1243;
@@ -28,7 +27,7 @@
   --ctp-mantle:    #f0f0f1;
   --ctp-crust:     #eaeaeb;
 
-  /* ── light-mode polarity ──────────────────────────────────────────────── */
+  /* ── Light-mode polarity ── */
   --gl-elevate: 0, 0, 0;
   --gl-selection-text: var(--ctp-text);
   --gl-backdrop: rgba(40, 42, 54, 0.30);
@@ -37,7 +36,7 @@
   --shadow-modal: 0 16px 44px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05) inset;
   --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.10);
 
-  /* terminal black/white ramp flips for a light background */
+  /* terminal black/white ramp, flipped */
   --term-black:        var(--ctp-subtext1);
   --term-bright-black: var(--ctp-subtext0);
   --term-white:        var(--ctp-surface1);

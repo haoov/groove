@@ -8,14 +8,8 @@ import { TimeFields } from './TimeFields';
 import type { PropertyValue, TaskSchema } from '../shared/ipc/ipc';
 
 /**
- * The task's properties as a framed strip of labelled columns (the mockup): each
- * property is a small uppercase key over its value, divided by hairlines, with
- * the "+ field" button pinned to the right. Every value opens a popover to edit —
- * one interaction model for status, select, date, number and multi-value sets.
- *
- * Shown = properties that have a value (or were just revealed via + field), plus
- * read-only computed fields; empty editable properties live behind + field.
- * Time is the last column, and renders with no schema too.
+ * The task's properties as a strip of labelled columns, each edited in a popover.
+ * Empty editable properties live behind "+ field". Time is the last column.
  */
 
 export function PropertyStrip({
@@ -54,8 +48,6 @@ export function PropertyStrip({
     const rows: Row[] = (schema?.properties ?? [])
       .filter((p) => !p.meta && p.name !== schema?.hours_property)
       .map((p) => ({ prop: p, current: values.find((v) => v.name === p.name) }));
-    // Columns, in schema order: editable props that carry a value (or were just
-    // revealed), plus read-only computed props that have something to show.
     const shownRows = rows.filter((r) =>
       r.prop.editable
         ? (hasValue(r.current) || revealed.has(r.prop.name))

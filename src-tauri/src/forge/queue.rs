@@ -3,13 +3,11 @@
 
 use crate::core::forge::api::pct;
 
-/// An open MR where the current user is a reviewer, matched (by pool slug) to
-/// its MAIN clone when one exists. TS mirror in types/ipc.ts.
+/// An open MR where the current user is a reviewer, matched by pool slug to its MAIN clone.
 #[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ReviewMr {
-    /// Which forge this row came from: "gitlab" or "github". The UI reads it for
-    /// the reference sigil (`!42` vs `#42`).
+    /// "gitlab" or "github".
     pub platform: String,
     /// Full project path on the forge, e.g. "wiremind/devops/gitlab-ci-common".
     pub project_full: String,
@@ -24,23 +22,25 @@ pub struct ReviewMr {
     pub updated_at: String,
     /// MAIN clone path when the project is already cloned locally.
     pub local_path: Option<String>,
-    /// Already approved (by anyone) but not merged — shown as a pill in Up next.
+    /// Approved by anyone but not merged.
     pub approved: bool,
 }
 
-/// Every forge host in the pool is asked, so a self-managed GitLab and
-/// gitlab.com both report. One host failing (CLI missing, not logged in) must
-/// not blank the others: each is best-effort and only a total failure surfaces.
+/// Ask every forge host in the pool; one host failing does not blank the others.
 #[tauri::command]
 pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
-    let main_repos = crate::worktrees::list_main_repos().await.map_err(|e| e.to_string())?;
+    let main_repos = crate::worktrees::list_main_repos()
+        .await
+        .map_err(|e| e.to_string())?;
 
-    // The pool layout is the identity: slug = <host>/<group…>/<project>.
+    // A pool slug is `<host>/<group…>/<project>`.
     let mut hosts: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     let mut clone_by_project: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
     for r in &main_repos {
-        let Some((host, _)) = r.slug.split_once('/') else { continue };
+        let Some((host, _)) = r.slug.split_once('/') else {
+            continue;
+        };
         hosts.insert(host.to_string());
         clone_by_project.insert(r.slug.clone(), r.local_path.clone());
     }
@@ -51,8 +51,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     let results = futures_util::future::join_all(hosts.iter().map(|host| {
         let clones = &clone_by_project;
         async move {
-            // Same rule as client::make_client, so the queue and the MR views
-            // cannot disagree about which forge a host is.
+            // Same rule as `client::make_client`.
             let mrs = if host.contains("github") {
                 github_reviews(host, clones).await
             } else {
@@ -68,7 +67,7 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     for (host, result) in results {
         match result {
             Ok(mut mrs) => out.append(&mut mrs),
-            // No CLI for that forge means no repos on it — not something to report.
+            // A missing CLI is not reported.
             Err(e) if crate::core::forge::auth::is_cli_missing(&e) => {
                 tracing::debug!("{host} review queue skipped: {e}");
             }
@@ -78,7 +77,6 @@ pub async fn list_review_mrs() -> Result<Vec<ReviewMr>, String> {
     if out.is_empty() && !errors.is_empty() {
         return Err(errors.join(" · "));
     }
-    // Most recently touched first, across every host.
     out.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
     Ok(out)
 }
@@ -93,7 +91,9 @@ async fn github_reviews(
         .filter_map(|pr| {
             let project_full = pr["repository"]["nameWithOwner"].as_str()?.to_string();
             Some(ReviewMr {
-                local_path: clone_by_project.get(&format!("{host}/{project_full}")).cloned(),
+                local_path: clone_by_project
+                    .get(&format!("{host}/{project_full}"))
+                    .cloned(),
                 iid: pr["number"].as_u64()?,
                 title: pr["title"].as_str().unwrap_or("").to_string(),
                 author: pr["author"]["login"].as_str().unwrap_or("").to_string(),
@@ -132,7 +132,9 @@ async fn gitlab_reviews(
             continue;
         }
         result.push(ReviewMr {
-            local_path: clone_by_project.get(&format!("{host}/{project_full}")).cloned(),
+            local_path: clone_by_project
+                .get(&format!("{host}/{project_full}"))
+                .cloned(),
             iid: item["iid"].as_u64().unwrap_or(0),
             title: item["title"].as_str().unwrap_or("").to_string(),
             author: item["author"]["username"]
@@ -142,18 +144,20 @@ async fn gitlab_reviews(
                 .to_string(),
             source_branch: item["source_branch"].as_str().unwrap_or("").to_string(),
             target_branch: item["target_branch"].as_str().unwrap_or("").to_string(),
-            draft: item["draft"].as_bool().or(item["work_in_progress"].as_bool()).unwrap_or(false),
+            draft: item["draft"]
+                .as_bool()
+                .or(item["work_in_progress"].as_bool())
+                .unwrap_or(false),
             web_url: item["web_url"].as_str().unwrap_or("").to_string(),
             updated_at: item["updated_at"].as_str().unwrap_or("").to_string(),
-            // Filled in concurrently below — one approvals call per MR.
+            // Filled in below.
             approved: false,
             platform: "gitlab".into(),
             project_full,
         });
     }
 
-    // Approval isn't in the list payload, so fetch it per MR. Concurrent, so the
-    // queue costs one extra round-trip in wall time rather than N.
+    // Approval is not in the list payload; one concurrent call per MR.
     let flags = futures_util::future::join_all(
         result
             .iter()

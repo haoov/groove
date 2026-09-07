@@ -1,13 +1,11 @@
 import type { ToolCheck } from '../ipc/ipc';
 
-// The forge axis: where CODE is hosted (github/gitlab) — not `provider`, which
-// is where a TASK came from. One place for the sigil and the name; nine copies
-// of `=== 'github' ? … : …` had made "not github" silently mean GitLab.
+// The forge axis: where code is hosted (github/gitlab). Not `provider`, which is where a task came from.
 
-/** `#` for GitHub, `!` for GitLab — the reference sigil each forge uses. */
+/** The reference sigil: `#` for GitHub, `!` for GitLab. */
 export const mrSigil = (platform: string): string => (platform === 'github' ? '#' : '!');
 
-/** `#42` / `!42` — an MR/PR reference as its forge writes it. */
+/** An MR/PR reference as its forge writes it: `#42` / `!42`. */
 export const mrRef = (platform: string, number: string | number): string =>
   `${mrSigil(platform)}${number}`;
 
@@ -17,19 +15,13 @@ export const forgeName = (platform: string): string =>
 
 // ── Forge CLI readiness ───────────────────────────────────────────────────────
 
-/** The forge CLIs the app shells out to — `Git & forge`'s rows. */
+/** The forge CLIs the app shells out to. */
 export const FORGE_CLIS: readonly string[] = ['glab', 'gh'];
 
 /** How ready a forge CLI is, worst first. */
 export type ForgeCliState = 'missing' | 'needs-auth' | 'needs-scope' | 'ready';
 
-/**
- * "Can this CLI do its job" — one rule for the first-run screen and the settings view.
- *
- * `gh` writes GitHub task properties, which needs the `project` scope. A scopes
- * list we could not read is UNKNOWN, not empty: a GH_TOKEN or a fine-grained PAT
- * prints none, and warning those users would be permanent.
- */
+/** How ready a forge CLI is. `gh` needs the `project` scope; an unreadable scopes list is unknown, not empty. */
 export function forgeCliState(tool: ToolCheck): ForgeCliState {
   if (!tool.path) return 'missing';
   if (tool.authed === false) return 'needs-auth';

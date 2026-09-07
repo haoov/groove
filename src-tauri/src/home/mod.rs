@@ -1,22 +1,18 @@
-//! The Home snapshot: what is *locally real* right now.
-//!
-//! Home's job is the state a task source can't show — which sessions are checked out,
-//! their repos/worktrees, and each MR's id + state. One SQL statement
-//! (store::home::snapshot) delivers every row, so a normal load is fully local;
-//! an explicit refresh (`force_mr`) additionally re-reads each MR's live state.
+//! The Home snapshot: checked-out sessions, their repos and worktrees, and each
+//! MR's id and state. `force_mr` re-reads each MR's live state.
 
 use serde::Serialize;
 use sqlx::SqlitePool;
 
 use crate::core::db::models::SessionKind;
-use crate::core::db::store::home::HomeRow;
 use crate::core::db::store;
+use crate::core::db::store::home::HomeRow;
 
 #[derive(Debug, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct HomeMr {
     pub id: String,
-    /// "gitlab" | "github" — the UI picks `!42` or `#42` from it.
+    /// "gitlab" | "github".
     pub platform: String,
     pub remote_id: String,
     pub state: String,
@@ -25,7 +21,7 @@ pub struct HomeMr {
     pub ci: Option<String>,
     #[ts(type = "number")]
     pub unresolved: i64,
-    /// Carries at least one approval — surfaced as a pill on Home.
+    /// Carries at least one approval.
     pub approved: bool,
 }
 
@@ -38,9 +34,9 @@ pub struct HomeRepo {
     pub branch: Option<String>,
     /// A worktree row exists for this repo.
     pub provisioned: bool,
-    /// Provisioned, but the directory is gone (deleted by hand / stale row).
+    /// Provisioned, but the directory is gone.
     pub missing: bool,
-    /// Working-tree changes (untracked files included, matching the sidebar chips).
+    /// Working-tree changes, untracked files included.
     #[ts(type = "number")]
     pub modified: i64,
     #[ts(type = "number")]
@@ -90,23 +86,22 @@ async fn snapshot(force_mr: bool, pool: &SqlitePool) -> anyhow::Result<Vec<HomeE
     let rows = store::home::snapshot(pool).await?;
     let entries = group_rows(rows);
 
-    Ok(futures_util::future::join_all(
-        entries.into_iter().map(|(entry, repo_rows)| async move {
+    Ok(
+        futures_util::future::join_all(entries.into_iter().map(|(entry, repo_rows)| async move {
             let repos = futures_util::future::join_all(
-                repo_rows.into_iter().map(|row| repo_state(row, force_mr, pool)),
+                repo_rows
+                    .into_iter()
+                    .map(|row| repo_state(row, force_mr, pool)),
             )
             .await;
             HomeEntry { repos, ..entry }
-        }),
+        }))
+        .await,
     )
-    .await)
 }
 
-/// Fold the flat snapshot rows into ONE entry per session, in first-seen order.
-///
-/// Looks the session up rather than trusting that its rows are adjacent: they are
-/// only adjacent while the query's ORDER BY happens to group them, and a tie there
-/// used to interleave two sessions and list one of them twice.
+/// Fold the flat rows into one entry per session, in first-seen order. Look the
+/// session up: its rows are not always adjacent.
 fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
     let mut entries: Vec<(HomeEntry, Vec<HomeRow>)> = vec![];
     let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -116,7 +111,10 @@ fn group_rows(rows: Vec<HomeRow>) -> Vec<(HomeEntry, Vec<HomeRow>)> {
                 HomeEntry {
                     short_id: row.session_id.clone(),
                     title: row.title.clone(),
-                    status: row.status.clone().unwrap_or_else(|| "in_progress".to_string()),
+                    status: row
+                        .status
+                        .clone()
+                        .unwrap_or_else(|| "in_progress".to_string()),
                     priority: row.priority.clone(),
                     provider: row.provider.clone(),
                     external_url: row.external_url.clone(),
@@ -153,15 +151,15 @@ async fn repo_state(row: HomeRow, force_mr: bool, pool: &SqlitePool) -> HomeRepo
         mr: None,
     };
 
-    let (Some(worktree_id), Some(path), Some(branch)) =
-        (row.worktree_id.clone(), row.worktree_path.clone(), row.branch.clone())
-    else {
+    let (Some(worktree_id), Some(path), Some(branch)) = (
+        row.worktree_id.clone(),
+        row.worktree_path.clone(),
+        row.branch.clone(),
+    ) else {
         return base;
     };
 
-    // Home Live shows only repo · branch · MR id + state, so the snapshot stays
-    // local: no git status/delta and no forge signals. The git-stat fields keep
-    // their zero defaults; the frontend does not read them here.
+    // The snapshot stays local; the git-stat fields keep their zero defaults.
     let mr = mr_for(&row, force_mr, pool).await;
 
     HomeRepo {
@@ -183,9 +181,7 @@ async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<Home
         row.mr_state.clone()?,
     );
 
-    // Only on an explicit refresh: re-read the live state and persist it if it
-    // moved (a merge leaves the stored row reading "open"). A failed fetch keeps
-    // the stored value. Normal loads stay fully local.
+    // Re-read the live state and persist a change; a failed fetch keeps the stored value.
     if force_mr {
         let repo = crate::core::db::models::Repo {
             id: row.repo_id.clone()?,
@@ -202,7 +198,6 @@ async fn mr_for(row: &HomeRow, force_mr: bool, pool: &SqlitePool) -> Option<Home
         }
     }
 
-    // Home shows only the id + state; the other signals are no longer fetched.
     Some(HomeMr {
         id: mr_id,
         platform,
@@ -244,9 +239,6 @@ mod tests {
         }
     }
 
-    /// Two sessions opened in the same second share created_at, so the query's
-    /// secondary sort used to interleave their rows — and a session whose rows
-    /// were split appeared TWICE on Home.
     #[test]
     fn interleaved_rows_still_yield_one_entry_per_session() {
         let entries = group_rows(vec![
@@ -256,12 +248,15 @@ mod tests {
         ]);
 
         let ids: Vec<&str> = entries.iter().map(|(e, _)| e.short_id.as_str()).collect();
-        assert_eq!(ids, ["B", "A"], "one entry per session, in first-seen order");
+        assert_eq!(
+            ids,
+            ["B", "A"],
+            "one entry per session, in first-seen order"
+        );
         assert_eq!(entries[0].1.len(), 2, "both of B's repos land on B");
         assert_eq!(entries[1].1.len(), 1);
     }
 
-    /// A session with no repos is still an entry, with no repo rows.
     #[test]
     fn a_session_with_no_repos_is_kept() {
         let entries = group_rows(vec![row("solo", None)]);

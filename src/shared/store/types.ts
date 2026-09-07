@@ -1,8 +1,4 @@
 // Store contracts: the shapes every component and reducer agrees on.
-//
-// Split out of index.ts so the pure session logic (session.ts) can import them
-// without a cycle through the store itself. index.ts re-exports everything here,
-// so `import type { SessionState } from './'` keeps working.
 
 import type {
   Task, Repo, Worktree, Mr, MrThread, Annotation, DiffResult, Hunk, CommitEntry,
@@ -18,9 +14,7 @@ export type PickerKind = 'session' | 'repo' | 'worktree' | null;
 
 // ─── The app store's own contract ────────────────────────────────────────────
 
-/** A content-search hit the editor should mark: the needle, and the 1-based line it
- *  was found on. The line is what keeps the preview to the selected row's match
- *  rather than every occurrence in the file. */
+/** A content-search hit the editor marks: the needle and its 1-based line. */
 export interface GrepHighlight {
   query: string;
   line: number;
@@ -32,60 +26,46 @@ export interface UiSlice {
   setView: (v: AppView) => void;
 
   // ── Sidebar list focus ──────────────────────────────────────────────────────
-  // Bumped by the panel.* shortcuts so the focused list grabs DOM focus for
-  // keyboard (vim) navigation.
   panelFocusNonce: number;
   requestPanelFocus: () => void;
-  /** Bumped to pull DOM focus into the Source-control commit box. Also flips the
-   *  active session's sidebar to the git tab so the commit box is mounted. */
+  /** Bumped to focus the Source-control commit box. Also selects the git sidebar tab. */
   commitFocusNonce: number;
   requestCommitFocus: () => void;
-  /** Bumped by Alt+F / Ctrl+Shift+F to focus the file-search input; `fileSearchMode`
-   *  selects filename vs content search when it lands. */
+  /** Bumped to focus the file-search input; `fileSearchMode` selects name or content search. */
   fileSearchFocusNonce: number;
   fileSearchMode: 'name' | 'text';
   requestFileSearchFocus: (mode?: 'name' | 'text') => void;
 
   // ── Grep match highlight ────────────────────────────────────────────────────
-  // The ONE match the Files panel's text-search cursor sits on, highlighted in the
-  // editor preview. Null = off.
+  // The match the Files panel's text-search cursor sits on. Null = off.
   grepHighlight: GrepHighlight | null;
   setGrepHighlight: (h: GrepHighlight | null) => void;
 
   // ── Terminal focus ──────────────────────────────────────────────────────────
-  // Bumped by the terminal keybinding to pull DOM focus into the active terminal
-  // (read by PtyTabBody). A nonce, so repeat presses re-fire.
   terminalFocusReq: number | null;
   requestTerminalFocus: () => void;
-  /** The bottom terminal dock on Home. A workspace has panes for this; Home does
-   *  not, so the shell lives app-level there — like the agent console. */
+  /** The bottom terminal dock on Home. */
   terminalConsoleOpen: boolean;
   setTerminalConsoleOpen: (v: boolean) => void;
 
   // ── Command palette / overlays ─────────────────────────────────────────────
   commandPaletteOpen: boolean;
   setCommandPaletteOpen: (v: boolean) => void;
-  /** Ask the file tree to expand down to a directory (breadcrumb clicks). The
-   *  nonce makes repeat requests for the same path fire again. */
+  /** Expands the file tree down to a directory. */
   revealDir: { path: string; nonce: number } | null;
   revealInTree: (path: string) => void;
-  /** Which header context picker is open (Alt+S / Alt+R / Alt+W), or none. Only
-   *  one at a time. Pressing the same shortcut again moves the highlight. */
   openPicker: PickerKind;
   setOpenPicker: (p: PickerKind) => void;
-  /** Highlighted row in the open picker. The shortcut advances it; Enter (or a
-   *  click) commits. Shared because only one picker is open at a time. */
+  /** Highlighted row in the open picker. */
   pickerCursor: number;
   setPickerCursor: (n: number) => void;
-  /** Alt+Shift+R add-repo wizard. One flag, so the two buttons that used to hold
-   *  their own local state and the keybinding all open the same instance. */
   addRepoOpen: boolean;
   addWorktreeOpen: boolean;
   setAddRepoOpen: (v: boolean) => void;
   setAddWorktreeOpen: (v: boolean) => void;
 
   // ── Settings ──────────────────────────────────────────────────────────────
-  /** Which view closing settings returns to — the one it was opened from. */
+  /** The view closing settings returns to. */
   settingsReturnTo: AppView;
   openSettings: () => void;
   closeSettings: () => void;
@@ -93,15 +73,13 @@ export interface UiSlice {
   // ── Editor: Vim mode (persisted to localStorage) ───────────────────────────
   vimMode: boolean;
   setVimMode: (v: boolean) => void;
-
-  // ── Task open wizard ──────────────────────────────────────────────────────
 }
 
 export interface HomeSlice {
   // ── Review queue (Home + rail badge) ────────────────────────────────────────
   /** Open MRs where the user is a reviewer. Null until the first fetch lands. */
   reviewQueue: ReviewMr[] | null;
-  /** Refetch the queue (silent-warn on failure — glab may be unavailable). */
+  /** Refetches the queue; a failure only warns. */
   refreshReviewQueue: () => Promise<void>;
 
   // ── Home snapshot (local state of every live session) ───────────────────────
@@ -109,7 +87,7 @@ export interface HomeSlice {
   homeSnapshot: HomeEntry[] | null;
   /** True while a refresh is in flight (drives the refresh spinner). */
   homeLoading: boolean;
-  /** Refetch. `forceMr` also bypasses the cached CI/thread counts (manual refresh). */
+  /** Refetches. `forceMr` also bypasses the cached CI/thread counts. */
   refreshHome: (forceMr?: boolean) => Promise<void>;
 
   // ── Task list ─────────────────────────────────────────────────────────────
@@ -124,21 +102,18 @@ export interface SessionsSlice {
   sessions: Record<string, SessionState>;
   sessionOrder: string[];
   activeSessionId: string | null;
-  /** Open (or focus, for an already-open task) a session and make it active.
-   *  `focus: false` registers it without navigating. */
+  /** Opens or focuses a session and makes it active. `focus: false` skips navigation. */
   openSession: (input: { kind: SessionKind; task?: Task | null; worktrees?: Worktree[]; repos?: Repo[]; focus?: boolean }) => string;
   focusSession: (id: string) => void;
-  /** Remove a session from the store (pure state — stop its PTYs first via endSession). */
+  /** Removes a session from the store. Stop its PTYs first via endSession. */
   closeSession: (id: string) => void;
-  /** Patch one session's state (object patch or recipe). Used by event handlers. */
+  /** Patches one session's state with an object patch or a recipe. */
   updateSession: (id: string, patch: Partial<SessionState> | ((s: SessionState) => Partial<SessionState>)) => void;
-  /** Recompute a session's worktree git status (for non-hook event handlers). */
+  /** Recomputes a session's worktree git status. */
   refreshStatusFor: (id: string) => Promise<void>;
-  /** Force a diff reload for a session: bump its diffNonce (re-fetches the
-   *  summary) and clear cached hunks (re-fetches expanded files). Keeps the
-   *  current diff visible until the refetch lands, so there's no flicker. */
+  /** Bumps diffNonce and clears cached hunks. The current diff stays visible until the refetch lands. */
   invalidateDiff: (id: string) => void;
-  /** Force an MR + threads reload for a session (after mr.* ops land). */
+  /** Forces an MR + threads reload for a session. */
   invalidateMrs: (id: string) => void;
 }
 
@@ -146,41 +121,33 @@ export interface ConfirmationsSlice {
   pendingConfirmations: ConfirmationDto[];
   addConfirmation: (c: ConfirmationDto) => void;
   removeConfirmation: (id: string) => void;
-  /** True while the approvals modal is deferred (Esc / "Later"). The queue stays
-   *  pending and the statusbar badge stays lit; a NEW confirmation un-defers. */
+  /** True while the approvals modal is deferred. A new confirmation un-defers it. */
   confirmationsMinimized: boolean;
   setConfirmationsMinimized: (v: boolean) => void;
 }
 
 export interface AgentSlice {
-  /** What each agent is doing, keyed by TASK short id. Reported by Claude Code
-   *  hooks (src-tauri/src/agent_hooks) — a task absent from the map has no agent
-   *  running, or one that started before this build and never reported. */
+  /** Agent activity keyed by task short id, reported by Claude Code hooks. */
   agentActivity: Record<string, AgentActivity>;
   setAgentActivity: (a: AgentActivity) => void;
   dropAgentActivity: (taskId: string) => void;
   hydrateAgentActivity: () => Promise<void>;
-  /** The agent console is expanded. It always addresses the FOCUSED session — no
-   *  picker, so "the agent I'm talking to" is whatever the window is showing. It
-   *  is also the agent's ONLY surface: there is no agent tab. */
+  /** The agent console is expanded. It addresses the focused session. */
   consoleOpen: boolean;
   setConsoleOpen: (v: boolean) => void;
   /** Bumped by the keybinding to pull DOM focus into the console's terminal. */
   consoleFocusNonce: number;
   requestConsoleFocus: () => void;
-  /** The agent column fills the body. `pane.maximize` toggles it when focus is
-   *  inside the agent, so one shortcut maximizes whichever pane you are in. */
+  /** The agent column fills the body. */
   agentMaximized: boolean;
   setAgentMaximized: (v: boolean) => void;
-  /** The agent lives in its own OS window. The docked column is not rendered,
-   *  so the main window keeps the width. Persisted across restarts. */
+  /** The agent lives in its own OS window. Persisted. */
   agentDetached: boolean;
   setAgentDetached: (v: boolean) => void;
-  /** The running-agents list is showing, as a column of the agent panel — in the
-   *  docked console or in the window, whichever is the surface. Persisted. */
+  /** The running-agents list shows as a column of the agent panel. Persisted. */
   agentsSidebarOpen: boolean;
   setAgentsSidebarOpen: (v: boolean) => void;
-  /** Its width, dragged within a small range. Persisted. */
+  /** Its width. Persisted. */
   agentsSidebarWidth: number;
   setAgentsSidebarWidth: (w: number) => void;
 }
@@ -192,8 +159,7 @@ export interface KeybindingsSlice {
   /** Put one command back on this platform's default. */
   resetBinding: (id: CommandId) => void;
   resetKeymap: () => void;
-  /** True while the Settings rebind UI is capturing a keystroke (suspends the
-   *  global keymap so the captured chord isn't also run as a command). */
+  /** True while the Settings rebind UI captures a keystroke; the global keymap is suspended. */
   capturingKey: boolean;
   setCapturingKey: (v: boolean) => void;
 }
@@ -215,12 +181,10 @@ export interface ConfigSlice {
 }
 
 export interface SkillsSlice {
-  /** What the agent can be asked to do, core first. Loaded once at startup and
-   *  after the user edits their own; the pill filters it by session kind. */
+  /** What the agent can be asked to do, core first. */
   skills: AgentSkill[];
   loadSkills: () => Promise<void>;
-  /** A skill file changed since the agents started. They load skills with
-   *  `--plugin-dir` at launch, so until one restarts the change is on disk only. */
+  /** A skill file changed since the agents started. */
   skillsStale: boolean;
   setSkillsStale: (stale: boolean) => void;
 }
@@ -234,37 +198,30 @@ export interface NotificationsSlice {
   dismissToast: (id: string) => void;
   notificationsOpen: boolean;
   setNotificationsOpen: (v: boolean) => void;
-  /** Mark ONE as seen. Merely opening the panel doesn't: the count should only
-   *  drop for things actually looked at, so what's new stays identifiable. */
+  /** Marks one notification as seen. */
   markNotificationRead: (id: string) => void;
   markNotificationsRead: () => void;
   clearNotifications: () => void;
 }
 
-/** The composed store: every slice, one state. Slice creators are typed over the
- *  whole AppState (cross-slice writes go through the shared set/get). */
+/** The composed store: every slice, one state. */
 export type AppState = UiSlice & HomeSlice & SessionsSlice & ConfirmationsSlice &
   AgentSlice & KeybindingsSlice & ConfigSlice & NotificationsSlice & SkillsSlice;
-
-/** Enough history to scroll back through a work session, not a log file. */
 
 export type AppView = 'home' | 'workspace' | 'settings';
 export type SidebarTab = 'files' | 'git' | 'annotations';
 
 // ─── Notifications ────────────────────────────────────────────────────────────
-// One record for everything worth telling the user about, whether it interrupts
-// (a toast) or waits to be read (the notification centre). Both are views of the
-// same feed, so nothing announced is ever unrecoverable — which is what the old
-// single `lastError` slot got wrong: a second error erased the first.
+// One feed; toasts and the notification centre are two views of it.
 
 export type NotificationKind = 'success' | 'error' | 'attention' | 'info';
 
-/** Who produced it — drives the icon and lets the feed be scanned by subsystem. */
+/** Who produced it; drives the icon. */
 export type NotificationSource = 'agent' | 'mcp' | 'git' | 'mr' | 'task' | 'files' | 'app';
 
 export interface NotificationInput {
   kind: NotificationKind;
-  /** One line. The feed is scanned, not read. */
+  /** One line. */
   title: string;
   /** The specifics: an error message, the tool being asked about, a file list. */
   detail?: string;
@@ -283,8 +240,7 @@ export interface AppNotification extends NotificationInput {
   read: boolean;
   /** Repeats of the same event collapse into one row with a count. */
   count: number;
-  /** Shown once as a toast, then forgotten — never in the feed or the badge.
-   *  Set for successes: "that worked" is an acknowledgement, not a record. */
+  /** Shown once as a toast; never in the feed or the badge. */
   ephemeral?: boolean;
 }
 /** Sub-modes of the Source-control panel. */
@@ -299,11 +255,8 @@ export interface EditorTab {
   repoId: string;
   filePath: string;
   view: TabView;
-  /** 'file' = a single file (default); 'changes' = the repo's whole "All changes"
-   *  review; 'commit' = one commit's diff; 'terminal' = a shell. The Overview is
-   *  a session MODE (workspaceMode), not a tab; MRs have no tab either — their
-   *  links open the forge, and a review's MR overview lives in its Overview.
-   *  The agent has no tab kind — it lives in the console (agent/AgentConsole). */
+  /** 'file' = one file (default); 'changes' = the repo's "All changes" review;
+   *  'commit' = one commit's diff; 'terminal' = a shell. */
   kind?: 'file' | 'changes' | 'commit' | 'terminal';
   /** Commit sha for kind='commit'. */
   sha?: string;
@@ -313,8 +266,7 @@ export interface EditorTab {
   label?: string;
   /** Seed cursor line for an edit view (e.g. jumping from a grep result). */
   cursorLine?: number;
-  /** Transient "preview" tab (≤ one per pane) — replaced in place by the next
-   *  preview open, committed on Enter, discarded on Esc. */
+  /** Transient preview tab, at most one per pane. Enter commits it, Esc discards it. */
   preview?: boolean;
 }
 /** A pane is one tab group; panes arrange in a recursive split tree (`layout`). */
@@ -332,12 +284,9 @@ export interface PtySessionState {
 }
 
 // ─── Session layer ────────────────────────────────────────────────────────────
-// A session is one open workspace, of one of three kinds: a real task, a scratch
-// explorer, or an MR review. All per-session workspace state lives inside a
-// SessionState so several can be open at once, each keeping its own tabs, diff,
-// annotations, and agent terminals alive.
+// A session is one open workspace: a task, an explorer, or an MR review.
+// Each holds its own tabs, diff, annotations and agent terminals.
 
-// The generated union — the desk is gone from the schema and the frontend.
 import type { SessionKind } from '../ipc/ipc';
 export type { SessionKind };
 
@@ -347,17 +296,15 @@ export interface SessionState {
   id: string;            // session id (distinct from the task short_id)
   kind: SessionKind;
   title: string;         // tab label
-  /** Which surface the session shows: the Overview page (per kind: ticket /
-   *  explorer / MR review) or the code panes. Opening any tab flips to code. */
+  /** The Overview page or the code panes. Opening any tab flips to code. */
   workspaceMode: WorkspaceMode;
 
-  // ── task-kind payload (optional so future kinds can omit it) ──
+  // ── task-kind payload ──
   task: Task | null;
   worktrees: Worktree[];
   repos: Repo[];
   activeRepoId: string | null;
-  /** The worktree git ops target. PRIMARY: `activeRepoId` is derived from it —
-   *  a repo can hold several worktrees (unique key session+repo+branch). */
+  /** The worktree git ops target. `activeRepoId` is derived from it. */
   activeWorktreeId: string | null;
 
   panes: WorkspacePane[];
@@ -366,12 +313,10 @@ export interface SessionState {
   layout: LayoutNode;
   /** When set, only this pane renders (others stay mounted, hidden). */
   maximizedPaneId: string | null;
-  /** Bumped when a real (non-preview) tab is opened/committed, so the active
-   *  editor grabs DOM focus. Preview opens never bump it (focus stays in the
-   *  file-search input). */
+  /** Bumped when a non-preview tab is opened or committed. Preview opens never bump it. */
   editorFocusNonce: number;
   sidebarTab: SidebarTab;
-  /** The panel column is hidden. Its shortcut closes it when already focused. */
+  /** The panel column is hidden. */
   sidebarCollapsed: boolean;
   gitSubTab: GitSubTab;
 
@@ -379,23 +324,15 @@ export interface SessionState {
   diffHunks: Record<string, Hunk[]>;
   diffMode: DiffMode;
   diffNonce: number;
-  /** Which files are expanded in the "All changes" review, keyed `${repoId}/${path}`.
-   *  Lives on the session so it survives switching tabs/panes and coming back. */
+  /** Files expanded in the "All changes" review, keyed `${repoId}/${path}`. */
   expandedDiffFiles: Set<string>;
 
-  /**
-   * Approve this session's agent write ops without asking.
-   *
-   * In memory only and per session: it dies with the session and is never written
-   * to the config, because "stop asking" is a decision about the next hour of work,
-   * not a preference. The agent console shows a badge while it is on.
-   */
+  /** Approve this session's agent write ops without asking. In memory only; never written to config. */
   autoApprove: boolean;
 
   /** Show the per-line author gutter in the editor and diff views. */
   blameOn: boolean;
-  /** Blame per file, keyed `${repoId}/${path}`. Cleared with the diff cache, since
-   *  a commit or an external edit re-attributes lines. */
+  /** Blame per file, keyed `${repoId}/${path}`. Cleared with the diff cache. */
   blameByFile: Record<string, BlameLine[]>;
 
   worktreeStatus: Record<string, WorktreeStatus>;
@@ -409,8 +346,7 @@ export interface SessionState {
   mrThreadsByRepo: Record<string, MrThread[]>;
   /** Bumped to refetch MRs + their threads (after mr.* ops, on Forge tab open). */
   mrNonce: number;
-  /** Active rebase-in-progress conflict for one of this session's worktrees
-   *  (null when none). Set by the rebase_conflict event, cleared by rebase_done. */
+  /** Active rebase conflict for one of this session's worktrees, or null. */
   rebaseConflict: { worktreeId: string; files: string[] } | null;
 
   ptySessions: PtySessionState[];
@@ -425,8 +361,7 @@ export interface SessionActions {
   refreshStatus: () => Promise<void>;
   /** Split the active pane (row = right, col = below); new pane takes focus. */
   splitPane: (dir: SplitDir) => void;
-  /** Dock-style split: wrap the WHOLE layout so the new pane spans full
-   *  height (row) / width (col). Used for the agent / terminal conventions. */
+  /** Dock-style split: wraps the whole layout so the new pane spans full height (row) or width (col). */
   splitRootPane: (dir: SplitDir, ratio?: number) => void;
   /** Close a pane; its tabs merge into the surviving sibling. */
   closePane: (paneId: string) => void;
@@ -446,8 +381,7 @@ export interface SessionActions {
   /** Bind a terminal tab to its started PTY session. */
   setTabPty: (paneId: string, tabId: string, ptySessionId: string) => void;
   focusPane: (paneId: string) => void;
-  /** Select a repo; targets that repo's first worktree (or keeps the current
-   *  one when it already belongs to the repo). */
+  /** Selects a repo and its first worktree, or keeps the current worktree when it belongs to the repo. */
   setActiveRepoId: (id: string | null) => void;
   /** Select the exact worktree (multi-worktree repos); syncs activeRepoId. */
   setActiveWorktreeId: (id: string | null) => void;
@@ -466,7 +400,7 @@ export interface SessionActions {
   /** Ask for another page of commits (the fetch effect reloads). */
   loadMoreCommits: () => void;
   setAnnotations: (a: Annotation[]) => void;
-  /** Add one, ignoring a repeat id (the agent's event can echo a local insert). */
+  /** Adds one; a repeat id is ignored. */
   addAnnotation: (a: Annotation) => void;
   /** Replace one annotation's body (after `update_annotation` lands). */
   updateAnnotation: (id: string, content: string) => void;
@@ -483,7 +417,7 @@ export interface SessionActions {
   removePtySession: (id: string) => void;
 }
 
-/** Convenience aliases so existing call-sites keep their `active*` field names. */
+/** `active*` aliases over the session's task, worktrees and repos. */
 export interface SessionAliases {
   activeTask: Task | null;
   activeWorktrees: Worktree[];
@@ -492,7 +426,6 @@ export interface SessionAliases {
 
 /** What `useSession`'s selector sees: a session merged with its bound actions. */
 export type SessionView = SessionState & SessionActions & SessionAliases;
-// ─── Per-session reducers (pure; operate on one SessionState) ───────────────────
 
 export interface OpenTabInput {
   repoId: string;

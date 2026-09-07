@@ -5,8 +5,7 @@ import { useStore } from '../shared/store';
 import type { AgentSkill } from '../shared/ipc/ipc';
 import './actions.css';
 
-/** The agent's actions in Settings. The editor is the raw SKILL.md — the same thing
- *  on disk. Core skills are read-only. */
+/** The agent's actions in Settings. The editor is the raw SKILL.md; core skills are read-only. */
 
 /** What a new action starts as. */
 const TEMPLATE = `---
@@ -66,7 +65,7 @@ export function SkillsSection() {
     setEditing({ name: '', previous: null, body: TEMPLATE });
   };
 
-  // A copy with no name yet, so saving cannot overwrite the core skill.
+  // A copy with no name yet; saving cannot overwrite the core skill.
   const copyToMine = () => {
     setViewing(null);
     setReport(null);
@@ -106,7 +105,7 @@ export function SkillsSection() {
     }
   };
 
-  // The hint, not the description — the description is written for the model.
+  // The hint, never the description: the description is written for the model.
   const row = (s: AgentSkill) => (
     <button key={s.id} className="skill-row" onClick={() => void open(s)} title={s.hint}>
       {!s.editable && <Lock size={12} strokeWidth={1.75} className="skill-lock" />}
@@ -185,8 +184,6 @@ export function SkillsSection() {
             spellCheck={false}
             onChange={(e) => setEditing({ ...editing, body: e.target.value })}
           />
-          {/* `claude plugin validate` reads the file the agent will read, so its
-              warnings are the real ones — a missing description, no front matter. */}
           {report && <pre className="skill-report">{report}</pre>}
         </div>
       )}

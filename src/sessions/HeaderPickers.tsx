@@ -14,21 +14,17 @@ import { sessionIdLabel } from '../shared/lib/agents';
 import { SESSION_KIND_ICON, SESSION_KIND_LABEL } from '../shared/lib/sessionKind';
 
 /**
- * The header context pickers: Active Session · Repo · Worktree. Each chip is
- * compact — icon + id/name — and opens a plain dropdown list of the choices.
- * Alt+S/R/W open the list and move the highlight; Enter (or a click) commits,
- * Esc cancels — nothing switches until you commit. The list is PORTALLED to the
- * body with fixed positioning so the header's overflow can never clip it.
+ * The header context pickers: Active Session, Repo, Worktree. Alt+S/R/W open a list;
+ * Enter commits, Esc cancels. The list is portalled to the body.
  */
 
-/** Keyboard-navigable list state, shared by the three dropdowns. The highlight
- *  lives in the store so Alt+S/R/W can drive it; Enter commits the highlighted. */
+/** Keyboard-navigable list state shared by the three dropdowns; the highlight lives in the store. */
 function usePickerList(count: number, initialIndex: number, onEnter: (i: number) => void) {
   const cursor = useStore((s) => s.pickerCursor);
   const setCursor = useStore((s) => s.setPickerCursor);
   const ref = useRef<HTMLDivElement>(null);
 
-  // On open, highlight the current item and take focus for the arrow keys.
+  // On open, highlight the current item and take focus.
   useEffect(() => {
     setCursor(initialIndex >= 0 ? initialIndex : 0);
     ref.current?.focus();
@@ -44,8 +40,7 @@ function usePickerList(count: number, initialIndex: number, onEnter: (i: number)
   return { cursor, setCursor, ref, onKeyDown };
 }
 
-/** Chip + portalled dropdown shell. Open state lives in the store (`openPicker`)
- *  so the Alt+S/R/W shortcuts can drive it. */
+/** Chip and portalled dropdown shell; open state lives in the store (`openPicker`). */
 function Picker({
   kind, value, icon: Icon, children, chipTitle, ariaLabel,
 }: {
@@ -62,8 +57,7 @@ function Picker({
   const chipRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
 
-  // Positioned as it mounts: `open` is store-driven (Alt+S/R/W opens it too), so
-  // there is no click to measure in, and a ref callback needs no state at all.
+  // Positioned by a ref callback as it mounts.
   const placePop = useCallback((el: HTMLDivElement | null) => {
     popRef.current = el;
     const r = chipRef.current?.getBoundingClientRect();
@@ -155,7 +149,6 @@ function SessionRows({ onClose }: { onClose: () => void }) {
                 {idLabel && <span className="hp-row-id">{idLabel}</span>}
                 <span className="hp-row-name">{title}</span>
               </span>
-              {/* The agent's state is the running-agents list's job — one place. */}
               <span className="hp-row-meta">
                 <span className="hp-row-kind">{SESSION_KIND_LABEL[s.kind]}</span>
                 {status && <span className={`hp-row-status status-${statusKey(status)}`}>{status}</span>}
@@ -192,8 +185,7 @@ function RepoRows({
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const select = (r: RepoLite) => { onSelect(r.id); onClose(); };
-  // force:true so closing succeeds on a dirty worktree — the confirm step is the
-  // guard, matching the old sidebar repo switcher.
+  // `force: true`: the confirm row is the guard for a dirty worktree.
   const closeRepo = async (worktreeId: string) => {
     try { await invoke('close_worktree', { worktreeId, force: true }); }
     catch (e) { setLastError(String(e)); }
@@ -264,8 +256,7 @@ function WorktreeRows({
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const select = (w: WtLite) => { onSelect(w.id); onClose(); };
-  // force:true so a dirty worktree still closes — the confirm names what it
-  // costs, matching the repo row beside it.
+  // `force: true`: the confirm row is the guard for a dirty worktree.
   const closeWorktree = async (worktreeId: string) => {
     try { await invoke('close_worktree', { worktreeId, force: true }); }
     catch (e) { setLastError(String(e)); }
@@ -318,8 +309,7 @@ function WorktreeRows({
           </div>
         );
       })}
-      {/* Another branch of THIS repo — the repo picker's Add repo attaches a new
-          one, this adds a worktree to the one in scope. */}
+      {/* Adds a worktree of the repo in scope. */}
       <button className="hp-row hp-row-add" onClick={() => { onAddWorktree(); onClose(); }}>
         <span className="hp-tick"><Plus size={12} strokeWidth={2} /></span>
         Add worktree…
@@ -353,11 +343,9 @@ export function HeaderPickers() {
   const activeWt = worktrees.find((w) => w.id === activeWorktreeId) ?? null;
   const close = () => setOpenPicker(null);
 
-  // The session chip is useful everywhere (it also closes sessions); the
-  // repo/worktree chips are workspace context and hide with it.
   if (sessionCount === 0 && !inWorkspace) return null;
 
-  // Reviews get the MR number, not their long title/short_id.
+  // A review shows its MR reference.
   const reviewNum = sessionKind === 'review' && sessionMrs[0]
     ? mrRef(sessionMrs[0].platform, sessionMrs[0].remote_id)
     : null;

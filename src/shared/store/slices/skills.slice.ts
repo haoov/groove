@@ -8,7 +8,6 @@ export const skillsSlice: StateCreator<AppState, [], [], SkillsSlice> = (set) =>
   skillsStale: false,
   setSkillsStale: (skillsStale) => set({ skillsStale }),
   loadSkills: async () => {
-    // A failure costs the buttons, not the app.
     try {
       set({ skills: await invoke<AgentSkill[]>('list_agent_skills') });
     } catch (e) {

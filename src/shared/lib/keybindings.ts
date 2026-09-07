@@ -2,9 +2,7 @@ import { chordLabel, type Chord } from './keys';
 import { isMac } from './platform';
 
 // ── Command registry + editable keymap ────────────────────────────────────────
-// Single source of truth for every global shortcut. Bindings match the typed
-// character (KeyboardEvent.key) so they follow the keyboard layout. The user's
-// overrides live in localStorage and are merged over the defaults at load.
+// Single source of truth for every global shortcut. Bindings match KeyboardEvent.key.
 
 export type CommandId =
   | 'palette.commands'
@@ -87,7 +85,6 @@ export const COMMANDS: CommandSpec[] = [
   { id: 'pane.maximize', label: 'Maximize / restore pane', group: 'Workspace', defaults: [C('m', { alt: true })] },
   { id: 'tab.next', label: 'Next file tab', group: 'Workspace', defaults: [C('n', { alt: true })] },
   { id: 'tab.prev', label: 'Previous file tab', group: 'Workspace', defaults: [C('p', { alt: true })] },
-  // Alt+W now cycles worktrees; a tab closes with middle-click or its × button.
   { id: 'tab.close', label: 'Close file tab', group: 'Workspace', defaults: [] },
   { id: 'repo.switch', label: 'Repo switcher (open / cycle)', group: 'Workspace', defaults: [C('r', { alt: true })] },
   { id: 'worktree.switch', label: 'Worktree switcher (open / cycle)', group: 'Workspace', defaults: [C('w', { alt: true })] },
@@ -119,46 +116,20 @@ const macDivergedIds = (): CommandId[] =>
   COMMANDS.filter((c) => c.macDefaults).map((c) => c.id);
 
 const LS_KEY = 'workbench.keymap.v7';
-/** Older maps are read once and migrated. v1 → v2 resolved chords shared by two
- *  commands (they used to resolve silently by declaration order); v2 → v3 released
- *  chords whose owning command changed (see MOVED_CHORDS); v5 → v6 released the
- *  chords that differ on macOS; v6 → v7 released Alt+O to the new Overview
- *  command. */
+/** Older maps are read once and migrated. */
 const LS_KEYS_OLD = ['workbench.keymap.v6', 'workbench.keymap.v5', 'workbench.keymap.v4', 'workbench.keymap.v3', 'workbench.keymap.v2', 'workbench.keymap.v1'];
 
-/**
- * Commands whose default chord moved to a different command, so a stored binding
- * has to be dropped rather than kept: keeping it would either hold the chord
- * hostage or lose the command its new default.
- *
- * `repo.add` held Alt+R until `repo.switch` took it; add-repo is now Alt+Shift+R.
- * `pane.close` lost Alt+W to `tab.close` and was left with nothing, so it takes
- * its new Alt+Shift+W default rather than staying unbound.
- * `tab.close` lost Alt+W to `worktree.switch`; it is unbound now (middle-click
- * and the × button close a tab).
- * `pane.next` lost Alt+O to `panel.overview` and takes Alt+I. Without this a
- * customised map would keep Alt+O for both and the conflict resolver would
- * quietly unbind one of them.
- */
+/** Commands whose default chord moved; an upgrade drops their stored binding. */
 const MOVED_CHORDS: CommandId[] = ['repo.add', 'pane.close', 'tab.close', 'pane.next'];
 
-/** A chord identifies one command. Same shape as `chordMatches` compares. */
+/** Chord identity. Keep it aligned with what `chordMatches` compares. */
 const chordKey = (c: Chord) =>
   `${c.key}|${!!c.ctrl}|${!!c.alt}|${!!c.shift}`;
 
-/**
- * When a chord is claimed by more than one command, the winner used to be
- * whichever was declared first in COMMANDS — invisible in Settings and wrong as
- * soon as a new command shipped with a default someone had already bound.
- *
- * `tab.close` over `pane.close` is the case that actually happened: Alt+W was
- * bound to "close the pane" when that was the only close there was, then
- * "close the file" arrived wanting the same chord. Closing a file is what the
- * chord is expected to do; the pane keeps its button and can be rebound.
- */
+/** Explicit winners when two commands claim one chord. */
 const CHORD_WINNERS: CommandId[] = ['tab.close'];
 
-/** Strip a chord from every command but its rightful owner. */
+/** Strips a chord from every command but its owner. */
 function resolveConflicts(map: Keymap): Keymap {
   const claims = new Map<string, CommandId[]>();
   for (const id of Object.keys(map) as CommandId[]) {
@@ -172,8 +143,7 @@ function resolveConflicts(map: Keymap): Keymap {
   const out: Keymap = { ...map };
   for (const [key, owners] of claims) {
     if (owners.length < 2) continue;
-    // An explicit winner, else the runtime's historical answer (declared first)
-    // so resolving a conflict never silently moves an unrelated shortcut.
+    // An explicit winner, else the first declared.
     const winner =
       owners.find((id) => CHORD_WINNERS.includes(id)) ??
       owners.slice().sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
@@ -188,14 +158,13 @@ function resolveConflicts(map: Keymap): Keymap {
 export function loadKeymap(): Keymap {
   const base = defaultKeymap();
   try {
-    // v2 if present, else migrate v1 in place: a heavily customised map must not
-    // be thrown away just because conflict handling changed.
+    // The current key if present, else migrate an older map in place.
     const current = localStorage.getItem(LS_KEY);
     const raw = current ?? LS_KEYS_OLD.map((k) => localStorage.getItem(k)).find(Boolean);
     if (!raw) return base;
     const saved = JSON.parse(raw) as Partial<Record<CommandId, Chord[]>>;
     for (const id of Object.keys(saved) as CommandId[]) {
-      // On an upgrade, a moved chord keeps the NEW default instead of the stored one.
+      // On an upgrade, a moved chord keeps the new default.
       if (!current && MOVED_CHORDS.includes(id)) continue;
       // A pre-macOS map holds punctuation chords Option cannot produce.
       if (!current && isMac() && macDivergedIds().includes(id)) continue;
@@ -210,8 +179,7 @@ export function loadKeymap(): Keymap {
   return base;
 }
 
-/** Assign `chords` to `id`, taking them off any command that already had them.
- *  Two commands on one chord is not a state the UI should be able to create. */
+/** Assigns `chords` to `id` and takes them off every other command. */
 export function assignBinding(map: Keymap, id: CommandId, chords: Chord[]): Keymap {
   const taken = new Set(chords.map(chordKey));
   const out: Keymap = { ...map, [id]: chords };
@@ -241,14 +209,12 @@ export function isDefaultBinding(map: Keymap, id: CommandId): boolean {
   return a.length === b.length && a.every((c, i) => chordKey(c) === chordKey(b[i]));
 }
 
-/** Put one command back on its platform default, taking the chord off whatever
- *  holds it — the same exclusivity `assignBinding` enforces. */
+/** Puts one command back on its platform default; the chord comes off whatever holds it. */
 export function resetBinding(map: Keymap, id: CommandId): Keymap {
   return assignBinding(map, id, defaultChordsFor(id));
 }
 
-/** The other command already holding `chord`, or null when it is free. Naming it
- *  is what turns `assignBinding`'s silent steal into a choice. */
+/** The other command already holding `chord`, or null when it is free. */
 export function chordOwner(map: Keymap, chord: Chord, except: CommandId): CommandId | null {
   const k = chordKey(chord);
   for (const id of Object.keys(map) as CommandId[]) {
@@ -280,8 +246,7 @@ export function clearKeymap(): void {
   try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
 }
 
-/** First chord bound to a command, labelled for this platform. Use this for every
- *  shortcut hint in the UI rather than hardcoding one. */
+/** First chord bound to a command, labelled for this platform. Use it for every shortcut hint. */
 export function shortcutLabel(keymap: Keymap, id: CommandId): string | undefined {
   const c = keymap[id]?.[0];
   return c ? chordLabel(c) : undefined;

@@ -1,8 +1,4 @@
-// Task status names, normalized.
-//
-// Boards name their statuses freely ("Ready for sprint", "Fixed with required
-// action"), so anything that colours or orders by status has to map the label to a
-// meaning first. Shared by Home's queue and the task overview's status dot.
+// Task status names, normalized: a board's free-form label maps to one known key.
 
 /** Order tasks appear in the queue. Lower sorts first. */
 export const STATUS_RANK: Record<string, number> = {
@@ -30,8 +26,7 @@ export function priorityRank(priority: string | null): number {
   return 3;
 }
 
-/** Compact label for the priority pill; '' when the task has no priority
- *  (which must stay distinct from "Low" — both rank 3). */
+/** Compact label for the priority pill; '' for no priority, which stays distinct from Low. */
 export function priorityLabel(priority: string | null): string {
   if (!priority) return '';
   return ['urg', 'high', 'med', 'low'][priorityRank(priority)] ?? '';

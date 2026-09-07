@@ -1,7 +1,4 @@
-/* ── Settings view ────────────────────────────────────────────────────────── */
-/* Groups on the left, one group's settings on the right. The control styles
-   below came from the modal this replaced and are unchanged. */
-
+/* ── Settings view ── */
 .settings-view {
   flex: 1;
   min-width: 0;
@@ -81,8 +78,6 @@
   color: var(--gl-text-color-default);
 }
 
-/* Capped to a reading width. Wide enough for the skill editor, which shows a
-   SKILL.md at the width it is written in. */
 .settings-panel-body {
   flex: 1;
   min-height: 0;
@@ -98,7 +93,7 @@
 .settings-value { margin: 0 0 var(--space-2); font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); }
 .settings-value code { font-family: var(--font-mono); }
 
-/* ── Settings controls ────────────────────────────────────────────────────── */
+/* ── Settings controls ── */
 
 .settings-close {
   display: inline-flex;
@@ -162,9 +157,6 @@
 
 .settings-theme-check { position: absolute; top: var(--space-2); right: var(--space-2); color: var(--gl-color-blue-400); }
 
-/* Font picker: a plain select over the families fontconfig reports, plus a
-   text fallback when there is no fontconfig to ask. */
-
 .settings-select,
 .settings-input {
   width: 100%;
@@ -220,7 +212,7 @@
   color: var(--gl-text-color-default);
 }
 
-/* ── Settings: toggle switch ──────────────────────────────────────────────── */
+/* ── Toggle switch ── */
 
 .settings-toggle-row {
   display: flex;
@@ -257,7 +249,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--gl-color-on-accent);
   border: 1px solid rgba(var(--gl-elevate), 0.2);
   box-shadow: 0 1px 2px rgba(var(--gl-elevate), 0.25);
   transition: transform 0.15s;
@@ -265,7 +257,7 @@
 
 .settings-switch.on .settings-switch-knob { transform: translateX(16px); }
 
-/* ── Settings: keyboard shortcuts ─────────────────────────────────────────── */
+/* ── Keyboard shortcuts ── */
 
 .settings-section-head {
   display: flex;
@@ -290,7 +282,7 @@
 
 .settings-reset-btn:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
 
-/* ── Settings: the shortcut table ─────────────────────────────────────────── */
+/* ── Shortcut table ── */
 
 .settings-key-search {
   display: flex;
@@ -330,7 +322,6 @@
 
 .settings-key-search-clear:hover { color: var(--gl-text-color-default); }
 
-/* Fixed width, so Rebind holds its column whether or not the revert button is up. */
 .settings-key-actions {
   flex-shrink: 0;
   display: flex;
@@ -438,5 +429,5 @@
 
 .settings-key-rebind:disabled { opacity: 0.5; cursor: default; }
 
-/* Two classes, so it wins over `.settings-hint` whatever the block order. */
+/* two classes: outranks .settings-hint */
 .settings-hint.settings-error { color: var(--gl-color-red-400); }

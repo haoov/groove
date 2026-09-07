@@ -1,8 +1,4 @@
-//! The clone pool: where primary clones live, how they are found and added.
-//!
-//! The pool layout IS the identity: `<root>/main/<host>/<group>/<project>`.
-//! Listing it is a pure directory walk — no git call per repo. The one
-//! `remote get-url origin` check happens when a repo is attached to a session.
+//! The clone pool: `<root>/main/<host>/<group>/<project>`, listed by a directory walk.
 
 use std::path::PathBuf;
 
@@ -17,8 +13,7 @@ use crate::core::git;
 #[derive(Debug, Clone, Serialize)]
 pub struct MainRepo {
     pub local_path: String,
-    /// Path relative to the pool, host first — both the display name and the
-    /// identity: `<host>/<group…>/<project>`.
+    /// Path relative to the pool, host first: `<host>/<group…>/<project>`.
     pub slug: String,
 }
 
@@ -26,7 +21,9 @@ pub struct MainRepo {
 pub(crate) fn slug_parts(slug: &str) -> anyhow::Result<(String, String, String)> {
     let mut segments: Vec<&str> = slug.split('/').filter(|s| !s.is_empty()).collect();
     if segments.len() < 3 {
-        return Err(anyhow::anyhow!("'{slug}' is not a <host>/<group>/<project> pool path"));
+        return Err(anyhow::anyhow!(
+            "'{slug}' is not a <host>/<group>/<project> pool path"
+        ));
     }
     let project = segments.pop().unwrap().to_string();
     let host = segments.remove(0).to_string();
@@ -34,8 +31,7 @@ pub(crate) fn slug_parts(slug: &str) -> anyhow::Result<(String, String, String)>
 }
 
 pub fn resolve_worktree_root() -> PathBuf {
-    // Honor the configured root (the agent cwd already does) — tilde-expanded,
-    // since the config stores it unexpanded.
+    // The config stores the root unexpanded.
     if let Some(cfg) = crate::core::config::get() {
         let raw = cfg.git.worktree_root;
         if !raw.trim().is_empty() {
@@ -46,17 +42,12 @@ pub fn resolve_worktree_root() -> PathBuf {
     PathBuf::from(home).join("worktrees")
 }
 
-/// Where the primary clones live. This directory IS the repo pool — the pickers
-/// list it, `clone_repo` fills it.
+/// Where the primary clones live.
 pub(crate) fn main_root() -> PathBuf {
     resolve_worktree_root().join("main")
 }
 
 /// A clone's place in the pool: `<root>/main/<host>/<group>/<project>`.
-///
-/// The host is a level of its own, so two forges — or two GitLab instances — can
-/// hold the same group and project without colliding, and the pool says where a
-/// repo came from without anyone opening its remote.
 fn repo_dir(host: &str, group_path: &str, project: &str) -> PathBuf {
     main_root().join(host).join(group_path).join(project)
 }
@@ -77,10 +68,7 @@ pub async fn register_repo(
         .map_err(|e| e.to_string())
 }
 
-/// Record a pool clone in the DB so a session can use it. The identity comes
-/// from its place in the pool; the one git call verifies it has an `origin`
-/// (every forge feature needs one) and happens here, at attach — never during
-/// a listing.
+/// Record a pool clone in the DB. The one git call checks that it has an `origin`.
 pub(crate) async fn register_repo_impl(
     slug: &str,
     local_path: String,
@@ -90,7 +78,9 @@ pub(crate) async fn register_repo_impl(
 
     git::run(&local_path, &["remote", "get-url", "origin"])
         .await
-        .map_err(|_| anyhow::anyhow!("{local_path} has no `origin` remote — forge features need one"))?;
+        .map_err(|_| {
+            anyhow::anyhow!("{local_path} has no `origin` remote — forge features need one")
+        })?;
 
     let repo = Repo {
         id: format!("{host}/{group_path}/{project}"),
@@ -103,19 +93,23 @@ pub(crate) async fn register_repo_impl(
     Ok(repo)
 }
 
-/// Whether `branch` already exists as a head on the repo's `origin` remote.
-/// Used to block creating a worktree on a branch name that's already taken remotely.
+/// Whether `branch` exists as a head on the repo's `origin`.
 #[tauri::command]
 pub async fn remote_branch_exists(
     repo_id: String,
     branch: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<bool, String> {
-    let repo = store::repos::get(&*pool, &repo_id).await.map_err(|e| e.to_string())?;
-
-    let out = git::output(&repo.local_path, &["ls-remote", "--heads", "origin", &branch])
+    let repo = store::repos::get(&*pool, &repo_id)
         .await
         .map_err(|e| e.to_string())?;
+
+    let out = git::output(
+        &repo.local_path,
+        &["ls-remote", "--heads", "origin", &branch],
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     let target = format!("refs/heads/{branch}");
     Ok(String::from_utf8_lossy(&out.stdout)
@@ -139,34 +133,45 @@ pub async fn list_origin_branches(
     repo_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<OriginBranches, String> {
-    let repo = store::repos::get(&*pool, &repo_id).await.map_err(|e| e.to_string())?;
+    let repo = store::repos::get(&*pool, &repo_id)
+        .await
+        .map_err(|e| e.to_string())?;
     let branches = git::refs::origin_branches(&repo.local_path)
         .await
         .map_err(|e| e.to_string())?;
     let default_branch = git::refs::default_branch(&repo.local_path).await;
-    Ok(OriginBranches { branches, default_branch })
+    Ok(OriginBranches {
+        branches,
+        default_branch,
+    })
 }
 
-/// Every clone in the pool: a pure directory walk, no git calls (searched a
-/// few levels deep, since a host level sits above group paths that nest; never
-/// descends INTO a repo). No pool → empty list.
+/// Every clone in the pool, by directory walk; no pool gives an empty list.
 #[tauri::command]
 pub async fn list_main_repos() -> Result<Vec<MainRepo>, String> {
     let root = main_root();
-    // On a blocking thread — it's pure filesystem.
     let mut repos: Vec<MainRepo> = tokio::task::spawn_blocking(move || {
-        fn walk(dir: &std::path::Path, root: &std::path::Path, depth: u32, acc: &mut Vec<MainRepo>) {
+        fn walk(
+            dir: &std::path::Path,
+            root: &std::path::Path,
+            depth: u32,
+            acc: &mut Vec<MainRepo>,
+        ) {
             if depth > 6 {
                 return;
             }
-            let Ok(entries) = std::fs::read_dir(dir) else { return };
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
                 if !path.is_dir() {
                     continue;
                 }
                 if path.join(".git").exists() {
-                    let Ok(slug) = path.strip_prefix(root) else { continue };
+                    let Ok(slug) = path.strip_prefix(root) else {
+                        continue;
+                    };
                     acc.push(MainRepo {
                         local_path: path.to_string_lossy().to_string(),
                         slug: slug.to_string_lossy().to_string(),
@@ -186,8 +191,7 @@ pub async fn list_main_repos() -> Result<Vec<MainRepo>, String> {
     Ok(repos)
 }
 
-/// Clone a repo into the pool and return it. The clone can be slow — it runs
-/// off the async runtime; the UI shows a pending state.
+/// Clone a repo into the pool and return it.
 #[tauri::command]
 pub async fn clone_repo(url: String) -> Result<MainRepo, String> {
     let (host, group_path, project) = git::parse_git_url(&url).map_err(|e| e.to_string())?;
@@ -219,7 +223,11 @@ mod tests {
     fn slugs_split_into_host_group_and_project() {
         assert_eq!(
             slug_parts("gitlab.example.com/wiremind/devops/mayo").unwrap(),
-            ("gitlab.example.com".into(), "wiremind/devops".into(), "mayo".into())
+            (
+                "gitlab.example.com".into(),
+                "wiremind/devops".into(),
+                "mayo".into()
+            )
         );
         assert_eq!(
             slug_parts("github.com/owner/proj").unwrap(),

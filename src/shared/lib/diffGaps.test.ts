@@ -39,8 +39,7 @@ describe('gapsFor', () => {
     ]);
   });
 
-  // A del line carries the new-side number of the line it was removed after, so
-  // it must never extend the hunk's range and hide a line from the gap.
+  // A del line carries the new-side number of the line it follows; it must not extend the hunk's range.
   it('ignores del lines when measuring a hunk', () => {
     const hunks = [
       { header: '@@', lines: [ctx(10), del(10), del(10)] },
@@ -49,8 +48,7 @@ describe('gapsFor', () => {
     expect(gapsFor(hunks, 20)[1]).toEqual({ beforeHunk: 1, startLine: 11, endLine: 19 });
   });
 
-  // A whole-file deletion occupies no new-side range. Indices must still point at
-  // the original array, or the widget lands above the wrong hunk.
+  // A whole-file deletion occupies no new-side range; indices still point at the original array.
   it('skips a hunk with no new-side line but keeps the original indices', () => {
     const hunks = [
       { header: '@@', lines: [del(0)] },
@@ -91,8 +89,7 @@ describe('stepRange', () => {
 });
 
 describe('mergeExpansion', () => {
-  // The property annotations and MR threads depend on: they anchor on the new-side
-  // line number, so an expansion must never renumber a line that already existed.
+  // Annotations and MR threads anchor on the new-side line number.
   it('keeps every pre-existing line at its own number', () => {
     const hunks = twoHunks();
     const gap = gapsFor(hunks, 60)[1];

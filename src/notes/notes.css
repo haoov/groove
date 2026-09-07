@@ -1,6 +1,4 @@
-/* Annotations tab */
-/* Flat list — cleaner, styled like the commit list (no bordered cards) */
-
+/* ── Annotations tab ── */
 .annotations-list { display: flex; flex-direction: column; }
 
 .annotation-item {
@@ -13,8 +11,6 @@
 }
 
 .annotation-item:hover { background: rgba(var(--gl-elevate), 0.025); }
-
-/* MR thread item stays a card (used in the Forge section) */
 
 .mr-thread-item {
   background: var(--gl-background-color-subtle);
@@ -29,13 +25,7 @@
 
 .mr-thread-item:hover { background: var(--gl-background-color-strong); }
 
-/* Open vs resolved is carried by the status dot in the header row and by the
-   dimming here — no border accent (see the notification rows for the same rule). */
-
 .mr-thread-item.mr-thread-resolved { opacity: 0.5; }
-
-/* Comment prose. Markdown-rendered, so it needs real block spacing rather than
-   the inline span it used to be. */
 
 .mr-thread-body { font-size: var(--gl-font-size-sm); line-height: 1.6; color: var(--gl-text-color-default); }
 
@@ -55,8 +45,6 @@
 .mr-thread-body code { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); }
 
 .mr-thread-reply { display: flex; flex-direction: column; gap: 3px; }
-
-/* The location line is a button: it opens the file at the annotated line. */
 
 .annotation-loc {
   display: flex;
@@ -138,8 +126,6 @@
 
 .annotation-confirm { color: var(--gl-color-red-400); font-weight: 600; }
 
-/* Notes are markdown: keep block spacing tight inside a sidebar row. */
-
 .annotation-content > .markdown-body > *:first-child { margin-top: 0; }
 
 .annotation-content > .markdown-body > *:last-child { margin-bottom: 0; }
@@ -150,7 +136,7 @@
 
 .annotation-content ul, .annotation-content ol { margin: 2px 0 4px; padding-left: 18px; }
 
-/* ── MR Threads (in annotations tab) ──────────────────────────────────────── */
+/* ── MR threads ── */
 
 .mr-threads-section { border-top: 1px solid var(--gl-border-color-default); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 
@@ -159,8 +145,6 @@
 .mr-threads-link { color: var(--gl-color-blue-400); text-decoration: none; margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; font-family: var(--font-mono); }
 
 .mr-threads-link:hover { text-decoration: underline; }
-
-/* mr-thread-item base is defined above alongside annotation-item */
 
 .mr-thread-author { font-size: var(--gl-font-size-xs); font-weight: 600; color: var(--gl-text-color-subtle); flex-shrink: 0; }
 
@@ -194,7 +178,7 @@
 
 .mr-thread-reply .mr-thread-body { flex: 1; font-size: var(--gl-font-size-xs); }
 
-/* ── Notes: the MR discussion below the annotations (review sessions) ───────── */
+/* ── MR discussion (review sessions) ── */
 
 .notes-threads { border-top: 1px solid var(--gl-border-color-subtle); margin-top: var(--space-3); padding-top: var(--space-2); }
 

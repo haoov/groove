@@ -1,8 +1,7 @@
-// The running agents: one row per open session, with what its agent is doing.
-// Pure, so the store hook and the window bridge build the same rows.
+// The running agents: one row per open session, with what its agent is doing. Pure.
 
 import type { AgentActivity, SessionKind } from '../ipc/ipc';
-import type { SessionState } from '../store/types';
+import type { SessionState } from '../store';
 import { mrRef } from './forge';
 
 export interface AgentRow {
@@ -18,7 +17,7 @@ export interface AgentRow {
   active: boolean;
 }
 
-/** Logical pixels. The agent column grows by the list's width while it is open. */
+/** Logical pixels. */
 export const AGENTS_SIDEBAR_MIN = 240;
 export const AGENTS_SIDEBAR_MAX = 360;
 export const AGENTS_SIDEBAR_DEFAULT = 280;
@@ -31,8 +30,7 @@ export function clampAgentsWidth(n: unknown): number {
 
 type SessionLite = Pick<SessionState, 'id' | 'kind' | 'title' | 'task' | 'mrs'>;
 
-/** The short id for a session: the MR number for reviews (their short_id is long
- *  and unhelpful), else the task short_id. */
+/** The MR number for reviews, else the task short_id. */
 export function sessionIdLabel(s: SessionLite): string | null {
   if (s.kind === 'review') {
     const mr = s.mrs?.[0];

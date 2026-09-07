@@ -1,7 +1,4 @@
-/* ── Terminal tab surfaces ───────────────────────────────────────────────── */
-/* The agent's terminal is styled by console.css — it has no tab. */
-
-/* Keep-alive wrapper inside a pane's body (display-toggled, never unmounted). */
+/* ── Terminal tab surfaces ── */
 .ws-pty-host {
   flex: 1;
   min-width: 0;
@@ -28,7 +25,6 @@
 }
 .agent-empty-hint { color: var(--gl-text-color-disabled); font-size: var(--gl-font-size-sm); }
 
-/* "Session ended" state with a restart action. */
 .pty-ended {
   display: flex;
   flex-direction: column;
@@ -36,14 +32,12 @@
   gap: var(--space-3);
 }
 
-/* The reparentable terminal element owned by terminalHost. */
 .pty-pane {
   flex: 1;
   overflow: hidden;
   padding: var(--space-1);
   min-height: 0;
-  /* Match the xterm theme background so the padding around the terminal blends
-     in — otherwise the panel colour shows through as a visible edge/limit. */
+  /* matches --term-bg */
   background: var(--gl-background-color-overlap);
 }
 .pty-pane .xterm { height: 100%; }
@@ -51,8 +45,6 @@
 .pty-pane .xterm-screen { background: transparent !important; }
 .pty-pane .xterm-viewport { overflow-y: auto !important; }
 
-/* Auto-approve, a real switch in the action bar: a track + sliding knob. Warm
-   while on — approving blind is the one state that must never be a surprise. */
 .console-toggle {
   display: inline-flex;
   align-items: center;

@@ -8,8 +8,7 @@ const LANG_MAP: Record<string, string> = {
   tpl: 'gotmpl', gotmpl: 'gotmpl', tmpl: 'gotmpl',
 };
 
-/** A Helm chart's `templates/*.yaml` is Go template, not YAML: `{{- if }}` opens
- *  blocks the YAML parser cannot close, so YAML highlighting mangles them. */
+/** A Helm chart's `templates/*.yaml` is Go template, not YAML. */
 function isHelmTemplate(path: string, ext: string): boolean {
   return (ext === 'yaml' || ext === 'yml') && /(^|\/)templates\//.test(path);
 }

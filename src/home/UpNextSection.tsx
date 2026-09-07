@@ -7,8 +7,7 @@ import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter'
 import { statusKey, STATUS_RANK } from '../shared/lib/taskStatus';
 import type { Task } from '../shared/ipc/ipc';
 
-// Up next = the queued tasks not yet checked out. Columns: id · name ·
-// priority · status. Reviews live in their own tab now.
+// Up next: the queued tasks not yet checked out.
 
 /** The fields an Up next row can answer — see `appliesTo`. */
 const FIELDS = ['id', 'title', 'status', 'priority', 'provider'];

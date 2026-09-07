@@ -1,9 +1,4 @@
-//! Forge tokens, borrowed from the CLIs at runtime.
-//!
-//! `glab` and `gh` own the login flow, the keyring, and the per-host identity —
-//! the one thing they are irreplaceable for. Everything else talks to the APIs
-//! directly (see `api`), so the CLIs are consulted exactly once per host for a
-//! token that lives in memory and is never persisted by us.
+//! Forge tokens, read from the `glab` and `gh` CLIs once per host and cached in memory.
 
 use std::{
     collections::HashMap,
@@ -11,10 +6,6 @@ use std::{
 };
 
 /// A forge CLI is not installed.
-///
-/// Typed rather than a message, because the caller has to TELL IT APART from a
-/// failure: a machine with no `glab` is a machine with no GitLab repos, and the
-/// review queue must stay quiet about it instead of showing an error.
 #[derive(Debug)]
 pub(crate) struct CliMissing(pub &'static str);
 
@@ -53,8 +44,7 @@ pub(crate) async fn token(platform: super::Platform, host: &str) -> anyhow::Resu
     Ok(token)
 }
 
-/// Drop a host's cached token — called on a 401 so the next request re-asks the
-/// CLI (the user may have re-logged in, or the token rotated).
+/// Drop a host's cached token.
 pub(crate) fn forget(host: &str) {
     if let Ok(mut map) = cache().lock() {
         map.remove(host);
@@ -74,8 +64,7 @@ async fn fetch_token(platform: super::Platform, host: &str) -> anyhow::Result<St
             Ok(token)
         }
         super::Platform::Gitlab => {
-            // `glab auth status -t` prints every configured host with its token.
-            // Historically on stderr, sometimes stdout — parse both.
+            // `glab auth status -t` prints on stderr or on stdout; parse both.
             let out = run_cli("glab", &["auth", "status", "-t"]).await?;
             let combined = format!("{}\n{}", out.stdout, out.stderr);
             glab_token_for(&combined, host).ok_or_else(|| {
@@ -96,10 +85,8 @@ async fn run_cli(bin: &'static str, args: &[&str]) -> anyhow::Result<CliOutput> 
     let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
     let printable = format!("{bin} {}", args.join(" "));
     let out = crate::core::timing::timed("subprocess", printable.clone(), async {
-        tokio::task::spawn_blocking(move || {
-            std::process::Command::new(bin).args(&args).output()
-        })
-        .await
+        tokio::task::spawn_blocking(move || std::process::Command::new(bin).args(&args).output())
+            .await
     })
     .await?;
 
@@ -115,14 +102,12 @@ async fn run_cli(bin: &'static str, args: &[&str]) -> anyhow::Result<CliOutput> 
     }
 }
 
-/// Pull `host`'s token out of `glab auth status -t` output. The output lists
-/// hosts as headings with indented "✓ …" detail lines; the token line reads
-/// "Token found: <t>" (glab ≥1.60) or "Token: <t>" (older). Match either by
-/// keying on a line that mentions "Token" and taking the last ": " segment.
+/// Pull `host`'s token out of `glab auth status -t` output. The token line reads
+/// "Token found: <t>" (glab ≥1.60) or "Token: <t>".
 fn glab_token_for(output: &str, host: &str) -> Option<String> {
     let mut in_host = false;
     for line in output.lines() {
-        // A heading is a non-indented, non-empty line — the bare host name.
+        // A heading is a non-indented, non-empty line: the bare host name.
         let is_detail = line.starts_with(char::is_whitespace);
         let trimmed = line.trim();
         if !is_detail && !trimmed.is_empty() {
@@ -132,7 +117,6 @@ fn glab_token_for(output: &str, host: &str) -> Option<String> {
         if !in_host || !trimmed.contains("Token") {
             continue;
         }
-        // "✓ Token found: glpat-…" → the part after the final ": ".
         if let Some((_, token)) = trimmed.rsplit_once(": ") {
             let token = token.trim();
             if !token.is_empty() && !token.contains('*') {
@@ -147,8 +131,7 @@ fn glab_token_for(output: &str, host: &str) -> Option<String> {
 mod tests {
     use super::glab_token_for;
 
-    /// The real shape of `glab auth status -t` on glab 1.6x: hosts as headings,
-    /// indented "✓ …" details, and "Token found:" (not "Token:").
+    /// `glab auth status -t` output on glab 1.6x.
     const STATUS: &str = "\
 gitlab.com
   ✓ Logged in to gitlab.com as haoov (/home/r/.config/glab-cli/config.yml)
@@ -173,15 +156,16 @@ gitlab.wiremind.io
         assert_eq!(glab_token_for(STATUS, "gitlab.example.org"), None);
     }
 
-    /// The older "Token:" wording must still parse — the "REST API Endpoint:"
-    /// line, which also contains a colon, must NOT be mistaken for it.
     #[test]
     fn accepts_the_older_wording_and_ignores_other_colon_lines() {
-        let old = "gitlab.com\n  ✓ REST API Endpoint: https://gitlab.com/api/v4/\n  ✓ Token: glpat-OLD\n";
-        assert_eq!(glab_token_for(old, "gitlab.com").as_deref(), Some("glpat-OLD"));
+        let old =
+            "gitlab.com\n  ✓ REST API Endpoint: https://gitlab.com/api/v4/\n  ✓ Token: glpat-OLD\n";
+        assert_eq!(
+            glab_token_for(old, "gitlab.com").as_deref(),
+            Some("glpat-OLD")
+        );
     }
 
-    /// Without `-t`, glab masks the token — a masked value must not be used.
     #[test]
     fn a_masked_token_is_not_a_token() {
         let masked = "gitlab.com\n  ✓ Token found: **************\n";

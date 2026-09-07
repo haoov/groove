@@ -1,5 +1,4 @@
-//! Git plumbing: the one spawner, the one URL parser, the one answer to every
-//! ref question — with a cache sized to how often the answers actually change.
+//! Git plumbing: the spawner, the URL parser and the cached ref answers.
 
 pub mod cache;
 pub mod refs;

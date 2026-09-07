@@ -22,7 +22,7 @@ pub struct Bridge {
 
 struct BridgeInner {
     handle: AppHandle,
-    // oneshot senders for MCP write tools — unblocked when confirmation resolves.
+    // Waiting MCP write handlers, keyed by confirmation id.
     senders: Mutex<HashMap<String, tokio::sync::oneshot::Sender<ResolveOutcome>>>,
 }
 
@@ -51,8 +51,8 @@ impl Bridge {
         Ok(id)
     }
 
-    /// Like `post`, but with a caller-supplied ID so a waiting sender can be
-    /// registered *before* the confirmation becomes visible (no resolve race).
+    /// Like `post`, with a caller-supplied id. Register the sender before this
+    /// call, or a fast resolve can miss it.
     pub async fn post_with_id(
         &self,
         id: &str,
@@ -92,15 +92,14 @@ impl Bridge {
             .unwrap_or(false)
     }
 
-    /// Register a oneshot sender so MCP write handlers can block until the user
-    /// decides; it receives the op outcome (approved result / rejected / failed).
+    /// Register a oneshot sender; it receives the outcome when the user decides.
     pub fn register_sender(&self, id: &str, tx: tokio::sync::oneshot::Sender<ResolveOutcome>) {
         if let Ok(mut map) = self.inner.senders.lock() {
             map.insert(id.to_string(), tx);
         }
     }
 
-    /// Drop a registered sender (e.g. when posting the confirmation failed).
+    /// Drop a registered sender.
     pub fn remove_sender(&self, id: &str) {
         if let Ok(mut map) = self.inner.senders.lock() {
             map.remove(id);
@@ -116,15 +115,14 @@ impl Bridge {
         approved: bool,
         overrides: Option<serde_json::Value>,
     ) -> anyhow::Result<()> {
-        // Atomically claim the row so two concurrent resolves (e.g. double
-        // Enter in the modal) can never execute the op twice.
+        // Claim the row atomically: two concurrent resolves must not run the op twice.
         let Some(confirmation) = store::confirmations::claim(pool, id).await? else {
-            return Err(anyhow::anyhow!("confirmation {id} not found (already resolved?)"));
+            return Err(anyhow::anyhow!(
+                "confirmation {id} not found (already resolved?)"
+            ));
         };
 
-        // Run the op but do NOT early-return on failure: the pending row must be
-        // deleted, the UI notified, and any waiting MCP handler unblocked either
-        // way — otherwise a failed op leaves a stuck confirmation and a hung agent.
+        // No early return on a failed op: the UI and the waiting handler are notified either way.
         let mut result = serde_json::Value::Null;
         let mut op_error: Option<String> = None;
         if approved {
@@ -139,7 +137,13 @@ impl Bridge {
                             obj.insert(k.clone(), v.clone());
                         }
                     }
-                    match super::ops::execute(&confirmation.op_type, payload, pool, &self.inner.handle).await
+                    match super::ops::execute(
+                        &confirmation.op_type,
+                        payload,
+                        pool,
+                        &self.inner.handle,
+                    )
+                    .await
                     {
                         Ok(r) => result = r,
                         Err(e) => op_error = Some(e.to_string()),
@@ -183,12 +187,10 @@ impl Bridge {
     }
 }
 
-/// Re-emit all rows that survived an app crash so the user can still act on
-/// them, oldest first.
+/// Re-emit every pending confirmation, oldest first.
 pub async fn surface_pending(pool: &SqlitePool, handle: &AppHandle) {
     for row in store::confirmations::all(pool).await.unwrap_or_default() {
-        let payload: serde_json::Value =
-            serde_json::from_str(&row.payload).unwrap_or_default();
+        let payload: serde_json::Value = serde_json::from_str(&row.payload).unwrap_or_default();
         let _ = handle.emit(
             crate::core::events::CONFIRMATION_REQUESTED,
             serde_json::json!({
@@ -215,4 +217,3 @@ pub async fn resolve_confirmation(
         .await
         .map_err(|e| e.to_string())
 }
-

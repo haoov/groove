@@ -1,17 +1,5 @@
-// Home's filter grammar: `field:value` tokens plus bare words, in the shape
-// GitHub and GitLab use. One parser, three field sets — each section declares
-// the fields it can answer and the free text it searches.
-//
-//   provider:github priority:high        both must hold
-//   provider:github,gitlab               same key twice reads as OR
-//   -provider:notion                     `-` or `!` negates
-//   title:"fix the parser"               quotes carry spaces
-//   parser                               a bare word searches the whole row
-//
-// The query is shared across the tabs, so a section is asked about fields it
-// does not have. Two rules keep that harmless: a key another section owns is
-// IGNORED here (it must not empty the list), while a key no section owns is a
-// typo and falls back to free text.
+// Home's filter grammar: `field:value` tokens plus bare words.
+// A repeated key reads as OR, distinct keys as AND; `-` or `!` negates; quotes carry spaces.
 
 export type Term =
   | { kind: 'text'; value: string }
@@ -29,11 +17,7 @@ export const KNOWN_KEYS = new Set([
 
 /**
  * What each field means, shown beside the key in the suggestion list.
- *
- * `provider` and `forge` are different axes and must never be merged: a provider
- * is where the TASK came from, a forge is where the CODE is hosted. An MR has no
- * provider at all. Both can read "github", which is exactly why one key for the
- * two would answer the wrong question.
+ * `provider` (task source) and `forge` (code host) are separate axes; never merge them.
  */
 export const KEY_HELP: Record<string, string> = {
   id: 'task id or MR number',
@@ -58,7 +42,7 @@ export interface Suggestion {
   label: string;
   /** Replaces the token being typed. */
   insert: string;
-  /** The field this line belongs to — the list reads it for the icon. */
+  /** The field this line belongs to. */
   field: string;
   hint?: string;
 }
@@ -71,9 +55,7 @@ export interface SuggestResult {
   kind: 'key' | 'value';
 }
 
-// Values are unbounded (every repo, every author), so cap them and let the list
-// scroll. Keys are a fixed set of thirteen — truncating those would hide fields
-// nobody can then discover.
+// Caps values only; keys are a fixed set.
 const MAX_VALUES = 10;
 
 /** The whitespace-bounded token around the caret. */
@@ -87,11 +69,7 @@ export function tokenRange(input: string, caret: number): [number, number] {
 
 const quoted = (v: string) => (/\s/.test(v) ? `"${v}"` : v);
 
-/**
- * What to offer for the token under the caret: values once a known `key:` is
- * typed, otherwise the field names themselves. `values` supplies what the loaded
- * rows actually contain, so the list only ever offers something that matches.
- */
+/** Suggestions for the token under the caret: values after a known `key:`, otherwise field names. */
 export function suggest(input: string, caret: number, values: Record<string, string[]>): SuggestResult {
   const [start, end] = tokenRange(input, caret);
   const token = input.slice(start, end);
@@ -119,14 +97,14 @@ export function suggest(input: string, caret: number, values: Record<string, str
   return { items, start, end, kind: 'key' };
 }
 
-/** Splice a completion in, and say where the caret lands. */
+/** Splices a completion in and returns the caret position. */
 export function applySuggestion(
   input: string, start: number, end: number, insert: string,
 ): { text: string; caret: number } {
   return { text: input.slice(0, start) + insert + input.slice(end), caret: start + insert.length };
 }
 
-/** A run of the raw query, tagged so the input's mirror layer can colour it. */
+/** A run of the raw query, tagged for the input's mirror layer. */
 export interface Segment {
   text: string;
   kind: 'plain' | 'key' | 'value';
@@ -135,9 +113,8 @@ export interface Segment {
 const TOKEN_RE = /([-!]?)([A-Za-z_]+):("[^"]*"|\S*)/g;
 
 /**
- * Split the raw query into display runs: a recognised `key:` and its value get
- * their own segments, everything else stays plain. Concatenating the segments
- * reproduces the input exactly — the mirror must line up with the real text.
+ * Splits the raw query into display runs. Concatenating the segments must reproduce
+ * the input exactly: the mirror sits under the real text.
  */
 export function highlightSegments(input: string): Segment[] {
   const out: Segment[] = [];
@@ -156,11 +133,7 @@ export function highlightSegments(input: string): Segment[] {
   return out;
 }
 
-/**
- * How a tab reports back to Home: how many rows matched, whether the query even
- * applies here, and which filter the answer is for (Home routes only once every
- * tab has answered for the current query).
- */
+/** How a tab reports back to Home: matched rows, whether the query applies, and the filter answered. */
 export type CountReport = (n: number, applicable: boolean, forFilter: string) => void;
 
 /** What a section can answer: field name → the value(s) of the row. */
@@ -195,14 +168,13 @@ export function parseQuery(input: string): Query {
       token = token.slice(1);
     }
     const m = KEY_RE.exec(token);
-    // A typo'd key stays free text — and keeps the sigil it came with, since a
-    // bare `-foo` is a search for "-foo", not a negation of nothing.
+    // An unknown key stays free text, sigil included.
     if (!m || !KNOWN_KEYS.has(m[1].toLowerCase())) {
       terms.push({ kind: 'text', value: raw.toLowerCase() });
       continue;
     }
     const values = m[2].split(',').map((v) => v.trim().toLowerCase()).filter(Boolean);
-    // `status:` with nothing after it is still being typed; ignore it.
+    // A key with no value is still being typed.
     if (values.length === 0) continue;
     terms.push({ kind: 'field', key: m[1].toLowerCase(), values, negated });
   }
@@ -216,11 +188,7 @@ export const isEmptyQuery = (q: Query) => q.terms.length === 0;
 export const queryKeys = (q: Query): string[] =>
   [...new Set(q.terms.flatMap((t) => (t.kind === 'field' ? [t.key] : [])))];
 
-/**
- * True when a section can answer every field the query names. A section that
- * cannot is not merely empty — it is the wrong tab for this query, which is what
- * lets Home tell "nothing matched here" apart from "ask another tab".
- */
+/** True when a section can answer every field the query names. */
 export const appliesTo = (q: Query, fields: readonly string[]): boolean =>
   queryKeys(q).every((k) => fields.includes(k));
 
@@ -230,25 +198,21 @@ function haystack(v: Fields[string]): string[] {
   return [String(v).toLowerCase()];
 }
 
-/** Substring, case-insensitive — `prio:hi` should find "High". */
+/** Case-insensitive substring match. */
 const hits = (values: string[], against: string[]) =>
   values.some((v) => against.some((a) => a.includes(v)));
 
-/**
- * `text` is the row's free-text haystack (id, title, whatever the section shows).
- * `fields` answers the typed keys. Repeated keys OR together; distinct keys AND.
- */
+/** `text` is the row's free-text haystack; `fields` answers the typed keys. */
 export function matchesQuery(q: Query, text: string, fields: Fields): boolean {
   const hay = text.toLowerCase();
-  // Group positives by key so `provider:a provider:b` reads as OR.
+  // Positives grouped by key: a repeated key reads as OR.
   const positives = new Map<string, string[]>();
   for (const t of q.terms) {
     if (t.kind === 'text') {
       if (!hay.includes(t.value)) return false;
       continue;
     }
-    // A field this section cannot answer excludes every row: the tab is not
-    // applicable, and Home routes the query to the tab that owns the field.
+    // A field this section cannot answer excludes every row.
     if (!(t.key in fields)) return false;
     if (t.negated) {
       if (hits(t.values, haystack(fields[t.key]))) return false;

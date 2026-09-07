@@ -27,8 +27,7 @@ mod tests {
             .clone()
     }
 
-    /// Tauri merges platform config with JSON Merge Patch, which replaces arrays
-    /// wholesale — so a base key missing from the macOS window is dropped silently.
+    /// Tauri merges platform config with JSON Merge Patch, which replaces arrays wholesale.
     #[test]
     fn the_macos_window_repeats_every_key_of_the_base_window() {
         let base = window_block("tauri.conf.json");

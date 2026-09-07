@@ -8,7 +8,10 @@ pub enum StoreError {
 
 impl StoreError {
     pub fn not_found(entity: &'static str, id: impl Into<String>) -> Self {
-        Self::NotFound { entity, id: id.into() }
+        Self::NotFound {
+            entity,
+            id: id.into(),
+        }
     }
 }
 

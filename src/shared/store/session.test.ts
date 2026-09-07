@@ -6,10 +6,6 @@ import {
 import type { SessionState } from './types';
 import type { Task } from '../ipc/ipc';
 
-// The reducers behind every pane and tab interaction. Each bug fixed here has been
-// a real one a user hit: a second terminal focusing the first, a preview tab
-// demoting a real one, a split collapsing and losing a terminal.
-
 const task = (short = 'TASKS2-1'): Task => ({
   short_id: short, page_id: 'p', title: 'Some task', status: 'In progress',
   priority: 'P2', task_type: 'Bug', url: '', repos: [],
@@ -70,8 +66,7 @@ describe('openTabReducer', () => {
     expect(tabIds(s)).toEqual(['r1::commit::abc', 'r1::commit::def']);
   });
 
-  // The bug: the tab id fell back to the label, and every unbound terminal is
-  // labelled 'Terminal', so they collapsed into one tab.
+  // Every unbound terminal is labelled 'Terminal'.
   it('gives each unbound terminal its own tab', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: '', filePath: '', view: 'diff', kind: 'terminal', label: 'Terminal' }));
@@ -123,8 +118,7 @@ describe('openTabReducer', () => {
     expect(pane(s).tabs[0].preview).toBe(false);
   });
 
-  // A tab opened normally carries no `preview` key at all, so the flag reads
-  // undefined rather than false. Only its falsiness is load-bearing.
+  // A tab opened normally carries no `preview` key; only its falsiness is load-bearing.
   it('never demotes a real tab to a preview', () => {
     let s = fresh();
     s = apply(s, openTabReducer(s, { repoId: 'r1', filePath: 'a.ts', view: 'edit' }));
@@ -195,7 +189,6 @@ describe('closeTabReducer', () => {
   });
 
   // A split whose source tab was single-instance produces a pane with no tabs.
-  // That pane is meant to survive — it is where "open a terminal here" lands.
   it('leaves an empty split pane alone', () => {
     let s = fresh();
     s = apply(s, splitPaneReducer(s, 'row'));
@@ -215,7 +208,7 @@ describe('splitPaneReducer', () => {
   });
 
   it('leaves the new pane empty rather than cloning a single-instance tab', () => {
-    const s = fresh(); // active tab is the overview
+    const s = fresh(); // empty pane
     const next = splitPaneReducer(s, 'row');
     expect(next.panes![1].tabs).toEqual([]);
     expect(next.panes![1].activeTabId).toBeNull();
@@ -240,7 +233,7 @@ describe('the terminal dock', () => {
     const dock = s.panes.find((p) => isTerminalPane(p));
     expect(dock).toBeDefined();
     expect(dock!.tabs.every((t) => t.kind === 'terminal')).toBe(true);
-    // An empty pane is neither kind — it can still become either.
+    // An empty pane is neither kind.
     expect(isTerminalPane({ id: 'x', tabs: [], activeTabId: null })).toBe(false);
   });
 

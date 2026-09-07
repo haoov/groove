@@ -1,4 +1,4 @@
-//! Writing board fields and the issue itself.
+//! Board field definitions and writes.
 
 use crate::core::config::GithubConfig;
 use crate::core::forge::api;
@@ -40,12 +40,11 @@ mutation($project: ID!, $item: ID!, $field: ID!) {
 pub(super) struct FieldDef {
     pub id: String,
     pub data_type: String,
-    /// Option name -> option id, for the types whose writes take an id.
+    /// Option name -> option id.
     pub options: Vec<(String, String)>,
 }
 
-/// The board's field definitions, cached: `board_schema` and every write want the
-/// same payload, and it changes about as often as the board is redesigned.
+/// The board's field definitions, cached.
 pub(super) async fn board_fields(
     host: &str,
     project_id: &str,
@@ -64,7 +63,7 @@ pub(super) async fn board_fields(
     Ok(nodes)
 }
 
-// `host` rather than the whole config: the setup preview runs before one exists.
+// Takes `host`, not the config: the setup preview runs before a config exists.
 pub(super) async fn field_def(
     host: &str,
     project_id: &str,
@@ -80,14 +79,22 @@ pub(super) async fn field_def(
             .as_array()
             .map(|o| {
                 o.iter()
-                    .filter_map(|x| Some((x["name"].as_str()?.to_string(), x["id"].as_str()?.to_string())))
+                    .filter_map(|x| {
+                        Some((
+                            x["name"].as_str()?.to_string(),
+                            x["id"].as_str()?.to_string(),
+                        ))
+                    })
                     .collect()
             })
             .unwrap_or_default();
         for key in ["iterations", "completedIterations"] {
             if let Some(iters) = f["configuration"][key].as_array() {
                 options.extend(iters.iter().filter_map(|i| {
-                    Some((i["title"].as_str()?.to_string(), i["id"].as_str()?.to_string()))
+                    Some((
+                        i["title"].as_str()?.to_string(),
+                        i["id"].as_str()?.to_string(),
+                    ))
                 }));
             }
         }
@@ -101,9 +108,7 @@ pub(super) async fn field_def(
 }
 
 /// The mutation payload for a value, in the shape its field type takes.
-///
-/// Single-select and iteration are addressed by option id, not by name — which is
-/// why the schema carries ids at all.
+/// Single-select and iteration are addressed by option id.
 fn field_value(def: &FieldDef, value: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
     let by_name = |name: &str| -> anyhow::Result<String> {
         def.options
@@ -118,19 +123,27 @@ fn field_value(def: &FieldDef, value: &serde_json::Value) -> anyhow::Result<serd
 
     Ok(match def.data_type.as_str() {
         "SINGLE_SELECT" => {
-            let name = value.as_str().ok_or_else(|| anyhow::anyhow!("expected an option name"))?;
+            let name = value
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("expected an option name"))?;
             serde_json::json!({ "singleSelectOptionId": by_name(name)? })
         }
         "ITERATION" => {
-            let name = value.as_str().ok_or_else(|| anyhow::anyhow!("expected an iteration"))?;
+            let name = value
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("expected an iteration"))?;
             serde_json::json!({ "iterationId": by_name(name)? })
         }
         "NUMBER" => {
-            let n = value.as_f64().ok_or_else(|| anyhow::anyhow!("expected a number"))?;
+            let n = value
+                .as_f64()
+                .ok_or_else(|| anyhow::anyhow!("expected a number"))?;
             serde_json::json!({ "number": n })
         }
         "DATE" => {
-            let d = value.as_str().ok_or_else(|| anyhow::anyhow!("expected a date"))?;
+            let d = value
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("expected a date"))?;
             serde_json::json!({ "date": d })
         }
         _ => {
@@ -164,13 +177,13 @@ pub(super) async fn set_field(
     api::github_graphql(&cfg.host, SET_FIELD, vars).await?;
     super::cache::invalidate();
 
-    Ok(value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string()))
+    Ok(value
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| value.to_string()))
 }
 
-/// The label this board uses for an intent.
-///
-/// Read off the board rather than the config: each board names its own columns,
-/// and with none nominated there is no single vocabulary to have detected at setup.
+/// The label this board uses for an intent. Read off the board; the config is the fallback.
 pub(super) async fn status_for(
     cfg: &GithubConfig,
     project_id: &str,
@@ -191,25 +204,30 @@ pub(super) async fn status_for(
     pick_status(&options, hint, configured)
 }
 
-/// The names of a board's Status columns, for the setup preview: the user must
-/// see what the board calls its states before status_map can name one.
+/// The names of a board's Status columns.
 pub(super) async fn status_columns(host: &str, project_id: &str) -> Vec<String> {
-    let Ok(nodes) = board_fields(host, project_id).await else { return vec![] };
+    let Ok(nodes) = board_fields(host, project_id).await else {
+        return vec![];
+    };
     nodes
         .as_array()
         .and_then(|fields| {
             fields.iter().find(|f| {
-                f["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case("Status"))
+                f["name"]
+                    .as_str()
+                    .is_some_and(|n| n.eq_ignore_ascii_case("Status"))
             })
         })
         .and_then(|f| f["options"].as_array())
-        .map(|opts| opts.iter().filter_map(|o| o["name"].as_str().map(str::to_string)).collect())
+        .map(|opts| {
+            opts.iter()
+                .filter_map(|o| o["name"].as_str().map(str::to_string))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
-/// The error for a board whose status columns match neither the intent nor the
-/// config. Lists the real columns: the fix is one line in the config file, and
-/// the list is what tells the user what to write there.
+/// The error for a board whose status columns match neither the intent nor the config.
 pub(super) fn no_status_error(
     intent: crate::provider::types::StatusIntent,
     columns: &[String],
@@ -223,11 +241,8 @@ pub(super) fn no_status_error(
     )
 }
 
-/// The board column for an intent: one whose name looks like it, else the
-/// configured label when the board really has a column by that name, else nothing.
-///
-/// Never positional. detect_status_map ends in `options.first()`, which would have
-/// filed a new issue into whatever column happens to be leftmost.
+/// The board column for an intent: by name hint, else the configured label when
+/// the board has it, else empty. Never positional.
 fn pick_status(options: &[String], hint: &str, configured: &str) -> String {
     if let Some(m) = options.iter().find(|o| o.to_lowercase().contains(hint)) {
         return m.clone();
@@ -242,10 +257,13 @@ fn pick_status(options: &[String], hint: &str, configured: &str) -> String {
 mod tests {
     use super::*;
 
-    /// The user's fix is a config line; the error must name the real columns.
     #[test]
     fn the_no_status_error_names_every_column() {
-        let cols = vec!["Todo".to_string(), "Doing".to_string(), "Shipped".to_string()];
+        let cols = vec![
+            "Todo".to_string(),
+            "Doing".to_string(),
+            "Shipped".to_string(),
+        ];
         let msg = no_status_error(crate::provider::types::StatusIntent::Done, &cols).to_string();
         for c in &cols {
             assert!(msg.contains(c.as_str()), "{msg}");
@@ -266,29 +284,30 @@ mod tests {
         }
     }
 
-    /// The schema hands the frontend the option NAME as the value to send, and the
-    /// mutation takes the option id — so the resolution happens here. Sending what
-    /// the frontend sends must work; sending a node id must not silently pass.
     #[test]
     fn a_select_is_addressed_by_option_id() {
         let out = field_value(&select(), &serde_json::json!("In progress")).unwrap();
-        assert_eq!(out, serde_json::json!({ "singleSelectOptionId": "47fc9ee4" }));
+        assert_eq!(
+            out,
+            serde_json::json!({ "singleSelectOptionId": "47fc9ee4" })
+        );
     }
 
     #[test]
     fn an_unknown_option_names_the_ones_that_exist() {
-        let err = field_value(&select(), &serde_json::json!("Shipped")).unwrap_err().to_string();
-        assert!(err.contains("Ready") && err.contains("In progress"), "{err}");
+        let err = field_value(&select(), &serde_json::json!("Shipped"))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("Ready") && err.contains("In progress"),
+            "{err}"
+        );
     }
 
-    /// What the frontend actually sends is PropertyOption.id, which the schema
-    /// sets to the option name. This is the round trip that was broken.
     #[test]
     fn the_value_the_schema_offers_is_the_value_a_write_accepts() {
         let def = select();
-        for (id_the_ui_sends, expected) in
-            [("Ready", "61e4505c"), ("In progress", "47fc9ee4")]
-        {
+        for (id_the_ui_sends, expected) in [("Ready", "61e4505c"), ("In progress", "47fc9ee4")] {
             let out = field_value(&def, &serde_json::json!(id_the_ui_sends)).unwrap();
             assert_eq!(out, serde_json::json!({ "singleSelectOptionId": expected }));
         }
@@ -296,7 +315,11 @@ mod tests {
 
     #[test]
     fn a_number_field_takes_a_number() {
-        let def = FieldDef { id: "f".into(), data_type: "NUMBER".into(), options: vec![] };
+        let def = FieldDef {
+            id: "f".into(),
+            data_type: "NUMBER".into(),
+            options: vec![],
+        };
         assert_eq!(
             field_value(&def, &serde_json::json!(2.5)).unwrap(),
             serde_json::json!({ "number": 2.5 })
@@ -308,22 +331,25 @@ mod tests {
         options.iter().map(|s| s.to_string()).collect()
     }
 
-    /// A board whose Done column is called something else must still resolve by
-    /// name — and a board with no matching column must resolve to nothing rather
-    /// than to whichever option is first.
     #[test]
     fn a_status_is_matched_by_name_never_by_position() {
-        assert!(pick_status(&board(&["Backlog", "Todo", "In Progress", "Done"]), "done", "Done")
-            .eq("Done"));
-        // No "ready"-ish column: "Backlog" is first, and must NOT be chosen.
+        assert!(pick_status(
+            &board(&["Backlog", "Todo", "In Progress", "Done"]),
+            "done",
+            "Done"
+        )
+        .eq("Done"));
         assert!(pick_status(&board(&["Backlog", "Todo", "Done"]), "ready", "Ready").is_empty());
-        // Unless the configured label really is one of the columns.
         assert!(pick_status(&board(&["Backlog", "Ready", "Done"]), "ready", "Ready").eq("Ready"));
     }
 
     #[test]
     fn anything_else_is_text() {
-        let def = FieldDef { id: "f".into(), data_type: "TEXT".into(), options: vec![] };
+        let def = FieldDef {
+            id: "f".into(),
+            data_type: "TEXT".into(),
+            options: vec![],
+        };
         assert_eq!(
             field_value(&def, &serde_json::json!("hello")).unwrap(),
             serde_json::json!({ "text": "hello" })

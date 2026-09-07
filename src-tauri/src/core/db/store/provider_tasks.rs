@@ -41,28 +41,27 @@ pub async fn get_by_short_id(
     exec: impl SqliteExecutor<'_>,
     short_id: &str,
 ) -> StoreResult<Option<ProviderTask>> {
-    Ok(
-        sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks WHERE short_id = ?"))
-            .bind(short_id)
-            .fetch_optional(exec)
-            .await?,
-    )
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM provider_tasks WHERE short_id = ?"
+    ))
+    .bind(short_id)
+    .fetch_optional(exec)
+    .await?)
 }
 
 pub async fn get_by_external_id(
     exec: impl SqliteExecutor<'_>,
     external_id: &str,
 ) -> StoreResult<Option<ProviderTask>> {
-    Ok(
-        sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks WHERE external_id = ?"))
-            .bind(external_id)
-            .fetch_optional(exec)
-            .await?,
-    )
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM provider_tasks WHERE external_id = ?"
+    ))
+    .bind(external_id)
+    .fetch_optional(exec)
+    .await?)
 }
 
-/// One provider's mirrored tasks, for showing what is known when its queue is
-/// unreachable.
+/// One provider's mirrored tasks.
 pub async fn for_provider(
     exec: impl SqliteExecutor<'_>,
     provider: &str,
@@ -76,11 +75,11 @@ pub async fn for_provider(
 }
 
 pub async fn all(exec: impl SqliteExecutor<'_>) -> StoreResult<Vec<ProviderTask>> {
-    Ok(
-        sqlx::query_as(&format!("SELECT {COLUMNS} FROM provider_tasks ORDER BY synced_at DESC"))
-            .fetch_all(exec)
-            .await?,
-    )
+    Ok(sqlx::query_as(&format!(
+        "SELECT {COLUMNS} FROM provider_tasks ORDER BY synced_at DESC"
+    ))
+    .fetch_all(exec)
+    .await?)
 }
 
 pub async fn set_status(
@@ -96,12 +95,7 @@ pub async fn set_status(
     Ok(())
 }
 
-/// Drop mirror rows for `provider` that the latest sync did not return, so a task
-/// that left the queue stops showing up. Sessions are untouched: an open task keeps
-/// its session whether or not it is still queued.
-/// Every mirror row of one provider, except tasks that are checked out — used
-/// when the source is disabled, since its sync loop (the usual pruner) no
-/// longer runs.
+/// Delete every mirror row of `provider` except tasks with a session.
 pub async fn prune_provider(exec: impl SqliteExecutor<'_>, provider: &str) -> StoreResult<u64> {
     Ok(sqlx::query(
         "DELETE FROM provider_tasks
@@ -119,7 +113,9 @@ pub async fn prune_missing(
     provider: &str,
     keep: &[String],
 ) -> StoreResult<u64> {
-    let holes = std::iter::repeat("?").take(keep.len()).collect::<Vec<_>>().join(",");
+    let holes = std::iter::repeat_n("?", keep.len())
+        .collect::<Vec<_>>()
+        .join(",");
     let sql = format!(
         "DELETE FROM provider_tasks
           WHERE provider = ?

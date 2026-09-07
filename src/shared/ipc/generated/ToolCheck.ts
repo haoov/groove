@@ -17,18 +17,10 @@ purpose: string,
  */
 required: boolean, 
 /**
- * For tools that hold their own credentials: whether they are logged in.
- * `None` when the tool is absent or has nothing to authenticate.
- *
- * Installed-but-not-logged-in is the state worth naming: every MR feature
- * fails, and the CLI's own error ("not logged in") only appears once you try.
+ * Whether a credential-holding tool is logged in; `None` when absent or not applicable.
  */
 authed: boolean | null, 
 /**
- * The token's scopes, when the CLI reports them.
- *
- * `None` means UNKNOWN, not missing: a GH_TOKEN or a fine-grained PAT prints
- * no scopes line, and treating that as missing would warn those users for
- * ever. Only a `Some` that lacks a scope is worth acting on.
+ * The token's scopes when the CLI reports them. `None` means unknown, not missing.
  */
 scopes: Array<string> | null, };

@@ -5,12 +5,8 @@ import { GAP_STEP, type Gap } from '../../shared/lib/diffGaps';
 import type { Hunk } from '../../shared/ipc/ipc';
 
 /**
- * Turning a hunk list into a CodeMirror document.
- *
- * The diff editor renders ONE document made of every hunk's lines back to back, so
- * a CodeMirror line number is not a file line number: `lineMap` is the translation,
- * and everything that anchors to a file line (annotations, threads, blame, the
- * comment gutter) goes through it. Pure, so the mapping can be tested directly.
+ * Builds the CodeMirror document and static decorations for a hunk list.
+ * `lineMap` translates document lines to new-side file lines.
  */
 
 /** What a document line came from. `fileLineNum` is the NEW-side number. */
@@ -28,7 +24,7 @@ class HunkSepWidget extends WidgetType {
     return el;
   }
   eq(): boolean { return true; }
-  // Must match the CSS box height (.diff-hunk-sep) so the gutter stays aligned.
+  // Must equal the .diff-hunk-sep height in CSS.
   get estimatedHeight(): number { return 13; }
 }
 
@@ -60,7 +56,7 @@ class GapWidget extends WidgetType {
       && other.gap.endLine === this.gap.endLine;
   }
 
-  // Must match the CSS box height (.diff-gap) so the gutter stays aligned.
+  // Must equal the .diff-gap height in CSS.
   get estimatedHeight(): number { return 20; }
 }
 
@@ -94,7 +90,7 @@ export function buildStaticDecos(
   gaps: Gap[],
   onExpand: ((gap: Gap, whole: boolean) => void) | null,
 ): DecorationSet {
-  // Pre-compute word-diff ranges (del/add pairs within each hunk)
+  // Word-diff ranges for paired del/add lines in each hunk.
   const wordRanges = new Map<number, { ranges: [number, number][] }>();
   for (let hi = 0; hi < hunks.length; hi++) {
     const { lines } = hunks[hi];
@@ -125,8 +121,7 @@ export function buildStaticDecos(
     const info = lineMap[n - 1];
     const docLine = state.doc.line(n);
 
-    // A band above every hunk that has hidden lines before it, plus the plain
-    // separator between hunks when expansion is unavailable.
+    // Gap band or plain separator above each hunk.
     const hunkIdx = hunkFirstCMLines.indexOf(n);
     if (hunkIdx >= 0) {
       const gap = gapAbove.get(hunkIdx);
@@ -139,14 +134,12 @@ export function buildStaticDecos(
       }
     }
 
-    // Line background
     if (info.type === 'add') {
       builder.add(docLine.from, docLine.from, Decoration.line({ class: 'diff-line-add' }));
     } else if (info.type === 'del') {
       builder.add(docLine.from, docLine.from, Decoration.line({ class: 'diff-line-del' }));
     }
 
-    // Word-diff marks
     const wr = wordRanges.get(n);
     if (wr) {
       for (const [start, end] of wr.ranges) {
@@ -159,7 +152,7 @@ export function buildStaticDecos(
     }
   }
 
-  // Trailing gap: below the last line, so it needs `side: 1`.
+  // Trailing gap, below the last line.
   const tail = gapAbove.get(hunks.length);
   if (tail && onExpand) {
     builder.add(state.doc.length, state.doc.length,

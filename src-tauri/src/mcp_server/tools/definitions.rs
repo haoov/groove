@@ -1,26 +1,15 @@
-//! MCP tool schemas advertised by `tools/list`.
-//!
-//! `inputSchema` is camelCase per the MCP spec.
-//!
-//! THIS FILE IS THE ONE PLACE that tells the agent how to write a commit message,
-//! MR text, an annotation or a task body. It is the only text present at the moment
-//! of the call, attached to the field it governs, and it reaches every caller — a
-//! skill only fires when invoked. Do NOT restate these rules in a skill, the core
-//! prompt or a CLAUDE.md.
-//!
-//! Keep every rule to a short phrase. No examples, no rationale, no length caps —
-//! the agent needs scoping, not an essay.
-//!
-//! The PreToolUse hook (~/.claude/hooks/conventional-check.py) DENIES a call that
-//! breaks the hard ones: the subject grammar, the annotation label, the MR's
-//! What/Why headings. Change a hard rule here and change it there in the same edit.
+//! MCP tool schemas advertised by `tools/list`. `inputSchema` is camelCase per the MCP spec.
+//! The one place that tells the agent how to write commits, MR text, annotations and
+//! task bodies; do not restate these rules in a skill, the core prompt or a CLAUDE.md.
+//! The PreToolUse hook (~/.claude/hooks/conventional-check.py) denies a call that breaks
+//! a hard rule: change a hard rule here and there in the same edit.
 
 /// Commit-subject grammar. Used by git_commit and both MR titles.
 const SUBJECT: &str = "Conventional commit subject: `type(scope): subject`, imperative, \
     lower case, no final period, under 72 chars. Types: feat, fix, chore, docs, style, \
     refactor, perf, test, build, ci, revert.";
 
-/// The bar for length — a deletion test, never a number.
+/// The length rule: a deletion test, not a number.
 const TIGHT: &str = "Only what the reader needs to act on. Cut what adds nothing.";
 
 /// Markdown affordances; `- [ ]` becomes a real to-do block.
@@ -35,8 +24,7 @@ fn mr_description() -> String {
     )
 }
 
-/// Body rules for a task being DRAFTED. Not used by update_task_body, which replaces
-/// a page the user may have written by hand.
+/// Body rules for a drafted task. Not used by update_task_body.
 fn task_body_description(specifics: &str) -> String {
     format!(
         "Markdown under the template's headings. {TIGHT} {specifics} {LISTS} Checkboxes \
@@ -46,8 +34,7 @@ fn task_body_description(specifics: &str) -> String {
 
 const TARGET_BRANCH: &str = "Branch this work is based on and will be merged back into. Omit for the repo default; name it for a maintenance, release or backport branch, or for the branch a stacked MR sits on. It must already exist on origin. The branch is cut from it, the diff is measured against it, and create_mr targets it.";
 
-/// What a `SKILL.md` has to contain. The description is what Claude Code matches to
-/// invoke the skill unprompted.
+/// What a `SKILL.md` has to contain.
 fn skill_body_description() -> String {
     "The whole SKILL.md. Front matter between `---` lines, every value on ONE line: \
      `name` (matches the name field), `description`, `groove-kinds` (comma list of \
@@ -114,7 +101,6 @@ fn mcp_tool(name: &str, description: &str, input_schema: serde_json::Value) -> s
 mod tests {
     use super::mcp_tool_definitions;
 
-    /// The hook denies a description without these, so the contract must name them.
     #[test]
     fn mr_description_states_the_required_headings() {
         let tools = mcp_tool_definitions();
@@ -129,15 +115,16 @@ mod tests {
         }
     }
 
-    /// The agent's commit is `index_only`, so the description has to say how to stage.
     #[test]
     fn git_commit_asks_for_a_deliberate_index() {
         let tools = mcp_tool_definitions();
-        let d = tools.iter().find(|t| t["name"] == "git_commit").expect("git_commit")["description"]
+        let d = tools
+            .iter()
+            .find(|t| t["name"] == "git_commit")
+            .expect("git_commit")["description"]
             .as_str()
             .expect("description text");
         assert!(d.contains("STAGED"), "does not say the index is what lands");
         assert!(d.contains("git add"), "does not say how to stage");
     }
 }
-

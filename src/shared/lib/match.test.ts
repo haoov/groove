@@ -19,7 +19,7 @@ describe('rankMatches', () => {
   });
 
   it('drops the scattered subsequences a bare matchRanges would keep', () => {
-    // Every one of these contains m…a…y…o in order, so matchRanges accepts them.
+    // Every one of these contains m…a…y…o in order.
     const loose = slugs.filter((s) => matchRanges('mayo', s) !== null);
     expect(loose.length).toBeGreaterThan(1);
     expect(ranked('mayo')).toEqual(['gitlab.example.com/wiremind/devops/mayonnaise']);
@@ -47,7 +47,7 @@ describe('rankMatches', () => {
   });
 
   it('still allows a two-run subsequence', () => {
-    // "devops" + "overwhelm" — one break, within the tightness budget.
+    // "devops" + "overwhelm": one break, within the tightness budget.
     const out = rankMatches('devoverwhelm', slugs, (s) => s);
     expect(out.map((r) => r.item)).toContain('gitlab.example.com/wiremind/devops/overwhelm');
   });

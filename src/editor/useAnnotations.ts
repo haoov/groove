@@ -19,12 +19,12 @@ export interface AnnCtx {
   cancel: () => void;
   replyTexts: Record<string, string>;
   setReplyTexts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  /** Reply keys with an in-flight submission (drives the reply input's disabled state). */
+  /** Reply keys with an in-flight submission. */
   replyPending: Record<string, boolean>;
   submitReply: (mrId: string, threadId: string, body: string, replyKey: string) => void;
   /** Annotation ids with an in-flight "Post to MR". */
   postPending: Record<string, boolean>;
-  /** Promote a local annotation to a positioned MR discussion, then resolve it. */
+  /** Posts a local annotation as a positioned MR discussion, then resolves it. */
   postToMr: (a: Annotation, mrId: string) => void;
   /** The annotation open for editing, and its draft body. */
   editingId: string | null;
@@ -32,29 +32,25 @@ export interface AnnCtx {
   setEditText: (s: string) => void;
   beginEdit: (a: Annotation) => void;
   cancelEdit: () => void;
-  /** Save the draft over the annotation being edited. */
+  /** Saves the draft over the annotation being edited. */
   saveEdit: () => void;
   /** Annotation ids with an in-flight edit. */
   editPending: Record<string, boolean>;
   /** Annotation ids with an in-flight resolve. */
   resolvePending: Record<string, boolean>;
-  /** Mark a note resolved — it leaves the diff, the record stays. */
+  /** Marks a note resolved; the record stays. */
   resolveNote: (id: string) => void;
   /** Annotation ids with an in-flight delete. */
   deletePending: Record<string, boolean>;
-  /** Delete a note outright (resolve keeps it; this removes it). */
+  /** Deletes a note outright. */
   deleteAnnotation: (id: string) => void;
   openInEditor: (repoId: string, filePath: string, lineNum?: number) => void;
   inputRef: React.RefObject<HTMLTextAreaElement>;
 }
 
 /**
- * Owns the diff annotation selection + reply state and the handlers a diff file
- * needs (gutter drag, submit, reply). A single instance is shared across every
- * pane/tab: selections carry a repoId+filePath so a file only paints its own.
- *
- * `openInEditor` is injected so the caller decides what "open in editor" does
- * (e.g. open an edit tab in the workspace).
+ * Owns the annotation selection, reply state and handlers shared by every pane.
+ * `openInEditor` is injected by the caller.
  */
 export function useAnnotations(
   openInEditor: (repoId: string, filePath: string, lineNum?: number) => void,
@@ -75,8 +71,7 @@ export function useAnnotations(
   const [annotationText, setAnnotationText] = useState('');
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  // In-flight guards: refs give a synchronous guard against a double Enter/Ctrl+Enter
-  // firing before React re-renders; the reply state additionally disables the UI.
+  // In-flight guards: the refs block a double Enter before React re-renders.
   const submittingRef = useRef(false);
   const replyInFlight = useRef<Set<string>>(new Set());
   const [replyPending, setReplyPending] = useState<Record<string, boolean>>({});
@@ -159,10 +154,7 @@ export function useAnnotations(
     }
   };
 
-  // Publish a drafted annotation as a positioned MR discussion (anchored at its
-  // start line on the MR head), then resolve it locally — draft locally, post
-  // deliberately. Caveat: positions reference the REMOTE head, so post before
-  // making local commits in a review worktree.
+  // Positions reference the remote MR head: post before local commits in a review worktree.
   const postToMr = async (a: Annotation, mrId: string) => {
     if (postInFlight.current.has(a.id)) return;
     postInFlight.current.add(a.id);
@@ -176,7 +168,7 @@ export function useAnnotations(
       });
       await invoke('resolve_annotation', { id: a.id });
       resolveAnnotation(a.id);
-      bumpMrs(); // the new thread shows up in Discussion + the diff gutter
+      bumpMrs();
       notify({ kind: 'success', source: 'mr', taskId: a.session_id, title: `Comment posted on ${a.file_path.split('/').pop()}:${a.start_line}` });
     } catch (e) {
       setLastError(String(e));

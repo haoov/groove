@@ -1,11 +1,6 @@
 import { Bot } from 'lucide-react';
 
-/**
- * The one button that shows the running-agents list. It sits in the agent
- * panel's head, beside the pop-out or dock-back button, docked or detached: the
- * list is the panel's, so its switch stays where the panel is. The badge is the
- * number of agents waiting on the user.
- */
+/** The button that shows the running-agents list. The badge counts the agents waiting on the user. */
 export function AgentsToggle({
   open, count, onClick, hint,
 }: {

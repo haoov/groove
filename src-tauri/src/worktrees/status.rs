@@ -35,17 +35,20 @@ pub async fn get_worktree_status(
             let x = line.chars().next().unwrap_or(' ');
             let y = line.chars().nth(1).unwrap_or(' ');
             if x == '?' && y == '?' {
-                // Untracked (newly created) file — count it as a working-tree change.
+                // An untracked file counts as a working-tree change.
                 modified += 1;
             } else {
-                if x != ' ' { staged += 1; }
-                if y != ' ' { modified += 1; }
+                if x != ' ' {
+                    staged += 1;
+                }
+                if y != ' ' {
+                    modified += 1;
+                }
             }
         }
     }
 
-    // Ahead/behind vs the branch's own remote tracking ref (origin/<branch>),
-    // not vs main — that distance powers the diff view instead.
+    // Ahead/behind against `origin/<branch>`, not the base branch.
     let upstream = format!("origin/{}", wt.branch);
     let has_upstream = crate::core::git::output(&wt.path, &["rev-parse", "--verify", &upstream])
         .await
@@ -58,7 +61,9 @@ pub async fn get_worktree_status(
             .await
             .ok()
             .and_then(|o| {
-                if !o.status.success() { return None; }
+                if !o.status.success() {
+                    return None;
+                }
                 let s = String::from_utf8(o.stdout).ok()?;
                 let parts: Vec<&str> = s.split_whitespace().collect();
                 if parts.len() == 2 {
@@ -69,23 +74,32 @@ pub async fn get_worktree_status(
             })
             .unwrap_or((0, 0))
     } else {
-        // Never pushed: every commit beyond the base is unpushed. Honours a review
-        // worktree's pinned target, so this count agrees with the diff instead of
-        // measuring against the repo default. No base on origin means there is
-        // nothing to measure against, and the count stays 0.
-        let ahead = match crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref()).await {
-            Ok(base_ref) => crate::core::git::output(&wt.path, &["rev-list", "--count", &format!("{base_ref}..HEAD")])
+        // No upstream: count commits beyond the base ref, honouring a pinned `base_ref`.
+        let ahead =
+            match crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref()).await {
+                Ok(base_ref) => crate::core::git::output(
+                    &wt.path,
+                    &["rev-list", "--count", &format!("{base_ref}..HEAD")],
+                )
                 .await
                 .ok()
                 .and_then(|o| {
-                    if !o.status.success() { return None; }
+                    if !o.status.success() {
+                        return None;
+                    }
                     String::from_utf8(o.stdout).ok()?.trim().parse::<i64>().ok()
                 })
                 .unwrap_or(0),
-            Err(_) => 0,
-        };
+                Err(_) => 0,
+            };
         (ahead, 0)
     };
 
-    Ok(WorktreeStatus { worktree_id, modified, staged, ahead, behind })
+    Ok(WorktreeStatus {
+        worktree_id,
+        modified,
+        staged,
+        ahead,
+        behind,
+    })
 }

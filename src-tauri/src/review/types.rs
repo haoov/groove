@@ -27,13 +27,10 @@ pub struct FileDiff {
     pub deleted: i64,
     /// Git status letter: "A" added, "M" modified, "D" deleted (summary only).
     pub status: String,
-    /// Working-tree staged state for this path: `Some(true)` = staged (index has
-    /// changes), `Some(false)` = only working-tree changes, `None` = no local
-    /// change (e.g. committed-only files shown in vs-main mode → no checkbox).
+    /// `Some(true)` staged, `Some(false)` working-tree only, `None` no local change.
     #[serde(default)]
     pub staged: Option<bool>,
-    /// Empty in the summary payload — line content is fetched lazily per file
-    /// via `get_file_diff` when the file is actually displayed.
+    /// Empty in the summary payload; filled by `get_file_diff`.
     pub hunks: Vec<Hunk>,
 }
 
@@ -63,15 +60,12 @@ pub struct CommitEntry {
     pub author: String,
     #[ts(type = "number")]
     pub timestamp: i64,
-    /// True = upstream base history (reachable from origin/HEAD); false = the
-    /// task's own commits (base..branch). The UI dims base commits and draws
-    /// the divergence divider before the first one.
+    /// True for upstream base history, false for the task's own commits.
     #[serde(default)]
     pub is_base: bool,
 }
 
-/// One line's blame. `uncommitted` marks git's all-zero sha: the line exists only
-/// on disk, so there is no commit to open.
+/// One line's blame; `uncommitted` marks git's all-zero sha.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct BlameLine {
@@ -84,4 +78,3 @@ pub struct BlameLine {
     pub summary: String,
     pub uncommitted: bool,
 }
-

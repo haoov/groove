@@ -1,14 +1,9 @@
-//! System clipboard, through the OS rather than the webview.
-//!
-//! `navigator.clipboard` needs a secure context and `execCommand('copy')` needs a DOM
-//! selection, which a terminal does not have — xterm draws its own. Both failed
-//! silently.
+//! System clipboard through OS tools, not the webview.
 
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
-/// A wedged clipboard owner must not freeze the UI: a tool that has not answered by
-/// then is killed and the next one runs.
+/// A tool that has not answered by then is killed and the next one runs.
 const TOOL_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Writers, in preference order. Linux: Wayland-native, then X11, then xsel.
@@ -35,8 +30,7 @@ fn is_wayland() -> bool {
     std::env::var_os("WAYLAND_DISPLAY").is_some()
 }
 
-/// The tools that fit the session: without a Wayland display the wl-clipboard pair
-/// has no selection to serve.
+/// The tools that fit the session; the wl-clipboard pair needs a Wayland display.
 fn session_tools(
     all: &[(&'static str, &'static [&'static str])],
     wayland: bool,
@@ -55,12 +49,8 @@ fn missing_tools(candidates: &[(&str, &[&str])]) -> String {
     )
 }
 
-/// Write `text` to the clipboard with the first tool that succeeds.
-///
-/// One write only: mutter mirrors the selection between the Wayland and X11
-/// clipboards, and a second write through xclip moves ownership to an X11 client
-/// behind the XWayland proxy — the state where a later `wl-paste` blocks for ever.
-/// (A wlroots compositor does not mirror; X11 apps there see a stale clipboard.)
+/// Write `text` to the clipboard with the first tool that succeeds. One write only:
+/// under mutter a second write through xclip makes a later `wl-paste` block for ever.
 #[tauri::command]
 pub async fn copy_to_clipboard(text: String) -> Result<(), String> {
     write_first(&session_tools(&WRITERS, is_wayland()), TOOL_TIMEOUT, &text).await

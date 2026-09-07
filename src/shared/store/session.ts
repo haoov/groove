@@ -1,8 +1,4 @@
-// Session construction and the pure per-session reducers.
-//
-// Everything here is a plain function of (SessionState, args) -> Partial<SessionState>:
-// no store access, no IPC. The store's bound actions in index.ts are thin wrappers
-// that feed these into `updateSessionState`.
+// Session construction and the pure per-session reducers. No store access, no IPC.
 
 import { leaf, splitLeaf, removeLeaf, type SplitDir } from '../lib/layout';
 import type { Task, Repo, Worktree } from '../ipc/ipc';
@@ -10,23 +6,15 @@ import type {
   EditorTab, OpenTabInput, SessionKind, SessionState, WorkspacePane,
 } from './types';
 
-/** Tab kinds that may exist at most once per session (one DOM/terminal instance):
- *  opening focuses the existing tab wherever it lives; splits never clone them. */
+/** Tab kinds that exist at most once per session. Opening focuses the existing tab; splits never clone them. */
 const UNIQUE_TAB_KINDS = new Set(['terminal']);
 
-/**
- * A pane that holds terminals holds nothing else.
- *
- * Terminals are a dock, not a document: they live in the bottom row, they never
- * mix with file tabs, and splitting one gives another terminal. Empty panes count
- * as neither, so a fresh split can still become either.
- */
+/** A pane that holds terminals holds nothing else. Empty panes count as neither. */
 export function isTerminalPane(pane: WorkspacePane): boolean {
   return pane.tabs.length > 0 && pane.tabs.every((t) => t.kind === 'terminal');
 }
 
-/** Where a tab of this kind is allowed to land. Keeps a file out of the terminal
- *  dock (and a terminal out of an editor pane) whatever the caller asks for. */
+/** The pane a tab of this kind lands in: terminals in a terminal pane, files elsewhere. */
 function paneFor(s: SessionState, kind: string, requested?: string): string {
   const wantsTerminal = kind === 'terminal';
   const pane = s.panes.find((p) => p.id === (requested ?? s.activePaneId));
@@ -42,15 +30,13 @@ export const COMMIT_PAGE = 20;
 
 let paneSeq = 1;
 export const newPaneId = () => `pane-${++paneSeq}`;
-/** The task overview page — seeded as every session's first tab. */
 export const emptyPane = (): WorkspacePane => ({
   id: 'pane-1',
   tabs: [],
   activeTabId: null,
 });
 
-/** Fresh per-session defaults. A factory (not a shared const) so every new
- *  session gets its own mutable containers (Sets, arrays, records). */
+/** Fresh per-session defaults. Keep it a factory: each session needs its own Sets, arrays and records. */
 export function sessionDefaults(): Omit<SessionState, 'id' | 'kind' | 'title' | 'task' | 'worktrees' | 'repos'> {
   return {
     workspaceMode: 'overview' as const,
@@ -121,18 +107,14 @@ export function openTabReducer(
   const tabId =
     kind === 'changes' ? `${repoId}::__changes__`
     : kind === 'commit' ? `${repoId}::commit::${sha}`
-    // NEVER the label: every unbound terminal is labelled 'Terminal', so keying on
-    // it made them all one tab and a second terminal silently focused the first.
+    // Never key on the label: every unbound terminal is labelled 'Terminal'.
     : kind === 'terminal' ? `::term::${ptySessionId ?? ++termTabSeq}`
     : `${repoId}::${filePath}`;
   // Single-instance surfaces never open as transient previews.
   const preview = UNIQUE_TAB_KINDS.has(kind) ? false : previewIn;
 
-  // Single-instance kinds: if the tab exists in ANY pane, focus it there
-  // (one DOM/terminal instance each — never a second copy). Terminals also
-  // match by PTY-session binding: a tab bound to the same session IS the same
-  // terminal even when its computed id differs (seq-based vs session-based),
-  // otherwise a duplicate tab would steal the xterm host element.
+  // Single-instance kinds: focus the existing tab in whichever pane holds it.
+  // Terminals also match by PTY session binding.
   if (UNIQUE_TAB_KINDS.has(kind)) {
     for (const p of s.panes) {
       const existingUnique = p.tabs.find(
@@ -154,8 +136,7 @@ export function openTabReducer(
     const existing = p.tabs.find((t) => t.id === tabId);
     let tabs: EditorTab[];
     if (existing) {
-      // Update in place. A normal open promotes a preview tab (clears the flag);
-      // a preview open never demotes an already-open normal tab.
+      // A normal open promotes a preview tab; a preview open never demotes a normal tab.
       tabs = p.tabs.map((t) =>
         t.id === tabId
           ? { ...t, view, cursorLine: cursorLine ?? t.cursorLine, preview: preview ? t.preview : false }
@@ -174,7 +155,7 @@ export function openTabReducer(
   return { panes, activePaneId: paneId };
 }
 
-/** Clear the preview flag on the pane's preview tab (keep it as a real tab). */
+/** Clears the preview flag on the pane's preview tab. */
 export function commitPreviewReducer(s: SessionState, paneId: string): Partial<SessionState> {
   const panes = s.panes.map((p) =>
     p.id === paneId ? { ...p, tabs: p.tabs.map((t) => (t.preview ? { ...t, preview: false } : t)) } : p
@@ -182,8 +163,7 @@ export function commitPreviewReducer(s: SessionState, paneId: string): Partial<S
   return { panes };
 }
 
-/** Remove the pane's preview tab. Unlike closeTab, never prunes an empty split
- *  pane — discarding a preview shouldn't collapse a split the user created. */
+/** Removes the pane's preview tab. Unlike closeTab, never prunes an empty split pane. */
 export function discardPreviewReducer(s: SessionState, paneId: string): Partial<SessionState> {
   const panes = s.panes.map((p) => {
     if (p.id !== paneId) return p;
@@ -207,7 +187,7 @@ export function closeTabReducer(s: SessionState, paneId: string, tabId: string):
       p.activeTabId === tabId ? (tabs.length ? tabs[Math.max(0, idx - 1)].id : null) : p.activeTabId;
     return { ...p, tabs, activeTabId };
   });
-  // Closing the last tab of a non-root pane closes the pane (tree collapses).
+  // Closing the last tab of a non-root pane closes the pane.
   const emptied = panes.find((p) => p.id === paneId && p.tabs.length === 0);
   if (emptied && panes.length > 1) {
     return closePaneReducer({ ...s, panes }, paneId);
@@ -215,14 +195,8 @@ export function closeTabReducer(s: SessionState, paneId: string, tabId: string):
   return { panes };
 }
 
-/**
- * Split the active pane in `dir`; the new pane clones the active tab (except
- * single-instance kinds, which can only exist once) and takes focus.
- *
- * Splitting a terminal pane is the exception: it always yields another terminal,
- * side by side in the dock, because a terminal pane can hold nothing else and an
- * empty half of the dock is useless. The caller starts the PTY for the new tab.
- */
+/** Splits the active pane in `dir`; the new pane clones the active tab, except single-instance kinds,
+ *  and takes focus. A terminal pane splits into another terminal; the caller starts its PTY. */
 export function splitPaneReducer(s: SessionState, dir: SplitDir): Partial<SessionState> {
   const active = s.panes.find((p) => p.id === s.activePaneId) ?? s.panes[0];
   if (!active) return {};
@@ -252,8 +226,7 @@ export function splitPaneReducer(s: SessionState, dir: SplitDir): Partial<Sessio
   };
 }
 
-/** Close a pane: merge its tabs into the surviving sibling (dedupe by id — PTY
- *  and other single-instance tabs are preserved), collapse the tree. */
+/** Closes a pane: its tabs merge into the surviving sibling, deduped by id. */
 export function closePaneReducer(s: SessionState, paneId: string): Partial<SessionState> {
   if (s.panes.length <= 1) return {};
   const closing = s.panes.find((p) => p.id === paneId);
@@ -278,9 +251,7 @@ export function closePaneReducer(s: SessionState, paneId: string): Partial<Sessi
   };
 }
 
-/** Force a diff reload: bump the nonce (re-fetches the summary) and clear cached
- *  hunks (re-fetches expanded files). Shared by session.bumpDiff + root.invalidateDiff.
- *  Blame goes too — a commit re-attributes lines. */
+/** Bumps the diff nonce and clears cached hunks and blame. */
 export const bumpDiffRecipe = (s: SessionState): Partial<SessionState> => ({
   diffNonce: s.diffNonce + 1,
   diffHunks: {},

@@ -5,8 +5,7 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
   // Navigation
   view: 'home',
   setView: (v) =>
-    // Leaving the workspace drops a maximized agent: the rule that gives it the
-    // pane area has no pane area to take on Home.
+    // Leaving the workspace drops a maximized agent.
     set(v === 'workspace' ? { view: v } : { view: v, agentMaximized: false }),
 
   // Sidebar list focus
@@ -19,8 +18,7 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
       const sess = id ? s.sessions[id] : null;
       return {
         commitFocusNonce: s.commitFocusNonce + 1,
-        // Also un-collapse: the commit box cannot take focus while the column it
-        // lives in is hidden.
+        // Also select the git tab and un-collapse the column.
         ...(sess && id
           ? {
               sessions: {
@@ -38,7 +36,7 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
 
   // Grep match highlight
   grepHighlight: null,
-  // Under two characters is not a search worth painting — it would mark half the file.
+  // Queries under two characters are not painted.
   setGrepHighlight: (h) => set({ grepHighlight: h && h.query.length >= 2 ? h : null }),
 
   // Terminal focus
@@ -77,7 +75,7 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
       return { view: back };
     }),
 
-  // Vim mode — defaults on (the editor + readonly-diff use vim navigation).
+  // Vim mode, default on.
   vimMode: (() => {
     try {
       const v = localStorage.getItem('workbench.vimMode');
@@ -90,6 +88,4 @@ export const uiSlice: StateCreator<AppState, [], [], UiSlice> = (set) => ({
     try { localStorage.setItem('workbench.vimMode', String(v)); } catch { /* ignore */ }
     set({ vimMode: v });
   },
-
-  // Task wizard
 });

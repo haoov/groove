@@ -11,10 +11,8 @@ import {
   sessionTitle, splitPaneReducer,
 } from '../session';
 
-// The slice owns the whole session layer: the map + lifecycle actions, the
-// per-session bound-action machinery, and the memoized `SessionView` builder.
-// Module-level helpers need the live store; the creator captures set/get once
-// (the store is created before anything can call them).
+// The session layer: the map, lifecycle actions, bound per-session actions, and the
+// memoized `SessionView` builder. The creator captures set/get once for the module-level helpers.
 
 let _set: StoreApi<AppState>['setState'];
 let _get: StoreApi<AppState>['getState'];
@@ -28,9 +26,8 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
     activeSessionId: null,
     openSession: ({ kind, task = null, worktrees = [], repos = [], focus = true }) => {
       const st = get();
-      // Navigation is opt-out: only a focusing open moves the user.
       const navigate = focus ? { view: 'workspace' as const } : {};
-      // Dedupe by short_id — reopening a task/explorer focuses its session.
+      // Dedupe by short_id.
       if (task) {
         const existingId = st.sessionOrder.find((id) => st.sessions[id]?.task?.short_id === task.short_id);
         if (existingId) {
@@ -44,11 +41,10 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
                   task,
                   worktrees,
                   repos,
-                  // Preserve the existing session's kind; only refresh the label.
+                  // Keep the existing session's kind; only refresh the label.
                   title: sessionTitle(prev.kind, task),
                   activeRepoId: prev.activeRepoId ?? repos[0]?.id ?? null,
-                  // Keep the selected worktree if it survived the refresh
-                  // (conversion/provisioning replace worktree rows).
+                  // Keep the selected worktree when it survived the refresh.
                   activeWorktreeId: worktrees.some((w) => w.id === prev.activeWorktreeId)
                     ? prev.activeWorktreeId
                     : worktrees.find((w) => w.repo_id === (prev.activeRepoId ?? repos[0]?.id))?.id
@@ -85,7 +81,7 @@ export const sessionsSlice: StateCreator<AppState, [], [], SessionsSlice> = (set
           const at = s.sessionOrder.indexOf(id);
           const remaining = s.sessionOrder.filter((x) => x !== id);
           activeSessionId = remaining[at] ?? remaining[at - 1] ?? null;
-          // Only the workspace has nothing left to show; settings stays put.
+          // Settings stays put.
           if (!activeSessionId && view === 'workspace') view = 'home';
         }
         return { sessions, sessionOrder, activeSessionId, view };
@@ -110,13 +106,11 @@ function updateSessionState(id: string, recipe: (s: SessionState) => Partial<Ses
   });
 }
 
-/** Recompute git status for a session's active worktrees. Shared by the bound
- *  per-session action and the root `refreshStatusFor` (used by event handlers). */
-// One run per session at a time — overlapping callers fold into a trailing
-// re-run instead of stacking N-per-worktree git calls.
+// One run per session at a time; overlapping callers fold into one trailing re-run.
 const statusInFlight = new Set<string>();
 const statusQueued = new Set<string>();
 
+/** Recomputes git status for a session's worktrees. */
 async function doRefreshStatus(id: string) {
   if (statusInFlight.has(id)) {
     statusQueued.add(id);
@@ -172,8 +166,7 @@ function makeSessionActions(id: string): SessionActions {
     openTab: (input, opts) =>
       upd((s) => {
         const patch = openTabReducer(s, input, opts);
-        // Any open shows the panes: leaving Overview is implied by asking for a tab.
-        // A real open focuses the editor; a preview open leaves focus in the search input.
+        // Any open shows the panes; only a real open focuses the editor.
         return input.preview
           ? { ...patch, workspaceMode: 'code' as const }
           : { ...patch, workspaceMode: 'code' as const, editorFocusNonce: s.editorFocusNonce + 1 };
@@ -269,8 +262,7 @@ function getBoundActions(id: string): SessionActions {
   return a;
 }
 
-/** A session's bound actions, for non-hook contexts (event handlers) that want to
- *  reuse the same reducers components call — instead of re-implementing patches. */
+/** A session's bound actions, for non-hook contexts. */
 export function sessionActions(id: string): SessionActions {
   return getBoundActions(id);
 }
@@ -280,10 +272,8 @@ const EMPTY_SESSION: SessionState = Object.freeze({
   id: '', kind: 'task', title: '', task: null, worktrees: [], repos: [], ...sessionDefaults(),
 });
 
-// Memoize the merged view per session record. `updateSessionState` produces a
-// fresh SessionState object on every change, so keying by object identity means
-// we rebuild the ~65-key view only when the session actually changed — unrelated
-// store updates reuse the cached view. GC'd with the session (WeakMap).
+// Memoized per session record, by object identity. Keep session identity stable:
+// a new SessionState object rebuilds the view.
 const viewCache = new WeakMap<SessionState, SessionView>();
 
 export function buildView(root: AppState, id: string | null): SessionView {

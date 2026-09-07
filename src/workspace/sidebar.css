@@ -1,17 +1,16 @@
-/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+/* ── Sidebar ── */
 
 .sidebar-wrapper {
   display: flex;
   flex-direction: column;
-  /* Yields before the panes do. */
   flex-shrink: 1;
-  /* The floor is the inline minWidth, not min-content — see .agent-pane. */
+  /* no min-content floor; the inline minWidth is the floor */
   min-width: 0;
   overflow: hidden;
 }
 
 .sidebar {
-  /* Takes focus as a fallback so the panel shortcut can close it (see index.tsx). */
+  /* focus target for the panel shortcut (index.tsx) */
   outline: none;
   width: 100%;
   height: 100%;
@@ -23,8 +22,6 @@
   flex: 1;
   min-height: 0;
 }
-
-/* Per-repo git status stat colors (shared by diff + sidebar repo headers) */
 
 .repo-stat-modified { color: var(--gl-color-orange-400); }
 
@@ -43,10 +40,6 @@
   text-align: center;
   line-height: 1.6;
 }
-
-/* Keyboard-navigable list (file tree / changed files): the cursor row gets a
-   full-row background (no left-border accent — see project rule). When the list
-   itself is focused the cursor reads as an accent; otherwise it stays subtle. */
 
 .nav-list { outline: none; }
 

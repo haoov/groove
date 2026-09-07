@@ -49,7 +49,6 @@ function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
   const lines = state.doc.lines;
   const anchor = dyn.selEnd;
 
-  // Group annotations by end line for permanent inline widgets.
   const annsByEndLine = new Map<number, Annotation[]>();
   for (const ann of dyn.fileAnnotations) {
     const g = annsByEndLine.get(ann.end_line);
@@ -64,7 +63,7 @@ function buildDecos(state: EditorState, dyn: EditorDyn): DecorationSet {
     } else if (dyn.annotatedLineNums.has(n)) {
       b.add(line.from, line.from, Decoration.line({ class: 'diff-line-annotated' }));
     }
-    // Permanent annotations under their end line (hidden while the form is open there).
+    // Inline annotations under their end line; hidden where the form is open.
     const lineAnns = annsByEndLine.get(n);
     const annContainer = dyn.annContainers.get(n);
     if (lineAnns && lineAnns.length > 0 && annContainer && n !== anchor) {
@@ -94,13 +93,7 @@ const grepQueryField = StateField.define<GrepHighlight | null>({
   },
 });
 
-/**
- * Mark the hits on ONE line: the row the search cursor is on.
- *
- * Marking every occurrence in the file meant the match you had selected looked
- * exactly like the twenty you had not, which is the opposite of what walking the
- * result list is for. A line also needs no viewport scan.
- */
+/** Marks the hits on one line: the row the search cursor is on. */
 function buildGrepDecos(view: EditorView, h: GrepHighlight): DecorationSet {
   const b = new RangeSetBuilder<Decoration>();
   const needle = h.query.toLowerCase();
@@ -124,7 +117,6 @@ const grepPlugin = ViewPlugin.fromClass(
     update(update: ViewUpdate) {
       const q = update.state.field(grepQueryField);
       const queryChanged = update.transactions.some((tr) => tr.effects.some((e) => e.is(setGrepQuery)));
-      // No viewport dependency: one line is marked, wherever it is.
       if (queryChanged || update.docChanged) {
         this.decorations = q ? buildGrepDecos(update.view, q) : Decoration.none;
       }
@@ -160,22 +152,20 @@ export interface CodeEditorProps {
   annotations: Annotation[];
   /** MR threads positioned in this file. */
   threads: MrThread[];
-  /** The MR for this worktree (for inline thread replies). */
+  /** The MR for this worktree. */
   mr: Mr | null;
-  /** Shared annotation context — same one the diff editor uses. */
+  /** Shared annotation context. */
   ann: AnnCtx;
   onModifiedChange: (modified: boolean) => void;
   onPersistCursor: (line: number, col: number, scrollTop: number) => void;
   onSaveContent: (content: string) => Promise<void>;
-  /** Hands the parent a save() it can call (Ctrl+S / Save button). */
+  /** Hands the parent a save() to call. */
   registerSave?: (fn: () => void) => void;
-  /** Changes when a real (non-preview) open/commit asks this editor to take
-   *  DOM focus. Undefined for inactive panes (so they never grab focus). */
+  /** Changes when a real open asks this editor to take focus; undefined for inactive panes. */
   focusSignal?: number;
-  /** True while this tab is a transient preview — suppresses auto-focus so the
-   *  file-search input keeps focus as the user navigates results. */
+  /** True while this tab is a transient preview; suppresses auto-focus. */
   isPreview?: boolean;
-  /** Per-line authorship, in file order. Absent = the blame gutter is off. */
+  /** Per-line authorship, in file order. Absent: the blame gutter is off. */
   blame?: BlameLine[];
   onOpenCommit?: (sha: string) => void;
 }
@@ -188,10 +178,8 @@ export function CodeEditor(props: CodeEditorProps) {
   const grepHighlight = useStore((s) => s.grepHighlight);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // Toggling vim reconfigures this compartment in place — the view is never
-  // recreated and the buffer is never reloaded, so unsaved edits survive.
+  // Reconfigured in place; recreating the view would drop unsaved edits and undo.
   const vimCompartment = useRef(new Compartment());
-  // Same reason as vim: toggling blame must not reload the buffer or lose undo.
   const blameCompartment = useRef(new Compartment());
   const loadingRef = useRef(false);
   const persistTimer = useRef<number | null>(null);
@@ -202,11 +190,10 @@ export function CodeEditor(props: CodeEditorProps) {
   annRef.current = ann;
 
 
-  // The selection that belongs to this file (drives the inline form).
+  // The selection in this file.
   const thisFileSel = ann.sel?.repoId === repoId && ann.sel?.filePath === filePath ? ann.sel : null;
   const anchorLine = thisFileSel?.endLine ?? null;
 
-  // Indicator/highlight sets derived from annotations + threads.
   const dynSets = useMemo(
     () => deriveAnnotationSets(props.annotations, props.threads, filePath),
     [props.annotations, props.threads, filePath],
@@ -224,20 +211,17 @@ export function CodeEditor(props: CodeEditorProps) {
       await propsRef.current.onSaveContent(view.state.doc.toString());
       propsRef.current.onModifiedChange(false);
     } catch (e) {
-      // Keep the modified flag set so the user knows the buffer is still dirty.
       useStore.getState().notify({ kind: 'error', source: 'files', title: `Save failed: ${e}` });
     }
   };
   const saveRef = useRef(doSave);
   saveRef.current = doSave;
 
-  // Built on demand because every state this editor creates has to install it:
-  // `view.setState` on a file load replaces the whole configuration, so a
-  // compartment left out there is gone and later reconfigures do nothing.
+  // Every `EditorState.create` must include this compartment; `setState` drops any left out.
   const blameExtension = (blame?: BlameLine[]) => {
     if (!blame) return [];
     const byLine = new Map(blame.map((b) => [b.line, b]));
-    // Read when the gutter paints: during render this is an impure call.
+    // Read when the gutter paints.
     const now = () => Math.floor(Date.now() / 1000);
     return gutter({
       class: 'cm-blame-gutter',
@@ -262,10 +246,9 @@ export function CodeEditor(props: CodeEditorProps) {
     }, 400);
   };
 
-  // Stable extensions (handlers read refs, so they never go stale).
+  // Stable extensions; handlers read refs.
   const baseExtensions = useMemo(() => {
-    // Gutter order (left → right) mirrors the diff editor: add-comment button,
-    // then the line numbers (with the annotation/thread indicator merged in).
+    // Gutter order mirrors the diff editor: comment button, then line numbers.
     const commentGutter = gutter({
       class: 'cm-comment-gutter',
       lineMarker(view: EditorView, line: BlockInfo) {
@@ -317,19 +300,17 @@ export function CodeEditor(props: CodeEditorProps) {
         if (update.docChanged || update.selectionSet || update.geometryChanged) schedulePersist();
       }),
     ];
-  // Stable for the editor's lifetime — vim lives in a compartment (reconfigured
-  // separately) so this never rebuilds and the view/buffer are never recreated.
+  // deps stay empty: a rebuild recreates the view and drops the buffer.
   }, []);
 
-  // Make `:w` / `:wq` save the buffer (registered once; Vim's ex-command map is global).
+  // `:w` / `:wq` save the buffer. Vim's ex-command map is global.
   useEffect(() => {
     Vim.defineEx('write', 'w', () => { saveRef.current(); });
     Vim.defineEx('wq', 'wq', () => { saveRef.current(); });
     setupVimSearch();
   }, []);
 
-  // Mount the editor once. Vim goes in a compartment (see the toggle effect
-  // below) so switching modes never recreates the view.
+  // Mount the editor once.
   useEffect(() => {
     if (!containerRef.current) return;
     const view = new EditorView({
@@ -338,7 +319,7 @@ export function CodeEditor(props: CodeEditorProps) {
         extensions: [
           vimCompartment.current.of(useStore.getState().vimMode ? vim() : []),
           ...baseExtensions,
-          // After the gutters in baseExtensions, so blame sits next to the code.
+          // Keep after the baseExtensions gutters: extension order is gutter order.
           blameCompartment.current.of(blameExtension(propsRef.current.blame)),
         ],
       }),
@@ -352,26 +333,24 @@ export function CodeEditor(props: CodeEditorProps) {
     };
   }, [baseExtensions]);
 
-  // Toggle vim in place — reconfigure the compartment, never recreate the view.
+  // Toggle vim in place.
   useEffect(() => {
     viewRef.current?.dispatch({ effects: vimCompartment.current.reconfigure(vimMode ? vim() : []) });
   }, [vimMode]);
 
-  // Blame in place, for the same reason. In an edit buffer the CodeMirror line
-  // number IS the file line, so the lookup is direct.
+  // Toggle blame in place.
   useEffect(() => {
     viewRef.current?.dispatch({
       effects: blameCompartment.current.reconfigure(blameExtension(props.blame)),
     });
   }, [props.blame]);
 
-  // Expose save() to the parent.
   const registerSave = props.registerSave;
   useEffect(() => {
     registerSave?.(() => { saveRef.current(); });
   }, [registerSave]);
 
-  // Load file content whenever the file changes; rebuild state with its language.
+  // Load the file and rebuild the state with its language.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
@@ -382,8 +361,7 @@ export function CodeEditor(props: CodeEditorProps) {
         if (cancelled || !viewRef.current) return;
         const lang = cmLangFor(props.languageId);
         const vimExt = vimCompartment.current.of(useStore.getState().vimMode ? vim() : []);
-        // Both compartments have to be re-declared here — setState replaces the
-        // configuration, so anything missing can never be reconfigured back in.
+        // Both compartments must be re-declared; `setState` drops any left out.
         const blameExt = blameCompartment.current.of(blameExtension(propsRef.current.blame));
         const base = [vimExt, ...baseExtensions, blameExt];
         const state = EditorState.create({
@@ -391,7 +369,7 @@ export function CodeEditor(props: CodeEditorProps) {
           extensions: lang ? [...base, lang] : base,
         });
         view.setState(state);
-        // Restore cursor + scroll, and re-push dynamic state (setState reset the field).
+        // Restore cursor and scroll; re-push the dynamic state `setState` reset.
         const lineNo = Math.min(Math.max(1, props.initialCursorLine || 1), state.doc.lines);
         const lineObj = state.doc.line(lineNo);
         const pos = Math.min(lineObj.from + Math.max(0, (props.initialCursorCol || 1) - 1), lineObj.to);
@@ -410,20 +388,17 @@ export function CodeEditor(props: CodeEditorProps) {
         loadingRef.current = false;
       });
     return () => { cancelled = true; };
+  // deps omit the cursor and language props: a change there would reload the file.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.worktreePath, props.filePath, baseExtensions]);
 
-  // Focus on a real open/commit. Preview opens reuse this editor instance and
-  // never bump focusSignal, so this only fires for genuine opens; the isPreview
-  // guard covers the fresh-mount case (e.g. a preview that swaps diff→edit view).
+  // Focus on a real open.
   useEffect(() => {
     if (props.focusSignal === undefined || props.isPreview) return;
     viewRef.current?.focus();
   }, [props.focusSignal, props.isPreview]);
 
-  // Reflect the active content-search query into the editor's match highlight,
-  // and jump to the selected match — so walking results within one previewed
-  // file scrolls to each hit, not only when a new file opens.
+  // Push the content-search query into the highlight and scroll to the selected match.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;

@@ -1,18 +1,8 @@
 import { LanguageSupport, StreamLanguage, type StreamParser } from '@codemirror/language';
 
 /**
- * Go templates — Helm charts, `.tpl`, `.gotmpl`.
- *
- * A `StreamLanguage` rather than a Lezer grammar: the content is two languages at
- * once (YAML with `{{ }}` cut into it, often mid-structure), which a real parser
- * cannot represent — `{{- if }}` can open a block that closes three keys later, so
- * the YAML never parses on its own. A tokenizer does not care, and highlighting is
- * what is actually wanted here.
- *
- * Outside an action it does YAML-lite (keys, strings, comments) so a chart template
- * still reads as YAML. Inside one it highlights the template language properly.
- * No dependency and no language server; hover and completion would need an LSP,
- * which is a separate piece of work.
+ * Go template highlighting for Helm charts, `.tpl` and `.gotmpl`: a `StreamLanguage`
+ * that tokenizes YAML-lite outside `{{ }}` and the template language inside.
  */
 
 /** Control flow and the built-in actions. */
@@ -22,8 +12,7 @@ const KEYWORDS = new Set([
   'eq', 'ne', 'lt', 'le', 'gt', 'ge',
 ]);
 
-/** The functions actually typed in these repos: Go's builtins plus the sprig and
- *  Helm helpers that show up in every chart. */
+/** Go builtins plus the sprig and Helm helpers. */
 const BUILTINS = new Set([
   'len', 'index', 'slice', 'print', 'printf', 'println', 'call', 'html', 'js', 'urlquery',
   'include', 'required', 'tpl', 'lookup', 'fail',
@@ -42,8 +31,7 @@ interface State {
   inComment: boolean;
 }
 
-/** The raw stream parser. Exported so it can be driven directly in a test with a
- *  `StringStream`; the app uses `gotmpl()` below. */
+/** The raw stream parser; tests drive it directly with a `StringStream`. */
 export const gotmplParser: StreamParser<State> = {
   name: 'gotmpl',
   startState: () => ({ inAction: false, inComment: false }),
@@ -76,11 +64,9 @@ export const gotmplParser: StreamParser<State> = {
       if (stream.match(/^"(?:[^"\\]|\\.)*"/) || stream.match(/^'(?:[^'\\]|\\.)*'/)) return 'string';
       if (stream.match(/^-?\d+(\.\d+)?\b/)) return 'number';
       if (stream.match(/^(true|false|null|~)\b/)) return 'atom';
-      // A bare scalar (`v1`, `my-app`) is consumed whole: matching the number
-      // first highlighted the `1` inside `v1`.
+      // A bare scalar (`v1`, `my-app`), consumed whole.
       if (stream.match(/^[A-Za-z_][\w.\-/]*/)) return null;
-      // Skip a run of characters that cannot begin any of the above, so ordinary
-      // prose does not cost one token per character.
+      // A run of characters that cannot begin a token.
       if (stream.match(/^[^{#"'\w\-\d]+/)) return null;
       stream.next();
       return null;

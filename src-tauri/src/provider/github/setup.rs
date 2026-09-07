@@ -1,4 +1,4 @@
-//! First-run preview: what the app would actually pick up.
+//! GitHub setup payload, config defaults and the first-run preview.
 
 const DEFAULT_HOST: &str = "github.com";
 
@@ -9,10 +9,7 @@ pub struct GithubSetup {
     pub host: Option<String>,
 }
 
-/// Nothing to validate: there is no board to nominate, and gh already holds the
-/// credential. The field names are Projects v2's own defaults and are corrected
-/// in the config file if a board names them differently. Reconnecting keeps
-/// `existing` — the hand-corrected values live nowhere else.
+/// The GitHub config: Projects v2 default field names, or `existing` unchanged.
 pub fn build_config(
     g: &GithubSetup,
     existing: Option<crate::core::config::GithubConfig>,
@@ -26,8 +23,7 @@ pub fn build_config(
             status: "Status".into(),
             priority: Some("Priority".into()),
         },
-        // Each board names its own columns, so a write reads them off the board
-        // and only falls back to this.
+        // Fallback only; a write reads the columns off the board.
         status_map: crate::core::config::StatusMap {
             ready: "Ready".into(),
             in_progress: "In progress".into(),
@@ -36,23 +32,21 @@ pub fn build_config(
     }
 }
 
-/// What GitHub would give the queue right now, so the setup screen can show it
-/// before anything is saved. Nothing to configure — this is the whole answer.
+/// What GitHub gives the queue right now, for the setup screen.
 #[derive(Debug, serde::Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GithubPreview {
-    /// Open issues assigned to you that sit on a board.
+    /// Open assigned issues that sit on a board.
     #[ts(type = "number")]
     pub tasks: i64,
-    /// The boards they came from, so an unexpected one is visible.
+    /// The boards they came from.
     pub boards: Vec<String>,
-    /// Board field names the app found, for the same reason.
+    /// Board field names found.
     pub fields: Vec<String>,
-    /// Assigned issues on no board, which are deliberately not tasks.
+    /// Assigned issues on no board.
     #[ts(type = "number")]
     pub unboarded: i64,
-    /// Each board's Status columns. Boards name their states freely, and a wrong
-    /// status_map makes Finish fail — show what is really there.
+    /// Each board's Status columns.
     pub status_columns: Vec<BoardColumns>,
 }
 
@@ -67,20 +61,24 @@ pub struct BoardColumns {
 pub async fn preview_github(host: Option<String>) -> Result<GithubPreview, String> {
     let host = host.unwrap_or_else(|| DEFAULT_HOST.to_string());
 
-    let items = super::projects::assigned_issues(&host).await.map_err(|e| e.to_string())?;
+    let items = super::projects::assigned_issues(&host)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let mut boards: Vec<String> = items.iter().map(|i| i.board.clone()).collect();
     boards.sort();
     boards.dedup();
 
-    let mut fields: Vec<String> =
-        items.iter().flat_map(|i| i.fields.iter().map(|f| f.name.clone())).collect();
+    let mut fields: Vec<String> = items
+        .iter()
+        .flat_map(|i| i.fields.iter().map(|f| f.name.clone()))
+        .collect();
     fields.sort();
     fields.dedup();
 
     let unboarded = super::projects::assigned_count(&host).await.unwrap_or(0) - items.len() as i64;
 
-    // One row per board the tasks came from, deduplicated by project id.
+    // One row per board, deduplicated by project id.
     let mut seen: Vec<(String, String)> = vec![];
     for i in &items {
         if !seen.iter().any(|(id, _)| id == &i.project_id) {
@@ -112,7 +110,6 @@ mod tests {
         assert_eq!(fresh.host, "github.com");
         assert_eq!(fresh.properties.status, "Status");
 
-        // Hand-corrected values live only in the config file — keep them.
         let mut corrected = fresh.clone();
         corrected.status_map.done = "Shipped".to_string();
         let kept = build_config(&GithubSetup { host: None }, Some(corrected));

@@ -7,11 +7,8 @@ import type { Hunk, FileLines } from '../shared/ipc/ipc';
 
 
 /**
- * Fills the unshown stretches of one file's diff on demand.
- *
- * The fetched lines are merged back into the hunk list and handed to `onHunks`, so
- * the editor only ever sees hunks. `rev` is the commit for a commit diff; leave it
- * undefined for the three working-tree modes, whose new side is the file on disk.
+ * Fills the hidden stretches of one file's diff on demand and hands merged hunks to `onHunks`.
+ * `rev` is the commit for a commit diff; undefined for the working-tree modes.
  */
 export function useDiffExpand(opts: {
   worktreeId: string | undefined;
@@ -24,7 +21,7 @@ export function useDiffExpand(opts: {
   const setLastError = useStore((s) => s.setLastError);
   const [total, setTotal] = useState<number | undefined>(undefined);
   const busy = useRef(false);
-  // A click is async: read the hunks and the writer as they are when it resolves.
+  // Read when the click resolves, not when it starts.
   const hunksRef = useRef(hunks);
   hunksRef.current = hunks;
   const applyRef = useRef(onHunks);
@@ -32,8 +29,7 @@ export function useDiffExpand(opts: {
 
   const empty = hunks === undefined || hunks.length === 0;
 
-  // One metadata probe per file: `end: 0` asks for no lines and just reports the
-  // length, which is what decides whether a trailing gap exists.
+  // `end: 0` fetches no lines and reports the file length.
   useEffect(() => {
     setTotal(undefined);
     if (!worktreeId || empty) return;
@@ -42,7 +38,7 @@ export function useDiffExpand(opts: {
       worktreeId, filePath, start: 1, end: 0, rev: rev ?? null,
     })
       .then((r) => { if (live) setTotal(r.total); })
-      .catch(() => { /* gaps between hunks still expand; only the tail is lost */ });
+      .catch(() => { /* only the trailing gap is lost */ });
     return () => { live = false; };
   }, [worktreeId, filePath, rev, empty]);
 

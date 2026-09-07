@@ -1,9 +1,8 @@
-//! Wall-clock timing for the operations that dominate latency: subprocesses
-//! and network calls. Enable with `RUST_LOG=timing=debug`.
+//! Wall-clock timing for subprocesses and network calls. Enable with `RUST_LOG=timing=debug`.
 
 use std::time::Instant;
 
-/// Threshold below which an operation is not worth a log line.
+/// Minimum duration that produces a log line.
 const NOISE_FLOOR_MS: u128 = 2;
 
 pub async fn timed<T, F>(op: &'static str, detail: impl AsRef<str>, fut: F) -> T

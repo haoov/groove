@@ -6,11 +6,9 @@ import { ContextMenu } from '../shared/ui/ContextMenu';
 import type { MainRepo, ReviewMr } from '../shared/ipc/ipc';
 import { appliesTo, matchesQuery, parseQuery, type CountReport } from './filter';
 
-// Reviews = open MRs where you are a reviewer, not yet checked out. Columns:
-// id · name · repo · owner · last update.
+// Reviews: open MRs where you are a reviewer, not yet checked out.
 
-/** The fields a Reviews row can answer — see `appliesTo`. */
-// No `provider`: an MR has no task source. Where the code is hosted is `forge`.
+/** The fields a Reviews row can answer. No `provider`: an MR has no task source; `forge` is the code host. */
 const FIELDS = ['id', 'mr', 'title', 'forge', 'repo', 'branch', 'owner', 'author', 'approved', 'draft'];
 
 const HIDDEN_KEY = 'wb.homeHiddenReviews';

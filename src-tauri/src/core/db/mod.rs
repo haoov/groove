@@ -27,9 +27,16 @@ pub async fn init(data_dir: &Path) -> Result<SqlitePool, sqlx::Error> {
 pub async fn test_pool() -> SqlitePool {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
-        .connect_with(SqliteConnectOptions::new().filename(":memory:").foreign_keys(true))
+        .connect_with(
+            SqliteConnectOptions::new()
+                .filename(":memory:")
+                .foreign_keys(true),
+        )
         .await
         .expect("in-memory pool");
-    sqlx::migrate!("src/core/db/migrations").run(&pool).await.expect("migrations");
+    sqlx::migrate!("src/core/db/migrations")
+        .run(&pool)
+        .await
+        .expect("migrations");
     pool
 }

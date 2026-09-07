@@ -1,8 +1,6 @@
 //! Parsing git remote URLs into (host, group_path, project).
 
-/// SSH (`git@host:group/project`) and HTTP(S) forms, `.git` stripped, and any
-/// userinfo (`user:token@`) removed so a credentialed remote never leaks into
-/// the repo id.
+/// SSH (`git@host:group/project`) and HTTP(S) forms, `.git` stripped, userinfo removed.
 pub fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
     let url = url.trim_end_matches(".git");
 
@@ -22,8 +20,7 @@ pub fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
         }
     }
 
-    // HTTPS: https://host/group/project — userinfo (user:token@) stripped, so a
-    // credentialed remote never leaks into the repo id.
+    // HTTPS: https://host/group/project, userinfo stripped
     let stripped = url
         .trim_start_matches("https://")
         .trim_start_matches("http://");
@@ -43,15 +40,13 @@ pub fn parse_git_url(url: &str) -> anyhow::Result<(String, String, String)> {
     Err(anyhow::anyhow!("Cannot parse git URL: {url}"))
 }
 
-/// The host of a web URL (`https://gitlab.example.com/g/p/-/merge_requests/4`
-/// → `gitlab.example.com`). Userinfo is stripped like everywhere else.
+/// The host of a web URL, userinfo stripped.
 pub fn url_host(url: &str) -> Option<String> {
     let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
     let rest = rest.rsplit_once('@').map_or(rest, |(_, rest)| rest);
     let host = rest.split('/').next()?.trim();
     (!host.is_empty()).then(|| host.to_string())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -61,7 +56,11 @@ mod tests {
     fn parses_ssh_and_https_remotes() {
         assert_eq!(
             parse_git_url("git@gitlab.example.com:group/sub/proj.git").unwrap(),
-            ("gitlab.example.com".into(), "group/sub".into(), "proj".into())
+            (
+                "gitlab.example.com".into(),
+                "group/sub".into(),
+                "proj".into()
+            )
         );
         assert_eq!(
             parse_git_url("https://github.com/owner/proj").unwrap(),
@@ -69,7 +68,6 @@ mod tests {
         );
     }
 
-    /// A credentialed remote must never leak the token into the repo id.
     #[test]
     fn strips_userinfo_from_https_remotes() {
         let (host, group, project) =

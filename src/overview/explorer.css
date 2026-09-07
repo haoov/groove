@@ -1,4 +1,4 @@
-/* ── Explorer inputs (Home) + explorer/review overview extras ─────────────── */
+/* ── Explorer inputs ── */
 .explorer-new-composer { display: flex; align-items: center; gap: var(--space-2); }
 .explorer-new-input {
   font-size: var(--gl-font-size-sm);
@@ -14,7 +14,6 @@
 }
 .explorer-new-input:focus { border-color: var(--gl-focus-border); box-shadow: var(--ring-accent); outline: none; }
 
-/* The discard/close confirm button (explorer + review overviews). */
 .explorer-discard:hover { color: var(--wb-warn, var(--gl-color-red-400)); }
 .explorer-confirm-label { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-subtle); margin-right: 2px; }
 .explorer-rename-input {
@@ -29,8 +28,7 @@
   padding: 2px 6px;
 }
 
-/* ── Explorer overview extras ─────────────────────────────────────────────── */
-.overview-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+/* ── Explorer overview extras ── */
 .overview-add-repo {
   display: inline-flex;
   align-items: center;

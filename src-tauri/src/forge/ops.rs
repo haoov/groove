@@ -1,25 +1,18 @@
-use sqlx::SqlitePool;
+use super::client::make_client;
+use super::commands::load_mr_context;
 use crate::core::db::models::{Repo, Worktree};
 use crate::core::db::store;
 use crate::core::git;
-use super::commands::load_mr_context;
-use super::client::make_client;
+use sqlx::SqlitePool;
 
-/// Separator before the ticket link. Also the marker that finds an existing
-/// footer, so re-describing an MR replaces the link instead of stacking copies.
+/// Separator before the task link; also the marker that finds an existing footer.
 const FOOTER_MARK: &str = "\n\n---\nTask: ";
-/// What the marker was while Notion was the only source. Still recognised, so an
-/// MR described before this stops accumulating footers.
+/// The Notion-era footer marker, still cut.
 const LEGACY_FOOTER_MARK: &str = "\n\n---\nNotion: ";
 
-/// Put the footer on a description, replacing one that is already there.
-///
-/// `url` is None for synthetic sessions (explorer / review), which have no task
-/// behind them — those get the body back with any stray footer removed.
+/// Put the footer on a description, replacing one already there; a `None` url strips it.
 fn apply_footer(description: &str, task_id: &str, url: Option<&str>) -> String {
-    // An agent told "the link is appended automatically" occasionally writes one
-    // anyway, and an update resends the body we produced last time. Either way,
-    // cut at the marker so the link cannot stack up.
+    // Cut at the earliest marker so the link cannot stack.
     let cut = [FOOTER_MARK, LEGACY_FOOTER_MARK]
         .iter()
         .filter_map(|m| description.find(m))
@@ -37,10 +30,6 @@ fn apply_footer(description: &str, task_id: &str, url: Option<&str>) -> String {
 }
 
 /// Append the task's link to a description.
-///
-/// The link is derived, never written by the agent — the tool descriptions say so,
-/// and both create and update go through here, so an agent that rewrites a whole
-/// description cannot drop it.
 async fn with_task_footer(
     description: &str,
     task_id: &str,
@@ -63,7 +52,12 @@ pub async fn mr_target_for(pool: &SqlitePool, worktree_id: &str) -> anyhow::Resu
 
 /// The worktree's base, else the repo default.
 async fn target_for(repo: &Repo, wt: &Worktree) -> String {
-    if let Some(base) = wt.base_ref.as_deref().map(str::trim).filter(|b| !b.is_empty()) {
+    if let Some(base) = wt
+        .base_ref
+        .as_deref()
+        .map(str::trim)
+        .filter(|b| !b.is_empty())
+    {
         return base.to_string();
     }
     git::refs::default_branch(&repo.local_path)
@@ -89,8 +83,15 @@ pub async fn create_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
         .create_mr(&repo, &wt.branch, &target, title, &described)
         .await?;
 
-    store::mrs::upsert(pool, worktree_id, client.platform_name(), &remote_id, &url, "open")
-        .await?;
+    store::mrs::upsert(
+        pool,
+        worktree_id,
+        client.platform_name(),
+        &remote_id,
+        &url,
+        "open",
+    )
+    .await?;
 
     Ok(())
 }
@@ -104,8 +105,7 @@ pub async fn update_mr_impl(payload: serde_json::Value, pool: &SqlitePool) -> an
 
     let (mr, wt, repo) = load_mr_context(mr_id, pool).await?;
 
-    // A description update REPLACES the whole body, so the footer has to be
-    // re-appended here or the ticket link vanishes on every edit.
+    // A description update replaces the whole body; re-append the footer.
     let described = match description {
         Some(d) => Some(with_task_footer(d, &wt.session_id, pool).await?),
         None => None,
@@ -150,7 +150,6 @@ mod tests {
 
     #[test]
     fn replaces_an_existing_footer_instead_of_stacking() {
-        // What an update resends: the body we produced on create.
         let once = apply_footer("## What\nCuts retention.", "TASKS2-42", Some(PAGE));
         let twice = apply_footer(&once, "TASKS2-42", Some(PAGE));
         assert_eq!(once, twice);
@@ -165,7 +164,6 @@ mod tests {
         assert!(!out.contains("wrong"), "{out}");
     }
 
-    /// An MR described before the rename must not end up with two footers.
     #[test]
     fn replaces_the_pre_provider_footer() {
         let old = "## What\nCuts retention.\n\n---\nNotion: [TASKS2-42](https://www.notion.so/x)";
@@ -198,7 +196,10 @@ mod tests {
 
     #[tokio::test]
     async fn the_mr_targets_the_branch_the_worktree_was_based_on() {
-        assert_eq!(target_for(&repo(), &worktree(Some("release/1.0"))).await, "release/1.0");
+        assert_eq!(
+            target_for(&repo(), &worktree(Some("release/1.0"))).await,
+            "release/1.0"
+        );
     }
 
     #[tokio::test]

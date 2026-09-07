@@ -5,9 +5,7 @@ import { Sidebar } from './sidebar';
 import { Workspace } from './Workspace';
 import { OverviewView } from '../overview/OverviewView';
 
-// Pixels, not a share of the row: a maximized agent content-sizes every level up
-// to the panel column, and a percentage of a content-sized parent resolves to
-// nothing — the column fell to its floor and the drag could not lift it.
+// Pixels, not a percentage: a percentage of the content-sized parent resolves to nothing.
 const SIDEBAR_DEFAULT_PX = 300;
 const SIDEBAR_MIN_PX = 176;
 const SIDEBAR_MAX_PX = 640;
@@ -24,9 +22,8 @@ function readSidebarWidth(): number {
   }
 }
 
-/** One session's workspace, by mode: the Overview page (full width, no sidebar
- *  band), or sidebar + the recursive tab/pane surface. Agent and terminal live
- *  as tabs inside the surface (see lib/panes.ts conventions). */
+/** One session's workspace: the Overview page, or the sidebar with the recursive pane
+ *  surface. Agent and terminal are tabs inside the surface. */
 export function WorkspaceLayout() {
   useWorkspaceData();
 
@@ -66,8 +63,7 @@ export function WorkspaceLayout() {
   const startSidebarDrag = (e: React.MouseEvent) => {
     dragging.current = true;
     startX.current = e.clientX;
-    // The rendered width, not the stored one: in a window too narrow for every
-    // column this has been shrunk, and dragging from the stored value would jump.
+    // The rendered width, not the stored one: a narrow window shrinks it and the drag would jump.
     startSize.current = wrapRef.current?.getBoundingClientRect().width ?? SIDEBAR_MIN_PX;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';

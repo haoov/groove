@@ -1,4 +1,4 @@
-/** File-icon tint, by extension. Palette tokens, so icons re-colour with the theme. */
+/** File-icon tint by extension, as palette tokens. */
 const COLORS: Record<string, string> = {
   'chart.yaml': 'lavender', 'values.yaml': 'lavender', tpl: 'lavender',
 

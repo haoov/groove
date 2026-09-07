@@ -1,10 +1,5 @@
-//! Explorer → task conversion.
-//!
-//! An explorer is a throwaway local session; converting it files a real task at
-//! its provider and moves the whole local footprint (worktrees on disk, DB rows,
-//! the Claude conversation) onto the new task id. Every step is independently
-//! recoverable: a worktree that fails to switch or move keeps working where it
-//! is and reports a warning instead of aborting the conversion.
+//! Explorer → task conversion: file the task at its provider, then move the
+//! worktrees, DB rows and agent session onto the new task id.
 
 use sqlx::SqlitePool;
 
@@ -12,8 +7,7 @@ use crate::core::db::models::{Repo, SessionKind, Worktree};
 use crate::core::db::store;
 use crate::provider::types::{ProviderId, TaskDraft};
 
-/// The confirmation payload: which explorer to convert, and the task to file for
-/// it. The task half is shared with `task.create`.
+/// The confirmation payload: the explorer to convert and the task to file.
 struct ConvertRequest<'a> {
     explorer_id: &'a str,
     provider: ProviderId,
@@ -37,12 +31,7 @@ impl<'a> ConvertRequest<'a> {
     }
 }
 
-/// Refuse anything that isn't a live explorer session.
-///
-/// This op re-points a session's worktrees/repos/annotations onto a new task
-/// and re-keys the source row — catastrophic if aimed at a real task or a
-/// review session. The id comes from the backend's active session, so validate
-/// it rather than trusting the caller.
+/// Refuse anything that is not a live explorer session.
 async fn validate_source(explorer_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
     match store::sessions::kind_of(pool, explorer_id).await? {
         None => Err(anyhow::anyhow!("no session {explorer_id} to convert")),
@@ -53,11 +42,9 @@ async fn validate_source(explorer_id: &str, pool: &SqlitePool) -> anyhow::Result
     }
 }
 
-/// Carry the explorer branch — its commits and uncommitted edits — over to the
-/// task's branch name. A rename, not a new branch: the history IS the work.
+/// Rename the explorer branch to the task's branch name.
 async fn rename_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
-    // A stray local branch named "HEAD" (older refresh bug) makes branch ops
-    // fail with "refname 'HEAD' is ambiguous" — clean it before renaming.
+    // A stray local branch named "HEAD" makes `branch -m` fail as ambiguous.
     crate::worktrees::repair_head_branch(&wt.path).await;
 
     match crate::core::git::output(&wt.path, &["branch", "-m", new_branch]).await {
@@ -74,28 +61,23 @@ async fn rename_branch(wt: &Worktree, new_branch: &str) -> Result<(), String> {
     }
 }
 
-/// Relocate `<root>/<explorer_id>/<project>` → `<root>/<short_id>/<project>`,
-/// driven from the MAIN clone. Returns the worktree's new path.
+/// Move the worktree into the task's session dir; returns the new path.
 async fn relocate_worktree(
     wt: &Worktree,
     repo: &Repo,
     session_dir: &std::path::Path,
     new_branch: &str,
 ) -> Result<String, String> {
-    let dest_path =
-        session_dir.join(crate::worktrees::naming::worktree_dir(&repo.project, new_branch));
+    let dest_path = session_dir.join(crate::worktrees::naming::worktree_dir(
+        &repo.project,
+        new_branch,
+    ));
     let dest = dest_path.to_string_lossy().to_string();
-    // worktree_dir keeps the branch's slashes as real directories, and
-    // `git worktree move` does not create the missing parents itself.
+    // `git worktree move` does not create missing parent directories.
     if let Some(parent) = dest_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    match crate::core::git::output(
-        &repo.local_path,
-        &["worktree", "move", &wt.path, &dest],
-    )
-    .await
-    {
+    match crate::core::git::output(&repo.local_path, &["worktree", "move", &wt.path, &dest]).await {
         Ok(o) if o.status.success() => Ok(dest),
         Ok(o) => Err(format!(
             "could not move {} to {dest}: {}",
@@ -106,11 +88,8 @@ async fn relocate_worktree(
     }
 }
 
-/// Branch + relocate every worktree of the explorer.
-///
-/// Returns the `(worktree id, final path)` pairs that reached `new_branch` and
-/// the warnings for the ones that didn't — those keep their old branch and path
-/// and stay usable, so a partial failure is not fatal to the conversion.
+/// Rename and relocate every worktree of the explorer. Returns the
+/// `(worktree id, final path)` pairs that switched, and a warning per failure.
 async fn promote_worktrees(
     explorer_id: &str,
     session_dir: &std::path::Path,
@@ -129,7 +108,6 @@ async fn promote_worktrees(
             continue;
         }
 
-        // Failure to move keeps the old path (still functional).
         let mut final_path = wt.path.clone();
         if let Some(repo) = store::repos::get_opt(pool, &wt.repo_id).await? {
             match relocate_worktree(wt, &repo, session_dir, new_branch).await {
@@ -146,14 +124,12 @@ async fn promote_worktrees(
     Ok((switched, warnings))
 }
 
-/// Hand the explorer's Claude session to the new task id via the legacy
-/// resume-fallback file, so reopening the task resumes the same conversation.
+/// Write the explorer's agent session id into the task's `.agent_session_id` file.
 fn handoff_agent_session(explorer_id: &str, session_dir: &std::path::Path) {
     let session_uuid = crate::agent_manager::task_session_uuid(explorer_id);
     let sid_path = session_dir.join(".agent_session_id");
     let _ = std::fs::create_dir_all(session_dir);
     if let Err(e) = std::fs::write(&sid_path, session_uuid) {
-        // Not fatal, but the explorer's conversation won't resume under the task.
         tracing::warn!(
             "[convert] could not persist agent session handoff at {}: {e}",
             sid_path.display()
@@ -161,8 +137,7 @@ fn handoff_agent_session(explorer_id: &str, session_dir: &std::path::Path) {
     }
 }
 
-/// Remove the now-defunct explorer dir. `remove_dir` (not `_all`) so a worktree
-/// that failed to move keeps its directory.
+/// Remove the empty explorer dir. Keep `remove_dir`: a worktree that failed to move stays inside.
 fn cleanup_explorer_dir(explorer_dir: &std::path::Path) {
     let _ = std::fs::remove_file(explorer_dir.join(".agent_session_id"));
     if let Err(e) = std::fs::remove_dir(explorer_dir) {
@@ -175,9 +150,6 @@ fn cleanup_explorer_dir(explorer_dir: &std::path::Path) {
     }
 }
 
-/// Convert an explorer session into a real task. Called from the confirmation
-/// bridge (op `task.create_from_explorer`); returns the new task as JSON
-/// (delivered to both the agent and the frontend).
 /// The session shape the branch namer needs, before the row is re-keyed.
 fn adopted_session(short_id: &str, title: &str) -> crate::core::db::models::Session {
     crate::core::db::models::Session {
@@ -191,6 +163,7 @@ fn adopted_session(short_id: &str, title: &str) -> crate::core::db::models::Sess
     }
 }
 
+/// Convert an explorer session into a task; bridge op `task.create_from_explorer`.
 pub async fn create_task_from_explorer_impl(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -198,8 +171,6 @@ pub async fn create_task_from_explorer_impl(
     let req = ConvertRequest::from_payload(&payload)?;
     validate_source(req.explorer_id, pool).await?;
 
-    // Same filing as a standalone task — this op is that, plus adopting the
-    // session onto the result.
     let provider = crate::provider::get(req.provider)?;
     let filed = provider.create_task(&req.draft).await?;
     let short_id =

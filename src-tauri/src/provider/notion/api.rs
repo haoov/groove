@@ -1,12 +1,11 @@
-//! The Notion HTTP verbs. `pub(super)` on purpose: only this feature module can
-//! reach the API, so every caller outside `notion/` goes through a named function.
+//! The Notion HTTP verbs. Keep them `pub(super)`: only `notion/` reaches the API.
 
 use crate::core::timing::timed;
 
 const NOTION_BASE: &str = "https://api.notion.com";
 const NOTION_VERSION: &str = "2022-06-28";
 
-/// One page of results per request; Notion's maximum.
+/// Notion's maximum page size.
 const PAGE_SIZE: usize = 100;
 
 async fn call(
@@ -28,7 +27,9 @@ async fn call(
         let status = resp.status();
         let out: serde_json::Value = resp.json().await?;
         if !status.is_success() {
-            return Err(anyhow::anyhow!("Notion {verb} {path} failed {status}: {out}"));
+            return Err(anyhow::anyhow!(
+                "Notion {verb} {path} failed {status}: {out}"
+            ));
         }
         Ok(out)
     })
@@ -56,8 +57,7 @@ pub(super) async fn patch(
 }
 
 /// Walk a GET endpoint's cursor pagination and return every `results` entry.
-/// `path` must carry no query string. `max_pages` is a runaway backstop, far
-/// above any real dataset.
+/// `path` must carry no query string.
 pub(super) async fn paginate_get(
     token: &str,
     path: &str,
@@ -101,8 +101,8 @@ pub(super) async fn paginate_post(
     Ok(out)
 }
 
-/// Append one page's results; true when another page must be fetched.
-/// `has_more` without a cursor would loop forever, so it counts as the end.
+/// Append one page's results; true when another page follows. `has_more`
+/// without a cursor ends the walk.
 fn collect(
     page: &serde_json::Value,
     out: &mut Vec<serde_json::Value>,
@@ -122,14 +122,16 @@ fn collect(
 
 #[cfg(test)]
 mod tests {
-    /// The API host may be named nowhere else: outside this file, Notion is
-    /// reached through named functions only. Same style as the other guards.
+    /// Guard: `api.notion.com` appears in no other source file.
     #[test]
     fn no_notion_api_outside_notion_api() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = vec![];
         visit(&src, &mut offenders);
-        assert!(offenders.is_empty(), "api.notion.com outside provider/notion/api.rs: {offenders:?}");
+        assert!(
+            offenders.is_empty(),
+            "api.notion.com outside provider/notion/api.rs: {offenders:?}"
+        );
 
         fn visit(dir: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).unwrap().flatten() {
@@ -138,7 +140,9 @@ mod tests {
                     visit(&path, offenders);
                 } else if path.extension().is_some_and(|e| e == "rs")
                     && !path.to_string_lossy().ends_with("/provider/notion/api.rs")
-                    && std::fs::read_to_string(&path).unwrap().contains("api.notion.com")
+                    && std::fs::read_to_string(&path)
+                        .unwrap()
+                        .contains("api.notion.com")
                 {
                     offenders.push(path.display().to_string());
                 }

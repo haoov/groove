@@ -1,19 +1,13 @@
-//! One provisioning path for every session kind.
-//!
-//! A task worktree sits on `<type>/<id>-<slug>` (user-overridable), an
-//! explorer's on `explorer/<name-slug>` — both off the repo's default branch,
-//! or off the caller's target when there is one. A review worktree checks out
-//! the MR's source branch (tracking origin) with the MR's target pinned as the
-//! diff/log base. All of them live at `<session>/<project>@<branch-slug>`.
+//! One provisioning path for every session kind. A worktree lives at `<session>/<project>/<branch>`.
 
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
+use super::naming;
+use super::pool::session_dir;
 use crate::core::db::models::{Repo, Session, Worktree};
 use crate::core::db::store;
 use crate::core::git;
-use super::naming;
-use super::pool::session_dir;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BranchSpec {
@@ -36,13 +30,7 @@ pub async fn provision_worktrees(
         .map_err(|e| e.to_string())
 }
 
-/// The branch a new worktree gets when the caller names none — the same value
-/// provisioning derives.
-///
-/// Exposed so a caller can SHOW it before the branch exists: an approval that
-/// cannot name the branch it is about to create is asking the user to approve
-/// something they cannot see, and a prefilled field that disagrees with what gets
-/// created is worse than an empty one.
+/// The branch a new worktree gets when the caller names none.
 pub(crate) async fn default_branch_for(
     session_id: &str,
     pool: &SqlitePool,
@@ -61,18 +49,18 @@ async fn branch_tag_of(session_id: &str, pool: &SqlitePool) -> Option<String> {
         .and_then(|t| t.branch_tag)
 }
 
-/// The branch a new worktree would get, for a caller that wants to SHOW it (and
-/// let the user edit it) before anything is created.
+/// The default branch for a session's next worktree, shown before anything is created.
 #[tauri::command]
 pub async fn default_branch_for_session(
     short_id: String,
     pool: tauri::State<'_, SqlitePool>,
 ) -> Result<String, String> {
-    default_branch_for(&short_id, &pool).await.map_err(|e| e.to_string())
+    default_branch_for(&short_id, &pool)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-/// Provision one worktree per spec, concurrently — each repo's fetch is
-/// network-bound and independent.
+/// Provision one worktree per spec, concurrently.
 pub(crate) async fn provision_worktrees_impl(
     session_id: &str,
     branches: &[BranchSpec],
@@ -92,14 +80,21 @@ pub(crate) async fn provision_worktrees_impl(
                 .clone()
                 .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| naming::default_branch(session, tag));
-            provision_one(pool, session, &repo, &branch, None, spec.target_branch.as_deref()).await
+            provision_one(
+                pool,
+                session,
+                &repo,
+                &branch,
+                None,
+                spec.target_branch.as_deref(),
+            )
+            .await
         }
     }))
     .await
 }
 
-/// Provision the worktree for a review session: check out the MR's source
-/// branch and pin the MR's target as the diff/log base via `base_ref`.
+/// Provision a review worktree: the MR's source branch, with its target as `base_ref`.
 pub(crate) async fn provision_review_worktree(
     session_id: &str,
     repo: &Repo,
@@ -109,8 +104,7 @@ pub(crate) async fn provision_review_worktree(
 ) -> anyhow::Result<Worktree> {
     let session = store::sessions::get(pool, session_id).await?;
 
-    // The default-branch fetch inside provisioning may not cover the MR
-    // branches — fetch both explicitly first.
+    // The default fetch may not cover the MR branches.
     let out = git::output(
         &repo.local_path,
         &["fetch", "origin", source_branch, target_branch],
@@ -124,15 +118,24 @@ pub(crate) async fn provision_review_worktree(
         ));
     }
 
-    let wt = provision_one(pool, &session, repo, source_branch, Some(source_branch), None).await?;
+    let wt = provision_one(
+        pool,
+        &session,
+        repo,
+        source_branch,
+        Some(source_branch),
+        None,
+    )
+    .await?;
     store::worktrees::set_base_ref(pool, &wt.id, target_branch).await?;
-    Ok(Worktree { base_ref: Some(target_branch.to_string()), ..wt })
+    Ok(Worktree {
+        base_ref: Some(target_branch.to_string()),
+        ..wt
+    })
 }
 
-/// The shared core: freshen the clone, make sure the branch exists, add the
-/// worktree at its place, record it. Idempotent — a worktree this session
-/// already has for this branch is reused wherever its directory sits (which
-/// also keeps pre-rework directory names working).
+/// Fetch the clone, create the branch if needed, add the worktree, record it.
+/// Idempotent: an existing worktree for this branch is reused wherever its directory sits.
 async fn provision_one(
     pool: &SqlitePool,
     session: &Session,
@@ -150,8 +153,7 @@ async fn provision_one(
         return Err(anyhow::anyhow!("Cannot open repo {}", repo.local_path));
     }
 
-    // Reopening a review whose folder was deleted would otherwise fail with
-    // "missing but already registered worktree" instead of recreating it.
+    // A deleted folder leaves a "missing but already registered" worktree behind.
     let _ = git::run(&repo.local_path, &["worktree", "prune"]).await;
 
     let repo_default = refresh_main_clone(&repo.local_path, &repo.project, &session.id).await;
@@ -164,14 +166,23 @@ async fn provision_one(
     std::fs::create_dir_all(&wt_path)?;
     let wt_path_str = wt_path.to_string_lossy().to_string();
 
-    let local_exists = git::refs::ref_exists(&repo.local_path, &format!("refs/heads/{branch}")).await;
+    let local_exists =
+        git::refs::ref_exists(&repo.local_path, &format!("refs/heads/{branch}")).await;
     let output = match track_remote {
-        // Review: a branch we don't have yet tracks its origin counterpart.
+        // Review: a branch not yet local tracks its origin counterpart.
         Some(remote_branch) if !local_exists => {
             let track = format!("origin/{remote_branch}");
             git::output(
                 &repo.local_path,
-                &["worktree", "add", "--track", "-b", branch, &wt_path_str, &track],
+                &[
+                    "worktree",
+                    "add",
+                    "--track",
+                    "-b",
+                    branch,
+                    &wt_path_str,
+                    &track,
+                ],
             )
             .await?
         }
@@ -195,13 +206,15 @@ async fn provision_one(
 
     if let Some(t) = target {
         store::worktrees::set_base_ref(pool, &wt.id, t).await?;
-        return Ok(Worktree { base_ref: Some(t.to_string()), ..wt });
+        return Ok(Worktree {
+            base_ref: Some(t.to_string()),
+            ..wt
+        });
     }
     Ok(wt)
 }
 
-/// The session's existing worktree for this (repo, branch), when its directory
-/// is still on disk.
+/// The session's existing worktree for `(repo, branch)` whose directory is still on disk.
 async fn existing_worktree(
     pool: &SqlitePool,
     session: &Session,
@@ -214,9 +227,7 @@ async fn existing_worktree(
         .find(|wt| wt.branch == branch && std::path::Path::new(&wt.path).is_dir()))
 }
 
-/// A re-provisioned worktree may sit on a different branch than the one asked
-/// for; recording the new branch while the checkout keeps the old one would
-/// desync DB and disk, so align the checkout first.
+/// Switch the checkout to `branch` when it sits on another one.
 async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
     let current = git::run(wt_path, &["rev-parse", "--abbrev-ref", "HEAD"])
         .await?
@@ -225,7 +236,6 @@ async fn align_checkout(wt_path: &str, branch: &str) -> anyhow::Result<()> {
     if current == branch {
         return Ok(());
     }
-    // Plain switch when the branch exists locally, -c otherwise.
     let switch = git::output(wt_path, &["switch", branch]).await?;
     if switch.status.success() {
         git::cache::flush();
@@ -281,10 +291,7 @@ async fn create_branch(
     ))
 }
 
-/// Delete a stray local branch literally named `HEAD` — it makes every `HEAD`
-/// reference ambiguous, breaking switch/rev-parse in the clone AND all of its
-/// worktrees (refs are shared). Older builds created one via `fetch HEAD:HEAD`.
-/// Best-effort; safe to call from a worktree path.
+/// Delete a stray local branch named `HEAD`; it makes every `HEAD` reference ambiguous in the clone and all its worktrees.
 pub(crate) async fn repair_head_branch(repo_or_wt_path: &str) {
     if git::refs::ref_exists(repo_or_wt_path, "refs/heads/HEAD").await {
         tracing::warn!("[git] deleting stray local branch 'HEAD' at {repo_or_wt_path}");
@@ -292,12 +299,7 @@ pub(crate) async fn repair_head_branch(repo_or_wt_path: &str) {
     }
 }
 
-/// Bring the MAIN clone up to date before branching off it, and return the
-/// default branch so the caller branches from the ref that was just fetched.
-///
-/// Failures here are REPORTED, not swallowed. A silent fetch failure (off VPN,
-/// expired credentials) would hand back a worktree quietly based on last week's
-/// main, with nothing to explain why.
+/// Fetch the MAIN clone and return its default branch. A fetch failure is reported, not swallowed.
 async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str) -> Option<String> {
     let fetched = git::run(repo_path, &["fetch", "origin"]).await;
     git::cache::flush();
@@ -309,8 +311,6 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
             Some(e.to_string()),
             Some(session_id),
         );
-        // Carry on: branching from whatever is on disk still beats failing
-        // outright, now that the staleness has been named.
     }
     repair_head_branch(repo_path).await;
 
@@ -325,11 +325,17 @@ async fn refresh_main_clone(repo_path: &str, repo_label: &str, session_id: &str)
         git::run(repo_path, &["pull", "--ff-only"]).await
     } else {
         // Advance the local branch ref without touching MAIN's checkout.
-        git::run(repo_path, &["fetch", "origin", &format!("{default_branch}:{default_branch}")]).await
+        git::run(
+            repo_path,
+            &[
+                "fetch",
+                "origin",
+                &format!("{default_branch}:{default_branch}"),
+            ],
+        )
+        .await
     };
     if let Err(e) = result {
-        // The common cause is local commits or a dirty tree in the MAIN clone,
-        // which the user has to resolve there — so say which repo and branch.
         crate::core::events::notice(
             "attention",
             "git",
@@ -358,16 +364,27 @@ mod tests {
     }
 
     async fn git(dir: &str, args: &[&str]) -> String {
-        let mut full = vec!["-c", "user.email=t@t", "-c", "user.name=T", "-c", "commit.gpgsign=false"];
+        let mut full = vec![
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=T",
+            "-c",
+            "commit.gpgsign=false",
+        ];
         full.extend_from_slice(args);
-        git::run(dir, &full).await.unwrap_or_else(|e| panic!("git {args:?}: {e}")).trim().to_string()
+        git::run(dir, &full)
+            .await
+            .unwrap_or_else(|e| panic!("git {args:?}: {e}"))
+            .trim()
+            .to_string()
     }
 
     impl Fixture {
         /// `release/1.0` sits one commit behind `main`.
         async fn new(name: &str) -> (Self, String) {
-            let root =
-                std::env::temp_dir().join(format!("groove-provision-{name}-{}", std::process::id()));
+            let root = std::env::temp_dir()
+                .join(format!("groove-provision-{name}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&root);
             std::fs::create_dir_all(&root).unwrap();
             let fixture = Fixture { root: root.clone() };
@@ -403,8 +420,13 @@ mod tests {
     #[tokio::test]
     async fn a_named_target_is_the_branch_point() {
         let (_fx, work) = Fixture::new("exact").await;
-        create_branch("fix/x", &work, BranchPoint::Exact("release/1.0")).await.unwrap();
-        assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/release/1.0").await);
+        create_branch("fix/x", &work, BranchPoint::Exact("release/1.0"))
+            .await
+            .unwrap();
+        assert_eq!(
+            tip(&work, "fix/x").await,
+            tip(&work, "origin/release/1.0").await
+        );
         assert_ne!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
     }
 
@@ -422,14 +444,18 @@ mod tests {
     #[tokio::test]
     async fn no_target_branches_from_the_repo_default() {
         let (_fx, work) = Fixture::new("default").await;
-        create_branch("fix/x", &work, BranchPoint::RepoDefault(Some("main"))).await.unwrap();
+        create_branch("fix/x", &work, BranchPoint::RepoDefault(Some("main")))
+            .await
+            .unwrap();
         assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
     }
 
     #[tokio::test]
     async fn an_unresolved_default_falls_back_to_main() {
         let (_fx, work) = Fixture::new("guess").await;
-        create_branch("fix/x", &work, BranchPoint::RepoDefault(None)).await.unwrap();
+        create_branch("fix/x", &work, BranchPoint::RepoDefault(None))
+            .await
+            .unwrap();
         assert_eq!(tip(&work, "fix/x").await, tip(&work, "origin/main").await);
     }
 }

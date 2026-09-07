@@ -2,19 +2,15 @@
 
 export type UiConfig = { font_size: number, theme: string, 
 /**
- * Monospace family for the editor, tree and terminal. Must be a name
- * fontconfig reports (`fc-list : family`) — a name nothing matches falls
- * silently through to the next family in the CSS stack.
+ * Monospace family for the editor, tree and terminal. Must be a fontconfig
+ * family name (`fc-list : family`); an unknown name silently falls through the CSS stack.
  */
 font_family: string, 
 /**
- * Monospace family for the agent's terminal only. Same rules as
- * `font_family`; empty = the built-in stack.
+ * Monospace family for the agent's terminal only; empty = the built-in stack.
  */
 agent_font_family: string, 
 /**
- * One switch for every agent suggestion Groove offers — today the chip on a
- * task with no repos. Off means the app never proposes an action, not that
- * the skill is gone: it is still a button and a slash command.
+ * One switch for every agent suggestion Groove offers.
  */
 suggest_actions: boolean, };

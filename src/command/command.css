@@ -1,4 +1,4 @@
-/* ── Command Palette · File finder · Search-in-files (shared overlay language) ── */
+/* ── Command palette, file finder, search-in-files ── */
 
 .palette-overlay {
   position: fixed;
@@ -17,8 +17,6 @@
 .palette-modal {
   display: flex;
   flex-direction: column;
-  /* Wide enough for a command with its shortcut, and tall enough to show the
-     result list without a near-immediate scroll. */
   width: 760px;
   max-width: calc(100vw - 32px);
   max-height: min(78vh, 760px);
@@ -29,8 +27,6 @@
   overflow: hidden;
   animation: wb-modal-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-
-/* input row — leading search glyph + borderless input */
 
 .palette-input-row {
   display: flex;
@@ -110,8 +106,6 @@
 }
 
 .palette-item.selected .palette-item-shortcut { color: var(--gl-text-color-subtle); }
-
-/* matched-character highlight (palette + finder) */
 
 .hl-match {
   background: transparent;

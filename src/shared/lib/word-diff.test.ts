@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { wordDiff } from './word-diff';
 
-// The ranges are character offsets used directly as CodeMirror decoration bounds,
-// so an off-by-one paints the wrong characters or throws on an out-of-range mark.
-
-/** Apply the ranges the way the editor does, marking them with « ». */
+/** Applies the ranges the way the editor does, marking them with « ». */
 const marked = (s: string, ranges: [number, number][]) => {
   let out = '', at = 0;
   for (const [from, to] of ranges) {

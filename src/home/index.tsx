@@ -14,14 +14,10 @@ import { useFilterValues } from './useFilterValues';
 import { isTypingCharacter } from '../shared/lib/keys';
 
 /**
- * Home = what is locally real, not a mirror of the task queue.
- *
- * A big tabbed panel on the left — Live (checked out), Up next (queued tasks)
- * and Reviews (MRs waiting on you), each tab showing its count. A shared filter
- * narrows the active tab. A right rail holds the ambient panels (Activity now).
+ * Home: the Live, Up next and Reviews tabs under a shared filter, plus a right rail of panels.
  */
 
-/** One icon per filter field, so a line is recognisable before it is read. */
+/** One icon per filter field. */
 const KEY_ICON: Record<string, LucideIcon> = {
   id: Hash,
   title: Type,
@@ -39,7 +35,7 @@ const KEY_ICON: Record<string, LucideIcon> = {
   mr: GitPullRequest,
 };
 
-/** Keep this in step with `min-width` on `.home-ac`. */
+/** Must equal `min-width` on `.home-ac`. */
 const AC_MIN_WIDTH = 260;
 
 /** What a tab last reported for a given query. */
@@ -47,7 +43,7 @@ interface TabState {
   n: number;
   /** False when the query names a field this tab has no column for. */
   applicable: boolean;
-  /** The query the numbers belong to — routing waits for all three to agree. */
+  /** The query the numbers belong to. */
   forFilter: string;
 }
 const EMPTY_TAB: TabState = { n: 0, applicable: true, forFilter: '' };
@@ -61,8 +57,7 @@ const loadTab = (): Tab => {
 
 export function Home() {
   const [tab, setTabState] = useState<Tab>(loadTab);
-  // `draft` is what you are typing; `filter` is what the tabs apply. Enter
-  // commits — a query is built key by key, and refiltering mid-word is noise.
+  // `draft` is the typed text; `filter` is what the tabs apply. Enter commits.
   const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +86,7 @@ export function Home() {
 
   const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem(TAB_KEY, t); } catch { /* ignore */ } };
 
-  // The mirror sits under the input, so it must scroll with it.
+  // The mirror scrolls with the input.
   const syncMirror = () => {
     if (mirrorRef.current && inputRef.current) {
       mirrorRef.current.scrollLeft = inputRef.current.scrollLeft;
@@ -101,8 +96,7 @@ export function Home() {
 
   const clearFilter = () => { setDraft(''); setFilter(''); setCaret(0); inputRef.current?.focus(); };
 
-  // `/` jumps to the filter — scoped to Home because this listener lives and
-  // dies with it. Never steal the key from someone already typing.
+  // `/` focuses the filter, except while typing elsewhere.
   useEffect(() => {
     const onSlash = (e: KeyboardEvent) => {
       if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || isTypingCharacter(e)) return;
@@ -122,14 +116,11 @@ export function Home() {
   const onUpnextCount = useCallback<CountReport>((n, applicable, forFilter) => setUpnext({ n, applicable, forFilter }), []);
   const onReviewsCount = useCallback<CountReport>((n, applicable, forFilter) => setReviews({ n, applicable, forFilter }), []);
 
-  // Every tab has answered for the query on screen. Until then the counts below
-  // still describe the previous query, so nothing may be concluded from them.
+  // True once every tab has answered for the current query.
   const counted = live.forFilter === filter && upnext.forFilter === filter && reviews.forFilter === filter;
   const noMatches = counted && filter.trim() !== '' && live.n === 0 && upnext.n === 0 && reviews.n === 0;
 
-  // A committed query goes to the tab that can answer it. Routing runs ONCE per
-  // commit — as a standing rule it would bounce you out of any empty tab you
-  // opened on purpose. Your own tab wins whenever it has results.
+  // Route a committed query to a tab with results, once per commit; the current tab wins when it has any.
   useEffect(() => {
     if (!routePending || !counted) return;
     setRoutePending(false);
@@ -140,8 +131,7 @@ export function Home() {
     if (target) setTab(target[0]);
   }, [routePending, counted, live, upnext, reviews, tab]);
 
-  // Put the caret back after a completion is spliced in (React has re-rendered
-  // by then, so the DOM value is the new one).
+  // Restore the caret after a completion is spliced in.
   useEffect(() => {
     const at = pendingCaret.current;
     if (at === null) return;
@@ -150,8 +140,7 @@ export function Home() {
     setCaret(at);
   }, [draft]);
 
-  // Hang the list under the token being completed, following the input's own
-  // scroll. Clamped so a query typed past the right edge keeps the list on screen.
+  // Position the list under the token being completed, clamped to the input width.
   useEffect(() => {
     const field = inputRef.current;
     const width = measureRef.current?.offsetWidth ?? 0;
@@ -160,7 +149,7 @@ export function Home() {
     setAcLeft(Math.min(Math.max(0, width - field.scrollLeft), max));
   }, [draft, ac.start, acOpen]);
 
-  // Keep the highlighted line visible — the list is taller than its box.
+  // Keep the highlighted line visible.
   useEffect(() => {
     acListRef.current?.querySelector('.home-ac-item.active')?.scrollIntoView({ block: 'nearest' });
   }, [acIndex, acOpen]);
@@ -170,7 +159,7 @@ export function Home() {
     setDraft(text);
     pendingCaret.current = at;
     setAcIndex(0);
-    // A key still needs its value, so keep the list up; a value ends the token.
+    // A key keeps the list open; a value closes it.
     setAcOpen(s.kind === 'key');
     inputRef.current?.focus();
   };
@@ -195,8 +184,7 @@ export function Home() {
         return;
       case 'Enter':
         e.preventDefault();
-        // Enter takes the highlighted suggestion first, and only applies the
-        // query once there is nothing left to complete.
+        // Enter accepts the highlighted suggestion first, then applies the query.
         if (open) { accept(ac.items[acIndex]); return; }
         commitFilter();
         return;
@@ -211,8 +199,6 @@ export function Home() {
     }
   };
 
-  // New explorer lives in the header — it opens a Live session, so it belongs
-  // next to the tabs, not inside one tab's body.
   const createExplorer = async () => {
     const name = newName.trim();
     setCreating(false);
@@ -225,8 +211,7 @@ export function Home() {
     }
   };
 
-  // One button, whichever tab is showing — each tab reads a different source, so
-  // a shared "refresh everything" would fetch three things to update one.
+  // Refresh for the active tab only.
   const REFRESH: Record<Tab, { run: () => Promise<void>; title: string }> = {
     live: { run: () => refreshHome(true), title: 'Refresh sessions (also re-checks CI)' },
     upnext: { run: refreshTasks, title: 'Refresh the task queue' },
@@ -242,8 +227,7 @@ export function Home() {
   const Tab = ({ id, label, state }: { id: Tab; label: string; state: TabState }) => (
     <button className={`home-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
       {label}{' '}
-      {/* A dash says the query asks for a field this tab has no column for —
-          different from a zero, which means it looked and found nothing. */}
+      {/* A dash: the query names a field this tab has no column for. */}
       <span
         className={`home-tab-count${state.applicable ? '' : ' na'}`}
         title={state.applicable ? undefined : 'This query filters on a field this tab does not have'}
@@ -285,15 +269,13 @@ export function Home() {
 
           <div className="home-searchbar">
             <div className="home-searchbar-field">
-              {/* Mirror layer: colours the recognised keys behind a transparent
-                  input, so the text you type is the text you see highlighted. */}
+              {/* Mirror layer: colours the recognised keys behind the transparent input. */}
               <div className="home-filter-mirror" aria-hidden="true" ref={mirrorRef}>
                 {highlightSegments(draft).map((s, i) => (
                   <span key={i} className={s.kind === 'plain' ? undefined : `flt-${s.kind}`}>{s.text}</span>
                 ))}
               </div>
-              {/* Invisible run of the text before the token: its width IS the
-                  offset the suggestion list hangs from. */}
+              {/* Invisible text before the token; its width positions the suggestion list. */}
               <span className="home-filter-measure" aria-hidden="true" ref={measureRef}>
                 {draft.slice(0, ac.start)}
               </span>
@@ -321,7 +303,7 @@ export function Home() {
                           className={`home-ac-item ${i === acIndex ? 'active' : ''}`}
                           role="option"
                           aria-selected={i === acIndex}
-                          // Keep focus in the input, or blur closes the list first.
+                          // Keeps focus in the input; a blur closes the list first.
                           onMouseDown={(e) => e.preventDefault()}
                           onMouseEnter={() => setAcIndex(i)}
                           onClick={() => accept(s)}
@@ -366,7 +348,7 @@ export function Home() {
               </button>
             </div>
 
-            {/* All mounted (counts + state persist); only the active shows. */}
+            {/* All tabs stay mounted; only the active one shows. */}
             <div className={`home-tabpanel ${tab === 'live' ? '' : 'is-hidden'}`}>
               <LiveSection filter={filter} onCount={onLiveCount} />
             </div>

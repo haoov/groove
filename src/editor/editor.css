@@ -1,11 +1,10 @@
-/* ── Editor View ──────────────────────────────────────────────────────────── */
+/* ── Editor view ── */
 
 .editor-hint { font-size: var(--gl-font-size-xs); color: var(--gl-text-color-disabled); }
 
-/* Editor inline annotation portal (the shared AnnotationBlock renders here). */
 .editor-inline-portal { display: block; }
 
-/* ── Diff inline block (replaces floating tooltip) ────────────────────────── */
+/* ── Diff inline block ── */
 .diff-inline-block {
   background: transparent;
   padding: var(--space-2) var(--space-3);
@@ -21,7 +20,6 @@
   border: 1px solid var(--gl-color-blue-300);
 }
 .diff-inline-thread { display: flex; align-items: baseline; gap: var(--space-2); }
-/* An annotation body is markdown, so it stacks: author → note → actions. */
 .diff-inline-annotation { display: flex; flex-direction: column; gap: 3px; }
 .diff-inline-annotation .diff-inline-content { white-space: normal; overflow: visible; text-overflow: clip; }
 .diff-inline-annotation .markdown-body > *:first-child { margin-top: 0; }
@@ -51,7 +49,6 @@
 .diff-inline-resolve:disabled { opacity: 0.6; cursor: default; }
 .diff-inline-post-mr:disabled { opacity: 0.6; cursor: default; }
 .diff-inline-confirm { font-size: var(--gl-font-size-xs); font-weight: 600; color: var(--gl-color-red-400); }
-/* Resolved reads as dimmed, not as a coloured edge. */
 .diff-inline-thread.resolved { opacity: 0.55; }
 .diff-inline-author { font-size: var(--gl-font-size-xs); font-weight: 600; flex-shrink: 0; white-space: nowrap; }
 .diff-inline-content { font-size: var(--gl-font-size-sm); color: var(--gl-text-color-default); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -65,15 +62,13 @@
 .diff-thread-dot.unresolved { color: var(--gl-color-orange-400); }
 .diff-thread-dot.resolved { color: var(--gl-text-color-disabled); }
 
-/* CodeMirror editable editor host */
+/* ── CodeMirror editor host ── */
 .code-editor-host { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .code-editor { flex: 1; min-height: 0; overflow: hidden; }
 .code-editor .cm-editor { height: 100%; }
 .code-editor .cm-scroller { overflow: auto; }
 
-/* ── Vim mode (both editors) ───────────────────────────────────────────────
-   In normal/visual mode @replit/codemirror-vim adds .cm-fat-cursor: render the
-   caret as a translucent accent block. Insert mode falls back to the bar caret. */
+/* ── Vim mode; @replit/codemirror-vim adds .cm-fat-cursor ── */
 .cm-editor .cm-fat-cursor .cm-cursor,
 .cm-editor.cm-focused .cm-fat-cursor .cm-cursor {
   background: color-mix(in srgb, var(--gl-color-blue-400) 55%, transparent);
@@ -81,12 +76,10 @@
   width: auto;
   outline: 1px solid var(--gl-color-blue-400);
 }
-/* Vim normal-mode block caret on a non-focused view stays visible (diffs). */
 .cm-editor:not(.cm-focused) .cm-fat-cursor .cm-cursor { background: color-mix(in srgb, var(--gl-color-blue-400) 30%, transparent); }
-/* The diff is readonly: hide the blinking insert bar but keep the fat block. */
 .diff-cm-editor .cm-vim-panel { font-family: var(--font-mono); font-size: var(--gl-font-size-xs); }
 
-/* Comment + line-number gutters — mirror the diff editor's sizing/hover reveal. */
+/* mirror of the diff editor gutters in diff.css */
 .code-editor .cm-comment-gutter { width: 26px; }
 .code-editor .cm-linenum-gutter { width: 48px; color: color-mix(in srgb, var(--gl-text-color-subtle) 55%, transparent); }
 .code-editor .diff-add-comment { opacity: 0; transition: opacity 0.12s; }
@@ -117,7 +110,6 @@
 }
 .editor-save-btn:hover { opacity: 1; }
 
-/* A footer toggle (blame). Reads as off until it carries `on`. */
 .editor-foot-btn {
   background: none;
   border: 1px solid transparent;
@@ -138,24 +130,14 @@
 .editor-lang { text-transform: capitalize; color: var(--gl-color-blue-300); font-weight: 500; }
 .editor-path { font-family: var(--font-mono); color: var(--gl-text-color-disabled); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-
-/* Content-search (grep) match highlight in the editor preview. */
 .cm-grep-match {
   background: var(--gl-search-match-bg);
   border-radius: 2px;
   box-shadow: 0 0 0 1px var(--gl-search-match-border);
 }
 
-/* ── Line wrapping with an 80-column floor ────────────────────────────────────
-   `EditorView.lineWrapping` wraps at the width of `.cm-content`, so a min-width
-   of 80ch means: wrap at the pane width when it's wider than 80 columns, and
-   never wrap tighter than that — a narrower pane scrolls horizontally instead.
-   Applies to both editors (code + unified diff). */
+/* 80-column floor for both editors; diff.css overrides it */
 .cm-content { min-width: 80ch; }
-
-/* ── from home.css (split) ── */
-
-/* "Post to MR" on an inline annotation. */
 
 .diff-inline-post-mr {
   display: inline-flex;
@@ -176,7 +158,5 @@
 .diff-inline-post-mr:hover { background: var(--gl-color-blue-100); }
 
 .diff-inline-post-mr:disabled { opacity: 0.6; cursor: default; }
-
-/* Annotations panel action pair. */
 
 .annotation-post-mr { color: var(--gl-color-blue-300); }

@@ -1,7 +1,6 @@
 import type { Annotation, MrThread } from '../../shared/ipc/ipc';
 
-/** Gutter-indicator + highlight line-number sets shared by the code and diff
- *  editors. All sets are keyed by new-side file line number. */
+/** Line-number sets for gutter indicators and highlights, keyed by new-side file line. */
 export interface AnnotationSets {
   annStartNums: Set<number>;
   annotatedLineNums: Set<number>;
@@ -9,12 +8,7 @@ export interface AnnotationSets {
   unresolvedThreadNums: Set<number>;
 }
 
-/**
- * Derive the annotated/threaded line sets for one file from its open annotations
- * and MR threads. The code editor keys these off real document line numbers and
- * the diff editor off new-side file line numbers (via its lineMap) — in both
- * cases the numbers are new-side file lines, so the derivation is identical.
- */
+/** Derives the annotated and threaded line sets for one file. */
 export function deriveAnnotationSets(
   annotations: Annotation[],
   threads: MrThread[],

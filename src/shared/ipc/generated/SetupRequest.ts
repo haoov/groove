@@ -3,7 +3,6 @@ import type { GithubSetup } from "./GithubSetup";
 import type { NotionSetup } from "./NotionSetup";
 
 /**
- * What the setup screen sends: a worktree root, plus whichever sources were
- * filled in.
+ * What the setup screen sends: a worktree root plus the sources filled in.
  */
 export type SetupRequest = { worktree_root: string, notion: NotionSetup | null, github: GithubSetup | null, };

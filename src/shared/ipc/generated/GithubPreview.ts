@@ -2,28 +2,26 @@
 import type { BoardColumns } from "./BoardColumns";
 
 /**
- * What GitHub would give the queue right now, so the setup screen can show it
- * before anything is saved. Nothing to configure — this is the whole answer.
+ * What GitHub gives the queue right now, for the setup screen.
  */
 export type GithubPreview = { 
 /**
- * Open issues assigned to you that sit on a board.
+ * Open assigned issues that sit on a board.
  */
 tasks: number, 
 /**
- * The boards they came from, so an unexpected one is visible.
+ * The boards they came from.
  */
 boards: Array<string>, 
 /**
- * Board field names the app found, for the same reason.
+ * Board field names found.
  */
 fields: Array<string>, 
 /**
- * Assigned issues on no board, which are deliberately not tasks.
+ * Assigned issues on no board.
  */
 unboarded: number, 
 /**
- * Each board's Status columns. Boards name their states freely, and a wrong
- * status_map makes Finish fail — show what is really there.
+ * Each board's Status columns.
  */
 status_columns: Array<BoardColumns>, };

@@ -7,6 +7,6 @@ export type Environment = {
  */
 config_path: string, config_exists: boolean, 
 /**
- * Set when the file exists but could not be parsed — a missing key names itself.
+ * Set when the file exists but does not parse.
  */
 config_error: string | null, tools: Array<ToolCheck>, };

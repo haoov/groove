@@ -3,8 +3,7 @@ use sqlx::SqliteExecutor;
 use super::super::error::StoreResult;
 use super::super::models::SessionKind;
 
-/// One row per (session, attached repo) — sessions with no repos yield a
-/// single row with the repo side NULL. Newest session first, repos by name.
+/// One row per (session, attached repo); a session with no repos yields one row with NULL repo fields.
 #[derive(Debug, sqlx::FromRow)]
 pub struct HomeRow {
     pub session_id: String,

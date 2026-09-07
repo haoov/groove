@@ -14,7 +14,12 @@ pub struct GithubProvider;
 /// The owner/repo/number a GitHub key carries.
 fn issue_of(key: &TaskKey) -> anyhow::Result<(&str, &str, &str, i64)> {
     match key {
-        TaskKey::Github { host, owner, repo, number } => Ok((host, owner, repo, *number)),
+        TaskKey::Github {
+            host,
+            owner,
+            repo,
+            number,
+        } => Ok((host, owner, repo, *number)),
         other => anyhow::bail!("not a GitHub task: {}", other.external_id()),
     }
 }
@@ -24,7 +29,10 @@ impl GithubProvider {
         let status_field = &cfg.properties.status;
         let priority_field = cfg.properties.priority.as_deref();
         let field = |name: &str| {
-            item.fields.iter().find(|f| f.name == name).map(|f| f.display.clone())
+            item.fields
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.display.clone())
         };
 
         FetchedTask {
@@ -35,24 +43,17 @@ impl GithubProvider {
                 number: item.number,
             },
             title: item.title.clone(),
-            // An issue on the board with no Status set is still queued.
             status: field(status_field).unwrap_or_else(|| "Backlog".to_string()),
             priority: priority_field.and_then(field),
             url: item.url.clone(),
-            // No natural short id: short_id() below builds one.
             natural_short_id: None,
-            // Only the issue number goes in the branch — a branch is scoped to one
-            // repo, so the rest of the id would be noise.
             branch_tag: Some(item.number.to_string()),
             board: Some(item.board.clone()),
         }
     }
 
-    /// The board item behind a task.
-    ///
-    /// The queue cache is the fast path, but it only holds OPEN issues ASSIGNED
-    /// to you — a task whose issue was closed or reassigned must stay operable
-    /// for its open session, so a miss falls back to fetching the issue itself.
+    /// The board item behind a task. The queue cache holds only open assigned
+    /// issues; a miss fetches the issue itself.
     async fn item_for(
         &self,
         cfg: &config::GithubConfig,
@@ -80,16 +81,22 @@ impl TaskProvider for GithubProvider {
 
     fn task_url(&self, key: &TaskKey) -> String {
         match issue_of(key) {
-            Ok((host, owner, repo, number)) => format!("https://{host}/{owner}/{repo}/issues/{number}"),
+            Ok((host, owner, repo, number)) => {
+                format!("https://{host}/{owner}/{repo}/issues/{number}")
+            }
             Err(_) => key.external_id(),
         }
     }
 
-    /// `gh-<owner>-<repo>-<number>` — the owner is always in it. Leaving it out
-    /// reads better but collides whenever two owners share a repo name, and the
-    /// loser then carries a numeric suffix for the rest of its life.
+    /// `gh-<owner>-<repo>-<number>`. Keep the owner: two owners can share a repo name.
     fn short_id(&self, task: &FetchedTask) -> Option<String> {
-        let TaskKey::Github { owner, repo, number, .. } = &task.key else {
+        let TaskKey::Github {
+            owner,
+            repo,
+            number,
+            ..
+        } = &task.key
+        else {
             return None;
         };
         let seg = crate::provider::commands::segment;
@@ -128,19 +135,20 @@ impl TaskProvider for GithubProvider {
             .map(|p| {
                 let found = item.fields.iter().find(|f| f.name == p.name);
                 let (value, display) = match (p.name.as_str(), found) {
-                    // These live on the issue, not in a board field.
-                    ("Labels", _) => (
-                        serde_json::json!(item.labels),
-                        item.labels.join(", "),
-                    ),
-                    ("Assignees", _) => (
-                        serde_json::json!(item.assignees),
-                        item.assignees.join(", "),
-                    ),
+                    // Issue fields, not board fields.
+                    ("Labels", _) => (serde_json::json!(item.labels), item.labels.join(", ")),
+                    ("Assignees", _) => {
+                        (serde_json::json!(item.assignees), item.assignees.join(", "))
+                    }
                     (_, Some(f)) => (f.value.clone(), f.display.clone()),
                     (_, None) => (serde_json::Value::Null, String::new()),
                 };
-                PropertyValue { name: p.name.clone(), kind: p.kind.clone(), value, display }
+                PropertyValue {
+                    name: p.name.clone(),
+                    kind: p.kind.clone(),
+                    value,
+                    display,
+                }
             })
             .collect())
     }
@@ -148,12 +156,8 @@ impl TaskProvider for GithubProvider {
     async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> anyhow::Result<String> {
         let cfg = config::github()?;
         let item = self.item_for(&cfg, key).await?;
-        // The board's own columns, not the config: every board names them
-        // differently, and this is the write a user makes every day.
         let label = fields::status_for(&cfg, &item.project_id, intent).await;
         if label.is_empty() {
-            // Name the board's real columns: the fix is one config line, and
-            // without the list the user cannot know what to put there.
             let columns = fields::field_def(&cfg.host, &item.project_id, &cfg.properties.status)
                 .await
                 .map(|d| d.options.into_iter().map(|(n, _)| n).collect::<Vec<_>>())
@@ -196,8 +200,7 @@ impl TaskProvider for GithubProvider {
         Ok(item.body)
     }
 
-    /// An issue body is markdown already, so nothing can be lost in the round trip
-    /// and `force` has nothing to decide.
+    /// Issue bodies are markdown; `force` is ignored.
     async fn replace_body(
         &self,
         key: &TaskKey,
@@ -207,7 +210,9 @@ impl TaskProvider for GithubProvider {
         let cfg = config::github()?;
         let (_, owner, repo, number) = issue_of(key)?;
         issues::set_body(&cfg, owner, repo, number, markdown).await?;
-        Ok(BodyWrite { blocks_written: markdown.lines().count() })
+        Ok(BodyWrite {
+            blocks_written: markdown.lines().count(),
+        })
     }
 
     async fn add_hours(&self, key: &TaskKey, hours: f64) -> anyhow::Result<Option<HoursWrite>> {
@@ -225,20 +230,24 @@ impl TaskProvider for GithubProvider {
             .and_then(|f| f.value.as_f64())
             .unwrap_or(0.0);
         let after = before + hours;
-        fields::set_field(&cfg, &item.project_id, &item.item_id, &name, &serde_json::json!(after))
-            .await?;
+        fields::set_field(
+            &cfg,
+            &item.project_id,
+            &item.item_id,
+            &name,
+            &serde_json::json!(after),
+        )
+        .await?;
         Ok(Some(HoursWrite { before, after }))
     }
 
-    /// File an issue in the draft's repo and put it on the first configured board.
-    /// A task that is not on a board would not come back from `list_tasks`.
+    /// File an issue in the draft's repo and put it on the repo's first board.
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
         let cfg = config::github()?;
         let slug = draft
             .repo
             .ok_or_else(|| anyhow::anyhow!("filing a GitHub issue needs a repo to file it in"))?;
-        // The last two segments: a caller passes either `owner/repo` or a repo id,
-        // which carries the host in front of it.
+        // Last two segments: the slug is `owner/repo` or `host/owner/repo`.
         let mut parts = slug.rsplit('/');
         let (Some(repo), Some(owner)) = (parts.next(), parts.next()) else {
             anyhow::bail!("expected owner/repo, got {slug}");
@@ -281,10 +290,7 @@ impl TaskProvider for GithubProvider {
 
 #[cfg(test)]
 mod tests {
-    /// The same split create_task does. A caller passes either `owner/repo` or a
-    /// repo id, which is `host/owner/repo` — taking the first two segments made
-    /// every GitHub conversion ask GitHub for a repo called `owner/repo` owned by
-    /// the hostname.
+    /// The same split `create_task` does.
     fn owner_repo(slug: &str) -> Option<(&str, &str)> {
         let mut parts = slug.rsplit('/');
         match (parts.next(), parts.next()) {
@@ -296,7 +302,10 @@ mod tests {
     #[test]
     fn a_repo_id_and_a_bare_slug_both_resolve() {
         assert_eq!(owner_repo("haoov/groove"), Some(("haoov", "groove")));
-        assert_eq!(owner_repo("github.com/haoov/groove"), Some(("haoov", "groove")));
+        assert_eq!(
+            owner_repo("github.com/haoov/groove"),
+            Some(("haoov", "groove"))
+        );
         assert_eq!(owner_repo("groove"), None);
     }
 }

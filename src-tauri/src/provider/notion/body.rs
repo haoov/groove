@@ -1,17 +1,8 @@
-//! Reading and replacing a task page's body.
-//!
-//! Notion pages are blocks, not text, and the markdown bridge only covers the
-//! block types a task body normally uses. Replacing children therefore DESTROYS
-//! anything outside that set — embeds, images, child databases, toggles — and
-//! gives every surviving block a new id, which detaches block-level comments.
-//! So the replace refuses by default when the page holds something it cannot
-//! faithfully rebuild, and names what it found; `force` accepts the loss.
-
-
+//! Reading and replacing a task page's body. A replace destroys blocks that
+//! markdown cannot rebuild and detaches block comments; it refuses unless `force`.
 
 use super::markdown::{blocks_to_markdown, markdown_to_blocks};
 
-/// Blocks pagination backstop: 30 pages × 100 blocks is far above any task body.
 const MAX_BLOCK_PAGES: usize = 30;
 
 /// Fetch one block's direct children, paginating past Notion's 100-block cap.
@@ -19,13 +10,15 @@ async fn fetch_block_children(
     block_id: &str,
     token: &str,
 ) -> anyhow::Result<Vec<serde_json::Value>> {
-    super::api::paginate_get(token, &format!("v1/blocks/{block_id}/children"), MAX_BLOCK_PAGES).await
+    super::api::paginate_get(
+        token,
+        &format!("v1/blocks/{block_id}/children"),
+        MAX_BLOCK_PAGES,
+    )
+    .await
 }
 
-/// Fetch the Notion page blocks — shared impl callable from MCP and Tauri commands.
-/// Table blocks get their rows (children) attached as `__children` so the UI and
-/// the markdown renderer can show them (rows are NOT part of the parent payload).
-/// Row fetches run concurrently — a page with several tables pays one round trip.
+/// Fetch the page blocks. Table rows are attached to their table as `__children`.
 pub async fn get_task_body_impl(
     notion_page_id: &str,
     token: &str,
@@ -44,7 +37,10 @@ pub async fn get_task_body_impl(
     let fetches = table_ids
         .iter()
         .map(|(_, id)| fetch_block_children(id, token));
-    for ((i, id), rows) in table_ids.iter().zip(futures_util::future::join_all(fetches).await) {
+    for ((i, id), rows) in table_ids
+        .iter()
+        .zip(futures_util::future::join_all(fetches).await)
+    {
         match rows {
             Ok(rows) => blocks[*i]["__children"] = serde_json::Value::Array(rows),
             Err(e) => tracing::warn!("table rows fetch failed for {id}: {e}"),
@@ -53,9 +49,7 @@ pub async fn get_task_body_impl(
     Ok(blocks)
 }
 
-/// Fetch the task template as markdown, validating the configured id first —
-/// a database id (or an inaccessible/archived page) must fail with a clear,
-/// actionable error instead of handing junk blocks to the agent.
+/// Fetch the task template as markdown. Checks first that the id is a readable page.
 pub async fn template_markdown(page_id: &str, token: &str) -> anyhow::Result<String> {
     if let Err(e) = super::api::get(token, &format!("v1/pages/{page_id}")).await {
         let msg = e.to_string();
@@ -81,9 +75,7 @@ pub async fn template_markdown(page_id: &str, token: &str) -> anyhow::Result<Str
 
 // ─── Replace ──────────────────────────────────────────────────────────────────
 
-/// Block types that survive markdown → Notion → markdown unchanged. Anything
-/// else either can't be produced from markdown or would come back as a plain
-/// paragraph.
+/// Block types that survive markdown -> Notion -> markdown unchanged.
 const ROUND_TRIPPABLE: [&str; 11] = [
     "paragraph",
     "heading_1",
@@ -105,7 +97,9 @@ const APPEND_BATCH: usize = 100;
 fn lossy_types(blocks: &[serde_json::Value]) -> Vec<String> {
     let mut found: Vec<String> = vec![];
     for b in blocks {
-        let Some(kind) = b["type"].as_str() else { continue };
+        let Some(kind) = b["type"].as_str() else {
+            continue;
+        };
         if ROUND_TRIPPABLE.contains(&kind) || found.iter().any(|f| f == kind) {
             continue;
         }
@@ -140,8 +134,7 @@ pub(crate) async fn replace(
         ));
     }
 
-    // Append first, then archive the old blocks: if the append fails the page is
-    // left intact (duplicated content is recoverable, an emptied page is not).
+    // Append before archiving. Do not reorder: a failed append must leave the page intact.
     let mut appended = 0usize;
     for chunk in new_blocks.chunks(APPEND_BATCH) {
         super::api::patch(
@@ -155,20 +148,25 @@ pub(crate) async fn replace(
 
     let mut removed = 0usize;
     for block in &existing {
-        let Some(id) = block["id"].as_str() else { continue };
-        // Notion has no bulk delete; archiving each is the documented way.
-        match super::api::patch(token, &format!("v1/blocks/{id}"), &serde_json::json!({ "archived": true }))
-            .await
+        let Some(id) = block["id"].as_str() else {
+            continue;
+        };
+        match super::api::patch(
+            token,
+            &format!("v1/blocks/{id}"),
+            &serde_json::json!({ "archived": true }),
+        )
+        .await
         {
             Ok(_) => removed += 1,
-            // A block that won't archive leaves stale content behind, which is
-            // visible and fixable — worth reporting, not worth failing over.
             Err(e) => tracing::warn!("[task body] could not archive block {id}: {e}"),
         }
     }
 
     let _ = removed;
-    Ok(crate::provider::types::BodyWrite { blocks_written: appended })
+    Ok(crate::provider::types::BodyWrite {
+        blocks_written: appended,
+    })
 }
 
 #[cfg(test)]
@@ -196,8 +194,6 @@ mod tests {
         assert_eq!(lossy_types(&blocks), vec!["image", "child_database"]);
     }
 
-    /// A callout reads as markdown but comes back as a paragraph, so it counts as
-    /// loss even though the text survives.
     #[test]
     fn a_callout_counts_as_loss() {
         let blocks = vec![serde_json::json!({ "type": "callout", "id": "1" })];

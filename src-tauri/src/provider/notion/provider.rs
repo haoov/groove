@@ -14,7 +14,9 @@ fn page_of(key: &TaskKey) -> anyhow::Result<&str> {
 
 impl NotionProvider {
     fn fetched(&self, task: &crate::core::db::models::ProviderTask) -> FetchedTask {
-        let key = TaskKey::Notion { page_id: task.external_id.clone() };
+        let key = TaskKey::Notion {
+            page_id: task.external_id.clone(),
+        };
         FetchedTask {
             url: self.task_url(&key),
             key,
@@ -44,7 +46,11 @@ impl TaskProvider for NotionProvider {
     }
 
     async fn list_tasks(&self) -> anyhow::Result<Vec<FetchedTask>> {
-        Ok(super::tasks::fetch_queue().await?.iter().map(|t| self.fetched(t)).collect())
+        Ok(super::tasks::fetch_queue()
+            .await?
+            .iter()
+            .map(|t| self.fetched(t))
+            .collect())
     }
 
     async fn fetch_task(&self, key: &TaskKey) -> anyhow::Result<FetchedTask> {
@@ -95,13 +101,7 @@ impl TaskProvider for NotionProvider {
             StatusIntent::InProgress => map.in_progress.clone(),
             StatusIntent::Done => map.done.clone(),
         };
-        super::tasks::set_status(
-            &cfg.token,
-            page_of(key)?,
-            &cfg.properties.status,
-            &label,
-        )
-        .await?;
+        super::tasks::set_status(&cfg.token, page_of(key)?, &cfg.properties.status, &label).await?;
         Ok(label)
     }
 
@@ -147,7 +147,7 @@ impl TaskProvider for NotionProvider {
 
     async fn create_task(&self, draft: &TaskDraft<'_>) -> anyhow::Result<FetchedTask> {
         let cfg = config::notion()?;
-        // Notion files into its one database; the draft's repo means nothing here.
+        // `draft.repo` is ignored: Notion has one database.
         let req = super::NewTask::from_config(&cfg, draft.title, draft.body_markdown);
         let (page_id, short_id) = super::create::create_page(&cfg.token, &req).await?;
         let key = TaskKey::Notion { page_id };

@@ -3,11 +3,7 @@ import type { GithubPropertyNames } from "./GithubPropertyNames";
 import type { StatusMap } from "./StatusMap";
 
 /**
- * No token: `gh auth token` owns it, and check_environment already reports gh's
- * state. That also means GithubConfig needs no token-stripped view type.
- *
- * No boards either: a task is an issue assigned to you that sits on any board, so
- * there is nothing to nominate.
+ * GitHub task source. The token comes from `gh auth token`, not from here.
  */
 export type GithubConfig = { 
 /**
@@ -15,7 +11,6 @@ export type GithubConfig = {
  */
 host: string, properties: GithubPropertyNames, 
 /**
- * A fallback for the labels the app writes. Each board has its own vocabulary,
- * so a write reads the board's own options first and only falls back here.
+ * Fallback labels; a write reads the board's own options first.
  */
 status_map: StatusMap, };

@@ -22,13 +22,12 @@ export const agentSlice: StateCreator<AppState, [], [], AgentSlice> = (set) => (
       const rows = await invoke<AgentActivity[]>('get_agent_activity');
       set({ agentActivity: Object.fromEntries(rows.map((r) => [r.task_id, r])) });
     } catch {
-      // Best-effort: an empty map just means "unknown", which is the honest state.
+      // Best-effort: an empty map means unknown.
     }
   },
   consoleOpen: false,
   setConsoleOpen: (v) =>
-    // Closing drops the maximize too: reopening straight into a full-screen agent
-    // is not what the last Alt+A meant.
+    // Closing drops the maximize too.
     set(v ? { consoleOpen: true } : { consoleOpen: false, agentMaximized: false }),
   consoleFocusNonce: 0,
   requestConsoleFocus: () =>
@@ -38,8 +37,7 @@ export const agentSlice: StateCreator<AppState, [], [], AgentSlice> = (set) => (
   agentDetached: readDetached(),
   setAgentDetached: (v) => {
     writeDetached(v);
-    // A window has no column to maximize; docking back reopens the column, or
-    // the agent would vanish with the window.
+    // A window has no column to maximize; docking back reopens the column.
     set(v ? { agentDetached: true, agentMaximized: false } : { agentDetached: false, consoleOpen: true });
   },
   agentsSidebarOpen: readAgentsSidebar(),

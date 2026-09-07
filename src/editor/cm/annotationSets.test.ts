@@ -2,9 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { annotationsForStartLine, deriveAnnotationSets, threadsForStartLine } from './annotationSets';
 import type { Annotation, MrThread } from '../../shared/ipc/ipc';
 
-// Both editors draw their gutter indicators from these sets, so a mistake here
-// puts a comment marker on the wrong line in the diff AND in the editor.
-
 const ann = (start: number, end = start, file = 'a.ts'): Annotation => ({
   id: `a${start}-${end}`, session_id: 't', repo_id: 'r', file_path: file,
   start_line: start, end_line: end,
@@ -60,8 +57,6 @@ describe('deriveAnnotationSets', () => {
     expect(s.threadNums.size).toBe(0);
   });
 
-  // resolved is optional in the API payload: a note that never says so counts as
-  // unresolved, which is why the check is `!== true` rather than `=== false`.
   it('counts a thread as unresolved unless every note says resolved', () => {
     const unset = deriveAnnotationSets([], [thread('a.ts', { new_line: 5 })], 'a.ts');
     expect([...unset.unresolvedThreadNums]).toEqual([5]);

@@ -6,12 +6,8 @@ import { fitAndSync, focusHost } from '../shared/lib/terminalHost';
 import { useAttachedHost } from '../shared/lib/useAttachedHost';
 
 /**
- * Body of a terminal tab. The xterm lives in the module-level host registry —
- * this component only re-parents the host's element into its container (and
- * detaches on unmount), so the terminal survives tab switches, pane moves, and
- * tab close/reopen.
- *
- * Agents have no tab: they live in the console (components/AgentConsole).
+ * Body of a terminal tab. Re-parents the xterm host element into its container; the
+ * terminal survives tab switches, pane moves, and close/reopen.
  */
 export function PtyTabBody({
   tab, paneId, isActive,
@@ -58,7 +54,7 @@ export function PtyTabBody({
     }
   };
 
-  // Auto-start on first mount (opening the tab IS the request to start).
+  // Auto-start on first mount.
   const autoStartedRef = useRef(false);
   useEffect(() => {
     if (!sessionId && !ended && activeTask && !autoStartedRef.current) {
@@ -79,8 +75,7 @@ export function PtyTabBody({
     focusHost(sessionId);
   }, [terminalFocusReq, isActive, sessionId]);
 
-  // Refit when this tab becomes visible again (display:none → flex): it measured
-  // 0×0 while hidden, so its size is whatever it had when it was last shown.
+  // Refit when the tab becomes visible again: hidden, it measured 0×0.
   useEffect(() => {
     if (!isActive || !sessionId) return;
     const id = requestAnimationFrame(() => fitAndSync(sessionId));

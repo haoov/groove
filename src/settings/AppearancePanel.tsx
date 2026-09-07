@@ -6,11 +6,10 @@ import {
   THEMES, DEFAULT_FONT_SIZE, DEFAULT_THEME, FONT_MIN, FONT_MAX, type ThemeName,
 } from '../shared/ipc/ipc';
 
-// Monospace faces shipped with the app (see main.tsx @fontsource imports). They are
-// always selectable even though the OS font list never reports them.
+// Monospace faces shipped with the app (main.tsx @fontsource imports).
 const BUNDLED_FONTS = ['Lilex', 'IBM Plex Mono'];
 
-// Representative swatches for the theme picker preview (base · surface · accent · green).
+// Theme swatches: base · surface · accent · green.
 const SWATCHES: Record<ThemeName, string[]> = {
   frappe:   ['#303446', '#414559', '#8caaee', '#a6d189'],
   latte:    ['#eff1f5', '#ccd0da', '#1e66f5', '#40a02b'],
@@ -30,8 +29,6 @@ export function AppearancePanel() {
   const fontFamily = config?.ui.font_family ?? '';
   const agentFontFamily = config?.ui.agent_font_family ?? '';
 
-  // Real installed families, so a name that matches nothing can't be picked —
-  // CSS falls through silently, which is how the font "didn't apply" at all.
   const [fonts, setFonts] = useState<string[] | null>(null);
   useEffect(() => {
     invoke<string[]>('list_fonts').then(setFonts).catch(() => setFonts([]));
@@ -125,14 +122,10 @@ function FontPicker({
   return (
     <select className="settings-select" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{defaultLabel}</option>
-      {/* Bundled faces ship with the app, so they are always selectable even
-          though the OS font list never reports them. */}
       <optgroup label="Bundled">
         {BUNDLED_FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
       </optgroup>
-      {/* A configured family that is not installed (a config copied from another
-          machine) stays selectable rather than silently switching to whatever
-          sorts first. */}
+      {/* A configured family that is not installed stays selectable. */}
       {value && !fonts.includes(value) && !BUNDLED_FONTS.includes(value) && (
         <option value={value}>{value} (not installed)</option>
       )}

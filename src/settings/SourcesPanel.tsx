@@ -1,9 +1,7 @@
 import { TaskSources } from '../setup/sources/TaskSources';
 import type { Config, Environment } from '../shared/ipc/ipc';
 
-/** Status and repair, not a second setup screen. The first-run screen is
- *  unreachable once configured, so this is the only route to adding a source to a
- *  machine that already has one. */
+/** Status and repair of the connected sources. */
 export function SourcesPanel({
   config, env, reload, onNeedsScope,
 }: {

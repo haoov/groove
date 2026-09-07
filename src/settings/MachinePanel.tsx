@@ -2,9 +2,7 @@ import { Check, Minus, RotateCcw } from 'lucide-react';
 import { FORGE_CLIS } from '../shared/lib/forge';
 import type { Environment } from '../shared/ipc/ipc';
 
-/** The same check the first-run screen does. Kept reachable afterwards: a tool
- *  uninstalled later breaks a feature with no other clue. The forge CLIs are not
- *  here — they are Git & forge's rows. */
+/** The first-run tools check, minus the forge CLIs (those are Git & forge's rows). */
 export function MachinePanel({ env, reload }: { env: Environment | null; reload: () => void }) {
   const tools = (env?.tools ?? []).filter((t) => !FORGE_CLIS.includes(t.name));
 

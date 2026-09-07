@@ -9,7 +9,9 @@ pub(super) async fn get_active_task(
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
     let Some(task_id) = state.task_for(mcp_session) else {
-        return Ok(ToolCallResponse::ok(serde_json::json!({ "active_task": null })));
+        return Ok(ToolCallResponse::ok(
+            serde_json::json!({ "active_task": null }),
+        ));
     };
 
     let task = store::sessions::view_opt(&state.pool, &task_id).await?;
@@ -22,7 +24,6 @@ pub(super) async fn get_active_task(
         "repos": repos,
     })))
 }
-
 
 /// Every real task from the local mirror; explorers and reviews are not tasks.
 pub(super) async fn list_tasks(state: &McpState) -> anyhow::Result<ToolCallResponse> {
@@ -45,7 +46,7 @@ pub(super) async fn list_repos(
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Matched on local_path: the pool listing has no repo id until registered.
+    // Matched on local_path; the pool listing carries no repo id.
     let attached: Vec<String> = match state.task_for(mcp_session) {
         Some(task_id) => store::repos::attached_paths(&state.pool, &task_id).await?,
         None => vec![],
@@ -59,7 +60,6 @@ pub(super) async fn list_repos(
                 "slug": r.slug,
                 "project": project,
                 "attached": attached.contains(&r.local_path),
-                // The clone itself, for reading a repo the session has not checked out.
                 "local_path": r.local_path,
             })
         })
@@ -71,7 +71,11 @@ pub(super) async fn list_repos(
 }
 
 /// The task a read is about: the one named, else the caller's own.
-fn task_or_own(input: &serde_json::Value, state: &McpState, mcp_session: &str) -> anyhow::Result<String> {
+fn task_or_own(
+    input: &serde_json::Value,
+    state: &McpState,
+    mcp_session: &str,
+) -> anyhow::Result<String> {
     input["task_id"]
         .as_str()
         .map(|s| s.to_string())
@@ -120,8 +124,7 @@ pub(super) async fn get_annotations(
     Ok(ToolCallResponse::ok(serde_json::to_value(rows)?))
 }
 
-/// Time measured for a task, and how much reached the source. Hours as well as
-/// seconds — `log_task_hours` takes hours.
+/// Time measured for a task and how much reached the source, in hours and seconds.
 pub(super) async fn get_task_time(
     input: serde_json::Value,
     state: &McpState,
@@ -155,12 +158,14 @@ pub(super) async fn get_task_schema(
     let schema = crate::provider::schema_for(&state.pool, &task_id).await?;
     let values = crate::provider::properties_for(&state.pool, &task_id).await?;
 
-    // Each property carries what it holds beside what it accepts.
+    // Attach each property's current value.
     let mut out = serde_json::to_value(schema)?;
     if let Some(props) = out["properties"].as_array_mut() {
         for p in props {
             let held = values.iter().find(|v| v.name == p["name"]);
-            p["value"] = held.map(|v| v.value.clone()).unwrap_or(serde_json::Value::Null);
+            p["value"] = held
+                .map(|v| v.value.clone())
+                .unwrap_or(serde_json::Value::Null);
         }
     }
     Ok(ToolCallResponse::ok(out))
@@ -209,7 +214,6 @@ pub(super) async fn get_open_file(
     ))
 }
 
-
 pub(super) async fn get_task_body(
     input: serde_json::Value,
     state: &McpState,
@@ -218,7 +222,9 @@ pub(super) async fn get_task_body(
     let task_id = task_or_own(&input, state, mcp_session)?;
     let (provider, key) = crate::provider::resolve(&state.pool, &task_id).await?;
     let markdown = provider.body_markdown(&key).await?;
-    Ok(ToolCallResponse::ok(serde_json::json!({ "markdown": markdown })))
+    Ok(ToolCallResponse::ok(
+        serde_json::json!({ "markdown": markdown }),
+    ))
 }
 
 /// The task template as markdown.
@@ -227,8 +233,7 @@ pub(super) async fn get_task_template(
     state: &McpState,
     mcp_session: &str,
 ) -> anyhow::Result<ToolCallResponse> {
-    // Source: the one named, else the task's, else the only one configured. An
-    // explorer has no source and falls through.
+    // Source: the one named, else the task's, else the only one configured.
     let named = input["provider"]
         .as_str()
         .map(|_| crate::provider::commands::draft_provider(&input));
@@ -252,7 +257,6 @@ pub(super) async fn get_task_template(
         Ok(Some(markdown)) => Ok(ToolCallResponse::ok(
             serde_json::json!({ "template_markdown": markdown }),
         )),
-        // No template is an answer, not an error.
         Ok(None) => Ok(ToolCallResponse::ok(serde_json::json!({
             "template_markdown": "",
             "note": "this task source has no template — structure the body yourself",
@@ -261,11 +265,8 @@ pub(super) async fn get_task_template(
     }
 }
 
-/// The raw `SKILL.md` of one of the user's own skills, so an edit rewrites a
-/// whole file instead of guessing at what the rest of it said.
-pub(super) async fn read_user_skill(
-    input: serde_json::Value,
-) -> anyhow::Result<ToolCallResponse> {
+/// The raw `SKILL.md` of one of the user's own skills.
+pub(super) async fn read_user_skill(input: serde_json::Value) -> anyhow::Result<ToolCallResponse> {
     let name = str_field(&input, "name")?;
     Ok(match crate::skills::read_user_skill(&name) {
         Ok(body) => ToolCallResponse::ok(serde_json::json!({ "name": name, "body": body })),

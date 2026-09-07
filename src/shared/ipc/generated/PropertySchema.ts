@@ -3,18 +3,15 @@ import type { PropertyOption } from "./PropertyOption";
 
 export type PropertySchema = { name: string, 
 /**
- * The shared type vocabulary — the frontend renders by this.
+ * The shared type vocabulary the frontend renders by.
  */
 kind: string, 
 /**
  * Allowed values for select / status / multi_select, in the provider's order.
- *
- * Carries ids as well as titles because GitHub's Projects v2 mutations take
- * the option id, not its name. Notion has no separate id and sets both.
  */
 options: Array<PropertyOption>, 
 /**
- * Target database for a relation, so its rows can be offered as choices.
+ * Target database for a relation.
  */
 relation_db: string | null, 
 /**
@@ -22,7 +19,6 @@ relation_db: string | null,
  */
 editable: boolean, 
 /**
- * Not a field the user sets — an id, a timestamp, a computed value. Kept out
- * of the property strip.
+ * An id, a timestamp or a computed value; hidden from the property strip.
  */
 meta: boolean, };

@@ -1,5 +1,4 @@
-/// Expand a leading `~` to $HOME. Child processes spawned without a shell never
-/// expand `~`, so chdir("~/…") fails with ENOENT.
+/// Expand a leading `~` to `$HOME`; a child process spawned without a shell never expands `~`.
 pub fn expand_tilde(path: &str) -> String {
     if let Some(rest) = path.strip_prefix("~/") {
         let home = std::env::var("HOME").unwrap_or_default();

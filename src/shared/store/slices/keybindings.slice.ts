@@ -6,8 +6,7 @@ export const keybindingsSlice: StateCreator<AppState, [], [], KeybindingsSlice> 
   keymap: loadKeymap(),
   setBinding: (id, chords) =>
     set((s) => {
-      // Exclusive: the chord is taken off whatever held it. Otherwise two
-      // commands share it and declaration order silently decides the winner.
+      // Exclusive: the chord comes off whatever held it.
       const keymap = assignBinding(s.keymap, id, chords);
       saveKeymap(keymap);
       return { keymap };

@@ -1,32 +1,19 @@
-//! Reading the database's vocabulary instead of asking for it.
-//!
-//! Property names and status values were configuration, which meant a new user had
-//! to describe their own database to the app and any mismatch showed up later as a
-//! property that "does not exist". Notion already knows all of it: every property
-//! carries a type, and a status property carries GROUPS — Notion's own To-do /
-//! In progress / Complete classification of its options.
-//!
-//! Detection is therefore type-first with a name tiebreaker, never a name guess:
-//! a database with `Assignee` and `Reporter` (both people) needs the name to pick,
-//! but a database that calls it `Owner` still resolves, because it is the only
-//! people property.
-//!
-//! The result is still written to the config, where it can be corrected. Detection
-//! that cannot be overridden is just a different hardcoding.
+//! Detection of property names from the database schema: type first, name as
+//! tiebreaker. The result is written to the config, where the user can correct it.
 
-use crate::core::config::PropertyNames;
 use super::schema::TaskSchema;
+use crate::core::config::PropertyNames;
 
 pub use crate::provider::detect::detect_status_map;
 use crate::provider::detect::norm;
 
 /// The first property of one of `kinds`, preferring a name containing `hint`.
-///
-/// Type narrows, the name only breaks ties. Notion's public API calls a person
-/// property `people`; other surfaces call it `person`, so callers pass both.
 fn find(schema: &TaskSchema, kinds: &[&str], hint: &str) -> Option<String> {
-    let candidates: Vec<&crate::provider::types::PropertySchema> =
-        schema.properties.iter().filter(|p| kinds.contains(&p.kind.as_str())).collect();
+    let candidates: Vec<&crate::provider::types::PropertySchema> = schema
+        .properties
+        .iter()
+        .filter(|p| kinds.contains(&p.kind.as_str()))
+        .collect();
     let hint = norm(hint);
     candidates
         .iter()
@@ -36,8 +23,7 @@ fn find(schema: &TaskSchema, kinds: &[&str], hint: &str) -> Option<String> {
         .map(|p| p.name.clone())
 }
 
-/// Same, but only when the name matches: with three relations (Sprint, Project,
-/// Platform Components) "the first relation" would be a coin toss.
+/// Same, but only when the name matches.
 fn find_named(schema: &TaskSchema, kinds: &[&str], hint: &str) -> Option<String> {
     let hint = norm(hint);
     schema
@@ -51,8 +37,6 @@ fn find_named(schema: &TaskSchema, kinds: &[&str], hint: &str) -> Option<String>
 /// Which property holds what, read off the schema.
 pub fn detect_properties(schema: &TaskSchema) -> PropertyNames {
     PropertyNames {
-        // A database without a status property is not usable, so fall back to the
-        // conventional name rather than inventing one.
         status: find(schema, &["status"], "status").unwrap_or_else(|| "Status".to_string()),
         priority: find_named(schema, &["select", "status"], "priority"),
         sprint: find_named(schema, &["relation"], "sprint"),
@@ -63,27 +47,32 @@ pub fn detect_properties(schema: &TaskSchema) -> PropertyNames {
 
 #[cfg(test)]
 mod tests {
+    use super::super::schema::PropertySchema;
     use super::*;
     use crate::provider::types::StatusGroup;
-    use super::super::schema::PropertySchema;
 
     fn prop(name: &str, kind: &str, options: &[&str]) -> PropertySchema {
         PropertySchema {
             meta: false,
             name: name.into(),
             kind: kind.into(),
-            options: options.iter().map(|o| crate::provider::types::PropertyOption::named(*o)).collect(),
+            options: options
+                .iter()
+                .map(|o| crate::provider::types::PropertyOption::named(*o))
+                .collect(),
             relation_db: None,
             editable: true,
         }
     }
 
     fn group(name: &str, options: &[&str]) -> StatusGroup {
-        StatusGroup { name: name.into(), options: options.iter().map(|s| s.to_string()).collect() }
+        StatusGroup {
+            name: name.into(),
+            options: options.iter().map(|s| s.to_string()).collect(),
+        }
     }
 
-    /// The real Platform Tasks database: two people properties, three relations,
-    /// and a Complete group holding four different completions.
+    /// Two people properties, three relations, four completions in one group.
     fn real() -> TaskSchema {
         TaskSchema {
             hours_property: None,
@@ -97,17 +86,33 @@ mod tests {
                 prop("Project", "relation", &[]),
                 prop("Platform Components", "relation", &[]),
                 prop("Task name", "title", &[]),
-                prop("Status", "status", &[
-                    "To be defined", "Ready for sprint", "In progress", "Blocked",
-                    "Fixed with required action", "Done", "Abandoned", "Archived",
-                ]),
+                prop(
+                    "Status",
+                    "status",
+                    &[
+                        "To be defined",
+                        "Ready for sprint",
+                        "In progress",
+                        "Blocked",
+                        "Fixed with required action",
+                        "Done",
+                        "Abandoned",
+                        "Archived",
+                    ],
+                ),
             ],
             status_groups: vec![
                 group("To-do", &["To be defined", "Ready for sprint"]),
                 group("In progress", &["In progress", "Blocked"]),
-                group("Complete", &[
-                    "Fixed with required action", "Done", "Abandoned", "Archived",
-                ]),
+                group(
+                    "Complete",
+                    &[
+                        "Fixed with required action",
+                        "Done",
+                        "Abandoned",
+                        "Archived",
+                    ],
+                ),
             ],
         }
     }
@@ -119,8 +124,6 @@ mod tests {
         assert_eq!(p.priority.as_deref(), Some("Priority"));
         assert_eq!(p.sprint.as_deref(), Some("Sprint"));
         assert_eq!(p.project.as_deref(), Some("Project"));
-        // Two people properties: the name has to break the tie, or tasks get
-        // assigned to the Reporter.
         assert_eq!(p.assignee.as_deref(), Some("Assignee"));
     }
 
@@ -129,11 +132,9 @@ mod tests {
         let m = detect_status_map(&real());
         assert_eq!(m.ready, "Ready for sprint");
         assert_eq!(m.in_progress, "In progress");
-        // NOT "Fixed with required action", which sorts first in the group.
         assert_eq!(m.done, "Done");
     }
 
-    /// A differently-named database must still resolve: type first, name second.
     #[test]
     fn resolves_a_database_that_uses_other_words() {
         let schema = TaskSchema {
@@ -153,8 +154,15 @@ mod tests {
             ],
         };
         let p = detect_properties(&schema);
-        assert_eq!(p.status, "State", "the only status property, whatever it is called");
-        assert_eq!(p.assignee.as_deref(), Some("Owner"), "the only people property");
+        assert_eq!(
+            p.status, "State",
+            "the only status property, whatever it is called"
+        );
+        assert_eq!(
+            p.assignee.as_deref(),
+            Some("Owner"),
+            "the only people property"
+        );
         assert_eq!(p.priority, None, "absent means absent, not a wrong guess");
         assert_eq!(p.sprint, None, "a relation called Cycle is not a sprint");
 
@@ -164,7 +172,6 @@ mod tests {
         assert_eq!(m.done, "Shipped");
     }
 
-    /// Group names differ between API surfaces (`To-do` vs `to_do`).
     #[test]
     fn accepts_either_spelling_of_a_group_name() {
         let mut schema = real();
@@ -179,7 +186,6 @@ mod tests {
         assert_eq!(m.done, "Done");
     }
 
-    /// A `select` standing in for a status has no groups at all.
     #[test]
     fn falls_back_to_every_option_when_there_are_no_groups() {
         let schema = TaskSchema {
@@ -208,7 +214,10 @@ mod tests {
             status_groups: vec![],
         };
         let p = detect_properties(&schema);
-        assert_eq!(p.status, "Status", "the conventional name is the only fallback");
+        assert_eq!(
+            p.status, "Status",
+            "the conventional name is the only fallback"
+        );
         assert_eq!(p.assignee, None);
         let m = detect_status_map(&schema);
         assert!(m.ready.is_empty() && m.in_progress.is_empty() && m.done.is_empty());

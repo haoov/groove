@@ -3,14 +3,14 @@
 
 use crate::core::pty::{PtySpec, Ptys};
 
-/// Every in-app terminal runs bash, not $SHELL — one escape-sequence dialect against xterm.js.
+/// Every in-app terminal runs bash, not $SHELL: one escape-sequence dialect for xterm.js.
 const TERMINAL_SHELL: &str = "/bin/bash";
 
-/// Overall MCP tool-call cap — 24h, since a gated write waits on a human.
+/// MCP tool-call cap: 24h.
 const MCP_TOOL_TIMEOUT_MS: &str = "86400000";
 
-/// No MCP idle timeout and a 24h cap: a gated write waits on a human, and a timed-out
-/// call would be retried, queueing a duplicate. Set on every PTY.
+/// No MCP idle timeout and a 24h cap. A timed-out gated write is retried and queues
+/// a duplicate. Set on every PTY.
 fn claude_env() -> Vec<(&'static str, String)> {
     vec![
         ("CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT", "0".to_string()),
@@ -20,8 +20,7 @@ fn claude_env() -> Vec<(&'static str, String)> {
 
 // ─── Session identity ───────────────────────────────────────────────────────
 
-/// Fixed namespace for deriving deterministic per-task Claude session UUIDs.
-/// (A constant random UUID — its only job is to namespace `new_v5`.)
+/// Namespace for deterministic per-task Claude session UUIDs.
 const SESSION_NS: uuid::Uuid = uuid::uuid!("6f3d8a1c-2b7e-4f5a-9c0d-1e2f3a4b5c6d");
 
 /// The Claude session UUID for a task, derived from its id.
@@ -29,7 +28,7 @@ pub fn task_session_uuid(task_id: &str) -> String {
     uuid::Uuid::new_v5(&SESSION_NS, task_id.as_bytes()).to_string()
 }
 
-/// Legacy `.agent_session_id` file — read as a fallback, never written.
+/// Fallback session id from `.agent_session_id`. Read only, never written.
 fn load_legacy_session_id(task_id: &str) -> Option<String> {
     std::fs::read_to_string(crate::worktrees::session_dir(task_id).join(".agent_session_id"))
         .ok()
@@ -54,7 +53,9 @@ fn claude_projects_dir(cwd: &str) -> std::path::PathBuf {
 
 /// True if Claude already has a persisted session file for this UUID under `cwd`.
 fn session_exists(cwd: &str, uuid: &str) -> bool {
-    claude_projects_dir(cwd).join(format!("{uuid}.jsonl")).is_file()
+    claude_projects_dir(cwd)
+        .join(format!("{uuid}.jsonl"))
+        .is_file()
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,8 +77,7 @@ pub(crate) fn resolve_claude_bin() -> String {
 
 #[cfg(test)]
 mod tests {
-    /// Pinned to a real entry in ~/.claude/projects: Claude Code encodes EVERY
-    /// non-alphanumeric character as `-`, not just the slashes.
+    /// Pinned to a real `~/.claude/projects` entry: every non-alphanumeric char becomes `-`.
     #[test]
     fn projects_dir_encodes_like_claude_code() {
         let dir = super::claude_projects_dir("/home/x/worktrees/gitlab.wiremind.io/devops/");
@@ -111,20 +111,20 @@ pub async fn start_agent_session(
 ) -> Result<String, String> {
     let cwd = resolve_root_cwd();
 
-    // One deterministic Claude session per task: created on first launch, resumed
-    // after. A legacy `.agent_session_id` is honored while its file still exists.
+    // One Claude session per task: created on first launch, resumed after.
     let uuid = task_session_uuid(&task_id);
     let mut args: Vec<String> = if session_exists(&cwd, &uuid) {
         vec!["--resume".to_string(), uuid]
-    } else if let Some(legacy) = load_legacy_session_id(&task_id).filter(|id| session_exists(&cwd, id)) {
+    } else if let Some(legacy) =
+        load_legacy_session_id(&task_id).filter(|id| session_exists(&cwd, id))
+    {
         vec!["--resume".to_string(), legacy]
     } else {
         vec!["--session-id".to_string(), uuid]
     };
 
-    // Bind this connection to this task via `?task=`. Both blobs go through FILES,
-    // not argv: they carry the bearer token and /proc/<pid>/cmdline is readable.
-    // No `--strict-mcp-config`, so the user's own servers still load.
+    // Both blobs go through files, not argv: they carry the bearer token.
+    // No `--strict-mcp-config`: the user's own servers still load.
     let mcp_config = serde_json::json!({
         "mcpServers": {
             // The server name is the agent's tool prefix (mcp__groove__*).
@@ -138,22 +138,32 @@ pub async fn start_agent_session(
         }
     });
     args.push("--mcp-config".to_string());
-    args.push(write_launch_file(&app, &task_id, "mcp.json", &mcp_config.to_string()).map_err(|e| e.to_string())?);
+    args.push(
+        write_launch_file(&app, &task_id, "mcp.json", &mcp_config.to_string())
+            .map_err(|e| e.to_string())?,
+    );
 
-    // Report the agent's state back through hooks (see agent_hooks).
+    // Hooks report the agent's state; see agent_hooks.
     args.push("--settings".to_string());
-    args.push(write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id)).map_err(|e| e.to_string())?);
+    args.push(
+        write_launch_file(&app, &task_id, "settings.json", &hook_settings(&task_id))
+            .map_err(|e| e.to_string())?,
+    );
 
-    // The core prompt. `--append-system-prompt-file` is absent from `--help`;
-    // `--append-system-prompt` is the inline fallback.
+    // The core prompt. `--append-system-prompt` is the inline fallback.
     let session = crate::core::db::store::sessions::get_opt(&*pool, &task_id)
         .await
         .ok()
         .flatten();
     args.push("--append-system-prompt-file".to_string());
     args.push(
-        write_launch_file(&app, &task_id, "prompt.md", &crate::skills::core_prompt(&task_id, session.as_ref()))
-            .map_err(|e| e.to_string())?,
+        write_launch_file(
+            &app,
+            &task_id,
+            "prompt.md",
+            &crate::skills::core_prompt(&task_id, session.as_ref()),
+        )
+        .map_err(|e| e.to_string())?,
     );
 
     // Skills, per session: `--plugin-dir` is launch-scoped.
@@ -188,8 +198,7 @@ pub async fn start_agent_session(
     .map_err(|e| e.to_string())
 }
 
-/// Write one agent-launch file (0600 — it carries the loopback token) and
-/// return its path. Overwritten on every spawn; one pair per task.
+/// Write one agent-launch file (0600; it carries the loopback token) and return its path.
 fn write_launch_file(
     app: &tauri::AppHandle,
     task_id: &str,
@@ -213,8 +222,8 @@ fn write_launch_file(
     Ok(path.to_string_lossy().to_string())
 }
 
-/// `--settings` wiring Claude Code's hooks to the loopback server; merges with the
-/// user's own. `curl -m 2 … || true`: a failing hook must never hold up the agent.
+/// `--settings` wiring Claude Code's hooks to the loopback server. Keep `-m 2 ... || true`:
+/// a failing hook must never hold up the agent.
 fn hook_settings(task_id: &str) -> String {
     let command = format!(
         "curl -s -m 2 -X POST -H 'content-type: application/json' -H 'authorization: Bearer {}' --data-binary @- '{}' >/dev/null 2>&1 || true",
@@ -224,31 +233,20 @@ fn hook_settings(task_id: &str) -> String {
     let post = serde_json::json!([{ "hooks": [{ "type": "command", "command": command }] }]);
     serde_json::json!({
         "hooks": {
-            // Session is up, between turns.
             "SessionStart": post,
-            // A prompt was submitted (by the user or the pill) — turn started.
             "UserPromptSubmit": post,
-            // Tool about to run; also the tool a following Notification is about.
             "PreToolUse": post,
-            // Tool finished, so nothing is pending approval.
             "PostToolUse": post,
-            // Claude wants the user (permission prompt, idle nudge).
             "Notification": post,
-            // Turn finished; payload carries last_assistant_message.
+            // Payload carries last_assistant_message.
             "Stop": post,
         }
     })
     .to_string()
 }
 
-/// A shell for the setup screen's sign-in, for the user to run the login in.
-///
-/// A shell rather than `<tool> auth login` itself: a self-hosted GitLab needs
-/// `--hostname`, and there is no way to ask for every flag a forge CLI accepts. So
-/// the modal names the command and the user runs it, with edits.
-///
-/// Not tied to a task — it exists before any task does. The session row uses a
-/// synthetic id so the reaper cleans it up like any other PTY when the shell exits.
+/// A shell for the setup screen's sign-in. Not tied to a task; the synthetic id
+/// lets the reaper clean it up like any other PTY.
 pub(crate) fn start_login_pty(
     app: &tauri::AppHandle,
     cwd: &str,
@@ -275,8 +273,7 @@ pub async fn start_terminal_session(
     worktree_path: Option<String>,
     ptys: tauri::State<'_, Ptys>,
 ) -> Result<String, String> {
-    // Open in the worktree when there is one; otherwise fall back to the worktree
-    // root (an explorer with no repos added yet).
+    // The worktree when there is one, else the worktree root.
     let cwd = match worktree_path.as_deref() {
         Some(p) if !p.is_empty() && std::path::Path::new(p).is_dir() => p.to_string(),
         _ => resolve_root_cwd(),

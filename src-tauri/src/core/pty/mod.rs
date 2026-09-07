@@ -1,6 +1,5 @@
 //! PTY mechanics: spawn a child on a pseudo-terminal, stream its output to the
-//! frontend, accept writes/resizes, and end it. What runs in the PTY is the
-//! caller's business (see `agent_manager`).
+//! frontend, accept writes and resizes, end it.
 
 use std::{
     collections::HashMap,
@@ -20,11 +19,10 @@ struct Entry {
     pid: Option<u32>,
 }
 
-/// What to run and where. No uniqueness constraint: a session opens as many
-/// PTYs as it likes; each spawn returns its own id.
+/// What to run and where. Each spawn returns its own id.
 pub struct PtySpec {
     pub task_id: String,
-    /// "agent" | "terminal" | "auth" — echoed in `pty_started` for the frontend.
+    /// "agent" | "terminal" | "auth", echoed in `pty_started`.
     pub kind: &'static str,
     pub cwd: String,
     pub program: String,
@@ -41,15 +39,19 @@ pub struct Ptys {
 
 impl Ptys {
     pub fn new() -> Self {
-        Self { entries: Arc::new(Mutex::new(HashMap::new())) }
+        Self {
+            entries: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     pub fn spawn(&self, app: &tauri::AppHandle, spec: PtySpec) -> anyhow::Result<String> {
         let pair = portable_pty::native_pty_system()
-            // The conventional default. The frontend resizes to the real geometry
-            // as soon as the host attaches; until then a shell that wraps at 80 is
-            // far less wrong than one that wraps at 120.
-            .openpty(portable_pty::PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 })
+            .openpty(portable_pty::PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| anyhow::anyhow!("openpty failed: {e}"))?;
 
         let mut cmd = portable_pty::CommandBuilder::new(&spec.program);
@@ -79,9 +81,7 @@ impl Ptys {
 
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Background reader forwards output to the frontend. It owns the child
-        // handle so it can `wait()` on natural exit (avoiding a zombie), then it
-        // reaps the entry from the registry.
+        // The reader owns the child handle, waits on exit, then removes the entry.
         let app_reader = app.clone();
         let sid = session_id.clone();
         let entries = Arc::clone(&self.entries);
@@ -92,12 +92,7 @@ impl Ptys {
             loop {
                 match std::io::Read::read(&mut reader, &mut buf) {
                     Ok(0) | Err(_) => break,
-                    // Base64, not a JSON array of numbers. This is the busiest
-                    // path in the app — an agent redraws its whole screen as it
-                    // thinks — and a number array costs about four JSON characters
-                    // per byte, every one of them parsed individually on the UI
-                    // thread. Measured on the same 2 MB of output: 14.7 KB per
-                    // 4 KB chunk against 5.5 KB, and 37 ms of parsing against 9 ms.
+                    // Base64, not a JSON number array; this is the busiest IPC path.
                     Ok(n) => {
                         let _ = app_reader.emit(
                             crate::core::events::PTY_OUTPUT,
@@ -119,7 +114,10 @@ impl Ptys {
             if let Some(hook) = on_exit {
                 hook();
             }
-            let _ = app_reader.emit(crate::core::events::PTY_EXIT, serde_json::json!({ "session_id": sid }));
+            let _ = app_reader.emit(
+                crate::core::events::PTY_EXIT,
+                serde_json::json!({ "session_id": sid }),
+            );
         });
 
         if let Ok(mut map) = self.entries.lock() {
@@ -153,9 +151,7 @@ impl Ptys {
             .and_then(|map| map.get(session_id).map(|e| Arc::clone(&e.writer)))
             .ok_or_else(|| format!("session {session_id} not found"))?;
 
-        // The write can block (PTY buffer full); do it off the async runtime,
-        // locking the std Mutex inside the blocking closure rather than across
-        // the .await.
+        // The write can block on a full PTY buffer; run it off the async runtime.
         tokio::task::spawn_blocking(move || {
             writer
                 .lock()
@@ -177,13 +173,16 @@ impl Ptys {
         let guard = master.lock().map_err(|_| "lock poisoned".to_string())?;
         guard
             .0
-            .resize(portable_pty::PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
+            .resize(portable_pty::PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| e.to_string())
     }
 
-    /// SIGTERM the child and drop the entry. The reader thread sees EOF, reaps
-    /// the process, and runs the exit hook; the immediate `pty_exit` below keeps
-    /// the UI honest even if the child ignores the signal.
+    /// SIGTERM the child and drop the entry. The reader thread reaps the process and runs the exit hook.
     pub fn kill(&self, app: &tauri::AppHandle, session_id: &str) -> Result<(), String> {
         if let Ok(mut map) = self.entries.lock() {
             if let Some(entry) = map.remove(session_id) {
@@ -192,8 +191,11 @@ impl Ptys {
                 }
             }
         }
-        app.emit(crate::core::events::PTY_EXIT, serde_json::json!({ "session_id": session_id }))
-            .map_err(|e| e.to_string())
+        app.emit(
+            crate::core::events::PTY_EXIT,
+            serde_json::json!({ "session_id": session_id }),
+        )
+        .map_err(|e| e.to_string())
     }
 }
 
@@ -203,22 +205,8 @@ impl Default for Ptys {
     }
 }
 
-/// Tell the child what terminal it is talking to, and sever it from any terminal
-/// multiplexer that launched the APP.
-///
-/// The frontend is xterm.js, so `TERM` is the truth and never the launcher's idea
-/// of it: a desktop launch has no `TERM` at all, and a program with no terminfo
-/// cannot move the cursor. Inheriting `TERM` is just as wrong: a shell told it is
-/// inside tmux writes sequences xterm.js does not implement.
-///
-/// `TMUX`/`TMUX_PANE`/`STY` are severed for a sharper reason: `pnpm tauri dev`
-/// (and any terminal launch from inside tmux/screen) leaves those set, and
-/// portable-pty hands the child the app's whole environment. An interactive
-/// shell that inherits `$TMUX` becomes a CLIENT of the multiplexer session that
-/// launched the app — a tmux-aware startup (e.g. prezto's `exec tmux
-/// attach-session -d`) then reaches back into that session and detaches it,
-/// killing the dev server. The in-app terminal is its own world, never nested in
-/// the launcher's session.
+/// Set `TERM`/`COLORTERM` for xterm.js and sever the child from the launcher's multiplexer.
+/// An inherited `$TMUX`/`$STY` makes the shell a client of the launcher's session; a tmux-aware startup then detaches it.
 fn describe_terminal(cmd: &mut portable_pty::CommandBuilder) {
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
@@ -241,8 +229,7 @@ pub async fn stop_agent_session(
 #[tauri::command]
 pub async fn write_pty(
     session_id: String,
-    // Base64, not Vec<u8>: a JSON number array costs four characters and a parse
-    // per byte on the hottest IPC path (every keystroke). Symmetric with pty_output.
+    // Base64, not Vec<u8>; symmetric with pty_output.
     data_b64: String,
     ptys: tauri::State<'_, Ptys>,
 ) -> Result<(), String> {
@@ -265,9 +252,7 @@ pub async fn resize_pty(
 mod tests {
     use super::*;
 
-    // A PTY child with no TERM cannot move its cursor, and a shell's line redraw
-    // then duplicates characters. The value has to be one xterm.js actually
-    // implements, and it has to be SET rather than inherited.
+    // `TERM` is set, not inherited.
     #[test]
     fn pty_children_are_told_they_are_an_xterm() {
         let mut cmd = portable_pty::CommandBuilder::new("bash");

@@ -1,12 +1,6 @@
-/* ── Home: an outline, not a dashboard ────────────────────────────────────────
-   Structure comes from headings, aligned columns and indentation; colour is
-   reserved for meaning (red = broken, amber = wants attention, green = clean).
-   No card boxes. The ONE badge is the session-type marker — it sits in a fixed
-   column and encodes a category, unlike the decorative chips this replaced. */
+/* ── Home ── */
 
 .home {
-  /* Home's own type scale — a step above the app default, since this is a
-     reading surface rather than dense editor chrome. Two sizes only. */
   --home-text: var(--gl-font-size-md);
   --home-text-sm: var(--gl-font-size-sm);
   flex: 1;
@@ -18,7 +12,6 @@
   background: var(--gl-background-color-default);
 }
 
-/* Big tabbed panel on the left, ambient rail on the right; one column when narrow. */
 .home-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 17rem;
@@ -33,7 +26,6 @@
 
 .home-rail { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
 
-/* Title row, filter bar, then the panel — the issue-list shape. */
 .home-main-col { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 
 .home-pagehead {
@@ -52,7 +44,6 @@
   color: var(--gl-text-color-strong);
 }
 
-/* Full-width filter bar: icon, the query, a clear button once it has content. */
 .home-searchbar {
   display: flex;
   align-items: center;
@@ -66,7 +57,6 @@
 }
 .home-searchbar:focus-within { border-color: var(--gl-focus-border); }
 
-/* The input and its mirror stack here; both must use the same metrics. */
 .home-searchbar-field { position: relative; flex: 1; min-width: 0; }
 
 .home-filter-mirror {
@@ -78,10 +68,7 @@
   color: var(--gl-text-color-default);
 }
 
-/* The value carries the highlight — that is what you are filtering ON; the key
-   just names the field and stays quiet. Colour and background only: any change
-   to weight, size or spacing here widens the mirror past the real input and the
-   highlight slides off the caret. */
+/* colour and background only: weight, size or spacing here drifts the mirror off the input */
 .flt-key { color: var(--gl-text-color-muted); }
 .flt-value {
   color: var(--gl-color-blue-300);
@@ -89,12 +76,11 @@
   border-radius: 3px;
 }
 
-/* Suggestion list — hangs under the token being completed (its `left` is set
-   inline from the measured text width), sized to its content. */
+/* left is set inline from the measured text width */
 .home-ac {
   position: absolute;
   top: calc(100% + 6px);
-  /* Keep min-width in step with AC_MIN_WIDTH in index.tsx. */
+  /* keep in step with AC_MIN_WIDTH in index.tsx */
   min-width: 260px;
   width: max-content;
   max-width: 100%;
@@ -107,7 +93,7 @@
   border: 1px solid var(--gl-border-color-default);
   border-radius: var(--gl-border-radius-medium);
   background: var(--gl-background-color-overlap);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-float);
 }
 
 .home-ac-item {
@@ -159,7 +145,7 @@
 .home-searchbar-clear:hover,
 .home-searchbar-go:hover { background: var(--gl-background-color-hover); color: var(--gl-text-color-default); }
 
-/* ── Tab bar (the main panel's header strip) ────────────────────────────────── */
+/* ── Tab bar ── */
 
 .home-tabbar {
   display: flex;
@@ -204,7 +190,6 @@
   padding: 0 6px;
 }
 .home-tab.active .home-tab-count { color: var(--gl-color-blue-300); }
-/* A dash, not a number: the query names a field this tab has no column for. */
 .home-tab-count.na,
 .home-tab.active .home-tab-count.na { color: var(--gl-text-color-disabled); opacity: 0.6; }
 
@@ -216,9 +201,7 @@
   color: var(--gl-text-color-muted);
 }
 
-/* The query itself — the bar owns the border, the mirror owns the colour, so the
-   text here is transparent and only the caret shows. Both layers MUST keep the
-   same font, size and metrics or the highlight drifts off the characters. */
+/* mirror layer: keep font, size, weight and spacing identical to .home-filter */
 .home-filter,
 .home-filter-mirror,
 .home-filter-measure {
@@ -234,7 +217,6 @@
 .home-filter,
 .home-filter-mirror { display: block; width: 100%; }
 
-/* Measures the text before the token; never seen, so it must not affect layout. */
 .home-filter-measure {
   position: absolute;
   top: 0;
@@ -256,7 +238,6 @@
 
 .home-tabpanel.is-hidden { display: none; }
 
-/* Per-tab actions row, under the tabs. */
 .home-toolbar {
   display: flex;
   align-items: center;
@@ -265,15 +246,8 @@
   border-bottom: 1px solid var(--gl-border-color-subtle);
   min-height: 1.6rem;
 }
-.home-toolbar-spring { flex: 1; }
 
-/* ── Section heading ────────────────────────────────────────────────────────── */
-/* Full width — rows fill the pane. The trailing info stays aligned into a column
-   because it carries its own min-width, not because the container is narrow. */
-
-/* Each section is a panel, cohesive with the overview and sidebar: a hairline
-   card with a header strip. The outline lives INSIDE the panel now. */
-
+/* ── Section panel ── */
 .home-section {
   display: flex;
   flex-direction: column;
@@ -298,20 +272,6 @@
   font-weight: 600;
   letter-spacing: 0.1em;
   color: var(--gl-text-color-subtle);
-}
-
-.home-heading-count { font-family: var(--font-mono); font-weight: 400; color: var(--gl-text-color-disabled); }
-
-/* Actions ride the heading rule so they never become a second toolbar — left
-   with the title, since a right-pinned pair reads as detached chrome. */
-
-.home-heading-actions {
-  margin-left: var(--space-4);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .home-link {
@@ -343,7 +303,7 @@
   margin: 0;
 }
 
-/* ── Rows ───────────────────────────────────────────────────────────────────── */
+/* ── Rows ── */
 
 .home-rows { display: flex; flex-direction: column; }
 
@@ -377,7 +337,6 @@
   color: var(--gl-text-color-subtle);
 }
 
-/* Where a Live row came from, in place of its id. */
 .row-provider {
   min-width: 0;
   overflow: hidden;
@@ -405,16 +364,10 @@
   white-space: nowrap;
 }
 
-/* ONE shape for both sections — badge · key · title · trailing info — so Live and
-   Up next line up column for column down the whole page. The title grows to fill
-   the pane; the trailing track has a floor (so it forms a column) but may grow on
-   the rare row whose summary is unusually long. */
-
-/* caret · type · id · title(fills) · summary. Live and Up next share the leading
-   tracks (caret/spacer · type · id · title) so their columns line up. */
+/* caret · type · id · title · summary */
 .live-row { grid-template-columns: 0.5rem 5rem minmax(0, 1fr) 8rem 8rem; }
 
-/* ── Live: fold/expand ──────────────────────────────────────────────────────── */
+/* ── Live: fold/expand ── */
 
 .live-caret {
   display: inline-flex;
@@ -432,24 +385,7 @@
 
 .live-caret:hover { color: var(--gl-text-color-default); background: var(--gl-background-color-hover); }
 
-/* Folded-row aggregate chips: quiet, mono, readable at a glance. */
-
-.row-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 6px;
-  border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-subtle);
-  font-family: var(--font-mono);
-  font-size: var(--home-text-sm);
-  color: var(--gl-text-color-subtle);
-  white-space: nowrap;
-}
-
-.row-chip.stat-bad { color: var(--ctp-red); }
-
-/* ── Up next: one table — badge · code · name · state · owner ───────────────── */
+/* ── Up next table ── */
 
 .upnext-table { display: flex; flex-direction: column; padding: 0 var(--space-2) var(--space-2); }
 
@@ -463,11 +399,11 @@
   padding: 7px var(--space-2);
 }
 
-/* Up next (tasks): name · priority · status · provider */
+/* name · priority · status · provider */
 .tasks-table .upnext-head,
 .tasks-table .upnext-tr { grid-template-columns: minmax(0, 43rem) minmax(6rem, 1fr) 15rem 8rem; }
 
-/* Reviews: code · name · repo · owner · last update. */
+/* code · name · repo · owner · last update */
 .reviews-table .upnext-head,
 .reviews-table .upnext-tr { grid-template-columns: 5rem minmax(0, 1fr) 12rem 8rem 6rem; }
 
@@ -500,37 +436,16 @@
 
 .upnext-tr.is-review .row-key { color: var(--gl-color-blue-300); font-weight: 600; }
 
-/* Hidden rows, shown only while "hidden (N)" is revealed. */
 .upnext-tr.dimmed { opacity: 0.42; }
 .upnext-tr.dimmed:hover { opacity: 0.7; }
 
-.upnext-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 .upnext-prio, .upnext-status { min-width: 0; overflow: hidden; }
-
-.upnext-owner { justify-self: start; }
-
-.upnext-filter {
-  width: 200px;
-  height: 32px;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--gl-border-color-default);
-  border-radius: var(--gl-border-radius-base);
-  background: var(--gl-background-color-default);
-  color: var(--gl-text-color-default);
-  font-family: var(--font-ui);
-  font-size: var(--home-text-sm);
-}
-
-.upnext-filter:focus { outline: none; border-color: var(--gl-focus-border); }
 
 .home-link.active { color: var(--ctp-blue); }
 
-/* The track carries the floor now; the item just anchors to its left edge. */
-
 .row-summary { justify-self: start; }
 
-/* ── Session-type badge ─────────────────────────────────────────────────────── */
+/* ── Session-type badge ── */
 
 .type-badge {
   justify-self: start;
@@ -567,8 +482,6 @@
   text-decoration: underline;
 }
 
-/* Rolled-up state on a collapsed session line. */
-
 .row-summary {
   display: inline-flex;
   align-items: center;
@@ -578,45 +491,14 @@
   font-size: var(--home-text-sm);
 }
 
-/* ── Stat colours (shared by summary + detail rows) ─────────────────────────── */
-
-.stat-add     { color: var(--gl-color-green-400); }
-
-.stat-del     { color: var(--gl-color-red-400); }
-
-.stat-dirty   { color: var(--gl-color-orange-400); }
-
-.stat-staged  { color: var(--gl-color-green-400); }
-
-.stat-ahead   { color: var(--gl-color-blue-300); }
-
-.stat-behind  { color: var(--gl-color-purple-400); }
-
-.stat-bad     { color: var(--gl-color-red-400); font-weight: 600; }
-
-.stat-warn    { color: var(--gl-color-orange-400); }
-
-.stat-threads { color: var(--gl-color-orange-400); }
-
-.stat-agent   { color: var(--wb-annotation-agent, var(--gl-color-blue-300)); font-weight: 600; }
-
-/* Blocked on an answer in a terminal the user may not be looking at. */
-
-.stat-agent.waiting { color: var(--wb-warn); }
-
 .muted { color: var(--gl-text-color-disabled); }
 
-/* ── Live: collapsed line + indented detail ─────────────────────────────────── */
-/* Each session is a softly tinted block with air around it — the tint groups a
-   row with its repo rows, the gap separates one session from the next (no rule
-   needed). A failing pipeline shows up in the summary, not as a border. */
-
+/* ── Live: collapsed line and detail ── */
 .live-group {
   display: flex;
   flex-direction: column;
 }
 
-/* A clear break between one live session and the next. */
 .live-group + .live-group {
   border-top: 1px solid var(--gl-border-color-default);
 }
@@ -625,7 +507,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  /* Indented to sit under the row's title, so the detail reads as nested. */
   padding: var(--space-2) var(--space-2) var(--space-2) 2rem;
 }
 
@@ -637,8 +518,6 @@
   font-size: var(--home-text-sm);
 }
 
-/* Home action buttons — the finish-task button shape, so Live reads as buttons
-   not links. Neutral by default; green for finish, red for destructive. */
 .live-btn {
   display: inline-flex;
   align-items: center;
@@ -673,8 +552,7 @@
   color: var(--gl-color-red-400);
 }
 
-/* Icon-only actions stay quiet: no background or border until hover. Declared
-   after the .go/.danger variants so it wins at equal specificity. */
+/* after .go/.danger: order decides at equal specificity */
 .live-btn--icon { padding: 5px; color: var(--gl-text-color-muted); }
 .live-btn--icon svg { display: block; }
 .live-btn--icon,
@@ -684,7 +562,6 @@
 .live-btn--icon.go:hover:not(:disabled) { background: var(--gl-color-green-100); border-color: transparent; color: var(--gl-color-green-400); }
 .live-btn--icon.danger:hover:not(:disabled) { background: var(--gl-color-red-100); border-color: transparent; color: var(--gl-color-red-400); }
 
-/* Provision link on an unprovisioned worktree row. */
 .live-wt-provision {
   margin-left: auto;
   flex-shrink: 0;
@@ -699,22 +576,12 @@
 .live-wt-provision:hover:not(:disabled) { text-decoration: underline; }
 .live-wt-provision:disabled { opacity: 0.6; cursor: default; }
 
-/* MR CI dot + unresolved count beside a worktree's MR. */
-.live-ci { flex-shrink: 0; }
-.live-ci.ci-ok { color: var(--gl-color-green-400); }
-.live-ci.ci-fail { color: var(--gl-color-red-400); }
-.live-ci.ci-run { color: var(--gl-color-orange-400); }
-.live-mr-threads { flex-shrink: 0; color: var(--gl-color-orange-400); font-family: var(--font-mono); }
-
 .detail-row {
   display: grid;
-  /* repo · branch · stats · slack. Only the repo column is fixed: the stats sit
-     directly after the branch name rather than at the far right, so a repo's
-     state reads as one phrase. */
+  /* repo · branch · stats · slack */
   grid-template-columns: 224px minmax(0, auto) auto 1fr;
   align-items: center;
   column-gap: var(--space-4);
-  /* Text stays at the same x as before: the guide line now owns the indent. */
   padding: 3px var(--space-2) 3px var(--space-4);
   font-size: var(--home-text-sm);
   border-radius: var(--gl-border-radius-base);
@@ -723,59 +590,6 @@
 .detail-row.clickable { cursor: pointer; transition: background 0.1s; }
 
 .detail-row.clickable:hover { background: var(--gl-background-color-hover); }
-
-.detail-repo {
-  font-family: var(--font-ui);
-  color: var(--gl-text-color-default);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-row.muted .detail-repo { color: var(--gl-text-color-disabled); }
-
-.detail-branch {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-mono);
-  color: var(--gl-text-color-disabled);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.detail-stats {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  justify-self: start;
-  font-family: var(--font-mono);
-}
-
-/* Snug under the repo row it belongs to, rather than floating between rows. */
-
-.detail-mr-row { padding-top: 0; }
-
-.detail-mr { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-mono); }
-
-/* The MR number is the anchor of this line — everything else is context. */
-
-.detail-mr-num { font-weight: 700; color: var(--gl-color-blue-300); }
-
-/* The overview's mr-state-* colours are scoped to .overview-badge, so the state
-   word here had been inheriting the row's grey. Give it its own. */
-
-.detail-mr .mr-state-open   { color: var(--gl-color-green-400); }
-
-.detail-mr .mr-state-merged { color: var(--gl-color-purple-400); }
-
-.detail-mr .mr-state-closed { color: var(--gl-color-red-400); }
-
-.detail-mr .ci-ok   { color: var(--gl-color-green-400); }
-
-.detail-mr .ci-fail { color: var(--gl-color-red-400); font-weight: 600; }
-
-.detail-mr .ci-run  { color: var(--gl-color-orange-400); }
 
 .detail-actions {
   display: flex;
@@ -794,7 +608,7 @@
   padding: 3px var(--space-2);
 }
 
-/* ── Queue ──────────────────────────────────────────────────────────────────── */
+/* ── Queue ── */
 
 .row-status {
   font-size: var(--home-text-sm);
@@ -809,9 +623,6 @@
 .row-status.status-blocked { color: var(--gl-color-red-400); }
 
 .row-status.status-in_review { color: var(--gl-color-orange-400); }
-
-/* Title + its priority pill share one grid cell, so the badge sits right beside
-   the text instead of in a column of its own. */
 
 .row-titleline { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 
@@ -836,14 +647,6 @@
   background: color-mix(in srgb, var(--gl-color-green-400) 16%, transparent);
 }
 
-/* On an MR line it shares space with mono text — hold its own type. */
-
-.detail-mr .approved-badge {
-  font-family: var(--font-ui);
-  font-size: var(--home-text-sm);
-  line-height: 1.35;
-}
-
 .prio-badge.p0 {
   color: var(--gl-color-red-400);
   background: color-mix(in srgb, var(--gl-color-red-400) 15%, transparent);
@@ -854,11 +657,7 @@
   background: color-mix(in srgb, var(--gl-color-orange-400) 15%, transparent);
 }
 
-.upnext-more { align-self: flex-start; padding: var(--space-2); }
-
-/* ── Activity heatmap ──────────────────────────────────────────────────────────
-   The daily time log (get_activity_days) as a GitHub-style grid: 7 weekday rows,
-   one column per week, newest on the right. Green scales with tracked time. */
+/* ── Activity heatmap ── */
 
 .activity-body {
   padding: var(--space-3);
@@ -867,7 +666,6 @@
   gap: var(--space-4);
 }
 
-/* Small title+value chips, centered above the heatmap. */
 .activity-stats {
   display: flex;
   flex-wrap: wrap;
@@ -896,10 +694,8 @@
   color: var(--gl-text-color-default);
 }
 
-/* Square 7×7 grid, centered in the panel. */
 .activity-cal { width: max-content; margin: 0 auto; }
 
-/* A week reads left-to-right: 7 weekday columns, one row per week (newest last). */
 .activity-weekdays,
 .activity-grid {
   display: grid;
@@ -937,7 +733,6 @@
 }
 .activity-legend .activity-cell { width: 0.85rem; height: 0.85rem; }
 
-/* New-explorer control in the tab bar. */
 .home-new-explorer { margin-left: var(--space-2); }
 .explorer-new-composer { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2); }
 .explorer-new-input {

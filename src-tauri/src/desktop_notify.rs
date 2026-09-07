@@ -1,15 +1,12 @@
-//! Desktop notifications, for when the window is unfocused.
+//! Desktop notifications.
 
-/// Quote and escape a string so AppleScript reads it as one literal.
-///
-/// Required: an unescaped `"` ends the literal and the rest runs as AppleScript.
+/// Quote and escape a string as one AppleScript literal.
 #[cfg(target_os = "macos")]
 fn applescript_string(s: &str) -> String {
     format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
-/// Send one desktop notification. `urgency` is accepted and ignored — macOS has no
-/// equivalent, and osascript attributes the notification to the script host, not us.
+/// Send one desktop notification. `urgency` is accepted and ignored on macOS.
 #[cfg(target_os = "macos")]
 #[tauri::command]
 pub async fn notify_desktop(
@@ -50,7 +47,6 @@ pub async fn notify_desktop(
     body: String,
     urgency: Option<String>,
 ) -> Result<(), String> {
-    // Anything unexpected becomes `normal`.
     let urgency = match urgency.as_deref() {
         Some("low") => "low",
         Some("critical") => "critical",

@@ -1,28 +1,21 @@
-//! Reading a source's vocabulary instead of asking for it.
-//!
-//! Type-first with a name tiebreaker, never a name guess: a source with `Assignee`
-//! and `Reporter` (both people) needs the name to pick, but one that calls it
-//! `Owner` still resolves, because it is the only people property.
-//!
-//! The result is written to the config, where it can be corrected. Detection that
-//! cannot be overridden is just a different hardcoding.
+//! Detection of a source's status vocabulary and hours field from its schema.
+//! The result is written to the config, where the user can correct it.
 
 use super::types::{StatusGroup, TaskSchema};
 use crate::core::config::StatusMap;
 
-/// Lowercase, letters and digits only: makes "To-do", "to_do" and "To Do" the same
-/// string, so group names from either API surface compare equal.
+/// Lowercase, letters and digits only: "To-do", "to_do" and "To Do" compare equal.
 pub(super) fn norm(s: &str) -> String {
-    s.chars().filter(|c| c.is_alphanumeric()).flat_map(|c| c.to_lowercase()).collect()
+    s.chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
 }
 
-/// Number fields hours are logged into, matched case-insensitively — a board or
-/// database is named by hand and "Time spent" is as likely as "Hours". ONE list
-/// for every provider: two copies had already drifted apart.
+/// Number fields hours are logged into. The one list for every provider.
 const HOURS_NAMES: [&str; 4] = ["Hours spent", "Hours", "Time spent", "Time spent (H)"];
 
-/// Whether `name` is where hours are logged. Exact names only (normalized): a
-/// contains-match would silently write into "Hours estimate".
+/// Whether `name` is where hours are logged. Exact normalized match only, never contains.
 pub(super) fn is_hours_property(name: &str) -> bool {
     HOURS_NAMES.iter().any(|h| norm(h) == norm(name))
 }
@@ -47,13 +40,8 @@ fn pick(options: &[String], hint: &str) -> Option<String> {
         .cloned()
 }
 
-/// The three status values the app actually writes: what it sets when a task is
-/// filed (`ready`), picked up (`in_progress`) and finished (`done`).
-///
-/// Group membership decides the meaning; the name only chooses within a group. In a
-/// real database "Complete" holds `Fixed with required action`, `Done`, `Abandoned`
-/// and `Archived` — all completions, but only one of them is what finishing a task
-/// should set.
+/// The three status values the app writes: `ready`, `in_progress`, `done`.
+/// Group membership decides the meaning; the name only chooses within a group.
 pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
     let g = &schema.status_groups;
     let all: Vec<String> = schema
@@ -63,11 +51,14 @@ pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
         .map(|p| p.options.iter().map(|o| o.title.clone()).collect())
         .unwrap_or_default();
 
-    // No groups (a `select` used as a status, or an API surface that omits them):
-    // fall back to matching over every option.
+    // Without groups, match over every option.
     let from = |group: &str, hint: &str| -> Option<String> {
         let scoped = group_options(g, group);
-        if scoped.is_empty() { pick(&all, hint) } else { pick(scoped, hint) }
+        if scoped.is_empty() {
+            pick(&all, hint)
+        } else {
+            pick(scoped, hint)
+        }
     };
 
     StatusMap {
@@ -77,12 +68,10 @@ pub fn detect_status_map(schema: &TaskSchema) -> StatusMap {
     }
 }
 
-
 #[cfg(test)]
 mod hours_tests {
     use super::is_hours_property;
 
-    /// Case and separators must not matter; near-misses must.
     #[test]
     fn hours_names_match_exactly_but_loosely() {
         for yes in ["Hours spent", "hours SPENT", "Time spent (h)", "Hours"] {

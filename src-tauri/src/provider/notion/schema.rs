@@ -1,31 +1,26 @@
-//! The task database's own description of itself.
-//!
-//! Notion already knows every property, its type, its select options and where a
-//! relation points. Reading that instead of hardcoding it means the app follows
-//! the board: add a property in Notion and it becomes editable here, with no
-//! config entry and no release. It also removes guesses that were never really
-//! configuration — the Sprint database id, for one, is simply the target of the
-//! Sprint relation.
+//! The task database's schema, read from Notion: properties, types, options and
+//! relation targets.
 
 use std::{
     collections::HashMap,
     sync::{OnceLock, RwLock},
 };
 
-
 use super::api;
 
-/// A schema is re-read this often. Long enough to keep property panels snappy,
-/// short enough that a new Notion option shows up while you work.
 const CACHE_TTL_SECS: i64 = 300;
 
-/// Property types we can render AND write. Anything else is shown read-only
-/// rather than hidden — seeing a value you can't edit beats pretending it isn't
-/// there.
-/// Not fields the user sets: an id, a timestamp, a computed value.
-const META_KINDS: [&str; 6] =
-    ["title", "formula", "unique_id", "created_time", "last_edited_time", "rollup"];
+/// An id, a timestamp or a computed value; not fields the user sets.
+const META_KINDS: [&str; 6] = [
+    "title",
+    "formula",
+    "unique_id",
+    "created_time",
+    "last_edited_time",
+    "rollup",
+];
 
+/// Property types the app can write. Every other type is shown read-only.
 const WRITABLE: [&str; 9] = [
     "select",
     "status",
@@ -129,11 +124,8 @@ fn parse(database_id: &str, body: &serde_json::Value) -> anyhow::Result<TaskSche
     })
 }
 
-/// `groups` reference options by id, so resolve them to names.
-///
-/// The public API returns `groups: [{ name, option_ids }]`; some surfaces key the
-/// groups object by an internal name instead (`to_do`, `in_progress`, `complete`).
-/// Both are read here, because the caller only ever compares normalized names.
+/// Status groups with option ids resolved to names. Reads both the list form
+/// (`groups: [{ name, option_ids }]`) and the keyed form (`to_do`, `in_progress`, ...).
 fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
     let name_by_id: HashMap<&str, &str> = status["options"]
         .as_array()
@@ -167,7 +159,11 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
                 name: name.clone(),
                 options: opts
                     .as_array()
-                    .map(|a| a.iter().filter_map(|o| o["name"].as_str().map(str::to_string)).collect())
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(|o| o["name"].as_str().map(str::to_string))
+                            .collect()
+                    })
                     .unwrap_or_default(),
             })
             .collect();
@@ -177,16 +173,9 @@ fn parse_status_groups(status: &serde_json::Value) -> Vec<StatusGroup> {
 
 // ─── IPC ──────────────────────────────────────────────────────────────────────
 
-/// The configured task database's schema — drives the property panel.
-
 pub use crate::provider::types::PropertyOption;
 
-/// Every row of a relation's target database, so the picker can filter locally.
-/// Paginates to a cap — a relation with thousands of rows wants a server-side
-/// search instead, and this returns what it got rather than silently truncating
-/// to one page.
-
-/// Every row of a relation's target database, as pickable options.
+/// Every row of a relation's target database, as pickable options. Paginates to a cap.
 pub(crate) async fn relation_options(
     token: &str,
     database_id: &str,
@@ -203,8 +192,7 @@ pub(crate) async fn relation_options(
     let mut out: Vec<PropertyOption> = rows
         .iter()
         .filter_map(|row| {
-            // Find the title by TYPE, not by name: every database names it
-            // differently ("Brick / Component" here).
+            // The title property is found by type.
             let title = row["properties"]
                 .as_object()
                 .and_then(|props| props.values().find(|p| p["type"] == "title"))
@@ -220,7 +208,10 @@ pub(crate) async fn relation_options(
                         .unwrap_or_default()
                 })
                 .unwrap_or_default();
-            row["id"].as_str().map(|id| PropertyOption { id: id.to_string(), title })
+            row["id"].as_str().map(|id| PropertyOption {
+                id: id.to_string(),
+                title,
+            })
         })
         .collect();
 
@@ -232,9 +223,7 @@ pub(crate) async fn relation_options(
 mod tests {
     use super::*;
 
-    /// Trimmed from the live `Platform Tasks` database. The point of the test is
-    /// that everything the property panel needs — option lists, relation targets,
-    /// which fields are writable — comes out of Notion's own answer.
+    /// A trimmed live database response.
     fn body() -> serde_json::Value {
         serde_json::json!({
             "properties": {
@@ -259,10 +248,14 @@ mod tests {
     fn options_and_relation_targets_come_from_notion() {
         let s = parse("db-1", &body()).expect("schema");
         assert_eq!(s.title_property, "Task name");
-        let options: Vec<&str> =
-            s.property("Priority").unwrap().options.iter().map(|o| o.title.as_str()).collect();
+        let options: Vec<&str> = s
+            .property("Priority")
+            .unwrap()
+            .options
+            .iter()
+            .map(|o| o.title.as_str())
+            .collect();
         assert_eq!(options, ["Low", "Medium", "High"]);
-        // This is what replaces the hardcoded sprint database id.
         assert_eq!(
             s.relation_target("Sprint"),
             Some("775d0850-bf41-43f9-addb-1ef559ad02af")
@@ -278,9 +271,18 @@ mod tests {
         let s = parse("db-1", &body()).expect("schema");
         assert!(s.property("Hours spent").unwrap().editable);
         assert!(s.property("Priority").unwrap().editable);
-        assert!(!s.property("Time spent (days)").unwrap().editable, "a formula is not settable");
-        assert!(!s.property("Task ID").unwrap().editable, "unique_id is generated");
-        assert!(!s.property("Task name").unwrap().editable, "the title has its own edit path");
+        assert!(
+            !s.property("Time spent (days)").unwrap().editable,
+            "a formula is not settable"
+        );
+        assert!(
+            !s.property("Task ID").unwrap().editable,
+            "unique_id is generated"
+        );
+        assert!(
+            !s.property("Task name").unwrap().editable,
+            "the title has its own edit path"
+        );
     }
 
     #[test]

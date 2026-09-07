@@ -1,4 +1,4 @@
-// Confirmation-bridge op_type names — hand-mirrored with src-tauri/src/approvals/ops.rs.
+// Confirmation-bridge op_type names. Keep in sync with src-tauri/src/approvals/ops.rs.
 
 export const OP = {
   GIT_COMMIT: 'git.commit',
@@ -25,9 +25,9 @@ export const OP = {
   SKILL_SAVE: 'skill.save',
 } as const;
 
-/** Op_type prefix for git operations (commit/push/pull/rebase). */
+/** Op_type prefix for git operations. */
 export const OP_GIT_PREFIX = 'git.';
-/** Op_type prefix for merge-request operations (create/update/close). */
+/** Op_type prefix for merge-request operations. */
 export const OP_MR_PREFIX = 'mr.';
-/** Op_type prefix for task operations, whichever provider the task came from. */
+/** Op_type prefix for task operations. */
 export const OP_TASK_PREFIX = 'task.';

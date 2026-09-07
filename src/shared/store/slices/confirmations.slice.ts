@@ -8,7 +8,7 @@ export const confirmationsSlice: StateCreator<AppState, [], [], ConfirmationsSli
       pendingConfirmations: s.pendingConfirmations.some((p) => p.id === c.id)
         ? s.pendingConfirmations
         : [...s.pendingConfirmations, c],
-      // A new request always surfaces the modal, even if the user deferred earlier.
+      // A new request un-defers the modal.
       confirmationsMinimized: false,
     })),
   removeConfirmation: (id) =>

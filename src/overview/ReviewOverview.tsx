@@ -6,8 +6,7 @@ import { sendSkill } from '../shared/lib/agentSend';
 import { endSession } from '../shared/lib/endSession';
 import { MrOverview } from './MrOverview';
 
-/** Review session overview: the MR overview plus the review action row
- *  (AI co-review, finish review). Approve lives on the MR overview itself. */
+/** Review session overview: the MR overview plus the review action row. */
 export function ReviewOverview() {
   const activeTask = useSession((s) => s.activeTask);
   const activeRepos = useSession((s) => s.activeRepos);
@@ -24,12 +23,10 @@ export function ReviewOverview() {
     [activeWorktrees, activeRepos, mr],
   );
 
-  // The same skill the agent pill sends. sendSkill starts the agent if there
-  // isn't one — waiting on its SessionStart hook rather than guessing how long
-  // Claude takes to boot.
+  // sendSkill starts the agent when there is none.
   const coReview = async () => {
     if (!activeTask) return;
-    useStore.getState().requestConsoleFocus(); // surface the conversation
+    useStore.getState().requestConsoleFocus();
     try {
       await sendSkill(sessionId, 'groove:co-review');
     } catch (e) {
@@ -41,7 +38,6 @@ export function ReviewOverview() {
     if (!activeTask) return;
     setConfirmingFinish(false);
     try {
-      // Same teardown as an explorer discard: worktree + all session rows.
       await endSession(sessionId);
       await invoke('discard_explorer', { shortId: activeTask.short_id });
     } catch (e) {

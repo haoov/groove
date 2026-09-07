@@ -1,7 +1,7 @@
-use sqlx::SqlitePool;
+use super::types::CommitEntry;
 use crate::core::db::models::Worktree;
 use crate::core::db::store;
-use super::types::CommitEntry;
+use sqlx::SqlitePool;
 
 pub(super) async fn get_commit_log_impl(
     task_id: &str,
@@ -9,11 +9,14 @@ pub(super) async fn get_commit_log_impl(
     limit: u32,
     pool: &SqlitePool,
 ) -> anyhow::Result<Vec<CommitEntry>> {
-    // Scope to a single worktree when given, otherwise every worktree.
     let worktrees: Vec<Worktree> = match worktree_id {
         Some(wid) => {
             let wt = store::worktrees::get(pool, wid).await?;
-            if wt.session_id == task_id { vec![wt] } else { vec![] }
+            if wt.session_id == task_id {
+                vec![wt]
+            } else {
+                vec![]
+            }
         }
         None => store::worktrees::for_session(pool, task_id).await?,
     };
@@ -22,17 +25,13 @@ pub(super) async fn get_commit_log_impl(
     for wt in worktrees {
         let log_ref = wt.branch.as_str();
 
-        // Review worktrees pin the MR's target branch as the base, so history
-        // divides at the real target and not the repo default. `None` means the
-        // remote has no branch to divide at (origin-less or unfetched clone), and
-        // then every commit here is local work rather than base history.
-        let base = crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref()).await.ok();
+        // A pinned `base_ref` is the base; `None` means the remote has no base branch.
+        let base = crate::core::git::refs::upstream_base(&wt.path, wt.base_ref.as_deref())
+            .await
+            .ok();
 
-        // Full recent history of the branch — task commits AND upstream base
-        // commits — so the list shows where the branch grew from.
         let max_count = format!("--max-count={limit}");
-        // Subject (%s) goes LAST: it's the only field that can contain `|`, and
-        // splitn keeps the remainder intact only for the final field.
+        // Subject (%s) goes last: it is the only field that can contain `|`.
         let output = crate::core::git::output(
             &wt.path,
             &["log", &max_count, "--format=%H|%h|%an|%at|%s", log_ref],
@@ -46,8 +45,7 @@ pub(super) async fn get_commit_log_impl(
             ));
         }
 
-        // Which of those are the task's own work: reachable from the branch but
-        // not from the upstream base (base..ref). Everything else is base history.
+        // The task's own commits: `base..ref`.
         let range = match &base {
             Some(b) => format!("{b}..{log_ref}"),
             None => log_ref.to_string(),

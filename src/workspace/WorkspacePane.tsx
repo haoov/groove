@@ -52,13 +52,11 @@ export function WorkspacePane({
   const isMaximized = maximizedPaneId === pane.id;
 
   const activeTab = pane.tabs.find((t) => t.id === pane.activeTabId) ?? null;
-  // Only the active pane's editor reacts to the focus nonce, so a background
-  // pane never steals focus on an open/commit elsewhere.
+  // Only the active pane's editor reacts to the focus nonce.
   const focusSignal = isActive ? editorFocusNonce : undefined;
   const repoName = (repoId: string) => activeRepos.find((r) => r.id === repoId)?.project ?? repoId;
 
-  // Right-click menu on any tab: close / close others / left / right / all, plus
-  // Kill on a terminal (its plain close only hides — the session keeps running).
+  // Tab context menu. Kill ends a terminal session; its close only hides the tab.
   const sessionKey = useSession((s) => s.id);
   const [tabMenu, setTabMenu] = useState<{ x: number; y: number; tab: EditorTab } | null>(null);
 
@@ -99,7 +97,7 @@ export function WorkspacePane({
               <button
                 className="ws-tab-close"
                 title="Close"
-                // Left button only — right-clicking the × must not close the tab.
+                // Left button only: a right-click on the × must not close the tab.
                 onMouseDown={(e) => { if (e.button !== 0) return; e.stopPropagation(); closeTab(pane.id, t.id); }}
                 onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
               >
@@ -173,8 +171,7 @@ export function WorkspacePane({
       )}
 
       <div className="ws-pane-body">
-        {/* PTY tabs stay mounted (hidden when inactive): the xterm host element
-            must never remount, and warm mounts avoid refit flashes. */}
+        {/* PTY tabs stay mounted when hidden: the xterm host element must never remount. */}
         {pane.tabs.filter((t) => isPtyKind(t.kind)).map((t) => (
           <div
             key={t.id}
@@ -188,8 +185,7 @@ export function WorkspacePane({
           <div className="ws-pane-empty">
             <p>No file open</p>
             <p className="editor-hint"><kbd>Ctrl+P</kbd> find file · click a changed file in the sidebar</p>
-            {/* A split leaves an empty pane, and a terminal is the usual reason
-                for making one. */}
+            {/* A split leaves an empty pane. */}
             <button className="btn-secondary" onClick={() => ensureTerminalTab()}>
               <TerminalIcon size={12} strokeWidth={1.75} style={{ marginRight: 6 }} />
               New terminal
@@ -264,8 +260,7 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
 
   const activeWorktreeId = useSession((s) => s.activeWorktreeId);
   const wt = activeWorktreeFor(activeWorktrees, tab.repoId, activeWorktreeId);
-  // Worktree-keyed (falls back to the repo while provisioning): one repo can have
-  // several worktrees in a session, so a repo key would collide across branches.
+  // Keyed by worktree, the repo while provisioning: a repo key collides across branches.
   const key = `${wt?.id ?? tab.repoId}/${tab.filePath}`;
   const hunks = diffHunks[key];
   const expand = useDiffExpand({
@@ -402,13 +397,8 @@ function EditTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
   );
 }
 
-/**
- * Where the open file lives, above the editor.
- *
- * Directory segments expand the tree down to themselves (store `revealInTree`);
- * the file segment is inert — you are already looking at it. Only file tabs get
- * one: diffs, terminals and the overview have no path to show.
- */
+/** The open file's path above the editor. Directory segments reveal in the tree, the
+ *  file segment is inert. File tabs only. */
 function Breadcrumbs({ repoId, filePath }: { repoId: string; filePath: string }) {
   const repos = useSession((s) => s.activeRepos);
   const setSidebarTab = useSession((s) => s.setSidebarTab);

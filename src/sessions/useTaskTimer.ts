@@ -4,15 +4,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useStore } from '../shared/store';
 
 /**
- * Measure time spent on the focused task.
- *
- * Deliberately strict: a tick only counts while the app window has focus AND
- * there is evidence of work — you interacted recently, or that task's agent is
- * mid-turn. So watching an agent grind through a refactor counts (it is work on
- * the task), but leaving the app open over lunch does not.
- *
- * Nothing here writes to the task source. It accumulates locally; the overview shows what
- * was measured and you log a figure you agree with (see hours.rs).
+ * Measures time on the focused task. A tick counts only while the window has focus
+ * and there is recent input or a busy agent. Accumulates locally; nothing writes to the task source.
  */
 
 const TICK_MS = 30_000;
@@ -23,7 +16,7 @@ export function useTaskTimer() {
   const activeShortId = useStore((s) =>
     s.activeSessionId ? s.sessions[s.activeSessionId]?.task?.short_id ?? null : null,
   );
-  // Seeded on mount, not during render, where Date.now() is an impure call.
+  // Seeded on mount.
   const lastInputRef = useRef(0);
   const focusedRef = useRef(true);
 
@@ -36,14 +29,13 @@ export function useTaskTimer() {
     return () => { for (const e of events) window.removeEventListener(e, touch); };
   }, []);
 
-  // Window focus is the hard gate. `document.hasFocus()` misses the case where
-  // the OS window lost focus but the page kept it, so use Tauri's own signal.
+  // Tauri's focus signal; `document.hasFocus()` misses an OS-level focus loss.
   useEffect(() => {
     const w = getCurrentWindow();
     w.isFocused().then((f) => { focusedRef.current = f; }).catch(() => {});
     const unlisten = w.onFocusChanged(({ payload }) => {
       focusedRef.current = payload;
-      // Returning to the window is itself a sign of presence.
+      // A focus return counts as input.
       if (payload) lastInputRef.current = Date.now();
     });
     return () => { unlisten.then((f) => f()).catch(() => {}); };
@@ -57,7 +49,7 @@ export function useTaskTimer() {
       const idle = Date.now() - lastInputRef.current > IDLE_MS;
       const agentBusy = useStore.getState().agentActivity[activeShortId]?.state === 'working';
       if (idle && !agentBusy) return;
-      // Best-effort: a dropped tick costs 30s of credit, never correctness.
+      // Best-effort; a dropped tick is lost.
       invoke('add_task_time', { taskId: activeShortId, seconds }).catch(() => {});
     }, TICK_MS);
     return () => clearInterval(id);

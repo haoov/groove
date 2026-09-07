@@ -1,7 +1,6 @@
 import type { ProviderId } from '../ipc/ipc';
 
-/** Copy that names a specific task's source. Only copy — anything a provider can
- *  or cannot do is answered by its schema, not by a flag here. */
+/** Copy that names a task's source. Only copy; capabilities come from the schema. */
 interface ProviderCopy {
   label: string;
   /** What one task is called there. */
@@ -14,9 +13,7 @@ interface ProviderCopy {
   discard: string;
 }
 
-// Keyed by ProviderId, not by string: a provider added on the Rust side then
-// fails the build here until its copy exists, instead of silently reading
-// FALLBACK for the rest of the app's life.
+// Keyed by ProviderId: a provider added on the Rust side fails the build here until its copy exists.
 const PROVIDERS: Record<ProviderId, ProviderCopy> = {
   notion: {
     label: 'Notion',
@@ -28,7 +25,6 @@ const PROVIDERS: Record<ProviderId, ProviderCopy> = {
   github: {
     label: 'GitHub',
     item: 'issue',
-    // An issue body is markdown already, so a round trip loses nothing.
     bodyWarning: null,
     finish: "The board's Status is set to done.",
     discard: 'The issue is closed as not planned.',
@@ -43,8 +39,7 @@ const FALLBACK: ProviderCopy = {
   discard: 'The task is closed at its source.',
 };
 
-/** The wire carries `provider` as a plain string, so a value the app does not
- *  know still has to render — as neutral copy, never as a wrong provider. */
+/** Copy for a task's provider. An unknown provider gets neutral copy. */
 export function providerCopy(
   task: { provider?: string | null } | null | undefined,
 ): ProviderCopy {

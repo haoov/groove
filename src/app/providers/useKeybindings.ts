@@ -18,8 +18,7 @@ function isAgentFocused(): boolean {
   return !!el?.closest('.agent-pane');
 }
 
-/** Run a global command against the current store state. Returns false when the
- *  command was a no-op in this context (so the keystroke can fall through). */
+/** Runs a global command. Returns false when it is a no-op in this context. */
 export function runCommand(id: CommandId): boolean {
   const st = useStore.getState();
   const sid = st.activeSessionId;
@@ -39,7 +38,6 @@ export function runCommand(id: CommandId): boolean {
     case 'agents.sidebar':
       return toggleAgentsSidebar();
     case 'view.notifications':
-      // The feed is the bell's popover now: the chord simply toggles it.
       st.setNotificationsOpen(!st.notificationsOpen);
       return true;
     case 'editor.toggleVim':
@@ -66,7 +64,7 @@ export function runCommand(id: CommandId): boolean {
       const idx = order.indexOf(st.activeSessionId ?? '');
       let target: string;
       if (idx === -1) {
-        // No active session yet — next lands on the first, prev on the last.
+        // No active session: next lands on the first, prev on the last.
         target = id === 'session.next' ? order[0] : order[order.length - 1];
       } else {
         const d = id === 'session.next' ? 1 : -1;
@@ -76,9 +74,7 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
-    // The session's Overview MODE — the rail's own button, on a key. Pressing it
-    // while already there goes back to the code view, so the key toggles rather
-    // than dead-ends (the panel shortcuts fold the same way).
+    // Overview mode. Pressing it while already there goes back to the code view.
     case 'panel.overview': {
       if (!sess) return false;
       const a = sessionActions(sess.id);
@@ -87,9 +83,7 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
-    // 3-state, matching the terminal: closed → open+focus; open but not focused →
-    // focus; focused on the same panel → close. Pressing the shortcut you are
-    // already in should put the space back, not do nothing.
+    // 3-state: closed → open+focus; open, not focused → focus; focused → close.
     case 'panel.files':
     case 'panel.git':
     case 'panel.annotations': {
@@ -97,19 +91,17 @@ export function runCommand(id: CommandId): boolean {
       const tab: SidebarTab =
         id === 'panel.files' ? 'files' : id === 'panel.git' ? 'git' : 'annotations';
       const inCode = sess.workspaceMode === 'code';
-      // Fold only when already looking at this panel; from Overview the same key
-      // has to bring the panels back, which is what the rail's buttons do.
+      // Fold only when already looking at this panel.
       if (inCode && !sess.sidebarCollapsed && sess.sidebarTab === tab && isSidebarFocused()) {
         sessionActions(sess.id).setSidebarCollapsed(true);
-        // Hand the keyboard back to the editor, or focus lands nowhere.
+        // Hand the keyboard back to the editor.
         st.updateSession(sess.id, (x) => ({ editorFocusNonce: x.editorFocusNonce + 1 }));
         return true;
       }
       st.updateSession(sess.id, () => ({
         sidebarTab: tab,
         sidebarCollapsed: false,
-        // Overview is a MODE, not a tab: without this the sidebar state changed
-        // behind the overview and the keystroke looked dead.
+        // Overview is a mode, not a tab.
         workspaceMode: 'code' as const,
         ...(tab === 'git' ? { gitSubTab: 'changes' as GitSubTab } : {}),
       }));
@@ -118,21 +110,17 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
-    // 3-state like every other surface: closed → open+focus; open but elsewhere →
-    // focus; open AND focused → close. Escape belongs to Claude, so closing is
-    // this chord's job.
+    // 3-state: closed → open+focus; open, not focused → focus; focused → close.
     case 'agent.console':
       if (st.consoleOpen && isAgentFocused()) {
         st.setConsoleOpen(false);
         return true;
       }
-      // Only navigate when there IS a workspace to navigate to.
       if (sess) st.setView('workspace');
       st.requestConsoleFocus();
       return true;
     case 'workspace.toggleTerminal':
-      // On Home the terminal is an app-level dock (there are no panes to put one
-      // in), so the same chord toggles that instead of navigating away.
+      // On Home the terminal is an app-level dock.
       if (!inWorkspace) {
         const showing = st.terminalConsoleOpen;
         st.setTerminalConsoleOpen(!showing);
@@ -158,10 +146,7 @@ export function runCommand(id: CommandId): boolean {
       sessionActions(sess.id).focusNextPane();
       return true;
     case 'pane.maximize':
-      // The agent is a column rather than a workspace pane, so the same shortcut
-      // has to mean "maximize the thing I am in".
-      // Only in a workspace: on Home there are no panes to take the room from,
-      // and shrinking Home to nothing is not a maximize.
+      // Focus inside the agent maximizes the agent column, in a workspace only.
       if (isAgentFocused() && inWorkspace) {
         st.setAgentMaximized(!st.agentMaximized);
         return true;
@@ -170,8 +155,7 @@ export function runCommand(id: CommandId): boolean {
       sessionActions(sess.id).toggleMaximizePane();
       return true;
 
-    // File tabs inside the focused pane. `pane.close` is deliberately left alone —
-    // it never had a default binding, so there was nothing to replace.
+    // File tabs inside the focused pane.
     case 'tab.next':
     case 'tab.prev': {
       if (!sess || !inWorkspace) return false;
@@ -191,8 +175,7 @@ export function runCommand(id: CommandId): boolean {
       return true;
     }
 
-    // Alt+S: first press opens the session switcher; each further press moves the
-    // highlight down (wrapping). Enter commits, Esc cancels — no live switching.
+    // Alt+S: the first press opens the session switcher; each further press moves the highlight.
     case 'session.switcher': {
       const n = st.sessionOrder.length;
       if (n === 0) return false;
@@ -202,14 +185,13 @@ export function runCommand(id: CommandId): boolean {
     }
 
     case 'git.commitFocus':
-      // requestCommitFocus opens the git panel and un-collapses it, so the box
-      // exists to receive the focus.
+      // requestCommitFocus also opens and un-collapses the git panel.
       if (!sess) return false;
       st.setView('workspace');
       st.requestCommitFocus();
       return true;
 
-    // Alt+R: open the header repo switcher, then move the highlight. Enter commits.
+    // Alt+R: open the header repo switcher, then move the highlight.
     case 'repo.switch': {
       if (!sess || sess.repos.length === 0) return false;
       st.setView('workspace');
@@ -272,37 +254,27 @@ export function runCommand(id: CommandId): boolean {
   return false;
 }
 
-/**
- * Install the single global keydown listener. Runs in the capture phase so app
- * shortcuts win over CodeMirror/xterm. All bindings carry Alt or Ctrl, so they
- * never collide with plain typing — we only bail when the chord has no modifier
- * and focus is inside a text field.
- */
+/** Installs the global keydown listener in the capture phase; app shortcuts win over CodeMirror/xterm. */
 export function useKeybindings() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Capture phase runs before the focused element, so a keystroke that is
-      // spelling a character has to be let through here or it never arrives.
+      // Let typed characters through.
       if (isModifierOnly(e) || isTypingCharacter(e)) return;
       const st = useStore.getState();
-      if (st.capturingKey) return; // Settings is rebinding — let it grab the keystroke.
+      if (st.capturingKey) return; // Settings is rebinding.
       const { keymap } = st;
 
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
       const inField = tag === 'INPUT' || tag === 'TEXTAREA' || !!el?.isContentEditable;
 
-      // The file-search input owns Ctrl+J/K (next/prev result). Capture-phase
-      // means stopPropagation can't help it, so exempt it here explicitly.
+      // The file-search input owns Ctrl+J/K; stopPropagation cannot reach the capture phase.
       if (el?.dataset?.fileSearch === '1' && (e.ctrlKey || e.metaKey) && (e.key === 'j' || e.key === 'k')) return;
 
-      // Same for the repo picker's filter, which owns Ctrl+J/K (move) and
-      // Ctrl+Tab (toggle) while the add-repo wizard is up.
+      // The repo picker's filter owns Ctrl+J/K and Ctrl+Tab.
       if (el?.dataset?.repoPicker === '1' && (e.ctrlKey || e.metaKey)) return;
 
-      // A terminal owns copy and paste inside itself. Ctrl+Shift+C is also the
-      // default `editor.focus` chord, and capture phase would run it before
-      // xterm's handler — so copying out of a terminal focused the editor instead.
+      // A terminal owns Ctrl+Shift+C/V; the capture phase would run `editor.focus` first.
       if (
         (e.ctrlKey || e.metaKey) && e.shiftKey &&
         (e.code === 'KeyC' || e.code === 'KeyV') &&
@@ -312,7 +284,7 @@ export function useKeybindings() {
       for (const cmd of COMMANDS) {
         for (const c of keymap[cmd.id] ?? []) {
           if (!chordMatches(e, c)) continue;
-          // Don't steal un-modified keys from text fields (none today, but future-proof).
+          // Do not steal un-modified keys from text fields.
           if (inField && !c.alt && !c.ctrl) return;
           e.preventDefault();
           e.stopPropagation();
@@ -321,8 +293,7 @@ export function useKeybindings() {
         }
       }
     };
-    // Mouse back/forward (M4/M5) cycle the focused pane. preventDefault stops the
-    // webview from treating them as history navigation.
+    // Mouse back/forward (M4/M5) cycle the focused pane; preventDefault stops history navigation.
     const onMouse = (e: MouseEvent) => {
       if (e.button !== 3 && e.button !== 4) return;
       const st = useStore.getState();

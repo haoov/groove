@@ -1,9 +1,9 @@
-/** Tokenize into alternating non-word / word segments (split preserves delimiters). */
+/** Tokenizes into alternating non-word / word segments. */
 function tokenize(s: string): string[] {
   return s.split(/(\w+)/);
 }
 
-/** DP LCS on token arrays; returns length table. */
+/** LCS length table over token arrays. */
 function lcsTable(a: string[], b: string[]): number[][] {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
@@ -13,7 +13,7 @@ function lcsTable(a: string[], b: string[]): number[][] {
   return dp;
 }
 
-/** Backtrack LCS table → boolean mask: true = token is common (unchanged). */
+/** Backtracks the LCS table into a mask: true = common token. */
 function commonMask(dp: number[][], a: string[], b: string[]): { maskA: boolean[]; maskB: boolean[] } {
   const maskA = new Array(a.length).fill(false);
   const maskB = new Array(b.length).fill(false);
@@ -32,7 +32,7 @@ function commonMask(dp: number[][], a: string[], b: string[]): { maskA: boolean[
   return { maskA, maskB };
 }
 
-/** Convert a boolean token mask to character ranges (exclusive end) in the original string. */
+/** Boolean token mask to character ranges (exclusive end) in the original string. */
 function changedRanges(tokens: string[], mask: boolean[]): [number, number][] {
   const ranges: [number, number][] = [];
   let offset = 0;
@@ -53,10 +53,7 @@ function changedRanges(tokens: string[], mask: boolean[]): [number, number][] {
   return ranges;
 }
 
-/**
- * Compute changed character ranges for a del/add line pair.
- * Returns char ranges (exclusive end) in `a` (del) and `b` (add) that differ.
- */
+/** Changed character ranges (exclusive end) in `a` (del) and `b` (add). */
 export function wordDiff(
   a: string, b: string,
 ): { delRanges: [number, number][]; addRanges: [number, number][] } {

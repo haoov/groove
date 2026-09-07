@@ -22,10 +22,8 @@ import {
 } from '../shared/lib/agentWindow';
 
 /**
- * The main window's half of the detached agent window. Opens and closes the
- * window as `agentDetached` flips, mirrors the focused session's agent state into
- * it, and runs the commands it sends back — the window itself holds no session
- * state and never mounts useIpc, so nothing happens twice.
+ * The main window's half of the detached agent window: opens and closes it, mirrors the
+ * agent state into it, and runs the commands it sends back. The window never mounts useIpc.
  */
 export function AgentWindowBridge() {
   const detached = useStore((s) => s.agentDetached);
@@ -59,7 +57,7 @@ export function AgentWindowBridge() {
     };
   }, [detached]);
 
-  // State mirror: push on every change that alters it, and on the window's READY.
+  // State mirror: push on every store change and again on the window's READY.
   useEffect(() => {
     if (!detached) return;
     let last = '';
@@ -88,7 +86,7 @@ export function AgentWindowBridge() {
     };
   }, [detached]);
 
-  // Commands, each answered so the window can clear its spinner.
+  // Commands, each answered with DONE.
   useEffect(() => {
     if (!detached) return;
     let cancelled = false;
@@ -113,7 +111,7 @@ export function AgentWindowBridge() {
     };
   }, [detached]);
 
-  // The agent shortcut and "go to the agent" land on the window while detached.
+  // Focus the window on the agent shortcut while detached.
   useEffect(() => {
     if (!detached || focusNonce === 0) return;
     WebviewWindow.getByLabel(AGENT_WINDOW_LABEL)

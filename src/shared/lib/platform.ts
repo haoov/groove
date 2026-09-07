@@ -16,11 +16,9 @@ export function setPlatform(p: Platform): void {
 }
 
 /**
- * Resolve the platform and mark it on `<html>` as `data-platform`.
- *
- * Must settle before the app module graph loads: the store builds the default keymap
- * on import. `invoke` is imported dynamically to keep the Tauri API out of `isMac()`
- * callers, whose tests run in plain node.
+ * Resolves the platform and marks it on `<html>` as `data-platform`.
+ * Must settle before the app module graph loads: the store builds the default keymap on import.
+ * Keep the `invoke` import dynamic: `isMac()` callers' tests run in plain node.
  */
 export async function initPlatform(): Promise<Platform> {
   try {

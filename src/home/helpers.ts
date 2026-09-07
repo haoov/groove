@@ -9,8 +9,7 @@ import type { HomeEntry, HomeRepo } from '../shared/ipc/ipc';
 export const openTask = (shortId: string) =>
   invoke('open_task', { shortId }).catch((e) => useStore.getState().setLastError(String(e)));
 
-/** Open a session and land directly on one repo's "all changes" tab when the
- *  session is already mounted (a cold open can only route to the session). */
+/** Opens a session on one repo's "all changes" tab when mounted; a cold open routes to the session. */
 export function openRepo(entry: HomeEntry, repo: HomeRepo) {
   const st = useStore.getState();
   const sid = st.sessionOrder.find((id) => st.sessions[id]?.task?.short_id === entry.short_id);
@@ -24,7 +23,7 @@ export function openRepo(entry: HomeEntry, repo: HomeRepo) {
   st.focusSession(sid);
 }
 
-/** Rolled-up state: orders Live, and fills the FOLDED row's summary chips. */
+/** Rolled-up repo state for the Live order and the folded row's chips. */
 export function summarize(entry: HomeEntry) {
   let dirty = 0;
   let added = 0;
@@ -53,9 +52,7 @@ export function summarize(entry: HomeEntry) {
 
 export const KIND_LABEL = { task: 'task', explorer: 'expl', review: 'review' } as const;
 
-/** The key column: always filled so the title column lines up across kinds. */
-/** Where a row came from. A review keeps its MR number: that is the only place it
- *  is shown, and the sigil already names the forge. */
+/** Where a row came from. A review shows its MR reference. */
 export function rowProvider(entry: HomeEntry): string {
   if (entry.kind === 'review') {
     const mr = entry.repos.find((r) => r.mr)?.mr;
@@ -65,5 +62,4 @@ export function rowProvider(entry: HomeEntry): string {
   return entry.provider ?? '—';
 }
 
-// priorityRank / priorityLabel moved to shared/lib/taskStatus (used across features).
 export { priorityLabel, priorityRank } from '../shared/lib/taskStatus';

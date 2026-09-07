@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { buildDocument } from './diffDoc';
 import type { DiffLine, Hunk } from '../../shared/ipc/ipc';
 
-// The diff editor renders every hunk into ONE document, so a CodeMirror line number
-// is not a file line number. `lineMap` is the only translation between them, and
-// every anchor in the diff — comments, MR threads, blame, the expansion bands —
-// reads through it. An off-by-one here puts a comment on the wrong line.
-
 const ctx = (n: number, c = `ctx ${n}`): DiffLine => ({ num: n, content: c, type: 'ctx' });
 const add = (n: number, c = `add ${n}`): DiffLine => ({ num: n, content: c, type: 'add' });
 const del = (n: number, c = `del ${n}`): DiffLine => ({ num: n, content: c, type: 'del' });
@@ -39,7 +34,6 @@ describe('buildDocument', () => {
     expect(lineMap).toHaveLength(doc.split('\n').length);
   });
 
-  // The gap bands and hunk separators are placed at these lines.
   it('reports where each hunk starts, 1-indexed', () => {
     const { hunkFirstCMLines } = buildDocument(hunks);
     expect(hunkFirstCMLines).toEqual([1, 5]);
@@ -71,8 +65,6 @@ describe('buildDocument', () => {
     expect(lineMap[1]).toEqual({ fileLineNum: 5, type: 'ctx' });
   });
 
-  // Expansion writes merged hunks back through the same builder, so the mapping has
-  // to hold for a hunk whose context was filled in after the fact.
   it('maps an expanded hunk the same way', () => {
     const expanded: Hunk[] = [
       { header: '@@', lines: [ctx(8), del(8), add(9), ctx(10), ctx(11), ctx(12)] },

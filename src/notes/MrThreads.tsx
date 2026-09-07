@@ -6,17 +6,13 @@ import type { Mr, MrThread } from '../shared/ipc/ipc';
 import { openExternal } from '../shared/lib/openExternal';
 import { useSession } from '../shared/store';
 
-/** The MR's discussion: review threads with a resolve flow, and general comments
- *  (a CI bot's report, a conversation note) read-only. */
+/** The MR's discussion: review threads with a resolve flow, plus read-only general comments. */
 export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThread[]; mr: Mr; onResolved: () => void }) {
-  // A thread carries a diff position, so its header can open the file where the
-  // comment is — the same affordance the annotation rows have.
   const openTab = useSession((s) => s.openTab);
   const worktrees = useSession((s) => s.activeWorktrees);
   const repoId = worktrees.find((w) => w.id === mr.worktree_id)?.repo_id ?? null;
 
-  /** Where a note points, preferring the new side; a comment on a deleted line
-   *  only has the old one. */
+  /** Where a note points: the new side first, then the old. */
   const locate = (note: any): { path: string; line: number } | null => {
     const pos = note?.position;
     if (!pos) return null;
@@ -25,9 +21,7 @@ export function MrThreadsSection({ threads, mr, onResolved }: { threads: MrThrea
     return null;
   };
 
-  // Keyed by thread id (stable across refetches), not array index — the thread
-  // list is refetched after each resolve, so index-keyed state would smear onto
-  // the wrong thread.
+  // Keyed by thread id, not array index: the list is refetched after each resolve.
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [confirmingResolve, setConfirmingResolve] = useState<Set<string>>(new Set());
   const [resolving, setResolving] = useState<Set<string>>(new Set());

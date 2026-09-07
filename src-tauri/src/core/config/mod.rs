@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// Absent when Notion is not set up. Every file written before providers
-    /// existed has it, so an older config still lands in Some.
+    /// Absent when Notion is not set up.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notion: Option<NotionConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -20,18 +19,14 @@ pub struct UiConfig {
     pub font_size: u8,
     #[serde(default = "default_theme")]
     pub theme: String,
-    /// Monospace family for the editor, tree and terminal. Must be a name
-    /// fontconfig reports (`fc-list : family`) — a name nothing matches falls
-    /// silently through to the next family in the CSS stack.
+    /// Monospace family for the editor, tree and terminal. Must be a fontconfig
+    /// family name (`fc-list : family`); an unknown name silently falls through the CSS stack.
     #[serde(default = "default_font_family")]
     pub font_family: String,
-    /// Monospace family for the agent's terminal only. Same rules as
-    /// `font_family`; empty = the built-in stack.
+    /// Monospace family for the agent's terminal only; empty = the built-in stack.
     #[serde(default = "default_font_family")]
     pub agent_font_family: String,
-    /// One switch for every agent suggestion Groove offers — today the chip on a
-    /// task with no repos. Off means the app never proposes an action, not that
-    /// the skill is gone: it is still a button and a slash command.
+    /// One switch for every agent suggestion Groove offers.
     #[serde(default = "default_true")]
     pub suggest_actions: bool,
 }
@@ -53,9 +48,7 @@ fn default_font_size() -> u8 {
     15
 }
 
-/// Empty = use the CSS stack in tokens.css (Lilex → IBM Plex Mono → ui-monospace).
-/// A name written here on a machine that lacks the font is a silent fallback with
-/// no way to tell why; no name is honest.
+/// Empty = the CSS stack in tokens.css.
 fn default_font_family() -> String {
     String::new()
 }
@@ -72,32 +65,26 @@ pub struct NotionConfig {
     pub properties: PropertyNames,
     pub status_map: StatusMap,
     pub filters: FilterConfig,
-    /// Notion page whose body is mirrored as the template when an explorer
-    /// session is converted into a task. Required for that conversion.
+    /// Notion page used as the task template when an explorer becomes a task.
     #[serde(default)]
     pub task_template_page_id: Option<String>,
-    /// Optional default Project relation id set on tasks created from explorers.
+    /// Default Project relation id for tasks created from explorers.
     #[serde(default)]
     pub default_project_id: Option<String>,
 }
 
-/// No token: `gh auth token` owns it, and check_environment already reports gh's
-/// state. That also means GithubConfig needs no token-stripped view type.
-///
-/// No boards either: a task is an issue assigned to you that sits on any board, so
-/// there is nothing to nominate.
+/// GitHub task source. The token comes from `gh auth token`, not from here.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GithubConfig {
     /// github.com, or a GitHub Enterprise hostname.
     pub host: String,
     pub properties: GithubPropertyNames,
-    /// A fallback for the labels the app writes. Each board has its own vocabulary,
-    /// so a write reads the board's own options first and only falls back here.
+    /// Fallback labels; a write reads the board's own options first.
     pub status_map: StatusMap,
 }
 
-/// The board fields the app drives, by name. Everything else is just a property.
+/// The board fields the app drives, by name.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GithubPropertyNames {
@@ -115,14 +102,7 @@ pub struct PropertyNames {
     pub assignee: Option<String>,
 }
 
-/// The three status values the app WRITES: filing a task, picking it up, finishing
-/// it. Detected from the database (see `detect.rs`) and kept here so a wrong guess
-/// can be corrected.
-///
-/// There is deliberately no `blocked` or `in_review`: nothing ever set them, and the
-/// database this was written against has no "In review" option at all — the map was
-/// describing states the app does not drive. Reading a status is a different problem
-/// and needs no map: `lib/taskStatus.ts` classifies whatever label Notion returns.
+/// The three status values the app writes: filing, picking up and finishing a task.
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct StatusMap {
@@ -146,18 +126,12 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct GitConfig {
-    // The repo pool is discovered on disk (`<worktree_root>/main/**`), not
-    // configured — an old `repos` key in the file is silently ignored.
+    // The repo pool is discovered on disk under `<worktree_root>/main/**`.
     pub worktree_root: String,
 }
 
-/// The config as the FRONTEND sees it: everything except the Notion token.
-///
-/// The token is a write credential for the whole task database, and nothing in the
-/// webview uses it — every Notion call is made in Rust. It cannot just be
-/// `skip_serializing` on the field, because `Config` is also what gets written back
-/// to `workbench.config.json` (see `save_config_to_dir`), so skipping it there would
-/// erase the token from disk on the next preference change.
+/// The config as the frontend sees it: everything except the Notion token.
+/// Do not `skip_serializing` the token on `Config` instead; `Config` is also the on-disk format.
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 #[ts(export, export_to = "../../src/shared/ipc/generated/")]
 pub struct ConfigView {
@@ -198,7 +172,6 @@ impl From<Config> for ConfigView {
     }
 }
 
-/// Named once: the setup flow reports this path to the user.
 pub(crate) const CONFIG_FILE: &str = "workbench.config.json";
 
 // ─── The one process-wide config ──────────────────────────────────────────────
@@ -209,9 +182,7 @@ use std::sync::{OnceLock, RwLock};
 static CONFIG_DIR: OnceLock<PathBuf> = OnceLock::new();
 static CONFIG: RwLock<Option<Config>> = RwLock::new(None);
 
-/// Remember where the config lives and load it if it exists. Called once at
-/// startup, before anything reads it; a missing file is the first-run state,
-/// a corrupt one is reported by `check_environment`.
+/// Load the config from `config_dir` and remember the directory. Called once at startup.
 pub fn init(config_dir: PathBuf) {
     match load_config_from_dir(&config_dir) {
         Ok(cfg) => set(cfg),
@@ -228,19 +199,17 @@ pub fn require() -> anyhow::Result<Config> {
     get().ok_or_else(|| anyhow::anyhow!("not configured — run the setup screen first"))
 }
 
-/// Where the config file lives (shown by the setup screen, read by env checks).
+/// Path of the config file.
 pub fn file_path() -> Option<PathBuf> {
     CONFIG_DIR.get().map(|dir| dir.join(CONFIG_FILE))
 }
 
-/// The config directory itself — also the parent of anything else Groove keeps
-/// per user, such as the user skills plugin.
+/// The config directory.
 pub fn dir() -> Option<PathBuf> {
     CONFIG_DIR.get().cloned()
 }
 
-/// Mutate the config, persist it, and publish it — one write path for setup
-/// and every preference change.
+/// Mutate the config, persist it and publish it.
 pub fn update(edit: impl FnOnce(&mut Config)) -> anyhow::Result<Config> {
     let mut cfg = require()?;
     edit(&mut cfg);
@@ -270,7 +239,7 @@ fn persist(cfg: &Config) -> anyhow::Result<()> {
     save_config_to_dir(dir, cfg)
 }
 
-/// The Notion config, or the one error that says it is not set up.
+/// The Notion config, or an error when it is not set up.
 pub fn notion() -> anyhow::Result<NotionConfig> {
     require()?
         .notion
@@ -290,11 +259,10 @@ pub(crate) fn load_config_from_dir(config_dir: &Path) -> anyhow::Result<Config> 
     Ok(serde_json::from_str(&content)?)
 }
 
-/// Write the file atomically (temp + rename, so a crash never truncates it)
-/// and owner-only (0600) — it holds the Notion token.
+/// Write the file atomically (temp + rename) with mode 0600.
 pub(crate) fn save_config_to_dir(config_dir: &Path, cfg: &Config) -> anyhow::Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
     use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
 
     let path = config_dir.join(CONFIG_FILE);
     let tmp = config_dir.join(format!("{CONFIG_FILE}.tmp"));
@@ -337,11 +305,16 @@ mod tests {
                     in_progress: "In progress".into(),
                     done: "Done".into(),
                 },
-                filters: FilterConfig { exclude_statuses: vec![], filter_by_assignee: true },
+                filters: FilterConfig {
+                    exclude_statuses: vec![],
+                    filter_by_assignee: true,
+                },
                 task_template_page_id: None,
                 default_project_id: None,
             }),
-            git: GitConfig { worktree_root: "/tmp/wt".into() },
+            git: GitConfig {
+                worktree_root: "/tmp/wt".into(),
+            },
             ui: UiConfig::default(),
         }
     }
@@ -349,9 +322,14 @@ mod tests {
     #[test]
     fn the_view_never_carries_the_token() {
         let json = serde_json::to_string(&ConfigView::from(sample())).unwrap();
-        assert!(!json.contains("ntn_secret"), "token reached the frontend: {json}");
-        assert!(!json.contains("token"), "token field reached the frontend: {json}");
-        // Everything the frontend does need is still there.
+        assert!(
+            !json.contains("ntn_secret"),
+            "token reached the frontend: {json}"
+        );
+        assert!(
+            !json.contains("token"),
+            "token field reached the frontend: {json}"
+        );
         assert!(json.contains("\"database_id\":\"db\""));
         assert!(json.contains("worktree_root"));
         assert!(json.contains("font_family"));
@@ -360,11 +338,12 @@ mod tests {
     #[test]
     fn the_file_on_disk_keeps_the_token() {
         let json = serde_json::to_string(&sample()).unwrap();
-        assert!(json.contains("ntn_secret"), "a saved config without its token cannot authenticate");
+        assert!(
+            json.contains("ntn_secret"),
+            "a saved config without its token cannot authenticate"
+        );
     }
 
-    /// A config written before `blocked`/`in_review` were dropped must still load:
-    /// serde ignores unknown keys, so an existing install keeps working untouched.
     #[test]
     fn an_older_config_with_removed_keys_still_loads() {
         let json = r#"{
@@ -383,16 +362,14 @@ mod tests {
         let n = cfg.notion.as_ref().expect("notion block");
         assert_eq!(n.status_map.done, "Done");
         assert_eq!(n.properties.assignee.as_deref(), Some("Assignee"));
-        assert_eq!(n.task_template_page_id.as_deref(), Some("c9bff477d2f944fba9846567745a77ec"));
-        // `ui` is absent in older files and must default rather than fail.
+        assert_eq!(
+            n.task_template_page_id.as_deref(),
+            Some("c9bff477d2f944fba9846567745a77ec")
+        );
         assert_eq!(cfg.ui.font_size, default_font_size());
-        // A switch added later defaults ON, so an existing install gets the
-        // feature rather than silently opting out of it.
         assert!(cfg.ui.suggest_actions);
     }
 
-    /// A `ui` block written before the switch existed keeps its own values and
-    /// takes the default for the new one.
     #[test]
     fn a_ui_block_without_the_new_switch_still_loads() {
         let json = r#"{
@@ -404,24 +381,26 @@ mod tests {
         assert!(cfg.ui.suggest_actions);
     }
 
-    /// The file holds the Notion token, so it must be owner-only — and written
-    /// via a temp+rename so a crash mid-save can never truncate it.
     #[test]
     fn the_file_on_disk_is_owner_only() {
         use std::os::unix::fs::PermissionsExt;
         let dir = std::env::temp_dir().join(format!("groove-cfg-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         save_config_to_dir(&dir, &sample()).unwrap();
-        let mode = std::fs::metadata(dir.join(CONFIG_FILE)).unwrap().permissions().mode();
+        let mode = std::fs::metadata(dir.join(CONFIG_FILE))
+            .unwrap()
+            .permissions()
+            .mode();
         assert_eq!(mode & 0o777, 0o600, "mode was {mode:o}");
-        assert!(!dir.join(format!("{CONFIG_FILE}.tmp")).exists(), "temp file cleaned up");
+        assert!(
+            !dir.join(format!("{CONFIG_FILE}.tmp")).exists(),
+            "temp file cleaned up"
+        );
         let back = load_config_from_dir(&dir).unwrap();
         assert_eq!(back.notion.expect("notion block").token, "ntn_secret");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// A config written before providers existed has no `github` key and must
-    /// still load, with its notion block landing in Some.
     #[test]
     fn a_pre_provider_config_still_loads() {
         let json = r#"{
@@ -438,7 +417,6 @@ mod tests {
         assert!(cfg.github.is_none());
     }
 
-    /// And a config with neither source is legal — that is a fresh install.
     #[test]
     fn a_config_with_no_task_source_loads() {
         let json = r#"{ "git": { "worktree_root": "~/worktrees" } }"#;
@@ -446,7 +424,6 @@ mod tests {
         assert!(cfg.notion.is_none() && cfg.github.is_none());
     }
 
-    /// An absent source must not be written back as an explicit null.
     #[test]
     fn an_absent_source_is_omitted_on_save() {
         let mut cfg = sample();

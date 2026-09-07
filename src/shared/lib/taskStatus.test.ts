@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STATUS_RANK, statusKey } from './taskStatus';
 
-// Sources name statuses freely, so every label the team actually uses has to
-// land on a known key — anything unrecognized silently becomes "ready" and sorts
-// into the queue as if it were actionable.
-
 describe('statusKey', () => {
   it.each([
     ['In progress', 'in_progress'],
@@ -29,8 +25,7 @@ describe('statusKey', () => {
     expect(statusKey('In   Progress')).toBe('in_progress');
   });
 
-  // "Fixed with required action" contains neither "done" nor "review": it stays
-  // actionable on purpose, since it still needs someone to do the action.
+  // "Fixed with required action" contains neither "done" nor "review".
   it('keeps a status that only sounds finished in the queue', () => {
     expect(statusKey('Fixed with required action')).toBe('ready');
   });

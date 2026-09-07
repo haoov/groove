@@ -1,5 +1,4 @@
-// Tauri event names — hand-mirrored contract with src-tauri/src/events.rs.
-// Every value here must match the Rust constant of the same name.
+// Tauri event names. Keep in sync with src-tauri/src/events.rs.
 
 export const EVENT = {
   WORKSPACE_STUB: 'workspace_stub',

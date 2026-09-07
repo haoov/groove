@@ -3,8 +3,7 @@ import { invoke } from '../shared/ipc/invoke';
 import { useStore } from '../shared/store';
 import type { ActivityDay } from '../shared/ipc/ipc';
 
-// A heatmap of tracked work: 7 weekday columns × 7 week rows (a square), newest
-// week at the bottom. All figures come from one get_activity_days call.
+// Heatmap of tracked work: 7 weekday columns by 7 week rows, newest week at the bottom.
 const WEEKS = 7;
 
 const dayKey = (d: Date) =>
@@ -63,8 +62,7 @@ export function ActivityPanel() {
     const active = out.filter((c) => !c.future && c.seconds > 0).length;
     const total = out.reduce((s, c) => s + c.seconds, 0);
 
-    // Current streak: consecutive tracked days ending today (or yesterday, so a
-    // day you haven't started yet doesn't read as a broken streak).
+    // Current streak: consecutive tracked days ending today or yesterday.
     let s = 0;
     const d = new Date(today);
     if ((byDay.get(dayKey(d)) ?? 0) === 0) d.setDate(d.getDate() - 1);

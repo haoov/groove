@@ -2,12 +2,8 @@ import { invoke } from '../ipc/invoke';
 import { useStore, findSessionByTask } from '../store';
 import type { AgentState } from '../ipc/ipc';
 
-/**
- * The refresh contract: flush the backend git caches, then refetch
- * the session's diff + status — and Home, when it's on screen. The ONE named
- * path shared by the agent-activity handler and the sidebar refresh button, so
- * neither can skip the cache flush and read 5s-stale refs.
- */
+/** Flushes the backend git caches, then refetches the session's diff and status, and Home when on screen.
+ *  The one refresh path: never skip the cache flush. */
 export async function refreshSession(id: string) {
   await invoke('flush_git_caches').catch(() => { /* best-effort */ });
   const s = useStore.getState();
@@ -16,16 +12,12 @@ export async function refreshSession(id: string) {
   if (s.view === 'home') void s.refreshHome();
 }
 
-// Agent-activity pacing: a hook fires on EVERY tool call — reads, greps and
-// thinking included — so refreshing on each would hammer git for nothing. The
-// disk only changes when the agent runs a file-editing tool, so refresh only on
-// those (throttled to coalesce edit bursts), plus once when the turn ends.
+// Agent-activity pacing: refresh only on file-editing tools, throttled, plus once when the turn ends.
 const WORKING_THROTTLE_MS = 1500;
 const lastRefreshAt = new Map<string, number>();
 const pendingTimer = new Map<string, number>();
 
-/** Tools that actually mutate the working tree (Edit / MultiEdit / NotebookEdit
- *  / Write). Everything else — Read, Grep, Bash, thinking — leaves it untouched. */
+/** Tools that mutate the working tree. */
 const mutatesTree = (tool?: string | null) => !!tool && /edit|write/i.test(tool);
 
 export function refreshOnAgentActivity(taskId: string, state: AgentState, tool?: string | null) {
@@ -37,15 +29,14 @@ export function refreshOnAgentActivity(taskId: string, state: AgentState, tool?:
     lastRefreshAt.set(id, Date.now());
     void refreshSession(id);
   };
-  // Turn done — edits have landed; refresh once, and drop any pending
-  // edit-triggered refresh since this supersedes it.
+  // Turn done: refresh once and drop any pending edit-triggered refresh.
   if (state === 'idle') {
     const t = pendingTimer.get(id);
     if (t !== undefined) { clearTimeout(t); pendingTimer.delete(id); }
     fire();
     return;
   }
-  // Only a file-editing tool changes the diff; reads/greps/waiting never do.
+  // Only a file-editing tool changes the diff.
   if (state !== 'working' || !mutatesTree(tool)) return;
   if (pendingTimer.has(id)) return;
   const since = Date.now() - (lastRefreshAt.get(id) ?? 0);

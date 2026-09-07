@@ -28,16 +28,13 @@ import { ResizeHandles } from './chrome/ResizeHandles';
 import type { PtyExitEvent, PtyOutputEvent } from '../shared/ipc/ipc';
 
 const MAIN_WINDOW = 'main';
-/** A command the main window never answers is an error, not a stuck spinner. */
+/** An unanswered command rejects after this. */
 const COMMAND_TIMEOUT_MS = 30_000;
 /** Quiet time after the last move or resize before the bounds are saved. */
 const BOUNDS_SETTLE_MS = 400;
 
-/**
- * The detached agent window: the agent panel alone, over the focused session's
- * agent. It draws the state the main window mirrors into it and owns only its
- * xterm and its geometry; every action goes back to the main window to run.
- */
+/** The detached agent window. It draws the state the main window mirrors, owns only its xterm
+ *  and geometry, and sends every action back to the main window. */
 export default function AgentWindow() {
   const [state, setState] = useState<AgentWindowState | null>(null);
   const setConfig = useStore((s) => s.setConfig);
@@ -85,8 +82,7 @@ export default function AgentWindow() {
         if (payload.error) p.reject(new Error(payload.error));
         else p.resolve();
       }));
-      // Only the agent's own stream: every PTY broadcasts here, and buffering the
-      // terminals' output for a handler that never mounts is waste.
+      // Only the agent's own stream; every PTY broadcasts here.
       track(await listen<PtyOutputEvent>(EVENT.PTY_OUTPUT, ({ payload }) => {
         if (payload.session_id === ptyIdRef.current) deliverPtyOutput(payload.session_id, payload.b64);
       }));
@@ -99,8 +95,7 @@ export default function AgentWindow() {
     };
   }, []);
 
-  // The mirrored config drives the theme, the font ramp, and — through the store
-  // copy — xterm's font size and re-skin.
+  // The mirrored config drives the theme, the font ramp and, via the store copy, xterm.
   const config = state?.config ?? null;
   useEffect(() => {
     if (!config) return;
@@ -144,7 +139,7 @@ export default function AgentWindow() {
   const sources = SOURCE_IDS.filter((id) => !!config?.[id]);
   const agents = state?.agents ?? [];
   const agentsOpen = state?.agentsOpen ?? false;
-  // The list's width is this window's own layout, like its bounds — not mirrored.
+  // The list's width is this window's own layout, not mirrored.
   const [agentsWidth, setAgentsWidth] = useState(readAgentsWidth);
   const resizeAgents = (w: number) => { writeAgentsWidth(w); setAgentsWidth(w); };
   const goToSession = (row: AgentRow) => void send({ type: 'goToSession', sessionId: row.sessionId });

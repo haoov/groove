@@ -9,8 +9,7 @@ use crate::core::db::store;
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 
-/// The focused session, for MCP tools with no binding of their own. Config
-/// lives in `core::config`, not here.
+/// The focused session id, read by MCP tools with no binding of their own.
 #[derive(Clone)]
 pub struct State {
     inner: Arc<RwLock<Option<String>>>,
@@ -18,7 +17,9 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        Self { inner: Arc::new(RwLock::new(None)) }
+        Self {
+            inner: Arc::new(RwLock::new(None)),
+        }
     }
 
     pub fn get_active_task_id(&self) -> Option<String> {
@@ -38,14 +39,12 @@ impl Default for State {
     }
 }
 
-/// What an `open_task_impl` call MEANS, since the two callers differ: the user
-/// asking for a session, or a landed write pushing new rows into one already on
-/// screen. Only a focusing open may move the user or the active-task pointer.
+/// The intent of an `open_task_impl` call. Only `Focus` moves the active-task pointer.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(super) enum Open {
-    /// The user asked for this session — navigate to it.
+    /// Navigate to the session.
     Focus,
-    /// Repos or worktrees changed — refresh in place, do not navigate.
+    /// Refresh the session in place.
     Refresh,
 }
 
@@ -59,7 +58,7 @@ impl Open {
 
 #[tauri::command]
 pub async fn get_config() -> Result<Option<ConfigView>, String> {
-    // A view, not the Config: a source token stays in Rust.
+    // Do not return the raw Config: it holds a source token.
     Ok(config::get().map(ConfigView::from))
 }
 
@@ -98,11 +97,7 @@ pub async fn set_theme(theme: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-/// Monospace families fontconfig knows about, for the Settings picker.
-///
-/// Reading the real list is the point: the font that started this was set to a
-/// name nothing matched, and CSS fails silently to the next family. An empty
-/// result (no fontconfig) is not an error — Settings falls back to a text field.
+/// Font families known to fontconfig, for the Settings picker; empty without fontconfig.
 #[tauri::command]
 pub async fn list_fonts() -> Result<Vec<String>, String> {
     let out = tokio::process::Command::new("fc-list")
@@ -113,7 +108,7 @@ pub async fn list_fonts() -> Result<Vec<String>, String> {
     let Ok(out) = out else { return Ok(vec![]) };
     let mut families: Vec<String> = String::from_utf8_lossy(&out.stdout)
         .lines()
-        // fontconfig reports aliases comma-separated ("JetBrainsMono NFM,Regular").
+        // fontconfig lists aliases comma-separated.
         .flat_map(|line| line.split(','))
         .map(|f| f.trim().to_string())
         .filter(|f| !f.is_empty())
@@ -136,11 +131,7 @@ pub async fn open_task(
         .map_err(|e| e.to_string())
 }
 
-/// Point the backend at the session the user is looking at. EVERY MCP tool
-/// resolves its target from the active session, so without this the agent
-/// operates on whichever session was last *opened* rather than the focused one.
-/// The frontend calls it whenever the active session changes; `None` when the
-/// last session closes.
+/// Point the backend at the focused session; `None` when the last session closes.
 #[tauri::command]
 pub async fn set_active_task(
     short_id: Option<String>,
@@ -150,14 +141,7 @@ pub async fn set_active_task(
     Ok(())
 }
 
-/// Open a session: an existing one re-emits its state, a mirrored task gets
-/// its session row on first open. Emits `workspace_ready` — or `workspace_stub`
-/// for a task that still has no worktrees, which sends the frontend to the
-/// repo-picking wizard.
-///
-/// `open` rides along in the payload as `focus`: the frontend uses the same
-/// event to mount a session and to refresh one, and only the caller knows which
-/// it asked for.
+/// Open a session and emit `workspace_ready`, or `workspace_stub` for a task with no worktrees.
 pub(super) async fn open_task_impl(
     app: &tauri::AppHandle,
     short_id: &str,
@@ -170,8 +154,7 @@ pub(super) async fn open_task_impl(
         None => store::sessions::open_task(pool, short_id).await?,
     };
 
-    // A refresh must not steal the pointer: MCP tools with no binding of their
-    // own resolve from it, and the user is still looking at another session.
+    // A refresh must not move the active-task pointer.
     if open.focuses() {
         task_state.set_active_task_id(Some(session.id.clone()));
     }
@@ -203,9 +186,7 @@ pub(super) async fn open_task_impl(
     Ok(session)
 }
 
-/// Drop worktrees whose directories were deleted by hand, and clear git's stale
-/// registration in the source repo — re-provisioning the same branch otherwise
-/// fails with "already registered".
+/// Drop worktrees whose directories are gone and prune their git registration.
 async fn prune_missing_worktrees(session_id: &str, pool: &SqlitePool) -> anyhow::Result<()> {
     let worktrees: Vec<Worktree> = store::worktrees::for_session(pool, session_id).await?;
     for wt in worktrees {
@@ -232,7 +213,7 @@ pub async fn finish_task(
         .map_err(|e| e.to_string())
 }
 
-/// The approval-gated form. Same teardown as the Finish task button.
+/// The confirmation-bridge form of `finish_task`.
 pub async fn finish_task_from_payload(
     payload: serde_json::Value,
     pool: &SqlitePool,
@@ -251,23 +232,17 @@ async fn finish_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    // Mark it done at the source BEFORE any destructive teardown — if that
-    // fails, the workspace is still intact.
+    // Set the status at the source before any local teardown.
     let (provider, key) = crate::provider::resolve(pool, short_id).await?;
-    // The label the provider ACTUALLY wrote is what the mirror records — the
-    // config's guess of it could differ (GitHub picks the column off the board).
-    let done_status =
-        provider.set_status(&key, crate::provider::types::StatusIntent::Done).await?;
+    let done_status = provider
+        .set_status(&key, crate::provider::types::StatusIntent::Done)
+        .await?;
 
     store::provider_tasks::set_status(pool, short_id, &done_status).await?;
     tear_down_session(app, short_id, &done_status, task_state, pool).await
 }
 
-/// A task the user is deleting outright, not finishing.
-///
-/// What that means at the source is the provider's business — Notion trashes the
-/// page, which its workspace keeps for thirty days. The local teardown is the
-/// same one `finish_task` runs.
+/// Discard a task at its source and tear the session down locally.
 #[tauri::command]
 pub async fn delete_task(
     app: tauri::AppHandle,
@@ -286,17 +261,14 @@ async fn delete_task_impl(
     task_state: &State,
     pool: &SqlitePool,
 ) -> anyhow::Result<()> {
-    // Discard at the source BEFORE any local teardown, the order finish_task uses.
+    // Discard at the source before any local teardown.
     let (provider, key) = crate::provider::resolve(pool, short_id).await?;
     provider.discard(&key).await?;
 
-    // The row is deleted with the session, so the status in the teardown event
-    // is cosmetic — a literal beats asking the provider for a label it never wrote.
     tear_down_session(app, short_id, "Done", task_state, pool).await
 }
 
-/// Close a session locally: its worktree directories, its rows (one cascading
-/// delete), the active pointer, and the event the UI closes the session on.
+/// Close a session locally: worktree directories, rows, the active pointer, and the close event.
 async fn tear_down_session(
     app: &tauri::AppHandle,
     short_id: &str,
@@ -319,8 +291,7 @@ async fn tear_down_session(
     Ok(())
 }
 
-/// Put a session away without finishing it: the UI closes, the worktrees stay.
-/// Reopening is a plain `open_task`.
+/// Close the session in the UI and keep its worktrees.
 #[tauri::command]
 pub async fn pause_task(
     app: tauri::AppHandle,
@@ -329,8 +300,11 @@ pub async fn pause_task(
 ) -> Result<(), String> {
     task_state.set_active_task_id(None);
 
-    app.emit(crate::core::events::TASK_PAUSED, serde_json::json!({ "short_id": short_id }))
-        .map_err(|e| e.to_string())?;
+    app.emit(
+        crate::core::events::TASK_PAUSED,
+        serde_json::json!({ "short_id": short_id }),
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -345,4 +319,3 @@ pub async fn set_task_repos(
         .await
         .map_err(|e| e.to_string())
 }
-

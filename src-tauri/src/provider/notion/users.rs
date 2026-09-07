@@ -10,13 +10,10 @@ pub struct NotionUser {
     pub email: Option<String>,
 }
 
-/// Every page is followed: Notion caps a page at 100 entries, bots share the
-/// endpoint with people, and the match may sit pages in.
 const MAX_USER_PAGES: usize = 30;
 
-/// The workspace person with this email. Requires the integration's
-/// "user information with email" capability — without it every email is null
-/// and nothing can match.
+/// The workspace person with this email. Needs the integration's
+/// "user information with email" capability, else every email is null.
 #[tauri::command]
 pub async fn find_notion_user(token: String, email: String) -> Result<NotionUser, String> {
     let wanted = email.trim().to_lowercase();

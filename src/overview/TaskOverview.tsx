@@ -28,7 +28,6 @@ export function TaskOverview() {
   const [starting, setStarting] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  // Finishing runs through close-task, which checks for unlanded work first.
   const closeTask = async () => {
     setClosing(true);
     useStore.getState().requestConsoleFocus();
@@ -44,7 +43,7 @@ export function TaskOverview() {
   // A suggestion, never an auto-send.
   const startTask = async () => {
     setStarting(true);
-    useStore.getState().requestConsoleFocus(); // the proposal lands in the chat
+    useStore.getState().requestConsoleFocus();
     try {
       await sendSkill(sessionId, 'groove:start-task');
     } catch (e) {
@@ -54,7 +53,6 @@ export function TaskOverview() {
     }
   };
 
-  // Clicking a worktree scopes the editor to it and leaves the overview.
   const openWorktree = (repoId: string, worktreeId: string) => {
     setActiveRepoId(repoId);
     setActiveWorktreeId(worktreeId);
@@ -63,8 +61,6 @@ export function TaskOverview() {
   const [allMrs, setAllMrs] = useState<Mr[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
-  /** Deleting discards the task at its source and tears the local workspace
-   *  down. Finishing goes through the agent instead, so it has no banner. */
   const [ending, setEnding] = useState<'delete' | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [schema, setSchema] = useState<TaskSchema | null>(null);
@@ -76,15 +72,12 @@ export function TaskOverview() {
   useEffect(() => {
     if (!shortId) return;
     setLoading(true);
-    // Markdown, not raw blocks: same renderer as MR descriptions, and markdown
-    // typed literally into the source (backticks, **bold**) then displays properly.
     invoke<string>('get_task_body_markdown', { shortId })
       .then(setBody)
       .catch(() => setBody(''))
       .finally(() => setLoading(false));
   }, [shortId, reloadNonce]);
 
-  // Per task, not per mount: a schema belongs to the source the task came from.
   useEffect(() => {
     if (!shortId) return;
     invoke<TaskSchema>('get_task_schema', { shortId })
@@ -92,8 +85,7 @@ export function TaskOverview() {
       .catch(() => setSchema(null));
   }, [shortId]);
 
-  // Load MRs for all worktrees into local state — independent of the sidebar's
-  // per-repo store so switching repos in the sidebar never clears this list.
+  // Local MR state, independent of the sidebar's per-repo store.
   useEffect(() => {
     if (!activeWorktrees.length) return;
     let cancelled = false;
@@ -105,8 +97,7 @@ export function TaskOverview() {
     return () => { cancelled = true; };
   }, [activeWorktrees]);
 
-  // No success path to handle: delete_task emits task_finished, which closes the
-  // session — this component goes with it.
+  // delete_task emits task_finished, which closes the session.
   const handleEnd = async () => {
     if (!activeTask || !ending) return;
     setFinishing(true);
@@ -124,7 +115,6 @@ export function TaskOverview() {
   return (
     <div className="overview-view">
       <div className="overview-inner">
-        {/* Header — id chip, title, and the task-level actions. */}
         <header className="overview-header">
           <span className="overview-task-id">{activeTask.short_id}</span>
           <h1 className="overview-title">{activeTask.title}</h1>
@@ -169,7 +159,6 @@ export function TaskOverview() {
           </div>
         </header>
 
-        {/* Properties — the framed metadata card under the title. */}
         <PropertyStrip
           key={reloadNonce}
           shortId={activeTask.short_id}
@@ -205,7 +194,6 @@ export function TaskOverview() {
         )}
 
         <div className="overview-main">
-          {/* Shown even with no repos: it carries the only way to attach one. */}
           <section className="overview-section">
             <h3 className="overview-section-title">
               Repositories

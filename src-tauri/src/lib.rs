@@ -1,18 +1,18 @@
 mod agent_hooks;
 mod agent_manager;
 mod annotation_store;
-mod clipboard;
 mod approvals;
+mod clipboard;
 mod core;
 mod desktop_notify;
 mod editor_host;
+mod forge;
 mod home;
 mod launch_env;
 mod mcp_server;
 #[cfg(target_os = "linux")]
 mod migrate_identity;
 mod platform;
-mod forge;
 mod provider;
 mod review;
 mod skills;
@@ -24,13 +24,7 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Before anything spawns a child or opens a window.
-    //
-    // A desktop launch has none of the shell profile's PATH, so `glab`, `gh` and
-    // `claude` are "not found" while a terminal finds them; and the identity
-    // migration has to beat the webview to the data directory, which rules out
-    // Tauri's `setup()` hook.
     launch_env::widen_path();
-    // XDG paths only; macOS uses ~/Library/Application Support.
     #[cfg(target_os = "linux")]
     if let Some((config_dir, data_dir)) = migrate_identity::linux_dirs() {
         migrate_identity::from_legacy_identity(&config_dir, &data_dir);
@@ -45,8 +39,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        // Closing the main window quits, or a detached agent window keeps the
-        // process alive with nothing to drive it.
+        // Closing the main window quits.
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 window.app_handle().exit(0);
@@ -57,9 +50,7 @@ pub fn run() {
             std::fs::create_dir_all(&data_dir)?;
             let handle = app.handle().clone();
 
-            // Spin up the async init inside Tauri's tokio runtime, then block the
-            // main thread on a sync channel until it's done.  This guarantees that
-            // all managed states are ready before the first IPC command arrives.
+            // Block the main thread until async init finishes.
             let (tx, rx) = std::sync::mpsc::channel::<Result<(), String>>();
 
             tauri::async_runtime::spawn(async move {
@@ -203,16 +194,14 @@ pub fn run() {
 }
 
 async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> Result<(), String> {
-    // Config first: the worktree root and agent cwd resolve from it, and the
-    // config dir is remembered here for every later save.
+    // Config first: the worktree root and agent cwd resolve from it.
     let config_dir = handle
         .path()
         .app_config_dir()
         .map_err(|e| format!("cannot get config dir: {e}"))?;
     crate::core::config::init(config_dir);
 
-    // After the config, which decides where the user plugin lives; before any
-    // agent can launch and ask for its `--plugin-dir` arguments.
+    // After the config, before any agent launches.
     if let Err(e) = skills::sync(&handle) {
         tracing::warn!("skills not synced: {e}");
     }
@@ -221,7 +210,6 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
         .await
         .map_err(|e| format!("DB init failed: {e}"))?;
 
-    // Lets background work (git provisioning) report problems it can't return.
     core::events::set_app(handle.clone());
 
     let bridge = approvals::Bridge::new(handle.clone());
@@ -236,7 +224,6 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
     handle.manage(task_state.clone());
     handle.manage(activity.clone());
 
-
     // Re-emit any confirmations that survived a crash
     let pool_c = pool.clone();
     let handle_c = handle.clone();
@@ -244,7 +231,7 @@ async fn async_init(handle: tauri::AppHandle, data_dir: std::path::PathBuf) -> R
         approvals::surface_pending(&pool_c, &handle_c).await;
     });
 
-    // Start the MCP server (endpoint owned by `mcp_server`)
+    // Start the MCP server
     let bridge_c = bridge;
     let task_c = task_state;
     let editor_c = editor_state;

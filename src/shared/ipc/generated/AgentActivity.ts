@@ -7,7 +7,7 @@ import type { ToolCall } from "./ToolCall";
  */
 export type AgentActivity = { 
 /**
- * Task short id — the key, repeated in the payload for the frontend.
+ * Task short id.
  */
 task_id: string, state: AgentState, 
 /**

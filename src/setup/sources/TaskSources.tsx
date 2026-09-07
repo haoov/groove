@@ -3,8 +3,7 @@ import { invoke } from '../../shared/ipc/invoke';
 import { SOURCES, SOURCE_IDS } from './index';
 import type { Config, Environment, ProviderId } from '../../shared/ipc/ipc';
 
-/** Which sources are on, what they point at, and how to fix a source that has
- *  stopped working. Not a second setup screen — the same shape as "This machine". */
+/** Which sources are on and what they point at. */
 export function TaskSources({
   config, env, onChanged, onNeedsScope,
 }: {

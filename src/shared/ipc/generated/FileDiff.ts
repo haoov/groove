@@ -7,13 +7,10 @@ export type FileDiff = { path: string, added: number, deleted: number,
  */
 status: string, 
 /**
- * Working-tree staged state for this path: `Some(true)` = staged (index has
- * changes), `Some(false)` = only working-tree changes, `None` = no local
- * change (e.g. committed-only files shown in vs-main mode → no checkbox).
+ * `Some(true)` staged, `Some(false)` working-tree only, `None` no local change.
  */
 staged: boolean | null, 
 /**
- * Empty in the summary payload — line content is fetched lazily per file
- * via `get_file_diff` when the file is actually displayed.
+ * Empty in the summary payload; filled by `get_file_diff`.
  */
 hunks: Array<Hunk>, };

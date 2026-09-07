@@ -4,14 +4,7 @@ import { Eye, Loader2, Pencil, X } from 'lucide-react';
 import { useStore } from '../shared/store';
 import { Markdown } from '../shared/ui/Markdown';
 
-/**
- * The task body: rendered markdown, or the raw markdown to edit by hand.
- *
- * Saving does NOT write directly. It queues a confirmation (op `task.body`)
- * because replacing a page's children can destroy blocks markdown cannot express
- * — the modal is where you see what is about to change, and the backend refuses
- * outright if the page holds anything unrepresentable.
- */
+/** The task body: rendered markdown, or the raw markdown to edit. Saving queues a `task.body` confirmation. */
 export function BodyEditor({
   taskId, source, markdown, loading, onSaved,
 }: {

@@ -1,8 +1,4 @@
-//! Ref answers change on commits, fetches and checkouts — not on every diff
-//! refresh. A short TTL collapses the 3–5 resolutions one refresh performs
-//! into one, and `flush()` restores instant freshness after every operation
-//! the app itself performs. The TTL is the safety net for ref movement the
-//! app cannot see (an agent committing in its own terminal).
+//! Short-TTL cache for ref answers; `flush()` empties it after every git operation the app performs.
 
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
@@ -14,8 +10,7 @@ pub struct RefCache {
     ttl: Duration,
     texts: Mutex<HashMap<String, (Instant, Option<String>)>>,
     flags: Mutex<HashMap<String, (Instant, bool)>>,
-    /// Per-key throttle stamps for fire-and-forget fetches (no TTL — each
-    /// caller states its own window).
+    /// Per-key throttle stamps for fire-and-forget fetches; no TTL.
     stamps: Mutex<HashMap<String, Instant>>,
 }
 
@@ -25,8 +20,7 @@ pub fn shared() -> &'static RefCache {
     &REFS
 }
 
-/// Drop every cached answer. Called after anything that can move a ref:
-/// commit, push, pull, rebase, discard, fetch, worktree add/close/switch.
+/// Drop every cached answer. Call after anything that can move a ref.
 pub fn flush() {
     REFS.clear();
 }
@@ -79,10 +73,11 @@ impl RefCache {
         value
     }
 
-    /// True (and stamps now) when `window` has passed since the last stamp for
-    /// `key` — the throttle for fire-and-forget fetches.
+    /// True (and stamps now) when `window` has passed since the last stamp for `key`.
     pub fn due(&self, key: &str, window: Duration) -> bool {
-        let Ok(mut map) = self.stamps.lock() else { return true };
+        let Ok(mut map) = self.stamps.lock() else {
+            return true;
+        };
         let now = Instant::now();
         match map.get(key) {
             Some(at) if now.duration_since(*at) < window => false,
@@ -100,8 +95,7 @@ impl RefCache {
         if let Ok(mut map) = self.flags.lock() {
             map.clear();
         }
-        // Fetch stamps survive a flush: flushing answers must not un-throttle
-        // the network.
+        // Fetch stamps survive a flush.
     }
 }
 

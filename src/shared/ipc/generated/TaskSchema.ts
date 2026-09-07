@@ -4,11 +4,10 @@ import type { StatusGroup } from "./StatusGroup";
 
 export type TaskSchema = { database_id: string, 
 /**
- * The title property's name — it differs per database ("Task name" here).
+ * The title property's name.
  */
 title_property: string, properties: Array<PropertySchema>, status_groups: Array<StatusGroup>, 
 /**
- * The number field hours are logged to, when this source has one. None means
- * time is tracked locally and written nowhere else.
+ * The number field hours are logged to, when this source has one.
  */
 hours_property: string | null, };

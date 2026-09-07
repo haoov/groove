@@ -10,16 +10,7 @@ import {
   DEFAULT_FONT_SIZE, DEFAULT_THEME, type Config, type Environment, type ProviderId,
 } from '../shared/ipc/ipc';
 
-/**
- * What a new machine sees: the dependency list, and the four values only the user
- * can supply.
- *
- * Without this the first run was a Home page with no tasks and a Notion error in
- * the corner — nothing to say WHAT was missing. Everything asked for here is
- * something the app cannot discover: a token, which database, which person, and
- * where to put worktrees. The rest of the config is written with defaults and can
- * be edited in the file, whose path is printed below.
- */
+/** First-run setup: the dependency list, and the values only the user can supply. */
 
 export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
   const setLastError = useStore((s) => s.setLastError);
@@ -42,8 +33,7 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
     setBusy('save');
     setError(null);
     try {
-      // SetupRequest's field names ARE the ProviderId strings, so the enabled
-      // payloads splice straight in.
+      // SetupRequest's field names are the ProviderId strings.
       const sources = Object.fromEntries(
         SOURCE_IDS.filter((id) => on[id]).map((id) => [id, payloads[id] ?? null]),
       );
@@ -66,8 +56,6 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
 
   const missingRequired = (env?.tools ?? []).filter((t) => t.required && !t.path);
 
-  // An enabled-but-incomplete source blocks saving; at least one must be on. A
-  // form with nothing to fill in reports its payload on mount.
   const enabled = SOURCE_IDS.filter((id) => on[id]);
   const canSave =
     enabled.length > 0 &&
@@ -114,10 +102,6 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
           ) : (
             <ul className="firstrun-tools">
               {env.tools.map((t) => {
-                // Installed but not logged in is its own state: the tool is there,
-                // and every MR feature still fails until the CLI has credentials.
-                // One rule, shared with the settings view — it also knows why an
-                // unreadable scopes list is not a missing one.
                 const state = forgeCliState(t);
                 const needsAuth = state === 'needs-auth';
                 const needsScope = state === 'needs-scope';
@@ -135,7 +119,6 @@ export function FirstRun({ onReady }: { onReady: (cfg: Config) => void }) {
                         ? 'installed, but not signed in'
                         : needsScope
                           ? 'signed in, but missing the project scope — GitHub tasks stay read-only'
-                          // The tick proves a file on $PATH, nothing more — say so.
                           : t.path ? `installed — ${t.purpose}` : t.purpose}
                     </span>
                     {(needsAuth || needsScope) && (t.name === 'glab' || t.name === 'gh') ? (

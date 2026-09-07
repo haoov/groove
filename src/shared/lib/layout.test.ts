@@ -4,11 +4,6 @@ import {
   type LayoutNode,
 } from './layout';
 
-// The pane tree is the one data structure in the app with invariants a user can
-// break by clicking: every split must keep exactly two children, closing a pane
-// must collapse its parent into the sibling, and no pane id may be lost or
-// duplicated. These check the shape, not the rendering.
-
 /** Every invariant a tree must satisfy after any operation. */
 function assertWellFormed(node: LayoutNode) {
   const ids = leafOrder(node);
