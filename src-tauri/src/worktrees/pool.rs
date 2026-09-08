@@ -183,7 +183,7 @@ pub async fn list_main_repos() -> AppResult<Vec<MainRepo>> {
     })
     .await
     .map_err(|e| AppError::internal(e.to_string()))?;
-    repos.sort_by(|a, b| a.slug.to_lowercase().cmp(&b.slug.to_lowercase()));
+    repos.sort_by_key(|r| r.slug.to_lowercase());
     Ok(repos)
 }
 
