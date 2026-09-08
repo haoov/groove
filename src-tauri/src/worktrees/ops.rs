@@ -488,6 +488,11 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         let dir = root.to_string_lossy().to_string();
         run(&dir, &["init", "--initial-branch=main", "."]).await;
+        // On the repo, not the command: `commit_impl` runs its own git and would
+        // otherwise need an identity and a signing key from the machine.
+        run(&dir, &["config", "user.email", "t@t"]).await;
+        run(&dir, &["config", "user.name", "T"]).await;
+        run(&dir, &["config", "commit.gpgsign", "false"]).await;
         std::fs::write(root.join("tracked.txt"), "one\n").unwrap();
         run(&dir, &["add", "."]).await;
         run(&dir, &["commit", "-m", "first"]).await;
