@@ -210,9 +210,9 @@
   border-radius: 100px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--gl-text-color-subtle);
-  border: 1px solid var(--gl-border-color-default);
-  background: rgba(var(--gl-elevate), 0.03);
+  color: var(--mr-state-color, var(--gl-text-color-subtle));
+  border: 1px solid var(--mr-state-edge, var(--gl-border-color-default));
+  background: var(--mr-state-tint, rgba(var(--gl-elevate), 0.03));
 }
 
 .overview-grid {
@@ -294,11 +294,8 @@
   color: var(--gl-text-color-default);
 }
 
-.overview-badge.mr-state-open   { color: var(--gl-color-green-400); border-color: color-mix(in srgb, var(--ctp-green) 35%, transparent); background: var(--gl-color-green-100); }
 
-.overview-badge.mr-state-merged { color: var(--gl-color-purple-400); border-color: color-mix(in srgb, var(--ctp-mauve) 35%, transparent); background: var(--gl-color-purple-100); }
 
-.overview-badge.mr-state-closed { color: var(--gl-color-red-400); border-color: color-mix(in srgb, var(--ctp-red) 35%, transparent); background: var(--gl-color-red-100); }
 
 .overview-ci { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 
@@ -405,13 +402,10 @@
 
 .overview-wt-mr:hover .overview-wt-mr-num { text-decoration: underline; }
 
-.overview-wt-mr-state { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.overview-wt-mr-state { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; color: var(--mr-state-color, inherit); }
 
-.overview-wt-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
 
-.overview-wt-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
 
-.overview-wt-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
 
 .overview-badge.mr-approved {
   display: inline-flex;
@@ -535,29 +529,14 @@
 
 .ppill.neutral:hover { color: var(--gl-text-color-default); border-color: var(--gl-border-color-strong); }
 
-/* mirrors .row-status colours in home.css */
-
-.ppill.status { color: var(--gl-text-color-subtle); background: rgba(var(--gl-elevate), 0.07); }
-
-.ppill.status.status-in_progress {
-  color: var(--gl-color-blue-300);
-  background: color-mix(in srgb, var(--gl-color-blue-400) 16%, transparent);
+.ppill.status {
+  color: var(--task-status-color, var(--gl-text-color-subtle));
+  background: color-mix(in srgb, var(--task-status-color, transparent) 16%, rgba(var(--gl-elevate), 0.07));
 }
 
-.ppill.status.status-blocked {
-  color: var(--gl-color-red-400);
-  background: color-mix(in srgb, var(--gl-color-red-400) 16%, transparent);
-}
 
-.ppill.status.status-in_review {
-  color: var(--gl-color-orange-400);
-  background: color-mix(in srgb, var(--gl-color-orange-400) 16%, transparent);
-}
 
-.ppill.status.status-done {
-  color: var(--gl-color-green-400);
-  background: color-mix(in srgb, var(--gl-color-green-400) 16%, transparent);
-}
+
 
 /* mirrors .prio-badge tints in home.css */
 

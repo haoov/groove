@@ -402,3 +402,30 @@
   font-size: var(--gl-font-size-sm);
   color: var(--gl-text-color-disabled);
 }
+
+/* ── State palettes ─────────────────────────────────────────────────────────── */
+/* A state class sets custom properties only, so a host's own colour rule keeps
+   winning on specificity and the load order stops mattering. */
+
+.mr-state-open {
+  --mr-state-color: var(--gl-color-green-400);
+  --mr-state-tint: var(--gl-color-green-100);
+  --mr-state-edge: color-mix(in srgb, var(--ctp-green) 35%, transparent);
+}
+
+.mr-state-merged {
+  --mr-state-color: var(--gl-color-purple-400);
+  --mr-state-tint: var(--gl-color-purple-100);
+  --mr-state-edge: color-mix(in srgb, var(--ctp-mauve) 35%, transparent);
+}
+
+.mr-state-closed {
+  --mr-state-color: var(--gl-color-red-400);
+  --mr-state-tint: var(--gl-color-red-100);
+  --mr-state-edge: color-mix(in srgb, var(--ctp-red) 35%, transparent);
+}
+
+.status-in_progress { --task-status-color: var(--gl-color-blue-300); }
+.status-blocked     { --task-status-color: var(--gl-color-red-400); }
+.status-in_review   { --task-status-color: var(--gl-color-orange-400); }
+.status-done        { --task-status-color: var(--gl-color-green-400); }

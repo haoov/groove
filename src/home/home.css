@@ -612,17 +612,14 @@
 
 .row-status {
   font-size: var(--home-text-sm);
-  color: var(--gl-text-color-disabled);
+  color: var(--task-status-color, var(--gl-text-color-disabled));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.row-status.status-in_progress { color: var(--gl-color-blue-300); }
 
-.row-status.status-blocked { color: var(--gl-color-red-400); }
 
-.row-status.status-in_review { color: var(--gl-color-orange-400); }
 
 .row-titleline { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 

@@ -342,14 +342,11 @@
   font-size: var(--gl-font-size-xs);
   font-weight: 500;
   text-transform: capitalize;
-  color: var(--gl-text-color-disabled);
+  color: var(--mr-state-color, var(--gl-text-color-disabled));
 }
 
-.git-commit-mr-state.mr-state-open   { color: var(--gl-color-green-400); }
 
-.git-commit-mr-state.mr-state-merged { color: var(--gl-color-purple-400); }
 
-.git-commit-mr-state.mr-state-closed { color: var(--gl-color-red-400); }
 
 .git-commit-mr-ci {
   margin-left: auto;

@@ -91,8 +91,7 @@
 .agents-row-state-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .agents-row-state.waiting { color: var(--wb-warn); }
 .agents-row-state.working { color: var(--gl-color-blue-300); }
-.agents-row-state.status-blocked { color: var(--gl-color-red-400); }
-.agents-row-state.status-done { color: var(--gl-color-green-400); }
+.agents-row-state[class*="status-"] { color: var(--task-status-color, inherit); }
 .agents-row-state[class*="status-"] .pill-dot { background: currentColor; }
 
 .agents-row-close {
