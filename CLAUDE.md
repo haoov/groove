@@ -205,10 +205,12 @@ The flush is the sidebar button's, not the agent's: `refreshSession(id, false)` 
 because an agent edit moves the working tree and never a ref. Ref-moving ops — commit, push,
 pull, rebase — flush in the backend where they run.
 
-**A refresh keeps the diff it already has.** `invalidateDiff` bumps the nonce only; `setDiff`
-then prunes `diffHunks` and `blameByFile` per file with `pruneFileCache`, keeping every file
-whose `added`/`deleted`/`status`/`staged` did not move. Clearing them wholesale sent every
-expanded file back to "Loading diff…" on each edit burst, and refetched a `git diff` per file.
+**A cached diff is not a fresh diff.** `invalidateDiff` bumps `diffNonce`, and every hunk,
+blame and expanded-file fetch depends on it, so each refresh refetches and replaces in place.
+The cached hunks stay on screen until the new ones land, which is what keeps "Loading diff…"
+off an edit burst. Never gate one of those fetches on the cache being empty, and never infer
+freshness from the summary's `added`/`deleted` counts: an edit that adds and removes one line
+leaves them identical.
 
 **Nothing polls the forge.** The CI chip moves on three things and no others: a
 `git.push` or an `mr.*` op landing (`useIpc` bumps `mrNonce`), and the sidebar's refresh

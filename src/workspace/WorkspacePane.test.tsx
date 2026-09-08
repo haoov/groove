@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, act } from '@testing-library/react';
 import { useSession, type EditorTab } from '../shared/store';
+import { useStore } from '../shared/store';
 import { resetStore, seedSession, testRepo, testWorktree } from '../shared/store/testing';
 import type { Hunk } from '../shared/ipc/ipc';
 import type { AnnCtx } from '../editor/useAnnotations';
@@ -150,14 +151,21 @@ describe('the diff tab', () => {
     expect(screen.getByTestId('diff-body').textContent).toBe('the B body');
   });
 
-  it('reuses the cached diff instead of refetching a file already fetched', async () => {
+  /** The regression: an edit that adds and removes one line leaves the summary's numbers
+   *  untouched, so a cached entry can never stand for a fresh one. */
+  it('refetches the open file when the diff is invalidated', async () => {
     render(<Pane />);
     await act(async () => { replies[A].resolve(hunksFor('the A body')); });
-    await act(async () => { clickTab(B); });
-    await act(async () => { replies[B].resolve(hunksFor('the B body')); });
-    await act(async () => { clickTab(A); });
-
-    expect(diffCallsFor(A)).toHaveLength(1);
     expect(screen.getByTestId('diff-body').textContent).toBe('the A body');
+
+    // The refetch needs a promise of its own; the first one is already settled.
+    replies[A] = deferred<Hunk[]>();
+    await act(async () => { useStore.getState().invalidateDiff(useStore.getState().activeSessionId!); });
+    expect(diffCallsFor(A)).toHaveLength(2);
+
+    // The old body stays on screen until the new one lands: no flash of "Loading diff…".
+    expect(screen.getByTestId('diff-body').textContent).toBe('the A body');
+    await act(async () => { replies[A].resolve(hunksFor('the edited A body')); });
+    expect(screen.getByTestId('diff-body').textContent).toBe('the edited A body');
   });
 });

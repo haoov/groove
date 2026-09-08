@@ -1,7 +1,7 @@
 // Session construction and the pure per-session reducers. No store access, no IPC.
 
 import { leaf, splitLeaf, removeLeaf, type SplitDir } from '../lib/pure/layout';
-import type { Task, Repo, Worktree, DiffResult, FileDiff } from '../ipc/ipc';
+import type { Task, Repo, Worktree } from '../ipc/ipc';
 import type {
   EditorTab, OpenTabInput, SessionKind, SessionState, WorkspacePane,
 } from './types';
@@ -256,35 +256,3 @@ export const bumpDiffRecipe = (s: SessionState): Partial<SessionState> => ({
   diffNonce: s.diffNonce + 1,
 });
 
-/** A file's cache key, as the diff and blame caches are keyed. */
-export const fileCacheKey = (worktreeId: string, path: string) => `${worktreeId}/${path}`;
-
-/** What a cached hunk list depends on: the file's own numbers, not the summary's identity. */
-const fileSignature = (f: FileDiff) => `${f.added}:${f.deleted}:${f.status}:${f.staged}`;
-
-function signatures(diff: DiffResult | null): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const repo of diff?.repos ?? []) {
-    for (const f of repo.files) {
-      out.set(fileCacheKey(repo.worktree_id, f.path), fileSignature(f));
-    }
-  }
-  return out;
-}
-
-/** Drop the cached entries of files whose diff numbers moved; keep the rest so a refresh
- *  does not send every open file back to "Loading diff…". */
-export function pruneFileCache<T>(
-  cache: Record<string, T>,
-  prev: DiffResult | null,
-  next: DiffResult | null,
-): Record<string, T> {
-  const before = signatures(prev);
-  const after = signatures(next);
-  const kept: Record<string, T> = {};
-  for (const [key, value] of Object.entries(cache)) {
-    const now = after.get(key);
-    if (now !== undefined && now === before.get(key)) kept[key] = value;
-  }
-  return kept;
-}

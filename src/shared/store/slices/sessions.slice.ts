@@ -7,7 +7,7 @@ import {
 import type { AppState, SessionActions, SessionState, SessionView, SessionsSlice } from '../types';
 import {
   COMMIT_PAGE, bumpDiffRecipe, closePaneReducer, closeTabReducer, commitPreviewReducer,
-  discardPreviewReducer, newPaneId, newWorkspaceSession, openTabReducer, pruneFileCache,
+  discardPreviewReducer, newPaneId, newWorkspaceSession, openTabReducer,
   sessionDefaults, sessionTitle, splitPaneReducer,
 } from '../session';
 
@@ -219,12 +219,7 @@ function makeSessionActions(id: string): SessionActions {
     setSidebarTab: (t) => upd(() => ({ sidebarTab: t })),
     setSidebarCollapsed: (v) => upd(() => ({ sidebarCollapsed: v })),
     setGitSubTab: (t) => upd(() => ({ gitSubTab: t })),
-    setDiff: (d) =>
-      upd((s) => ({
-        diff: d,
-        diffHunks: pruneFileCache(s.diffHunks, s.diff, d),
-        blameByFile: pruneFileCache(s.blameByFile, s.diff, d),
-      })),
+    setDiff: (d) => upd(() => ({ diff: d })),
     setDiffHunks: (key, hunks) => upd((s) => ({ diffHunks: { ...s.diffHunks, [key]: hunks } })),
     toggleDiffFile: (key) =>
       upd((s) => {

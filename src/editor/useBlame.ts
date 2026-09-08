@@ -17,16 +17,18 @@ export function useBlame(opts: {
   const setBlame = useSession((s) => s.setBlame);
   const openTab = useSession((s) => s.openTab);
   const setLastError = useStore((s) => s.setLastError);
+  // Blame follows the diff nonce: an edit shifts the lines it attributes.
+  const diffNonce = useSession((s) => s.diffNonce);
   const inFlight = useRef(false);
 
   useEffect(() => {
-    if (!blameOn || !worktreeId || blame !== undefined || inFlight.current) return;
+    if (!blameOn || !worktreeId || inFlight.current) return;
     inFlight.current = true;
     invoke<BlameLine[]>('blame_file', { worktreeId, filePath })
       .then((lines) => setBlame(key, lines))
       .catch((e) => setLastError(e))
       .finally(() => { inFlight.current = false; });
-  }, [blameOn, worktreeId, filePath, blame, key, setBlame, setLastError]);
+  }, [blameOn, worktreeId, filePath, diffNonce, key, setBlame, setLastError]);
 
   const openCommit = useCallback(
     (sha: string) => {

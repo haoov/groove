@@ -31,19 +31,21 @@ export function ChangesView({ repoId, ann }: { repoId: string; ann: AnnCtx }) {
   const wt = activeWorktreeFor(activeWorktrees, repoId, activeWorktreeId);
   const repo = repoDiffFor(diff, wt?.id, repoId);
 
-  // Lazily fetch line content for expanded files not yet cached.
+  // Fetch line content for every expanded file, and again on each diff nonce: a cached
+  // entry is not a fresh one.
+  const diffNonce = useSession((s) => s.diffNonce);
   useEffect(() => {
     if (!repo || !wt) return;
     for (const f of repo.files) {
       const key = `${wt.id}/${f.path}`;
-      if (!expandedFiles.has(key) || diffHunks[key] !== undefined || hunksInFlight.current.has(key)) continue;
+      if (!expandedFiles.has(key) || hunksInFlight.current.has(key)) continue;
       hunksInFlight.current.add(key);
       invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: f.path, mode: diffMode })
         .then((hunks) => setDiffHunks(key, hunks))
         .catch((e) => setLastError(e))
         .finally(() => hunksInFlight.current.delete(key));
     }
-  }, [expandedFiles, repo, wt, diffHunks, diffMode, repoId, setDiffHunks, setLastError]);
+  }, [expandedFiles, repo, wt, diffNonce, diffMode, repoId, setDiffHunks, setLastError]);
 
   const threads = useMemo(() => mrThreadsByRepo[repoId] ?? NO_THREADS, [mrThreadsByRepo, repoId]);
 

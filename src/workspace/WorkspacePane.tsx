@@ -272,14 +272,17 @@ function DiffTab({ tab, ann, focusSignal }: { tab: EditorTab; ann: AnnCtx; focus
     worktreeId: wt?.id, repoId: tab.repoId, filePath: tab.filePath,
   });
 
+  // Refetch on every diff nonce: a cached entry is not a fresh one, and an edit that
+  // adds and removes one line leaves the summary's numbers untouched.
+  const diffNonce = useSession((s) => s.diffNonce);
   useEffect(() => {
-    if (!wt || hunks !== undefined) return;
+    if (!wt) return;
     let stale = false;
     invoke<Hunk[]>('get_file_diff', { worktreeId: wt.id, filePath: tab.filePath, mode: diffMode })
       .then((h) => { if (!stale) setDiffHunks(key, h); })
       .catch((e) => { if (!stale) setLastError(e); });
     return () => { stale = true; };
-  }, [key, wt, hunks, diffMode, tab.filePath, setDiffHunks, setLastError]);
+  }, [key, wt, diffNonce, diffMode, tab.filePath, setDiffHunks, setLastError]);
 
   const fileAnns = useMemo(
     () => openFileAnnotations(annotations, tab.repoId, tab.filePath),
