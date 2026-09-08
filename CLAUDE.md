@@ -30,6 +30,10 @@ pnpm test                    # vitest — pure logic, node env
 npx vite build               # catches what tsc alone does not
 ```
 
+The Rust toolchain is pinned in `rust-toolchain.toml` and named again in the
+workflow. `-D warnings` gates the build, so a floating channel would turn a new
+clippy lint into a red pipeline on code nobody touched — bump both together.
+
 `pnpm gen:types` after ANY change to a `#[ts(export)]` Rust type — it runs
 `cargo test --lib export_bindings` then rebuilds the barrel via
 `scripts/gen-index.mjs`. A renamed or deleted Rust type leaves a stale `.ts`

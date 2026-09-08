@@ -1,0 +1,6 @@
+# The one toolchain, so a green local run means the same thing CI means.
+# `cargo clippy -- -D warnings` gates the build, and a floating channel turns a new
+# lint into a red pipeline on untouched code. Bump this deliberately, with CI.
+[toolchain]
+channel = "1.98.1"
+components = ["clippy", "rustfmt"]
