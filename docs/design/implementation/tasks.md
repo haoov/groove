@@ -34,7 +34,8 @@ list and each task's properties and body in its slice.
 | Controller | Does |
 |---|---|
 | `task.sync` | refetch one task from its source |
-| `task.schema` · `task.relation_options` | read, for the overview's editors and the agent |
+| `task.get` · `task.list` | reads: one task with properties and body; the list |
+| `task.schema` · `task.relation_options` · `task.template` | reads, for the overview's editors and the agent |
 
 The compile-time registry rule stays; a provider is added by a row.
 
@@ -82,8 +83,12 @@ sums them.
 | `task.set_property` · `task.set_body` | by hand from the overview; from the agent through `approvals` |
 | `task.set_status` | by lifecycle — in progress on open, done on finish — or by hand |
 | `task.log_hours` | the unlogged hours to the ledger and the source |
+| `task.get_time` | read: tracked and logged hours |
 | `task.reorder` | move an item in Up next; above or below *later* |
 | `task.filter` | the board's filter string |
+
+The timer is the `task` service's own: it credits the focused session on a clock
+while the window has focus and there is input or a busy agent. No controller.
 
 **Removed.** Pause. The activity heatmap and `get_activity_days`. *Blocked by*.
 

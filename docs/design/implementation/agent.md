@@ -57,6 +57,8 @@ motion follow [../design.md](../design.md).
 | `agent.approve` · `agent.refuse` | `approvals.resolve`, then the row and the timeline |
 | `agent.review` | opens the review sheet in ui state |
 | `agent.auto_approve` | flips the session's flag |
+| `agent.get_activity` · `agent.get_asks` | reads: the rail's rows |
+| `agent.resize` | the pane's size to the PTY |
 
 **Rail** reads the slice and nothing else; the feed reads `timeline` for the opened
 sessions.

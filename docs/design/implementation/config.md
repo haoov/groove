@@ -23,6 +23,8 @@ both. `config::init` loads once at startup; `update` mutates, persists and publi
 
 | Controller | Does |
 |---|---|
+| `config.get` | read: the config as the ui sees it, token excluded |
+| `config.write_initial` | first run: worktree root and sources; detects the Notion property names |
 | `config.check_environment` | git, gh, glab, claude: version, auth status, a mark |
 | `config.login` | open the CLI sign-in in a terminal |
 | `config.set_worktree_root` | the one path the user changes |
@@ -49,7 +51,7 @@ missing from `forge`'s check.
 
 | Controller | Does |
 |---|---|
-| `config.set_task_source` | turn a source on or off; detect its property names |
+| `config.set_task_source` | turn a source on or off; detect its property names — database, user, GitHub preview as its steps |
 | `config.set_source_field` | one field of the active source |
 
 The token stays out of every view and log, as today.
@@ -69,6 +71,7 @@ family means the bundled default.
 
 | Controller | Does |
 |---|---|
+| `config.list_fonts` | read: the system's font families |
 | `config.set_theme` · `config.set_ui_font` · `config.set_agent_font` · `config.set_font_size` | persist, republish, redraw |
 
 ## Preferences
@@ -98,3 +101,4 @@ Every change saves on the spot. No save button; no restart.
 
 - [ ] The config file's new fields: auto-approve default, thresholds, poll interval.
 - [ ] Settings search: an index of every row's label and section, built from the form.
+- [ ] The clipboard's home: `ui` through winit, since it is the window's, not a service's.

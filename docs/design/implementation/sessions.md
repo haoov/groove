@@ -88,14 +88,14 @@ One overview for the three kinds, drawn from the `session` slice, in the order o
 | `session.open` | create or load the session, provision what is missing, `agent.start`, set the task in progress, select the last-touched worktree, add the row to the rail |
 | `session.close` | `agent.end`, remove the row; the session stays on disk |
 | `session.select` | make it the current one; clear its *unseen* |
-| `session.finish` | offered when every worktree is merged or closed: set done, teardown, remove |
-| `session.delete` · `session.delete_local` | as today |
 | `session.open_explorer` · `session.rename_explorer` · `session.discard_explorer` · `session.convert_explorer` | as today; convert moves rows and the agent onto the new id |
 | `session.open_review` | register the MR's clone, provision the review worktree, `agent.start` |
+| `session.get_active` · `session.get` | reads: the active session; one session with its repos and worktrees |
+| `session.list_repos` · `session.list_branches` | reads: the pool; `origin`'s heads for the pickers |
 
 The worktree row's delivery icons come from `WorktreeDelivery`; its skill button sends
-`agent.send_skill`. Property and body edits are `task.*` controllers; the overview only
-renders them.
+`agent.send_skill`. Property and body edits, finish and delete are `task.*` controllers; the overview
+only renders them. Finish is offered when every worktree is merged or closed.
 
 ## Agent session
 

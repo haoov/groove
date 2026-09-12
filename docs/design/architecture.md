@@ -44,6 +44,9 @@ Rules that follow:
 - Controllers mirror the services: `task`, `session`, `workspace`, `agent`, `config`.
   A function is the entry point for one action whether it calls one service or four;
   `session.select_worktree` calls one, `session.open` calls four.
+- A read is a controller function too: it returns data and mutates nothing.
+  `task.get`, `workspace.get_diff`, `session.get_active`. One enum, one `dispatch`;
+  the MCP tools that read map to these.
 - The command id is `controller.function`: `task.open`, `session.add_repo`,
   `agent.approve`, `workspace.push`. That one string is the palette entry, the MCP
   tool name, the keybinding target and the timeline label. The palette shows a label

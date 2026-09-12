@@ -51,6 +51,7 @@ faces an empty row. Word diff only on one-for-one pairs, the rule in `types`.
 
 | Controller | Does |
 |---|---|
+| `workspace.get_diff` · `workspace.get_commits` · `workspace.get_status` | reads: the summary, the commit log, git status |
 | `workspace.refresh` | reload status, summary, MR, CI and threads for the selected worktree |
 | `workspace.set_mode` | base, working, vs-remote; reload the summary |
 | `workspace.set_view` | unified or split; remembered per user |
@@ -85,6 +86,7 @@ width. The sidebar's notes tab lists them with file and line; a note opens its l
 
 | Controller | Does |
 |---|---|
+| `workspace.get_notes` | read: annotations and threads of the selected worktree |
 | `workspace.create_note` · `workspace.update_note` · `workspace.resolve_note` · `workspace.delete_note` | the store; from the agent, local writes |
 | `workspace.post_note` | post as an MR discussion at its line, resolve the local copy |
 | `workspace.reply_thread` · `workspace.resolve_thread` | on the forge |
@@ -111,6 +113,7 @@ hover, definition, references, diagnostics.
 
 | Controller | Does |
 |---|---|
+| `workspace.get_open_file` · `workspace.list_files` · `workspace.read_file` | reads |
 | `workspace.open_file` | from a diff line or the explorer |
 | `workspace.save_file` | write, refresh the diff, return to it |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
@@ -136,6 +139,7 @@ grids on `gfx`, split and resizable, collapsible.
 | Controller | Does |
 |---|---|
 | `workspace.open_terminal` | a shell in the selected worktree |
+| `workspace.resize_terminal` | from the pane's layout, to the PTY |
 | `workspace.close_terminal` | end it |
 | `workspace.split_terminal` | a second one beside the first |
 
@@ -199,6 +203,7 @@ at once, by hand.
 
 | Controller | Does |
 |---|---|
+| `workspace.get_mr` · `workspace.get_ci` · `workspace.get_threads` · `workspace.get_review_queue` | reads |
 | `workspace.create_mr` · `workspace.update_mr` · `workspace.close_mr` | through `approvals` from the agent |
 | `workspace.request_review` | add reviewers |
 | `workspace.review` | post a verdict with the pending annotations as its comments |
