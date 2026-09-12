@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = ["crates/*/*"]
+exclude = ["legacy", "probe"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+
+[workspace.dependencies]
+tokio = { version = "1", default-features = false, features = ["process", "io-util", "rt-multi-thread", "macros", "time"] }
+thiserror = "2"
+anyhow = "1"
+portable-pty = "0.8"
+nix = { version = "0.29", default-features = false, features = ["signal"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
