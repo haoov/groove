@@ -9,41 +9,84 @@ board does not reach the rail.
 | Board | large | every task, live or not, with its repos and MRs | Tasks |
 | Rail | mid | the sessions actually open, and what their agents do | Agent › Multi-agent |
 | Session | small | one session, in full | Sessions, Workspace |
-| Settings | — | setup, providers, appearance, preferences | Config |
+| Settings | whole window | setup, providers, appearance, preferences | Config |
 
 ## Rules
 
-- **Colour means attention. Motion means activity.** Nothing else uses either
-  channel. If a thing is coloured, the user is needed. If it moves, an agent works.
+- **Colour means state. Motion means activity.** One colour per state and nothing
+  else uses colour: an ask is peach, a working agent is blue, CI and diff carry green
+  and red. Text carries the colour, never a background. If it moves, an agent works.
 - **A fact clears when the world changes, never when the user looks at it.** No
   dismiss.
 - **Suggest, never auto-send.** The action of a state is the skill that fixes it,
   shown as a button. Groove never runs it by itself.
 - **Everything is reachable from the keyboard.** The command palette is the front
   door to every action in every capability. The mouse is a shortcut.
+- **Selection is a background, never an underline or a bar.** A selected tab, row or
+  item takes a filled background one step above its ground.
 
 ## Board — large scope
 
-The complete lists: **Live**, **Up next**, **Review**. Form and design open.
+The board replaces the agent pane, the workspace and the sidebar; the rail stays. It
+uses that width as three columns, one per list, each scrolling on its own.
 
-Each item has two forms:
+**Header.** The filter — `field:value` tokens and bare words, with autocomplete —
+applied to all three columns at once. On the right, **+ task**: a new task at the
+provider, or a new explorer.
 
-| Form | Shows |
-|---|---|
-| folded | title, type, repo count |
-| expanded | the repo list, each with its MRs and an external link |
+| Column | Holds | Sort |
+|---|---|---|
+| **Live** | sessions with a worktree | last activity |
+| **Up next** | tickets with no session, in the user's local order — the plan | the user's order |
+| **Review** | the forge queue: MRs where the user is a requested reviewer | updated |
 
-Quick links to the externals: the provider and the forge.
+Each column header carries its count.
 
-Task actions, on the item: open in provider · finish · delete · delete locally.
+**Live item.** Folded: kind icon, title, repo count, twisty. Expanded: one row per
+worktree — branch, then git counts, MR, CI and notes as icons, zero and absent
+omitted — and a link to the forge. The title opens the session, which joins the
+rail. Right click: open in provider, finish, delete, delete locally.
 
-Delivery per worktree appears here as counts, never as a verdict.
+**Up next item.** A position number, title, priority and size as text. Drag to
+reorder. One divider, **later**, that items can be dragged under, so the top of the
+column stays short. The order is Groove's and is never written to the provider. A
+ticket that gets a session leaves the plan for Live.
 
-- [ ] Sections, sorting and filtering.
+**Review item.** Project and MR number, title, author, updated. Open creates a review
+session, which joins the rail.
+
+**Attention.** An item that needs the user gets one line under its title — the reason
+and the age, in peach — and floats to the top of its column whatever the sort:
+
+```
+◎ paxone-deploy !88          waiting 5d
+⚑ Harden Groove…             changes requested · 2d
+⚑ finops export              CI failed · 3h
+```
+
+The rules, each with an age and a threshold in Config › Preferences: a review
+waiting longer than the threshold; an MR with changes requested; an MR with CI
+failed; an MR approved and green but not merged for a day. The rail's Board row
+carries the count of items with attention, in peach, and nothing else.
+
+**Timeline.** A band under the three columns, full width, collapsible; collapsed to
+its header by itself when nothing falls in the horizon. Four weeks, today about a
+quarter in, days as hairlines, week boundaries stronger, weekends dimmed. One bar per
+task: from its start date to start plus duration, or to its due date when it has
+one; a point when it has only a due date; an open bar to today when it has only a
+start. Bars stack when they overlap. The filter applies to the band. Dates and
+duration are properties, read from the provider and edited by hand in the overview.
+The band never reorders Up next.
+
+Overdue and due soon are attention rules like the others — *due in 2d*,
+*overdue 3d* — a peach line on the item in its column and a peach bar on the band.
+
+No activity heatmap. No *blocked by*.
 
 ## Rail — mid scope
 
-Only the sessions actually open, in the order opened. Never re-sorted.
+Only the sessions actually open, in the order opened. Never re-sorted. The Board
+row above them carries the board's attention count when it is not zero.
 
 Each row:
 
@@ -51,7 +94,7 @@ Each row:
 2. **Title.**
 3. **Agent status** — `setting up`, `working`, `committed 2 · 5 files`, `idle`,
    `exited`, `error`. One line, truncated, never wrapped.
-4. **Agent action, with buttons when it needs one** — `asks to push to main`
+4. **Agent action, with buttons when it needs one** — `asks to commit`
    **Approve** **Review**.
 5. **Relative time, right-aligned** — how long the agent has waited, or since it
    finished.
@@ -60,7 +103,7 @@ Each row:
  ▤  Board
  ─────────────────────────────────────────
  ⚑  TASK-51  auth refresh                2m
-    asks to push to main         [Approve] [Review]
+    asks to commit         [Approve] [Review]
  ⚑  fix/keys-50                          6m
     committed 3 · 7 files
  ⚑  TASK-49  cert rotation              12m
@@ -73,38 +116,91 @@ Each row:
 
 Nothing else: no CI, no MR state, no worktree count.
 
-An ask is coloured and offers *Approve* and *Review*. A working status moves,
-monochrome.
+An ask's text is peach and offers *Approve* and *Review*. With auto-approve on for
+the session, nothing asks. A working status is blue and its glyph moves. No row has a
+background of its own.
 
 Opening a session starts its agent. Closing a row ends the agent and removes the row.
 The session stays as it is on disk.
 
+**Feed.** Below the rows, the event log of the opened sessions, newest first,
+filterable to the selected session: agent turns, commits, pushes, MR events, CI
+results, notes. Monochrome, no motion. Asks are never in the feed; they live on the
+row. Collapsible.
+
 ## Session — small scope
 
-One session in full. Three regions, layout open:
+One window, four columns, left to right. The left half is the agents; the right half
+is the work.
 
-| Region | Holds |
+| Column | Holds |
 |---|---|
-| **Agent pane** | the terminal with the discussion — Sessions › Agent session |
-| **Session overview** | body, properties, the repo and worktree list — the selector for the session — Sessions › Overview |
-| **Work** | diff / annotations / editor / terminals / git / forge / timeline — Workspace |
+| **Rail** | opened sessions, the feed |
+| **Agent pane** | header: title, status · the agent's PTY · action bar: skills menu, reload, stop turn, the ask with Approve and Review |
+| **Workspace** | header · tabs · the selected tab · the manual section |
+| **Sidebar** | contextual list for the selected tab; folds away |
 
-Delivery per worktree — CI, MR state, review notes, land, resolve, close worktree —
-lives on the worktree list in the overview. Closing the task is offered there when
-every worktree is merged or closed.
+### Workspace
 
-- [ ] Layout of the three regions: splits, tabs, or both.
-- [ ] **Diff first.** A session with changes opens on the diff of the worktree the
-      agent last touched; the editor is the drill-down.
-- [ ] **Timeline** placement within Work.
-- [ ] **Review with context.** An ask opens the thing itself: a commit is its diff
-      and message, an MR its rendered description, a task update before and after.
-      Editable in place, then approve.
-- [ ] **Notes.** Where annotations live relative to the diff and the timeline.
+**Header.** One line across the agent pane, the workspace and the sidebar: type
+icon, title, the repo and worktree pickers — the session's selector, which every tab
+and the manual section follow — the selected worktree's MR and CI, then the task
+actions: finish, and a menu with delete and open in provider.
 
+**Tabs.** `overview · diff · editor`.
+
+| Tab | Shows | Sidebar |
+|---|---|---|
+| overview | properties; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, no words, and the row's skill button; then the body. Properties and body edited by hand. Close task when every worktree is merged or closed | folded |
+| diff | the selected worktree's diff, unified or split, notes inline; default when the session has changes | a search bar — files, or grep with `/` — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
+| editor | one file, opened from a diff line, back to the diff on save | file explorer, search, grep results |
+
+**Manual section.** Where the user acts by hand, as the agent pane is where the agent
+acts. Terminals for the selected worktree, splittable, resizable. Collapsible; hidden
+entirely when collapsed.
+
+**Commit box.** In the sidebar under the changed files, since it acts on the staged
+set the list shows: git status, message, commit, and an actions menu — push, pull,
+rebase, discard all. Commit commits the index.
+
+### Review sheet
+
+An ask's **Review** opens a sheet over the work half — workspace and sidebar. The
+agent pane stays visible. One frame for every op: the repo and the branch, then the
+text of the write. No diff and no file list — the code was reviewed before this point.
+A push goes to the worktree's own branch and nowhere else.
+
+| Op | Text shown |
+|---|---|
+| commit | the message: title and body |
+| push | each commit's title and body |
+| MR create, update, close | the MR's title and body |
+| task property | the task's title, the property, before → after |
+| task body | the task's title and the body |
+| task finish | the task's title and the worktrees torn down |
+| discard | the files |
+
+**Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without
+deciding.
+
+### Board and settings
+
+The board replaces the agent pane, the workspace and the sidebar; the rail stays.
+Settings takes the whole window.
 ## Settings
 
-One surface for Config: setup, providers, appearance, preferences. Reached from the
-palette and the board. Form open.
+Config's surface. Takes the whole window, the rail included; Esc or *back* returns to
+where the user was. Reached from the rail's footer and the palette. A section list on
+the left — Setup, Providers, Appearance, Preferences — with a search bar at its top:
+typing filters every section to the matching rows, each shown with its section. The
+selected section's form on the right. Labels left, controls
+right, one row per setting, hairlines between groups, paths and ids in mono.
 
-- [ ] Modal or page.
+| Section | Rows |
+|---|---|
+| Setup | environment check — git, gh, glab, claude — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
+| Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
+| Appearance | theme — Latte, Mocha, system · UI font · agent font · font size |
+| Preferences | suggest actions · attention thresholds in days: review waiting, due soon, approved unmerged · git: clone pool path |
+
+Every change saves to the config file on the spot. No save button.

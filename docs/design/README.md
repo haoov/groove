@@ -27,4 +27,5 @@ command is built belongs to architecture and design.
 | [capabilities.md](capabilities.md) | the seven capabilities and their features |
 | [capabilities/](capabilities/) | one implementation file per capability: how its features are made |
 | [architecture.md](architecture.md) | crates, boundaries, state ownership, rendering, tests, migration |
-| [design.md](design.md) | the three surfaces — board, rail, session — and the rules they follow |
+| [design.md](design.md) | the surfaces — board, rail, session, review sheet, settings — and the rules they follow |
+| [maquette.html](maquette.html) | the surfaces as a working page; open it in a browser |

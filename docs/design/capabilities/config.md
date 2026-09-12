@@ -19,4 +19,5 @@
 ## Preferences
 
 - suggest actions
+- attention thresholds
 - git

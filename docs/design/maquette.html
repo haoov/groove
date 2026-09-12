@@ -1,0 +1,780 @@
+<title>Groove Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --base:#eff1f5; --mantle:#e6e9ef; --crust:#dce0e8;
+  --s0:#ccd0da; --s1:#bcc0cc; --s2:#acb0be;
+  --text:#4c4f69; --sub1:#5c5f77; --sub0:#6c6f85; --ov0:#9ca0b0;
+  --blue:#1e66f5; --peach:#fe640b; --green:#40a02b; --red:#d20f39; --yellow:#df8e1d; --lav:#7287fd;
+  --add:rgba(64,160,43,.14); --del:rgba(210,15,57,.12); --ask:rgba(254,100,11,.10);
+  --sans:'IBM Plex Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+  --s0:#313244; --s1:#45475a; --s2:#585b70;
+  --text:#cdd6f4; --sub1:#bac2de; --sub0:#a6adc8; --ov0:#6c7086;
+  --blue:#89b4fa; --peach:#fab387; --green:#a6e3a1; --red:#f38ba8; --yellow:#f9e2af; --lav:#b4befe;
+  --add:rgba(166,227,161,.14); --del:rgba(243,139,168,.14); --ask:rgba(250,179,135,.12);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+  --s0:#313244; --s1:#45475a; --s2:#585b70;
+  --text:#cdd6f4; --sub1:#bac2de; --sub0:#a6adc8; --ov0:#6c7086;
+  --blue:#89b4fa; --peach:#fab387; --green:#a6e3a1; --red:#f38ba8; --yellow:#f9e2af; --lav:#b4befe;
+  --add:rgba(166,227,161,.14); --del:rgba(243,139,168,.14); --ask:rgba(250,179,135,.12);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--base);color:var(--text);font:13px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:1px solid var(--s1);padding:2px 8px;cursor:pointer;line-height:1.3}
+button:hover{background:var(--mantle)}
+button:focus-visible,[tabindex]:focus-visible{outline:1px solid var(--blue);outline-offset:1px}
+button.quiet{border-color:transparent;color:var(--sub0)}
+button.quiet:hover{color:var(--text);background:var(--mantle)}
+button.primary{border-color:var(--peach);color:var(--peach)}
+button.primary:hover{background:var(--ask)}
+.mono{font-family:var(--mono);font-size:12.5px}
+.sub{color:var(--sub0)}
+.dim{color:var(--ov0)}
+.caps{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub0)}
+.row{display:flex;align-items:center;gap:8px}
+.grow{flex:1;min-width:0}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--s0);flex:none}
+
+.app{height:100vh;display:grid;grid-template-columns:240px 1fr;grid-template-rows:100%;overflow:hidden}
+.rest{min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.cols{flex:1;min-height:0;display:grid;grid-template-columns:380px 1fr 260px}
+.app.side-folded .cols{grid-template-columns:380px 1fr 0}
+.app.side-folded .side{display:none}
+.session-head{display:none;border-bottom:1px solid var(--s0);flex:none}
+.app.span .session-head{display:block}
+.app.span .agent > .bar.agent-head{display:none}
+.app.span .work-head{display:none}
+.session-head .l1{height:36px;display:flex;align-items:center;gap:8px;padding:0 14px}
+.session-head .sep{width:1px;height:16px;background:var(--s0);margin:0 6px}
+.session-head .l1 .title{font-weight:500;font-size:14px}
+.session-head .l1 .status{font-family:var(--mono);font-size:12px;color:var(--sub0)}
+.session-head .l2{height:30px;display:flex;align-items:center;gap:6px;padding:0 14px;color:var(--sub1);font-family:var(--mono);font-size:12px}
+.col{min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--s0);overflow:hidden}
+.col:last-child{border-right:0}
+
+/* board */
+.app.board .session-head,.app.board .cols{display:none}
+#boardView{display:none;flex:1;min-height:0;flex-direction:column}
+.app.board #boardView{display:flex}
+.board-head{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--s0);flex:none}
+.board-head .filter{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.board-head .filter input{flex:1;min-width:0;border:0;background:none;color:var(--text);font:12.5px var(--mono);outline:none}
+.board-head .filter input::placeholder{color:var(--ov0)}
+.board-cols{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr 1fr}
+.bcol{min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--s0);overflow:hidden}
+.bcol:last-child{border-right:0}
+.bcol .bh{height:32px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--s0);background:var(--mantle);flex:none}
+.bcol .bh .n{font-family:var(--mono);font-size:12px;color:var(--sub0)}
+.bcol .bl{flex:1;min-height:0;overflow:auto}
+.bi{padding:8px 12px;border-bottom:1px solid var(--s0);cursor:default}
+.bi:hover{background:var(--mantle)}
+.bi .t{display:flex;align-items:baseline;gap:8px}
+.bi .t .kind{color:var(--sub0);width:12px;text-align:center;flex:none}
+.bi .t .pos{font-family:var(--mono);font-size:12px;color:var(--ov0);width:16px;text-align:right;flex:none}
+.bi .t .title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bi .t .meta{font-family:var(--mono);font-size:12px;color:var(--sub0);white-space:nowrap}
+.bi .t .tw{color:var(--ov0);font-size:10px;width:10px;text-align:center;cursor:pointer}
+.bi .att{margin:3px 0 0 20px;font-family:var(--mono);font-size:12px;color:var(--peach)}
+.bi .sub{margin:3px 0 0 20px;font-family:var(--mono);font-size:12px;color:var(--sub0)}
+.bi .wts{margin:6px 0 0 20px;display:none;flex-direction:column;gap:3px}
+.bi.open .wts{display:flex}
+.bi .wtr{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12px}
+.bi .wtr .br{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sub1)}
+.bi .wtr .ic{white-space:nowrap;color:var(--ov0);font-variant-numeric:tabular-nums;display:inline-flex;gap:10px}
+.bi .wtr .ic .mr{color:var(--blue)} .bi .wtr .ic .ci{color:var(--green)} .bi .wtr .ic .nt{color:var(--sub1)}
+.bi .wtr .lk{color:var(--ov0)}
+.bi .wtr .lk:hover{color:var(--text)}
+.later{display:flex;align-items:center;gap:10px;padding:6px 12px;color:var(--ov0);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.later::before,.later::after{content:"";flex:1;height:1px;background:var(--s0)}
+.rail .board .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--peach)}
+.rail .board.sel{background:var(--base)}
+.rail .board{cursor:default}
+.rail .board:hover{background:var(--base)}
+
+/* board timeline */
+.tl{flex:none;border-top:1px solid var(--s0);display:flex;flex-direction:column;height:260px}
+.tl.collapsed{height:32px}
+.tl.collapsed .tlb{display:none}
+.tl .bar .horizon{font-family:var(--mono);font-size:11.5px;color:var(--ov0)}
+.tlb{flex:1;min-height:0;position:relative;overflow:hidden;font-family:var(--mono);font-size:11.5px}
+.tlb .day{position:absolute;top:0;bottom:0;width:1px;background:var(--s0)}
+.tlb .day.week{background:var(--s1)}
+.tlb .wend{position:absolute;top:0;bottom:0;background:var(--mantle)}
+.tlb .today{position:absolute;top:0;bottom:0;width:2px;background:var(--peach)}
+.tlb .dl{position:absolute;top:4px;color:var(--ov0);padding-left:4px}
+.tlb .dl.today{background:none;width:auto;color:var(--peach);bottom:auto}
+.tlb .tb{position:absolute;height:20px;line-height:20px;padding:0 8px;background:var(--s0);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+.tlb .tb.open{background:none;border:1px dashed var(--s1);color:var(--sub0)}
+.tlb .tb.late{background:var(--ask);border:1px solid var(--peach);color:var(--peach)}
+.tlb .tb.soon{border:1px solid var(--peach);background:none;color:var(--peach)}
+.tlb .pt{position:absolute;height:20px;line-height:20px;white-space:nowrap;color:var(--sub1)}
+.tlb .pt::before{content:"";display:inline-block;width:8px;height:8px;background:var(--sub1);margin-right:8px;vertical-align:middle}
+.tlb .pt.soon{color:var(--peach)} .tlb .pt.soon::before{background:var(--peach)}
+
+/* review sheet */
+.cols{position:relative}
+.sheet{display:none;position:absolute;top:0;bottom:0;left:380px;right:0;background:var(--base);border-left:1px solid var(--s0);flex-direction:column;z-index:5}
+.sheet.open{display:flex}
+.sheet .sh{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--s0);font-weight:500}
+.sheet .sh .force{color:var(--peach)}
+.sheet .sb{flex:1;min-height:0;overflow:auto;padding:12px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.5}
+.sheet .where{display:flex;gap:10px;align-items:baseline;color:var(--sub1);margin-bottom:6px}
+.sheet .where .arr{color:var(--ov0)}
+.sheet .where .ff{color:var(--sub0)}
+.sheet .count{color:var(--sub0);margin-bottom:10px}
+.sheet .cm{padding:10px 0;border-top:1px solid var(--s0)}
+.sheet .cm .ct{display:flex;gap:12px}
+.sheet .cm .ct .sha{color:var(--sub0)}
+.sheet .cm .ct .subj{color:var(--text)}
+.sheet .cm .cb{margin:6px 0 0 76px;color:var(--sub1);white-space:pre-wrap;font-family:var(--sans);font-size:12.5px;max-width:70ch}
+.sheet .sf{height:44px;display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 14px;border-top:1px solid var(--s0)}
+
+/* settings */
+#settings{display:none;height:100vh;grid-template-columns:240px 1fr;overflow:hidden}
+.app.settings-open{display:none}
+body.in-settings #settings{display:grid}
+.set-nav{background:var(--mantle);border-right:1px solid var(--s0);display:flex;flex-direction:column}
+.set-nav .search{border-bottom:1px solid var(--s0)}
+.set-nav button.sec{border:0;text-align:left;padding:8px 12px;color:var(--sub0);height:auto}
+.set-nav button.sec:hover{background:var(--base)}
+.set-nav button.sec[aria-selected="true"]{color:var(--text);background:var(--s0)}
+.set-main{min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.set-main .bar{justify-content:flex-end;height:36px}
+.set-body{flex:1;min-height:0;overflow:auto;padding:16px 24px 24px}
+.set-body h2{font-size:14px;font-weight:500;margin:0 0 14px}
+.set-body h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub0);font-weight:500;margin:18px 0 8px}
+.set-body h3:first-of-type{margin-top:0}
+.srow{display:grid;grid-template-columns:180px 1fr auto;align-items:center;gap:16px;padding:6px 0;border-bottom:1px solid var(--s0);font-size:13px}
+.srow .k{color:var(--sub1)}
+.srow .v{font-family:var(--mono);font-size:12.5px;color:var(--text);display:flex;gap:14px;align-items:center;min-width:0}
+.srow .v .d{color:var(--sub0)}
+.srow .ok{color:var(--green)} .srow .bad{color:var(--red)}
+.srow .a{display:flex;gap:6px}
+.srow select,.srow input[type=text],.srow input[type=number]{font:12.5px var(--mono);color:var(--text);background:var(--base);border:1px solid var(--s1);padding:2px 6px}
+.srow input[type=number]{width:56px;text-align:right}
+.srow .toggle{width:30px;height:16px;border:1px solid var(--s1);position:relative;background:var(--base);cursor:pointer}
+.srow .toggle.on{background:var(--s0)}
+.srow .toggle::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;background:var(--sub0)}
+.srow .toggle.on::after{left:16px;background:var(--text)}
+.set-sec{display:none} .set-sec.active{display:block}
+.srow.hidden{display:none}
+.set-sec .from{display:none;font-size:11px;color:var(--ov0);margin-left:6px}
+.set-body.searching .set-sec{display:block}
+.set-body.searching h2,.set-body.searching h3{display:none}
+.set-body.searching .from{display:inline}
+
+/* rail */
+.rail{background:var(--mantle)}
+.rail .board{height:32px;border-bottom:1px solid var(--s0);display:flex;align-items:center;padding:0 12px;gap:8px;font-weight:500}
+.rail .board .glyph{color:var(--sub0)}
+.items{list-style:none;margin:0;padding:0;flex:1;min-height:0;overflow:auto}
+.item{padding:10px 12px 11px;border-bottom:1px solid var(--s0);cursor:default}
+.item:hover{background:var(--base)}
+.item.selected{background:var(--base)}
+.item .head{display:flex;gap:6px;align-items:baseline}
+.item .kind{color:var(--sub0);font-size:12px;width:12px;text-align:center;flex:none}
+.item .title{flex:1;min-width:0}
+.item .time{font-family:var(--mono);font-size:11.5px;color:var(--ov0);flex:none}
+.item .status{margin:4px 0 0 18px;color:var(--sub0);font-family:var(--mono);font-size:12px}
+.item.ask .status{color:var(--peach)}
+.item .actions{margin:8px 0 0 18px;display:flex;gap:6px}
+.item .status.working{color:var(--blue)}
+.glyph-work{display:inline-block;animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.glyph-work{animation:none}}
+.feed{flex:none;height:34%;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(--s0)}
+.feed.collapsed{height:32px}
+.feed .bar{background:var(--mantle)}
+.feed ol{list-style:none;margin:0;padding:4px 0;overflow:auto;flex:1;font-family:var(--mono);font-size:11.5px}
+.feed li{display:grid;grid-template-columns:40px 70px 1fr;gap:6px;padding:2px 12px;color:var(--sub1)}
+.feed li .t{color:var(--ov0)}
+.feed li .s{color:var(--sub0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed.collapsed ol{display:none}
+.rail-foot{height:32px;border-top:1px solid var(--s0);display:flex;align-items:center;padding:0 12px;color:var(--sub0);gap:12px}
+
+/* agent */
+.agent{background:var(--base)}
+.agent .bar .status{font-family:var(--mono);font-size:12px;color:var(--sub0)}
+.pty{flex:1;margin:0;padding:10px 12px;overflow:auto;background:var(--crust);color:var(--sub1);font-family:var(--mono);font-size:12.5px;line-height:1.5;white-space:pre-wrap}
+.pty .u{color:var(--text)}
+.pty .tool{color:var(--blue)}
+.pty .ok{color:var(--green)}
+.pty .wait{color:var(--peach)}
+.agent-bar{border-top:1px solid var(--s0);flex:none}
+.agent-bar .bar{border-bottom:0}
+
+/* workspace */
+.work{background:var(--base)}
+.work-head{border-bottom:1px solid var(--s0);flex:none}
+.work-head .l1{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.work-head .l1 .title{font-weight:500;font-size:14px}
+.work-head .l2{height:30px;display:flex;align-items:center;gap:6px;padding:0 14px;color:var(--sub1);font-family:var(--mono);font-size:12px}
+.pick{border:1px solid var(--s0);padding:1px 6px;background:var(--mantle);cursor:pointer}
+.pick:hover{border-color:var(--s1)}
+.ci{display:inline-flex;align-items:center;gap:5px}
+.ci .dot{width:7px;height:7px;background:var(--green);display:inline-block}
+.tabs{height:32px;display:flex;align-items:stretch;border-bottom:1px solid var(--s0);padding:0;flex:none}
+.tabs button{border:0;padding:0 12px;color:var(--sub0)}
+.tabs button:hover{background:var(--mantle);color:var(--text)}
+.tabs button[aria-selected="true"]{color:var(--text);background:var(--s0)}
+.tabs .spacer{flex:1}
+.pane{flex:1;min-height:0;overflow:auto;display:none}
+.pane.active{display:block}
+
+/* diff */
+.filehead{height:30px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--s0);position:sticky;top:0;background:var(--base);font-family:var(--mono);font-size:12px}
+.filehead .plus{color:var(--green)} .filehead .minus{color:var(--red)}
+.seg{display:inline-flex;border:1px solid var(--s1)}
+.seg button{border:0;padding:1px 8px;color:var(--sub0)}
+.seg button[aria-pressed="true"]{background:var(--s0);color:var(--text)}
+table.diff{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px;line-height:1.5}
+table.diff td{padding:0 10px 0 0;white-space:pre;vertical-align:top}
+table.diff td.n{width:44px;text-align:right;color:var(--ov0);user-select:none;padding-right:8px;border-right:1px solid var(--s0)}
+table.diff td.c{padding-left:12px}
+table.diff tr.add td{background:var(--add)}
+table.diff tr.del td{background:var(--del)}
+table.diff tr.hunk td{color:var(--sub0);background:var(--mantle);padding:2px 12px}
+table.diff .k{color:var(--lav)} table.diff .s{color:var(--green)} table.diff .cm{color:var(--ov0)}
+.note{margin:0;padding:6px 12px;background:var(--mantle);font-family:var(--sans);font-size:12px;line-height:1.5;display:flex;gap:10px;align-items:baseline}
+.note .nh{color:var(--sub0);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.note .nb{flex:1;min-width:0;white-space:normal}
+.note .na{display:flex;gap:2px;white-space:nowrap}
+.note .na button{padding:0 4px;font-size:11px;line-height:1.5}
+table.diff tr.noterow td{padding:0;white-space:normal}
+.gapline td{color:var(--ov0);text-align:center;padding:1px 0;background:var(--mantle);font-size:11px}
+
+/* overview */
+.ov{padding:14px 18px;max-width:78ch}
+.ov h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub0);margin:18px 0 8px;font-weight:500}
+.ov h2:first-child{margin-top:0}
+.ov p{margin:0 0 8px}
+.props{display:grid;grid-template-columns:120px 1fr;row-gap:4px;font-family:var(--mono);font-size:12.5px}
+.props dt{color:var(--sub0)} .props dd{margin:0}
+.repos{border-top:1px solid var(--s0);font-family:var(--mono);font-size:12px}
+.repos .repo{display:flex;align-items:center;padding:8px 0 4px;font-weight:500;color:var(--text)}
+.repos .repo .ri{color:var(--sub0);margin-right:8px}
+.repos .wtr{display:grid;grid-template-columns:1fr auto auto auto auto auto;align-items:center;gap:16px;padding:6px 0 6px 22px;border-bottom:1px solid var(--s0)}
+.repos .wtr .br{color:var(--sub1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repos .ic{white-space:nowrap;color:var(--ov0);font-variant-numeric:tabular-nums}
+.repos .ic.git{display:inline-flex;gap:10px}
+.repos .gs{color:var(--ov0)}
+.repos .ic.mr.open{color:var(--blue)} .repos .ic.mr.merged{color:var(--lav)}
+.repos .ic.ci.pass{color:var(--green)} .repos .ic.ci.fail{color:var(--red)} .repos .ic.ci.run{color:var(--yellow)}
+.repos .ic.notes.has{color:var(--sub1)}
+.repos .wtr button{font-size:12px}
+
+/* editor */
+.ed{font-family:var(--mono);font-size:12.5px;line-height:1.5}
+.ed .line{display:grid;grid-template-columns:44px 1fr}
+.ed .n{text-align:right;padding-right:8px;color:var(--ov0);border-right:1px solid var(--s0);user-select:none}
+.ed .c{padding-left:12px;white-space:pre}
+.ed .cur{background:var(--mantle)}
+.caret{display:inline-block;width:1px;height:1.2em;background:var(--text);vertical-align:text-bottom}
+
+/* manual */
+.manual{flex:none;border-top:1px solid var(--s0);display:flex;flex-direction:column;height:220px}
+.manual.collapsed{height:32px}
+.manual.collapsed .term{display:none}
+.manual .bar .ttab{color:var(--sub0);padding:0 8px;border:0;height:100%}
+.manual .bar .ttab[aria-selected="true"]{color:var(--text);background:var(--s0)}
+.term{flex:1;margin:0;padding:8px 12px;overflow:auto;background:var(--crust);color:var(--sub1);font-family:var(--mono);font-size:12.5px;line-height:1.5;white-space:pre}
+.term .p{color:var(--green)}
+
+/* sidebar */
+.side{background:var(--mantle)}
+.side .bar button{border:0;color:var(--sub0);padding:0 10px;height:100%}
+.side .bar button:hover{background:var(--base)}
+.side .bar button[aria-selected="true"]{color:var(--text);background:var(--s0)}
+.search{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--s0)}
+.search input{flex:1;min-width:0;border:0;background:none;color:var(--text);font:12px var(--mono);outline:none}
+.search input::placeholder{color:var(--ov0)}
+.side[data-mode="commits"] .search,.side[data-mode="notes"] .search{display:none}
+.tree{flex:1;min-height:0;overflow:auto;padding:6px 0;font-family:var(--mono);font-size:12px}
+.tree .d{display:flex;gap:6px;align-items:center;padding:2px 12px;color:var(--sub1);cursor:default;user-select:none}
+.tree .d:hover{background:var(--base)}
+.tree .d .tw{width:10px;color:var(--ov0);font-size:10px}
+.tree .d .fo{color:var(--sub0)}
+.tree .d[data-depth="1"]{padding-left:26px}
+.tree .f{display:flex;gap:8px;align-items:center;padding:2px 12px 2px 30px;cursor:default}
+.tree .f[data-depth="2"]{padding-left:44px}
+.tree .g.closed{display:none}
+.tree .f:hover{background:var(--base)}
+.tree .f .st{width:10px;color:var(--green)} .tree .f .st.m{color:var(--yellow)}
+.tree .f .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree .f .staged{color:var(--ov0);font-size:11px}
+.tree .f .ops{display:none;gap:4px}
+.tree .f:hover .ops{display:flex} .tree .f:hover .staged{display:none}
+.tree .f .ops button{border:0;padding:0 4px;color:var(--sub0);font-size:11px}
+.commitbox{flex:none;border-top:1px solid var(--s0);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.commitbox .st{font-family:var(--mono);font-size:12px;display:flex;gap:14px}
+.commitbox .gs.ahead{color:var(--blue)} .commitbox .gs.staged{color:var(--green)} .commitbox .gs.mod{color:var(--yellow)} .commitbox .gs.untr{color:var(--ov0)}
+.commitbox textarea{width:100%;height:56px;resize:vertical;border:1px solid var(--s1);background:var(--base);color:var(--text);font:12.5px/1.4 var(--mono);padding:6px 8px}
+.commitbox textarea:focus{outline:1px solid var(--blue);outline-offset:-1px}
+.commits{flex:1;min-height:0;padding:6px 0;font-family:var(--mono);font-size:12px;overflow:auto}
+.commits .c{display:flex;gap:8px;padding:3px 12px;cursor:default}
+.commits .c:hover{background:var(--base)}
+.commits .c .sha{color:var(--sub0)} .commits .c .m{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.commits .base{padding:4px 12px;color:var(--ov0);font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-top:1px solid var(--s0);border-bottom:1px solid var(--s0);margin:4px 0}
+.side .notes{flex:1;min-height:0;overflow:auto;padding:4px 0;display:none}
+.side .notes .nt{padding:6px 12px;border-bottom:1px solid var(--s0);cursor:default}
+.side .notes .nt:hover{background:var(--base)}
+.side .notes .nt .m{display:flex;gap:6px;font-family:var(--mono);font-size:11px;color:var(--sub0)}
+.side .notes .nt .m .f{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side .notes .nt .b{font-size:12px;margin-top:2px;color:var(--sub1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side .notes .nt.res .b{color:var(--ov0)}
+.side[data-mode="commits"] .tree,.side[data-mode="commits"] .commitbox,.side[data-mode="notes"] .tree,.side[data-mode="notes"] .commitbox{display:none}
+.side:not([data-mode="commits"]) .commits{display:none}
+.side[data-mode="notes"] .notes{display:block}
+</style>
+
+<div class="app span board" id="app">
+
+  <!-- rail -->
+  <aside class="col rail" aria-label="Opened sessions">
+    <div class="board sel" id="railBoard"><span class="glyph">▤</span> Board<span class="n">· 3</span></div>
+    <ul class="items">
+      <li class="item ask">
+        <div class="head"><span class="kind">⚑</span><span class="title trunc">Harden Groove: CI gates, security fixes</span><span class="time">2m</span></div>
+        <div class="status">asks to commit</div>
+        <div class="actions"><button class="primary">Approve</button><button data-review>Review</button></div>
+      </li>
+      <li class="item selected">
+        <div class="head"><span class="kind">⚑</span><span class="title trunc">Rust rewrite</span><span class="time">6m</span></div>
+        <div class="status">◐ committed 1 · 9 files</div>
+      </li>
+      <li class="item">
+        <div class="head"><span class="kind">◎</span><span class="title trunc">paxone-argo !412</span><span class="time">now</span></div>
+        <div class="status working"><span class="glyph-work">◌</span> working</div>
+      </li>
+    </ul>
+    <section class="feed" id="feed">
+      <div class="bar"><span class="caps grow">feed</span><span class="pick mono" style="font-size:11.5px">all ▾</span><button class="quiet" id="feedToggle" aria-label="Collapse feed">▾</button></div>
+      <ol>
+        <li><span class="t">16:41</span><span class="s">groove-50</span><span>committed docs(design)</span></li>
+        <li><span class="t">16:40</span><span class="s">groove-50</span><span>ran cargo test</span></li>
+        <li><span class="t">16:38</span><span class="s">rewrite</span><span>pushed 1 commit</span></li>
+        <li><span class="t">16:35</span><span class="s">paxone</span><span>turn started</span></li>
+        <li><span class="t">16:31</span><span class="s">rewrite</span><span>PR #51 updated</span></li>
+        <li><span class="t">16:29</span><span class="s">groove-50</span><span>CI passing</span></li>
+        <li><span class="t">16:20</span><span class="s">groove-50</span><span>note by agent</span></li>
+        <li><span class="t">16:02</span><span class="s">paxone</span><span>opened</span></li>
+        <li><span class="t">15:48</span><span class="s">rewrite</span><span>committed probe</span></li>
+      </ol>
+    </section>
+    <div class="rail-foot"><button class="quiet" data-settings-open title="Settings" style="padding:0 4px">⚙</button><span title="Command palette" class="mono" style="font-size:11px">⌘K</span></div>
+  </aside>
+
+  <div class="rest">
+  <header class="session-head">
+    <div class="l1"><span class="sub">⚑</span><span class="title">Rust rewrite</span><span class="sep"></span><span class="pick">groove ▾</span><span class="dim">·</span><span class="pick">fix/rust-rewrite ▾</span><span class="dim">·</span><span class="ci mono" style="font-size:12px;color:var(--sub1)"><span class="dot"></span>CI passing</span><span class="grow"></span><button class="quiet">finish</button><button class="quiet" aria-label="More">⋯</button><button class="quiet" data-span title="Header on the workspace only">⇥</button></div>
+  </header>
+  <section id="boardView" aria-label="Board">
+    <div class="board-head">
+      <div class="filter"><span class="dim">⌕</span><input id="boardFilter" placeholder="filter · status:ready  repo:groove  provider:notion  forge:gitlab" aria-label="Filter the board"></div>
+      <button>+ task ▾</button>
+    </div>
+    <div class="board-cols">
+      <div class="bcol">
+        <div class="bh"><span class="caps">live</span><span class="n">3</span></div>
+        <div class="bl">
+          <div class="bi open" data-live>
+            <div class="t"><span class="kind">⚑</span><span class="title" data-open-session>Harden Groove: CI gates, security fixes, defect fixes</span><span class="meta">▣ 1</span><span class="tw">▾</span></div>
+            <div class="att">changes requested · 2d</div>
+            <div class="wts">
+              <div class="wtr"><span class="br">groove › fix/harden-groove-ci-gates-security-50</span><span class="ic"><span class="mr" title="PR #51 open">⎇ 51</span><span class="ci" title="CI passing">●</span><span class="nt" title="2 review notes">✎ 2</span></span><span class="lk" title="open on GitHub">↗</span></div>
+              <div class="wtr"><span class="br">groove › fix/rust-rewrite</span><span class="ic"><span style="color:var(--blue)">↑ 1</span><span style="color:var(--green)">✚ 6</span><span style="color:var(--yellow)">● 3</span><span class="nt" title="3 notes">✎ 3</span></span><span class="lk" title="open on GitHub">↗</span></div>
+            </div>
+          </div>
+          <div class="bi" data-live>
+            <div class="t"><span class="kind">⚑</span><span class="title" data-open-session>paxone-staging-gite CNPG migration</span><span class="meta">▣ 2</span><span class="tw">▸</span></div>
+            <div class="wts">
+              <div class="wtr"><span class="br">paxone-deploy › feat/cnpg-4244</span><span class="ic"><span style="color:var(--blue)">↑ 2</span><span class="mr" title="MR !91 open">⎇ 91</span><span style="color:var(--yellow)" title="CI running">◌</span></span><span class="lk" title="open on GitLab">↗</span></div>
+              <div class="wtr"><span class="br">paxone-argo › feat/cnpg-4244</span><span class="ic"><span style="color:var(--yellow)">● 1</span></span><span class="lk" title="open on GitLab">↗</span></div>
+            </div>
+          </div>
+          <div class="bi" data-live>
+            <div class="t"><span class="kind">◎</span><span class="title" data-open-session>paxone-argo !412 · prod targetRevision</span><span class="meta">▣ 1</span><span class="tw">▸</span></div>
+            <div class="wts">
+              <div class="wtr"><span class="br">paxone-argo › review/412</span><span class="ic"><span class="mr" title="MR !412 open">⎇ 412</span><span class="ci" title="CI passing">●</span><span class="nt" title="1 note">✎ 1</span></span><span class="lk" title="open on GitLab">↗</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bcol">
+        <div class="bh"><span class="caps">up next</span><span class="n">12</span></div>
+        <div class="bl">
+          <div class="bi"><div class="t"><span class="pos">1</span><span class="title">external-dns shared Cloudflare token 429s</span><span class="meta">P2 · S</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">2</span><span class="title">1clickreview security pass</span><span class="meta">P2 · M</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">3</span><span class="title">Tempo tenant index alert rework</span><span class="meta">P3 · S</span></div></div>
+          <div class="later">later</div>
+          <div class="bi"><div class="t"><span class="pos">4</span><span class="title">Kubernetes access v2 · epics 4138–4142</span><span class="meta">P3 · L</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">5</span><span class="title">Renovate dry-run in the CI image</span><span class="meta">P3 · S</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">6</span><span class="title">ingress-nginx to HAProxy audit</span><span class="meta">P3 · M</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">7</span><span class="title">Inert == 0 rate alerts</span><span class="meta">P3 · S</span></div></div>
+          <div class="bi"><div class="t"><span class="pos">8</span><span class="title">cluster-manager OpenStack credential rotation</span><span class="meta">P2 · S</span></div></div>
+        </div>
+      </div>
+      <div class="bcol">
+        <div class="bh"><span class="caps">review</span><span class="n">4</span></div>
+        <div class="bl">
+          <div class="bi"><div class="t"><span class="kind">◎</span><span class="title">paxone-deploy !88 · fix ingress class</span><span class="meta">jdoe · 5d</span></div><div class="att">waiting 5d</div></div>
+          <div class="bi"><div class="t"><span class="kind">◎</span><span class="title">infra-services #207 · cilium 1.17</span><span class="meta">rs · 3d</span></div><div class="att">waiting 3d</div></div>
+          <div class="bi"><div class="t"><span class="kind">◎</span><span class="title">gitlab-ci-common !412 · bump kaniko</span><span class="meta">mk · 2h</span></div></div>
+          <div class="bi"><div class="t"><span class="kind">◎</span><span class="title">track-argo !31 · prod targetRevision</span><span class="meta">ab · 1d</span></div></div>
+        </div>
+      </div>
+    </div>
+    <section class="tl" id="tl">
+      <div class="bar"><button class="quiet" id="tlToggle" aria-label="Collapse timeline">▾</button><span class="caps">timeline</span><span class="horizon">4 weeks · 5 Sep – 3 Oct</span><span class="grow"></span></div>
+      <div class="tlb" id="tlb"></div>
+    </section>
+  </section>
+  <div class="cols">
+  <!-- agent pane -->
+  <section class="col agent" aria-label="Agent">
+    <div class="bar agent-head"><span class="trunc grow">Rust rewrite</span><span class="status">◐ done · unseen</span></div>
+<pre class="pty"><span class="u">&gt; commit the docs then go for the design pass</span>
+
+<span class="tool">⏺ get_active_task</span>
+<span class="tool">⏺ git_commit</span>  docs(design): add rewrite architecture,
+              capabilities and design references
+  <span class="wait">⧗ asks to commit · waiting for approval</span>
+
+  The docs are committed. The probe stays uncommitted as
+  agreed. Starting the design pass with the session view.
+
+<span class="tool">⏺ Read</span>        docs/design/design.md
+<span class="tool">⏺ Edit</span>        docs/design/design.md
+<span class="tool">⏺ Edit</span>        docs/design/capabilities/workspace.md
+
+  Layout written: four columns, manual section, contextual
+  sidebar. Schema drawn for validation.
+
+<span class="u">&gt; </span><span class="caret"></span></pre>
+    <div class="agent-bar">
+      <div class="bar"><button class="quiet">skills ▾</button><button class="quiet">reload</button><button class="quiet">stop</button><span class="grow"></span><span class="dim mono" style="font-size:11px">--resume 6f3d…</span></div>
+    </div>
+  </section>
+
+  <!-- workspace -->
+  <main class="col work" aria-label="Workspace">
+    <header class="work-head">
+      <div class="l1"><span class="sub">⚑</span><span class="title trunc grow">Rust rewrite</span><button class="quiet">finish</button><button class="quiet" aria-label="More">⋯</button><button class="quiet" data-span title="Header across the session">⇤</button></div>
+      <div class="l2"><span class="pick">groove ▾</span><span class="dim">·</span><span class="pick">fix/rust-rewrite ▾</span><span class="dim" style="margin-left:6px">·</span><span>no PR</span><span class="dim">·</span><span class="ci"><span class="dot"></span>CI passing</span></div>
+    </header>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="overview">overview</button>
+      <button role="tab" data-tab="diff" aria-selected="true">diff</button>
+      <button role="tab" data-tab="editor">editor</button>
+      <span class="spacer"></span>
+      <button class="quiet" id="sideToggle" title="Toggle sidebar">▥</button>
+    </nav>
+
+    <!-- diff -->
+    <section class="pane active" id="pane-diff" role="tabpanel">
+      <div class="filehead"><span>probe/src/boxdraw.rs</span><span class="plus">+21</span><span class="minus">−4</span><span class="grow"></span>
+        <span class="seg" id="viewSeg"><button aria-pressed="true" data-view="unified">unified</button><button aria-pressed="false" data-view="split">split</button></span></div>
+      <table class="diff">
+        <tr class="hunk"><td class="n"></td><td class="c">@@ -1,8 +1,8 @@</td></tr>
+        <tr><td class="n">1</td><td class="c"><span class="cm">//! Box-drawing and block glyphs as rectangles, not font glyphs. A font's box glyphs are</span></td></tr>
+        <tr><td class="n">2</td><td class="c"><span class="cm">//! shaped to their own advance, so they leave gaps at cell edges; these tile exactly.</span></td></tr>
+        <tr><td class="n">3</td><td class="c"><span class="cm">//!</span></td></tr>
+        <tr class="del"><td class="n">4</td><td class="c"><span class="cm">//! Arms are decoded per side. Dashed variants render solid, and double corners draw as two</span></td></tr>
+        <tr class="del"><td class="n">5</td><td class="c"><span class="cm">//! parallel lines without trimming the inner corner.</span></td></tr>
+        <tr class="add"><td class="n">4</td><td class="c"><span class="cm">//! Arms are decoded per side, and dashed variants render solid. Double and rounded glyphs</span></td></tr>
+        <tr class="add"><td class="n">5</td><td class="c"><span class="cm">//! stay on the font path: they need corner trimming and arcs, and the font draws them well.</span></td></tr>
+        <tr class="gapline"><td colspan="2">··· 14 lines ···</td></tr>
+        <tr class="hunk"><td class="n"></td><td class="c">@@ -20,14 +20,9 @@ pub fn quads(ch: char, x0: f32, y0: f32, w: f32, h: f32, size: f32)</td></tr>
+        <tr><td class="n">20</td><td class="c">    <span class="k">let</span> arms = arms(ch)?;</td></tr>
+        <tr><td class="n">21</td><td class="c">    <span class="k">let</span> light = (size / 12.0).round().max(1.0);</td></tr>
+        <tr><td class="n">22</td><td class="c">    <span class="k">let</span> heavy = light * 2.0;</td></tr>
+        <tr class="del"><td class="n">23</td><td class="c">    <span class="k">let</span> offsets: &amp;[f32] = <span class="k">if</span> *arm == D { &amp;[-light - 0.5, light + 0.5] } <span class="k">else</span> { &amp;[0.0] };</td></tr>
+        <tr class="del"><td class="n">24</td><td class="c">    <span class="k">for</span> off <span class="k">in</span> offsets {</td></tr>
+        <tr class="add"><td class="n">23</td><td class="c">    <span class="k">let</span> (a, b) = (t / 2.0, t / 2.0);</td></tr>
+        <tr class="add"><td class="n">24</td><td class="c">    <span class="k">let</span> r = <span class="k">match</span> side {</td></tr>
+        <tr class="add"><td class="n">25</td><td class="c">        0 =&gt; [cx - a, y0, cx + b, cy + b],</td></tr>
+        <tr class="add"><td class="n">26</td><td class="c">        1 =&gt; [cx - a, cy - a, x1, cy + b],</td></tr>
+        <tr class="add"><td class="n">27</td><td class="c">        2 =&gt; [cx - a, cy - a, cx + b, y1],</td></tr>
+        <tr class="add"><td class="n">28</td><td class="c">        _ =&gt; [x0, cy - a, cx + b, cy + b],</td></tr>
+        <tr class="add"><td class="n">29</td><td class="c">    };</td></tr>
+        <tr class="noterow"><td colspan="2"><div class="note"><span class="nh">◎ agent · 16:20</span><span class="nb">Heavy arms use <span class="mono">heavy</span> for <span class="mono">t</span> but the corner join still uses <span class="mono">light</span> for <span class="mono">b</span> on side 0 — a heavy ┏ shows a notch at the inner corner.</span><span class="na"><button class="quiet">reply</button><button class="quiet">resolve</button><button class="quiet">post</button></span></div></td></tr>
+        <tr class="add"><td class="n">30</td><td class="c">    out.push((r, 1.0));</td></tr>
+        <tr><td class="n">31</td><td class="c">    }</td></tr>
+        <tr><td class="n">32</td><td class="c">    <span class="k">Some</span>(out)</td></tr>
+        <tr><td class="n">33</td><td class="c">}</td></tr>
+        <tr class="gapline"><td colspan="2">··· 86 lines ···</td></tr>
+      </table>
+    </section>
+
+    <!-- overview -->
+    <section class="pane" id="pane-overview" role="tabpanel">
+      <div class="ov">
+        <h2>Properties</h2>
+        <dl class="props"><dt>Status</dt><dd>In progress</dd><dt>Priority</dt><dd>P1</dd><dt>Size</dt><dd>XL</dd><dt>Provider</dt><dd>github · haoov/groove#50</dd><dt>Time</dt><dd>14.2h · 1.9h logged</dd></dl>
+        <h2>Repos and worktrees</h2>
+        <div class="repos">
+          <div class="repo"><span class="ri">▣</span>groove<span class="dim mono" style="font-size:11.5px;margin-left:8px">github.com/haoov/groove</span></div>
+          <div class="wtr">
+            <span class="br">fix/harden-groove-ci-gates-security-50</span>
+            <span class="ic git"></span>
+            <span class="ic mr open" title="PR #51 open">⎇ 51</span>
+            <span class="ic ci pass" title="CI passing">●</span>
+            <span class="ic notes has" title="2 review notes">✎ 2</span>
+            <button>Fix notes</button>
+          </div>
+          <div class="wtr">
+            <span class="br">fix/rust-rewrite</span>
+            <span class="ic git"><span class="gs ahead" style="color:var(--blue)" title="ahead of base">↑ 1</span><span class="gs staged" style="color:var(--green)" title="staged">✚ 6</span><span class="gs mod" style="color:var(--yellow)" title="modified">● 3</span></span>
+                        <span class="ic notes has" title="3 notes">✎ 3</span>
+            <button>Land</button>
+          </div>
+        </div>
+        <p class="dim" style="margin-top:10px">Close task becomes available when every worktree is merged or closed.</p>
+        <h2>Body</h2>
+        <p>Rewrite the view layer in Rust on the GPU. Before code: architecture, structure, tools, dependencies and tests. Vim out of scope for now.</p>
+        <p>Probe done: one grid renderer serves terminal and editor. Design references under <span class="mono">docs/design/</span>.</p>
+      </div>
+    </section>
+
+    <!-- editor -->
+    <section class="pane" id="pane-editor" role="tabpanel">
+      <div class="filehead"><span>probe/src/boxdraw.rs</span><span class="dim">saved</span><span class="grow"></span><button class="quiet" data-tab="diff">back to diff</button></div>
+      <div class="ed">
+        <div class="line"><span class="n">20</span><span class="c">    <span class="k">let</span> arms = arms(ch)?;</span></div>
+        <div class="line"><span class="n">21</span><span class="c">    <span class="k">let</span> light = (size / 12.0).round().max(1.0);</span></div>
+        <div class="line"><span class="n">22</span><span class="c">    <span class="k">let</span> heavy = light * 2.0;</span></div>
+        <div class="line cur"><span class="n">23</span><span class="c">    <span class="k">let</span> (a, b) = (t / 2.0, t / 2.0);<span class="caret"></span></span></div>
+        <div class="line"><span class="n">24</span><span class="c">    <span class="k">let</span> r = <span class="k">match</span> side {</span></div>
+        <div class="line"><span class="n">25</span><span class="c">        0 =&gt; [cx - a, y0, cx + b, cy + b],</span></div>
+        <div class="line"><span class="n">26</span><span class="c">        1 =&gt; [cx - a, cy - a, x1, cy + b],</span></div>
+        <div class="line"><span class="n">27</span><span class="c">        2 =&gt; [cx - a, cy - a, cx + b, y1],</span></div>
+        <div class="line"><span class="n">28</span><span class="c">        _ =&gt; [x0, cy - a, cx + b, cy + b],</span></div>
+        <div class="line"><span class="n">29</span><span class="c">    };</span></div>
+        <div class="line"><span class="n">30</span><span class="c">    out.push((r, 1.0));</span></div>
+      </div>
+    </section>
+
+    <!-- manual section -->
+    <section class="manual" id="manual">
+      <div class="bar"><button class="quiet" id="manualToggle" aria-label="Collapse terminals">▾</button><span class="caps">terminals</span><span class="grow"></span><button class="ttab" aria-selected="true">term 1</button><button class="ttab">term 2</button><button class="quiet">+</button><button class="quiet">split</button></div>
+<pre class="term"><span class="p">fix/rust-rewrite $</span> cd probe && cargo build --release
+   Compiling grid-probe v0.0.0
+    Finished `release` profile [optimized] target(s) in 2.42s
+<span class="p">fix/rust-rewrite $</span> PER_CELL=1 ./target/release/grid-probe 100 30 14 "JetBrainsMono Nerd Font Mono" -- htop
+adapter: Intel(R) Graphics (MTL) (IntegratedGpu, Vulkan)
+cell: 8.400 x 18.900 at 14px
+grid 80x30  bytes 19270  alt-screen true  mouse-reporting true
+<span class="p">fix/rust-rewrite $</span> <span class="caret"></span></pre>
+    </section>
+  </main>
+
+  <!-- review sheet -->
+  <section class="sheet" id="sheet" role="dialog" aria-label="Review the ask">
+    <div class="sh"><span class="grow">asks to commit</span><button class="quiet" data-sheet-close aria-label="Close">✕</button></div>
+    <div class="sb">
+      <div class="where"><span>groove</span><span class="arr">›</span><span>fix/harden-groove-ci-gates-security-50</span><span class="ff">6 files staged</span></div>
+      <div class="cm"><div class="ct"><span class="subj">fix(ci): pin the rust toolchain and drop deprecated actions</span></div><div class="cb" style="margin-left:0">A floating channel turned a new clippy lint into a red pipeline on code nobody touched. Pin 1.98.1 in rust-toolchain.toml and the workflow. Actions on Node 16 are deprecated; move to the current majors.</div></div>
+    </div>
+    <div class="sf"><button data-sheet-close>Refuse</button><button class="primary" data-sheet-close>Approve</button></div>
+  </section>
+  <!-- sidebar -->
+  <aside class="col side" id="side" data-mode="files" aria-label="Sidebar">
+    <div class="bar" style="padding:0"><button data-side="files" aria-selected="true">files</button><button data-side="commits">commits</button><button data-side="notes">notes</button></div>
+    <div class="search"><span class="dim">⌕</span><input id="sideSearch" placeholder="search files · / to grep" aria-label="Search files or grep"></div>
+    <div class="tree">
+      <div class="d" data-depth="0" data-folder="docs"><span class="tw">▾</span><span class="fo">▭</span>docs/design</div>
+      <div class="g" data-of="docs">
+      <div class="f" data-depth="1"><span class="st">A</span><span class="nm">README.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      <div class="f" data-depth="1"><span class="st">A</span><span class="nm">architecture.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      <div class="f" data-depth="1"><span class="st">A</span><span class="nm">capabilities.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      <div class="f" data-depth="1"><span class="st">A</span><span class="nm">design.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      <div class="d" data-depth="1" data-folder="caps"><span class="tw">▾</span><span class="fo">▭</span>capabilities</div>
+      <div class="g" data-of="caps">
+      <div class="f" data-depth="2"><span class="st">A</span><span class="nm">agent.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      <div class="f" data-depth="2"><span class="st">A</span><span class="nm">workspace.md</span><span class="staged">staged</span><span class="ops"><button>unstage</button><button>discard</button></span></div>
+      </div>
+      </div>
+      <div class="d" data-depth="0" data-folder="probe"><span class="tw">▸</span><span class="fo">▬</span>probe/src</div>
+      <div class="g closed" data-of="probe">
+      <div class="f" data-depth="1"><span class="st m">M</span><span class="nm">boxdraw.rs</span><span class="staged"></span><span class="ops"><button>stage</button><button>discard</button></span></div>
+      <div class="f" data-depth="1"><span class="st m">M</span><span class="nm">grid.rs</span><span class="staged"></span><span class="ops"><button>stage</button><button>discard</button></span></div>
+      <div class="f" data-depth="1"><span class="st m">M</span><span class="nm">term.rs</span><span class="staged"></span><span class="ops"><button>stage</button><button>discard</button></span></div>
+      </div>
+    </div>
+    <div class="commitbox">
+      <div class="st"><span class="gs ahead" title="ahead of base">↑ 1</span><span class="gs staged" title="staged">✚ 6</span><span class="gs mod" title="modified">● 3</span></div>
+      <textarea id="commitmsg" placeholder="docs(design): "></textarea>
+      <div class="row"><button>Commit</button><span class="grow"></span><button class="quiet">actions ▾</button></div>
+    </div>
+    <div class="notes">
+      <div class="nt"><div class="m"><span>◎ agent</span><span class="f">boxdraw.rs:29</span><span>open</span></div><div class="b">Heavy arms use heavy for t but the corner join still uses light…</div></div>
+      <div class="nt"><div class="m"><span>◎ agent</span><span class="f">grid.rs:212</span><span>open</span></div><div class="b">per_cell path shapes a Buffer per glyph; cache by char+attrs</div></div>
+      <div class="nt"><div class="m"><span>⚑ you</span><span class="f">term.rs:141</span><span>open</span></div><div class="b">resize must also reach the PTY — see on_resize</div></div>
+      <div class="nt res"><div class="m"><span>◎ agent</span><span class="f">design.md:88</span><span>resolved</span></div><div class="b">"left half is the agents" — say it once, in the table</div></div>
+      <div class="nt res"><div class="m"><span>⚑ you</span><span class="f">architecture.md:14</span><span>PR #51</span></div><div class="b">types is not a base crate</div></div>
+    </div>
+    <div class="commits">
+      <div class="caps" style="padding:2px 12px 6px">fix/rust-rewrite · 1 ahead of base</div>
+      <div class="c"><span class="sha">8c41e2f</span><span class="m">docs(design): add rewrite architecture, capabilities and design references</span></div>
+      <div class="base">base · fix/harden-groove-ci-gates-security-50</div>
+      <div class="c"><span class="sha">b2a9d10</span><span class="m">fix(ci): pin the rust toolchain and drop deprecated actions</span></div>
+      <div class="c"><span class="sha">7f3e0c4</span><span class="m">fix(git): make dirty_repo set a repo-local identity</span></div>
+      <div class="c"><span class="sha">1d0b8a9</span><span class="m">refactor(notion): sort options with sort_by_key</span></div>
+    </div>
+  </aside>
+  </div>
+  </div>
+</div>
+
+<div id="settings" aria-label="Settings">
+  <nav class="set-nav">
+    <div class="search"><span class="dim">⌕</span><input id="setSearch" placeholder="search a setting" aria-label="Search settings"></div>
+    <button class="sec" data-sec="setup" aria-selected="true">Setup</button>
+    <button class="sec" data-sec="providers">Providers</button>
+    <button class="sec" data-sec="appearance">Appearance</button>
+    <button class="sec" data-sec="preferences">Preferences</button>
+  </nav>
+  <section class="set-main">
+    <div class="bar"><button class="quiet" data-settings-close>✕ back <span class="dim mono" style="font-size:11px">esc</span></button></div>
+    <div class="set-body" id="setBody">
+      <div class="set-sec active" data-sec="setup">
+        <h2>Setup</h2>
+        <h3>Environment</h3>
+        <div class="srow" data-k="git version environment"><span class="k">git<span class="from">Setup</span></span><span class="v">2.51.0</span><span class="a"><span class="ok">✓</span></span></div>
+        <div class="srow" data-k="gh github cli token login environment"><span class="k">gh<span class="from">Setup</span></span><span class="v">2.79.0<span class="d">logged in as rsabbah</span></span><span class="a"><span class="ok">✓</span></span></div>
+        <div class="srow" data-k="glab gitlab cli token login environment"><span class="k">glab<span class="from">Setup</span></span><span class="v">1.71.0<span class="d">gitlab.wiremind.io</span></span><span class="a"><span class="ok">✓</span></span></div>
+        <div class="srow" data-k="claude login agent environment"><span class="k">claude<span class="from">Setup</span></span><span class="v">2.1.4<span class="d">logged in</span></span><span class="a"><span class="ok">✓</span><button class="quiet">log in again</button></span></div>
+        <h3>Paths</h3>
+        <div class="srow" data-k="config file path"><span class="k">config<span class="from">Setup</span></span><span class="v">~/.config/com.haoov.groove/workbench.config.json</span><span class="a"><button class="quiet">↗</button></span></div>
+        <div class="srow" data-k="state database path sqlite"><span class="k">state<span class="from">Setup</span></span><span class="v">~/.local/share/com.haoov.groove/app.db</span><span class="a"><button class="quiet">↗</button></span></div>
+        <div class="srow" data-k="worktree root path"><span class="k">worktree root<span class="from">Setup</span></span><span class="v">~/worktrees</span><span class="a"><button class="quiet">change</button></span></div>
+      </div>
+      <div class="set-sec" data-sec="providers">
+        <h2>Providers</h2>
+        <h3>Task source</h3>
+        <div class="srow" data-k="task source provider notion github"><span class="k">source<span class="from">Providers</span></span><span class="v"><select><option>Notion</option><option>GitHub</option></select></span><span class="a"></span></div>
+        <div class="srow" data-k="notion database id"><span class="k">database<span class="from">Providers</span></span><span class="v"><input type="text" value="a1b2c3d4e5f6…" size="34"></span><span class="a"></span></div>
+        <div class="srow" data-k="notion user"><span class="k">user<span class="from">Providers</span></span><span class="v">rsabbah<span class="d">from the token</span></span><span class="a"></span></div>
+        <h3>Forge tokens</h3>
+        <div class="srow" data-k="gh token github forge"><span class="k">gh<span class="from">Providers</span></span><span class="v"><span class="d">read from the CLI</span></span><span class="a"><span class="ok">present</span></span></div>
+        <div class="srow" data-k="glab token gitlab forge"><span class="k">glab<span class="from">Providers</span></span><span class="v"><span class="d">read from the CLI</span></span><span class="a"><span class="ok">present</span></span></div>
+      </div>
+      <div class="set-sec" data-sec="appearance">
+        <h2>Appearance</h2>
+        <h3>Theme</h3>
+        <div class="srow" data-k="theme latte mocha system dark light"><span class="k">theme<span class="from">Appearance</span></span><span class="v"><select><option>system</option><option>Latte</option><option>Mocha</option></select></span><span class="a"></span></div>
+        <h3>Fonts</h3>
+        <div class="srow" data-k="ui font family"><span class="k">ui font<span class="from">Appearance</span></span><span class="v"><select><option>IBM Plex Sans</option><option>Inter</option><option>system</option></select></span><span class="a"></span></div>
+        <div class="srow" data-k="agent terminal font family mono"><span class="k">agent font<span class="from">Appearance</span></span><span class="v"><select><option>JetBrains Mono</option><option>JetBrainsMono Nerd Font Mono</option><option>Fira Code</option></select></span><span class="a"></span></div>
+        <div class="srow" data-k="font size"><span class="k">font size<span class="from">Appearance</span></span><span class="v"><input type="number" value="13"></span><span class="a"></span></div>
+      </div>
+      <div class="set-sec" data-sec="preferences">
+        <h2>Preferences</h2>
+        <h3>Agent</h3>
+        <div class="srow" data-k="suggest actions chips skills"><span class="k">suggest actions<span class="from">Preferences</span></span><span class="v"><span class="toggle on" role="switch" aria-checked="true" tabindex="0"></span></span><span class="a"></span></div>
+        <h3>Attention thresholds</h3>
+        <div class="srow" data-k="attention review waiting days threshold"><span class="k">review waiting<span class="from">Preferences</span></span><span class="v"><input type="number" value="2"><span class="d">days</span></span><span class="a"></span></div>
+        <div class="srow" data-k="attention due soon days threshold"><span class="k">due soon<span class="from">Preferences</span></span><span class="v"><input type="number" value="3"><span class="d">days</span></span><span class="a"></span></div>
+        <div class="srow" data-k="attention approved unmerged days threshold"><span class="k">approved unmerged<span class="from">Preferences</span></span><span class="v"><input type="number" value="1"><span class="d">days</span></span><span class="a"></span></div>
+        <h3>Git</h3>
+        <div class="srow" data-k="git clone pool path"><span class="k">clone pool<span class="from">Preferences</span></span><span class="v">~/worktrees/main</span><span class="a"><button class="quiet">change</button></span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  function showTab(name){
+    $$('.tabs [role=tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===name)));
+    $$('.pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
+    $('#side [data-side=files]').textContent = name==='editor'?'explorer':'files';
+  }
+  $$('[data-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+  $$('[data-side]').forEach(b=>b.addEventListener('click',()=>{
+    $$('[data-side]').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+    $('#side').dataset.mode=b.dataset.side;
+  }));
+  $$('#viewSeg button').forEach(b=>b.addEventListener('click',()=>{
+    $$('#viewSeg button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    $('#pane-diff').classList.toggle('split',b.dataset.view==='split');
+  }));
+  $('#manualToggle').addEventListener('click',e=>{const m=$('#manual');m.classList.toggle('collapsed');e.currentTarget.textContent=m.classList.contains('collapsed')?'▸':'▾';});
+  $('#feedToggle').addEventListener('click',e=>{const f=$('#feed');f.classList.toggle('collapsed');e.currentTarget.textContent=f.classList.contains('collapsed')?'▸':'▾';});
+  $('#sideToggle').addEventListener('click',()=>$('#app').classList.toggle('side-folded'));
+  $$('.tree .d[data-folder]').forEach(d=>d.addEventListener('click',()=>{
+    const g=$('.tree .g[data-of="'+d.dataset.folder+'"]'); const closed=g.classList.toggle('closed');
+    d.querySelector('.tw').textContent=closed?'▸':'▾'; d.querySelector('.fo').textContent=closed?'▬':'▭';
+  }));
+  $$('[data-span]').forEach(b=>b.addEventListener('click',()=>$('#app').classList.toggle('span')));
+  function showBoard(on){ $('#app').classList.toggle('board',on); $('#railBoard').classList.toggle('sel',on); $$('.rail .item').forEach(i=>i.classList.toggle('selected',!on && i.dataset.sel==='1')); }
+  $('#railBoard').addEventListener('click',()=>showBoard(true));
+  $$('.rail .item').forEach((i,k)=>{ if(i.classList.contains('selected')) i.dataset.sel='1'; i.addEventListener('click',()=>{ $$('.rail .item').forEach(x=>{x.dataset.sel='0';x.classList.remove('selected')}); i.dataset.sel='1'; i.classList.add('selected'); showBoard(false); }); });
+  $$('[data-open-session]').forEach(t=>t.addEventListener('click',()=>showBoard(false)));
+  $$('.bi .tw').forEach(t=>t.addEventListener('click',e=>{ e.stopPropagation(); const bi=t.closest('.bi'); const open=bi.classList.toggle('open'); t.textContent=open?'▾':'▸'; }));
+
+
+  // review sheet
+  $$('[data-review]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); showBoard(false); $('#sheet').classList.add('open'); }));
+  $$('[data-sheet-close]').forEach(b=>b.addEventListener('click',()=>$('#sheet').classList.remove('open')));
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') $('#sheet').classList.remove('open'); });
+
+  // settings
+  const openSettings=on=>{ document.body.classList.toggle('in-settings',on); $('#app').classList.toggle('settings-open',on); if(on) $('#setSearch').focus(); };
+  $$('[data-settings-open]').forEach(b=>b.addEventListener('click',()=>openSettings(true)));
+  $$('[data-settings-close]').forEach(b=>b.addEventListener('click',()=>openSettings(false)));
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && document.body.classList.contains('in-settings')) openSettings(false); });
+  $$('.set-nav .sec').forEach(b=>b.addEventListener('click',()=>{ $('#setSearch').value=''; filterSettings(''); $$('.set-nav .sec').forEach(x=>x.setAttribute('aria-selected',String(x===b))); $$('.set-sec').forEach(sec=>sec.classList.toggle('active',sec.dataset.sec===b.dataset.sec)); }));
+  function filterSettings(q){ q=q.trim().toLowerCase(); const body=$('#setBody'); body.classList.toggle('searching',!!q); $$('.srow').forEach(r=>{ const hit=!q || (r.dataset.k+' '+r.textContent).toLowerCase().includes(q); r.classList.toggle('hidden',!!q && !hit); }); }
+  $('#setSearch').addEventListener('input',e=>filterSettings(e.target.value));
+  $$('.toggle').forEach(t=>t.addEventListener('click',()=>{ t.classList.toggle('on'); t.setAttribute('aria-checked',String(t.classList.contains('on'))); }));
+  // timeline: 28 days, today at day 7
+  (function(){
+    const b=$('#tlb'); if(!b) return;
+    const days=28, today=7, w=()=>b.clientWidth, px=d=>d/days*w();
+    const labels={0:'5 Sep',7:'12 Sep · today',14:'19 Sep',21:'26 Sep'};
+    const items=[
+      {t:'Harden Groove: CI gates, security fixes',s:2,e:5,k:'late',l:'overdue 2d'},
+      {t:'Rust rewrite',s:4,e:7,k:'open'},
+      {t:'paxone-staging-gite CNPG migration',s:7,e:15},
+      {t:'external-dns shared Cloudflare token 429s',p:19,k:'soon',l:'due in 12d'},
+      {t:'Kubernetes access v2 · epics',s:21,e:31},
+      {t:'1clickreview security pass',s:9,e:12},
+    ];
+    function draw(){
+      b.innerHTML='';
+      for(let d=0; d<days; d++){
+        const dow=(d+5)%7; // 5 Sep 2026 is a Saturday
+        if(dow===5||dow===6){const we=document.createElement('div');we.className='wend';we.style.left=px(d)+'px';we.style.width=px(1)+'px';b.appendChild(we);}
+      }
+      for(let d=0; d<=days; d++){
+        const l=document.createElement('div'); l.className='day'+(d%7===0?' week':''); l.style.left=px(d)+'px'; b.appendChild(l);
+        if(labels[d]!==undefined){const t=document.createElement('div'); t.className='dl'+(d===today?' today':''); t.style.left=px(d)+'px'; t.textContent=labels[d]; b.appendChild(t);}
+      }
+      const tl=document.createElement('div'); tl.className='today'; tl.style.left=px(today)+'px'; b.appendChild(tl);
+      let row=0;
+      items.forEach(it=>{
+        const el=document.createElement('div'); const top=26+row*26; row++;
+        if(it.p!==undefined){ el.className='pt'+(it.k?' '+it.k:''); el.style.left=(px(it.p)-4)+'px'; el.style.top=top+'px'; el.textContent=it.t+(it.l?' · '+it.l:''); }
+        else { el.className='tb'+(it.k?' '+it.k:''); el.style.left=px(it.s)+'px'; el.style.width=Math.max(px(Math.min(it.e,days)-it.s)-2,24)+'px'; el.style.top=top+'px'; el.textContent=it.t+(it.l?' · '+it.l:''); el.title=it.t; }
+        b.appendChild(el);
+      });
+    }
+    draw(); new ResizeObserver(draw).observe(b);
+    $('#tlToggle').addEventListener('click',e=>{const t=$('#tl');t.classList.toggle('collapsed');e.currentTarget.textContent=t.classList.contains('collapsed')?'▸':'▾';});
+  })();
+})();
+</script>

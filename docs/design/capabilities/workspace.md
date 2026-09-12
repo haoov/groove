@@ -27,7 +27,7 @@
 
 ## Git
 
-- actions: status, commit, push, pull, rebase, discard
+- actions: status, stage, unstage, commit, push, pull, rebase, discard
 - conflict resolution
 - commit logs
 

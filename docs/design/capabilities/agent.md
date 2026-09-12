@@ -9,7 +9,7 @@
 ## MCP tools
 
 - reads
-- writes: auto, ask
+- writes: ask, or auto when auto-approve is on
 - scoped to the session
 - harness description
 
