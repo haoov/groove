@@ -19,5 +19,6 @@
 ## Preferences
 
 - suggest actions
+- auto-approve default
 - attention thresholds
 - git

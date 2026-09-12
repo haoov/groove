@@ -92,8 +92,8 @@ Each row:
 
 1. **Type icon** — task, review, explorer.
 2. **Title.**
-3. **Agent status** — `setting up`, `working`, `committed 2 · 5 files`, `idle`,
-   `exited`, `error`. One line, truncated, never wrapped.
+3. **Agent status** — `working`, `committed 2 · 5 files`, `idle`, `exited`,
+   `error`. One line, truncated, never wrapped.
 4. **Agent action, with buttons when it needs one** — `asks to commit`
    **Approve** **Review**.
 5. **Relative time, right-aligned** — how long the agent has waited, or since it
@@ -136,7 +136,7 @@ is the work.
 | Column | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | header: title, status · the agent's PTY · action bar: skills menu, reload, stop turn, the ask with Approve and Review |
+| **Agent pane** | the agent's PTY · action bar: skills menu, reload, the ask with Approve and Review |
 | **Workspace** | header · tabs · the selected tab · the manual section |
 | **Sidebar** | contextual list for the selected tab; folds away |
 
@@ -144,8 +144,9 @@ is the work.
 
 **Header.** One line across the agent pane, the workspace and the sidebar: type
 icon, title, the repo and worktree pickers — the session's selector, which every tab
-and the manual section follow — the selected worktree's MR and CI, then the task
-actions: finish, and a menu with delete and open in provider.
+and the manual section follow — the selected worktree's MR and CI, a refresh button
+that reloads the worktree at once, then the task actions: finish, and a menu with
+delete and open in provider.
 
 **Tabs.** `overview · diff · editor`.
 
@@ -201,6 +202,6 @@ right, one row per setting, hairlines between groups, paths and ids in mono.
 | Setup | environment check — git, gh, glab, claude — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
 | Appearance | theme — Latte, Mocha, system · UI font · agent font · font size |
-| Preferences | suggest actions · attention thresholds in days: review waiting, due soon, approved unmerged · git: clone pool path |
+| Preferences | suggest actions · auto-approve default · attention thresholds in days: review waiting, due soon, approved unmerged · git: clone pool path |
 
 Every change saves to the config file on the spot. No save button.

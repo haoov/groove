@@ -8,9 +8,9 @@ layer above it. Nothing calls up.
 | Layer | Crates | Role |
 |---|---|---|
 | ui | `groove` (bin) · `ui` · `mcp-server` | present, translate input |
-| controllers | `task` · `session` · `review` · `agent` · `git` · `mr` … | one function per action, services in order |
+| controllers | `task` · `session` · `workspace` · `agent` · `config` | one per service; one function per action, services in order |
 | services | `task` · `session` · `workspace` · `agent` · `config` | one per capability |
-| modules | `provider` · `worktree` · `git` · `diff` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` | one concern each |
+| modules | `provider` · `worktree` · `git` · `diff` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
 | base | `db` · `http` · `exec` · `gfx` | one way out of the process each |
 | shared | `types` | the vocabulary: data and pure rules, used from modules up; depends on nothing; the base never touches it |
 
@@ -22,7 +22,7 @@ layer above it. Nothing calls up.
 | **shared** | `types`: the data every layer talks in, and pure rules over it | IO, async, anything with a side effect |
 | **modules** | one concern, on the base: parse a diff, provision a worktree, talk to GitLab; IO exposed only as `async fn` | calls a service; knows a user action; offers a blocking path to IO |
 | **services** | one capability: its slice of `AppState` and the operations on it, assembled from modules | calls another service; orders work across capabilities |
-| **controllers** | one function per user action, grouped by what the user acts on: which services, in what order, what to record, what to undo on failure | touches a module directly; holds state; groups by service |
+| **controllers** | one module per service, one function per user action: which services, in what order, what to record, what to undo on failure | touches a module directly; holds state |
 | **ui** | draws `AppState` as a `Frame`; turns input into a controller call | calls a service; decides an order |
 
 Rules that follow:
@@ -41,12 +41,13 @@ Rules that follow:
       services.agent.start(id)
   ```
 
-- Controllers are grouped by the noun on the screen — task, session, review, agent,
-  git, mr — never by service. A controller that only forwards to one service has no
-  reason to exist.
-- The command id is `controller.function`: `task.open`, `session.close`,
-  `agent.approve`, `git.push`. That one string is the palette entry, the MCP tool
-  name, the keybinding target and the timeline label.
+- Controllers mirror the services: `task`, `session`, `workspace`, `agent`, `config`.
+  A function is the entry point for one action whether it calls one service or four;
+  `session.select_worktree` calls one, `session.open` calls four.
+- The command id is `controller.function`: `task.open`, `session.add_repo`,
+  `agent.approve`, `workspace.push`. That one string is the palette entry, the MCP
+  tool name, the keybinding target and the timeline label. The palette shows a label
+  and a group — *Workspace › Git › Push*; the id is for code and tools.
 - The controllers **are** the API. A function nobody can reach, and a palette entry
   or tool that is not a function, are both defects.
 - `AppState` is the sum of the services' slices, owned on the main thread. A controller
@@ -64,6 +65,7 @@ Rules that follow:
 | | approvals | db |
 | workspace | git (conventions, parsers, actions) | exec |
 | | diff (modes, hunks, blame, expansion) → git, text | exec |
+| | watch (selected worktree) | — |
 | | annotations → forge | db, http |
 | | editor (file ops) → text | — |
 | | text (rope, tree-sitter, transactions) | — |
@@ -104,8 +106,9 @@ One directory per layer under `crates/`.
 | | `timeline` | one log per session |
 | | `skills` | core and user skills, plugin dirs |
 | | `config` | the config file |
+| | `watch` | filesystem watcher on the selected worktree, debounced |
 | services | `task` `session` `workspace` `agent` `config` | one per capability; its slice of `AppState`, its operations, its `Event` variants and `apply` |
-| controllers | `controllers` | one module per noun, one function per action; the `Command` enum and `dispatch`; `Spawner`, `Continuation`, cancellation |
+| controllers | `controllers` | one module per service, one function per action; the `Command` enum and `dispatch`; `Spawner`, `Continuation`, cancellation |
 | ui | `ui` | `frame.rs`, `layout.rs`, `input.rs`, `widget/`, `view/<capability>/` |
 | | `mcp-server` | axum; each tool calls one controller |
 | | `groove` | the binary: winit, event loop, wiring |
@@ -131,8 +134,8 @@ One directory per layer under `crates/`.
 Commands go down as data. Results come back as continuations. Events are the outside
 world. One thread applies all three to `AppState`.
 
-**Command.** An enum grouped by controller: `Command::Task(task::Command::Open { id })`
-is `task.open`. Produced by ui input, the palette, a keybinding or an MCP tool; never
+**Command.** An enum grouped by controller, one variant per function:
+`Command::Task(task::Command::Open { id })` is `task.open`. Produced by ui input, the palette, a keybinding or an MCP tool; never
 a direct call. `dispatch(cmd, &mut AppState, &Services, &Spawner)` is one match that
 calls the controller function.
 
@@ -163,6 +166,7 @@ rule, one place.
 | `Terminal::Damaged { id }` | the reader thread, coalesced per frame |
 | `Approvals::Decided { id, approved }` | the user, on the rail |
 | `Forge::Polled { mr, details, ci, threads }` | the poll |
+| `Workspace::FilesChanged { worktree, paths }` | the filesystem watcher, debounced |
 | `Window::Focus(bool)` | winit |
 | `Config::Changed` | the config file |
 
@@ -250,8 +254,8 @@ Bottom up, one layer at a time, no behaviour change until step 5.
    and `shared/lib/pure`.
 2. Modules: one crate per module from the existing `src-tauri/src/` directories.
 3. Services: one per capability, holding its slice of `AppState`.
-4. Controllers: one module per noun, one function per action; Tauri commands and MCP
-   tools become calls to them. Tauri is now a UI on the controllers.
+4. Controllers: one module per service, one function per action; Tauri commands and
+   MCP tools become calls to them. Tauri is now a UI on the controllers.
 5. UI: the second binary, one surface at a time.
 
 Both binaries depend on the controllers. The database is single-owner, so one runs at a
