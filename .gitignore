@@ -1,6 +1,6 @@
 # Rust / Tauri
 target/
-src-tauri/gen/
+legacy/src-tauri/gen/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
