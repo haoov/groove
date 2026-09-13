@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use groove_controllers::{AppState, Event, TokioSpawner, Window as WindowEvent_, apply, dispatch};
+use groove_controllers::{
+    AppState, Command, Env, Event, TokioSpawner, Window as WindowEvent_, apply, dispatch, session,
+};
 use groove_gfx::{Fonts, Renderer, Size};
-use groove_ui::Ui;
+use groove_ui::{Metrics, Ui};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow};
@@ -20,18 +22,20 @@ pub struct App {
     spawner: TokioSpawner,
     modifiers: ModifiersState,
     failure: Option<groove_gfx::Error>,
+    explore: bool,
 }
 
 impl App {
-    pub fn new(spawner: TokioSpawner) -> Self {
+    pub fn new(spawner: TokioSpawner, env: Env, explore: bool) -> Self {
         Self {
             window: None,
             renderer: None,
-            state: AppState::default(),
+            state: AppState::new(env),
             ui: Ui::default(),
             spawner,
             modifiers: ModifiersState::empty(),
             failure: None,
+            explore,
         }
     }
 
@@ -49,17 +53,49 @@ impl App {
         }
     }
 
+    /// Fits every agent to the pane, then draws.
     fn draw(&mut self) {
-        let (Some(window), Some(renderer)) = (&self.window, &mut self.renderer) else {
+        let Some(metrics) = self.metrics() else {
             return;
         };
-        let frame = groove_ui::view(
-            &self.state,
-            &self.ui,
-            size_of(window),
-            window.scale_factor() as f32,
-        );
-        let _ = renderer.render(&frame);
+        for command in groove_ui::layout_commands(&self.state, metrics) {
+            dispatch(command, &mut self.state, &self.spawner);
+        }
+        let frame = groove_ui::view(&self.state, &self.ui, metrics);
+        if let Some(renderer) = &mut self.renderer {
+            let _ = renderer.render(&frame);
+        }
+    }
+
+    fn metrics(&mut self) -> Option<Metrics> {
+        let (Some(window), Some(renderer)) = (&self.window, &mut self.renderer) else {
+            return None;
+        };
+        let scale = window.scale_factor() as f32;
+        let theme = groove_ui::theme(&self.state);
+        Some(Metrics {
+            size: size_of(window),
+            scale,
+            cell: renderer.fonts().cell_size(theme.mono * scale),
+        })
+    }
+
+    /// Every agent gets SIGTERM before the window goes.
+    fn end_agents(&mut self) {
+        let sessions: Vec<_> = self
+            .state
+            .session
+            .open
+            .iter()
+            .map(|o| o.session.id.clone())
+            .collect();
+        for session in sessions {
+            dispatch(
+                Command::Session(session::Command::Close { session }),
+                &mut self.state,
+                &self.spawner,
+            );
+        }
     }
 
     fn apply(&mut self, event: Event) {
@@ -87,6 +123,10 @@ impl ApplicationHandler<Message> for App {
             }
         }
         self.window = Some(window);
+        if std::mem::take(&mut self.explore) {
+            let open = Command::Session(session::Command::OpenExplorer { title: None });
+            dispatch(open, &mut self.state, &self.spawner);
+        }
     }
 
     fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
@@ -101,13 +141,19 @@ impl ApplicationHandler<Message> for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                self.end_agents();
+                event_loop.exit();
+            }
             WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => self.redraw(),
             WindowEvent::Focused(focused) => {
                 self.apply(Event::Window(WindowEvent_::Focus(focused)))
             }
             WindowEvent::RedrawRequested => self.draw(),
             WindowEvent::ModifiersChanged(mods) => self.modifiers = mods.state(),
+            WindowEvent::KeyboardInput {
+                is_synthetic: true, ..
+            } => {}
             WindowEvent::KeyboardInput { event, .. } => {
                 let Some(input) = input_of(&event, self.modifiers) else {
                     return;

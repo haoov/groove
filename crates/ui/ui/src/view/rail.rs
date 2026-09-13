@@ -41,7 +41,7 @@ pub fn draw(frame: &mut Frame, app: &AppState, theme: &Theme, layout: &Layout) {
             frame,
             status,
             layout.px(12.0),
-            label,
+            &label,
             sans(layout, theme.small, Weight::Regular, color),
         );
         y += 2.0 * layout.row;
@@ -72,18 +72,18 @@ fn status_of(
     app: &AppState,
     open: &groove_controllers::session_service::Open,
     theme: &Theme,
-) -> (&'static str, Color) {
+) -> (String, Color) {
     let p = &theme.palette;
     let Some(activity) = app.agent.activity(&open.session.id) else {
-        return ("idle", p.overlay0);
+        return ("idle".into(), p.overlay0);
     };
     let label = match &activity.status {
-        _ if !activity.asks.is_empty() => "asks",
-        AgentStatus::Working => "working",
-        AgentStatus::Done { .. } => "done",
-        AgentStatus::Idle => "idle",
-        AgentStatus::Exited { .. } => "exited",
-        AgentStatus::Error { .. } => "error",
+        _ if !activity.asks.is_empty() => "asks".into(),
+        AgentStatus::Working => "working".into(),
+        AgentStatus::Done { .. } => "done".into(),
+        AgentStatus::Idle => "idle".into(),
+        AgentStatus::Exited { code } => format!("exited {code}"),
+        AgentStatus::Error { message } => format!("error: {message}"),
     };
     let color = match activity.class() {
         AttentionClass::NeedsYou => p.peach,

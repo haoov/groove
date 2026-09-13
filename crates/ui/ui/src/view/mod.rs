@@ -1,24 +1,57 @@
+pub(crate) mod agent;
 mod palette;
 mod rail;
 mod session;
 
-use groove_controllers::AppState;
-use groove_gfx::{Font, Frame, Size, TextStyle, Theme, Weight};
+use groove_controllers::{AppState, Command};
+use groove_gfx::{CellSize, Font, Frame, Size, TextStyle, Theme, Weight};
 
 use crate::layout::Layout;
 use crate::{Ui, theme};
 
+/// What the renderer measured: the window and the mono cell at the theme's size.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Metrics {
+    pub size: Size,
+    pub scale: f32,
+    pub cell: CellSize,
+}
+
 /// The whole window as a display list, rebuilt every frame from state.
-pub fn view(app: &AppState, ui: &Ui, size: Size, scale: f32) -> Frame {
+pub fn view(app: &AppState, ui: &Ui, metrics: Metrics) -> Frame {
     let theme = theme(app);
-    let layout = Layout::new(size, scale);
-    let mut frame = Frame::new(size, theme.palette.base);
+    let layout = Layout::new(metrics.size, metrics.scale);
+    let mut frame = Frame::new(metrics.size, theme.palette.base);
     rail::draw(&mut frame, app, &theme, &layout);
     session::draw(&mut frame, app, &theme, &layout);
+    agent::draw(&mut frame, app, &theme, &layout);
     if ui.palette_open {
         palette::draw(&mut frame, &theme, &layout);
     }
     frame
+}
+
+/// The commands a new window size implies: every agent's grid to the pane's grid.
+pub fn layout_commands(app: &AppState, metrics: Metrics) -> Vec<Command> {
+    let layout = Layout::new(metrics.size, metrics.scale);
+    let (cols, rows) = layout.agent_grid(metrics.cell);
+    app.agent
+        .agents
+        .iter()
+        .filter(|(_, agent)| {
+            agent
+                .terminal
+                .as_ref()
+                .is_some_and(|t| t.size() != (cols, rows))
+        })
+        .map(|(session, _)| {
+            Command::Agent(groove_controllers::agent::Command::Resize {
+                session: session.clone(),
+                cols,
+                rows,
+            })
+        })
+        .collect()
 }
 
 pub(crate) fn sans(

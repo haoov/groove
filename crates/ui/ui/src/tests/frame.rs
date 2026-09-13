@@ -1,8 +1,22 @@
 use groove_controllers::AppState;
-use groove_gfx::{Palette, Size};
+use groove_gfx::{CellSize, Palette, Size};
+use groove_types::{Rgb, Screen, ScreenCell};
 
-use crate::input::{Input, Key, Modifiers, handle};
-use crate::{Ui, view};
+use crate::input::{Input, Key, Modifiers, encode, handle};
+use crate::layout::Layout;
+use crate::view::agent::grid_of;
+use crate::{Metrics, Ui, view};
+
+fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
+    Metrics {
+        size: Size::new(w, h),
+        scale,
+        cell: CellSize {
+            width: 8.0 * scale,
+            height: 17.0 * scale,
+        },
+    }
+}
 
 fn texts(frame: &groove_gfx::Frame) -> Vec<String> {
     frame
@@ -17,8 +31,7 @@ fn an_empty_state_draws_the_rail_and_the_hint() {
     let frame = view(
         &AppState::default(),
         &Ui::default(),
-        Size::new(1280, 800),
-        1.0,
+        metrics(1280, 800, 1.0),
     );
     assert_eq!(frame.layers().len(), 1);
     let rail = &frame.layers()[0].quads[0];
@@ -34,26 +47,102 @@ fn hidpi_scales_the_layout() {
     let frame = view(
         &AppState::default(),
         &Ui::default(),
-        Size::new(2560, 1600),
-        2.0,
+        metrics(2560, 1600, 2.0),
     );
     assert_eq!(frame.layers()[0].quads[0].rect.w, 440.0);
     assert_eq!(frame.layers()[0].texts[0].style.size, 24.0);
 }
 
 #[test]
-fn ctrl_k_opens_the_palette_on_its_own_layer_and_escape_closes_it() {
-    let app = AppState::default();
-    let mut ui = Ui::default();
+fn the_agent_pane_grid_follows_the_cell_size() {
+    let layout = Layout::new(Size::new(1280, 800), 1.0);
+    let (cols, rows) = layout.agent_grid(CellSize {
+        width: 8.0,
+        height: 17.0,
+    });
+    let pane = layout.agent;
+    assert_eq!(pane.w, ((1280.0 - 220.0) * 0.45_f32).floor());
+    assert_eq!(cols, ((pane.w - 16.0) / 8.0).floor() as u16);
+    assert_eq!(rows, ((pane.h - 16.0) / 17.0).floor() as u16);
+}
+
+#[test]
+fn a_screen_becomes_a_grid_with_a_swapped_cursor_cell() {
+    let fg = Rgb::hex(0xcdd6f4);
+    let cell = |ch: char| ScreenCell {
+        ch,
+        fg,
+        bg: None,
+        bold: false,
+        spacer: false,
+    };
+    let mut cells = vec![cell(' '); 6];
+    cells[0] = cell('a');
+    cells[1] = ScreenCell {
+        ch: '日',
+        ..cell('日')
+    };
+    cells[2] = ScreenCell {
+        spacer: true,
+        ..cell(' ')
+    };
+    let screen = Screen {
+        cols: 3,
+        rows: 2,
+        cells,
+        cursor: Some((0, 1)),
+    };
+    let grid = grid_of(&screen, 10.0, 20.0, 12.5, Palette::MOCHA.base);
+    assert_eq!((grid.cols, grid.rows), (3, 2));
+    assert_eq!(grid.cell(0, 0).ch, 'a');
+    assert_eq!(grid.cell(2, 0).ch, groove_gfx::WIDE_SPACER);
+    let cursor = grid.cell(0, 1);
+    assert_eq!(cursor.bg, groove_gfx::Color::hex(0xcdd6f4));
+    assert_eq!(cursor.fg, Palette::MOCHA.base);
+}
+
+#[test]
+fn keys_encode_as_a_terminal_sends_them() {
+    let plain = Modifiers::default();
     let ctrl = Modifiers {
         ctrl: true,
-        ..Modifiers::default()
+        ..plain
+    };
+    assert_eq!(encode(Key::Char('a'), plain).unwrap(), b"a");
+    assert_eq!(encode(Key::Char('é'), plain).unwrap(), "é".as_bytes());
+    assert_eq!(encode(Key::Char('c'), ctrl).unwrap(), vec![0x03]);
+    assert_eq!(encode(Key::Enter, plain).unwrap(), b"\r");
+    assert_eq!(encode(Key::Escape, plain).unwrap(), b"\x1b");
+    assert_eq!(encode(Key::Up, plain).unwrap(), b"\x1b[A");
+    assert_eq!(encode(Key::Backspace, plain).unwrap(), b"\x7f");
+    assert_eq!(
+        encode(
+            Key::Tab,
+            Modifiers {
+                shift: true,
+                ..plain
+            }
+        )
+        .unwrap(),
+        b"\x1b[Z"
+    );
+    assert!(encode(Key::Char('1'), ctrl).is_none());
+}
+
+#[test]
+fn chords_are_grooves_and_the_rest_is_the_agents() {
+    let app = AppState::default();
+    let mut ui = Ui::default();
+    let chord = Modifiers {
+        ctrl: true,
+        shift: true,
+        alt: false,
     };
     assert!(
         handle(
             Input::Key {
-                key: Key::Char('k'),
-                mods: ctrl
+                key: Key::Char('P'),
+                mods: chord
             },
             &mut ui,
             &app
@@ -61,8 +150,20 @@ fn ctrl_k_opens_the_palette_on_its_own_layer_and_escape_closes_it() {
         .is_none()
     );
     assert!(ui.palette_open);
-    let frame = view(&app, &ui, Size::new(1280, 800), 1.0);
+    let frame = view(&app, &ui, metrics(1280, 800, 1.0));
     assert_eq!(frame.layers().len(), 2);
+    assert!(
+        handle(
+            Input::Key {
+                key: Key::Char('a'),
+                mods: Modifiers::default()
+            },
+            &mut ui,
+            &app
+        )
+        .is_none(),
+        "a typed key never leaks past the palette"
+    );
     handle(
         Input::Key {
             key: Key::Escape,
@@ -72,4 +173,39 @@ fn ctrl_k_opens_the_palette_on_its_own_layer_and_escape_closes_it() {
         &app,
     );
     assert!(!ui.palette_open);
+
+    let open = handle(
+        Input::Key {
+            key: Key::Char('n'),
+            mods: chord,
+        },
+        &mut ui,
+        &app,
+    )
+    .unwrap();
+    assert_eq!(open.id(), "session.open_explorer");
+    assert!(
+        handle(
+            Input::Key {
+                key: Key::Char('w'),
+                mods: chord
+            },
+            &mut ui,
+            &app
+        )
+        .is_none(),
+        "nothing selected, nothing to close"
+    );
+    assert!(
+        handle(
+            Input::Key {
+                key: Key::Char('a'),
+                mods: Modifiers::default()
+            },
+            &mut ui,
+            &app
+        )
+        .is_none(),
+        "no session, no agent to type into"
+    );
 }

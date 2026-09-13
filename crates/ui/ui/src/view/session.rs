@@ -54,7 +54,7 @@ pub fn draw(frame: &mut Frame, app: &AppState, theme: &Theme, layout: &Layout) {
                 frame,
                 hint,
                 layout.px(12.0),
-                "No session open. Open one from the board.",
+                "No session open. Ctrl+Shift+N starts an explorer.",
                 sans(layout, theme.text, Weight::Regular, p.subtext0),
             );
         }
