@@ -15,6 +15,7 @@ mod repo;
 mod schema;
 mod session;
 mod task;
+mod terminal;
 mod time;
 mod timeline;
 
@@ -49,5 +50,6 @@ pub use schema::{
 };
 pub use session::{Session, SessionKind, SessionState};
 pub use task::{ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary};
+pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};

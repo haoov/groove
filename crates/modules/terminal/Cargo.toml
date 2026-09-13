@@ -1,0 +1,15 @@
+[package]
+name = "groove-terminal"
+description = "A terminal: alacritty's grid and scrollback over exec::pty, a Screen out"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-exec = { path = "../../base/exec" }
+groove-types = { path = "../../shared/types" }
+alacritty_terminal.workspace = true
+
+[lints]
+workspace = true

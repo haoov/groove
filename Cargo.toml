@@ -27,6 +27,7 @@ bytemuck = { version = "1", features = ["derive"] }
 pollster = "1"
 png = "0.18"
 winit = "0.30"
+alacritty_terminal = { version = "0.26", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

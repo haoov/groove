@@ -19,7 +19,7 @@ pub struct PtySpec {
 /// The handle kept by the owner: write, resize, terminate.
 pub struct Pty {
     writer: Box<dyn Write + Send>,
-    master: Box<dyn MasterPty>,
+    master: Box<dyn MasterPty + Send>,
     pid: Option<u32>,
 }
 
