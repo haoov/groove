@@ -6,6 +6,9 @@ mod error;
 mod redact;
 mod response;
 
+#[cfg(test)]
+mod tests;
+
 pub use auth::TokenSource;
 pub use client::{Client, Request};
 pub use error::{Error, Result};

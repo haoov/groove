@@ -5,5 +5,8 @@ pub mod pty;
 mod redact;
 pub mod run;
 
+#[cfg(test)]
+mod tests;
+
 pub use error::{Error, Result};
 pub use redact::redact;
