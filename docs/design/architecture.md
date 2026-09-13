@@ -176,6 +176,10 @@ rule, one place.
 into the grid and sets a dirty flag; one `Terminal::Damaged` per frame at most. Hook
 bursts on file-editing tools are coalesced before they become a refresh.
 
+**Keystrokes never touch a device on the main thread.** The terminal module's writer
+thread owns the PTY's input side; `agent.send` and `agent.resize` queue on its channel
+and return. The channel keeps the order typed.
+
 **Redraw.** `ControlFlow::Wait`. A dirty flag set by any continuation or `apply`;
 one `request_redraw`; one `view(&AppState) → Frame` per batch.
 

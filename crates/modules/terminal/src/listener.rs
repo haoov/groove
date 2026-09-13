@@ -1,26 +1,27 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::mpsc::Sender;
 
 use alacritty_terminal::event::{Event, EventListener};
-use groove_exec::pty::Pty;
 use groove_types::AnsiPalette;
 
 use crate::color;
 use crate::size::Size;
+use crate::writer::Op;
 
 /// Answers the terminal's questions on the reader thread; everything else is dropped.
 pub(crate) struct Listener {
-    pty: Arc<Mutex<Pty>>,
+    ops: Sender<Op>,
     size: Arc<Size>,
     palette: AnsiPalette,
 }
 
 impl Listener {
-    pub fn new(pty: Arc<Mutex<Pty>>, size: Arc<Size>, palette: AnsiPalette) -> Self {
-        Self { pty, size, palette }
+    pub fn new(ops: Sender<Op>, size: Arc<Size>, palette: AnsiPalette) -> Self {
+        Self { ops, size, palette }
     }
 
     fn reply(&self, text: &str) {
-        let _ = crate::lock(&self.pty).write(text.as_bytes());
+        let _ = self.ops.send(Op::Write(text.as_bytes().to_vec()));
     }
 }
 

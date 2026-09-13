@@ -8,6 +8,8 @@ publish.workspace = true
 
 [dependencies]
 groove-types = { path = "../../shared/types" }
+groove-terminal = { path = "../../modules/terminal" }
+groove-agent-launch = { path = "../../modules/agent-launch" }
 
 [lints]
 workspace = true

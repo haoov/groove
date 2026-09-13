@@ -64,13 +64,24 @@ impl Pty {
         self.master.resize(size(rows, cols)).map_err(pty_error)
     }
 
+    pub fn pid(&self) -> Option<u32> {
+        self.pid
+    }
+
     /// Asks the child to end with SIGTERM.
     pub fn terminate(&self) -> Result<()> {
-        let Some(pid) = self.pid else { return Ok(()) };
-        let pid = nix::unistd::Pid::from_raw(pid as i32);
-        nix::sys::signal::kill(pid, nix::sys::signal::Signal::SIGTERM)
-            .map_err(|e| Error::Pty(e.to_string()))
+        match self.pid {
+            Some(pid) => terminate(pid),
+            None => Ok(()),
+        }
     }
+}
+
+/// SIGTERM to a child by pid. Never blocks.
+pub fn terminate(pid: u32) -> Result<()> {
+    let pid = nix::unistd::Pid::from_raw(pid as i32);
+    nix::sys::signal::kill(pid, nix::sys::signal::Signal::SIGTERM)
+        .map_err(|e| Error::Pty(e.to_string()))
 }
 
 impl PtyChild {

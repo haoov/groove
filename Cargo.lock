@@ -1078,6 +1078,8 @@ dependencies = [
 name = "groove-agent-service"
 version = "0.1.0"
 dependencies = [
+ "groove-agent-launch",
+ "groove-terminal",
  "groove-types",
 ]
 
@@ -1098,6 +1100,7 @@ dependencies = [
  "groove-task-service",
  "groove-types",
  "groove-workspace-service",
+ "tempfile",
  "tokio",
 ]
 

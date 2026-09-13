@@ -31,6 +31,13 @@ impl Timestamp {
         self.0
     }
 
+    pub fn now() -> Self {
+        let since_epoch = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        Self(since_epoch.as_secs() as i64)
+    }
+
     /// How long ago this was at `now`; zero when it is in the future.
     pub fn age_at(self, now: Timestamp) -> Duration {
         Duration::from_secs((now.0 - self.0).max(0) as u64)

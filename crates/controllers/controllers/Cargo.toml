@@ -15,5 +15,8 @@ groove-agent-service = { path = "../../services/agent" }
 groove-config-service = { path = "../../services/config" }
 tokio.workspace = true
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true

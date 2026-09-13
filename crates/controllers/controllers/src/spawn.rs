@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use crate::AppState;
 
@@ -17,6 +18,9 @@ pub trait Deliver: Send + Sync {
 
 pub trait Spawner {
     fn spawn(&self, job: Job);
+
+    /// For threads a job starts, so they can report back the same way.
+    fn sink(&self) -> Arc<dyn Deliver>;
 }
 
 /// Runs jobs on the tokio pool and delivers their continuations.
@@ -36,12 +40,29 @@ impl Spawner for TokioSpawner {
         let sink = self.sink.clone();
         self.runtime.spawn(async move { sink.deliver(job.await) });
     }
+
+    fn sink(&self) -> Arc<dyn Deliver> {
+        self.sink.clone()
+    }
+}
+
+/// Continuations waiting for `drain`.
+#[derive(Default)]
+struct Pending(Mutex<Vec<Continuation>>);
+
+impl Deliver for Pending {
+    fn deliver(&self, continuation: Continuation) {
+        self.0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(continuation);
+    }
 }
 
 /// Runs each job to completion on the spot and keeps its continuation for `drain`.
 pub struct SyncSpawner {
     runtime: tokio::runtime::Runtime,
-    pending: Mutex<Vec<Continuation>>,
+    pending: Arc<Pending>,
 }
 
 impl SyncSpawner {
@@ -50,13 +71,19 @@ impl SyncSpawner {
             runtime: tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()?,
-            pending: Mutex::new(Vec::new()),
+            pending: Arc::default(),
         })
     }
 
-    /// Applies every finished continuation, in order.
+    /// Applies every continuation that has arrived, in order.
     pub fn drain(&self, state: &mut AppState) {
-        let pending = std::mem::take(&mut *self.pending.lock().unwrap_or_else(|e| e.into_inner()));
+        let pending = std::mem::take(
+            &mut *self
+                .pending
+                .0
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner),
+        );
         for continuation in pending {
             continuation(state);
         }
@@ -66,9 +93,29 @@ impl SyncSpawner {
 impl Spawner for SyncSpawner {
     fn spawn(&self, job: Job) {
         let continuation = self.runtime.block_on(job);
-        self.pending
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .push(continuation);
+        self.pending.deliver(continuation);
+    }
+
+    fn sink(&self) -> Arc<dyn Deliver> {
+        self.pending.clone()
+    }
+}
+
+/// A callback that delivers at most one continuation until that one has run.
+pub fn coalesced(
+    sink: Arc<dyn Deliver>,
+    make: impl Fn() -> Continuation + Send + Sync + 'static,
+) -> impl Fn() + Send + Sync {
+    let in_flight = Arc::new(AtomicBool::new(false));
+    move || {
+        if in_flight.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let flag = in_flight.clone();
+        let continuation = make();
+        sink.deliver(Box::new(move |state: &mut AppState| {
+            flag.store(false, Ordering::Release);
+            continuation(state);
+        }));
     }
 }
