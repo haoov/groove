@@ -243,7 +243,7 @@ tree-sitter.
 Requirements:
 
 - Golden images run on software Vulkan (`mesa-vulkan-drivers`, lavapipe) in CI.
-- The test font is vendored in the repo. JetBrains Mono, OFL.
+- The fonts are vendored in the repo: IBM Plex Sans and IBM Plex Mono, OFL.
 
 - [ ] Prove lavapipe on `ubuntu-latest`.
 - [ ] A chrome probe: one real pane drawn with owned primitives.

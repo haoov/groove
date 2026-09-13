@@ -1,0 +1,21 @@
+[package]
+name = "groove-gfx"
+description = "The GPU: one device, the glyph atlas, quads, the cell grid and the theme"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+wgpu.workspace = true
+glyphon.workspace = true
+bytemuck.workspace = true
+pollster.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+png.workspace = true
+winit.workspace = true
+
+[lints]
+workspace = true
