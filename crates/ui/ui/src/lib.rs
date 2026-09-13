@@ -3,6 +3,7 @@
 
 pub mod input;
 pub mod layout;
+pub mod palette;
 mod theme;
 mod view;
 mod widget;
@@ -24,6 +25,6 @@ pub enum Focus {
 /// What is the ui's alone: focus, folds, the palette. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Ui {
-    pub palette_open: bool,
+    pub palette: Option<palette::Palette>,
     pub focus: Focus,
 }

@@ -25,8 +25,8 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics) -> Frame {
     rail::draw(&mut frame, app, &theme, &layout);
     session::draw(&mut frame, app, &theme, &layout);
     agent::draw(&mut frame, app, &theme, &layout);
-    if ui.palette_open {
-        palette::draw(&mut frame, &theme, &layout);
+    if let Some(palette) = &ui.palette {
+        palette::draw(&mut frame, app, palette, &theme, &layout);
     }
     frame
 }

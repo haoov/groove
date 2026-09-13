@@ -149,7 +149,7 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
         )
         .is_none()
     );
-    assert!(ui.palette_open);
+    assert!(ui.palette.is_some());
     let frame = view(&app, &ui, metrics(1280, 800, 1.0));
     assert_eq!(frame.layers().len(), 2);
     assert!(
@@ -172,7 +172,7 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
         &mut ui,
         &app,
     );
-    assert!(!ui.palette_open);
+    assert!(ui.palette.is_none());
 
     let open = handle(
         Input::Key {

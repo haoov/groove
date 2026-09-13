@@ -3,6 +3,7 @@
 
 use groove_controllers::{AppState, Command, agent, session};
 
+use crate::palette::Palette;
 use crate::{Focus, Ui};
 
 /// A key as the ui reads it, free of the window library's types.
@@ -45,11 +46,16 @@ pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Option<Command> {
     if mods.ctrl && mods.shift {
         return chord(key, ui, app);
     }
-    if ui.palette_open {
+    if let Some(palette) = &mut ui.palette {
         if key == Key::Escape {
-            ui.palette_open = false;
+            ui.palette = None;
+            return None;
         }
-        return None;
+        let command = palette.key(key, app);
+        if command.is_some() {
+            ui.palette = None;
+        }
+        return command;
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app),
@@ -61,7 +67,10 @@ pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Option<Command> {
 fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
     match key {
         Key::Char('p' | 'P') => {
-            ui.palette_open = !ui.palette_open;
+            ui.palette = match ui.palette {
+                Some(_) => None,
+                None => Some(Palette::default()),
+            };
             None
         }
         Key::Char('n' | 'N') => Some(Command::Session(session::Command::OpenExplorer {
