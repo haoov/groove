@@ -1,0 +1,13 @@
+[package]
+name = "groove-agent-service"
+description = "The agent capability: one activity per open session, its asks and auto-approve flag"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

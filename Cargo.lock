@@ -1028,6 +1028,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove"
+version = "0.1.0"
+dependencies = [
+ "groove-controllers",
+ "groove-gfx",
+ "groove-ui",
+ "tokio",
+ "winit",
+]
+
+[[package]]
+name = "groove-agent-service"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+]
+
+[[package]]
+name = "groove-config-service"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+]
+
+[[package]]
+name = "groove-controllers"
+version = "0.1.0"
+dependencies = [
+ "groove-agent-service",
+ "groove-config-service",
+ "groove-session-service",
+ "groove-task-service",
+ "groove-types",
+ "groove-workspace-service",
+ "tokio",
+]
+
+[[package]]
 name = "groove-db"
 version = "0.1.0"
 dependencies = [
@@ -1074,11 +1112,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-session-service"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+]
+
+[[package]]
+name = "groove-task-service"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+]
+
+[[package]]
 name = "groove-types"
 version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "groove-ui"
+version = "0.1.0"
+dependencies = [
+ "groove-controllers",
+ "groove-gfx",
+ "groove-types",
+]
+
+[[package]]
+name = "groove-workspace-service"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
 ]
 
 [[package]]

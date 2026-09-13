@@ -21,7 +21,7 @@ pub use cell::{Cell, CellGrid, WIDE_SPACER};
 pub use color::Color;
 pub use error::{Error, Result};
 pub use fonts::{CellSize, Fonts};
-pub use frame::{Font, Frame, Quad, TextRun, TextStyle, Weight};
+pub use frame::{Font, Frame, Layer, Quad, TextRun, TextStyle, Weight};
 pub use geom::{Rect, Size};
 pub use renderer::Renderer;
 pub use theme::{Palette, Theme};

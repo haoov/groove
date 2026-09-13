@@ -1,0 +1,27 @@
+use groove_ui::input::{Input, Key, Modifiers};
+use winit::event::{ElementState, KeyEvent};
+use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
+
+/// A pressed key as the ui reads it; releases and unmapped keys are nothing.
+pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
+    if event.state != ElementState::Pressed {
+        return None;
+    }
+    let key = match &event.logical_key {
+        WinitKey::Named(NamedKey::Escape) => Key::Escape,
+        WinitKey::Named(NamedKey::Enter) => Key::Enter,
+        WinitKey::Named(NamedKey::Tab) => Key::Tab,
+        WinitKey::Named(NamedKey::ArrowUp) => Key::Up,
+        WinitKey::Named(NamedKey::ArrowDown) => Key::Down,
+        WinitKey::Character(text) => Key::Char(text.chars().next()?),
+        _ => return None,
+    };
+    Some(Input::Key {
+        key,
+        mods: Modifiers {
+            ctrl: mods.control_key(),
+            shift: mods.shift_key(),
+            alt: mods.alt_key(),
+        },
+    })
+}

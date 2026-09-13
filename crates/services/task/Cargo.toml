@@ -1,0 +1,13 @@
+[package]
+name = "groove-task-service"
+description = "The task capability: the task list, its properties and bodies, the attention fold"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

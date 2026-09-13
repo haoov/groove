@@ -1,0 +1,17 @@
+[package]
+name = "groove"
+description = "The binary: the window, the event loop, the wiring"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-controllers = { path = "../../controllers/controllers" }
+groove-gfx = { path = "../../base/gfx" }
+groove-ui = { path = "../ui" }
+tokio.workspace = true
+winit.workspace = true
+
+[lints]
+workspace = true

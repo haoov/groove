@@ -115,7 +115,6 @@ One directory per layer under `crates/`.
 | ui | `ui` | `frame.rs`, `layout.rs`, `input.rs`, `widget/`, `view/<capability>/` |
 | | `mcp-server` | axum; each tool calls one controller |
 | | `groove` | the binary: winit, event loop, wiring |
-| | `groove-tauri` | the existing app on the same services; temporary, removed at parity |
 
 `ui` never calls `gfx` directly; it emits a `Frame`.
 
@@ -250,19 +249,25 @@ Requirements:
 
 ## Migration
 
-Bottom up, one layer at a time, no behaviour change until step 5.
+The base and `types` first, then the spine, then one vertical slice at a time. A
+module lands with its first consumer and only as wide as that consumer needs.
 
-1. Base and shared: split `core/db` and `core/http` into their crates; `core/git/run.rs`
-   and `core/pty` into `exec`; `gfx` from the probe; `types` from the scattered models
-   and `shared/lib/pure`.
-2. Modules: one crate per module from the existing `src-tauri/src/` directories.
-3. Services: one per capability, holding its slice of `AppState`.
-4. Controllers: one module per service, one function per action; Tauri commands and
-   MCP tools become calls to them. Tauri is now a UI on the controllers.
-5. UI: the second binary, one surface at a time.
+1. Base and shared: `db`, `http`, `exec`, `gfx` from the probe; `types` from the
+   scattered models.
+2. The spine: the five services as empty slices, the controllers crate with
+   `AppState`, `Command`, `dispatch`, `Event`, `apply` and the `Spawner`; `ui` with
+   the rail and an empty session surface; the `groove` binary with the loop.
+3. Slices, each ending in the window:
+   1. a session with its agent — `terminal`, `agent-launch`, the agent pane
+   2. sessions and worktrees — `worktree`, the provisioning part of `git`, the rail
+   3. the workspace diff — the rest of `git`, `diff`, `text`, the files and diff tabs
+   4. the board and tasks — `provider`, the three columns, the filter
+   5. MR and forge — `forge`, the header's MR and CI, the review sheet
+   6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`
+   7. settings — `config`, `skills`, `watch`
 
-Both binaries depend on the controllers. The database is single-owner, so one runs at a
-time.
+The layer test in `controllers` reads every crate's manifest and refuses a
+dependency that points up or across the services.
 
 ## Removed at parity
 

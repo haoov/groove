@@ -1,0 +1,13 @@
+[package]
+name = "groove-config-service"
+description = "The config capability: the parsed config file and the last environment check"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

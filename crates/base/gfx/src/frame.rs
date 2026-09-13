@@ -42,7 +42,7 @@ pub struct TextRun {
 
 /// Quads draw first, then text. A later layer draws over an earlier one.
 #[derive(Default)]
-pub(crate) struct Layer {
+pub struct Layer {
     pub quads: Vec<Quad>,
     pub texts: Vec<TextRun>,
     pub grids: Vec<CellGrid>,
@@ -69,6 +69,10 @@ impl Frame {
     /// Everything emitted after this draws over what came before.
     pub fn layer(&mut self) {
         self.layers.push(Layer::default());
+    }
+
+    pub fn layers(&self) -> &[Layer] {
+        &self.layers
     }
 
     pub fn clip(&self) -> Rect {

@@ -1,0 +1,19 @@
+[package]
+name = "groove-controllers"
+description = "The API: AppState, one function per user action, Command and dispatch, Event and apply, the Spawner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+groove-task-service = { path = "../../services/task" }
+groove-session-service = { path = "../../services/session" }
+groove-workspace-service = { path = "../../services/workspace" }
+groove-agent-service = { path = "../../services/agent" }
+groove-config-service = { path = "../../services/config" }
+tokio.workspace = true
+
+[lints]
+workspace = true
