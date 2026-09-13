@@ -159,5 +159,6 @@ any write.
 ## Needs
 
 - [ ] `SessionActivity` in `types`: status, asks, auto-approve, last change, last seen.
+- [ ] `seen_at` and `auto_approve` on the `session_state` row.
 - [ ] Timeline table and its migration.
 - [ ] Hook coalescing window.

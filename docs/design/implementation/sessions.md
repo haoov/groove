@@ -124,6 +124,7 @@ this agent has; stale after a save until reload.
 
 ## Needs
 
+- [ ] `session_state`: one leaf row per session — opened_at, seen_at, auto_approve, selected_worktree_id — so `sessions` is never altered again.
 - [ ] `WorktreeDelivery` in `types` and its fold in the `session` service.
 - [ ] The last-touched worktree per session, from the timeline.
 - [ ] Explorer conversion as one controller over `task`, `session` and `agent`.
