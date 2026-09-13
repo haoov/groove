@@ -1,6 +1,9 @@
 //! The session capability. Its slice of `AppState`, the operations on it, its events.
 
-use groove_types::{Session, SessionId, SessionState, Worktree, WorktreeDelivery, WorktreeId};
+use groove_types::{
+    Session, SessionId, SessionKind, SessionState, Timestamp, Worktree, WorktreeDelivery,
+    WorktreeId,
+};
 
 /// One open session as the rail lists it.
 #[derive(Debug)]
@@ -19,9 +22,63 @@ pub struct State {
 }
 
 impl State {
-    pub fn selected(&self) -> Option<&Open> {
-        let id = self.selected.as_ref()?;
+    pub fn get(&self, id: &SessionId) -> Option<&Open> {
         self.open.iter().find(|o| &o.session.id == id)
+    }
+
+    pub fn selected(&self) -> Option<&Open> {
+        self.get(self.selected.as_ref()?)
+    }
+
+    /// Adds a row and selects it.
+    pub fn open(&mut self, session: Session, now: Timestamp) {
+        let id = session.id.clone();
+        self.open.retain(|o| o.session.id != id);
+        self.open.push(Open {
+            session,
+            state: SessionState {
+                opened_at: Some(now),
+                ..SessionState::default()
+            },
+            worktrees: Vec::new(),
+            delivery: Vec::new(),
+        });
+        self.selected = Some(id);
+    }
+
+    pub fn select(&mut self, id: &SessionId, now: Timestamp) {
+        let Some(open) = self.open.iter_mut().find(|o| &o.session.id == id) else {
+            return;
+        };
+        open.state.seen_at = Some(now);
+        self.selected = Some(id.clone());
+    }
+
+    /// Removes the row; the selection moves to the row that took its place, or the last one.
+    pub fn close(&mut self, id: &SessionId) -> Option<Open> {
+        let at = self.open.iter().position(|o| &o.session.id == id)?;
+        let closed = self.open.remove(at);
+        if self.selected.as_ref() == Some(id) {
+            let next = self.open.get(at).or(self.open.last());
+            self.selected = next.map(|o| o.session.id.clone());
+        }
+        Some(closed)
+    }
+}
+
+/// An explorer: no ticket yet, a title the user gave or the default.
+pub fn explorer(title: Option<&str>, now: Timestamp) -> Session {
+    let short = uuid::Uuid::new_v4().simple().to_string();
+    let title = title
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .unwrap_or("Explorer")
+        .to_string();
+    Session {
+        id: SessionId::new(format!("explorer-{}", &short[..8])),
+        title,
+        kind: SessionKind::Explorer,
+        created_at: now,
     }
 }
 

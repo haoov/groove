@@ -1,7 +1,5 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
-use std::path::PathBuf;
-
 use groove_agent_service::{Event as AgentEvent, LaunchPaths, launch, palette};
 use groove_types::{Session, SessionId, Timestamp};
 
@@ -10,10 +8,9 @@ use crate::{AppState, Continuation, Event, Spawner, apply};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
-    /// `agent.start`: launch the session's agent at `cwd` on a grid of `cols` by `rows`.
+    /// `agent.start`: launch the session's agent at the worktree root on a grid of `cols` by `rows`.
     Start {
         session: SessionId,
-        cwd: PathBuf,
         cols: u16,
         rows: u16,
     },
@@ -44,10 +41,9 @@ pub fn dispatch(command: Command, state: &mut AppState, spawner: &dyn Spawner) {
     match command {
         Command::Start {
             session,
-            cwd,
             cols,
             rows,
-        } => start(state, spawner, session, cwd, (cols, rows)),
+        } => start(state, spawner, session, (cols, rows)),
         Command::End { session } => end(state, &session),
         Command::Send { session, bytes } => send(state, &session, &bytes),
         Command::Resize {
@@ -59,13 +55,8 @@ pub fn dispatch(command: Command, state: &mut AppState, spawner: &dyn Spawner) {
 }
 
 /// The launch runs as a job; its continuation stores the terminal or the error.
-pub fn start(
-    state: &mut AppState,
-    spawner: &dyn Spawner,
-    id: SessionId,
-    cwd: PathBuf,
-    size: (u16, u16),
-) {
+/// Every agent runs at the worktree root: the cwd carries no session.
+pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (u16, u16)) {
     let Some(session) = state
         .session
         .open
@@ -80,6 +71,7 @@ pub fn start(
         launch_dir: state.env.data_dir.join("agent-launch"),
         plugin_dirs: state.env.plugin_dirs.clone(),
     };
+    let cwd = state.config.worktree_root(&state.env.home);
     let palette = palette(state.config.theme());
     let sink = spawner.sink();
     spawner.spawn(Box::pin(async move {

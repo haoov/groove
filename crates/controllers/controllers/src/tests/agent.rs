@@ -1,15 +1,9 @@
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-use std::time::{Duration, Instant};
-
 use groove_session_service::Open;
 use groove_types::{AgentStatus, Session, SessionId, SessionKind, SessionState, Timestamp};
 
 use crate::agent::Command;
-use crate::{AppState, Env, SyncSpawner, dispatch};
-
-const FAKE_CLAUDE: &str =
-    "#!/bin/sh\nprintf 'ready %s\\n' \"$1\"\nread line\nprintf 'got %s\\n' \"$line\"\nexit 7\n";
+use crate::tests::fixture::{self, until};
+use crate::{AppState, SyncSpawner, dispatch};
 
 fn explorer() -> Session {
     Session {
@@ -20,18 +14,9 @@ fn explorer() -> Session {
     }
 }
 
-/// An `AppState` with a fake `claude` under `<home>/.local/bin` and one open explorer.
-fn state(home: &Path) -> AppState {
-    let bin = home.join(".local/bin");
-    std::fs::create_dir_all(&bin).unwrap();
-    let claude = bin.join("claude");
-    std::fs::write(&claude, FAKE_CLAUDE).unwrap();
-    std::fs::set_permissions(&claude, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let mut state = AppState::new(Env {
-        home: home.to_path_buf(),
-        data_dir: home.join("data"),
-        plugin_dirs: vec![],
-    });
+/// The fixture state with one open explorer.
+fn state(home: &std::path::Path) -> AppState {
+    let mut state = fixture::state(home);
     state.session.open.push(Open {
         session: explorer(),
         state: SessionState::default(),
@@ -39,18 +24,6 @@ fn state(home: &Path) -> AppState {
         delivery: vec![],
     });
     state
-}
-
-fn until(spawner: &SyncSpawner, state: &mut AppState, mut done: impl FnMut(&AppState) -> bool) {
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        spawner.drain(state);
-        if done(state) {
-            return;
-        }
-        assert!(Instant::now() < deadline, "timed out");
-        std::thread::sleep(Duration::from_millis(10));
-    }
 }
 
 fn agent_cmd(command: Command) -> crate::Command {
@@ -67,7 +40,6 @@ fn start_send_and_exit_travel_through_the_loop() {
     dispatch(
         agent_cmd(Command::Start {
             session: id.clone(),
-            cwd: home.path().to_path_buf(),
             cols: 40,
             rows: 6,
         }),
@@ -126,7 +98,6 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
     dispatch(
         agent_cmd(Command::Start {
             session: id.clone(),
-            cwd: home.path().to_path_buf(),
             cols: 40,
             rows: 6,
         }),
@@ -173,7 +144,6 @@ fn a_start_for_an_unknown_session_does_nothing() {
     dispatch(
         agent_cmd(Command::Start {
             session: id.clone(),
-            cwd: home.path().to_path_buf(),
             cols: 40,
             rows: 6,
         }),
