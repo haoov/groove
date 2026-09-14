@@ -92,7 +92,7 @@ impl App {
         Some(Metrics {
             size: size_of(window),
             scale,
-            cell: renderer.fonts().cell_size(tokens.mono),
+            cell: renderer.fonts().cell_size(tokens.code),
             tick: self.started.elapsed().as_millis() as u64,
         })
     }

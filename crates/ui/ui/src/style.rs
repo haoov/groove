@@ -9,13 +9,19 @@ use crate::tokens::{SCRIM_ALPHA, Tokens};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     Text,
+    /// Secondary content: a branch, a value.
     Muted,
+    /// A label, a heading, a hint.
     Faint,
+    /// Quiet to the point of being out of the way.
+    Ghost,
     /// Something waits for the user.
     Attention,
     /// Something is happening.
     Working,
     Ok,
+    /// Changed, not yet staged.
+    Warn,
     Bad,
     Accent,
     /// On an accent ground.
@@ -41,39 +47,40 @@ impl Styles {
         let p = &self.palette;
         match role {
             Role::Text => p.text,
-            Role::Muted => p.subtext0,
-            Role::Faint => p.overlay0,
+            Role::Muted => p.subtext1,
+            Role::Faint => p.subtext0,
+            Role::Ghost => p.overlay0,
             Role::Attention => p.peach,
             Role::Working => p.blue,
             Role::Ok => p.green,
+            Role::Warn => p.yellow,
             Role::Bad => p.red,
             Role::Accent => p.lavender,
             Role::Inverse => p.crust,
         }
     }
 
+    /// A surface's name.
     pub fn title(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.title, Weight::SemiBold, role)
+        self.sans(self.tokens.title, Weight::Medium, role)
     }
 
-    pub fn strong(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.text, Weight::SemiBold, role)
-    }
-
-    pub fn label(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.text, Weight::Medium, role)
+    /// A section's name inside a surface; drawn upper case.
+    pub fn heading(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.heading, Weight::Medium, role)
     }
 
     pub fn body(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.text, Weight::Regular, role)
     }
 
-    pub fn small(&self, role: Role) -> TextStyle {
-        self.sans(self.tokens.small, Weight::Regular, role)
+    /// Prose that names something: a tab, a row, a button.
+    pub fn label(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.text, Weight::Medium, role)
     }
 
-    pub fn mono(&self, role: Role) -> TextStyle {
-        self.fixed(Weight::Regular, role)
+    pub fn small(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.small, Weight::Regular, role)
     }
 
     /// The window's own ground.
@@ -109,15 +116,6 @@ impl Styles {
             font: Font::Sans,
             weight,
             size,
-            color: self.color(role),
-        }
-    }
-
-    fn fixed(&self, weight: Weight, role: Role) -> TextStyle {
-        TextStyle {
-            font: Font::Mono,
-            weight,
-            size: self.tokens.mono,
             color: self.color(role),
         }
     }

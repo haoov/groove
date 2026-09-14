@@ -43,12 +43,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
             Some(_) => "nothing to pick",
             None => "no match",
         };
-        let style = ctx.styles.small(Role::Muted);
+        let style = ctx.styles.small(Role::Faint);
         return row(ctx, body, pad, hint, style);
     }
 
     let first = palette.selected.saturating_sub(PALETTE_ROWS - 1);
-    let (group_style, label_style) = (ctx.styles.small(Role::Muted), ctx.styles.label(Role::Text));
+    let (group_style, label_style) = (ctx.styles.small(Role::Faint), ctx.styles.label(Role::Text));
     let at = ctx.tokens.aside_near;
     let items: Vec<Row<'_>> = rows
         .iter()

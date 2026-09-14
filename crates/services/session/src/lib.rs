@@ -6,7 +6,7 @@ use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId,
 };
-pub use service::{Added, Service};
+pub use service::{Added, Contents, Service};
 
 /// One open session as the rail lists it.
 #[derive(Debug)]
@@ -19,6 +19,13 @@ pub struct Open {
 }
 
 impl Open {
+    pub fn delivery_of(&self, worktree: &WorktreeId) -> Option<&WorktreeDelivery> {
+        self.delivery
+            .iter()
+            .find(|(id, _)| id == worktree)
+            .map(|(_, delivery)| delivery)
+    }
+
     pub fn selected_worktree(&self) -> Option<&Worktree> {
         let id = self.state.selected_worktree.as_ref()?;
         self.worktrees.iter().find(|w| &w.id == id)

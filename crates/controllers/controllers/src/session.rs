@@ -159,10 +159,11 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
         let result = service.contents(&id).await;
         Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| match result {
-                Ok((repos, worktrees)) => {
+                Ok(contents) => {
                     if let Some(open) = state.session.get_mut(&id) {
-                        open.repos = repos;
-                        open.worktrees = worktrees;
+                        open.repos = contents.repos;
+                        open.worktrees = contents.worktrees;
+                        open.delivery = contents.delivery;
                         if open.selected_worktree().is_none() {
                             open.state.selected_worktree =
                                 open.worktrees.first().map(|w| w.id.clone());

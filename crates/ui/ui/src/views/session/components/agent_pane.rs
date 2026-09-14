@@ -34,7 +34,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 }
 
 fn note(ctx: &mut Ctx, text: &str) {
-    let style = ctx.styles.body(Role::Muted);
+    let style = ctx.styles.body(Role::Faint);
     let (pad, pane) = (ctx.tokens.md, ctx.layout.agent);
     let rect = Rect::new(pane.x, pane.y + ctx.tokens.sm, pane.w, ctx.tokens.row);
     row(ctx, rect, pad, text, style);

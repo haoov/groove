@@ -7,7 +7,7 @@ use super::status;
 use crate::ctx::Ctx;
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{Row, hairline, list};
+use crate::widget::{Row, after_mark, hairline, list};
 
 /// Opened sessions only, in the order opened. The Board row above, the feed below.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -50,7 +50,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         })
         .collect();
     let title = ctx.styles.label(Role::Text);
-    let second_line = pad + ctx.tokens.icon + ctx.tokens.sm;
+    let second_line = after_mark(ctx, pad);
     let mut rows = Vec::with_capacity(sessions.len() * 2);
     for (session, mark, state, role) in &sessions {
         rows.push(Row::new(pad, session, title).mark(*mark));
@@ -66,14 +66,14 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         Rect::new(0.0, footer.y - row_height, width, row_height),
         line,
     );
-    let settings = Row::new(pad, "settings", ctx.styles.small(Role::Muted)).mark(Mark::Settings);
+    let settings = Row::new(pad, "settings", ctx.styles.small(Role::Faint)).mark(Mark::Settings);
     list(ctx, footer, &[settings], None);
 }
 
 /// The row's second line and its role: state is colour, nothing else is.
 fn status_of(app: &AppState, open: &Open) -> (String, Role) {
     let Some(activity) = app.agent.activity(&open.session.id) else {
-        return ("idle".into(), Role::Faint);
+        return ("idle".into(), Role::Ghost);
     };
     let label = match &activity.status {
         _ if !activity.asks.is_empty() => "asks".into(),
@@ -87,7 +87,7 @@ fn status_of(app: &AppState, open: &Open) -> (String, Role) {
         AttentionClass::NeedsYou => Role::Attention,
         AttentionClass::Moving => Role::Working,
         AttentionClass::ActWhenYouLook => Role::Text,
-        AttentionClass::Quiet => Role::Faint,
+        AttentionClass::Quiet => Role::Ghost,
     };
     (label, role)
 }

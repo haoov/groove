@@ -13,19 +13,29 @@ pub enum Icon {
     Gear,
     /// Three quarters of a ring, for what is in flight.
     Notch,
+    Cube,
+    ArrowUp,
+    ArrowDown,
+    Plus,
+    Dot,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 6] = [
+    pub(crate) const ALL: [Icon; 11] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
         Icon::Kanban,
         Icon::Gear,
         Icon::Notch,
+        Icon::Cube,
+        Icon::ArrowUp,
+        Icon::ArrowDown,
+        Icon::Plus,
+        Icon::Dot,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -36,6 +46,11 @@ impl Icon {
             Icon::Kanban => include_bytes!("../../../../assets/icons/kanban.svg"),
             Icon::Gear => include_bytes!("../../../../assets/icons/gear.svg"),
             Icon::Notch => include_bytes!("../../../../assets/icons/circle-notch.svg"),
+            Icon::Cube => include_bytes!("../../../../assets/icons/cube.svg"),
+            Icon::ArrowUp => include_bytes!("../../../../assets/icons/arrow-up.svg"),
+            Icon::ArrowDown => include_bytes!("../../../../assets/icons/arrow-down.svg"),
+            Icon::Plus => include_bytes!("../../../../assets/icons/plus.svg"),
+            Icon::Dot => include_bytes!("../../../../assets/icons/circle-fill.svg"),
         }
     }
 

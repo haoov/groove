@@ -54,7 +54,11 @@ fn hidpi_scales_the_layout() {
         &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers()[0].quads[0].rect.w, 440.0);
-    assert_eq!(frame.layers()[0].texts[0].style.size, 24.0);
+    assert_eq!(
+        frame.layers()[0].texts[0].style.size,
+        26.0,
+        "13 logical, doubled"
+    );
 }
 
 #[test]

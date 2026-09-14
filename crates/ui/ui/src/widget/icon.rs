@@ -5,10 +5,19 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::tokens::SPINNER_MS;
 
-/// An icon box of the token size, centred vertically in `row`, at `x`.
-pub fn box_in(ctx: &Ctx, row: Rect, x: f32) -> Rect {
-    let size = ctx.tokens.icon;
+/// A square box of `size`, centred vertically in `row`, at `x`.
+pub fn box_in(row: Rect, x: f32, size: f32) -> Rect {
     Rect::new(x, row.y + (row.h - size) / 2.0, size, size)
+}
+
+/// A leading icon in `row` at `x`, the icon size.
+pub fn leading(ctx: &Ctx, row: Rect, x: f32) -> Rect {
+    box_in(row, x, ctx.tokens.icon)
+}
+
+/// Where a row's text starts when a mark leads it at `indent`.
+pub fn after_mark(ctx: &Ctx, indent: f32) -> f32 {
+    indent + ctx.tokens.icon + ctx.tokens.sm
 }
 
 /// An icon in `rect`, upright, in the role's colour.

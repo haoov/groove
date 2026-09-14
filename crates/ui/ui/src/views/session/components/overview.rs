@@ -1,61 +1,59 @@
 use groove_controllers::AppState;
+use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 
+use super::worktree_row;
 use crate::ctx::Ctx;
+use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{Row, list, row, tabs};
+use crate::widget::{Row, list, row};
 
-/// The overview tab: the repos, each with its worktrees as rows.
-pub fn draw(ctx: &mut Ctx, app: &AppState) {
+/// The overview tab: the properties, then the repos with their worktrees, then the body.
+pub fn draw(ctx: &mut Ctx, app: &AppState, area: Rect) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let area = ctx.layout.workspace;
-    let strip = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
-    tabs(ctx, strip, &["overview"], 0);
+    let y = section(ctx, area, area.y, "Repos and worktrees");
+    repos(ctx, open, area, y);
+}
 
-    let body = Rect::new(
-        area.x,
-        strip.bottom() + ctx.tokens.sm,
-        area.w,
-        area.h - ctx.tokens.row,
-    );
+/// A section's name, and the y its content starts at.
+fn section(ctx: &mut Ctx, area: Rect, y: f32, title: &str) -> f32 {
+    let style = ctx.styles.heading(Role::Faint);
+    let pad = ctx.tokens.md;
+    let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
+    row(ctx, line, pad, &title.to_uppercase(), style);
+    line.bottom()
+}
+
+/// One block per repo: the repo, then its worktrees.
+fn repos(ctx: &mut Ctx, open: &Open, area: Rect, top: f32) {
+    let pad = ctx.tokens.md;
     if open.repos.is_empty() {
-        let style = ctx.styles.body(Role::Muted);
-        let pad = ctx.tokens.md;
-        let rect = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
-        return row(ctx, rect, pad, "No repos. Add one from the palette.", style);
+        let style = ctx.styles.body(Role::Faint);
+        let line = Rect::new(area.x, top, area.w, ctx.tokens.row);
+        return row(ctx, line, pad, "No repos. Add one from the palette.", style);
     }
-
-    let (name, slug) = (ctx.styles.strong(Role::Text), ctx.styles.small(Role::Muted));
-    let (branch, base) = (ctx.styles.mono(Role::Text), ctx.styles.mono(Role::Muted));
-    let (pad, indent) = (ctx.tokens.md, ctx.tokens.indent);
-    let (at_slug, at_base) = (ctx.tokens.aside_mid, ctx.tokens.aside_far);
-    let mut y = body.y;
+    let (name, slug) = (ctx.styles.label(Role::Text), ctx.styles.small(Role::Faint));
+    let at_slug = ctx.tokens.aside_mid;
+    let mut y = top;
     for repo in &open.repos {
-        let worktrees: Vec<_> = open
-            .worktrees
-            .iter()
-            .filter(|w| w.repo == repo.id)
-            .collect();
-        let bases: Vec<String> = worktrees
-            .iter()
-            .map(|w| {
-                w.base_ref
-                    .as_deref()
-                    .map(|b| format!("→ {b}"))
-                    .unwrap_or_default()
-            })
-            .collect();
-        let mut rows =
-            vec![Row::new(pad, &repo.project, name).aside(at_slug, repo.id.as_str(), slug)];
-        let mut selected = None;
-        for (i, worktree) in worktrees.iter().enumerate() {
-            if open.state.selected_worktree.as_ref() == Some(&worktree.id) {
-                selected = Some(i + 1);
-            }
-            rows.push(Row::new(indent, &worktree.branch, branch).aside(at_base, &bases[i], base));
+        let head = Row::new(pad, &repo.project, name).mark(Mark::Repo).aside(
+            at_slug,
+            repo.id.as_str(),
+            slug,
+        );
+        y = list(
+            ctx,
+            Rect::new(area.x, y, area.w, ctx.tokens.row),
+            &[head],
+            None,
+        );
+        for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
+            let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
+            worktree_row::draw(ctx, line, worktree, open.delivery_of(&worktree.id));
+            y += ctx.tokens.row;
         }
-        y = list(ctx, Rect::new(body.x, y, body.w, body.h), &rows, selected) + ctx.tokens.sm;
+        y += ctx.tokens.sm;
     }
 }

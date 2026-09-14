@@ -3,9 +3,17 @@ use std::path::Path;
 use groove_sessions::Store;
 use groove_types::{
     Error, PoolEntry, Repo, RepoId, Session, SessionId, SessionState, Timestamp, Worktree,
-    WorktreeId, WorktreeSpec, WorktreeStatus,
+    WorktreeDelivery, WorktreeId, WorktreeSpec, WorktreeStatus,
 };
 use groove_worktree::Pool;
+
+/// What a session holds, as recorded and as git reports it.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Contents {
+    pub repos: Vec<Repo>,
+    pub worktrees: Vec<Worktree>,
+    pub delivery: Vec<(WorktreeId, WorktreeDelivery)>,
+}
 
 /// A worktree just made, with what the user should hear about it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,13 +81,30 @@ impl Service {
         Ok(self.store.opened().await?)
     }
 
-    /// A session's repos and worktrees, as recorded.
-    pub async fn contents(&self, id: &SessionId) -> Result<(Vec<Repo>, Vec<Worktree>), Error> {
+    /// A session's repos and worktrees, and what git says about each worktree.
+    /// A worktree whose directory is gone reports no counts rather than failing the load.
+    pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {
         let mut repos = Vec::new();
         for repo_id in self.store.repos_of(id).await? {
             repos.push(self.pool.repo(&repo_id).await?);
         }
-        Ok((repos, self.pool.worktrees_of(id).await?))
+        let worktrees = self.pool.worktrees_of(id).await?;
+        let mut delivery = Vec::with_capacity(worktrees.len());
+        for worktree in &worktrees {
+            let status = self.pool.status(worktree).await.unwrap_or_default();
+            delivery.push((
+                worktree.id.clone(),
+                WorktreeDelivery {
+                    status,
+                    ..WorktreeDelivery::default()
+                },
+            ));
+        }
+        Ok(Contents {
+            repos,
+            worktrees,
+            delivery,
+        })
     }
 
     /// Resolve the name in the pool, or clone a URL into it; record and attach the repo;

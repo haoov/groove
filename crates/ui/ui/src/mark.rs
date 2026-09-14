@@ -13,6 +13,12 @@ pub enum Mark {
     Settings,
     /// Something is in flight; drawn turning.
     Busy,
+    Repo,
+    /// Commits this branch has and origin does not.
+    Ahead,
+    Behind,
+    Staged,
+    Modified,
 }
 
 impl Mark {
@@ -33,6 +39,11 @@ impl Mark {
             Mark::Board => Icon::Kanban,
             Mark::Settings => Icon::Gear,
             Mark::Busy => Icon::Notch,
+            Mark::Repo => Icon::Cube,
+            Mark::Ahead => Icon::ArrowUp,
+            Mark::Behind => Icon::ArrowDown,
+            Mark::Staged => Icon::Plus,
+            Mark::Modified => Icon::Dot,
         }
     }
 }

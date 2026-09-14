@@ -2,7 +2,7 @@ use groove_gfx::{Color, Rect, TextStyle};
 
 use crate::ctx::Ctx;
 use crate::mark::Mark;
-use crate::widget::{box_in, row};
+use crate::widget::{after_mark, leading, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a> {
@@ -57,9 +57,9 @@ pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>
         }
         let mut indent = item.indent;
         if let Some((mark, turn)) = item.mark {
-            let box_ = box_in(ctx, line, line.x + indent);
+            let box_ = leading(ctx, line, line.x + indent);
             ctx.icon(box_, mark, turn, item.style.color);
-            indent += ctx.tokens.icon + ctx.tokens.sm;
+            indent = after_mark(ctx, indent);
         }
         row(ctx, line, indent, item.text, item.style);
         if let Some((at, text, style)) = item.aside {
