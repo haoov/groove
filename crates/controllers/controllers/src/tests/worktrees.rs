@@ -237,9 +237,10 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
     assert!(fresh.errors.is_empty(), "{:?}", fresh.errors);
     let clone = home.path().join("code/main").join(REPO);
     assert!(
-        sh(&clone, &["branch", "--list", "fix/x"]).contains("fix/x"),
-        "the branch stays"
+        !sh(&clone, &["branch", "--list", "fix/x"]).contains("fix/x"),
+        "the local branch goes with the worktree"
     );
+    assert!(fresh.pending.is_empty(), "{:?}", fresh.pending);
 }
 
 #[test]
@@ -288,4 +289,39 @@ fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
         state.errors[1].message
     );
     assert!(state.session.get(&id).unwrap().worktrees.is_empty());
+}
+
+#[test]
+fn a_git_url_is_cloned_into_the_pool_and_a_bad_name_is_not() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+
+    let url = "ssh://git@gitlab.example.com/other/proj.git";
+    dispatch(
+        session_cmd(Command::AddRepo {
+            session: id.clone(),
+            name: url.into(),
+            spec: WorktreeSpec::default(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert_eq!(
+        state.errors.len(),
+        1,
+        "no network: the clone itself fails, not the resolution"
+    );
+    assert_eq!(
+        state.errors[0].kind,
+        groove_types::ErrorKind::Git,
+        "{}",
+        state.errors[0].message
+    );
+    assert!(state.session.get(&id).unwrap().repos.is_empty());
 }

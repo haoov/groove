@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use groove_controllers::{
     AppState, Command, Env, Event, Services, TokioSpawner, Window as WindowEvent_, agent, apply,
@@ -26,6 +27,7 @@ pub struct App {
     modifiers: ModifiersState,
     failure: Option<groove_gfx::Error>,
     explore: bool,
+    started: Instant,
 }
 
 impl App {
@@ -48,6 +50,7 @@ impl App {
             modifiers: ModifiersState::empty(),
             failure: None,
             explore,
+            started: Instant::now(),
         }
     }
 
@@ -73,10 +76,11 @@ impl App {
         for command in groove_ui::layout_commands(&self.state, metrics) {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
-        let frame = groove_ui::view(&self.state, &self.ui, metrics);
-        if let Some(renderer) = &mut self.renderer {
-            let _ = renderer.render(&frame);
-        }
+        let Some(renderer) = &mut self.renderer else {
+            return;
+        };
+        let frame = groove_ui::view(&self.state, &self.ui, metrics, renderer.fonts());
+        let _ = renderer.render(&frame);
     }
 
     fn metrics(&mut self) -> Option<Metrics> {
@@ -84,11 +88,12 @@ impl App {
             return None;
         };
         let scale = window.scale_factor() as f32;
-        let theme = groove_ui::theme(&self.state);
+        let tokens = groove_ui::Tokens::new(scale);
         Some(Metrics {
             size: size_of(window),
             scale,
-            cell: renderer.fonts().cell_size(theme.mono * scale),
+            cell: renderer.fonts().cell_size(tokens.mono),
+            tick: self.started.elapsed().as_millis() as u64,
         })
     }
 
@@ -144,6 +149,18 @@ impl ApplicationHandler<Message> for App {
         }
     }
 
+    /// While a job is in flight the status line moves: one frame every 120 ms.
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.state.pending.is_empty() {
+            event_loop.set_control_flow(ControlFlow::Wait);
+        } else {
+            self.redraw();
+            event_loop.set_control_flow(ControlFlow::WaitUntil(
+                Instant::now() + Duration::from_millis(120),
+            ));
+        }
+    }
+
     fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
         match message {
             Message::Continue(continuation) => {
@@ -173,7 +190,7 @@ impl ApplicationHandler<Message> for App {
                 let Some(input) = input_of(&event, self.modifiers) else {
                     return;
                 };
-                if let Some(command) = groove_ui::input::handle(input, &mut self.ui, &self.state) {
+                for command in groove_ui::input::handle(input, &mut self.ui, &self.state) {
                     dispatch(command, &mut self.state, &self.services, &self.spawner);
                 }
                 self.redraw();

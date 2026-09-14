@@ -1,18 +1,26 @@
 //! The surfaces. `view` reads `AppState` and the ui's own state into a `Frame`;
-//! `input` turns a key or a click into a `Command`. Nothing here talks to a service.
+//! `input` turns a key or a click into commands. Nothing here talks to a service.
+//!
+//! One directory per surface under `views/`, the surface's own file named after it.
 
+mod ctx;
 pub mod input;
-pub mod layout;
+mod layout;
 pub mod palette;
-mod theme;
-mod view;
+mod render;
+mod style;
+mod tokens;
+mod views;
 mod widget;
 
 #[cfg(test)]
 mod tests;
 
-pub use theme::theme;
-pub use view::{Metrics, layout_commands, view};
+pub use ctx::Metrics;
+pub use render::{layout_commands, view};
+pub use style::Role;
+pub use tokens::Tokens;
+pub use views::session::{SessionUi, Tab};
 
 /// Which pane the keyboard belongs to.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +33,7 @@ pub enum Focus {
 /// What is the ui's alone: focus, folds, the palette. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Ui {
-    pub palette: Option<palette::Palette>,
     pub focus: Focus,
+    pub palette: Option<palette::Palette>,
+    pub session: SessionUi,
 }

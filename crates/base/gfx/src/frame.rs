@@ -79,11 +79,20 @@ impl Frame {
         self.clips.last().copied().unwrap_or(self.size.rect())
     }
 
+    /// Narrows the clip to `rect` until `pop_clip`.
+    pub fn push_clip(&mut self, rect: Rect) {
+        self.clips.push(self.clip().intersect(rect));
+    }
+
+    pub fn pop_clip(&mut self) {
+        self.clips.pop();
+    }
+
     /// Runs `f` with drawing clipped to `rect`, inside the current clip.
     pub fn clipped(&mut self, rect: Rect, f: impl FnOnce(&mut Frame)) {
-        self.clips.push(self.clip().intersect(rect));
+        self.push_clip(rect);
         f(self);
-        self.clips.pop();
+        self.pop_clip();
     }
 
     pub fn quad(&mut self, rect: Rect, color: Color) {

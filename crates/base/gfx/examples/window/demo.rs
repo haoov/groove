@@ -1,10 +1,27 @@
 //! The session layout as a frame: rail, header, terminal grid, sidebar, palette.
 
-use groove_gfx::{
-    CellGrid, Color, Font, Frame, Palette, Rect, Renderer, Size, TextStyle, Theme, Weight,
-};
+use groove_gfx::{CellGrid, Color, Font, Frame, Palette, Rect, Renderer, Size, TextStyle, Weight};
 
 const P: Palette = Palette::MOCHA;
+
+/// The demo's own type scale. The app's lives in the ui crate.
+struct Theme {
+    text: f32,
+    small: f32,
+    title: f32,
+    mono: f32,
+}
+
+impl Theme {
+    fn dark() -> Self {
+        Self {
+            text: 12.0,
+            small: 11.0,
+            title: 14.0,
+            mono: 12.5,
+        }
+    }
+}
 const RAIL: f32 = 200.0;
 const HEADER: f32 = 32.0;
 const SIDEBAR: f32 = 280.0;

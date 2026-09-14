@@ -235,7 +235,7 @@ fn explorers_persist_and_the_rail_restores_with_agents() {
         &spawner,
     );
     dispatch(
-        Cmd::Session(Command::DiscardExplorer {
+        Cmd::Session(Command::Delete {
             session: ids[1].clone(),
         }),
         &mut state,

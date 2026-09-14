@@ -40,6 +40,8 @@ pub enum Error {
     ForeignBranch { repo: String, branch: String },
     #[error("the worktree has uncommitted changes; commit or discard first, or force")]
     Dirty,
+    #[error("{branch} has {ahead} commits origin does not; push first, or force")]
+    Unpushed { branch: String, ahead: u32 },
 }
 
 impl From<Error> for groove_types::Error {
@@ -59,7 +61,8 @@ impl From<Error> for groove_types::Error {
             Error::NoOrigin { .. }
             | Error::Exists { .. }
             | Error::ForeignBranch { .. }
-            | Error::Dirty => ErrorKind::Conflict,
+            | Error::Dirty
+            | Error::Unpushed { .. } => ErrorKind::Conflict,
         };
         groove_types::Error::new(kind, e.to_string())
     }

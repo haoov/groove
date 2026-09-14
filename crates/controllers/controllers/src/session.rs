@@ -8,6 +8,9 @@ use crate::{AppState, Continuation, Services, Spawner, agent};
 /// The grid an agent starts on; the pane resizes it on its first frame.
 const FIRST_SIZE: (u16, u16) = (80, 24);
 
+/// A write nobody waits on.
+const NO_PENDING: u64 = 0;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `session.restore`: the rail as it was when the app last closed, agents started.
@@ -16,13 +19,13 @@ pub enum Command {
     OpenExplorer { title: Option<String> },
     /// `session.rename_explorer`
     RenameExplorer { session: SessionId, title: String },
-    /// `session.discard_explorer`: end the agent, delete the session and what it owns.
-    DiscardExplorer { session: SessionId },
+    /// `session.delete`: end the agent, remove the worktrees and their branches, delete the row.
+    Delete { session: SessionId },
     /// `session.select`: make it the current one.
     Select { session: SessionId },
     /// `session.close`: end the agent, drop the row; the session stays on disk.
     Close { session: SessionId },
-    /// `session.add_repo`: a pool repo by name, its first worktree cut.
+    /// `session.add_repo`: a pool repo by name, or a URL to clone, its first worktree cut.
     AddRepo {
         session: SessionId,
         name: String,
@@ -45,7 +48,7 @@ pub enum Command {
         session: SessionId,
         worktree: WorktreeId,
     },
-    /// `session.close_worktree`: the directory goes, the branch stays.
+    /// `session.close_worktree`: the directory and the local branch go; origin keeps its copy.
     CloseWorktree {
         session: SessionId,
         worktree: WorktreeId,
@@ -63,7 +66,7 @@ impl Command {
             Command::Restore => "session.restore",
             Command::OpenExplorer { .. } => "session.open_explorer",
             Command::RenameExplorer { .. } => "session.rename_explorer",
-            Command::DiscardExplorer { .. } => "session.discard_explorer",
+            Command::Delete { .. } => "session.delete",
             Command::Select { .. } => "session.select",
             Command::Close { .. } => "session.close",
             Command::AddRepo { .. } => "session.add_repo",
@@ -91,9 +94,7 @@ pub fn dispatch(
         Command::RenameExplorer { session, title } => {
             rename_explorer(state, services, spawner, &session, &title)
         }
-        Command::DiscardExplorer { session } => {
-            discard_explorer(state, services, spawner, &session)
-        }
+        Command::Delete { session } => delete(state, services, spawner, &session),
         Command::Select { session } => select(state, services, spawner, &session),
         Command::Close { session } => close(state, services, spawner, &session),
         Command::AddRepo {
@@ -105,7 +106,7 @@ pub fn dispatch(
             session,
             repo,
             force,
-        } => remove_repo(services, spawner, &session, &repo, force),
+        } => remove_repo(state, services, spawner, &session, &repo, force),
         Command::AddWorktree {
             session,
             repo,
@@ -118,7 +119,7 @@ pub fn dispatch(
             session,
             worktree,
             force,
-        } => close_worktree(services, spawner, &session, &worktree, force),
+        } => close_worktree(state, services, spawner, &session, &worktree, force),
         Command::ListRepos => list_repos(services, spawner),
         Command::ListBranches { repo } => list_branches(services, spawner, &repo),
     }
@@ -162,8 +163,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                     if let Some(open) = state.session.get_mut(&id) {
                         open.repos = repos;
                         open.worktrees = worktrees;
-                        let still_there = open.selected_worktree().is_some();
-                        if !still_there {
+                        if open.selected_worktree().is_none() {
                             open.state.selected_worktree =
                                 open.worktrees.first().map(|w| w.id.clone());
                         }
@@ -187,7 +187,7 @@ pub fn open_explorer(
     state.session.open(session.clone(), now);
     agent::start(state, spawner, id, FIRST_SIZE);
     let service = services.session.clone();
-    record(spawner, async move {
+    record(spawner, NO_PENDING, async move {
         service.create_explorer(&session, now).await
     });
 }
@@ -201,35 +201,40 @@ pub fn rename_explorer(
 ) {
     state.session.rename(id, title);
     let (service, id, title) = (services.session.clone(), id.clone(), title.to_string());
-    record(spawner, async move {
+    record(spawner, NO_PENDING, async move {
         service.rename_explorer(&id, &title).await
     });
 }
 
-pub fn discard_explorer(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &SessionId,
-) {
+pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     agent::end(state, id);
+    let title = state
+        .session
+        .get(id)
+        .map(|o| o.session.title.clone())
+        .unwrap_or_default();
     state.session.close(id);
+    let pending = state.begin(format!("deleting {title}"));
     let (service, id) = (services.session.clone(), id.clone());
-    record(spawner, async move { service.remove(&id).await });
+    record(spawner, pending, async move { service.remove(&id).await });
 }
 
 pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     let now = Timestamp::now();
     state.session.select(id, now);
     let (service, id) = (services.session.clone(), id.clone());
-    record(spawner, async move { service.set_seen(&id, now).await });
+    record(spawner, NO_PENDING, async move {
+        service.set_seen(&id, now).await
+    });
 }
 
 pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     agent::end(state, id);
     state.session.close(id);
     let (service, id) = (services.session.clone(), id.clone());
-    record(spawner, async move { service.set_opened(&id, None).await });
+    record(spawner, NO_PENDING, async move {
+        service.set_opened(&id, None).await
+    });
 }
 
 pub fn add_repo(
@@ -243,8 +248,14 @@ pub fn add_repo(
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
         return;
     };
+    let verb = if name.contains("://") || name.contains('@') {
+        "cloning"
+    } else {
+        "adding"
+    };
+    let pending = state.begin(format!("{verb} {name}"));
     let (service, name) = (services.session.clone(), name.to_string());
-    added(spawner, async move {
+    added(spawner, pending, async move {
         service.add_repo(&session, &name, &spec, None).await
     });
 }
@@ -260,31 +271,38 @@ pub fn add_worktree(
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
         return;
     };
+    let branch = spec.branch.clone().unwrap_or_default();
+    let pending = state.begin(format!("adding worktree {branch}"));
     let (service, repo) = (services.session.clone(), repo.clone());
-    added(spawner, async move {
+    added(spawner, pending, async move {
         service.add_worktree(&session, &repo, &spec, None).await
     });
 }
 
 pub fn remove_repo(
+    state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     id: &SessionId,
     repo: &RepoId,
     force: bool,
 ) {
+    let pending = state.begin(format!("removing {repo}"));
     let (service, id, repo) = (services.session.clone(), id.clone(), repo.clone());
     spawner.spawn(Box::pin(async move {
         let result = service.remove_repo(&id, &repo, force).await;
         Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match result {
-                Ok(()) => {
-                    if let Some(open) = state.session.get_mut(&id) {
-                        open.remove_repo(&repo);
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(pending);
+                match result {
+                    Ok(()) => {
+                        if let Some(open) = state.session.get_mut(&id) {
+                            open.remove_repo(&repo);
+                        }
+                        persist_selection(state, services, spawner, &id);
                     }
-                    persist_selection(state, services, spawner, &id);
+                    Err(e) => state.errors.push(e),
                 }
-                Err(e) => state.errors.push(e),
             },
         ) as Continuation
     }));
@@ -308,24 +326,29 @@ pub fn select_worktree(
 }
 
 pub fn close_worktree(
+    state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     id: &SessionId,
     worktree: &WorktreeId,
     force: bool,
 ) {
+    let pending = state.begin("closing worktree");
     let (service, id, worktree) = (services.session.clone(), id.clone(), worktree.clone());
     spawner.spawn(Box::pin(async move {
         let result = service.close_worktree(&worktree, force).await;
         Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match result {
-                Ok(closed) => {
-                    if let Some(open) = state.session.get_mut(&id) {
-                        open.remove_worktree(&closed.id);
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(pending);
+                match result {
+                    Ok(closed) => {
+                        if let Some(open) = state.session.get_mut(&id) {
+                            open.remove_worktree(&closed.id);
+                        }
+                        persist_selection(state, services, spawner, &id);
                     }
-                    persist_selection(state, services, spawner, &id);
+                    Err(e) => state.errors.push(e),
                 }
-                Err(e) => state.errors.push(e),
             },
         ) as Continuation
     }));
@@ -358,20 +381,27 @@ pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) 
 }
 
 /// A provisioning result into the session's row: the repo, the worktree, the notes.
-fn added(spawner: &dyn Spawner, work: impl Future<Output = Result<Added, Error>> + Send + 'static) {
+fn added(
+    spawner: &dyn Spawner,
+    pending: u64,
+    work: impl Future<Output = Result<Added, Error>> + Send + 'static,
+) {
     spawner.spawn(Box::pin(async move {
         let result = work.await;
         Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match result {
-                Ok(added) => {
-                    let id = added.worktree.session.clone();
-                    state.notes.extend(added.notes);
-                    if let Some(open) = state.session.get_mut(&id) {
-                        open.add_worktree(added.repo, added.worktree);
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(pending);
+                match result {
+                    Ok(added) => {
+                        let id = added.worktree.session.clone();
+                        state.notes.extend(added.notes);
+                        if let Some(open) = state.session.get_mut(&id) {
+                            open.add_worktree(added.repo, added.worktree);
+                        }
+                        persist_selection(state, services, spawner, &id);
                     }
-                    persist_selection(state, services, spawner, &id);
+                    Err(e) => state.errors.push(e),
                 }
-                Err(e) => state.errors.push(e),
             },
         ) as Continuation
     }));
@@ -384,16 +414,21 @@ fn persist_selection(state: &AppState, services: &Services, spawner: &dyn Spawne
         .get(id)
         .and_then(|o| o.state.selected_worktree.clone());
     let (service, id) = (services.session.clone(), id.clone());
-    record(spawner, async move {
+    record(spawner, NO_PENDING, async move {
         service.set_selected_worktree(&id, selected.as_ref()).await
     });
 }
 
-/// A write whose only result is success or an error for the feed.
-fn record(spawner: &dyn Spawner, write: impl Future<Output = Result<(), Error>> + Send + 'static) {
+/// A write whose only result is success or an error for the feed, ending `pending` when it lands.
+fn record(
+    spawner: &dyn Spawner,
+    pending: u64,
+    write: impl Future<Output = Result<(), Error>> + Send + 'static,
+) {
     spawner.spawn(Box::pin(async move {
         let result = write.await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.end(pending);
             if let Err(e) = result {
                 state.errors.push(e);
             }

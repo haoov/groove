@@ -82,7 +82,8 @@ impl Service {
         Ok((repos, self.pool.worktrees_of(id).await?))
     }
 
-    /// Resolve the name in the pool, record and attach the repo, cut its first worktree.
+    /// Resolve the name in the pool, or clone a URL into it; record and attach the repo;
+    /// cut its first worktree.
     pub async fn add_repo(
         &self,
         session: &Session,
@@ -90,9 +91,7 @@ impl Service {
         spec: &WorktreeSpec,
         tag: Option<&str>,
     ) -> Result<Added, Error> {
-        let entries = self.pool.list();
-        let entry = Pool::resolve(name, &entries)?;
-        let repo = self.pool.register(entry).await?;
+        let repo = self.find_or_clone(name).await?;
         self.store
             .attach_repo(&session.id, &repo.id, Timestamp::now())
             .await?;
@@ -102,6 +101,20 @@ impl Service {
             worktree: done.worktree,
             notes: done.notes,
         })
+    }
+
+    /// A pool clone by name, or a fresh clone when the name is a git URL.
+    async fn find_or_clone(&self, name: &str) -> Result<Repo, Error> {
+        let entries = self.pool.list();
+        match Pool::resolve(name, &entries) {
+            Ok(entry) => Ok(self.pool.register(entry).await?),
+            Err(groove_worktree::Error::UnknownRepo(_))
+                if groove_git::RemoteUrl::parse(name).is_ok() =>
+            {
+                Ok(self.pool.clone(name).await?)
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Another worktree on a repo the session already holds.

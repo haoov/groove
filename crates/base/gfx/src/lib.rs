@@ -24,5 +24,5 @@ pub use fonts::{CellSize, Fonts};
 pub use frame::{Font, Frame, Layer, Quad, TextRun, TextStyle, Weight};
 pub use geom::{Rect, Size};
 pub use renderer::Renderer;
-pub use theme::{Palette, Theme};
+pub use theme::Palette;
 pub use wgpu::SurfaceTarget;

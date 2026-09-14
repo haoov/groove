@@ -20,7 +20,7 @@ pub use command::{Command, dispatch};
 pub use event::{Event, Window, apply};
 pub use services::Services;
 pub use spawn::{Continuation, Deliver, Job, Spawner, SyncSpawner, TokioSpawner, coalesced};
-pub use state::{AppState, Env};
+pub use state::{AppState, Env, Pending};
 
 pub use groove_agent_service as agent_service;
 pub use groove_config_service as config_service;

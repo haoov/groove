@@ -61,4 +61,7 @@ async fn switch_creates_or_checks_out_and_prune_forgets_a_removed_worktree() {
     assert!(sh(&fx.work, &["worktree", "list"]).contains("wt/tmp"));
     git.worktree_prune().await.unwrap();
     assert!(!sh(&fx.work, &["worktree", "list"]).contains("wt/tmp"));
+    git.branch_delete("tmp-2").await.unwrap();
+    assert!(!sh(&fx.work, &["branch", "--list", "tmp-2"]).contains("tmp-2"));
+    assert!(git.branch_delete("tmp-2").await.is_err(), "already gone");
 }

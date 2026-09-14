@@ -1,59 +1,49 @@
+//! The window's regions. Built from the tokens and the window's size, nothing else.
+
 use groove_gfx::{CellSize, Rect, Size};
 
-const RAIL_WIDTH: f32 = 220.0;
-const HEADER_HEIGHT: f32 = 32.0;
-const ROW_HEIGHT: f32 = 26.0;
-const PANE_PAD: f32 = 8.0;
-/// The agent pane's share of the body.
-const AGENT_SHARE: f32 = 0.45;
+use crate::tokens::{AGENT_SHARE, Tokens};
 
-/// The fixed splits of the window, in physical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Layout {
-    pub scale: f32,
+    pub window: Rect,
     pub rail: Rect,
     pub header: Rect,
     pub body: Rect,
     pub agent: Rect,
     pub workspace: Rect,
-    pub row: f32,
 }
 
 impl Layout {
-    pub fn new(size: Size, scale: f32) -> Self {
-        let (w, h) = (size.width as f32, size.height as f32);
-        let rail_w = RAIL_WIDTH * scale;
-        let header_h = HEADER_HEIGHT * scale;
-        let body = Rect::new(rail_w, header_h, w - rail_w, h - header_h);
-        let agent_w = (body.w * AGENT_SHARE).floor();
+    pub fn new(size: Size, tokens: &Tokens) -> Self {
+        let window = size.rect();
+        let body = Rect::new(
+            tokens.rail,
+            tokens.header,
+            window.w - tokens.rail,
+            window.h - tokens.header,
+        );
+        let agent_width = (body.w * AGENT_SHARE).floor();
         Self {
-            scale,
-            rail: Rect::new(0.0, 0.0, rail_w, h),
-            header: Rect::new(rail_w, 0.0, w - rail_w, header_h),
+            window,
+            rail: Rect::new(0.0, 0.0, tokens.rail, window.h),
+            header: Rect::new(tokens.rail, 0.0, window.w - tokens.rail, tokens.header),
             body,
-            agent: Rect::new(body.x, body.y, agent_w, body.h),
-            workspace: Rect::new(body.x + agent_w, body.y, body.w - agent_w, body.h),
-            row: ROW_HEIGHT * scale,
+            agent: Rect::new(body.x, body.y, agent_width, body.h),
+            workspace: Rect::new(body.x + agent_width, body.y, body.w - agent_width, body.h),
         }
     }
 
-    pub fn px(&self, logical: f32) -> f32 {
-        logical * self.scale
-    }
-
     /// Where the agent's grid starts inside its pane.
-    pub fn agent_origin(&self) -> (f32, f32) {
-        (
-            self.agent.x + self.px(PANE_PAD),
-            self.agent.y + self.px(PANE_PAD),
-        )
+    pub fn agent_origin(&self, tokens: &Tokens) -> (f32, f32) {
+        (self.agent.x + tokens.sm, self.agent.y + tokens.sm)
     }
 
     /// The columns and rows the agent pane holds at this cell size.
-    pub fn agent_grid(&self, cell: CellSize) -> (u16, u16) {
-        let pad = self.px(PANE_PAD);
-        let cols = ((self.agent.w - 2.0 * pad) / cell.width).floor().max(1.0);
-        let rows = ((self.agent.h - 2.0 * pad) / cell.height).floor().max(1.0);
+    pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
+        let pad = tokens.sm * 2.0;
+        let cols = ((self.agent.w - pad) / cell.width).floor().max(1.0);
+        let rows = ((self.agent.h - pad) / cell.height).floor().max(1.0);
         (cols as u16, rows as u16)
     }
 }

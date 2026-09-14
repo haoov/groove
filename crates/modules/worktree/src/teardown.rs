@@ -6,32 +6,55 @@ use groove_types::{SessionId, Worktree, WorktreeId};
 use crate::{Error, Pool, Result};
 
 impl Pool {
-    /// Removes the directory and the row; the branch stays. A dirty worktree is refused unless forced.
+    /// Removes the directory, the local branch and the row. Uncommitted or unpushed work
+    /// is refused unless forced; origin's copy of the branch is never touched.
     pub async fn close(&self, id: &WorktreeId, force: bool) -> Result<Worktree> {
         let worktree = self.worktree(id).await?;
-        if !force && is_dirty(&worktree.path).await {
-            return Err(Error::Dirty);
+        if !force {
+            self.refuse_loss(&worktree).await?;
         }
         let stop_at = self.layout.session_dir(worktree.session.as_str());
-        remove_dir(Path::new(&worktree.path), &stop_at)?;
-        if let Ok(repo) = self.repo(&worktree.repo).await {
-            let _ = Git::at(&repo.local_path).worktree_prune().await;
-        }
+        self.tear_down(&worktree, &stop_at).await?;
         self.remove_worktree(id).await?;
         Ok(worktree)
     }
 
-    /// Every worktree directory of the session, then the session directory itself.
+    /// Every worktree of the session, its directory and its branch, then the session directory.
     pub async fn cleanup_session(&self, session: &SessionId) -> Result<()> {
         let dir = self.layout.session_dir(session.as_str());
         for worktree in self.worktrees_of(session).await? {
-            remove_dir(Path::new(&worktree.path), &dir)?;
-            if let Ok(repo) = self.repo(&worktree.repo).await {
-                let _ = Git::at(&repo.local_path).worktree_prune().await;
-            }
+            self.tear_down(&worktree, &dir).await?;
             self.remove_worktree(&worktree.id).await?;
         }
         remove_tree(&dir)
+    }
+
+    async fn refuse_loss(&self, worktree: &Worktree) -> Result<()> {
+        if !Path::new(&worktree.path).is_dir() {
+            return Ok(());
+        }
+        if is_dirty(&worktree.path).await {
+            return Err(Error::Dirty);
+        }
+        let status = self.status(worktree).await?;
+        if status.ahead > 0 {
+            return Err(Error::Unpushed {
+                branch: worktree.branch.clone(),
+                ahead: status.ahead,
+            });
+        }
+        Ok(())
+    }
+
+    /// The directory and its empty parents, the clone's registration, the local branch.
+    async fn tear_down(&self, worktree: &Worktree, stop_at: &Path) -> Result<()> {
+        remove_dir(Path::new(&worktree.path), stop_at)?;
+        if let Ok(repo) = self.repo(&worktree.repo).await {
+            let clone = Git::at(&repo.local_path);
+            let _ = clone.worktree_prune().await;
+            let _ = clone.branch_delete(&worktree.branch).await;
+        }
+        Ok(())
     }
 }
 

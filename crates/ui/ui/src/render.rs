@@ -1,0 +1,52 @@
+//! The one place that owns a `Frame`: the window as a display list, and what a new
+//! window size asks of the agents.
+
+use groove_controllers::{AppState, Command, agent};
+use groove_gfx::{Fonts, Frame};
+
+use crate::Ui;
+use crate::ctx::{Ctx, Metrics};
+use crate::layout::Layout;
+use crate::style::Styles;
+use crate::tokens::Tokens;
+use crate::views::{session, shared};
+
+/// The whole window as a display list, rebuilt every frame from state.
+pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> Frame {
+    let tokens = Tokens::new(metrics.scale);
+    let styles = Styles::new(app.config.theme(), tokens);
+    let mut frame = Frame::new(metrics.size, styles.ground());
+    {
+        let mut ctx = Ctx::new(app, metrics, &mut frame, fonts);
+        shared::rail::draw(&mut ctx, app);
+        session::draw(&mut ctx, app, ui);
+        if let Some(palette) = &ui.palette {
+            shared::palette::draw(&mut ctx, app, palette);
+        }
+    }
+    frame
+}
+
+/// The commands a new window size implies: every agent's grid to the pane's grid.
+pub fn layout_commands(app: &AppState, metrics: Metrics) -> Vec<Command> {
+    let tokens = Tokens::new(metrics.scale);
+    let layout = Layout::new(metrics.size, &tokens);
+    let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
+    app.agent
+        .agents
+        .iter()
+        .filter(|(_, agent)| {
+            agent
+                .terminal
+                .as_ref()
+                .is_some_and(|t| t.size() != (cols, rows))
+        })
+        .map(|(session, _)| {
+            Command::Agent(agent::Command::Resize {
+                session: session.clone(),
+                cols,
+                rows,
+            })
+        })
+        .collect()
+}

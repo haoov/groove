@@ -2,7 +2,7 @@ use crate::tests::fixture::{Fixture, sh};
 use crate::{Error, WorktreeSpec};
 
 #[tokio::test]
-async fn close_refuses_a_dirty_worktree_then_removes_dir_row_and_empty_parents() {
+async fn close_refuses_lost_work_then_removes_dir_row_branch_and_empty_parents() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
     let wt = fx
@@ -17,6 +17,10 @@ async fn close_refuses_a_dirty_worktree_then_removes_dir_row_and_empty_parents()
         fx.pool.close(&wt.id, false).await,
         Err(Error::Dirty)
     ));
+
+    sh(&path, &["commit", "-am", "unpushed"]);
+    let err = fx.pool.close(&wt.id, false).await.unwrap_err();
+    assert!(matches!(err, Error::Unpushed { ahead: 1, .. }), "{err}");
 
     let closed = fx.pool.close(&wt.id, true).await.unwrap();
     assert_eq!(closed.id, wt.id);
@@ -33,12 +37,12 @@ async fn close_refuses_a_dirty_worktree_then_removes_dir_row_and_empty_parents()
     );
     assert!(!sh(&fx.clone, &["worktree", "list"]).contains("try-sqlite-vacuum"));
     assert!(
-        sh(
+        !sh(
             &fx.clone,
             &["branch", "--list", "explorer/try-sqlite-vacuum"]
         )
         .contains("try-sqlite-vacuum"),
-        "the branch stays"
+        "the local branch goes too"
     );
 }
 
@@ -87,6 +91,11 @@ async fn cleanup_removes_every_worktree_and_the_session_dir() {
     assert_eq!(fx.pool.worktrees_of(&fx.session.id).await.unwrap().len(), 2);
     fx.pool.cleanup_session(&fx.session.id).await.unwrap();
     assert!(!fx.root.path().join("worktrees/explorer-ab12cd34").exists());
+    assert_eq!(
+        sh(&fx.clone, &["branch", "--list", "explorer/*"]),
+        "",
+        "every session branch is gone"
+    );
     assert!(
         fx.pool
             .worktrees_of(&fx.session.id)

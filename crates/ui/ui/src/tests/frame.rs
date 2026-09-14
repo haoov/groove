@@ -4,7 +4,8 @@ use groove_types::{Rgb, Screen, ScreenCell};
 
 use crate::input::{Input, Key, Modifiers, encode, handle};
 use crate::layout::Layout;
-use crate::view::agent::grid_of;
+use crate::tokens::Tokens;
+use crate::widget::grid_of;
 use crate::{Metrics, Ui, view};
 
 fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
@@ -15,6 +16,7 @@ fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
             width: 8.0 * scale,
             height: 17.0 * scale,
         },
+        tick: 0,
     }
 }
 
@@ -32,6 +34,7 @@ fn an_empty_state_draws_the_rail_and_the_hint() {
         &AppState::default(),
         &Ui::default(),
         metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers().len(), 1);
     let rail = &frame.layers()[0].quads[0];
@@ -48,6 +51,7 @@ fn hidpi_scales_the_layout() {
         &AppState::default(),
         &Ui::default(),
         metrics(2560, 1600, 2.0),
+        &mut groove_gfx::Fonts::embedded(),
     );
     assert_eq!(frame.layers()[0].quads[0].rect.w, 440.0);
     assert_eq!(frame.layers()[0].texts[0].style.size, 24.0);
@@ -55,11 +59,15 @@ fn hidpi_scales_the_layout() {
 
 #[test]
 fn the_agent_pane_grid_follows_the_cell_size() {
-    let layout = Layout::new(Size::new(1280, 800), 1.0);
-    let (cols, rows) = layout.agent_grid(CellSize {
-        width: 8.0,
-        height: 17.0,
-    });
+    let tokens = Tokens::new(1.0);
+    let layout = Layout::new(Size::new(1280, 800), &tokens);
+    let (cols, rows) = layout.agent_grid(
+        &tokens,
+        CellSize {
+            width: 8.0,
+            height: 17.0,
+        },
+    );
     let pane = layout.agent;
     assert_eq!(pane.w, ((1280.0 - 220.0) * 0.45_f32).floor());
     assert_eq!(cols, ((pane.w - 16.0) / 8.0).floor() as u16);
@@ -138,74 +146,33 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
         shift: true,
         alt: false,
     };
-    assert!(
-        handle(
-            Input::Key {
-                key: Key::Char('P'),
-                mods: chord
-            },
-            &mut ui,
-            &app
-        )
-        .is_none()
-    );
+    let key = |key, mods| Input::Key { key, mods };
+    let opened = handle(key(Key::Char('P'), chord), &mut ui, &app);
+    assert_eq!(opened.len(), 1, "opening refreshes the pool");
+    assert_eq!(opened[0].id(), "session.list_repos");
     assert!(ui.palette.is_some());
-    let frame = view(&app, &ui, metrics(1280, 800, 1.0));
+    let frame = view(
+        &app,
+        &ui,
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
     assert_eq!(frame.layers().len(), 2);
     assert!(
-        handle(
-            Input::Key {
-                key: Key::Char('a'),
-                mods: Modifiers::default()
-            },
-            &mut ui,
-            &app
-        )
-        .is_none(),
+        handle(key(Key::Char('a'), Modifiers::default()), &mut ui, &app).is_empty(),
         "a typed key never leaks past the palette"
     );
-    handle(
-        Input::Key {
-            key: Key::Escape,
-            mods: Modifiers::default(),
-        },
-        &mut ui,
-        &app,
-    );
+    handle(key(Key::Escape, Modifiers::default()), &mut ui, &app);
     assert!(ui.palette.is_none());
 
-    let open = handle(
-        Input::Key {
-            key: Key::Char('n'),
-            mods: chord,
-        },
-        &mut ui,
-        &app,
-    )
-    .unwrap();
-    assert_eq!(open.id(), "session.open_explorer");
+    let open = handle(key(Key::Char('n'), chord), &mut ui, &app);
+    assert_eq!(open[0].id(), "session.open_explorer");
     assert!(
-        handle(
-            Input::Key {
-                key: Key::Char('w'),
-                mods: chord
-            },
-            &mut ui,
-            &app
-        )
-        .is_none(),
+        handle(key(Key::Char('w'), chord), &mut ui, &app).is_empty(),
         "nothing selected, nothing to close"
     );
     assert!(
-        handle(
-            Input::Key {
-                key: Key::Char('a'),
-                mods: Modifiers::default()
-            },
-            &mut ui,
-            &app
-        )
-        .is_none(),
+        handle(key(Key::Char('a'), Modifiers::default()), &mut ui, &app).is_empty(),
         "no session, no agent to type into"
     );
 }

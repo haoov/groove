@@ -38,28 +38,24 @@ pub enum Input {
     Click { x: f32, y: f32 },
 }
 
-/// Mutates the ui's own state on the spot; returns the command a domain action needs.
-pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Option<Command> {
+/// Mutates the ui's own state on the spot; returns the commands a domain action needs.
+pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let Input::Key { key, mods } = input else {
-        return None;
+        return Vec::new();
     };
     if mods.ctrl && mods.shift {
-        return chord(key, ui, app);
+        return chord(key, ui, app).into_iter().collect();
     }
     if let Some(palette) = &mut ui.palette {
-        if key == Key::Escape {
-            ui.palette = None;
-            return None;
-        }
-        let command = palette.key(key, app);
-        if command.is_some() {
+        let outcome = palette.key(key, app);
+        if outcome.close {
             ui.palette = None;
         }
-        return command;
+        return outcome.commands;
     }
     match ui.focus {
-        Focus::Agent => to_agent(key, mods, app),
-        Focus::Rail => None,
+        Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
+        Focus::Rail => Vec::new(),
     }
 }
 
@@ -67,11 +63,11 @@ pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Option<Command> {
 fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
     match key {
         Key::Char('p' | 'P') => {
-            ui.palette = match ui.palette {
-                Some(_) => None,
-                None => Some(Palette::default()),
-            };
-            None
+            if ui.palette.take().is_some() {
+                return None;
+            }
+            ui.palette = Some(Palette::default());
+            Some(Command::Session(session::Command::ListRepos))
         }
         Key::Char('n' | 'N') => Some(Command::Session(session::Command::OpenExplorer {
             title: None,

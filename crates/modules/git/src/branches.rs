@@ -43,6 +43,11 @@ impl Git {
         .await
     }
 
+    /// Deletes a local branch whatever its state; the remote's copy is untouched.
+    pub async fn branch_delete(&self, name: &str) -> Result<()> {
+        self.text(&["branch", "-D", name]).await.map(drop)
+    }
+
     /// Forget worktrees whose directory is gone.
     pub async fn worktree_prune(&self) -> Result<()> {
         self.text(&["worktree", "prune"]).await.map(drop)
