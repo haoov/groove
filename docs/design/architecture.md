@@ -10,7 +10,7 @@ layer above it. Nothing calls up.
 | ui | `groove` (bin) · `ui` · `mcp-server` | present, translate input |
 | controllers | `task` · `session` · `workspace` · `agent` · `config` | one per service; one function per action, services in order |
 | services | `task` · `session` · `workspace` · `agent` · `config` | one per capability |
-| modules | `provider` · `worktree` · `git` · `diff` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
+| modules | `provider` · `sessions` · `worktree` · `git` · `diff` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
 | base | `db` · `http` · `exec` · `gfx` | one way out of the process each |
 | shared | `types` | the vocabulary: data and pure rules, used from modules up; depends on nothing; the base never touches it |
 
@@ -93,6 +93,7 @@ One directory per layer under `crates/`.
 | | `gfx` | wgpu device, glyph atlas, cell grid, box quads, theme |
 | shared | `types` | session, task, worktree, repo, mr, diff, annotation, activity, delivery, timeline event, config, error, ids, `Generation`; pure rules such as `names_session` and the word-diff pair rule |
 | modules | `provider` | notion, github issues, the registry |
+| | `sessions` | the session rows: `sessions`, `session_state`, `session_repos` |
 | | `worktree` | clone pool, provisioning, naming, teardown |
 | | `git` | the git client: environment conventions, parsers for status, diff, blame, log, the actions |
 | | `diff` | modes, hunks, commits, blame, expansion |

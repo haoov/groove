@@ -9,6 +9,7 @@ pub mod workspace;
 
 mod command;
 mod event;
+mod services;
 mod spawn;
 mod state;
 
@@ -17,6 +18,7 @@ mod tests;
 
 pub use command::{Command, dispatch};
 pub use event::{Event, Window, apply};
+pub use services::Services;
 pub use spawn::{Continuation, Deliver, Job, Spawner, SyncSpawner, TokioSpawner, coalesced};
 pub use state::{AppState, Env};
 

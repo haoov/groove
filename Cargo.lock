@@ -1056,7 +1056,9 @@ name = "groove"
 version = "0.1.0"
 dependencies = [
  "groove-controllers",
+ "groove-db",
  "groove-gfx",
+ "groove-sessions",
  "groove-types",
  "groove-ui",
  "tokio",
@@ -1178,8 +1180,20 @@ dependencies = [
 name = "groove-session-service"
 version = "0.1.0"
 dependencies = [
+ "groove-sessions",
  "groove-types",
  "uuid",
+]
+
+[[package]]
+name = "groove-sessions"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-types",
+ "sqlx",
+ "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]

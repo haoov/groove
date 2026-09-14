@@ -3,10 +3,11 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use crate::AppState;
+use crate::{AppState, Services};
 
-/// A result on its way back to the main thread: it writes into `AppState` there.
-pub type Continuation = Box<dyn FnOnce(&mut AppState) + Send>;
+/// A result on its way back to the main thread. It writes into `AppState` there, and
+/// may start the next step of its controller function.
+pub type Continuation = Box<dyn FnOnce(&mut AppState, &Services, &dyn Spawner) + Send>;
 
 /// The async part of a controller function, ending in its continuation.
 pub type Job = Pin<Box<dyn Future<Output = Continuation> + Send>>;
@@ -76,7 +77,7 @@ impl SyncSpawner {
     }
 
     /// Applies every continuation that has arrived, in order.
-    pub fn drain(&self, state: &mut AppState) {
+    pub fn drain(&self, state: &mut AppState, services: &Services) {
         let pending = std::mem::take(
             &mut *self
                 .pending
@@ -85,8 +86,13 @@ impl SyncSpawner {
                 .unwrap_or_else(PoisonError::into_inner),
         );
         for continuation in pending {
-            continuation(state);
+            continuation(state, services, self);
         }
+    }
+
+    /// Runs a future to completion on the spawner's own runtime.
+    pub fn block_on<F: Future>(&self, future: F) -> F::Output {
+        self.runtime.block_on(future)
     }
 }
 
@@ -113,9 +119,11 @@ pub fn coalesced(
         }
         let flag = in_flight.clone();
         let continuation = make();
-        sink.deliver(Box::new(move |state: &mut AppState| {
-            flag.store(false, Ordering::Release);
-            continuation(state);
-        }));
+        sink.deliver(Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                flag.store(false, Ordering::Release);
+                continuation(state, services, spawner);
+            },
+        ));
     }
 }

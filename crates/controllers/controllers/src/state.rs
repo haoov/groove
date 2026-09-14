@@ -4,9 +4,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Env {
     pub home: PathBuf,
-    /// `~/.config/com.haoov.groove`
+    /// `~/.config/groove`
     pub config_dir: PathBuf,
-    /// `~/.local/share/com.haoov.groove`
+    /// `~/.local/share/groove`
     pub data_dir: PathBuf,
     pub plugin_dirs: Vec<PathBuf>,
 }
@@ -16,6 +16,8 @@ pub struct Env {
 pub struct AppState {
     pub env: Env,
     pub focused: bool,
+    /// What a job could not do, newest last; the feed shows them.
+    pub errors: Vec<groove_types::Error>,
     pub task: groove_task_service::State,
     pub session: groove_session_service::State,
     pub workspace: groove_workspace_service::State,

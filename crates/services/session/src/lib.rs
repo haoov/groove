@@ -1,9 +1,12 @@
 //! The session capability. Its slice of `AppState`, the operations on it, its events.
 
+mod service;
+
 use groove_types::{
     Session, SessionId, SessionKind, SessionState, Timestamp, Worktree, WorktreeDelivery,
     WorktreeId,
 };
+pub use service::Service;
 
 /// One open session as the rail lists it.
 #[derive(Debug)]
@@ -52,6 +55,23 @@ impl State {
         };
         open.state.seen_at = Some(now);
         self.selected = Some(id.clone());
+    }
+
+    pub fn rename(&mut self, id: &SessionId, title: &str) {
+        if let Some(open) = self.open.iter_mut().find(|o| &o.session.id == id) {
+            open.session.title = title.to_string();
+        }
+    }
+
+    /// A row read back from disk, in the order stored; nothing selected by it.
+    pub fn restore(&mut self, session: Session, state: SessionState) {
+        self.open.retain(|o| o.session.id != session.id);
+        self.open.push(Open {
+            session,
+            state,
+            worktrees: Vec::new(),
+            delivery: Vec::new(),
+        });
     }
 
     /// Removes the row; the selection moves to the row that took its place, or the last one.

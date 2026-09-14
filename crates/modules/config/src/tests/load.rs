@@ -7,8 +7,8 @@ const FILE: &str = r#"{ "git": { "worktree_root": "~/worktrees" }, "ui": { "them
 #[test]
 fn the_path_is_the_file_under_the_config_dir() {
     assert_eq!(
-        path(std::path::Path::new("/home/x/.config/com.haoov.groove")),
-        std::path::PathBuf::from("/home/x/.config/com.haoov.groove/workbench.config.json")
+        path(std::path::Path::new("/home/x/.config/groove")),
+        std::path::PathBuf::from("/home/x/.config/groove/config.json")
     );
 }
 
@@ -38,6 +38,6 @@ fn a_broken_file_names_itself() {
     let err = load(&file).unwrap_err();
     assert!(matches!(err, Error::Parse { .. }));
     let message = err.to_string();
-    assert!(message.contains("workbench.config.json"), "{message}");
+    assert!(message.contains("config.json"), "{message}");
     assert_eq!(groove_types::Error::from(err).kind, ErrorKind::Invalid);
 }

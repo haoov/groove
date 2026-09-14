@@ -1,4 +1,5 @@
-//! Every crate's `groove-*` dependencies must point down the layer table.
+//! Every crate's `groove-*` dependencies must point down the layer table. The `groove`
+//! binary is the wiring and may name any layer.
 
 use std::collections::HashMap;
 use std::fs;
@@ -78,6 +79,9 @@ fn every_dependency_points_down_the_layers() {
         .collect();
     let mut offenders = Vec::new();
     for (name, layer, deps) in &crates {
+        if name == "groove" {
+            continue;
+        }
         for dep in deps {
             let dep_layer = layer_of
                 .get(dep.as_str())

@@ -10,9 +10,9 @@ use std::path::{Path, PathBuf};
 pub use error::{Error, Result};
 use groove_types::Config;
 
-const FILE_NAME: &str = "workbench.config.json";
+const FILE_NAME: &str = "config.json";
 
-/// `<config dir>/workbench.config.json`, the config dir being the app's under XDG.
+/// `<config dir>/config.json`, the config dir being `~/.config/groove`.
 pub fn path(config_dir: &Path) -> PathBuf {
     config_dir.join(FILE_NAME)
 }

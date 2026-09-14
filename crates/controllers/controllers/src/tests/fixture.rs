@@ -4,7 +4,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use crate::{AppState, Env, SyncSpawner};
+use crate::{AppState, Env, Services, SyncSpawner};
 
 /// Prints its first flag; echoes one line, or its cwd when the line is `pwd`; exits 7.
 const FAKE_CLAUDE: &str = "#!/bin/sh
@@ -30,11 +30,21 @@ pub fn state(home: &Path) -> AppState {
     })
 }
 
+/// Every service on an in-memory database.
+pub fn services(spawner: &SyncSpawner) -> Services {
+    spawner.block_on(Services::in_memory()).unwrap()
+}
+
 /// Drains continuations until `done`, or fails after ten seconds.
-pub fn until(spawner: &SyncSpawner, state: &mut AppState, mut done: impl FnMut(&AppState) -> bool) {
+pub fn until(
+    spawner: &SyncSpawner,
+    services: &Services,
+    state: &mut AppState,
+    mut done: impl FnMut(&AppState) -> bool,
+) {
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
-        spawner.drain(state);
+        spawner.drain(state, services);
         if done(state) {
             return;
         }

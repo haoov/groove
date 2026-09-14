@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use groove_controllers::{
-    AppState, Command, Env, Event, TokioSpawner, Window as WindowEvent_, apply, dispatch, session,
+    AppState, Command, Env, Event, Services, TokioSpawner, Window as WindowEvent_, agent, apply,
+    dispatch, session,
 };
 use groove_gfx::{Fonts, Renderer, Size};
 use groove_types::Config;
@@ -21,13 +22,20 @@ pub struct App {
     state: AppState,
     ui: Ui,
     spawner: TokioSpawner,
+    services: Services,
     modifiers: ModifiersState,
     failure: Option<groove_gfx::Error>,
     explore: bool,
 }
 
 impl App {
-    pub fn new(spawner: TokioSpawner, env: Env, config: Option<Config>, explore: bool) -> Self {
+    pub fn new(
+        spawner: TokioSpawner,
+        services: Services,
+        env: Env,
+        config: Option<Config>,
+        explore: bool,
+    ) -> Self {
         let mut state = AppState::new(env);
         state.config.config = config;
         Self {
@@ -36,6 +44,7 @@ impl App {
             state,
             ui: Ui::default(),
             spawner,
+            services,
             modifiers: ModifiersState::empty(),
             failure: None,
             explore,
@@ -62,7 +71,7 @@ impl App {
             return;
         };
         for command in groove_ui::layout_commands(&self.state, metrics) {
-            dispatch(command, &mut self.state, &self.spawner);
+            dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
         let frame = groove_ui::view(&self.state, &self.ui, metrics);
         if let Some(renderer) = &mut self.renderer {
@@ -83,7 +92,7 @@ impl App {
         })
     }
 
-    /// Every agent gets SIGTERM before the window goes.
+    /// Every agent gets SIGTERM before the window goes; the sessions stay on the rail.
     fn end_agents(&mut self) {
         let sessions: Vec<_> = self
             .state
@@ -93,11 +102,8 @@ impl App {
             .map(|o| o.session.id.clone())
             .collect();
         for session in sessions {
-            dispatch(
-                Command::Session(session::Command::Close { session }),
-                &mut self.state,
-                &self.spawner,
-            );
+            let end = Command::Agent(agent::Command::End { session });
+            dispatch(end, &mut self.state, &self.services, &self.spawner);
         }
     }
 
@@ -126,16 +132,22 @@ impl ApplicationHandler<Message> for App {
             }
         }
         self.window = Some(window);
+        dispatch(
+            Command::Session(session::Command::Restore),
+            &mut self.state,
+            &self.services,
+            &self.spawner,
+        );
         if std::mem::take(&mut self.explore) {
             let open = Command::Session(session::Command::OpenExplorer { title: None });
-            dispatch(open, &mut self.state, &self.spawner);
+            dispatch(open, &mut self.state, &self.services, &self.spawner);
         }
     }
 
     fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
         match message {
             Message::Continue(continuation) => {
-                continuation(&mut self.state);
+                continuation(&mut self.state, &self.services, &self.spawner);
                 self.redraw();
             }
             Message::Event(event) => self.apply(event),
@@ -162,7 +174,7 @@ impl ApplicationHandler<Message> for App {
                     return;
                 };
                 if let Some(command) = groove_ui::input::handle(input, &mut self.ui, &self.state) {
-                    dispatch(command, &mut self.state, &self.spawner);
+                    dispatch(command, &mut self.state, &self.services, &self.spawner);
                 }
                 self.redraw();
             }

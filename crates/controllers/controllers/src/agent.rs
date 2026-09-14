@@ -4,7 +4,7 @@ use groove_agent_service::{Event as AgentEvent, LaunchPaths, launch, palette};
 use groove_types::{Session, SessionId, Timestamp};
 
 use crate::spawn::coalesced;
-use crate::{AppState, Continuation, Event, Spawner, apply};
+use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -37,7 +37,12 @@ impl Command {
     }
 }
 
-pub fn dispatch(command: Command, state: &mut AppState, spawner: &dyn Spawner) {
+pub fn dispatch(
+    command: Command,
+    state: &mut AppState,
+    _services: &Services,
+    spawner: &dyn Spawner,
+) {
     match command {
         Command::Start {
             session,
@@ -84,7 +89,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
             on_damage(&sink, &session),
             on_exit(&sink, &session),
         );
-        Box::new(move |state: &mut AppState| {
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.agent.started(session.id, result, Timestamp::now())
         }) as Continuation
     }));
@@ -116,7 +121,7 @@ fn on_damage(
     let id = session.id.clone();
     Box::new(coalesced(sink.clone(), move || {
         let id = id.clone();
-        Box::new(move |state: &mut AppState| {
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             apply(Event::Agent(AgentEvent::Damaged { session: id }), state)
         })
     }))
@@ -129,13 +134,15 @@ fn on_exit(
     let sink = sink.clone();
     let id = session.id.clone();
     Box::new(move |code| {
-        sink.deliver(Box::new(move |state: &mut AppState| {
-            let event = AgentEvent::Exited {
-                session: id,
-                code,
-                at: Timestamp::now(),
-            };
-            apply(Event::Agent(event), state);
-        }));
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                let event = AgentEvent::Exited {
+                    session: id,
+                    code,
+                    at: Timestamp::now(),
+                };
+                apply(Event::Agent(event), state);
+            },
+        ));
     })
 }

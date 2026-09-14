@@ -2,7 +2,7 @@ use groove_session_service::Open;
 use groove_types::{AgentStatus, Session, SessionId, SessionKind, SessionState, Timestamp};
 
 use crate::agent::Command;
-use crate::tests::fixture::{self, until};
+use crate::tests::fixture::{self, services, until};
 use crate::{AppState, SyncSpawner, dispatch};
 
 fn explorer() -> Session {
@@ -34,6 +34,7 @@ fn agent_cmd(command: Command) -> crate::Command {
 fn start_send_and_exit_travel_through_the_loop() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner);
     let mut state = state(home.path());
     let id = SessionId::new("explorer-1");
 
@@ -44,14 +45,17 @@ fn start_send_and_exit_travel_through_the_loop() {
             rows: 6,
         }),
         &mut state,
+        &services,
         &spawner,
     );
-    until(&spawner, &mut state, |s| s.agent.agent(&id).is_some());
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.agent(&id).is_some()
+    });
     let agent = state.agent.agent(&id).unwrap();
     assert_eq!(agent.activity.status, AgentStatus::Idle);
     assert_eq!(agent.terminal.as_ref().unwrap().size(), (40, 6));
 
-    until(&spawner, &mut state, |s| {
+    until(&spawner, &services, &mut state, |s| {
         s.agent
             .agent(&id)
             .unwrap()
@@ -68,9 +72,10 @@ fn start_send_and_exit_travel_through_the_loop() {
             bytes: b"hi\n".to_vec(),
         }),
         &mut state,
+        &services,
         &spawner,
     );
-    until(&spawner, &mut state, |s| {
+    until(&spawner, &services, &mut state, |s| {
         matches!(
             s.agent.activity(&id).unwrap().status,
             AgentStatus::Exited { .. }
@@ -93,6 +98,7 @@ fn start_send_and_exit_travel_through_the_loop() {
 fn resize_reaches_the_terminal_and_end_forgets_it() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner);
     let mut state = state(home.path());
     let id = SessionId::new("explorer-1");
     dispatch(
@@ -102,9 +108,12 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
             rows: 6,
         }),
         &mut state,
+        &services,
         &spawner,
     );
-    until(&spawner, &mut state, |s| s.agent.agent(&id).is_some());
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.agent(&id).is_some()
+    });
     dispatch(
         agent_cmd(Command::Resize {
             session: id.clone(),
@@ -112,6 +121,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
             rows: 8,
         }),
         &mut state,
+        &services,
         &spawner,
     );
     assert_eq!(
@@ -130,6 +140,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
             session: id.clone(),
         }),
         &mut state,
+        &services,
         &spawner,
     );
     assert!(state.agent.agent(&id).is_none());
@@ -139,6 +150,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
 fn a_start_for_an_unknown_session_does_nothing() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner);
     let mut state = state(home.path());
     let id = SessionId::new("nope");
     dispatch(
@@ -148,8 +160,9 @@ fn a_start_for_an_unknown_session_does_nothing() {
             rows: 6,
         }),
         &mut state,
+        &services,
         &spawner,
     );
-    spawner.drain(&mut state);
+    spawner.drain(&mut state, &services);
     assert!(state.agent.agent(&id).is_none());
 }

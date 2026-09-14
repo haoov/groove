@@ -1,6 +1,6 @@
 //! The `task` controller: one function per user action on the `task` service.
 
-use crate::{AppState, Spawner};
+use crate::{AppState, Services, Spawner};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {}
@@ -11,6 +11,11 @@ impl Command {
     }
 }
 
-pub fn dispatch(command: Command, _state: &mut AppState, _spawner: &dyn Spawner) {
+pub fn dispatch(
+    command: Command,
+    _state: &mut AppState,
+    _services: &Services,
+    _spawner: &dyn Spawner,
+) {
     match command {}
 }

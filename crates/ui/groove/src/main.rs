@@ -7,7 +7,7 @@ mod keys;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use groove_controllers::{Continuation, Deliver, Env, Event, TokioSpawner};
+use groove_controllers::{Continuation, Deliver, Env, Event, Services, TokioSpawner};
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
 /// What crosses from the pool and the outside world into the loop.
@@ -35,12 +35,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let explore = std::env::args().any(|a| a == "--explore");
     let env = env();
     let config = groove_controllers::config_service::load(&env.config_dir)?;
-    let mut app = app::App::new(spawner, env, config, explore);
+    let services = runtime.block_on(services(&env))?;
+    let mut app = app::App::new(spawner, services, env, config, explore);
     event_loop.run_app(&mut app)?;
-    app.into_result()
+    let result = app.into_result();
+    runtime.shutdown_timeout(std::time::Duration::from_secs(2));
+    result
 }
 
-/// `$HOME` and the XDG data dir under the bundle identifier.
+/// Every module on the one database, handed to its service.
+async fn services(env: &Env) -> Result<Services, Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(&env.data_dir)?;
+    let db = groove_db::Db::open(&env.data_dir.join("app.db")).await?;
+    Ok(Services {
+        session: groove_controllers::session_service::Service::new(groove_sessions::Store::new(db)),
+    })
+}
+
+/// `$HOME` and the XDG dirs under `groove`; the legacy app keeps `com.haoov.groove`.
 fn env() -> Env {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
@@ -52,8 +64,8 @@ fn env() -> Env {
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".config"));
     Env {
-        config_dir: config.join("com.haoov.groove"),
-        data_dir: data.join("com.haoov.groove"),
+        config_dir: config.join("groove"),
+        data_dir: data.join("groove"),
         home,
         plugin_dirs: Vec::new(),
     }

@@ -20,6 +20,8 @@ both. `config::init` loads once at startup; `update` mutates, persists and publi
 
 **Module `config`**: the file, load, update and persist; the environment check through
 `exec::run`. **Service `config`** holds the parsed config and the last check.
+The rewrite keeps its own files, `~/.config/groove/config.json` and
+`~/.local/share/groove/app.db`, so the legacy app's stay untouched until parity.
 
 | Controller | Does |
 |---|---|

@@ -1,4 +1,4 @@
-use crate::{AppState, Spawner, agent, config, session, task, workspace};
+use crate::{AppState, Services, Spawner, agent, config, session, task, workspace};
 
 /// One variant per controller function, grouped by controller.
 #[derive(Debug, Clone, PartialEq)]
@@ -24,12 +24,17 @@ impl Command {
 }
 
 /// The one match. The sync part runs now; the async part goes through the spawner.
-pub fn dispatch(command: Command, state: &mut AppState, spawner: &dyn Spawner) {
+pub fn dispatch(
+    command: Command,
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+) {
     match command {
-        Command::Task(c) => task::dispatch(c, state, spawner),
-        Command::Session(c) => session::dispatch(c, state, spawner),
-        Command::Workspace(c) => workspace::dispatch(c, state, spawner),
-        Command::Agent(c) => agent::dispatch(c, state, spawner),
-        Command::Config(c) => config::dispatch(c, state, spawner),
+        Command::Task(c) => task::dispatch(c, state, services, spawner),
+        Command::Session(c) => session::dispatch(c, state, services, spawner),
+        Command::Workspace(c) => workspace::dispatch(c, state, services, spawner),
+        Command::Agent(c) => agent::dispatch(c, state, services, spawner),
+        Command::Config(c) => config::dispatch(c, state, services, spawner),
     }
 }
