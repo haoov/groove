@@ -8,6 +8,17 @@ impl Git {
         Ok(porcelain(&out))
     }
 
+    /// Commits on HEAD that `base` lacks.
+    pub async fn commits_since(&self, base: &str) -> Result<u32> {
+        let range = format!("{base}..HEAD");
+        let args = ["rev-list", "--count", &range];
+        let out = self.line(&args).await?;
+        out.parse().map_err(|_| Error::Unexpected {
+            command: crate::command::describe(&args),
+            output: out.clone(),
+        })
+    }
+
     /// Commits this branch is ahead of and behind its own head on origin; `None` when
     /// the branch was never pushed.
     pub async fn ahead_behind(&self, branch: &str) -> Result<Option<(u32, u32)>> {

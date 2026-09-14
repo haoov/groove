@@ -13,6 +13,11 @@ impl Git {
         self.succeeds(&["rev-parse", "--git-dir"]).await
     }
 
+    /// Whether the remote is configured, whatever its URL looks like.
+    pub async fn has_remote(&self, remote: &str) -> Result<bool> {
+        self.succeeds(&["remote", "get-url", remote]).await
+    }
+
     pub async fn remote_url(&self, remote: &str) -> Result<RemoteUrl> {
         let url = self.line(&["remote", "get-url", remote]).await?;
         RemoteUrl::parse(&url)

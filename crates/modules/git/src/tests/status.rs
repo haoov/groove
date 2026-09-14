@@ -22,4 +22,6 @@ async fn status_rows_and_ahead_behind() {
         "the unpushed second commit"
     );
     assert_eq!(git.ahead_behind("never-pushed").await.unwrap(), None);
+    assert_eq!(git.commits_since("origin/main").await.unwrap(), 1);
+    assert_eq!(git.commits_since("HEAD").await.unwrap(), 0);
 }

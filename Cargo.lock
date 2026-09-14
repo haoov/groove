@@ -1237,6 +1237,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-worktree"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-git",
+ "groove-types",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"

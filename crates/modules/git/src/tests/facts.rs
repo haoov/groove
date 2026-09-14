@@ -6,6 +6,8 @@ async fn a_clone_knows_itself() {
     let fx = Fixture::new();
     let git = fx.git();
     assert!(git.is_repository().await.unwrap());
+    assert!(git.has_remote("origin").await.unwrap());
+    assert!(!git.has_remote("upstream").await.unwrap());
     assert!(
         !crate::Git::at(fx.root.path())
             .is_repository()

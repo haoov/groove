@@ -1,0 +1,22 @@
+[package]
+name = "groove-worktree"
+description = "The clone pool and the worktrees cut from it: naming, provisioning, teardown, status"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-db = { path = "../../base/db" }
+groove-git = { path = "../git" }
+groove-types = { path = "../../shared/types" }
+sqlx.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
