@@ -6,6 +6,7 @@
 mod ctx;
 pub mod input;
 mod layout;
+mod mark;
 pub mod palette;
 mod render;
 mod style;
@@ -17,6 +18,7 @@ mod widget;
 mod tests;
 
 pub use ctx::Metrics;
+pub use mark::Mark;
 pub use render::{layout_commands, view};
 pub use style::Role;
 pub use tokens::Tokens;

@@ -4,6 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
 
 use crate::layout::Layout;
+use crate::mark::Mark;
 use crate::style::Styles;
 use crate::tokens::Tokens;
 
@@ -54,6 +55,11 @@ impl<'a> Ctx<'a> {
 
     pub fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
         self.frame.text(text, x, y, height, style);
+    }
+
+    /// A mark in `rect`, turned by eighths of a turn.
+    pub fn icon(&mut self, rect: Rect, mark: Mark, turn: u8, color: Color) {
+        self.frame.icon_turned(rect, mark.shape(), turn, color);
     }
 
     pub fn grid(&mut self, grid: CellGrid) {

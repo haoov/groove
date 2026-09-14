@@ -11,6 +11,7 @@ wgpu.workspace = true
 glyphon.workspace = true
 bytemuck.workspace = true
 pollster.workspace = true
+resvg.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

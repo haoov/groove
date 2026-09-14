@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use glyphon::{
-    Buffer, Cache, Metrics, Resolution, Shaping, TextArea, TextAtlas, TextBounds, TextRenderer,
-    Viewport,
+    Buffer, Cache, ContentType, CustomGlyph, Metrics, RasterizedCustomGlyph, Resolution, Shaping,
+    TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
 use crate::fonts::CellSize;
-use crate::{Color, Font, Fonts, Rect, Result, Size, TextRun, Weight};
+use crate::icons::Icons;
+use crate::{Color, Font, Fonts, IconDraw, Rect, Result, Size, TextRun, Weight};
 
 const GLYPH_CACHE_CAP: usize = 4096;
 
@@ -23,6 +24,12 @@ struct Placement {
     x: f32,
     y: f32,
     color: Color,
+    clip: Rect,
+}
+
+/// One icon placed, in the shape glyphon takes. The array backs the area's slice.
+struct IconArea {
+    glyph: [CustomGlyph; 1],
     clip: Rect,
 }
 
@@ -43,6 +50,10 @@ pub(crate) struct TextPass {
     glyphs: HashMap<GlyphKey, Buffer>,
     runs: Vec<Vec<Run>>,
     placements: Vec<Vec<Placement>>,
+    icons: Vec<Vec<IconArea>>,
+    registry: Icons,
+    /// What an icon-only area hangs on: a buffer with no text.
+    empty: Option<Buffer>,
 }
 
 impl TextPass {
@@ -55,6 +66,9 @@ impl TextPass {
             glyphs: HashMap::new(),
             runs: Vec::new(),
             placements: Vec::new(),
+            icons: Vec::new(),
+            registry: Icons::new(),
+            empty: None,
         }
     }
 
@@ -70,6 +84,8 @@ impl TextPass {
         self.runs.resize_with(layers, Vec::new);
         self.placements.clear();
         self.placements.resize_with(layers, Vec::new);
+        self.icons.clear();
+        self.icons.resize_with(layers, Vec::new);
         while self.renderers.len() < layers {
             let renderer = TextRenderer::new(
                 &mut self.atlas,
@@ -97,6 +113,23 @@ impl TextPass {
             y: run.y,
             color: style.color,
             clip: run.clip,
+        });
+    }
+
+    pub fn push_icon(&mut self, layer: usize, draw: &IconDraw) {
+        let glyph = CustomGlyph {
+            id: draw.icon.glyph_id(draw.turn),
+            left: draw.rect.x,
+            top: draw.rect.y,
+            width: draw.rect.w,
+            height: draw.rect.h,
+            color: Some(draw.color.glyphon()),
+            snap_to_physical_pixel: true,
+            metadata: 0,
+        };
+        self.icons[layer].push(IconArea {
+            glyph: [glyph],
+            clip: draw.clip,
         });
     }
 
@@ -137,25 +170,54 @@ impl TextPass {
         queue: &wgpu::Queue,
         fonts: &mut Fonts,
     ) -> Result<()> {
-        let layers = self.runs.len();
-        for (layer, renderer) in self.renderers.iter_mut().enumerate().take(layers) {
-            let runs = self.runs[layer]
+        let Self {
+            atlas,
+            viewport,
+            renderers,
+            glyphs,
+            runs,
+            placements,
+            icons,
+            registry,
+            empty,
+        } = self;
+        let empty =
+            empty.get_or_insert_with(|| Buffer::new(&mut fonts.system, Metrics::new(1.0, 1.0)));
+        for (layer, renderer) in renderers.iter_mut().enumerate().take(runs.len()) {
+            let lines = runs[layer]
                 .iter()
-                .map(|r| area(&r.buffer, r.x, r.y, r.color, r.clip));
-            let glyphs = &self.glyphs;
-            let placed = self.placements[layer].iter().filter_map(|p| {
+                .map(|run| area(&run.buffer, run.x, run.y, run.color, run.clip));
+            let placed = placements[layer].iter().filter_map(|p| {
                 glyphs
                     .get(&p.key)
                     .map(|b| area(b, p.x, p.y, p.color, p.clip))
             });
-            renderer.prepare(
+            let marks = icons[layer].iter().map(|icon| TextArea {
+                buffer: empty,
+                left: 0.0,
+                top: 0.0,
+                scale: 1.0,
+                bounds: bounds(icon.clip),
+                default_color: Color::WHITE.glyphon(),
+                custom_glyphs: &icon.glyph,
+            });
+            renderer.prepare_with_depth_and_custom(
                 device,
                 queue,
                 &mut fonts.system,
-                &mut self.atlas,
-                &self.viewport,
-                runs.chain(placed),
+                atlas,
+                viewport,
+                lines.chain(placed).chain(marks),
                 &mut fonts.swash,
+                |_| 0.0,
+                |request| {
+                    registry
+                        .rasterize(request.id, request.width, request.height)
+                        .map(|data| RasterizedCustomGlyph {
+                            data,
+                            content_type: ContentType::Mask,
+                        })
+                },
             )?;
         }
         Ok(())
@@ -194,13 +256,17 @@ fn area(buffer: &Buffer, x: f32, y: f32, color: Color, clip: Rect) -> TextArea<'
         left: x,
         top: y,
         scale: 1.0,
-        bounds: TextBounds {
-            left: clip.x.floor() as i32,
-            top: clip.y.floor() as i32,
-            right: clip.right().ceil() as i32,
-            bottom: clip.bottom().ceil() as i32,
-        },
+        bounds: bounds(clip),
         default_color: color.glyphon(),
         custom_glyphs: &[],
+    }
+}
+
+fn bounds(clip: Rect) -> TextBounds {
+    TextBounds {
+        left: clip.x.floor() as i32,
+        top: clip.y.floor() as i32,
+        right: clip.right().ceil() as i32,
+        bottom: clip.bottom().ceil() as i32,
     }
 }

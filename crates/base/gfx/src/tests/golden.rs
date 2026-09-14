@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use super::readback::Image;
 use crate::{
-    CellGrid, Color, Font, Fonts, Frame, Palette, Rect, Renderer, Size, TextStyle, Weight,
+    CellGrid, Color, Font, Fonts, Frame, Icon, Palette, Rect, Renderer, Size, TextStyle, Weight,
 };
 
 const MAX_CHANNEL_DIFF: u8 = 3;
@@ -86,6 +86,36 @@ fn text_renders_glyphs() {
         .filter(|&(x, y)| image.pixel(x, y)[0] > 128)
         .count();
     assert!(lit > 40, "{lit} lit pixels");
+}
+
+#[test]
+fn icons_match_golden() {
+    let size = Size::new(240, 84);
+    let p = Palette::MOCHA;
+    let mut frame = Frame::new(size, p.base);
+    let icons = [
+        Icon::Flag,
+        Icon::Compass,
+        Icon::Eye,
+        Icon::Kanban,
+        Icon::Gear,
+        Icon::Notch,
+    ];
+    for (i, icon) in icons.iter().enumerate() {
+        let x = 8.0 + i as f32 * 36.0;
+        frame.icon(Rect::new(x, 8.0, 24.0, 24.0), *icon, p.text);
+        frame.icon(Rect::new(x, 40.0, 16.0, 16.0), *icon, p.peach);
+    }
+    for turn in 0..4u8 {
+        let x = 8.0 + f32::from(turn) * 24.0;
+        frame.icon_turned(
+            Rect::new(x, 62.0, 16.0, 16.0),
+            Icon::Notch,
+            turn * 2,
+            p.blue,
+        );
+    }
+    compare("icons", size, &frame);
 }
 
 #[test]

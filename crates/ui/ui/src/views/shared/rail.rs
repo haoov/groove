@@ -5,8 +5,9 @@ use groove_types::{AgentStatus, AttentionClass};
 
 use super::status;
 use crate::ctx::Ctx;
+use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{Row, hairline, list, row};
+use crate::widget::{Row, hairline, list};
 
 /// Opened sessions only, in the order opened. The Board row above, the feed below.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -26,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 
     let width = rect.w - hairline_width;
     let (pad, row_height, gap) = (ctx.tokens.md, ctx.tokens.row, ctx.tokens.sm);
-    let board = Row::new(pad, "Board", ctx.styles.label(Role::Text));
+    let board = Row::new(pad, "Board", ctx.styles.label(Role::Text)).mark(Mark::Board);
     let mut y = list(
         ctx,
         Rect::new(0.0, rect.y + gap, width, row_height),
@@ -34,20 +35,26 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         None,
     ) + gap;
 
-    let labels: Vec<(String, String, Role)> = app
+    let sessions: Vec<(String, Mark, String, Role)> = app
         .session
         .open
         .iter()
         .map(|open| {
             let (label, role) = status_of(app, open);
-            (open.session.title.clone(), label, role)
+            (
+                open.session.title.clone(),
+                Mark::of_kind(&open.session.kind),
+                label,
+                role,
+            )
         })
         .collect();
     let title = ctx.styles.label(Role::Text);
-    let mut rows = Vec::with_capacity(labels.len() * 2);
-    for (session, state, role) in &labels {
-        rows.push(Row::new(pad, session, title));
-        rows.push(Row::new(pad, state, ctx.styles.small(*role)));
+    let second_line = pad + ctx.tokens.icon + ctx.tokens.sm;
+    let mut rows = Vec::with_capacity(sessions.len() * 2);
+    for (session, mark, state, role) in &sessions {
+        rows.push(Row::new(pad, session, title).mark(*mark));
+        rows.push(Row::new(second_line, state, ctx.styles.small(*role)));
     }
     y = list(ctx, Rect::new(0.0, y, width, rect.h - y), &rows, None);
     let _ = y;
@@ -59,8 +66,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         Rect::new(0.0, footer.y - row_height, width, row_height),
         line,
     );
-    let settings = ctx.styles.small(Role::Muted);
-    row(ctx, footer, pad, "settings", settings);
+    let settings = Row::new(pad, "settings", ctx.styles.small(Role::Muted)).mark(Mark::Settings);
+    list(ctx, footer, &[settings], None);
 }
 
 /// The row's second line and its role: state is colour, nothing else is.

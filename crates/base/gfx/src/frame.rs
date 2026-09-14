@@ -1,4 +1,4 @@
-use crate::{CellGrid, Color, Rect, Size};
+use crate::{CellGrid, Color, Icon, Rect, Size};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Font {
@@ -29,6 +29,17 @@ pub struct Quad {
     pub clip: Rect,
 }
 
+/// One icon, drawn in its own box.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct IconDraw {
+    pub rect: Rect,
+    pub icon: Icon,
+    /// Eighths of a turn, clockwise.
+    pub turn: u8,
+    pub color: Color,
+    pub clip: Rect,
+}
+
 /// One line of chrome text, vertically centred in `height`.
 #[derive(Clone, PartialEq, Debug)]
 pub struct TextRun {
@@ -46,6 +57,7 @@ pub struct Layer {
     pub quads: Vec<Quad>,
     pub texts: Vec<TextRun>,
     pub grids: Vec<CellGrid>,
+    pub icons: Vec<IconDraw>,
 }
 
 /// The display list for one frame.
@@ -123,6 +135,26 @@ impl Frame {
             height,
             text,
             style,
+            clip,
+        });
+    }
+
+    /// An icon in `rect`, upright.
+    pub fn icon(&mut self, rect: Rect, icon: Icon, color: Color) {
+        self.icon_turned(rect, icon, 0, color);
+    }
+
+    /// An icon in `rect`, turned by eighths of a turn.
+    pub fn icon_turned(&mut self, rect: Rect, icon: Icon, turn: u8, color: Color) {
+        if rect.is_empty() || color.is_transparent() {
+            return;
+        }
+        let clip = self.clip();
+        self.top().icons.push(IconDraw {
+            rect,
+            icon,
+            turn,
+            color,
             clip,
         });
     }

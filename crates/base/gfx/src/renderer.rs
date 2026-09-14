@@ -145,6 +145,9 @@ impl Renderer {
             for run in &layer.texts {
                 self.text.push_run(i, &mut self.fonts, run);
             }
+            for icon in &layer.icons {
+                self.text.push_icon(i, icon);
+            }
             for g in &layer.grids {
                 let cell = self.fonts.cell_size(g.font_size);
                 grid::push_grid(

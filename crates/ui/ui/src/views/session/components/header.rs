@@ -2,8 +2,9 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use crate::ctx::Ctx;
+use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{hairline, row};
+use crate::widget::{box_in, hairline, icon, row};
 
 /// One line across the whole session: the title, then the selected worktree.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -17,7 +18,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let Some(open) = app.session.selected() else {
         return row(ctx, rect, pad, "Groove", title);
     };
-    row(ctx, rect, pad, &open.session.title, title);
+    let mark = Mark::of_kind(&open.session.kind);
+    let box_ = box_in(ctx, rect, rect.x + pad);
+    icon(ctx, box_, mark, Role::Muted);
+    let indent = pad + ctx.tokens.icon + ctx.tokens.sm;
+    row(ctx, rect, indent, &open.session.title, title);
 
     let Some(worktree) = open.selected_worktree() else {
         return;

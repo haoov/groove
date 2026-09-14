@@ -26,6 +26,8 @@ pub struct Tokens {
     pub small: f32,
     pub title: f32,
     pub mono: f32,
+    /// One icon's box.
+    pub icon: f32,
     /// A child row under its parent.
     pub indent: f32,
     /// Where a row's second text sits, from the row's left edge.
@@ -53,6 +55,7 @@ const LOGICAL: Tokens = Tokens {
     small: 11.0,
     title: 14.0,
     mono: 12.5,
+    icon: 16.0,
     indent: 28.0,
     aside_near: 90.0,
     aside_mid: 160.0,
@@ -79,6 +82,7 @@ impl Tokens {
             small: s(LOGICAL.small),
             title: s(LOGICAL.title),
             mono: s(LOGICAL.mono),
+            icon: s(LOGICAL.icon),
             indent: s(LOGICAL.indent),
             aside_near: s(LOGICAL.aside_near),
             aside_mid: s(LOGICAL.aside_mid),
