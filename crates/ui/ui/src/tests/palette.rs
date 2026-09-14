@@ -15,6 +15,7 @@ fn open(id: &str, title: &str) -> Open {
             created_at: Timestamp::new(0),
         },
         state: SessionState::default(),
+        repos: vec![],
         worktrees: vec![],
         delivery: vec![],
     }

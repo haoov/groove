@@ -21,7 +21,8 @@ fn a_job_runs_and_its_continuation_writes_the_state() {
         }) as _
     }));
     assert!(!state.focused, "nothing applies before drain");
-    let services = spawner.block_on(Services::in_memory()).unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let services = spawner.block_on(Services::in_memory(home.path())).unwrap();
     spawner.drain(&mut state, &services);
     assert!(state.focused);
 }

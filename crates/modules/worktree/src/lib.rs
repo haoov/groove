@@ -17,9 +17,9 @@ use std::path::{Path, PathBuf};
 
 pub use error::{Error, Result};
 use groove_db::Db;
+pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
-pub use pool::Clone;
-pub use provision::{BranchSpec, Provisioned};
+pub use provision::Provisioned;
 
 /// The module's handle: the database and the root, cheap to clone into a job.
 #[derive(std::clone::Clone)]

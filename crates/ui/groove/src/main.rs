@@ -35,7 +35,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let explore = std::env::args().any(|a| a == "--explore");
     let env = env();
     let config = groove_controllers::config_service::load(&env.config_dir)?;
-    let services = runtime.block_on(services(&env))?;
+    let config_state = groove_controllers::config_service::State { config };
+    let root = config_state.worktree_root(&env.home);
+    let services = runtime.block_on(services(&env, &root))?;
+    let config = config_state.config;
     let mut app = app::App::new(spawner, services, env, config, explore);
     event_loop.run_app(&mut app)?;
     let result = app.into_result();
@@ -44,11 +47,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Every module on the one database, handed to its service.
-async fn services(env: &Env) -> Result<Services, Box<dyn std::error::Error>> {
+async fn services(
+    env: &Env,
+    root: &std::path::Path,
+) -> Result<Services, Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&env.data_dir)?;
     let db = groove_db::Db::open(&env.data_dir.join("app.db")).await?;
+    let store = groove_sessions::Store::new(db.clone());
+    let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
-        session: groove_controllers::session_service::Service::new(groove_sessions::Store::new(db)),
+        session: groove_controllers::session_service::Service::new(store, pool),
     })
 }
 

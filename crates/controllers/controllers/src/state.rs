@@ -18,6 +18,8 @@ pub struct AppState {
     pub focused: bool,
     /// What a job could not do, newest last; the feed shows them.
     pub errors: Vec<groove_types::Error>,
+    /// What a job wants the user to hear, newest last.
+    pub notes: Vec<String>,
     pub task: groove_task_service::State,
     pub session: groove_session_service::State,
     pub workspace: groove_workspace_service::State,

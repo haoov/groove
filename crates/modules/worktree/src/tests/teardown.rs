@@ -1,5 +1,5 @@
 use crate::tests::fixture::{Fixture, sh};
-use crate::{BranchSpec, Error};
+use crate::{Error, WorktreeSpec};
 
 #[tokio::test]
 async fn close_refuses_a_dirty_worktree_then_removes_dir_row_and_empty_parents() {
@@ -7,7 +7,7 @@ async fn close_refuses_a_dirty_worktree_then_removes_dir_row_and_empty_parents()
     let repo = fx.repo().await;
     let wt = fx
         .pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap()
         .worktree;
@@ -48,7 +48,7 @@ async fn status_counts_changes_and_commits_ahead_of_the_base() {
     let repo = fx.repo().await;
     let wt = fx
         .pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap()
         .worktree;
@@ -73,10 +73,10 @@ async fn cleanup_removes_every_worktree_and_the_session_dir() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
     fx.pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap();
-    let second = BranchSpec {
+    let second = WorktreeSpec {
         branch: Some("explorer/second".into()),
         ..Default::default()
     };

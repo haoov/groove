@@ -1,7 +1,7 @@
 use groove_types::{ExternalId, Session, SessionId, SessionKind, Timestamp};
 
 use crate::tests::fixture::{Fixture, sh};
-use crate::{BranchSpec, Error};
+use crate::{Error, WorktreeSpec};
 
 #[tokio::test]
 async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
@@ -9,7 +9,7 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
     let repo = fx.repo().await;
     let done = fx
         .pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap();
     let wt = &done.worktree;
@@ -42,7 +42,7 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
 
     let again = fx
         .pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap();
     assert_eq!(again.worktree.id, wt.id, "idempotent on the same branch");
@@ -52,7 +52,7 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
 async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
-    let spec = BranchSpec {
+    let spec = WorktreeSpec {
         branch: Some("fix/x".into()),
         target: Some("release/1.0".into()),
         track_remote: None,
@@ -71,7 +71,7 @@ async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
         sh(&fx.clone, &["rev-parse", "origin/release/1.0"])
     );
 
-    let bad = BranchSpec {
+    let bad = WorktreeSpec {
         branch: Some("fix/y".into()),
         target: Some("nope".into()),
         track_remote: None,
@@ -97,12 +97,12 @@ async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopte
     );
     let err = fx
         .pool
-        .provision(&fx.session, &repo, &BranchSpec::default(), None)
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap_err();
     assert!(matches!(err, Error::ForeignBranch { .. }), "{err}");
 
-    let named = BranchSpec {
+    let named = WorktreeSpec {
         branch: Some("explorer/try-sqlite-vacuum".into()),
         ..Default::default()
     };
@@ -132,7 +132,7 @@ async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopte
     );
     let own = fx
         .pool
-        .provision(&task, &repo, &BranchSpec::default(), None)
+        .provision(&task, &repo, &WorktreeSpec::default(), None)
         .await
         .unwrap();
     assert!(own.adopted, "a branch naming the session is the session's");
@@ -142,7 +142,7 @@ async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopte
 async fn a_review_worktree_tracks_the_remote_branch() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
-    let spec = BranchSpec {
+    let spec = WorktreeSpec {
         branch: Some("release/1.0".into()),
         target: Some("main".into()),
         track_remote: Some("release/1.0".into()),
@@ -167,7 +167,7 @@ async fn a_review_worktree_tracks_the_remote_branch() {
 async fn a_bad_branch_name_never_reaches_git() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
-    let spec = BranchSpec {
+    let spec = WorktreeSpec {
         branch: Some("bad name".into()),
         ..Default::default()
     };

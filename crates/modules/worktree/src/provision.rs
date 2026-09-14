@@ -1,19 +1,8 @@
 use groove_git::{Error as GitError, Git};
-use groove_types::{Repo, Session, Timestamp, Worktree, names_session};
+use groove_types::{Repo, Session, Timestamp, Worktree, WorktreeSpec, names_session};
 
 use crate::naming::{default_branch, validate_branch_name};
 use crate::{Error, Pool, Result};
-
-/// What a new worktree should be.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct BranchSpec {
-    /// `None`: the session's default name.
-    pub branch: Option<String>,
-    /// The branch to cut from and merge into. `None`: the repo's default.
-    pub target: Option<String>,
-    /// A review: check out this branch of origin instead of cutting a new one.
-    pub track_remote: Option<String>,
-}
 
 /// The worktree, and what happened on the way that the user should hear.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +20,7 @@ impl Pool {
         &self,
         session: &Session,
         repo: &Repo,
-        spec: &BranchSpec,
+        spec: &WorktreeSpec,
         tag: Option<&str>,
     ) -> Result<Provisioned> {
         let branch = spec

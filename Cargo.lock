@@ -1061,6 +1061,7 @@ dependencies = [
  "groove-sessions",
  "groove-types",
  "groove-ui",
+ "groove-worktree",
  "tokio",
  "winit",
 ]
@@ -1180,8 +1181,10 @@ dependencies = [
 name = "groove-session-service"
 version = "0.1.0"
 dependencies = [
+ "groove-git",
  "groove-sessions",
  "groove-types",
+ "groove-worktree",
  "uuid",
 ]
 

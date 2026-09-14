@@ -1,23 +1,15 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use groove_git::{Git, RemoteUrl};
-use groove_types::{Repo, RepoId};
+use groove_types::{PoolEntry, Repo, RepoId};
 
 use crate::{Error, Pool, Result};
 
 const WALK_DEPTH: u32 = 6;
 
-/// A clone under `<root>/main`, named by its path there.
-#[derive(Debug, std::clone::Clone, PartialEq, Eq)]
-pub struct Clone {
-    /// `<host>/<group…>/<project>`
-    pub slug: String,
-    pub path: PathBuf,
-}
-
 impl Pool {
     /// Every clone in the pool, by directory walk, sorted by slug. No pool is an empty list.
-    pub fn list(&self) -> Vec<Clone> {
+    pub fn list(&self) -> Vec<PoolEntry> {
         let main = self.layout.main();
         let mut clones = Vec::new();
         walk(&main, &main, 1, &mut clones);
@@ -26,9 +18,9 @@ impl Pool {
     }
 
     /// The one clone `name` means: its whole slug, or any suffix on a `/` boundary.
-    pub fn resolve<'a>(name: &str, clones: &'a [Clone]) -> Result<&'a Clone> {
+    pub fn resolve<'a>(name: &str, clones: &'a [PoolEntry]) -> Result<&'a PoolEntry> {
         let name = name.trim().trim_matches('/');
-        let matches: Vec<&Clone> = clones
+        let matches: Vec<&PoolEntry> = clones
             .iter()
             .filter(|c| c.slug == name || c.slug.ends_with(&format!("/{name}")))
             .collect();
@@ -43,7 +35,7 @@ impl Pool {
     }
 
     /// Records a clone as a repo. The one git call checks it has an origin.
-    pub async fn register(&self, clone: &Clone) -> Result<Repo> {
+    pub async fn register(&self, clone: &PoolEntry) -> Result<Repo> {
         let (host, group, project) = slug_parts(&clone.slug)?;
         if !Git::at(&clone.path).has_remote("origin").await? {
             return Err(Error::NoOrigin {
@@ -77,7 +69,7 @@ impl Pool {
             })?;
         }
         Git::clone(url, &dest).await?;
-        self.register(&Clone {
+        self.register(&PoolEntry {
             slug: remote.slug(),
             path: dest,
         })
@@ -97,7 +89,7 @@ fn slug_parts(slug: &str) -> Result<(String, String, String)> {
 }
 
 /// Directories holding a `.git`, at most `WALK_DEPTH` deep; a clone's own tree is not entered.
-fn walk(dir: &Path, root: &Path, depth: u32, acc: &mut Vec<Clone>) {
+fn walk(dir: &Path, root: &Path, depth: u32, acc: &mut Vec<PoolEntry>) {
     if depth > WALK_DEPTH {
         return;
     }
@@ -111,7 +103,7 @@ fn walk(dir: &Path, root: &Path, depth: u32, acc: &mut Vec<Clone>) {
         }
         if path.join(".git").exists() {
             if let Ok(slug) = path.strip_prefix(root) {
-                acc.push(Clone {
+                acc.push(PoolEntry {
                     slug: slug.to_string_lossy().into_owned(),
                     path,
                 });

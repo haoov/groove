@@ -29,6 +29,11 @@ impl Store {
         Ok(Self::new(Db::in_memory().await?))
     }
 
+    /// The pool this store writes to, for the modules that share it.
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
+
     pub async fn get(&self, id: &SessionId) -> Result<Option<Session>> {
         let row: Option<SessionRow> = sqlx::query_as(
             "SELECT id, kind, title, external_id, review_project, review_iid, created_at

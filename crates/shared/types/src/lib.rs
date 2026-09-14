@@ -44,7 +44,7 @@ pub use mr::{
     ReviewMr, ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::names_session;
-pub use repo::{Repo, Worktree, WorktreeStatus};
+pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use schema::{
     PropertyKind, PropertyOption, PropertySchema, PropertyValue, StatusGroup, TaskSchema,
 };

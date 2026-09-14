@@ -1,5 +1,5 @@
 use crate::tests::fixture::{Fixture, SLUG, sh};
-use crate::{Clone, Error, Pool};
+use crate::{Error, Pool, PoolEntry};
 
 #[tokio::test]
 async fn the_pool_lists_registers_and_resolves() {
@@ -17,7 +17,7 @@ async fn the_pool_lists_registers_and_resolves() {
         "no partial words"
     );
 
-    let twin = Clone {
+    let twin = PoolEntry {
         slug: "github.com/other/mayo".into(),
         path: fx.root.path().join("x"),
     };
@@ -40,7 +40,7 @@ async fn the_pool_lists_registers_and_resolves() {
     assert_eq!(fx.pool.repo(&repo.id).await.unwrap(), repo);
     assert_eq!(
         Pool::new(fx.pool.db.clone(), fx.root.path().join("nowhere")).list(),
-        Vec::<Clone>::new()
+        Vec::<PoolEntry>::new()
     );
 }
 

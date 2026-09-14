@@ -20,6 +20,7 @@ fn state(home: &std::path::Path) -> AppState {
     state.session.open.push(Open {
         session: explorer(),
         state: SessionState::default(),
+        repos: vec![],
         worktrees: vec![],
         delivery: vec![],
     });
@@ -34,7 +35,7 @@ fn agent_cmd(command: Command) -> crate::Command {
 fn start_send_and_exit_travel_through_the_loop() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner);
+    let services = services(&spawner, home.path());
     let mut state = state(home.path());
     let id = SessionId::new("explorer-1");
 
@@ -98,7 +99,7 @@ fn start_send_and_exit_travel_through_the_loop() {
 fn resize_reaches_the_terminal_and_end_forgets_it() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner);
+    let services = services(&spawner, home.path());
     let mut state = state(home.path());
     let id = SessionId::new("explorer-1");
     dispatch(
@@ -150,7 +151,7 @@ fn resize_reaches_the_terminal_and_end_forgets_it() {
 fn a_start_for_an_unknown_session_does_nothing() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner);
+    let services = services(&spawner, home.path());
     let mut state = state(home.path());
     let id = SessionId::new("nope");
     dispatch(

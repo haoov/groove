@@ -13,6 +13,7 @@ groove-ui = { path = "../ui" }
 groove-types = { path = "../../shared/types" }
 groove-db = { path = "../../base/db" }
 groove-sessions = { path = "../../modules/sessions" }
+groove-worktree = { path = "../../modules/worktree" }
 tokio.workspace = true
 winit.workspace = true
 

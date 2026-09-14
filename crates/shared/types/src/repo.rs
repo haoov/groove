@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{RepoId, SessionId, Timestamp, WorktreeId};
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
@@ -45,4 +47,23 @@ impl WorktreeStatus {
     pub fn is_pushed(&self) -> bool {
         self.ahead == 0
     }
+}
+
+/// A clone in the pool, named by its path under `main/`.
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PoolEntry {
+    /// `<host>/<group…>/<project>`
+    pub slug: String,
+    pub path: PathBuf,
+}
+
+/// What a new worktree should be.
+#[derive(Clone, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct WorktreeSpec {
+    /// `None`: the session's default name.
+    pub branch: Option<String>,
+    /// The branch to cut from and merge into. `None`: the repo's default.
+    pub target: Option<String>,
+    /// A review: check out this branch of origin instead of cutting a new one.
+    pub track_remote: Option<String>,
 }
