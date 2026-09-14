@@ -47,7 +47,7 @@ const LOGICAL: Tokens = Tokens {
     lg: 16.0,
     xl: 24.0,
     row: 26.0,
-    header: 32.0,
+    header: 36.0,
     rail: 220.0,
     hairline: 1.0,
     text: 13.0,

@@ -410,3 +410,82 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
     assert!(texts.iter().any(|t| t == "3"));
     assert!(texts.iter().any(|t| t == "1"));
 }
+
+#[test]
+fn the_header_names_the_session_and_what_it_points_at() {
+    let app = full_app();
+    let metrics = Metrics {
+        size: groove_gfx::Size::new(1280, 800),
+        scale: 1.0,
+        cell: groove_gfx::CellSize {
+            width: 8.0,
+            height: 17.0,
+        },
+        tick: 0,
+    };
+    let frame = view(
+        &app,
+        &Ui::default(),
+        metrics,
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(texts.iter().any(|t| t == "Alpha"), "the title");
+    assert!(texts.iter().any(|t| t == "mayo"), "the repo picker");
+    assert_eq!(
+        texts.iter().filter(|t| *t == "explorer/alpha").count(),
+        2,
+        "the worktree picker and the overview row"
+    );
+    let carets = frame.layers()[0]
+        .icons
+        .iter()
+        .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
+        .count();
+    assert_eq!(carets, 2, "one per picker");
+}
+
+#[test]
+fn a_session_without_a_worktree_says_so() {
+    let mut app = app();
+    app.session.selected = Some(SessionId::new("a"));
+    let metrics = Metrics {
+        size: groove_gfx::Size::new(1280, 800),
+        scale: 1.0,
+        cell: groove_gfx::CellSize {
+            width: 8.0,
+            height: 17.0,
+        },
+        tick: 0,
+    };
+    let frame = view(
+        &app,
+        &Ui::default(),
+        metrics,
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(texts.iter().any(|t| t == "no repo"));
+    assert!(texts.iter().any(|t| t == "no worktree"));
+}
+
+#[test]
+fn the_header_stands_over_the_workspace_only() {
+    let tokens = crate::tokens::Tokens::new(1.0);
+    let layout = crate::layout::Layout::new(groove_gfx::Size::new(1280, 800), &tokens);
+    assert_eq!(layout.agent.y, 0.0, "the agent pane runs full height");
+    assert_eq!(layout.agent.h, 800.0);
+    assert_eq!(layout.header.x, layout.agent.right());
+    assert_eq!(layout.header.w, layout.workspace.w);
+    assert_eq!(layout.header.h, tokens.header);
+    assert_eq!(layout.workspace.y, layout.header.bottom());
+    assert_eq!(layout.rail.right(), layout.agent.x);
+}

@@ -66,7 +66,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// Nothing open: how to start.
 fn empty(ctx: &mut Ctx) {
     let style = ctx.styles.body(Role::Faint);
-    let (pad, body) = (ctx.tokens.md, ctx.layout.body);
+    let (pad, body) = (ctx.tokens.md, ctx.layout.workspace);
     let rect = Rect::new(body.x, body.y + ctx.tokens.sm, body.w, ctx.tokens.row);
     row(
         ctx,

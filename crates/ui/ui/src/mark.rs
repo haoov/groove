@@ -19,6 +19,8 @@ pub enum Mark {
     Behind,
     Staged,
     Modified,
+    /// What opens a picker.
+    Down,
 }
 
 impl Mark {
@@ -44,6 +46,7 @@ impl Mark {
             Mark::Behind => Icon::ArrowDown,
             Mark::Staged => Icon::Plus,
             Mark::Modified => Icon::Dot,
+            Mark::Down => Icon::CaretDown,
         }
     }
 }

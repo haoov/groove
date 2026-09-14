@@ -1,4 +1,7 @@
 //! The window's regions. Built from the tokens and the window's size, nothing else.
+//!
+//! Three columns full height: the rail, the agent's pane, the workspace. The session
+//! header is the workspace's first line, not a band across the window.
 
 use groove_gfx::{CellSize, Rect, Size};
 
@@ -8,29 +11,26 @@ use crate::tokens::{AGENT_SHARE, Tokens};
 pub struct Layout {
     pub window: Rect,
     pub rail: Rect,
-    pub header: Rect,
-    pub body: Rect,
     pub agent: Rect,
+    /// The workspace's first line: what the session is, and what it points at.
+    pub header: Rect,
+    /// Under the header: the tabs and the tab.
     pub workspace: Rect,
 }
 
 impl Layout {
     pub fn new(size: Size, tokens: &Tokens) -> Self {
         let window = size.rect();
-        let body = Rect::new(
-            tokens.rail,
-            tokens.header,
-            window.w - tokens.rail,
-            window.h - tokens.header,
-        );
-        let agent_width = (body.w * AGENT_SHARE).floor();
+        let right = window.w - tokens.rail;
+        let agent_width = (right * AGENT_SHARE).floor();
+        let work_x = tokens.rail + agent_width;
+        let work_width = right - agent_width;
         Self {
             window,
             rail: Rect::new(0.0, 0.0, tokens.rail, window.h),
-            header: Rect::new(tokens.rail, 0.0, window.w - tokens.rail, tokens.header),
-            body,
-            agent: Rect::new(body.x, body.y, agent_width, body.h),
-            workspace: Rect::new(body.x + agent_width, body.y, body.w - agent_width, body.h),
+            agent: Rect::new(tokens.rail, 0.0, agent_width, window.h),
+            header: Rect::new(work_x, 0.0, work_width, tokens.header),
+            workspace: Rect::new(work_x, tokens.header, work_width, window.h - tokens.header),
         }
     }
 
