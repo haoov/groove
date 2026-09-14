@@ -2,12 +2,17 @@
 
 use std::path::{Path, PathBuf};
 
-use groove_types::{Config, ThemeName};
+use groove_types::{Config, Error, ThemeName};
 
 /// The parsed config, or nothing before first run.
 #[derive(Debug, Default)]
 pub struct State {
     pub config: Option<Config>,
+}
+
+/// The file under the app's config dir, read once at start.
+pub fn load(config_dir: &Path) -> Result<Option<Config>, Error> {
+    Ok(groove_config::load(&groove_config::path(config_dir))?)
 }
 
 impl State {

@@ -10,6 +10,7 @@ publish.workspace = true
 groove-controllers = { path = "../../controllers/controllers" }
 groove-gfx = { path = "../../base/gfx" }
 groove-ui = { path = "../ui" }
+groove-types = { path = "../../shared/types" }
 tokio.workspace = true
 winit.workspace = true
 

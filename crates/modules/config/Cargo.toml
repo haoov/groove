@@ -1,6 +1,6 @@
 [package]
-name = "groove-config-service"
-description = "The config capability: the parsed config file and the last environment check"
+name = "groove-config"
+description = "The config file: where it lives, load, update and persist"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,7 +8,11 @@ publish.workspace = true
 
 [dependencies]
 groove-types = { path = "../../shared/types" }
-groove-config = { path = "../../modules/config" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

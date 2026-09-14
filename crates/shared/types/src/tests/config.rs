@@ -22,6 +22,15 @@ fn a_legacy_file_loads_with_defaults_for_the_new_block() {
     assert_eq!(config.preferences.thresholds.review_waiting_days, 3);
     assert!(!config.preferences.auto_approve_default);
     assert!(config.github.is_none());
+    for (name, dark) in [
+        ("latte", false),
+        ("frappe", true),
+        ("macchiato", true),
+        ("mocha", true),
+    ] {
+        let theme: ThemeName = serde_json::from_str(&format!("\"{name}\"")).unwrap();
+        assert_eq!(theme.is_dark(), dark, "{name}");
+    }
 }
 
 #[test]

@@ -24,6 +24,7 @@ pub fn state(home: &Path) -> AppState {
     std::fs::set_permissions(&claude, std::fs::Permissions::from_mode(0o755)).unwrap();
     AppState::new(Env {
         home: home.to_path_buf(),
+        config_dir: home.join("config"),
         data_dir: home.join("data"),
         plugin_dirs: vec![],
     })

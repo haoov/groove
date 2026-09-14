@@ -4,6 +4,8 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Env {
     pub home: PathBuf,
+    /// `~/.config/com.haoov.groove`
+    pub config_dir: PathBuf,
     /// `~/.local/share/com.haoov.groove`
     pub data_dir: PathBuf,
     pub plugin_dirs: Vec<PathBuf>,

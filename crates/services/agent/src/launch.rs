@@ -41,6 +41,8 @@ pub fn launch(
 pub fn palette(theme: ThemeName) -> AnsiPalette {
     match theme {
         ThemeName::Latte => AnsiPalette::LATTE,
+        ThemeName::Frappe => AnsiPalette::FRAPPE,
+        ThemeName::Macchiato => AnsiPalette::MACCHIATO,
         ThemeName::Mocha => AnsiPalette::MOCHA,
     }
 }

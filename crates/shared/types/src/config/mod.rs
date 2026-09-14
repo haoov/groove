@@ -26,7 +26,15 @@ pub struct Config {
 pub enum ThemeName {
     #[default]
     Latte,
+    Frappe,
+    Macchiato,
     Mocha,
+}
+
+impl ThemeName {
+    pub fn is_dark(self) -> bool {
+        self != ThemeName::Latte
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

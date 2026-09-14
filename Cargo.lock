@@ -1057,6 +1057,7 @@ version = "0.1.0"
 dependencies = [
  "groove-controllers",
  "groove-gfx",
+ "groove-types",
  "groove-ui",
  "tokio",
  "winit",
@@ -1084,9 +1085,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-config"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "groove-config-service"
 version = "0.1.0"
 dependencies = [
+ "groove-config",
  "groove-types",
 ]
 

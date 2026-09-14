@@ -33,7 +33,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::new(Proxy(event_loop.create_proxy())),
     );
     let explore = std::env::args().any(|a| a == "--explore");
-    let mut app = app::App::new(spawner, env(), explore);
+    let env = env();
+    let config = groove_controllers::config_service::load(&env.config_dir)?;
+    let mut app = app::App::new(spawner, env, config, explore);
     event_loop.run_app(&mut app)?;
     app.into_result()
 }
@@ -46,7 +48,11 @@ fn env() -> Env {
     let data = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".local/share"));
+    let config = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".config"));
     Env {
+        config_dir: config.join("com.haoov.groove"),
         data_dir: data.join("com.haoov.groove"),
         home,
         plugin_dirs: Vec::new(),

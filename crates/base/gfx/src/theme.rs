@@ -41,6 +41,44 @@ impl Palette {
         yellow: Color::hex(0xf9e2af),
     };
 
+    pub const FRAPPE: Palette = Palette {
+        crust: Color::hex(0x232634),
+        mantle: Color::hex(0x292c3c),
+        base: Color::hex(0x303446),
+        surface0: Color::hex(0x414559),
+        surface1: Color::hex(0x51576d),
+        surface2: Color::hex(0x626880),
+        overlay0: Color::hex(0x737994),
+        subtext0: Color::hex(0xa5adce),
+        subtext1: Color::hex(0xb5bfe2),
+        text: Color::hex(0xc6d0f5),
+        blue: Color::hex(0x8caaee),
+        lavender: Color::hex(0xbabbf1),
+        green: Color::hex(0xa6d189),
+        red: Color::hex(0xe78284),
+        peach: Color::hex(0xef9f76),
+        yellow: Color::hex(0xe5c890),
+    };
+
+    pub const MACCHIATO: Palette = Palette {
+        crust: Color::hex(0x181926),
+        mantle: Color::hex(0x1e2030),
+        base: Color::hex(0x24273a),
+        surface0: Color::hex(0x363a4f),
+        surface1: Color::hex(0x494d64),
+        surface2: Color::hex(0x5b6078),
+        overlay0: Color::hex(0x6e738d),
+        subtext0: Color::hex(0xa5adcb),
+        subtext1: Color::hex(0xb8c0e0),
+        text: Color::hex(0xcad3f5),
+        blue: Color::hex(0x8aadf4),
+        lavender: Color::hex(0xb7bdf8),
+        green: Color::hex(0xa6da95),
+        red: Color::hex(0xed8796),
+        peach: Color::hex(0xf5a97f),
+        yellow: Color::hex(0xeed49f),
+    };
+
     pub const LATTE: Palette = Palette {
         crust: Color::hex(0xdce0e8),
         mantle: Color::hex(0xe6e9ef),
@@ -78,6 +116,14 @@ impl Theme {
 
     pub const fn light() -> Self {
         Self::with(Palette::LATTE)
+    }
+
+    pub const fn frappe() -> Self {
+        Self::with(Palette::FRAPPE)
+    }
+
+    pub const fn macchiato() -> Self {
+        Self::with(Palette::MACCHIATO)
     }
 
     const fn with(palette: Palette) -> Self {

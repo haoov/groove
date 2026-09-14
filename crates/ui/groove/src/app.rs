@@ -4,6 +4,7 @@ use groove_controllers::{
     AppState, Command, Env, Event, TokioSpawner, Window as WindowEvent_, apply, dispatch, session,
 };
 use groove_gfx::{Fonts, Renderer, Size};
+use groove_types::Config;
 use groove_ui::{Metrics, Ui};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -26,11 +27,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(spawner: TokioSpawner, env: Env, explore: bool) -> Self {
+    pub fn new(spawner: TokioSpawner, env: Env, config: Option<Config>, explore: bool) -> Self {
+        let mut state = AppState::new(env);
+        state.config.config = config;
         Self {
             window: None,
             renderer: None,
-            state: AppState::new(env),
+            state,
             ui: Ui::default(),
             spawner,
             modifiers: ModifiersState::empty(),

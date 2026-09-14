@@ -97,6 +97,54 @@ impl AnsiPalette {
         cursor: Rgb::hex(0xf5e0dc),
     };
 
+    pub const FRAPPE: AnsiPalette = AnsiPalette {
+        colors: [
+            Rgb::hex(0x51576d),
+            Rgb::hex(0xe78284),
+            Rgb::hex(0xa6d189),
+            Rgb::hex(0xe5c890),
+            Rgb::hex(0x8caaee),
+            Rgb::hex(0xf4b8e4),
+            Rgb::hex(0x81c8be),
+            Rgb::hex(0xb5bfe2),
+            Rgb::hex(0x626880),
+            Rgb::hex(0xe78284),
+            Rgb::hex(0xa6d189),
+            Rgb::hex(0xe5c890),
+            Rgb::hex(0x8caaee),
+            Rgb::hex(0xf4b8e4),
+            Rgb::hex(0x81c8be),
+            Rgb::hex(0xa5adce),
+        ],
+        foreground: Rgb::hex(0xc6d0f5),
+        background: Rgb::hex(0x303446),
+        cursor: Rgb::hex(0xf2d5cf),
+    };
+
+    pub const MACCHIATO: AnsiPalette = AnsiPalette {
+        colors: [
+            Rgb::hex(0x494d64),
+            Rgb::hex(0xed8796),
+            Rgb::hex(0xa6da95),
+            Rgb::hex(0xeed49f),
+            Rgb::hex(0x8aadf4),
+            Rgb::hex(0xf5bde6),
+            Rgb::hex(0x8bd5ca),
+            Rgb::hex(0xb8c0e0),
+            Rgb::hex(0x5b6078),
+            Rgb::hex(0xed8796),
+            Rgb::hex(0xa6da95),
+            Rgb::hex(0xeed49f),
+            Rgb::hex(0x8aadf4),
+            Rgb::hex(0xf5bde6),
+            Rgb::hex(0x8bd5ca),
+            Rgb::hex(0xa5adcb),
+        ],
+        foreground: Rgb::hex(0xcad3f5),
+        background: Rgb::hex(0x24273a),
+        cursor: Rgb::hex(0xf4dbd6),
+    };
+
     pub const LATTE: AnsiPalette = AnsiPalette {
         colors: [
             Rgb::hex(0x5c5f77),
