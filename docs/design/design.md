@@ -153,8 +153,37 @@ delete and open in provider.
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | properties; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, no words, and the row's skill button; then the body. Properties and body edited by hand. Close task when every worktree is merged or closed | folded |
-| diff | the selected worktree's diff, unified or split, notes inline; default when the session has changes | a search bar — files, or grep with `/` — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
-| editor | one file, opened from a diff line, back to the diff on save | file explorer, search, grep results |
+| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — files, or grep with `/` — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
+| editor | any file, on the same surface; a changed file keeps its marks and its views | file explorer, search, grep results |
+
+**One code surface.** The diff and the editor are one surface in three views, which
+the gutter holds together.
+
+| View | Shows | Gutter |
+|---|---|---|
+| file | the file as it is now | a mark on every line the change touched |
+| inline | the change as one column | the old and the new line number |
+| split | the old beside the new | one number per side |
+
+The new side is editable in every view. A caret lives in the document, never in a
+row, so it stays where the user left it while the rows move under it. In the inline
+view a removed line belongs to the old document and takes no caret.
+
+**Finding your way in a big change.** A change over forty files in twenty directories
+is where a diff is won or lost. Four answers, and none of them is a bigger tree:
+
+- **The path, once.** The file list strips the whole change's common root and shows
+  it once, then collapses every directory chain with a single child. A file reads as
+  its name first and the rest of its path behind it, dimmed. Where the name carries no
+  meaning, `mod.rs` and its like, the directory is the name.
+- **Where am I.** Two lines pin at the top of the surface: the file, and under it the
+  scope the visible rows sit in, read from the syntax tree.
+- **Crossing a directory.** In a scroll over several files, a band marks the point
+  where the path changes, showing only the segments that differ from the file above.
+- **What is left.** One column down the edge holds the whole change: a band per file,
+  its height its diff's length, its hunks as marks, the viewport as a lens that drags.
+  A file marked read dims; a file carrying a note is marked. What is left is what is
+  still bright. The marks belong to the session and outlive the window.
 
 **Manual section.** Where the user acts by hand, as the agent pane is where the agent
 acts. Terminals for the selected worktree, splittable, resizable. Collapsible; hidden

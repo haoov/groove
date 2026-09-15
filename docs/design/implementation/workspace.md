@@ -28,12 +28,30 @@ file. The file list is a directory tree with status, counts and a staged marker.
 
 ### Planned
 
-**Module `diff`**, on `git` and `text`: the three modes, the summary, hunks on demand,
-untracked handling, commits, blame, expansion, the fetch throttle. Parsers stay in
-`git`. The cache goes; one state is refetched on refresh with a generation.
+**Two documents and an alignment.** A diff is the file before and the file after, each
+a document in `text`, and the alignment between them. `git` gives the content at a ref;
+the working copy comes from disk. `diff` computes the alignment with `imara-diff`. Git's
+own diff output is never read, so there is no patch parser and no drift between a patch
+and the files beside it. Expansion is a slice of a document already held. Word diff runs
+on one-for-one pairs.
 
-**Service `workspace`** holds per selected worktree: the summary, the hunks loaded so
-far, the view — unified or split — the mode, blame when asked.
+Tree-sitter forces this shape: a hunk parses as garbage on its own, because it starts
+mid-expression. Only whole files colour correctly, and search wants the same positions.
+
+**Module `diff`**, on `git` and `text`: the three modes, the summary, the alignment,
+untracked handling, commits, blame, expansion, the fetch throttle. The cache goes; one
+state is refetched on refresh with a generation.
+
+**Service `workspace`** holds per selected worktree: the summary, the documents and
+alignments loaded so far, the view — file, inline or split — the mode, the files marked
+read, blame when asked.
+
+**Loaded by window.** The numeric summary builds the file list with no content at all.
+Documents are held for the files near the viewport and dropped when they leave it, so a
+change over two hundred files never loads four hundred documents.
+
+**Capped by size.** Above one size a file is aligned but not coloured; above a larger
+one it is listed as changed and not shown. A file git calls binary is listed only.
 
 **Module `watch`**: a filesystem watcher on the selected worktree, `.git` excluded,
 debounced. A change to a file — modified, created, deleted, by the agent, the editor
@@ -47,14 +65,23 @@ waiting for the watcher or the poll.
 
 **Rendering** in `ui` on `gfx`: one glyph per cell, syntax from tree-sitter through
 `text`, only visible rows shaped. Split aligns by hunk; a line with no counterpart
-faces an empty row. Word diff only on one-for-one pairs, the rule in `types`.
+faces an empty row. Word diff only on one-for-one pairs, the rule in `types`. `text`
+returns the capture names tree-sitter gives, never colours; the capture to role table
+lives with the styles.
+
+**Finding your way** is drawn as [../design.md](../design.md) describes it: the common
+root stripped once and single-child chains collapsed in the file list, the file and its
+syntactic scope pinned at the top, a band where a scroll crosses a directory, and one
+column holding the whole change with the viewport as a lens. A file marked read dims in
+that column; the marks sit on the session, beside the selected worktree.
 
 | Controller | Does |
 |---|---|
 | `workspace.get_diff` · `workspace.get_commits` · `workspace.get_status` | reads: the summary, the commit log, git status |
 | `workspace.refresh` | reload status, summary, MR, CI and threads for the selected worktree |
 | `workspace.set_mode` | base, working, vs-remote; reload the summary |
-| `workspace.set_view` | unified or split; remembered per user |
+| `workspace.set_view` | file, inline or split; remembered per user |
+| `workspace.mark_read` | a file read or unread, on the session |
 | `workspace.open_file_diff` | load a file's hunks |
 | `workspace.expand` | load a slice of the new side |
 | `workspace.blame` | load blame for the file |
@@ -106,9 +133,11 @@ file, grep across the worktree with match highlighting, a file tree.
 tree-sitter, transactions, the semantic hook. **Service `workspace`** holds the open
 file — path, buffer, dirty, cursor.
 
-The editor tab opens from a diff line and returns to the diff on save. A save, a
-create, a rename or a delete reaches the diff and the explorer through `watch` like
-any other change on disk. The sidebar's explorer tab: file tree, search, grep results. LSP later through the semantic hook:
+The editor tab opens any file on the same surface, from a diff line or the explorer,
+and stays where it is on save: a tab that jumps away under the user is worse than a
+tab they leave when they choose. A save, a create, a rename or a delete reaches the
+diff and the explorer through `watch` like any other change on disk, and the alignment
+follows. The sidebar's explorer tab: file tree, search, grep results. LSP later through the semantic hook:
 hover, definition, references, diagnostics.
 
 | Controller | Does |
@@ -214,7 +243,15 @@ the header for the selected worktree.
 
 ## Needs
 
-- [ ] Tree-sitter grammars bundled: yaml, python, bash, json, markdown, dockerfile, go.
+- [ ] Tree-sitter grammars bundled: rust, toml, yaml, python, bash, json, markdown, dockerfile, go.
+- [ ] A rope: `ropey`.
+- [x] The diff algorithm: upstream `imara-diff`, not gitoxide's copy. The copy is
+      adapted to gitoxide's byte strings and rides its release train; upstream is what
+      Helix computes its diff gutter with, and a line diff is a settled algorithm. The
+      copy stays the escape hatch, drop-in because it is the same API.
+- [ ] The two size caps: aligned but not coloured, and listed but not shown.
+- [ ] Does scrolling past a file mark it read, or only the user?
+- [ ] `DiffView` gains `File` and `Unified` becomes `Inline`.
 - [ ] Word-diff rule in `types`: one-for-one pairs only.
 - [ ] Request reviewers and a review with a verdict, both forges; reviewer state in `MrDetails`.
 - [ ] The poll's interval and the stale threshold in Config › Preferences.

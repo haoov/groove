@@ -265,7 +265,8 @@ module lands with its first consumer and only as wide as that consumer needs.
 3. Slices, each ending in the window:
    1. a session with its agent — `terminal`, `agent-launch`, the agent pane
    2. sessions and worktrees — `worktree`, the provisioning part of `git`, the rail
-   3. the workspace diff — the rest of `git`, `diff`, `text`, the files and diff tabs
+   3. the workspace diff — the rest of `git`, `diff`, `text`, the code surface with
+      its three views, the files and diff tabs, the editor on the same surface
    4. the board and tasks — `provider`, the three columns, the filter
    5. MR and forge — `forge`, the header's MR and CI, the review sheet
    6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`
