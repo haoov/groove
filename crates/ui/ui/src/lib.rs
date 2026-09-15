@@ -26,6 +26,7 @@ pub use render::{layout_commands, view};
 pub use style::Role;
 pub use tokens::Tokens;
 pub use views::session::{SessionUi, Tab};
+pub use views::shared::rail::RailUi;
 
 /// Which pane the keyboard belongs to.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -49,8 +50,11 @@ pub struct Ui {
     pub focus: Focus,
     pub palette: Option<palette::Palette>,
     pub session: SessionUi,
+    pub rail: RailUi,
     pub split: Split,
     pub drag: Option<Drag>,
+    /// What the pointer is over, for the row under it to say so.
+    pub hover: Option<Target>,
 }
 
 impl Ui {

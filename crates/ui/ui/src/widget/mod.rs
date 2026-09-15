@@ -10,6 +10,7 @@ mod picker;
 mod tabs;
 mod terminal;
 mod text;
+mod time;
 
 pub use counts::counts;
 pub use icon::{after_mark, box_in, icon, leading, turn};
@@ -21,4 +22,5 @@ pub use tabs::tabs;
 #[cfg(test)]
 pub(crate) use terminal::grid_of;
 pub use terminal::screen;
-pub use text::{hairline, row};
+pub use text::{elide, hairline, row};
+pub use time::ago;

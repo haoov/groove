@@ -7,8 +7,9 @@ use groove_types::WorktreeId;
 
 use crate::ctx::Metrics;
 use crate::hit::{Cursor, Hits, Target};
-use crate::layout::Edge;
+use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Flow, Palette};
+use crate::tokens::Tokens;
 use crate::{Drag, Focus, Ui};
 
 /// A key as the ui reads it, free of the window library's types.
@@ -54,6 +55,19 @@ pub enum Input {
         y: f32,
     },
     Release,
+    /// The wheel or the trackpad, over this point.
+    Scroll {
+        x: f32,
+        y: f32,
+        delta: Delta,
+    },
+}
+
+/// What a wheel reports: whole lines, or pixels from a trackpad.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Delta {
+    Lines(f32),
+    Pixels(f32),
 }
 
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
@@ -75,7 +89,33 @@ pub fn handle(
             ui.drag = None;
             Vec::new()
         }
+        Input::Scroll { x, delta, .. } => {
+            scroll(x, delta, ui, metrics);
+            Vec::new()
+        }
     }
+}
+
+/// The rail is the only column that scrolls so far. Wheel down is rows up, and the
+/// far end is clamped by the view, since only it knows how tall the content is.
+fn scroll(x: f32, delta: Delta, ui: &mut Ui, metrics: Metrics) {
+    let tokens = Tokens::new(metrics.scale);
+    if x > Layout::new(metrics.size, &tokens, ui.split).rail.right() {
+        return;
+    }
+    let pixels = match delta {
+        Delta::Lines(lines) => lines * tokens.row,
+        Delta::Pixels(pixels) => pixels,
+    };
+    ui.rail.scroll = (ui.rail.scroll - pixels).max(0.0);
+}
+
+/// The row under the pointer. True when it changed, and the window must redraw.
+pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
+    let at = hits.at(x, y);
+    let changed = at != ui.hover;
+    ui.hover = at;
+    changed
 }
 
 /// The pointer: a drag in flight owns it, otherwise it is whatever was drawn under it.

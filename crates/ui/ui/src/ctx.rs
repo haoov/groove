@@ -2,6 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
+use groove_types::Timestamp;
 
 use crate::hit::{Hits, Target};
 use crate::layout::{Layout, Split};
@@ -17,6 +18,8 @@ pub struct Metrics {
     pub cell: CellSize,
     /// Milliseconds since start, for what moves.
     pub tick: u64,
+    /// The wall clock, for what says how long ago.
+    pub now: Timestamp,
 }
 
 pub struct Ctx<'a> {
@@ -24,9 +27,11 @@ pub struct Ctx<'a> {
     pub styles: Styles,
     pub layout: Layout,
     pub tick: u64,
+    pub now: Timestamp,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
     hits: &'a mut Hits,
+    clip: Option<Rect>,
 }
 
 impl<'a> Ctx<'a> {
@@ -44,14 +49,21 @@ impl<'a> Ctx<'a> {
             styles: Styles::new(app.config.theme(), tokens),
             layout: Layout::new(metrics.size, &tokens, split),
             tick: metrics.tick,
+            now: metrics.now,
             frame,
             fonts,
             hits,
+            clip: None,
         }
     }
 
-    /// Says that `target` was drawn in `rect`, for the pointer to find.
+    /// Says that `target` was drawn in `rect`, for the pointer to find. Only the part
+    /// of it the clip left visible can be reached.
     pub fn hit(&mut self, rect: Rect, target: Target) {
+        let rect = self.clip.map_or(rect, |clip| clip.intersect(rect));
+        if rect.is_empty() {
+            return;
+        }
         self.hits.push(rect, target);
     }
 
@@ -83,9 +95,12 @@ impl<'a> Ctx<'a> {
 
     /// Runs `draw` with everything clipped to `rect`.
     pub fn clipped(&mut self, rect: Rect, draw: impl FnOnce(&mut Self)) {
+        let outer = self.clip;
+        self.clip = Some(outer.map_or(rect, |clip| clip.intersect(rect)));
         self.frame.push_clip(rect);
         draw(self);
         self.frame.pop_clip();
+        self.clip = outer;
     }
 
     /// The width this text takes in this style.

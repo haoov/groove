@@ -25,6 +25,8 @@ pub struct Tokens {
     pub row: f32,
     pub header: f32,
     pub rail: f32,
+    /// One line of text, with its leading.
+    pub line: f32,
     pub hairline: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
@@ -56,6 +58,7 @@ const LOGICAL: Tokens = Tokens {
     row: 26.0,
     header: 36.0,
     rail: 220.0,
+    line: 18.0,
     hairline: 1.0,
     grab: 8.0,
     text: 13.0,
@@ -84,6 +87,7 @@ impl Tokens {
             row: s(LOGICAL.row),
             header: s(LOGICAL.header),
             rail: s(LOGICAL.rail),
+            line: s(LOGICAL.line),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),
             text: s(LOGICAL.text),

@@ -20,7 +20,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
     let mut hits = Hits::default();
     {
         let mut ctx = Ctx::new(app, metrics, ui.split, &mut frame, fonts, &mut hits);
-        shared::rail::draw(&mut ctx, app);
+        shared::rail::draw(&mut ctx, app, ui);
         session::draw(&mut ctx, app, ui);
         shared::splitter::draw(&mut ctx);
         if let Some(palette) = &ui.palette {

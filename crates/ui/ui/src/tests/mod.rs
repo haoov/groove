@@ -1,6 +1,7 @@
 mod frame;
 mod mouse;
 mod palette;
+mod rail;
 mod structure;
 
 use groove_controllers::session_service::Open;
@@ -55,6 +56,7 @@ fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
             height: 17.0 * scale,
         },
         tick: 0,
+        now: Timestamp::new(0),
     }
 }
 
