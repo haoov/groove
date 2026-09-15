@@ -1,10 +1,11 @@
 use crate::Result;
 use crate::files::LaunchDir;
 
-/// The app's loopback server, as the agent reaches it.
+/// The app's loopback server, as the agent reaches it. The MCP server is optional:
+/// hooks stand on their own, and a broken tool server is worse than none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Loopback {
-    pub sse_url: String,
+    pub sse_url: Option<String>,
     pub hook_url: String,
     pub token: String,
 }
@@ -22,21 +23,23 @@ impl Loopback {
     /// `--mcp-config` and `--settings`, both through files: they carry the token.
     pub(crate) fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
         let curl = files.write("hooks.curl", &self.curl_config())?;
-        Ok(vec![
-            "--mcp-config".into(),
-            files.write("mcp.json", &self.mcp_config())?,
-            "--settings".into(),
-            files.write("settings.json", &self.hook_settings(&curl))?,
-        ])
+        let mut args = Vec::new();
+        if let Some(sse_url) = &self.sse_url {
+            args.push("--mcp-config".into());
+            args.push(files.write("mcp.json", &self.mcp_config(sse_url))?);
+        }
+        args.push("--settings".into());
+        args.push(files.write("settings.json", &self.hook_settings(&curl))?);
+        Ok(args)
     }
 
     /// The server name is the agent's tool prefix, `mcp__groove__*`.
-    fn mcp_config(&self) -> String {
+    fn mcp_config(&self, sse_url: &str) -> String {
         serde_json::json!({
             "mcpServers": {
                 "groove": {
                     "type": "sse",
-                    "url": self.sse_url,
+                    "url": sse_url,
                     "headers": { "Authorization": format!("Bearer {}", self.token) }
                 }
             }

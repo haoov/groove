@@ -27,6 +27,7 @@ pub fn state(home: &Path) -> AppState {
         config_dir: home.join("config"),
         data_dir: home.join("data"),
         plugin_dirs: vec![],
+        hooks: None,
     });
     let config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/code" } }"#).unwrap();

@@ -1,0 +1,117 @@
+use groove_types::{AgentStatus, HookKind, SessionId, Timestamp, ToolCall};
+
+use crate::{Agent, Event, State, apply};
+
+fn state() -> State {
+    let mut state = State::default();
+    let agent = Agent {
+        terminal: None,
+        activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
+    };
+    state.agents.push((SessionId::new("s"), agent));
+    state
+}
+
+fn post(state: &mut State, kind: HookKind, tool: Option<ToolCall>, at: i64) {
+    let event = Event::Hook {
+        session: SessionId::new("s"),
+        kind,
+        tool,
+        at: Timestamp::new(at),
+    };
+    apply(state, event);
+}
+
+fn tool() -> Option<ToolCall> {
+    Some(ToolCall {
+        name: "Bash".into(),
+        detail: Some("cargo test --all".into()),
+    })
+}
+
+#[test]
+fn a_prompt_sets_the_agent_working_and_stop_sets_it_done() {
+    let mut state = state();
+    post(&mut state, HookKind::UserPromptSubmit, None, 200);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Working);
+    assert_eq!(activity.changed_at, Timestamp::new(200));
+
+    post(&mut state, HookKind::Stop, None, 300);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Done { seen: false });
+    assert_eq!(activity.changed_at, Timestamp::new(300));
+}
+
+#[test]
+fn a_tool_is_shown_while_it_runs_and_forgotten_after() {
+    let mut state = state();
+    post(&mut state, HookKind::PreToolUse, tool(), 200);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Working);
+    assert_eq!(activity.tool, tool());
+
+    post(&mut state, HookKind::PostToolUse, tool(), 210);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Working);
+    assert!(activity.tool.is_none(), "the tool finished");
+}
+
+#[test]
+fn a_run_of_tool_hooks_leaves_the_time_where_the_turn_started() {
+    let mut state = state();
+    post(&mut state, HookKind::UserPromptSubmit, None, 200);
+    post(&mut state, HookKind::PreToolUse, tool(), 260);
+    post(&mut state, HookKind::PostToolUse, tool(), 280);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(
+        activity.changed_at,
+        Timestamp::new(200),
+        "the row says how long the turn has run, not how long the last tool took"
+    );
+}
+
+#[test]
+fn a_notification_is_the_approval_queue_s_and_moves_nothing() {
+    let mut state = state();
+    post(&mut state, HookKind::UserPromptSubmit, None, 200);
+    post(&mut state, HookKind::Notification, None, 250);
+    let activity = state.activity(&SessionId::new("s")).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Working);
+    assert_eq!(activity.changed_at, Timestamp::new(200));
+}
+
+#[test]
+fn a_hook_for_an_agent_that_is_gone_is_dropped() {
+    let mut state = State::default();
+    post(&mut state, HookKind::UserPromptSubmit, None, 200);
+    assert!(state.activity(&SessionId::new("s")).is_none());
+}
+
+#[test]
+fn a_session_posts_its_hooks_to_its_own_url() {
+    let session = groove_types::Session {
+        id: SessionId::new("gh-groove-50"),
+        title: "Harden Groove".into(),
+        kind: groove_types::SessionKind::Explorer,
+        created_at: Timestamp::new(0),
+    };
+    let paths = crate::LaunchPaths {
+        hooks: Some(crate::Receiver {
+            port: 41234,
+            token: "s3cr3t".into(),
+        }),
+        ..Default::default()
+    };
+    let loopback = crate::launch::loopback(&paths, &session).expect("a loopback");
+    assert_eq!(
+        loopback.hook_url,
+        "http://127.0.0.1:41234/hook/gh-groove-50"
+    );
+    assert_eq!(loopback.token, "s3cr3t");
+    assert!(loopback.sse_url.is_none(), "the tool server comes later");
+    assert!(
+        crate::launch::loopback(&crate::LaunchPaths::default(), &session).is_none(),
+        "no receiver, no hooks"
+    );
+}

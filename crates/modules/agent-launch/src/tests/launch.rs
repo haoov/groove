@@ -6,7 +6,7 @@ use groove_types::{Session, SessionId, SessionKind, Timestamp};
 use crate::session::session_file;
 use crate::{Launch, Loopback, Paths, core_prompt, session_uuid};
 
-fn explorer() -> Session {
+pub(crate) fn explorer() -> Session {
     Session {
         id: SessionId::new("explorer-ab12cd34"),
         title: "try the new grid".into(),
@@ -15,7 +15,7 @@ fn explorer() -> Session {
     }
 }
 
-fn paths<'a>(root: &'a Path) -> Paths<'a> {
+pub(crate) fn paths<'a>(root: &'a Path) -> Paths<'a> {
     Paths {
         home: root,
         launch_dir: root,
@@ -23,7 +23,7 @@ fn paths<'a>(root: &'a Path) -> Paths<'a> {
     }
 }
 
-fn flag_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
+pub(crate) fn flag_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
     args.iter()
         .position(|a| a == flag)
         .map(|i| args[i + 1].as_str())
@@ -104,7 +104,7 @@ fn the_prompt_file_is_private_and_names_the_session() {
 fn the_token_reaches_the_files_and_never_the_command_line() {
     let root = tempfile::tempdir().unwrap();
     let loopback = Loopback {
-        sse_url: "http://127.0.0.1:27413/sse?session=explorer-ab12cd34".into(),
+        sse_url: Some("http://127.0.0.1:27413/sse?session=explorer-ab12cd34".into()),
         hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
         token: "s3cr3t-token".into(),
     };
@@ -134,4 +134,19 @@ fn the_core_prompt_keeps_its_rules() {
     assert!(text.contains("A write waits for a human"));
     assert!(text.contains("Never write in a clone"));
     assert!(!text.contains("{{"));
+}
+
+#[test]
+fn hooks_run_without_the_tool_server() {
+    let root = tempfile::tempdir().unwrap();
+    let loopback = Loopback {
+        sse_url: None,
+        hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
+        token: "s3cr3t-token".into(),
+    };
+    let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback)).unwrap();
+    assert!(launch.args.iter().all(|a| a != "--mcp-config"));
+    let settings =
+        std::fs::read_to_string(flag_value(&launch.args, "--settings").unwrap()).unwrap();
+    assert!(settings.contains("/hook/explorer-ab12cd34"));
 }

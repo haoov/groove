@@ -1070,6 +1070,7 @@ dependencies = [
  "groove-controllers",
  "groove-db",
  "groove-gfx",
+ "groove-hooks",
  "groove-sessions",
  "groove-types",
  "groove-ui",
@@ -1083,10 +1084,12 @@ name = "groove-agent-launch"
 version = "0.1.0"
 dependencies = [
  "groove-exec",
+ "groove-hooks",
  "groove-types",
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
  "uuid",
 ]
 
@@ -1095,6 +1098,7 @@ name = "groove-agent-service"
 version = "0.1.0"
 dependencies = [
  "groove-agent-launch",
+ "groove-hooks",
  "groove-terminal",
  "groove-types",
 ]
@@ -1176,6 +1180,20 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "groove-hooks"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

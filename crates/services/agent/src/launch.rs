@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use groove_agent_launch::{Launch, Paths};
+use groove_agent_launch::{Launch, Loopback, Paths};
+use groove_hooks::Receiver;
 use groove_terminal::{Hooks, Terminal};
 use groove_types::{AnsiPalette, Error, Session, ThemeName};
 
@@ -10,6 +11,8 @@ pub struct LaunchPaths {
     pub home: PathBuf,
     pub launch_dir: PathBuf,
     pub plugin_dirs: Vec<PathBuf>,
+    /// The loopback the agent's hooks post to, when one is listening.
+    pub hooks: Option<Receiver>,
 }
 
 /// Plans the command line and spawns it on a terminal of `cols` by `rows`.
@@ -30,11 +33,21 @@ pub fn launch(
             cwd,
         },
         &paths.plugin_dirs,
-        None,
+        loopback(paths, session).as_ref(),
     )?;
     let hooks = Hooks { on_damage, on_exit };
     Terminal::spawn(launch.spec(cols, rows), palette, hooks)
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
+}
+
+/// Every session posts its hooks to its own url; the tool server comes with the asks.
+pub(crate) fn loopback(paths: &LaunchPaths, session: &Session) -> Option<Loopback> {
+    let hooks = paths.hooks.as_ref()?;
+    Some(Loopback {
+        sse_url: None,
+        hook_url: hooks.hook_url(session.id.as_str()),
+        token: hooks.token.clone(),
+    })
 }
 
 /// The terminal colours that go with the theme.

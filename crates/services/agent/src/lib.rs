@@ -1,9 +1,13 @@
 //! The agent capability. One agent per open session: its terminal and its activity.
 
-mod launch;
+pub(crate) mod launch;
+
+#[cfg(test)]
+mod tests;
 
 use groove_types::{AgentStatus, Error, HookKind, SessionActivity, SessionId, Timestamp, ToolCall};
 
+pub use groove_hooks::{Post, Receiver};
 pub use groove_terminal::Terminal;
 pub use groove_types::Screen;
 pub use launch::{LaunchPaths, launch, palette};
@@ -61,7 +65,7 @@ impl State {
     }
 }
 
-fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
+pub(crate) fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
     SessionActivity {
         status,
         tool: None,
@@ -86,6 +90,7 @@ pub enum Event {
         session: SessionId,
         kind: HookKind,
         tool: Option<ToolCall>,
+        at: Timestamp,
     },
 }
 
@@ -98,6 +103,36 @@ pub fn apply(state: &mut State, event: Event) {
                 activity.changed_at = at;
             }
         }
-        Event::Hook { .. } => {}
+        Event::Hook {
+            session,
+            kind,
+            tool,
+            at,
+        } => {
+            if let Some(activity) = state.activity_mut(&session) {
+                hook(activity, kind, tool, at);
+            }
+        }
     }
+}
+
+/// What a hook says the agent is doing. `Notification` says it wants the user, which
+/// the approval queue owns, so it moves nothing here.
+fn hook(activity: &mut SessionActivity, kind: HookKind, tool: Option<ToolCall>, at: Timestamp) {
+    let status = match kind {
+        HookKind::SessionStart => AgentStatus::Idle,
+        HookKind::UserPromptSubmit | HookKind::PreToolUse | HookKind::PostToolUse => {
+            AgentStatus::Working
+        }
+        HookKind::Stop => AgentStatus::Done { seen: false },
+        HookKind::Notification => return,
+    };
+    activity.tool = match kind {
+        HookKind::PreToolUse => tool,
+        _ => None,
+    };
+    if activity.status != status {
+        activity.changed_at = at;
+    }
+    activity.status = status;
 }
