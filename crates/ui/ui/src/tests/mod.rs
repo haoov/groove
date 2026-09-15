@@ -15,18 +15,35 @@ use crate::hit::Hits;
 use crate::input::{Input, Key, Modifiers, handle};
 use crate::{Metrics, Ui};
 
+/// The window every mouse test works in.
+const WINDOW: (u32, u32) = (1280, 800);
+
 /// A key, with nothing drawn: a key never reads the regions.
 fn press(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    handle(Input::Key { key, mods }, ui, app, &Hits::default())
+    let input = Input::Key { key, mods };
+    handle(input, ui, app, &Hits::default(), window())
 }
 
 /// A click in the middle of what was drawn there.
 fn click(rect: Rect, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
-    let input = Input::Click {
+    let input = Input::Press {
         x: rect.x + rect.w / 2.0,
         y: rect.y + rect.h / 2.0,
     };
-    handle(input, ui, app, hits)
+    handle(input, ui, app, hits, window())
+}
+
+/// The pointer at a physical x, mid-drag.
+fn drag(x: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    handle(Input::Move { x, y: 0.0 }, ui, app, hits, window())
+}
+
+fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    handle(Input::Release, ui, app, hits, window())
+}
+
+fn window() -> Metrics {
+    metrics(WINDOW.0, WINDOW.1, 1.0)
 }
 
 fn metrics(w: u32, h: u32, scale: f32) -> Metrics {

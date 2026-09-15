@@ -4,7 +4,9 @@ use groove_types::{SessionId, WorktreeId};
 
 use crate::hit::{Cursor, Hits, Target};
 use crate::input::{Key, Modifiers};
-use crate::tests::{click, full_app, metrics, press};
+use crate::layout::{Edge, Layout, Split};
+use crate::tests::{WINDOW, click, drag, full_app, metrics, press, release};
+use crate::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -111,5 +113,82 @@ fn the_pointer_says_where_a_click_lands() {
         hits.cursor_at(row.x, row.bottom() + row.h),
         Cursor::Default,
         "nothing is drawn under the rail's rows"
+    );
+}
+
+/// The rail's boundary, as the frame drew it.
+fn rail_edge(hits: &Hits) -> groove_gfx::Rect {
+    hits.rect_of(&Target::Split(Edge::Rail))
+        .expect("the rail has a splitter")
+}
+
+fn columns(split: Split) -> Layout {
+    let tokens = Tokens::new(1.0);
+    Layout::new(groove_gfx::Size::new(WINDOW.0, WINDOW.1), &tokens, split)
+}
+
+#[test]
+fn a_press_on_a_boundary_takes_hold_of_it() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    let edge = rail_edge(&hits);
+    assert!(click(edge, &mut ui, &app, &hits).is_empty());
+    assert!(ui.dragging(), "the press grabbed the boundary");
+    drag(400.0, &mut ui, &app, &hits);
+    assert_eq!(ui.split.rail, 400.0);
+    release(&mut ui, &app, &hits);
+    assert!(!ui.dragging());
+    assert_eq!(
+        columns(ui.split).rail.w,
+        400.0,
+        "the rail follows the split"
+    );
+}
+
+#[test]
+fn a_drag_never_starves_a_column() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    let edge = rail_edge(&hits);
+    click(edge, &mut ui, &app, &hits);
+    drag(0.0, &mut ui, &app, &hits);
+    assert_eq!(ui.split.rail, RAIL_MIN);
+    drag(WINDOW.0 as f32, &mut ui, &app, &hits);
+    let left = WINDOW.0 as f32 - AGENT_MIN - WORKSPACE_MIN;
+    assert_eq!(
+        ui.split.rail, left,
+        "the agent and the workspace keep their own"
+    );
+}
+
+#[test]
+fn the_agent_edge_leaves_the_workspace_its_minimum() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    let edge = hits
+        .rect_of(&Target::Split(Edge::Agent))
+        .expect("the agent pane has a splitter");
+    click(edge, &mut ui, &app, &hits);
+    drag(WINDOW.0 as f32, &mut ui, &app, &hits);
+    let workspace = columns(ui.split).workspace.w;
+    assert_eq!(workspace, WORKSPACE_MIN);
+}
+
+#[test]
+fn the_pointer_resizes_over_a_boundary_and_stays_so_while_dragging() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    let edge = rail_edge(&hits);
+    let (x, y) = (edge.x + 1.0, edge.y + 1.0);
+    assert_eq!(crate::input::cursor(&ui, &hits, x, y), Cursor::ColResize);
+    click(edge, &mut ui, &app, &hits);
+    assert_eq!(
+        crate::input::cursor(&ui, &hits, 0.0, 0.0),
+        Cursor::ColResize,
+        "a drag owns the pointer wherever it goes"
     );
 }

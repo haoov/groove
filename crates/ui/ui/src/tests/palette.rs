@@ -351,7 +351,11 @@ fn a_session_without_a_worktree_says_so() {
 #[test]
 fn the_header_stands_over_the_workspace_only() {
     let tokens = crate::tokens::Tokens::new(1.0);
-    let layout = crate::layout::Layout::new(groove_gfx::Size::new(1280, 800), &tokens);
+    let layout = crate::layout::Layout::new(
+        groove_gfx::Size::new(1280, 800),
+        &tokens,
+        crate::Split::default(),
+    );
     assert_eq!(layout.agent.y, 0.0, "the agent pane runs full height");
     assert_eq!(layout.agent.h, 800.0);
     assert_eq!(layout.header.x, layout.agent.right());

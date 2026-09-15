@@ -5,7 +5,58 @@
 
 use groove_gfx::{CellSize, Rect, Size};
 
-use crate::tokens::{AGENT_SHARE, Tokens};
+use crate::tokens::{AGENT_MIN, AGENT_SHARE, RAIL_MIN, Tokens, WORKSPACE_MIN};
+
+/// A boundary between two columns, which the user drags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Edge {
+    /// Between the rail and the agent pane.
+    Rail,
+    /// Between the agent pane and the workspace.
+    Agent,
+}
+
+/// Where the columns divide, in logical pixels. The window's size never changes it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Split {
+    pub rail: f32,
+    /// The agent pane's share of what the rail leaves.
+    pub agent: f32,
+}
+
+impl Default for Split {
+    fn default() -> Self {
+        Self {
+            rail: Tokens::default().rail,
+            agent: AGENT_SHARE,
+        }
+    }
+}
+
+impl Split {
+    /// Puts `edge` at `x`, and no column under its minimum. Logical pixels throughout.
+    pub fn drag(&mut self, edge: Edge, x: f32, width: f32) {
+        match edge {
+            Edge::Rail => {
+                let most = (width - AGENT_MIN - WORKSPACE_MIN).max(RAIL_MIN);
+                self.rail = x.clamp(RAIL_MIN, most);
+            }
+            Edge::Agent => {
+                let right = (width - self.rail).max(1.0);
+                let most = (right - WORKSPACE_MIN).max(AGENT_MIN);
+                self.agent = (x - self.rail).clamp(AGENT_MIN, most) / right;
+            }
+        }
+    }
+
+    /// Where `edge` stands in a window this wide, in logical pixels.
+    pub fn edge_at(&self, edge: Edge, width: f32) -> f32 {
+        match edge {
+            Edge::Rail => self.rail,
+            Edge::Agent => self.rail + (width - self.rail) * self.agent,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Layout {
@@ -19,16 +70,17 @@ pub struct Layout {
 }
 
 impl Layout {
-    pub fn new(size: Size, tokens: &Tokens) -> Self {
+    pub fn new(size: Size, tokens: &Tokens, split: Split) -> Self {
         let window = size.rect();
-        let right = window.w - tokens.rail;
-        let agent_width = (right * AGENT_SHARE).floor();
-        let work_x = tokens.rail + agent_width;
+        let rail_width = (split.rail * tokens.scale).floor();
+        let right = window.w - rail_width;
+        let agent_width = (right * split.agent).floor();
+        let work_x = rail_width + agent_width;
         let work_width = right - agent_width;
         Self {
             window,
-            rail: Rect::new(0.0, 0.0, tokens.rail, window.h),
-            agent: Rect::new(tokens.rail, 0.0, agent_width, window.h),
+            rail: Rect::new(0.0, 0.0, rail_width, window.h),
+            agent: Rect::new(rail_width, 0.0, agent_width, window.h),
             header: Rect::new(work_x, 0.0, work_width, tokens.header),
             workspace: Rect::new(work_x, tokens.header, work_width, window.h - tokens.header),
         }

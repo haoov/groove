@@ -20,6 +20,7 @@ mod tests;
 
 pub use ctx::Metrics;
 pub use hit::{Cursor, Hits, Target};
+pub use layout::{Edge, Split};
 pub use mark::Mark;
 pub use render::{layout_commands, view};
 pub use style::Role;
@@ -34,10 +35,26 @@ pub enum Focus {
     Rail,
 }
 
-/// What is the ui's alone: focus, folds, the palette. Never in `AppState`.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+/// A boundary under the pointer: which one, and where the pointer took hold of it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Drag {
+    pub edge: Edge,
+    /// The pointer's distance from the boundary when it was grabbed, in logical pixels.
+    pub offset: f32,
+}
+
+/// What is the ui's alone: focus, folds, the palette, the splits. Never in `AppState`.
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ui {
     pub focus: Focus,
     pub palette: Option<palette::Palette>,
     pub session: SessionUi,
+    pub split: Split,
+    pub drag: Option<Drag>,
+}
+
+impl Ui {
+    pub fn dragging(&self) -> bool {
+        self.drag.is_some()
+    }
 }

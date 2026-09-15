@@ -6,6 +6,11 @@ pub const PALETTE_ROWS: usize = 8;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 
+/// The smallest a dragged column may be, in logical pixels.
+pub const RAIL_MIN: f32 = 160.0;
+pub const AGENT_MIN: f32 = 280.0;
+pub const WORKSPACE_MIN: f32 = 320.0;
+
 /// Sizes in pixels, scaled to the window.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tokens {
@@ -21,6 +26,8 @@ pub struct Tokens {
     pub header: f32,
     pub rail: f32,
     pub hairline: f32,
+    /// How wide a splitter is to grab.
+    pub grab: f32,
     /// The type scale. Mono is only for code: the agent, the terminal, the diff.
     pub text: f32,
     pub small: f32,
@@ -50,6 +57,7 @@ const LOGICAL: Tokens = Tokens {
     header: 36.0,
     rail: 220.0,
     hairline: 1.0,
+    grab: 8.0,
     text: 13.0,
     small: 11.5,
     title: 14.0,
@@ -77,6 +85,7 @@ impl Tokens {
             header: s(LOGICAL.header),
             rail: s(LOGICAL.rail),
             hairline: s(LOGICAL.hairline),
+            grab: s(LOGICAL.grab),
             text: s(LOGICAL.text),
             small: s(LOGICAL.small),
             title: s(LOGICAL.title),

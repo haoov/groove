@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
 
 use crate::hit::{Hits, Target};
-use crate::layout::Layout;
+use crate::layout::{Layout, Split};
 use crate::mark::Mark;
 use crate::style::Styles;
 use crate::tokens::Tokens;
@@ -33,6 +33,7 @@ impl<'a> Ctx<'a> {
     pub fn new(
         app: &AppState,
         metrics: Metrics,
+        split: Split,
         frame: &'a mut Frame,
         fonts: &'a mut Fonts,
         hits: &'a mut Hits,
@@ -41,7 +42,7 @@ impl<'a> Ctx<'a> {
         Self {
             tokens,
             styles: Styles::new(app.config.theme(), tokens),
-            layout: Layout::new(metrics.size, &tokens),
+            layout: Layout::new(metrics.size, &tokens, split),
             tick: metrics.tick,
             frame,
             fonts,

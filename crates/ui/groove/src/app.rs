@@ -30,6 +30,8 @@ pub struct App {
     hits: Hits,
     cursor: (f32, f32),
     pointer: Cursor,
+    /// When the agents were last fitted to their pane, to throttle a drag.
+    fitted: Instant,
     failure: Option<groove_gfx::Error>,
     explore: bool,
     started: Instant,
@@ -56,6 +58,7 @@ impl App {
             hits: Hits::default(),
             cursor: (0.0, 0.0),
             pointer: Cursor::default(),
+            fitted: Instant::now(),
             failure: None,
             explore,
             started: Instant::now(),
@@ -81,9 +84,7 @@ impl App {
         let Some(metrics) = self.metrics() else {
             return;
         };
-        for command in groove_ui::layout_commands(&self.state, metrics) {
-            dispatch(command, &mut self.state, &self.services, &self.spawner);
-        }
+        self.fit_agents(metrics);
         let Some(renderer) = &mut self.renderer else {
             return;
         };
@@ -93,10 +94,23 @@ impl App {
         self.point();
     }
 
+    /// Every agent's grid to its pane. A drag is throttled: one resize repaints the
+    /// whole TUI, and a grid only changes by whole cells anyway.
+    fn fit_agents(&mut self, metrics: Metrics) {
+        let waiting = self.fitted.elapsed() < Duration::from_millis(FIT_MS);
+        if self.ui.dragging() && waiting {
+            return;
+        }
+        self.fitted = Instant::now();
+        for command in groove_ui::layout_commands(&self.state, metrics, self.ui.split) {
+            dispatch(command, &mut self.state, &self.services, &self.spawner);
+        }
+    }
+
     /// The pointer follows what is under it, and changes only when it must.
     fn point(&mut self) {
         let (x, y) = self.cursor;
-        let wanted = self.hits.cursor_at(x, y);
+        let wanted = groove_ui::input::cursor(&self.ui, &self.hits, x, y);
         if wanted == self.pointer {
             return;
         }
@@ -108,7 +122,11 @@ impl App {
 
     /// One input, then whatever it asks of the services.
     fn input(&mut self, input: Input) {
-        let commands = groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits);
+        let Some(metrics) = self.metrics() else {
+            return;
+        };
+        let commands =
+            groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits, metrics);
         for command in commands {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
@@ -226,6 +244,10 @@ impl ApplicationHandler<Message> for App {
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor = (position.x as f32, position.y as f32);
                 self.point();
+                if self.ui.dragging() {
+                    let (x, y) = self.cursor;
+                    self.input(Input::Move { x, y });
+                }
             }
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
@@ -233,17 +255,26 @@ impl ApplicationHandler<Message> for App {
                 ..
             } => {
                 let (x, y) = self.cursor;
-                self.input(Input::Click { x, y });
+                self.input(Input::Press { x, y });
             }
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } => self.input(Input::Release),
             _ => {}
         }
     }
 }
 
+/// How often the agents are refitted while a split is dragged.
+const FIT_MS: u64 = 100;
+
 fn icon_of(cursor: Cursor) -> CursorIcon {
     match cursor {
         Cursor::Default => CursorIcon::Default,
         Cursor::Pointer => CursorIcon::Pointer,
+        Cursor::ColResize => CursorIcon::ColResize,
     }
 }
 

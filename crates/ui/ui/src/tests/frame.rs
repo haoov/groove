@@ -3,7 +3,7 @@ use groove_gfx::{CellSize, Palette, Size};
 use groove_types::{Rgb, Screen, ScreenCell};
 
 use crate::input::{Key, Modifiers, encode};
-use crate::layout::Layout;
+use crate::layout::{Layout, Split};
 use crate::tests::{metrics, press};
 use crate::tokens::Tokens;
 use crate::widget::grid_of;
@@ -53,7 +53,7 @@ fn hidpi_scales_the_layout() {
 #[test]
 fn the_agent_pane_grid_follows_the_cell_size() {
     let tokens = Tokens::new(1.0);
-    let layout = Layout::new(Size::new(1280, 800), &tokens);
+    let layout = Layout::new(Size::new(1280, 800), &tokens, Split::default());
     let (cols, rows) = layout.agent_grid(
         &tokens,
         CellSize {

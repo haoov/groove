@@ -7,7 +7,7 @@ use groove_gfx::{Fonts, Frame};
 use crate::Ui;
 use crate::ctx::{Ctx, Metrics};
 use crate::hit::Hits;
-use crate::layout::Layout;
+use crate::layout::{Layout, Split};
 use crate::style::Styles;
 use crate::tokens::Tokens;
 use crate::views::{session, shared};
@@ -19,9 +19,10 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
     let mut frame = Frame::new(metrics.size, styles.ground());
     let mut hits = Hits::default();
     {
-        let mut ctx = Ctx::new(app, metrics, &mut frame, fonts, &mut hits);
+        let mut ctx = Ctx::new(app, metrics, ui.split, &mut frame, fonts, &mut hits);
         shared::rail::draw(&mut ctx, app);
         session::draw(&mut ctx, app, ui);
+        shared::splitter::draw(&mut ctx);
         if let Some(palette) = &ui.palette {
             shared::palette::draw(&mut ctx, app, palette);
         }
@@ -30,9 +31,9 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 }
 
 /// The commands a new window size implies: every agent's grid to the pane's grid.
-pub fn layout_commands(app: &AppState, metrics: Metrics) -> Vec<Command> {
+pub fn layout_commands(app: &AppState, metrics: Metrics, split: Split) -> Vec<Command> {
     let tokens = Tokens::new(metrics.scale);
-    let layout = Layout::new(metrics.size, &tokens);
+    let layout = Layout::new(metrics.size, &tokens, split);
     let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
     app.agent
         .agents

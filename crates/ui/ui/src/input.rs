@@ -5,9 +5,11 @@
 use groove_controllers::{AppState, Command, agent, session};
 use groove_types::WorktreeId;
 
-use crate::hit::{Hits, Target};
+use crate::ctx::Metrics;
+use crate::hit::{Cursor, Hits, Target};
+use crate::layout::Edge;
 use crate::palette::{Action, Flow, Palette};
-use crate::{Focus, Ui};
+use crate::{Drag, Focus, Ui};
 
 /// A key as the ui reads it, free of the window library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,15 +39,50 @@ pub struct Modifiers {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Input {
-    Key { key: Key, mods: Modifiers },
-    Click { x: f32, y: f32 },
+    Key {
+        key: Key,
+        mods: Modifiers,
+    },
+    /// The left button went down here.
+    Press {
+        x: f32,
+        y: f32,
+    },
+    /// The pointer moved here while the button is down.
+    Move {
+        x: f32,
+        y: f32,
+    },
+    Release,
 }
 
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
-pub fn handle(input: Input, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+pub fn handle(
+    input: Input,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
     match input {
         Input::Key { key, mods } => key_input(key, mods, ui, app),
-        Input::Click { x, y } => click(x, y, ui, app, hits),
+        Input::Press { x, y } => press(x, y, ui, app, hits, metrics),
+        Input::Move { x, .. } => {
+            drag_to(ui, x, metrics);
+            Vec::new()
+        }
+        Input::Release => {
+            ui.drag = None;
+            Vec::new()
+        }
+    }
+}
+
+/// The pointer: a drag in flight owns it, otherwise it is whatever was drawn under it.
+pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
+    match ui.drag {
+        Some(_) => Cursor::ColResize,
+        None => hits.cursor_at(x, y),
     }
 }
 
@@ -64,6 +101,50 @@ fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Comm
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Rail => Vec::new(),
     }
+}
+
+/// A press on a boundary takes hold of it; anywhere else is a click.
+fn press(
+    x: f32,
+    y: f32,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
+    if let Some(Target::Split(edge)) = hits.at(x, y) {
+        grab(ui, edge, x, metrics);
+        return Vec::new();
+    }
+    click(x, y, ui, app, hits)
+}
+
+/// The pointer rarely grabs a boundary dead centre; the offset keeps it from jumping.
+fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
+    let at = ui.split.edge_at(edge, width_of(metrics));
+    ui.drag = Some(Drag {
+        edge,
+        offset: logical(x, metrics) - at,
+    });
+}
+
+/// The boundary follows the pointer. The panes redraw at once; the agent's grid
+/// follows on the next frame, since a grid only changes by whole cells.
+fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
+    let Some(drag) = ui.drag else {
+        return;
+    };
+    let at = logical(x, metrics) - drag.offset;
+    ui.split.drag(drag.edge, at, width_of(metrics));
+}
+
+/// The window's width in logical pixels, which is what a split is measured in.
+fn width_of(metrics: Metrics) -> f32 {
+    logical(metrics.size.rect().w, metrics)
+}
+
+fn logical(value: f32, metrics: Metrics) -> f32 {
+    value / metrics.scale
 }
 
 /// What was drawn under the point, acted on. Anywhere else closes the palette.
@@ -85,7 +166,7 @@ fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comman
         Some(Target::Picker) => selector(ui, app),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::Palette) | None => Vec::new(),
+        Some(Target::Palette | Target::Split(_)) | None => Vec::new(),
     }
 }
 

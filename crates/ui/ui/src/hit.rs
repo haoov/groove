@@ -4,6 +4,7 @@
 use groove_gfx::Rect;
 use groove_types::{SessionId, WorktreeId};
 
+use crate::layout::Edge;
 use crate::views::session::Tab;
 
 /// What the pointer looks like over a region.
@@ -13,6 +14,8 @@ pub enum Cursor {
     Default,
     /// Over something a click acts on.
     Pointer,
+    /// Over a boundary a drag moves sideways.
+    ColResize,
 }
 
 /// A thing on screen the pointer can act on.
@@ -30,6 +33,8 @@ pub enum Target {
     PaletteRow(usize),
     /// The palette's box, so a click inside it is not a click outside.
     Palette,
+    /// A boundary between two columns.
+    Split(Edge),
 }
 
 impl Target {
@@ -41,6 +46,7 @@ impl Target {
             | Target::Picker
             | Target::Worktree(_)
             | Target::PaletteRow(_) => Cursor::Pointer,
+            Target::Split(_) => Cursor::ColResize,
             Target::Palette => Cursor::Default,
         }
     }
