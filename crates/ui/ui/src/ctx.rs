@@ -3,6 +3,7 @@
 use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
 
+use crate::hit::{Hits, Target};
 use crate::layout::Layout;
 use crate::mark::Mark;
 use crate::style::Styles;
@@ -25,6 +26,7 @@ pub struct Ctx<'a> {
     pub tick: u64,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
+    hits: &'a mut Hits,
 }
 
 impl<'a> Ctx<'a> {
@@ -33,6 +35,7 @@ impl<'a> Ctx<'a> {
         metrics: Metrics,
         frame: &'a mut Frame,
         fonts: &'a mut Fonts,
+        hits: &'a mut Hits,
     ) -> Self {
         let tokens = Tokens::new(metrics.scale);
         Self {
@@ -42,7 +45,13 @@ impl<'a> Ctx<'a> {
             tick: metrics.tick,
             frame,
             fonts,
+            hits,
         }
+    }
+
+    /// Says that `target` was drawn in `rect`, for the pointer to find.
+    pub fn hit(&mut self, rect: Rect, target: Target) {
+        self.hits.push(rect, target);
     }
 
     pub fn quad(&mut self, rect: Rect, color: Color) {

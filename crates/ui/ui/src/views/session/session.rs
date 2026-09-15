@@ -4,6 +4,7 @@ use groove_gfx::Rect;
 use super::components::{agent_pane, header, overview};
 use crate::Ui;
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::style::Role;
 use crate::widget::{row, tabs};
 
@@ -50,7 +51,9 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         .iter()
         .position(|tab| *tab == ui.session.tab)
         .unwrap_or(0);
-    tabs(ctx, strip, &labels, at);
+    for (tab, rect) in Tab::ALL.iter().zip(tabs(ctx, strip, &labels, at)) {
+        ctx.hit(rect, Target::Tab(*tab));
+    }
 
     let body = Rect::new(
         area.x,

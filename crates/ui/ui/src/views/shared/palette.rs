@@ -2,6 +2,7 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::palette::Palette;
 use crate::style::Role;
 use crate::tokens::PALETTE_ROWS;
@@ -22,6 +23,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let (row_height, pad) = (ctx.tokens.row, ctx.tokens.md);
     let height = row_height * (shown + 1) as f32 + ctx.tokens.sm;
     let rect = modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top);
+    ctx.hit(rect, Target::Palette);
 
     let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, row_height);
     let prefix = match &prompt {
@@ -54,9 +56,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         .iter()
         .skip(first)
         .take(PALETTE_ROWS)
-        .map(|(group, label)| match &prompt {
-            Some(_) => Row::new(pad, group, label_style),
-            None => Row::new(pad, group, group_style).aside(at, label, label_style),
+        .enumerate()
+        .map(|(i, (group, label))| {
+            let row = match &prompt {
+                Some(_) => Row::new(pad, group, label_style),
+                None => Row::new(pad, group, group_style).aside(at, label, label_style),
+            };
+            row.target(Target::PaletteRow(first + i))
         })
         .collect();
     list(ctx, body, &items, Some(palette.selected - first));

@@ -1,3 +1,100 @@
 mod frame;
+mod mouse;
 mod palette;
 mod structure;
+
+use groove_controllers::session_service::Open;
+use groove_controllers::{AppState, Command};
+use groove_gfx::{CellSize, Rect, Size};
+use groove_types::{
+    PoolEntry, Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
+    WorktreeId,
+};
+
+use crate::hit::Hits;
+use crate::input::{Input, Key, Modifiers, handle};
+use crate::{Metrics, Ui};
+
+/// A key, with nothing drawn: a key never reads the regions.
+fn press(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    handle(Input::Key { key, mods }, ui, app, &Hits::default())
+}
+
+/// A click in the middle of what was drawn there.
+fn click(rect: Rect, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    let input = Input::Click {
+        x: rect.x + rect.w / 2.0,
+        y: rect.y + rect.h / 2.0,
+    };
+    handle(input, ui, app, hits)
+}
+
+fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
+    Metrics {
+        size: Size::new(w, h),
+        scale,
+        cell: CellSize {
+            width: 8.0 * scale,
+            height: 17.0 * scale,
+        },
+        tick: 0,
+    }
+}
+
+fn open(id: &str, title: &str) -> Open {
+    Open {
+        session: Session {
+            id: SessionId::new(id),
+            title: title.into(),
+            kind: SessionKind::Explorer,
+            created_at: Timestamp::new(0),
+        },
+        state: SessionState::default(),
+        repos: vec![],
+        worktrees: vec![],
+        delivery: vec![],
+    }
+}
+
+fn app() -> AppState {
+    let mut app = AppState::default();
+    app.session.open.push(open("a", "Alpha"));
+    app.session.open.push(open("b", "Beta"));
+    app.session.selected = Some(SessionId::new("a"));
+    app.session.pool = vec![PoolEntry {
+        slug: "gitlab.example.com/g/mayo".into(),
+        path: "/pool/mayo".into(),
+    }];
+    app
+}
+
+fn with_repo(mut app: AppState) -> AppState {
+    let repo = Repo {
+        id: RepoId::new("gitlab.example.com/g/mayo"),
+        host: "gitlab.example.com".into(),
+        group_path: "g".into(),
+        project: "mayo".into(),
+        local_path: "/pool/mayo".into(),
+    };
+    let wt = Worktree {
+        id: WorktreeId::new("wt-1"),
+        session: SessionId::new("a"),
+        repo: repo.id.clone(),
+        branch: "explorer/alpha".into(),
+        path: "/code/worktrees/a/mayo/explorer/alpha".into(),
+        base_ref: None,
+        created_at: Timestamp::new(0),
+    };
+    app.session
+        .branches
+        .push((repo.id.clone(), vec!["main".into(), "release/1.0".into()]));
+    app.session
+        .get_mut(&SessionId::new("a"))
+        .unwrap()
+        .add_worktree(repo, wt);
+    app
+}
+
+fn full_app() -> AppState {
+    with_repo(app())
+}

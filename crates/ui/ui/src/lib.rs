@@ -4,6 +4,7 @@
 //! One directory per surface under `views/`, the surface's own file named after it.
 
 mod ctx;
+mod hit;
 pub mod input;
 mod layout;
 mod mark;
@@ -18,6 +19,7 @@ mod widget;
 mod tests;
 
 pub use ctx::Metrics;
+pub use hit::{Cursor, Hits, Target};
 pub use mark::Mark;
 pub use render::{layout_commands, view};
 pub use style::Role;

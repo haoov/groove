@@ -4,6 +4,7 @@ use groove_gfx::Rect;
 
 use super::worktree_row;
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{Row, list, row};
@@ -52,6 +53,7 @@ fn repos(ctx: &mut Ctx, open: &Open, area: Rect, top: f32) {
         for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
             let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
             worktree_row::draw(ctx, line, worktree, open.delivery_of(&worktree.id));
+            ctx.hit(line, Target::Worktree(worktree.id.clone()));
             y += ctx.tokens.row;
         }
         y += ctx.tokens.sm;

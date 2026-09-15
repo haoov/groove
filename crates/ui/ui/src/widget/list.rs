@@ -1,6 +1,7 @@
 use groove_gfx::{Color, Rect, TextStyle};
 
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::mark::Mark;
 use crate::widget::{after_mark, leading, row};
 
@@ -13,6 +14,8 @@ pub struct Row<'a> {
     pub background: Option<Color>,
     /// A mark before the text, in the text's own colour, and its rotation.
     pub mark: Option<(Mark, u8)>,
+    /// What a click on the row means.
+    pub target: Option<Target>,
 }
 
 impl<'a> Row<'a> {
@@ -24,7 +27,14 @@ impl<'a> Row<'a> {
             aside: None,
             background: None,
             mark: None,
+            target: None,
         }
+    }
+
+    /// What a click on this row acts on.
+    pub fn target(mut self, target: Target) -> Self {
+        self.target = Some(target);
+        self
     }
 
     pub fn mark(mut self, mark: Mark) -> Self {
@@ -65,6 +75,9 @@ pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>
         if let Some((at, text, style)) = item.aside {
             let aside = Rect::new(rect.x + at, y, rect.w - at, height);
             row(ctx, aside, 0.0, text, style);
+        }
+        if let Some(target) = &item.target {
+            ctx.hit(line, target.clone());
         }
         y += height;
     }

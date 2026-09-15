@@ -6,25 +6,27 @@ use groove_gfx::{Fonts, Frame};
 
 use crate::Ui;
 use crate::ctx::{Ctx, Metrics};
+use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::style::Styles;
 use crate::tokens::Tokens;
 use crate::views::{session, shared};
 
 /// The whole window as a display list, rebuilt every frame from state.
-pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> Frame {
+pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Frame, Hits) {
     let tokens = Tokens::new(metrics.scale);
     let styles = Styles::new(app.config.theme(), tokens);
     let mut frame = Frame::new(metrics.size, styles.ground());
+    let mut hits = Hits::default();
     {
-        let mut ctx = Ctx::new(app, metrics, &mut frame, fonts);
+        let mut ctx = Ctx::new(app, metrics, &mut frame, fonts, &mut hits);
         shared::rail::draw(&mut ctx, app);
         session::draw(&mut ctx, app, ui);
         if let Some(palette) = &ui.palette {
             shared::palette::draw(&mut ctx, app, palette);
         }
     }
-    frame
+    (frame, hits)
 }
 
 /// The commands a new window size implies: every agent's grid to the pane's grid.

@@ -7,12 +7,13 @@ use groove_controllers::{
 };
 use groove_gfx::{Fonts, Renderer, Size};
 use groove_types::Config;
-use groove_ui::{Metrics, Ui};
+use groove_ui::input::Input;
+use groove_ui::{Cursor, Hits, Metrics, Ui};
 use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
+use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::keyboard::ModifiersState;
-use winit::window::{Window, WindowId};
+use winit::window::{CursorIcon, Window, WindowId};
 
 use crate::Message;
 use crate::keys::input_of;
@@ -25,6 +26,10 @@ pub struct App {
     spawner: TokioSpawner,
     services: Services,
     modifiers: ModifiersState,
+    /// What the last frame drew, and where the pointer is.
+    hits: Hits,
+    cursor: (f32, f32),
+    pointer: Cursor,
     failure: Option<groove_gfx::Error>,
     explore: bool,
     started: Instant,
@@ -48,6 +53,9 @@ impl App {
             spawner,
             services,
             modifiers: ModifiersState::empty(),
+            hits: Hits::default(),
+            cursor: (0.0, 0.0),
+            pointer: Cursor::default(),
             failure: None,
             explore,
             started: Instant::now(),
@@ -79,8 +87,32 @@ impl App {
         let Some(renderer) = &mut self.renderer else {
             return;
         };
-        let frame = groove_ui::view(&self.state, &self.ui, metrics, renderer.fonts());
+        let (frame, hits) = groove_ui::view(&self.state, &self.ui, metrics, renderer.fonts());
         let _ = renderer.render(&frame);
+        self.hits = hits;
+        self.point();
+    }
+
+    /// The pointer follows what is under it, and changes only when it must.
+    fn point(&mut self) {
+        let (x, y) = self.cursor;
+        let wanted = self.hits.cursor_at(x, y);
+        if wanted == self.pointer {
+            return;
+        }
+        self.pointer = wanted;
+        if let Some(window) = &self.window {
+            window.set_cursor(icon_of(wanted));
+        }
+    }
+
+    /// One input, then whatever it asks of the services.
+    fn input(&mut self, input: Input) {
+        let commands = groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits);
+        for command in commands {
+            dispatch(command, &mut self.state, &self.services, &self.spawner);
+        }
+        self.redraw();
     }
 
     fn metrics(&mut self) -> Option<Metrics> {
@@ -187,16 +219,31 @@ impl ApplicationHandler<Message> for App {
                 is_synthetic: true, ..
             } => {}
             WindowEvent::KeyboardInput { event, .. } => {
-                let Some(input) = input_of(&event, self.modifiers) else {
-                    return;
-                };
-                for command in groove_ui::input::handle(input, &mut self.ui, &self.state) {
-                    dispatch(command, &mut self.state, &self.services, &self.spawner);
+                if let Some(input) = input_of(&event, self.modifiers) {
+                    self.input(input);
                 }
-                self.redraw();
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.cursor = (position.x as f32, position.y as f32);
+                self.point();
+            }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Left,
+                ..
+            } => {
+                let (x, y) = self.cursor;
+                self.input(Input::Click { x, y });
             }
             _ => {}
         }
+    }
+}
+
+fn icon_of(cursor: Cursor) -> CursorIcon {
+    match cursor {
+        Cursor::Default => CursorIcon::Default,
+        Cursor::Pointer => CursorIcon::Pointer,
     }
 }
 

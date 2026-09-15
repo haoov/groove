@@ -1,67 +1,10 @@
 use groove_controllers::AppState;
-use groove_controllers::session_service::Open;
-use groove_types::{
-    PoolEntry, Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
-    WorktreeId,
-};
+use groove_types::{PoolEntry, SessionId};
 
-use crate::input::{Input, Key, Modifiers, handle};
+use crate::input::{Key, Modifiers};
 use crate::palette::{Palette, entries, matching};
-use crate::{Metrics, Ui, view};
-
-fn open(id: &str, title: &str) -> Open {
-    Open {
-        session: Session {
-            id: SessionId::new(id),
-            title: title.into(),
-            kind: SessionKind::Explorer,
-            created_at: Timestamp::new(0),
-        },
-        state: SessionState::default(),
-        repos: vec![],
-        worktrees: vec![],
-        delivery: vec![],
-    }
-}
-
-fn app() -> AppState {
-    let mut app = AppState::default();
-    app.session.open.push(open("a", "Alpha"));
-    app.session.open.push(open("b", "Beta"));
-    app.session.selected = Some(SessionId::new("a"));
-    app.session.pool = vec![PoolEntry {
-        slug: "gitlab.example.com/g/mayo".into(),
-        path: "/pool/mayo".into(),
-    }];
-    app
-}
-
-fn with_repo(mut app: AppState) -> AppState {
-    let repo = Repo {
-        id: RepoId::new("gitlab.example.com/g/mayo"),
-        host: "gitlab.example.com".into(),
-        group_path: "g".into(),
-        project: "mayo".into(),
-        local_path: "/pool/mayo".into(),
-    };
-    let wt = Worktree {
-        id: WorktreeId::new("wt-1"),
-        session: SessionId::new("a"),
-        repo: repo.id.clone(),
-        branch: "explorer/alpha".into(),
-        path: "/code/worktrees/a/mayo/explorer/alpha".into(),
-        base_ref: None,
-        created_at: Timestamp::new(0),
-    };
-    app.session
-        .branches
-        .push((repo.id.clone(), vec!["main".into(), "release/1.0".into()]));
-    app.session
-        .get_mut(&SessionId::new("a"))
-        .unwrap()
-        .add_worktree(repo, wt);
-    app
-}
+use crate::tests::{app, full_app, metrics, press, with_repo};
+use crate::{Ui, view};
 
 fn typed(palette: &mut Palette, text: &str, app: &AppState) {
     for c in text.chars() {
@@ -99,10 +42,6 @@ fn entries_follow_what_the_session_holds() {
         "one worktree: nothing to select between"
     );
     assert!(entries(&full_app()).iter().all(|e| e.id().contains('.')));
-}
-
-fn full_app() -> AppState {
-    with_repo(app())
 }
 
 #[test]
@@ -252,24 +191,9 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         shift: true,
         alt: false,
     };
-    handle(
-        Input::Key {
-            key: Key::Char('p'),
-            mods: chord,
-        },
-        &mut ui,
-        &app,
-    );
-    let metrics = Metrics {
-        size: groove_gfx::Size::new(1280, 800),
-        scale: 1.0,
-        cell: groove_gfx::CellSize {
-            width: 8.0,
-            height: 17.0,
-        },
-        tick: 0,
-    };
-    let frame = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    press(Key::Char('p'), chord, &mut ui, &app);
+    let metrics = metrics(1280, 800, 1.0);
+    let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]
         .texts
         .iter()
@@ -277,24 +201,10 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         .collect();
     assert!(texts.iter().any(|t| t == "Add worktree"));
     for c in "close work".chars() {
-        handle(
-            Input::Key {
-                key: Key::Char(c),
-                mods: Modifiers::default(),
-            },
-            &mut ui,
-            &app,
-        );
+        press(Key::Char(c), Modifiers::default(), &mut ui, &app);
     }
-    handle(
-        Input::Key {
-            key: Key::Enter,
-            mods: Modifiers::default(),
-        },
-        &mut ui,
-        &app,
-    );
-    let frame = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
+    press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]
         .texts
         .iter()
@@ -305,14 +215,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
         "{texts:?}"
     );
     assert!(texts.iter().any(|t| t == "mayo · explorer/alpha"));
-    let run = handle(
-        Input::Key {
-            key: Key::Enter,
-            mods: Modifiers::default(),
-        },
-        &mut ui,
-        &app,
-    );
+    let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
     assert!(ui.palette.is_none());
 }
@@ -320,16 +223,8 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
 #[test]
 fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
     let app = full_app();
-    let metrics = Metrics {
-        size: groove_gfx::Size::new(1280, 800),
-        scale: 1.0,
-        cell: groove_gfx::CellSize {
-            width: 8.0,
-            height: 17.0,
-        },
-        tick: 0,
-    };
-    let frame = view(
+    let metrics = metrics(1280, 800, 1.0);
+    let (frame, _) = view(
         &app,
         &Ui::default(),
         metrics,
@@ -376,16 +271,8 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
             ..Default::default()
         },
     ));
-    let metrics = Metrics {
-        size: groove_gfx::Size::new(1280, 800),
-        scale: 1.0,
-        cell: groove_gfx::CellSize {
-            width: 8.0,
-            height: 17.0,
-        },
-        tick: 0,
-    };
-    let frame = view(
+    let metrics = metrics(1280, 800, 1.0);
+    let (frame, _) = view(
         &app,
         &Ui::default(),
         metrics,
@@ -414,16 +301,8 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
 #[test]
 fn the_header_names_the_session_and_what_it_points_at() {
     let app = full_app();
-    let metrics = Metrics {
-        size: groove_gfx::Size::new(1280, 800),
-        scale: 1.0,
-        cell: groove_gfx::CellSize {
-            width: 8.0,
-            height: 17.0,
-        },
-        tick: 0,
-    };
-    let frame = view(
+    let metrics = metrics(1280, 800, 1.0);
+    let (frame, _) = view(
         &app,
         &Ui::default(),
         metrics,
@@ -453,16 +332,8 @@ fn the_header_names_the_session_and_what_it_points_at() {
 fn a_session_without_a_worktree_says_so() {
     let mut app = app();
     app.session.selected = Some(SessionId::new("a"));
-    let metrics = Metrics {
-        size: groove_gfx::Size::new(1280, 800),
-        scale: 1.0,
-        cell: groove_gfx::CellSize {
-            width: 8.0,
-            height: 17.0,
-        },
-        tick: 0,
-    };
-    let frame = view(
+    let metrics = metrics(1280, 800, 1.0);
+    let (frame, _) = view(
         &app,
         &Ui::default(),
         metrics,

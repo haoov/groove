@@ -2,23 +2,12 @@ use groove_controllers::AppState;
 use groove_gfx::{CellSize, Palette, Size};
 use groove_types::{Rgb, Screen, ScreenCell};
 
-use crate::input::{Input, Key, Modifiers, encode, handle};
+use crate::input::{Key, Modifiers, encode};
 use crate::layout::Layout;
+use crate::tests::{metrics, press};
 use crate::tokens::Tokens;
 use crate::widget::grid_of;
-use crate::{Metrics, Ui, view};
-
-fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
-    Metrics {
-        size: Size::new(w, h),
-        scale,
-        cell: CellSize {
-            width: 8.0 * scale,
-            height: 17.0 * scale,
-        },
-        tick: 0,
-    }
-}
+use crate::{Ui, view};
 
 fn texts(frame: &groove_gfx::Frame) -> Vec<String> {
     frame
@@ -30,7 +19,7 @@ fn texts(frame: &groove_gfx::Frame) -> Vec<String> {
 
 #[test]
 fn an_empty_state_draws_the_rail_and_the_hint() {
-    let frame = view(
+    let (frame, _) = view(
         &AppState::default(),
         &Ui::default(),
         metrics(1280, 800, 1.0),
@@ -47,7 +36,7 @@ fn an_empty_state_draws_the_rail_and_the_hint() {
 
 #[test]
 fn hidpi_scales_the_layout() {
-    let frame = view(
+    let (frame, _) = view(
         &AppState::default(),
         &Ui::default(),
         metrics(2560, 1600, 2.0),
@@ -150,12 +139,11 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
         shift: true,
         alt: false,
     };
-    let key = |key, mods| Input::Key { key, mods };
-    let opened = handle(key(Key::Char('P'), chord), &mut ui, &app);
+    let opened = press(Key::Char('P'), chord, &mut ui, &app);
     assert_eq!(opened.len(), 1, "opening refreshes the pool");
     assert_eq!(opened[0].id(), "session.list_repos");
     assert!(ui.palette.is_some());
-    let frame = view(
+    let (frame, _) = view(
         &app,
         &ui,
         metrics(1280, 800, 1.0),
@@ -163,20 +151,20 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
     );
     assert_eq!(frame.layers().len(), 2);
     assert!(
-        handle(key(Key::Char('a'), Modifiers::default()), &mut ui, &app).is_empty(),
+        press(Key::Char('a'), Modifiers::default(), &mut ui, &app).is_empty(),
         "a typed key never leaks past the palette"
     );
-    handle(key(Key::Escape, Modifiers::default()), &mut ui, &app);
+    press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(ui.palette.is_none());
 
-    let open = handle(key(Key::Char('n'), chord), &mut ui, &app);
+    let open = press(Key::Char('n'), chord, &mut ui, &app);
     assert_eq!(open[0].id(), "session.open_explorer");
     assert!(
-        handle(key(Key::Char('w'), chord), &mut ui, &app).is_empty(),
+        press(Key::Char('w'), chord, &mut ui, &app).is_empty(),
         "nothing selected, nothing to close"
     );
     assert!(
-        handle(key(Key::Char('a'), Modifiers::default()), &mut ui, &app).is_empty(),
+        press(Key::Char('a'), Modifiers::default(), &mut ui, &app).is_empty(),
         "no session, no agent to type into"
     );
 }

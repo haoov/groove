@@ -5,8 +5,8 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{box_in, row};
 
-/// A value the user can change, with the caret that says so. Returns the x after it.
-pub fn picker(ctx: &mut Ctx, line: Rect, x: f32, label: &str, role: Role) -> f32 {
+/// A value the user can change, with the caret that says so. Returns what it covers.
+pub fn picker(ctx: &mut Ctx, line: Rect, x: f32, label: &str, role: Role) -> Rect {
     let style = ctx.styles.body(role);
     let width = ctx.measure(label, &style);
     row(ctx, Rect::new(x, line.y, width, line.h), 0.0, label, style);
@@ -16,7 +16,7 @@ pub fn picker(ctx: &mut Ctx, line: Rect, x: f32, label: &str, role: Role) -> f32
     let caret = box_in(line, at, style.size);
     ctx.icon(caret, Mark::Down, 0, color);
     at += style.size;
-    at
+    Rect::new(x, line.y, at - x, line.h)
 }
 
 /// A hairline standing between two things. Returns the x after it.

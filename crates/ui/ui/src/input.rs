@@ -1,9 +1,12 @@
-//! Keys to commands. With the agent pane focused every key is the agent's, except
-//! the `ctrl+shift` chords, which are Groove's everywhere.
+//! Keys and clicks to commands. With the agent pane focused every key is the agent's,
+//! except the `ctrl+shift` chords, which are Groove's everywhere. A click goes through
+//! what the last frame drew.
 
 use groove_controllers::{AppState, Command, agent, session};
+use groove_types::WorktreeId;
 
-use crate::palette::Palette;
+use crate::hit::{Hits, Target};
+use crate::palette::{Action, Flow, Palette};
 use crate::{Focus, Ui};
 
 /// A key as the ui reads it, free of the window library's types.
@@ -39,10 +42,14 @@ pub enum Input {
 }
 
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
-pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let Input::Key { key, mods } = input else {
-        return Vec::new();
-    };
+pub fn handle(input: Input, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    match input {
+        Input::Key { key, mods } => key_input(key, mods, ui, app),
+        Input::Click { x, y } => click(x, y, ui, app, hits),
+    }
+}
+
+fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if mods.ctrl && mods.shift {
         return chord(key, ui, app).into_iter().collect();
     }
@@ -57,6 +64,66 @@ pub fn handle(input: Input, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Rail => Vec::new(),
     }
+}
+
+/// What was drawn under the point, acted on. Anywhere else closes the palette.
+fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    let target = hits.at(x, y);
+    let inside = matches!(target, Some(Target::Palette | Target::PaletteRow(_)));
+    if ui.palette.is_some() && !inside {
+        ui.palette = None;
+        return Vec::new();
+    }
+    match target {
+        Some(Target::Session(session)) => {
+            vec![Command::Session(session::Command::Select { session })]
+        }
+        Some(Target::Tab(tab)) => {
+            ui.session.tab = tab;
+            Vec::new()
+        }
+        Some(Target::Picker) => selector(ui, app),
+        Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
+        Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
+        Some(Target::Palette) | None => Vec::new(),
+    }
+}
+
+/// Either picker opens the session's selector: the worktree every tab follows.
+fn selector(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let flow = Flow::new(Action::SelectWorktree, session);
+    let commands = flow.refresh(app).into_iter().collect();
+    ui.palette = Some(Palette {
+        flow: Some(flow),
+        ..Palette::default()
+    });
+    commands
+}
+
+fn select_worktree(app: &AppState, worktree: WorktreeId) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    vec![Command::Session(session::Command::SelectWorktree {
+        session,
+        worktree,
+    })]
+}
+
+/// A click on a row is that row selected, then confirmed.
+fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(palette) = &mut ui.palette else {
+        return Vec::new();
+    };
+    palette.selected = at;
+    let outcome = palette.key(Key::Enter, app);
+    if outcome.close {
+        ui.palette = None;
+    }
+    outcome.commands
 }
 
 /// Groove's own shortcuts.
