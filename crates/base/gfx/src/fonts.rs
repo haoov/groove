@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use glyphon::fontdb::{Database, Source};
@@ -24,10 +25,33 @@ pub struct CellSize {
     pub height: f32,
 }
 
+/// Above this many measured strings a face gives up its widths.
+const WIDTH_CACHE_CAP: usize = 4096;
+
+/// One way of drawing text: the face and the size it is shaped at.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct Face {
+    pub(crate) font: Font,
+    pub(crate) weight: Weight,
+    pub(crate) size: u32,
+}
+
+impl Face {
+    pub(crate) fn new(font: Font, weight: Weight, size: f32) -> Self {
+        Self {
+            font,
+            weight,
+            size: size.to_bits(),
+        }
+    }
+}
+
 /// The font database and the shaping caches.
 pub struct Fonts {
     pub(crate) system: FontSystem,
     pub(crate) swash: SwashCache,
+    /// What a face already measured, by the text it measured.
+    widths: HashMap<Face, HashMap<Box<str>, f32>>,
 }
 
 impl Fonts {
@@ -54,6 +78,7 @@ impl Fonts {
         Self {
             system: FontSystem::new_with_locale_and_db("en-US".into(), db),
             swash: SwashCache::new(),
+            widths: HashMap::new(),
         }
     }
 
@@ -67,8 +92,25 @@ impl Fonts {
             .weight(weight.into())
     }
 
-    /// The advance of `text` on one line.
+    /// The advance of `text` on one line, shaped once and kept.
     pub fn measure(&mut self, text: &str, font: Font, weight: Weight, size: f32) -> f32 {
+        if text.is_empty() {
+            return 0.0;
+        }
+        let face = Face::new(font, weight, size);
+        if let Some(width) = self.widths.get(&face).and_then(|face| face.get(text)) {
+            return *width;
+        }
+        let width = self.shaped(text, font, weight, size);
+        let widths = self.widths.entry(face).or_default();
+        if widths.len() >= WIDTH_CACHE_CAP {
+            widths.clear();
+        }
+        widths.insert(text.into(), width);
+        width
+    }
+
+    fn shaped(&mut self, text: &str, font: Font, weight: Weight, size: f32) -> f32 {
         let mut buf = Buffer::new(&mut self.system, Metrics::new(size, size));
         buf.set_text(text, &Fonts::attrs(font, weight), Shaping::Advanced, None);
         buf.shape_until_scroll(&mut self.system, false);

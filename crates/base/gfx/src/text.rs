@@ -5,11 +5,14 @@ use glyphon::{
     TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
-use crate::fonts::CellSize;
+use crate::fonts::{CellSize, Face};
 use crate::icons::Icons;
 use crate::{Color, Font, Fonts, IconDraw, Rect, Result, Size, TextRun, Weight};
 
 const GLYPH_CACHE_CAP: usize = 4096;
+
+/// Above this many shaped lines the pass gives them up.
+const RUN_CACHE_CAP: usize = 2048;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct GlyphKey {
@@ -33,13 +36,20 @@ struct IconArea {
     clip: Rect,
 }
 
-/// One shaped line of chrome text.
+/// One line of text placed, pointing at the shaped line it draws.
 struct Run {
-    buffer: Buffer,
+    at: usize,
     x: f32,
     y: f32,
     color: Color,
     clip: Rect,
+}
+
+/// How a line was shaped: its face, and the row height it was laid out in.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Shaped {
+    face: Face,
+    height: u32,
 }
 
 /// All text of the frame: one atlas, one renderer per layer.
@@ -48,6 +58,9 @@ pub(crate) struct TextPass {
     viewport: Viewport,
     renderers: Vec<TextRenderer>,
     glyphs: HashMap<GlyphKey, Buffer>,
+    /// Every line shaped so far, and where each one sits.
+    lines: Vec<Buffer>,
+    shaped: HashMap<Shaped, HashMap<Box<str>, usize>>,
     runs: Vec<Vec<Run>>,
     placements: Vec<Vec<Placement>>,
     icons: Vec<Vec<IconArea>>,
@@ -64,6 +77,8 @@ impl TextPass {
             viewport: Viewport::new(device, &cache),
             renderers: Vec::new(),
             glyphs: HashMap::new(),
+            lines: Vec::new(),
+            shaped: HashMap::new(),
             runs: Vec::new(),
             placements: Vec::new(),
             icons: Vec::new(),
@@ -98,22 +113,49 @@ impl TextPass {
         if self.glyphs.len() > GLYPH_CACHE_CAP {
             self.glyphs.clear();
         }
+        if self.lines.len() > RUN_CACHE_CAP {
+            self.lines.clear();
+            self.shaped.clear();
+        }
     }
 
     pub fn push_run(&mut self, layer: usize, fonts: &mut Fonts, run: &TextRun) {
+        let at = self.shape(fonts, run);
+        self.runs[layer].push(Run {
+            at,
+            x: run.x,
+            y: run.y,
+            color: run.style.color,
+            clip: run.clip,
+        });
+    }
+
+    /// Where the run's shaped line sits, shaping it the first time it is asked for.
+    fn shape(&mut self, fonts: &mut Fonts, run: &TextRun) -> usize {
         let style = run.style;
+        let key = Shaped {
+            face: Face::new(style.font, style.weight, style.size),
+            height: run.height.to_bits(),
+        };
+        if let Some(at) = self
+            .shaped
+            .get(&key)
+            .and_then(|lines| lines.get(&*run.text))
+        {
+            return *at;
+        }
         let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(style.size, run.height));
         buffer.set_size(None, Some(run.height));
         let attrs = Fonts::attrs(style.font, style.weight);
         buffer.set_text(&run.text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut fonts.system, false);
-        self.runs[layer].push(Run {
-            buffer,
-            x: run.x,
-            y: run.y,
-            color: style.color,
-            clip: run.clip,
-        });
+        self.lines.push(buffer);
+        let at = self.lines.len() - 1;
+        self.shaped
+            .entry(key)
+            .or_default()
+            .insert(run.text.as_str().into(), at);
+        at
     }
 
     pub fn push_icon(&mut self, layer: usize, draw: &IconDraw) {
@@ -175,6 +217,8 @@ impl TextPass {
             viewport,
             renderers,
             glyphs,
+            lines: shaped_lines,
+            shaped: _,
             runs,
             placements,
             icons,
@@ -186,7 +230,7 @@ impl TextPass {
         for (layer, renderer) in renderers.iter_mut().enumerate().take(runs.len()) {
             let lines = runs[layer]
                 .iter()
-                .map(|run| area(&run.buffer, run.x, run.y, run.color, run.clip));
+                .map(|run| area(&shaped_lines[run.at], run.x, run.y, run.color, run.clip));
             let placed = placements[layer].iter().filter_map(|p| {
                 glyphs
                     .get(&p.key)
