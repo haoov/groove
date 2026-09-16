@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use groove_text::Document;
-use groove_types::{Row, RowKind};
+use groove_types::{LineMark, Row, RowKind};
 use imara_diff::{Algorithm, Diff, InternedInput, Interner, Token};
 
 /// Unchanged lines kept either side of a change.
@@ -125,4 +127,48 @@ fn tokens<'a>(document: &'a Document, interner: &mut Interner<Line<'a>>) -> Vec<
 
 fn lines(document: &Document) -> u32 {
     document.lines() as u32
+}
+
+/// What each line of the new file did, by walking the changes either side of it.
+/// A line both removed and added changed in place; a removal with nothing in its
+/// place marks the line that closed the gap.
+pub fn marks(rows: &[Row]) -> BTreeMap<u32, LineMark> {
+    let mut marks = BTreeMap::new();
+    let mut at = 0;
+    while at < rows.len() {
+        let gone = run_of(rows, at, RowKind::Removed);
+        let came = run_of(rows, at + gone, RowKind::Added);
+        if gone == 0 && came == 0 {
+            at += 1;
+            continue;
+        }
+        let mark = match (gone, came) {
+            (0, _) => LineMark::Added,
+            (_, 0) => LineMark::Removed,
+            _ => LineMark::Changed,
+        };
+        marks.extend(marked(rows, at + gone, came, mark));
+        at += gone + came;
+    }
+    marks
+}
+
+/// The lines a change marks: the ones that came, or the line a removal closed on.
+fn marked(rows: &[Row], at: usize, came: usize, mark: LineMark) -> Vec<(u32, LineMark)> {
+    if came == 0 {
+        let next = rows[at..].iter().find_map(|row| row.new);
+        return next.map(|line| (line, mark)).into_iter().collect();
+    }
+    rows[at..at + came]
+        .iter()
+        .filter_map(|row| row.new)
+        .map(|line| (line, mark))
+        .collect()
+}
+
+fn run_of(rows: &[Row], from: usize, kind: RowKind) -> usize {
+    rows[from.min(rows.len())..]
+        .iter()
+        .take_while(|row| row.kind == kind)
+        .count()
 }

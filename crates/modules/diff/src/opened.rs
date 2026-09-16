@@ -1,10 +1,11 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use groove_git::Git;
 use groove_text::Document;
-use groove_types::{Result, Row};
+use groove_types::{LineMark, Result, Row};
 
-use crate::alignment::{CONTEXT, align};
+use crate::alignment::{CONTEXT, align, marks};
 
 /// Above this a file is listed as changed and not shown.
 pub const MAX_SHOWN_BYTES: usize = 2 << 20;
@@ -16,6 +17,8 @@ pub struct Opened {
     pub old: Document,
     pub new: Document,
     pub rows: Vec<Row>,
+    /// What the change did to each line of the new file.
+    pub marks: BTreeMap<u32, LineMark>,
     /// Too long to align; the view says so instead of drawing it.
     pub long: bool,
 }
@@ -27,16 +30,27 @@ pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
     Ok(from_text(path, &before, &after))
 }
 
+/// The file read again, against the HEAD side already read for it. Only a git
+/// command changes that side, and nothing here runs one.
+pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
+    from_parts(path, old, &working(dir, path))
+}
+
 /// The same, from two sides already in hand.
 pub fn from_text(path: &str, before: &str, after: &str) -> Opened {
-    let long = before.len().max(after.len()) > MAX_SHOWN_BYTES;
-    let (old, new) = (Document::new(path, before), Document::new(path, after));
+    from_parts(path, Document::new(path, before), after)
+}
+
+fn from_parts(path: &str, old: Document, after: &str) -> Opened {
+    let new = Document::new(path, after);
+    let long = old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES;
     let rows = match long {
         true => Vec::new(),
         false => align(&old, &new, CONTEXT),
     };
     Opened {
         path: path.to_string(),
+        marks: marks(&rows),
         old,
         new,
         rows,

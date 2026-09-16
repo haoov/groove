@@ -29,6 +29,7 @@ impl std::fmt::Debug for Document {
     }
 }
 
+#[derive(Clone)]
 pub struct Document {
     text: Rope,
     language: Option<Language>,
@@ -69,6 +70,10 @@ impl Document {
             true => lines,
             false => lines.saturating_sub(1),
         }
+    }
+
+    pub fn bytes(&self) -> usize {
+        self.text.len_bytes()
     }
 
     pub fn line(&self, at: usize) -> Option<Cow<'_, str>> {

@@ -8,6 +8,7 @@ mod summary;
 #[cfg(test)]
 mod tests;
 
-pub use alignment::{CONTEXT, align};
-pub use opened::{MAX_SHOWN_BYTES, Opened, from_text, opened};
+pub use alignment::{CONTEXT, align, marks};
+pub use groove_text::Document;
+pub use opened::{MAX_SHOWN_BYTES, Opened, from_text, opened, reopened};
 pub use summary::{MAX_BYTES, summary};

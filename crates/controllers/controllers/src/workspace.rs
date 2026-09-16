@@ -1,10 +1,10 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::WorktreeId;
-use groove_workspace_service::{opened, summary};
+use groove_types::{Result, WorktreeId};
+use groove_workspace_service::{Document, Opened, opened, reopened, summary};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -38,34 +38,55 @@ pub fn dispatch(
     }
 }
 
+/// Where the HEAD side of a reopened file comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Head {
+    /// Read it again: a git command may have moved it.
+    Read,
+    /// Keep the one in hand: only the working side changed.
+    Keep,
+}
+
 /// The worktree and the file it is showing, read at the same time: the file's rows do
 /// not wait on the summary.
 fn reread(state: &mut AppState, spawner: &dyn Spawner) {
     load(state, spawner);
-    reopen(state, spawner);
+    reopen(state, spawner, Head::Read);
+}
+
+/// The same, for what a write under the worktree touched.
+fn refresh(state: &mut AppState, spawner: &dyn Spawner, paths: &[PathBuf]) {
+    load(state, spawner);
+    if state.workspace.shows(paths) {
+        reopen(state, spawner, Head::Keep);
+    }
 }
 
 /// Reads the open file again, now the worktree has moved under it.
-fn reopen(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(path) = state
-        .workspace
-        .opened
-        .as_ref()
-        .map(|open| open.path.clone())
-    else {
+fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
+    let Some(open) = state.workspace.opened.as_ref() else {
         return;
     };
-    open_file(state, spawner, path);
+    let path = open.path.clone();
+    let old = match head {
+        Head::Keep => Some(open.old.clone()),
+        Head::Read => None,
+    };
+    read(state, spawner, path, old);
 }
 
 /// Reads both sides in a job; the continuation stores them for the tab to draw.
 pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String) {
+    read(state, spawner, path, None);
+}
+
+fn read(state: &mut AppState, spawner: &dyn Spawner, path: String, old: Option<Document>) {
     let Some(dir) = worktree_dir(state) else {
         return;
     };
     let job = state.begin(format!("opening {path}"));
     spawner.spawn(Box::pin(async move {
-        let file = opened(&dir, &path).await;
+        let file = sides(&dir, &path, old).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match file {
@@ -74,6 +95,14 @@ pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String) {
             }
         }) as Continuation
     }));
+}
+
+/// The file's two sides, reading HEAD only when the old one is not in hand.
+async fn sides(dir: &Path, path: &str, old: Option<Document>) -> Result<Opened> {
+    match old {
+        Some(old) => Ok(reopened(dir, path, old)),
+        None => opened(dir, path).await,
+    }
 }
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
@@ -117,27 +146,38 @@ fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: WorktreeId) {
         return;
     };
     let on_change = reload(spawner.sink(), worktree.clone());
-    let watched =
-        groove_workspace_service::watch(&mut state.workspace, worktree, &dir, move |_paths| {
-            on_change()
-        });
+    let watched = groove_workspace_service::watch(&mut state.workspace, worktree, &dir, on_change);
     if let Err(e) = watched {
         state.errors.push(e);
     }
 }
 
-/// One read in flight at most.
-fn reload(sink: Arc<dyn Deliver>, worktree: WorktreeId) -> impl Fn() + Send + Sync {
-    coalesced(sink, move || {
-        let worktree = worktree.clone();
+/// One read in flight at most. What moves while it runs waits for the next one.
+fn reload(
+    sink: Arc<dyn Deliver>,
+    worktree: WorktreeId,
+) -> impl Fn(Vec<PathBuf>) + Send + Sync + 'static {
+    let changed: Arc<Mutex<Vec<PathBuf>>> = Arc::default();
+    let queue = changed.clone();
+    let once = coalesced(sink, move || {
+        let (worktree, changed) = (worktree.clone(), changed.clone());
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                let paths = std::mem::take(&mut *lock(&changed));
                 if state.workspace.watching.as_ref() == Some(&worktree) {
-                    reread(state, spawner);
+                    refresh(state, spawner, &paths);
                 }
             },
         ) as Continuation
-    })
+    });
+    move |paths: Vec<PathBuf>| {
+        lock(&queue).extend(paths);
+        once();
+    }
+}
+
+fn lock(paths: &Mutex<Vec<PathBuf>>) -> std::sync::MutexGuard<'_, Vec<PathBuf>> {
+    paths.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Where the selected worktree sits on disk.

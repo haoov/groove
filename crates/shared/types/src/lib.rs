@@ -34,7 +34,7 @@ pub use config::{
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
     BlameLine, CommitEntry, DiffLine, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineKind,
-    RepoDiff, Row, RowKind, word_diff_pairs,
+    LineMark, RepoDiff, Row, RowKind, word_diff_pairs,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use ids::{

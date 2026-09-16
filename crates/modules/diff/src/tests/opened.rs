@@ -87,3 +87,26 @@ fn a_file_the_worktree_lists_can_always_be_opened() {
         );
     }
 }
+
+#[test]
+fn reopening_with_the_head_side_in_hand_reads_the_same_file() {
+    let dir = repo();
+    write(
+        dir.path(),
+        "src/lib.rs",
+        "fn one() {}\nfn TWO() {}\nfn three() {}\n",
+    );
+    let first = open(dir.path(), "src/lib.rs");
+    write(
+        dir.path(),
+        "src/lib.rs",
+        "fn one() {}\nfn TWO() {}\nfn THREE() {}\n",
+    );
+    let again = crate::reopened(dir.path(), "src/lib.rs", first.old.clone());
+    let fresh = open(dir.path(), "src/lib.rs");
+    assert_eq!(again.rows, fresh.rows);
+    assert_eq!(again.marks, fresh.marks);
+    assert_eq!(again.old.lines(), fresh.old.lines());
+    assert_eq!(again.new.lines(), fresh.new.lines());
+    assert!(again.new.is_highlighted(), "the new side is read again");
+}

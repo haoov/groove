@@ -2,9 +2,12 @@
 
 use std::path::{Path, PathBuf};
 
-pub use groove_diff::{Opened, from_text};
+pub use groove_diff::{Document, Opened, from_text};
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
+
+#[cfg(test)]
+mod tests;
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -41,6 +44,14 @@ impl State {
     /// Whether the summary still holds this path.
     fn gone(&self, path: &str) -> bool {
         !self.files.iter().any(|file| file.path == path)
+    }
+
+    /// Whether the open file is one of these paths.
+    pub fn shows(&self, paths: &[PathBuf]) -> bool {
+        let Some(open) = self.opened.as_ref() else {
+            return false;
+        };
+        paths.iter().any(|path| path.ends_with(&open.path))
     }
 
     /// The changed files, and nothing at all when they are another worktree's.
@@ -84,6 +95,11 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
 /// One file of the worktree, both sides and the rows between them.
 pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
     groove_diff::opened(dir, path).await
+}
+
+/// The same file, against the HEAD side already read for it.
+pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
+    groove_diff::reopened(dir, path, old)
 }
 
 /// The filesystem watcher and the forge poll speak here.

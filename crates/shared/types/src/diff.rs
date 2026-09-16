@@ -67,6 +67,15 @@ pub enum RowKind {
     Gap(u32),
 }
 
+/// What the change did to a line of the new file.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LineMark {
+    Added,
+    Removed,
+    Changed,
+}
+
 /// One row of a diff: the line it is in each file, and what it is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Row {
