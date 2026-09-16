@@ -158,19 +158,22 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     spawner.spawn(Box::pin(async move {
         let result = service.contents(&id).await;
         Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match result {
-                Ok(contents) => {
-                    if let Some(open) = state.session.get_mut(&id) {
-                        open.repos = contents.repos;
-                        open.worktrees = contents.worktrees;
-                        open.delivery = contents.delivery;
-                        if open.selected_worktree().is_none() {
-                            open.state.selected_worktree =
-                                open.worktrees.first().map(|w| w.id.clone());
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                match result {
+                    Ok(contents) => {
+                        if let Some(open) = state.session.get_mut(&id) {
+                            open.repos = contents.repos;
+                            open.worktrees = contents.worktrees;
+                            open.delivery = contents.delivery;
+                            if open.selected_worktree().is_none() {
+                                open.state.selected_worktree =
+                                    open.worktrees.first().map(|w| w.id.clone());
+                            }
                         }
                     }
+                    Err(e) => state.errors.push(e),
                 }
-                Err(e) => state.errors.push(e),
+                crate::workspace::load_if_stale(state, spawner);
             },
         ) as Continuation
     }));
@@ -223,6 +226,7 @@ pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     let now = Timestamp::now();
     state.session.select(id, now);
+    crate::workspace::load_if_stale(state, spawner);
     let (service, id) = (services.session.clone(), id.clone());
     record(spawner, NO_PENDING, async move {
         service.set_seen(&id, now).await
@@ -301,6 +305,7 @@ pub fn remove_repo(
                             open.remove_repo(&repo);
                         }
                         persist_selection(state, services, spawner, &id);
+                        crate::workspace::load_if_stale(state, spawner);
                     }
                     Err(e) => state.errors.push(e),
                 }
@@ -324,6 +329,7 @@ pub fn select_worktree(
     }
     open.state.selected_worktree = Some(worktree.clone());
     persist_selection(state, services, spawner, id);
+    crate::workspace::load(state, spawner);
 }
 
 pub fn close_worktree(
@@ -400,6 +406,7 @@ fn added(
                             open.add_worktree(added.repo, added.worktree);
                         }
                         persist_selection(state, services, spawner, &id);
+                        crate::workspace::load_if_stale(state, spawner);
                     }
                     Err(e) => state.errors.push(e),
                 }

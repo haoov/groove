@@ -1,3 +1,4 @@
+mod files;
 mod frame;
 mod mouse;
 mod palette;
@@ -18,6 +19,13 @@ use crate::{Metrics, Ui};
 
 /// The window every mouse test works in.
 const WINDOW: (u32, u32) = (1280, 800);
+
+/// Groove's own modifier pair.
+const CHORD: Modifiers = Modifiers {
+    ctrl: true,
+    shift: true,
+    alt: false,
+};
 
 /// A key, with nothing drawn: a key never reads the regions.
 fn press(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {

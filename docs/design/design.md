@@ -140,6 +140,12 @@ is the work.
 | **Workspace** | header · tabs · the selected tab · the manual section |
 | **Sidebar** | contextual list for the selected tab; folds away |
 
+The rail, the agent pane and the sidebar each have a width the user drags. The
+workspace takes what is left, so it is the only column a window resize, a fold or a
+drag of a boundary it does not touch ever changes. A boundary moves the two columns it
+stands between and nothing else. The sidebar folds from the far end of the tab strip
+or with `ctrl+shift+B`, whatever the tab offers.
+
 ### Workspace
 
 **Header.** One line across the agent pane, the workspace and the sidebar: type

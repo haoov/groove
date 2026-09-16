@@ -53,7 +53,7 @@ fn hidpi_scales_the_layout() {
 #[test]
 fn the_agent_pane_grid_follows_the_cell_size() {
     let tokens = Tokens::new(1.0);
-    let layout = Layout::new(Size::new(1280, 800), &tokens, Split::default());
+    let layout = Layout::new(Size::new(1280, 800), &tokens, Split::default(), false);
     let (cols, rows) = layout.agent_grid(
         &tokens,
         CellSize {
@@ -62,7 +62,7 @@ fn the_agent_pane_grid_follows_the_cell_size() {
         },
     );
     let pane = layout.agent;
-    assert_eq!(pane.w, ((1280.0 - 220.0) * 0.45_f32).floor());
+    assert_eq!(pane.w, Split::default().agent, "a width, not a share");
     assert_eq!(cols, ((pane.w - 16.0) / 8.0).floor() as u16);
     assert_eq!(rows, ((pane.h - 16.0) / 17.0).floor() as u16);
 }

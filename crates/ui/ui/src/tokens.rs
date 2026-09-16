@@ -1,7 +1,6 @@
 //! Every number the ui draws with. Nothing else in the crate holds a size.
 
 /// Unitless and non-pixel values, which no scale touches.
-pub const AGENT_SHARE: f32 = 0.45;
 pub const PALETTE_ROWS: usize = 8;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
@@ -10,6 +9,7 @@ pub const SCRIM_ALPHA: u8 = 120;
 pub const RAIL_MIN: f32 = 160.0;
 pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
+pub const SIDEBAR_MIN: f32 = 180.0;
 
 /// Sizes in pixels, scaled to the window.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +25,8 @@ pub struct Tokens {
     pub row: f32,
     pub header: f32,
     pub rail: f32,
+    pub agent: f32,
+    pub sidebar: f32,
     /// One line of text, with its leading.
     pub line: f32,
     pub hairline: f32,
@@ -58,6 +60,8 @@ const LOGICAL: Tokens = Tokens {
     row: 26.0,
     header: 36.0,
     rail: 220.0,
+    agent: 380.0,
+    sidebar: 260.0,
     line: 18.0,
     hairline: 1.0,
     grab: 8.0,
@@ -87,6 +91,8 @@ impl Tokens {
             row: s(LOGICAL.row),
             header: s(LOGICAL.header),
             rail: s(LOGICAL.rail),
+            agent: s(LOGICAL.agent),
+            sidebar: s(LOGICAL.sidebar),
             line: s(LOGICAL.line),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),

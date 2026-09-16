@@ -19,13 +19,14 @@ pub enum Icon {
     Plus,
     Dot,
     CaretDown,
+    Sidebar,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 12] = [
+    pub(crate) const ALL: [Icon; 13] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -38,6 +39,7 @@ impl Icon {
         Icon::Plus,
         Icon::Dot,
         Icon::CaretDown,
+        Icon::Sidebar,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -54,6 +56,7 @@ impl Icon {
             Icon::Plus => include_bytes!("../../../../assets/icons/plus.svg"),
             Icon::Dot => include_bytes!("../../../../assets/icons/circle-fill.svg"),
             Icon::CaretDown => include_bytes!("../../../../assets/icons/caret-down.svg"),
+            Icon::Sidebar => include_bytes!("../../../../assets/icons/sidebar.svg"),
         }
     }
 

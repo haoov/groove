@@ -21,6 +21,8 @@ pub enum Mark {
     Modified,
     /// What opens a picker.
     Down,
+    /// What folds the sidebar away.
+    Sidebar,
 }
 
 impl Mark {
@@ -47,6 +49,7 @@ impl Mark {
             Mark::Staged => Icon::Plus,
             Mark::Modified => Icon::Dot,
             Mark::Down => Icon::CaretDown,
+            Mark::Sidebar => Icon::Sidebar,
         }
     }
 }

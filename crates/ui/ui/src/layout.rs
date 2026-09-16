@@ -1,11 +1,15 @@
-//! The window's regions. Built from the tokens and the window's size, nothing else.
+//! The window's regions. Built from the tokens, the window's size and where the user
+//! dragged the boundaries, nothing else.
 //!
-//! Three columns full height: the rail, the agent's pane, the workspace. The session
-//! header is the workspace's first line, not a band across the window.
+//! Four columns full height: the rail, the agent's pane, the workspace and the
+//! sidebar, which the tab folds away. The session header is the workspace's first
+//! line, not a band across the window.
 
 use groove_gfx::{CellSize, Rect, Size};
 
-use crate::tokens::{AGENT_MIN, AGENT_SHARE, RAIL_MIN, Tokens, WORKSPACE_MIN};
+use crate::Ui;
+use crate::ctx::Metrics;
+use crate::tokens::{AGENT_MIN, RAIL_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN};
 
 /// A boundary between two columns, which the user drags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,46 +18,74 @@ pub enum Edge {
     Rail,
     /// Between the agent pane and the workspace.
     Agent,
+    /// Between the workspace and the sidebar.
+    Sidebar,
 }
 
-/// Where the columns divide, in logical pixels. The window's size never changes it.
+impl Edge {
+    /// Every boundary, left to right.
+    pub const ALL: [Edge; 3] = [Edge::Rail, Edge::Agent, Edge::Sidebar];
+}
+
+/// The width of every column but the workspace, in logical pixels. The workspace
+/// takes what is left, so it is the only one a window resize or a fold changes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Split {
     pub rail: f32,
-    /// The agent pane's share of what the rail leaves.
     pub agent: f32,
+    pub sidebar: f32,
 }
 
 impl Default for Split {
     fn default() -> Self {
+        let tokens = Tokens::default();
         Self {
-            rail: Tokens::default().rail,
-            agent: AGENT_SHARE,
+            rail: tokens.rail,
+            agent: tokens.agent,
+            sidebar: tokens.sidebar,
         }
     }
 }
 
 impl Split {
-    /// Puts `edge` at `x`, and no column under its minimum. Logical pixels throughout.
-    pub fn drag(&mut self, edge: Edge, x: f32, width: f32) {
+    /// Puts `edge` at `x`, and no column under its minimum. A drag moves the two
+    /// columns the boundary stands between and nothing else. Logical pixels throughout.
+    pub fn drag(&mut self, edge: Edge, x: f32, width: f32, sidebar: bool) {
         match edge {
             Edge::Rail => {
-                let most = (width - AGENT_MIN - WORKSPACE_MIN).max(RAIL_MIN);
-                self.rail = x.clamp(RAIL_MIN, most);
+                let held = self.rail + self.agent;
+                self.rail = x.clamp(RAIL_MIN, (held - AGENT_MIN).max(RAIL_MIN));
+                self.agent = held - self.rail;
             }
             Edge::Agent => {
-                let right = (width - self.rail).max(1.0);
-                let most = (right - WORKSPACE_MIN).max(AGENT_MIN);
-                self.agent = (x - self.rail).clamp(AGENT_MIN, most) / right;
+                let most = (self.room(width, sidebar) - WORKSPACE_MIN).max(AGENT_MIN);
+                self.agent = (x - self.rail).clamp(AGENT_MIN, most);
+            }
+            Edge::Sidebar => {
+                let most = (width - self.rail - self.agent - WORKSPACE_MIN).max(SIDEBAR_MIN);
+                self.sidebar = (width - x).clamp(SIDEBAR_MIN, most);
             }
         }
     }
 
     /// Where `edge` stands in a window this wide, in logical pixels.
-    pub fn edge_at(&self, edge: Edge, width: f32) -> f32 {
+    pub fn edge_at(&self, edge: Edge, width: f32, sidebar: bool) -> f32 {
         match edge {
             Edge::Rail => self.rail,
-            Edge::Agent => self.rail + (width - self.rail) * self.agent,
+            Edge::Agent => self.rail + self.agent,
+            Edge::Sidebar => width - self.aside(sidebar),
+        }
+    }
+
+    /// What the agent pane and the workspace have between the rail and the sidebar.
+    fn room(&self, width: f32, sidebar: bool) -> f32 {
+        (width - self.rail - self.aside(sidebar)).max(1.0)
+    }
+
+    fn aside(&self, sidebar: bool) -> f32 {
+        match sidebar {
+            true => self.sidebar,
+            false => 0.0,
         }
     }
 }
@@ -67,23 +99,33 @@ pub struct Layout {
     pub header: Rect,
     /// Under the header: the tabs and the tab.
     pub workspace: Rect,
+    /// The tab's own list, folded to nothing when the tab has none.
+    pub sidebar: Rect,
 }
 
 impl Layout {
-    pub fn new(size: Size, tokens: &Tokens, split: Split) -> Self {
+    pub fn new(size: Size, tokens: &Tokens, split: Split, sidebar: bool) -> Self {
         let window = size.rect();
-        let rail_width = (split.rail * tokens.scale).floor();
-        let right = window.w - rail_width;
-        let agent_width = (right * split.agent).floor();
-        let work_x = rail_width + agent_width;
-        let work_width = right - agent_width;
+        let scale = |logical: f32| (logical * tokens.scale).floor();
+        let rail = scale(split.rail);
+        let agent = scale(split.agent);
+        let aside = scale(split.aside(sidebar));
+        let work_x = rail + agent;
+        let work_width = (window.w - work_x - aside).max(0.0);
         Self {
             window,
-            rail: Rect::new(0.0, 0.0, rail_width, window.h),
-            agent: Rect::new(rail_width, 0.0, agent_width, window.h),
+            rail: Rect::new(0.0, 0.0, rail, window.h),
+            agent: Rect::new(rail, 0.0, agent, window.h),
             header: Rect::new(work_x, 0.0, work_width, tokens.header),
             workspace: Rect::new(work_x, tokens.header, work_width, window.h - tokens.header),
+            sidebar: Rect::new(work_x + work_width, 0.0, aside, window.h),
         }
+    }
+
+    /// The regions for what the ui is showing right now.
+    pub fn of(metrics: Metrics, ui: &Ui) -> Self {
+        let tokens = Tokens::new(metrics.scale);
+        Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar())
     }
 
     /// Where the agent's grid starts inside its pane.

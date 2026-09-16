@@ -115,3 +115,19 @@ fn palettes_carry_the_design_values() {
     assert_eq!(Palette::LATTE.base, Color::hex(0xeff1f5));
     assert_eq!(Palette::LATTE.text, Color::hex(0x4c4f69));
 }
+
+#[test]
+fn every_icon_rasterizes_to_ink() {
+    let icons = crate::icons::Icons::new();
+    for icon in crate::Icon::ALL {
+        let glyph = icon.glyph_id(0);
+        let mask = icons
+            .rasterize(glyph, 32, 32)
+            .unwrap_or_else(|| panic!("{icon:?} has no shape"));
+        assert_eq!(mask.len(), 32 * 32);
+        assert!(
+            mask.iter().any(|alpha| *alpha > 0),
+            "{icon:?} rasterized empty"
+        );
+    }
+}

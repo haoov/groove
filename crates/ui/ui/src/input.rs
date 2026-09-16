@@ -2,7 +2,7 @@
 //! except the `ctrl+shift` chords, which are Groove's everywhere. A click goes through
 //! what the last frame drew.
 
-use groove_controllers::{AppState, Command, agent, session};
+use groove_controllers::{AppState, Command, agent, session, workspace};
 use groove_types::WorktreeId;
 
 use crate::ctx::Metrics;
@@ -96,18 +96,21 @@ pub fn handle(
     }
 }
 
-/// The rail is the only column that scrolls so far. Wheel down is rows up, and the
-/// far end is clamped by the view, since only it knows how tall the content is.
+/// The column under the pointer scrolls. Wheel down is rows up, and the far end is
+/// clamped by the view, since only it knows how tall its content is.
 fn scroll(x: f32, delta: Delta, ui: &mut Ui, metrics: Metrics) {
-    let tokens = Tokens::new(metrics.scale);
-    if x > Layout::new(metrics.size, &tokens, ui.split).rail.right() {
-        return;
-    }
+    let layout = Layout::of(metrics, ui);
     let pixels = match delta {
-        Delta::Lines(lines) => lines * tokens.row,
+        Delta::Lines(lines) => lines * Tokens::new(metrics.scale).row,
         Delta::Pixels(pixels) => pixels,
     };
-    ui.rail.scroll = (ui.rail.scroll - pixels).max(0.0);
+    if x <= layout.rail.right() {
+        ui.rail.scroll = (ui.rail.scroll - pixels).max(0.0);
+        return;
+    }
+    if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
+        ui.session.files = (ui.session.files - pixels).max(0.0);
+    }
 }
 
 /// The row under the pointer. True when it changed, and the window must redraw.
@@ -161,7 +164,7 @@ fn press(
 
 /// The pointer rarely grabs a boundary dead centre; the offset keeps it from jumping.
 fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
-    let at = ui.split.edge_at(edge, width_of(metrics));
+    let at = ui.split.edge_at(edge, width_of(metrics), sidebar(ui));
     ui.drag = Some(Drag {
         edge,
         offset: logical(x, metrics) - at,
@@ -175,7 +178,12 @@ fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
         return;
     };
     let at = logical(x, metrics) - drag.offset;
-    ui.split.drag(drag.edge, at, width_of(metrics));
+    ui.split.drag(drag.edge, at, width_of(metrics), sidebar(ui));
+}
+
+/// Whether the sidebar stands beside the workspace right now.
+fn sidebar(ui: &Ui) -> bool {
+    ui.session.sidebar()
 }
 
 /// The window's width in logical pixels, which is what a split is measured in.
@@ -201,12 +209,25 @@ fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comman
         }
         Some(Target::Tab(tab)) => {
             ui.session.tab = tab;
-            Vec::new()
+            reload(ui.session.sidebar())
+        }
+        Some(Target::Fold) => {
+            ui.session.folded = !ui.session.folded;
+            reload(ui.session.sidebar())
         }
         Some(Target::Picker) => selector(ui, app),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::Palette | Target::Split(_)) | None => Vec::new(),
+    }
+}
+
+/// Bringing a list of the worktree into view reads it again: what is on disk moved
+/// while it was away, and nothing watches the filesystem yet.
+fn reload(showing: bool) -> Vec<Command> {
+    match showing {
+        true => vec![Command::Workspace(workspace::Command::Load)],
+        false => Vec::new(),
     }
 }
 
@@ -260,6 +281,11 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
         Key::Char('n' | 'N') => Some(Command::Session(session::Command::OpenExplorer {
             title: None,
         })),
+        Key::Char('b' | 'B') => {
+            ui.session.folded = !ui.session.folded;
+            reload(ui.session.sidebar()).into_iter().next()
+        }
+        Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
         Key::Char('w' | 'W') => {
             let session = app.session.selected.clone()?;
             Some(Command::Session(session::Command::Close { session }))

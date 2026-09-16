@@ -355,6 +355,7 @@ fn the_header_stands_over_the_workspace_only() {
         groove_gfx::Size::new(1280, 800),
         &tokens,
         crate::Split::default(),
+        false,
     );
     assert_eq!(layout.agent.y, 0.0, "the agent pane runs full height");
     assert_eq!(layout.agent.h, 800.0);

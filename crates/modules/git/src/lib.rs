@@ -3,6 +3,7 @@
 
 mod branches;
 mod command;
+mod diff;
 mod error;
 mod facts;
 pub mod parse;
@@ -15,7 +16,7 @@ mod tests;
 use std::path::{Path, PathBuf};
 
 pub use error::{Error, Result};
-pub use parse::{Change, RemoteUrl};
+pub use parse::{Change, Counts, RemoteUrl};
 
 /// A repository or worktree directory to run git in.
 #[derive(Debug, Clone, PartialEq, Eq)]

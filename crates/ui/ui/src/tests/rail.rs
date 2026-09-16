@@ -18,6 +18,7 @@ fn rail_texts(app: &AppState, ui: &Ui) -> Vec<TextRun> {
         groove_gfx::Size::new(WINDOW.0, WINDOW.1),
         &crate::tokens::Tokens::new(1.0),
         ui.split,
+        false,
     )
     .rail;
     let (frame, _) = view(app, ui, window(), &mut Fonts::embedded());

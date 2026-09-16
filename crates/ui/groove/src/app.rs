@@ -119,7 +119,7 @@ impl App {
             return;
         }
         self.fitted = Instant::now();
-        for command in groove_ui::layout_commands(&self.state, metrics, self.ui.split) {
+        for command in groove_ui::layout_commands(&self.state, &self.ui, metrics) {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
     }
@@ -191,7 +191,8 @@ impl ApplicationHandler<Message> for App {
         event_loop.set_control_flow(ControlFlow::Wait);
         let attributes = Window::default_attributes()
             .with_title("Groove")
-            .with_inner_size(winit::dpi::LogicalSize::new(1440.0, 900.0));
+            .with_inner_size(winit::dpi::LogicalSize::new(1440.0, 900.0))
+            .with_min_inner_size(winit::dpi::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT));
         let Ok(window) = event_loop.create_window(attributes) else {
             event_loop.exit();
             return;
@@ -308,6 +309,10 @@ fn delta_of(delta: MouseScrollDelta) -> Delta {
 
 /// How often the agents are refitted while a split is dragged.
 const FIT_MS: u64 = 100;
+
+/// The narrowest the window may be: every column at its minimum, and room to read.
+const MIN_WIDTH: f64 = 960.0;
+const MIN_HEIGHT: f64 = 600.0;
 
 /// One frame of a turning mark, and how often an idle window redraws its clocks.
 const FRAME_MS: u64 = 120;

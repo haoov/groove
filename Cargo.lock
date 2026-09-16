@@ -1147,6 +1147,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-diff"
+version = "0.1.0"
+dependencies = [
+ "groove-git",
+ "groove-types",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "groove-exec"
 version = "0.1.0"
 dependencies = [
@@ -1267,6 +1277,7 @@ dependencies = [
 name = "groove-workspace-service"
 version = "0.1.0"
 dependencies = [
+ "groove-diff",
  "groove-types",
 ]
 

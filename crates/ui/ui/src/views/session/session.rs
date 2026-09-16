@@ -1,35 +1,57 @@
 use groove_controllers::AppState;
 use groove_gfx::Rect;
 
-use super::components::{agent_pane, header, overview};
+use super::components::{agent_pane, diff, files, header, overview};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{row, tabs};
+use crate::widget::{icon, leading, row, tabs};
 
 /// Which tab of the workspace is up.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     #[default]
     Overview,
+    Diff,
 }
 
 impl Tab {
     /// Every tab, in the order the strip shows them.
-    pub const ALL: [Tab; 1] = [Tab::Overview];
+    pub const ALL: [Tab; 2] = [Tab::Overview, Tab::Diff];
 
     pub fn label(self) -> &'static str {
         match self {
             Tab::Overview => "overview",
+            Tab::Diff => "diff",
+        }
+    }
+
+    /// Whether the tab brings its own list beside the workspace.
+    pub fn has_sidebar(self) -> bool {
+        match self {
+            Tab::Overview => false,
+            Tab::Diff => true,
         }
     }
 }
 
 /// What the session surface remembers between frames.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
     pub tab: Tab,
+    /// How far the sidebar's list is scrolled, in pixels.
+    pub files: f32,
+    /// The user folded the sidebar away, whatever the tab offers.
+    pub folded: bool,
+}
+
+impl SessionUi {
+    /// Whether the sidebar stands beside the workspace right now.
+    pub fn sidebar(&self) -> bool {
+        self.tab.has_sidebar() && !self.folded
+    }
 }
 
 /// The session: one header line, then the agent pane and the workspace.
@@ -54,6 +76,9 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     for (tab, rect) in Tab::ALL.iter().zip(tabs(ctx, strip, &labels, at)) {
         ctx.hit(rect, Target::Tab(*tab));
     }
+    if ui.session.tab.has_sidebar() {
+        fold(ctx, strip, ui);
+    }
 
     let body = Rect::new(
         area.x,
@@ -63,7 +88,23 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     );
     match ui.session.tab {
         Tab::Overview => overview::draw(ctx, app, body),
+        Tab::Diff => diff::draw(ctx, app, body),
     }
+    if ui.session.sidebar() {
+        files::draw(ctx, app, ui);
+    }
+}
+
+/// What folds the sidebar away, at the far end of the strip.
+fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) {
+    let role = match ui.session.folded {
+        true => Role::Ghost,
+        false => Role::Muted,
+    };
+    let at = strip.right() - ctx.tokens.md - ctx.tokens.icon;
+    let box_ = leading(ctx, strip, at);
+    icon(ctx, box_, Mark::Sidebar, role);
+    ctx.hit(box_, Target::Fold);
 }
 
 /// Nothing open: how to start.

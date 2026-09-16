@@ -2,9 +2,10 @@ use crate::parse::{Change, porcelain};
 use crate::{Error, Git, Result};
 
 impl Git {
-    /// Every changed path, index and worktree letters as git wrote them.
+    /// Every changed path, index and worktree letters as git wrote them. Untracked
+    /// files one by one: a new directory is a list of files, not one row.
     pub async fn status(&self) -> Result<Vec<Change>> {
-        let out = self.text(&["status", "--porcelain"]).await?;
+        let out = self.text(&["status", "--porcelain", "-uall"]).await?;
         Ok(porcelain(&out))
     }
 

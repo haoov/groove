@@ -35,6 +35,8 @@ pub enum Target {
     Palette,
     /// A boundary between two columns.
     Split(Edge),
+    /// What folds the sidebar away.
+    Fold,
 }
 
 impl Target {
@@ -45,7 +47,8 @@ impl Target {
             | Target::Tab(_)
             | Target::Picker
             | Target::Worktree(_)
-            | Target::PaletteRow(_) => Cursor::Pointer,
+            | Target::PaletteRow(_)
+            | Target::Fold => Cursor::Pointer,
             Target::Split(_) => Cursor::ColResize,
             Target::Palette => Cursor::Default,
         }

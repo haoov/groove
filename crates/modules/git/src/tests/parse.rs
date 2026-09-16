@@ -100,3 +100,20 @@ fn quoted_paths_unquote() {
         "two digits are not an escape"
     );
 }
+
+#[test]
+fn numstat_rows_read_apart() {
+    let text = "2\t1\tf.txt\0\
+                1\t0\tnew/two.rs\0\
+                1\t0\t\0src/one.rs\0src/renamed.rs\0\
+                -\t-\tlogo.png\0";
+    let rows = crate::parse::numstat(text);
+    assert_eq!(
+        rows.iter().map(|r| r.path.as_str()).collect::<Vec<_>>(),
+        ["f.txt", "new/two.rs", "src/renamed.rs", "logo.png"],
+        "a file that moved is keyed on where it landed"
+    );
+    assert_eq!((rows[0].added, rows[0].deleted), (Some(2), Some(1)));
+    assert!(rows[3].is_binary());
+    assert!(crate::parse::numstat("").is_empty());
+}
