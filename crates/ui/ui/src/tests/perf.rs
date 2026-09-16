@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::from_text;
-use groove_gfx::{Fonts, Renderer, Size};
-use groove_types::DiffView;
+use groove_gfx::{Color, Fonts, Renderer, Size};
+use groove_types::{DiffView, Rgb, Screen, ScreenCell};
 
 use crate::tests::{full_app, window};
 use crate::views::session::Tab;
@@ -88,5 +88,47 @@ fn time_the_draw() {
                 started.elapsed() / runs
             );
         }
+    }
+}
+
+/// A pane of agent output, as the terminal hands it over.
+fn screen(cols: usize, rows: usize) -> Screen {
+    let text = "the agent said something about a file and then said it again";
+    let cells = (0..cols * rows)
+        .map(|at| ScreenCell {
+            ch: text.as_bytes()[at % text.len()] as char,
+            fg: Rgb {
+                r: 205,
+                g: 214,
+                b: 244,
+            },
+            bg: None,
+            bold: false,
+            spacer: false,
+        })
+        .collect();
+    Screen {
+        cols,
+        rows,
+        cells,
+        cursor: Some((0, 0)),
+    }
+}
+
+#[test]
+#[ignore]
+fn time_the_agent_pane() {
+    for (cols, rows) in [(80, 24), (120, 40)] {
+        let screen = screen(cols, rows);
+        let runs = 100;
+        let started = Instant::now();
+        for _ in 0..runs {
+            let grid = crate::widget::grid_of(&screen, 0.0, 0.0, 13.0, Color::TRANSPARENT);
+            assert_eq!(grid.cells.len(), cols * rows);
+        }
+        println!(
+            "{cols}x{rows}: {:?} to turn a screen into a grid",
+            started.elapsed() / runs
+        );
     }
 }

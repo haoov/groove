@@ -1,0 +1,5 @@
+[alias]
+# Every measurement harness, in release, printing what it measured.
+perf = ["test", "--release", "perf", "--", "--ignored", "--nocapture"]
+# What CI refuses to merge without.
+lint = ["clippy", "--all-targets", "--", "-D", "warnings"]

@@ -240,7 +240,7 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
         !sh(&clone, &["branch", "--list", "fix/x"]).contains("fix/x"),
         "the local branch goes with the worktree"
     );
-    assert!(fresh.pending.is_empty(), "{:?}", fresh.pending);
+    until(&spawner, &services, &mut fresh, |s| s.pending.is_empty());
 }
 
 #[test]

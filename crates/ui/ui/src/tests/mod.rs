@@ -1,3 +1,4 @@
+mod budget;
 mod diff;
 mod files;
 mod focus;

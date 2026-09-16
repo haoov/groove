@@ -26,5 +26,6 @@ pub use frame::{Font, Frame, IconDraw, Layer, Quad, TextRun, TextStyle, Weight};
 pub use geom::{Rect, Size};
 pub use icons::Icon;
 pub use renderer::Renderer;
+pub use text::Cached;
 pub use theme::Palette;
 pub use wgpu::SurfaceTarget;

@@ -1,45 +1,7 @@
-use groove_types::{FileStatus, WorktreeSpec};
+use groove_types::FileStatus;
 
-use crate::tests::fixture::{pooled_clone, services, state, until};
+use crate::tests::fixture::{pooled_clone, services, state, until, worktree};
 use crate::{Command as Cmd, SyncSpawner, dispatch, session, workspace};
-
-/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
-fn worktree(
-    state: &mut crate::AppState,
-    services: &crate::Services,
-    spawner: &SyncSpawner,
-) -> String {
-    dispatch(
-        Cmd::Session(session::Command::OpenExplorer {
-            title: Some("try mayo".into()),
-        }),
-        state,
-        services,
-        spawner,
-    );
-    let id = state.session.selected.clone().expect("a session");
-    until(spawner, services, state, |s| s.agent.agent(&id).is_some());
-    dispatch(
-        Cmd::Session(session::Command::AddRepo {
-            session: id.clone(),
-            name: "mayo".into(),
-            spec: WorktreeSpec::default(),
-        }),
-        state,
-        services,
-        spawner,
-    );
-    until(spawner, services, state, |s| {
-        s.workspace.worktree.is_some() || !s.errors.is_empty()
-    });
-    assert!(state.errors.is_empty(), "{:?}", state.errors);
-    state
-        .session
-        .get(&id)
-        .and_then(|o| o.selected_worktree())
-        .map(|w| w.path.clone())
-        .expect("a worktree")
-}
 
 #[test]
 fn load_lists_what_changed_in_the_selected_worktree() {

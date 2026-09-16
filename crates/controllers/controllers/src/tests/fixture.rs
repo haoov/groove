@@ -4,7 +4,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use crate::{AppState, Env, Services, SyncSpawner};
+use groove_types::WorktreeSpec;
+
+use crate::{AppState, Command as Cmd, Env, Services, SyncSpawner, dispatch, session};
 
 /// Prints its first flag; echoes one line, or its cwd when the line is `pwd`; exits 7.
 const FAKE_CLAUDE: &str = "#!/bin/sh
@@ -93,6 +95,40 @@ pub fn sh(dir: &Path, args: &[&str]) -> String {
 }
 
 /// Drains continuations until `done`, or fails after ten seconds.
+/// An explorer with the fixture's repo and one worktree; returns the worktree's path.
+pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
+    dispatch(
+        Cmd::Session(session::Command::OpenExplorer {
+            title: Some("try mayo".into()),
+        }),
+        state,
+        services,
+        spawner,
+    );
+    let id = state.session.selected.clone().expect("a session");
+    until(spawner, services, state, |s| s.agent.agent(&id).is_some());
+    dispatch(
+        Cmd::Session(session::Command::AddRepo {
+            session: id.clone(),
+            name: "mayo".into(),
+            spec: WorktreeSpec::default(),
+        }),
+        state,
+        services,
+        spawner,
+    );
+    until(spawner, services, state, |s| {
+        s.workspace.worktree.is_some() || !s.errors.is_empty()
+    });
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    state
+        .session
+        .get(&id)
+        .and_then(|o| o.selected_worktree())
+        .map(|w| w.path.clone())
+        .expect("a worktree")
+}
+
 pub fn until(
     spawner: &SyncSpawner,
     services: &Services,

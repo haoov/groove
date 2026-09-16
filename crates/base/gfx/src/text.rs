@@ -52,6 +52,17 @@ struct Shaped {
     height: u32,
 }
 
+/// What shaping a frame left behind, for a test or a debug line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Cached {
+    /// Lines of chrome text held, shaped whole.
+    pub lines: usize,
+    /// Single glyphs held, for the terminal grid.
+    pub glyphs: usize,
+    /// What it took to get there: cache misses since the window opened.
+    pub shaped: u64,
+}
+
 /// All text of the frame: one atlas, one renderer per layer.
 pub(crate) struct TextPass {
     atlas: TextAtlas,
@@ -60,13 +71,14 @@ pub(crate) struct TextPass {
     glyphs: HashMap<GlyphKey, Buffer>,
     /// Every line shaped so far, and where each one sits.
     lines: Vec<Buffer>,
-    shaped: HashMap<Shaped, HashMap<Box<str>, usize>>,
+    index: HashMap<Shaped, HashMap<Box<str>, usize>>,
     runs: Vec<Vec<Run>>,
     placements: Vec<Vec<Placement>>,
     icons: Vec<Vec<IconArea>>,
     registry: Icons,
     /// What an icon-only area hangs on: a buffer with no text.
     empty: Option<Buffer>,
+    shaped: u64,
 }
 
 impl TextPass {
@@ -78,12 +90,13 @@ impl TextPass {
             renderers: Vec::new(),
             glyphs: HashMap::new(),
             lines: Vec::new(),
-            shaped: HashMap::new(),
+            index: HashMap::new(),
             runs: Vec::new(),
             placements: Vec::new(),
             icons: Vec::new(),
             registry: Icons::new(),
             empty: None,
+            shaped: 0,
         }
     }
 
@@ -115,7 +128,16 @@ impl TextPass {
         }
         if self.lines.len() > RUN_CACHE_CAP {
             self.lines.clear();
-            self.shaped.clear();
+            self.index.clear();
+        }
+    }
+
+    /// What it has shaped so far and kept.
+    pub fn cached(&self) -> Cached {
+        Cached {
+            lines: self.lines.len(),
+            glyphs: self.glyphs.len(),
+            shaped: self.shaped,
         }
     }
 
@@ -137,11 +159,7 @@ impl TextPass {
             face: Face::new(style.font, style.weight, style.size),
             height: run.height.to_bits(),
         };
-        if let Some(at) = self
-            .shaped
-            .get(&key)
-            .and_then(|lines| lines.get(&*run.text))
-        {
+        if let Some(at) = self.index.get(&key).and_then(|lines| lines.get(&*run.text)) {
             return *at;
         }
         let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(style.size, run.height));
@@ -149,9 +167,10 @@ impl TextPass {
         let attrs = Fonts::attrs(style.font, style.weight);
         buffer.set_text(&run.text, &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut fonts.system, false);
+        self.shaped += 1;
         self.lines.push(buffer);
         let at = self.lines.len() - 1;
-        self.shaped
+        self.index
             .entry(key)
             .or_default()
             .insert(run.text.as_str().into(), at);
@@ -194,9 +213,10 @@ impl TextPass {
             bold,
             size: size.to_bits(),
         };
-        self.glyphs
-            .entry(key)
-            .or_insert_with(|| shape_glyph(fonts, ch, bold, size, cell));
+        if let std::collections::hash_map::Entry::Vacant(slot) = self.glyphs.entry(key) {
+            slot.insert(shape_glyph(fonts, ch, bold, size, cell));
+            self.shaped += 1;
+        }
         self.placements[layer].push(Placement {
             key,
             x,
@@ -218,6 +238,7 @@ impl TextPass {
             renderers,
             glyphs,
             lines: shaped_lines,
+            index: _,
             shaped: _,
             runs,
             placements,

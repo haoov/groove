@@ -1,6 +1,6 @@
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
-use crate::text::TextPass;
+use crate::text::{Cached, TextPass};
 use crate::{Error, Fonts, Frame, Result, Size, grid};
 
 pub(crate) const OFFSCREEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -71,6 +71,11 @@ impl Renderer {
 
     pub fn size(&self) -> Size {
         self.size
+    }
+
+    /// What the text pass has shaped and kept.
+    pub fn cached(&self) -> Cached {
+        self.text.cached()
     }
 
     pub fn fonts(&mut self) -> &mut Fonts {
