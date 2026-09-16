@@ -1,0 +1,22 @@
+[package]
+name = "groove-text"
+description = "A file as a document: its lines, its syntax and search over it"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+ropey.workspace = true
+tree-sitter.workspace = true
+tree-sitter-bash.workspace = true
+tree-sitter-go.workspace = true
+tree-sitter-highlight.workspace = true
+tree-sitter-md.workspace = true
+tree-sitter-python.workspace = true
+tree-sitter-rust.workspace = true
+tree-sitter-yaml.workspace = true
+
+[lints]
+workspace = true
