@@ -20,7 +20,7 @@ use groove_types::{Error, ErrorKind, Result};
 
 /// How long a burst must be quiet before it is reported. A save writes once or twice,
 /// so this only has to outlast a write and its rename; the reader coalesces the rest.
-pub const QUIET: Duration = Duration::from_millis(50);
+pub const QUIET: Duration = Duration::from_millis(25);
 
 /// Watching, until this is dropped.
 pub struct Watch {
