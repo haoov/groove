@@ -1,5 +1,6 @@
 use groove_controllers::AppState;
 use groove_gfx::Rect;
+use groove_types::DiffView;
 
 use super::components::{agent_pane, diff, files, header, overview};
 use crate::Ui;
@@ -49,6 +50,8 @@ pub struct SessionUi {
     pub diff: f32,
     /// The row and column the last click landed on in the open file.
     pub at: Option<(usize, usize)>,
+    /// Which of the three views the open file is drawn in.
+    pub view: DiffView,
 }
 
 impl SessionUi {
@@ -84,14 +87,17 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         fold(ctx, strip, ui);
     }
 
-    let body = Rect::new(
-        area.x,
-        strip.bottom() + ctx.tokens.sm,
-        area.w,
-        area.h - ctx.tokens.row,
-    );
+    let body = Rect::new(area.x, strip.bottom(), area.w, area.h - strip.h);
     match ui.session.tab {
-        Tab::Overview => overview::draw(ctx, app, body),
+        Tab::Overview => {
+            let inset = Rect::new(
+                body.x,
+                body.y + ctx.tokens.sm,
+                body.w,
+                body.h - ctx.tokens.sm,
+            );
+            overview::draw(ctx, app, inset)
+        }
         Tab::Diff => diff::draw(ctx, app, ui, body),
     }
     if ui.session.sidebar() {

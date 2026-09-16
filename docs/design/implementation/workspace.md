@@ -47,8 +47,8 @@ alignments loaded so far, the view — file, inline or split — the mode, the f
 read, blame when asked.
 
 **Loaded by window.** The numeric summary builds the file list with no content at all.
-Documents are held for the files near the viewport and dropped when they leave it, so a
-change over two hundred files never loads four hundred documents.
+One file is open at a time today. When the scroll runs across files, documents are held
+for the files near the viewport and dropped when they leave it.
 
 **Capped by size.** Above one size a file is aligned but not coloured; above a larger
 one it is listed as changed and not shown. A file git calls binary is listed only.
@@ -243,15 +243,16 @@ the header for the selected worktree.
 
 ## Needs
 
-- [ ] Tree-sitter grammars bundled: rust, toml, yaml, python, bash, json, markdown, dockerfile, go.
-- [ ] A rope: `ropey`.
+- [x] Tree-sitter grammars bundled: rust, yaml, bash, markdown, python, go. Anything
+      else is a plain document; toml, json and dockerfile were left for later.
+- [x] A rope: `ropey`.
 - [x] The diff algorithm: upstream `imara-diff`, not gitoxide's copy. The copy is
       adapted to gitoxide's byte strings and rides its release train; upstream is what
       Helix computes its diff gutter with, and a line diff is a settled algorithm. The
       copy stays the escape hatch, drop-in because it is the same API.
-- [ ] The two size caps: aligned but not coloured, and listed but not shown.
+- [x] The two size caps: coloured to 1 MiB, aligned and shown to 2 MiB.
 - [ ] Does scrolling past a file mark it read, or only the user?
-- [ ] `DiffView` gains `File` and `Unified` becomes `Inline`.
+- [x] `DiffView` is `File`, `Inline`, `Split`, switched from the file header.
 - [ ] Word-diff rule in `types`: one-for-one pairs only.
 - [ ] Request reviewers and a review with a verdict, both forges; reviewer state in `MrDetails`.
 - [ ] The poll's interval and the stale threshold in Config › Preferences.

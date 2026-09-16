@@ -4,6 +4,8 @@
 use groove_gfx::Rect;
 use groove_types::{SessionId, WorktreeId};
 
+use groove_types::DiffView;
+
 use crate::layout::Edge;
 use crate::views::session::Tab;
 
@@ -43,6 +45,8 @@ pub enum Target {
     File(String),
     /// The open file's rows.
     Code,
+    /// One of the three views of the open file.
+    View(DiffView),
 }
 
 impl Target {
@@ -55,7 +59,8 @@ impl Target {
             | Target::Worktree(_)
             | Target::PaletteRow(_)
             | Target::Fold
-            | Target::File(_) => Cursor::Pointer,
+            | Target::File(_)
+            | Target::View(_) => Cursor::Pointer,
             Target::Code => Cursor::Text,
             Target::Split(_) => Cursor::ColResize,
             Target::Palette => Cursor::Default,

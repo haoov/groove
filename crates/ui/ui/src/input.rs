@@ -230,6 +230,10 @@ fn click(
         Some(Target::File(path)) => {
             vec![Command::Workspace(workspace::Command::OpenFile { path })]
         }
+        Some(Target::View(view)) => {
+            ui.session.view = view;
+            Vec::new()
+        }
         Some(Target::Code) => {
             ui.session.at = caret(ui, hits, metrics, (x, y));
             Vec::new()

@@ -12,9 +12,25 @@ pub enum DiffMode {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DiffView {
+    /// The file as it is now, marked where the change touched it.
+    File,
+    /// Both sides in one column.
     #[default]
-    Unified,
+    Inline,
+    /// The old beside the new.
     Split,
+}
+
+impl DiffView {
+    pub const ALL: [DiffView; 3] = [DiffView::File, DiffView::Inline, DiffView::Split];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            DiffView::File => "file",
+            DiffView::Inline => "inline",
+            DiffView::Split => "split",
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]

@@ -110,6 +110,15 @@ impl Styles {
         }
     }
 
+    /// What a marked line did: came, went, or changed in place.
+    pub fn mark(&self, mark: Mark) -> Color {
+        match mark {
+            Mark::Added => self.palette.green,
+            Mark::Removed => self.palette.red,
+            Mark::Changed => self.palette.yellow,
+        }
+    }
+
     /// The ground a diff row stands on, and the one under the caret.
     pub fn row_ground(&self, kind: RowKind, caret: bool) -> Option<Color> {
         let tint = |color: Color| Some(color.with_alpha(GROUND_ALPHA));
@@ -167,4 +176,12 @@ fn flavour(theme: ThemeName) -> Palette {
         ThemeName::Macchiato => Palette::MACCHIATO,
         ThemeName::Mocha => Palette::MOCHA,
     }
+}
+
+/// What happened to a line the file view marks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mark {
+    Added,
+    Removed,
+    Changed,
 }

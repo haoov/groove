@@ -9,6 +9,7 @@ use crate::tokens::Tokens;
 use crate::views::session::Tab;
 use crate::widget::code_at;
 use crate::{Ui, view};
+use groove_types::DiffView;
 
 const OLD: &str = "fn one() {}\nfn two() {}\nfn three() {}\n";
 const NEW: &str = "fn one() {}\nfn TWO() {}\nfn three() {}\n";
@@ -93,6 +94,39 @@ fn the_header_names_the_file_and_what_it_changed() {
     assert!(drawn.iter().any(|t| t == "src/lib.rs"), "{drawn:?}");
     assert!(drawn.iter().any(|t| t == "+1"), "what it added: {drawn:?}");
     assert!(drawn.iter().any(|t| t == "-1"), "and what it took away");
+}
+
+#[test]
+fn the_header_sits_under_the_tabs_and_rules_the_whole_width() {
+    let app = opened();
+    let ui = on_diff();
+    let (frame, _) = view_of(&app, &ui);
+    let tokens = Tokens::new(1.0);
+    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let band = Rect::new(
+        workspace.x,
+        workspace.y + tokens.row,
+        workspace.w,
+        tokens.row,
+    );
+    let styles = crate::style::Styles::new(app.config.theme(), tokens);
+    let rule = frame.layers()[0]
+        .quads
+        .iter()
+        .find(|quad| {
+            quad.color == styles.line()
+                && quad.rect.h == tokens.hairline
+                && quad.rect.y == band.bottom() - tokens.hairline
+        })
+        .expect("a hairline under the header");
+    assert_eq!(rule.rect.x, band.x, "from the left edge");
+    assert_eq!(rule.rect.w, band.w, "to the right one");
+    let path = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text.ends_with("lib.rs"))
+        .expect("the path");
+    assert_eq!(path.y, band.y, "the band starts where the tabs end");
 }
 
 #[test]
@@ -261,4 +295,144 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .filter(|quad| quad.color == styles.panel() && quad.rect.h == Tokens::new(1.0).line)
         .count();
     assert_eq!(panels, 1, "one band, the height of a row");
+}
+
+/// The rows of one view, as the surface drew them, both panes in split.
+fn in_view(app: &AppState, view: DiffView) -> Vec<String> {
+    let mut ui = on_diff();
+    ui.session.view = view;
+    let (frame, _) = view_of(app, &ui);
+    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let body = workspace.y + Tokens::new(1.0).row * 2.0;
+    frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.x >= workspace.x && run.x < workspace.right() && run.y >= body)
+        .map(|run| run.text.clone())
+        .collect()
+}
+
+fn view_of(app: &AppState, ui: &Ui) -> (groove_gfx::Frame, crate::Hits) {
+    view(app, ui, window(), &mut Fonts::embedded())
+}
+
+#[test]
+fn the_switch_names_the_three_views_and_picks_one() {
+    let app = opened();
+    let mut ui = on_diff();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    for view in DiffView::ALL {
+        assert!(
+            hits.rect_of(&Target::View(view)).is_some(),
+            "{view:?} can be picked"
+        );
+    }
+    let split = hits.rect_of(&Target::View(DiffView::Split)).expect("split");
+    assert!(click(split, &mut ui, &app, &hits).is_empty());
+    assert_eq!(ui.session.view, DiffView::Split);
+}
+
+/// The marks the file view drew, by colour.
+fn marks(app: &AppState) -> Vec<crate::style::Mark> {
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    let (frame, _) = view_of(app, &ui);
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let width = Tokens::new(1.0).hairline * 2.0;
+    frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.rect.w == width)
+        .filter_map(|quad| {
+            [
+                crate::style::Mark::Added,
+                crate::style::Mark::Removed,
+                crate::style::Mark::Changed,
+            ]
+            .into_iter()
+            .find(|mark| styles.mark(*mark) == quad.color)
+        })
+        .collect()
+}
+
+#[test]
+fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
+    let app = opened();
+    assert_eq!(
+        marks(&app),
+        [crate::style::Mark::Changed],
+        "one line went and one came in its place"
+    );
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    let (frame, _) = view_of(&app, &ui);
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let grounds = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| {
+            [groove_types::RowKind::Added, groove_types::RowKind::Removed]
+                .into_iter()
+                .filter_map(|kind| styles.row_ground(kind, false))
+                .any(|color| color == quad.color)
+        })
+        .count();
+    assert_eq!(grounds, 0, "the file view tints no row");
+}
+
+#[test]
+fn a_line_added_and_a_line_removed_are_marked_apart() {
+    let mut app = with_files();
+    app.workspace.opened = Some(from_text(
+        "src/lib.rs",
+        "one\ngone\nthree\n",
+        "one\nthree\nadded\n",
+    ));
+    assert_eq!(
+        marks(&app),
+        [crate::style::Mark::Removed, crate::style::Mark::Added],
+        "the deletion marks the line that closed it, the addition its own"
+    );
+}
+
+#[test]
+fn the_file_view_shows_what_is_there_now_and_nothing_that_went() {
+    let drawn = in_view(&opened(), DiffView::File);
+    assert!(drawn.iter().any(|t| t == "TWO"), "the new line: {drawn:?}");
+    assert!(!drawn.iter().any(|t| t == "two"), "not the old one");
+    let numbers: Vec<&String> = drawn.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
+    assert_eq!(numbers, ["1", "2", "3"], "the file's own numbers");
+}
+
+#[test]
+fn split_draws_each_side_with_its_own_numbers() {
+    let app = opened();
+    let drawn = in_view(&app, DiffView::Split);
+    assert!(drawn.iter().any(|t| t == "two"), "the old side: {drawn:?}");
+    assert!(drawn.iter().any(|t| t == "TWO"), "and the new one");
+    let numbers: Vec<&String> = drawn.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
+    assert_eq!(
+        numbers,
+        ["1", "2", "3", "1", "2", "3"],
+        "three rows a side, each numbered once: {drawn:?}"
+    );
+}
+
+#[test]
+fn split_puts_a_rule_between_the_sides() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::Split;
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let code = hits
+        .rect_of(&Target::Code)
+        .expect("the new side takes clicks");
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let rules = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == styles.line() && quad.rect.h == code.h)
+        .count();
+    assert_eq!(rules, 3, "one between the sides, one per gutter");
+    assert!(code.x > code.w, "clicks land on the right half");
 }

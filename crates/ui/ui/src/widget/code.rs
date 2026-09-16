@@ -1,4 +1,4 @@
-use groove_gfx::{CellSize, Color, Rect};
+use groove_gfx::{CellSize, Color, Rect, TextStyle};
 use groove_types::Highlight;
 
 use crate::ctx::Ctx;
@@ -8,10 +8,12 @@ use crate::widget::row;
 
 /// One row of code: what its gutters say, its text, and the colour over it.
 pub struct Line<'a> {
-    pub gutters: [&'a str; 2],
+    pub gutters: &'a [&'a str],
     pub text: &'a str,
     pub spans: &'a [Highlight],
     pub ground: Option<Color>,
+    /// A bar at the row's left edge, for what a gutter number cannot say.
+    pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
     pub banner: bool,
 }
@@ -19,10 +21,11 @@ pub struct Line<'a> {
 impl<'a> Line<'a> {
     pub fn new(text: &'a str) -> Self {
         Self {
-            gutters: ["", ""],
+            gutters: &[],
             text,
             spans: &[],
             ground: None,
+            mark: None,
             banner: false,
         }
     }
@@ -35,7 +38,7 @@ impl<'a> Line<'a> {
         }
     }
 
-    pub fn gutters(mut self, gutters: [&'a str; 2]) -> Self {
+    pub fn gutters(mut self, gutters: &'a [&'a str]) -> Self {
         self.gutters = gutters;
         self
     }
@@ -49,37 +52,57 @@ impl<'a> Line<'a> {
         self.ground = ground.into();
         self
     }
+
+    pub fn mark(mut self, mark: Option<Color>) -> Self {
+        self.mark = mark;
+        self
+    }
 }
 
-/// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it. The
-/// gutters take the width of the widest of them.
+/// The gutter block: how many cells the rows ask for, and how wide one is.
+#[derive(Debug, Clone, Copy)]
+struct Gutter {
+    cells: usize,
+    width: f32,
+}
+
+impl Gutter {
+    fn of(ctx: &mut Ctx, lines: &[Line<'_>]) -> Self {
+        let numbers = ctx.styles.code(Role::Ghost);
+        let cells = lines.iter().map(|line| line.gutters.len()).max();
+        let width = lines
+            .iter()
+            .flat_map(|line| line.gutters)
+            .map(|text| ctx.measure(text, &numbers))
+            .fold(0.0, f32::max);
+        Self {
+            cells: cells.unwrap_or_default(),
+            width,
+        }
+    }
+
+    /// Where a line's text starts, past every gutter and the hairline.
+    fn content(&self, ctx: &Ctx, rect: Rect) -> f32 {
+        let small = ctx.tokens.sm;
+        let block = (self.width + small) * self.cells as f32;
+        rect.x + small + block + ctx.tokens.md
+    }
+}
+
+/// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
 pub fn code(ctx: &mut Ctx, rect: Rect, lines: &[Line<'_>], scroll: f32) {
     let height = ctx.tokens.line;
-    let gutter = gutter_width(ctx, lines);
+    let gutter = Gutter::of(ctx, lines);
     ctx.clipped(rect, |ctx| {
         let first = (scroll / height).floor().max(0.0);
         let shown = (rect.h / height).ceil() as usize + 1;
-        let skipped = first as usize;
         let mut y = rect.y - scroll + first * height;
-        for line in lines.iter().skip(skipped).take(shown) {
+        for line in lines.iter().skip(first as usize).take(shown) {
             draw(ctx, Rect::new(rect.x, y, rect.w, height), line, gutter);
             y += height;
         }
     });
     rule(ctx, rect, gutter);
-}
-
-/// The hairline the gutters end at, down the whole surface.
-fn rule(ctx: &mut Ctx, rect: Rect, gutter: f32) {
-    let (color, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
-    let at = content(ctx, rect, gutter) - ctx.tokens.md;
-    ctx.quad(Rect::new(at, rect.y, thickness, rect.h), color);
-}
-
-/// Where a line's text starts, past both gutters and the hairline.
-fn content(ctx: &Ctx, rect: Rect, gutter: f32) -> f32 {
-    let (small, wide) = (ctx.tokens.sm, ctx.tokens.md);
-    rect.x + small + (gutter + small) * 2.0 + wide
 }
 
 /// How tall the rows stand together.
@@ -104,22 +127,36 @@ pub fn code_at(
     Some((row as usize, column as usize))
 }
 
-fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: f32) {
+/// The hairline the gutters end at, down the whole surface.
+fn rule(ctx: &mut Ctx, rect: Rect, gutter: Gutter) {
+    if gutter.cells == 0 {
+        return;
+    }
+    let (color, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
+    let at = gutter.content(ctx, rect) - ctx.tokens.md;
+    ctx.quad(Rect::new(at, rect.y, thickness, rect.h), color);
+}
+
+fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Gutter) {
     if code.banner {
         return banner(ctx, line, code.text);
     }
     if let Some(ground) = code.ground {
         ctx.quad(line, ground);
     }
+    if let Some(mark) = code.mark {
+        let width = ctx.tokens.hairline * 2.0;
+        ctx.quad(Rect::new(line.x, line.y, width, line.h), mark);
+    }
     let numbers = ctx.styles.code(Role::Ghost);
     let mut at = line.x + ctx.tokens.sm;
     for text in code.gutters {
         let width = ctx.measure(text, &numbers);
-        let cell = Rect::new(at + gutter - width, line.y, width, line.h);
+        let cell = Rect::new(at + gutter.width - width, line.y, width, line.h);
         row(ctx, cell, 0.0, text, numbers);
-        at += gutter + ctx.tokens.sm;
+        at += gutter.width + ctx.tokens.sm;
     }
-    let at = content(ctx, line, gutter);
+    let at = gutter.content(ctx, line);
     text(ctx, Rect::new(at, line.y, line.right() - at, line.h), code);
 }
 
@@ -159,20 +196,11 @@ fn text(ctx: &mut Ctx, rect: Rect, code: &Line<'_>) {
 }
 
 /// One piece of a line at `x`. Returns where the next one starts.
-fn piece(ctx: &mut Ctx, rect: Rect, x: f32, text: &str, style: groove_gfx::TextStyle) -> f32 {
+fn piece(ctx: &mut Ctx, rect: Rect, x: f32, text: &str, style: TextStyle) -> f32 {
     if text.is_empty() {
         return x;
     }
     let width = ctx.measure(text, &style);
     row(ctx, Rect::new(x, rect.y, width, rect.h), 0.0, text, style);
     x + width
-}
-
-fn gutter_width(ctx: &mut Ctx, lines: &[Line<'_>]) -> f32 {
-    let numbers = ctx.styles.code(Role::Ghost);
-    lines
-        .iter()
-        .flat_map(|line| line.gutters)
-        .map(|text| ctx.measure(text, &numbers))
-        .fold(0.0, f32::max)
 }
