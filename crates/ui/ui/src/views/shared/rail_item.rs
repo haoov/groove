@@ -87,7 +87,7 @@ fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
     );
 }
 
-/// What the agent is doing, and the colour that says how much it wants you.
+/// What the agent is doing, and its colour.
 fn state_of(app: &AppState, open: &Open) -> (String, Role) {
     let Some(activity) = app.agent.activity(&open.session.id) else {
         return ("idle".into(), Role::Ghost);

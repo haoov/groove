@@ -1,8 +1,9 @@
 //! The workspace capability. Its slice of `AppState`, the operations on it, its events.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
+use groove_watch::{QUIET, Watch};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -13,10 +14,11 @@ pub struct State {
     pub view: DiffView,
     pub status: Option<WorktreeStatus>,
     pub files: Vec<FileDiff>,
+    pub watching: Option<WorktreeId>,
+    watch: Option<Watch>,
 }
 
 impl State {
-    /// Whether what is loaded is this worktree's.
     pub fn holds(&self, worktree: &WorktreeId) -> bool {
         self.worktree.as_ref() == Some(worktree)
     }
@@ -34,15 +36,31 @@ impl State {
         }
     }
 
-    /// Forgets what was loaded: nothing is selected, so nothing is the truth.
+    /// Forgets what was loaded and stops watching.
     pub fn clear(&mut self) {
         self.worktree = None;
         self.files.clear();
         self.status = None;
+        self.watching = None;
+        self.watch = None;
     }
 }
 
-/// Every changed file of the worktree at `dir`, with its counts.
+/// Watches `dir` until another worktree is watched or the state is cleared.
+pub fn watch(
+    state: &mut State,
+    worktree: WorktreeId,
+    dir: &Path,
+    on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
+) -> Result<()> {
+    state.watch = None;
+    state.watching = None;
+    let watch = groove_watch::watch(dir, QUIET, on_change)?;
+    state.watching = Some(worktree);
+    state.watch = Some(watch);
+    Ok(())
+}
+
 pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     groove_diff::summary(dir).await
 }

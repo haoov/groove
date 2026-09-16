@@ -20,7 +20,7 @@ pub trait Deliver: Send + Sync {
 pub trait Spawner {
     fn spawn(&self, job: Job);
 
-    /// For threads a job starts, so they can report back the same way.
+    /// The sink a thread reports back through.
     fn sink(&self) -> Arc<dyn Deliver>;
 }
 

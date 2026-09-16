@@ -82,7 +82,7 @@ impl Service {
     }
 
     /// A session's repos and worktrees, and what git says about each worktree.
-    /// A worktree whose directory is gone reports no counts rather than failing the load.
+    /// A worktree whose directory is gone reports no counts.
     pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {
         let mut repos = Vec::new();
         for repo_id in self.store.repos_of(id).await? {

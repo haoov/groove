@@ -233,7 +233,7 @@ impl TextPass {
     }
 }
 
-/// One glyph in a box two cells wide, so a wide character is not wrapped.
+/// One glyph in a box two cells wide, for a wide character.
 fn shape_glyph(fonts: &mut Fonts, ch: char, bold: bool, size: f32, cell: CellSize) -> Buffer {
     let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(size, cell.height));
     buffer.set_size(Some(cell.width * 2.0), Some(cell.height));

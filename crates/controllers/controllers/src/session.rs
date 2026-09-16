@@ -173,7 +173,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                     }
                     Err(e) => state.errors.push(e),
                 }
-                crate::workspace::load_if_stale(state, spawner);
+                crate::workspace::follow(state, spawner);
             },
         ) as Continuation
     }));
@@ -218,6 +218,7 @@ pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         .map(|o| o.session.title.clone())
         .unwrap_or_default();
     state.session.close(id);
+    crate::workspace::follow(state, spawner);
     let pending = state.begin(format!("deleting {title}"));
     let (service, id) = (services.session.clone(), id.clone());
     record(spawner, pending, async move { service.remove(&id).await });
@@ -226,7 +227,7 @@ pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     let now = Timestamp::now();
     state.session.select(id, now);
-    crate::workspace::load_if_stale(state, spawner);
+    crate::workspace::follow(state, spawner);
     let (service, id) = (services.session.clone(), id.clone());
     record(spawner, NO_PENDING, async move {
         service.set_seen(&id, now).await
@@ -236,6 +237,7 @@ pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     agent::end(state, id);
     state.session.close(id);
+    crate::workspace::follow(state, spawner);
     let (service, id) = (services.session.clone(), id.clone());
     record(spawner, NO_PENDING, async move {
         service.set_opened(&id, None).await
@@ -305,7 +307,7 @@ pub fn remove_repo(
                             open.remove_repo(&repo);
                         }
                         persist_selection(state, services, spawner, &id);
-                        crate::workspace::load_if_stale(state, spawner);
+                        crate::workspace::follow(state, spawner);
                     }
                     Err(e) => state.errors.push(e),
                 }
@@ -406,7 +408,7 @@ fn added(
                             open.add_worktree(added.repo, added.worktree);
                         }
                         persist_selection(state, services, spawner, &id);
-                        crate::workspace::load_if_stale(state, spawner);
+                        crate::workspace::follow(state, spawner);
                     }
                     Err(e) => state.errors.push(e),
                 }

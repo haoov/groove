@@ -22,7 +22,6 @@ use tokio::runtime::Handle;
 
 pub use parse::Post;
 
-/// A hook payload never needs more than this.
 const BODY_MAX: usize = 1 << 20;
 
 /// Where the agent posts its hooks, and the token it must carry.
@@ -79,7 +78,7 @@ async fn accept(listener: TcpListener, token: String, sink: Sink) {
     }
 }
 
-/// The only route there is. Everything else is refused, quietly.
+/// The only route there is.
 async fn route(request: Request<Incoming>, token: &str, sink: &Sink) -> Response<Full<Bytes>> {
     if !bearer(&request, token) {
         return reply(StatusCode::UNAUTHORIZED);

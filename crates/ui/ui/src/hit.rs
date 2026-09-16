@@ -1,5 +1,5 @@
 //! What the pointer can reach. A view registers a rect and what it means; a click
-//! resolves to the last thing registered over that point, so a later layer wins.
+//! resolves to the last one registered over that point.
 
 use groove_gfx::Rect;
 use groove_types::{SessionId, WorktreeId};
@@ -31,7 +31,7 @@ pub enum Target {
     Worktree(WorktreeId),
     /// A palette row, by its place in the list.
     PaletteRow(usize),
-    /// The palette's box, so a click inside it is not a click outside.
+    /// The palette's box; a click on it does nothing.
     Palette,
     /// A boundary between two columns.
     Split(Edge),

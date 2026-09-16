@@ -1,9 +1,7 @@
-//! The window's regions. Built from the tokens, the window's size and where the user
-//! dragged the boundaries, nothing else.
+//! The window's regions, from the tokens, the window's size and the user's drags.
 //!
 //! Four columns full height: the rail, the agent's pane, the workspace and the
-//! sidebar, which the tab folds away. The session header is the workspace's first
-//! line, not a band across the window.
+//! sidebar. The session header is the workspace's first line.
 
 use groove_gfx::{CellSize, Rect, Size};
 
@@ -27,8 +25,8 @@ impl Edge {
     pub const ALL: [Edge; 3] = [Edge::Rail, Edge::Agent, Edge::Sidebar];
 }
 
-/// The width of every column but the workspace, in logical pixels. The workspace
-/// takes what is left, so it is the only one a window resize or a fold changes.
+/// Every column's width but the workspace's, in logical pixels. The workspace takes
+/// what is left.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Split {
     pub rail: f32,
@@ -48,8 +46,8 @@ impl Default for Split {
 }
 
 impl Split {
-    /// Puts `edge` at `x`, and no column under its minimum. A drag moves the two
-    /// columns the boundary stands between and nothing else. Logical pixels throughout.
+    /// Puts `edge` at `x`, moving only the two columns it stands between, and no
+    /// column under its minimum. Logical pixels throughout.
     pub fn drag(&mut self, edge: Edge, x: f32, width: f32, sidebar: bool) {
         match edge {
             Edge::Rail => {
@@ -68,7 +66,6 @@ impl Split {
         }
     }
 
-    /// Where `edge` stands in a window this wide, in logical pixels.
     pub fn edge_at(&self, edge: Edge, width: f32, sidebar: bool) -> f32 {
         match edge {
             Edge::Rail => self.rail,
@@ -77,7 +74,6 @@ impl Split {
         }
     }
 
-    /// What the agent pane and the workspace have between the rail and the sidebar.
     fn room(&self, width: f32, sidebar: bool) -> f32 {
         (width - self.rail - self.aside(sidebar)).max(1.0)
     }
@@ -122,7 +118,6 @@ impl Layout {
         }
     }
 
-    /// The regions for what the ui is showing right now.
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
         let tokens = Tokens::new(metrics.scale);
         Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar())

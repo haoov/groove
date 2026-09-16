@@ -1,9 +1,8 @@
 use groove_types::{HookKind, SessionId, ToolCall};
 
-/// A tool's detail is one line on a row, never more.
 const DETAIL_MAX: usize = 80;
 
-/// The fields of a tool's input worth showing, in the order they are looked for.
+/// The fields of a tool's input worth showing, in order.
 const DETAILS: [&str; 4] = ["command", "file_path", "path", "pattern"];
 
 /// One hook the agent posted.
@@ -36,7 +35,7 @@ fn tool(value: &serde_json::Value) -> Option<ToolCall> {
     Some(ToolCall { name, detail })
 }
 
-/// The first line of it, short enough for a row.
+/// The first line, capped.
 fn one_line(text: &str) -> String {
     text.lines()
         .next()

@@ -116,8 +116,7 @@ pub fn apply(state: &mut State, event: Event) {
     }
 }
 
-/// What a hook says the agent is doing. `Notification` says it wants the user, which
-/// the approval queue owns, so it moves nothing here.
+/// What a hook says the agent is doing. `Notification` moves nothing here.
 fn hook(activity: &mut SessionActivity, kind: HookKind, tool: Option<ToolCall>, at: Timestamp) {
     let status = match kind {
         HookKind::SessionStart => AgentStatus::Idle,

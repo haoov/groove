@@ -1,11 +1,13 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use groove_types::WorktreeId;
 use groove_workspace_service::summary;
 
-use crate::{AppState, Continuation, Services, Spawner};
+use crate::spawn::coalesced;
+use crate::{AppState, Continuation, Deliver, Services, Spawner};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -55,17 +57,53 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// What every change of selection asks for: the new worktree's files, or none.
-pub fn load_if_stale(state: &mut AppState, spawner: &dyn Spawner) {
-    if selected(state).is_none() {
+/// The selected worktree read and watched, or nothing when none is selected.
+pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(worktree) = selected(state) else {
         return state.workspace.clear();
-    }
+    };
     if stale(state) {
         load(state, spawner);
     }
+    if state.workspace.watching.as_ref() != Some(&worktree) {
+        watch(state, spawner, worktree);
+    }
 }
 
-/// Nothing is loaded for the selected worktree yet.
+fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: WorktreeId) {
+    let Some(dir) = directory(state, &worktree) else {
+        return;
+    };
+    let on_change = reload(spawner.sink(), worktree.clone());
+    let watched =
+        groove_workspace_service::watch(&mut state.workspace, worktree, &dir, move |_paths| {
+            on_change()
+        });
+    if let Err(e) = watched {
+        state.errors.push(e);
+    }
+}
+
+/// One read in flight at most.
+fn reload(sink: Arc<dyn Deliver>, worktree: WorktreeId) -> impl Fn() + Send + Sync {
+    coalesced(sink, move || {
+        let worktree = worktree.clone();
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if state.workspace.watching.as_ref() == Some(&worktree) {
+                    load(state, spawner);
+                }
+            },
+        ) as Continuation
+    })
+}
+
+fn directory(state: &AppState, worktree: &WorktreeId) -> Option<PathBuf> {
+    let open = state.session.selected()?;
+    let found = open.worktrees.iter().find(|w| &w.id == worktree)?;
+    Some(PathBuf::from(&found.path))
+}
+
 pub fn stale(state: &AppState) -> bool {
     match selected(state) {
         Some(worktree) => !state.workspace.holds(&worktree),
@@ -73,13 +111,11 @@ pub fn stale(state: &AppState) -> bool {
     }
 }
 
-/// The worktree every tab follows.
 fn selected(state: &AppState) -> Option<WorktreeId> {
     let open = state.session.selected()?;
     Some(open.selected_worktree()?.id.clone())
 }
 
-/// The id the summary belongs to, for a test to read.
 pub fn loaded_for(state: &AppState) -> Option<&WorktreeId> {
     state.workspace.worktree.as_ref()
 }

@@ -1,0 +1,18 @@
+[package]
+name = "groove-watch"
+description = "A filesystem watcher on one worktree, debounced"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+ignore.workspace = true
+notify.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

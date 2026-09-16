@@ -1,5 +1,4 @@
-//! The diff tab. The surface itself comes with the alignment; for now the tab says
-//! what the sidebar holds.
+//! The diff tab. Holds the file count until the surface lands with the alignment.
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;

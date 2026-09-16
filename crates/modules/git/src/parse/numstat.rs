@@ -1,5 +1,4 @@
-/// One row of `git diff --numstat -z`: the lines added and deleted, and the path they
-/// belong to. A binary file counts nothing.
+/// One row of `git diff --numstat -z`. A binary file counts nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Counts {
     pub added: Option<u32>,
@@ -13,9 +12,8 @@ impl Counts {
     }
 }
 
-/// `-z` ends every row with a NUL and quotes no path. A row reads
-/// `added<TAB>deleted<TAB>path`, and a file that moved leaves the path empty and
-/// writes its old and new names as the two rows after it.
+/// `-z` ends a row with a NUL and quotes no path: `added<TAB>deleted<TAB>path`. A
+/// file that moved leaves the path empty and writes its two names as the rows after.
 pub fn numstat(text: &str) -> Vec<Counts> {
     let mut rows = Vec::new();
     let mut fields = text.split('\0').filter(|field| !field.is_empty());
@@ -39,13 +37,12 @@ pub fn numstat(text: &str) -> Vec<Counts> {
     rows
 }
 
-/// The new name of a file that moved: the second of the two names that follow.
+/// The second of the two names a moved file writes.
 fn moved<'a>(fields: &mut impl Iterator<Item = &'a str>) -> String {
     fields.next();
     fields.next().unwrap_or_default().to_string()
 }
 
-/// `12<TAB>3<TAB>path`, the counts `-` for a binary file.
 fn row(field: &str) -> Option<(Option<u32>, Option<u32>, &str)> {
     let mut parts = field.splitn(3, '\t');
     let added = count(parts.next()?)?;

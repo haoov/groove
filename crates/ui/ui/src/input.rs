@@ -96,8 +96,8 @@ pub fn handle(
     }
 }
 
-/// The column under the pointer scrolls. Wheel down is rows up, and the far end is
-/// clamped by the view, since only it knows how tall its content is.
+/// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
+/// far end.
 fn scroll(x: f32, delta: Delta, ui: &mut Ui, metrics: Metrics) {
     let layout = Layout::of(metrics, ui);
     let pixels = match delta {
@@ -121,7 +121,7 @@ pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
     changed
 }
 
-/// The pointer: a drag in flight owns it, otherwise it is whatever was drawn under it.
+/// The pointer: a drag in flight owns it, else whatever was drawn under it.
 pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
     match ui.drag {
         Some(_) => Cursor::ColResize,
@@ -162,7 +162,7 @@ fn press(
     click(x, y, ui, app, hits)
 }
 
-/// The pointer rarely grabs a boundary dead centre; the offset keeps it from jumping.
+/// Takes hold of `edge`, keeping how far from it the pointer landed.
 fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
     let at = ui.split.edge_at(edge, width_of(metrics), sidebar(ui));
     ui.drag = Some(Drag {
@@ -171,8 +171,7 @@ fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
     });
 }
 
-/// The boundary follows the pointer. The panes redraw at once; the agent's grid
-/// follows on the next frame, since a grid only changes by whole cells.
+/// The boundary follows the pointer.
 fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
     let Some(drag) = ui.drag else {
         return;
@@ -181,12 +180,11 @@ fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
     ui.split.drag(drag.edge, at, width_of(metrics), sidebar(ui));
 }
 
-/// Whether the sidebar stands beside the workspace right now.
 fn sidebar(ui: &Ui) -> bool {
     ui.session.sidebar()
 }
 
-/// The window's width in logical pixels, which is what a split is measured in.
+/// The window's width in logical pixels.
 fn width_of(metrics: Metrics) -> f32 {
     logical(metrics.size.rect().w, metrics)
 }
@@ -209,11 +207,11 @@ fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comman
         }
         Some(Target::Tab(tab)) => {
             ui.session.tab = tab;
-            reload(ui.session.sidebar())
+            Vec::new()
         }
         Some(Target::Fold) => {
             ui.session.folded = !ui.session.folded;
-            reload(ui.session.sidebar())
+            Vec::new()
         }
         Some(Target::Picker) => selector(ui, app),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
@@ -222,16 +220,7 @@ fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comman
     }
 }
 
-/// Bringing a list of the worktree into view reads it again: what is on disk moved
-/// while it was away, and nothing watches the filesystem yet.
-fn reload(showing: bool) -> Vec<Command> {
-    match showing {
-        true => vec![Command::Workspace(workspace::Command::Load)],
-        false => Vec::new(),
-    }
-}
-
-/// Either picker opens the session's selector: the worktree every tab follows.
+/// Either picker opens the worktree selector.
 fn selector(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
@@ -283,7 +272,7 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
         })),
         Key::Char('b' | 'B') => {
             ui.session.folded = !ui.session.folded;
-            reload(ui.session.sidebar()).into_iter().next()
+            None
         }
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
         Key::Char('w' | 'W') => {

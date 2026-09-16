@@ -57,8 +57,7 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    /// Says that `target` was drawn in `rect`, for the pointer to find. Only the part
-    /// of it the clip left visible can be reached.
+    /// Registers `target` at `rect`. Only the part the clip leaves visible is reachable.
     pub fn hit(&mut self, rect: Rect, target: Target) {
         let rect = self.clip.map_or(rect, |clip| clip.intersect(rect));
         if rect.is_empty() {

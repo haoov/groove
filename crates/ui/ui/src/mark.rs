@@ -3,7 +3,7 @@
 use groove_gfx::Icon;
 use groove_types::SessionKind;
 
-/// An icon by meaning, so a view never names a shape.
+/// An icon by meaning. A view never names a shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mark {
     Task,

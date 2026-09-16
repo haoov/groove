@@ -43,7 +43,7 @@ pub struct SessionUi {
     pub tab: Tab,
     /// How far the sidebar's list is scrolled, in pixels.
     pub files: f32,
-    /// The user folded the sidebar away, whatever the tab offers.
+    /// The user folded the sidebar away.
     pub folded: bool,
 }
 

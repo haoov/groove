@@ -16,7 +16,7 @@ pub enum Run {
     Flow(Action),
 }
 
-/// One row of the palette. A command row's id is the command's, so it is always a real function.
+/// One row of the palette. A command row's id is the command's own.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entry {
     pub group: &'static str,

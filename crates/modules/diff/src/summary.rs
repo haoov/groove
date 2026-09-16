@@ -23,7 +23,6 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     Ok(files)
 }
 
-/// One row of `git status`, with the counts that belong to its path.
 fn file(change: &Change, counts: &[Counts], dir: &Path) -> FileDiff {
     let path = unquote_path(&change.path);
     let (added, deleted) = match change.is_untracked() {
@@ -40,7 +39,7 @@ fn file(change: &Change, counts: &[Counts], dir: &Path) -> FileDiff {
     }
 }
 
-/// The index letter leads: it says what the change will be once committed.
+/// The index letter when the file is staged, the worktree letter otherwise.
 fn status_of(change: &Change) -> FileStatus {
     let letter = match change.is_staged() {
         true => change.x,
@@ -62,7 +61,7 @@ fn counted(counts: &[Counts], path: &str) -> (Option<u32>, Option<u32>) {
     }
 }
 
-/// An untracked file is all additions. One too big to read counts nothing.
+/// All additions, or nothing at all for a file too big to read.
 fn whole_file(dir: &Path, path: &str) -> (Option<u32>, Option<u32>) {
     let full = dir.join(path);
     let Ok(meta) = std::fs::metadata(&full) else {

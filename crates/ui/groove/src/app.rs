@@ -30,7 +30,7 @@ pub struct App {
     hits: Hits,
     cursor: (f32, f32),
     pointer: Cursor,
-    /// When the agents were last fitted to their pane, to throttle a drag.
+    /// When the agents were last fitted to their pane.
     fitted: Instant,
     failure: Option<groove_gfx::Error>,
     explore: bool,
@@ -94,8 +94,7 @@ impl App {
         self.point();
     }
 
-    /// How long the window may sleep: a frame while a mark turns, otherwise long
-    /// enough that a row's `2m` becomes `3m` on its own.
+    /// How long the window may sleep before it redraws itself.
     fn pace(&self) -> Option<Duration> {
         let moving = !self.state.pending.is_empty()
             || self
@@ -111,8 +110,7 @@ impl App {
         waiting.then(|| Duration::from_secs(CLOCK_S))
     }
 
-    /// Every agent's grid to its pane. A drag is throttled: one resize repaints the
-    /// whole TUI, and a grid only changes by whole cells anyway.
+    /// Every agent's grid to its pane, throttled while a split is dragged.
     fn fit_agents(&mut self, metrics: Metrics) {
         let waiting = self.fitted.elapsed() < Duration::from_millis(FIT_MS);
         if self.ui.dragging() && waiting {
@@ -310,7 +308,7 @@ fn delta_of(delta: MouseScrollDelta) -> Delta {
 /// How often the agents are refitted while a split is dragged.
 const FIT_MS: u64 = 100;
 
-/// The narrowest the window may be: every column at its minimum, and room to read.
+/// The narrowest the window may be.
 const MIN_WIDTH: f64 = 960.0;
 const MIN_HEIGHT: f64 = 600.0;
 

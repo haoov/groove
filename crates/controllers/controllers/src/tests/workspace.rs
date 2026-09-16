@@ -155,3 +155,35 @@ fn switching_to_a_session_with_no_worktree_forgets_the_last_one() {
     });
     assert_eq!(state.workspace.files[0].path, "a.txt", "and back again");
 }
+
+#[test]
+fn a_file_changing_on_disk_reads_the_worktree_again() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    assert!(
+        state.workspace.watching.is_some(),
+        "the selected worktree is watched"
+    );
+
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    assert_eq!(state.workspace.files[0].path, "a.txt");
+
+    let second = state.session.selected.clone().expect("a session");
+    dispatch(
+        Cmd::Session(session::Command::Close { session: second }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(
+        state.workspace.watching.is_none(),
+        "nothing selected, nothing watched"
+    );
+}

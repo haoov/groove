@@ -31,7 +31,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     footer(ctx, app, foot);
 }
 
-/// The hairline down the rail's right edge.
 fn edge(ctx: &mut Ctx, rect: Rect) {
     let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(

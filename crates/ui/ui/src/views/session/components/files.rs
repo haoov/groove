@@ -1,6 +1,5 @@
-//! The sidebar's files tab: what changed in the selected worktree. The change's own
-//! root is shown once, then one group per directory under it, so a deep path costs
-//! one line rather than six.
+//! The sidebar's files tab: what changed in the selected worktree, the common root
+//! once and then a group per directory under it.
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
@@ -11,19 +10,16 @@ use crate::ctx::Ctx;
 use crate::style::Role;
 use crate::widget::{elide, hairline, row};
 
-/// The changed files as the list draws them.
 pub(crate) struct Listing<'a> {
     pub root: String,
     pub groups: Vec<Group<'a>>,
 }
 
-/// One directory under the root, with the files that sit directly in it.
 pub(crate) struct Group<'a> {
     pub dir: String,
     pub files: Vec<&'a FileDiff>,
 }
 
-/// The sidebar: a heading with the root, then the groups.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.sidebar;
     if rect.is_empty() {
@@ -46,13 +42,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     rows(ctx, body, &listing, ui.session.files);
 }
 
-/// The hairline down the sidebar's left edge.
 fn edge(ctx: &mut Ctx, rect: Rect) {
     let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
 }
 
-/// `FILES` with the count, and the root every path shares.
 fn heading(ctx: &mut Ctx, rect: Rect, root: &str, count: usize) {
     let (rule, pad) = (ctx.styles.line(), ctx.tokens.md);
     let style = ctx.styles.heading(Role::Faint);
@@ -73,7 +67,6 @@ fn heading(ctx: &mut Ctx, rect: Rect, root: &str, count: usize) {
     hairline(ctx, rect, rule);
 }
 
-/// A dim line per directory, then its files, clipped and scrolled.
 fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, scroll: f32) {
     let height = ctx.tokens.row;
     let lines = listing
@@ -101,7 +94,6 @@ fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, scroll: f32) {
     });
 }
 
-/// The status letter, the file's name, then what it added and deleted.
 fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool) {
     let letter = ctx.styles.small(Role::Ghost);
     let indent = match at_root {
@@ -125,7 +117,7 @@ fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool) {
     );
 }
 
-/// The counts on the right. Returns where they start.
+/// Returns where the counts start.
 fn counts(ctx: &mut Ctx, line: Rect, file: &FileDiff) -> f32 {
     let mut at = line.right() - ctx.tokens.md;
     for (count, role) in [(file.deleted, Role::Bad), (file.added, Role::Ok)] {
@@ -146,7 +138,7 @@ fn counts(ctx: &mut Ctx, line: Rect, file: &FileDiff) -> f32 {
     at
 }
 
-/// What changed in the worktree the session points at, and nothing else.
+/// The files of the worktree the session points at, never another's.
 pub(crate) fn changed(app: &AppState) -> &[FileDiff] {
     let selected = app
         .session
@@ -160,7 +152,6 @@ fn name_of(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-/// The root every path shares, then a group per directory under it.
 pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
     let root = common_root(files);
     let mut groups: Vec<Group<'_>> = Vec::new();
@@ -178,7 +169,7 @@ pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
     Listing { root, groups }
 }
 
-/// The deepest directory every path shares, empty when they share none.
+/// The deepest directory every path shares.
 fn common_root(files: &[FileDiff]) -> String {
     let Some(first) = files.first() else {
         return String::new();
@@ -196,14 +187,12 @@ fn common_root(files: &[FileDiff]) -> String {
     root.join("/")
 }
 
-/// A path's directories, without its file name.
 fn segments(path: &str) -> Vec<&str> {
     let mut parts: Vec<&str> = path.split('/').collect();
     parts.pop();
     parts
 }
 
-/// What is left of a path's directory once the root is taken off.
 fn directory(path: &str, root: &str) -> String {
     let dir = segments(path).join("/");
     match dir.strip_prefix(root) {

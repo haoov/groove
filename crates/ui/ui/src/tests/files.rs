@@ -207,23 +207,14 @@ fn files_loaded_for_another_worktree_are_never_shown() {
 }
 
 #[test]
-fn bringing_the_list_back_into_view_reads_the_worktree_again() {
+fn folding_asks_for_nothing_since_the_worktree_is_watched() {
     let app = with_files(&["crates/ui/ui/src/tokens.rs"]);
     let mut ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let fold = hits.rect_of(&Target::Fold).expect("the fold");
-
-    assert!(
-        click(fold, &mut ui, &app, &hits).is_empty(),
-        "folding it away asks for nothing"
-    );
-    let back = click(fold, &mut ui, &app, &hits);
-    assert_eq!(back.len(), 1);
-    assert_eq!(back[0].id(), "workspace.load", "unfolding reads it again");
-
-    let mut on_overview = Ui::default();
-    let opened = press(Key::Char('b'), CHORD, &mut on_overview, &app);
-    assert!(opened.is_empty(), "the overview has no list to read");
+    assert!(click(fold, &mut ui, &app, &hits).is_empty());
+    assert!(click(fold, &mut ui, &app, &hits).is_empty());
+    assert!(press(Key::Char('b'), CHORD, &mut ui, &app).is_empty());
 }
 
 #[test]
