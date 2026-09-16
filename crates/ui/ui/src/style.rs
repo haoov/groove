@@ -1,9 +1,9 @@
 //! What a text means and what it looks like. The only place a colour or a style is built.
 
 use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
-use groove_types::ThemeName;
+use groove_types::{Capture, RowKind, ThemeName};
 
-use crate::tokens::{SCRIM_ALPHA, Tokens};
+use crate::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,6 +81,44 @@ impl Styles {
 
     pub fn small(&self, role: Role) -> TextStyle {
         self.sans(self.tokens.small, Weight::Regular, role)
+    }
+
+    /// Code: the agent, the terminal, the diff and the editor, and nowhere else.
+    pub fn code(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Regular,
+            size: self.tokens.code,
+            color: self.color(role),
+        }
+    }
+
+    /// What a grammar's capture looks like.
+    pub fn syntax(&self, capture: Capture) -> Color {
+        let p = &self.palette;
+        match capture {
+            Capture::Keyword => p.mauve,
+            Capture::Function => p.blue,
+            Capture::Type => p.yellow,
+            Capture::String => p.green,
+            Capture::Number | Capture::Constant => p.peach,
+            Capture::Comment => p.overlay1,
+            Capture::Attribute => p.teal,
+            Capture::Title => p.lavender,
+            Capture::Literal => p.green,
+            Capture::Link => p.sapphire,
+        }
+    }
+
+    /// The ground a diff row stands on, and the one under the caret.
+    pub fn row_ground(&self, kind: RowKind, caret: bool) -> Option<Color> {
+        let tint = |color: Color| Some(color.with_alpha(GROUND_ALPHA));
+        match kind {
+            RowKind::Added => tint(self.palette.green),
+            RowKind::Removed => tint(self.palette.red),
+            _ if caret => Some(self.raised()),
+            _ => None,
+        }
     }
 
     /// The window's own ground.

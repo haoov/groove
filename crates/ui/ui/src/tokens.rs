@@ -4,6 +4,8 @@
 pub const PALETTE_ROWS: usize = 8;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
+/// A diff row's ground, under its text.
+pub const GROUND_ALPHA: u8 = 38;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;

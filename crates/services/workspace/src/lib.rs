@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+pub use groove_diff::{Opened, from_text};
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
@@ -14,6 +15,8 @@ pub struct State {
     pub view: DiffView,
     pub status: Option<WorktreeStatus>,
     pub files: Vec<FileDiff>,
+    /// The file the diff is showing, with both its sides.
+    pub opened: Option<Opened>,
     pub watching: Option<WorktreeId>,
     watch: Option<Watch>,
 }
@@ -26,6 +29,18 @@ impl State {
     pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>) {
         self.worktree = Some(worktree);
         self.files = files;
+        if self
+            .opened
+            .as_ref()
+            .is_some_and(|open| self.gone(&open.path))
+        {
+            self.opened = None;
+        }
+    }
+
+    /// Whether the summary still holds this path.
+    fn gone(&self, path: &str) -> bool {
+        !self.files.iter().any(|file| file.path == path)
     }
 
     /// The changed files, and nothing at all when they are another worktree's.
@@ -40,6 +55,7 @@ impl State {
     pub fn clear(&mut self) {
         self.worktree = None;
         self.files.clear();
+        self.opened = None;
         self.status = None;
         self.watching = None;
         self.watch = None;
@@ -63,6 +79,11 @@ pub fn watch(
 
 pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     groove_diff::summary(dir).await
+}
+
+/// One file of the worktree, both sides and the rows between them.
+pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
+    groove_diff::opened(dir, path).await
 }
 
 /// The filesystem watcher and the forge poll speak here.

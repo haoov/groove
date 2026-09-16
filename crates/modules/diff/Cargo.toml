@@ -8,7 +8,9 @@ publish.workspace = true
 
 [dependencies]
 groove-git = { path = "../git" }
+groove-text = { path = "../text" }
 groove-types = { path = "../../shared/types" }
+imara-diff.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

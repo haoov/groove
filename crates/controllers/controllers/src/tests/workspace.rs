@@ -187,3 +187,43 @@ fn a_file_changing_on_disk_reads_the_worktree_again() {
         "nothing selected, nothing watched"
     );
 }
+
+#[test]
+fn the_open_file_follows_a_change_on_disk() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let file = std::path::Path::new(&dir).join("a.txt");
+
+    std::fs::write(&file, "two\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    dispatch(
+        Cmd::Workspace(workspace::Command::OpenFile {
+            path: "a.txt".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.opened.is_some()
+    });
+    let rows = state.workspace.opened.as_ref().map(|open| open.rows.len());
+    assert_eq!(rows, Some(2), "one line out, one line in");
+
+    std::fs::write(&file, "two\nthree\nfour\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace
+            .opened
+            .as_ref()
+            .is_some_and(|open| open.new.lines() == 3)
+    });
+    let open = state.workspace.opened.as_ref().expect("still open");
+    assert_eq!(open.path, "a.txt", "the same file, read again");
+    assert_eq!(open.rows.len(), 4, "one out, three in");
+}

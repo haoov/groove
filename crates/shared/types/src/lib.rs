@@ -14,6 +14,7 @@ mod naming;
 mod repo;
 mod schema;
 mod session;
+mod syntax;
 mod task;
 mod terminal;
 mod time;
@@ -33,7 +34,7 @@ pub use config::{
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
     BlameLine, CommitEntry, DiffLine, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineKind,
-    RepoDiff, word_diff_pairs,
+    RepoDiff, Row, RowKind, word_diff_pairs,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use ids::{
@@ -49,6 +50,7 @@ pub use schema::{
     PropertyKind, PropertyOption, PropertySchema, PropertyValue, StatusGroup, TaskSchema,
 };
 pub use session::{Session, SessionKind, SessionState};
+pub use syntax::{Capture, Highlight};
 pub use task::{ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell};
 pub use time::{Day, Timestamp};

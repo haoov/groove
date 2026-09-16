@@ -16,7 +16,8 @@ fn a_file_name_names_its_language() {
 
 #[test]
 fn lines_are_what_a_reader_counts() {
-    assert_eq!(Document::new("a.rs", "").lines(), 1, "one empty line");
+    assert_eq!(Document::new("a.rs", "").lines(), 0, "nothing to read");
+    assert_eq!(Document::new("a.rs", "\n").lines(), 1, "one empty line");
     assert_eq!(Document::new("a.rs", "one").lines(), 1);
     assert_eq!(Document::new("a.rs", "one\n").lines(), 1);
     assert_eq!(Document::new("a.rs", "one\ntwo").lines(), 2);

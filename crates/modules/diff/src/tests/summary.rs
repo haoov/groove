@@ -6,7 +6,7 @@ use groove_types::FileStatus;
 use crate::summary;
 
 /// A repository with one commit, and whatever the test writes after it.
-fn repo() -> tempfile::TempDir {
+pub(crate) fn repo() -> tempfile::TempDir {
     let dir = tempfile::tempdir().expect("a temp dir");
     git(dir.path(), &["init", "-q", "-b", "main"]);
     git(dir.path(), &["config", "user.email", "test@example.com"]);
@@ -22,7 +22,7 @@ fn repo() -> tempfile::TempDir {
     dir
 }
 
-fn git(dir: &Path, args: &[&str]) {
+pub(crate) fn git(dir: &Path, args: &[&str]) {
     let status = Command::new("git")
         .args(args)
         .current_dir(dir)
@@ -33,7 +33,7 @@ fn git(dir: &Path, args: &[&str]) {
     assert!(status.success(), "git {args:?}");
 }
 
-fn write(dir: &Path, path: &str, text: &str) {
+pub(crate) fn write(dir: &Path, path: &str, text: &str) {
     let full = dir.join(path);
     if let Some(parent) = full.parent() {
         std::fs::create_dir_all(parent).expect("a directory");

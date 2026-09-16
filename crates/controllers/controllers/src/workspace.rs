@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use groove_types::WorktreeId;
-use groove_workspace_service::summary;
+use groove_workspace_service::{opened, summary};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -13,12 +13,15 @@ use crate::{AppState, Continuation, Deliver, Services, Spawner};
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
     Load,
+    /// `workspace.open_file`: one file's two sides and the rows between them.
+    OpenFile { path: String },
 }
 
 impl Command {
     pub fn id(&self) -> &'static str {
         match self {
             Command::Load => "workspace.load",
+            Command::OpenFile { .. } => "workspace.open_file",
         }
     }
 }
@@ -30,8 +33,47 @@ pub fn dispatch(
     spawner: &dyn Spawner,
 ) {
     match command {
-        Command::Load => load(state, spawner),
+        Command::Load => reread(state, spawner),
+        Command::OpenFile { path } => open_file(state, spawner, path),
     }
+}
+
+/// The worktree and the file it is showing, read at the same time: the file's rows do
+/// not wait on the summary.
+fn reread(state: &mut AppState, spawner: &dyn Spawner) {
+    load(state, spawner);
+    reopen(state, spawner);
+}
+
+/// Reads the open file again, now the worktree has moved under it.
+fn reopen(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(path) = state
+        .workspace
+        .opened
+        .as_ref()
+        .map(|open| open.path.clone())
+    else {
+        return;
+    };
+    open_file(state, spawner, path);
+}
+
+/// Reads both sides in a job; the continuation stores them for the tab to draw.
+pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let job = state.begin(format!("opening {path}"));
+    spawner.spawn(Box::pin(async move {
+        let file = opened(&dir, &path).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.end(job);
+            match file {
+                Ok(file) => state.workspace.opened = Some(file),
+                Err(e) => state.errors.push(e),
+            }
+        }) as Continuation
+    }));
 }
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
@@ -91,11 +133,17 @@ fn reload(sink: Arc<dyn Deliver>, worktree: WorktreeId) -> impl Fn() + Send + Sy
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 if state.workspace.watching.as_ref() == Some(&worktree) {
-                    load(state, spawner);
+                    reread(state, spawner);
                 }
             },
         ) as Continuation
     })
+}
+
+/// Where the selected worktree sits on disk.
+fn worktree_dir(state: &AppState) -> Option<PathBuf> {
+    let open = state.session.selected()?;
+    Some(PathBuf::from(&open.selected_worktree()?.path))
 }
 
 fn directory(state: &AppState, worktree: &WorktreeId) -> Option<PathBuf> {

@@ -16,6 +16,8 @@ pub enum Cursor {
     Pointer,
     /// Over a boundary a drag moves sideways.
     ColResize,
+    /// Over code.
+    Text,
 }
 
 /// A thing on screen the pointer can act on.
@@ -37,6 +39,10 @@ pub enum Target {
     Split(Edge),
     /// What folds the sidebar away.
     Fold,
+    /// A file's row in the sidebar.
+    File(String),
+    /// The open file's rows.
+    Code,
 }
 
 impl Target {
@@ -48,7 +54,9 @@ impl Target {
             | Target::Picker
             | Target::Worktree(_)
             | Target::PaletteRow(_)
-            | Target::Fold => Cursor::Pointer,
+            | Target::Fold
+            | Target::File(_) => Cursor::Pointer,
+            Target::Code => Cursor::Text,
             Target::Split(_) => Cursor::ColResize,
             Target::Palette => Cursor::Default,
         }
@@ -89,8 +97,7 @@ impl Hits {
     }
 
     /// Where this target was drawn.
-    #[cfg(test)]
-    pub(crate) fn rect_of(&self, target: &Target) -> Option<Rect> {
+    pub fn rect_of(&self, target: &Target) -> Option<Rect> {
         self.regions
             .iter()
             .find(|(_, at)| at == target)

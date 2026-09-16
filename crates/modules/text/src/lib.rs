@@ -11,19 +11,28 @@ mod tests;
 use std::borrow::Cow;
 use std::ops::Range;
 
+use groove_types::Highlight;
 use ropey::Rope;
 
-pub use highlight::Span;
-pub use language::{Capture, Language};
+pub use language::Language;
 pub use search::Found;
 
 /// Above this a document keeps its text and gives up its colour.
 pub const MAX_HIGHLIGHT_BYTES: usize = 1 << 20;
 
+impl std::fmt::Debug for Document {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Document")
+            .field("lines", &self.lines())
+            .field("language", &self.language)
+            .finish()
+    }
+}
+
 pub struct Document {
     text: Rope,
     language: Option<Language>,
-    spans: Vec<Span>,
+    spans: Vec<Highlight>,
 }
 
 impl Document {
@@ -49,8 +58,12 @@ impl Document {
         !self.spans.is_empty()
     }
 
-    /// Lines as a reader counts them: a trailing newline ends the last one.
+    /// Lines as a reader counts them: a trailing newline ends the last one, and an
+    /// empty file has none.
     pub fn lines(&self) -> usize {
+        if self.text.len_bytes() == 0 {
+            return 0;
+        }
         let lines = self.text.len_lines();
         match self.ends_open() {
             true => lines,
@@ -69,7 +82,7 @@ impl Document {
     }
 
     /// The line's coloured runs, at offsets from its own start.
-    pub fn spans(&self, at: usize) -> Vec<Span> {
+    pub fn spans(&self, at: usize) -> Vec<Highlight> {
         match self.bytes_of(at) {
             Some(range) => highlight::within(&self.spans, range),
             None => Vec::new(),

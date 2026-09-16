@@ -1,4 +1,6 @@
-use crate::{Capture, Document};
+use groove_types::Capture;
+
+use crate::Document;
 
 /// The captures of one line, with the text each one covers.
 fn spans(doc: &Document, at: usize) -> Vec<(Capture, String)> {

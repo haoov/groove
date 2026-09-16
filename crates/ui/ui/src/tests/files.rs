@@ -18,7 +18,6 @@ fn changed(path: &str, added: u32, deleted: u32) -> FileDiff {
         deleted,
         status: FileStatus::Modified,
         staged: Some(false),
-        hunks: Vec::new(),
     }
 }
 
@@ -42,14 +41,14 @@ fn on_diff() -> Ui {
 }
 
 #[test]
-fn the_root_every_path_shares_is_shown_once() {
+fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
     let files = [
         changed("crates/ui/ui/src/views/session/session.rs", 1, 0),
         changed("crates/ui/ui/src/views/shared/rail.rs", 1, 0),
         changed("crates/ui/ui/src/tokens.rs", 1, 0),
+        changed("Cargo.toml", 1, 0),
     ];
     let listing = listing(&files);
-    assert_eq!(listing.root, "crates/ui/ui/src");
     let groups: Vec<(&str, Vec<&str>)> = listing
         .groups
         .iter()
@@ -63,39 +62,27 @@ fn the_root_every_path_shares_is_shown_once() {
     assert_eq!(
         groups,
         [
-            ("", vec!["crates/ui/ui/src/tokens.rs"]),
+            ("", vec!["Cargo.toml"]),
+            ("crates/ui/ui/src", vec!["crates/ui/ui/src/tokens.rs"]),
             (
-                "views/session",
+                "crates/ui/ui/src/views/session",
                 vec!["crates/ui/ui/src/views/session/session.rs"]
             ),
             (
-                "views/shared",
+                "crates/ui/ui/src/views/shared",
                 vec!["crates/ui/ui/src/views/shared/rail.rs"]
             ),
         ],
-        "a chain with one child costs one line, not six"
+        "the worktree root is the only root"
     );
 }
 
 #[test]
-fn paths_that_share_nothing_keep_their_whole_directory() {
-    let files = [
-        changed("Cargo.toml", 1, 0),
-        changed("docs/design/design.md", 1, 0),
-    ];
-    let listing = listing(&files);
-    assert!(listing.root.is_empty());
-    assert_eq!(listing.groups[0].dir, "");
-    assert_eq!(listing.groups[1].dir, "docs/design");
-}
-
-#[test]
-fn one_file_puts_its_directory_in_the_root() {
+fn one_file_keeps_its_whole_directory() {
     let files = [changed("crates/base/gfx/src/icons.rs", 3, 2)];
     let listing = listing(&files);
-    assert_eq!(listing.root, "crates/base/gfx/src");
     assert_eq!(listing.groups.len(), 1);
-    assert_eq!(listing.groups[0].dir, "");
+    assert_eq!(listing.groups[0].dir, "crates/base/gfx/src");
 }
 
 #[test]
@@ -132,10 +119,13 @@ fn the_files_tab_names_the_files_with_what_they_changed() {
         .map(|run| run.text.clone())
         .collect();
     assert!(texts.iter().any(|t| t == "FILES · 2"), "{texts:?}");
-    assert!(texts.iter().any(|t| t == "crates/ui/ui/src"));
     assert!(texts.iter().any(|t| t == "tokens.rs"));
     assert!(texts.iter().any(|t| t == "session.rs"));
-    assert!(texts.iter().any(|t| t == "views/session"));
+    assert!(
+        texts.iter().any(|t| t == "crates/ui/ui/src"),
+        "a group: {texts:?}"
+    );
+    assert!(texts.iter().any(|t| t == "crates/ui/ui/src/views/session"));
     assert!(texts.iter().any(|t| t == "+2"));
     assert!(texts.iter().any(|t| t == "-1"));
     assert!(

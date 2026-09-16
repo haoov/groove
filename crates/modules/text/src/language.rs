@@ -1,5 +1,6 @@
 use std::sync::OnceLock;
 
+use groove_types::Capture;
 use tree_sitter::Language as Grammar;
 use tree_sitter_highlight::HighlightConfiguration;
 
@@ -12,22 +13,6 @@ pub enum Language {
     Markdown,
     Python,
     Go,
-}
-
-/// What a span means. A grammar's own capture names map onto these.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Capture {
-    Keyword,
-    Function,
-    Type,
-    String,
-    Number,
-    Comment,
-    Constant,
-    Attribute,
-    Title,
-    Literal,
-    Link,
 }
 
 /// The capture names Groove reads, and what each one means. Several names can mean
@@ -55,10 +40,9 @@ const RECOGNIZED: [(&str, Capture); 20] = [
     ("markup.link", Capture::Link),
 ];
 
-impl Capture {
-    pub(crate) fn at(index: usize) -> Option<Capture> {
-        RECOGNIZED.get(index).map(|(_, capture)| *capture)
-    }
+/// What the grammar's capture at `index` means to us.
+pub(crate) fn capture(index: usize) -> Option<Capture> {
+    RECOGNIZED.get(index).map(|(_, capture)| *capture)
 }
 
 impl Language {

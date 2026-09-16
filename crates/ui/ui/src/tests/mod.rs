@@ -1,3 +1,4 @@
+mod diff;
 mod files;
 mod frame;
 mod mouse;

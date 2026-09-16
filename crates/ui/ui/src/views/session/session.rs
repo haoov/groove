@@ -45,6 +45,10 @@ pub struct SessionUi {
     pub files: f32,
     /// The user folded the sidebar away.
     pub folded: bool,
+    /// How far the open file is scrolled, in pixels.
+    pub diff: f32,
+    /// The row and column the last click landed on in the open file.
+    pub at: Option<(usize, usize)>,
 }
 
 impl SessionUi {
@@ -88,7 +92,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     );
     match ui.session.tab {
         Tab::Overview => overview::draw(ctx, app, body),
-        Tab::Diff => diff::draw(ctx, app, body),
+        Tab::Diff => diff::draw(ctx, app, ui, body),
     }
     if ui.session.sidebar() {
         files::draw(ctx, app, ui);

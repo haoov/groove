@@ -34,7 +34,6 @@ fn file(change: &Change, counts: &[Counts], dir: &Path) -> FileDiff {
         deleted: deleted.unwrap_or(0),
         status: status_of(change),
         staged: Some(change.is_staged()),
-        hunks: Vec::new(),
         path,
     }
 }

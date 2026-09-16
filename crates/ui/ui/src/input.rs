@@ -10,6 +10,7 @@ use crate::hit::{Cursor, Hits, Target};
 use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Flow, Palette};
 use crate::tokens::Tokens;
+use crate::widget::code_at;
 use crate::{Drag, Focus, Ui};
 
 /// A key as the ui reads it, free of the window library's types.
@@ -110,6 +111,10 @@ fn scroll(x: f32, delta: Delta, ui: &mut Ui, metrics: Metrics) {
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
         ui.session.files = (ui.session.files - pixels).max(0.0);
+        return;
+    }
+    if x >= layout.workspace.x {
+        ui.session.diff = (ui.session.diff - pixels).max(0.0);
     }
 }
 
@@ -159,7 +164,7 @@ fn press(
         grab(ui, edge, x, metrics);
         return Vec::new();
     }
-    click(x, y, ui, app, hits)
+    click(x, y, ui, app, hits, metrics)
 }
 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
@@ -194,7 +199,14 @@ fn logical(value: f32, metrics: Metrics) -> f32 {
 }
 
 /// What was drawn under the point, acted on. Anywhere else closes the palette.
-fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+fn click(
+    x: f32,
+    y: f32,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
     let target = hits.at(x, y);
     let inside = matches!(target, Some(Target::Palette | Target::PaletteRow(_)));
     if ui.palette.is_some() && !inside {
@@ -215,9 +227,23 @@ fn click(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comman
         }
         Some(Target::Picker) => selector(ui, app),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
+        Some(Target::File(path)) => {
+            vec![Command::Workspace(workspace::Command::OpenFile { path })]
+        }
+        Some(Target::Code) => {
+            ui.session.at = caret(ui, hits, metrics, (x, y));
+            Vec::new()
+        }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::Palette | Target::Split(_)) | None => Vec::new(),
     }
+}
+
+/// The row and column a click lands on in the open file.
+fn caret(ui: &Ui, hits: &Hits, metrics: Metrics, point: (f32, f32)) -> Option<(usize, usize)> {
+    let rect = hits.rect_of(&Target::Code)?;
+    let tokens = Tokens::new(metrics.scale);
+    code_at(&tokens, metrics.cell, rect, ui.session.diff, point)
 }
 
 /// Either picker opens the worktree selector.

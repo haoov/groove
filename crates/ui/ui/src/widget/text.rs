@@ -35,6 +35,25 @@ pub fn elide(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String
     format!("{}{ELLIPSIS}", text[..cuts[low]].trim_end())
 }
 
+/// The text as it fits `width`, cut at the front so its end survives.
+pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String {
+    if ctx.measure(text, style) <= width {
+        return text.to_string();
+    }
+    let cuts: Vec<usize> = text.char_indices().map(|(at, _)| at).collect();
+    let mut low = 0;
+    let mut high = cuts.len().saturating_sub(1);
+    while low < high {
+        let mid = (low + high) / 2;
+        let candidate = format!("{ELLIPSIS}{}", &text[cuts[mid]..]);
+        match ctx.measure(&candidate, style) <= width {
+            true => high = mid,
+            false => low = mid + 1,
+        }
+    }
+    format!("{ELLIPSIS}{}", &text[cuts[low]..])
+}
+
 /// A hairline along the bottom of `rect`.
 pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;

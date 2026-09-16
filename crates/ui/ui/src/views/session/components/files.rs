@@ -7,11 +7,11 @@ use groove_types::FileDiff;
 
 use crate::Ui;
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::style::Role;
 use crate::widget::{elide, hairline, row};
 
 pub(crate) struct Listing<'a> {
-    pub root: String,
     pub groups: Vec<Group<'a>>,
 }
 
@@ -32,7 +32,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let files = changed(app);
     let listing = listing(files);
     let head = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.header);
-    heading(ctx, head, &listing.root, files.len());
+    heading(ctx, head, files.len());
     let body = Rect::new(rect.x, head.bottom(), rect.w, rect.h - head.h);
     if files.is_empty() {
         let style = ctx.styles.small(Role::Faint);
@@ -47,23 +47,14 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
 }
 
-fn heading(ctx: &mut Ctx, rect: Rect, root: &str, count: usize) {
+fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
     let (rule, pad) = (ctx.styles.line(), ctx.tokens.md);
     let style = ctx.styles.heading(Role::Faint);
     let label = match count {
         0 => "FILES".to_string(),
         n => format!("FILES · {n}"),
     };
-    let width = ctx.measure(&label, &style);
     row(ctx, rect, pad, &label, style);
-    if !root.is_empty() {
-        let dim = ctx.styles.small(Role::Ghost);
-        let at = pad + width + ctx.tokens.sm;
-        let room = (rect.w - at - pad).max(0.0);
-        let text = elide(ctx, root, &dim, room);
-        let line = Rect::new(rect.x + at, rect.y, room, rect.h);
-        row(ctx, line, 0.0, &text, dim);
-    }
     hairline(ctx, rect, rule);
 }
 
@@ -103,6 +94,7 @@ fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool) {
     let mark = file.status.letter().to_string();
     row(ctx, line, indent, &mark, letter);
 
+    ctx.hit(line, Target::File(file.path.clone()));
     let at = counts(ctx, line, file);
     let name = ctx.styles.body(Role::Text);
     let start = indent + ctx.tokens.md;
@@ -153,10 +145,9 @@ fn name_of(path: &str) -> &str {
 }
 
 pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
-    let root = common_root(files);
     let mut groups: Vec<Group<'_>> = Vec::new();
     for file in files {
-        let dir = directory(&file.path, &root);
+        let dir = segments(&file.path).join("/");
         match groups.iter_mut().find(|group| group.dir == dir) {
             Some(group) => group.files.push(file),
             None => groups.push(Group {
@@ -166,37 +157,12 @@ pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
         }
     }
     groups.sort_by(|a, b| a.dir.cmp(&b.dir));
-    Listing { root, groups }
+    Listing { groups }
 }
 
-/// The deepest directory every path shares.
-fn common_root(files: &[FileDiff]) -> String {
-    let Some(first) = files.first() else {
-        return String::new();
-    };
-    let mut root: Vec<&str> = segments(&first.path);
-    for file in files.iter().skip(1) {
-        let theirs = segments(&file.path);
-        let shared = root
-            .iter()
-            .zip(theirs.iter())
-            .take_while(|(a, b)| a == b)
-            .count();
-        root.truncate(shared);
-    }
-    root.join("/")
-}
-
+/// A path's directories, without its file name.
 fn segments(path: &str) -> Vec<&str> {
     let mut parts: Vec<&str> = path.split('/').collect();
     parts.pop();
     parts
-}
-
-fn directory(path: &str, root: &str) -> String {
-    let dir = segments(path).join("/");
-    match dir.strip_prefix(root) {
-        Some(rest) => rest.trim_start_matches('/').to_string(),
-        None => dir,
-    }
 }

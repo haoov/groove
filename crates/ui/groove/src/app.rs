@@ -321,6 +321,7 @@ fn icon_of(cursor: Cursor) -> CursorIcon {
         Cursor::Default => CursorIcon::Default,
         Cursor::Pointer => CursorIcon::Pointer,
         Cursor::ColResize => CursorIcon::ColResize,
+        Cursor::Text => CursorIcon::Text,
     }
 }
 

@@ -40,6 +40,25 @@ impl FileStatus {
     }
 }
 
+/// What a row of a diff is: a line of the old file, of the new one, or of both.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RowKind {
+    Context,
+    Removed,
+    Added,
+    /// Lines neither side shows, and how many.
+    Gap(u32),
+}
+
+/// One row of a diff: the line it is in each file, and what it is.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Row {
+    pub old: Option<u32>,
+    pub new: Option<u32>,
+    pub kind: RowKind,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FileDiff {
     pub path: String,
@@ -48,8 +67,6 @@ pub struct FileDiff {
     pub status: FileStatus,
     /// `Some(true)` staged, `Some(false)` working tree only, `None` no local change.
     pub staged: Option<bool>,
-    /// Empty in the summary; filled when the file is opened.
-    pub hunks: Vec<Hunk>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
