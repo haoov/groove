@@ -4,4 +4,5 @@ pub(crate) mod components;
 #[allow(clippy::module_inception)]
 mod session;
 
+pub(crate) use components::files::changed;
 pub use session::{SessionUi, Tab, draw};

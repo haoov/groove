@@ -31,9 +31,26 @@ pub use views::shared::rail::RailUi;
 /// Which pane the keyboard belongs to.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Focus {
+    Rail,
     #[default]
     Agent,
-    Rail,
+    Workspace,
+    Sidebar,
+}
+
+impl Focus {
+    /// The panes left to right, for a chord that moves between them.
+    pub const ALL: [Focus; 4] = [Focus::Rail, Focus::Agent, Focus::Workspace, Focus::Sidebar];
+
+    /// The pane beside this one, or this one at the edge.
+    pub fn beside(self, right: bool) -> Self {
+        let at = Self::ALL.iter().position(|it| *it == self).unwrap_or(1);
+        let next = match right {
+            true => at + 1,
+            false => at.saturating_sub(1),
+        };
+        Self::ALL.get(next).copied().unwrap_or(self)
+    }
 }
 
 /// A boundary under the pointer: which one, and where the pointer took hold of it.

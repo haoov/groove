@@ -3,6 +3,7 @@ use groove_gfx::Rect;
 use groove_types::AgentStatus;
 
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::style::Role;
 use crate::widget::{row, screen};
 
@@ -14,6 +15,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let pane = ctx.layout.agent;
     let (ground, line, hairline) = (ctx.styles.ground(), ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(pane, ground);
+    ctx.hit(pane, Target::Agent);
     ctx.quad(
         Rect::new(pane.right() - hairline, pane.y, hairline, pane.h),
         line,

@@ -1,7 +1,7 @@
 //! What a text means and what it looks like. The only place a colour or a style is built.
 
 use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
-use groove_types::{Capture, RowKind, ThemeName};
+use groove_types::{Capture, LineMark, RowKind, ThemeName};
 
 use crate::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens};
 
@@ -111,11 +111,11 @@ impl Styles {
     }
 
     /// What a marked line did: came, went, or changed in place.
-    pub fn mark(&self, mark: Mark) -> Color {
+    pub fn mark(&self, mark: LineMark) -> Color {
         match mark {
-            Mark::Added => self.palette.green,
-            Mark::Removed => self.palette.red,
-            Mark::Changed => self.palette.yellow,
+            LineMark::Added => self.palette.green,
+            LineMark::Removed => self.palette.red,
+            LineMark::Changed => self.palette.yellow,
         }
     }
 
@@ -176,12 +176,4 @@ fn flavour(theme: ThemeName) -> Palette {
         ThemeName::Macchiato => Palette::MACCHIATO,
         ThemeName::Mocha => Palette::MOCHA,
     }
-}
-
-/// What happened to a line the file view marks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mark {
-    Added,
-    Removed,
-    Changed,
 }

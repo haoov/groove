@@ -4,6 +4,7 @@ use groove_gfx::Rect;
 use super::{rail_item, status};
 use crate::Ui;
 use crate::ctx::Ctx;
+use crate::hit::Scroller;
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{Row, after_mark, hairline, icon, leading, list, row};
@@ -52,7 +53,9 @@ fn board_row(ctx: &mut Ctx, rect: Rect) {
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let height = rail_item::height(ctx);
     let content = height * app.session.open.len() as f32;
-    let scroll = ui.rail.scroll.min((content - area.h).max(0.0));
+    let extent = (content - area.h).max(0.0);
+    ctx.scrolls(Scroller::Rail, extent);
+    let scroll = ui.rail.scroll.min(extent);
     ctx.clipped(area, |ctx| {
         let mut y = area.y - scroll;
         for open in &app.session.open {

@@ -1,17 +1,17 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
-use std::collections::BTreeMap;
+use std::ops::Range;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Opened;
 use groove_gfx::Rect;
-use groove_types::{DiffView, Highlight, Row, RowKind};
+use groove_types::{DiffView, Highlight, LineMark, Row, RowKind};
 
-use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::{Mark, Role};
-use crate::widget::{Line, code, elide_start, hairline, height, row};
+use crate::hit::{Scroller, Target};
+use crate::style::Role;
+use crate::widget::{Gutters, Line, Rows, code, elide_start, hairline, height, row, visible};
+use crate::{Focus, Ui};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let Some(file) = app.workspace.opened.as_ref() else {
@@ -115,10 +115,7 @@ fn counted(app: &AppState, path: &str) -> Option<(u32, u32)> {
 fn rows(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
     match ui.session.view {
         DiffView::Split => beside(ctx, body, file, ui),
-        view => {
-            let rows = drawn(file, ui, view, Side::New);
-            surface(ctx, body, &rows, ui, true);
-        }
+        view => surface(ctx, body, file, ui, view, Side::New, true),
     }
 }
 
@@ -135,20 +132,9 @@ fn beside(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
     );
     let rule = ctx.styles.line();
     ctx.quad(Rect::new(left.right(), body.y, thickness, body.h), rule);
-    surface(
-        ctx,
-        left,
-        &drawn(file, ui, DiffView::Split, Side::Old),
-        ui,
-        false,
-    );
-    surface(
-        ctx,
-        right,
-        &drawn(file, ui, DiffView::Split, Side::New),
-        ui,
-        true,
-    );
+    let view = DiffView::Split;
+    surface(ctx, left, file, ui, view, Side::Old, false);
+    surface(ctx, right, file, ui, view, Side::New, true);
 }
 
 /// Which file a row is read from.
@@ -166,75 +152,105 @@ struct Drawn {
     kind: RowKind,
     caret: bool,
     /// What the file view says happened to this line.
-    mark: Option<Mark>,
+    mark: Option<LineMark>,
 }
 
-/// The rows of one view, read from one side.
-fn drawn(file: &Opened, ui: &Ui, view: DiffView, side: Side) -> Vec<Drawn> {
-    let marks = marks(&file.rows);
-    let file_view = view == DiffView::File;
-    file.rows
+/// The rows of one view, inside `window`. The file view is the file; the others
+/// are the alignment.
+fn drawn(file: &Opened, ui: &Ui, view: DiffView, side: Side, window: Range<usize>) -> Vec<Drawn> {
+    match view {
+        DiffView::File => whole(file, ui, window),
+        _ => aligned(file, ui, view, side, window),
+    }
+}
+
+/// How many rows the view stands, all of it.
+fn count(file: &Opened, view: DiffView) -> usize {
+    match view {
+        DiffView::File => file.new.lines(),
+        _ => file.rows.len(),
+    }
+}
+
+/// The lines of the file as it is now, marked where the change touched them.
+fn whole(file: &Opened, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
+    let caret = caret(ui);
+    window
+        .map(|at| Drawn {
+            text: file.new.line(at).unwrap_or_default().to_string(),
+            spans: file.new.spans(at),
+            gutters: vec![(at + 1).to_string()],
+            kind: RowKind::Context,
+            caret: caret == Some(at),
+            mark: file.marks.get(&(at as u32)).copied(),
+        })
+        .collect()
+}
+
+/// The alignment's rows, read from the side the view asks for.
+fn aligned(file: &Opened, ui: &Ui, view: DiffView, side: Side, window: Range<usize>) -> Vec<Drawn> {
+    let caret = caret(ui);
+    let first = window.start;
+    file.rows[window]
         .iter()
         .enumerate()
-        .filter(|(_, row)| shown(row, view, side))
         .map(|(at, row)| {
             let (text, spans) = line(file, row, source(row, view, side));
             Drawn {
                 text,
                 spans,
                 gutters: gutters(row, view, side),
-                kind: match file_view {
-                    true => RowKind::Context,
-                    false => kind(row, view, side),
-                },
-                caret: ui.session.at.is_some_and(|(caret, _)| caret == at),
-                mark: file_view.then(|| marks.get(&row.new?).copied()).flatten(),
+                kind: kind(row, view, side),
+                caret: caret == Some(first + at),
+                mark: None,
             }
         })
         .collect()
 }
 
-/// What each line of the new file did, by walking the changes either side of it.
-/// A line both removed and added changed in place; a removal with nothing in its
-/// place marks the line that closed the gap.
-fn marks(rows: &[Row]) -> BTreeMap<u32, Mark> {
-    let mut marks = BTreeMap::new();
-    let mut at = 0;
-    while at < rows.len() {
-        let gone: Vec<&Row> = rows[at..]
-            .iter()
-            .take_while(|row| row.kind == RowKind::Removed)
-            .collect();
-        let came: Vec<&Row> = rows[at + gone.len()..]
-            .iter()
-            .take_while(|row| row.kind == RowKind::Added)
-            .collect();
-        if gone.is_empty() && came.is_empty() {
-            at += 1;
-            continue;
-        }
-        let mark = match (gone.is_empty(), came.is_empty()) {
-            (false, false) => Mark::Changed,
-            (true, false) => Mark::Added,
-            _ => Mark::Removed,
-        };
-        match came.is_empty() {
-            true => {
-                let next = rows[at + gone.len()..].iter().find_map(|row| row.new);
-                marks.extend(next.map(|line| (line, mark)));
-            }
-            false => marks.extend(came.iter().filter_map(|row| row.new).map(|l| (l, mark))),
-        }
-        at += gone.len() + came.len();
+/// The row the caret is on, while the workspace holds the keyboard.
+fn caret(ui: &Ui) -> Option<usize> {
+    match ui.focus == Focus::Workspace {
+        true => ui.session.at.map(|(row, _)| row),
+        false => None,
     }
-    marks
 }
 
-/// The file view shows what is there now; the others show every row.
-fn shown(row: &Row, view: DiffView, _side: Side) -> bool {
+/// The scroll that keeps the same line in view once the view changes.
+pub(crate) fn scrolled(
+    app: &AppState,
+    from: DiffView,
+    to: DiffView,
+    scroll: f32,
+    line: f32,
+) -> f32 {
+    let at = (scroll / line).floor().max(0.0) as usize;
+    moved(app, from, to, at) as f32 * line
+}
+
+/// The row that holds the same line once the view changes.
+pub(crate) fn moved(app: &AppState, from: DiffView, to: DiffView, row: usize) -> usize {
+    let Some(file) = app.workspace.opened.as_ref() else {
+        return row;
+    };
+    let Some(number) = number(file, from, row) else {
+        return row;
+    };
+    match to {
+        DiffView::File => number as usize,
+        _ => file
+            .rows
+            .iter()
+            .position(|at| at.new.is_some_and(|line| line >= number))
+            .unwrap_or(row),
+    }
+}
+
+/// The new-side line the top of the view is on.
+fn number(file: &Opened, view: DiffView, at: usize) -> Option<u32> {
     match view {
-        DiffView::File => row.new.is_some(),
-        _ => true,
+        DiffView::File => Some(at as u32),
+        _ => file.rows.get(at..)?.iter().find_map(|row| row.new),
     }
 }
 
@@ -272,8 +288,22 @@ fn gutters(row: &Row, view: DiffView, side: Side) -> Vec<String> {
     }
 }
 
-/// Draws the rows, clamps the scroll, and says where a click can land.
-fn surface(ctx: &mut Ctx, rect: Rect, rows: &[Drawn], ui: &Ui, clickable: bool) {
+/// Draws the rows the surface has room for, and says where a click can land.
+fn surface(
+    ctx: &mut Ctx,
+    rect: Rect,
+    file: &Opened,
+    ui: &Ui,
+    view: DiffView,
+    side: Side,
+    clickable: bool,
+) {
+    let total = count(file, view);
+    let extent = (height(ctx, total) - rect.h).max(0.0);
+    ctx.scrolls(Scroller::Code, extent);
+    let scroll = ui.session.diff.min(extent);
+    let window = visible(ctx, rect, total, scroll);
+    let rows = drawn(file, ui, view, side, window.clone());
     let gutters: Vec<Vec<&str>> = rows
         .iter()
         .map(|row| row.gutters.iter().map(String::as_str).collect())
@@ -293,14 +323,27 @@ fn surface(ctx: &mut Ctx, rect: Rect, rows: &[Drawn], ui: &Ui, clickable: bool) 
             }
         })
         .collect();
-    let scroll = ui
-        .session
-        .diff
-        .min((height(ctx, lines.len()) - rect.h).max(0.0));
     if clickable {
         ctx.hit(rect, Target::Code);
     }
-    code(ctx, rect, &lines, scroll);
+    let rows = Rows {
+        lines: &lines,
+        first: window.start,
+        gutters: numbers(file, view),
+    };
+    code(ctx, rect, rows, scroll);
+}
+
+/// How wide the numbers stand: one column a side in split and file, two in inline.
+fn numbers(file: &Opened, view: DiffView) -> Gutters {
+    let lines = file.old.lines().max(file.new.lines());
+    Gutters {
+        cells: match view {
+            DiffView::Inline => 2,
+            _ => 1,
+        },
+        digits: lines.to_string().len(),
+    }
 }
 
 /// The row's line and its colours. The ground says whether it came or went.

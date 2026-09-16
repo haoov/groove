@@ -7,7 +7,7 @@ use groove_types::FileDiff;
 
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{Scroller, Target};
 use crate::style::Role;
 use crate::widget::{elide, hairline, row};
 
@@ -39,7 +39,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
         return row(ctx, line, ctx.tokens.md, "nothing changed", style);
     }
-    rows(ctx, body, &listing, ui.session.files);
+    let open = app.workspace.opened.as_ref().map(|file| &file.path);
+    rows(ctx, body, &listing, ui.session.files, open);
 }
 
 fn edge(ctx: &mut Ctx, rect: Rect) {
@@ -58,14 +59,16 @@ fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
     hairline(ctx, rect, rule);
 }
 
-fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, scroll: f32) {
+fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, scroll: f32, open: Option<&String>) {
     let height = ctx.tokens.row;
     let lines = listing
         .groups
         .iter()
         .map(|g| g.files.len() + 1)
         .sum::<usize>();
-    let scroll = scroll.min((height * lines as f32 - body.h).max(0.0));
+    let extent = (height * lines as f32 - body.h).max(0.0);
+    ctx.scrolls(Scroller::Files, extent);
+    let scroll = scroll.min(extent);
     ctx.clipped(body, |ctx| {
         let mut y = body.y - scroll;
         for group in &listing.groups {
@@ -78,14 +81,24 @@ fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, scroll: f32) {
             }
             for file in &group.files {
                 let line = Rect::new(body.x, y, body.w, height);
-                entry(ctx, line, file, group.dir.is_empty());
+                entry(
+                    ctx,
+                    line,
+                    file,
+                    group.dir.is_empty(),
+                    open == Some(&file.path),
+                );
                 y += height;
             }
         }
     });
 }
 
-fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool) {
+fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool, open: bool) {
+    if open {
+        let raised = ctx.styles.raised();
+        ctx.quad(line, raised);
+    }
     let letter = ctx.styles.small(Role::Ghost);
     let indent = match at_root {
         true => ctx.tokens.md,

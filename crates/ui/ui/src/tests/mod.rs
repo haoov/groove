@@ -1,8 +1,10 @@
 mod diff;
 mod files;
+mod focus;
 mod frame;
 mod mouse;
 mod palette;
+mod perf;
 mod rail;
 mod structure;
 

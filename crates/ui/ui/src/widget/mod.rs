@@ -13,7 +13,7 @@ mod terminal;
 mod text;
 mod time;
 
-pub use code::{Line, code, code_at, height};
+pub use code::{Gutters, Line, Rows, code, code_at, height, visible};
 pub use counts::counts;
 pub use icon::{after_mark, box_in, icon, leading, turn};
 pub use input::input;

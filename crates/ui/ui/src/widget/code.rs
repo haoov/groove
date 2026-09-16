@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use groove_gfx::{CellSize, Color, Rect, TextStyle};
 use groove_types::Highlight;
 
@@ -59,25 +61,35 @@ impl<'a> Line<'a> {
     }
 }
 
-/// The gutter block: how many cells the rows ask for, and how wide one is.
+/// The rows a surface draws: the window it built, and the gutter they share.
+pub struct Rows<'a> {
+    pub lines: &'a [Line<'a>],
+    /// Where the first line sits among all the rows.
+    pub first: usize,
+    pub gutters: Gutters,
+}
+
+/// The gutter a surface asks for: how many number columns, and their longest number.
 #[derive(Debug, Clone, Copy)]
-struct Gutter {
+pub struct Gutters {
+    pub cells: usize,
+    pub digits: usize,
+}
+
+/// The gutter block, measured once for the surface.
+#[derive(Debug, Clone, Copy)]
+struct Block {
     cells: usize,
     width: f32,
 }
 
-impl Gutter {
-    fn of(ctx: &mut Ctx, lines: &[Line<'_>]) -> Self {
+impl Block {
+    fn of(ctx: &mut Ctx, gutters: Gutters) -> Self {
         let numbers = ctx.styles.code(Role::Ghost);
-        let cells = lines.iter().map(|line| line.gutters.len()).max();
-        let width = lines
-            .iter()
-            .flat_map(|line| line.gutters)
-            .map(|text| ctx.measure(text, &numbers))
-            .fold(0.0, f32::max);
+        let widest = "0".repeat(gutters.digits);
         Self {
-            cells: cells.unwrap_or_default(),
-            width,
+            cells: gutters.cells,
+            width: ctx.measure(&widest, &numbers),
         }
     }
 
@@ -89,20 +101,26 @@ impl Gutter {
     }
 }
 
-/// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
-pub fn code(ctx: &mut Ctx, rect: Rect, lines: &[Line<'_>], scroll: f32) {
+/// The rows `rect` has room for at `scroll`, among `total`.
+pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize> {
     let height = ctx.tokens.line;
-    let gutter = Gutter::of(ctx, lines);
+    let first = ((scroll / height).floor().max(0.0) as usize).min(total);
+    let shown = (rect.h / height).ceil() as usize + 1;
+    first..(first + shown).min(total)
+}
+
+/// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
+pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) {
+    let height = ctx.tokens.line;
+    let block = Block::of(ctx, rows.gutters);
     ctx.clipped(rect, |ctx| {
-        let first = (scroll / height).floor().max(0.0);
-        let shown = (rect.h / height).ceil() as usize + 1;
-        let mut y = rect.y - scroll + first * height;
-        for line in lines.iter().skip(first as usize).take(shown) {
-            draw(ctx, Rect::new(rect.x, y, rect.w, height), line, gutter);
+        let mut y = rect.y - scroll + rows.first as f32 * height;
+        for line in rows.lines {
+            draw(ctx, Rect::new(rect.x, y, rect.w, height), line, block);
             y += height;
         }
     });
-    rule(ctx, rect, gutter);
+    rule(ctx, rect, block);
 }
 
 /// How tall the rows stand together.
@@ -128,7 +146,7 @@ pub fn code_at(
 }
 
 /// The hairline the gutters end at, down the whole surface.
-fn rule(ctx: &mut Ctx, rect: Rect, gutter: Gutter) {
+fn rule(ctx: &mut Ctx, rect: Rect, gutter: Block) {
     if gutter.cells == 0 {
         return;
     }
@@ -137,7 +155,7 @@ fn rule(ctx: &mut Ctx, rect: Rect, gutter: Gutter) {
     ctx.quad(Rect::new(at, rect.y, thickness, rect.h), color);
 }
 
-fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Gutter) {
+fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if code.banner {
         return banner(ctx, line, code.text);
     }

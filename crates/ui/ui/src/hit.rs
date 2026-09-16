@@ -47,6 +47,8 @@ pub enum Target {
     Code,
     /// One of the three views of the open file.
     View(DiffView),
+    /// The agent's pane.
+    Agent,
 }
 
 impl Target {
@@ -62,21 +64,42 @@ impl Target {
             | Target::File(_)
             | Target::View(_) => Cursor::Pointer,
             Target::Code => Cursor::Text,
+            Target::Agent => Cursor::Default,
             Target::Split(_) => Cursor::ColResize,
             Target::Palette => Cursor::Default,
         }
     }
 }
 
+/// A column that scrolls on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Scroller {
+    Rail,
+    Files,
+    Code,
+}
+
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]
 pub struct Hits {
     regions: Vec<(Rect, Target)>,
+    /// How far each column can scroll, one per `Scroller`.
+    extents: [f32; 3],
 }
 
 impl Hits {
     pub fn push(&mut self, rect: Rect, target: Target) {
         self.regions.push((rect, target));
+    }
+
+    /// How far a column could scroll when it was drawn.
+    pub fn scrolls(&mut self, which: Scroller, extent: f32) {
+        let at = which as usize;
+        self.extents[at] = self.extents[at].max(extent);
+    }
+
+    pub fn extent(&self, which: Scroller) -> f32 {
+        self.extents[which as usize]
     }
 
     /// The last thing drawn over this point.

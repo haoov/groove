@@ -3,13 +3,14 @@
 //! what the last frame drew.
 
 use groove_controllers::{AppState, Command, agent, session, workspace};
-use groove_types::WorktreeId;
+use groove_types::{DiffView, WorktreeId};
 
 use crate::ctx::Metrics;
-use crate::hit::{Cursor, Hits, Target};
+use crate::hit::{Cursor, Hits, Scroller, Target};
 use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Flow, Palette};
 use crate::tokens::Tokens;
+use crate::views::session::components::diff;
 use crate::widget::code_at;
 use crate::{Drag, Focus, Ui};
 
@@ -91,7 +92,7 @@ pub fn handle(
             Vec::new()
         }
         Input::Scroll { x, delta, .. } => {
-            scroll(x, delta, ui, metrics);
+            scroll(x, delta, ui, hits, metrics);
             Vec::new()
         }
     }
@@ -99,23 +100,32 @@ pub fn handle(
 
 /// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
 /// far end.
-fn scroll(x: f32, delta: Delta, ui: &mut Ui, metrics: Metrics) {
+fn scroll(x: f32, delta: Delta, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
     let layout = Layout::of(metrics, ui);
-    let pixels = match delta {
-        Delta::Lines(lines) => lines * Tokens::new(metrics.scale).row,
+    let tokens = Tokens::new(metrics.scale);
+    let pixels = |height: f32| match delta {
+        Delta::Lines(lines) => lines * height,
         Delta::Pixels(pixels) => pixels,
     };
     if x <= layout.rail.right() {
-        ui.rail.scroll = (ui.rail.scroll - pixels).max(0.0);
+        let far = hits.extent(Scroller::Rail);
+        ui.rail.scroll = moved(ui.rail.scroll, pixels(tokens.row), far);
         return;
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
-        ui.session.files = (ui.session.files - pixels).max(0.0);
+        let far = hits.extent(Scroller::Files);
+        ui.session.files = moved(ui.session.files, pixels(tokens.row), far);
         return;
     }
     if x >= layout.workspace.x {
-        ui.session.diff = (ui.session.diff - pixels).max(0.0);
+        let far = hits.extent(Scroller::Code);
+        ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
     }
+}
+
+/// Where a column stands after the wheel turned, inside what it can scroll.
+fn moved(from: f32, pixels: f32, extent: f32) -> f32 {
+    (from - pixels).clamp(0.0, extent)
 }
 
 /// The row under the pointer. True when it changed, and the window must redraw.
@@ -147,8 +157,73 @@ fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Comm
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
-        Focus::Rail => Vec::new(),
+        Focus::Workspace => in_file(key, ui, app),
+        Focus::Sidebar => in_list(key, ui, app),
+        Focus::Rail => in_rail(key, app),
     }
+}
+
+/// The caret moves by line, the surface by page.
+fn in_file(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let rows = app.workspace.opened.as_ref().map(|open| open.rows.len());
+    let Some(rows) = rows.filter(|rows| *rows > 0) else {
+        return Vec::new();
+    };
+    let (row, column) = ui.session.at.unwrap_or_default();
+    let moved = match key {
+        Key::Up => row.saturating_sub(1),
+        Key::Down => (row + 1).min(rows - 1),
+        Key::Home => 0,
+        Key::End => rows - 1,
+        _ => return Vec::new(),
+    };
+    ui.session.at = Some((moved, column));
+    Vec::new()
+}
+
+/// Up and down open the file above or below in the list.
+fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let files = crate::views::session::changed(app);
+    let at = files
+        .iter()
+        .position(|file| Some(&file.path) == app.workspace.opened.as_ref().map(|o| &o.path));
+    let next = match (key, at) {
+        (Key::Up, Some(at)) => at.saturating_sub(1),
+        (Key::Down, Some(at)) => (at + 1).min(files.len().saturating_sub(1)),
+        (Key::Up | Key::Down, None) => 0,
+        (Key::Enter, _) => {
+            ui.focus = Focus::Workspace;
+            return Vec::new();
+        }
+        _ => return Vec::new(),
+    };
+    let Some(file) = files.get(next) else {
+        return Vec::new();
+    };
+    vec![Command::Workspace(workspace::Command::OpenFile {
+        path: file.path.clone(),
+    })]
+}
+
+/// Up and down move along the opened sessions.
+fn in_rail(key: Key, app: &AppState) -> Vec<Command> {
+    let at = app
+        .session
+        .open
+        .iter()
+        .position(|open| Some(&open.session.id) == app.session.selected.as_ref());
+    let next = match (key, at) {
+        (Key::Up, Some(at)) => at.saturating_sub(1),
+        (Key::Down, Some(at)) => (at + 1).min(app.session.open.len().saturating_sub(1)),
+        (Key::Up | Key::Down, None) => 0,
+        _ => return Vec::new(),
+    };
+    let Some(open) = app.session.open.get(next) else {
+        return Vec::new();
+    };
+    vec![Command::Session(session::Command::Select {
+        session: open.session.id.clone(),
+    })]
 }
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
@@ -213,6 +288,7 @@ fn click(
         ui.palette = None;
         return Vec::new();
     }
+    ui.focus = focused(&target, ui.focus);
     match target {
         Some(Target::Session(session)) => {
             vec![Command::Session(session::Command::Select { session })]
@@ -231,7 +307,7 @@ fn click(
             vec![Command::Workspace(workspace::Command::OpenFile { path })]
         }
         Some(Target::View(view)) => {
-            ui.session.view = view;
+            switch(ui, app, view, metrics);
             Vec::new()
         }
         Some(Target::Code) => {
@@ -239,7 +315,30 @@ fn click(
             Vec::new()
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::Palette | Target::Split(_)) | None => Vec::new(),
+        Some(Target::Agent | Target::Palette | Target::Split(_)) | None => Vec::new(),
+    }
+}
+
+/// Changes the view, keeping the line at the top of the old one in view.
+fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {
+    let line = Tokens::new(metrics.scale).line;
+    let from = ui.session.view;
+    ui.session.diff = diff::scrolled(app, from, view, ui.session.diff, line);
+    ui.session.at = ui
+        .session
+        .at
+        .map(|(row, column)| (diff::moved(app, from, view, row), column));
+    ui.session.view = view;
+}
+
+/// The pane a click lands in. What it lands on says which.
+fn focused(target: &Option<Target>, focus: Focus) -> Focus {
+    match target {
+        Some(Target::Session(_)) => Focus::Rail,
+        Some(Target::Agent) => Focus::Agent,
+        Some(Target::Code) | Some(Target::View(_)) => Focus::Workspace,
+        Some(Target::File(_)) => Focus::Sidebar,
+        _ => focus,
     }
 }
 
@@ -305,6 +404,10 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
             None
         }
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
+        Key::Left | Key::Right => {
+            ui.focus = ui.focus.beside(key == Key::Right);
+            None
+        }
         Key::Char('w' | 'W') => {
             let session = app.session.selected.clone()?;
             Some(Command::Session(session::Command::Close { session }))
