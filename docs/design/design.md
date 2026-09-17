@@ -165,6 +165,18 @@ delete and open in provider.
 **One code surface.** The diff and the editor are one surface in three views, which
 the gutter holds together.
 
+**Editing is modeless, and stays usable by anyone.** Keys do what they do everywhere
+else: characters type, arrows move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes,
+`ctrl+s` writes. Tab writes what the language's own formatter writes — a tab in Go,
+two spaces in YAML and Markdown, four elsewhere — so a file keeps the shape its tools
+give it.
+
+A **modal layer comes after settings**, and it is a grammar over what the editor
+already holds rather than a second editor: the buffer keeps a set of selections, one
+per caret, so several carets and a normal mode are additions to that set. It will not
+be an emulation of vim — no ex commands, since the palette is the command line — and
+the modeless keys above stay whatever else lands on top of them.
+
 | View | Shows | Gutter |
 |---|---|---|
 | file | the file as it is now | a mark on every line the change touched |

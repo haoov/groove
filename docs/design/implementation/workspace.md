@@ -129,7 +129,8 @@ file, grep across the worktree with match highlighting, a file tree.
 
 ### Planned
 
-**Module `editor`**: the file operations as today. **Module `text`**: rope,
+**Module `editor`**: the file operations as today, each path resolved against the
+worktree root and refused when it escapes. **Module `text`**: rope,
 tree-sitter, transactions, the semantic hook. **Service `workspace`** holds the open
 file — path, buffer, dirty, cursor.
 
@@ -140,11 +141,29 @@ diff and the explorer through `watch` like any other change on disk, and the ali
 follows. The sidebar's explorer tab: file tree, search, grep results. LSP later through the semantic hook:
 hover, definition, references, diagnostics.
 
+**Editing.** The buffer is the new side of the open file, so every view edits the same
+text. Four rules, measured rather than assumed:
+
+- **The buffer answers at once, what it implies follows.** A keystroke costs the rope
+  edit and a shift of the colours already read: 5µs at 300 lines, 29µs at 3000.
+  Reading the colours again costs 5.6ms and 45ms, and the alignment as much, so both
+  are read in a job and installed only if the buffer has not moved on. One read is
+  out at a time; a read that lands stale starts the next one.
+- **A dirty buffer outranks the disk.** While the buffer owes the disk, a write under
+  the worktree refreshes the summary and leaves the buffer alone. A save clears the
+  debt, and the reopen that follows lands.
+- **The caret is a place in the document**, carried across a reopen and across a
+  change of view, clamped to a place that exists. A removed line belongs to the old
+  document and takes no caret.
+- **An undo takes back a typing run**, not a character. A motion or a newline closes
+  the run.
+
 | Controller | Does |
 |---|---|
 | `workspace.get_open_file` · `workspace.list_files` · `workspace.read_file` | reads |
 | `workspace.open_file` | from a diff line or the explorer |
-| `workspace.save_file` | write, refresh the diff, return to it |
+| `workspace.edit` | one keystroke on the buffer: a motion, a change, an undo |
+| `workspace.save_file` | write; the buffer keeps its place and its history |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
 | `workspace.search` · `workspace.grep` | the sidebar's search bar; `/` selects grep |
 

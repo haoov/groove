@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-pub use groove_diff::{Document, Opened, from_text};
+pub use groove_diff::{Derived, Document, Opened, columns, display_at, from_text, shown};
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
@@ -21,6 +21,8 @@ pub struct State {
     /// The file the diff is showing, with both its sides.
     pub opened: Option<Opened>,
     pub watching: Option<WorktreeId>,
+    /// The buffer revision a read of the colours and the rows is out for.
+    pub deriving: Option<u64>,
     watch: Option<Watch>,
 }
 
@@ -62,6 +64,11 @@ impl State {
         }
     }
 
+    /// What the open file owes the disk.
+    pub fn dirty(&self) -> bool {
+        self.opened.as_ref().is_some_and(|open| open.new.dirty())
+    }
+
     /// Forgets what was loaded and stops watching.
     pub fn clear(&mut self) {
         self.worktree = None;
@@ -69,6 +76,7 @@ impl State {
         self.opened = None;
         self.status = None;
         self.watching = None;
+        self.deriving = None;
         self.watch = None;
     }
 }
@@ -100,6 +108,16 @@ pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
 /// The same file, against the HEAD side already read for it.
 pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
     groove_diff::reopened(dir, path, old)
+}
+
+/// The colours and the alignment of text the buffer now holds.
+pub fn derived(path: &str, old: &Document, text: &str) -> Derived {
+    groove_diff::derived(path, old, text)
+}
+
+/// Writes the buffer to the file it came from.
+pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
+    groove_editor::save(dir, path, text)
 }
 
 /// The filesystem watcher and the forge poll speak here.

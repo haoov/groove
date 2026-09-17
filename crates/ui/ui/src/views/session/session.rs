@@ -48,8 +48,6 @@ pub struct SessionUi {
     pub folded: bool,
     /// How far the open file is scrolled, in pixels.
     pub diff: f32,
-    /// The row and column the last click landed on in the open file.
-    pub at: Option<(usize, usize)>,
     /// Which of the three views the open file is drawn in.
     pub view: DiffView,
 }

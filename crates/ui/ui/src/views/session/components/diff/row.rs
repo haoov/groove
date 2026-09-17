@@ -2,10 +2,12 @@
 
 use std::ops::Range;
 
+use groove_controllers::AppState;
 use groove_controllers::workspace_service::Opened;
-use groove_types::{DiffView, Highlight, LineMark, Row, RowKind};
+use groove_types::{Caret, DiffView, Highlight, LineMark, Row, RowKind};
 
 use crate::{Focus, Ui};
+use groove_controllers::workspace_service::{display_at, shown};
 
 /// Which file a row is read from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,7 +22,10 @@ pub(super) struct Drawn {
     pub(super) spans: Vec<Highlight>,
     pub(super) gutters: Vec<String>,
     pub(super) kind: RowKind,
-    pub(super) caret: bool,
+    /// The caret's column, when the caret is on this row.
+    pub(super) caret: Option<usize>,
+    /// The columns a selection covers on this row, and whether it carries on.
+    pub(super) held: Option<(usize, usize, bool)>,
     /// What the file view says happened to this line.
     pub(super) mark: Option<LineMark>,
 }
@@ -49,47 +54,98 @@ pub(super) fn count(file: &Opened, view: DiffView) -> usize {
 }
 
 /// The lines of the file as it is now, marked where the change touched them.
-fn whole(file: &Opened, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
-    let caret = caret(ui);
+pub(super) fn whole(file: &Opened, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
+    let caret = caret(ui, file);
     window
-        .map(|at| Drawn {
-            text: file.new.line(at).unwrap_or_default().to_string(),
-            spans: file.new.spans(at),
-            gutters: vec![(at + 1).to_string()],
-            kind: RowKind::Context,
-            caret: caret == Some(at),
-            mark: file.marks.get(&(at as u32)).copied(),
+        .map(|at| {
+            let (text, spans) = shown(&text_of(file, at), &file.new.spans(at), width(file));
+            Drawn {
+                text,
+                spans,
+                gutters: vec![(at + 1).to_string()],
+                kind: RowKind::Context,
+                caret: caret
+                    .filter(|on| on.line == at)
+                    .map(|on| display_at(&text_of(file, at), on.column, width(file))),
+                held: held(file, ui, at),
+                mark: file.marks.get(&(at as u32)).copied(),
+            }
         })
         .collect()
 }
 
 /// The alignment's rows, read from the side the view asks for.
-fn aligned(file: &Opened, ui: &Ui, view: DiffView, side: Side, window: Range<usize>) -> Vec<Drawn> {
-    let caret = caret(ui);
-    let first = window.start;
+pub(super) fn aligned(
+    file: &Opened,
+    ui: &Ui,
+    view: DiffView,
+    side: Side,
+    window: Range<usize>,
+) -> Vec<Drawn> {
+    let caret = caret(ui, file).filter(|_| side == Side::New);
     file.rows[window]
         .iter()
-        .enumerate()
-        .map(|(at, row)| {
+        .map(|row| {
             let (text, spans) = line(file, row, source(row, view, side));
             Drawn {
                 text,
                 spans,
                 gutters: gutters(row, view, side),
                 kind: kind(row, view, side),
-                caret: caret == Some(first + at),
+                caret: on_row(caret, row).map(|column| {
+                    let line = row.new.unwrap_or_default() as usize;
+                    display_at(&text_of(file, line), column, width(file))
+                }),
+                held: row.new.and_then(|line| held(file, ui, line as usize)),
                 mark: None,
             }
         })
         .collect()
 }
 
-/// The row the caret is on, while the workspace holds the keyboard.
-fn caret(ui: &Ui) -> Option<usize> {
+/// Where the caret is, while the workspace holds the keyboard.
+fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
     match ui.focus == Focus::Workspace {
-        true => ui.session.at.map(|(row, _)| row),
+        true => Some(file.new.caret()),
         false => None,
     }
+}
+
+/// The new-side line a row shows, if it shows one at all.
+pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<usize> {
+    let file = app.workspace.opened.as_ref()?;
+    match view {
+        DiffView::File => (row < file.new.lines()).then_some(row),
+        _ => file.rows.get(row)?.new.map(|line| line as usize),
+    }
+}
+
+/// What a caret holds on `line`, in the columns the row draws.
+fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize, bool)> {
+    if ui.focus != Focus::Workspace {
+        return None;
+    }
+    let text = text_of(file, line);
+    let chars = text.chars().count();
+    let (from, to, through) = file
+        .new
+        .selections()
+        .iter()
+        .find_map(|one| one.on(line, chars))?;
+    let width = width(file);
+    Some((
+        display_at(&text, from, width),
+        display_at(&text, to, width),
+        through,
+    ))
+}
+
+/// The caret's column when this row is the line it sits on. A removed line belongs
+/// to the old document and takes no caret.
+fn on_row(caret: Option<Caret>, row: &Row) -> Option<usize> {
+    let caret = caret?;
+    let shows = row.new == Some(caret.line as u32) && row.kind != RowKind::Removed;
+    shows.then_some(caret.column)
 }
 
 /// Which file a row's line is read from: a pane's own side in split, and in the
@@ -133,11 +189,21 @@ fn line(file: &Opened, row: &Row, side: Side) -> (String, Vec<Highlight>) {
     }
     let (document, at) = match side {
         Side::Old => (&file.old, row.old),
-        Side::New => (&file.new, row.new),
+        Side::New => (file.new.document(), row.new),
     };
     let Some(at) = at.map(|at| at as usize) else {
         return (String::new(), Vec::new());
     };
     let text = document.line(at).unwrap_or_default();
-    (text.to_string(), document.spans(at))
+    shown(&text, &document.spans(at), width(file))
+}
+
+/// How wide a tab reads in this file.
+fn width(file: &Opened) -> usize {
+    file.new.document().indent().width()
+}
+
+/// The line as it is, for counting columns over what is drawn.
+fn text_of(file: &Opened, line: usize) -> String {
+    file.new.line(line).unwrap_or_default().to_string()
 }

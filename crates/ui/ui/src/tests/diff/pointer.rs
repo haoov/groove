@@ -1,6 +1,9 @@
 //! What a click, the wheel and the keyboard do to the open file.
 
 use super::*;
+use crate::hit::Chars;
+use groove_controllers::{Command, workspace};
+use groove_types::{Caret, Edit, Motion};
 
 #[test]
 fn a_file_in_the_sidebar_opens_on_a_click() {
@@ -58,7 +61,7 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
     let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 2.0 + 1.0);
-    handle(
+    let commands = handle(
         Input::Press {
             x: point.0,
             y: point.1,
@@ -68,20 +71,45 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
         &hits,
         window(),
     );
-    assert_eq!(ui.session.at, Some((2, 0)), "the third row, first column");
+    let wanted = Edit::Move(Motion::To(Caret::new(1, 0)));
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Edit(wanted))],
+        "the third row is the new side's second line"
+    );
+}
+
+#[test]
+fn a_click_on_a_removed_line_takes_no_caret() {
+    let app = opened();
+    let mut ui = on_diff();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let tokens = Tokens::new(1.0);
+    let commands = handle(
+        Input::Press {
+            x: code.x + tokens.sm + 1.0,
+            y: code.y + tokens.line + 1.0,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert!(commands.is_empty(), "the second row is the line that went");
 }
 
 #[test]
 fn a_point_outside_the_rows_lands_nowhere() {
     let tokens = Tokens::new(1.0);
-    let cell = CellSize {
-        width: 8.0,
-        height: 17.0,
+    let chars = Chars {
+        left: 40.0,
+        advance: 8.0,
     };
     let rect = Rect::new(0.0, 0.0, 100.0, 100.0);
-    assert!(code_at(&tokens, cell, rect, 0.0, (-1.0, 10.0)).is_none());
+    assert!(code_at(&tokens, chars, rect, 0.0, (-1.0, 10.0)).is_none());
     assert_eq!(
-        code_at(&tokens, cell, rect, tokens.line, (tokens.sm, 0.0)),
+        code_at(&tokens, chars, rect, tokens.line, (chars.left, 0.0)),
         Some((1, 0)),
         "a scrolled surface counts from the first row"
     );
@@ -89,10 +117,36 @@ fn a_point_outside_the_rows_lands_nowhere() {
 }
 
 #[test]
+fn a_click_lands_on_the_character_it_points_at() {
+    let app = opened();
+    let ui = on_diff();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let rect = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let chars = hits.chars();
+    assert!(
+        chars.left > rect.x + Tokens::new(1.0).sm,
+        "the text starts past the gutter, not at the surface edge"
+    );
+    let tokens = Tokens::new(1.0);
+    let at = |x: f32| code_at(&tokens, chars, rect, 0.0, (x, rect.y + 1.0)).map(|at| at.1);
+    assert_eq!(at(chars.left + 1.0), Some(0), "the first character");
+    assert_eq!(at(chars.left - 4.0), Some(0), "the gutter is column zero");
+    for column in [1, 5, 9] {
+        let middle = chars.left + chars.advance * column as f32 + chars.advance / 4.0;
+        assert_eq!(at(middle), Some(column), "column {column}");
+    }
+    let past = chars.left + chars.advance * 3.0 + chars.advance * 0.8;
+    assert_eq!(
+        at(past),
+        Some(4),
+        "past the middle of a character is after it"
+    );
+}
+
+#[test]
 fn the_caret_shows_only_where_the_keyboard_is() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.at = Some((0, 0));
     ui.focus = crate::Focus::Workspace;
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let raised = |ui: &Ui| {

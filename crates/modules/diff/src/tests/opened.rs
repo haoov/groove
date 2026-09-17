@@ -21,7 +21,7 @@ fn a_changed_file_carries_both_sides_and_its_rows() {
     let file = open(dir.path(), "src/lib.rs");
     assert_eq!(file.old.lines(), 3, "HEAD still has three");
     assert_eq!(file.new.lines(), 3);
-    assert!(file.old.is_highlighted() && file.new.is_highlighted());
+    assert!(file.old.is_highlighted() && file.new.document().is_highlighted());
     let kinds: Vec<RowKind> = file.rows.iter().map(|row| row.kind).collect();
     assert_eq!(
         kinds,
@@ -108,5 +108,8 @@ fn reopening_with_the_head_side_in_hand_reads_the_same_file() {
     assert_eq!(again.marks, fresh.marks);
     assert_eq!(again.old.lines(), fresh.old.lines());
     assert_eq!(again.new.lines(), fresh.new.lines());
-    assert!(again.new.is_highlighted(), "the new side is read again");
+    assert!(
+        again.new.document().is_highlighted(),
+        "the new side is read again"
+    );
 }

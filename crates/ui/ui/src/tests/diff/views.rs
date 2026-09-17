@@ -1,6 +1,11 @@
 //! What each of the three views shows.
 
 use super::*;
+use groove_controllers::{Command, workspace};
+use groove_types::{Caret, Edit, Motion};
+
+use crate::hit::Target;
+use crate::input::{Input, handle};
 
 #[test]
 fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
@@ -99,4 +104,58 @@ fn the_file_view_draws_the_whole_file_not_the_alignment() {
     let numbers: Vec<&String> = file.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
     assert_eq!(numbers[..3], ["1", "2", "3"], "from the first line");
     assert_eq!(numbers.len(), 30, "every line: {numbers:?}");
+}
+
+/// A Go file, whose own formatter writes tabs.
+fn tabbed() -> AppState {
+    let before = "func one() {\n\treturn 1\n}\n";
+    let after = "func one() {\n\treturn 2\n}\n";
+    let mut app = with_files();
+    app.workspace.opened = Some(from_text("main.go", before, after));
+    app
+}
+
+#[test]
+fn a_tab_is_drawn_run_out_to_its_stop() {
+    let drawn = in_view(&tabbed(), DiffView::File);
+    let joined = drawn.join("");
+    assert!(
+        joined.contains("    return"),
+        "the tab reads as four columns: {drawn:?}"
+    );
+    assert!(
+        !joined.contains('\t'),
+        "and no tab reaches the glyphs, which would set its own stop"
+    );
+}
+
+#[test]
+fn a_click_past_a_tab_lands_on_the_character_it_points_at() {
+    let app = tabbed();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let chars = hits.chars();
+    let tokens = Tokens::new(1.0);
+    let point = (
+        chars.left + chars.advance * 4.0 + 1.0,
+        code.y + tokens.line + 1.0,
+    );
+    let commands = handle(
+        Input::Press {
+            x: point.0,
+            y: point.1,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    let wanted = Edit::Move(Motion::To(Caret::new(1, 1)));
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Edit(wanted))],
+        "the fifth column is the character after the tab, not the fifth character"
+    );
 }

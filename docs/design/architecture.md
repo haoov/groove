@@ -270,7 +270,8 @@ module lands with its first consumer and only as wide as that consumer needs.
    4. the board and tasks — `provider`, the three columns, the filter
    5. MR and forge — `forge`, the header's MR and CI, the review sheet
    6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`
-   7. settings — `config`, `skills`, `watch`
+   7. settings — `config`, `skills`, `watch`; the keymap gets its pass here
+   8. modal editing — a normal mode over the selections the editor already keeps
 
 The layer test in `controllers` reads every crate's manifest and refuses a
 dependency that points up or across the services.

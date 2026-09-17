@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
 use groove_types::Timestamp;
 
-use crate::hit::{Hits, Scroller, Target};
+use crate::hit::{Chars, Hits, Scroller, Target};
 use crate::layout::Layout;
 use crate::mark::Mark;
 use crate::style::Styles;
@@ -64,6 +64,10 @@ impl<'a> Ctx<'a> {
             return;
         }
         self.hits.push(rect, target);
+    }
+
+    pub fn characters(&mut self, chars: Chars) {
+        self.hits.characters(chars);
     }
 
     pub fn scrolls(&mut self, which: Scroller, extent: f32) {

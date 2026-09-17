@@ -1,9 +1,10 @@
 use std::ops::Range;
 
-use groove_gfx::{CellSize, Color, Rect, TextStyle};
+use groove_gfx::{Color, Rect, TextStyle};
 use groove_types::Highlight;
 
 use crate::ctx::Ctx;
+use crate::hit::Chars;
 use crate::style::Role;
 use crate::tokens::Tokens;
 use crate::widget::row;
@@ -18,6 +19,10 @@ pub struct Line<'a> {
     pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
     pub banner: bool,
+    /// Where the caret sits on this row, in characters.
+    pub caret: Option<usize>,
+    /// What is held on this row: from, to, and whether it runs past the line.
+    pub held: Option<(usize, usize, bool)>,
 }
 
 impl<'a> Line<'a> {
@@ -29,6 +34,8 @@ impl<'a> Line<'a> {
             ground: None,
             mark: None,
             banner: false,
+            caret: None,
+            held: None,
         }
     }
 
@@ -57,6 +64,16 @@ impl<'a> Line<'a> {
 
     pub fn mark(mut self, mark: Option<Color>) -> Self {
         self.mark = mark;
+        self
+    }
+
+    pub fn caret(mut self, caret: Option<usize>) -> Self {
+        self.caret = caret;
+        self
+    }
+
+    pub fn held(mut self, held: Option<(usize, usize, bool)>) -> Self {
+        self.held = held;
         self
     }
 }
@@ -101,6 +118,15 @@ impl Block {
     }
 }
 
+/// Where a surface with these gutters puts its characters in `rect`.
+pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect) -> Chars {
+    let style = ctx.styles.code(Role::Text);
+    Chars {
+        left: Block::of(ctx, gutters).content(ctx, rect),
+        advance: ctx.measure("M", &style),
+    }
+}
+
 /// The rows `rect` has room for at `scroll`, among `total`.
 pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize> {
     let height = ctx.tokens.line;
@@ -131,7 +157,7 @@ pub fn height(ctx: &Ctx, lines: usize) -> f32 {
 /// The row and the column a point lands on, counted from the first row.
 pub fn code_at(
     tokens: &Tokens,
-    cell: CellSize,
+    chars: Chars,
     rect: Rect,
     scroll: f32,
     point: (f32, f32),
@@ -140,8 +166,9 @@ pub fn code_at(
         return None;
     }
     let row = ((point.1 - rect.y + scroll) / tokens.line).floor().max(0.0);
-    let text = rect.x + tokens.sm;
-    let column = ((point.0 - text) / cell.width.max(1.0)).floor().max(0.0);
+    let column = ((point.0 - chars.left) / chars.advance.max(1.0))
+        .round()
+        .max(0.0);
     Some((row as usize, column as usize))
 }
 
@@ -175,7 +202,45 @@ fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
         at += gutter.width + ctx.tokens.sm;
     }
     let at = gutter.content(ctx, line);
-    text(ctx, Rect::new(at, line.y, line.right() - at, line.h), code);
+    let rect = Rect::new(at, line.y, line.right() - at, line.h);
+    if let Some(held) = code.held {
+        holding(ctx, rect, code.text, held);
+    }
+    text(ctx, rect, code);
+    if let Some(column) = code.caret {
+        caret(ctx, rect, code.text, column);
+    }
+}
+
+/// What a caret holds, under the text: a band over the characters, run out past the
+/// line's end when the selection carries on to the next row.
+fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
+    let (from, to, through) = held;
+    let style = ctx.styles.code(Role::Text);
+    let start = upto(ctx, text, from, &style);
+    let mut end = upto(ctx, text, to, &style);
+    if through {
+        end += ctx.measure("M", &style);
+    }
+    let color = ctx.styles.held();
+    ctx.quad(
+        Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h),
+        color,
+    );
+}
+
+/// How wide the first `column` characters are.
+fn upto(ctx: &mut Ctx, text: &str, column: usize, style: &TextStyle) -> f32 {
+    let before: String = text.chars().take(column).collect();
+    ctx.measure(&before, style)
+}
+
+/// The caret: a bar at the column, placed through the text before it.
+fn caret(ctx: &mut Ctx, rect: Rect, text: &str, column: usize) {
+    let style = ctx.styles.code(Role::Text);
+    let at = rect.x + upto(ctx, text, column, &style);
+    let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
+    ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
 }
 
 /// A row across the width: its own ground, its text in the middle.

@@ -1,7 +1,7 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
 use groove_controllers::{AppState, Command, session, workspace};
-use groove_types::{DiffView, WorktreeId};
+use groove_types::{Caret, DiffView, Edit, Motion, WorktreeId};
 
 use super::Key;
 use crate::ctx::Metrics;
@@ -12,6 +12,7 @@ use crate::tokens::Tokens;
 use crate::views::session::components::diff;
 use crate::widget::code_at;
 use crate::{Drag, Focus, Ui};
+use groove_controllers::workspace_service::columns;
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
 pub(super) fn press(
@@ -38,8 +39,31 @@ fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
     });
 }
 
+/// The pointer moved: a boundary follows it, or the open file holds more.
+pub(super) fn moved(
+    x: f32,
+    y: f32,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
+    if ui.drag.is_some() {
+        drag_to(ui, x, metrics);
+        return Vec::new();
+    }
+    if !ui.selecting {
+        return Vec::new();
+    }
+    let Some(caret) = caret(ui, app, hits, metrics, (x, y)) else {
+        return Vec::new();
+    };
+    let edit = Edit::Extend(Motion::To(caret));
+    vec![Command::Workspace(workspace::Command::Edit(edit))]
+}
+
 /// The boundary follows the pointer.
-pub(super) fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
+fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
     let Some(drag) = ui.drag else {
         return;
     };
@@ -98,8 +122,8 @@ fn click(
             Vec::new()
         }
         Some(Target::Code) => {
-            ui.session.at = caret(ui, hits, metrics, (x, y));
-            Vec::new()
+            ui.selecting = true;
+            landed(ui, app, hits, metrics, (x, y))
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::Agent | Target::Palette | Target::Split(_)) | None => Vec::new(),
@@ -111,10 +135,6 @@ fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {
     let line = Tokens::new(metrics.scale).line;
     let from = ui.session.view;
     ui.session.diff = diff::scrolled(app, from, view, ui.session.diff, line);
-    ui.session.at = ui
-        .session
-        .at
-        .map(|(row, column)| (diff::moved(app, from, view, row), column));
     ui.session.view = view;
 }
 
@@ -129,11 +149,37 @@ fn focused(target: &Option<Target>, focus: Focus) -> Focus {
     }
 }
 
-/// The row and column a click lands on in the open file.
-fn caret(ui: &Ui, hits: &Hits, metrics: Metrics, point: (f32, f32)) -> Option<(usize, usize)> {
+/// Where a click in the open file puts the caret. A row the new side has no line
+/// on — a removed one, a gap — takes no caret.
+fn landed(
+    ui: &Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Vec<Command> {
+    let Some(caret) = caret(ui, app, hits, metrics, point) else {
+        return Vec::new();
+    };
+    let edit = Edit::Move(Motion::To(caret));
+    vec![Command::Workspace(workspace::Command::Edit(edit))]
+}
+
+fn caret(
+    ui: &Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Option<Caret> {
     let rect = hits.rect_of(&Target::Code)?;
     let tokens = Tokens::new(metrics.scale);
-    code_at(&tokens, metrics.cell, rect, ui.session.diff, point)
+    let (row, display) = code_at(&tokens, hits.chars(), rect, ui.session.diff, point)?;
+    let line = diff::line_at(app, ui.session.view, row)?;
+    let file = app.workspace.opened.as_ref()?;
+    let text = file.new.line(line).unwrap_or_default();
+    let width = file.new.document().indent().width();
+    Some(Caret::new(line, columns(&text, display, width)))
 }
 
 /// Either picker opens the worktree selector.

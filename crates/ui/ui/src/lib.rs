@@ -70,6 +70,8 @@ pub struct Ui {
     pub rail: RailUi,
     pub split: Split,
     pub drag: Option<Drag>,
+    /// The pointer is down on the open file, so it is choosing what to hold.
+    pub selecting: bool,
     /// What the pointer is over, for the row under it to say so.
     pub hover: Option<Target>,
 }

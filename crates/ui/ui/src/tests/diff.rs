@@ -5,7 +5,7 @@ mod views;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::from_text;
-use groove_gfx::{CellSize, Fonts, Rect};
+use groove_gfx::{Fonts, Rect};
 
 use crate::hit::Target;
 use crate::input::{Delta, Input};
@@ -19,7 +19,7 @@ use groove_types::{DiffView, LineMark};
 const OLD: &str = "fn one() {}\nfn two() {}\nfn three() {}\n";
 const NEW: &str = "fn one() {}\nfn TWO() {}\nfn three() {}\n";
 
-fn opened() -> AppState {
+pub(super) fn opened() -> AppState {
     let mut app = with_files();
     app.workspace.opened = Some(from_text("src/lib.rs", OLD, NEW));
     app

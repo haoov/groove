@@ -2,6 +2,8 @@
 
 use groove_controllers::{AppState, Command, agent, session, workspace};
 
+use groove_types::{Edit, Motion};
+
 use super::{Key, Modifiers};
 use crate::palette::Palette;
 use crate::{Focus, Ui};
@@ -19,28 +21,59 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
-        Focus::Workspace => in_file(key, ui, app),
+        Focus::Workspace => in_file(key, mods, app),
         Focus::Sidebar => in_list(key, ui, app),
         Focus::Rail => in_rail(key, app),
     }
 }
 
-/// The caret moves by line, the surface by page.
-fn in_file(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let rows = app.workspace.opened.as_ref().map(|open| open.rows.len());
-    let Some(rows) = rows.filter(|rows| *rows > 0) else {
+/// The open buffer takes the keystroke: a motion, a change, or a save.
+fn in_file(key: Key, mods: Modifiers, app: &AppState) -> Vec<Command> {
+    if app.workspace.opened.is_none() {
         return Vec::new();
+    }
+    if mods.ctrl {
+        return with_ctrl(key).into_iter().collect();
+    }
+    let edit = match key {
+        Key::Char(c) if !mods.alt => Edit::Insert(c.to_string()),
+        Key::Enter => Edit::Newline,
+        Key::Tab => Edit::Indent,
+        Key::Backspace => Edit::Backspace,
+        Key::Delete => Edit::Delete,
+        _ => return moved(key, mods).into_iter().collect(),
     };
-    let (row, column) = ui.session.at.unwrap_or_default();
-    let moved = match key {
-        Key::Up => row.saturating_sub(1),
-        Key::Down => (row + 1).min(rows - 1),
-        Key::Home => 0,
-        Key::End => rows - 1,
-        _ => return Vec::new(),
+    vec![Command::Workspace(workspace::Command::Edit(edit))]
+}
+
+/// A motion, extending what the caret holds while shift is down.
+fn moved(key: Key, mods: Modifiers) -> Option<Command> {
+    let motion = match key {
+        Key::Left => Motion::Left,
+        Key::Right => Motion::Right,
+        Key::Up => Motion::Up,
+        Key::Down => Motion::Down,
+        Key::Home => Motion::LineStart,
+        Key::End => Motion::LineEnd,
+        _ => return None,
     };
-    ui.session.at = Some((moved, column));
-    Vec::new()
+    let edit = match mods.shift {
+        true => Edit::Extend(motion),
+        false => Edit::Move(motion),
+    };
+    Some(Command::Workspace(workspace::Command::Edit(edit)))
+}
+
+/// What the control key asks of the buffer.
+fn with_ctrl(key: Key) -> Option<Command> {
+    let edit = match key {
+        Key::Char('s' | 'S') => return Some(Command::Workspace(workspace::Command::SaveFile)),
+        Key::Char('z' | 'Z') => Edit::Undo,
+        Key::Char('y' | 'Y') => Edit::Redo,
+        Key::Char('a' | 'A') => Edit::SelectAll,
+        _ => return None,
+    };
+    Some(Command::Workspace(workspace::Command::Edit(edit)))
 }
 
 /// Up and down open the file above or below in the list.

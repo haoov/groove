@@ -13,7 +13,8 @@ use crate::ctx::Ctx;
 use crate::style::Role;
 use crate::widget::row;
 
-pub(crate) use scroll::{moved, scrolled};
+pub(crate) use row::line_at;
+pub(crate) use scroll::scrolled;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let Some(file) = app.workspace.opened.as_ref() else {

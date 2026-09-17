@@ -1,7 +1,7 @@
-use groove_types::FileStatus;
+use groove_types::{Caret, Edit, FileStatus, Motion};
 
 use crate::tests::fixture::{pooled_clone, services, state, until, worktree};
-use crate::{Command as Cmd, SyncSpawner, dispatch, session, workspace};
+use crate::{Command as Cmd, Services, SyncSpawner, dispatch, session, workspace};
 
 #[test]
 fn load_lists_what_changed_in_the_selected_worktree() {
@@ -188,4 +188,138 @@ fn the_open_file_follows_a_change_on_disk() {
     let open = state.workspace.opened.as_ref().expect("still open");
     assert_eq!(open.path, "a.txt", "the same file, read again");
     assert_eq!(open.rows.len(), 4, "one out, three in");
+}
+
+/// The fixture's worktree with `a.txt` open, and where it sits.
+fn editing(
+    state: &mut crate::AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+) -> std::path::PathBuf {
+    let dir = worktree(state, services, spawner);
+    let file = std::path::Path::new(&dir).join("a.txt");
+    std::fs::write(&file, "one\ntwo\n").unwrap();
+    until(spawner, services, state, |s| !s.workspace.files.is_empty());
+    dispatch(
+        Cmd::Workspace(workspace::Command::OpenFile {
+            path: "a.txt".into(),
+        }),
+        state,
+        services,
+        spawner,
+    );
+    until(spawner, services, state, |s| s.workspace.opened.is_some());
+    file
+}
+
+fn edit(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, edits: &[Edit]) {
+    for one in edits {
+        dispatch(
+            Cmd::Workspace(workspace::Command::Edit(one.clone())),
+            state,
+            services,
+            spawner,
+        );
+    }
+}
+
+fn buffer(state: &crate::AppState) -> String {
+    state
+        .workspace
+        .opened
+        .as_ref()
+        .map(|open| open.new.text())
+        .expect("a file is open")
+}
+
+#[test]
+fn typing_changes_the_buffer_and_the_rows_follow() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    editing(&mut state, &services, &spawner);
+    let rows = state.workspace.opened.as_ref().map(|open| open.rows.len());
+
+    edit(
+        &mut state,
+        &services,
+        &spawner,
+        &[
+            Edit::Move(Motion::To(Caret::new(1, 3))),
+            Edit::Newline,
+            Edit::Insert("three".into()),
+        ],
+    );
+    assert_eq!(buffer(&state), "one\ntwo\nthree\n", "the buffer took it");
+    assert!(state.workspace.dirty(), "and owes the disk");
+
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.deriving.is_none()
+            && s.workspace
+                .opened
+                .as_ref()
+                .is_some_and(|open| Some(open.rows.len()) != rows)
+    });
+    let open = state.workspace.opened.as_ref().expect("still open");
+    assert_eq!(open.new.lines(), 3, "the buffer has the new line");
+    assert!(
+        open.rows.iter().any(|row| row.new == Some(2)),
+        "and the alignment found it: {:?}",
+        open.rows
+    );
+}
+
+#[test]
+fn saving_writes_the_buffer_and_clears_what_it_owes() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let file = editing(&mut state, &services, &spawner);
+
+    edit(
+        &mut state,
+        &services,
+        &spawner,
+        &[Edit::Move(Motion::LineEnd), Edit::Insert("!".into())],
+    );
+    dispatch(
+        Cmd::Workspace(workspace::Command::SaveFile),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| !s.workspace.dirty());
+    assert_eq!(
+        std::fs::read_to_string(&file).unwrap(),
+        "one!\ntwo\n",
+        "the disk has what the buffer held"
+    );
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn a_write_on_disk_does_not_take_unsaved_edits_away() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let file = editing(&mut state, &services, &spawner);
+
+    edit(
+        &mut state,
+        &services,
+        &spawner,
+        &[Edit::Move(Motion::LineEnd), Edit::Insert("!".into())],
+    );
+    std::fs::write(&file, "something else\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.path == "a.txt")
+    });
+    assert_eq!(buffer(&state), "one!\ntwo\n", "the buffer is the user's");
+    assert!(state.workspace.dirty());
 }

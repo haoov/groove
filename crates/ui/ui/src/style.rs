@@ -111,6 +111,16 @@ impl Styles {
     }
 
     /// What a marked line did: came, went, or changed in place.
+    /// The band under what a caret holds.
+    pub fn held(&self) -> Color {
+        self.palette.surface2
+    }
+
+    /// The bar where the caret sits.
+    pub fn caret(&self) -> Color {
+        self.palette.text
+    }
+
     pub fn mark(&self, mark: LineMark) -> Color {
         match mark {
             LineMark::Added => self.palette.green,

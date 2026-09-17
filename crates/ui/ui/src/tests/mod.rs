@@ -1,5 +1,6 @@
 mod budget;
 mod diff;
+mod editing;
 mod files;
 mod focus;
 mod frame;

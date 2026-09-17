@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::{Result, WorktreeId};
-use groove_workspace_service::{Document, Opened, opened, reopened, summary};
+use groove_types::{Edit, Result, WorktreeId};
+use groove_workspace_service::{Derived, Document, Opened, derived, opened, reopened, summary};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -15,6 +15,10 @@ pub enum Command {
     Load,
     /// `workspace.open_file`: one file's two sides and the rows between them.
     OpenFile { path: String },
+    /// `workspace.edit`: one keystroke on the open buffer.
+    Edit(Edit),
+    /// `workspace.save_file`: the buffer to the file it came from.
+    SaveFile,
 }
 
 impl Command {
@@ -22,6 +26,8 @@ impl Command {
         match self {
             Command::Load => "workspace.load",
             Command::OpenFile { .. } => "workspace.open_file",
+            Command::Edit(_) => "workspace.edit",
+            Command::SaveFile => "workspace.save_file",
         }
     }
 }
@@ -35,6 +41,97 @@ pub fn dispatch(
     match command {
         Command::Load => reread(state, spawner),
         Command::OpenFile { path } => open_file(state, spawner, path),
+        Command::Edit(edit) => edit_file(state, spawner, edit),
+        Command::SaveFile => save_file(state, spawner),
+    }
+}
+
+/// One keystroke on the buffer; its rows and colours follow in a job.
+fn edit_file(state: &mut AppState, spawner: &dyn Spawner, edit: Edit) {
+    let Some(open) = state.workspace.opened.as_mut() else {
+        return;
+    };
+    let before = open.new.revision();
+    open.new.edit(&edit);
+    if open.new.revision() != before {
+        derive(state, spawner);
+    }
+}
+
+/// Reads the colours and the alignment again, one read at a time: the last
+/// revision wins, and a read that lands stale starts the next one.
+fn derive(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(open) = state.workspace.opened.as_ref() else {
+        return;
+    };
+    if state.workspace.deriving.is_some() {
+        return;
+    }
+    let revision = open.new.revision();
+    let (path, old, text) = (open.path.clone(), open.old.clone(), open.new.text());
+    state.workspace.deriving = Some(revision);
+    spawner.spawn(Box::pin(async move {
+        let read = derived(&path, &old, &text);
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.workspace.deriving = None;
+                took(state, path, read, revision);
+                if state
+                    .workspace
+                    .opened
+                    .as_ref()
+                    .is_some_and(|open| open.new.revision() != revision)
+                {
+                    derive(state, spawner);
+                }
+            },
+        ) as Continuation
+    }));
+}
+
+/// Installs what the read found, when the buffer is still the one it read.
+fn took(state: &mut AppState, path: String, read: Derived, revision: u64) {
+    let Some(open) = state.workspace.opened.as_mut() else {
+        return;
+    };
+    if open.path != path || !open.new.coloured(read.spans, revision) {
+        return;
+    }
+    open.rows = read.rows;
+    open.marks = read.marks;
+}
+
+/// Writes the buffer out. The watcher's read of our own write finds it clean.
+fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(open) = state.workspace.opened.as_ref() else {
+        return;
+    };
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let (path, text) = (open.path.clone(), open.new.text());
+    let job = state.begin(format!("saving {path}"));
+    spawner.spawn(Box::pin(async move {
+        let written = groove_workspace_service::save(&dir, &path, &text);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.end(job);
+            match written {
+                Ok(()) => saved(state, &path),
+                Err(e) => state.errors.push(e),
+            }
+        }) as Continuation
+    }));
+}
+
+/// The buffer owes the disk nothing, so a later read may replace it.
+fn saved(state: &mut AppState, path: &str) {
+    if let Some(open) = state
+        .workspace
+        .opened
+        .as_mut()
+        .filter(|open| open.path == path)
+    {
+        open.new.saved();
     }
 }
 
@@ -62,11 +159,15 @@ fn refresh(state: &mut AppState, spawner: &dyn Spawner, paths: &[PathBuf]) {
     }
 }
 
-/// Reads the open file again, now the worktree has moved under it.
+/// Reads the open file again, now the worktree has moved under it. A buffer with
+/// unsaved edits is left alone: the user's text outranks the disk's.
 fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
     let Some(open) = state.workspace.opened.as_ref() else {
         return;
     };
+    if open.new.dirty() {
+        return;
+    }
     let path = open.path.clone();
     let old = match head {
         Head::Keep => Some(open.old.clone()),
@@ -90,11 +191,25 @@ fn read(state: &mut AppState, spawner: &dyn Spawner, path: String, old: Option<D
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match file {
-                Ok(file) => state.workspace.opened = Some(file),
+                Ok(file) => arrived(state, file),
                 Err(e) => state.errors.push(e),
             }
         }) as Continuation
     }));
+}
+
+/// The file read, with the caret it had while it was the same file.
+fn arrived(state: &mut AppState, mut file: Opened) {
+    let caret = state
+        .workspace
+        .opened
+        .as_ref()
+        .filter(|open| open.path == file.path)
+        .map(|open| open.new.caret());
+    if let Some(caret) = caret {
+        file.new.follow(caret);
+    }
+    state.workspace.opened = Some(file);
 }
 
 /// The file's two sides, reading HEAD only when the old one is not in hand.

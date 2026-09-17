@@ -71,6 +71,15 @@ impl Target {
     }
 }
 
+/// How the code surface laid its characters out, as the last frame drew it.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Chars {
+    /// Where a line's text starts, past the gutters.
+    pub left: f32,
+    /// How wide one character of it is.
+    pub advance: f32,
+}
+
 /// A column that scrolls on its own.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Scroller {
@@ -85,6 +94,7 @@ pub struct Hits {
     regions: Vec<(Rect, Target)>,
     /// How far each column can scroll, one per `Scroller`.
     extents: [f32; 3],
+    chars: Chars,
 }
 
 impl Hits {
@@ -100,6 +110,15 @@ impl Hits {
 
     pub fn extent(&self, which: Scroller) -> f32 {
         self.extents[which as usize]
+    }
+
+    /// Where the open file's characters went, for the click that follows.
+    pub fn characters(&mut self, chars: Chars) {
+        self.chars = chars;
+    }
+
+    pub fn chars(&self) -> Chars {
+        self.chars
     }
 
     /// The last thing drawn over this point.

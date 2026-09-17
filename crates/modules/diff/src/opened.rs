@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use groove_git::Git;
-use groove_text::Document;
+use groove_text::{Buffer, Document};
 use groove_types::{LineMark, Result, Row};
 
 use crate::alignment::{CONTEXT, align, marks};
@@ -15,7 +15,8 @@ pub const MAX_SHOWN_BYTES: usize = 2 << 20;
 pub struct Opened {
     pub path: String,
     pub old: Document,
-    pub new: Document,
+    /// The side the user edits.
+    pub new: Buffer,
     pub rows: Vec<Row>,
     /// What the change did to each line of the new file.
     pub marks: BTreeMap<u32, LineMark>,
@@ -52,9 +53,27 @@ fn from_parts(path: &str, old: Document, after: &str) -> Opened {
         path: path.to_string(),
         marks: marks(&rows),
         old,
-        new,
+        new: Buffer::new(new),
         rows,
         long,
+    }
+}
+
+/// What the rows and the colours become once the buffer has been edited.
+pub struct Derived {
+    pub spans: Vec<groove_types::Highlight>,
+    pub rows: Vec<Row>,
+    pub marks: BTreeMap<u32, LineMark>,
+}
+
+/// Reads the colours and the alignment again for text the buffer now holds.
+pub fn derived(path: &str, old: &Document, text: &str) -> Derived {
+    let new = Document::new(path, text);
+    let rows = align(old, &new, CONTEXT);
+    Derived {
+        spans: Document::colours(path, text),
+        marks: marks(&rows),
+        rows,
     }
 }
 

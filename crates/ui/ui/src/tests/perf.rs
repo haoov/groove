@@ -37,6 +37,48 @@ fn big(lines: usize) -> AppState {
     app
 }
 
+/// The same Go file twice: indented with tabs, which the rows run out to their
+/// stops, and with those tabs already spaces.
+fn tabbed(lines: usize, tabs: bool) -> AppState {
+    let mut app = big(lines);
+    let indent = match tabs {
+        true => "\t\t",
+        false => "        ",
+    };
+    let before: String = (0..lines)
+        .map(|at| format!("func name{at}() int {{\n{indent}return {at}\n}}\n"))
+        .collect();
+    let after = before.replace("return 20", "return 21");
+    app.workspace.opened = Some(from_text("main.go", &before, &after));
+    app
+}
+
+#[test]
+#[ignore]
+fn time_what_tabs_cost() {
+    let mut fonts = Fonts::embedded();
+    for lines in [200, 2000] {
+        for tabs in [false, true] {
+            let app = tabbed(lines, tabs);
+            let mut ui = Ui::default();
+            ui.session.tab = Tab::Diff;
+            ui.session.view = DiffView::File;
+            let _ = view(&app, &ui, window(), &mut fonts);
+            let runs = 50;
+            let started = Instant::now();
+            for _ in 0..runs {
+                let _ = view(&app, &ui, window(), &mut fonts);
+            }
+            let each = started.elapsed() / runs;
+            let kind = match tabs {
+                true => "tabs  ",
+                false => "spaces",
+            };
+            println!("{:>6} lines of {kind}: {each:?} a frame", lines * 3);
+        }
+    }
+}
+
 #[test]
 #[ignore]
 fn time_the_frame() {

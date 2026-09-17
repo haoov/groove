@@ -7,7 +7,7 @@ use super::row::{Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
-use crate::widget::{Gutters, Line, Rows, code, height, visible};
+use crate::widget::{Gutters, Line, Rows, chars_of, code, height, visible};
 use groove_controllers::workspace_service::Opened;
 
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
@@ -63,20 +63,26 @@ fn surface(
                 return Line::banner(&row.text);
             }
             let line = Line::new(&row.text).gutters(&gutters[at]).spans(&row.spans);
-            let line = line.mark(row.mark.map(|mark| ctx.styles.mark(mark)));
-            match ctx.styles.row_ground(row.kind, row.caret) {
+            let line = line
+                .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
+                .caret(row.caret)
+                .held(row.held);
+            match ctx.styles.row_ground(row.kind, row.caret.is_some()) {
                 Some(color) => line.ground(color),
                 None => line,
             }
         })
         .collect();
+    let numbers = numbers(file, view);
     if clickable {
         ctx.hit(rect, Target::Code);
+        let chars = chars_of(ctx, numbers, rect);
+        ctx.characters(chars);
     }
     let rows = Rows {
         lines: &lines,
         first: window.start,
-        gutters: numbers(file, view),
+        gutters: numbers,
     };
     code(ctx, rect, rows, scroll);
 }

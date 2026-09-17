@@ -83,12 +83,10 @@ pub fn handle(
     match input {
         Input::Key { key, mods } => keys::key_input(key, mods, ui, app),
         Input::Press { x, y } => pointer::press(x, y, ui, app, hits, metrics),
-        Input::Move { x, .. } => {
-            pointer::drag_to(ui, x, metrics);
-            Vec::new()
-        }
+        Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
         Input::Release => {
             ui.drag = None;
+            ui.selecting = false;
             Vec::new()
         }
         Input::Scroll { x, delta, .. } => {
