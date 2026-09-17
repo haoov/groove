@@ -8,10 +8,10 @@ use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::layout::Edge;
 use crate::palette::{Action, Flow, Palette};
-use crate::tokens::Tokens;
+use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
 use crate::widget::code_at;
-use crate::{Drag, Focus, Ui};
+use crate::{Click, Drag, Focus, Ui};
 use groove_controllers::workspace_service::columns;
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
@@ -23,11 +23,29 @@ pub(super) fn press(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
+    ui.clicked = Some(counted(ui.clicked, x, y, metrics));
     if let Some(Target::Split(edge)) = hits.at(x, y) {
         grab(ui, edge, x, metrics);
         return Vec::new();
     }
     click(x, y, ui, app, hits, metrics)
+}
+
+/// This press, against the one before it: a press soon after another and near it
+/// carries the same click on.
+fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> Click {
+    let slop = CLICK_SLOP * metrics.scale;
+    let same = last.filter(|last| {
+        metrics.tick.saturating_sub(last.at) <= CLICK_MS
+            && (last.x - x).abs() <= slop
+            && (last.y - y).abs() <= slop
+    });
+    Click {
+        x,
+        y,
+        at: metrics.tick,
+        count: same.map_or(1, |last| last.count + 1),
+    }
 }
 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
@@ -125,6 +143,7 @@ fn click(
             ui.selecting = true;
             landed(ui, app, hits, metrics, (x, y))
         }
+
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::Agent | Target::Palette | Target::Split(_)) | None => Vec::new(),
     }
@@ -132,7 +151,7 @@ fn click(
 
 /// Changes the view, keeping the line at the top of the old one in view.
 fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {
-    let line = Tokens::new(metrics.scale).line;
+    let line = metrics.tokens().line;
     let from = ui.session.view;
     ui.session.diff = diff::scrolled(app, from, view, ui.session.diff, line);
     ui.session.view = view;
@@ -161,8 +180,21 @@ fn landed(
     let Some(caret) = caret(ui, app, hits, metrics, point) else {
         return Vec::new();
     };
-    let edit = Edit::Move(Motion::To(caret));
-    vec![Command::Workspace(workspace::Command::Edit(edit))]
+    let mut edits = vec![Edit::Move(Motion::To(caret))];
+    edits.extend(taken(ui.clicked));
+    edits
+        .into_iter()
+        .map(|edit| Command::Workspace(workspace::Command::Edit(edit)))
+        .collect()
+}
+
+/// What a click of its own takes: one lands the caret, two a word, three the line.
+fn taken(click: Option<Click>) -> Option<Edit> {
+    match click?.count {
+        2 => Some(Edit::SelectWord),
+        count if count >= 3 => Some(Edit::SelectLine),
+        _ => None,
+    }
 }
 
 fn caret(
@@ -173,7 +205,7 @@ fn caret(
     point: (f32, f32),
 ) -> Option<Caret> {
     let rect = hits.rect_of(&Target::Code)?;
-    let tokens = Tokens::new(metrics.scale);
+    let tokens = metrics.tokens();
     let (row, display) = code_at(&tokens, hits.chars(), rect, ui.session.diff, point)?;
     let line = diff::line_at(app, ui.session.view, row)?;
     let file = app.workspace.opened.as_ref()?;

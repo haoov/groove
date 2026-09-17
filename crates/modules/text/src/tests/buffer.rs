@@ -275,3 +275,66 @@ fn an_indent_step_is_what_the_language_writes() {
         "and a file with no grammar, four"
     );
 }
+
+#[test]
+fn a_word_is_taken_with_its_own_kind_of_characters() {
+    let mut buffer = buffer("let value = one();\n");
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(0, 5))), Edit::SelectWord],
+    );
+    assert_eq!(buffer.selected(), "value", "from inside the word");
+
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(0, 3))), Edit::SelectWord],
+    );
+    assert_eq!(buffer.selected(), " ", "the space between two words");
+
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(0, 15))), Edit::SelectWord],
+    );
+    assert_eq!(buffer.selected(), "();", "a run of marks");
+}
+
+#[test]
+fn a_word_is_taken_from_either_of_its_ends() {
+    let mut buffer = buffer("one two\n");
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(0, 4))), Edit::SelectWord],
+    );
+    assert_eq!(buffer.selected(), "two", "from its first character");
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(0, 7))), Edit::SelectWord],
+    );
+    assert_eq!(buffer.selected(), "two", "and from its last");
+}
+
+#[test]
+fn a_line_is_taken_with_the_break_that_ends_it() {
+    let mut buffer = buffer("one\ntwo\nthree\n");
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(1, 2))), Edit::SelectLine],
+    );
+    assert_eq!(buffer.selected(), "two\n");
+    edit(&mut buffer, &[Edit::Backspace]);
+    assert_eq!(
+        text(&buffer),
+        "one\nthree\n",
+        "so taking it out takes the row away"
+    );
+}
+
+#[test]
+fn the_last_line_is_taken_without_a_break_it_does_not_have() {
+    let mut buffer = buffer("one\ntwo");
+    edit(
+        &mut buffer,
+        &[Edit::Move(Motion::To(Caret::new(1, 1))), Edit::SelectLine],
+    );
+    assert_eq!(buffer.selected(), "two");
+}

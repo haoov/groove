@@ -61,6 +61,7 @@ async fn services(
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
         session: groove_controllers::session_service::Service::new(store, pool),
+        clipboard: groove_controllers::workspace_service::clipboard(),
     })
 }
 

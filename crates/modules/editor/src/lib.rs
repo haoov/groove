@@ -1,8 +1,13 @@
-//! File operations on one worktree. Every path is resolved against its root, and a
-//! path that leaves the worktree is refused rather than followed.
+//! What the editing surface needs outside the buffer: the files of one worktree, and
+//! the clipboard. Every path is resolved against the worktree root, and a path that
+//! leaves it is refused rather than followed.
+
+mod clipboard;
 
 #[cfg(test)]
 mod tests;
+
+pub use clipboard::{Clipboard, Memory, System, clipboard};
 
 use std::path::{Component, Path, PathBuf};
 

@@ -5,6 +5,22 @@ use groove_types::{Caret, Edit, Highlight, Motion, Selection};
 use crate::Document;
 use crate::history::{Change, History};
 
+/// What a character belongs to, for picking out a word.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Class {
+    Word,
+    Space,
+    Mark,
+}
+
+fn class(c: char) -> Class {
+    match c {
+        _ if c.is_alphanumeric() || c == '_' => Class::Word,
+        _ if c.is_whitespace() => Class::Space,
+        _ => Class::Mark,
+    }
+}
+
 pub struct Buffer {
     doc: Document,
     /// One per caret. Several carets edit at once; today there is one.
@@ -122,6 +138,8 @@ impl Buffer {
             Edit::Move(motion) => self.go(*motion, false),
             Edit::Extend(motion) => self.go(*motion, true),
             Edit::SelectAll => self.all(),
+            Edit::SelectWord => self.hold(Self::word),
+            Edit::SelectLine => self.hold(Self::whole_line),
             Edit::Undo => self.step(History::undo),
             Edit::Redo => self.step(History::redo),
         }
@@ -247,6 +265,45 @@ impl Buffer {
             Motion::LineStart => Caret::new(head.line, 0),
             Motion::LineEnd => Caret::new(head.line, self.doc.line_chars(head.line)),
             Motion::To(caret) => caret,
+        }
+    }
+
+    /// Every caret holds what `pick` makes of the line it is on.
+    fn hold(&mut self, pick: impl Fn(&Self, Caret) -> Selection) {
+        self.history.close();
+        self.carets = self.carets.iter().map(|one| pick(self, one.head)).collect();
+    }
+
+    /// The run of characters of one kind around the caret: a word, the spaces
+    /// between words, or a run of marks.
+    fn word(&self, caret: Caret) -> Selection {
+        let Some(line) = self.doc.line(caret.line) else {
+            return Selection::at(caret);
+        };
+        let chars: Vec<char> = line.chars().collect();
+        let at = caret.column.min(chars.len().saturating_sub(1));
+        let Some(kind) = chars.get(at).copied().map(class) else {
+            return Selection::at(caret);
+        };
+        let same = |column: &usize| chars.get(*column).copied().map(class) == Some(kind);
+        let from = (0..=at).rev().take_while(&same).last().unwrap_or(at);
+        let to = (at..chars.len()).take_while(&same).last().unwrap_or(at) + 1;
+        Selection {
+            anchor: Caret::new(caret.line, from),
+            head: Caret::new(caret.line, to),
+        }
+    }
+
+    /// The line and the break that ends it, so taking it out takes the row away.
+    fn whole_line(&self, caret: Caret) -> Selection {
+        let last = caret.line + 1 >= self.doc.lines();
+        let head = match last {
+            true => Caret::new(caret.line, self.doc.line_chars(caret.line)),
+            false => Caret::new(caret.line + 1, 0),
+        };
+        Selection {
+            anchor: Caret::new(caret.line, 0),
+            head,
         }
     }
 

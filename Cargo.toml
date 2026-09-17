@@ -28,6 +28,7 @@ pollster = "1"
 png = "0.18"
 resvg = { version = "0.45", default-features = false }
 winit = "0.30"
+arboard = { version = "3", default-features = false, features = ["wayland-data-control"] }
 alacritty_terminal = { version = "0.26", default-features = false }
 notify = "8"
 ignore = "0.4"

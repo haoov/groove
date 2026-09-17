@@ -15,11 +15,21 @@ use crate::tokens::Tokens;
 pub struct Metrics {
     pub size: Size,
     pub scale: f32,
+    /// What the config says to draw the interface and code with, in points.
+    pub text: f32,
+    pub code: f32,
     pub cell: CellSize,
     /// Milliseconds since start, for what moves.
     pub tick: u64,
     /// The wall clock, for what says how long ago.
     pub now: Timestamp,
+}
+
+impl Metrics {
+    /// Every number a frame draws with, at this window's scale and sizes.
+    pub fn tokens(&self) -> Tokens {
+        Tokens::sized(self.scale, self.text, self.code)
+    }
 }
 
 pub struct Ctx<'a> {
@@ -43,7 +53,7 @@ impl<'a> Ctx<'a> {
         fonts: &'a mut Fonts,
         hits: &'a mut Hits,
     ) -> Self {
-        let tokens = Tokens::new(metrics.scale);
+        let tokens = metrics.tokens();
         Self {
             tokens,
             styles: Styles::new(app.config.theme(), tokens),

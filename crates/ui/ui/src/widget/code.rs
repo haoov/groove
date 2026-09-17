@@ -209,7 +209,16 @@ fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     text(ctx, rect, code);
     if let Some(column) = code.caret {
         caret(ctx, rect, code.text, column);
+        here(ctx, line);
     }
+}
+
+/// Where the caret is: a rule above the row and one below it, across the surface.
+fn here(ctx: &mut Ctx, line: Rect) {
+    let (color, thickness) = (ctx.styles.here(), ctx.tokens.hairline);
+    ctx.quad(Rect::new(line.x, line.y, line.w, thickness), color);
+    let under = line.bottom() - thickness;
+    ctx.quad(Rect::new(line.x, under, line.w, thickness), color);
 }
 
 /// What a caret holds, under the text: a band over the characters, run out past the

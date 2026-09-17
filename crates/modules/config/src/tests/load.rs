@@ -26,7 +26,7 @@ fn a_file_loads_with_its_defaults() {
     let config = load(&file).unwrap().unwrap();
     assert_eq!(config.git.worktree_root, "~/worktrees");
     assert_eq!(config.ui.theme, ThemeName::Mocha);
-    assert_eq!(config.ui.font_size, 12);
+    assert_eq!(config.ui.font_size, 13.0, "the design's own size");
     assert_eq!(config.preferences.poll_interval_secs, 60);
 }
 

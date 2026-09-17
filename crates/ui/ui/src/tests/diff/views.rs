@@ -25,7 +25,7 @@ fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
         .filter(|quad| {
             [groove_types::RowKind::Added, groove_types::RowKind::Removed]
                 .into_iter()
-                .filter_map(|kind| styles.row_ground(kind, false))
+                .filter_map(|kind| styles.row_ground(kind))
                 .any(|color| color == quad.color)
         })
         .count();

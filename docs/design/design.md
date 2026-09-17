@@ -165,6 +165,11 @@ delete and open in provider.
 **One code surface.** The diff and the editor are one surface in three views, which
 the gutter holds together.
 
+**Where the caret is** is two rules, above its row and below it, across the surface
+— not a ground. The rows already carry grounds for what a change did, and what a
+caret holds is a ground of its own; a third would leave the three telling each other
+apart by shade.
+
 **Editing is modeless, and stays usable by anyone.** Keys do what they do everywhere
 else: characters type, arrows move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes,
 `ctrl+s` writes. Tab writes what the language's own formatter writes — a tab in Go,

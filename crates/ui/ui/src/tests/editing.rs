@@ -153,7 +153,10 @@ fn a_drag_over_the_file_holds_more_of_it() {
         pressed.first(),
         Some(Command::Workspace(workspace::Command::Edit(Edit::Move(_))))
     ));
-    assert!(ui.selecting, "the pointer is choosing");
+    assert!(
+        ui.pointing(),
+        "the window sends moves while the pointer leads something"
+    );
     let dragged = handle(
         Input::Move {
             x: point.0 + hits.chars().advance * 3.0,
@@ -174,5 +177,109 @@ fn a_drag_over_the_file_holds_more_of_it() {
         "a move while down extends: {dragged:?}"
     );
     handle(Input::Release, &mut ui, &app, &hits, window());
-    assert!(!ui.selecting, "and the release ends it");
+    assert!(!ui.pointing(), "and the release ends it");
+}
+
+#[test]
+fn control_carries_what_is_held() {
+    for (key, wanted) in [
+        (Key::Char('c'), workspace::Command::Copy),
+        (Key::Char('x'), workspace::Command::Cut),
+        (Key::Char('v'), workspace::Command::Paste),
+    ] {
+        assert_eq!(asked(key, CTRL), [Command::Workspace(wanted)], "{key:?}");
+    }
+}
+
+#[test]
+fn the_pointer_leads_nothing_until_it_goes_down_on_something() {
+    let ui = Ui::default();
+    assert!(!ui.pointing(), "a still pointer sends no moves");
+    let app = opened();
+    let mut ui = editing();
+    let (_, hits) = crate::view(
+        &app,
+        &ui,
+        crate::tests::window(),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let moved = crate::input::handle(
+        crate::input::Input::Move { x: 200.0, y: 200.0 },
+        &mut ui,
+        &app,
+        &hits,
+        crate::tests::window(),
+    );
+    assert!(moved.is_empty(), "a move with nothing down asks nothing");
+}
+
+/// Presses at the same point, `apart` milliseconds between them.
+fn clicks(times: usize, apart: u64) -> Vec<Command> {
+    use crate::hit::Target;
+    use crate::input::{Input, handle};
+    use crate::tests::metrics;
+    use groove_gfx::Fonts;
+
+    let app = opened();
+    let mut ui = editing();
+    let (_, hits) = crate::view(&app, &ui, crate::tests::window(), &mut Fonts::embedded());
+    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let point = (hits.chars().left + 1.0, code.y + 1.0);
+    let mut commands = Vec::new();
+    for at in 0..times {
+        let mut window = metrics(1280, 800, 1.0);
+        window.tick = at as u64 * apart;
+        commands = handle(
+            Input::Press {
+                x: point.0,
+                y: point.1,
+            },
+            &mut ui,
+            &app,
+            &hits,
+            window,
+        );
+        handle(Input::Release, &mut ui, &app, &hits, window);
+    }
+    commands
+}
+
+/// The edits one press asked for.
+fn edits(commands: Vec<Command>) -> Vec<Edit> {
+    commands
+        .into_iter()
+        .filter_map(|command| match command {
+            Command::Workspace(workspace::Command::Edit(edit)) => Some(edit),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn one_click_lands_the_caret_and_holds_nothing() {
+    let asked = edits(clicks(1, 0));
+    assert!(matches!(asked.as_slice(), [Edit::Move(_)]), "{asked:?}");
+}
+
+#[test]
+fn two_clicks_hold_the_word_and_three_hold_the_line() {
+    let two = edits(clicks(2, 50));
+    assert!(
+        matches!(two.as_slice(), [Edit::Move(_), Edit::SelectWord]),
+        "{two:?}"
+    );
+    let three = edits(clicks(3, 50));
+    assert!(
+        matches!(three.as_slice(), [Edit::Move(_), Edit::SelectLine]),
+        "{three:?}"
+    );
+}
+
+#[test]
+fn a_press_long_after_another_is_a_click_of_its_own() {
+    let slow = edits(clicks(2, crate::tokens::CLICK_MS + 1));
+    assert!(
+        matches!(slow.as_slice(), [Edit::Move(_)]),
+        "too late to carry the first one on: {slow:?}"
+    );
 }

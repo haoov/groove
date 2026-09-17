@@ -67,7 +67,7 @@ fn surface(
                 .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
                 .caret(row.caret)
                 .held(row.held);
-            match ctx.styles.row_ground(row.kind, row.caret.is_some()) {
+            match ctx.styles.row_ground(row.kind) {
                 Some(color) => line.ground(color),
                 None => line,
             }

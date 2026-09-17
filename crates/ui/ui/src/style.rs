@@ -116,6 +116,12 @@ impl Styles {
         self.palette.surface2
     }
 
+    /// The rules above and below the row the caret is on. Brighter than a panel's
+    /// hairlines, which are structure rather than a place.
+    pub fn here(&self) -> Color {
+        self.palette.overlay0
+    }
+
     /// The bar where the caret sits.
     pub fn caret(&self) -> Color {
         self.palette.text
@@ -130,12 +136,11 @@ impl Styles {
     }
 
     /// The ground a diff row stands on, and the one under the caret.
-    pub fn row_ground(&self, kind: RowKind, caret: bool) -> Option<Color> {
+    pub fn row_ground(&self, kind: RowKind) -> Option<Color> {
         let tint = |color: Color| Some(color.with_alpha(GROUND_ALPHA));
         match kind {
             RowKind::Added => tint(self.palette.green),
             RowKind::Removed => tint(self.palette.red),
-            _ if caret => Some(self.raised()),
             _ => None,
         }
     }

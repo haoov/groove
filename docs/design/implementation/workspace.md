@@ -129,8 +129,10 @@ file, grep across the worktree with match highlighting, a file tree.
 
 ### Planned
 
-**Module `editor`**: the file operations as today, each path resolved against the
-worktree root and refused when it escapes. **Module `text`**: rope,
+**Module `editor`**: what the surface needs outside the buffer — the file operations
+as today, each path resolved against the worktree root and refused when it escapes,
+and the clipboard, which falls back to one of its own when there is no desktop to
+open. **Module `text`**: rope,
 tree-sitter, transactions, the semantic hook. **Service `workspace`** holds the open
 file — path, buffer, dirty, cursor.
 
@@ -163,6 +165,7 @@ text. Four rules, measured rather than assumed:
 | `workspace.get_open_file` · `workspace.list_files` · `workspace.read_file` | reads |
 | `workspace.open_file` | from a diff line or the explorer |
 | `workspace.edit` | one keystroke on the buffer: a motion, a change, an undo |
+| `workspace.copy` · `workspace.cut` · `workspace.paste` | what the carets hold, through the desktop's clipboard |
 | `workspace.save_file` | write; the buffer keeps its place and its history |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
 | `workspace.search` · `workspace.grep` | the sidebar's search bar; `/` selects grep |

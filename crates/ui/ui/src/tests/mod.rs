@@ -61,9 +61,12 @@ fn window() -> Metrics {
 }
 
 fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
+    let design = crate::Tokens::new(1.0);
     Metrics {
         size: Size::new(w, h),
         scale,
+        text: design.text,
+        code: design.code,
         cell: CellSize {
             width: 8.0 * scale,
             height: 17.0 * scale,

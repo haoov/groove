@@ -17,7 +17,7 @@ const LEGACY_FILE: &str = r#"{
 fn a_legacy_file_loads_with_defaults_for_the_new_block() {
     let config: Config = serde_json::from_str(LEGACY_FILE).unwrap();
     assert_eq!(config.ui.theme, ThemeName::Latte);
-    assert_eq!(config.ui.font_size, 15);
+    assert_eq!(config.ui.font_size, 15.0);
     assert_eq!(config.preferences.poll_interval_secs, 60);
     assert_eq!(config.preferences.thresholds.review_waiting_days, 3);
     assert!(!config.preferences.auto_approve_default);

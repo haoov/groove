@@ -119,7 +119,7 @@ impl Layout {
     }
 
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
-        let tokens = Tokens::new(metrics.scale);
+        let tokens = metrics.tokens();
         Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar())
     }
 

@@ -149,17 +149,37 @@ fn the_caret_shows_only_where_the_keyboard_is() {
     let mut ui = on_diff();
     ui.focus = crate::Focus::Workspace;
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let raised = |ui: &Ui| {
+    let rules = |ui: &Ui| {
         let (frame, _) = view_of(&app, ui);
         frame.layers()[0]
             .quads
             .iter()
-            .filter(|quad| quad.color == styles.raised() && quad.rect.h == Tokens::new(1.0).line)
+            .filter(|quad| quad.color == styles.here() && quad.rect.h == Tokens::new(1.0).hairline)
             .count()
     };
-    assert_eq!(raised(&ui), 1, "the row the caret is on");
+    assert_eq!(rules(&ui), 2, "a rule above the caret's row and one below");
     ui.focus = crate::Focus::Agent;
-    assert_eq!(raised(&ui), 0, "and nothing once the keyboard leaves");
+    assert_eq!(rules(&ui), 0, "and none once the keyboard leaves");
+}
+
+#[test]
+fn what_is_held_reads_apart_from_the_row_the_caret_is_on() {
+    let app = opened();
+    let ui = on_diff();
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let tokens = Tokens::new(1.0);
+    assert_ne!(
+        styles.held(),
+        styles.here(),
+        "a selection and a caret row are told apart by colour"
+    );
+    let (frame, _) = view_of(&app, &ui);
+    let rows = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.rect.h == tokens.line && quad.color == styles.here())
+        .count();
+    assert_eq!(rows, 0, "the caret's row carries no ground of its own");
 }
 
 #[test]

@@ -71,6 +71,9 @@ fn with_ctrl(key: Key) -> Option<Command> {
         Key::Char('z' | 'Z') => Edit::Undo,
         Key::Char('y' | 'Y') => Edit::Redo,
         Key::Char('a' | 'A') => Edit::SelectAll,
+        Key::Char('c' | 'C') => return Some(Command::Workspace(workspace::Command::Copy)),
+        Key::Char('x' | 'X') => return Some(Command::Workspace(workspace::Command::Cut)),
+        Key::Char('v' | 'V') => return Some(Command::Workspace(workspace::Command::Paste)),
         _ => return None,
     };
     Some(Command::Workspace(workspace::Command::Edit(edit)))

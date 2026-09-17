@@ -1,8 +1,15 @@
 //! The config capability. Its slice of `AppState`, the operations on it, its events.
 
+#[cfg(test)]
+mod tests;
+
 use std::path::{Path, PathBuf};
 
-use groove_types::{Config, Error, ThemeName};
+use groove_types::{Config, Error, ThemeName, UiConfig};
+
+/// What a font size may be, whatever the file says.
+const MIN_FONT: f32 = 8.0;
+const MAX_FONT: f32 = 32.0;
 
 /// The parsed config, or nothing before first run.
 #[derive(Debug, Default)]
@@ -18,6 +25,24 @@ pub fn load(config_dir: &Path) -> Result<Option<Config>, Error> {
 impl State {
     pub fn theme(&self) -> ThemeName {
         self.config.as_ref().map(|c| c.ui.theme).unwrap_or_default()
+    }
+
+    /// The interface's type size, and code's, both inside what a font can read as.
+    pub fn text_size(&self) -> f32 {
+        self.sized(|ui| ui.font_size)
+    }
+
+    pub fn code_size(&self) -> f32 {
+        self.sized(|ui| ui.code_font_size)
+    }
+
+    fn sized(&self, of: impl Fn(&UiConfig) -> f32) -> f32 {
+        let default = of(&UiConfig::default());
+        self.config
+            .as_ref()
+            .map(|c| of(&c.ui))
+            .filter(|size| *size >= MIN_FONT && *size <= MAX_FONT)
+            .unwrap_or(default)
     }
 
     /// Where every agent runs: `git.worktree_root`, `~` expanded; `home` before first run.

@@ -7,6 +7,11 @@ pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
 pub const GROUND_ALPHA: u8 = 38;
 
+/// How long after a press another one counts as the same click, and how far it may
+/// land from it, in logical pixels.
+pub const CLICK_MS: u64 = 400;
+pub const CLICK_SLOP: f32 = 4.0;
+
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
 pub const AGENT_MIN: f32 = 280.0;
@@ -51,6 +56,15 @@ pub struct Tokens {
     pub modal_top: f32,
 }
 
+/// The type scale and the bands that hold it, against the size they follow.
+const SMALL: f32 = 11.5 / 13.0;
+const TITLE: f32 = 14.0 / 13.0;
+const HEADING: f32 = 12.0 / 13.0;
+const ICON: f32 = 16.0 / 13.0;
+const ROW: f32 = 26.0 / 13.0;
+const HEADER: f32 = 36.0 / 13.0;
+const LINE: f32 = 18.0 / 12.5;
+
 /// The design's numbers, at scale 1.
 const LOGICAL: Tokens = Tokens {
     scale: 1.0,
@@ -81,8 +95,17 @@ const LOGICAL: Tokens = Tokens {
 };
 
 impl Tokens {
+    /// The design's own sizes, scaled to the window.
     pub fn new(scale: f32) -> Self {
+        Self::sized(scale, LOGICAL.text, LOGICAL.code)
+    }
+
+    /// The same, with the interface's type at `text` and code's at `code`. What holds
+    /// type follows it; what holds the window does not.
+    pub fn sized(scale: f32, text: f32, code: f32) -> Self {
         let s = |value: f32| value * scale;
+        let of_text = |ratio: f32| s(text * ratio);
+        let row = |ratio: f32, size: f32| s((size * ratio).round());
         Self {
             scale,
             xs: s(LOGICAL.xs),
@@ -90,20 +113,20 @@ impl Tokens {
             md: s(LOGICAL.md),
             lg: s(LOGICAL.lg),
             xl: s(LOGICAL.xl),
-            row: s(LOGICAL.row),
-            header: s(LOGICAL.header),
+            row: row(ROW, text),
+            header: row(HEADER, text),
             rail: s(LOGICAL.rail),
             agent: s(LOGICAL.agent),
             sidebar: s(LOGICAL.sidebar),
-            line: s(LOGICAL.line),
+            line: row(LINE, code),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),
-            text: s(LOGICAL.text),
-            small: s(LOGICAL.small),
-            title: s(LOGICAL.title),
-            heading: s(LOGICAL.heading),
-            code: s(LOGICAL.code),
-            icon: s(LOGICAL.icon),
+            text: s(text),
+            small: of_text(SMALL),
+            title: of_text(TITLE),
+            heading: of_text(HEADING),
+            code: s(code),
+            icon: of_text(ICON),
             aside_near: s(LOGICAL.aside_near),
             aside_mid: s(LOGICAL.aside_mid),
             aside_far: s(LOGICAL.aside_far),

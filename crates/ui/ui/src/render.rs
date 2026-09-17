@@ -9,12 +9,11 @@ use crate::ctx::{Ctx, Metrics};
 use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::style::Styles;
-use crate::tokens::Tokens;
 use crate::views::{session, shared};
 
 /// The whole window as a display list, rebuilt every frame from state.
 pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Frame, Hits) {
-    let tokens = Tokens::new(metrics.scale);
+    let tokens = metrics.tokens();
     let styles = Styles::new(app.config.theme(), tokens);
     let mut frame = Frame::new(metrics.size, styles.ground());
     let mut hits = Hits::default();
@@ -39,7 +38,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 
 /// The commands a new window size implies: every agent's grid to the pane's grid.
 pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
-    let tokens = Tokens::new(metrics.scale);
+    let tokens = metrics.tokens();
     let layout = Layout::of(metrics, ui);
     let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);
     app.agent

@@ -106,6 +106,10 @@ pub enum Edit {
     /// Moves the caret and leaves the anchor, so the range between them grows.
     Extend(Motion),
     SelectAll,
+    /// What a double click takes: the word, the spaces or the marks under the caret.
+    SelectWord,
+    /// What a triple click takes: the line and the break that ends it.
+    SelectLine,
     Newline,
     Backspace,
     Delete,

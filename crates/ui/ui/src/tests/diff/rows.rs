@@ -27,7 +27,7 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let ground = |kind| {
-        let color = styles.row_ground(kind, false).expect("a ground");
+        let color = styles.row_ground(kind).expect("a ground");
         frame.layers()[0]
             .quads
             .iter()

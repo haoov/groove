@@ -5,13 +5,12 @@ use crate::Ui;
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Scroller};
 use crate::layout::Layout;
-use crate::tokens::Tokens;
 
 /// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
 /// far end.
 pub(super) fn scroll(x: f32, delta: Delta, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
     let layout = Layout::of(metrics, ui);
-    let tokens = Tokens::new(metrics.scale);
+    let tokens = metrics.tokens();
     let pixels = |height: f32| match delta {
         Delta::Lines(lines) => lines * height,
         Delta::Pixels(pixels) => pixels,

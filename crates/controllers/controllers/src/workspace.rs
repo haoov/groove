@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::{Edit, Result, WorktreeId};
+use groove_types::{Edit, Error, ErrorKind, Result, WorktreeId};
 use groove_workspace_service::{Derived, Document, Opened, derived, opened, reopened, summary};
 
 use crate::spawn::coalesced;
@@ -19,6 +19,12 @@ pub enum Command {
     Edit(Edit),
     /// `workspace.save_file`: the buffer to the file it came from.
     SaveFile,
+    /// `workspace.copy`: what the carets hold, to the clipboard.
+    Copy,
+    /// `workspace.cut`: the same, and out of the buffer.
+    Cut,
+    /// `workspace.paste`: the clipboard, over what the carets hold.
+    Paste,
 }
 
 impl Command {
@@ -28,6 +34,9 @@ impl Command {
             Command::OpenFile { .. } => "workspace.open_file",
             Command::Edit(_) => "workspace.edit",
             Command::SaveFile => "workspace.save_file",
+            Command::Copy => "workspace.copy",
+            Command::Cut => "workspace.cut",
+            Command::Paste => "workspace.paste",
         }
     }
 }
@@ -35,7 +44,7 @@ impl Command {
 pub fn dispatch(
     command: Command,
     state: &mut AppState,
-    _services: &Services,
+    services: &Services,
     spawner: &dyn Spawner,
 ) {
     match command {
@@ -43,6 +52,9 @@ pub fn dispatch(
         Command::OpenFile { path } => open_file(state, spawner, path),
         Command::Edit(edit) => edit_file(state, spawner, edit),
         Command::SaveFile => save_file(state, spawner),
+        Command::Copy => copy(state, services, spawner, false),
+        Command::Cut => copy(state, services, spawner, true),
+        Command::Paste => paste(state, services, spawner),
     }
 }
 
@@ -133,6 +145,48 @@ fn saved(state: &mut AppState, path: &str) {
     {
         open.new.saved();
     }
+}
+
+/// What the carets hold goes to the clipboard, off the main thread: the window that
+/// copied serves the text to whoever pastes it.
+fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner, cut: bool) {
+    let Some(open) = state.workspace.opened.as_ref() else {
+        return;
+    };
+    let held = open.new.selected();
+    if held.is_empty() {
+        return;
+    }
+    if cut {
+        edit_file(state, spawner, Edit::Delete);
+    }
+    let clipboard = services.clipboard.clone();
+    spawner.spawn(Box::pin(async move {
+        let written = clipboard.write(&held);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = written {
+                state.errors.push(Error::new(ErrorKind::Io, e.to_string()));
+            }
+        }) as Continuation
+    }));
+}
+
+/// The clipboard read in a job, then put in where the carets are.
+fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    if state.workspace.opened.is_none() {
+        return;
+    }
+    let clipboard = services.clipboard.clone();
+    spawner.spawn(Box::pin(async move {
+        let text = clipboard.read();
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if let Some(text) = text.filter(|text| !text.is_empty()) {
+                    edit_file(state, spawner, Edit::Insert(text));
+                }
+            },
+        ) as Continuation
+    }));
 }
 
 /// Where the HEAD side of a reopened file comes from.

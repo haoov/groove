@@ -153,10 +153,13 @@ impl App {
             return None;
         };
         let scale = window.scale_factor() as f32;
-        let tokens = groove_ui::Tokens::new(scale);
+        let (text, code) = (self.state.config.text_size(), self.state.config.code_size());
+        let tokens = groove_ui::Tokens::sized(scale, text, code);
         Some(Metrics {
             size: size_of(window),
             scale,
+            text,
+            code,
             cell: renderer.fonts().cell_size(tokens.code),
             tick: self.started.elapsed().as_millis() as u64,
             now: Timestamp::now(),
@@ -260,7 +263,7 @@ impl ApplicationHandler<Message> for App {
                 self.point();
                 let (x, y) = self.cursor;
                 let moved = groove_ui::input::hover(&mut self.ui, &self.hits, x, y);
-                if self.ui.dragging() {
+                if self.ui.pointing() {
                     self.input(Input::Move { x, y });
                 } else if moved {
                     self.redraw();

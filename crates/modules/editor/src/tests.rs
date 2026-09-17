@@ -39,3 +39,28 @@ fn a_write_to_a_directory_that_is_not_there_is_an_error_not_a_panic() {
     let failed = save(dir.path(), "nope/lib.rs", "x").expect_err("an error");
     assert_eq!(failed.kind, ErrorKind::Io);
 }
+
+#[test]
+fn what_is_written_to_a_clipboard_of_our_own_reads_back() {
+    use crate::{Clipboard, Memory};
+
+    let clipboard = Memory::default();
+    assert_eq!(clipboard.read(), None, "nothing has been copied");
+    clipboard.write("fn one() {}").expect("written");
+    assert_eq!(clipboard.read().as_deref(), Some("fn one() {}"));
+    clipboard.write("something else").expect("written");
+    assert_eq!(clipboard.read().as_deref(), Some("something else"));
+}
+
+#[test]
+fn a_clipboard_is_shared_across_threads() {
+    use crate::{Clipboard, Memory};
+    use std::sync::Arc;
+
+    let clipboard = Arc::new(Memory::default());
+    let writer = clipboard.clone();
+    std::thread::spawn(move || writer.write("from another thread").expect("written"))
+        .join()
+        .expect("the thread ends");
+    assert_eq!(clipboard.read().as_deref(), Some("from another thread"));
+}

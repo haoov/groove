@@ -37,10 +37,14 @@ impl ThemeName {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UiConfig {
+    /// The interface's type. Code has its own below: mono reads larger at the same
+    /// size, and a diff wants more of it on screen than a list does.
     #[serde(default = "default_font_size")]
-    pub font_size: u8,
+    pub font_size: f32,
+    #[serde(default = "default_code_font_size")]
+    pub code_font_size: f32,
     #[serde(default)]
     pub theme: ThemeName,
     /// Empty means the bundled font.
@@ -56,6 +60,7 @@ impl Default for UiConfig {
     fn default() -> Self {
         Self {
             font_size: default_font_size(),
+            code_font_size: default_code_font_size(),
             theme: ThemeName::default(),
             font_family: String::new(),
             agent_font_family: String::new(),
@@ -115,8 +120,12 @@ impl From<Config> for ConfigView {
     }
 }
 
-fn default_font_size() -> u8 {
-    12
+fn default_font_size() -> f32 {
+    13.0
+}
+
+fn default_code_font_size() -> f32 {
+    12.5
 }
 
 fn default_true() -> bool {

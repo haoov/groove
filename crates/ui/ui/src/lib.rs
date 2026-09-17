@@ -72,12 +72,28 @@ pub struct Ui {
     pub drag: Option<Drag>,
     /// The pointer is down on the open file, so it is choosing what to hold.
     pub selecting: bool,
+    /// The last press, for the next one to know whether it carries on the same click.
+    pub clicked: Option<Click>,
     /// What the pointer is over, for the row under it to say so.
     pub hover: Option<Target>,
+}
+
+/// A press, and how many the pointer has made in the same place in a row.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Click {
+    pub x: f32,
+    pub y: f32,
+    pub at: u64,
+    pub count: u32,
 }
 
 impl Ui {
     pub fn dragging(&self) -> bool {
         self.drag.is_some()
+    }
+
+    /// The pointer is down on something that follows it, so its moves are input.
+    pub fn pointing(&self) -> bool {
+        self.drag.is_some() || self.selecting
     }
 }
