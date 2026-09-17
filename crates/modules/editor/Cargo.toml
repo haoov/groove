@@ -1,0 +1,16 @@
+[package]
+name = "groove-editor"
+description = "File operations on a worktree: read, write, and the paths they refuse"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
