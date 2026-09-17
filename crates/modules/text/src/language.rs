@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use groove_types::Capture;
+use groove_types::{Capture, Indent};
 use tree_sitter::Language as Grammar;
 use tree_sitter_highlight::HighlightConfiguration;
 
@@ -54,6 +54,16 @@ impl Language {
         Language::Python,
         Language::Go,
     ];
+
+    /// What one indent step is in this language: what `gofmt`, `rustfmt` and the
+    /// like write, so a file keeps the shape its own tools give it.
+    pub fn indent(self) -> Indent {
+        match self {
+            Language::Go => Indent::Tab(4),
+            Language::Yaml | Language::Markdown => Indent::Spaces(2),
+            Language::Rust | Language::Bash | Language::Python => Indent::Spaces(4),
+        }
+    }
 
     /// The language a file name carries, by extension and then by whole name.
     pub fn of(path: &str) -> Option<Language> {

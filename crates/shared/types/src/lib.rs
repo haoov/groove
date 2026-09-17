@@ -7,6 +7,7 @@ mod attention;
 mod config;
 mod delivery;
 mod diff;
+mod editing;
 mod error;
 mod ids;
 mod mr;
@@ -36,6 +37,7 @@ pub use diff::{
     BlameLine, CommitEntry, DiffLine, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineKind,
     LineMark, RepoDiff, Row, RowKind, word_diff_pairs,
 };
+pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use error::{Error, ErrorKind, Result};
 pub use ids::{
     AnnotationId, ApprovalId, ExternalId, Generation, MrId, RepoId, SessionId, WorktreeId,
