@@ -14,6 +14,7 @@ impl Git {
             .env("LC_ALL", "C")
             .env("LANG", "C")
             .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GIT_OPTIONAL_LOCKS", "0")
             .env("GIT_SSH_COMMAND", "ssh -oBatchMode=yes")
     }
 

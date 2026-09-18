@@ -139,3 +139,29 @@ fn a_first_commit_that_does_not_exist_yet_still_lists_its_files() {
     assert_eq!(files[0].3, FileStatus::Untracked);
     assert_eq!(files[0].1, 1, "an untracked file is all additions");
 }
+
+#[tokio::test]
+async fn reading_the_worktree_leaves_git_s_own_state_alone() {
+    let dir = repo();
+    write(dir.path(), "src/lib.rs", "fn one() {}\n");
+    let index = dir.path().join(".git/index");
+    let before = std::fs::metadata(&index)
+        .expect("an index")
+        .modified()
+        .expect("a time");
+
+    for _ in 0..3 {
+        crate::summary(dir.path()).await.expect("a summary");
+        crate::opened(dir.path(), "src/lib.rs")
+            .await
+            .expect("the file");
+    }
+    let after = std::fs::metadata(&index)
+        .expect("an index")
+        .modified()
+        .expect("a time");
+    assert_eq!(
+        before, after,
+        "a read that writes the index is a watcher that wakes itself"
+    );
+}
