@@ -7,9 +7,10 @@ use groove_types::DiffView;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::mark::Mark;
 use crate::style::Role;
 use crate::views::session::components::files;
-use crate::widget::{elide_start, hairline, row};
+use crate::widget::{box_in, elide_start, hairline, row};
 
 /// The file's path, what it changed, and which view it is drawn in.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
@@ -21,16 +22,34 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
         .map(|counts| written(ctx, left, counts))
         .unwrap_or(left.right());
     let style = ctx.styles.code(Role::Muted);
-    let room = (at - band.x - ctx.tokens.md * 2.0).max(0.0);
+    let dirty = app
+        .workspace
+        .opened
+        .as_ref()
+        .is_some_and(|open| open.new.dirty());
+    let mark = match dirty {
+        true => unsaved(ctx, band, at),
+        false => at,
+    };
+    let room = (mark - band.x - ctx.tokens.md * 2.0).max(0.0);
     let text = elide_start(ctx, path, &style, room);
     row(
         ctx,
-        Rect::new(band.x, band.y, at - band.x, band.h),
+        Rect::new(band.x, band.y, mark - band.x, band.h),
         ctx.tokens.md,
         &text,
         style,
     );
     hairline(ctx, band, rule);
+}
+
+/// The file owes the disk: a dot before what it changed. Returns where it starts.
+fn unsaved(ctx: &mut Ctx, band: Rect, at: f32) -> f32 {
+    let size = ctx.styles.small(Role::Warn).size;
+    let start = at - size - ctx.tokens.sm;
+    let box_ = box_in(band, start, size);
+    ctx.icon(box_, Mark::Modified, 0, ctx.styles.color(Role::Warn));
+    start
 }
 
 /// The three views, the current one raised. Returns where they start.

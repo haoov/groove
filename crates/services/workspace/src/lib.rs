@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub use groove_diff::{Derived, Document, Opened, columns, display_at, from_text, shown};
 pub use groove_editor::{Clipboard, Memory, clipboard};
+pub use groove_text::Buffer;
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
@@ -21,6 +22,8 @@ pub struct State {
     pub files: Vec<FileDiff>,
     /// The file the diff is showing, with both its sides.
     pub opened: Option<Opened>,
+    /// What the commit box holds, typed on the same buffer as a file.
+    pub message: Buffer,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,
@@ -47,6 +50,13 @@ impl State {
     /// Whether the summary still holds this path.
     fn gone(&self, path: &str) -> bool {
         !self.files.iter().any(|file| file.path == path)
+    }
+
+    /// Whether any of these paths is git's own state rather than a file of it.
+    pub fn moved_git(&self, paths: &[PathBuf]) -> bool {
+        paths
+            .iter()
+            .any(|path| path.components().any(|part| part.as_os_str() == ".git"))
     }
 
     /// Whether the open file is one of these paths.
@@ -82,16 +92,22 @@ impl State {
     }
 }
 
-/// Watches `dir` until another worktree is watched or the state is cleared.
+/// Where git keeps the worktree's own state.
+pub async fn git_dir(dir: &Path) -> Option<PathBuf> {
+    groove_git::Git::at(dir).git_dir().await.ok()
+}
+
+/// Watches `dir` and git's own directory, until the state is cleared.
 pub fn watch(
     state: &mut State,
     worktree: WorktreeId,
     dir: &Path,
+    git: Option<PathBuf>,
     on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
 ) -> Result<()> {
     state.watch = None;
     state.watching = None;
-    let watch = groove_watch::watch(dir, QUIET, on_change)?;
+    let watch = groove_watch::watch(dir, git.into_iter().collect(), QUIET, on_change)?;
     state.watching = Some(worktree);
     state.watch = Some(watch);
     Ok(())
@@ -114,6 +130,27 @@ pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
 /// The colours and the alignment of text the buffer now holds.
 pub fn derived(path: &str, old: &Document, text: &str) -> Derived {
     groove_diff::derived(path, old, text)
+}
+
+/// What the index holds, and the commit that turns it into history.
+pub async fn stage(dir: &Path, paths: &[String]) -> Result<()> {
+    groove_git::Git::at(dir).stage(paths).await?;
+    Ok(())
+}
+
+pub async fn unstage(dir: &Path, paths: &[String]) -> Result<()> {
+    groove_git::Git::at(dir).unstage(paths).await?;
+    Ok(())
+}
+
+pub async fn discard(dir: &Path, paths: &[String]) -> Result<()> {
+    groove_git::Git::at(dir).discard(paths).await?;
+    Ok(())
+}
+
+pub async fn commit(dir: &Path, message: &str) -> Result<()> {
+    groove_git::Git::at(dir).commit(message).await?;
+    Ok(())
 }
 
 /// Writes the buffer to the file it came from.

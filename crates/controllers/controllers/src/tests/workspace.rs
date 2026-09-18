@@ -1,6 +1,6 @@
 use groove_types::{Caret, Edit, FileStatus, Motion};
 
-use crate::tests::fixture::{pooled_clone, services, state, until, worktree};
+use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, session, workspace};
 
 #[test]
@@ -395,5 +395,242 @@ fn a_copy_with_nothing_held_says_nothing() {
         services.clipboard.read(),
         None,
         "the clipboard is untouched"
+    );
+}
+
+/// What the summary says is changed, and whether the index holds it.
+fn changed(state: &crate::AppState) -> Vec<(String, Option<bool>)> {
+    let mut rows: Vec<(String, Option<bool>)> = state
+        .workspace
+        .files
+        .iter()
+        .map(|file| (file.path.clone(), file.staged))
+        .collect();
+    rows.sort();
+    rows
+}
+
+fn act(
+    state: &mut crate::AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    command: workspace::Command,
+) {
+    dispatch(Cmd::Workspace(command), state, services, spawner);
+}
+
+#[test]
+fn a_file_is_staged_then_taken_back_out() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    assert_eq!(changed(&state), [("a.txt".to_string(), Some(false))]);
+
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Stage {
+            path: "a.txt".into(),
+        },
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.staged == Some(true))
+    });
+    assert_eq!(changed(&state), [("a.txt".to_string(), Some(true))]);
+
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Unstage {
+            path: "a.txt".into(),
+        },
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.staged == Some(false))
+    });
+    assert_eq!(changed(&state), [("a.txt".to_string(), Some(false))]);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn discarding_a_file_puts_it_back_and_takes_it_off_the_list() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let file = std::path::Path::new(&dir).join("a.txt");
+    let before = std::fs::read_to_string(&file).unwrap();
+    std::fs::write(&file, "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Discard {
+            path: "a.txt".into(),
+        },
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.is_empty()
+    });
+    assert_eq!(
+        std::fs::read_to_string(&file).unwrap(),
+        before,
+        "the file is what HEAD has"
+    );
+}
+
+#[test]
+fn a_commit_takes_the_index_and_empties_the_message() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::Stage {
+            path: "a.txt".into(),
+        },
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.staged == Some(true))
+    });
+
+    state
+        .workspace
+        .message
+        .edit(&Edit::Insert("fix(a): change it".into()));
+    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.is_empty()
+    });
+    assert_eq!(
+        state.workspace.message.text(),
+        "",
+        "the message is spent with the commit"
+    );
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn a_commit_with_no_message_is_not_made() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    state.workspace.message.edit(&Edit::Insert("   ".into()));
+    act(&mut state, &services, &spawner, workspace::Command::Commit);
+    spawner.drain(&mut state, &services);
+    assert!(state.errors.is_empty(), "nothing was tried");
+    assert_eq!(state.workspace.message.text(), "   ", "and nothing spent");
+}
+
+#[test]
+fn a_new_session_shows_nothing_of_the_one_before_it() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    editing(&mut state, &services, &spawner);
+    assert!(state.workspace.opened.is_some(), "a file is open");
+    assert!(!state.workspace.files.is_empty());
+
+    dispatch(
+        Cmd::Session(session::Command::OpenExplorer { title: None }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(
+        state.workspace.opened.is_none(),
+        "the file belonged to the worktree that is no longer selected"
+    );
+    assert!(
+        workspace::loaded_for(&state).is_none(),
+        "and nothing is loaded for a session with no worktree"
+    );
+    let selected = state
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|w| &w.id);
+    assert!(
+        state.workspace.files_of(selected).is_empty(),
+        "so the sidebar has nothing to list"
+    );
+}
+
+#[test]
+fn a_stage_from_outside_the_window_reaches_the_list() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    assert_eq!(changed(&state), [("a.txt".to_string(), Some(false))]);
+
+    sh(std::path::Path::new(&dir), &["add", "a.txt"]);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.iter().any(|f| f.staged == Some(true))
+    });
+    assert_eq!(
+        changed(&state),
+        [("a.txt".to_string(), Some(true))],
+        "git wrote its index and the window noticed"
+    );
+}
+
+#[test]
+fn a_commit_from_outside_the_window_reaches_the_diff() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    std::fs::write(at.join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+
+    sh(at, &["add", "a.txt"]);
+    sh(at, &["commit", "-m", "fix(a): change it"]);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.is_empty()
+    });
+    assert!(
+        state.workspace.files.is_empty(),
+        "nothing is changed any more, since HEAD has it"
     );
 }

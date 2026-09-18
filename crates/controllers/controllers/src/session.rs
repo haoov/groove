@@ -189,11 +189,33 @@ pub fn open_explorer(
     let session = groove_session_service::explorer(title, now);
     let id = session.id.clone();
     state.session.open(session.clone(), now);
+    crate::workspace::follow(state, spawner);
     agent::start(state, spawner, id, FIRST_SIZE);
     let service = services.session.clone();
     record(spawner, NO_PENDING, async move {
         service.create_explorer(&session, now).await
     });
+}
+
+/// What git says about the selected worktree, read again for the overview.
+pub fn refresh_status(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let Some(open) = state.session.selected() else {
+        return;
+    };
+    let Some(worktree) = open.selected_worktree().cloned() else {
+        return;
+    };
+    let session = open.session.id.clone();
+    let service = services.session.clone();
+    spawner.spawn(Box::pin(async move {
+        let status = service.status(&worktree).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            let Ok(status) = status else { return };
+            if let Some(open) = state.session.get_mut(&session) {
+                open.told(&worktree.id, status);
+            }
+        }) as Continuation
+    }));
 }
 
 pub fn rename_explorer(

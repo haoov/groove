@@ -55,6 +55,14 @@ pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> 
 }
 
 /// A hairline along the bottom of `rect`.
+/// A hairline above `rect` and one below it.
+pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
+    let thickness = ctx.tokens.hairline;
+    ctx.quad(Rect::new(rect.x, rect.y, rect.w, thickness), color);
+    let under = rect.bottom() - thickness;
+    ctx.quad(Rect::new(rect.x, under, rect.w, thickness), color);
+}
+
 pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
     ctx.quad(

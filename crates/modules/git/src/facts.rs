@@ -9,6 +9,12 @@ impl Git {
         self.line(&["--version"]).await
     }
 
+    /// Where git keeps this worktree's own HEAD and index.
+    pub async fn git_dir(&self) -> Result<std::path::PathBuf> {
+        let out = self.line(&["rev-parse", "--absolute-git-dir"]).await?;
+        Ok(std::path::PathBuf::from(out))
+    }
+
     pub async fn is_repository(&self) -> Result<bool> {
         self.succeeds(&["rev-parse", "--git-dir"]).await
     }

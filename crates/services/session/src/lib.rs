@@ -4,7 +4,7 @@ mod service;
 
 use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
-    WorktreeDelivery, WorktreeId,
+    WorktreeDelivery, WorktreeId, WorktreeStatus,
 };
 pub use service::{Added, Contents, Service};
 
@@ -19,6 +19,20 @@ pub struct Open {
 }
 
 impl Open {
+    /// What git says about one worktree now.
+    pub fn told(&mut self, worktree: &WorktreeId, status: WorktreeStatus) {
+        match self.delivery.iter_mut().find(|(id, _)| id == worktree) {
+            Some((_, delivery)) => delivery.status = status,
+            None => self.delivery.push((
+                worktree.clone(),
+                WorktreeDelivery {
+                    status,
+                    ..WorktreeDelivery::default()
+                },
+            )),
+        }
+    }
+
     pub fn delivery_of(&self, worktree: &WorktreeId) -> Option<&WorktreeDelivery> {
         self.delivery
             .iter()

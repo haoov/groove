@@ -41,6 +41,13 @@ impl std::fmt::Debug for Buffer {
     }
 }
 
+impl Default for Buffer {
+    /// An empty buffer of no language, for what is typed outside a file.
+    fn default() -> Self {
+        Self::new(Document::new("", ""))
+    }
+}
+
 impl Buffer {
     pub fn new(doc: Document) -> Self {
         Self {

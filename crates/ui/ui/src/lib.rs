@@ -74,8 +74,19 @@ pub struct Ui {
     pub selecting: bool,
     /// The last press, for the next one to know whether it carries on the same click.
     pub clicked: Option<Click>,
+    /// The file whose row is asking before it throws its change away.
+    pub discarding: Option<String>,
+    /// What the right button opened, and where.
+    pub menu: Option<Menu>,
     /// What the pointer is over, for the row under it to say so.
     pub hover: Option<Target>,
+}
+
+/// What the right button opened: the actions for one file, at the point it asked.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Menu {
+    pub at: (f32, f32),
+    pub path: String,
 }
 
 /// A press, and how many the pointer has made in the same place in a row.

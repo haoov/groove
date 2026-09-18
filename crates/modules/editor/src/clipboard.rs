@@ -1,5 +1,4 @@
-//! What the editing surface copies through: the desktop's clipboard, or one of its
-//! own when there is no desktop to ask.
+//! What the editing surface copies through.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -10,8 +9,7 @@ pub trait Clipboard: Send + Sync {
     fn write(&self, text: &str) -> Result<()>;
 }
 
-/// The desktop's clipboard, or a clipboard of our own when it cannot be opened:
-/// copying inside the window still works, and nothing above has to know.
+/// The desktop's clipboard, or one of our own when it cannot be opened.
 pub fn clipboard() -> Arc<dyn Clipboard> {
     match System::open() {
         Ok(system) => Arc::new(system),
@@ -19,8 +17,8 @@ pub fn clipboard() -> Arc<dyn Clipboard> {
     }
 }
 
-/// The clipboard the rest of the desktop shares. It must outlive the copy: on
-/// Wayland and X11 the window that copied serves the text to whoever pastes it.
+/// The clipboard the rest of the desktop shares. Keep it: on Wayland and X11 the
+/// window that copied serves the text to whoever pastes it.
 pub struct System {
     held: Mutex<arboard::Clipboard>,
 }

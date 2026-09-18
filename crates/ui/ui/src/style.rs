@@ -150,14 +150,30 @@ impl Styles {
         self.palette.base
     }
 
-    /// A band beside the ground: the rail, the header.
+    /// A band beside the work: the rail, the header, the sidebar.
     pub fn panel(&self) -> Color {
+        self.palette.crust
+    }
+
+    /// A surface inside the work that is not the work: the agent pane, the commit box.
+    pub fn inner(&self) -> Color {
         self.palette.mantle
+    }
+
+    /// A row under the pointer, the quietest of the three grounds a row can take.
+    pub fn hover(&self) -> Color {
+        self.palette.surface0
+    }
+
+    /// A selected row or tab.
+    /// The ground of something a click acts on, above a raised row.
+    pub fn action(&self) -> Color {
+        self.palette.surface2
     }
 
     /// A selected row or tab.
     pub fn raised(&self) -> Color {
-        self.palette.surface0
+        self.palette.surface1
     }
 
     pub fn line(&self) -> Color {

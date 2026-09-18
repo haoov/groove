@@ -7,9 +7,11 @@ use groove_gfx::{CellSize, Rect, Size};
 
 use crate::Ui;
 use crate::ctx::Metrics;
-use crate::tokens::{AGENT_MIN, RAIL_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN};
+use crate::tokens::{
+    AGENT_MIN, COMMIT_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
+};
 
-/// A boundary between two columns, which the user drags.
+/// A boundary the user drags.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Edge {
     /// Between the rail and the agent pane.
@@ -18,11 +20,18 @@ pub enum Edge {
     Agent,
     /// Between the workspace and the sidebar.
     Sidebar,
+    /// Between the changed files and the commit box under them.
+    Commit,
 }
 
 impl Edge {
-    /// Every boundary, left to right.
-    pub const ALL: [Edge; 3] = [Edge::Rail, Edge::Agent, Edge::Sidebar];
+    /// Every boundary: the three columns, then the one across the sidebar.
+    pub const ALL: [Edge; 4] = [Edge::Rail, Edge::Agent, Edge::Sidebar, Edge::Commit];
+
+    /// Whether the boundary is a vertical line, which the pointer moves sideways.
+    pub fn upright(self) -> bool {
+        self != Edge::Commit
+    }
 }
 
 /// Every column's width but the workspace's, in logical pixels. The workspace takes
@@ -32,6 +41,8 @@ pub struct Split {
     pub rail: f32,
     pub agent: f32,
     pub sidebar: f32,
+    /// How tall the commit box stands at the sidebar's foot.
+    pub commit: f32,
 }
 
 impl Default for Split {
@@ -41,6 +52,7 @@ impl Default for Split {
             rail: tokens.rail,
             agent: tokens.agent,
             sidebar: tokens.sidebar,
+            commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
         }
     }
 }
@@ -48,7 +60,9 @@ impl Default for Split {
 impl Split {
     /// Puts `edge` at `x`, moving only the two columns it stands between, and no
     /// column under its minimum. Logical pixels throughout.
-    pub fn drag(&mut self, edge: Edge, x: f32, width: f32, sidebar: bool) {
+    pub fn drag(&mut self, edge: Edge, at: f32, window: (f32, f32), sidebar: bool) {
+        let (width, height) = window;
+        let x = at;
         match edge {
             Edge::Rail => {
                 let held = self.rail + self.agent;
@@ -63,14 +77,20 @@ impl Split {
                 let most = (width - self.rail - self.agent - WORKSPACE_MIN).max(SIDEBAR_MIN);
                 self.sidebar = (width - x).clamp(SIDEBAR_MIN, most);
             }
+            Edge::Commit => {
+                let most = (height - FILES_MIN).max(COMMIT_MIN);
+                self.commit = (height - at).clamp(COMMIT_MIN, most);
+            }
         }
     }
 
-    pub fn edge_at(&self, edge: Edge, width: f32, sidebar: bool) -> f32 {
+    pub fn edge_at(&self, edge: Edge, window: (f32, f32), sidebar: bool) -> f32 {
+        let (width, height) = window;
         match edge {
             Edge::Rail => self.rail,
             Edge::Agent => self.rail + self.agent,
             Edge::Sidebar => width - self.aside(sidebar),
+            Edge::Commit => height - self.commit,
         }
     }
 
@@ -97,6 +117,8 @@ pub struct Layout {
     pub workspace: Rect,
     /// The tab's own list, folded to nothing when the tab has none.
     pub sidebar: Rect,
+    /// The commit box at the sidebar's foot, as tall as the user has dragged it.
+    pub commit: Rect,
 }
 
 impl Layout {
@@ -108,8 +130,10 @@ impl Layout {
         let aside = scale(split.aside(sidebar));
         let work_x = rail + agent;
         let work_width = (window.w - work_x - aside).max(0.0);
+        let box_ = scale(split.commit).min(window.h);
         Self {
             window,
+            commit: Rect::new(work_x + work_width, window.h - box_, aside, box_),
             rail: Rect::new(0.0, 0.0, rail, window.h),
             agent: Rect::new(rail, 0.0, agent, window.h),
             header: Rect::new(work_x, 0.0, work_width, tokens.header),

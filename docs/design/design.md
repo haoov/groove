@@ -214,7 +214,24 @@ entirely when collapsed.
 
 **Commit box.** In the sidebar under the changed files, since it acts on the staged
 set the list shows: git status, message, commit, and an actions menu — push, pull,
-rebase, discard all. Commit commits the index.
+rebase, discard all. Commit commits the index. The message is typed on the same
+buffer a file is, so a caret, a selection and an undo work there too; Enter is a line
+of the message and `ctrl+Enter` commits.
+
+**Three grounds, deepest first.** The bands beside the work — rail, header, sidebar —
+sit lowest; a surface inside the work that is not the work — the agent pane, the
+commit box — sits between; the work itself is the brightest the theme has.
+
+**Three grounds a row can take, and they never share a value.** Under the pointer is
+the quietest, a selected row is stronger, and what a click acts on is stronger again.
+Where the caret or the open file is, two rules stand instead of a ground: a place is
+not a state.
+
+**A row offers, it never surprises.** Pointing at a file shows one word at its end —
+stage, or unstage — in the place its counts were. Everything else a row can do is
+behind the right button, and **discard asks in the row itself**: the row becomes the
+question and its two answers. No modal, and nothing destructive within a click of
+something ordinary.
 
 ### Review sheet
 

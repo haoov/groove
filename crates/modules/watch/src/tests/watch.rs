@@ -26,7 +26,7 @@ fn worktree() -> tempfile::TempDir {
 
 fn watching(dir: &tempfile::TempDir) -> (crate::Watch, Receiver<Vec<PathBuf>>) {
     let (sender, batches) = channel();
-    let watch = watch(dir.path(), QUIET, move |paths| {
+    let watch = watch(dir.path(), Vec::new(), QUIET, move |paths| {
         let _ = sender.send(paths);
     })
     .expect("a watcher");
@@ -167,4 +167,38 @@ fn an_ignored_directory_that_appears_later_stays_unwatched() {
     assert_eq!(batch.len(), 1, "{batch:?}");
     assert!(batch[0].ends_with("lib.rs"));
     assert_eq!(watch.watched(), before, "and the watch count holds");
+}
+
+#[test]
+fn git_s_own_state_is_watched_and_its_working_noise_is_not() {
+    let dir = worktree();
+    let git = dir.path().join(".git");
+    std::fs::create_dir_all(git.join("refs/heads")).expect("refs");
+    std::fs::write(git.join("index"), "i").expect("an index");
+    let (sender, batches) = channel();
+    let watch = watch(dir.path(), vec![git.clone()], QUIET, move |paths| {
+        let _ = sender.send(paths);
+    })
+    .expect("a watch");
+
+    std::fs::write(git.join("index.lock"), "lock").expect("a lock");
+    std::fs::create_dir_all(git.join("objects/ab")).expect("objects");
+    std::fs::write(git.join("objects/ab/cdef"), "blob").expect("a loose object");
+    std::fs::write(git.join("COMMIT_EDITMSG"), "wip").expect("a message");
+    assert!(
+        batches.recv_timeout(QUIET * 8).is_err(),
+        "git writing its own working files is not a change"
+    );
+
+    std::fs::write(git.join("index"), "index again").expect("a stage");
+    let batch = batches.recv_timeout(WAIT).expect("the index is a change");
+    assert!(
+        batch.iter().any(|path| path.ends_with("index")),
+        "{batch:?}"
+    );
+
+    std::fs::write(git.join("HEAD"), "ref: refs/heads/other\n").expect("a checkout");
+    let batch = batches.recv_timeout(WAIT).expect("HEAD is a change");
+    assert!(batch.iter().any(|path| path.ends_with("HEAD")), "{batch:?}");
+    drop(watch);
 }

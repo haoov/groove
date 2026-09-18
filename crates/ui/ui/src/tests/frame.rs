@@ -28,7 +28,11 @@ fn an_empty_state_draws_the_rail_and_the_hint() {
     assert_eq!(frame.layers().len(), 1);
     let rail = &frame.layers()[0].quads[0];
     assert_eq!(rail.rect.w, 220.0);
-    assert_eq!(rail.color, Palette::LATTE.mantle);
+    assert_eq!(
+        rail.color,
+        Palette::LATTE.crust,
+        "the chrome sits under the work"
+    );
     let texts = texts(&frame);
     assert!(texts.iter().any(|t| t == "Board"));
     assert!(texts.iter().any(|t| t.starts_with("No session open")));

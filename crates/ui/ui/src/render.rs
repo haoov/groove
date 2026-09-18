@@ -29,6 +29,9 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         shared::rail::draw(&mut ctx, app, ui);
         session::draw(&mut ctx, app, ui);
         shared::splitter::draw(&mut ctx);
+        if let Some(menu) = &ui.menu {
+            shared::actions::draw(&mut ctx, ui, menu);
+        }
         if let Some(palette) = &ui.palette {
             shared::palette::draw(&mut ctx, app, palette);
         }

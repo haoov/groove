@@ -150,11 +150,13 @@ fn the_caret_shows_only_where_the_keyboard_is() {
     ui.focus = crate::Focus::Workspace;
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let rules = |ui: &Ui| {
-        let (frame, _) = view_of(&app, ui);
+        let (frame, hits) = view_of(&app, ui);
+        let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
         frame.layers()[0]
             .quads
             .iter()
             .filter(|quad| quad.color == styles.here() && quad.rect.h == Tokens::new(1.0).hairline)
+            .filter(|quad| code.contains(quad.rect.x + 1.0, quad.rect.y))
             .count()
     };
     assert_eq!(rules(&ui), 2, "a rule above the caret's row and one below");
@@ -191,13 +193,14 @@ fn the_sidebar_says_which_file_is_open() {
         .rect_of(&Target::File("src/lib.rs".into()))
         .expect("the file's row");
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    assert!(
-        frame.layers()[0]
-            .quads
-            .iter()
-            .any(|quad| quad.color == styles.raised() && quad.rect == row),
-        "the open file's row is raised"
-    );
+    let hairline = Tokens::new(1.0).hairline;
+    let rules = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == styles.here() && quad.rect.h == hairline)
+        .filter(|quad| quad.rect.x == row.x && quad.rect.w == row.w)
+        .count();
+    assert_eq!(rules, 2, "the open file's row is ruled above and below");
 }
 
 #[test]

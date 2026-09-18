@@ -291,6 +291,14 @@ impl ApplicationHandler<Message> for App {
                 self.input(Input::Press { x, y });
             }
             WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            } => {
+                let (x, y) = self.cursor;
+                self.input(Input::Menu { x, y });
+            }
+            WindowEvent::MouseInput {
                 state: ElementState::Released,
                 button: MouseButton::Left,
                 ..
@@ -324,6 +332,7 @@ fn icon_of(cursor: Cursor) -> CursorIcon {
         Cursor::Default => CursorIcon::Default,
         Cursor::Pointer => CursorIcon::Pointer,
         Cursor::ColResize => CursorIcon::ColResize,
+        Cursor::RowResize => CursorIcon::RowResize,
         Cursor::Text => CursorIcon::Text,
     }
 }

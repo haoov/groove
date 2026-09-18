@@ -9,24 +9,26 @@ use crate::layout::Edge;
 
 /// A grab band over each boundary, above whatever the panes drew there.
 pub fn draw(ctx: &mut Ctx) {
-    let (grab, height) = (ctx.tokens.grab, ctx.layout.window.h);
     for edge in Edge::ALL {
-        let Some(x) = boundary(ctx, edge) else {
+        let Some(band) = band(ctx, edge) else {
             continue;
         };
-        let band = Rect::new(x - grab / 2.0, 0.0, grab, height);
         ctx.hit(band, Target::Split(edge));
     }
 }
 
-/// Where the boundary was drawn, or nothing when its column is folded.
-fn boundary(ctx: &Ctx, edge: Edge) -> Option<f32> {
+/// The band to grab a boundary by, or nothing when its column is folded.
+fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
+    let (grab, window) = (ctx.tokens.grab, ctx.layout.window);
+    let upright = |x: f32| Rect::new(x - grab / 2.0, 0.0, grab, window.h);
+    let aside = ctx.layout.sidebar;
     match edge {
-        Edge::Rail => Some(ctx.layout.rail.right()),
-        Edge::Agent => Some(ctx.layout.agent.right()),
-        Edge::Sidebar => match ctx.layout.sidebar.is_empty() {
-            true => None,
-            false => Some(ctx.layout.sidebar.x),
-        },
+        Edge::Rail => Some(upright(ctx.layout.rail.right())),
+        Edge::Agent => Some(upright(ctx.layout.agent.right())),
+        Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x)),
+        Edge::Commit => (!aside.is_empty()).then(|| {
+            let top = ctx.layout.commit.y;
+            Rect::new(aside.x, top - grab / 2.0, aside.w, grab)
+        }),
     }
 }

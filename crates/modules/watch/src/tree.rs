@@ -10,14 +10,17 @@ use notify::{RecommendedWatcher, RecursiveMode, Watcher as _};
 /// own directory only.
 pub(crate) struct Tree {
     root: PathBuf,
+    /// Watched whatever the walk says.
+    fixed: Vec<PathBuf>,
     watched: HashSet<PathBuf>,
     size: Arc<AtomicUsize>,
 }
 
 impl Tree {
-    pub(crate) fn new(root: &Path, size: Arc<AtomicUsize>) -> Self {
+    pub(crate) fn new(root: &Path, fixed: Vec<PathBuf>, size: Arc<AtomicUsize>) -> Self {
         Self {
             root: root.to_path_buf(),
+            fixed,
             watched: HashSet::new(),
             size,
         }
@@ -26,7 +29,8 @@ impl Tree {
     /// Watches every directory under the root the ignore rules keep, and drops the
     /// rest. Returns how many are watched.
     pub(crate) fn reconcile(&mut self, watcher: &mut RecommendedWatcher) -> usize {
-        let wanted: HashSet<PathBuf> = directories(&self.root).into_iter().collect();
+        let mut wanted: HashSet<PathBuf> = directories(&self.root).into_iter().collect();
+        wanted.extend(self.fixed.iter().filter(|dir| dir.is_dir()).cloned());
         let fresh: Vec<PathBuf> = wanted.difference(&self.watched).cloned().collect();
         let gone: Vec<PathBuf> = self.watched.difference(&wanted).cloned().collect();
         for dir in fresh {
@@ -42,10 +46,23 @@ impl Tree {
         self.watched.len()
     }
 
-    /// Whether a path is worth reporting: anything but a directory left unwatched.
+    /// Whether a path is worth reporting: anything but a directory left unwatched,
+    /// and of git's own state only what a commit, a stage or a checkout moves.
     pub(crate) fn keeps(&self, path: &Path) -> bool {
+        if self.fixed.iter().any(|dir| path.starts_with(dir)) {
+            return git_state(path);
+        }
         !path.is_dir() || self.watched.contains(path)
     }
+}
+
+/// The names inside git's own directory that say the repository moved: the branch
+/// HEAD points at, the index, and the refs themselves. Everything else there is
+/// git's working noise, including the locks it takes while it writes.
+fn git_state(path: &Path) -> bool {
+    let name = path.file_name().unwrap_or_default();
+    let refs = path.components().any(|part| part.as_os_str() == "refs");
+    refs || name == "HEAD" || name == "index"
 }
 
 /// `root` and the directories under it, minus what git is told to ignore and `.git`.

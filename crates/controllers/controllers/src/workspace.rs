@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{Edit, Error, ErrorKind, Result, WorktreeId};
-use groove_workspace_service::{Derived, Document, Opened, derived, opened, reopened, summary};
+use groove_workspace_service::{
+    Buffer, Derived, Document, Opened, derived, opened, reopened, summary,
+};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -25,6 +27,16 @@ pub enum Command {
     Cut,
     /// `workspace.paste`: the clipboard, over what the carets hold.
     Paste,
+    /// `workspace.stage`: one path into the index.
+    Stage { path: String },
+    /// `workspace.unstage`: one path back out of it.
+    Unstage { path: String },
+    /// `workspace.discard`: what one path holds, thrown away.
+    Discard { path: String },
+    /// `workspace.message`: one keystroke on the commit message.
+    Message(Edit),
+    /// `workspace.commit`: the index, with the message the box holds.
+    Commit,
 }
 
 impl Command {
@@ -37,6 +49,11 @@ impl Command {
             Command::Copy => "workspace.copy",
             Command::Cut => "workspace.cut",
             Command::Paste => "workspace.paste",
+            Command::Stage { .. } => "workspace.stage",
+            Command::Unstage { .. } => "workspace.unstage",
+            Command::Discard { .. } => "workspace.discard",
+            Command::Message(_) => "workspace.message",
+            Command::Commit => "workspace.commit",
         }
     }
 }
@@ -55,6 +72,11 @@ pub fn dispatch(
         Command::Copy => copy(state, services, spawner, false),
         Command::Cut => copy(state, services, spawner, true),
         Command::Paste => paste(state, services, spawner),
+        Command::Stage { path } => index(state, spawner, Act::Stage, path),
+        Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
+        Command::Discard { path } => index(state, spawner, Act::Discard, path),
+        Command::Message(edit) => state.workspace.message.edit(&edit),
+        Command::Commit => commit(state, spawner),
     }
 }
 
@@ -147,8 +169,7 @@ fn saved(state: &mut AppState, path: &str) {
     }
 }
 
-/// What the carets hold goes to the clipboard, off the main thread: the window that
-/// copied serves the text to whoever pastes it.
+/// What the carets hold, to the clipboard, off the main thread.
 fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner, cut: bool) {
     let Some(open) = state.workspace.opened.as_ref() else {
         return;
@@ -189,6 +210,79 @@ fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     }));
 }
 
+/// What one action does to the index.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Act {
+    Stage,
+    Unstage,
+    Discard,
+}
+
+impl Act {
+    fn label(self) -> &'static str {
+        match self {
+            Act::Stage => "staging",
+            Act::Unstage => "unstaging",
+            Act::Discard => "discarding",
+        }
+    }
+}
+
+/// One path into the index, out of it, or thrown away.
+fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path: String) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let job = state.begin(format!("{} {path}", act.label()));
+    spawner.spawn(Box::pin(async move {
+        let paths = [path];
+        let done = match act {
+            Act::Stage => groove_workspace_service::stage(&dir, &paths).await,
+            Act::Unstage => groove_workspace_service::unstage(&dir, &paths).await,
+            Act::Discard => groove_workspace_service::discard(&dir, &paths).await,
+        };
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                match done {
+                    Ok(()) => load(state, spawner),
+                    Err(e) => state.errors.push(e),
+                }
+            },
+        ) as Continuation
+    }));
+}
+
+/// The index committed, then every side of the diff read again.
+fn commit(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let message = state.workspace.message.text();
+    if message.trim().is_empty() {
+        return;
+    }
+    let job = state.begin("committing");
+    spawner.spawn(Box::pin(async move {
+        let done = groove_workspace_service::commit(&dir, message.trim()).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                match done {
+                    Ok(()) => committed(state, spawner),
+                    Err(e) => state.errors.push(e),
+                }
+            },
+        ) as Continuation
+    }));
+}
+
+/// The message is spent, and every side of the diff is read again.
+fn committed(state: &mut AppState, spawner: &dyn Spawner) {
+    state.workspace.message = Buffer::default();
+    reread(state, spawner);
+}
+
 /// Where the HEAD side of a reopened file comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Head {
@@ -206,7 +300,11 @@ fn reread(state: &mut AppState, spawner: &dyn Spawner) {
 }
 
 /// The same, for what a write under the worktree touched.
-fn refresh(state: &mut AppState, spawner: &dyn Spawner, paths: &[PathBuf]) {
+fn refresh(state: &mut AppState, services: &Services, spawner: &dyn Spawner, paths: &[PathBuf]) {
+    if state.workspace.moved_git(paths) {
+        crate::session::refresh_status(state, services, spawner);
+        return reread(state, spawner);
+    }
     load(state, spawner);
     if state.workspace.shows(paths) {
         reopen(state, spawner, Head::Keep);
@@ -303,6 +401,7 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
         return state.workspace.clear();
     };
     if stale(state) {
+        state.workspace.opened = None;
         load(state, spawner);
     }
     if state.workspace.watching.as_ref() != Some(&worktree) {
@@ -314,11 +413,24 @@ fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: WorktreeId) {
     let Some(dir) = directory(state, &worktree) else {
         return;
     };
-    let on_change = reload(spawner.sink(), worktree.clone());
-    let watched = groove_workspace_service::watch(&mut state.workspace, worktree, &dir, on_change);
-    if let Err(e) = watched {
-        state.errors.push(e);
-    }
+    spawner.spawn(Box::pin(async move {
+        let git = groove_workspace_service::git_dir(&dir).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                let on_change = reload(spawner.sink(), worktree.clone());
+                let watched = groove_workspace_service::watch(
+                    &mut state.workspace,
+                    worktree,
+                    &dir,
+                    git,
+                    on_change,
+                );
+                if let Err(e) = watched {
+                    state.errors.push(e);
+                }
+            },
+        ) as Continuation
+    }));
 }
 
 /// One read in flight at most. What moves while it runs waits for the next one.
@@ -331,10 +443,10 @@ fn reload(
     let once = coalesced(sink, move || {
         let (worktree, changed) = (worktree.clone(), changed.clone());
         Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 let paths = std::mem::take(&mut *lock(&changed));
                 if state.workspace.watching.as_ref() == Some(&worktree) {
-                    refresh(state, spawner, &paths);
+                    refresh(state, services, spawner, &paths);
                 }
             },
         ) as Continuation

@@ -57,6 +57,11 @@ pub enum Input {
         y: f32,
     },
     Release,
+    /// The right button went down here.
+    Menu {
+        x: f32,
+        y: f32,
+    },
     /// The wheel or the trackpad, over this point.
     Scroll {
         x: f32,
@@ -83,6 +88,10 @@ pub fn handle(
     match input {
         Input::Key { key, mods } => keys::key_input(key, mods, ui, app),
         Input::Press { x, y } => pointer::press(x, y, ui, app, hits, metrics),
+        Input::Menu { x, y } => {
+            pointer::asked(x, y, ui, hits);
+            Vec::new()
+        }
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
         Input::Release => {
             ui.drag = None;
@@ -106,8 +115,9 @@ pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
 
 /// The pointer: a drag in flight owns it, else whatever was drawn under it.
 pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
-    match ui.drag {
-        Some(_) => Cursor::ColResize,
+    match ui.drag.map(|drag| drag.edge.upright()) {
+        Some(true) => Cursor::ColResize,
+        Some(false) => Cursor::RowResize,
         None => hits.cursor_at(x, y),
     }
 }

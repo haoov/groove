@@ -7,6 +7,9 @@ pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
 pub const GROUND_ALPHA: u8 = 38;
 
+/// How many lines of a commit message the box shows.
+pub const MESSAGE_LINES: usize = 10;
+
 /// How long after a press another one counts as the same click, and how far it may
 /// land from it, in logical pixels.
 pub const CLICK_MS: u64 = 400;
@@ -14,6 +17,9 @@ pub const CLICK_SLOP: f32 = 4.0;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
+/// The smallest the commit box and the list above it may be.
+pub const COMMIT_MIN: f32 = 72.0;
+pub const FILES_MIN: f32 = 120.0;
 pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
@@ -54,6 +60,8 @@ pub struct Tokens {
     /// The palette's box.
     pub modal: f32,
     pub modal_top: f32,
+    /// What the right button opens.
+    pub menu: f32,
 }
 
 /// The type scale and the bands that hold it, against the size they follow.
@@ -92,6 +100,7 @@ const LOGICAL: Tokens = Tokens {
     aside_far: 320.0,
     modal: 560.0,
     modal_top: 96.0,
+    menu: 150.0,
 };
 
 impl Tokens {
@@ -132,6 +141,7 @@ impl Tokens {
             aside_far: s(LOGICAL.aside_far),
             modal: s(LOGICAL.modal),
             modal_top: s(LOGICAL.modal_top),
+            menu: s(LOGICAL.menu),
         }
     }
 }

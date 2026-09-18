@@ -143,6 +143,12 @@ diff and the explorer through `watch` like any other change on disk, and the ali
 follows. The sidebar's explorer tab: file tree, search, grep results. LSP later through the semantic hook:
 hover, definition, references, diagnostics.
 
+**Reading the worktree never writes it.** Every git command runs with
+`GIT_OPTIONAL_LOCKS=0`, or `git status` rewrites the index on each read and the
+watcher on git's own directory wakes itself forever. Of that directory only `HEAD`,
+`index` and the refs are reported; the locks, the loose objects and the logs are
+git's working noise.
+
 **Editing.** The buffer is the new side of the open file, so every view edits the same
 text. Four rules, measured rather than assumed:
 
@@ -166,6 +172,8 @@ text. Four rules, measured rather than assumed:
 | `workspace.open_file` | from a diff line or the explorer |
 | `workspace.edit` | one keystroke on the buffer: a motion, a change, an undo |
 | `workspace.copy` · `workspace.cut` · `workspace.paste` | what the carets hold, through the desktop's clipboard |
+| `workspace.stage` · `workspace.unstage` · `workspace.discard` | one path, never more than the row it came from |
+| `workspace.message` · `workspace.commit` | the box's own buffer, and the index it spends |
 | `workspace.save_file` | write; the buffer keeps its place and its history |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
 | `workspace.search` · `workspace.grep` | the sidebar's search bar; `/` selects grep |

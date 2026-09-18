@@ -22,7 +22,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, app),
-        Focus::Sidebar => in_list(key, ui, app),
+        Focus::Sidebar => in_sidebar(key, mods, ui, app),
         Focus::Rail => in_rail(key, app),
     }
 }
@@ -77,6 +77,43 @@ fn with_ctrl(key: Key) -> Option<Command> {
         _ => return None,
     };
     Some(Command::Workspace(workspace::Command::Edit(edit)))
+}
+
+/// The list, or the commit message once the box has been clicked.
+fn in_sidebar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if !ui.session.composing {
+        return in_list(key, ui, app);
+    }
+    if key == Key::Escape {
+        ui.session.composing = false;
+        return Vec::new();
+    }
+    if mods.ctrl && key == Key::Enter {
+        ui.session.composing = false;
+        return vec![Command::Workspace(workspace::Command::Commit)];
+    }
+    in_message(key, mods)
+}
+
+/// What a keystroke asks of the message.
+fn in_message(key: Key, mods: Modifiers) -> Vec<Command> {
+    if mods.ctrl {
+        return Vec::new();
+    }
+    let edit = match key {
+        Key::Char(c) if !mods.alt => Edit::Insert(c.to_string()),
+        Key::Enter => Edit::Newline,
+        Key::Backspace => Edit::Backspace,
+        Key::Delete => Edit::Delete,
+        Key::Left => Edit::Move(Motion::Left),
+        Key::Right => Edit::Move(Motion::Right),
+        Key::Up => Edit::Move(Motion::Up),
+        Key::Down => Edit::Move(Motion::Down),
+        Key::Home => Edit::Move(Motion::LineStart),
+        Key::End => Edit::Move(Motion::LineEnd),
+        _ => return Vec::new(),
+    };
+    vec![Command::Workspace(workspace::Command::Message(edit))]
 }
 
 /// Up and down open the file above or below in the list.

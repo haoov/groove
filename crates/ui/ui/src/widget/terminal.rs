@@ -5,7 +5,7 @@ use crate::ctx::Ctx;
 
 /// A terminal screen as a cell grid at `origin`, clipped to `rect`.
 pub fn screen(ctx: &mut Ctx, rect: Rect, origin: (f32, f32), screen: &Screen) {
-    let ground = ctx.styles.ground();
+    let ground = ctx.styles.inner();
     let grid = grid_of(screen, origin.0, origin.1, ctx.tokens.code, ground);
     ctx.clipped(rect, |ctx| ctx.grid(grid));
 }

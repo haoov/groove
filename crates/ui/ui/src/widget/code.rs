@@ -7,7 +7,7 @@ use crate::ctx::Ctx;
 use crate::hit::Chars;
 use crate::style::Role;
 use crate::tokens::Tokens;
-use crate::widget::row;
+use crate::widget::{row, ruled};
 
 /// One row of code: what its gutters say, its text, and the colour over it.
 pub struct Line<'a> {
@@ -112,6 +112,9 @@ impl Block {
 
     /// Where a line's text starts, past every gutter and the hairline.
     fn content(&self, ctx: &Ctx, rect: Rect) -> f32 {
+        if self.cells == 0 {
+            return rect.x + ctx.tokens.md;
+        }
         let small = ctx.tokens.sm;
         let block = (self.width + small) * self.cells as f32;
         rect.x + small + block + ctx.tokens.md
@@ -215,10 +218,8 @@ fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
 
 /// Where the caret is: a rule above the row and one below it, across the surface.
 fn here(ctx: &mut Ctx, line: Rect) {
-    let (color, thickness) = (ctx.styles.here(), ctx.tokens.hairline);
-    ctx.quad(Rect::new(line.x, line.y, line.w, thickness), color);
-    let under = line.bottom() - thickness;
-    ctx.quad(Rect::new(line.x, under, line.w, thickness), color);
+    let color = ctx.styles.here();
+    ruled(ctx, line, color);
 }
 
 /// What a caret holds, under the text: a band over the characters, run out past the

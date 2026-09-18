@@ -1412,6 +1412,8 @@ version = "0.1.0"
 dependencies = [
  "groove-diff",
  "groove-editor",
+ "groove-git",
+ "groove-text",
  "groove-types",
  "groove-watch",
 ]

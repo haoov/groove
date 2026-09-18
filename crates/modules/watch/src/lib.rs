@@ -41,9 +41,11 @@ impl std::fmt::Debug for Watch {
     }
 }
 
-/// Calls `on_change` with what moved under `dir`, once a burst has gone quiet.
+/// Calls `on_change` with what moved under `dir` or in one of `also`, once a burst
+/// has gone quiet.
 pub fn watch(
     dir: &Path,
+    also: Vec<PathBuf>,
     quiet: Duration,
     on_change: impl Fn(Vec<PathBuf>) + Send + 'static,
 ) -> Result<Watch> {
@@ -53,7 +55,7 @@ pub fn watch(
     })
     .map_err(failed)?;
     let watched = Arc::new(AtomicUsize::new(0));
-    let mut tree = tree::Tree::new(dir, watched.clone());
+    let mut tree = tree::Tree::new(dir, also, watched.clone());
     if tree.reconcile(&mut watcher) == 0 {
         return Err(Error::new(
             ErrorKind::Io,

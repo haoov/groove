@@ -50,6 +50,8 @@ pub struct SessionUi {
     pub diff: f32,
     /// Which of the three views the open file is drawn in.
     pub view: DiffView,
+    /// The keyboard is in the commit box.
+    pub composing: bool,
 }
 
 impl SessionUi {

@@ -5,7 +5,9 @@ use groove_types::{SessionId, WorktreeId};
 use crate::hit::{Cursor, Hits, Target};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
-use crate::tests::{CHORD, WINDOW, click, drag, full_app, metrics, press, release};
+use crate::tests::{
+    CHORD, WINDOW, click, drag, drag_at, full_app, metrics, press, pressed, release, window,
+};
 use crate::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
 use crate::views::session::Tab;
 use crate::{Ui, view};
@@ -245,4 +247,34 @@ fn wide(split: Split) -> Layout {
         split,
         true,
     )
+}
+
+#[test]
+fn the_commit_box_is_dragged_taller_and_the_list_keeps_its_room() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Diff;
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let band = hits
+        .rect_of(&Target::Split(Edge::Commit))
+        .expect("a band across the sidebar");
+    assert_eq!(
+        hits.cursor_at(band.x + 1.0, band.y + band.h / 2.0),
+        crate::Cursor::RowResize,
+        "and it says which way it moves"
+    );
+
+    let before = ui.split.commit;
+    pressed(band.x + 1.0, band.y + band.h / 2.0, &mut ui, &app, &hits);
+    assert!(ui.dragging());
+    drag_at(band.x + 1.0, band.y - 100.0, &mut ui, &app, &hits);
+    assert!(ui.split.commit > before, "taller: {}", ui.split.commit);
+    release(&mut ui, &app, &hits);
+
+    drag_at(band.x + 1.0, 0.0, &mut ui, &app, &hits);
+    let layout = crate::layout::Layout::of(window(), &ui);
+    assert!(
+        layout.commit.y > layout.sidebar.y,
+        "the list above it keeps room whatever the pointer asks"
+    );
 }

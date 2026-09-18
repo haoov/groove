@@ -72,3 +72,27 @@ fn the_switch_names_the_three_views_and_picks_one() {
     assert!(click(split, &mut ui, &app, &hits).is_empty());
     assert_eq!(ui.session.view, DiffView::Split);
 }
+
+#[test]
+fn the_header_says_when_the_file_owes_the_disk() {
+    let app = opened();
+    let ui = on_diff();
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let band = crate::layout::Layout::of(window(), &ui).workspace;
+    let marks = |app: &AppState| {
+        let (frame, _) = view_of(app, &ui);
+        frame.layers()[0]
+            .icons
+            .iter()
+            .filter(|icon| icon.color == styles.color(crate::style::Role::Warn))
+            .filter(|icon| icon.rect.y < band.y + Tokens::new(1.0).row * 2.0)
+            .count()
+    };
+    assert_eq!(marks(&app), 0, "nothing is owed yet");
+
+    let mut dirty = opened();
+    if let Some(open) = dirty.workspace.opened.as_mut() {
+        open.new.edit(&groove_types::Edit::Insert("x".into()));
+    }
+    assert_eq!(marks(&dirty), 1, "and a mark once something is typed");
+}

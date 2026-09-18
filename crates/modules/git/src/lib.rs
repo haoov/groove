@@ -6,6 +6,7 @@ mod command;
 mod diff;
 mod error;
 mod facts;
+mod index;
 pub mod parse;
 mod remote;
 mod status;

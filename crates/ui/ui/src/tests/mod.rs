@@ -4,6 +4,7 @@ mod editing;
 mod files;
 mod focus;
 mod frame;
+mod index;
 mod mouse;
 mod palette;
 mod perf;
@@ -50,6 +51,16 @@ fn click(rect: Rect, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
 /// The pointer at a physical x, mid-drag.
 fn drag(x: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
     handle(Input::Move { x, y: 0.0 }, ui, app, hits, window())
+}
+
+/// The pointer at a point, mid-drag.
+fn drag_at(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    handle(Input::Move { x, y }, ui, app, hits, window())
+}
+
+/// A press at a point.
+fn pressed(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    handle(Input::Press { x, y }, ui, app, hits, window())
 }
 
 fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {

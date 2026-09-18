@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
@@ -33,7 +33,7 @@ pub(crate) fn report(mut parts: Parts) {
         let held = match parts.events.recv_timeout(parts.quiet) {
             Ok(Ok(event)) if !is_change(&event.kind) => false,
             Ok(Ok(event)) => {
-                paths.extend(event.paths.into_iter().filter(|path| !in_git(path)));
+                paths.extend(event.paths);
                 opened.get_or_insert_with(Instant::now);
                 let long = opened.is_some_and(|at| at.elapsed() >= parts.quiet * HOLD);
                 long || paths.len() >= PATHS
@@ -74,9 +74,4 @@ fn is_change(kind: &EventKind) -> bool {
         kind,
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) | EventKind::Any
     )
-}
-
-fn in_git(path: &Path) -> bool {
-    path.components()
-        .any(|part| part.as_os_str() == std::ffi::OsStr::new(".git"))
 }

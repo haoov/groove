@@ -11,7 +11,7 @@ use crate::palette::{Action, Flow, Palette};
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
 use crate::widget::code_at;
-use crate::{Click, Drag, Focus, Ui};
+use crate::{Click, Drag, Focus, Menu, Ui};
 use groove_controllers::workspace_service::columns;
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
@@ -25,10 +25,19 @@ pub(super) fn press(
 ) -> Vec<Command> {
     ui.clicked = Some(counted(ui.clicked, x, y, metrics));
     if let Some(Target::Split(edge)) = hits.at(x, y) {
-        grab(ui, edge, x, metrics);
+        grab(ui, edge, x, y, metrics);
         return Vec::new();
     }
     click(x, y, ui, app, hits, metrics)
+}
+
+/// The right button on a file's row opens its actions; anywhere else closes them.
+pub(super) fn asked(x: f32, y: f32, ui: &mut Ui, hits: &Hits) {
+    ui.discarding = None;
+    ui.menu = match hits.at(x, y) {
+        Some(Target::File(path)) => Some(Menu { at: (x, y), path }),
+        _ => None,
+    };
 }
 
 /// This press, against the one before it: a press soon after another and near it
@@ -49,12 +58,20 @@ fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> Click {
 }
 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
-fn grab(ui: &mut Ui, edge: Edge, x: f32, metrics: Metrics) {
-    let at = ui.split.edge_at(edge, width_of(metrics), sidebar(ui));
+fn grab(ui: &mut Ui, edge: Edge, x: f32, y: f32, metrics: Metrics) {
+    let at = ui.split.edge_at(edge, window_of(metrics), sidebar(ui));
     ui.drag = Some(Drag {
         edge,
-        offset: logical(x, metrics) - at,
+        offset: along(edge, x, y, metrics) - at,
     });
+}
+
+/// The pointer's place along the axis the boundary moves in, in logical pixels.
+fn along(edge: Edge, x: f32, y: f32, metrics: Metrics) -> f32 {
+    match edge.upright() {
+        true => logical(x, metrics),
+        false => logical(y, metrics),
+    }
 }
 
 /// The pointer moved: a boundary follows it, or the open file holds more.
@@ -67,7 +84,7 @@ pub(super) fn moved(
     metrics: Metrics,
 ) -> Vec<Command> {
     if ui.drag.is_some() {
-        drag_to(ui, x, metrics);
+        drag_to(ui, x, y, metrics);
         return Vec::new();
     }
     if !ui.selecting {
@@ -81,12 +98,13 @@ pub(super) fn moved(
 }
 
 /// The boundary follows the pointer.
-fn drag_to(ui: &mut Ui, x: f32, metrics: Metrics) {
+fn drag_to(ui: &mut Ui, x: f32, y: f32, metrics: Metrics) {
     let Some(drag) = ui.drag else {
         return;
     };
-    let at = logical(x, metrics) - drag.offset;
-    ui.split.drag(drag.edge, at, width_of(metrics), sidebar(ui));
+    let at = along(drag.edge, x, y, metrics) - drag.offset;
+    ui.split
+        .drag(drag.edge, at, window_of(metrics), sidebar(ui));
 }
 
 fn sidebar(ui: &Ui) -> bool {
@@ -94,8 +112,9 @@ fn sidebar(ui: &Ui) -> bool {
 }
 
 /// The window's width in logical pixels.
-fn width_of(metrics: Metrics) -> f32 {
-    logical(metrics.size.rect().w, metrics)
+fn window_of(metrics: Metrics) -> (f32, f32) {
+    let rect = metrics.size.rect();
+    (logical(rect.w, metrics), logical(rect.h, metrics))
 }
 
 fn logical(value: f32, metrics: Metrics) -> f32 {
@@ -116,6 +135,9 @@ fn click(
     if ui.palette.is_some() && !inside {
         ui.palette = None;
         return Vec::new();
+    }
+    if ui.menu.is_some() {
+        return chosen(target, ui);
     }
     ui.focus = focused(&target, ui.focus);
     match target {
@@ -144,9 +166,45 @@ fn click(
             landed(ui, app, hits, metrics, (x, y))
         }
 
+        Some(Target::Stage(path)) => {
+            vec![Command::Workspace(workspace::Command::Stage { path })]
+        }
+        Some(Target::Unstage(path)) => {
+            vec![Command::Workspace(workspace::Command::Unstage { path })]
+        }
+        Some(Target::Discard(path)) => {
+            ui.discarding = None;
+            vec![Command::Workspace(workspace::Command::Discard { path })]
+        }
+        Some(Target::Keep) => {
+            ui.discarding = None;
+            Vec::new()
+        }
+        Some(Target::Message) => {
+            ui.session.composing = true;
+            Vec::new()
+        }
+        Some(Target::Commit) => {
+            ui.session.composing = false;
+            vec![Command::Workspace(workspace::Command::Commit)]
+        }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::Agent | Target::Palette | Target::Split(_)) | None => Vec::new(),
+        Some(Target::Agent | Target::Palette | Target::Split(_) | Target::MenuRow(_)) | None => {
+            Vec::new()
+        }
     }
+}
+
+/// A click while the actions are open: a row of them, or anywhere to close them.
+fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
+    let menu = ui.menu.take();
+    let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
+        return Vec::new();
+    };
+    if crate::views::shared::actions::ROWS.get(at) == Some(&"discard changes") {
+        ui.discarding = Some(menu.path);
+    }
+    Vec::new()
 }
 
 /// Changes the view, keeping the line at the top of the old one in view.
@@ -163,7 +221,15 @@ fn focused(target: &Option<Target>, focus: Focus) -> Focus {
         Some(Target::Session(_)) => Focus::Rail,
         Some(Target::Agent) => Focus::Agent,
         Some(Target::Code) | Some(Target::View(_)) => Focus::Workspace,
-        Some(Target::File(_)) => Focus::Sidebar,
+        Some(
+            Target::File(_)
+            | Target::Stage(_)
+            | Target::Unstage(_)
+            | Target::Discard(_)
+            | Target::Keep
+            | Target::Message
+            | Target::Commit,
+        ) => Focus::Sidebar,
         _ => focus,
     }
 }

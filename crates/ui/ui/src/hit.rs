@@ -18,6 +18,8 @@ pub enum Cursor {
     Pointer,
     /// Over a boundary a drag moves sideways.
     ColResize,
+    /// Over one a drag moves up and down.
+    RowResize,
     /// Over code.
     Text,
 }
@@ -43,6 +45,17 @@ pub enum Target {
     Fold,
     /// A file's row in the sidebar.
     File(String),
+    /// What a row offers while the pointer is on it.
+    Stage(String),
+    Unstage(String),
+    /// What the row asks before it throws the change away, and its two answers.
+    Discard(String),
+    Keep,
+    /// A row of the menu the right button opens.
+    MenuRow(usize),
+    /// The commit message, and what commits it.
+    Message,
+    Commit,
     /// The open file's rows.
     Code,
     /// One of the three views of the open file.
@@ -62,10 +75,20 @@ impl Target {
             | Target::PaletteRow(_)
             | Target::Fold
             | Target::File(_)
+            | Target::Stage(_)
+            | Target::Unstage(_)
+            | Target::Discard(_)
+            | Target::Keep
+            | Target::MenuRow(_)
+            | Target::Commit
             | Target::View(_) => Cursor::Pointer,
+            Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent => Cursor::Default,
-            Target::Split(_) => Cursor::ColResize,
+            Target::Split(edge) => match edge.upright() {
+                true => Cursor::ColResize,
+                false => Cursor::RowResize,
+            },
             Target::Palette => Cursor::Default,
         }
     }
