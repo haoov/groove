@@ -26,6 +26,9 @@ pub enum Mark {
 }
 
 impl Mark {
+    /// The turn that points a mark the other way.
+    pub(crate) const UPWARDS: u8 = Icon::TURNS / 2;
+
     /// The mark a session wears for its kind.
     pub fn of_kind(kind: &SessionKind) -> Self {
         match kind {

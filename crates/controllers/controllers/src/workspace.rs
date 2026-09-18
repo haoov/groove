@@ -37,6 +37,14 @@ pub enum Command {
     Message(Edit),
     /// `workspace.commit`: the index, with the message the box holds.
     Commit,
+    /// `workspace.push`: the branch to its own name on origin.
+    Push,
+    /// `workspace.pull`: origin's own head, fast-forward only.
+    Pull,
+    /// `workspace.rebase`: the branch replayed on the ref it forks from.
+    Rebase,
+    /// `workspace.discard_all`: every change in the worktree, thrown away.
+    DiscardAll,
 }
 
 impl Command {
@@ -54,6 +62,10 @@ impl Command {
             Command::Discard { .. } => "workspace.discard",
             Command::Message(_) => "workspace.message",
             Command::Commit => "workspace.commit",
+            Command::Push => "workspace.push",
+            Command::Pull => "workspace.pull",
+            Command::Rebase => "workspace.rebase",
+            Command::DiscardAll => "workspace.discard_all",
         }
     }
 }
@@ -77,6 +89,10 @@ pub fn dispatch(
         Command::Discard { path } => index(state, spawner, Act::Discard, path),
         Command::Message(edit) => state.workspace.message.edit(&edit),
         Command::Commit => commit(state, spawner),
+        Command::Push => remote(state, spawner, Remote::Push),
+        Command::Pull => remote(state, spawner, Remote::Pull),
+        Command::Rebase => remote(state, spawner, Remote::Rebase),
+        Command::DiscardAll => discard_all(state, spawner),
     }
 }
 
@@ -204,6 +220,88 @@ fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 if let Some(text) = text.filter(|text| !text.is_empty()) {
                     edit_file(state, spawner, Edit::Insert(text));
+                }
+            },
+        ) as Continuation
+    }));
+}
+
+/// What one action does against the remote or the base.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Remote {
+    Push,
+    Pull,
+    Rebase,
+}
+
+impl Remote {
+    fn label(self) -> &'static str {
+        match self {
+            Remote::Push => "pushing",
+            Remote::Pull => "pulling",
+            Remote::Rebase => "rebasing",
+        }
+    }
+}
+
+/// One action against the remote. HEAD may move, so everything is read again.
+fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let Some(worktree) = state
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .cloned()
+    else {
+        return;
+    };
+    let job = state.begin(act.label());
+    spawner.spawn(Box::pin(async move {
+        let done = match act {
+            Remote::Push => groove_workspace_service::push(&dir, &worktree.branch).await,
+            Remote::Pull => groove_workspace_service::pull(&dir).await,
+            Remote::Rebase => {
+                groove_workspace_service::rebase(&dir, worktree.base_ref.clone()).await
+            }
+        };
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                if let Err(e) = done {
+                    state.errors.push(e);
+                }
+                crate::session::refresh_status(state, services, spawner);
+                reread(state, spawner);
+            },
+        ) as Continuation
+    }));
+}
+
+/// Every change in the worktree, thrown away.
+fn discard_all(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    let paths: Vec<String> = state
+        .workspace
+        .files
+        .iter()
+        .map(|file| file.path.clone())
+        .collect();
+    if paths.is_empty() {
+        return;
+    }
+    let job = state.begin("discarding every change");
+    spawner.spawn(Box::pin(async move {
+        let done = groove_workspace_service::discard(&dir, &paths).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                match done {
+                    Ok(()) => load(state, spawner),
+                    Err(e) => state.errors.push(e),
                 }
             },
         ) as Continuation

@@ -48,14 +48,16 @@ pub enum Target {
     /// What a row offers while the pointer is on it.
     Stage(String),
     Unstage(String),
-    /// What the row asks before it throws the change away, and its two answers.
-    Discard(String),
+    /// The two answers to what is asked before a change is thrown away.
+    Discard,
     Keep,
+    /// What the commit box offers beyond committing.
+    Actions,
     /// A row of the menu the right button opens.
     MenuRow(usize),
-    /// The commit message, and what commits it.
+    /// The commit message, and what the box does now.
     Message,
-    Commit,
+    Do,
     /// The open file's rows.
     Code,
     /// One of the three views of the open file.
@@ -77,10 +79,11 @@ impl Target {
             | Target::File(_)
             | Target::Stage(_)
             | Target::Unstage(_)
-            | Target::Discard(_)
+            | Target::Discard
             | Target::Keep
+            | Target::Actions
             | Target::MenuRow(_)
-            | Target::Commit
+            | Target::Do
             | Target::View(_) => Cursor::Pointer,
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,

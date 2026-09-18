@@ -174,6 +174,8 @@ text. Four rules, measured rather than assumed:
 | `workspace.copy` · `workspace.cut` · `workspace.paste` | what the carets hold, through the desktop's clipboard |
 | `workspace.stage` · `workspace.unstage` · `workspace.discard` | one path, never more than the row it came from |
 | `workspace.message` · `workspace.commit` | the box's own buffer, and the index it spends |
+| `workspace.push` · `workspace.pull` · `workspace.rebase` | the box's actions menu; HEAD may move, so all of it is read again |
+| `workspace.discard_all` | every changed path, asked for in the box first |
 | `workspace.save_file` | write; the buffer keeps its place and its history |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
 | `workspace.search` · `workspace.grep` | the sidebar's search bar; `/` selects grep |

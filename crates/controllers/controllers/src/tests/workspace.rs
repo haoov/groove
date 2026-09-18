@@ -634,3 +634,72 @@ fn a_commit_from_outside_the_window_reaches_the_diff() {
         "nothing is changed any more, since HEAD has it"
     );
 }
+
+#[test]
+fn a_commit_is_pushed_and_the_branch_stops_being_ahead() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    std::fs::write(at.join("a.txt"), "changed\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    sh(at, &["add", "a.txt"]);
+    sh(at, &["commit", "-m", "fix(a): change it"]);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.is_empty()
+    });
+
+    act(&mut state, &services, &spawner, workspace::Command::Push);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let pushed = sh(at, &["rev-parse", "HEAD"]);
+    let upstream = sh(at, &["rev-parse", "@{upstream}"]);
+    assert_eq!(pushed, upstream, "origin has what the branch has");
+}
+
+#[test]
+fn discarding_everything_leaves_the_worktree_as_head_has_it() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    let before = std::fs::read_to_string(at.join("a.txt")).unwrap();
+    std::fs::write(at.join("a.txt"), "changed\n").unwrap();
+    std::fs::write(at.join("new.txt"), "fresh\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.len() == 2
+    });
+
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::DiscardAll,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.files.is_empty()
+    });
+    assert_eq!(std::fs::read_to_string(at.join("a.txt")).unwrap(), before);
+    assert!(!at.join("new.txt").exists(), "and the untracked one goes");
+}
+
+#[test]
+fn pulling_a_branch_that_never_moved_says_nothing_went_wrong() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    act(&mut state, &services, &spawner, workspace::Command::Pull);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}

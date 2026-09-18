@@ -46,6 +46,12 @@ impl Git {
             .map(drop)
     }
 
+    /// The branch replayed on `onto`. A rebase that stops is left as git left it,
+    /// for the user to finish or abort in a terminal.
+    pub async fn rebase(&self, onto: &str) -> Result<()> {
+        self.text(&["rebase", onto]).await.map(drop)
+    }
+
     /// `git clone <url> <dest>`, run in the destination's parent.
     pub async fn clone(url: &str, dest: &Path) -> Result<Git> {
         let parent = dest.parent().unwrap_or(Path::new("."));

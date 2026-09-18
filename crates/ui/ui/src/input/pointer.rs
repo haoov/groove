@@ -6,12 +6,12 @@ use groove_types::{Caret, DiffView, Edit, Motion, WorktreeId};
 use super::Key;
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
-use crate::layout::Edge;
+use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Flow, Palette};
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
 use crate::widget::code_at;
-use crate::{Click, Drag, Focus, Menu, Ui};
+use crate::{Click, Corner, Drag, Focus, Losing, Menu, Of, Ui};
 use groove_controllers::workspace_service::columns;
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
@@ -32,10 +32,15 @@ pub(super) fn press(
 }
 
 /// The right button on a file's row opens its actions; anywhere else closes them.
-pub(super) fn asked(x: f32, y: f32, ui: &mut Ui, hits: &Hits) {
+pub(super) fn asked(x: f32, y: f32, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
     ui.discarding = None;
     ui.menu = match hits.at(x, y) {
-        Some(Target::File(path)) => Some(Menu { at: (x, y), path }),
+        Some(Target::File(path)) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::File(path),
+        }),
+        Some(Target::Actions) => Some(worktree_menu(ui, hits, metrics)),
         _ => None,
     };
 }
@@ -172,21 +177,23 @@ fn click(
         Some(Target::Unstage(path)) => {
             vec![Command::Workspace(workspace::Command::Unstage { path })]
         }
-        Some(Target::Discard(path)) => {
-            ui.discarding = None;
-            vec![Command::Workspace(workspace::Command::Discard { path })]
-        }
+        Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => {
             ui.discarding = None;
+            Vec::new()
+        }
+        Some(Target::Actions) => {
+            ui.menu = Some(worktree_menu(ui, hits, metrics));
             Vec::new()
         }
         Some(Target::Message) => {
             ui.session.composing = true;
             Vec::new()
         }
-        Some(Target::Commit) => {
+        Some(Target::Do) => {
             ui.session.composing = false;
-            vec![Command::Workspace(workspace::Command::Commit)]
+            let act = crate::views::session::components::commit::primary(app);
+            act.map(Command::Workspace).into_iter().collect()
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::Agent | Target::Palette | Target::Split(_) | Target::MenuRow(_)) | None => {
@@ -195,16 +202,41 @@ fn click(
     }
 }
 
-/// A click while the actions are open: a row of them, or anywhere to close them.
+/// The worktree's actions stand above the caret that opened them, ending on the rule
+/// that separates the box from the list.
+fn worktree_menu(ui: &Ui, hits: &Hits, metrics: Metrics) -> Menu {
+    let box_ = Layout::of(metrics, ui).commit;
+    let right = hits
+        .rect_of(&Target::Actions)
+        .map(|caret| caret.right())
+        .unwrap_or(box_.right());
+    Menu {
+        at: (right, box_.y),
+        corner: Corner::BottomRight,
+        of: Of::Worktree,
+    }
+}
+
+/// The answer that throws the change away: one file's, or every one.
+fn lose(ui: &mut Ui) -> Vec<Command> {
+    let asked = ui.discarding.take();
+    let command = match asked {
+        Some(Losing::File(path)) => workspace::Command::Discard { path },
+        Some(Losing::Everything) => workspace::Command::DiscardAll,
+        None => return Vec::new(),
+    };
+    vec![Command::Workspace(command)]
+}
+
+/// A click while a menu is open: a row of it, or anywhere to close it.
 fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let menu = ui.menu.take();
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
-    if crate::views::shared::actions::ROWS.get(at) == Some(&"discard changes") {
-        ui.discarding = Some(menu.path);
-    }
-    Vec::new()
+    let (commands, asking) = crate::views::shared::actions::picked(&menu.of, at);
+    ui.discarding = asking;
+    commands
 }
 
 /// Changes the view, keeping the line at the top of the old one in view.
@@ -225,10 +257,10 @@ fn focused(target: &Option<Target>, focus: Focus) -> Focus {
             Target::File(_)
             | Target::Stage(_)
             | Target::Unstage(_)
-            | Target::Discard(_)
+            | Target::Discard
             | Target::Keep
             | Target::Message
-            | Target::Commit,
+            | Target::Do,
         ) => Focus::Sidebar,
         _ => focus,
     }

@@ -74,19 +74,44 @@ pub struct Ui {
     pub selecting: bool,
     /// The last press, for the next one to know whether it carries on the same click.
     pub clicked: Option<Click>,
-    /// The file whose row is asking before it throws its change away.
-    pub discarding: Option<String>,
+    /// What is asking before it throws a change away.
+    pub discarding: Option<Losing>,
     /// What the right button opened, and where.
     pub menu: Option<Menu>,
     /// What the pointer is over, for the row under it to say so.
     pub hover: Option<Target>,
 }
 
-/// What the right button opened: the actions for one file, at the point it asked.
+/// An open menu: what it belongs to, at the point it was asked for.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Menu {
+    /// The corner named by `corner`, in physical pixels.
     pub at: (f32, f32),
-    pub path: String,
+    pub corner: Corner,
+    pub of: Of,
+}
+
+/// Which corner of the panel sits at the point it was opened from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Corner {
+    TopLeft,
+    BottomRight,
+}
+
+/// What a menu offers.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Of {
+    /// One file of the list.
+    File(String),
+    /// The worktree, from the commit box.
+    Worktree,
+}
+
+/// What is asked before a change is thrown away.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Losing {
+    File(String),
+    Everything,
 }
 
 /// A press, and how many the pointer has made in the same place in a row.

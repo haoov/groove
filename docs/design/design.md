@@ -227,6 +227,17 @@ the quietest, a selected row is stronger, and what a click acts on is stronger a
 Where the caret or the open file is, two rules stand instead of a ground: a place is
 not a state.
 
+**One button says what to do now.** The commit box offers a single action — commit
+while something is staged, push while the branch is ahead, pull while it is behind —
+with a caret beside it for everything else the worktree can do. The menu hangs from
+that caret: its own bottom-right corner on the caret's, so it stands over the button
+it came from and ends on the rule that separates the box from the list.
+
+**A question takes the place of what asked it.** Discarding one file turns its row
+into the question; discarding every change turns the commit box's first line into it.
+Two answers at the end, no modal, and nothing destructive within a click of something
+ordinary.
+
 **A row offers, it never surprises.** Pointing at a file shows one word at its end —
 stage, or unstage — in the place its counts were. Everything else a row can do is
 behind the right button, and **discard asks in the row itself**: the row becomes the

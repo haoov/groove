@@ -153,6 +153,25 @@ pub async fn commit(dir: &Path, message: &str) -> Result<()> {
     Ok(())
 }
 
+/// What the branch does against its remote and its base.
+pub async fn push(dir: &Path, branch: &str) -> Result<()> {
+    groove_git::Git::at(dir).push(branch).await?;
+    Ok(())
+}
+
+pub async fn pull(dir: &Path) -> Result<()> {
+    groove_git::Git::at(dir).pull().await?;
+    Ok(())
+}
+
+/// The branch replayed on the ref it forks from.
+pub async fn rebase(dir: &Path, base: Option<String>) -> Result<()> {
+    let git = groove_git::Git::at(dir);
+    let onto = git.base_ref(base.as_deref()).await?;
+    git.rebase(&onto).await?;
+    Ok(())
+}
+
 /// Writes the buffer to the file it came from.
 pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
     groove_editor::save(dir, path, text)

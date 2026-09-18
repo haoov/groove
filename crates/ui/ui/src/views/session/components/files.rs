@@ -6,11 +6,11 @@ use groove_gfx::Rect;
 use groove_types::FileDiff;
 
 use super::commit;
-use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::style::Role;
 use crate::widget::{button, elide, hairline, row, ruled};
+use crate::{Losing, Ui};
 
 pub(crate) struct Listing<'a> {
     pub groups: Vec<Group<'a>>,
@@ -100,8 +100,8 @@ fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, open: Option<&String>,
 }
 
 fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool, open: bool, ui: &Ui) {
-    if ui.discarding.as_deref() == Some(file.path.as_str()) {
-        return asking(ctx, line, &file.path, ui);
+    if ui.discarding == Some(Losing::File(file.path.clone())) {
+        return asking(ctx, line, "discard changes?", ui);
     }
     let on_row = pointed(ui, &file.path);
     if on_row {
@@ -157,7 +157,7 @@ fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff, ui: &Ui) -> f32 {
 }
 
 /// One word at the end of a row, with a ground of its own under the pointer.
-fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target, ui: &Ui) -> f32 {
+pub(crate) fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target, ui: &Ui) -> f32 {
     let style = ctx.styles.small(Role::Muted);
     let on_it = ui.hover.as_ref() == Some(&target);
     let ground = on_it.then(|| ctx.styles.action());
@@ -166,20 +166,16 @@ fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target, ui: &Ui) -> f32
     box_.x
 }
 
-/// The row asks before it throws a change away, in the row's own place.
-fn asking(ctx: &mut Ctx, line: Rect, path: &str, ui: &Ui) {
+/// A question in the row's own place, with its two answers at its end.
+pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str, ui: &Ui) {
     ctx.quad(line, ctx.styles.raised());
     let keep = acted(ctx, line, "keep", Target::Keep, ui);
     let gone = Rect::new(line.x, line.y, keep - line.x, line.h);
-    let discard = acted(ctx, gone, "discard", Target::Discard(path.to_string()), ui);
+    let discard = acted(ctx, gone, "discard", Target::Discard, ui);
     let style = ctx.styles.small(Role::Bad);
     let asked = Rect::new(line.x, line.y, discard - line.x, line.h);
-    let text = elide(
-        ctx,
-        "discard changes?",
-        &style,
-        asked.w - ctx.tokens.md * 2.0,
-    );
+    let room = (asked.w - ctx.tokens.md * 2.0).max(0.0);
+    let text = elide(ctx, question, &style, room);
     row(ctx, asked, ctx.tokens.md, &text, style);
 }
 

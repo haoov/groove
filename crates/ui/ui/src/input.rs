@@ -89,7 +89,7 @@ pub fn handle(
         Input::Key { key, mods } => keys::key_input(key, mods, ui, app),
         Input::Press { x, y } => pointer::press(x, y, ui, app, hits, metrics),
         Input::Menu { x, y } => {
-            pointer::asked(x, y, ui, hits);
+            pointer::asked(x, y, ui, hits, metrics);
             Vec::new()
         }
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),

@@ -61,3 +61,28 @@ async fn a_missing_origin_is_an_error_not_an_empty_list() {
         Err(Error::Failed { .. })
     ));
 }
+
+#[tokio::test]
+async fn a_branch_is_replayed_on_its_base() {
+    let fx = Fixture::new();
+    let git = fx.git();
+    sh(&fx.work, &["config", "user.email", "t@t"]);
+    sh(&fx.work, &["config", "user.name", "T"]);
+    sh(&fx.work, &["config", "commit.gpgsign", "false"]);
+    sh(&fx.work, &["checkout", "-q", "-b", "work"]);
+    std::fs::write(fx.work.join("mine.txt"), "mine\n").unwrap();
+    sh(&fx.work, &["add", "mine.txt"]);
+    sh(&fx.work, &["commit", "-qm", "feat: mine"]);
+
+    let base = git.base_ref(None).await.expect("a base");
+    git.rebase(&base).await.expect("the rebase runs");
+    let log = sh(&fx.work, &["log", "--oneline", "-2", "--pretty=%s"]);
+    assert!(log.contains("feat: mine"), "the work is on top: {log}");
+}
+
+#[tokio::test]
+async fn a_rebase_onto_something_that_is_not_there_is_an_error() {
+    let fx = Fixture::new();
+    let refused = fx.git().rebase("origin/nope").await;
+    assert!(refused.is_err());
+}
