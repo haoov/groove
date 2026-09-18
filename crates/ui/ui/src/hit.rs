@@ -9,6 +9,13 @@ use groove_types::DiffView;
 use crate::layout::Edge;
 use crate::views::session::Tab;
 
+/// Which of the header's pickers was asked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Picks {
+    Repo,
+    Branch,
+}
+
 /// What the pointer looks like over a region.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum Cursor {
@@ -31,8 +38,8 @@ pub enum Target {
     Session(SessionId),
     /// A tab of the workspace.
     Tab(Tab),
-    /// The header's repo or worktree picker.
-    Picker,
+    /// One of the header's two pickers.
+    Picker(Picks),
     /// An overview row.
     Worktree(WorktreeId),
     /// A palette row, by its place in the list.
@@ -72,7 +79,7 @@ impl Target {
         match self {
             Target::Session(_)
             | Target::Tab(_)
-            | Target::Picker
+            | Target::Picker(_)
             | Target::Worktree(_)
             | Target::PaletteRow(_)
             | Target::Fold

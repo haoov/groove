@@ -3,7 +3,7 @@ use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{Picks, Target};
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{after_mark, divider, hairline, icon, leading, picker, row};
@@ -49,11 +49,11 @@ fn pickers(ctx: &mut Ctx, line: Rect, x: f32, open: &Open) {
         .map(|r| r.project.as_str());
     let (repo_role, branch_role) = (role_of(repo), role_of(worktree.map(|w| w.branch.as_str())));
     let repo_box = picker(ctx, line, x, repo.unwrap_or("no repo"), repo_role);
-    ctx.hit(repo_box, Target::Picker);
+    ctx.hit(repo_box, Target::Picker(Picks::Repo));
     let x = separator(ctx, line, repo_box.right() + ctx.tokens.sm);
     let branch = worktree.map(|w| w.branch.as_str()).unwrap_or("no worktree");
     let branch_box = picker(ctx, line, x, branch, branch_role);
-    ctx.hit(branch_box, Target::Picker);
+    ctx.hit(branch_box, Target::Picker(Picks::Branch));
 }
 
 fn role_of(value: Option<&str>) -> Role {

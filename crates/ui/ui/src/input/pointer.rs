@@ -5,9 +5,9 @@ use groove_types::{Caret, DiffView, Edit, Motion, WorktreeId};
 
 use super::Key;
 use crate::ctx::Metrics;
-use crate::hit::{Hits, Target};
+use crate::hit::{Hits, Picks, Target};
 use crate::layout::{Edge, Layout};
-use crate::palette::{Action, Flow, Palette};
+use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
 use crate::widget::code_at;
@@ -157,7 +157,7 @@ fn click(
             ui.session.folded = !ui.session.folded;
             Vec::new()
         }
-        Some(Target::Picker) => selector(ui, app),
+        Some(Target::Picker(which)) => selector(ui, app, hits, which),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => {
             vec![Command::Workspace(workspace::Command::OpenFile { path })]
@@ -312,8 +312,8 @@ fn caret(
     Some(Caret::new(line, columns(&text, display, width)))
 }
 
-/// Either picker opens the worktree selector.
-fn selector(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+/// Either picker opens the worktree selector, under the picker itself.
+fn selector(ui: &mut Ui, app: &AppState, hits: &Hits, which: Picks) -> Vec<Command> {
     let Some(session) = app.session.selected.clone() else {
         return Vec::new();
     };
@@ -321,6 +321,7 @@ fn selector(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let commands = flow.refresh(app).into_iter().collect();
     ui.palette = Some(Palette {
         flow: Some(flow),
+        anchor: hits.rect_of(&Target::Picker(which)).map(Anchor::under),
         ..Palette::default()
     });
     commands

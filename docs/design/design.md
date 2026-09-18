@@ -227,6 +227,12 @@ the quietest, a selected row is stronger, and what a click acts on is stronger a
 Where the caret or the open file is, two rules stand instead of a ground: a place is
 not a state.
 
+**A choice about one thing opens on that thing.** A picker draws the same rows the
+palette does, filtered the same way, keyed the same way — but anchored under what was
+clicked, as wide as its rows, with nothing behind it dimmed, and it asks for a query
+only once the list is longer than it shows or something has been typed. The palette
+stays in the middle of the window and dims it, because it belongs to no one thing.
+
 **One button says what to do now.** The commit box offers a single action — commit
 while something is staged, push while the branch is ahead, pull while it is behind —
 with a caret beside it for everything else the worktree can do. The menu hangs from

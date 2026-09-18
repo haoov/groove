@@ -6,7 +6,24 @@ use crate::hit::Target;
 use crate::palette::Palette;
 use crate::style::Role;
 use crate::tokens::PALETTE_ROWS;
-use crate::widget::{Row, input, list, modal, row};
+use crate::widget::{Row, input, list, modal, panel_at, row};
+
+/// Whether the panel offers a line to type in: the palette always does, a picker
+/// once its list is longer than it can show or something has been typed.
+fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
+    let free = prompt.as_ref().is_some_and(|prompt| prompt.free);
+    palette.anchor.is_none() || free || rows > PALETTE_ROWS || !palette.query.is_empty()
+}
+
+/// How wide an anchored panel stands: its widest row, padded, at least a menu's width.
+fn wide(ctx: &mut Ctx, rows: &[(String, String)]) -> f32 {
+    let style = ctx.styles.label(Role::Text);
+    let widest = rows
+        .iter()
+        .map(|(group, label)| ctx.measure(&format!("{group}{label}"), &style))
+        .fold(0.0, f32::max);
+    (widest + ctx.tokens.md * 2.0).max(ctx.tokens.menu)
+}
 
 /// The command palette: an input line, then the entries or the prompt's options.
 pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
@@ -21,22 +38,33 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     };
     let shown = rows.len().clamp(1, PALETTE_ROWS);
     let (row_height, pad) = (ctx.tokens.row, ctx.tokens.md);
-    let height = row_height * (shown + 1) as f32 + ctx.tokens.sm;
-    let rect = modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top);
+    let asks = asks(palette, &prompt, rows.len());
+    let lines = shown + usize::from(asks);
+    let height = row_height * lines as f32 + ctx.tokens.sm;
+    let rect = match palette.anchor {
+        Some(anchor) => {
+            let width = wide(ctx, &rows);
+            panel_at(ctx, anchor.point(), anchor.corner, (width, height))
+        }
+        None => modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top),
+    };
     ctx.hit(rect, Target::Palette);
 
-    let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, row_height);
-    let prefix = match &prompt {
-        Some(prompt) => format!("{}: ", prompt.label),
-        None => "> ".to_string(),
-    };
-    input(ctx, line, &prefix, &palette.query);
-
+    let mut body = Rect::new(rect.x, rect.y, rect.w, rect.h);
+    if asks {
+        let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, row_height);
+        let prefix = match &prompt {
+            Some(prompt) => format!("{}: ", prompt.label),
+            None => "> ".to_string(),
+        };
+        input(ctx, line, &prefix, &palette.query);
+        body = Rect::new(rect.x, line.bottom(), rect.w, rect.bottom() - line.bottom());
+    }
     let hairline = ctx.tokens.hairline;
     let body = Rect::new(
-        rect.x + hairline,
-        line.bottom(),
-        rect.w - hairline * 2.0,
+        body.x + hairline,
+        body.y,
+        body.w - hairline * 2.0,
         row_height * shown as f32,
     );
     if rows.is_empty() {

@@ -22,7 +22,7 @@ pub use icon::{after_mark, box_in, icon, leading, turn};
 pub use input::input;
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
-pub use modal::modal;
+pub use modal::{modal, panel_at};
 pub use picker::{divider, picker};
 pub use tabs::tabs;
 #[cfg(test)]

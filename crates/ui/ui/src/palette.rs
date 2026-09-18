@@ -7,6 +7,7 @@ use groove_controllers::{AppState, Command, session};
 
 pub use flow::{Action, CLONE, Flow, Prompt};
 
+use crate::Corner;
 use crate::input::Key;
 
 /// What picking a row does: run a command, or start asking for arguments.
@@ -62,6 +63,29 @@ pub struct Palette {
     pub query: String,
     pub selected: usize,
     pub flow: Option<Flow>,
+    /// Where it is drawn: on what opened it, or in the middle of the window.
+    pub anchor: Option<Anchor>,
+}
+
+/// The corner of the panel, and where that corner sits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Anchor {
+    pub at: (u32, u32),
+    pub corner: Corner,
+}
+
+impl Anchor {
+    /// Under the rect that opened it, along its left edge.
+    pub fn under(rect: groove_gfx::Rect) -> Self {
+        Self {
+            at: (rect.x as u32, rect.bottom() as u32),
+            corner: Corner::TopLeft,
+        }
+    }
+
+    pub(crate) fn point(&self) -> (f32, f32) {
+        (self.at.0 as f32, self.at.1 as f32)
+    }
 }
 
 /// Every entry the state allows right now, in group order.
