@@ -33,6 +33,8 @@ pub struct State {
     pub coloured: BTreeMap<String, Painted>,
     /// The rows the surface last drew.
     pub showing: Range<usize>,
+    /// Bumped whenever a document is read again, for a cache to know.
+    pub stamp: u64,
     /// What the commit box holds, typed on the same buffer as a file.
     pub message: Buffer,
     pub watching: Option<WorktreeId>,
@@ -46,7 +48,13 @@ impl State {
         self.worktree.as_ref() == Some(worktree)
     }
 
+    /// The documents it holds are not the ones it held.
+    pub fn moved(&mut self) {
+        self.stamp = self.stamp.wrapping_add(1);
+    }
+
     pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>, changes: Changes) {
+        self.moved();
         self.worktree = Some(worktree);
         self.files = files;
         self.changes = changes;
@@ -94,6 +102,7 @@ impl State {
 
     /// Forgets what was loaded and stops watching.
     pub fn clear(&mut self) {
+        self.moved();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();

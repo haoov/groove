@@ -48,7 +48,7 @@ pub struct Settled {
 }
 
 /// The colours over a range of lines, each at offsets from its own line's start.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Colours {
     first: usize,
     lines: Vec<Vec<Highlight>>,

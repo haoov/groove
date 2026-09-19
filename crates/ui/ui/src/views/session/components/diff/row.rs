@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::ops::Range;
+use std::rc::Rc;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{Aligned, At, Colours, Opened};
@@ -98,7 +99,7 @@ fn streamed(
     window: Range<usize>,
 ) -> Vec<Drawn> {
     let changes = &app.workspace.changes;
-    let colours = coloured(app, window.clone());
+    let colours = coloured(app, ui, window.clone());
     window
         .map(|row| match changes.at(row) {
             Some(At::Head(file)) => head(file),
@@ -120,7 +121,11 @@ fn streamed(
 }
 
 /// The colours of every file the window touches, asked for once a file a side.
-fn coloured(app: &AppState, window: Range<usize>) -> BTreeMap<&str, (Colours, Colours)> {
+fn coloured<'a>(
+    app: &'a AppState,
+    ui: &Ui,
+    window: Range<usize>,
+) -> BTreeMap<&'a str, (Rc<Colours>, Rc<Colours>)> {
     let changes = &app.workspace.changes;
     let mut bounds: BTreeMap<&str, (Range<usize>, Range<usize>)> = BTreeMap::new();
     for row in window {
@@ -135,9 +140,19 @@ fn coloured(app: &AppState, window: Range<usize>) -> BTreeMap<&str, (Colours, Co
         .into_iter()
         .filter_map(|(path, (old, new))| {
             let (before, after) = app.workspace.sides(path)?;
-            Some((path, (before.colours(old), after.colours(new))))
+            let stamp = (app.workspace.stamp, revision(app, path));
+            let before = ui.painted.of(before, path, true, (stamp.0, 0), old);
+            let after = ui.painted.of(after, path, false, stamp, new);
+            Some((path, (before, after)))
         })
         .collect()
+}
+
+/// How many times the buffer of this file has changed, when it is the open one.
+fn revision(app: &AppState, path: &str) -> u64 {
+    open(app)
+        .filter(|open| open.path == path)
+        .map_or(0, |open| open.new.revision())
 }
 
 /// The range grown to hold one more line.
@@ -168,7 +183,7 @@ fn one(
     at: usize,
     view: DiffView,
     side: Side,
-    colours: Option<&(Colours, Colours)>,
+    colours: Option<&(Rc<Colours>, Rc<Colours>)>,
 ) -> Drawn {
     let row = &file.rows[at];
     let line = match side {
@@ -213,7 +228,11 @@ fn blank(row: &Row, view: DiffView, side: Side) -> bool {
     view == DiffView::Split && !has
 }
 
-fn spans_of(colours: Option<&(Colours, Colours)>, side: Side, line: Option<u32>) -> Vec<Highlight> {
+fn spans_of(
+    colours: Option<&(Rc<Colours>, Rc<Colours>)>,
+    side: Side,
+    line: Option<u32>,
+) -> Vec<Highlight> {
     let (Some(colours), Some(line)) = (colours, line) else {
         return Vec::new();
     };

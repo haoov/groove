@@ -6,6 +6,7 @@ mod focus;
 mod frame;
 mod index;
 mod mouse;
+mod painted;
 mod palette;
 mod perf;
 mod rail;

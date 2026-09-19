@@ -129,6 +129,7 @@ fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize
         let read = painted(&dir, missing).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.workspace.coloured.extend(read);
+            state.workspace.moved();
         }) as Continuation
     }));
 }
@@ -510,6 +511,7 @@ fn arrived(state: &mut AppState, mut file: Opened, at: Option<Caret>) {
         file.new.follow(caret);
     }
     state.workspace.opened = Some(file);
+    state.workspace.moved();
 }
 
 /// The file's two sides, reading HEAD only when the old one is not in hand.

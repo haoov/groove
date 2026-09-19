@@ -8,6 +8,7 @@ mod hit;
 pub mod input;
 mod layout;
 mod mark;
+mod painted;
 pub mod palette;
 mod render;
 mod style;
@@ -80,6 +81,8 @@ pub struct Ui {
     pub menu: Option<Menu>,
     /// What the pointer is over, for the row under it to say so.
     pub hover: Option<Target>,
+    /// The colours the last frames read, kept while they still hold.
+    pub painted: painted::Painted,
 }
 
 /// An open menu: what it belongs to, at the point it was asked for.

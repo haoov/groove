@@ -174,3 +174,86 @@ fn time_the_agent_pane() {
         );
     }
 }
+
+/// `count` changed files, each a handful of rows, all on screen at once.
+fn several(count: usize) -> AppState {
+    use groove_controllers::workspace_service::{Document, Painted, from_text};
+    let mut app = full_app();
+    let sides: Vec<(String, String, String)> = (0..count)
+        .map(|at| {
+            let before: String = (0..12)
+                .map(|n| format!("fn name_{at}_{n}(value: usize) -> usize {{ value + {n} }}\n"))
+                .collect();
+            let after = before.replace("value + 4 }", "value * 4 }");
+            (format!("src/file_{at}.rs"), before, after)
+        })
+        .collect();
+    let named: Vec<(&str, &str, &str)> = sides
+        .iter()
+        .map(|(path, before, after)| (path.as_str(), before.as_str(), after.as_str()))
+        .collect();
+    crate::tests::changed_files(&mut app, &named);
+    for (path, before, after) in &sides {
+        app.workspace.coloured.insert(
+            path.clone(),
+            Painted {
+                old: Document::new(path, before),
+                new: Document::new(path, after),
+            },
+        );
+    }
+    let (path, before, after) = &sides[0];
+    app.workspace.opened = Some(from_text(path, before, after));
+    app
+}
+
+#[test]
+#[ignore]
+fn time_a_frame_over_several_files() {
+    use groove_types::{Caret, Edit, Motion};
+    let size = Size::new(crate::tests::WINDOW.0, crate::tests::WINDOW.1);
+    let mut renderer = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
+    for files in [1, 5] {
+        for kind in [DiffView::Inline, DiffView::Split] {
+            let mut app = several(files);
+            let mut ui = Ui::default();
+            ui.session.tab = Tab::Diff;
+            ui.session.view = kind;
+            ui.focus = crate::Focus::Workspace;
+            let (frame, _) = view(&app, &ui, window(), renderer.fonts());
+            renderer.render(&frame).expect("rendered");
+            let runs = 20;
+            let started = Instant::now();
+            for _ in 0..runs {
+                let (frame, _) = view(&app, &ui, window(), renderer.fonts());
+                renderer.render(&frame).expect("rendered");
+            }
+            let still = started.elapsed() / runs;
+
+            let buffer = &mut app.workspace.opened.as_mut().unwrap().new;
+            buffer.edit(&Edit::Move(Motion::To(Caret::new(4, 8))));
+            let started = Instant::now();
+            for _ in 0..runs {
+                app.workspace
+                    .opened
+                    .as_mut()
+                    .unwrap()
+                    .new
+                    .edit(&Edit::Insert("x".into()));
+                let (frame, _) = view(&app, &ui, window(), renderer.fonts());
+                renderer.render(&frame).expect("rendered");
+            }
+            let typing = started.elapsed() / runs;
+            let started = Instant::now();
+            for at in 0..runs {
+                ui.session.diff = at as f32 * crate::tokens::Tokens::new(1.0).line;
+                let (frame, _) = view(&app, &ui, window(), renderer.fonts());
+                renderer.render(&frame).expect("rendered");
+            }
+            println!(
+                "{files} files {kind:?}: {still:>10?} still, {typing:>10?} typing, {:>10?} scrolling",
+                started.elapsed() / runs
+            );
+        }
+    }
+}
