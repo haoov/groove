@@ -13,6 +13,8 @@ pub struct Contents {
     pub repos: Vec<Repo>,
     pub worktrees: Vec<Worktree>,
     pub delivery: Vec<(WorktreeId, WorktreeDelivery)>,
+    /// The files marked read, by the worktree they belong to.
+    pub read: Vec<(WorktreeId, String)>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -83,6 +85,17 @@ impl Service {
 
     /// A session's repos and worktrees, and what git says about each worktree.
     /// A worktree whose directory is gone reports no counts.
+    /// One file of a worktree marked read, or the mark taken off it.
+    pub async fn set_read(
+        &self,
+        id: &SessionId,
+        worktree: &WorktreeId,
+        path: &str,
+        read: bool,
+    ) -> Result<(), Error> {
+        Ok(self.store.set_read(id, worktree, path, read).await?)
+    }
+
     pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {
         let mut repos = Vec::new();
         for repo_id in self.store.repos_of(id).await? {
@@ -101,6 +114,7 @@ impl Service {
             ));
         }
         Ok(Contents {
+            read: self.store.reads_of(id).await?,
             repos,
             worktrees,
             delivery,

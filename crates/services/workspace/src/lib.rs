@@ -57,7 +57,9 @@ impl State {
         self.moved();
         self.worktree = Some(worktree);
         self.files = files;
+        let shut = self.changes.folds();
         self.changes = changes;
+        self.changes.refold(shut);
         if self
             .opened
             .as_ref()

@@ -9,7 +9,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::tokens::{PINNED_DEEP, PINNED_SHARE};
-use crate::widget::{Gutters, Line, Rows, code, first};
+use crate::widget::{Gutters, Line, Rows, code, first, head_mark};
 
 /// One line held above the rows.
 struct Pin {
@@ -28,11 +28,12 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
     let height = ctx.tokens.line * pins.len() as f32;
     let band = Rect::new(body.x, body.y, body.w, height);
     let ground = ctx.styles.raised();
+    let read = super::row::is_read(app, &pins[0].text);
     let lines: Vec<Line<'_>> = pins
         .iter()
         .enumerate()
         .map(|(at, pin)| match pin.head {
-            true => Line::head(&pin.text),
+            true => Line::head(&pin.text).read(read),
             false => Line::new(&pin.text)
                 .gutters(&numbers[at])
                 .spans(&pin.spans)
@@ -40,7 +41,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
         })
         .collect();
     ctx.layer();
-    code(
+    let drawn = code(
         ctx,
         band,
         Rows {
@@ -51,6 +52,11 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
         0.0,
     );
     ctx.hit(band, Target::Pinned);
+    if let (Some(line), true) = (drawn.first(), pins[0].head) {
+        let path = pins[0].text.clone();
+        ctx.hit(*line, Target::Head(path.clone()));
+        ctx.hit(head_mark(ctx, *line), Target::Read(path));
+    }
 }
 
 /// The file and the scopes the top of the surface stands in.

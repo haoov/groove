@@ -23,6 +23,7 @@ fn state(home: &std::path::Path) -> AppState {
         repos: vec![],
         worktrees: vec![],
         delivery: vec![],
+        read: Default::default(),
     });
     state
 }

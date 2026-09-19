@@ -1,6 +1,6 @@
 //! The whole change as one surface: every file's alignment, and no document behind it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use groove_git::Git;
@@ -54,12 +54,18 @@ pub struct Changes {
     starts: Vec<usize>,
     /// Whether each file opens a directory of its own.
     bands: Vec<bool>,
+    /// The files whose rows are hidden under their own head.
+    shut: BTreeSet<String>,
     rows: usize,
     digits: usize,
 }
 
 impl Changes {
     pub fn new(files: Vec<Aligned>) -> Self {
+        Self::indexed(files, BTreeSet::new())
+    }
+
+    fn indexed(files: Vec<Aligned>, shut: BTreeSet<String>) -> Self {
         let mut starts = Vec::with_capacity(files.len());
         let mut bands = Vec::with_capacity(files.len());
         let mut rows = 0;
@@ -69,15 +75,54 @@ impl Changes {
             dir = Some(file.dir());
             starts.push(rows);
             bands.push(band);
-            rows += file.rows.len() + 1 + usize::from(band);
+            let shown = match shut.contains(&file.path) {
+                true => 0,
+                false => file.rows.len(),
+            };
+            rows += shown + 1 + usize::from(band);
         }
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
             files,
             starts,
             bands,
+            shut,
             rows,
             digits,
+        }
+    }
+
+    /// Hides a file's rows under its own head, or shows them again.
+    pub fn fold(&mut self, path: &str) {
+        let mut shut = std::mem::take(&mut self.shut);
+        if !shut.remove(path) {
+            shut.insert(path.to_string());
+        }
+        *self = Self::indexed(std::mem::take(&mut self.files), shut);
+    }
+
+    /// The folds carried over from the change this one replaces.
+    pub fn refold(&mut self, shut: BTreeSet<String>) {
+        let kept = shut
+            .into_iter()
+            .filter(|path| self.files.iter().any(|file| &file.path == path))
+            .collect();
+        *self = Self::indexed(std::mem::take(&mut self.files), kept);
+    }
+
+    pub fn folds(&self) -> BTreeSet<String> {
+        self.shut.clone()
+    }
+
+    pub fn is_folded(&self, path: &str) -> bool {
+        self.shut.contains(path)
+    }
+
+    /// How many of a file's rows the surface draws.
+    pub fn shown(&self, file: &Aligned) -> usize {
+        match self.is_folded(&file.path) {
+            true => 0,
+            false => file.rows.len(),
         }
     }
 
@@ -123,9 +168,13 @@ impl Changes {
         Some(self.starts[at])
     }
 
-    /// Every file with the row its own block begins on.
-    pub fn placed(&self) -> impl Iterator<Item = (usize, &Aligned)> {
-        self.starts.iter().copied().zip(self.files.iter())
+    /// Every file with the row its own block begins on, and the rows it shows.
+    pub fn placed(&self) -> impl Iterator<Item = (usize, usize, &Aligned)> {
+        self.starts
+            .iter()
+            .copied()
+            .zip(self.files.iter())
+            .map(|(start, file)| (start, self.shown(file), file))
     }
 
     pub fn get(&self, path: &str) -> Option<&Aligned> {
@@ -138,7 +187,8 @@ impl Changes {
             return;
         };
         self.files[at] = file;
-        *self = Self::new(std::mem::take(&mut self.files));
+        let shut = std::mem::take(&mut self.shut);
+        *self = Self::indexed(std::mem::take(&mut self.files), shut);
     }
 }
 

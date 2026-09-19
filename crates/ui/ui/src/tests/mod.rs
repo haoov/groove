@@ -127,6 +127,7 @@ fn open(id: &str, title: &str) -> Open {
         repos: vec![],
         worktrees: vec![],
         delivery: vec![],
+        read: Default::default(),
     }
 }
 

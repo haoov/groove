@@ -9,7 +9,7 @@ mod tests;
 
 pub use error::{Error, Result};
 use groove_db::Db;
-use groove_types::{RepoId, Session, SessionId, SessionKind, Timestamp};
+use groove_types::{RepoId, Session, SessionId, SessionKind, Timestamp, WorktreeId};
 
 use rows::SessionRow;
 
@@ -96,6 +96,46 @@ impl Store {
         sqlx::query("DELETE FROM session_repos WHERE session_id = ? AND repo_id = ?")
             .bind(id.as_str())
             .bind(repo.as_str())
+            .execute(self.db.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// Every file this session has marked read, by the worktree it belongs to.
+    pub async fn reads_of(&self, id: &SessionId) -> Result<Vec<(WorktreeId, String)>> {
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT worktree_id, path FROM read_files WHERE session_id = ? ORDER BY path",
+        )
+        .bind(id.as_str())
+        .fetch_all(self.db.pool())
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|(worktree, path)| (WorktreeId::new(worktree), path))
+            .collect())
+    }
+
+    /// One file marked read, or the mark taken off it.
+    pub async fn set_read(
+        &self,
+        id: &SessionId,
+        worktree: &WorktreeId,
+        path: &str,
+        read: bool,
+    ) -> Result<()> {
+        let query = match read {
+            true => sqlx::query(
+                "INSERT OR IGNORE INTO read_files (session_id, worktree_id, path)
+                 VALUES (?, ?, ?)",
+            ),
+            false => sqlx::query(
+                "DELETE FROM read_files WHERE session_id = ? AND worktree_id = ? AND path = ?",
+            ),
+        };
+        query
+            .bind(id.as_str())
+            .bind(worktree.as_str())
+            .bind(path)
             .execute(self.db.pool())
             .await?;
         Ok(())

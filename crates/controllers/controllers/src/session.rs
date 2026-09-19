@@ -165,6 +165,9 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                             open.repos = contents.repos;
                             open.worktrees = contents.worktrees;
                             open.delivery = contents.delivery;
+                            for (worktree, path) in contents.read {
+                                open.mark(&worktree, &path, true);
+                            }
                             if open.selected_worktree().is_none() {
                                 open.state.selected_worktree =
                                     open.worktrees.first().map(|w| w.id.clone());

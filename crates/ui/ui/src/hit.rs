@@ -71,6 +71,10 @@ pub enum Target {
     Pinned,
     /// The column holding the whole change.
     Map,
+    /// What marks a file read, at the end of its head row.
+    Read(String),
+    /// The row a file starts on, which folds it.
+    Head(String),
     /// One of the three views of the open file.
     View(DiffView),
     /// The agent's pane.
@@ -95,7 +99,9 @@ impl Target {
             | Target::Actions
             | Target::MenuRow(_)
             | Target::Do
-            | Target::View(_) => Cursor::Pointer,
+            | Target::View(_)
+            | Target::Read(_)
+            | Target::Head(_) => Cursor::Pointer,
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,

@@ -2,6 +2,8 @@
 
 mod service;
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId, WorktreeStatus,
@@ -16,9 +18,27 @@ pub struct Open {
     pub repos: Vec<Repo>,
     pub worktrees: Vec<Worktree>,
     pub delivery: Vec<(WorktreeId, WorktreeDelivery)>,
+    /// The files read, per worktree, as the session remembers them.
+    pub read: BTreeMap<WorktreeId, BTreeSet<String>>,
 }
 
 impl Open {
+    /// Whether this file of the worktree has been marked read.
+    pub fn is_read(&self, worktree: &WorktreeId, path: &str) -> bool {
+        self.read
+            .get(worktree)
+            .is_some_and(|files| files.contains(path))
+    }
+
+    /// One file marked read, or the mark taken off it.
+    pub fn mark(&mut self, worktree: &WorktreeId, path: &str, read: bool) {
+        let files = self.read.entry(worktree.clone()).or_default();
+        match read {
+            true => files.insert(path.to_string()),
+            false => files.remove(path),
+        };
+    }
+
     /// What git says about one worktree now.
     pub fn told(&mut self, worktree: &WorktreeId, status: WorktreeStatus) {
         match self.delivery.iter_mut().find(|(id, _)| id == worktree) {
@@ -126,6 +146,7 @@ impl State {
             repos: Vec::new(),
             worktrees: Vec::new(),
             delivery: Vec::new(),
+            read: BTreeMap::new(),
         });
         self.selected = Some(id);
     }
@@ -153,6 +174,7 @@ impl State {
             repos: Vec::new(),
             worktrees: Vec::new(),
             delivery: Vec::new(),
+            read: BTreeMap::new(),
         });
     }
 

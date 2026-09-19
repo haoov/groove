@@ -785,3 +785,64 @@ fn a_keystroke_reaches_the_rows_the_whole_change_shows() {
             .is_some_and(|file| file.lines.iter().any(|line| line.starts_with('X')))
     });
 }
+
+#[test]
+fn a_file_marked_read_is_remembered_by_the_session() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    let id = state.session.selected.clone().expect("a session");
+    let picked = state
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|worktree| worktree.id.clone())
+        .expect("a worktree");
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::MarkRead {
+            path: "a.txt".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(
+        state
+            .session
+            .selected()
+            .expect("the row")
+            .is_read(&picked, "a.txt"),
+        "the session says so at once"
+    );
+    until(&spawner, &services, &mut state, |_| true);
+    let kept = spawner
+        .block_on(services.session.contents(&id))
+        .expect("the contents");
+    assert_eq!(
+        kept.read,
+        [(picked.clone(), "a.txt".to_string())],
+        "and the disk holds it"
+    );
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::MarkRead {
+            path: "a.txt".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |_| true);
+    let gone = spawner
+        .block_on(services.session.contents(&id))
+        .expect("the contents");
+    assert!(gone.read.is_empty(), "marked again takes it off");
+}

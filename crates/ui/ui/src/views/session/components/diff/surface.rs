@@ -5,11 +5,11 @@ use groove_types::{DiffView, RowKind};
 
 use groove_controllers::AppState;
 
-use super::row::{Side, count, drawn};
+use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
-use crate::widget::{Gutters, Line, Rows, chars_of, code, height, visible};
+use crate::widget::{Gutters, Line, Rows, chars_of, code, head_mark, height, visible};
 
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     match ui.session.view {
@@ -64,7 +64,7 @@ fn surface(
                 return Line::band(&row.text);
             }
             if row.head {
-                return Line::head(&row.text);
+                return Line::head(&row.text).folded(row.folded).read(row.read);
             }
             if let RowKind::Gap(_) = row.kind {
                 return Line::banner(&row.text);
@@ -87,12 +87,26 @@ fn surface(
         let chars = chars_of(ctx, numbers, rect, scroll);
         ctx.characters(chars);
     }
-    let rows = Rows {
+    let shown = Rows {
         lines: &lines,
         first: window.start,
         gutters: numbers,
     };
-    code(ctx, rect, rows, scroll);
+    let drawn = code(ctx, rect, shown, scroll);
+    if clickable {
+        marks(ctx, &drawn, &rows);
+    }
+}
+
+/// What a head row offers: the row itself folds, its box marks the file read.
+fn marks(ctx: &mut Ctx, drawn: &[Rect], rows: &[Drawn]) {
+    for (line, row) in drawn.iter().zip(rows) {
+        let Some(path) = row.file.as_ref().filter(|_| row.head) else {
+            continue;
+        };
+        ctx.hit(*line, Target::Head(path.clone()));
+        ctx.hit(head_mark(ctx, *line), Target::Read(path.clone()));
+    }
 }
 
 /// How wide the numbers stand: one column a side in split and file, two in inline.

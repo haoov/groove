@@ -10,7 +10,7 @@ use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
-use crate::widget::code_at;
+use crate::widget::{code_at, first};
 use crate::{Click, Corner, Drag, Focus, Losing, Menu, Of, Ui};
 use groove_controllers::workspace_service::columns;
 
@@ -168,10 +168,7 @@ fn click(
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => {
             jump(ui, app, &path, metrics);
-            vec![Command::Workspace(workspace::Command::OpenFile {
-                path,
-                at: None,
-            })]
+            shown(app, path)
         }
         Some(Target::View(view)) => {
             switch(ui, app, view, metrics);
@@ -181,6 +178,11 @@ fn click(
             ui.selecting = true;
             landed(ui, app, hits, metrics, (x, y))
         }
+        Some(Target::Read(path)) => {
+            vec![Command::Workspace(workspace::Command::MarkRead { path })]
+        }
+        Some(Target::Head(path)) => folded(ui, app, metrics, path),
+        Some(Target::Pinned) => Vec::new(),
         Some(Target::Map) => {
             ui.mapping = true;
             lensed(y, ui, app, hits, metrics);
@@ -212,14 +214,9 @@ fn click(
             act.map(Command::Workspace).into_iter().collect()
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(
-            Target::Agent
-            | Target::Palette
-            | Target::Pinned
-            | Target::Split(_)
-            | Target::MenuRow(_),
-        )
-        | None => Vec::new(),
+        Some(Target::Agent | Target::Palette | Target::Split(_) | Target::MenuRow(_)) | None => {
+            Vec::new()
+        }
     }
 }
 
@@ -290,7 +287,7 @@ fn focused(target: &Option<Target>, focus: Focus) -> Focus {
 /// Where a click in the open file puts the caret. A row the new side has no line
 /// on — a removed one, a gap — takes no caret.
 fn landed(
-    ui: &Ui,
+    ui: &mut Ui,
     app: &AppState,
     hits: &Hits,
     metrics: Metrics,
@@ -321,6 +318,18 @@ fn taken(click: Option<Click>) -> Option<Edit> {
         count if count >= 3 => Some(Edit::SelectLine),
         _ => None,
     }
+}
+
+/// The file opened, and its rows shown again when it was folded away.
+fn shown(app: &AppState, path: String) -> Vec<Command> {
+    let mut commands = Vec::new();
+    if app.workspace.changes.is_folded(&path) {
+        let fold = workspace::Command::Fold { path: path.clone() };
+        commands.push(Command::Workspace(fold));
+    }
+    let open = workspace::Command::OpenFile { path, at: None };
+    commands.push(Command::Workspace(open));
+    commands
 }
 
 /// The stream scrolled to where this file starts.
@@ -357,6 +366,30 @@ fn holds(app: &AppState, path: &str) -> bool {
         .is_some_and(|open| open.path == path)
 }
 
+/// A click on the lines standing above the rows: the file's own line folds it.
+/// A file's rows hidden or shown again, with what stands above them held still.
+fn folded(ui: &mut Ui, app: &AppState, metrics: Metrics, path: String) -> Vec<Command> {
+    let changes = &app.workspace.changes;
+    let line = metrics.tokens().line;
+    let top = first(line, ui.session.diff);
+    if let (Some(head), Some(file)) = (changes.head_of(&path), changes.get(&path))
+        && head < top
+    {
+        let rows = file.rows.len();
+        ui.session.diff = match changes.is_folded(&path) {
+            true => ui.session.diff + rows as f32 * line,
+            false => top.saturating_sub(rows).max(head) as f32 * line,
+        };
+    }
+    vec![Command::Workspace(workspace::Command::Fold { path })]
+}
+
+/// The row of the whole surface a point lands on, and the column in it.
+fn row_at(hits: &Hits, metrics: Metrics, point: (f32, f32)) -> Option<(usize, usize)> {
+    let rect = hits.rect_of(&Target::Code)?;
+    code_at(&metrics.tokens(), hits.chars(), rect, point)
+}
+
 /// The file a click in the rows points at, and where the caret lands in it.
 fn at(
     ui: &Ui,
@@ -365,9 +398,7 @@ fn at(
     metrics: Metrics,
     point: (f32, f32),
 ) -> Option<(String, Caret)> {
-    let rect = hits.rect_of(&Target::Code)?;
-    let tokens = metrics.tokens();
-    let (row, display) = code_at(&tokens, hits.chars(), rect, point)?;
+    let (row, display) = row_at(hits, metrics, point)?;
     let (path, line) = diff::line_at(app, ui.session.view, row)?;
     let (text, width) = diff::text_at(app, &path, line)?;
     Some((path, Caret::new(line, columns(&text, display, width))))

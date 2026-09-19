@@ -248,3 +248,215 @@ fn the_file_view_makes_the_map_the_file_s_own_scrollbar() {
     assert_eq!(top, column.y, "the file is at its start");
     assert!(foot - top < column.h, "the lens holds what the rows show");
 }
+
+#[test]
+fn a_click_on_a_file_head_folds_it() {
+    let app = both();
+    let mut ui = on_diff();
+    let (_, hits) = view_of(&app, &ui);
+    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let tokens = Tokens::new(1.0);
+    let head = (hits.chars().left + 1.0, code.y + tokens.line + 1.0);
+    let commands = handle(
+        Input::Press {
+            x: head.0,
+            y: head.1,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Fold {
+            path: "src/a.rs".into()
+        })],
+        "the row under the band is the first file's head"
+    );
+}
+
+/// One file whose every line changed, so its rows run past the window.
+fn busy() -> AppState {
+    let mut app = with_files();
+    let before: String = (0..60)
+        .map(|at| format!("let value_{at} = {at};\n"))
+        .collect();
+    let after = before.replace(" = ", " = 1 + ");
+    crate::tests::shows(&mut app, "src/lib.rs", &before, &after);
+    app
+}
+
+#[test]
+fn folding_from_the_pinned_head_lands_on_the_file_it_shut() {
+    let app = busy();
+    let mut ui = on_diff();
+    let line = Tokens::new(1.0).line;
+    ui.session.diff = line * 20.0;
+    let (_, hits) = view_of(&app, &ui);
+    let band = hits.rect_of(&Target::Pinned).expect("the band stands");
+    let commands = handle(
+        Input::Press {
+            x: band.x + band.w / 2.0,
+            y: band.y + 1.0,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Fold {
+            path: "src/lib.rs".into()
+        })]
+    );
+    let head = app
+        .workspace
+        .changes
+        .head_of("src/lib.rs")
+        .expect("its head");
+    assert_eq!(
+        ui.session.diff,
+        head as f32 * line,
+        "the rows it shut are gone, so it lands on the head itself"
+    );
+}
+
+/// The worktree the fixture's session has selected.
+fn selected(app: &AppState) -> groove_types::WorktreeId {
+    app.session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|worktree| worktree.id.clone())
+        .expect("the fixture has a worktree")
+}
+
+#[test]
+fn the_mark_on_a_file_head_says_it_is_read() {
+    let app = both();
+    let mut ui = on_diff();
+    let (_, hits) = view_of(&app, &ui);
+    let box_ = hits
+        .rect_of(&Target::Read("src/a.rs".into()))
+        .expect("the head carries a mark");
+    let commands = click(box_, &mut ui, &app, &hits);
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::MarkRead {
+            path: "src/a.rs".into()
+        })]
+    );
+}
+
+#[test]
+fn a_file_read_dims_its_head_and_its_band() {
+    let mut app = both();
+    let worktree = selected(&app);
+    let id = app.session.selected.clone().expect("a session");
+    app.session
+        .get_mut(&id)
+        .expect("the row")
+        .mark(&worktree, "src/a.rs", true);
+    let ui = on_diff();
+    let (frame, hits) = view_of(&app, &ui);
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let column = hits.rect_of(&Target::Map).expect("the map");
+    let dimmed = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.rect.x == column.x && quad.rect.w == column.w)
+        .filter(|quad| quad.color == styles.hover())
+        .count();
+    assert_eq!(dimmed, 1, "the band of the file that was read");
+    let faint = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "a.rs")
+        .expect("its head");
+    assert_eq!(
+        faint.style.color,
+        styles.color(crate::style::Role::Faint),
+        "its name reads quiet"
+    );
+}
+
+#[test]
+fn a_file_picked_in_the_sidebar_is_shown_again_when_it_was_folded() {
+    let mut app = both();
+    let mut ui = on_diff();
+    app.workspace.changes.fold("src/b.rs");
+    let (_, hits) = view_of(&app, &ui);
+    let row = hits
+        .rect_of(&Target::File("src/b.rs".into()))
+        .expect("the sidebar lists it");
+    let commands = click(row, &mut ui, &app, &hits);
+    assert_eq!(
+        commands,
+        [
+            Command::Workspace(workspace::Command::Fold {
+                path: "src/b.rs".into()
+            }),
+            Command::Workspace(workspace::Command::OpenFile {
+                path: "src/b.rs".into(),
+                at: None
+            }),
+        ],
+        "it opens, and its rows come back"
+    );
+}
+
+#[test]
+fn a_file_head_says_it_can_be_clicked() {
+    let app = both();
+    let ui = on_diff();
+    let (_, hits) = view_of(&app, &ui);
+    let head = hits
+        .rect_of(&Target::Head("src/a.rs".into()))
+        .expect("the head takes the pointer");
+    let inside = (head.x + head.w / 2.0, head.y + head.h / 2.0);
+    assert_eq!(
+        hits.cursor_at(inside.0, inside.1),
+        crate::hit::Cursor::Pointer,
+        "not the text cursor the rows carry"
+    );
+    let rows = hits.rect_of(&Target::Code).expect("the rows");
+    let under = (inside.0, head.bottom() + 1.0);
+    assert!(rows.contains(under.0, under.1));
+    assert_eq!(hits.cursor_at(under.0, under.1), crate::hit::Cursor::Text);
+}
+
+#[test]
+fn the_header_names_the_file_that_is_open() {
+    let mut app = both();
+    let ui = on_diff();
+    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let row = Tokens::new(1.0).row;
+    let header = |app: &AppState| {
+        let (frame, _) = view_of(app, &ui);
+        frame.layers()[0]
+            .texts
+            .iter()
+            .filter(|run| run.x >= workspace.x && run.x < workspace.right())
+            .filter(|run| run.y >= workspace.y + row && run.y < workspace.y + row * 2.0)
+            .map(|run| run.text.clone())
+            .collect::<Vec<String>>()
+    };
+    assert!(
+        header(&app).iter().any(|text| text.ends_with("a.rs")),
+        "with nothing open it names the file the rows start on: {:?}",
+        header(&app)
+    );
+
+    crate::tests::shows(&mut app, "src/b.rs", FILES[1].1, FILES[1].2);
+    changed_files(&mut app, &FILES);
+    let named = header(&app);
+    assert!(
+        named.iter().any(|text| text.ends_with("b.rs")),
+        "and once a file is open, that one: {named:?}"
+    );
+    assert!(
+        !named.iter().any(|text| text.ends_with("a.rs")),
+        "{named:?}"
+    );
+}

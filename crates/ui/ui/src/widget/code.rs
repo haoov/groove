@@ -5,6 +5,7 @@ use groove_types::Highlight;
 
 use crate::ctx::Ctx;
 use crate::hit::Chars;
+use crate::mark::Mark;
 use crate::style::Role;
 use crate::tokens::Tokens;
 use crate::widget::{row, ruled};
@@ -23,6 +24,10 @@ pub struct Line<'a> {
     pub head: bool,
     /// A row that names the directory the files under it share.
     pub band: bool,
+    /// A head row that hides its file's rows.
+    pub folded: bool,
+    /// A head row whose file has been read.
+    pub read: bool,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -40,6 +45,8 @@ impl<'a> Line<'a> {
             banner: false,
             head: false,
             band: false,
+            folded: false,
+            read: false,
             caret: None,
             held: None,
         }
@@ -59,6 +66,16 @@ impl<'a> Line<'a> {
             head: true,
             ..Self::new(text)
         }
+    }
+
+    pub fn folded(mut self, folded: bool) -> Self {
+        self.folded = folded;
+        self
+    }
+
+    pub fn read(mut self, read: bool) -> Self {
+        self.read = read;
+        self
     }
 
     /// The row a directory starts on.
@@ -167,17 +184,28 @@ pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize>
 }
 
 /// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
-pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) {
+pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect> {
     let height = ctx.tokens.line;
     let block = Block::of(ctx, rows.gutters);
+    let mut drawn = Vec::with_capacity(rows.lines.len());
     ctx.clipped(rect, |ctx| {
         let mut y = rect.y - scroll + rows.first as f32 * height;
         for line in rows.lines {
-            draw(ctx, Rect::new(rect.x, y, rect.w, height), line, block);
+            let at = Rect::new(rect.x, y, rect.w, height);
+            draw(ctx, at, line, block);
+            drawn.push(at);
             y += height;
         }
     });
     rule(ctx, rect, block);
+    drawn
+}
+
+/// Where a head row carries the mark that says its file is read.
+pub fn head_mark(ctx: &Ctx, line: Rect) -> Rect {
+    let size = ctx.tokens.icon;
+    let x = line.right() - ctx.tokens.md - size;
+    Rect::new(x, line.y + (line.h - size) / 2.0, size, size)
 }
 
 /// How tall the rows stand together.
@@ -219,7 +247,7 @@ fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
         return band(ctx, line, code.text);
     }
     if code.head {
-        return head(ctx, line, code.text);
+        return head(ctx, line, code);
     }
     if code.banner {
         return banner(ctx, line, code.text);
@@ -304,11 +332,48 @@ fn band(ctx: &mut Ctx, line: Rect, text: &str) {
     row(ctx, line, ctx.tokens.md, text, style);
 }
 
-/// A row naming a file: its own ground, its name at the margin.
-fn head(ctx: &mut Ctx, line: Rect, text: &str) {
-    let (ground, style) = (ctx.styles.raised(), ctx.styles.label(Role::Text));
+/// A row naming a file: its own ground, a caret for its rows, its name.
+fn head(ctx: &mut Ctx, line: Rect, code: &Line<'_>) {
+    let role = match code.read {
+        true => Role::Faint,
+        false => Role::Text,
+    };
+    let (ground, style) = (ctx.styles.raised(), ctx.styles.label(role));
     ctx.quad(line, ground);
-    row(ctx, line, ctx.tokens.md, text, style);
+    let size = ctx.tokens.icon;
+    let caret = Rect::new(
+        line.x + ctx.tokens.xs,
+        line.y + (line.h - size) / 2.0,
+        size,
+        size,
+    );
+    let turn = match code.folded {
+        true => Mark::RIGHTWARDS,
+        false => 0,
+    };
+    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    let at = caret.right() - line.x + ctx.tokens.xs;
+    row(ctx, line, at, code.text, style);
+    box_(ctx, head_mark(ctx, line), code.read);
+}
+
+/// The box that says whether a file is read, ticked once it is.
+fn box_(ctx: &mut Ctx, rect: Rect, read: bool) {
+    let inset = ctx.tokens.xs / 2.0;
+    let square = Rect::new(
+        rect.x + inset,
+        rect.y + inset,
+        rect.w - inset * 2.0,
+        rect.h - inset * 2.0,
+    );
+    let role = match read {
+        true => Role::Text,
+        false => Role::Faint,
+    };
+    ctx.border(square, ctx.styles.color(role));
+    if read {
+        ctx.icon(rect, Mark::Read, 0, ctx.styles.color(role));
+    }
 }
 
 /// The line's text, in the pieces its spans cut it into.

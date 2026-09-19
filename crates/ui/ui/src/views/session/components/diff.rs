@@ -57,11 +57,13 @@ fn whole_file(app: &AppState, ui: &Ui) -> Option<bool> {
     }
 }
 
-/// The file the top of the surface belongs to.
+/// The file the header names: the one being edited, else the one under the top row.
 fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
+    if let Some(open) = app.workspace.opened.as_ref() {
+        return open.path.clone();
+    }
     if ui.session.view == DiffView::File {
-        let open = app.workspace.opened.as_ref();
-        return open.map(|file| file.path.clone()).unwrap_or_default();
+        return String::new();
     }
     let top = first(ctx.tokens.line, ui.session.diff);
     match app.workspace.changes.at(top) {

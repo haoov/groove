@@ -100,3 +100,61 @@ fn a_directory_is_named_once_over_the_files_that_share_it() {
         "every file, named"
     );
 }
+
+#[test]
+fn a_folded_file_keeps_its_head_and_hides_its_rows() {
+    let mut changes = Changes::new(vec![
+        aligned("src/a.rs", "one\n", "ONE\n"),
+        aligned("src/b.rs", "two\n", "TWO\n"),
+    ]);
+    let whole = changes.rows();
+    let second = changes.head_of("src/b.rs").expect("the second file");
+
+    changes.fold("src/a.rs");
+    assert!(changes.is_folded("src/a.rs"));
+    let file = changes.get("src/a.rs").expect("still there");
+    assert_eq!(changes.shown(file), 0, "its rows are hidden");
+    assert_eq!(
+        changes.rows(),
+        whole - file.rows.len(),
+        "the surface is shorter"
+    );
+    assert_eq!(
+        changes.head_of("src/b.rs"),
+        Some(second - file.rows.len()),
+        "what follows moves up"
+    );
+    assert!(matches!(changes.at(1), Some(At::Head(_))), "the head stays");
+    assert!(
+        matches!(changes.at(2), Some(At::Head(_))),
+        "then the next file"
+    );
+
+    changes.fold("src/a.rs");
+    assert!(!changes.is_folded("src/a.rs"));
+    assert_eq!(changes.rows(), whole, "shown again");
+}
+
+#[test]
+fn a_fold_outlives_the_file_being_aligned_again() {
+    let mut changes = Changes::new(vec![aligned("src/a.rs", "one\n", "ONE\n")]);
+    changes.fold("src/a.rs");
+    changes.replace(aligned("src/a.rs", "one\n", "TWO\n"));
+    assert!(
+        changes.is_folded("src/a.rs"),
+        "the keystroke did not open it"
+    );
+}
+
+#[test]
+fn a_fold_outlives_the_worktree_being_read_again() {
+    let mut changes = Changes::new(vec![aligned("src/a.rs", "one\n", "ONE\n")]);
+    changes.fold("src/a.rs");
+    let mut again = Changes::new(vec![
+        aligned("src/a.rs", "one\n", "ONE\n"),
+        aligned("src/b.rs", "two\n", "TWO\n"),
+    ]);
+    again.refold(changes.folds());
+    assert!(again.is_folded("src/a.rs"), "still shut");
+    assert!(!again.is_folded("src/b.rs"), "a file it never shut");
+}

@@ -35,6 +35,12 @@ pub(super) struct Drawn {
     pub(super) head: bool,
     /// The row a directory starts on.
     pub(super) band: bool,
+    /// A head row whose file hides its rows.
+    pub(super) folded: bool,
+    /// A head row whose file has been read.
+    pub(super) read: bool,
+    /// The file a head row names.
+    pub(super) file: Option<String>,
 }
 
 /// The rows of one view, inside `window`. The file view is the open file; the others
@@ -105,7 +111,7 @@ fn streamed(
     window
         .map(|row| match changes.at(row) {
             Some(At::Band(file)) => band(file),
-            Some(At::Head(file)) => head(file),
+            Some(At::Head(file)) => head(app, file, changes.is_folded(&file.path)),
             Some(At::Row(file, at)) => {
                 let side = source(&file.rows[at], view, side);
                 one(
@@ -170,12 +176,26 @@ fn stretch(range: &mut Range<usize>, line: Option<u32>) {
 }
 
 /// The row that names a file, standing above its own rows.
-fn head(file: &Aligned) -> Drawn {
+fn head(app: &AppState, file: &Aligned, folded: bool) -> Drawn {
     Drawn {
         text: file.name().to_string(),
         head: true,
+        folded,
+        read: is_read(app, &file.path),
+        file: Some(file.path.clone()),
         ..Drawn::default()
     }
+}
+
+/// Whether the session has marked this file of the worktree read.
+pub(crate) fn is_read(app: &AppState, path: &str) -> bool {
+    let Some(open) = app.session.selected() else {
+        return false;
+    };
+    let Some(worktree) = open.selected_worktree() else {
+        return false;
+    };
+    open.is_read(&worktree.id, path)
 }
 
 /// The row that names the directory the files under it share.

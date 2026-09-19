@@ -38,9 +38,20 @@ pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
 
 /// Every changed file, one band under another.
 fn change(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState) {
-    for (start, file) in app.workspace.changes.placed() {
-        band(ctx, rect, per, start, file);
+    for (start, shown, file) in app.workspace.changes.placed() {
+        match super::row::is_read(app, &file.path) {
+            true => read(ctx, rect, per, (start, shown)),
+            false => band(ctx, rect, per, (start, shown), file),
+        }
     }
+}
+
+/// A file already read: its own ground, and none of its marks.
+fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
+    let (start, shown) = at;
+    let top = rect.y + start as f32 * per;
+    let high = (shown as f32 * per).max(ctx.tokens.hairline);
+    ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.hover());
 }
 
 /// The open file alone: what the change did to each of its lines.
@@ -62,11 +73,14 @@ fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState) {
 }
 
 /// One file: its own ground, and a mark for every run its change touched.
-fn band(ctx: &mut Ctx, rect: Rect, per: f32, start: usize, file: &Aligned) {
-    let hairline = ctx.tokens.hairline;
+fn band(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize), file: &Aligned) {
+    let (start, shown) = at;
     let top = rect.y + start as f32 * per;
-    let high = (file.rows.len() as f32 * per).max(hairline);
+    let high = (shown as f32 * per).max(ctx.tokens.hairline);
     ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.inner());
+    if shown == 0 {
+        return;
+    }
     for (at, run, mark) in runs(file) {
         marked(ctx, rect, per, start + 1 + at, run, mark);
     }

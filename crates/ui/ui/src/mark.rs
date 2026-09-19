@@ -19,6 +19,8 @@ pub enum Mark {
     Behind,
     Staged,
     Modified,
+    /// A file the reader has marked read.
+    Read,
     /// What opens a picker.
     Down,
     /// What folds the sidebar away.
@@ -28,6 +30,8 @@ pub enum Mark {
 impl Mark {
     /// The turn that points a mark the other way.
     pub(crate) const UPWARDS: u8 = Icon::TURNS / 2;
+    /// The turn that points it to the right.
+    pub(crate) const RIGHTWARDS: u8 = Icon::TURNS * 3 / 4;
 
     /// The mark a session wears for its kind.
     pub fn of_kind(kind: &SessionKind) -> Self {
@@ -51,6 +55,7 @@ impl Mark {
             Mark::Behind => Icon::ArrowDown,
             Mark::Staged => Icon::Plus,
             Mark::Modified => Icon::Dot,
+            Mark::Read => Icon::Check,
             Mark::Down => Icon::CaretDown,
             Mark::Sidebar => Icon::Sidebar,
         }

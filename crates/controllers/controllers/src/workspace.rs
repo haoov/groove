@@ -21,6 +21,10 @@ pub enum Command {
         /// Where to put the caret, when the click that asked knows.
         at: Option<Caret>,
     },
+    /// `workspace.mark_read`: one file read, or the mark taken off it.
+    MarkRead { path: String },
+    /// `workspace.fold`: one file's rows hidden under its head, or shown again.
+    Fold { path: String },
     /// `workspace.show`: which rows of the whole change are on screen.
     Show { rows: std::ops::Range<usize> },
     /// `workspace.edit`: one keystroke on the open buffer.
@@ -58,6 +62,8 @@ impl Command {
         match self {
             Command::Load => "workspace.load",
             Command::OpenFile { .. } => "workspace.open_file",
+            Command::MarkRead { .. } => "workspace.mark_read",
+            Command::Fold { .. } => "workspace.fold",
             Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
             Command::SaveFile => "workspace.save_file",
@@ -86,6 +92,8 @@ pub fn dispatch(
     match command {
         Command::Load => reread(state, spawner),
         Command::OpenFile { path, at } => open_file(state, spawner, path, at),
+        Command::MarkRead { path } => mark_read(state, services, spawner, path),
+        Command::Fold { path } => state.workspace.changes.fold(&path),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
         Command::SaveFile => save_file(state, spawner),
@@ -102,6 +110,37 @@ pub fn dispatch(
         Command::Rebase => remote(state, spawner, Remote::Rebase),
         Command::DiscardAll => discard_all(state, spawner),
     }
+}
+
+/// One file read or unread: the session says so at once, and the disk follows.
+fn mark_read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, path: String) {
+    let Some(id) = state.session.selected.clone() else {
+        return;
+    };
+    let Some(worktree) = state
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|worktree| worktree.id.clone())
+    else {
+        return;
+    };
+    let read = !state
+        .session
+        .selected()
+        .is_some_and(|open| open.is_read(&worktree, &path));
+    if let Some(open) = state.session.get_mut(&id) {
+        open.mark(&worktree, &path, read);
+    }
+    let service = services.session.clone();
+    spawner.spawn(Box::pin(async move {
+        let done = service.set_read(&id, &worktree, &path, read).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = done {
+                state.errors.push(e);
+            }
+        }) as Continuation
+    }));
 }
 
 /// The rows on screen: their files take their colours, the others give theirs up.
