@@ -82,7 +82,7 @@ The editor tab opens any file on the same surface, from a diff line or the explo
 stays where it is on save. A save, a create, a rename or a delete reaches the diff and the
 explorer through `watch`, and the alignment follows.
 
-**Four rules of editing:**
+**The rules of editing:**
 
 - **The buffer answers at once, what it implies follows.** A keystroke costs the rope edit
   and a shift of the tree's nodes. The parse and the alignment run in a job and install
@@ -92,6 +92,8 @@ explorer through `watch`, and the alignment follows.
   worktree refreshes the summary and leaves the buffer alone. A save clears the debt.
 - **The caret is a place in the document**, carried across a reopen and a change of view,
   clamped to a place that exists.
+- **A read that finds the text the buffer holds leaves the buffer alone**, so a save costs
+  neither the undo history nor the caret.
 - **An undo takes back a typing run**, not a character. A motion or a newline closes the
   run.
 
@@ -175,4 +177,3 @@ header for the selected worktree.
       `MrDetails`.
 - [ ] The poll's interval and the stale threshold in Config › Preferences.
 - [ ] The watcher's debounce window.
-- [ ] A `FileStatus` for a worktree stopped mid-rebase, with its conflicted files.

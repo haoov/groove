@@ -199,7 +199,41 @@ pub(super) fn read(
 }
 
 /// The file read, with the caret it had while it was the same file.
-pub(super) fn arrived(state: &mut AppState, mut file: Opened, at: Option<Selection>) {
+pub(super) fn arrived(state: &mut AppState, file: Opened, at: Option<Selection>) {
+    match reads_the_same(state, &file) {
+        true => refreshed(state, file, at),
+        false => replaced(state, file, at),
+    }
+}
+
+/// Whether the buffer in hand already holds the text this read found.
+fn reads_the_same(state: &AppState, file: &Opened) -> bool {
+    state
+        .workspace
+        .opened
+        .as_ref()
+        .is_some_and(|open| open.path == file.path && open.new.text() == file.new.text())
+}
+
+/// The read brought back the text the buffer holds: the buffer stays, with its history.
+fn refreshed(state: &mut AppState, file: Opened, at: Option<Selection>) {
+    let Some(open) = state.workspace.opened.as_mut() else {
+        return;
+    };
+    open.old = file.old;
+    open.rows = file.rows;
+    open.marks = file.marks;
+    open.words = file.words;
+    open.long = file.long;
+    open.new.saved();
+    if let Some(held) = at {
+        open.new.holding(held);
+    }
+    state.workspace.moved();
+}
+
+/// A different text: the buffer gives way, keeping only where the caret was.
+fn replaced(state: &mut AppState, mut file: Opened, at: Option<Selection>) {
     let held = at.or_else(|| {
         state
             .workspace

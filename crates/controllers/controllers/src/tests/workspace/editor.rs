@@ -240,3 +240,42 @@ fn a_file_opened_at_a_match_holds_it() {
     let open = state.workspace.opened.as_ref().expect("the file");
     assert_eq!(open.new.selected(), "two", "the match, held by the caret");
 }
+
+#[test]
+fn an_undo_after_a_save_takes_back_what_was_typed() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let file = editing(&mut state, &services, &spawner);
+
+    edit(
+        &mut state,
+        &services,
+        &spawner,
+        &[Edit::Move(Motion::LineEnd), Edit::Insert("!".into())],
+    );
+    act(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::SaveFile,
+    );
+    until(&spawner, &services, &mut state, |s| !s.workspace.dirty());
+
+    let stamp = state.workspace.stamp;
+    std::fs::write(&file, "one!\ntwo\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.stamp != stamp
+    });
+    assert_eq!(
+        buffer(&state),
+        "one!\ntwo\n",
+        "the read found the same text"
+    );
+
+    edit(&mut state, &services, &spawner, &[Edit::Undo]);
+    assert_eq!(buffer(&state), "one\ntwo\n", "the buffer kept its history");
+    assert!(state.workspace.dirty(), "and owes the disk again");
+}
