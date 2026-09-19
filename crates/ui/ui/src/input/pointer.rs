@@ -304,7 +304,7 @@ fn caret(
 ) -> Option<Caret> {
     let rect = hits.rect_of(&Target::Code)?;
     let tokens = metrics.tokens();
-    let (row, display) = code_at(&tokens, hits.chars(), rect, ui.session.diff, point)?;
+    let (row, display) = code_at(&tokens, hits.chars(), rect, point)?;
     let line = diff::line_at(app, ui.session.view, row)?;
     let file = app.workspace.opened.as_ref()?;
     let text = file.new.line(line).unwrap_or_default();

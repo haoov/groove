@@ -122,11 +122,12 @@ impl Block {
 }
 
 /// Where a surface with these gutters puts its characters in `rect`.
-pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect) -> Chars {
+pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect, scroll: f32) -> Chars {
     let style = ctx.styles.code(Role::Text);
     Chars {
         left: Block::of(ctx, gutters).content(ctx, rect),
         advance: ctx.measure("M", &style),
+        scroll,
     }
 }
 
@@ -162,13 +163,14 @@ pub fn code_at(
     tokens: &Tokens,
     chars: Chars,
     rect: Rect,
-    scroll: f32,
     point: (f32, f32),
 ) -> Option<(usize, usize)> {
     if !rect.contains(point.0, point.1) {
         return None;
     }
-    let row = ((point.1 - rect.y + scroll) / tokens.line).floor().max(0.0);
+    let row = ((point.1 - rect.y + chars.scroll) / tokens.line)
+        .floor()
+        .max(0.0);
     let column = ((point.0 - chars.left) / chars.advance.max(1.0))
         .round()
         .max(0.0);

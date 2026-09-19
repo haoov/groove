@@ -76,7 +76,7 @@ fn surface(
     let numbers = numbers(file, view);
     if clickable {
         ctx.hit(rect, Target::Code);
-        let chars = chars_of(ctx, numbers, rect);
+        let chars = chars_of(ctx, numbers, rect, scroll);
         ctx.characters(chars);
     }
     let rows = Rows {

@@ -105,11 +105,16 @@ fn a_point_outside_the_rows_lands_nowhere() {
     let chars = Chars {
         left: 40.0,
         advance: 8.0,
+        scroll: 0.0,
     };
     let rect = Rect::new(0.0, 0.0, 100.0, 100.0);
-    assert!(code_at(&tokens, chars, rect, 0.0, (-1.0, 10.0)).is_none());
+    assert!(code_at(&tokens, chars, rect, (-1.0, 10.0)).is_none());
+    let scrolled = Chars {
+        scroll: tokens.line,
+        ..chars
+    };
     assert_eq!(
-        code_at(&tokens, chars, rect, tokens.line, (chars.left, 0.0)),
+        code_at(&tokens, scrolled, rect, (chars.left, 0.0)),
         Some((1, 0)),
         "a scrolled surface counts from the first row"
     );
@@ -128,7 +133,7 @@ fn a_click_lands_on_the_character_it_points_at() {
         "the text starts past the gutter, not at the surface edge"
     );
     let tokens = Tokens::new(1.0);
-    let at = |x: f32| code_at(&tokens, chars, rect, 0.0, (x, rect.y + 1.0)).map(|at| at.1);
+    let at = |x: f32| code_at(&tokens, chars, rect, (x, rect.y + 1.0)).map(|at| at.1);
     assert_eq!(at(chars.left + 1.0), Some(0), "the first character");
     assert_eq!(at(chars.left - 4.0), Some(0), "the gutter is column zero");
     for column in [1, 5, 9] {
@@ -251,5 +256,32 @@ fn a_wheel_notch_over_the_file_moves_one_code_line() {
         ui.session.diff, tokens.line,
         "a code row, not a list row of {}",
         tokens.row
+    );
+}
+
+#[test]
+fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.diff = 10_000.0;
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+    let tokens = Tokens::new(1.0);
+    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 2.0 + 1.0);
+    let commands = handle(
+        Input::Press {
+            x: point.0,
+            y: point.1,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    let wanted = Edit::Move(Motion::To(Caret::new(1, 0)));
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Edit(wanted))],
+        "the click reads the rows the frame drew, not a scroll it clamped away"
     );
 }

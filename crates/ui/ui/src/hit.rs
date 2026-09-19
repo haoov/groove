@@ -111,6 +111,8 @@ pub struct Chars {
     pub left: f32,
     /// How wide one character of it is.
     pub advance: f32,
+    /// How far down it was drawn.
+    pub scroll: f32,
 }
 
 /// A column that scrolls on its own.
