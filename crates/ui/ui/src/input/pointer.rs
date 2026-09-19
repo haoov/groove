@@ -1,7 +1,7 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
 use groove_controllers::{AppState, Command, session, workspace};
-use groove_types::{Caret, DiffView, Edit, Motion, WorktreeId};
+use groove_types::{Caret, DiffView, Edit, Motion, Selection, WorktreeId};
 
 use super::Key;
 use crate::ctx::Metrics;
@@ -299,7 +299,7 @@ fn landed(
     if !holds(app, &path) {
         let open = workspace::Command::OpenFile {
             path,
-            at: Some(caret),
+            at: Some(Selection::at(caret)),
         };
         return vec![Command::Workspace(open)];
     }

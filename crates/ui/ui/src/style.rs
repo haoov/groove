@@ -181,6 +181,11 @@ impl Styles {
         self.palette.text
     }
 
+    /// Under a match a search found, where the caret is not.
+    pub fn found(&self) -> Color {
+        self.palette.yellow.with_alpha(GROUND_ALPHA)
+    }
+
     pub fn line(&self) -> Color {
         self.palette.surface0
     }

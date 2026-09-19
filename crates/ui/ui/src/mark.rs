@@ -21,6 +21,8 @@ pub enum Mark {
     Modified,
     /// A file the reader has marked read.
     Read,
+    /// What a search bar carries.
+    Search,
     /// What opens a picker.
     Down,
     /// What folds the sidebar away.
@@ -56,6 +58,7 @@ impl Mark {
             Mark::Staged => Icon::Plus,
             Mark::Modified => Icon::Dot,
             Mark::Read => Icon::Check,
+            Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,
             Mark::Sidebar => Icon::Sidebar,
         }

@@ -43,6 +43,13 @@ fn on_diff() -> Ui {
     ui
 }
 
+fn ctrl() -> crate::input::Modifiers {
+    crate::input::Modifiers {
+        ctrl: true,
+        ..crate::input::Modifiers::default()
+    }
+}
+
 #[test]
 fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
     let files = [
@@ -51,7 +58,7 @@ fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
         changed("crates/ui/ui/src/tokens.rs", 1, 0),
         changed("Cargo.toml", 1, 0),
     ];
-    let listing = listing(&files);
+    let listing = listing(&files.iter().collect::<Vec<_>>());
     let groups: Vec<(&str, Vec<&str>)> = listing
         .groups
         .iter()
@@ -88,7 +95,7 @@ fn what_every_file_shares_is_shown_once_and_taken_off_the_groups() {
         changed("crates/ui/ui/src/views/session/session.rs", 1, 0),
         changed("crates/ui/ui/src/views/shared/rail.rs", 1, 0),
     ];
-    let listing = listing(&files);
+    let listing = listing(&files.iter().collect::<Vec<_>>());
     assert_eq!(listing.root, "crates/ui/ui/src");
     let dirs: Vec<&str> = listing.groups.iter().map(|g| g.dir.as_str()).collect();
     assert_eq!(
@@ -122,7 +129,7 @@ fn a_name_that_says_nothing_reads_as_its_directory() {
 #[test]
 fn one_file_is_all_root_and_no_group_line() {
     let files = [changed("crates/base/gfx/src/icons.rs", 3, 2)];
-    let listing = listing(&files);
+    let listing = listing(&files.iter().collect::<Vec<_>>());
     assert_eq!(listing.root, "crates/base/gfx/src");
     assert_eq!(listing.groups.len(), 1);
     assert_eq!(listing.groups[0].dir, "", "its path is the root itself");
@@ -286,5 +293,68 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
     assert!(
         !texts.iter().any(|t| t == "mod.rs"),
         "never a bare mod.rs, which says nothing"
+    );
+}
+
+#[test]
+fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
+    let app = with_files(&["src/one/alpha.rs", "src/two/beta.rs", "README.md"]);
+    let mut ui = on_diff();
+    ui.focus = crate::Focus::Sidebar;
+    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    assert!(ui.session.searching, "the keyboard is in the bar");
+
+    for c in "two/be".chars() {
+        press(
+            Key::Char(c),
+            crate::input::Modifiers::default(),
+            &mut ui,
+            &app,
+        );
+    }
+    let left = crate::views::session::components::files::narrowed(&app, &ui);
+    let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
+    assert_eq!(paths, ["src/two/beta.rs"], "the one path that matches");
+
+    let commands = press(
+        Key::Enter,
+        crate::input::Modifiers::default(),
+        &mut ui,
+        &app,
+    );
+    assert_eq!(commands.len(), 1, "it opens what is left");
+    assert_eq!(commands[0].id(), "workspace.open_file");
+    assert!(!ui.session.searching, "and the bar is spent");
+    assert_eq!(ui.session.query.text(), "");
+}
+
+#[test]
+fn escape_leaves_the_list_as_it_was() {
+    let app = with_files(&["src/one/alpha.rs", "src/two/beta.rs"]);
+    let mut ui = on_diff();
+    ui.focus = crate::Focus::Sidebar;
+    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(
+        Key::Char('z'),
+        crate::input::Modifiers::default(),
+        &mut ui,
+        &app,
+    );
+    assert_eq!(
+        crate::views::session::components::files::narrowed(&app, &ui).len(),
+        0,
+        "nothing matches z"
+    );
+    press(
+        Key::Escape,
+        crate::input::Modifiers::default(),
+        &mut ui,
+        &app,
+    );
+    assert!(!ui.session.searching);
+    assert_eq!(
+        crate::views::session::components::files::narrowed(&app, &ui).len(),
+        2,
+        "both files are back"
     );
 }

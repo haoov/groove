@@ -4,6 +4,8 @@
 //! One directory per surface under `views/`, the surface's own file named after it.
 
 mod ctx;
+mod field;
+mod find;
 mod hit;
 pub mod input;
 mod layout;

@@ -846,3 +846,35 @@ fn a_file_marked_read_is_remembered_by_the_session() {
         .expect("the contents");
     assert!(gone.read.is_empty(), "marked again takes it off");
 }
+
+#[test]
+fn a_file_opened_at_a_match_holds_it() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "one two\nthree\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.files.is_empty()
+    });
+    let held = groove_types::Selection {
+        anchor: groove_types::Caret::new(0, 4),
+        head: groove_types::Caret::new(0, 7),
+    };
+    dispatch(
+        Cmd::Workspace(workspace::Command::OpenFile {
+            path: "a.txt".into(),
+            at: Some(held),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.opened.is_some()
+    });
+    let open = state.workspace.opened.as_ref().expect("the file");
+    assert_eq!(open.new.selected(), "two", "the match, held by the caret");
+}

@@ -52,9 +52,19 @@ pub struct SessionUi {
     pub view: DiffView,
     /// The keyboard is in the commit box.
     pub composing: bool,
+    /// What the sidebar's search bar holds, and whether the keyboard is in it.
+    pub query: crate::field::Field,
+    pub searching: bool,
+    /// The bar over the rows, while a search of them is live.
+    pub find: Option<crate::find::Finding>,
 }
 
 impl SessionUi {
+    /// Whether a bar has the keyboard, so no surface should draw its caret.
+    pub fn typing(&self) -> bool {
+        self.searching || self.find.as_ref().is_some_and(|find| find.typing)
+    }
+
     /// Whether the sidebar stands beside the workspace right now.
     pub fn sidebar(&self) -> bool {
         self.tab.has_sidebar() && !self.folded

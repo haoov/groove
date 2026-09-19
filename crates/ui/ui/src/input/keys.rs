@@ -2,10 +2,13 @@
 
 use groove_controllers::{AppState, Command, agent, session, workspace};
 
-use groove_types::{Edit, Motion};
+use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use super::{Key, Modifiers};
+use crate::field::Field;
+use crate::find::Finding;
 use crate::palette::Palette;
+use crate::tokens::ABOVE_MATCH;
 use crate::{Focus, Ui};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
@@ -19,12 +22,147 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         }
         return outcome.commands;
     }
+    if ui.session.searching {
+        return in_query(key, mods, ui, app);
+    }
+    if let Some(commands) = finding(key, mods, ui, app) {
+        return commands;
+    }
+    if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && ui.focus != Focus::Agent {
+        searching(ui, true);
+        return Vec::new();
+    }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, app),
         Focus::Sidebar => in_sidebar(key, mods, ui, app),
         Focus::Rail => in_rail(key, app),
     }
+}
+
+/// The find bar's own keys, while the workspace holds the keyboard: the bar takes
+/// what is typed until `Enter` hands the code back, and the chords step either way.
+fn finding(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let view = ui.session.view;
+    if mods.ctrl && matches!(key, Key::Char('f' | 'F')) && ui.focus == Focus::Workspace {
+        let find = ui.session.find.get_or_insert_with(|| Finding::open(view));
+        find.typing = true;
+        return Some(Vec::new());
+    }
+    let find = ui.session.find.as_mut()?;
+    match key {
+        Key::Escape => {
+            ui.session.find = None;
+            return Some(Vec::new());
+        }
+        Key::Char('n' | 'N') if mods.ctrl => find.step(true),
+        Key::Char('p' | 'P') if mods.ctrl => find.step(false),
+        Key::Enter if find.typing => find.typing = false,
+        key if find.typing => match typing(key, mods, &mut find.query) {
+            true => searched(find, app, view),
+            false => return Some(Vec::new()),
+        },
+        _ => return None,
+    }
+    Some(reached(ui, app))
+}
+
+/// One keystroke in a field. True when what it holds changed, which a motion does not.
+fn typing(key: Key, mods: Modifiers, field: &mut Field) -> bool {
+    match key {
+        Key::Left => field.left(),
+        Key::Right => field.right(),
+        Key::Home => field.home(),
+        Key::End => field.end(),
+        Key::Backspace => return took(field, Field::backspace),
+        Key::Delete => return took(field, Field::delete),
+        Key::Char(c) if !mods.ctrl && !mods.alt => return took(field, |field| field.insert(c)),
+        _ => {}
+    }
+    false
+}
+
+fn took(field: &mut Field, act: impl FnOnce(&mut Field)) -> bool {
+    act(field);
+    true
+}
+
+/// The matches read again for what the bar now holds.
+fn searched(find: &mut Finding, app: &AppState, view: DiffView) {
+    find.hits = crate::find::found(app, view, find.query.text());
+    find.view = view;
+    find.at = 0;
+}
+
+/// The surface scrolled to the match it stands on, which it holds as a selection.
+fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let line = crate::tokens::Tokens::new(1.0).line;
+    let Some(find) = ui.session.find.as_ref() else {
+        return Vec::new();
+    };
+    let Some(hit) = find.here().cloned() else {
+        return Vec::new();
+    };
+    let above = hit.row.saturating_sub(ABOVE_MATCH);
+    ui.session.diff = above as f32 * line;
+    let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {
+        return Vec::new();
+    };
+    let end = Caret::new(at.line, hit.range.end);
+    let holds = app
+        .workspace
+        .opened
+        .as_ref()
+        .is_some_and(|open| open.path == hit.path);
+    if !holds {
+        let open = workspace::Command::OpenFile {
+            path: hit.path,
+            at: Some(Selection {
+                anchor: at,
+                head: end,
+            }),
+        };
+        return vec![Command::Workspace(open)];
+    }
+    [Edit::Move(Motion::To(at)), Edit::Extend(Motion::To(end))]
+        .into_iter()
+        .map(|edit| Command::Workspace(workspace::Command::Edit(edit)))
+        .collect()
+}
+
+/// The search bar open or shut, its query spent either way. Only one thing takes
+/// what is typed, so the commit box gives the keyboard up.
+fn searching(ui: &mut Ui, on: bool) {
+    ui.session.searching = on;
+    ui.session.query.clear();
+    if on {
+        ui.session.composing = false;
+    }
+}
+
+/// What a keystroke asks of the search bar: a path to narrow the list to, or the
+/// first file it left.
+fn in_query(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    match key {
+        Key::Escape => searching(ui, false),
+        Key::Enter => {
+            let first = crate::views::session::components::files::narrowed(app, ui)
+                .first()
+                .map(|file| file.path.clone());
+            searching(ui, false);
+            return match first {
+                Some(path) => vec![Command::Workspace(workspace::Command::OpenFile {
+                    path,
+                    at: None,
+                })],
+                None => Vec::new(),
+            };
+        }
+        key => {
+            typing(key, mods, &mut ui.session.query);
+        }
+    }
+    Vec::new()
 }
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.

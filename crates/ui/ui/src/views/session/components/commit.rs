@@ -56,7 +56,8 @@ fn count(files: &[FileDiff], staged: bool) -> u32 {
 
 /// The message, on the same surface a file is edited on.
 fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    let composing = ui.session.composing && ui.focus == Focus::Sidebar;
+    let held = ui.session.composing && !ui.session.typing();
+    let composing = held && ui.focus == Focus::Sidebar;
     ctx.quad(rect, ctx.styles.inner());
     let buffer = &app.workspace.message;
     let caret = buffer.caret();

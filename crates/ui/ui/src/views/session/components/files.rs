@@ -8,6 +8,7 @@ use groove_types::FileDiff;
 use super::commit;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
+use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{button, elide, hairline, row, ruled};
 use crate::{Losing, Ui};
@@ -33,9 +34,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ctx.quad(rect, panel);
     edge(ctx, rect);
 
-    let files = changed(app);
-    let listing = listing(files);
-    let head = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.header);
+    let files = narrowed(app, ui);
+    let listing = listing(&files);
+    let bar = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
+    searching(ctx, bar, ui);
+    let head = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.header);
     heading(ctx, head, files.len());
     let under = ctx.layout.commit;
     let body = Rect::new(rect.x, head.bottom(), rect.w, under.y - head.bottom());
@@ -52,6 +55,39 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 fn edge(ctx: &mut Ctx, rect: Rect) {
     let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
+}
+
+/// The changed files the search bar leaves, every one of them when it is empty.
+pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
+    let files: Vec<&FileDiff> = changed(app).iter().collect();
+    match ui.session.query.is_empty() {
+        true => files,
+        false => {
+            let query = ui.session.query.text();
+            crate::palette::matching(files, |file| file.path.clone(), query)
+        }
+    }
+}
+
+/// The bar the search types into, above the list it narrows.
+fn searching(ctx: &mut Ctx, rect: Rect, ui: &Ui) {
+    ctx.quad(rect, ctx.styles.ground());
+    hairline(ctx, rect, ctx.styles.line());
+    let (text, role) = match (ui.session.searching, ui.session.query.is_empty()) {
+        (false, true) => ("filter by path".to_string(), Role::Ghost),
+        (true, _) => (ui.session.query.shown(), Role::Text),
+        (false, _) => (ui.session.query.text().to_string(), Role::Text),
+    };
+    let size = ctx.tokens.icon;
+    let glass = Rect::new(
+        rect.x + ctx.tokens.md,
+        rect.y + (rect.h - size) / 2.0,
+        size,
+        size,
+    );
+    ctx.icon(glass, Mark::Search, 0, ctx.styles.color(role));
+    let at = glass.right() - rect.x + ctx.tokens.sm;
+    row(ctx, rect, at, &text, ctx.styles.code(role));
 }
 
 fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
@@ -242,9 +278,9 @@ fn name_of(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
+pub(crate) fn listing<'a>(files: &[&'a FileDiff]) -> Listing<'a> {
     let root = common(files);
-    let mut groups: Vec<Group<'_>> = Vec::new();
+    let mut groups: Vec<Group<'a>> = Vec::new();
     for file in files {
         let dir = under(&root, &file.path);
         match groups.iter_mut().find(|group| group.dir == dir) {
@@ -260,7 +296,7 @@ pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
 }
 
 /// The longest path every file shares, and nothing when they share none.
-fn common(files: &[FileDiff]) -> String {
+fn common(files: &[&FileDiff]) -> String {
     let mut shared: Option<Vec<&str>> = None;
     for file in files {
         let parts = segments(&file.path);

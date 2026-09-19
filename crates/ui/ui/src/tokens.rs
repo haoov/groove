@@ -14,6 +14,9 @@ pub const MESSAGE_LINES: usize = 10;
 pub const PINNED_DEEP: usize = 3;
 pub const PINNED_SHARE: f32 = 4.0;
 
+/// How many rows a search keeps above the match it lands on.
+pub const ABOVE_MATCH: usize = 4;
+
 /// How long after a press another one counts as the same click, and how far it may
 /// land from it, in logical pixels.
 pub const CLICK_MS: u64 = 400;

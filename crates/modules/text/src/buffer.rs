@@ -113,6 +113,14 @@ impl Buffer {
         self.carets = vec![Selection::at(self.clamped(caret))];
     }
 
+    /// Puts one caret where it was and gives it what it held.
+    pub fn holding(&mut self, held: Selection) {
+        self.carets = vec![Selection {
+            anchor: self.clamped(held.anchor),
+            head: self.clamped(held.head),
+        }];
+    }
+
     /// The disk has what the buffer holds.
     pub fn saved(&mut self) {
         self.dirty = false;

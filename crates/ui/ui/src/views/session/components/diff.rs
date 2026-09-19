@@ -1,5 +1,6 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
+mod finder;
 mod header;
 mod map;
 mod pinned;
@@ -42,6 +43,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         None => {
             surface::rows(ctx, body, app, ui);
             pinned::draw(ctx, body, app, ui, surface::numbers(app, ui.session.view));
+            finder::draw(ctx, body, ui);
         }
     }
 }

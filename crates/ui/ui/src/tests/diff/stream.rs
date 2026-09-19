@@ -54,7 +54,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
         commands,
         [Command::Workspace(workspace::Command::OpenFile {
             path: "src/a.rs".into(),
-            at: Some(Caret::new(0, 0)),
+            at: Some(groove_types::Selection::at(Caret::new(0, 0))),
         })],
         "the band, the head, the line that went, then the line that came"
     );

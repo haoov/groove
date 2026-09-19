@@ -41,6 +41,10 @@ pub(super) struct Drawn {
     pub(super) read: bool,
     /// The file a head row names.
     pub(super) file: Option<String>,
+    /// What a search found on this row, in the columns the row draws.
+    pub(super) found: Vec<(usize, usize)>,
+    /// The one of them the search stands on.
+    pub(super) standing: Option<(usize, usize)>,
 }
 
 /// The rows of one view, inside `window`. The file view is the open file; the others
@@ -92,10 +96,38 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                     .map(|on| display_at(&text, on.column, width)),
                 held: held(file, ui, at),
                 mark: file.marks.get(&(at as u32)).copied(),
+                found: matched(ui, at, &text, width),
+                standing: standing(ui, at, &text, width),
                 ..Drawn::default()
             }
         })
         .collect()
+}
+
+/// What a live search found on this row, in the columns the row draws. A side that
+/// draws the row blank marks nothing.
+fn matched(ui: &Ui, row: usize, text: &str, width: usize) -> Vec<(usize, usize)> {
+    let Some(find) = ui.session.find.as_ref().filter(|_| !text.is_empty()) else {
+        return Vec::new();
+    };
+    find.on(row)
+        .into_iter()
+        .map(|at| columns_of(at, text, width))
+        .collect()
+}
+
+/// The match the search stands on, when it stands on this row.
+fn standing(ui: &Ui, row: usize, text: &str, width: usize) -> Option<(usize, usize)> {
+    let find = ui.session.find.as_ref().filter(|_| !text.is_empty())?;
+    let at = find.standing(row)?;
+    Some(columns_of(at, text, width))
+}
+
+fn columns_of(at: Range<usize>, text: &str, width: usize) -> (usize, usize) {
+    (
+        display_at(text, at.start, width),
+        display_at(text, at.end, width),
+    )
 }
 
 /// Every changed file's rows, each under a row naming the file.
@@ -118,7 +150,7 @@ fn streamed(
                     app,
                     ui,
                     file,
-                    at,
+                    (row, at),
                     view,
                     side,
                     colours.get(file.path.as_str()),
@@ -212,7 +244,7 @@ fn one(
     app: &AppState,
     ui: &Ui,
     file: &Aligned,
-    at: usize,
+    (on, at): (usize, usize),
     view: DiffView,
     side: Side,
     colours: Option<&(Rc<Colours>, Rc<Colours>)>,
@@ -230,6 +262,8 @@ fn one(
     let spans = spans_of(colours, side, line);
     let (drawn, spans) = shown(&text, &spans, file.indent);
     Drawn {
+        found: matched(ui, on, &text, file.indent),
+        standing: standing(ui, on, &text, file.indent),
         text: drawn,
         spans,
         gutters: gutters(row, view, side),
@@ -276,10 +310,8 @@ fn spans_of(
 
 /// Where the caret is, while the workspace holds the keyboard.
 fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
-    match ui.focus == Focus::Workspace {
-        true => Some(file.new.caret()),
-        false => None,
-    }
+    let here = ui.focus == Focus::Workspace && !ui.session.typing();
+    here.then(|| file.new.caret())
 }
 
 /// The file and line a row of the whole surface shows, on the new side.

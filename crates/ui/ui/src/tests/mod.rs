@@ -1,7 +1,9 @@
 mod budget;
 mod diff;
 mod editing;
+mod field;
 mod files;
+mod finding;
 mod focus;
 mod frame;
 mod index;

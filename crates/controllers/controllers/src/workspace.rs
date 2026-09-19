@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::{Caret, Edit, Error, ErrorKind, Result, WorktreeId};
+use groove_types::{Edit, Error, ErrorKind, Result, Selection, WorktreeId};
 use groove_workspace_service::{
     Buffer, Derived, Document, Opened, changes, derived, opened, painted, reopened, summary,
 };
@@ -18,8 +18,8 @@ pub enum Command {
     /// `workspace.open_file`: one file's two sides and the rows between them.
     OpenFile {
         path: String,
-        /// Where to put the caret, when the click that asked knows.
-        at: Option<Caret>,
+        /// What the caret should hold once it is open, when the asking knows.
+        at: Option<Selection>,
     },
     /// `workspace.mark_read`: one file read, or the mark taken off it.
     MarkRead { path: String },
@@ -509,7 +509,7 @@ fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
 }
 
 /// Reads both sides in a job; the continuation stores them for the tab to draw.
-pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: Option<Caret>) {
+pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: Option<Selection>) {
     read(state, spawner, path, None, at);
 }
 
@@ -518,7 +518,7 @@ fn read(
     spawner: &dyn Spawner,
     path: String,
     old: Option<Document>,
-    at: Option<Caret>,
+    at: Option<Selection>,
 ) {
     let Some(dir) = worktree_dir(state) else {
         return;
@@ -537,17 +537,17 @@ fn read(
 }
 
 /// The file read, with the caret it had while it was the same file.
-fn arrived(state: &mut AppState, mut file: Opened, at: Option<Caret>) {
-    let caret = at.or_else(|| {
+fn arrived(state: &mut AppState, mut file: Opened, at: Option<Selection>) {
+    let held = at.or_else(|| {
         state
             .workspace
             .opened
             .as_ref()
             .filter(|open| open.path == file.path)
-            .map(|open| open.new.caret())
+            .map(|open| Selection::at(open.new.caret()))
     });
-    if let Some(caret) = caret {
-        file.new.follow(caret);
+    if let Some(held) = held {
+        file.new.holding(held);
     }
     state.workspace.opened = Some(file);
     state.workspace.moved();

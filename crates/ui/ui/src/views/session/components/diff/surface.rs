@@ -69,7 +69,11 @@ fn surface(
             if let RowKind::Gap(_) = row.kind {
                 return Line::banner(&row.text);
             }
-            let line = Line::new(&row.text).gutters(&gutters[at]).spans(&row.spans);
+            let line = Line::new(&row.text)
+                .gutters(&gutters[at])
+                .spans(&row.spans)
+                .found(&row.found)
+                .standing(row.standing);
             let line = line
                 .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
                 .caret(row.caret)

@@ -32,6 +32,10 @@ pub struct Line<'a> {
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
     pub held: Option<(usize, usize, bool)>,
+    /// What a search found on this row, in columns of its text.
+    pub found: &'a [(usize, usize)],
+    /// The one of them it stands on, drawn as a selection is.
+    pub standing: Option<(usize, usize)>,
 }
 
 impl<'a> Line<'a> {
@@ -49,6 +53,8 @@ impl<'a> Line<'a> {
             read: false,
             caret: None,
             held: None,
+            found: &[],
+            standing: None,
         }
     }
 
@@ -113,6 +119,16 @@ impl<'a> Line<'a> {
 
     pub fn held(mut self, held: Option<(usize, usize, bool)>) -> Self {
         self.held = held;
+        self
+    }
+
+    pub fn found(mut self, found: &'a [(usize, usize)]) -> Self {
+        self.found = found;
+        self
+    }
+
+    pub fn standing(mut self, standing: Option<(usize, usize)>) -> Self {
+        self.standing = standing;
         self
     }
 }
@@ -269,6 +285,12 @@ fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     }
     let at = gutter.content(ctx, line);
     let rect = Rect::new(at, line.y, line.right() - at, line.h);
+    for (from, to) in code.found {
+        marked(ctx, rect, code.text, (*from, *to), false);
+    }
+    if let Some(at) = code.standing {
+        marked(ctx, rect, code.text, at, true);
+    }
     if let Some(held) = code.held {
         holding(ctx, rect, code.text, held);
     }
@@ -296,6 +318,22 @@ fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
         end += ctx.measure("M", &style);
     }
     let color = ctx.styles.held();
+    ctx.quad(
+        Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h),
+        color,
+    );
+}
+
+/// What a search found, under the text. The one it stands on reads as a selection,
+/// which is what it is wherever a caret can hold it.
+fn marked(ctx: &mut Ctx, rect: Rect, text: &str, at: (usize, usize), standing: bool) {
+    let style = ctx.styles.code(Role::Text);
+    let start = upto(ctx, text, at.0, &style);
+    let end = upto(ctx, text, at.1, &style);
+    let color = match standing {
+        true => ctx.styles.held(),
+        false => ctx.styles.found(),
+    };
     ctx.quad(
         Rect::new(rect.x + start, rect.y, (end - start).max(1.0), rect.h),
         color,
