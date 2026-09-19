@@ -15,7 +15,6 @@ mod naming;
 mod narrowing;
 mod panes;
 mod repo;
-mod schema;
 mod session;
 mod syntax;
 mod task;
@@ -31,8 +30,8 @@ pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention};
 pub use config::{
-    Config, ConfigView, FilterConfig, GitConfig, GithubConfig, GithubPropertyNames, NotionConfig,
-    NotionView, Preferences, PropertyNames, StatusMap, ThemeName, UiConfig,
+    Config, ConfigView, FilterConfig, GitConfig, GithubConfig, GithubView, NotionConfig,
+    NotionView, Preferences, PriorityMap, PropertyNames, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
@@ -52,12 +51,9 @@ pub use naming::names_session;
 pub use narrowing::{narrows, score};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
-pub use schema::{
-    PropertyKind, PropertyOption, PropertySchema, PropertyValue, StatusGroup, TaskSchema,
-};
 pub use session::{Session, SessionKind, SessionState};
 pub use syntax::{Capture, Highlight};
-pub use task::{ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary};
+pub use task::{Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};

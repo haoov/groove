@@ -65,7 +65,7 @@ The capabilities are five and do not move. Growth is answered inside them.
 
 | Service | Modules | Base |
 |---|---|---|
-| task | provider (notion, github issues) · timeline | http, db |
+| task | provider (github issues, notion) · timeline | http, exec, db |
 | session | worktree → git · agent-launch → terminal · terminal · approvals | exec, db |
 | workspace | git · diff → git, text · grep · watch · annotations → forge · editor → text · text · terminal · forge | exec, db, http |
 | agent | tools → approvals · hooks → activity → timeline · skills · approvals | db |
@@ -82,7 +82,7 @@ One directory per layer under `crates/`. What each holds:
 | `exec` | a process: run to completion with capture, timeout, kill on drop, redaction; a pty with streaming and resize |
 | `gfx` | wgpu device, glyph atlas, cell grid, box quads, theme |
 | `types` | the vocabulary and the pure rules over it |
-| `provider` | notion, github issues, the registry |
+| `provider` | github issues, notion, and the enum that registers them |
 | `sessions` | the session rows |
 | `worktree` | clone pool, provisioning, naming, teardown |
 | `git` | environment conventions, the parsers, the actions |

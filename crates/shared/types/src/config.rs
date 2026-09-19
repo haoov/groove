@@ -1,7 +1,7 @@
 mod sources;
 
 pub use sources::{
-    FilterConfig, GithubConfig, GithubPropertyNames, NotionConfig, NotionView, PropertyNames,
+    FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap, PropertyNames,
     StatusMap,
 };
 
@@ -102,7 +102,7 @@ impl Default for Preferences {
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct ConfigView {
     pub notion: Option<NotionView>,
-    pub github: Option<GithubConfig>,
+    pub github: Option<GithubView>,
     pub git: GitConfig,
     pub ui: UiConfig,
     pub preferences: Preferences,
@@ -112,7 +112,7 @@ impl From<Config> for ConfigView {
     fn from(c: Config) -> Self {
         Self {
             notion: c.notion.map(NotionView::from),
-            github: c.github,
+            github: c.github.map(GithubView::from),
             git: c.git,
             ui: c.ui,
             preferences: c.preferences,

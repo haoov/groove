@@ -7,6 +7,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-provider = { path = "../../modules/provider" }
 groove-types = { path = "../../shared/types" }
 
 [lints]

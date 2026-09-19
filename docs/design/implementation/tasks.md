@@ -6,17 +6,29 @@ still to build; for the rest the `Command` enum is the truth.
 
 ## Multi providers
 
-**Module `provider`**, on `http`: the trait, the two implementations, the registry,
-the generic writes. **Service `task`** holds the task list and each task's properties
-and body in its slice.
+**Groove reads a task; it writes only what it did.** Opening a session sets the status
+in progress, finishing sets it done, and `task.log_hours` adds the hours Groove
+measured. A new task, a changed body, any other property: the agent asks for it through
+`approvals`, and the review sheet shows it. The board and the overview never edit.
+
+**The six properties**, named per source in the config, with what each provider calls
+them: status, priority, start, due, estimate, and the one hours are logged to. A name
+left out is a gap, not an error — Setup lists the six and what a gap costs. `status_map`
+and `priority_map` say which of the source's own values mean what, and the first value
+of each is the one Groove writes.
+
+**Module `provider`**, on `http`: one `Source` per provider, read-only — list, fetch,
+body. The enum is the registry: a new provider is a new arm, and the compiler asks for
+it everywhere at once. **Service `task`** holds the list in its slice.
+
+**GitHub** reads the open issues assigned to you that sit on a project board, and takes
+the six from the board's fields. Its token comes from `gh auth token`, or from the
+config when a host has one of its own.
 
 | Still to build | Does |
 |---|---|
-| `task.sync` | refetch one task from its source |
-| `task.get` · `task.list` | reads: one task with properties and body; the list |
-| `task.schema` · `task.relation_options` · `task.template` | reads, for the overview's editors and the agent |
-
-The compile-time registry rule stays; a provider is added by a row.
+| `task.get` · `task.list` | reads for the MCP tools |
+| `task.body` | the task's body, as the overview shows it |
 
 ## Tasks management
 
@@ -36,15 +48,16 @@ Board row sums them.
 | Still to build | Does |
 |---|---|
 | `task.open` | create or load the session, then `session.open` |
-| `task.create` | at the provider; from the board or the agent |
 | `task.finish` | status done, teardown, remove from the rail |
 | `task.delete` · `task.delete_local` | at the provider; locally only |
-| `task.set_property` · `task.set_body` | by hand from the overview; from the agent through `approvals` |
-| `task.set_status` | by lifecycle — in progress on open, done on finish — or by hand |
+| `task.set_status` | by lifecycle only: in progress on open, done on finish |
 | `task.log_hours` | the unlogged hours to the ledger and the source |
 | `task.get_time` | read: tracked and logged hours |
 | `task.reorder` | move an item in Up next; above or below *later* |
-| `task.filter` | the board's filter string |
+| `task.create` · `task.set_property` · `task.set_body` | the agent's own writes, through `approvals` |
+
+The board's **+ task** opens an explorer; filing the task is what the agent does from
+it.
 
 The timer is the `task` service's own: it credits the focused session on a clock
 while the window has focus and there is input or a busy agent. No controller.
@@ -53,8 +66,8 @@ while the window has focus and there is input or a busy agent. No controller.
 
 ## Needs
 
+- [x] The six properties named per source, with a status map and a priority map.
 - [ ] Local order per task and the *later* position, in the database.
 - [x] Attention rules and thresholds in `types`.
 - [ ] The attention fold in the `task` service.
-- [ ] Start, duration and due read from the provider schema by property name,
-      configured per source.
+- [ ] Notion on the same `Source` enum: its row, its mapping, its body read.

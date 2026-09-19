@@ -1231,6 +1231,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -1336,6 +1337,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-provider"
+version = "0.1.0"
+dependencies = [
+ "groove-exec",
+ "groove-http",
+ "groove-types",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "groove-session-service"
 version = "0.1.0"
 dependencies = [
@@ -1361,6 +1375,7 @@ dependencies = [
 name = "groove-task-service"
 version = "0.1.0"
 dependencies = [
+ "groove-provider",
  "groove-types",
 ]
 

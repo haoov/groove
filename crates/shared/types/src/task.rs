@@ -3,16 +3,14 @@ use crate::{Day, Error, ExternalId, Result, Timestamp};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderId {
-    Notion,
     Github,
 }
 
 impl ProviderId {
-    pub const ALL: [ProviderId; 2] = [ProviderId::Notion, ProviderId::Github];
+    pub const ALL: [ProviderId; 1] = [ProviderId::Github];
 
     pub fn as_str(self) -> &'static str {
         match self {
-            ProviderId::Notion => "notion",
             ProviderId::Github => "github",
         }
     }
@@ -28,9 +26,6 @@ impl ProviderId {
 /// A task's identity at its source.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TaskKey {
-    Notion {
-        page_id: String,
-    },
     Github {
         host: String,
         owner: String,
@@ -40,22 +35,61 @@ pub enum TaskKey {
 }
 
 impl TaskKey {
+    /// How the key reads as one string: what the database and the MR footer carry.
+    pub fn external_id(&self) -> ExternalId {
+        match self {
+            TaskKey::Github {
+                host,
+                owner,
+                repo,
+                number,
+            } => ExternalId::new(format!("{host}/{owner}/{repo}#{number}")),
+        }
+    }
+
     pub fn provider(&self) -> ProviderId {
         match self {
-            TaskKey::Notion { .. } => ProviderId::Notion,
             TaskKey::Github { .. } => ProviderId::Github,
         }
     }
 }
 
+/// How much a task matters, whatever its provider calls it.
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Priority {
+    High,
+    Medium,
+    Low,
+}
+
+impl Priority {
+    pub const ALL: [Priority; 3] = [Priority::High, Priority::Medium, Priority::Low];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Priority::High => "high",
+            Priority::Medium => "medium",
+            Priority::Low => "low",
+        }
+    }
+}
+
 /// A task as its provider last reported it.
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Task {
     pub external_id: ExternalId,
     pub short_id: String,
     pub title: String,
+    /// The provider's own status label, and what it means to Groove.
     pub status: String,
-    pub priority: Option<String>,
+    pub intent: Option<StatusIntent>,
+    pub priority: Option<Priority>,
+    pub dates: TaskDates,
+    /// The hours the task is estimated at.
+    pub estimate: Option<f32>,
     pub synced_at: Timestamp,
     pub provider: ProviderId,
     pub url: Option<String>,
@@ -71,7 +105,8 @@ impl Task {
 }
 
 /// What the app asks for; the provider owns the label it writes.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StatusIntent {
     Ready,
     InProgress,

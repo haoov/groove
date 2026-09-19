@@ -29,8 +29,8 @@ The board replaces the agent pane, the workspace and the sidebar; the rail stays
 columns, one per list, each scrolling on its own.
 
 **Header.** The filter — `field:value` tokens and bare words, with autocomplete — applied
-to all three columns at once. On the right, **+ task**: a new task at the provider, or a
-new explorer.
+to all three columns at once. On the right, **+ task**, which opens an explorer; filing
+the task at the provider is the agent's own write.
 
 | Column | Holds | Sort |
 |---|---|---|
@@ -71,8 +71,8 @@ when nothing falls in the horizon. Four weeks, today about a quarter in, days as
 week boundaries stronger, weekends dimmed. One bar per task: from its start date to start
 plus duration, or to its due date when it has one; a point when it has only a due date; an
 open bar to today when it has only a start. Bars stack when they overlap. The filter
-applies to the band; the band never reorders Up next. Dates and duration are properties,
-read from the provider and edited by hand in the overview.
+applies to the band; the band never reorders Up next. The dates come from the provider,
+read-only.
 
 No activity heatmap. No *blocked by*.
 
@@ -143,7 +143,7 @@ actions: finish, and a menu with delete and open in provider.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
-| overview | properties; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, and the row's skill button; then the body. Properties and body edited by hand. Close task when every worktree is merged or closed | folded |
+| overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, and the row's skill button; then the body as text. Close task when every worktree is merged or closed | folded |
 | diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — path and text, both live — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
 | editor | any file, on the same surface; a changed file keeps its marks and its views | file explorer, search, grep results |
 

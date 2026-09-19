@@ -4,5 +4,6 @@ mod layers;
 mod loop_;
 mod perf;
 mod session;
+mod tasks;
 mod workspace;
 mod worktrees;

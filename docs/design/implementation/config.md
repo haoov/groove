@@ -26,8 +26,9 @@ The Setup section of Settings is the check, the login and the three paths.
 ## Providers
 
 **Module `config`** holds the source's fields; **`forge`** keeps the token reads. The
-Providers section: the task source as a select with its fields under it; forge tokens
-shown present or missing from `forge`'s check.
+Providers section: the task source with its fields under it, then the six properties it
+maps — status, priority, start, due, estimate, logged — each with the source's own name
+or a gap, and what the gap costs. Forge tokens show present or missing.
 
 | Still to build | Does |
 |---|---|

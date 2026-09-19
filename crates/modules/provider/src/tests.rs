@@ -1,0 +1,130 @@
+use groove_types::{GithubConfig, Priority, PriorityMap, PropertyNames, StatusIntent, StatusMap};
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
+
+use crate::{Github, Token};
+
+fn config(host: &str) -> GithubConfig {
+    GithubConfig {
+        host: host.to_string(),
+        token: None,
+        properties: PropertyNames {
+            status: "Status".into(),
+            priority: Some("Priority".into()),
+            start: Some("Start".into()),
+            due: Some("Due".into()),
+            estimate: Some("Estimate".into()),
+            logged: Some("Spent".into()),
+        },
+        status_map: StatusMap {
+            ready: vec!["Todo".into()],
+            in_progress: vec!["In progress".into()],
+            done: vec!["Done".into()],
+        },
+        priority_map: PriorityMap {
+            high: vec!["P1".into()],
+            medium: vec!["P2".into()],
+            low: vec!["P3".into()],
+        },
+    }
+}
+
+fn issue() -> serde_json::Value {
+    serde_json::json!({
+        "number": 50,
+        "title": "Harden Groove",
+        "url": "https://github.com/haoov/groove/issues/50",
+        "body": "the body",
+        "repository": { "name": "groove", "owner": { "login": "haoov" } },
+        "projectItems": { "nodes": [{
+            "project": { "title": "Platform" },
+            "fieldValues": { "nodes": [
+                { "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "In progress", "field": { "name": "Status" } },
+                { "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                  "name": "P1", "field": { "name": "Priority" } },
+                { "__typename": "ProjectV2ItemFieldDateValue",
+                  "date": "2026-09-14", "field": { "name": "Start" } },
+                { "__typename": "ProjectV2ItemFieldDateValue",
+                  "date": "2026-09-30", "field": { "name": "Due" } },
+                { "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 6.5, "field": { "name": "Estimate" } }
+            ]}
+        }]}
+    })
+}
+
+/// A server that answers every GraphQL call with `reply`, and the source on it.
+async fn source(reply: serde_json::Value) -> (MockServer, Github) {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/graphql"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(reply))
+        .mount(&server)
+        .await;
+    let host = format!("http://{}", server.address());
+    let github = Github::with_token(config(&host), Token::Fixed("t".into())).expect("a client");
+    (server, github)
+}
+
+#[tokio::test]
+async fn an_issue_on_a_board_reads_as_a_task_through_the_mapping() {
+    let reply = serde_json::json!({ "data": { "search": { "nodes": [issue()] } } });
+    let (_server, github) = source(reply).await;
+    let tasks = github.list().await.expect("the search answers");
+    let task = tasks.first().expect("one task");
+    assert_eq!(task.short_id, "gh-haoov-groove-50");
+    assert!(
+        task.external_id.as_str().ends_with("/haoov/groove#50"),
+        "the key names the host, the repo and the number: {}",
+        task.external_id.as_str()
+    );
+    assert_eq!(task.title, "Harden Groove");
+    assert_eq!(task.status, "In progress");
+    assert_eq!(task.intent, Some(StatusIntent::InProgress));
+    assert_eq!(task.priority, Some(Priority::High));
+    assert_eq!(task.dates.due.map(|day| day.day), Some(30));
+    assert_eq!(task.estimate, Some(6.5));
+    assert_eq!(task.branch_tag.as_deref(), Some("50"));
+    assert_eq!(task.board.as_deref(), Some("Platform"));
+}
+
+#[tokio::test]
+async fn an_issue_on_no_board_is_not_a_task() {
+    let mut bare = issue();
+    bare["projectItems"]["nodes"] = serde_json::json!([]);
+    let reply = serde_json::json!({ "data": { "search": { "nodes": [bare] } } });
+    let (_server, github) = source(reply).await;
+    assert!(github.list().await.expect("the search answers").is_empty());
+}
+
+#[tokio::test]
+async fn a_property_the_config_does_not_name_is_left_out() {
+    let reply = serde_json::json!({ "data": { "search": { "nodes": [issue()] } } });
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(reply))
+        .mount(&server)
+        .await;
+    let mut config = config(&format!("http://{}", server.address()));
+    config.properties.estimate = None;
+    config.properties.due = None;
+    let github = Github::with_token(config, Token::Fixed("t".into())).expect("a client");
+    let tasks = github.list().await.expect("the search answers");
+    let task = tasks.first().expect("one task");
+    assert_eq!(task.estimate, None, "no name, no estimate, no error");
+    assert_eq!(task.dates.due, None);
+    assert_eq!(
+        task.dates.start.map(|day| day.day),
+        Some(14),
+        "the rest stands"
+    );
+}
+
+#[tokio::test]
+async fn what_github_refuses_comes_back_as_the_reason_it_gave() {
+    let reply = serde_json::json!({ "errors": [{ "message": "Bad credentials" }] });
+    let (_server, github) = source(reply).await;
+    let refused = github.list().await.expect_err("the query is refused");
+    assert!(refused.to_string().contains("Bad credentials"), "{refused}");
+}

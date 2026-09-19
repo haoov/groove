@@ -2,8 +2,8 @@
 
 ## Multi providers
 
-- providers: Notion, GitHub
-- schema: properties, status groups, hours
+- providers: GitHub, Notion
+- the six properties, mapped per source: status, priority, start, due, estimate, logged
 - identity: provider key, short id
 - setup
 
@@ -11,11 +11,10 @@
 
 - lists: live, up next, review
 - filter
-- actions: open, create, finish, delete, delete locally
-- properties: read, edit
-- body: read, edit
-- status
+- actions: open, finish, delete, delete locally
+- properties and body: read
+- status: in progress on open, done on finish
 - time: timer, log hours
 - planning: local order, later divider
 - attention: reason and age
-- timeline: start, duration, due
+- timeline: start, due
