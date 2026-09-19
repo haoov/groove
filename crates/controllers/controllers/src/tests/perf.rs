@@ -43,6 +43,7 @@ fn time_a_save_reaching_the_state() {
     });
     dispatch(
         Cmd::Workspace(workspace::Command::OpenFile {
+            at: None,
             path: "a.txt".into(),
         }),
         &mut state,

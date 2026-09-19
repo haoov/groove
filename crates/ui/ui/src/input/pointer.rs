@@ -95,9 +95,12 @@ pub(super) fn moved(
     if !ui.selecting {
         return Vec::new();
     }
-    let Some(caret) = caret(ui, app, hits, metrics, (x, y)) else {
+    let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
         return Vec::new();
     };
+    if !holds(app, &path) {
+        return Vec::new();
+    }
     let edit = Edit::Extend(Motion::To(caret));
     vec![Command::Workspace(workspace::Command::Edit(edit))]
 }
@@ -160,7 +163,11 @@ fn click(
         Some(Target::Picker(which)) => selector(ui, app, hits, which),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => {
-            vec![Command::Workspace(workspace::Command::OpenFile { path })]
+            jump(ui, app, &path, metrics);
+            vec![Command::Workspace(workspace::Command::OpenFile {
+                path,
+                at: None,
+            })]
         }
         Some(Target::View(view)) => {
             switch(ui, app, view, metrics);
@@ -275,9 +282,16 @@ fn landed(
     metrics: Metrics,
     point: (f32, f32),
 ) -> Vec<Command> {
-    let Some(caret) = caret(ui, app, hits, metrics, point) else {
+    let Some((path, caret)) = at(ui, app, hits, metrics, point) else {
         return Vec::new();
     };
+    if !holds(app, &path) {
+        let open = workspace::Command::OpenFile {
+            path,
+            at: Some(caret),
+        };
+        return vec![Command::Workspace(open)];
+    }
     let mut edits = vec![Edit::Move(Motion::To(caret))];
     edits.extend(taken(ui.clicked));
     edits
@@ -295,21 +309,39 @@ fn taken(click: Option<Click>) -> Option<Edit> {
     }
 }
 
-fn caret(
+/// The stream scrolled to where this file starts.
+fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) {
+    if ui.session.view == DiffView::File {
+        return;
+    }
+    let Some(head) = app.workspace.changes.head_of(path) else {
+        return;
+    };
+    ui.session.diff = head as f32 * metrics.tokens().line;
+}
+
+/// Whether the buffer being edited is this file.
+fn holds(app: &AppState, path: &str) -> bool {
+    app.workspace
+        .opened
+        .as_ref()
+        .is_some_and(|open| open.path == path)
+}
+
+/// The file a click in the rows points at, and where the caret lands in it.
+fn at(
     ui: &Ui,
     app: &AppState,
     hits: &Hits,
     metrics: Metrics,
     point: (f32, f32),
-) -> Option<Caret> {
+) -> Option<(String, Caret)> {
     let rect = hits.rect_of(&Target::Code)?;
     let tokens = metrics.tokens();
     let (row, display) = code_at(&tokens, hits.chars(), rect, point)?;
-    let line = diff::line_at(app, ui.session.view, row)?;
-    let file = app.workspace.opened.as_ref()?;
-    let text = file.new.line(line).unwrap_or_default();
-    let width = file.new.document().indent().width();
-    Some(Caret::new(line, columns(&text, display, width)))
+    let (path, line) = diff::line_at(app, ui.session.view, row)?;
+    let (text, width) = diff::text_at(app, &path, line)?;
+    Some((path, Caret::new(line, columns(&text, display, width))))
 }
 
 /// Either picker opens the worktree selector, under the picker itself.

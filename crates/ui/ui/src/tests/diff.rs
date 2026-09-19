@@ -1,15 +1,15 @@
 mod header;
 mod pointer;
 mod rows;
+mod stream;
 mod views;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::from_text;
 use groove_gfx::{Fonts, Rect};
 
 use crate::hit::Target;
 use crate::input::{Delta, Input};
-use crate::tests::{WINDOW, click, full_app, handle, window};
+use crate::tests::{WINDOW, click, full_app, handle, shows, window};
 use crate::tokens::Tokens;
 use crate::views::session::Tab;
 use crate::widget::code_at;
@@ -21,7 +21,7 @@ const NEW: &str = "fn one() {}\nfn TWO() {}\nfn three() {}\n";
 
 pub(super) fn opened() -> AppState {
     let mut app = with_files();
-    app.workspace.opened = Some(from_text("src/lib.rs", OLD, NEW));
+    shows(&mut app, "src/lib.rs", OLD, NEW);
     app
 }
 
@@ -40,7 +40,8 @@ fn with_files() -> AppState {
         status: groove_types::FileStatus::Modified,
         staged: Some(false),
     };
-    app.workspace.loaded(worktree, vec![file]);
+    app.workspace
+        .loaded(worktree, vec![file], Default::default());
     app
 }
 
@@ -124,6 +125,6 @@ fn many(count: usize) -> AppState {
     lines[19] = "changed".into();
     let after = lines.join("\n") + "\n";
     let mut app = with_files();
-    app.workspace.opened = Some(from_text("src/lib.rs", &before, &after));
+    shows(&mut app, "src/lib.rs", &before, &after);
     app
 }

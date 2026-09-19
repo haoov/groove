@@ -1,0 +1,168 @@
+//! The whole change as one surface: every file's alignment, and no document behind it.
+
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use groove_git::Git;
+use groove_text::Document;
+use groove_types::{FileDiff, LineMark, Row, RowKind};
+
+use crate::alignment::{CONTEXT, align, marks};
+use crate::opened::MAX_SHOWN_BYTES;
+
+/// One changed file: how its sides line up, and what each row shows.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Aligned {
+    pub path: String,
+    pub rows: Vec<Row>,
+    /// One per row, in the row's own order.
+    pub lines: Vec<String>,
+    pub marks: BTreeMap<u32, LineMark>,
+    /// How wide a tab reads in this file.
+    pub indent: usize,
+    /// Too long to align; the surface says so instead of drawing it.
+    pub long: bool,
+}
+
+/// Where a row of the whole surface belongs.
+#[derive(Debug, PartialEq, Eq)]
+pub enum At<'a> {
+    Head(&'a Aligned),
+    Row(&'a Aligned, usize),
+}
+
+#[derive(Debug, Default)]
+pub struct Changes {
+    files: Vec<Aligned>,
+    /// Each file's head row, in the whole surface.
+    heads: Vec<usize>,
+    rows: usize,
+    digits: usize,
+}
+
+impl Changes {
+    pub fn new(files: Vec<Aligned>) -> Self {
+        let mut heads = Vec::with_capacity(files.len());
+        let mut rows = 0;
+        for file in &files {
+            heads.push(rows);
+            rows += file.rows.len() + 1;
+        }
+        let digits = files.iter().map(widest).max().unwrap_or(1);
+        Self {
+            files,
+            heads,
+            rows,
+            digits,
+        }
+    }
+
+    /// How wide the line numbers stand, over the whole change.
+    pub fn digits(&self) -> usize {
+        self.digits
+    }
+
+    /// How many rows the whole change stands.
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    pub fn files(&self) -> &[Aligned] {
+        &self.files
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+
+    pub fn at(&self, row: usize) -> Option<At<'_>> {
+        if row >= self.rows {
+            return None;
+        }
+        let at = self.heads.partition_point(|head| *head <= row);
+        let file = self.files.get(at.checked_sub(1)?)?;
+        let head = self.heads[at - 1];
+        match row == head {
+            true => Some(At::Head(file)),
+            false => Some(At::Row(file, row - head - 1)),
+        }
+    }
+
+    /// The row this file's head sits on.
+    pub fn head_of(&self, path: &str) -> Option<usize> {
+        let at = self.files.iter().position(|file| file.path == path)?;
+        Some(self.heads[at])
+    }
+
+    pub fn get(&self, path: &str) -> Option<&Aligned> {
+        self.files.iter().find(|file| file.path == path)
+    }
+}
+
+/// The digits the highest line number of a file takes.
+fn widest(file: &Aligned) -> usize {
+    let highest = file
+        .rows
+        .iter()
+        .filter_map(|row| row.old.max(row.new))
+        .max()
+        .unwrap_or(0);
+    (highest + 1).to_string().len()
+}
+
+/// Every changed file aligned, the HEAD sides read in one git process.
+pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
+    let paths: Vec<String> = files.iter().map(|file| file.path.clone()).collect();
+    let heads = Git::at(dir).blobs("HEAD", &paths).await.unwrap_or_default();
+    let aligned = paths
+        .iter()
+        .map(|path| {
+            let before = heads.get(path).map(String::as_str).unwrap_or_default();
+            let after = std::fs::read_to_string(dir.join(path)).unwrap_or_default();
+            aligned(path, before, &after)
+        })
+        .collect();
+    Changes::new(aligned)
+}
+
+/// One file's rows, from its two sides.
+pub fn aligned(path: &str, before: &str, after: &str) -> Aligned {
+    let (old, new) = (Document::plain(path, before), Document::plain(path, after));
+    let indent = new.indent().width();
+    if old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES {
+        return Aligned {
+            path: path.to_string(),
+            rows: vec![Row {
+                old: None,
+                new: None,
+                kind: RowKind::Gap(0),
+            }],
+            lines: vec![String::new()],
+            indent,
+            long: true,
+            ..Aligned::default()
+        };
+    }
+    let rows = align(&old, &new, CONTEXT);
+    Aligned {
+        lines: rows.iter().map(|row| text_of(&old, &new, row)).collect(),
+        marks: marks(&rows),
+        path: path.to_string(),
+        rows,
+        indent,
+        long: false,
+    }
+}
+
+/// What a row shows: its own side's line, or how many lines a gap hides.
+fn text_of(old: &Document, new: &Document, row: &Row) -> String {
+    if let RowKind::Gap(lines) = row.kind {
+        return format!("\u{2026} {lines} lines");
+    }
+    let line = match (row.new, row.old) {
+        (Some(at), _) => new.line(at as usize),
+        (None, Some(at)) => old.line(at as usize),
+        (None, None) => None,
+    };
+    line.unwrap_or_default().to_string()
+}

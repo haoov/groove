@@ -127,6 +127,8 @@ pub enum Scroller {
 #[derive(Debug, Default)]
 pub struct Hits {
     regions: Vec<(Rect, Target)>,
+    /// The rows the code surface drew.
+    shown: std::ops::Range<usize>,
     /// How far each column can scroll, one per `Scroller`.
     extents: [f32; 3],
     chars: Chars,
@@ -145,6 +147,15 @@ impl Hits {
 
     pub fn extent(&self, which: Scroller) -> f32 {
         self.extents[which as usize]
+    }
+
+    /// Which rows of the whole change the surface drew.
+    pub fn showing(&mut self, rows: std::ops::Range<usize>) {
+        self.shown = rows;
+    }
+
+    pub fn shown(&self) -> std::ops::Range<usize> {
+        self.shown.clone()
     }
 
     /// Where the open file's characters went, for the click that follows.

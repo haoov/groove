@@ -76,6 +76,10 @@ impl<'a> Ctx<'a> {
         self.hits.push(rect, target);
     }
 
+    pub fn showing(&mut self, rows: std::ops::Range<usize>) {
+        self.hits.showing(rows);
+    }
+
     pub fn characters(&mut self, chars: Chars) {
         self.hits.characters(chars);
     }

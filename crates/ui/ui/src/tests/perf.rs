@@ -5,7 +5,6 @@
 use std::time::Instant;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::from_text;
 use groove_gfx::{Color, Fonts, Renderer, Size};
 use groove_types::{DiffView, Rgb, Screen, ScreenCell};
 
@@ -28,12 +27,13 @@ fn big(lines: usize) -> AppState {
         status: groove_types::FileStatus::Modified,
         staged: Some(false),
     };
-    app.workspace.loaded(worktree, vec![file]);
+    app.workspace
+        .loaded(worktree, vec![file], Default::default());
     let before: String = (0..lines)
         .map(|at| format!("fn name_{at}(value: usize) -> usize {{ value + {at} }}\n"))
         .collect();
     let after = before.replace("value + 20 }", "value * 20 }");
-    app.workspace.opened = Some(from_text("src/lib.rs", &before, &after));
+    crate::tests::shows(&mut app, "src/lib.rs", &before, &after);
     app
 }
 
@@ -49,7 +49,7 @@ fn tabbed(lines: usize, tabs: bool) -> AppState {
         .map(|at| format!("func name{at}() int {{\n{indent}return {at}\n}}\n"))
         .collect();
     let after = before.replace("return 20", "return 21");
-    app.workspace.opened = Some(from_text("main.go", &before, &after));
+    crate::tests::shows(&mut app, "main.go", &before, &after);
     app
 }
 

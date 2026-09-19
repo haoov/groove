@@ -28,7 +28,8 @@ fn listed(files: &[FileDiff]) -> AppState {
         .and_then(|open| open.selected_worktree())
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
-    app.workspace.loaded(worktree, files.to_vec());
+    app.workspace
+        .loaded(worktree, files.to_vec(), Default::default());
     app
 }
 
@@ -430,6 +431,7 @@ fn the_box_offers_what_the_worktree_most_wants_doing() {
             .map(|w| w.id.clone())
             .expect("a worktree"),
         Vec::new(),
+        Default::default(),
     );
     assert_eq!(offered(&app, &ui), None, "a clean worktree wants nothing");
 }

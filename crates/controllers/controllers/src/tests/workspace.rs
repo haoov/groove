@@ -166,6 +166,7 @@ fn the_open_file_follows_a_change_on_disk() {
     });
     dispatch(
         Cmd::Workspace(workspace::Command::OpenFile {
+            at: None,
             path: "a.txt".into(),
         }),
         &mut state,
@@ -202,6 +203,7 @@ fn editing(
     until(spawner, services, state, |s| !s.workspace.files.is_empty());
     dispatch(
         Cmd::Workspace(workspace::Command::OpenFile {
+            at: None,
             path: "a.txt".into(),
         }),
         state,
@@ -702,4 +704,62 @@ fn pulling_a_branch_that_never_moved_says_nothing_went_wrong() {
     act(&mut state, &services, &spawner, workspace::Command::Pull);
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
+    std::fs::write(std::path::Path::new(&dir).join("b.rs"), "fn b() {}\n").unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.changes.files().len() == 2
+    });
+    let changes = &state.workspace.changes;
+    assert_eq!(
+        changes.rows(),
+        changes
+            .files()
+            .iter()
+            .map(|f| f.rows.len() + 1)
+            .sum::<usize>()
+    );
+    assert_eq!(
+        changes.head_of("b.rs"),
+        Some(changes.files()[0].rows.len() + 1)
+    );
+    assert!(
+        state.workspace.coloured.is_empty(),
+        "nothing is on screen yet"
+    );
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::Show {
+            rows: 0..changes.rows(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.coloured.len() == 2
+    });
+    let painted = state.workspace.coloured.get("b.rs").expect("the rust file");
+    assert!(painted.new.is_highlighted(), "its grammar was read");
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::Show { rows: 0..1 }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert_eq!(
+        state.workspace.coloured.keys().collect::<Vec<_>>(),
+        ["a.txt"],
+        "a file off screen gives its documents up"
+    );
 }

@@ -136,6 +136,7 @@ fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return Vec::new();
     };
     vec![Command::Workspace(workspace::Command::OpenFile {
+        at: None,
         path: file.path.clone(),
     })]
 }

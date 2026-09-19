@@ -35,11 +35,12 @@ fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
 #[test]
 fn a_line_added_and_a_line_removed_are_marked_apart() {
     let mut app = with_files();
-    app.workspace.opened = Some(from_text(
+    crate::tests::shows(
+        &mut app,
         "src/lib.rs",
         "one\ngone\nthree\n",
         "one\nthree\nadded\n",
-    ));
+    );
     assert_eq!(
         marks(&app),
         [LineMark::Removed, LineMark::Added],
@@ -111,7 +112,7 @@ fn tabbed() -> AppState {
     let before = "func one() {\n\treturn 1\n}\n";
     let after = "func one() {\n\treturn 2\n}\n";
     let mut app = with_files();
-    app.workspace.opened = Some(from_text("main.go", before, after));
+    crate::tests::shows(&mut app, "main.go", before, after);
     app
 }
 

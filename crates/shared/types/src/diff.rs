@@ -57,9 +57,10 @@ impl FileStatus {
 }
 
 /// What a row of a diff is: a line of the old file, of the new one, or of both.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RowKind {
+    #[default]
     Context,
     Removed,
     Added,

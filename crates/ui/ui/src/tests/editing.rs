@@ -138,7 +138,8 @@ fn a_drag_over_the_file_holds_more_of_it() {
     let mut ui = editing();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let point = (hits.chars().left + 1.0, code.y + 1.0);
+    let line = crate::tokens::Tokens::new(1.0).line;
+    let point = (hits.chars().left + 1.0, code.y + line + 1.0);
     let pressed = handle(
         Input::Press {
             x: point.0,
@@ -224,7 +225,8 @@ fn clicks(times: usize, apart: u64) -> Vec<Command> {
     let mut ui = editing();
     let (_, hits) = crate::view(&app, &ui, crate::tests::window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let point = (hits.chars().left + 1.0, code.y + 1.0);
+    let line = crate::tokens::Tokens::new(1.0).line;
+    let point = (hits.chars().left + 1.0, code.y + line + 1.0);
     let mut commands = Vec::new();
     for at in 0..times {
         let mut window = metrics(1280, 800, 1.0);

@@ -3,9 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::{Edit, Error, ErrorKind, Result, WorktreeId};
+use groove_types::{Caret, Edit, Error, ErrorKind, Result, WorktreeId};
 use groove_workspace_service::{
-    Buffer, Derived, Document, Opened, derived, opened, reopened, summary,
+    Buffer, Derived, Document, Opened, changes, derived, opened, painted, reopened, summary,
 };
 
 use crate::spawn::coalesced;
@@ -16,7 +16,13 @@ pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
     Load,
     /// `workspace.open_file`: one file's two sides and the rows between them.
-    OpenFile { path: String },
+    OpenFile {
+        path: String,
+        /// Where to put the caret, when the click that asked knows.
+        at: Option<Caret>,
+    },
+    /// `workspace.show`: which rows of the whole change are on screen.
+    Show { rows: std::ops::Range<usize> },
     /// `workspace.edit`: one keystroke on the open buffer.
     Edit(Edit),
     /// `workspace.save_file`: the buffer to the file it came from.
@@ -52,6 +58,7 @@ impl Command {
         match self {
             Command::Load => "workspace.load",
             Command::OpenFile { .. } => "workspace.open_file",
+            Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
             Command::SaveFile => "workspace.save_file",
             Command::Copy => "workspace.copy",
@@ -78,7 +85,8 @@ pub fn dispatch(
 ) {
     match command {
         Command::Load => reread(state, spawner),
-        Command::OpenFile { path } => open_file(state, spawner, path),
+        Command::OpenFile { path, at } => open_file(state, spawner, path, at),
+        Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
         Command::SaveFile => save_file(state, spawner),
         Command::Copy => copy(state, services, spawner, false),
@@ -94,6 +102,35 @@ pub fn dispatch(
         Command::Rebase => remote(state, spawner, Remote::Rebase),
         Command::DiscardAll => discard_all(state, spawner),
     }
+}
+
+/// The rows on screen: their files take their colours, the others give theirs up.
+fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
+    if state.workspace.showing == rows {
+        return;
+    }
+    state.workspace.showing = rows.clone();
+    let wanted = state.workspace.over(rows);
+    state
+        .workspace
+        .coloured
+        .retain(|path, _| wanted.contains(path));
+    let missing: Vec<String> = wanted
+        .into_iter()
+        .filter(|path| !state.workspace.coloured.contains_key(path))
+        .collect();
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    if missing.is_empty() {
+        return;
+    }
+    spawner.spawn(Box::pin(async move {
+        let read = painted(&dir, missing).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.workspace.coloured.extend(read);
+        }) as Continuation
+    }));
 }
 
 /// One keystroke on the buffer; its rows and colours follow in a job.
@@ -427,15 +464,21 @@ fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
         Head::Keep => Some(open.old.clone()),
         Head::Read => None,
     };
-    read(state, spawner, path, old);
+    read(state, spawner, path, old, None);
 }
 
 /// Reads both sides in a job; the continuation stores them for the tab to draw.
-pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String) {
-    read(state, spawner, path, None);
+pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: Option<Caret>) {
+    read(state, spawner, path, None, at);
 }
 
-fn read(state: &mut AppState, spawner: &dyn Spawner, path: String, old: Option<Document>) {
+fn read(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    path: String,
+    old: Option<Document>,
+    at: Option<Caret>,
+) {
     let Some(dir) = worktree_dir(state) else {
         return;
     };
@@ -445,7 +488,7 @@ fn read(state: &mut AppState, spawner: &dyn Spawner, path: String, old: Option<D
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match file {
-                Ok(file) => arrived(state, file),
+                Ok(file) => arrived(state, file, at),
                 Err(e) => state.errors.push(e),
             }
         }) as Continuation
@@ -453,13 +496,15 @@ fn read(state: &mut AppState, spawner: &dyn Spawner, path: String, old: Option<D
 }
 
 /// The file read, with the caret it had while it was the same file.
-fn arrived(state: &mut AppState, mut file: Opened) {
-    let caret = state
-        .workspace
-        .opened
-        .as_ref()
-        .filter(|open| open.path == file.path)
-        .map(|open| open.new.caret());
+fn arrived(state: &mut AppState, mut file: Opened, at: Option<Caret>) {
+    let caret = at.or_else(|| {
+        state
+            .workspace
+            .opened
+            .as_ref()
+            .filter(|open| open.path == file.path)
+            .map(|open| open.new.caret())
+    });
     if let Some(caret) = caret {
         file.new.follow(caret);
     }
@@ -487,10 +532,14 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     let job = state.begin("changed files");
     spawner.spawn(Box::pin(async move {
         let files = summary(&dir).await;
+        let read = match &files {
+            Ok(files) => changes(&dir, files).await,
+            Err(_) => Default::default(),
+        };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match files {
-                Ok(files) => state.workspace.loaded(id, files),
+                Ok(files) => state.workspace.loaded(id, files, read),
                 Err(e) => state.errors.push(e),
             }
         }) as Continuation

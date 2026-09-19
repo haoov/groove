@@ -29,8 +29,11 @@ fn with_files(paths: &[&str]) -> AppState {
         .and_then(|open| open.selected_worktree())
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
-    app.workspace
-        .loaded(worktree, paths.iter().map(|p| changed(p, 2, 1)).collect());
+    app.workspace.loaded(
+        worktree,
+        paths.iter().map(|p| changed(p, 2, 1)).collect(),
+        Default::default(),
+    );
     app
 }
 

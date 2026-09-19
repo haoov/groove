@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use groove_controllers::{
     AppState, Command, Env, Event, Services, TokioSpawner, Window as WindowEvent_, agent, apply,
-    dispatch, session,
+    dispatch, session, workspace,
 };
 use groove_gfx::{Fonts, Renderer, Size};
 use groove_types::{AttentionClass, Config, Timestamp};
@@ -91,7 +91,18 @@ impl App {
         let (frame, hits) = groove_ui::view(&self.state, &self.ui, metrics, renderer.fonts());
         let _ = renderer.render(&frame);
         self.hits = hits;
+        self.showing();
         self.point();
+    }
+
+    /// The rows the frame drew, so their files can take their colours.
+    fn showing(&mut self) {
+        let rows = self.hits.shown();
+        if rows == self.state.workspace.showing {
+            return;
+        }
+        let command = Command::Workspace(workspace::Command::Show { rows });
+        dispatch(command, &mut self.state, &self.services, &self.spawner);
     }
 
     /// How long the window may sleep before it redraws itself.

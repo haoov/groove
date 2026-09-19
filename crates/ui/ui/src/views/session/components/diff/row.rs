@@ -1,13 +1,14 @@
 //! What one row says: its text, its colours, its numbers and its mark.
 
+use std::collections::BTreeMap;
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::Opened;
+use groove_controllers::workspace_service::{Aligned, At, Colours, Opened};
 use groove_types::{Caret, DiffView, Highlight, LineMark, Row, RowKind};
 
 use crate::{Focus, Ui};
-use groove_controllers::workspace_service::{Colours, display_at, shown};
+use groove_controllers::workspace_service::{display_at, shown};
 
 /// Which file a row is read from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +18,7 @@ pub(super) enum Side {
 }
 
 /// A row as the surface needs it, owned so the lines can borrow it.
+#[derive(Default)]
 pub(super) struct Drawn {
     pub(super) text: String,
     pub(super) spans: Vec<Highlight>,
@@ -28,82 +30,188 @@ pub(super) struct Drawn {
     pub(super) held: Option<(usize, usize, bool)>,
     /// What the file view says happened to this line.
     pub(super) mark: Option<LineMark>,
+    /// The row a file starts on, which names it instead of showing a line.
+    pub(super) head: bool,
 }
 
-/// The rows of one view, inside `window`. The file view is the file; the others
-/// are the alignment.
+/// The rows of one view, inside `window`. The file view is the open file; the others
+/// are every changed file, one after another.
 pub(super) fn drawn(
-    file: &Opened,
+    app: &AppState,
     ui: &Ui,
     view: DiffView,
     side: Side,
     window: Range<usize>,
 ) -> Vec<Drawn> {
     match view {
-        DiffView::File => whole(file, ui, window),
-        _ => aligned(file, ui, view, side, window),
+        DiffView::File => whole(app, ui, window),
+        _ => streamed(app, ui, view, side, window),
     }
 }
 
 /// How many rows the view stands, all of it.
-pub(super) fn count(file: &Opened, view: DiffView) -> usize {
+pub(super) fn count(app: &AppState, view: DiffView) -> usize {
     match view {
-        DiffView::File => file.new.lines(),
-        _ => file.rows.len(),
+        DiffView::File => open(app).map_or(0, |file| file.new.lines()),
+        _ => app.workspace.changes.rows(),
     }
 }
 
-/// The lines of the file as it is now, marked where the change touched them.
-pub(super) fn whole(file: &Opened, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
+fn open(app: &AppState) -> Option<&Opened> {
+    app.workspace.opened.as_ref()
+}
+
+/// The lines of the open file as it is now, marked where the change touched them.
+fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
+    let Some(file) = open(app) else {
+        return Vec::new();
+    };
     let caret = caret(ui, file);
     let colours = file.new.colours(window.clone());
+    let width = file.new.document().indent().width();
     window
         .map(|at| {
-            let (text, spans) = shown(&text_of(file, at), colours.of(at), width(file));
+            let text = text_of(file, at);
+            let (drawn, spans) = shown(&text, colours.of(at), width);
             Drawn {
-                text,
+                text: drawn,
                 spans,
                 gutters: vec![(at + 1).to_string()],
                 kind: RowKind::Context,
                 caret: caret
                     .filter(|on| on.line == at)
-                    .map(|on| display_at(&text_of(file, at), on.column, width(file))),
+                    .map(|on| display_at(&text, on.column, width)),
                 held: held(file, ui, at),
                 mark: file.marks.get(&(at as u32)).copied(),
+                head: false,
             }
         })
         .collect()
 }
 
-/// The alignment's rows, read from the side the view asks for.
-pub(super) fn aligned(
-    file: &Opened,
+/// Every changed file's rows, each under a row naming the file.
+fn streamed(
+    app: &AppState,
     ui: &Ui,
     view: DiffView,
     side: Side,
     window: Range<usize>,
 ) -> Vec<Drawn> {
-    let caret = caret(ui, file).filter(|_| side == Side::New);
-    let rows = &file.rows[window];
-    let (old, new) = bounds(rows);
-    let (old, new) = (file.old.colours(old), file.new.colours(new));
-    rows.iter()
-        .map(|row| {
-            let (text, spans) = line(file, row, source(row, view, side), (&old, &new));
-            Drawn {
-                text,
-                spans,
-                gutters: gutters(row, view, side),
-                kind: kind(row, view, side),
-                caret: on_row(caret, row).map(|column| {
-                    let line = row.new.unwrap_or_default() as usize;
-                    display_at(&text_of(file, line), column, width(file))
-                }),
-                held: row.new.and_then(|line| held(file, ui, line as usize)),
-                mark: None,
+    let changes = &app.workspace.changes;
+    let colours = coloured(app, window.clone());
+    window
+        .map(|row| match changes.at(row) {
+            Some(At::Head(file)) => head(file),
+            Some(At::Row(file, at)) => {
+                let side = source(&file.rows[at], view, side);
+                one(
+                    app,
+                    ui,
+                    file,
+                    at,
+                    view,
+                    side,
+                    colours.get(file.path.as_str()),
+                )
             }
+            None => Drawn::default(),
         })
         .collect()
+}
+
+/// The colours of every file the window touches, asked for once a file a side.
+fn coloured(app: &AppState, window: Range<usize>) -> BTreeMap<&str, (Colours, Colours)> {
+    let changes = &app.workspace.changes;
+    let mut bounds: BTreeMap<&str, (Range<usize>, Range<usize>)> = BTreeMap::new();
+    for row in window {
+        let Some(At::Row(file, at)) = changes.at(row) else {
+            continue;
+        };
+        let (old, new) = bounds.entry(file.path.as_str()).or_default();
+        stretch(old, file.rows[at].old);
+        stretch(new, file.rows[at].new);
+    }
+    bounds
+        .into_iter()
+        .filter_map(|(path, (old, new))| {
+            let (before, after) = app.workspace.sides(path)?;
+            Some((path, (before.colours(old), after.colours(new))))
+        })
+        .collect()
+}
+
+/// The range grown to hold one more line.
+fn stretch(range: &mut Range<usize>, line: Option<u32>) {
+    let Some(at) = line.map(|at| at as usize) else {
+        return;
+    };
+    *range = match range.start == range.end {
+        true => at..at + 1,
+        false => range.start.min(at)..range.end.max(at + 1),
+    };
+}
+
+/// The row that names a file, standing above its own rows.
+fn head(file: &Aligned) -> Drawn {
+    Drawn {
+        text: file.path.clone(),
+        head: true,
+        ..Drawn::default()
+    }
+}
+
+/// One row of one file, read from the side the view asks for.
+fn one(
+    app: &AppState,
+    ui: &Ui,
+    file: &Aligned,
+    at: usize,
+    view: DiffView,
+    side: Side,
+    colours: Option<&(Colours, Colours)>,
+) -> Drawn {
+    let row = &file.rows[at];
+    let line = match side {
+        Side::Old => row.old,
+        Side::New => row.new,
+    };
+    let text = match blank(row, view, side) {
+        true => String::new(),
+        false => file.lines[at].clone(),
+    };
+    let spans = spans_of(colours, side, line);
+    let (drawn, spans) = shown(&text, &spans, file.indent);
+    let here = open(app).filter(|open| open.path == file.path);
+    Drawn {
+        text: drawn,
+        spans,
+        gutters: gutters(row, view, side),
+        kind: kind(row, view, side),
+        caret: here.and_then(|open| on_row(caret(ui, open), row, open, file.indent)),
+        held: here.and_then(|open| row.new.and_then(|line| held(open, ui, line as usize))),
+        mark: None,
+        head: false,
+    }
+}
+
+/// A row with nothing on this side shows nothing, whatever its own side holds.
+fn blank(row: &Row, view: DiffView, side: Side) -> bool {
+    let has = match side {
+        Side::Old => row.old.is_some(),
+        Side::New => row.new.is_some(),
+    };
+    view == DiffView::Split && !has
+}
+
+fn spans_of(colours: Option<&(Colours, Colours)>, side: Side, line: Option<u32>) -> Vec<Highlight> {
+    let (Some(colours), Some(line)) = (colours, line) else {
+        return Vec::new();
+    };
+    let found = match side {
+        Side::Old => colours.0.of(line as usize),
+        Side::New => colours.1.of(line as usize),
+    };
+    found.to_vec()
 }
 
 /// Where the caret is, while the workspace holds the keyboard.
@@ -114,13 +222,35 @@ fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
     }
 }
 
-/// The new-side line a row shows, if it shows one at all.
-pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<usize> {
-    let file = app.workspace.opened.as_ref()?;
+/// The file and line a row of the whole surface shows, on the new side.
+pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<(String, usize)> {
     match view {
-        DiffView::File => (row < file.new.lines()).then_some(row),
-        _ => file.rows.get(row)?.new.map(|line| line as usize),
+        DiffView::File => {
+            let file = open(app)?;
+            (row < file.new.lines()).then(|| (file.path.clone(), row))
+        }
+        _ => match app.workspace.changes.at(row)? {
+            At::Head(_) => None,
+            At::Row(file, at) => {
+                let line = file.rows[at].new?;
+                Some((file.path.clone(), line as usize))
+            }
+        },
     }
+}
+
+/// A line of any changed file, and how wide a tab reads in it.
+pub(crate) fn text_at(app: &AppState, path: &str, line: usize) -> Option<(String, usize)> {
+    if let Some(file) = open(app).filter(|file| file.path == path) {
+        let width = file.new.document().indent().width();
+        return Some((text_of(file, line), width));
+    }
+    let file = app.workspace.changes.get(path)?;
+    let at = file
+        .rows
+        .iter()
+        .position(|row| row.new == Some(line as u32))?;
+    Some((file.lines[at].clone(), file.indent))
 }
 
 /// What a caret holds on `line`, in the columns the row draws.
@@ -135,7 +265,7 @@ fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize, bool)> {
         .selections()
         .iter()
         .find_map(|one| one.on(line, chars))?;
-    let width = width(file);
+    let width = file.new.document().indent().width();
     Some((
         display_at(&text, from, width),
         display_at(&text, to, width),
@@ -145,10 +275,11 @@ fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize, bool)> {
 
 /// The caret's column when this row is the line it sits on. A removed line belongs
 /// to the old document and takes no caret.
-fn on_row(caret: Option<Caret>, row: &Row) -> Option<usize> {
+fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Option<usize> {
     let caret = caret?;
     let shows = row.new == Some(caret.line as u32) && row.kind != RowKind::Removed;
-    shows.then_some(caret.column)
+    let text = text_of(file, caret.line);
+    shows.then(|| display_at(&text, caret.column, width))
 }
 
 /// Which file a row's line is read from: a pane's own side in split, and in the
@@ -183,45 +314,6 @@ fn gutters(row: &Row, view: DiffView, side: Side) -> Vec<String> {
         (DiffView::Inline, RowKind::Removed) => vec![number(row.old), String::new()],
         (DiffView::Inline, _) => vec![String::new(), number(row.new)],
     }
-}
-
-/// The lines each side shows in `rows`, as one range a side.
-fn bounds(rows: &[Row]) -> (Range<usize>, Range<usize>) {
-    let ends = |pick: fn(&Row) -> Option<u32>| {
-        let lines = rows.iter().filter_map(pick).map(|at| at as usize);
-        lines.fold(None, |range: Option<Range<usize>>, at| match range {
-            Some(range) => Some(range.start.min(at)..range.end.max(at + 1)),
-            None => Some(at..at + 1),
-        })
-    };
-    let range = |found: Option<Range<usize>>| found.unwrap_or(0..0);
-    (range(ends(|row| row.old)), range(ends(|row| row.new)))
-}
-
-/// The row's line and its colours. The ground says whether it came or went.
-fn line(
-    file: &Opened,
-    row: &Row,
-    side: Side,
-    colours: (&Colours, &Colours),
-) -> (String, Vec<Highlight>) {
-    if let RowKind::Gap(lines) = row.kind {
-        return (format!("\u{2026} {lines} lines"), Vec::new());
-    }
-    let (document, at, colours) = match side {
-        Side::Old => (&file.old, row.old, colours.0),
-        Side::New => (file.new.document(), row.new, colours.1),
-    };
-    let Some(at) = at.map(|at| at as usize) else {
-        return (String::new(), Vec::new());
-    };
-    let text = document.line(at).unwrap_or_default();
-    shown(&text, colours.of(at), width(file))
-}
-
-/// How wide a tab reads in this file.
-fn width(file: &Opened) -> usize {
-    file.new.document().indent().width()
 }
 
 /// The line as it is, for counting columns over what is drawn.

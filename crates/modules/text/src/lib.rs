@@ -78,6 +78,15 @@ impl Document {
         }
     }
 
+    /// The same document with no tree, for text a reader only counts lines of.
+    pub fn plain(path: &str, text: &str) -> Self {
+        Self {
+            text: Rope::from_str(text),
+            language: Language::of(path),
+            syntax: None,
+        }
+    }
+
     pub fn language(&self) -> Option<Language> {
         self.language
     }

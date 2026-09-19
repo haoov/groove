@@ -2,9 +2,14 @@
 
 use std::path::{Path, PathBuf};
 
-pub use groove_diff::{Derived, Document, Opened, columns, display_at, from_text, shown};
+pub use groove_diff::{
+    Aligned, At, Changes, Derived, Document, Opened, aligned, columns, display_at, from_text, shown,
+};
 pub use groove_editor::{Clipboard, Memory, clipboard};
 pub use groove_text::{Buffer, Colours};
+use std::collections::BTreeMap;
+use std::ops::Range;
+
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
@@ -20,8 +25,14 @@ pub struct State {
     pub view: DiffView,
     pub status: Option<WorktreeStatus>,
     pub files: Vec<FileDiff>,
+    /// Every changed file's rows, the whole change as one surface.
+    pub changes: Changes,
     /// The file the diff is showing, with both its sides.
     pub opened: Option<Opened>,
+    /// Both sides parsed, for the files whose rows are on screen.
+    pub coloured: BTreeMap<String, Painted>,
+    /// The rows the surface last drew.
+    pub showing: Range<usize>,
     /// What the commit box holds, typed on the same buffer as a file.
     pub message: Buffer,
     pub watching: Option<WorktreeId>,
@@ -35,9 +46,10 @@ impl State {
         self.worktree.as_ref() == Some(worktree)
     }
 
-    pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>) {
+    pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>, changes: Changes) {
         self.worktree = Some(worktree);
         self.files = files;
+        self.changes = changes;
         if self
             .opened
             .as_ref()
@@ -84,11 +96,48 @@ impl State {
     pub fn clear(&mut self) {
         self.worktree = None;
         self.files.clear();
+        self.changes = Changes::default();
+        self.coloured.clear();
+        self.showing = 0..0;
         self.opened = None;
         self.status = None;
         self.watching = None;
         self.deriving = None;
         self.watch = None;
+    }
+}
+
+/// A file's two sides parsed, for the rows in view to take their colours from.
+#[derive(Debug)]
+pub struct Painted {
+    pub old: Document,
+    pub new: Document,
+}
+
+impl State {
+    /// The paths whose rows `rows` covers.
+    pub fn over(&self, rows: Range<usize>) -> Vec<String> {
+        let mut paths: Vec<String> = Vec::new();
+        for row in rows {
+            let path = match self.changes.at(row) {
+                Some(At::Head(file)) | Some(At::Row(file, _)) => &file.path,
+                None => break,
+            };
+            if paths.last().is_some_and(|last| last == path) {
+                continue;
+            }
+            paths.push(path.clone());
+        }
+        paths
+    }
+
+    /// The colours of one file, from the buffer when it is the open one.
+    pub fn sides(&self, path: &str) -> Option<(&Document, &Document)> {
+        if let Some(open) = self.opened.as_ref().filter(|open| open.path == path) {
+            return Some((&open.old, open.new.document()));
+        }
+        let painted = self.coloured.get(path)?;
+        Some((&painted.old, &painted.new))
     }
 }
 
@@ -115,6 +164,31 @@ pub fn watch(
 
 pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     groove_diff::summary(dir).await
+}
+
+/// Every changed file aligned, with no document held.
+pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
+    groove_diff::changes(dir, files).await
+}
+
+/// Both sides of these paths, parsed, read in one git process.
+pub async fn painted(dir: &Path, paths: Vec<String>) -> Vec<(String, Painted)> {
+    let heads = groove_git::Git::at(dir)
+        .blobs("HEAD", &paths)
+        .await
+        .unwrap_or_default();
+    paths
+        .into_iter()
+        .map(|path| {
+            let before = heads.get(&path).map(String::as_str).unwrap_or_default();
+            let after = std::fs::read_to_string(dir.join(&path)).unwrap_or_default();
+            let painted = Painted {
+                old: Document::new(&path, before),
+                new: Document::new(&path, &after),
+            };
+            (path, painted)
+        })
+        .collect()
 }
 
 /// One file of the worktree, both sides and the rows between them.

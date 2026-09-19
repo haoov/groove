@@ -15,8 +15,8 @@ use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command};
 use groove_gfx::{CellSize, Rect, Size};
 use groove_types::{
-    PoolEntry, Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
-    WorktreeId,
+    FileDiff, FileStatus, PoolEntry, Repo, RepoId, Session, SessionId, SessionKind, SessionState,
+    Timestamp, Worktree, WorktreeId,
 };
 
 use crate::hit::Hits;
@@ -65,6 +65,33 @@ fn pressed(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comm
 
 fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
     handle(Input::Release, ui, app, hits, window())
+}
+
+/// The open file, and the whole change it belongs to.
+fn shows(app: &mut AppState, path: &str, before: &str, after: &str) {
+    use groove_controllers::workspace_service::from_text;
+    app.workspace.opened = Some(from_text(path, before, after));
+    changed_files(app, &[(path, before, after)]);
+}
+
+/// Several changed files, as one change with nothing open.
+fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
+    use groove_controllers::workspace_service::{Changes, aligned};
+    let read = files
+        .iter()
+        .map(|(path, before, after)| aligned(path, before, after))
+        .collect();
+    app.workspace.changes = Changes::new(read);
+    app.workspace.files = files
+        .iter()
+        .map(|(path, _, _)| FileDiff {
+            path: (*path).to_string(),
+            added: 1,
+            deleted: 1,
+            status: FileStatus::Modified,
+            staged: Some(false),
+        })
+        .collect();
 }
 
 fn window() -> Metrics {

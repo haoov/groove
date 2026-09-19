@@ -85,7 +85,7 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .replace("line 1\n", "LINE 1\n")
         .replace("line 40\n", "LINE 40\n");
     let mut app = with_files();
-    app.workspace.opened = Some(from_text("src/lib.rs", &old, &new));
+    crate::tests::shows(&mut app, "src/lib.rs", &old, &new);
     let ui = on_diff();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = texts(&app, &ui);

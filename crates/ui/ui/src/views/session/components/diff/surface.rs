@@ -3,22 +3,23 @@
 use groove_gfx::Rect;
 use groove_types::{DiffView, RowKind};
 
+use groove_controllers::AppState;
+
 use super::row::{Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::widget::{Gutters, Line, Rows, chars_of, code, height, visible};
-use groove_controllers::workspace_service::Opened;
 
-pub(super) fn rows(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
+pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     match ui.session.view {
-        DiffView::Split => beside(ctx, body, file, ui),
-        view => surface(ctx, body, file, ui, view, Side::New, true),
+        DiffView::Split => beside(ctx, body, app, ui),
+        view => surface(ctx, body, app, ui, view, Side::New, true),
     }
 }
 
 /// The old on the left, the new on the right, one alignment between them.
-fn beside(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
+fn beside(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let thickness = ctx.tokens.hairline;
     let half = ((body.w - thickness) / 2.0).floor();
     let left = Rect::new(body.x, body.y, half, body.h);
@@ -31,26 +32,26 @@ fn beside(ctx: &mut Ctx, body: Rect, file: &Opened, ui: &Ui) {
     let rule = ctx.styles.line();
     ctx.quad(Rect::new(left.right(), body.y, thickness, body.h), rule);
     let view = DiffView::Split;
-    surface(ctx, left, file, ui, view, Side::Old, false);
-    surface(ctx, right, file, ui, view, Side::New, true);
+    surface(ctx, left, app, ui, view, Side::Old, false);
+    surface(ctx, right, app, ui, view, Side::New, true);
 }
 
 /// Draws the rows the surface has room for, and says where a click can land.
 fn surface(
     ctx: &mut Ctx,
     rect: Rect,
-    file: &Opened,
+    app: &AppState,
     ui: &Ui,
     view: DiffView,
     side: Side,
     clickable: bool,
 ) {
-    let total = count(file, view);
+    let total = count(app, view);
     let extent = (height(ctx, total) - rect.h).max(0.0);
     ctx.scrolls(Scroller::Code, extent);
     let scroll = ui.session.diff.min(extent);
     let window = visible(ctx, rect, total, scroll);
-    let rows = drawn(file, ui, view, side, window.clone());
+    let rows = drawn(app, ui, view, side, window.clone());
     let gutters: Vec<Vec<&str>> = rows
         .iter()
         .map(|row| row.gutters.iter().map(String::as_str).collect())
@@ -59,6 +60,9 @@ fn surface(
         .iter()
         .enumerate()
         .map(|(at, row)| {
+            if row.head {
+                return Line::head(&row.text);
+            }
             if let RowKind::Gap(_) = row.kind {
                 return Line::banner(&row.text);
             }
@@ -73,8 +77,9 @@ fn surface(
             }
         })
         .collect();
-    let numbers = numbers(file, view);
+    let numbers = numbers(app, view);
     if clickable {
+        ctx.showing(window.clone());
         ctx.hit(rect, Target::Code);
         let chars = chars_of(ctx, numbers, rect, scroll);
         ctx.characters(chars);
@@ -88,13 +93,20 @@ fn surface(
 }
 
 /// How wide the numbers stand: one column a side in split and file, two in inline.
-fn numbers(file: &Opened, view: DiffView) -> Gutters {
-    let lines = file.old.lines().max(file.new.lines());
+/// The whole change shares one width, so the text does not shift file to file.
+fn numbers(app: &AppState, view: DiffView) -> Gutters {
+    let digits = match view {
+        DiffView::File => match app.workspace.opened.as_ref() {
+            Some(file) => file.new.lines().to_string().len(),
+            None => 1,
+        },
+        _ => app.workspace.changes.digits(),
+    };
     Gutters {
         cells: match view {
             DiffView::Inline => 2,
             _ => 1,
         },
-        digits: lines.to_string().len(),
+        digits,
     }
 }

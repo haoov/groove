@@ -2,6 +2,7 @@
 //! is every changed file with its counts, cheap enough to draw a list from.
 
 mod alignment;
+mod changes;
 mod opened;
 mod summary;
 
@@ -9,6 +10,7 @@ mod summary;
 mod tests;
 
 pub use alignment::{CONTEXT, align, marks};
+pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use groove_text::{Buffer, Document};
 
 /// A line as the surface draws it, and its colours over it.

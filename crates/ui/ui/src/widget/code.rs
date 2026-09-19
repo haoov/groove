@@ -19,6 +19,8 @@ pub struct Line<'a> {
     pub mark: Option<Color>,
     /// A row across the whole width with no gutters: a gap, a note.
     pub banner: bool,
+    /// A row that names a file, at the head of its own rows.
+    pub head: bool,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -34,6 +36,7 @@ impl<'a> Line<'a> {
             ground: None,
             mark: None,
             banner: false,
+            head: false,
             caret: None,
             held: None,
         }
@@ -43,6 +46,14 @@ impl<'a> Line<'a> {
     pub fn banner(text: &'a str) -> Self {
         Self {
             banner: true,
+            ..Self::new(text)
+        }
+    }
+
+    /// The row a file starts on, naming it.
+    pub fn head(text: &'a str) -> Self {
+        Self {
+            head: true,
             ..Self::new(text)
         }
     }
@@ -122,6 +133,11 @@ impl Block {
 }
 
 /// Where a surface with these gutters puts its characters in `rect`.
+/// The row at the top of a surface scrolled this far.
+pub fn first(line: f32, scroll: f32) -> usize {
+    (scroll / line).floor().max(0.0) as usize
+}
+
 pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect, scroll: f32) -> Chars {
     let style = ctx.styles.code(Role::Text);
     Chars {
@@ -134,7 +150,7 @@ pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect, scroll: f32) -> Cha
 /// The rows `rect` has room for at `scroll`, among `total`.
 pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize> {
     let height = ctx.tokens.line;
-    let first = ((scroll / height).floor().max(0.0) as usize).min(total);
+    let first = first(height, scroll).min(total);
     let shown = (rect.h / height).ceil() as usize + 1;
     first..(first + shown).min(total)
 }
@@ -188,6 +204,9 @@ fn rule(ctx: &mut Ctx, rect: Rect, gutter: Block) {
 }
 
 fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+    if code.head {
+        return head(ctx, line, code.text);
+    }
     if code.banner {
         return banner(ctx, line, code.text);
     }
@@ -262,6 +281,13 @@ fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
     let width = ctx.measure(text, &style);
     let at = line.x + (line.w - width) / 2.0;
     row(ctx, Rect::new(at, line.y, width, line.h), 0.0, text, style);
+}
+
+/// A row naming a file: its own ground, its path at the margin.
+fn head(ctx: &mut Ctx, line: Rect, text: &str) {
+    let (ground, style) = (ctx.styles.raised(), ctx.styles.label(Role::Text));
+    ctx.quad(line, ground);
+    row(ctx, line, ctx.tokens.md, text, style);
 }
 
 /// The line's text, in the pieces its spans cut it into.

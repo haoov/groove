@@ -1,11 +1,10 @@
 //! What a frame is allowed to cost: the window it draws, never the file behind it.
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::from_text;
 use groove_gfx::Fonts;
 use groove_types::{DiffView, FileDiff, FileStatus};
 
-use crate::tests::{full_app, metrics};
+use crate::tests::{full_app, metrics, shows};
 use crate::views::session::Tab;
 use crate::{Metrics, Ui, view};
 
@@ -28,12 +27,13 @@ fn file(lines: usize) -> AppState {
             status: FileStatus::Modified,
             staged: Some(false),
         }],
+        Default::default(),
     );
     let mut rows = vec!["let value = one();"; lines];
     let before = rows.join("\n") + "\n";
     rows[19] = "let value = two();";
     let after = rows.join("\n") + "\n";
-    app.workspace.opened = Some(from_text("src/lib.rs", &before, &after));
+    shows(&mut app, "src/lib.rs", &before, &after);
     app
 }
 

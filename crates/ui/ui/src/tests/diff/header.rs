@@ -48,7 +48,7 @@ fn the_header_sits_under_the_tabs_and_rules_the_whole_width() {
 fn a_long_path_keeps_its_end() {
     let long = "crates/ui/ui/src/views/session/components/diff.rs";
     let mut app = with_files();
-    app.workspace.opened = Some(from_text(long, OLD, NEW));
+    crate::tests::shows(&mut app, long, OLD, NEW);
     let drawn = texts(&app, &on_diff());
     let path = drawn
         .iter()
