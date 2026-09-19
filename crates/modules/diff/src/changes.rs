@@ -24,9 +24,25 @@ pub struct Aligned {
     pub long: bool,
 }
 
+impl Aligned {
+    /// The directory the file sits in, from the worktree root.
+    pub fn dir(&self) -> &str {
+        match self.path.rsplit_once('/') {
+            Some((dir, _)) => dir,
+            None => "",
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        self.path.rsplit('/').next().unwrap_or(&self.path)
+    }
+}
+
 /// Where a row of the whole surface belongs.
 #[derive(Debug, PartialEq, Eq)]
 pub enum At<'a> {
+    /// The row naming the directory the files below it share.
+    Band(&'a Aligned),
     Head(&'a Aligned),
     Row(&'a Aligned, usize),
 }
@@ -34,24 +50,32 @@ pub enum At<'a> {
 #[derive(Debug, Default)]
 pub struct Changes {
     files: Vec<Aligned>,
-    /// Each file's head row, in the whole surface.
-    heads: Vec<usize>,
+    /// Where each file's own rows begin, the chrome above them included.
+    starts: Vec<usize>,
+    /// Whether each file opens a directory of its own.
+    bands: Vec<bool>,
     rows: usize,
     digits: usize,
 }
 
 impl Changes {
     pub fn new(files: Vec<Aligned>) -> Self {
-        let mut heads = Vec::with_capacity(files.len());
+        let mut starts = Vec::with_capacity(files.len());
+        let mut bands = Vec::with_capacity(files.len());
         let mut rows = 0;
+        let mut dir = None;
         for file in &files {
-            heads.push(rows);
-            rows += file.rows.len() + 1;
+            let band = !file.dir().is_empty() && dir != Some(file.dir());
+            dir = Some(file.dir());
+            starts.push(rows);
+            bands.push(band);
+            rows += file.rows.len() + 1 + usize::from(band);
         }
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
             files,
-            heads,
+            starts,
+            bands,
             rows,
             digits,
         }
@@ -79,19 +103,24 @@ impl Changes {
         if row >= self.rows {
             return None;
         }
-        let at = self.heads.partition_point(|head| *head <= row);
-        let file = self.files.get(at.checked_sub(1)?)?;
-        let head = self.heads[at - 1];
-        match row == head {
-            true => Some(At::Head(file)),
-            false => Some(At::Row(file, row - head - 1)),
+        let at = self
+            .starts
+            .partition_point(|start| *start <= row)
+            .checked_sub(1)?;
+        let file = self.files.get(at)?;
+        let band = usize::from(self.bands[at]);
+        let head = self.starts[at] + band;
+        match row {
+            _ if row < head => Some(At::Band(file)),
+            _ if row == head => Some(At::Head(file)),
+            _ => Some(At::Row(file, row - head - 1)),
         }
     }
 
-    /// The row this file's head sits on.
+    /// The row this file's own band or head sits on.
     pub fn head_of(&self, path: &str) -> Option<usize> {
         let at = self.files.iter().position(|file| file.path == path)?;
-        Some(self.heads[at])
+        Some(self.starts[at])
     }
 
     pub fn get(&self, path: &str) -> Option<&Aligned> {

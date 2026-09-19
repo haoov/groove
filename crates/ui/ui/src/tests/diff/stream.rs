@@ -19,8 +19,14 @@ fn both() -> AppState {
 #[test]
 fn every_changed_file_draws_under_a_row_naming_it() {
     let drawn = texts(&both(), &on_diff());
+    assert_eq!(
+        drawn.iter().filter(|text| *text == "src").count(),
+        1,
+        "the directory is named once: {drawn:?}"
+    );
     for (path, before, after) in FILES {
-        assert!(drawn.iter().any(|text| text == path), "{path}: {drawn:?}");
+        let name = path.rsplit('/').next().expect("a name");
+        assert!(drawn.iter().any(|text| text == name), "{name}: {drawn:?}");
         assert!(drawn.iter().any(|text| text == before.trim()));
         assert!(drawn.iter().any(|text| text == after.trim()));
     }
@@ -33,7 +39,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
     let (_, hits) = view_of(&app, &ui);
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (hits.chars().left + 1.0, code.y + tokens.line * 2.0 + 1.0);
+    let point = (hits.chars().left + 1.0, code.y + tokens.line * 3.0 + 1.0);
     let commands = handle(
         Input::Press {
             x: point.0,
@@ -50,7 +56,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
             path: "src/a.rs".into(),
             at: Some(Caret::new(0, 0)),
         })],
-        "the second row under the head is the first file's new line"
+        "the band, the head, the line that went, then the line that came"
     );
 }
 

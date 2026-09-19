@@ -60,6 +60,9 @@ fn surface(
         .iter()
         .enumerate()
         .map(|(at, row)| {
+            if row.band {
+                return Line::band(&row.text);
+            }
             if row.head {
                 return Line::head(&row.text);
             }

@@ -55,7 +55,7 @@ fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
     }
     let top = first(ctx.tokens.line, ui.session.diff);
     match app.workspace.changes.at(top) {
-        Some(At::Head(file) | At::Row(file, _)) => file.path.clone(),
+        Some(At::Band(file) | At::Head(file) | At::Row(file, _)) => file.path.clone(),
         None => String::new(),
     }
 }

@@ -129,7 +129,7 @@ impl State {
         let mut paths: Vec<String> = Vec::new();
         for row in rows {
             let path = match self.changes.at(row) {
-                Some(At::Head(file)) | Some(At::Row(file, _)) => &file.path,
+                Some(At::Band(file) | At::Head(file) | At::Row(file, _)) => &file.path,
                 None => break,
             };
             if paths.last().is_some_and(|last| last == path) {

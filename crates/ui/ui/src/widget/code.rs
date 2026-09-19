@@ -21,6 +21,8 @@ pub struct Line<'a> {
     pub banner: bool,
     /// A row that names a file, at the head of its own rows.
     pub head: bool,
+    /// A row that names the directory the files under it share.
+    pub band: bool,
     /// Where the caret sits on this row, in characters.
     pub caret: Option<usize>,
     /// What is held on this row: from, to, and whether it runs past the line.
@@ -37,6 +39,7 @@ impl<'a> Line<'a> {
             mark: None,
             banner: false,
             head: false,
+            band: false,
             caret: None,
             held: None,
         }
@@ -54,6 +57,14 @@ impl<'a> Line<'a> {
     pub fn head(text: &'a str) -> Self {
         Self {
             head: true,
+            ..Self::new(text)
+        }
+    }
+
+    /// The row a directory starts on.
+    pub fn band(text: &'a str) -> Self {
+        Self {
+            band: true,
             ..Self::new(text)
         }
     }
@@ -204,6 +215,9 @@ fn rule(ctx: &mut Ctx, rect: Rect, gutter: Block) {
 }
 
 fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+    if code.band {
+        return band(ctx, line, code.text);
+    }
     if code.head {
         return head(ctx, line, code.text);
     }
@@ -283,7 +297,14 @@ fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
     row(ctx, Rect::new(at, line.y, width, line.h), 0.0, text, style);
 }
 
-/// A row naming a file: its own ground, its path at the margin.
+/// A row naming a directory: its own ground, its path faint at the margin.
+fn band(ctx: &mut Ctx, line: Rect, text: &str) {
+    let (ground, style) = (ctx.styles.inner(), ctx.styles.small(Role::Faint));
+    ctx.quad(line, ground);
+    row(ctx, line, ctx.tokens.md, text, style);
+}
+
+/// A row naming a file: its own ground, its name at the margin.
 fn head(ctx: &mut Ctx, line: Rect, text: &str) {
     let (ground, style) = (ctx.styles.raised(), ctx.styles.label(Role::Text));
     ctx.quad(line, ground);

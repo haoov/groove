@@ -33,6 +33,8 @@ pub(super) struct Drawn {
     pub(super) mark: Option<LineMark>,
     /// The row a file starts on, which names it instead of showing a line.
     pub(super) head: bool,
+    /// The row a directory starts on.
+    pub(super) band: bool,
 }
 
 /// The rows of one view, inside `window`. The file view is the open file; the others
@@ -84,7 +86,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                     .map(|on| display_at(&text, on.column, width)),
                 held: held(file, ui, at),
                 mark: file.marks.get(&(at as u32)).copied(),
-                head: false,
+                ..Drawn::default()
             }
         })
         .collect()
@@ -102,6 +104,7 @@ fn streamed(
     let colours = coloured(app, ui, window.clone());
     window
         .map(|row| match changes.at(row) {
+            Some(At::Band(file)) => band(file),
             Some(At::Head(file)) => head(file),
             Some(At::Row(file, at)) => {
                 let side = source(&file.rows[at], view, side);
@@ -169,8 +172,17 @@ fn stretch(range: &mut Range<usize>, line: Option<u32>) {
 /// The row that names a file, standing above its own rows.
 fn head(file: &Aligned) -> Drawn {
     Drawn {
-        text: file.path.clone(),
+        text: file.name().to_string(),
         head: true,
+        ..Drawn::default()
+    }
+}
+
+/// The row that names the directory the files under it share.
+fn band(file: &Aligned) -> Drawn {
+    Drawn {
+        text: file.dir().to_string(),
+        band: true,
         ..Drawn::default()
     }
 }
@@ -204,8 +216,7 @@ fn one(
         kind: kind(row, view, side),
         caret: here.and_then(|open| on_row(caret(ui, open), row, open, file.indent)),
         held: here.and_then(|open| row.new.and_then(|line| held(open, ui, line as usize))),
-        mark: None,
-        head: false,
+        ..Drawn::default()
     }
 }
 
@@ -259,7 +270,7 @@ pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<(Str
             (row < file.new.lines()).then(|| (file.path.clone(), row))
         }
         _ => match app.workspace.changes.at(row)? {
-            At::Head(_) => None,
+            At::Band(_) | At::Head(_) => None,
             At::Row(file, at) => {
                 let line = file.rows[at].new?;
                 Some((file.path.clone(), line as usize))
