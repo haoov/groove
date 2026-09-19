@@ -59,6 +59,7 @@ fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
             )
         })
         .collect();
+    assert_eq!(listing.root, "", "nothing is shared with a file at the top");
     assert_eq!(
         groups,
         [
@@ -78,11 +79,50 @@ fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
 }
 
 #[test]
-fn one_file_keeps_its_whole_directory() {
+fn what_every_file_shares_is_shown_once_and_taken_off_the_groups() {
+    let files = [
+        changed("crates/ui/ui/src/tokens.rs", 1, 0),
+        changed("crates/ui/ui/src/views/session/session.rs", 1, 0),
+        changed("crates/ui/ui/src/views/shared/rail.rs", 1, 0),
+    ];
+    let listing = listing(&files);
+    assert_eq!(listing.root, "crates/ui/ui/src");
+    let dirs: Vec<&str> = listing.groups.iter().map(|g| g.dir.as_str()).collect();
+    assert_eq!(
+        dirs,
+        ["", "views/session", "views/shared"],
+        "and a chain with one child is one line, not three"
+    );
+}
+
+#[test]
+fn a_name_that_says_nothing_reads_as_its_directory() {
+    use crate::views::session::components::files::reads_as;
+
+    assert_eq!(
+        reads_as("crates/ui/ui/src/views/session/mod.rs"),
+        (
+            "session/mod.rs".to_string(),
+            "crates/ui/ui/src/views".to_string()
+        )
+    );
+    assert_eq!(
+        reads_as("crates/ui/ui/src/tokens.rs"),
+        ("tokens.rs".to_string(), "crates/ui/ui/src".to_string())
+    );
+    assert_eq!(
+        reads_as("Cargo.toml"),
+        ("Cargo.toml".to_string(), String::new())
+    );
+}
+
+#[test]
+fn one_file_is_all_root_and_no_group_line() {
     let files = [changed("crates/base/gfx/src/icons.rs", 3, 2)];
     let listing = listing(&files);
+    assert_eq!(listing.root, "crates/base/gfx/src");
     assert_eq!(listing.groups.len(), 1);
-    assert_eq!(listing.groups[0].dir, "crates/base/gfx/src");
+    assert_eq!(listing.groups[0].dir, "", "its path is the root itself");
 }
 
 #[test]
@@ -123,9 +163,12 @@ fn the_files_tab_names_the_files_with_what_they_changed() {
     assert!(texts.iter().any(|t| t == "session.rs"));
     assert!(
         texts.iter().any(|t| t == "crates/ui/ui/src"),
-        "a group: {texts:?}"
+        "the root, once: {texts:?}"
     );
-    assert!(texts.iter().any(|t| t == "crates/ui/ui/src/views/session"));
+    assert!(
+        texts.iter().any(|t| t == "views/session"),
+        "and a group under it"
+    );
     assert!(texts.iter().any(|t| t == "+2"));
     assert!(texts.iter().any(|t| t == "-1"));
     assert!(
@@ -214,4 +257,31 @@ fn a_chord_reads_the_worktree_whenever_the_user_asks() {
     let asked = press(Key::Char('r'), CHORD, &mut ui, &app);
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].id(), "workspace.load");
+}
+
+#[test]
+fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
+    let app = with_files(&[
+        "crates/ui/ui/src/tokens.rs",
+        "crates/other/src/views/session/mod.rs",
+    ]);
+    let mut ui = on_diff();
+    ui.session.tab = Tab::Diff;
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let sidebar = Layout::of(window(), &ui).sidebar;
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.x >= sidebar.x)
+        .map(|run| run.text.clone())
+        .collect();
+    assert!(
+        texts.iter().any(|t| t == "session/mod.rs"),
+        "the directory names it: {texts:?}"
+    );
+    assert!(texts.iter().any(|t| t == "tokens.rs"));
+    assert!(
+        !texts.iter().any(|t| t == "mod.rs"),
+        "never a bare mod.rs, which says nothing"
+    );
 }

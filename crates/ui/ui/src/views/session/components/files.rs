@@ -13,10 +13,13 @@ use crate::widget::{button, elide, hairline, row, ruled};
 use crate::{Losing, Ui};
 
 pub(crate) struct Listing<'a> {
+    /// What every file has in common, shown once above them.
+    pub root: String,
     pub groups: Vec<Group<'a>>,
 }
 
 pub(crate) struct Group<'a> {
+    /// The directory under the root, its single-child chains collapsed.
     pub dir: String,
     pub files: Vec<&'a FileDiff>,
 }
@@ -65,16 +68,26 @@ fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
 fn rows(ctx: &mut Ctx, body: Rect, listing: &Listing<'_>, open: Option<&String>, ui: &Ui) {
     let scroll = ui.session.files;
     let height = ctx.tokens.row;
-    let lines = listing
-        .groups
-        .iter()
-        .map(|g| g.files.len() + 1)
-        .sum::<usize>();
+    let root = usize::from(!listing.root.is_empty());
+    let lines = root
+        + listing
+            .groups
+            .iter()
+            .map(|g| g.files.len() + usize::from(!g.dir.is_empty()))
+            .sum::<usize>();
     let extent = (height * lines as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Files, extent);
     let scroll = scroll.min(extent);
     ctx.clipped(body, |ctx| {
         let mut y = body.y - scroll;
+        if !listing.root.is_empty() {
+            let style = ctx.styles.small(Role::Ghost);
+            let line = Rect::new(body.x, y, body.w, height);
+            let room = body.w - ctx.tokens.md * 2.0;
+            let text = elide(ctx, &listing.root, &style, room);
+            row(ctx, line, ctx.tokens.md, &text, style);
+            y += height;
+        }
         for group in &listing.groups {
             if !group.dir.is_empty() {
                 let style = ctx.styles.small(Role::Faint);
@@ -125,17 +138,32 @@ fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool, open: bool, 
         true => offer(ctx, line, file, ui),
         false => counts(ctx, line, file),
     };
-    let name = ctx.styles.body(Role::Text);
     let start = indent + ctx.tokens.md;
     let room = (at - line.x - start - ctx.tokens.sm).max(0.0);
-    let text = elide(ctx, name_of(&file.path), &name, room);
-    row(
+    named(
         ctx,
         Rect::new(line.x, line.y, at - line.x, line.h),
+        file,
         start,
-        &text,
-        name,
+        room,
     );
+}
+
+/// The file's name, then what is left of its path behind it, dimmed.
+fn named(ctx: &mut Ctx, line: Rect, file: &FileDiff, start: f32, room: f32) {
+    let (name, behind) = reads_as(&file.path);
+    let strong = ctx.styles.body(Role::Text);
+    let quiet = ctx.styles.small(Role::Ghost);
+    let text = elide(ctx, &name, &strong, room);
+    let width = ctx.measure(&text, &strong);
+    row(ctx, line, start, &text, strong);
+    let left = room - width - ctx.tokens.sm;
+    if behind.is_empty() || left <= 0.0 {
+        return;
+    }
+    let rest = elide(ctx, &behind, &quiet, left);
+    let at = line.x + start + width + ctx.tokens.sm;
+    row(ctx, Rect::new(at, line.y, left, line.h), 0.0, &rest, quiet);
 }
 
 /// Whether the pointer is on this row, or on what the row is offering.
@@ -215,9 +243,10 @@ fn name_of(path: &str) -> &str {
 }
 
 pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
+    let root = common(files);
     let mut groups: Vec<Group<'_>> = Vec::new();
     for file in files {
-        let dir = segments(&file.path).join("/");
+        let dir = under(&root, &file.path);
         match groups.iter_mut().find(|group| group.dir == dir) {
             Some(group) => group.files.push(file),
             None => groups.push(Group {
@@ -227,7 +256,51 @@ pub(crate) fn listing(files: &[FileDiff]) -> Listing<'_> {
         }
     }
     groups.sort_by(|a, b| a.dir.cmp(&b.dir));
-    Listing { groups }
+    Listing { root, groups }
+}
+
+/// The longest path every file shares, and nothing when they share none.
+fn common(files: &[FileDiff]) -> String {
+    let mut shared: Option<Vec<&str>> = None;
+    for file in files {
+        let parts = segments(&file.path);
+        shared = Some(match shared {
+            None => parts,
+            Some(shared) => shared
+                .iter()
+                .zip(parts.iter())
+                .take_while(|(a, b)| a == b)
+                .map(|(a, _)| *a)
+                .collect(),
+        });
+    }
+    shared.unwrap_or_default().join("/")
+}
+
+/// A file's directory with the root taken off its front.
+fn under(root: &str, path: &str) -> String {
+    let dir = segments(path).join("/");
+    match dir.strip_prefix(root) {
+        Some(rest) => rest.trim_start_matches('/').to_string(),
+        None => dir,
+    }
+}
+
+/// The name a file reads as, and the path behind it. `mod.rs` and its like read as
+/// the directory that holds them.
+pub(crate) fn reads_as(path: &str) -> (String, String) {
+    let name = name_of(path);
+    let parts = segments(path);
+    let plain = [
+        "mod.rs", "lib.rs", "main.rs", "index.ts", "index.js", "mod.ts",
+    ];
+    match plain.contains(&name) {
+        true => match parts.last() {
+            Some(dir) => (format!("{dir}/{name}"), parts[..parts.len() - 1].join("/")),
+            None => (name.to_string(), String::new()),
+        },
+        false => (name.to_string(), parts.join("/")),
+    }
 }
 
 /// A path's directories, without its file name.
