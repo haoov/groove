@@ -1,3 +1,5 @@
+//! The thread that owns the pty's input side.
+
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 use groove_exec::pty::Pty;

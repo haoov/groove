@@ -1,3 +1,5 @@
+//! Finding text in one document.
+
 use std::ops::Range;
 
 /// Where a query was found: the line, and the bytes inside that line.

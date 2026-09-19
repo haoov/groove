@@ -94,7 +94,6 @@ pub fn sh(dir: &Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
-/// Drains continuations until `done`, or fails after ten seconds.
 /// An explorer with the fixture's repo and one worktree; returns the worktree's path.
 pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> String {
     dispatch(

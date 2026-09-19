@@ -1,4 +1,4 @@
-use groove_types::{RepoId, WorktreeSpec};
+use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::session::Command;
 use crate::tests::fixture::{self, pooled_clone, services, sh, state, until};
@@ -93,44 +93,7 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
     let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
     let repo = RepoId::new(REPO);
-
-    dispatch(
-        session_cmd(Command::AddRepo {
-            session: id.clone(),
-            name: "mayo".into(),
-            spec: WorktreeSpec::default(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    let spec = WorktreeSpec {
-        branch: Some("fix/x".into()),
-        target: Some("release/1.0".into()),
-        track_remote: None,
-    };
-    dispatch(
-        session_cmd(Command::AddWorktree {
-            session: id.clone(),
-            repo: repo.clone(),
-            spec,
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    until(&spawner, &services, &mut state, |s| {
-        s.session.get(&id).is_some_and(|o| o.worktrees.len() == 2)
-    });
-    let second = state
-        .session
-        .get(&id)
-        .unwrap()
-        .worktrees
-        .iter()
-        .find(|w| w.branch == "fix/x")
-        .unwrap()
-        .clone();
+    let second = second_worktree(&mut state, &services, &spawner, &id, &repo);
     assert_eq!(second.base_ref.as_deref(), Some("release/1.0"));
 
     dispatch(
@@ -143,27 +106,8 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
         &spawner,
     );
     spawner.drain(&mut state, &services);
-    assert_eq!(
-        state
-            .session
-            .get(&id)
-            .unwrap()
-            .state
-            .selected_worktree
-            .as_ref(),
-        Some(&second.id)
-    );
 
-    let mut fresh = fixture::state(home.path());
-    dispatch(
-        session_cmd(Command::Restore),
-        &mut fresh,
-        &services,
-        &spawner,
-    );
-    until(&spawner, &services, &mut fresh, |s| {
-        s.session.get(&id).is_some_and(|o| o.worktrees.len() == 2)
-    });
+    let mut fresh = restarted(home.path(), &services, &spawner, &id);
     let open = fresh.session.get(&id).unwrap();
     assert_eq!(open.repos.len(), 1);
     assert_eq!(
@@ -171,40 +115,20 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
         Some(&second.id),
         "the selection was persisted"
     );
-
     let first = open
         .worktrees
         .iter()
         .find(|w| w.branch == "explorer/try-mayo")
         .unwrap()
         .clone();
+
     std::fs::write(std::path::Path::new(&second.path).join("a.txt"), "dirty\n").unwrap();
-    dispatch(
-        session_cmd(Command::CloseWorktree {
-            session: id.clone(),
-            worktree: second.id.clone(),
-            force: false,
-        }),
-        &mut fresh,
-        &services,
-        &spawner,
-    );
-    spawner.drain(&mut fresh, &services);
+    close(&mut fresh, &services, &spawner, &id, &second.id, false);
     assert_eq!(fresh.errors.len(), 1, "a dirty worktree is refused");
     assert_eq!(fresh.errors[0].kind, groove_types::ErrorKind::Conflict);
     fresh.errors.clear();
 
-    dispatch(
-        session_cmd(Command::CloseWorktree {
-            session: id.clone(),
-            worktree: second.id.clone(),
-            force: true,
-        }),
-        &mut fresh,
-        &services,
-        &spawner,
-    );
-    spawner.drain(&mut fresh, &services);
+    close(&mut fresh, &services, &spawner, &id, &second.id, true);
     let open = fresh.session.get(&id).unwrap();
     assert_eq!(open.worktrees.len(), 1);
     assert_eq!(
@@ -241,6 +165,89 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
         "the local branch goes with the worktree"
     );
     until(&spawner, &services, &mut fresh, |s| s.pending.is_empty());
+}
+
+/// The repo added, then a second worktree on its own branch off `release/1.0`.
+fn second_worktree(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    id: &SessionId,
+    repo: &RepoId,
+) -> groove_types::Worktree {
+    dispatch(
+        session_cmd(Command::AddRepo {
+            session: id.clone(),
+            name: "mayo".into(),
+            spec: WorktreeSpec::default(),
+        }),
+        state,
+        services,
+        spawner,
+    );
+    let spec = WorktreeSpec {
+        branch: Some("fix/x".into()),
+        target: Some("release/1.0".into()),
+        track_remote: None,
+    };
+    dispatch(
+        session_cmd(Command::AddWorktree {
+            session: id.clone(),
+            repo: repo.clone(),
+            spec,
+        }),
+        state,
+        services,
+        spawner,
+    );
+    until(spawner, services, state, |s| {
+        s.session.get(id).is_some_and(|o| o.worktrees.len() == 2)
+    });
+    state
+        .session
+        .get(id)
+        .unwrap()
+        .worktrees
+        .iter()
+        .find(|w| w.branch == "fix/x")
+        .unwrap()
+        .clone()
+}
+
+/// A state of its own, restored from the same disk.
+fn restarted(
+    home: &std::path::Path,
+    services: &Services,
+    spawner: &SyncSpawner,
+    id: &SessionId,
+) -> AppState {
+    let mut fresh = fixture::state(home);
+    dispatch(session_cmd(Command::Restore), &mut fresh, services, spawner);
+    until(spawner, services, &mut fresh, |s| {
+        s.session.get(id).is_some_and(|o| o.worktrees.len() == 2)
+    });
+    fresh
+}
+
+fn close(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    id: &SessionId,
+    worktree: &WorktreeId,
+    force: bool,
+) {
+    dispatch(
+        session_cmd(Command::CloseWorktree {
+            session: id.clone(),
+            worktree: worktree.clone(),
+            force,
+        }),
+        state,
+        services,
+        spawner,
+    );
+    spawner.drain(state, services);
 }
 
 #[test]

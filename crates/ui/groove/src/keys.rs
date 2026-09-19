@@ -1,3 +1,5 @@
+//! A winit key event as the ui's own key and modifiers.
+
 use groove_ui::input::{Input, Key, Modifiers};
 use winit::event::{ElementState, KeyEvent};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};

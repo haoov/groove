@@ -1,3 +1,5 @@
+//! The renderer: a surface or an offscreen target, and one frame onto it.
+
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
 use crate::text::{Cached, TextPass};

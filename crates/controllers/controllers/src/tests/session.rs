@@ -2,7 +2,7 @@ use groove_types::{AgentStatus, SessionKind};
 
 use crate::session::Command;
 use crate::tests::fixture::{self, services, state, until};
-use crate::{Command as Cmd, SyncSpawner, dispatch};
+use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
 #[test]
 fn opening_an_explorer_adds_a_row_selects_it_and_starts_its_agent() {
@@ -191,30 +191,9 @@ fn explorers_persist_and_the_rail_restores_with_agents() {
     let spawner = SyncSpawner::new().unwrap();
     let services = services(&spawner, home.path());
     let mut state = state(home.path());
-    dispatch(
-        Cmd::Session(Command::OpenExplorer {
-            title: Some("keep".into()),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    dispatch(
-        Cmd::Session(Command::OpenExplorer {
-            title: Some("drop".into()),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    dispatch(
-        Cmd::Session(Command::OpenExplorer {
-            title: Some("closed".into()),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+    for title in ["keep", "drop", "closed"] {
+        open_explorer(&mut state, &services, &spawner, title);
+    }
     let ids: Vec<_> = state
         .session
         .open
@@ -225,39 +204,24 @@ fn explorers_persist_and_the_rail_restores_with_agents() {
         ids.iter().all(|id| s.agent.agent(id).is_some())
     });
 
-    dispatch(
-        Cmd::Session(Command::RenameExplorer {
+    let acts = [
+        Command::RenameExplorer {
             session: ids[0].clone(),
             title: "kept".into(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    dispatch(
-        Cmd::Session(Command::Delete {
+        },
+        Command::Delete {
             session: ids[1].clone(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    dispatch(
-        Cmd::Session(Command::Close {
+        },
+        Command::Close {
             session: ids[2].clone(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
-    dispatch(
-        Cmd::Session(Command::Select {
+        },
+        Command::Select {
             session: ids[0].clone(),
-        }),
-        &mut state,
-        &services,
-        &spawner,
-    );
+        },
+    ];
+    for act in acts {
+        dispatch(Cmd::Session(act), &mut state, &services, &spawner);
+    }
     spawner.drain(&mut state, &services);
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 
@@ -293,4 +257,15 @@ fn explorers_persist_and_the_rail_restores_with_agents() {
             .is_some()
     );
     assert!(fresh.errors.is_empty(), "{:?}", fresh.errors);
+}
+
+fn open_explorer(state: &mut AppState, services: &Services, spawner: &SyncSpawner, title: &str) {
+    dispatch(
+        Cmd::Session(Command::OpenExplorer {
+            title: Some(title.into()),
+        }),
+        state,
+        services,
+        spawner,
+    );
 }

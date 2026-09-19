@@ -1,3 +1,5 @@
+//! What changed in a worktree, as counts per file.
+
 use std::path::Path;
 
 use groove_git::parse::unquote_path;

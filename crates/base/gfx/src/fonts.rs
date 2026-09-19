@@ -1,3 +1,5 @@
+//! The faces the atlas shapes with, and the cell one size gives.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 

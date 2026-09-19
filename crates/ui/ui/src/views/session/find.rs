@@ -20,7 +20,7 @@ pub struct Hit {
 /// The bar over the rows: what is typed, and what it found.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Finding {
-    pub query: crate::field::Field,
+    pub query: crate::widget::Field,
     /// The keyboard is in the bar; on `Enter` it goes back to the code.
     pub typing: bool,
     pub hits: Vec<Hit>,

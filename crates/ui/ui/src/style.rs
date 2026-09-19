@@ -110,10 +110,9 @@ impl Styles {
         }
     }
 
-    /// What a marked line did: came, went, or changed in place.
-    /// The band under what a caret holds.
+    /// The band under what a caret holds, above every ground a row can take.
     pub fn held(&self) -> Color {
-        self.palette.surface2
+        self.palette.overlay1
     }
 
     /// The rules above and below the row the caret is on. Brighter than a panel's
@@ -127,6 +126,7 @@ impl Styles {
         self.palette.text
     }
 
+    /// What a marked line did: came, went, or changed in place.
     pub fn mark(&self, mark: LineMark) -> Color {
         match mark {
             LineMark::Added => self.palette.green,
@@ -175,7 +175,6 @@ impl Styles {
         self.palette.surface0
     }
 
-    /// A selected row or tab.
     /// The ground of something a click acts on, above a raised row.
     pub fn action(&self) -> Color {
         self.palette.surface2

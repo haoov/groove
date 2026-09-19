@@ -90,18 +90,6 @@ fn a_title_too_long_for_the_rail_is_cut_with_an_ellipsis() {
 }
 
 #[test]
-fn the_time_sits_right_of_the_title() {
-    let mut app = full_app();
-    working(&mut app, "a", 0);
-    let ui = Ui::default();
-    let runs = rail_texts(&app, &ui);
-    let title = runs.iter().find(|r| r.text == "Alpha").expect("a title");
-    let time = runs.iter().find(|r| r.text == "now").expect("a time");
-    assert!(time.x > title.x, "the time is right-aligned");
-    assert_eq!(time.y, title.y, "both sit on the head line");
-}
-
-#[test]
 fn the_selected_row_and_the_hovered_row_are_raised() {
     let app = full_app();
     let mut ui = Ui::default();

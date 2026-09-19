@@ -10,7 +10,7 @@ mod words;
 #[cfg(test)]
 mod tests;
 
-pub use alignment::{CONTEXT, Words, align, by_line, marks};
+pub use alignment::{Words, align, by_line, marks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use groove_text::{Buffer, Document};
 
@@ -35,5 +35,5 @@ pub fn display_at(line: &str, column: usize, width: usize) -> usize {
 pub fn columns(line: &str, display: usize, width: usize) -> usize {
     groove_text::column_of(line, display, width)
 }
-pub use opened::{Derived, MAX_SHOWN_BYTES, Opened, derived, from_text, opened, reopened};
+pub use opened::{Derived, Opened, derived, from_text, opened, reopened};
 pub use summary::{MAX_BYTES, summary};

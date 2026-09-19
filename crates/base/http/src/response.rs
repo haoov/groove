@@ -1,3 +1,5 @@
+//! What a response carries, and how it fails.
+
 use serde::de::DeserializeOwned;
 
 use crate::{Error, Result, StatusCode};

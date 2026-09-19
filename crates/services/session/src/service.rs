@@ -1,3 +1,5 @@
+//! What the session capability asks of the store and the pool.
+
 use std::path::Path;
 
 use groove_sessions::Store;
@@ -83,8 +85,6 @@ impl Service {
         Ok(self.store.opened().await?)
     }
 
-    /// A session's repos and worktrees, and what git says about each worktree.
-    /// A worktree whose directory is gone reports no counts.
     /// One file of a worktree marked read, or the mark taken off it.
     pub async fn set_read(
         &self,

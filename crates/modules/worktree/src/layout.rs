@@ -1,3 +1,5 @@
+//! Where the pool, the worktrees and a session's directory live under the root.
+
 use std::path::{Path, PathBuf};
 
 /// Where things live under the worktree root.

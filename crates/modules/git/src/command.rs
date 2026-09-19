@@ -1,3 +1,5 @@
+//! How every git command runs: the environment it takes, and what it gives back.
+
 use std::process::Output;
 
 use groove_exec::redact;

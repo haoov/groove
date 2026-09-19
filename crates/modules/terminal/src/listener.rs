@@ -1,3 +1,5 @@
+//! What the emulator reports while it reads: damage, and a title.
+
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
 

@@ -58,7 +58,7 @@ fn a_deleted_file_is_all_removals() {
 fn a_file_too_long_to_align_says_so_and_keeps_its_text() {
     let dir = repo();
     let line = "fn one() {}\n";
-    let text = line.repeat(crate::MAX_SHOWN_BYTES / line.len() + 1);
+    let text = line.repeat(crate::opened::MAX_SHOWN_BYTES / line.len() + 1);
     write(dir.path(), "src/big.rs", &text);
     let file = open(dir.path(), "src/big.rs");
     assert!(file.long);

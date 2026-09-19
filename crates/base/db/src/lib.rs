@@ -7,7 +7,7 @@ use std::time::Duration;
 
 pub use error::{Error, Result};
 pub use sqlx;
-pub use sqlx::SqlitePool;
+use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);

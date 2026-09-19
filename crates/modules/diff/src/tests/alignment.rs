@@ -2,7 +2,8 @@ use groove_text::Document;
 
 use groove_types::{Row, RowKind};
 
-use crate::{CONTEXT, align};
+use crate::align;
+use crate::alignment::CONTEXT;
 
 fn doc(text: &str) -> Document {
     Document::new("a.rs", text)

@@ -143,3 +143,42 @@ fn a_view_draws_through_the_context() {
         "a view takes geometry from the renderer and everything else from Ctx: {offenders:#?}"
     );
 }
+
+/// Every ground and band a row can take, in each flavour.
+fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Color)> {
+    let styles = crate::style::Styles::new(theme, crate::tokens::Tokens::new(1.0));
+    vec![
+        ("hover", styles.hover()),
+        ("raised", styles.raised()),
+        ("action", styles.action()),
+        ("held", styles.held()),
+        ("here", styles.here()),
+        ("panel", styles.panel()),
+        ("inner", styles.inner()),
+        ("ground", styles.ground()),
+    ]
+}
+
+#[test]
+fn no_two_grounds_a_row_can_take_share_a_value() {
+    for theme in [
+        groove_types::ThemeName::Latte,
+        groove_types::ThemeName::Frappe,
+        groove_types::ThemeName::Macchiato,
+        groove_types::ThemeName::Mocha,
+    ] {
+        let grounds = grounds(theme);
+        for (at, (name, color)) in grounds.iter().enumerate() {
+            let same = grounds
+                .iter()
+                .skip(at + 1)
+                .find(|(_, other)| other == color)
+                .map(|(other, _)| *other);
+            assert!(
+                same.is_none(),
+                "{theme:?}: {name} and {} share a value",
+                same.unwrap_or("")
+            );
+        }
+    }
+}

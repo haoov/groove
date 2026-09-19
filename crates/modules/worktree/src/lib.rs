@@ -19,7 +19,6 @@ pub use error::{Error, Result};
 use groove_db::Db;
 pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
-pub use provision::Provisioned;
 
 /// The module's handle: the database and the root, cheap to clone into a job.
 #[derive(std::clone::Clone)]

@@ -7,6 +7,7 @@ mod history;
 mod language;
 mod search;
 mod tabs;
+mod words;
 
 #[cfg(test)]
 mod tests;
@@ -14,13 +15,14 @@ mod tests;
 use std::borrow::Cow;
 use std::ops::Range;
 
+use crate::language::Language;
 use groove_types::{Caret, Highlight, Indent};
 use ropey::Rope;
 
 pub use buffer::Buffer;
-pub use language::Language;
 pub use search::Found;
 pub use tabs::{column_of, display_of, expand, spans_of};
+pub use words::{Class, class};
 
 /// Above this a document keeps its text and gives up its colour.
 pub const MAX_HIGHLIGHT_BYTES: usize = 1 << 20;
@@ -172,9 +174,8 @@ impl Document {
         }
     }
 
-    /// The characters before `caret`, clamped to a place the text has. A line past
-    /// the last one is the end of the text, which is where a selection of all of it
-    /// ends.
+    /// The characters before `caret`, clamped to a place the text has. A line past the
+    /// last one is the end of the text.
     pub fn char_of(&self, caret: Caret) -> usize {
         if caret.line >= self.lines() {
             return self.text.len_chars();

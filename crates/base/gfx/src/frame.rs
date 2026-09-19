@@ -1,3 +1,5 @@
+//! The display list a view builds: quads, text runs, icons, clips, layers.
+
 use crate::{CellGrid, Color, Icon, Rect, Size};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]

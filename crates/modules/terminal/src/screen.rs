@@ -1,3 +1,5 @@
+//! The grid as the ui takes it: cells, colours, the cursor.
+
 use alacritty_terminal::event::EventListener;
 use alacritty_terminal::grid::Dimensions;
 use alacritty_terminal::term::cell::{Cell, Flags};

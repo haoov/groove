@@ -3,8 +3,10 @@ use std::path::{Path, PathBuf};
 
 use groove_types::{Session, SessionId, SessionKind, Timestamp};
 
+use crate::prompt::core_prompt;
 use crate::session::session_file;
-use crate::{Launch, Loopback, Paths, core_prompt, session_uuid};
+use crate::session::session_uuid;
+use crate::{Launch, Loopback, Paths};
 
 pub(crate) fn explorer() -> Session {
     Session {

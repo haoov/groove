@@ -8,7 +8,7 @@ use crate::layout::{Layout, Split};
 use crate::tests::{CHORD, WINDOW, click, full_app, press, window};
 use crate::tokens::Tokens;
 use crate::views::session::Tab;
-use crate::views::session::components::files::listing;
+use crate::views::session::files::listing;
 use crate::{Ui, view};
 
 fn changed(path: &str, added: u32, deleted: u32) -> FileDiff {
@@ -107,7 +107,7 @@ fn what_every_file_shares_is_shown_once_and_taken_off_the_groups() {
 
 #[test]
 fn a_name_that_says_nothing_reads_as_its_directory() {
-    use crate::views::session::components::files::reads_as;
+    use crate::views::session::files::reads_as;
 
     assert_eq!(
         reads_as("crates/ui/ui/src/views/session/mod.rs"),
@@ -250,7 +250,7 @@ fn files_loaded_for_another_worktree_are_never_shown() {
 }
 
 #[test]
-fn folding_asks_for_nothing_since_the_worktree_is_watched() {
+fn folding_the_sidebar_asks_nothing_of_the_worktree() {
     let app = with_files(&["crates/ui/ui/src/tokens.rs"]);
     let mut ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -315,7 +315,7 @@ fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
             &app,
         );
     }
-    let left = crate::views::session::components::files::narrowed(&app, &ui);
+    let left = crate::views::session::files::narrowed(&app, &ui);
     let paths: Vec<&str> = left.iter().map(|file| file.path.as_str()).collect();
     assert_eq!(paths, ["src/two/beta.rs"], "the one path that matches");
 
@@ -344,7 +344,7 @@ fn escape_leaves_the_list_as_it_was() {
         &app,
     );
     assert_eq!(
-        crate::views::session::components::files::narrowed(&app, &ui).len(),
+        crate::views::session::files::narrowed(&app, &ui).len(),
         0,
         "nothing matches z"
     );
@@ -356,7 +356,7 @@ fn escape_leaves_the_list_as_it_was() {
     );
     assert!(ui.session.bar.typing.is_none());
     assert_eq!(
-        crate::views::session::components::files::narrowed(&app, &ui).len(),
+        crate::views::session::files::narrowed(&app, &ui).len(),
         2,
         "both files are back"
     );

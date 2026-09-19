@@ -1,9 +1,13 @@
 use crate::{Cell, CellGrid, Color, Font, Frame, Palette, Rect, Size, TextStyle, Weight, boxdraw};
 
 #[test]
-fn colour_hex_and_linear() {
+fn a_colour_keeps_the_channels_its_hex_names() {
     let c = Color::hex(0x1e1e2e);
     assert_eq!((c.r, c.g, c.b, c.a), (0x1e, 0x1e, 0x2e, 255));
+}
+
+#[test]
+fn a_colour_reaches_the_gpu_linear_and_with_its_alpha() {
     assert_eq!(Color::BLACK.linear(), [0.0, 0.0, 0.0, 1.0]);
     assert_eq!(Color::WHITE.linear(), [1.0, 1.0, 1.0, 1.0]);
     let mid = Color::rgb(128, 128, 128).linear()[0];
@@ -12,11 +16,16 @@ fn colour_hex_and_linear() {
 }
 
 #[test]
-fn rect_intersection_and_scissor() {
+fn two_rects_meet_in_what_they_share_and_nothing_when_they_do_not() {
     let a = Rect::new(0.0, 0.0, 10.0, 10.0);
     let b = Rect::new(5.0, 5.0, 10.0, 10.0);
     assert_eq!(a.intersect(b), Rect::new(5.0, 5.0, 5.0, 5.0));
     assert!(a.intersect(Rect::new(20.0, 20.0, 1.0, 1.0)).is_empty());
+}
+
+#[test]
+fn a_rect_becomes_a_scissor_clamped_to_the_surface() {
+    let b = Rect::new(5.0, 5.0, 10.0, 10.0);
     let size = Size::new(8, 8);
     assert_eq!(b.scissor(size), Some((5, 5, 3, 3)));
     assert_eq!(

@@ -1,6 +1,9 @@
+//! One client: the request it builds, and the response it reads back.
+
 use std::time::Duration;
 
-use crate::{Method, Response, Result, redact_url};
+use crate::redact::redact_url;
+use crate::{Method, Response, Result};
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const TIMEOUT: Duration = Duration::from_secs(30);

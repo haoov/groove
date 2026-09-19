@@ -1,3 +1,5 @@
+//! Starting an agent for a session, and what its terminal reports.
+
 use std::path::{Path, PathBuf};
 
 use groove_agent_launch::{Launch, Loopback, Paths};

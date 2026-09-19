@@ -1,3 +1,5 @@
+//! Taking a worktree away, and the session directory with the last of them.
+
 use std::path::Path;
 
 use groove_git::Git;

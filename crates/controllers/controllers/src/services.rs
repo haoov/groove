@@ -1,3 +1,5 @@
+//! The service handles the binary builds and every controller reads.
+
 use std::sync::Arc;
 
 use groove_workspace_service::{Clipboard, Memory};

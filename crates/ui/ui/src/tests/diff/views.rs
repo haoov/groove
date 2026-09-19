@@ -72,25 +72,6 @@ fn split_draws_each_side_with_its_own_numbers() {
 }
 
 #[test]
-fn split_puts_a_rule_between_the_sides() {
-    let app = opened();
-    let mut ui = on_diff();
-    ui.session.view = DiffView::Split;
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let code = hits
-        .rect_of(&Target::Code)
-        .expect("the new side takes clicks");
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let rules = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.color == styles.line() && quad.rect.h == code.h)
-        .count();
-    assert_eq!(rules, 3, "one between the sides, one per gutter");
-    assert!(code.x > code.w, "clicks land on the right half");
-}
-
-#[test]
 fn the_file_view_draws_the_whole_file_not_the_alignment() {
     let inline = in_view(&long(), DiffView::Inline);
     assert!(

@@ -1,3 +1,5 @@
+//! What a branch is against its remote and its base: ahead, behind, the fork point.
+
 use crate::parse::RemoteUrl;
 use crate::{Error, Git, Result};
 

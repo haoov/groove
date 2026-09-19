@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
 use glyphon::{
-    Buffer, Cache, ContentType, CustomGlyph, Metrics, RasterizedCustomGlyph, Resolution, Shaping,
-    TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
+    Buffer, Cache, CustomGlyph, Metrics, Resolution, Shaping, TextAtlas, TextRenderer, Viewport,
 };
 
+mod areas;
+
+use self::areas::{area, mark, rasterize, shape_glyph};
 use crate::fonts::{CellSize, Face};
+use crate::frame::IconDraw;
 use crate::icons::Icons;
-use crate::{Color, Font, Fonts, IconDraw, Rect, Result, Size, TextRun, Weight};
+use crate::{Color, Fonts, Rect, Result, Size, TextRun};
 
 const GLYPH_CACHE_CAP: usize = 4096;
 
@@ -257,15 +260,7 @@ impl TextPass {
                     .get(&p.key)
                     .map(|b| area(b, p.x, p.y, p.color, p.clip))
             });
-            let marks = icons[layer].iter().map(|icon| TextArea {
-                buffer: empty,
-                left: 0.0,
-                top: 0.0,
-                scale: 1.0,
-                bounds: bounds(icon.clip),
-                default_color: Color::WHITE.glyphon(),
-                custom_glyphs: &icon.glyph,
-            });
+            let marks = icons[layer].iter().map(|icon| mark(icon, empty));
             renderer.prepare_with_depth_and_custom(
                 device,
                 queue,
@@ -275,14 +270,7 @@ impl TextPass {
                 lines.chain(placed).chain(marks),
                 &mut fonts.swash,
                 |_| 0.0,
-                |request| {
-                    registry
-                        .rasterize(request.id, request.width, request.height)
-                        .map(|data| RasterizedCustomGlyph {
-                            data,
-                            content_type: ContentType::Mask,
-                        })
-                },
+                |request| rasterize(registry, request),
             )?;
         }
         Ok(())
@@ -295,43 +283,5 @@ impl TextPass {
 
     pub fn end(&mut self) {
         self.atlas.trim();
-    }
-}
-
-/// One glyph in a box two cells wide, for a wide character.
-fn shape_glyph(fonts: &mut Fonts, ch: char, bold: bool, size: f32, cell: CellSize) -> Buffer {
-    let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(size, cell.height));
-    buffer.set_size(Some(cell.width * 2.0), Some(cell.height));
-    let weight = if bold { Weight::Bold } else { Weight::Regular };
-    let mut text = [0u8; 4];
-    let text = ch.encode_utf8(&mut text);
-    buffer.set_text(
-        text,
-        &Fonts::attrs(Font::Mono, weight),
-        Shaping::Advanced,
-        None,
-    );
-    buffer.shape_until_scroll(&mut fonts.system, false);
-    buffer
-}
-
-fn area(buffer: &Buffer, x: f32, y: f32, color: Color, clip: Rect) -> TextArea<'_> {
-    TextArea {
-        buffer,
-        left: x,
-        top: y,
-        scale: 1.0,
-        bounds: bounds(clip),
-        default_color: color.glyphon(),
-        custom_glyphs: &[],
-    }
-}
-
-fn bounds(clip: Rect) -> TextBounds {
-    TextBounds {
-        left: clip.x.floor() as i32,
-        top: clip.y.floor() as i32,
-        right: clip.right().ceil() as i32,
-        bottom: clip.bottom().ceil() as i32,
     }
 }

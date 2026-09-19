@@ -1,3 +1,5 @@
+//! What never reaches a log: tokens, and the URLs that carry them.
+
 /// Replaces the credentials in any `scheme://user:secret@host` with `<redacted>`.
 pub fn redact(text: &str) -> String {
     let mut out = String::with_capacity(text.len());

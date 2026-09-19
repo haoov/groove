@@ -54,7 +54,6 @@ pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> 
     format!("{ELLIPSIS}{}", &text[cuts[low]..])
 }
 
-/// A hairline along the bottom of `rect`.
 /// A hairline above `rect` and one below it.
 pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
@@ -63,6 +62,7 @@ pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
     ctx.quad(Rect::new(rect.x, under, rect.w, thickness), color);
 }
 
+/// A hairline along the bottom of `rect`.
 pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
     ctx.quad(

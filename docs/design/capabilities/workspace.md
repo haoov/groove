@@ -5,7 +5,7 @@
 - modes: base, working, vs-remote
 - blame
 - expansion
-- views: unified, split
+- views: file, inline, split
 - syntax, word diff
 - file tree/list
 

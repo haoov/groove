@@ -1,3 +1,5 @@
+//! `git diff --numstat`, as the counts per file.
+
 /// One row of `git diff --numstat -z`. A binary file counts nothing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Counts {

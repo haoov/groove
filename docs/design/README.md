@@ -19,14 +19,14 @@ worktrees and the agent instead of around files, windows or pages.
 ## Files
 
 Each file describes one level and names only the level below it. The README names
-capabilities. A capability names its tool sets. A tool set names its commands. How a
-command is built belongs to architecture and design.
+capabilities. A capability names its tool sets. A tool set names its commands. The docs
+hold the decisions and the rules; the code holds how they are carried out.
 
 | File | Describes |
 |---|---|
 | [capabilities.md](capabilities.md) | the five capabilities and their tool sets |
 | [capabilities/](capabilities/) | one file per capability: its tool sets and what each manages |
-| [implementation/](implementation/) | one file per capability: how each tool set is made, today and planned |
-| [architecture.md](architecture.md) | crates, boundaries, state ownership, rendering, tests, migration |
+| [implementation/](implementation/) | one file per capability: the decisions each tool set is made of, and what is left to build |
+| [architecture.md](architecture.md) | layers, boundaries, splitting, state ownership, rendering, tests, migration |
 | [design.md](design.md) | the surfaces — board, rail, session, review sheet, settings — and the rules they follow |
 | [maquette.html](maquette.html) | the surfaces as a working page; open it in a browser |

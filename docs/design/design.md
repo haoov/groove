@@ -1,8 +1,8 @@
 # Design
 
-Three surfaces, three scopes, and settings beside them. Information never leaks
-upward: what belongs in the session does not reach the rail; what belongs on the
-board does not reach the rail.
+Three surfaces, three scopes, and settings beside them. Information never leaks upward:
+what belongs in the session does not reach the rail; what belongs on the board does not
+reach the rail.
 
 | Surface | Scope | Holds | Capability |
 |---|---|---|---|
@@ -13,26 +13,24 @@ board does not reach the rail.
 
 ## Rules
 
-- **Colour means state. Motion means activity.** One colour per state and nothing
-  else uses colour: an ask is peach, a working agent is blue, CI and diff carry green
-  and red. Text carries the colour, never a background. If it moves, an agent works.
-- **A fact clears when the world changes, never when the user looks at it.** No
-  dismiss.
-- **Suggest, never auto-send.** The action of a state is the skill that fixes it,
-  shown as a button. Groove never runs it by itself.
-- **Everything is reachable from the keyboard.** The command palette is the front
-  door to every action in every capability. The mouse is a shortcut.
-- **Selection is a background, never an underline or a bar.** A selected tab, row or
-  item takes a filled background one step above its ground.
+- **Colour means state. Motion means activity.** One colour per state: an ask is peach, a
+  working agent is blue, CI and diff carry green and red. Text carries the colour, never a
+  background. If it moves, an agent works.
+- **A fact clears when the world changes, never when the user looks at it.** No dismiss.
+- **Suggest, never auto-send.** The action of a state is the skill that fixes it, shown as
+  a button. Groove never runs it by itself.
+- **Everything is reachable from the keyboard.** The palette is the front door to every
+  action. The mouse is a shortcut.
+- **Selection is a background**, one step above its ground — never an underline or a bar.
 
 ## Board — large scope
 
-The board replaces the agent pane, the workspace and the sidebar; the rail stays. It
-uses that width as three columns, one per list, each scrolling on its own.
+The board replaces the agent pane, the workspace and the sidebar; the rail stays. Three
+columns, one per list, each scrolling on its own.
 
-**Header.** The filter — `field:value` tokens and bare words, with autocomplete —
-applied to all three columns at once. On the right, **+ task**: a new task at the
-provider, or a new explorer.
+**Header.** The filter — `field:value` tokens and bare words, with autocomplete — applied
+to all three columns at once. On the right, **+ task**: a new task at the provider, or a
+new explorer.
 
 | Column | Holds | Sort |
 |---|---|---|
@@ -43,20 +41,19 @@ provider, or a new explorer.
 Each column header carries its count.
 
 **Live item.** Folded: kind icon, title, repo count, twisty. Expanded: one row per
-worktree — branch, then git counts, MR, CI and notes as icons, zero and absent
-omitted — and a link to the forge. The title opens the session, which joins the
-rail. Right click: open in provider, finish, delete, delete locally.
+worktree — branch, then git counts, MR, CI and notes as icons, zero and absent omitted —
+and a link to the forge. The title opens the session, which joins the rail. Right click:
+open in provider, finish, delete, delete locally.
 
-**Up next item.** A position number, title, priority and size as text. Drag to
-reorder. One divider, **later**, that items can be dragged under, so the top of the
-column stays short. The order is Groove's and is never written to the provider. A
-ticket that gets a session leaves the plan for Live.
+**Up next item.** A position number, title, priority and size as text. Drag to reorder. One
+divider, **later**, that items can be dragged under. The order is Groove's and is never
+written to the provider. A ticket that gets a session leaves the plan for Live.
 
 **Review item.** Project and MR number, title, author, updated. Open creates a review
 session, which joins the rail.
 
-**Attention.** An item that needs the user gets one line under its title — the reason
-and the age, in peach — and floats to the top of its column whatever the sort:
+**Attention.** An item that needs the user gets one line under its title — the reason and
+the age, in peach — and floats to the top of its column whatever the sort:
 
 ```
 ◎ paxone-deploy !88          waiting 5d
@@ -64,40 +61,35 @@ and the age, in peach — and floats to the top of its column whatever the sort:
 ⚑ finops export              CI failed · 3h
 ```
 
-The rules, each with an age and a threshold in Config › Preferences: a review
-waiting longer than the threshold; an MR with changes requested; an MR with CI
-failed; an MR approved and green but not merged for a day. The rail's Board row
-carries the count of items with attention, in peach, and nothing else.
+The rules, each with an age and a threshold in Config › Preferences: a review waiting
+longer than the threshold; changes requested; CI failed; approved and green but not merged
+for a day; due soon and overdue. The rail's Board row carries the count of items with
+attention, in peach, and nothing else.
 
-**Timeline.** A band under the three columns, full width, collapsible; collapsed to
-its header by itself when nothing falls in the horizon. Four weeks, today about a
-quarter in, days as hairlines, week boundaries stronger, weekends dimmed. One bar per
-task: from its start date to start plus duration, or to its due date when it has
-one; a point when it has only a due date; an open bar to today when it has only a
-start. Bars stack when they overlap. The filter applies to the band. Dates and
-duration are properties, read from the provider and edited by hand in the overview.
-The band never reorders Up next.
-
-Overdue and due soon are attention rules like the others — *due in 2d*,
-*overdue 3d* — a peach line on the item in its column and a peach bar on the band.
+**Timeline.** A band under the three columns, full width, collapsible; collapsed by itself
+when nothing falls in the horizon. Four weeks, today about a quarter in, days as hairlines,
+week boundaries stronger, weekends dimmed. One bar per task: from its start date to start
+plus duration, or to its due date when it has one; a point when it has only a due date; an
+open bar to today when it has only a start. Bars stack when they overlap. The filter
+applies to the band; the band never reorders Up next. Dates and duration are properties,
+read from the provider and edited by hand in the overview.
 
 No activity heatmap. No *blocked by*.
 
 ## Rail — mid scope
 
-Only the sessions actually open, in the order opened. Never re-sorted. The Board
-row above them carries the board's attention count when it is not zero.
+Only the sessions actually open, in the order opened. Never re-sorted. The Board row above
+them carries the board's attention count when it is not zero.
 
 Each row:
 
 1. **Type icon** — task, review, explorer.
 2. **Title.**
-3. **Agent status** — `working`, `committed 2 · 5 files`, `idle`, `exited`,
-   `error`. One line, truncated, never wrapped.
-4. **Agent action, with buttons when it needs one** — `asks to commit`
-   **Approve** **Review**.
-5. **Relative time, right-aligned** — how long the agent has waited, or since it
-   finished.
+3. **Agent status** — `working`, `committed 2 · 5 files`, `idle`, `exited`, `error`. One
+   line, truncated, never wrapped.
+4. **Agent action, with buttons when it needs one** — `asks to commit` **Approve**
+   **Review**.
+5. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
 
 ```
  ▤  Board
@@ -106,81 +98,57 @@ Each row:
     asks to commit         [Approve] [Review]
  ⚑  fix/keys-50                          6m
     committed 3 · 7 files
- ⚑  TASK-49  cert rotation              12m
-    committed 2 · 5 files
  ◎  review-3  paxone argo               now
     working
  ⚑  TASK-48  finops export               3h
     idle
 ```
 
-Nothing else: no CI, no MR state, no worktree count.
+Nothing else: no CI, no MR state, no worktree count. No row has a background of its own.
 
-An ask's text is peach and offers *Approve* and *Review*. With auto-approve on for
-the session, nothing asks. A working status is blue and its glyph moves. No row has a
-background of its own.
+An ask's text is peach and offers *Approve* and *Review*. With auto-approve on for the
+session, nothing asks. A working status is blue and its glyph moves.
 
-Opening a session starts its agent. Closing a row ends the agent and removes the row.
-The session stays as it is on disk.
+Opening a session starts its agent. Closing a row ends the agent and removes the row; the
+session stays as it is on disk.
 
-**Feed.** Below the rows, the event log of the opened sessions, newest first,
-filterable to the selected session: agent turns, commits, pushes, MR events, CI
-results, notes. Monochrome, no motion. Asks are never in the feed; they live on the
-row. Collapsible.
+**Feed.** Below the rows, the event log of the opened sessions, newest first, filterable to
+the selected session: agent turns, commits, pushes, MR events, CI results, notes.
+Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
 
 ## Session — small scope
 
-One window, four columns, left to right. The left half is the agents; the right half
-is the work.
+Four columns, left to right. The left half is the agents; the right half is the work.
 
 | Column | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's PTY · action bar: skills menu, reload, the ask with Approve and Review |
+| **Agent pane** | the agent's pty · action bar: skills menu, reload, the ask with Approve and Review |
 | **Workspace** | header · tabs · the selected tab · the manual section |
 | **Sidebar** | contextual list for the selected tab; folds away |
 
-The rail, the agent pane and the sidebar each have a width the user drags. The
-workspace takes what is left, so it is the only column a window resize, a fold or a
-drag of a boundary it does not touch ever changes. A boundary moves the two columns it
-stands between and nothing else. The sidebar folds from the far end of the tab strip
-or with `ctrl+shift+B`, whatever the tab offers.
+The rail, the agent pane and the sidebar each have a width the user drags, kept between
+runs. The workspace takes what is left, so it is the only column a resize, a fold or a drag
+elsewhere changes. A boundary moves the two columns it stands between and nothing else. The
+sidebar folds from the far end of the tab strip or with `ctrl+shift+B`.
 
 ### Workspace
 
-**Header.** One line across the agent pane, the workspace and the sidebar: type
-icon, title, the repo and worktree pickers — the session's selector, which every tab
-and the manual section follow — the selected worktree's MR and CI, a refresh button
-that reloads the worktree at once, then the task actions: finish, and a menu with
-delete and open in provider.
+**Header.** One line across the agent pane, the workspace and the sidebar: type icon,
+title, the repo and worktree pickers — the session's selector, which every tab and the
+manual section follow — the selected worktree's MR and CI, a refresh button, then the task
+actions: finish, and a menu with delete and open in provider.
 
 **Tabs.** `overview · diff · editor`.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
-| overview | properties; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, no words, and the row's skill button; then the body. Properties and body edited by hand. Close task when every worktree is merged or closed | folded |
-| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — files, or grep with `/` — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
+| overview | properties; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, and the row's skill button; then the body. Properties and body edited by hand. Close task when every worktree is merged or closed | folded |
+| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — path and text, both live — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
 | editor | any file, on the same surface; a changed file keeps its marks and its views | file explorer, search, grep results |
 
-**One code surface.** The diff and the editor are one surface in three views, which
-the gutter holds together.
-
-**Where the caret is** is two rules, above its row and below it, across the surface
-— not a ground. The rows already carry grounds for what a change did, and what a
-caret holds is a ground of its own; a third would leave the three telling each other
-apart by shade.
-
-**Editing is modeless, and stays usable by anyone.** Keys do what they do everywhere
-else: characters type, arrows move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes,
-`ctrl+s` writes. Tab writes what the language's own formatter writes — a tab in Go,
-two spaces in YAML and Markdown, four elsewhere — so a file keeps the shape its tools
-give it.
-
-A **modal layer comes after settings**, and it is a grammar over what the editor
-already holds rather than a second editor: the buffer keeps a set of selections, one
-per caret, so several carets and a normal mode are additions to that set. It will not
-be an emulation of vim — no ex commands, since the palette is the command line — and
-the modeless keys above stay whatever else lands on top of them.
+**One code surface.** The diff and the editor are one surface in three views, which the
+gutter holds together.
 
 | View | Shows | Gutter |
 |---|---|---|
@@ -188,75 +156,83 @@ the modeless keys above stay whatever else lands on top of them.
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 
-The new side is editable in every view. A caret lives in the document, never in a
-row, so it stays where the user left it while the rows move under it. In the inline
-view a removed line belongs to the old document and takes no caret.
+The new side is editable in every view. A caret lives in the document, never in a row, so
+it stays where the user left it while the rows move under it. A removed line belongs to the
+old document and takes no caret. **Where the caret is** is two rules, above its row and
+below it, across the surface — never a ground.
 
-**Finding your way in a big change.** A change over forty files in twenty directories
-is where a diff is won or lost. Four answers, and none of them is a bigger tree:
+**Word diff.** A run of removed rows and a run of added rows of the same length pair one
+for one, and each row shades the words its pair does not have. A line too long, or a pair
+too far apart, is left to the row's own ground.
 
-- **The path, once.** The file list strips the whole change's common root and shows
-  it once, then collapses every directory chain with a single child. A file reads as
-  its name first and the rest of its path behind it, dimmed. Where the name carries no
-  meaning, `mod.rs` and its like, the directory is the name.
-- **Where am I.** Two lines pin at the top of the surface: the file, and under it the
-  scope the visible rows sit in, read from the syntax tree.
-- **Crossing a directory.** In a scroll over several files, a band marks the point
-  where the path changes, showing only the segments that differ from the file above.
-- **What is left.** One column down the edge holds the whole change: a band per file,
-  its height its diff's length, its hunks as marks, the viewport as a lens that drags.
-  A file marked read dims; a file carrying a note is marked. What is left is what is
-  still bright. The marks belong to the session and outlive the window.
+**Editing is modeless.** Keys do what they do everywhere else: characters type, arrows
+move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes, `ctrl+s` writes. Enter opens the
+next line at the indent of the one it left. Tab writes what the language's own formatter
+writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
-**Manual section.** Where the user acts by hand, as the agent pane is where the agent
-acts. Terminals for the selected worktree, splittable, resizable. Collapsible; hidden
-entirely when collapsed.
+A **modal layer comes after settings**, as a grammar over the selections the buffer already
+keeps. It will not emulate vim, and the modeless keys stay.
 
-**Commit box.** In the sidebar under the changed files, since it acts on the staged
-set the list shows: git status, message, commit, and an actions menu — push, pull,
-discard all. A rebase waits for conflict resolution, which is its own feature.
-Commit commits the index. The message is typed on the same
-buffer a file is, so a caret, a selection and an undo work there too; Enter is a line
-of the message and `ctrl+Enter` commits.
+**Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
+surface, `ctrl+f` opens a bar over the file's own header, with the count at its end; enter
+hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc ends it.
 
-**Three grounds, deepest first.** The bands beside the work — rail, header, sidebar —
-sit lowest; a surface inside the work that is not the work — the agent pane, the
-commit box — sits between; the work itself is the brightest the theme has.
+**Finding your way in a big change.** Four answers, and none of them is a bigger tree:
 
-**Three grounds a row can take, and they never share a value.** Under the pointer is
-the quietest, a selected row is stronger, and what a click acts on is stronger again.
-Where the caret or the open file is, two rules stand instead of a ground: a place is
-not a state.
+- **The path, once.** The file list strips the whole change's common root and shows it
+  once, then collapses every directory chain with a single child. A file reads as its name
+  first and the rest of its path behind it, dimmed. Where the name carries no meaning,
+  `mod.rs` and its like, the directory is the name.
+- **Where am I.** The file pins at the top of the surface, and under it the scopes the
+  visible rows sit in, stacked as they nest, read from the syntax tree.
+- **Crossing a directory.** In a scroll over several files, a band marks where the path
+  changes, showing only the segments that differ from the file above.
+- **What is left.** One column down the edge holds the whole change: a band per file, its
+  height its diff's length, its hunks as marks, the viewport as a lens that drags. A file
+  marked read dims; a file carrying a note is marked. What is left is what is still bright.
+  A file is marked read by the user, never by scrolling past it. The marks belong to the
+  session and outlive the window.
 
-**A choice about one thing opens on that thing.** A picker draws the same rows the
-palette does, filtered the same way, keyed the same way — but anchored under what was
-clicked, as wide as its rows, with nothing behind it dimmed, and it asks for a query
-only once the list is longer than it shows or something has been typed. The palette
-stays in the middle of the window and dims it, because it belongs to no one thing.
+**Manual section.** Where the user acts by hand, as the agent pane is where the agent acts.
+Terminals for the selected worktree, splittable, resizable, collapsible; hidden entirely
+when collapsed.
 
-**One button says what to do now.** The commit box offers a single action — commit
-while something is staged, push while the branch is ahead, pull while it is behind —
-with a caret beside it for everything else the worktree can do. The menu hangs from
-that caret: its own bottom-right corner on the caret's, so it stands over the button
-it came from and ends on the rule that separates the box from the list.
+**Commit box.** In the sidebar under the changed files, since it acts on the staged set the
+list shows: git status, message, commit, and an actions menu — push, pull, discard all.
+Commit commits the index. The message is typed on the same kind of buffer a file is, so a
+caret, a selection and an undo work there too; Enter is a line of the message and
+`ctrl+Enter` commits. A rebase waits for conflict resolution, which is its own feature.
 
-**A question takes the place of what asked it.** Discarding one file turns its row
-into the question; discarding every change turns the commit box's first line into it.
-Two answers at the end, no modal, and nothing destructive within a click of something
-ordinary.
+**Three grounds, deepest first.** The bands beside the work — rail, header, sidebar — sit
+lowest; a surface inside the work that is not the work — the agent pane, the commit box —
+sits between; the work itself is the brightest the theme has.
 
-**A row offers, it never surprises.** Pointing at a file shows one word at its end —
-stage, or unstage — in the place its counts were. Everything else a row can do is
-behind the right button, and **discard asks in the row itself**: the row becomes the
-question and its two answers. No modal, and nothing destructive within a click of
-something ordinary.
+**Three grounds a row can take, and they never share a value.** Under the pointer is the
+quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
+caret or the open file is, two rules stand instead of a ground: a place is not a state.
+
+**A choice about one thing opens on that thing.** A picker draws the same rows the palette
+does, filtered and keyed the same way, anchored under what was clicked, as wide as its
+rows, nothing behind it dimmed, and it asks for a query only once the list is longer than
+it shows. The palette stays in the middle of the window and dims it.
+
+**One button says what to do now.** The commit box offers a single action — commit while
+something is staged, push while ahead, pull while behind — with a caret beside it for
+everything else the worktree can do. The menu hangs from that caret and ends on the rule
+that separates the box from the list.
+
+**A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,
+or unstage — where its counts were. Everything else is behind the right button.
+
+**A question takes the place of what asked it.** Discarding one file turns its row into the
+question; discarding every change turns the commit box's first line into it. Two answers at
+the end, no modal, and nothing destructive within a click of something ordinary.
 
 ### Review sheet
 
-An ask's **Review** opens a sheet over the work half — workspace and sidebar. The
-agent pane stays visible. One frame for every op: the repo and the branch, then the
-text of the write. No diff and no file list — the code was reviewed before this point.
-A push goes to the worktree's own branch and nowhere else.
+An ask's **Review** opens a sheet over the work half — workspace and sidebar. The agent
+pane stays visible. One frame for every op: the repo and the branch, then the text of the
+write. No diff and no file list. A push goes to the worktree's own branch and nowhere else.
 
 | Op | Text shown |
 |---|---|
@@ -268,27 +244,22 @@ A push goes to the worktree's own branch and nowhere else.
 | task finish | the task's title and the worktrees torn down |
 | discard | the files |
 
-**Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without
-deciding.
+**Approve** in peach, **Refuse**. No editing in the sheet. Esc closes it without deciding.
 
-### Board and settings
-
-The board replaces the agent pane, the workspace and the sidebar; the rail stays.
-Settings takes the whole window.
 ## Settings
 
-Config's surface. Takes the whole window, the rail included; Esc or *back* returns to
-where the user was. Reached from the rail's footer and the palette. A section list on
-the left — Setup, Providers, Appearance, Preferences — with a search bar at its top:
-typing filters every section to the matching rows, each shown with its section. The
-selected section's form on the right. Labels left, controls
-right, one row per setting, hairlines between groups, paths and ids in mono.
+Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
+the user was. Reached from the rail's footer and the palette. A section list on the left —
+Setup, Providers, Appearance, Preferences — with a search bar at its top: typing filters
+every section to the matching rows, each shown with its section. The selected section's
+form on the right: labels left, controls right, one row per setting, hairlines between
+groups, paths and ids in mono.
 
 | Section | Rows |
 |---|---|
 | Setup | environment check — git, gh, glab, claude — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
-| Appearance | theme — Latte, Mocha, system · UI font · agent font · font size |
+| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font · agent font · font size |
 | Preferences | suggest actions · auto-approve default · attention thresholds in days: review waiting, due soon, approved unmerged · git: clone pool path |
 
 Every change saves to the config file on the spot. No save button.

@@ -1,3 +1,5 @@
+//! How two files line up, and what each line and each word of a pair did.
+
 use std::collections::BTreeMap;
 use std::ops::Range;
 
@@ -168,9 +170,8 @@ fn line(document: &Document, at: Option<u32>) -> Option<String> {
     Some(document.line(at? as usize)?.to_string())
 }
 
-/// What each line of the new file did, by walking the changes either side of it.
-/// A line both removed and added changed in place; a removal with nothing in its
-/// place marks the line that closed the gap.
+/// What each line of the new file did. A removal with nothing in its place marks the
+/// line that closed the gap.
 pub fn marks(rows: &[Row]) -> BTreeMap<u32, LineMark> {
     let mut marks = BTreeMap::new();
     let mut at = 0;

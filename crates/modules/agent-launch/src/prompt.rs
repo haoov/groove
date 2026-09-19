@@ -1,3 +1,5 @@
+//! The core prompt every agent starts with.
+
 use groove_types::Session;
 
 const CORE_PROMPT: &str = include_str!("prompt.md");

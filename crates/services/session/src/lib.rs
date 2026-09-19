@@ -8,7 +8,7 @@ use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId, WorktreeStatus,
 };
-pub use service::{Added, Contents, Service};
+pub use service::{Added, Service};
 
 /// One open session as the rail lists it.
 #[derive(Debug)]

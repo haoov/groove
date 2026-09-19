@@ -1,3 +1,5 @@
+//! The files a launch writes beside the agent: the prompt, the plugin dir.
+
 use std::fs::{self, OpenOptions, Permissions};
 use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};

@@ -1,3 +1,5 @@
+//! The palettes a theme picks from.
+
 use crate::Color;
 
 /// Catppuccin, the names it uses.

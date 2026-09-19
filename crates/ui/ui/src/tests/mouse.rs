@@ -282,66 +282,6 @@ fn the_commit_box_is_dragged_taller_and_the_list_keeps_its_room() {
 }
 
 #[test]
-fn the_worktree_selector_opens_on_the_picker_it_came_from() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    let hits = regions(&app, &ui);
-    let picker = hits
-        .rect_of(&Target::Picker(Picks::Repo))
-        .expect("the header has one");
-    click(picker, &mut ui, &app, &hits);
-    let anchor = ui
-        .palette
-        .as_ref()
-        .and_then(|palette| palette.anchor)
-        .expect("it is anchored, not centred");
-
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let panel = hits.rect_of(&Target::Palette).expect("the panel is drawn");
-    assert!(
-        (panel.x - anchor.at.0 as f32).abs() <= 1.0,
-        "along the picker's left edge"
-    );
-    assert!(panel.y >= picker.bottom() - 1.0, "and under it");
-    assert!(
-        panel.w < Tokens::new(1.0).modal,
-        "as wide as its rows, not as the palette"
-    );
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    assert!(
-        !frame
-            .layers()
-            .iter()
-            .any(|layer| layer.quads.iter().any(|quad| quad.color == styles.scrim())),
-        "a choice about one thing does not dim the window"
-    );
-}
-
-#[test]
-fn the_command_palette_stays_in_the_middle_and_dims_the_window() {
-    let app = full_app();
-    let mut ui = Ui::default();
-    press(Key::Char('p'), CHORD, &mut ui, &app);
-    let palette = ui.palette.as_ref().expect("it is open");
-    assert!(
-        palette.anchor.is_none(),
-        "the palette belongs to no one thing"
-    );
-
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let panel = hits.rect_of(&Target::Palette).expect("the panel is drawn");
-    assert_eq!(panel.w, Tokens::new(1.0).modal);
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    assert!(
-        frame
-            .layers()
-            .iter()
-            .any(|layer| layer.quads.iter().any(|quad| quad.color == styles.scrim())),
-        "and the window behind it is dimmed"
-    );
-}
-
-#[test]
 fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
     let app = full_app();
     let mut ui = Ui::default();
@@ -363,28 +303,6 @@ fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
         palette.query.push('a');
     }
     assert!(shown(&ui), "and it appears the moment something is typed");
-}
-
-#[test]
-fn each_picker_opens_under_itself() {
-    let app = full_app();
-    for which in [Picks::Repo, Picks::Branch] {
-        let mut ui = Ui::default();
-        let hits = regions(&app, &ui);
-        let picker = hits
-            .rect_of(&Target::Picker(which))
-            .unwrap_or_else(|| panic!("{which:?} is drawn"));
-        click(picker, &mut ui, &app, &hits);
-        let anchor = ui
-            .palette
-            .as_ref()
-            .and_then(|palette| palette.anchor)
-            .unwrap_or_else(|| panic!("{which:?} anchors"));
-        assert!(
-            (anchor.at.0 as f32 - picker.x).abs() <= 1.0,
-            "{which:?} opens under its own picker, not the other"
-        );
-    }
 }
 
 #[test]

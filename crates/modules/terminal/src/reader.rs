@@ -1,3 +1,5 @@
+//! The thread that reads the pty into the grid.
+
 use std::io::{ErrorKind, Read};
 use std::sync::{Arc, Mutex};
 

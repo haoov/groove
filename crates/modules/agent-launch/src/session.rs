@@ -1,3 +1,5 @@
+//! The uuid a launch gives the agent, derived from the session.
+
 use std::path::{Path, PathBuf};
 
 use groove_types::Session;

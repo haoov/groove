@@ -3,9 +3,8 @@ use groove_gfx::Rect;
 use crate::Corner;
 use crate::ctx::Ctx;
 
-/// A box centred on a dimmed window, on its own layer. Returns the box.
-/// A panel of its own at `at`, the named corner of it, kept inside the window.
-/// Nothing behind it is dimmed: a choice about one thing does not stop the rest.
+/// A panel of its own at `at`, the named corner of it, kept inside the window and
+/// dimming nothing behind it.
 pub fn panel_at(ctx: &mut Ctx, at: (f32, f32), corner: Corner, size: (f32, f32)) -> Rect {
     let window = ctx.layout.window;
     let (width, height) = size;
@@ -22,6 +21,7 @@ pub fn panel_at(ctx: &mut Ctx, at: (f32, f32), corner: Corner, size: (f32, f32))
     rect
 }
 
+/// A box centred on a dimmed window, on its own layer. Returns the box.
 pub fn modal(ctx: &mut Ctx, width: f32, height: f32, top: f32) -> Rect {
     let window = ctx.layout.window;
     let (scrim, panel, border) = (ctx.styles.scrim(), ctx.styles.panel(), ctx.styles.border());

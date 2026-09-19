@@ -1,3 +1,5 @@
+//! How a job leaves the main thread and how its result comes back.
+
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -1,3 +1,5 @@
+//! What git says about a worktree, for the rows that show it.
+
 use groove_git::Git;
 use groove_types::{Worktree, WorktreeStatus};
 

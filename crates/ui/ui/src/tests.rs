@@ -1,4 +1,5 @@
 mod budget;
+mod commit;
 mod diff;
 mod editing;
 mod field;
@@ -6,12 +7,13 @@ mod files;
 mod finding;
 mod focus;
 mod frame;
-mod index;
 mod mouse;
+mod overview;
 mod painted;
 mod palette;
 mod perf;
 mod rail;
+mod staging;
 mod structure;
 
 use groove_controllers::session_service::Open;

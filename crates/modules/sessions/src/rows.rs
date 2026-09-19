@@ -1,3 +1,5 @@
+//! The `sessions` table as SQLite holds it, and the session it reads back as.
+
 use groove_types::{ExternalId, Session, SessionId, SessionKind, Timestamp};
 
 /// A `sessions` row as SQLite holds it: the kind and its nullable identity columns.

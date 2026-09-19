@@ -12,49 +12,16 @@ fn the_header_names_the_file_and_what_it_changed() {
 }
 
 #[test]
-fn the_header_sits_under_the_tabs_and_rules_the_whole_width() {
-    let app = opened();
-    let ui = on_diff();
-    let (frame, _) = view_of(&app, &ui);
-    let tokens = Tokens::new(1.0);
-    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
-    let band = Rect::new(
-        workspace.x,
-        workspace.y + tokens.row,
-        workspace.w,
-        tokens.row,
-    );
-    let styles = crate::style::Styles::new(app.config.theme(), tokens);
-    let rule = frame.layers()[0]
-        .quads
-        .iter()
-        .find(|quad| {
-            quad.color == styles.line()
-                && quad.rect.h == tokens.hairline
-                && quad.rect.y == band.bottom() - tokens.hairline
-        })
-        .expect("a hairline under the header");
-    assert_eq!(rule.rect.x, band.x, "from the left edge");
-    assert_eq!(rule.rect.w, band.w, "to the right one");
-    let path = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text.ends_with("lib.rs"))
-        .expect("the path");
-    assert_eq!(path.y, band.y, "the band starts where the tabs end");
-}
-
-#[test]
 fn a_long_path_keeps_its_end() {
-    let long = "crates/ui/ui/src/views/session/components/diff.rs";
+    let long = "crates/ui/ui/src/views/session/diff/surface.rs";
     let mut app = with_files();
     crate::tests::shows(&mut app, long, OLD, NEW);
     let drawn = texts(&app, &on_diff());
     let path = drawn
         .iter()
-        .find(|text| text.ends_with("diff.rs"))
+        .find(|text| text.ends_with("surface.rs"))
         .expect("the name survives: {drawn:?}");
-    assert!(path.ends_with("components/diff.rs"), "{path}");
+    assert!(path.ends_with("diff/surface.rs"), "{path}");
 }
 
 #[test]

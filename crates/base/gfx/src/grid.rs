@@ -1,3 +1,5 @@
+//! A cell grid drawn as one batch: the terminal and the code surface.
+
 use crate::fonts::CellSize;
 use crate::quads::QuadPass;
 use crate::text::TextPass;

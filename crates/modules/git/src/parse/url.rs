@@ -1,3 +1,5 @@
+//! A remote's URL, as the host, the group and the project in it.
+
 use crate::{Error, Result};
 
 /// A remote as the pool names it: `<host>/<group…>/<project>`.

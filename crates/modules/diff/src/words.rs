@@ -2,6 +2,7 @@
 
 use std::ops::Range;
 
+use groove_text::{Class, class};
 use imara_diff::{Algorithm, Diff, InternedInput, Interner, Token};
 
 /// Longer than this a line is marked whole.
@@ -9,14 +10,6 @@ const MAX_CHARS: usize = 400;
 
 /// A pair keeping less than this of its longer line is a rewrite, not an edit.
 const KEPT_MIN: f32 = 0.25;
-
-/// What a character belongs to, for cutting a line into words.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Class {
-    Word,
-    Space,
-    Mark,
-}
 
 /// The columns of `before` that `after` does not have, and the other way round.
 pub fn between(before: &str, after: &str) -> (Vec<Range<usize>>, Vec<Range<usize>>) {
@@ -95,14 +88,6 @@ fn words(line: &str) -> Vec<Word<'_>> {
         });
     }
     words
-}
-
-fn class(c: char) -> Class {
-    match c {
-        _ if c.is_alphanumeric() || c == '_' => Class::Word,
-        _ if c.is_whitespace() => Class::Space,
-        _ => Class::Mark,
-    }
 }
 
 fn interned<'a>(old: &'a [Word<'a>], new: &'a [Word<'a>]) -> InternedInput<&'a str> {

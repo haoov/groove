@@ -59,31 +59,7 @@ fn surface(
     let lines: Vec<Line<'_>> = rows
         .iter()
         .enumerate()
-        .map(|(at, row)| {
-            if row.band {
-                return Line::band(&row.text);
-            }
-            if row.head {
-                return Line::head(&row.text).folded(row.folded).read(row.read);
-            }
-            if let RowKind::Gap(_) = row.kind {
-                return Line::banner(&row.text);
-            }
-            let line = Line::new(&row.text)
-                .gutters(&gutters[at])
-                .spans(&row.spans)
-                .words(&row.words, ctx.styles.word(row.kind, row.mark))
-                .found(&row.found)
-                .standing(row.standing);
-            let line = line
-                .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
-                .caret(row.caret)
-                .held(row.held);
-            match ctx.styles.row_ground(row.kind) {
-                Some(color) => line.ground(color),
-                None => line,
-            }
-        })
+        .map(|(at, row)| lined(ctx, row, &gutters[at]))
         .collect();
     let numbers = numbers(app, view);
     if clickable {
@@ -103,6 +79,32 @@ fn surface(
     }
 }
 
+/// One row as the code widget takes it: a band, a head, a gap, or a line of text.
+fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
+    if row.band {
+        return Line::band(&row.text);
+    }
+    if row.head {
+        return Line::head(&row.text).folded(row.folded).read(row.read);
+    }
+    if let RowKind::Gap(_) = row.kind {
+        return Line::banner(&row.text);
+    }
+    let line = Line::new(&row.text)
+        .gutters(gutters)
+        .spans(&row.spans)
+        .words(&row.words, ctx.styles.word(row.kind, row.mark))
+        .found(&row.found)
+        .standing(row.standing)
+        .mark(row.mark.map(|mark| ctx.styles.mark(mark)))
+        .caret(row.caret)
+        .held(row.held);
+    match ctx.styles.row_ground(row.kind) {
+        Some(color) => line.ground(color),
+        None => line,
+    }
+}
+
 /// What a head row offers: the row itself folds, its box marks the file read.
 fn marks(ctx: &mut Ctx, drawn: &[Rect], rows: &[Drawn]) {
     for (line, row) in drawn.iter().zip(rows) {
@@ -114,8 +116,8 @@ fn marks(ctx: &mut Ctx, drawn: &[Rect], rows: &[Drawn]) {
     }
 }
 
-/// How wide the numbers stand: one column a side in split and file, two in inline.
-/// The whole change shares one width, so the text does not shift file to file.
+/// How wide the numbers stand: one column a side in split and file, two in inline,
+/// one width over the whole change.
 pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
     let digits = match view {
         DiffView::File => match app.workspace.opened.as_ref() {

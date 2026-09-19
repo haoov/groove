@@ -1,22 +1,21 @@
+//! The window's state and what it does with it: draw, fit, point, dispatch.
+
+mod events;
+
+use self::events::{CLOCK_S, FIT_MS, FRAME_MS};
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use groove_controllers::{
-    AppState, Command, Env, Event, Services, TokioSpawner, Window as WindowEvent_, agent, apply,
-    dispatch, session, workspace,
+    AppState, Command, Env, Event, Services, TokioSpawner, agent, apply, dispatch, workspace,
 };
-use groove_gfx::{Fonts, Renderer, Size};
+use groove_gfx::{Renderer, Size};
 use groove_types::{AttentionClass, Config, Panes, Timestamp};
-use groove_ui::input::{Delta, Input};
+use groove_ui::input::Input;
 use groove_ui::{Cursor, Hits, Metrics, Split, Ui};
-use winit::application::ApplicationHandler;
-use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::keyboard::ModifiersState;
-use winit::window::{CursorIcon, Window, WindowId};
-
-use crate::Message;
-use crate::keys::input_of;
+use winit::window::{CursorIcon, Window};
 
 pub struct App {
     window: Option<Arc<Window>>,
@@ -211,151 +210,14 @@ impl App {
     }
 }
 
-impl ApplicationHandler<Message> for App {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        event_loop.set_control_flow(ControlFlow::Wait);
-        let attributes = Window::default_attributes()
-            .with_title("Groove")
-            .with_inner_size(winit::dpi::LogicalSize::new(1440.0, 900.0))
-            .with_min_inner_size(winit::dpi::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT));
-        let Ok(window) = event_loop.create_window(attributes) else {
-            event_loop.exit();
-            return;
-        };
-        let window = Arc::new(window);
-        match Renderer::windowed(window.clone(), size_of(&window), Fonts::new()) {
-            Ok(renderer) => self.renderer = Some(renderer),
-            Err(e) => {
-                self.failure = Some(e);
-                event_loop.exit();
-            }
-        }
-        self.window = Some(window);
-        dispatch(
-            Command::Session(session::Command::Restore),
-            &mut self.state,
-            &self.services,
-            &self.spawner,
-        );
-        if std::mem::take(&mut self.explore) {
-            let open = Command::Session(session::Command::OpenExplorer { title: None });
-            dispatch(open, &mut self.state, &self.services, &self.spawner);
-        }
-    }
-
-    /// Nothing moving, nothing to draw: the loop sleeps until an event.
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(after) = self.pace() else {
-            return event_loop.set_control_flow(ControlFlow::Wait);
-        };
-        self.redraw();
-        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + after));
-    }
-
-    fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
-        match message {
-            Message::Continue(continuation) => {
-                continuation(&mut self.state, &self.services, &self.spawner);
-                self.redraw();
-            }
-            Message::Event(event) => self.apply(event),
-        }
-    }
-
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-        match event {
-            WindowEvent::CloseRequested => {
-                self.end_agents();
-                event_loop.exit();
-            }
-            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => self.redraw(),
-            WindowEvent::Focused(focused) => {
-                self.apply(Event::Window(WindowEvent_::Focus(focused)))
-            }
-            WindowEvent::RedrawRequested => self.draw(),
-            WindowEvent::ModifiersChanged(mods) => self.modifiers = mods.state(),
-            WindowEvent::KeyboardInput {
-                is_synthetic: true, ..
-            } => {}
-            WindowEvent::KeyboardInput { event, .. } => {
-                if let Some(input) = input_of(&event, self.modifiers) {
-                    self.input(input);
-                }
-            }
-            WindowEvent::CursorMoved { position, .. } => {
-                self.cursor = (position.x as f32, position.y as f32);
-                self.point();
-                let (x, y) = self.cursor;
-                let moved = groove_ui::input::hover(&mut self.ui, &self.hits, x, y);
-                if self.ui.pointing() {
-                    self.input(Input::Move { x, y });
-                } else if moved {
-                    self.redraw();
-                }
-            }
-            WindowEvent::CursorLeft { .. } => {
-                if self.ui.hover.take().is_some() {
-                    self.redraw();
-                }
-            }
-            WindowEvent::MouseWheel { delta, .. } => {
-                let (x, y) = self.cursor;
-                self.input(Input::Scroll {
-                    x,
-                    y,
-                    delta: delta_of(delta),
-                });
-            }
-            WindowEvent::MouseInput {
-                state: ElementState::Pressed,
-                button: MouseButton::Left,
-                ..
-            } => {
-                let (x, y) = self.cursor;
-                self.input(Input::Press { x, y });
-            }
-            WindowEvent::MouseInput {
-                state: ElementState::Pressed,
-                button: MouseButton::Right,
-                ..
-            } => {
-                let (x, y) = self.cursor;
-                self.input(Input::Menu { x, y });
-            }
-            WindowEvent::MouseInput {
-                state: ElementState::Released,
-                button: MouseButton::Left,
-                ..
-            } => {
-                let dragged = self.ui.dragging();
-                self.input(Input::Release);
-                if dragged {
-                    self.keep_panes();
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-/// A wheel notch is lines; a trackpad is pixels, and up is away from the user.
-fn delta_of(delta: MouseScrollDelta) -> Delta {
-    match delta {
-        MouseScrollDelta::LineDelta(_, lines) => Delta::Lines(lines),
-        MouseScrollDelta::PixelDelta(position) => Delta::Pixels(position.y as f32),
-    }
-}
-
-/// How often the agents are refitted while a split is dragged.
-const FIT_MS: u64 = 100;
-
 /// The narrowest the window may be.
-const MIN_WIDTH: f64 = 960.0;
-const MIN_HEIGHT: f64 = 600.0;
+pub(super) const MIN_WIDTH: f64 = 960.0;
+pub(super) const MIN_HEIGHT: f64 = 600.0;
 
-/// One frame of a turning mark, and how often an idle window redraws its clocks.
-const FRAME_MS: u64 = 120;
-const CLOCK_S: u64 = 15;
+pub(super) fn size_of(window: &Window) -> Size {
+    let size = window.inner_size();
+    Size::new(size.width, size.height)
+}
 
 fn icon_of(cursor: Cursor) -> CursorIcon {
     match cursor {
@@ -365,9 +227,4 @@ fn icon_of(cursor: Cursor) -> CursorIcon {
         Cursor::RowResize => CursorIcon::RowResize,
         Cursor::Text => CursorIcon::Text,
     }
-}
-
-fn size_of(window: &Window) -> Size {
-    let size = window.inner_size();
-    Size::new(size.width, size.height)
 }

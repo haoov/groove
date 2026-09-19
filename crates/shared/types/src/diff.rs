@@ -96,27 +96,6 @@ pub struct FileDiff {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Hunk {
-    pub header: String,
-    pub lines: Vec<DiffLine>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum LineKind {
-    Add,
-    Del,
-    Ctx,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub struct DiffLine {
-    pub num: u32,
-    pub content: String,
-    pub kind: LineKind,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RepoDiff {
     pub worktree: WorktreeId,
     pub repo: RepoId,

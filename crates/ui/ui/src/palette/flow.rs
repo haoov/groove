@@ -1,3 +1,5 @@
+//! An action that asks for its arguments, one prompt at a time.
+
 use groove_controllers::{AppState, Command, session, session_service::Open};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 

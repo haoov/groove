@@ -1,3 +1,5 @@
+//! The languages a document can be, and the grammar each one parses with.
+
 use std::sync::OnceLock;
 
 use groove_types::{Capture, Indent};
@@ -141,7 +143,6 @@ impl Language {
         Self::ALL.iter().position(|it| *it == self).unwrap_or(0)
     }
 
-    /// The query compiled once per language, for every document to share.
     /// The grammar and its highlight query, compiled once for the whole run.
     pub(crate) fn syntax(self) -> Option<&'static (Grammar, Query)> {
         static COMPILED: [OnceLock<Option<(Grammar, Query)>>; Language::ALL.len()] =

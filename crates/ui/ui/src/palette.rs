@@ -1,10 +1,12 @@
 //! The command palette: every action of every capability, filtered by what you type.
 //! An action that needs arguments asks for them one prompt at a time.
 
+mod entries;
 mod flow;
 
-use groove_controllers::{AppState, Command, session};
+use groove_controllers::{AppState, Command};
 
+pub use entries::entries;
 pub use flow::{Action, CLONE, Flow, Prompt};
 
 use crate::Corner;
@@ -89,68 +91,6 @@ impl Anchor {
 }
 
 /// Every entry the state allows right now, in group order.
-pub fn entries(app: &AppState) -> Vec<Entry> {
-    let mut out = vec![Entry::command(
-        "Session",
-        "New explorer",
-        Command::Session(session::Command::OpenExplorer { title: None }),
-    )];
-    let Some(open) = app.session.selected() else {
-        return out;
-    };
-    let id = open.session.id.clone();
-    out.push(Entry::flow("Session", "Add repo", Action::AddRepo));
-    if !open.repos.is_empty() {
-        out.push(Entry::flow("Session", "Add worktree", Action::AddWorktree));
-        out.push(Entry::flow("Session", "Remove repo", Action::RemoveRepo));
-    }
-    if !open.worktrees.is_empty() {
-        out.push(Entry::flow(
-            "Session",
-            "Close worktree",
-            Action::CloseWorktree,
-        ));
-    }
-    if open.worktrees.len() > 1 {
-        out.push(Entry::flow(
-            "Session",
-            "Select worktree",
-            Action::SelectWorktree,
-        ));
-    }
-    if matches!(open.session.kind, groove_types::SessionKind::Explorer) {
-        out.push(Entry::flow(
-            "Session",
-            "Rename explorer",
-            Action::RenameExplorer,
-        ));
-        out.push(Entry::command(
-            "Session",
-            "Delete session",
-            Command::Session(session::Command::Delete {
-                session: id.clone(),
-            }),
-        ));
-    }
-    out.push(Entry::command(
-        "Session",
-        "Close session",
-        Command::Session(session::Command::Close {
-            session: id.clone(),
-        }),
-    ));
-    for other in app.session.open.iter().filter(|o| o.session.id != id) {
-        out.push(Entry::command(
-            "Session",
-            format!("Switch to {}", other.session.title),
-            Command::Session(session::Command::Select {
-                session: other.session.id.clone(),
-            }),
-        ));
-    }
-    out
-}
-
 /// The rows whose text holds every word of the query, best match first.
 pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Vec<T> {
     let mut scored: Vec<(usize, T)> = rows

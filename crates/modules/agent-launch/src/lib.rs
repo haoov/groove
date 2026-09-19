@@ -12,12 +12,11 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
+use crate::prompt::core_prompt;
 pub use error::{Error, Result};
 use groove_exec::pty::PtySpec;
 use groove_types::Session;
 pub use loopback::Loopback;
-pub use prompt::core_prompt;
-pub use session::session_uuid;
 
 /// Where a launch reads and writes.
 pub struct Paths<'a> {

@@ -1,3 +1,5 @@
+//! What a worktree row shows of its delivery: the MR, the CI, the counts.
+
 use crate::{CiState, MrState, WorktreeStatus};
 
 /// The MR part of a worktree row.

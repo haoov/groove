@@ -1,3 +1,5 @@
+//! `AppState`: the sum of the services' slices, and the machine it runs on.
+
 use std::path::PathBuf;
 
 use groove_agent_service::Receiver;

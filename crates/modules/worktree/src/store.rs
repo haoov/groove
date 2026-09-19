@@ -1,3 +1,5 @@
+//! The worktree rows, read and written.
+
 use groove_types::{Repo, RepoId, SessionId, Timestamp, Worktree, WorktreeId};
 
 use crate::{Error, Pool, Result};

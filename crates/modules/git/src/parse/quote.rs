@@ -1,3 +1,5 @@
+//! Git's own quoting of a path, undone.
+
 /// Git's C-style quoting undone. `core.quotePath` writes a non-ASCII byte as `\ooo`,
 /// so decoding runs over bytes and UTF-8 comes last.
 pub fn unquote_path(s: &str) -> String {

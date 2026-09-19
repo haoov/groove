@@ -9,7 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::views::session::components::files;
+use crate::views::session::files;
 use crate::widget::{box_in, elide_start, hairline, row};
 
 /// The file's path, what it changed, and which view it is drawn in.

@@ -1,3 +1,5 @@
+//! The `session_state` row: what a session remembers between runs.
+
 use groove_types::{Session, SessionId, SessionState, Timestamp, WorktreeId};
 
 use crate::rows::SessionRow;

@@ -1,6 +1,6 @@
 //! What a one-line field does with a keystroke.
 
-use crate::field::Field;
+use crate::widget::Field;
 
 fn typed(text: &str) -> Field {
     let mut field = Field::default();

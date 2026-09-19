@@ -1,3 +1,5 @@
+//! The clones every worktree is cut from.
+
 use std::path::Path;
 
 use groove_git::{Git, RemoteUrl};

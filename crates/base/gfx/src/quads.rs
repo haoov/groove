@@ -1,3 +1,5 @@
+//! The rounded-rect pipeline every quad and border draws through.
+
 use std::ops::Range;
 
 use crate::{Color, Rect, Size};

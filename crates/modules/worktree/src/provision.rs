@@ -1,3 +1,5 @@
+//! Cutting a worktree for a session: its branch, its directory, its row.
+
 use groove_git::{Error as GitError, Git};
 use groove_types::{Repo, Session, Timestamp, Worktree, WorktreeSpec, names_session};
 
@@ -31,76 +33,158 @@ impl Pool {
         let clone = Git::at(&repo.local_path);
         let mut notes = Vec::new();
 
-        let existing = self
-            .worktree_for_branch(&session.id, &repo.id, &branch)
-            .await?;
-        if let Some(existing) = existing.filter(|w| std::path::Path::new(&w.path).is_dir()) {
-            align(&Git::at(&existing.path), &branch).await?;
+        if let Some(worktree) = self.standing(session, repo, &branch).await? {
             return Ok(Provisioned {
-                worktree: existing,
+                worktree,
                 adopted: false,
                 notes,
             });
         }
-        if !clone.is_repository().await? {
-            return Err(Error::NotFound {
-                what: "repository",
-                id: repo.local_path.clone(),
-            });
-        }
-        clone.worktree_prune().await?;
-        let default = refresh(&clone, &repo.project, &mut notes).await;
-        let point = branch_point(&clone, spec.target.as_deref(), default.as_deref()).await?;
-
+        let point = fetched(&clone, repo, spec, &mut notes).await?;
         let path = self
             .layout
             .worktree_dir(session.id.as_str(), &repo.project, &branch);
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|source| Error::Io {
-                path: parent.to_path_buf(),
-                source,
-            })?;
-        }
-
-        let local = clone.ref_exists(&format!("refs/heads/{branch}")).await?;
-        let mut adopted = false;
-        match (&spec.track_remote, local) {
-            (Some(remote), false) => clone.worktree_add_tracking(&path, &branch, remote).await?,
-            (_, true) => {
-                if spec.branch.is_none() && !names_session(&branch, session, tag) {
-                    return Err(Error::ForeignBranch {
-                        repo: repo.project.clone(),
-                        branch,
-                    });
-                }
-                adopted = true;
-                notes.push(format!(
-                    "{}: continuing on the existing branch {branch}",
-                    repo.project
-                ));
-                add_or_align(&clone, &path, &branch).await?;
-            }
-            (None, false) => {
-                clone.branch_create(&branch, &point).await?;
-                add_or_align(&clone, &path, &branch).await?;
-            }
-        }
-
+        make_parent(&path)?;
+        let adopted = cut(
+            &clone,
+            &path,
+            Cutting {
+                session,
+                repo,
+                spec,
+                tag,
+                branch: &branch,
+                point: &point,
+            },
+            &mut notes,
+        )
+        .await?;
         let worktree = self
-            .upsert_worktree(
-                &session.id,
-                &repo.id,
-                &branch,
-                &path.to_string_lossy(),
-                spec.target.as_deref(),
-                Timestamp::now(),
-            )
+            .recorded(session, repo, &branch, &path, spec.target.as_deref())
             .await?;
         Ok(Provisioned {
             worktree,
             adopted,
             notes,
         })
+    }
+
+    /// The worktree as the database now holds it.
+    async fn recorded(
+        &self,
+        session: &Session,
+        repo: &Repo,
+        branch: &str,
+        path: &std::path::Path,
+        target: Option<&str>,
+    ) -> Result<Worktree> {
+        self.upsert_worktree(
+            &session.id,
+            &repo.id,
+            branch,
+            &path.to_string_lossy(),
+            target,
+            Timestamp::now(),
+        )
+        .await
+    }
+
+    /// The session's worktree for this branch, when it is still on disk, aligned.
+    async fn standing(
+        &self,
+        session: &Session,
+        repo: &Repo,
+        branch: &str,
+    ) -> Result<Option<Worktree>> {
+        let existing = self
+            .worktree_for_branch(&session.id, &repo.id, branch)
+            .await?;
+        let Some(existing) = existing.filter(|w| std::path::Path::new(&w.path).is_dir()) else {
+            return Ok(None);
+        };
+        align(&Git::at(&existing.path), branch).await?;
+        Ok(Some(existing))
+    }
+}
+
+/// The clone brought up to date, and the commit a new branch would start from.
+async fn fetched(
+    clone: &Git,
+    repo: &Repo,
+    spec: &WorktreeSpec,
+    notes: &mut Vec<String>,
+) -> Result<String> {
+    if !clone.is_repository().await? {
+        return Err(Error::NotFound {
+            what: "repository",
+            id: repo.local_path.clone(),
+        });
+    }
+    clone.worktree_prune().await?;
+    let default = refresh(clone, &repo.project, notes).await;
+    branch_point(clone, spec.target.as_deref(), default.as_deref()).await
+}
+
+/// What cutting a worktree needs to know about the branch it stands on.
+struct Cutting<'a> {
+    session: &'a Session,
+    repo: &'a Repo,
+    spec: &'a WorktreeSpec,
+    tag: Option<&'a str>,
+    branch: &'a str,
+    point: &'a str,
+}
+
+fn make_parent(path: &std::path::Path) -> Result<()> {
+    let Some(parent) = path.parent() else {
+        return Ok(());
+    };
+    std::fs::create_dir_all(parent).map_err(|source| Error::Io {
+        path: parent.to_path_buf(),
+        source,
+    })
+}
+
+/// Adds the worktree, on a branch tracked, adopted or newly cut. True when adopted.
+async fn cut(
+    clone: &Git,
+    path: &std::path::Path,
+    at: Cutting<'_>,
+    notes: &mut Vec<String>,
+) -> Result<bool> {
+    let Cutting {
+        session,
+        repo,
+        spec,
+        tag,
+        branch,
+        point,
+    } = at;
+    let local = clone.ref_exists(&format!("refs/heads/{branch}")).await?;
+    match (&spec.track_remote, local) {
+        (Some(remote), false) => {
+            clone.worktree_add_tracking(path, branch, remote).await?;
+            Ok(false)
+        }
+        (_, true) => {
+            if spec.branch.is_none() && !names_session(branch, session, tag) {
+                return Err(Error::ForeignBranch {
+                    repo: repo.project.clone(),
+                    branch: branch.to_string(),
+                });
+            }
+            notes.push(format!(
+                "{}: continuing on the existing branch {branch}",
+                repo.project
+            ));
+            add_or_align(clone, path, branch).await?;
+            Ok(true)
+        }
+        (None, false) => {
+            clone.branch_create(branch, point).await?;
+            add_or_align(clone, path, branch).await?;
+            Ok(false)
+        }
     }
 }
 

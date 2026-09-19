@@ -1,3 +1,5 @@
+//! Where a token comes from, and the header it becomes.
+
 use crate::{Request, Response, Result, StatusCode};
 
 /// Where a bearer token comes from, and how to drop one the server refused.

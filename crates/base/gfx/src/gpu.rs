@@ -1,3 +1,5 @@
+//! The device, its queue and the adapter they came from.
+
 use crate::Result;
 
 /// The device and its queue.

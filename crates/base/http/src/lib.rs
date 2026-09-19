@@ -9,9 +9,7 @@ mod response;
 #[cfg(test)]
 mod tests;
 
-pub use auth::TokenSource;
 pub use client::{Client, Request};
 pub use error::{Error, Result};
-pub use redact::redact_url;
 pub use reqwest::{Method, StatusCode};
 pub use response::Response;

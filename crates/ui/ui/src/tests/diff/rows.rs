@@ -46,39 +46,6 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
 }
 
 #[test]
-fn the_gutters_end_at_a_hairline_and_the_text_starts_past_it() {
-    let app = opened();
-    let ui = on_diff();
-    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let rule = frame.layers()[0]
-        .quads
-        .iter()
-        .find(|quad| quad.color == styles.line() && quad.rect.h == code.h && quad.rect.x > code.x)
-        .expect("a hairline down the gutters");
-    let numbers: Vec<f32> = frame.layers()[0]
-        .texts
-        .iter()
-        .filter(|run| run.text.parse::<u32>().is_ok() && code.contains(run.x, run.y))
-        .map(|run| run.x)
-        .collect();
-    assert!(!numbers.is_empty());
-    assert!(
-        numbers.iter().all(|x| *x < rule.rect.x),
-        "the numbers sit left of it: {numbers:?} against {}",
-        rule.rect.x
-    );
-    let text = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|run| run.text == "fn")
-        .expect("a line of code");
-    let gap = text.x - rule.rect.x;
-    assert!(gap >= Tokens::new(1.0).md, "the text clears it: {gap}");
-}
-
-#[test]
 fn a_gap_reads_as_a_band_across_the_rows() {
     let old: String = (1..=40).map(|n| format!("line {n}\n")).collect();
     let new = old

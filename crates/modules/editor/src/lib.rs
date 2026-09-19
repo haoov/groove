@@ -7,7 +7,7 @@ mod clipboard;
 #[cfg(test)]
 mod tests;
 
-pub use clipboard::{Clipboard, Memory, System, clipboard};
+pub use clipboard::{Clipboard, Memory, clipboard};
 
 use std::path::{Component, Path, PathBuf};
 

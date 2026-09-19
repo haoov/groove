@@ -1,3 +1,6 @@
+//! The panel every choice is made in: the palette in the middle, a picker on what
+//! it belongs to.
+
 use groove_controllers::AppState;
 use groove_gfx::Rect;
 
@@ -28,19 +31,10 @@ fn wide(ctx: &mut Ctx, rows: &[(String, String)]) -> f32 {
 /// The command palette: an input line, then the entries or the prompt's options.
 pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let prompt = palette.prompt(app);
-    let rows: Vec<(String, String)> = match &prompt {
-        Some(_) => palette.options(app),
-        None => palette
-            .rows(app)
-            .into_iter()
-            .map(|entry| (entry.group.to_string(), entry.label))
-            .collect(),
-    };
+    let rows = listed(app, palette, &prompt);
     let shown = rows.len().clamp(1, PALETTE_ROWS);
-    let (row_height, pad) = (ctx.tokens.row, ctx.tokens.md);
     let asks = asks(palette, &prompt, rows.len());
-    let lines = shown + usize::from(asks);
-    let height = row_height * lines as f32 + ctx.tokens.sm;
+    let height = ctx.tokens.row * (shown + usize::from(asks)) as f32 + ctx.tokens.sm;
     let rect = match palette.anchor {
         Some(anchor) => {
             let width = wide(ctx, &rows);
@@ -49,34 +43,80 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         None => modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top),
     };
     ctx.hit(rect, Target::Palette);
-
-    let mut body = Rect::new(rect.x, rect.y, rect.w, rect.h);
-    if asks {
-        let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, row_height);
-        let prefix = match &prompt {
-            Some(prompt) => format!("{}: ", prompt.label),
-            None => "> ".to_string(),
-        };
-        input(ctx, line, &prefix, &palette.query);
-        body = Rect::new(rect.x, line.bottom(), rect.w, rect.bottom() - line.bottom());
+    let under = match asks {
+        true => asked(ctx, rect, palette, &prompt),
+        false => rect,
+    };
+    let body = inset(ctx, under, shown);
+    match rows.is_empty() {
+        true => nothing(ctx, body, &prompt),
+        false => items(ctx, body, palette, &prompt, &rows),
     }
+}
+
+/// What the panel lists: a prompt's options, or every entry the query leaves.
+fn listed(
+    app: &AppState,
+    palette: &Palette,
+    prompt: &Option<crate::palette::Prompt>,
+) -> Vec<(String, String)> {
+    match prompt {
+        Some(_) => palette.options(app),
+        None => palette
+            .rows(app)
+            .into_iter()
+            .map(|entry| (entry.group.to_string(), entry.label))
+            .collect(),
+    }
+}
+
+/// The line to type in, at the panel's top. Returns what is left under it.
+fn asked(
+    ctx: &mut Ctx,
+    rect: Rect,
+    palette: &Palette,
+    prompt: &Option<crate::palette::Prompt>,
+) -> Rect {
+    let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, ctx.tokens.row);
+    let prefix = match prompt {
+        Some(prompt) => format!("{}: ", prompt.label),
+        None => "> ".to_string(),
+    };
+    input(ctx, line, &prefix, &palette.query);
+    Rect::new(rect.x, line.bottom(), rect.w, rect.bottom() - line.bottom())
+}
+
+/// The rows' own room, inside the panel's edges.
+fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
     let hairline = ctx.tokens.hairline;
-    let body = Rect::new(
+    Rect::new(
         body.x + hairline,
         body.y,
         body.w - hairline * 2.0,
-        row_height * shown as f32,
-    );
-    if rows.is_empty() {
-        let hint = match &prompt {
-            Some(prompt) if prompt.free => "Enter to confirm",
-            Some(_) => "nothing to pick",
-            None => "no match",
-        };
-        let style = ctx.styles.small(Role::Faint);
-        return row(ctx, body, pad, hint, style);
-    }
+        ctx.tokens.row * shown as f32,
+    )
+}
 
+/// What stands in the list's place when it is empty.
+fn nothing(ctx: &mut Ctx, body: Rect, prompt: &Option<crate::palette::Prompt>) {
+    let hint = match prompt {
+        Some(prompt) if prompt.free => "Enter to confirm",
+        Some(_) => "nothing to pick",
+        None => "no match",
+    };
+    let style = ctx.styles.small(Role::Faint);
+    row(ctx, body, ctx.tokens.md, hint, style);
+}
+
+/// The rows around the selected one, as far as the panel shows.
+fn items(
+    ctx: &mut Ctx,
+    body: Rect,
+    palette: &Palette,
+    prompt: &Option<crate::palette::Prompt>,
+    rows: &[(String, String)],
+) {
+    let pad = ctx.tokens.md;
     let first = palette.selected.saturating_sub(PALETTE_ROWS - 1);
     let (group_style, label_style) = (ctx.styles.small(Role::Faint), ctx.styles.label(Role::Text));
     let at = ctx.tokens.aside_near;
@@ -86,7 +126,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         .take(PALETTE_ROWS)
         .enumerate()
         .map(|(i, (group, label))| {
-            let row = match &prompt {
+            let row = match prompt {
                 Some(_) => Row::new(pad, group, label_style),
                 None => Row::new(pad, group, group_style).aside(at, label, label_style),
             };

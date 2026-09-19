@@ -1,3 +1,5 @@
+//! What the watcher holds back: a burst of paths, reported once it goes quiet.
+
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};

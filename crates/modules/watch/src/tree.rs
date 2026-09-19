@@ -1,3 +1,5 @@
+//! The directories a watch covers, and which of git's own files are worth a look.
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -56,9 +58,8 @@ impl Tree {
     }
 }
 
-/// The names inside git's own directory that say the repository moved: the branch
-/// HEAD points at, the index, and the refs themselves. Everything else there is
-/// git's working noise, including the locks it takes while it writes.
+/// The names inside git's own directory that say the repository moved: HEAD, the
+/// index, the refs.
 fn git_state(path: &Path) -> bool {
     let name = path.file_name().unwrap_or_default();
     let refs = path.components().any(|part| part.as_os_str() == "refs");
