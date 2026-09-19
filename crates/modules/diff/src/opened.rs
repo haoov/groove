@@ -6,6 +6,7 @@ use groove_text::{Buffer, Document, Settled};
 use groove_types::{LineMark, Result, Row};
 
 use crate::alignment::{CONTEXT, align, marks};
+use crate::changes::{Aligned, text_of};
 
 /// Above this a file is listed as changed and not shown.
 pub const MAX_SHOWN_BYTES: usize = 2 << 20;
@@ -62,16 +63,22 @@ fn from_parts(path: &str, old: Document, after: &str) -> Opened {
 /// What the rows and the colours become once the buffer has been edited.
 pub struct Derived {
     pub settled: Settled,
-    pub rows: Vec<Row>,
-    pub marks: BTreeMap<u32, LineMark>,
+    pub aligned: Aligned,
 }
 
-/// Reads the alignment again, and colours `new` from the tree it carries.
-pub fn derived(old: &Document, new: Document) -> Derived {
+/// Aligns the file again, and colours `new` from the tree it carries.
+pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
     let rows = align(old, &new, CONTEXT);
-    Derived {
+    let aligned = Aligned {
+        lines: rows.iter().map(|row| text_of(old, &new, row)).collect(),
         marks: marks(&rows),
+        path: path.to_string(),
+        indent: new.indent().width(),
+        long: false,
         rows,
+    };
+    Derived {
+        aligned,
         settled: new.settled(),
     }
 }

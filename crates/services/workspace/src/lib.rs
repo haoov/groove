@@ -202,8 +202,8 @@ pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
 }
 
 /// The colours and the alignment of the document the buffer now holds.
-pub fn derived(old: &Document, new: Document) -> Derived {
-    groove_diff::derived(old, new)
+pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
+    groove_diff::derived(path, old, new)
 }
 
 /// What the index holds, and the commit that turns it into history.

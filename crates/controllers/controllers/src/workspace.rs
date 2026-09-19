@@ -162,7 +162,7 @@ fn derive(state: &mut AppState, spawner: &dyn Spawner) {
     );
     state.workspace.deriving = Some(revision);
     spawner.spawn(Box::pin(async move {
-        let read = derived(&old, new);
+        let read = derived(&path, &old, new);
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.workspace.deriving = None;
@@ -188,8 +188,9 @@ fn took(state: &mut AppState, path: String, read: Derived, revision: u64) {
     if open.path != path || !open.new.settled(read.settled, revision) {
         return;
     }
-    open.rows = read.rows;
-    open.marks = read.marks;
+    open.rows = read.aligned.rows.clone();
+    open.marks = read.aligned.marks.clone();
+    state.workspace.changes.replace(read.aligned);
 }
 
 /// Writes the buffer out. The watcher's read of our own write finds it clean.

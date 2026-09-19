@@ -763,3 +763,25 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
         "a file off screen gives its documents up"
     );
 }
+
+#[test]
+fn a_keystroke_reaches_the_rows_the_whole_change_shows() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    editing(&mut state, &services, &spawner);
+    dispatch(
+        Cmd::Workspace(workspace::Command::Edit(Edit::Insert("X".into()))),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace
+            .changes
+            .get("a.txt")
+            .is_some_and(|file| file.lines.iter().any(|line| line.starts_with('X')))
+    });
+}

@@ -97,6 +97,15 @@ impl Changes {
     pub fn get(&self, path: &str) -> Option<&Aligned> {
         self.files.iter().find(|file| file.path == path)
     }
+
+    /// One file aligned again, for a buffer that has moved under it.
+    pub fn replace(&mut self, file: Aligned) {
+        let Some(at) = self.files.iter().position(|one| one.path == file.path) else {
+            return;
+        };
+        self.files[at] = file;
+        *self = Self::new(std::mem::take(&mut self.files));
+    }
 }
 
 /// The digits the highest line number of a file takes.
@@ -155,7 +164,7 @@ pub fn aligned(path: &str, before: &str, after: &str) -> Aligned {
 }
 
 /// What a row shows: its own side's line, or how many lines a gap hides.
-fn text_of(old: &Document, new: &Document, row: &Row) -> String {
+pub(crate) fn text_of(old: &Document, new: &Document, row: &Row) -> String {
     if let RowKind::Gap(lines) = row.kind {
         return format!("\u{2026} {lines} lines");
     }
