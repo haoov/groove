@@ -153,17 +153,9 @@ pub fn entries(app: &AppState) -> Vec<Entry> {
 
 /// The rows whose text holds every word of the query, best match first.
 pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Vec<T> {
-    let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
     let mut scored: Vec<(usize, T)> = rows
         .into_iter()
-        .filter_map(|row| {
-            let hay = text(&row).to_lowercase();
-            let score = words
-                .iter()
-                .map(|w| hay.find(w.as_str()))
-                .sum::<Option<usize>>()?;
-            Some((score, row))
-        })
+        .filter_map(|row| Some((groove_types::score(&text(&row), query)?, row)))
         .collect();
     scored.sort_by_key(|(score, _)| *score);
     scored.into_iter().map(|(_, row)| row).collect()

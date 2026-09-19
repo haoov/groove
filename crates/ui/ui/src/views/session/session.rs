@@ -52,17 +52,78 @@ pub struct SessionUi {
     pub view: DiffView,
     /// The keyboard is in the commit box.
     pub composing: bool,
-    /// What the sidebar's search bar holds, and whether the keyboard is in it.
-    pub query: crate::field::Field,
-    pub searching: bool,
+    /// What the sidebar's search bar narrows by.
+    pub bar: Bar,
+    /// The files whose found lines are hidden under their own row.
+    pub shut: std::collections::BTreeSet<String>,
     /// The bar over the rows, while a search of them is live.
     pub find: Option<crate::find::Finding>,
+}
+
+/// What the sidebar's bar narrows by: a path, some text, or both at once. The path
+/// says which files to look at, the text what to look for in them.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct Bar {
+    pub path: crate::field::Field,
+    pub text: crate::field::Field,
+    /// Which of the two the keyboard is in, when it is in either.
+    pub typing: Option<Term>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Term {
+    #[default]
+    Path,
+    Text,
+}
+
+impl Term {
+    /// Both terms, in the order the bar stacks them.
+    pub const ALL: [Term; 2] = [Term::Path, Term::Text];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Term::Path => "path",
+            Term::Text => "text",
+        }
+    }
+}
+
+impl Bar {
+    /// The bar open on one term, keeping what the other holds. What that term held
+    /// is spent, since a chord asks for a new one.
+    pub fn open(&mut self, term: Term) {
+        self.typing = Some(term);
+        self.of(term).clear();
+    }
+
+    /// The keyboard in one term, leaving what it holds to be edited.
+    pub fn focus(&mut self, term: Term) {
+        self.typing = Some(term);
+        self.of(term).end();
+    }
+
+    pub fn shut(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn of(&mut self, term: Term) -> &mut crate::field::Field {
+        match term {
+            Term::Path => &mut self.path,
+            Term::Text => &mut self.text,
+        }
+    }
+
+    /// Whether the results are lines rather than files.
+    pub fn greps(&self) -> bool {
+        !self.text.is_empty()
+    }
 }
 
 impl SessionUi {
     /// Whether a bar has the keyboard, so no surface should draw its caret.
     pub fn typing(&self) -> bool {
-        self.searching || self.find.as_ref().is_some_and(|find| find.typing)
+        self.bar.typing.is_some() || self.find.as_ref().is_some_and(|find| find.typing)
     }
 
     /// Whether the sidebar stands beside the workspace right now.

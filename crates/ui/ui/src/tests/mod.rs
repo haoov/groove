@@ -97,6 +97,14 @@ fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
         .collect();
 }
 
+/// The sidebar with the keyboard, for the bar's own clicks.
+fn sidebar_ui() -> Ui {
+    let mut ui = Ui::default();
+    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.focus = crate::Focus::Sidebar;
+    ui
+}
+
 fn window() -> Metrics {
     metrics(WINDOW.0, WINDOW.1, 1.0)
 }

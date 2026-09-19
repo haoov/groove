@@ -7,7 +7,7 @@ use groove_types::{SessionId, WorktreeId};
 use groove_types::DiffView;
 
 use crate::layout::Edge;
-use crate::views::session::Tab;
+use crate::views::session::{Tab, Term};
 
 /// Which of the header's pickers was asked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +75,14 @@ pub enum Target {
     Read(String),
     /// The row a file starts on, which folds it.
     Head(String),
+    /// One line a search across the worktree found, by its place in the list.
+    Found(usize),
+    /// The row naming a file the search found lines in, which folds them.
+    FoundIn(String),
+    /// One term of the sidebar's search bar.
+    Term(Term),
+    /// The bar over the rows while a search of them is live.
+    Finding,
     /// One of the three views of the open file.
     View(DiffView),
     /// The agent's pane.
@@ -101,7 +109,10 @@ impl Target {
             | Target::Do
             | Target::View(_)
             | Target::Read(_)
-            | Target::Head(_) => Cursor::Pointer,
+            | Target::Head(_)
+            | Target::Found(_)
+            | Target::FoundIn(_) => Cursor::Pointer,
+            Target::Term(_) | Target::Finding => Cursor::Text,
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,

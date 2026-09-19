@@ -2,6 +2,7 @@
 //! once and then a group per directory under it.
 
 use groove_controllers::AppState;
+use groove_controllers::workspace_service::{FOUND_MAX, Found};
 use groove_gfx::Rect;
 use groove_types::FileDiff;
 
@@ -10,6 +11,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
+use crate::views::session::{Bar, Term};
 use crate::widget::{button, elide, hairline, row, ruled};
 use crate::{Losing, Ui};
 
@@ -36,13 +38,19 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
     let files = narrowed(app, ui);
     let listing = listing(&files);
-    let bar = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
-    searching(ctx, bar, ui);
+    let bar = searching(ctx, rect, ui);
+    let grep = ui.session.bar.greps();
     let head = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.header);
-    heading(ctx, head, files.len());
+    match grep {
+        true => found(ctx, head, app.workspace.found.len()),
+        false => heading(ctx, head, files.len()),
+    }
     let under = ctx.layout.commit;
     let body = Rect::new(rect.x, head.bottom(), rect.w, under.y - head.bottom());
     commit::draw(ctx, app, ui, under);
+    if grep {
+        return results(ctx, body, app, ui);
+    }
     if files.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
@@ -57,37 +65,202 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
 }
 
-/// The changed files the search bar leaves, every one of them when it is empty.
+/// The changed files the bar's path term leaves, every one of them when it is empty.
 pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
     let files: Vec<&FileDiff> = changed(app).iter().collect();
-    match ui.session.query.is_empty() {
+    let query = ui.session.bar.path.text();
+    match query.is_empty() {
         true => files,
-        false => {
-            let query = ui.session.query.text();
-            crate::palette::matching(files, |file| file.path.clone(), query)
-        }
+        false => crate::palette::matching(files, |file| file.path.clone(), query),
     }
 }
 
-/// The bar the search types into, above the list it narrows.
-fn searching(ctx: &mut Ctx, rect: Rect, ui: &Ui) {
-    ctx.quad(rect, ctx.styles.ground());
-    hairline(ctx, rect, ctx.styles.line());
-    let (text, role) = match (ui.session.searching, ui.session.query.is_empty()) {
-        (false, true) => ("filter by path".to_string(), Role::Ghost),
-        (true, _) => (ui.session.query.shown(), Role::Text),
-        (false, _) => (ui.session.query.text().to_string(), Role::Text),
+/// The bar the search types into: a row for each term it narrows by, under the one
+/// mark they share. Returns what it took.
+fn searching(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
+    let bar = &ui.session.bar;
+    let height = ctx.tokens.row * Term::ALL.len() as f32;
+    let whole = Rect::new(rect.x, rect.y, rect.w, height);
+    ctx.quad(whole, ctx.styles.ground());
+    hairline(ctx, whole, ctx.styles.line());
+    for (at, term) in Term::ALL.into_iter().enumerate() {
+        let y = whole.y + ctx.tokens.row * at as f32;
+        let line = Rect::new(whole.x, y, whole.w, ctx.tokens.row);
+        narrowing(ctx, line, bar, term, at == 0);
+        ctx.hit(line, Target::Term(term));
+    }
+    whole
+}
+
+/// One term of the bar: what it narrows by, and what is typed into it.
+fn narrowing(ctx: &mut Ctx, line: Rect, bar: &Bar, term: Term, first: bool) {
+    let held = bar.typing == Some(term);
+    let role = match held {
+        true => Role::Text,
+        false => Role::Faint,
     };
+    let field = match term {
+        Term::Path => &bar.path,
+        Term::Text => &bar.text,
+    };
+    let at = match first {
+        true => glass(ctx, line, role),
+        false => past_glass(ctx),
+    };
+    let label = term.label();
+    let quiet = ctx.styles.code(Role::Ghost);
+    let width = ctx.measure(label, &quiet);
+    row(
+        ctx,
+        Rect::new(line.x + at, line.y, width, line.h),
+        0.0,
+        label,
+        quiet,
+    );
+    let text = match held {
+        true => field.shown(),
+        false => field.text().to_string(),
+    };
+    let at = at + width + ctx.tokens.sm;
+    row(ctx, line, at, &text, ctx.styles.code(role));
+}
+
+/// The mark the bar carries, at the left of its first row. Returns where the text
+/// starts, which every row shares.
+fn glass(ctx: &mut Ctx, line: Rect, role: Role) -> f32 {
     let size = ctx.tokens.icon;
-    let glass = Rect::new(
-        rect.x + ctx.tokens.md,
-        rect.y + (rect.h - size) / 2.0,
+    let box_ = Rect::new(
+        line.x + ctx.tokens.md,
+        line.y + (line.h - size) / 2.0,
         size,
         size,
     );
-    ctx.icon(glass, Mark::Search, 0, ctx.styles.color(role));
-    let at = glass.right() - rect.x + ctx.tokens.sm;
-    row(ctx, rect, at, &text, ctx.styles.code(role));
+    ctx.icon(box_, Mark::Search, 0, ctx.styles.color(role));
+    past_glass(ctx)
+}
+
+fn past_glass(ctx: &Ctx) -> f32 {
+    ctx.tokens.md + ctx.tokens.icon + ctx.tokens.sm
+}
+
+/// How much the search across the worktree has turned up.
+fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
+    let style = ctx.styles.heading(Role::Faint);
+    let label = match count {
+        0 => "NOTHING FOUND".to_string(),
+        n if n >= FOUND_MAX => format!("FOUND {n}+"),
+        n => format!("FOUND · {n}"),
+    };
+    row(ctx, rect, ctx.tokens.md, &label, style);
+    hairline(ctx, rect, ctx.styles.line());
+}
+
+/// Every line the search found, its file named above its own matches.
+fn results(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
+    let height = ctx.tokens.row;
+    let found = &app.workspace.found;
+    let shut = |path: &String| ui.session.shut.contains(path);
+    let hidden = found.iter().filter(|one| shut(&one.path)).count();
+    let lines = found.len() - hidden + files_of(found);
+    let extent = (height * lines as f32 - body.h).max(0.0);
+    ctx.scrolls(Scroller::Files, extent);
+    let scroll = ui.session.files.min(extent);
+    ctx.clipped(body, |ctx| {
+        let mut y = body.y - scroll;
+        let mut over: Option<&str> = None;
+        for (at, one) in found.iter().enumerate() {
+            if over != Some(one.path.as_str()) {
+                if shows(body, y, height) {
+                    let count = found.iter().filter(|it| it.path == one.path).count();
+                    let line = Rect::new(body.x, y, body.w, height);
+                    file_found(ctx, line, &one.path, count, ui);
+                }
+                over = Some(one.path.as_str());
+                y += height;
+            }
+            if shut(&one.path) {
+                continue;
+            }
+            if shows(body, y, height) {
+                hit(ctx, Rect::new(body.x, y, body.w, height), one, at, ui);
+            }
+            y += height;
+        }
+    });
+}
+
+/// Whether a row at this height is on screen at all.
+fn shows(body: Rect, y: f32, height: f32) -> bool {
+    y + height >= body.y && y <= body.bottom()
+}
+
+fn files_of(found: &[Found]) -> usize {
+    let mut paths: Vec<&str> = found.iter().map(|one| one.path.as_str()).collect();
+    paths.dedup();
+    paths.len()
+}
+
+/// The file a run of matches belongs to, how many it holds, and a caret that hides
+/// them.
+fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
+    let target = Target::FoundIn(path.to_string());
+    ctx.quad(line, ctx.styles.raised());
+    if ui.hover.as_ref() == Some(&target) {
+        ctx.quad(line, ctx.styles.hover());
+    }
+    ctx.hit(line, target);
+    let style = ctx.styles.small(Role::Text);
+    let label = format!("{count}");
+    let width = ctx.measure(&label, &style);
+    let at = line.right() - ctx.tokens.md - width;
+    row(
+        ctx,
+        Rect::new(at, line.y, width, line.h),
+        0.0,
+        &label,
+        style,
+    );
+    let size = ctx.tokens.icon;
+    let caret = Rect::new(
+        line.x + ctx.tokens.xs,
+        line.y + (line.h - size) / 2.0,
+        size,
+        size,
+    );
+    let turn = match ui.session.shut.contains(path) {
+        true => Mark::RIGHTWARDS,
+        false => 0,
+    };
+    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    let start = caret.right() - line.x + ctx.tokens.xs;
+    let room = (at - line.x - start - ctx.tokens.sm).max(0.0);
+    let text = elide(ctx, path, &style, room);
+    row(ctx, line, start, &text, style);
+}
+
+/// One line a search matched: where it sits, and what it says.
+fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize, ui: &Ui) {
+    let target = Target::Found(at);
+    if ui.hover.as_ref() == Some(&target) {
+        ctx.quad(line, ctx.styles.hover());
+    }
+    ctx.hit(line, target);
+    let numbers = ctx.styles.code(Role::Ghost);
+    let number = format!("{}", one.line + 1);
+    let width = ctx.measure(&number, &numbers);
+    let start = ctx.tokens.md + ctx.tokens.sm;
+    row(
+        ctx,
+        Rect::new(line.x + start, line.y, width, line.h),
+        0.0,
+        &number,
+        numbers,
+    );
+    let style = ctx.styles.code(Role::Text);
+    let at = start + width + ctx.tokens.sm;
+    let room = (line.w - at - ctx.tokens.md).max(0.0);
+    let text = elide(ctx, one.text.trim_start(), &style, room);
+    row(ctx, line, at, &text, style);
 }
 
 fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {

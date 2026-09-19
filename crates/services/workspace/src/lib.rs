@@ -6,6 +6,7 @@ pub use groove_diff::{
     Aligned, At, Changes, Derived, Document, Opened, aligned, columns, display_at, from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
+pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
 use std::ops::Range;
@@ -33,6 +34,10 @@ pub struct State {
     pub coloured: BTreeMap<String, Painted>,
     /// The rows the surface last drew.
     pub showing: Range<usize>,
+    /// What the last search across the worktree has found so far.
+    pub found: Vec<Found>,
+    /// That search, while it still runs.
+    pub searching: Option<std::sync::Arc<Search>>,
     /// Bumped whenever a document is read again, for a cache to know.
     pub stamp: u64,
     /// What the commit box holds, typed on the same buffer as a file.
@@ -105,6 +110,8 @@ impl State {
     /// Forgets what was loaded and stops watching.
     pub fn clear(&mut self) {
         self.moved();
+        self.stop();
+        self.found.clear();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();
@@ -152,6 +159,15 @@ impl State {
     }
 }
 
+impl State {
+    /// The search across the worktree gives up, for a new one or for nothing.
+    pub fn stop(&mut self) {
+        if let Some(search) = self.searching.take() {
+            search.stop();
+        }
+    }
+}
+
 /// Where git keeps the worktree's own state.
 pub async fn git_dir(dir: &Path) -> Option<PathBuf> {
     groove_git::Git::at(dir).git_dir().await.ok()
@@ -181,6 +197,20 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
 pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
     groove_diff::changes(dir, files).await
 }
+
+/// Every line under the worktree holding `query`, in batches as they are found.
+pub fn grep(
+    dir: &Path,
+    query: &str,
+    under: &str,
+    search: std::sync::Arc<Search>,
+    found: impl FnMut(Vec<Found>) + Send,
+) {
+    groove_grep::walk(dir, query, under, FOUND_MAX, search, found);
+}
+
+/// How many matches a search across the worktree keeps.
+pub const FOUND_MAX: usize = 500;
 
 /// Both sides of these paths, parsed, read in one git process.
 pub async fn painted(dir: &Path, paths: Vec<String>) -> Vec<(String, Painted)> {

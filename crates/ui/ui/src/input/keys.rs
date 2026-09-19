@@ -9,6 +9,7 @@ use crate::field::Field;
 use crate::find::Finding;
 use crate::palette::Palette;
 use crate::tokens::ABOVE_MATCH;
+use crate::views::session::Term;
 use crate::{Focus, Ui};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
@@ -22,14 +23,14 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         }
         return outcome.commands;
     }
-    if ui.session.searching {
-        return in_query(key, mods, ui, app);
+    if ui.session.bar.typing.is_some() {
+        return in_bar(key, mods, ui, app);
     }
     if let Some(commands) = finding(key, mods, ui, app) {
         return commands;
     }
     if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && ui.focus != Focus::Agent {
-        searching(ui, true);
+        opened(ui, Term::Path);
         return Vec::new();
     }
     match ui.focus {
@@ -130,26 +131,29 @@ fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         .collect()
 }
 
-/// The search bar open or shut, its query spent either way. Only one thing takes
-/// what is typed, so the commit box gives the keyboard up.
-fn searching(ui: &mut Ui, on: bool) {
-    ui.session.searching = on;
-    ui.session.query.clear();
-    if on {
-        ui.session.composing = false;
-    }
+/// The bar open on one of its terms, the other kept as the scope it already is. Only
+/// one thing takes what is typed, so the commit box gives the keyboard up.
+fn opened(ui: &mut Ui, term: Term) {
+    ui.session.bar.open(term);
+    ui.session.composing = false;
 }
 
-/// What a keystroke asks of the search bar: a path to narrow the list to, or the
-/// first file it left.
-fn in_query(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+/// What a keystroke asks of the bar: a term narrowed, the search run again, or the
+/// first file it left opened.
+fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let Some(term) = ui.session.bar.typing else {
+        return Vec::new();
+    };
     match key {
-        Key::Escape => searching(ui, false),
+        Key::Escape => ui.session.bar.shut(),
+        Key::Tab => ui.session.bar.open(other(term)),
+        Key::Char('p' | 'P') if mods.ctrl => ui.session.bar.open(Term::Path),
+        Key::Enter if ui.session.bar.greps() => ui.session.bar.typing = None,
         Key::Enter => {
             let first = crate::views::session::components::files::narrowed(app, ui)
                 .first()
                 .map(|file| file.path.clone());
-            searching(ui, false);
+            ui.session.bar.typing = None;
             return match first {
                 Some(path) => vec![Command::Workspace(workspace::Command::OpenFile {
                     path,
@@ -159,10 +163,32 @@ fn in_query(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Comma
             };
         }
         key => {
-            typing(key, mods, &mut ui.session.query);
+            if typing(key, mods, ui.session.bar.of(term)) {
+                return searches(ui);
+            }
         }
     }
     Vec::new()
+}
+
+fn other(term: Term) -> Term {
+    match term {
+        Term::Path => Term::Text,
+        Term::Text => Term::Path,
+    }
+}
+
+/// The worktree searched again for what the bar now holds, when it holds any text.
+fn searches(ui: &Ui) -> Vec<Command> {
+    let bar = &ui.session.bar;
+    if !bar.greps() {
+        return Vec::new();
+    }
+    let grep = workspace::Command::Grep {
+        query: bar.text.text().to_string(),
+        under: bar.path.text().to_string(),
+    };
+    vec![Command::Workspace(grep)]
 }
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.
@@ -318,6 +344,10 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
             None
         }
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
+        Key::Char('f' | 'F') => {
+            opened(ui, Term::Text);
+            None
+        }
         Key::Left | Key::Right => {
             ui.focus = ui.focus.beside(key == Key::Right);
             None

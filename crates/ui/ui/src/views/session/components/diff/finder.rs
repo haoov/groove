@@ -4,6 +4,7 @@ use groove_gfx::Rect;
 
 use crate::Ui;
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::row;
@@ -16,6 +17,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     ctx.layer();
     ctx.quad(bar, ctx.styles.action());
     ctx.border(bar, ctx.styles.here());
+    ctx.hit(bar, Target::Finding);
     let role = match find.typing {
         true => Role::Text,
         false => Role::Faint,

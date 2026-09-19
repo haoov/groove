@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{Edit, Error, ErrorKind, Result, Selection, WorktreeId};
 use groove_workspace_service::{
-    Buffer, Derived, Document, Opened, changes, derived, opened, painted, reopened, summary,
+    Buffer, Derived, Document, Opened, Search, changes, derived, opened, painted, reopened, summary,
 };
 
 use crate::spawn::coalesced;
@@ -23,6 +23,8 @@ pub enum Command {
     },
     /// `workspace.mark_read`: one file read, or the mark taken off it.
     MarkRead { path: String },
+    /// `workspace.grep`: every line holding this text, in the files `under` keeps.
+    Grep { query: String, under: String },
     /// `workspace.fold`: one file's rows hidden under its head, or shown again.
     Fold { path: String },
     /// `workspace.show`: which rows of the whole change are on screen.
@@ -63,6 +65,7 @@ impl Command {
             Command::Load => "workspace.load",
             Command::OpenFile { .. } => "workspace.open_file",
             Command::MarkRead { .. } => "workspace.mark_read",
+            Command::Grep { .. } => "workspace.grep",
             Command::Fold { .. } => "workspace.fold",
             Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
@@ -93,6 +96,7 @@ pub fn dispatch(
         Command::Load => reread(state, spawner),
         Command::OpenFile { path, at } => open_file(state, spawner, path, at),
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
+        Command::Grep { query, under } => grep(state, spawner, query, under),
         Command::Fold { path } => state.workspace.changes.fold(&path),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
@@ -110,6 +114,37 @@ pub fn dispatch(
         Command::Rebase => remote(state, spawner, Remote::Rebase),
         Command::DiscardAll => discard_all(state, spawner),
     }
+}
+
+/// Every line of the worktree holding `query`, walked on a thread of its own and
+/// reported in batches. A search still running gives up for this one.
+fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, under: String) {
+    state.workspace.stop();
+    state.workspace.found.clear();
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    if query.is_empty() {
+        return;
+    }
+    let search = std::sync::Arc::new(Search::default());
+    state.workspace.searching = Some(search.clone());
+    let sink = spawner.sink();
+    spawner.spawn(Box::pin(async move {
+        let reading = tokio::task::spawn_blocking(move || {
+            groove_workspace_service::grep(&dir, &query, &under, search, |batch| {
+                sink.deliver(Box::new(
+                    move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                        state.workspace.found.extend(batch);
+                    },
+                ));
+            });
+        });
+        let _ = reading.await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.workspace.searching = None;
+        }) as Continuation
+    }));
 }
 
 /// One file read or unread: the session says so at once, and the disk follows.

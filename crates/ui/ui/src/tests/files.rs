@@ -302,7 +302,10 @@ fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
     press(Key::Char('p'), ctrl(), &mut ui, &app);
-    assert!(ui.session.searching, "the keyboard is in the bar");
+    assert!(
+        ui.session.bar.typing.is_some(),
+        "the keyboard is in the bar"
+    );
 
     for c in "two/be".chars() {
         press(
@@ -324,8 +327,8 @@ fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
     );
     assert_eq!(commands.len(), 1, "it opens what is left");
     assert_eq!(commands[0].id(), "workspace.open_file");
-    assert!(!ui.session.searching, "and the bar is spent");
-    assert_eq!(ui.session.query.text(), "");
+    assert!(ui.session.bar.typing.is_none(), "and the bar is spent");
+    assert_eq!(ui.session.bar.path.text(), "two/be", "what was typed stays");
 }
 
 #[test]
@@ -351,7 +354,7 @@ fn escape_leaves_the_list_as_it_was() {
         &mut ui,
         &app,
     );
-    assert!(!ui.session.searching);
+    assert!(ui.session.bar.typing.is_none());
     assert_eq!(
         crate::views::session::components::files::narrowed(&app, &ui).len(),
         2,

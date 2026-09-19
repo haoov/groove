@@ -1300,6 +1300,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-grep"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+ "ignore",
+ "tempfile",
+]
+
+[[package]]
 name = "groove-hooks"
 version = "0.1.0"
 dependencies = [
@@ -1412,6 +1421,7 @@ dependencies = [
  "groove-diff",
  "groove-editor",
  "groove-git",
+ "groove-grep",
  "groove-text",
  "groove-types",
  "groove-watch",

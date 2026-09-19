@@ -1,0 +1,17 @@
+[package]
+name = "groove-grep"
+description = "Text across a worktree, walked in parallel and reported in batches"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+ignore.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

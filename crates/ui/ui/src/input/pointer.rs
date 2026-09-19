@@ -8,7 +8,7 @@ use crate::ctx::Metrics;
 use crate::hit::{Hits, Picks, Scroller, Target};
 use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Anchor, Flow, Palette};
-use crate::tokens::{CLICK_MS, CLICK_SLOP};
+use crate::tokens::{ABOVE_MATCH, CLICK_MS, CLICK_SLOP};
 use crate::views::session::components::diff;
 use crate::widget::{code_at, first};
 use crate::{Click, Corner, Drag, Focus, Losing, Menu, Of, Ui};
@@ -182,6 +182,25 @@ fn click(
             vec![Command::Workspace(workspace::Command::MarkRead { path })]
         }
         Some(Target::Head(path)) => folded(ui, app, metrics, path),
+        Some(Target::Term(term)) => {
+            ui.session.composing = false;
+            ui.session.bar.focus(term);
+            Vec::new()
+        }
+        Some(Target::Finding) => {
+            if let Some(find) = ui.session.find.as_mut() {
+                find.typing = true;
+                find.query.end();
+            }
+            Vec::new()
+        }
+        Some(Target::Found(at)) => reached(ui, app, metrics, at),
+        Some(Target::FoundIn(path)) => {
+            if !ui.session.shut.remove(&path) {
+                ui.session.shut.insert(path);
+            }
+            Vec::new()
+        }
         Some(Target::Pinned) => Vec::new(),
         Some(Target::Map) => {
             ui.mapping = true;
@@ -356,6 +375,27 @@ fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let at = ((y - rect.y) / rect.h).clamp(0.0, 1.0) * total as f32 * line;
     let far = hits.extent(Scroller::Code);
     ui.session.diff = (at - rect.h / 2.0).clamp(0.0, far);
+}
+
+/// The file one found line belongs to, opened and stood on with that line held. A
+/// search reaches files the change never touched, which only the file view shows.
+fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) -> Vec<Command> {
+    let Some(one) = app.workspace.found.get(at) else {
+        return Vec::new();
+    };
+    ui.focus = Focus::Workspace;
+    ui.session.view = DiffView::File;
+    let above = one.line.saturating_sub(ABOVE_MATCH);
+    ui.session.diff = above as f32 * metrics.tokens().line;
+    let held = Selection {
+        anchor: Caret::new(one.line, one.at.0),
+        head: Caret::new(one.line, one.at.1),
+    };
+    let open = workspace::Command::OpenFile {
+        path: one.path.clone(),
+        at: Some(held),
+    };
+    vec![Command::Workspace(open)]
 }
 
 /// Whether the buffer being edited is this file.

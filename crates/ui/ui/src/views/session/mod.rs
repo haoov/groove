@@ -5,4 +5,4 @@ pub(crate) mod components;
 mod session;
 
 pub(crate) use components::files::changed;
-pub use session::{SessionUi, Tab, draw};
+pub use session::{Bar, SessionUi, Tab, Term, draw};
