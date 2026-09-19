@@ -5,7 +5,7 @@ use groove_types::{Caret, DiffView, Edit, Motion, WorktreeId};
 
 use super::Key;
 use crate::ctx::Metrics;
-use crate::hit::{Hits, Picks, Target};
+use crate::hit::{Hits, Picks, Scroller, Target};
 use crate::layout::{Edge, Layout};
 use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
@@ -92,6 +92,10 @@ pub(super) fn moved(
         drag_to(ui, x, y, metrics);
         return Vec::new();
     }
+    if ui.mapping {
+        lensed(y, ui, app, hits, metrics);
+        return Vec::new();
+    }
     if !ui.selecting {
         return Vec::new();
     }
@@ -176,6 +180,11 @@ fn click(
         Some(Target::Code) => {
             ui.selecting = true;
             landed(ui, app, hits, metrics, (x, y))
+        }
+        Some(Target::Map) => {
+            ui.mapping = true;
+            lensed(y, ui, app, hits, metrics);
+            Vec::new()
         }
 
         Some(Target::Stage(path)) => {
@@ -323,6 +332,21 @@ fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) {
         return;
     };
     ui.session.diff = head as f32 * metrics.tokens().line;
+}
+
+/// The lens dragged to the pointer, holding the rows around where it points.
+fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
+    let Some(rect) = hits.rect_of(&Target::Map) else {
+        return;
+    };
+    let total = diff::rows_of(app, ui);
+    if total == 0 {
+        return;
+    }
+    let line = metrics.tokens().line;
+    let at = ((y - rect.y) / rect.h).clamp(0.0, 1.0) * total as f32 * line;
+    let far = hits.extent(Scroller::Code);
+    ui.session.diff = (at - rect.h / 2.0).clamp(0.0, far);
 }
 
 /// Whether the buffer being edited is this file.

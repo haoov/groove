@@ -1,9 +1,9 @@
 //! The diff tab as one surface over every changed file.
 
 use super::*;
-use crate::tests::changed_files;
+use crate::tests::{changed_files, pressed, release};
 use groove_controllers::{Command, workspace};
-use groove_types::Caret;
+use groove_types::{Caret, LineMark};
 
 const FILES: [(&str, &str, &str); 2] = [
     ("src/a.rs", "one\n", "ONE\n"),
@@ -163,4 +163,88 @@ fn the_stream_pins_the_file_it_stands_in() {
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
     ui.session.diff = (head + 1) as f32 * Tokens::new(1.0).line;
     assert!(band(&app, &ui).contains("src/b.rs"), "{}", band(&app, &ui));
+}
+
+#[test]
+fn the_map_holds_a_band_for_every_file_and_a_lens_over_the_rows() {
+    let app = both();
+    let ui = on_diff();
+    let (frame, hits) = view_of(&app, &ui);
+    let column = hits.rect_of(&Target::Map).expect("the map is drawn");
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let inside = |quad: &groove_gfx::Quad| {
+        quad.rect.x >= column.x && quad.rect.right() <= column.right() + 1.0
+    };
+    let quads: Vec<&groove_gfx::Quad> = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| inside(quad))
+        .collect();
+    let bands = quads.iter().filter(|q| q.color == styles.inner()).count();
+    assert_eq!(bands, 2, "one band a file");
+    let marks = quads
+        .iter()
+        .filter(|q| {
+            q.color == styles.mark(LineMark::Added) || q.color == styles.mark(LineMark::Removed)
+        })
+        .count();
+    assert_eq!(marks, 4, "one line out and one in, twice over");
+    assert!(
+        quads.iter().any(|q| q.color == styles.lens()),
+        "the lens stands over it"
+    );
+}
+
+#[test]
+fn a_press_on_the_map_holds_the_rows_it_points_at() {
+    let app = both();
+    let mut ui = on_diff();
+    let (_, hits) = view_of(&app, &ui);
+    let column = hits.rect_of(&Target::Map).expect("the map is drawn");
+    pressed(column.x + 1.0, column.bottom() - 1.0, &mut ui, &app, &hits);
+    assert!(ui.mapping, "the lens follows the pointer");
+    assert_eq!(
+        ui.session.diff,
+        hits.extent(crate::hit::Scroller::Code),
+        "the foot of the map is the end of the change"
+    );
+    release(&mut ui, &app, &hits);
+    assert!(!ui.mapping);
+}
+
+#[test]
+fn the_file_view_makes_the_map_the_file_s_own_scrollbar() {
+    let app = many(200);
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    let (frame, hits) = view_of(&app, &ui);
+    let column = hits.rect_of(&Target::Map).expect("the map is drawn");
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let per = column.h / 200.0;
+    let quads: Vec<&groove_gfx::Quad> = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.rect.x >= column.x && quad.rect.right() <= column.right() + 1.0)
+        .collect();
+
+    let changed = quads
+        .iter()
+        .find(|quad| quad.color == styles.mark(LineMark::Changed))
+        .expect("the line the change touched");
+    assert!(
+        (changed.rect.y - (column.y + 19.0 * per)).abs() <= per,
+        "the mark sits where the line does"
+    );
+
+    let edges: Vec<f32> = quads
+        .iter()
+        .filter(|quad| quad.color == styles.lens())
+        .map(|quad| quad.rect.y)
+        .collect();
+    let (top, foot) = (
+        edges.iter().copied().fold(f32::MAX, f32::min),
+        edges.iter().copied().fold(0.0, f32::max),
+    );
+    assert_eq!(top, column.y, "the file is at its start");
+    assert!(foot - top < column.h, "the lens holds what the rows show");
 }

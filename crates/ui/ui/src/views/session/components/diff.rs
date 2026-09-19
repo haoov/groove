@@ -1,6 +1,7 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
 mod header;
+mod map;
 mod pinned;
 mod row;
 mod scroll;
@@ -16,6 +17,7 @@ use crate::ctx::Ctx;
 use crate::style::Role;
 use crate::widget::{first, row};
 
+pub(crate) use map::total as rows_of;
 pub(crate) use row::{line_at, text_at};
 pub(crate) use scroll::scrolled;
 
@@ -25,7 +27,15 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     }
     let head = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
     header::draw(ctx, head, app, ui, &standing(ctx, app, ui));
-    let body = Rect::new(area.x, head.bottom(), area.w, area.h - head.h);
+    let column = ctx.tokens.map;
+    let body = Rect::new(area.x, head.bottom(), area.w - column, area.h - head.h);
+    map::draw(
+        ctx,
+        Rect::new(body.right(), body.y, column, body.h),
+        body,
+        app,
+        ui,
+    );
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
         Some(false) => said(ctx, body, "Open a file in the sidebar."),

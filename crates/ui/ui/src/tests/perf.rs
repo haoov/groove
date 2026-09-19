@@ -181,7 +181,7 @@ fn several(count: usize) -> AppState {
     let mut app = full_app();
     let sides: Vec<(String, String, String)> = (0..count)
         .map(|at| {
-            let before: String = (0..12)
+            let before: String = (0..60)
                 .map(|n| format!("fn name_{at}_{n}(value: usize) -> usize {{ value + {n} }}\n"))
                 .collect();
             let after = before.replace("value + 4 }", "value * 4 }");
@@ -213,7 +213,7 @@ fn time_a_frame_over_several_files() {
     use groove_types::{Caret, Edit, Motion};
     let size = Size::new(crate::tests::WINDOW.0, crate::tests::WINDOW.1);
     let mut renderer = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
-    for files in [1, 5] {
+    for files in [1, 5, 40] {
         for kind in [DiffView::Inline, DiffView::Split] {
             let mut app = several(files);
             let mut ui = Ui::default();

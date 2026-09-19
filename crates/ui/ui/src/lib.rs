@@ -73,6 +73,8 @@ pub struct Ui {
     pub drag: Option<Drag>,
     /// The pointer is down on the open file, so it is choosing what to hold.
     pub selecting: bool,
+    /// The pointer is down on the change map, so it is dragging the lens.
+    pub mapping: bool,
     /// The last press, for the next one to know whether it carries on the same click.
     pub clicked: Option<Click>,
     /// What is asking before it throws a change away.
@@ -133,6 +135,6 @@ impl Ui {
 
     /// The pointer is down on something that follows it, so its moves are input.
     pub fn pointing(&self) -> bool {
-        self.drag.is_some() || self.selecting
+        self.drag.is_some() || self.selecting || self.mapping
     }
 }

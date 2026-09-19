@@ -176,6 +176,11 @@ impl Styles {
         self.palette.surface1
     }
 
+    /// The outline of the map's lens.
+    pub fn lens(&self) -> Color {
+        self.palette.text
+    }
+
     pub fn line(&self) -> Color {
         self.palette.surface0
     }

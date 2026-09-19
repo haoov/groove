@@ -49,6 +49,8 @@ pub struct Tokens {
     pub hairline: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
+    /// The column that holds the whole change.
+    pub map: f32,
     /// The type scale. Mono is only for code: the agent, the terminal, the diff.
     pub text: f32,
     pub small: f32,
@@ -93,6 +95,7 @@ const LOGICAL: Tokens = Tokens {
     line: 18.0,
     hairline: 1.0,
     grab: 8.0,
+    map: 14.0,
     text: 13.0,
     small: 11.5,
     title: 14.0,
@@ -134,6 +137,7 @@ impl Tokens {
             line: row(LINE, code),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),
+            map: s(LOGICAL.map),
             text: s(text),
             small: of_text(SMALL),
             title: of_text(TITLE),

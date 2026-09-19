@@ -69,6 +69,8 @@ pub enum Target {
     Code,
     /// The lines standing above them.
     Pinned,
+    /// The column holding the whole change.
+    Map,
     /// One of the three views of the open file.
     View(DiffView),
     /// The agent's pane.
@@ -97,6 +99,7 @@ impl Target {
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,
+            Target::Map => Cursor::RowResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

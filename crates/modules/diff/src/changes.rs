@@ -123,6 +123,11 @@ impl Changes {
         Some(self.starts[at])
     }
 
+    /// Every file with the row its own block begins on.
+    pub fn placed(&self) -> impl Iterator<Item = (usize, &Aligned)> {
+        self.starts.iter().copied().zip(self.files.iter())
+    }
+
     pub fn get(&self, path: &str) -> Option<&Aligned> {
         self.files.iter().find(|file| file.path == path)
     }

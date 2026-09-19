@@ -96,6 +96,7 @@ pub fn handle(
         Input::Release => {
             ui.drag = None;
             ui.selecting = false;
+            ui.mapping = false;
             Vec::new()
         }
         Input::Scroll { x, delta, .. } => {
