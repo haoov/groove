@@ -11,7 +11,7 @@ use groove_types::{DiffView, Edit, Motion};
 
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
-use self::surface::{at, folded, holds, jump, landed, lensed, reached, shown, switch};
+use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::views::session::{Tab, Term};
@@ -118,7 +118,7 @@ fn acted(
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
         Some(Target::Actions) => actions(ui, hits, metrics),
-        Some(Target::Message) => composing(ui),
+        Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(
@@ -211,9 +211,16 @@ fn actions(ui: &mut Ui, hits: &Hits, metrics: Metrics) -> Vec<Command> {
     Vec::new()
 }
 
-fn composing(ui: &mut Ui) -> Vec<Command> {
+/// The keyboard into the commit box, with its caret where the click landed.
+fn composing(
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Vec<Command> {
     ui.session.composing = true;
-    Vec::new()
+    composed(app, hits, metrics, point)
 }
 
 /// The one action the commit box offers now.

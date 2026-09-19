@@ -86,7 +86,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     ctx.hit(rect, Target::Message);
     if buffer.text().is_empty() && !composing {
         let style = ctx.styles.code(Role::Ghost);
-        row(ctx, rect, ctx.tokens.md, "a message", style);
+        row(ctx, rect, 0.0, "a message", style);
     }
 }
 

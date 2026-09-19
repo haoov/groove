@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use crate::ctx::Metrics;
-use crate::hit::{Hits, Scroller, Target};
+use crate::hit::{Chars, Hits, Scroller, Target};
 use crate::tokens::ABOVE_MATCH;
 use crate::views::session::diff;
 use crate::widget::{code_at, first};
@@ -157,4 +157,32 @@ pub(super) fn at(
     let (path, line) = diff::line_at(app, ui.session.view, row)?;
     let (text, width) = diff::text_at(app, &path, line)?;
     Some((path, Caret::new(line, columns(&text, display, width))))
+}
+
+/// Where a click in the commit box puts its caret.
+pub(super) fn composed(
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+    point: (f32, f32),
+) -> Vec<Command> {
+    let Some(rect) = hits.rect_of(&Target::Message) else {
+        return Vec::new();
+    };
+    let chars = Chars {
+        left: rect.x,
+        advance: metrics.cell.width,
+        scroll: 0.0,
+    };
+    let Some((row, display)) = code_at(&metrics.tokens(), chars, rect, point) else {
+        return Vec::new();
+    };
+    let message = &app.workspace.message;
+    let line = row.min(message.lines().saturating_sub(1));
+    let text = message.line(line).unwrap_or_default();
+    let width = message.document().indent().width();
+    let caret = Caret::new(line, columns(&text, display, width));
+    vec![Command::Workspace(workspace::Command::Message(Edit::Move(
+        Motion::To(caret),
+    )))]
 }

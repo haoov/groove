@@ -256,3 +256,62 @@ fn only_one_action_is_a_button_and_the_caret_holds_the_rest() {
     let asked = hit(&Target::Do, &mut ui, &with);
     assert_eq!(asked, [Command::Workspace(workspace::Command::Commit)]);
 }
+
+#[test]
+fn a_click_in_the_message_puts_the_caret_where_it_landed() {
+    let mut app = listed(&[file("a.txt", true)]);
+    app.workspace
+        .message
+        .edit(&groove_types::Edit::Insert("fix(a): it\nthe body".into()));
+    let mut ui = sidebar();
+    let hits = drawn(&app, &ui);
+    let box_ = hits.rect_of(&Target::Message).expect("the box");
+    let cell = window().cell;
+    let point = (box_.x + cell.width * 4.0, box_.y + cell.height / 2.0);
+    let commands = handle(
+        Input::Press {
+            x: point.0,
+            y: point.1,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Message(
+            groove_types::Edit::Move(groove_types::Motion::To(groove_types::Caret::new(0, 4)))
+        ))],
+        "the caret goes to the fourth character of the first line"
+    );
+}
+
+#[test]
+fn a_click_on_the_second_line_of_the_message_lands_on_it() {
+    let mut app = listed(&[file("a.txt", true)]);
+    app.workspace
+        .message
+        .edit(&groove_types::Edit::Insert("fix(a): it\nthe body".into()));
+    let mut ui = sidebar();
+    let hits = drawn(&app, &ui);
+    let box_ = hits.rect_of(&Target::Message).expect("the box");
+    let line = crate::tokens::Tokens::new(1.0).line;
+    let x = box_.x + window().cell.width * 2.0;
+    let commands = handle(
+        Input::Press {
+            x,
+            y: box_.y + line * 1.5,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert_eq!(
+        commands,
+        [Command::Workspace(workspace::Command::Message(
+            groove_types::Edit::Move(groove_types::Motion::To(groove_types::Caret::new(1, 2)))
+        ))]
+    );
+}
