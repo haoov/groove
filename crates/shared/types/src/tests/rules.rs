@@ -1,6 +1,6 @@
 use crate::{
-    AgentStatus, ApprovalId, Ask, Attention, AttentionClass, CiState, Day, DiffLine, ExternalId,
-    LineKind, MrFacts, MrState, Session, SessionActivity, SessionId, SessionKind, Span, TaskDates,
+    AgentStatus, ApprovalId, Ask, Attention, AttentionClass, CiState, Day, ExternalId, MrFacts,
+    MrState, Row, RowKind, Session, SessionActivity, SessionId, SessionKind, Span, TaskDates,
     Thresholds, Timestamp, attention, names_session, word_diff_pairs,
 };
 
@@ -29,18 +29,18 @@ fn only_this_sessions_own_branch_names_it() {
     assert!(!names_session("fix/other-gh-groove-49", &s, None));
 }
 
-fn line(kind: LineKind) -> DiffLine {
-    DiffLine {
-        num: 0,
-        content: String::new(),
+fn line(kind: RowKind) -> Row {
+    Row {
+        old: None,
+        new: None,
         kind,
     }
 }
 
 #[test]
 fn word_diff_pairs_only_one_for_one_runs() {
-    use LineKind::{Add, Ctx, Del};
-    let lines: Vec<DiffLine> = [
+    use RowKind::{Added as Add, Context as Ctx, Removed as Del};
+    let lines: Vec<Row> = [
         Ctx, Del, Del, Add, Add, Ctx, Del, Add, Add, Ctx, Add, Del, Add,
     ]
     .into_iter()

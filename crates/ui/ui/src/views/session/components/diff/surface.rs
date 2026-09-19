@@ -72,6 +72,7 @@ fn surface(
             let line = Line::new(&row.text)
                 .gutters(&gutters[at])
                 .spans(&row.spans)
+                .words(&row.words, ctx.styles.word(row.kind, row.mark))
                 .found(&row.found)
                 .standing(row.standing);
             let line = line

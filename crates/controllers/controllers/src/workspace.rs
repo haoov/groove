@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{Edit, Error, ErrorKind, Result, Selection, WorktreeId};
 use groove_workspace_service::{
-    Buffer, Derived, Document, Opened, Search, changes, derived, opened, painted, reopened, summary,
+    Buffer, Derived, Document, Opened, Search, by_line, changes, derived, opened, painted,
+    reopened, summary,
 };
 
 use crate::spawn::coalesced;
@@ -53,8 +54,6 @@ pub enum Command {
     Push,
     /// `workspace.pull`: origin's own head, fast-forward only.
     Pull,
-    /// `workspace.rebase`: the branch replayed on the ref it forks from.
-    Rebase,
     /// `workspace.discard_all`: every change in the worktree, thrown away.
     DiscardAll,
 }
@@ -80,7 +79,6 @@ impl Command {
             Command::Commit => "workspace.commit",
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
-            Command::Rebase => "workspace.rebase",
             Command::DiscardAll => "workspace.discard_all",
         }
     }
@@ -111,7 +109,6 @@ pub fn dispatch(
         Command::Commit => commit(state, spawner),
         Command::Push => remote(state, spawner, Remote::Push),
         Command::Pull => remote(state, spawner, Remote::Pull),
-        Command::Rebase => remote(state, spawner, Remote::Rebase),
         Command::DiscardAll => discard_all(state, spawner),
     }
 }
@@ -265,6 +262,7 @@ fn took(state: &mut AppState, path: String, read: Derived, revision: u64) {
     }
     open.rows = read.aligned.rows.clone();
     open.marks = read.aligned.marks.clone();
+    open.words = by_line(&read.aligned.rows, &read.aligned.words);
     state.workspace.changes.replace(read.aligned);
 }
 
@@ -348,7 +346,6 @@ fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
 enum Remote {
     Push,
     Pull,
-    Rebase,
 }
 
 impl Remote {
@@ -356,7 +353,6 @@ impl Remote {
         match self {
             Remote::Push => "pushing",
             Remote::Pull => "pulling",
-            Remote::Rebase => "rebasing",
         }
     }
 }
@@ -379,9 +375,6 @@ fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
         let done = match act {
             Remote::Push => groove_workspace_service::push(&dir, &worktree.branch).await,
             Remote::Pull => groove_workspace_service::pull(&dir).await,
-            Remote::Rebase => {
-                groove_workspace_service::rebase(&dir, worktree.base_ref.clone()).await
-            }
         };
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {

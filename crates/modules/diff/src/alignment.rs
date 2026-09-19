@@ -1,8 +1,14 @@
 use std::collections::BTreeMap;
+use std::ops::Range;
 
 use groove_text::Document;
-use groove_types::{LineMark, Row, RowKind};
+use groove_types::{LineMark, Row, RowKind, word_diff_pairs};
 use imara_diff::{Algorithm, Diff, InternedInput, Interner, Token};
+
+use crate::words::between;
+
+/// The columns a row draws that the row it pairs with does not, by row.
+pub type Words = BTreeMap<usize, Vec<Range<usize>>>;
 
 /// Unchanged lines kept either side of a change.
 pub const CONTEXT: u32 = 3;
@@ -127,6 +133,39 @@ fn tokens<'a>(document: &'a Document, interner: &mut Interner<Line<'a>>) -> Vec<
 
 fn lines(document: &Document) -> u32 {
     document.lines() as u32
+}
+
+/// What each row of a pair says that the other does not, in the columns it draws.
+pub fn words(rows: &[Row], old: &Document, new: &Document) -> Words {
+    let mut words = Words::new();
+    for (gone, came) in word_diff_pairs(rows) {
+        let (Some(before), Some(after)) = (line(old, rows[gone].old), line(new, rows[came].new))
+        else {
+            continue;
+        };
+        let (left, right) = between(&before, &after);
+        keep(&mut words, gone, left);
+        keep(&mut words, came, right);
+    }
+    words
+}
+
+/// The same, by the line of the new file a row shows.
+pub fn by_line(rows: &[Row], words: &Words) -> BTreeMap<u32, Vec<Range<usize>>> {
+    words
+        .iter()
+        .filter_map(|(at, ranges)| Some((rows.get(*at)?.new?, ranges.clone())))
+        .collect()
+}
+
+fn keep(words: &mut Words, at: usize, ranges: Vec<Range<usize>>) {
+    if !ranges.is_empty() {
+        words.insert(at, ranges);
+    }
+}
+
+fn line(document: &Document, at: Option<u32>) -> Option<String> {
+    Some(document.line(at? as usize)?.to_string())
 }
 
 /// What each line of the new file did, by walking the changes either side of it.

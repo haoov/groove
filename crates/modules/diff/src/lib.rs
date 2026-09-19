@@ -5,11 +5,12 @@ mod alignment;
 mod changes;
 mod opened;
 mod summary;
+mod words;
 
 #[cfg(test)]
 mod tests;
 
-pub use alignment::{CONTEXT, align, marks};
+pub use alignment::{CONTEXT, Words, align, by_line, marks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use groove_text::{Buffer, Document};
 

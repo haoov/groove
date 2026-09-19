@@ -365,13 +365,9 @@ fn the_box_offers_the_worktree_s_own_actions() {
 }
 
 #[test]
-fn push_pull_and_rebase_are_asked_for_on_the_spot() {
+fn push_and_pull_are_asked_for_on_the_spot() {
     let app = listed(&[file("a.txt", false)]);
-    for (at, wanted) in [
-        (0, workspace::Command::Push),
-        (1, workspace::Command::Pull),
-        (2, workspace::Command::Rebase),
-    ] {
+    for (at, wanted) in [(0, workspace::Command::Push), (1, workspace::Command::Pull)] {
         let mut ui = sidebar();
         hit(&Target::Actions, &mut ui, &app);
         let asked = hit(&Target::MenuRow(at), &mut ui, &app);
@@ -385,7 +381,7 @@ fn discarding_everything_is_asked_in_the_box_before_it_is_done() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
     hit(&Target::Actions, &mut ui, &app);
-    let taken = hit(&Target::MenuRow(3), &mut ui, &app);
+    let taken = hit(&Target::MenuRow(2), &mut ui, &app);
     assert!(taken.is_empty(), "nothing is thrown away on the spot");
     assert_eq!(ui.discarding, Some(crate::Losing::Everything));
     assert!(
@@ -490,7 +486,7 @@ fn a_menu_row_is_as_wide_as_what_it_says() {
     hit(&Target::Actions, &mut ui, &app);
     let hits = drawn(&app, &ui);
     let row = hits
-        .rect_of(&Target::MenuRow(3))
+        .rect_of(&Target::MenuRow(2))
         .expect("discard every change");
     let mut fonts = Fonts::embedded();
     let (frame, _) = view(&app, &ui, window(), &mut fonts);

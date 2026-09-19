@@ -3,7 +3,7 @@
 use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
 use groove_types::{Capture, LineMark, RowKind, ThemeName};
 
-use crate::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens};
+use crate::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens, WORD_ALPHA};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,6 +142,16 @@ impl Styles {
             RowKind::Added => tint(self.palette.green),
             RowKind::Removed => tint(self.palette.red),
             _ => None,
+        }
+    }
+
+    /// Over the ground, where a row and the one it pairs with differ.
+    pub fn word(&self, kind: RowKind, mark: Option<LineMark>) -> Option<Color> {
+        let tint = |color: Color| Some(color.with_alpha(WORD_ALPHA));
+        match kind {
+            RowKind::Added => tint(self.palette.green),
+            RowKind::Removed => tint(self.palette.red),
+            _ => mark.map(|mark| self.mark(mark).with_alpha(WORD_ALPHA)),
         }
     }
 

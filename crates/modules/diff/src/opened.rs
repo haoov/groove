@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
+use std::ops::Range;
 use std::path::Path;
 
 use groove_git::Git;
 use groove_text::{Buffer, Document, Settled};
 use groove_types::{LineMark, Result, Row};
 
-use crate::alignment::{CONTEXT, align, marks};
+use crate::alignment::{CONTEXT, align, by_line, marks, words};
 use crate::changes::{Aligned, text_of};
 
 /// Above this a file is listed as changed and not shown.
@@ -21,6 +22,8 @@ pub struct Opened {
     pub rows: Vec<Row>,
     /// What the change did to each line of the new file.
     pub marks: BTreeMap<u32, LineMark>,
+    /// The columns of a changed line the old one does not have.
+    pub words: BTreeMap<u32, Vec<Range<usize>>>,
     /// Too long to align; the view says so instead of drawing it.
     pub long: bool,
 }
@@ -53,6 +56,7 @@ fn from_parts(path: &str, old: Document, after: &str) -> Opened {
     Opened {
         path: path.to_string(),
         marks: marks(&rows),
+        words: by_line(&rows, &words(&rows, &old, &new)),
         old,
         new: Buffer::new(new),
         rows,
@@ -72,6 +76,7 @@ pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
     let aligned = Aligned {
         lines: rows.iter().map(|row| text_of(old, &new, row)).collect(),
         marks: marks(&rows),
+        words: words(&rows, old, &new),
         path: path.to_string(),
         indent: new.indent().width(),
         long: false,

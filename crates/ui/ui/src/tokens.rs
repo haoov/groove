@@ -6,6 +6,8 @@ pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
 pub const GROUND_ALPHA: u8 = 38;
+/// The words of a row its pair does not have, over that ground.
+pub const WORD_ALPHA: u8 = 96;
 
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;

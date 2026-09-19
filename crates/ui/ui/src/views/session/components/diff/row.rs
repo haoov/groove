@@ -43,6 +43,8 @@ pub(super) struct Drawn {
     pub(super) file: Option<String>,
     /// What a search found on this row, in the columns the row draws.
     pub(super) found: Vec<(usize, usize)>,
+    /// The columns the row it pairs with does not have.
+    pub(super) words: Vec<(usize, usize)>,
     /// The one of them the search stands on.
     pub(super) standing: Option<(usize, usize)>,
 }
@@ -96,6 +98,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                     .map(|on| display_at(&text, on.column, width)),
                 held: held(file, ui, at),
                 mark: file.marks.get(&(at as u32)).copied(),
+                words: columns_in(file.words.get(&(at as u32)), &text, width),
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
                 ..Drawn::default()
@@ -121,6 +124,17 @@ fn standing(ui: &Ui, row: usize, text: &str, width: usize) -> Option<(usize, usi
     let find = ui.session.find.as_ref().filter(|_| !text.is_empty())?;
     let at = find.standing(row)?;
     Some(columns_of(at, text, width))
+}
+
+/// Character ranges as the columns the row draws; a blank side draws none.
+fn columns_in(ranges: Option<&Vec<Range<usize>>>, text: &str, width: usize) -> Vec<(usize, usize)> {
+    let Some(ranges) = ranges.filter(|_| !text.is_empty()) else {
+        return Vec::new();
+    };
+    ranges
+        .iter()
+        .map(|at| columns_of(at.clone(), text, width))
+        .collect()
 }
 
 fn columns_of(at: Range<usize>, text: &str, width: usize) -> (usize, usize) {
@@ -262,6 +276,7 @@ fn one(
     let spans = spans_of(colours, side, line);
     let (drawn, spans) = shown(&text, &spans, file.indent);
     Drawn {
+        words: columns_in(file.words.get(&at), &text, file.indent),
         found: matched(ui, on, &text, file.indent),
         standing: standing(ui, on, &text, file.indent),
         text: drawn,

@@ -3,7 +3,8 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, Opened, aligned, columns, display_at, from_text, shown,
+    Aligned, At, Changes, Derived, Document, Opened, Words, aligned, by_line, columns, display_at,
+    from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
 pub use groove_grep::{Found, Search};
@@ -276,14 +277,6 @@ pub async fn push(dir: &Path, branch: &str) -> Result<()> {
 
 pub async fn pull(dir: &Path) -> Result<()> {
     groove_git::Git::at(dir).pull().await?;
-    Ok(())
-}
-
-/// The branch replayed on the ref it forks from.
-pub async fn rebase(dir: &Path, base: Option<String>) -> Result<()> {
-    let git = groove_git::Git::at(dir);
-    let onto = git.base_ref(base.as_deref()).await?;
-    git.rebase(&onto).await?;
     Ok(())
 }
 

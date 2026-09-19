@@ -182,7 +182,7 @@ text. Four rules, measured rather than assumed:
 | `workspace.copy` · `workspace.cut` · `workspace.paste` | what the carets hold, through the desktop's clipboard |
 | `workspace.stage` · `workspace.unstage` · `workspace.discard` | one path, never more than the row it came from |
 | `workspace.message` · `workspace.commit` | the box's own buffer, and the index it spends |
-| `workspace.push` · `workspace.pull` · `workspace.rebase` | the box's actions menu; HEAD may move, so all of it is read again |
+| `workspace.push` · `workspace.pull` | the box's actions menu; HEAD may move, so all of it is read again |
 | `workspace.discard_all` | every changed path, asked for in the box first |
 | `workspace.save_file` | write; the buffer keeps its place and its history |
 | `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | as today |
@@ -232,15 +232,16 @@ the parsers, the actions. **Service `workspace`** holds the status of the select
 worktree and the conflict list.
 
 The commit box in the sidebar commits the index; stage and unstage per file are UI
-actions on functions that exist. The commit box's actions menu: push, pull, rebase,
-discard all. A rebase that stops on conflicts reports the files and offers continue
-and abort, as today. Not in the first cut: conflict resolution in the workspace.
+actions on functions that exist. The commit box's actions menu: push, pull, discard
+all. A rebase comes back with conflict resolution, since one without the other leaves
+the worktree in a state the app cannot show.
 
 | Controller | Does |
 |---|---|
 | `workspace.stage` · `workspace.unstage` | a file, or all |
 | `workspace.commit` | the index, with the message |
-| `workspace.push` · `workspace.pull` · `workspace.rebase` · `workspace.rebase_continue` · `workspace.rebase_abort` | as today |
+| `workspace.push` · `workspace.pull` | as today |
+| `workspace.rebase` · `workspace.rebase_continue` · `workspace.rebase_abort` | with conflict resolution, not before |
 | `workspace.discard` · `workspace.discard_all` | as today |
 
 From the agent, every one of these goes through `approvals` unless auto-approve is on.

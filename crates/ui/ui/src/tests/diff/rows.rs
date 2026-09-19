@@ -102,3 +102,44 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .count();
     assert_eq!(panels, 1, "one band, the height of a row");
 }
+
+#[test]
+fn a_changed_row_shades_the_word_that_changed_and_not_the_rest() {
+    let app = opened();
+    let ui = on_diff();
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let shaded = |kind| {
+        let color = styles.word(kind, None).expect("a word colour");
+        frame.layers()[0]
+            .quads
+            .iter()
+            .filter(|quad| quad.color == color)
+            .map(|quad| quad.rect.w)
+            .collect::<Vec<f32>>()
+    };
+    let added = shaded(groove_types::RowKind::Added);
+    let removed = shaded(groove_types::RowKind::Removed);
+    assert_eq!(added.len(), 1, "one word on the new side: {added:?}");
+    assert_eq!(removed.len(), 1, "and one on the old");
+    let row = crate::layout::Layout::of(window(), &ui).workspace.w;
+    assert!(added[0] < row / 4.0, "the word only: {added:?}");
+}
+
+#[test]
+fn the_file_view_shades_what_changed_inside_a_changed_line() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let color = styles
+        .word(groove_types::RowKind::Context, Some(LineMark::Changed))
+        .expect("a word colour");
+    let shaded = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == color)
+        .count();
+    assert_eq!(shaded, 1, "the one word the change touched");
+}

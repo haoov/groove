@@ -43,7 +43,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = config_state.worktree_root(&env.home);
     let services = runtime.block_on(services(&env, &root))?;
     let config = config_state.config;
-    let mut app = app::App::new(spawner, services, env, config, explore);
+    let panes =
+        groove_config::panes::load(&groove_config::panes::path(&env.data_dir)).unwrap_or_default();
+    let mut app = app::App::new(spawner, services, env, config, panes, explore);
     event_loop.run_app(&mut app)?;
     let result = app.into_result();
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));

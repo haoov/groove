@@ -214,7 +214,8 @@ entirely when collapsed.
 
 **Commit box.** In the sidebar under the changed files, since it acts on the staged
 set the list shows: git status, message, commit, and an actions menu — push, pull,
-rebase, discard all. Commit commits the index. The message is typed on the same
+discard all. A rebase waits for conflict resolution, which is its own feature.
+Commit commits the index. The message is typed on the same
 buffer a file is, so a caret, a selection and an undo work there too; Enter is a line
 of the message and `ctrl+Enter` commits.
 

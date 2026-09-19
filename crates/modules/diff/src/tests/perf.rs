@@ -51,3 +51,31 @@ fn time_reading_a_file() {
         println!("{lines:>5} lines: open {full:?}, reopen {again:?}");
     }
 }
+
+/// The word diff's own worst case: every line of the file changed, one word each.
+#[test]
+#[ignore]
+fn time_aligning_a_file_changed_line_by_line() {
+    for lines in [300, 3000] {
+        let before = source(lines);
+        let after = before.replace("value +", "value *");
+        let started = Instant::now();
+        for _ in 0..RUNS {
+            crate::aligned("src/big.rs", &before, &after);
+        }
+        let whole = started.elapsed() / RUNS;
+        let (old, new) = (
+            crate::Document::plain("src/big.rs", &before),
+            crate::Document::plain("src/big.rs", &after),
+        );
+        let rows = crate::align(&old, &new, crate::CONTEXT);
+        let started = Instant::now();
+        for _ in 0..RUNS {
+            crate::alignment::words(&rows, &old, &new);
+        }
+        println!(
+            "{lines:>5} lines: align {whole:?}, of it words {:?}",
+            started.elapsed() / RUNS
+        );
+    }
+}

@@ -1163,6 +1163,7 @@ dependencies = [
 name = "groove"
 version = "0.1.0"
 dependencies = [
+ "groove-config",
  "groove-controllers",
  "groove-db",
  "groove-gfx",

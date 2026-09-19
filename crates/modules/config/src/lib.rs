@@ -1,6 +1,7 @@
 //! The config file. `Config` in `types` is its shape; this is its place on disk.
 
 mod error;
+pub mod panes;
 
 #[cfg(test)]
 mod tests;

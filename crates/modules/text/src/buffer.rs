@@ -146,7 +146,7 @@ impl Buffer {
     pub fn edit(&mut self, edit: &Edit) {
         match edit {
             Edit::Insert(text) => self.write(text),
-            Edit::Newline => self.write("\n"),
+            Edit::Newline => self.broke(),
             Edit::Indent => self.write(&self.doc.indent().text()),
             Edit::Backspace => self.erase(Motion::Left),
             Edit::Delete => self.erase(Motion::Right),
@@ -158,6 +158,30 @@ impl Buffer {
             Edit::Undo => self.step(History::undo),
             Edit::Redo => self.step(History::redo),
         }
+    }
+
+    /// A new line at every caret, under the one it leaves: what a reader writes next
+    /// starts where the line above it starts.
+    fn broke(&mut self) {
+        let changes = self.at_each(|buffer, one| {
+            let range = buffer.range(one);
+            Some(Change {
+                at: range.start,
+                removed: buffer.doc.slice(range),
+                inserted: format!("\n{}", buffer.leading(one.head.line)),
+            })
+        });
+        self.apply(changes);
+    }
+
+    /// The whitespace a line opens with, up to where its text begins.
+    fn leading(&self, line: usize) -> String {
+        self.doc
+            .line(line)
+            .unwrap_or_default()
+            .chars()
+            .take_while(|c| *c == ' ' || *c == '\t')
+            .collect()
     }
 
     /// Puts `text` in at every caret, over whatever it had selected.

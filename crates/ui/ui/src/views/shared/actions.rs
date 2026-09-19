@@ -11,7 +11,7 @@ use crate::{Corner, Losing, Menu, Of, Ui};
 pub const FILE: [&str; 1] = ["discard changes"];
 
 /// The actions of the worktree, from the commit box.
-pub const WORKTREE: [&str; 4] = ["push", "pull", "rebase", "discard every change"];
+pub const WORKTREE: [&str; 3] = ["push", "pull", "discard every change"];
 
 pub fn rows(of: &Of) -> &'static [&'static str] {
     match of {
@@ -46,7 +46,6 @@ pub fn picked(of: &Of, at: usize) -> (Vec<Command>, Option<Losing>) {
         (Of::Worktree, Some(&"discard every change")) => (Vec::new(), Some(Losing::Everything)),
         (Of::Worktree, Some(&"push")) => commanded(workspace::Command::Push),
         (Of::Worktree, Some(&"pull")) => commanded(workspace::Command::Pull),
-        (Of::Worktree, Some(&"rebase")) => commanded(workspace::Command::Rebase),
         _ => (Vec::new(), None),
     }
 }

@@ -147,25 +147,26 @@ pub struct BlameLine {
     pub uncommitted: bool,
 }
 
-/// The `(del, add)` index pairs that get a word diff: a run of deletions followed
-/// by a run of additions of the same length, paired in order. Anything else is none.
-pub fn word_diff_pairs(lines: &[DiffLine]) -> Vec<(usize, usize)> {
+/// The `(removed, added)` row pairs that get a word diff: a run of removed rows
+/// followed by a run of added rows of the same length, paired in order. Anything
+/// else is none.
+pub fn word_diff_pairs(rows: &[Row]) -> Vec<(usize, usize)> {
     let mut pairs = Vec::new();
-    let mut i = 0;
-    while i < lines.len() {
-        let dels = run(lines, i, LineKind::Del);
-        let adds = run(lines, i + dels, LineKind::Add);
-        if dels > 0 && dels == adds {
-            pairs.extend((0..dels).map(|k| (i + k, i + dels + k)));
+    let mut at = 0;
+    while at < rows.len() {
+        let gone = run(rows, at, RowKind::Removed);
+        let came = run(rows, at + gone, RowKind::Added);
+        if gone > 0 && gone == came {
+            pairs.extend((0..gone).map(|k| (at + k, at + gone + k)));
         }
-        i += (dels + adds).max(1);
+        at += (gone + came).max(1);
     }
     pairs
 }
 
-fn run(lines: &[DiffLine], from: usize, kind: LineKind) -> usize {
-    lines[from.min(lines.len())..]
+fn run(rows: &[Row], from: usize, kind: RowKind) -> usize {
+    rows[from.min(rows.len())..]
         .iter()
-        .take_while(|l| l.kind == kind)
+        .take_while(|row| row.kind == kind)
         .count()
 }

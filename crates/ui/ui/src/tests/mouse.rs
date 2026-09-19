@@ -386,3 +386,28 @@ fn each_picker_opens_under_itself() {
         );
     }
 }
+
+#[test]
+fn the_boundaries_a_run_left_come_back_where_they_stood() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    click(rail_edge(&hits), &mut ui, &app, &hits);
+    drag(300.0, &mut ui, &app, &hits);
+    release(&mut ui, &app, &hits);
+    let kept = ui.split.panes();
+    assert_eq!(Split::of(kept), ui.split);
+}
+
+#[test]
+fn a_column_narrower_than_its_minimum_opens_at_it() {
+    let panes = groove_types::Panes {
+        rail: 1.0,
+        agent: 1.0,
+        sidebar: 1.0,
+        commit: 1.0,
+    };
+    let split = Split::of(panes);
+    assert_eq!(split.rail, RAIL_MIN);
+    assert_eq!(split.agent, AGENT_MIN);
+}

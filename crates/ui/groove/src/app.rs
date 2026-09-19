@@ -6,9 +6,9 @@ use groove_controllers::{
     dispatch, session, workspace,
 };
 use groove_gfx::{Fonts, Renderer, Size};
-use groove_types::{AttentionClass, Config, Timestamp};
+use groove_types::{AttentionClass, Config, Panes, Timestamp};
 use groove_ui::input::{Delta, Input};
-use groove_ui::{Cursor, Hits, Metrics, Ui};
+use groove_ui::{Cursor, Hits, Metrics, Split, Ui};
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow};
@@ -43,15 +43,20 @@ impl App {
         services: Services,
         env: Env,
         config: Option<Config>,
+        panes: Option<Panes>,
         explore: bool,
     ) -> Self {
         let mut state = AppState::new(env);
         state.config.config = config;
+        let ui = Ui {
+            split: panes.map(Split::of).unwrap_or_default(),
+            ..Ui::default()
+        };
         Self {
             window: None,
             renderer: None,
             state,
-            ui: Ui::default(),
+            ui,
             spawner,
             services,
             modifiers: ModifiersState::empty(),
@@ -192,6 +197,14 @@ impl App {
         }
     }
 
+    /// Where the drag left the boundaries, for the next run.
+    fn keep_panes(&mut self) {
+        let path = groove_config::panes::path(&self.state.env.data_dir);
+        if let Err(e) = groove_config::panes::save(&path, &self.ui.split.panes()) {
+            self.state.errors.push(e.into());
+        }
+    }
+
     fn apply(&mut self, event: Event) {
         apply(event, &mut self.state);
         self.redraw();
@@ -313,7 +326,13 @@ impl ApplicationHandler<Message> for App {
                 state: ElementState::Released,
                 button: MouseButton::Left,
                 ..
-            } => self.input(Input::Release),
+            } => {
+                let dragged = self.ui.dragging();
+                self.input(Input::Release);
+                if dragged {
+                    self.keep_panes();
+                }
+            }
             _ => {}
         }
     }

@@ -338,3 +338,37 @@ fn the_last_line_is_taken_without_a_break_it_does_not_have() {
     );
     assert_eq!(buffer.selected(), "two");
 }
+
+#[test]
+fn a_new_line_starts_where_the_one_above_it_starts() {
+    let mut buffer = buffer("fn one() {\n    let value = 1;\n}\n");
+    edit(&mut buffer, &[Edit::Move(Motion::To(Caret::new(1, 18)))]);
+    edit(&mut buffer, &[Edit::Newline]);
+    edit(&mut buffer, &typed("let other = 2;"));
+    assert_eq!(
+        text(&buffer),
+        "fn one() {\n    let value = 1;\n    let other = 2;\n}\n",
+        "the indent of the line it left"
+    );
+    assert_eq!(buffer.caret(), Caret::new(2, 18), "the caret is past it");
+}
+
+#[test]
+fn a_new_line_under_one_with_no_indent_takes_none() {
+    let mut buffer = buffer("one\n");
+    edit(&mut buffer, &[Edit::Move(Motion::LineEnd), Edit::Newline]);
+    edit(&mut buffer, &typed("two"));
+    assert_eq!(text(&buffer), "one\ntwo\n");
+}
+
+#[test]
+fn breaking_a_line_carries_its_indent_to_what_follows() {
+    let mut buffer = buffer("\tlet value = 1;\n");
+    edit(&mut buffer, &[Edit::Move(Motion::To(Caret::new(0, 5)))]);
+    edit(&mut buffer, &[Edit::Newline]);
+    assert_eq!(
+        text(&buffer),
+        "\tlet \n\tvalue = 1;\n",
+        "a tab is an indent like any other"
+    );
+}

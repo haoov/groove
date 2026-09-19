@@ -4,6 +4,7 @@
 //! sidebar. The session header is the workspace's first line.
 
 use groove_gfx::{CellSize, Rect, Size};
+use groove_types::Panes;
 
 use crate::Ui;
 use crate::ctx::Metrics;
@@ -58,6 +59,25 @@ impl Default for Split {
 }
 
 impl Split {
+    /// What a past run left, no column under its minimum.
+    pub fn of(panes: Panes) -> Self {
+        Self {
+            rail: panes.rail.max(RAIL_MIN),
+            agent: panes.agent.max(AGENT_MIN),
+            sidebar: panes.sidebar.max(SIDEBAR_MIN),
+            commit: panes.commit.max(COMMIT_MIN),
+        }
+    }
+
+    pub fn panes(&self) -> Panes {
+        Panes {
+            rail: self.rail,
+            agent: self.agent,
+            sidebar: self.sidebar,
+            commit: self.commit,
+        }
+    }
+
     /// Puts `edge` at `x`, moving only the two columns it stands between, and no
     /// column under its minimum. Logical pixels throughout.
     pub fn drag(&mut self, edge: Edge, at: f32, window: (f32, f32), sidebar: bool) {

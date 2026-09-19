@@ -7,7 +7,7 @@ use groove_git::Git;
 use groove_text::Document;
 use groove_types::{FileDiff, LineMark, Row, RowKind};
 
-use crate::alignment::{CONTEXT, align, marks};
+use crate::alignment::{CONTEXT, Words, align, marks, words};
 use crate::opened::MAX_SHOWN_BYTES;
 
 /// One changed file: how its sides line up, and what each row shows.
@@ -18,6 +18,8 @@ pub struct Aligned {
     /// One per row, in the row's own order.
     pub lines: Vec<String>,
     pub marks: BTreeMap<u32, LineMark>,
+    /// The columns a row draws that the row it pairs with does not.
+    pub words: Words,
     /// How wide a tab reads in this file.
     pub indent: usize,
     /// Too long to align; the surface says so instead of drawing it.
@@ -240,6 +242,7 @@ pub fn aligned(path: &str, before: &str, after: &str) -> Aligned {
     Aligned {
         lines: rows.iter().map(|row| text_of(&old, &new, row)).collect(),
         marks: marks(&rows),
+        words: words(&rows, &old, &new),
         path: path.to_string(),
         rows,
         indent,
