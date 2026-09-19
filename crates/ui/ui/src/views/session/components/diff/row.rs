@@ -175,13 +175,13 @@ fn one(
         Side::Old => row.old,
         Side::New => row.new,
     };
+    let here = open(app).filter(|open| open.path == file.path);
     let text = match blank(row, view, side) {
         true => String::new(),
-        false => file.lines[at].clone(),
+        false => live(here, side, line).unwrap_or_else(|| file.lines[at].clone()),
     };
     let spans = spans_of(colours, side, line);
     let (drawn, spans) = shown(&text, &spans, file.indent);
-    let here = open(app).filter(|open| open.path == file.path);
     Drawn {
         text: drawn,
         spans,
@@ -192,6 +192,16 @@ fn one(
         mark: None,
         head: false,
     }
+}
+
+/// The row's line as the buffer holds it now, for the file being edited.
+fn live(open: Option<&Opened>, side: Side, line: Option<u32>) -> Option<String> {
+    let (open, line) = (open?, line? as usize);
+    let text = match side {
+        Side::Old => open.old.line(line),
+        Side::New => open.new.line(line),
+    };
+    Some(text?.to_string())
 }
 
 /// A row with nothing on this side shows nothing, whatever its own side holds.

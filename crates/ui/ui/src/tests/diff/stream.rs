@@ -80,3 +80,20 @@ fn the_header_names_the_file_the_surface_stands_in() {
     let drawn = texts(&app, &ui);
     assert!(drawn.iter().any(|text| text.ends_with("b.rs")), "{drawn:?}");
 }
+
+#[test]
+fn a_keystroke_shows_in_the_stream_before_the_rows_are_aligned_again() {
+    use groove_types::{Edit, Motion};
+
+    let mut app = opened();
+    let mut ui = on_diff();
+    ui.focus = crate::Focus::Workspace;
+    let buffer = &mut app.workspace.opened.as_mut().expect("the open file").new;
+    buffer.edit(&Edit::Move(Motion::To(Caret::new(0, 0))));
+    buffer.edit(&Edit::Insert("typed".into()));
+    let drawn = texts(&app, &ui);
+    assert!(
+        drawn.iter().any(|text| text.starts_with("typed")),
+        "the rows read the buffer, not the last alignment: {drawn:?}"
+    );
+}
