@@ -37,6 +37,11 @@ on one-for-one pairs.
 
 Tree-sitter forces this shape: a hunk parses as garbage on its own, because it starts
 mid-expression. Only whole files colour correctly, and search wants the same positions.
+The tree is whole-file, the query is not: a document holds no colours, and the frame
+asks the tree what the rows on screen mean. 0.3ms for 40 rows, whatever the file holds,
+against 20ms for a whole 3000-line file and 227ms for 30000. A node that opens above
+the window still colours the rows inside it, because the query takes every node its
+range touches.
 
 **Module `diff`**, on `git` and `text`: the three modes, the summary, the alignment,
 untracked handling, commits, blame, expansion, the fetch throttle. The cache goes; one
@@ -153,10 +158,13 @@ git's working noise.
 text. Four rules, measured rather than assumed:
 
 - **The buffer answers at once, what it implies follows.** A keystroke costs the rope
-  edit and a shift of the colours already read: 5µs at 300 lines, 29µs at 3000.
-  Reading the colours again costs 5.6ms and 45ms, and the alignment as much, so both
-  are read in a job and installed only if the buffer has not moved on. One read is
-  out at a time; a read that lands stale starts the next one.
+  edit and a shift of the tree's nodes: 4µs, whatever the file holds. The parse that
+  makes the tree right again costs 1.8ms at 3000 lines from the tree it already has,
+  and the alignment as much, so both run in a job and install only if the buffer has
+  not moved on. One read is out at a time; a read that lands stale starts the next one.
+  The job earns its keep on one text in a hundred: a letter typed before a top-level
+  `fn` costs the Rust grammar 193ms at 3000 lines, and a cold parse of that same text
+  costs the same, so nothing but a job can hide it.
 - **A dirty buffer outranks the disk.** While the buffer owes the disk, a write under
   the worktree refreshes the summary and leaves the buffer alone. A save clears the
   debt, and the reopen that follows lands.

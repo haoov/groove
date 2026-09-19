@@ -135,7 +135,7 @@ fn the_colours_follow_an_edit_before_they_are_read_again() {
         "every span moved along: {shifted:?}"
     );
     let revision = buffer.revision();
-    buffer.recolour(revision);
+    buffer.reparse(revision);
     assert_eq!(buffer.document().spans(0).len(), before, "read again");
 }
 
@@ -144,7 +144,7 @@ fn a_stale_recolour_is_dropped() {
     let mut buffer = buffer("fn one() {}\n");
     let revision = buffer.revision();
     edit(&mut buffer, &typed("x"));
-    buffer.recolour(revision);
+    buffer.reparse(revision);
     assert_ne!(
         buffer.revision(),
         revision,

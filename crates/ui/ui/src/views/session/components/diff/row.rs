@@ -7,7 +7,7 @@ use groove_controllers::workspace_service::Opened;
 use groove_types::{Caret, DiffView, Highlight, LineMark, Row, RowKind};
 
 use crate::{Focus, Ui};
-use groove_controllers::workspace_service::{display_at, shown};
+use groove_controllers::workspace_service::{Colours, display_at, shown};
 
 /// Which file a row is read from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,9 +56,10 @@ pub(super) fn count(file: &Opened, view: DiffView) -> usize {
 /// The lines of the file as it is now, marked where the change touched them.
 pub(super) fn whole(file: &Opened, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     let caret = caret(ui, file);
+    let colours = file.new.colours(window.clone());
     window
         .map(|at| {
-            let (text, spans) = shown(&text_of(file, at), &file.new.spans(at), width(file));
+            let (text, spans) = shown(&text_of(file, at), colours.of(at), width(file));
             Drawn {
                 text,
                 spans,
@@ -83,10 +84,12 @@ pub(super) fn aligned(
     window: Range<usize>,
 ) -> Vec<Drawn> {
     let caret = caret(ui, file).filter(|_| side == Side::New);
-    file.rows[window]
-        .iter()
+    let rows = &file.rows[window];
+    let (old, new) = bounds(rows);
+    let (old, new) = (file.old.colours(old), file.new.colours(new));
+    rows.iter()
         .map(|row| {
-            let (text, spans) = line(file, row, source(row, view, side));
+            let (text, spans) = line(file, row, source(row, view, side), (&old, &new));
             Drawn {
                 text,
                 spans,
@@ -182,20 +185,38 @@ fn gutters(row: &Row, view: DiffView, side: Side) -> Vec<String> {
     }
 }
 
+/// The lines each side shows in `rows`, as one range a side.
+fn bounds(rows: &[Row]) -> (Range<usize>, Range<usize>) {
+    let ends = |pick: fn(&Row) -> Option<u32>| {
+        let lines = rows.iter().filter_map(pick).map(|at| at as usize);
+        lines.fold(None, |range: Option<Range<usize>>, at| match range {
+            Some(range) => Some(range.start.min(at)..range.end.max(at + 1)),
+            None => Some(at..at + 1),
+        })
+    };
+    let range = |found: Option<Range<usize>>| found.unwrap_or(0..0);
+    (range(ends(|row| row.old)), range(ends(|row| row.new)))
+}
+
 /// The row's line and its colours. The ground says whether it came or went.
-fn line(file: &Opened, row: &Row, side: Side) -> (String, Vec<Highlight>) {
+fn line(
+    file: &Opened,
+    row: &Row,
+    side: Side,
+    colours: (&Colours, &Colours),
+) -> (String, Vec<Highlight>) {
     if let RowKind::Gap(lines) = row.kind {
         return (format!("\u{2026} {lines} lines"), Vec::new());
     }
-    let (document, at) = match side {
-        Side::Old => (&file.old, row.old),
-        Side::New => (file.new.document(), row.new),
+    let (document, at, colours) = match side {
+        Side::Old => (&file.old, row.old, colours.0),
+        Side::New => (file.new.document(), row.new, colours.1),
     };
     let Some(at) = at.map(|at| at as usize) else {
         return (String::new(), Vec::new());
     };
     let text = document.line(at).unwrap_or_default();
-    shown(&text, &document.spans(at), width(file))
+    shown(&text, colours.of(at), width(file))
 }
 
 /// How wide a tab reads in this file.

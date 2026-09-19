@@ -10,6 +10,12 @@ use crate::{Buffer, Document};
 
 const RUNS: u32 = 200;
 
+/// The grammar and its query, compiled before anything is timed.
+fn warm() {
+    let doc = Document::new("src/lib.rs", "fn one() {}\n");
+    assert!(doc.is_highlighted());
+}
+
 fn buffer(lines: usize) -> Buffer {
     Buffer::new(document(lines))
 }
@@ -24,6 +30,7 @@ fn document(lines: usize) -> Document {
 #[test]
 #[ignore]
 fn time_a_keystroke() {
+    warm();
     for lines in [300, 3000, 30_000] {
         let mut buffer = buffer(lines);
         buffer.edit(&Edit::Move(Motion::To(Caret::new(lines / 2, 0))));
@@ -43,32 +50,22 @@ fn time_a_keystroke() {
 
 #[test]
 #[ignore]
-fn time_reading_the_colours_again() {
-    for lines in [300, 3000] {
-        let mut buffer = buffer(lines);
-        let revision = buffer.revision();
-        let started = Instant::now();
-        buffer.recolour(revision);
-        println!(
-            "{lines:>6} lines: {:?} to read the colours",
-            started.elapsed()
-        );
-    }
-}
-
-#[test]
-#[ignore]
-fn time_colouring_a_file() {
-    for lines in [300, 3000] {
+fn time_opening_a_file() {
+    warm();
+    for lines in [300, 3000, 30_000] {
         let text: String = (0..lines)
             .map(|at| format!("fn name_{at}(value: usize) -> usize {{ value + {at} }}\n"))
             .collect();
         let started = Instant::now();
         let doc = Document::new("src/lib.rs", &text);
-        let whole = started.elapsed();
+        let parsed = started.elapsed();
+        let rows = lines / 2..lines / 2 + 40;
+        let started = Instant::now();
+        let window = doc.colours(rows.clone());
         println!(
-            "{lines:>5} lines: {whole:?} to parse and colour, {} spans",
-            doc.spans(0).len() + doc.spans(1).len()
+            "{lines:>6} lines: {parsed:>12?} to parse, {:>12?} to colour 40 rows, {} spans a row",
+            started.elapsed(),
+            window.of(rows.start).len()
         );
     }
 }
@@ -76,6 +73,7 @@ fn time_colouring_a_file() {
 #[test]
 #[ignore]
 fn time_settling_after_a_keystroke() {
+    warm();
     for lines in [300, 3000] {
         for (place, column) in [("a line start", 0), ("mid line", 20)] {
             for typed in ["x", "\""] {
@@ -89,7 +87,7 @@ fn time_settling_after_a_keystroke() {
                     started.elapsed()
                 };
                 let started = Instant::now();
-                doc.recolour();
+                doc.reparse();
                 println!(
                     "{lines:>6} lines, {typed:?} at {place:>12}: {:>12?} settled, {cold:>12?} from cold",
                     started.elapsed()

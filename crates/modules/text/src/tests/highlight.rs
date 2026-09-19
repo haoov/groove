@@ -1,4 +1,4 @@
-use groove_types::{Capture, Caret};
+use groove_types::{Capture, Caret, Highlight};
 
 use crate::Document;
 
@@ -92,8 +92,24 @@ fn an_edited_tree_colours_like_a_fresh_one() {
         let at = doc.char_of(Caret::new(1, 13));
         doc.insert(at, typed);
         doc.remove(at - 4..at - 1);
-        doc.recolour();
+        doc.reparse();
         let fresh = Document::new("src/lib.rs", &doc.text());
         assert_eq!(whole(&doc), whole(&fresh), "after typing {typed:?}");
     }
+}
+
+#[test]
+fn a_window_colours_a_comment_that_starts_above_it() {
+    let doc = Document::new("src/lib.rs", "/* one\ntwo\nthree\nfour */\nfn five() {}\n");
+    let window = doc.colours(2..3);
+    assert_eq!(
+        window.of(2),
+        [Highlight {
+            range: 0..5,
+            capture: Capture::Comment
+        }],
+        "the comment opened two lines above the window"
+    );
+    assert!(window.of(1).is_empty(), "a line the window left out");
+    assert!(window.of(4).is_empty());
 }

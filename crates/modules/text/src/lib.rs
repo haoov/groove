@@ -38,17 +38,28 @@ impl std::fmt::Debug for Document {
 pub struct Document {
     text: Rope,
     language: Option<Language>,
-    spans: Vec<Highlight>,
-    /// The grammar's own tree over the text, as the last read of it left it.
+    /// The grammar's own tree. An edit moves its nodes; a parse makes it right.
     syntax: Option<highlight::Syntax>,
-    /// Edits the text has taken and the tree has not.
-    pending: highlight::Edits,
 }
 
-/// A tree brought up to the text it belongs to, and the colours read from it.
+/// A tree parsed again for the text it belongs to.
 pub struct Settled {
-    spans: Vec<Highlight>,
     syntax: Option<highlight::Syntax>,
+}
+
+/// The colours over a range of lines, each at offsets from its own line's start.
+#[derive(Debug, Default)]
+pub struct Colours {
+    first: usize,
+    lines: Vec<Vec<Highlight>>,
+}
+
+impl Colours {
+    pub fn of(&self, line: usize) -> &[Highlight] {
+        let at = line.checked_sub(self.first);
+        at.and_then(|at| self.lines.get(at))
+            .map_or(&[], Vec::as_slice)
+    }
 }
 
 impl Document {
@@ -60,16 +71,10 @@ impl Document {
             Some(language) if !long => highlight::Syntax::new(&rope, language),
             _ => None,
         };
-        let spans = match &syntax {
-            Some(syntax) => syntax.spans(&rope, 0..rope.len_bytes()),
-            None => Vec::new(),
-        };
         Self {
             text: rope,
             language,
-            spans,
             syntax,
-            pending: Vec::new(),
         }
     }
 
@@ -87,7 +92,7 @@ impl Document {
     }
 
     pub fn is_highlighted(&self) -> bool {
-        !self.spans.is_empty()
+        self.syntax.is_some()
     }
 
     /// Lines as a reader counts them: a trailing newline ends the last one, and an
@@ -119,9 +124,29 @@ impl Document {
 
     /// The line's coloured runs, at offsets from its own start.
     pub fn spans(&self, at: usize) -> Vec<Highlight> {
-        match self.bytes_of(at) {
-            Some(range) => highlight::within(&self.spans, range),
-            None => Vec::new(),
+        self.colours(at..at + 1).of(at).to_vec()
+    }
+
+    /// What the grammar says about `lines`, asked of the tree once.
+    pub fn colours(&self, lines: Range<usize>) -> Colours {
+        let first = lines.start;
+        let last = lines.end.min(self.lines());
+        let Some(syntax) = &self.syntax else {
+            return Colours::default();
+        };
+        let (Some(from), Some(to)) = (self.bytes_of(first), self.bytes_of(last.wrapping_sub(1)))
+        else {
+            return Colours::default();
+        };
+        let found = syntax.spans(&self.text, from.start..to.end);
+        Colours {
+            first,
+            lines: (first..last)
+                .map(|at| match self.bytes_of(at) {
+                    Some(line) => highlight::within(&found, line),
+                    None => Vec::new(),
+                })
+                .collect(),
         }
     }
 
@@ -151,29 +176,29 @@ impl Document {
         }
     }
 
-    /// Puts `text` in at `at` characters, and moves the colours after it along.
+    /// Puts `text` in at `at` characters, and moves the tree along it.
     pub fn insert(&mut self, at: usize, text: &str) {
         let byte = self.text.char_to_byte(at);
         self.text.insert(at, text);
-        highlight::moved(&mut self.spans, byte, 0, text.len());
-        if self.syntax.is_some() {
-            self.pending
-                .push(highlight::inserted(&self.text, byte, text.len()));
-        }
+        let edit = highlight::inserted(&self.text, byte, text.len());
+        self.shift(edit);
     }
 
-    /// Takes `range` out, and moves the colours after it back.
+    /// Takes `range` out, and moves the tree back over it.
     pub fn remove(&mut self, range: Range<usize>) {
         let (start, end) = (
             self.text.char_to_byte(range.start),
             self.text.char_to_byte(range.end),
         );
-        if self.syntax.is_some() {
-            self.pending
-                .push(highlight::removed(&self.text, start, end));
-        }
+        let edit = highlight::removed(&self.text, start, end);
         self.text.remove(range);
-        highlight::moved(&mut self.spans, start, end - start, 0);
+        self.shift(edit);
+    }
+
+    fn shift(&mut self, edit: tree_sitter::InputEdit) {
+        if let Some(syntax) = self.syntax.as_mut() {
+            syntax.shift(edit);
+        }
     }
 
     /// How many characters it holds.
@@ -192,34 +217,22 @@ impl Document {
     }
 
     pub fn install(&mut self, settled: Settled) {
-        self.spans = settled.spans;
         self.syntax = settled.syntax;
-        self.pending.clear();
     }
 
-    /// The tree and the colours brought up to the text, for a job to hand back.
+    /// The tree parsed again for the text it now holds, for a job to hand back.
     pub fn settled(mut self) -> Settled {
-        self.settle();
+        self.reparse();
         Settled {
-            spans: self.spans,
             syntax: self.syntax,
         }
     }
 
     /// The same, on this thread.
-    pub fn recolour(&mut self) {
-        self.settle();
-    }
-
-    fn settle(&mut self) {
+    pub fn reparse(&mut self) {
         if let Some(syntax) = self.syntax.as_mut() {
-            syntax.edited(&self.text, &self.pending);
+            syntax.reparsed(&self.text);
         }
-        self.pending.clear();
-        self.spans = match &self.syntax {
-            Some(syntax) => syntax.spans(&self.text, 0..self.text.len_bytes()),
-            None => Vec::new(),
-        };
     }
 
     /// Every line holding `query`, with where in the line it was found.

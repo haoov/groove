@@ -1,9 +1,9 @@
 //! A document being edited: what its carets own, what it owes the disk, its history.
 
-use groove_types::{Caret, Edit, Highlight, Motion, Selection};
+use groove_types::{Caret, Edit, Motion, Selection};
 
 use crate::history::{Change, History};
-use crate::{Document, Settled};
+use crate::{Colours, Document, Settled};
 
 /// What a character belongs to, for picking out a word.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -71,8 +71,8 @@ impl Buffer {
         self.doc.line(at)
     }
 
-    pub fn spans(&self, at: usize) -> Vec<Highlight> {
-        self.doc.spans(at)
+    pub fn colours(&self, lines: std::ops::Range<usize>) -> Colours {
+        self.doc.colours(lines)
     }
 
     pub fn text(&self) -> String {
@@ -119,10 +119,10 @@ impl Buffer {
         self.history.close();
     }
 
-    /// Reads the colours again, when nothing has changed since `revision`.
-    pub fn recolour(&mut self, revision: u64) {
+    /// Parses again, when nothing has changed since `revision`.
+    pub fn reparse(&mut self, revision: u64) {
         if revision == self.revision {
-            self.doc.recolour();
+            self.doc.reparse();
         }
     }
 

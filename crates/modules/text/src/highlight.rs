@@ -10,8 +10,6 @@ use tree_sitter::{
 
 use crate::language::Language;
 
-pub(crate) type Edits = Vec<InputEdit>;
-
 /// A parsed document: the grammar's own tree over the text.
 #[derive(Clone)]
 pub(crate) struct Syntax {
@@ -27,17 +25,16 @@ impl Syntax {
         Some(Self { language, tree })
     }
 
-    /// Brings the tree up to `edits` already made to `text`.
-    pub(crate) fn edited(&mut self, text: &Rope, edits: &[InputEdit]) {
-        if edits.is_empty() {
-            return;
-        }
+    /// Moves the tree's nodes along an edit, without parsing again.
+    pub(crate) fn shift(&mut self, edit: InputEdit) {
+        self.tree.edit(&edit);
+    }
+
+    /// Parses `text` again, from the tree it already has.
+    pub(crate) fn reparsed(&mut self, text: &Rope) {
         let Some(mut parser) = parser(self.language) else {
             return;
         };
-        for edit in edits {
-            self.tree.edit(edit);
-        }
         if let Some(tree) = parse(&mut parser, text, Some(&self.tree)) {
             self.tree = tree;
         }
@@ -183,33 +180,4 @@ pub(crate) fn within(spans: &[Highlight], line: Range<usize>) -> Vec<Highlight> 
         })
         .filter(|span| !span.range.is_empty())
         .collect()
-}
-
-/// Moves spans along an edit at `at` that took `removed` bytes out and put
-/// `inserted` in. A span the edit lands inside grows or shrinks with it.
-pub(crate) fn moved(spans: &mut Vec<Highlight>, at: usize, removed: usize, inserted: usize) {
-    let end = at + removed;
-    for span in spans.iter_mut() {
-        span.range.start = start_of(span.range.start, at, end, inserted);
-        span.range.end = end_of(span.range.end, at, end, inserted);
-    }
-    spans.retain(|span| !span.range.is_empty());
-}
-
-/// Text put in where a span starts belongs before it, so the span moves along.
-fn start_of(byte: usize, at: usize, end: usize, inserted: usize) -> usize {
-    match byte {
-        _ if byte < at => byte,
-        _ if byte >= end => byte - (end - at) + inserted,
-        _ => at,
-    }
-}
-
-/// Text put in where a span ends belongs after it, so the span keeps its end.
-fn end_of(byte: usize, at: usize, end: usize, inserted: usize) -> usize {
-    match byte {
-        _ if byte <= at => byte,
-        _ if byte >= end => byte - (end - at) + inserted,
-        _ => at,
-    }
 }

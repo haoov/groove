@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub use groove_diff::{Derived, Document, Opened, columns, display_at, from_text, shown};
 pub use groove_editor::{Clipboard, Memory, clipboard};
-pub use groove_text::Buffer;
+pub use groove_text::{Buffer, Colours};
 use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
