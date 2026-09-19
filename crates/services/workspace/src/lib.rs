@@ -127,9 +127,9 @@ pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
     groove_diff::reopened(dir, path, old)
 }
 
-/// The colours and the alignment of text the buffer now holds.
-pub fn derived(path: &str, old: &Document, text: &str) -> Derived {
-    groove_diff::derived(path, old, text)
+/// The colours and the alignment of the document the buffer now holds.
+pub fn derived(old: &Document, new: Document) -> Derived {
+    groove_diff::derived(old, new)
 }
 
 /// What the index holds, and the commit that turns it into history.

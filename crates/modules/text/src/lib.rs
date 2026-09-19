@@ -39,20 +39,37 @@ pub struct Document {
     text: Rope,
     language: Option<Language>,
     spans: Vec<Highlight>,
+    /// The grammar's own tree over the text, as the last read of it left it.
+    syntax: Option<highlight::Syntax>,
+    /// Edits the text has taken and the tree has not.
+    pending: highlight::Edits,
+}
+
+/// A tree brought up to the text it belongs to, and the colours read from it.
+pub struct Settled {
+    spans: Vec<Highlight>,
+    syntax: Option<highlight::Syntax>,
 }
 
 impl Document {
     pub fn new(path: &str, text: &str) -> Self {
         let language = Language::of(path);
         let long = text.len() > MAX_HIGHLIGHT_BYTES;
-        let spans = match language {
-            Some(language) if !long => highlight::spans(text, language),
-            _ => Vec::new(),
+        let rope = Rope::from_str(text);
+        let syntax = match language {
+            Some(language) if !long => highlight::Syntax::new(&rope, language),
+            _ => None,
+        };
+        let spans = match &syntax {
+            Some(syntax) => syntax.spans(&rope, 0..rope.len_bytes()),
+            None => Vec::new(),
         };
         Self {
-            text: Rope::from_str(text),
+            text: rope,
             language,
             spans,
+            syntax,
+            pending: Vec::new(),
         }
     }
 
@@ -139,6 +156,10 @@ impl Document {
         let byte = self.text.char_to_byte(at);
         self.text.insert(at, text);
         highlight::moved(&mut self.spans, byte, 0, text.len());
+        if self.syntax.is_some() {
+            self.pending
+                .push(highlight::inserted(&self.text, byte, text.len()));
+        }
     }
 
     /// Takes `range` out, and moves the colours after it back.
@@ -147,6 +168,10 @@ impl Document {
             self.text.char_to_byte(range.start),
             self.text.char_to_byte(range.end),
         );
+        if self.syntax.is_some() {
+            self.pending
+                .push(highlight::removed(&self.text, start, end));
+        }
         self.text.remove(range);
         highlight::moved(&mut self.spans, start, end - start, 0);
     }
@@ -166,27 +191,34 @@ impl Document {
         self.text.to_string()
     }
 
-    /// Takes colours read elsewhere, for the same text.
-    pub fn set_spans(&mut self, spans: Vec<Highlight>) {
-        self.spans = spans;
+    pub fn install(&mut self, settled: Settled) {
+        self.spans = settled.spans;
+        self.syntax = settled.syntax;
+        self.pending.clear();
     }
 
-    /// The colours of the whole text, read on this thread.
-    pub fn colours(path: &str, text: &str) -> Vec<Highlight> {
-        let language = Language::of(path);
-        let long = text.len() > MAX_HIGHLIGHT_BYTES;
-        match language {
-            Some(language) if !long => highlight::spans(text, language),
-            _ => Vec::new(),
+    /// The tree and the colours brought up to the text, for a job to hand back.
+    pub fn settled(mut self) -> Settled {
+        self.settle();
+        Settled {
+            spans: self.spans,
+            syntax: self.syntax,
         }
     }
 
-    /// The colours read again, for a document that has been edited.
+    /// The same, on this thread.
     pub fn recolour(&mut self) {
-        let long = self.text.len_bytes() > MAX_HIGHLIGHT_BYTES;
-        self.spans = match self.language {
-            Some(language) if !long => highlight::spans(&self.text.to_string(), language),
-            _ => Vec::new(),
+        self.settle();
+    }
+
+    fn settle(&mut self) {
+        if let Some(syntax) = self.syntax.as_mut() {
+            syntax.edited(&self.text, &self.pending);
+        }
+        self.pending.clear();
+        self.spans = match &self.syntax {
+            Some(syntax) => syntax.spans(&self.text, 0..self.text.len_bytes()),
+            None => Vec::new(),
         };
     }
 

@@ -1,8 +1,7 @@
 use std::sync::OnceLock;
 
 use groove_types::{Capture, Indent};
-use tree_sitter::Language as Grammar;
-use tree_sitter_highlight::HighlightConfiguration;
+use tree_sitter::{Language as Grammar, Query};
 
 /// A language Groove colours. Everything else is a plain document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,9 +39,12 @@ const RECOGNIZED: [(&str, Capture); 20] = [
     ("markup.link", Capture::Link),
 ];
 
-/// What the grammar's capture at `index` means to us.
-pub(crate) fn capture(index: usize) -> Option<Capture> {
-    RECOGNIZED.get(index).map(|(_, capture)| *capture)
+/// What a capture means to us, by the name the grammar gave it.
+pub(crate) fn capture(name: &str) -> Option<Capture> {
+    RECOGNIZED
+        .iter()
+        .find(|(known, _)| *known == name)
+        .map(|(_, capture)| *capture)
 }
 
 impl Language {
@@ -113,17 +115,18 @@ impl Language {
     }
 
     /// The query compiled once per language, for every document to share.
-    pub(crate) fn config(self) -> Option<&'static HighlightConfiguration> {
-        static CONFIGS: [OnceLock<Option<HighlightConfiguration>>; Language::ALL.len()] =
+    /// The grammar and its highlight query, compiled once for the whole run.
+    pub(crate) fn syntax(self) -> Option<&'static (Grammar, Query)> {
+        static COMPILED: [OnceLock<Option<(Grammar, Query)>>; Language::ALL.len()] =
             [const { OnceLock::new() }; Language::ALL.len()];
-        CONFIGS[self.index()].get_or_init(|| compile(self)).as_ref()
+        COMPILED[self.index()]
+            .get_or_init(|| compile(self))
+            .as_ref()
     }
 }
 
-fn compile(language: Language) -> Option<HighlightConfiguration> {
-    let names: Vec<&str> = RECOGNIZED.iter().map(|(name, _)| *name).collect();
-    let mut config =
-        HighlightConfiguration::new(language.grammar(), "groove", language.query(), "", "").ok()?;
-    config.configure(&names);
-    Some(config)
+fn compile(language: Language) -> Option<(Grammar, Query)> {
+    let grammar = language.grammar();
+    let query = Query::new(&grammar, language.query()).ok()?;
+    Some((grammar, query))
 }

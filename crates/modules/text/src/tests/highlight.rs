@@ -1,4 +1,4 @@
-use groove_types::Capture;
+use groove_types::{Capture, Caret};
 
 use crate::Document;
 
@@ -77,4 +77,23 @@ fn a_yaml_key_and_a_markdown_heading_carry_their_own_meaning() {
         title.iter().any(|(kind, _)| *kind == Capture::Title),
         "{title:?}"
     );
+}
+
+/// Every line's captures, for comparing two reads of the same text.
+fn whole(doc: &Document) -> Vec<Vec<(Capture, String)>> {
+    (0..doc.lines()).map(|at| spans(doc, at)).collect()
+}
+
+#[test]
+fn an_edited_tree_colours_like_a_fresh_one() {
+    let source = "fn one() -> usize {\n    let it = \"text\";\n    1\n}\n";
+    for typed in ["value", "\"", "}", "/* "] {
+        let mut doc = Document::new("src/lib.rs", source);
+        let at = doc.char_of(Caret::new(1, 13));
+        doc.insert(at, typed);
+        doc.remove(at - 4..at - 1);
+        doc.recolour();
+        let fresh = Document::new("src/lib.rs", &doc.text());
+        assert_eq!(whole(&doc), whole(&fresh), "after typing {typed:?}");
+    }
 }

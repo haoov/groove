@@ -118,10 +118,14 @@ fn derive(state: &mut AppState, spawner: &dyn Spawner) {
         return;
     }
     let revision = open.new.revision();
-    let (path, old, text) = (open.path.clone(), open.old.clone(), open.new.text());
+    let (path, old, new) = (
+        open.path.clone(),
+        open.old.clone(),
+        open.new.document().clone(),
+    );
     state.workspace.deriving = Some(revision);
     spawner.spawn(Box::pin(async move {
-        let read = derived(&path, &old, &text);
+        let read = derived(&old, new);
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.workspace.deriving = None;
@@ -144,7 +148,7 @@ fn took(state: &mut AppState, path: String, read: Derived, revision: u64) {
     let Some(open) = state.workspace.opened.as_mut() else {
         return;
     };
-    if open.path != path || !open.new.coloured(read.spans, revision) {
+    if open.path != path || !open.new.settled(read.settled, revision) {
         return;
     }
     open.rows = read.rows;

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use groove_git::Git;
-use groove_text::{Buffer, Document};
+use groove_text::{Buffer, Document, Settled};
 use groove_types::{LineMark, Result, Row};
 
 use crate::alignment::{CONTEXT, align, marks};
@@ -61,19 +61,18 @@ fn from_parts(path: &str, old: Document, after: &str) -> Opened {
 
 /// What the rows and the colours become once the buffer has been edited.
 pub struct Derived {
-    pub spans: Vec<groove_types::Highlight>,
+    pub settled: Settled,
     pub rows: Vec<Row>,
     pub marks: BTreeMap<u32, LineMark>,
 }
 
-/// Reads the colours and the alignment again for text the buffer now holds.
-pub fn derived(path: &str, old: &Document, text: &str) -> Derived {
-    let new = Document::new(path, text);
+/// Reads the alignment again, and colours `new` from the tree it carries.
+pub fn derived(old: &Document, new: Document) -> Derived {
     let rows = align(old, &new, CONTEXT);
     Derived {
-        spans: Document::colours(path, text),
         marks: marks(&rows),
         rows,
+        settled: new.settled(),
     }
 }
 

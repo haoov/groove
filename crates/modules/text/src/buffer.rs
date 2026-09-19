@@ -2,8 +2,8 @@
 
 use groove_types::{Caret, Edit, Highlight, Motion, Selection};
 
-use crate::Document;
 use crate::history::{Change, History};
+use crate::{Document, Settled};
 
 /// What a character belongs to, for picking out a word.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -126,12 +126,12 @@ impl Buffer {
         }
     }
 
-    /// The colours a job read for `revision`, if the buffer has not moved on.
-    pub fn coloured(&mut self, spans: Vec<Highlight>, revision: u64) -> bool {
+    /// What a job settled for `revision`, if the buffer has not moved on.
+    pub fn settled(&mut self, settled: Settled, revision: u64) -> bool {
         if revision != self.revision {
             return false;
         }
-        self.doc.set_spans(spans);
+        self.doc.install(settled);
         true
     }
 
