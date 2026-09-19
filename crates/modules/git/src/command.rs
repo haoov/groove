@@ -23,6 +23,11 @@ impl Git {
         Ok(self.run(args).output().await?)
     }
 
+    /// The same, with `input` on the child's standard input.
+    pub(crate) async fn fed(&self, args: &[&str], input: String) -> Result<Output> {
+        Ok(self.run(args).input(input).output().await?)
+    }
+
     /// Stdout of a command that succeeded; a failure is an error carrying stderr.
     pub(crate) async fn text(&self, args: &[&str]) -> Result<String> {
         let output = self.output(args).await?;

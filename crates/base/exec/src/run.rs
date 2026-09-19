@@ -14,6 +14,7 @@ pub struct Run {
     cwd: Option<PathBuf>,
     env: Vec<(String, String)>,
     timeout: Duration,
+    input: Option<Vec<u8>>,
 }
 
 impl Run {
@@ -24,6 +25,7 @@ impl Run {
             cwd: None,
             env: Vec::new(),
             timeout: DEFAULT_TIMEOUT,
+            input: None,
         }
     }
 
@@ -46,6 +48,12 @@ impl Run {
         self
     }
 
+    /// What the child reads on its standard input, which then closes.
+    pub fn input(mut self, input: impl Into<Vec<u8>>) -> Self {
+        self.input = Some(input.into());
+        self
+    }
+
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
@@ -59,8 +67,7 @@ impl Run {
     /// Runs and returns the raw output, whatever the exit status.
     pub async fn output(self) -> Result<Output> {
         let program = self.describe();
-        let mut command = self.command();
-        match tokio::time::timeout(self.timeout, command.output()).await {
+        match tokio::time::timeout(self.timeout, self.spawned()).await {
             Ok(Ok(output)) => Ok(output),
             Ok(Err(source)) => Err(Error::Spawn { program, source }),
             Err(_) => Err(Error::TimedOut {
@@ -81,6 +88,22 @@ impl Run {
             });
         }
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    }
+
+    async fn spawned(&self) -> std::io::Result<Output> {
+        let mut command = self.command();
+        let Some(input) = &self.input else {
+            return command.output().await;
+        };
+        command
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped());
+        let mut child = command.spawn()?;
+        if let Some(mut stdin) = child.stdin.take() {
+            tokio::io::AsyncWriteExt::write_all(&mut stdin, input).await?;
+        }
+        child.wait_with_output().await
     }
 
     fn command(&self) -> tokio::process::Command {

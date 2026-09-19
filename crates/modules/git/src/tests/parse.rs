@@ -117,3 +117,12 @@ fn numstat_rows_read_apart() {
     assert!(rows[3].is_binary());
     assert!(crate::parse::numstat("").is_empty());
 }
+
+#[test]
+fn a_batch_takes_each_blob_by_its_size() {
+    let out = b"aa blob 8\none\ntwo\n\nHEAD:gone.txt missing\ncc blob 4\nfour\n" as &[u8];
+    let found = crate::parse::batch(out, &["one.txt", "gone.txt", "four.txt"]);
+    assert_eq!(found.get("one.txt").map(String::as_str), Some("one\ntwo\n"));
+    assert_eq!(found.get("gone.txt"), None);
+    assert_eq!(found.get("four.txt").map(String::as_str), Some("four"));
+}

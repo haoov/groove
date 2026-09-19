@@ -60,3 +60,9 @@ async fn cwd_and_env_reach_the_child() {
         .unwrap();
     assert_eq!(out, "/\ny");
 }
+
+#[tokio::test]
+async fn input_reaches_the_child() {
+    let out = Run::new("cat").input("what it reads").text().await;
+    assert_eq!(out.expect("cat ran"), "what it reads");
+}
