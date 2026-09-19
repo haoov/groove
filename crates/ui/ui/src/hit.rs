@@ -46,6 +46,8 @@ pub enum Target {
     PaletteRow(usize),
     /// The palette's box; a click on it does nothing.
     Palette,
+    /// The rail's own first row, which opens the board.
+    Board,
     /// A boundary between two columns.
     Split(Edge),
     /// What folds the sidebar away.
@@ -109,6 +111,7 @@ impl Target {
             | Target::Do
             | Target::View(_)
             | Target::Read(_)
+            | Target::Board
             | Target::Head(_)
             | Target::Found(_)
             | Target::FoundIn(_) => Cursor::Pointer,
@@ -143,6 +146,20 @@ pub enum Scroller {
     Rail,
     Files,
     Code,
+    /// One of the board's columns.
+    Column(u8),
+}
+
+impl Scroller {
+    /// Its place among the extents one frame records.
+    fn at(self) -> usize {
+        match self {
+            Scroller::Rail => 0,
+            Scroller::Files => 1,
+            Scroller::Code => 2,
+            Scroller::Column(which) => 3 + which as usize,
+        }
+    }
 }
 
 /// Where everything was drawn this frame.
@@ -152,7 +169,7 @@ pub struct Hits {
     /// The rows the code surface drew.
     shown: std::ops::Range<usize>,
     /// How far each column can scroll, one per `Scroller`.
-    extents: [f32; 3],
+    extents: [f32; 6],
     chars: Chars,
 }
 
@@ -163,12 +180,12 @@ impl Hits {
 
     /// How far a column could scroll when it was drawn.
     pub fn scrolls(&mut self, which: Scroller, extent: f32) {
-        let at = which as usize;
+        let at = which.at();
         self.extents[at] = self.extents[at].max(extent);
     }
 
     pub fn extent(&self, which: Scroller) -> f32 {
-        self.extents[which as usize]
+        self.extents[which.at()]
     }
 
     /// Which rows of the whole change the surface drew.

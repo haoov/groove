@@ -4,12 +4,12 @@ mod agent;
 mod bar;
 mod panes;
 
-use groove_controllers::{AppState, Command, session, workspace};
+use groove_controllers::{AppState, Command, session, task, workspace};
 
 use super::{Key, Modifiers};
 use crate::palette::Palette;
 use crate::views::session::Term;
-use crate::{Focus, Ui};
+use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
 use agent::to_agent;
@@ -37,12 +37,24 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         opened(ui, Term::Path);
         return Vec::new();
     }
+    if ui.showing(app) == Surface::Board {
+        return Vec::new();
+    }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, app),
         Focus::Sidebar => in_sidebar(key, mods, ui, app),
         Focus::Rail => in_rail(key, app),
     }
+}
+
+/// The board, or the session it was opened from.
+fn board(ui: &mut Ui) -> Option<Command> {
+    ui.surface = match ui.surface {
+        Surface::Board => Surface::Session,
+        Surface::Session => Surface::Board,
+    };
+    (ui.surface == Surface::Board).then_some(Command::Task(task::Command::Load))
 }
 
 /// Groove's own shortcuts.
@@ -62,6 +74,7 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
             ui.session.folded = !ui.session.folded;
             None
         }
+        Key::Char('k' | 'K') => board(ui),
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
         Key::Char('f' | 'F') => {
             opened(ui, Term::Text);

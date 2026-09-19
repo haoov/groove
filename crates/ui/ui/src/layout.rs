@@ -139,6 +139,8 @@ pub struct Layout {
     pub sidebar: Rect,
     /// The commit box at the sidebar's foot, as tall as the user has dragged it.
     pub commit: Rect,
+    /// Everything the board takes: the window but the rail.
+    pub board: Rect,
 }
 
 impl Layout {
@@ -159,6 +161,7 @@ impl Layout {
             header: Rect::new(work_x, 0.0, work_width, tokens.header),
             workspace: Rect::new(work_x, tokens.header, work_width, window.h - tokens.header),
             sidebar: Rect::new(work_x + work_width, 0.0, aside, window.h),
+            board: Rect::new(rail, 0.0, (window.w - rail).max(0.0), window.h),
         }
     }
 

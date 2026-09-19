@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use groove_controllers::{Command, Event, dispatch, session};
+use groove_controllers::{Command, Event, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
 use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
@@ -37,12 +37,12 @@ impl ApplicationHandler<Message> for App {
             }
         }
         self.window = Some(window);
-        dispatch(
+        for command in [
             Command::Session(session::Command::Restore),
-            &mut self.state,
-            &self.services,
-            &self.spawner,
-        );
+            Command::Task(task::Command::Load),
+        ] {
+            dispatch(command, &mut self.state, &self.services, &self.spawner);
+        }
         if std::mem::take(&mut self.explore) {
             let open = Command::Session(session::Command::OpenExplorer { title: None });
             dispatch(open, &mut self.state, &self.services, &self.spawner);

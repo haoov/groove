@@ -3,17 +3,26 @@
 
 use groove_gfx::Rect;
 
+use crate::Surface;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::layout::Edge;
 
-/// A grab band over each boundary, above whatever the panes drew there.
-pub fn draw(ctx: &mut Ctx) {
-    for edge in Edge::ALL {
-        let Some(band) = band(ctx, edge) else {
+/// A grab band over each boundary the surface shows, above whatever drew there.
+pub fn draw(ctx: &mut Ctx, surface: Surface) {
+    for edge in shown(surface) {
+        let Some(band) = band(ctx, *edge) else {
             continue;
         };
-        ctx.hit(band, Target::Split(edge));
+        ctx.hit(band, Target::Split(*edge));
+    }
+}
+
+/// The boundaries a surface has: the board has only the rail's.
+fn shown(surface: Surface) -> &'static [Edge] {
+    match surface {
+        Surface::Session => &Edge::ALL,
+        Surface::Board => &[Edge::Rail],
     }
 }
 

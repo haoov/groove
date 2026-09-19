@@ -3,12 +3,12 @@ use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 use groove_types::{AgentStatus, AttentionClass, SessionId};
 
-use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{after_mark, ago, box_in, elide, hairline, icon, leading, row, turn};
+use crate::{Surface, Ui};
 
 /// Padding, the head line, the gap, the state line, padding.
 pub fn height(ctx: &Ctx) -> f32 {
@@ -34,10 +34,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     ctx.hit(rect, Target::Session(id.clone()));
 }
 
-/// Selected and hovered rows are raised; no other row has a background.
+/// A hovered row is raised, and a selected one while the session surface is up.
 fn ground(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, id: &SessionId) {
     let hovered = ui.hover.as_ref() == Some(&Target::Session(id.clone()));
-    let selected = app.session.selected.as_ref() == Some(id);
+    let selected = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
     if selected || hovered {
         let raised = ctx.styles.raised();
         ctx.quad(rect, raised);

@@ -36,9 +36,14 @@ config when a host has one of its own.
 due and start dates and duration read as properties, the attention state per item.
 The board reads this slice and the `session` slice; nothing else.
 
-**Board**, in `ui`, as [../design.md](../design.md): three columns; the filter with
-the grammar that exists, applied to all three; items folded or expanded; the plan in
-Up next with the *later* divider; attention lines; the timeline band.
+**Board**, in `ui`, as [../design.md](../design.md): a surface of its own beside the
+rail, reached from the rail's Board row or `ctrl+shift+K`, left by the same chord or by
+picking a session. It is a surface, not an overlay: while it is up the rail holds no
+selection, and with no session open it is the window — closing the last one lands
+there, and its Live column says how to start. Three columns, each scrolling on its own:
+Live reads the open sessions, Up next the tasks no session holds, Review waits for the
+forge. Still to draw: the filter, folded and expanded items, the plan's order and its
+*later* divider, the attention lines, the timeline band.
 
 **Attention** is computed in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,

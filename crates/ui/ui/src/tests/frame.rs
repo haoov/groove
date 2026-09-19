@@ -18,7 +18,7 @@ fn texts(frame: &groove_gfx::Frame) -> Vec<String> {
 }
 
 #[test]
-fn an_empty_state_draws_the_rail_and_the_hint() {
+fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
     let (frame, _) = view(
         &AppState::default(),
         &Ui::default(),
@@ -35,7 +35,11 @@ fn an_empty_state_draws_the_rail_and_the_hint() {
     );
     let texts = texts(&frame);
     assert!(texts.iter().any(|t| t == "Board"));
-    assert!(texts.iter().any(|t| t.starts_with("No session open")));
+    assert!(texts.iter().any(|t| t == "LIVE"), "{texts:?}");
+    assert!(
+        texts.iter().any(|t| t.starts_with("nothing open")),
+        "{texts:?}"
+    );
 }
 
 #[test]

@@ -6,8 +6,8 @@ mod surface;
 
 pub(super) use menu::asked;
 
-use groove_controllers::{AppState, Command, session, workspace};
-use groove_types::{DiffView, Edit, Motion};
+use groove_controllers::{AppState, Command, session, task, workspace};
+use groove_types::{DiffView, Edit, Motion, SessionId};
 
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
@@ -15,7 +15,7 @@ use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, 
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::views::session::{Tab, Term};
-use crate::{Focus, Ui};
+use crate::{Focus, Surface, Ui};
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
 pub(super) fn press(
@@ -96,9 +96,8 @@ fn acted(
     metrics: Metrics,
 ) -> Vec<Command> {
     match target {
-        Some(Target::Session(session)) => {
-            vec![Command::Session(session::Command::Select { session })]
-        }
+        Some(Target::Board) => board(ui),
+        Some(Target::Session(session)) => opened_session(ui, session),
         Some(Target::Tab(tab)) => tabbed(ui, tab),
         Some(Target::Fold) => aside(ui),
         Some(Target::Picker(which)) => selector(ui, app, hits, which),
@@ -130,6 +129,18 @@ fn acted(
         )
         | None => Vec::new(),
     }
+}
+
+/// The board, with a read of the sources behind it.
+fn board(ui: &mut Ui) -> Vec<Command> {
+    ui.surface = Surface::Board;
+    vec![Command::Task(task::Command::Load)]
+}
+
+/// A session picked, wherever it was picked from, with the window back on it.
+fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
+    ui.surface = Surface::Session;
+    vec![Command::Session(session::Command::Select { session })]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

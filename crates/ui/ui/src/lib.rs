@@ -3,6 +3,8 @@
 //!
 //! One directory per surface under `views/`, the surface's own file named after it.
 
+use groove_controllers::AppState;
+
 mod ctx;
 mod hit;
 pub mod input;
@@ -26,8 +28,17 @@ pub use mark::Mark;
 pub use render::{layout_commands, view};
 pub use style::Role;
 pub use tokens::Tokens;
+pub use views::board::BoardUi;
 pub use views::session::{SessionUi, Tab};
 pub use views::shared::rail::RailUi;
+
+/// What the window shows beside the rail.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Surface {
+    #[default]
+    Session,
+    Board,
+}
 
 /// Which pane the keyboard belongs to.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -65,10 +76,13 @@ pub struct Drag {
 /// What is the ui's alone: focus, folds, the palette, the splits. Never in `AppState`.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ui {
+    /// Which surface the window is showing.
+    pub surface: Surface,
     pub focus: Focus,
     pub palette: Option<palette::Palette>,
     pub session: SessionUi,
     pub rail: RailUi,
+    pub board: BoardUi,
     pub split: Split,
     pub drag: Option<Drag>,
     /// The pointer is down on the open file, so it is choosing what to hold.
@@ -129,6 +143,14 @@ pub struct Click {
 }
 
 impl Ui {
+    /// The surface the window shows. With no session open, the board is the window.
+    pub fn showing(&self, app: &AppState) -> Surface {
+        match app.session.open.is_empty() {
+            true => Surface::Board,
+            false => self.surface,
+        }
+    }
+
     pub fn dragging(&self) -> bool {
         self.drag.is_some()
     }

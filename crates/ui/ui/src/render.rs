@@ -4,12 +4,12 @@
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};
 
-use crate::Ui;
 use crate::ctx::{Ctx, Metrics};
 use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::style::Styles;
-use crate::views::{session, shared};
+use crate::views::{board, session, shared};
+use crate::{Surface, Ui};
 
 /// The whole window as a display list, rebuilt every frame from state.
 pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Frame, Hits) {
@@ -27,8 +27,11 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             &mut hits,
         );
         shared::rail::draw(&mut ctx, app, ui);
-        session::draw(&mut ctx, app, ui);
-        shared::splitter::draw(&mut ctx);
+        match ui.showing(app) {
+            Surface::Session => session::draw(&mut ctx, app, ui),
+            Surface::Board => board::draw(&mut ctx, app, ui),
+        }
+        shared::splitter::draw(&mut ctx, ui.showing(app));
         if let Some(menu) = &ui.menu {
             shared::actions::draw(&mut ctx, ui, menu);
         }

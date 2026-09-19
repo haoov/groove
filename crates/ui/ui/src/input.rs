@@ -100,7 +100,7 @@ pub fn handle(
             Vec::new()
         }
         Input::Scroll { x, delta, .. } => {
-            scroll::scroll(x, delta, ui, hits, metrics);
+            scroll::scroll(x, delta, ui, app, hits, metrics);
             Vec::new()
         }
     }

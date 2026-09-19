@@ -1,3 +1,4 @@
+mod board;
 mod budget;
 mod commit;
 mod diff;

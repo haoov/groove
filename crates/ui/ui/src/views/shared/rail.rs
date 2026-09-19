@@ -2,12 +2,12 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use super::{rail_item, status};
-use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Scroller;
+use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{Row, after_mark, hairline, icon, leading, list, row};
+use crate::{Surface, Ui};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -26,7 +26,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let width = rect.w - ctx.tokens.hairline;
     let board = Rect::new(0.0, 0.0, width, ctx.tokens.header);
     let foot = Rect::new(0.0, rect.h - ctx.tokens.row, width, ctx.tokens.row);
-    board_row(ctx, board);
+    board_row(ctx, app, ui, board);
     let rows = Rect::new(0.0, board.bottom(), width, foot.y - board.bottom());
     items(ctx, app, ui, rows);
     footer(ctx, app, foot);
@@ -41,7 +41,11 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
 }
 
 /// The board. It carries the attention count when it is not zero.
-fn board_row(ctx: &mut Ctx, rect: Rect) {
+fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
+    if ui.showing(app) == Surface::Board || ui.hover.as_ref() == Some(&Target::Board) {
+        ctx.quad(rect, ctx.styles.raised());
+    }
+    ctx.hit(rect, Target::Board);
     let (rule, style) = (ctx.styles.line(), ctx.styles.label(Role::Text));
     let box_ = leading(ctx, rect, ctx.tokens.md);
     icon(ctx, box_, Mark::Board, Role::Faint);
