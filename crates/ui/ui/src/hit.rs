@@ -67,6 +67,8 @@ pub enum Target {
     Do,
     /// The open file's rows.
     Code,
+    /// The lines standing above them.
+    Pinned,
     /// One of the three views of the open file.
     View(DiffView),
     /// The agent's pane.
@@ -94,7 +96,7 @@ impl Target {
             | Target::View(_) => Cursor::Pointer,
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
-            Target::Agent => Cursor::Default,
+            Target::Agent | Target::Pinned => Cursor::Default,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

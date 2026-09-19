@@ -10,6 +10,10 @@ pub const GROUND_ALPHA: u8 = 38;
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;
 
+/// How many scopes stand over the rows, and the share of the surface they may take.
+pub const PINNED_DEEP: usize = 3;
+pub const PINNED_SHARE: f32 = 4.0;
+
 /// How long after a press another one counts as the same click, and how far it may
 /// land from it, in logical pixels.
 pub const CLICK_MS: u64 = 400;

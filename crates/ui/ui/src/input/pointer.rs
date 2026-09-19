@@ -203,9 +203,14 @@ fn click(
             act.map(Command::Workspace).into_iter().collect()
         }
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::Agent | Target::Palette | Target::Split(_) | Target::MenuRow(_)) | None => {
-            Vec::new()
-        }
+        Some(
+            Target::Agent
+            | Target::Palette
+            | Target::Pinned
+            | Target::Split(_)
+            | Target::MenuRow(_),
+        )
+        | None => Vec::new(),
     }
 }
 

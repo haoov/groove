@@ -97,3 +97,64 @@ fn a_keystroke_shows_in_the_stream_before_the_rows_are_aligned_again() {
         "the rows read the buffer, not the last alignment: {drawn:?}"
     );
 }
+
+/// What the band standing over the rows says, its coloured runs joined.
+fn band(app: &AppState, ui: &Ui) -> String {
+    let (frame, _) = view_of(app, ui);
+    let layers = frame.layers();
+    match layers.len() > 1 {
+        true => layers
+            .iter()
+            .skip(1)
+            .flat_map(|layer| layer.texts.iter())
+            .map(|run| run.text.as_str())
+            .collect(),
+        false => String::new(),
+    }
+}
+
+/// One file deep enough to scroll inside a scope.
+fn nested() -> AppState {
+    let mut app = with_files();
+    let body: String = (0..40)
+        .map(|at| format!("            let value_{at} = {at};\n"))
+        .collect();
+    let before = format!(
+        "mod one {{\n    impl Two {{\n        fn three() {{\n{body}        }}\n    }}\n}}\n"
+    );
+    let after = before.replace("let value_3 = 3;", "let value_3 = 33;");
+    crate::tests::shows(&mut app, "src/lib.rs", &before, &after);
+    app
+}
+
+#[test]
+fn the_scopes_above_the_first_row_stand_over_it() {
+    let app = nested();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    ui.session.diff = Tokens::new(1.0).line * 20.0;
+    let band = band(&app, &ui);
+    for scope in ["mod one {", "impl Two {", "fn three() {"] {
+        assert!(
+            band.contains(scope.trim()),
+            "{scope} stands over the rows: {band}"
+        );
+    }
+}
+
+#[test]
+fn a_scope_already_on_screen_does_not_stand_over_it_as_well() {
+    let app = nested();
+    let mut ui = on_diff();
+    ui.session.view = DiffView::File;
+    assert_eq!(band(&app, &ui), "", "the scopes are in the rows themselves");
+}
+
+#[test]
+fn the_stream_pins_the_file_it_stands_in() {
+    let app = both();
+    let mut ui = on_diff();
+    let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
+    ui.session.diff = (head + 1) as f32 * Tokens::new(1.0).line;
+    assert!(band(&app, &ui).contains("src/b.rs"), "{}", band(&app, &ui));
+}

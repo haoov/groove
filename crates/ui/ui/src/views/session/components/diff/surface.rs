@@ -94,7 +94,7 @@ fn surface(
 
 /// How wide the numbers stand: one column a side in split and file, two in inline.
 /// The whole change shares one width, so the text does not shift file to file.
-fn numbers(app: &AppState, view: DiffView) -> Gutters {
+pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
     let digits = match view {
         DiffView::File => match app.workspace.opened.as_ref() {
             Some(file) => file.new.lines().to_string().len(),

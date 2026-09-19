@@ -136,6 +136,19 @@ impl Document {
         self.colours(at..at + 1).of(at).to_vec()
     }
 
+    /// The lines the scopes around `line` begin on, outermost first. A scope that
+    /// begins on `line` itself is left out.
+    pub fn scopes(&self, line: usize) -> Vec<usize> {
+        let (Some(syntax), Some(range)) = (&self.syntax, self.bytes_of(line)) else {
+            return Vec::new();
+        };
+        syntax
+            .scopes(range.start)
+            .into_iter()
+            .filter(|at| *at < line)
+            .collect()
+    }
+
     /// What the grammar says about `lines`, asked of the tree once.
     pub fn colours(&self, lines: Range<usize>) -> Colours {
         let first = lines.start;

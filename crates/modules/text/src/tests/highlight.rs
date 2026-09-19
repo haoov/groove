@@ -113,3 +113,27 @@ fn a_window_colours_a_comment_that_starts_above_it() {
     assert!(window.of(1).is_empty(), "a line the window left out");
     assert!(window.of(4).is_empty());
 }
+
+#[test]
+fn the_scopes_of_a_line_stack_from_the_outside_in() {
+    let source = "mod one {\n    impl Two {\n        fn three() {\n            let four = 4;\n        }\n    }\n}\n";
+    let doc = Document::new("src/lib.rs", source);
+    assert_eq!(doc.scopes(3), [0, 1, 2], "mod, impl, fn");
+    assert_eq!(
+        doc.scopes(2),
+        [0, 1],
+        "the line a scope opens on is not its own scope"
+    );
+    assert_eq!(doc.scopes(0), Vec::<usize>::new());
+}
+
+#[test]
+fn a_yaml_key_path_and_a_markdown_heading_are_scopes() {
+    let yaml = Document::new(
+        "ci.yml",
+        "spec:\n  containers:\n    resources:\n      cpu: 1\n",
+    );
+    assert_eq!(yaml.scopes(3), [0, 1, 2]);
+    let md = Document::new("README.md", "# One\n\n## Two\n\ntext\n");
+    assert_eq!(md.scopes(4), [0, 2], "the headings above it");
+}

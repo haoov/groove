@@ -40,6 +40,21 @@ impl Syntax {
         }
     }
 
+    /// The lines the scopes holding `byte` begin on, outermost first.
+    pub(crate) fn scopes(&self, byte: usize) -> Vec<usize> {
+        let mut node = self.tree.root_node().descendant_for_byte_range(byte, byte);
+        let mut lines = Vec::new();
+        while let Some(here) = node {
+            if self.language.is_scope(here.kind()) {
+                lines.push(here.start_position().row);
+            }
+            node = here.parent();
+        }
+        lines.reverse();
+        lines.dedup();
+        lines
+    }
+
     /// What every node the query names means, over `range` of the text.
     pub(crate) fn spans(&self, text: &Rope, range: Range<usize>) -> Vec<Highlight> {
         let Some((_, query)) = self.language.syntax() else {

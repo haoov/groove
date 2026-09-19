@@ -86,6 +86,33 @@ impl Language {
         })
     }
 
+    /// The node kinds that stand for a scope, for the lines a view pins above itself.
+    fn scopes(self) -> &'static [&'static str] {
+        match self {
+            Language::Rust => &[
+                "impl_item",
+                "trait_item",
+                "mod_item",
+                "function_item",
+                "struct_item",
+                "enum_item",
+            ],
+            Language::Go => &[
+                "function_declaration",
+                "method_declaration",
+                "type_declaration",
+            ],
+            Language::Python => &["class_definition", "function_definition"],
+            Language::Bash => &["function_definition"],
+            Language::Markdown => &["section"],
+            Language::Yaml => &["block_mapping_pair"],
+        }
+    }
+
+    pub(crate) fn is_scope(self, kind: &str) -> bool {
+        self.scopes().contains(&kind)
+    }
+
     fn grammar(self) -> Grammar {
         let language = match self {
             Language::Rust => tree_sitter_rust::LANGUAGE,

@@ -1,6 +1,7 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
 mod header;
+mod pinned;
 mod row;
 mod scroll;
 mod surface;
@@ -28,7 +29,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
         Some(false) => said(ctx, body, "Open a file in the sidebar."),
-        None => surface::rows(ctx, body, app, ui),
+        None => {
+            surface::rows(ctx, body, app, ui);
+            pinned::draw(ctx, body, app, ui, surface::numbers(app, ui.session.view));
+        }
     }
 }
 
