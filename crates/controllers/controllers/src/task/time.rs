@@ -15,7 +15,7 @@ pub fn tick(state: &mut AppState, services: &Services, spawner: &dyn Spawner, no
     if !state.task.timer.due(now, WRITE) {
         return;
     }
-    super::attention(state, now);
+    super::settled(state, now);
     let owed = state.task.timer.taken(now);
     if owed.is_empty() {
         return;

@@ -4,14 +4,16 @@ use crate::{Day, Error, ExternalId, Result, Timestamp};
 #[serde(rename_all = "lowercase")]
 pub enum ProviderId {
     Github,
+    Notion,
 }
 
 impl ProviderId {
-    pub const ALL: [ProviderId; 1] = [ProviderId::Github];
+    pub const ALL: [ProviderId; 2] = [ProviderId::Github, ProviderId::Notion];
 
     pub fn as_str(self) -> &'static str {
         match self {
             ProviderId::Github => "github",
+            ProviderId::Notion => "notion",
         }
     }
 
@@ -32,6 +34,9 @@ pub enum TaskKey {
         repo: String,
         number: u64,
     },
+    Notion {
+        page_id: String,
+    },
 }
 
 impl TaskKey {
@@ -44,19 +49,26 @@ impl TaskKey {
                 repo,
                 number,
             } => ExternalId::new(format!("{host}/{owner}/{repo}#{number}")),
+            TaskKey::Notion { page_id } => ExternalId::new(page_id.clone()),
         }
     }
 
     pub fn provider(&self) -> ProviderId {
         match self {
             TaskKey::Github { .. } => ProviderId::Github,
+            TaskKey::Notion { .. } => ProviderId::Notion,
         }
     }
 
-    /// The key an external id reads as: `<host>/<owner>/<repo>#<number>` is GitHub's.
+    /// The key an external id reads as: `<host>/<owner>/<repo>#<number>` is GitHub's,
+    /// and anything without a number of its own is a Notion page.
     pub fn parse(id: &ExternalId) -> Result<Self> {
         let invalid = || Error::invalid(format!("not a task id: {}", id.as_str()));
-        let (path, number) = id.as_str().rsplit_once('#').ok_or_else(invalid)?;
+        let Some((path, number)) = id.as_str().rsplit_once('#') else {
+            return Ok(TaskKey::Notion {
+                page_id: id.as_str().to_string(),
+            });
+        };
         let [repo, owner, host] = path.rsplitn(3, '/').collect::<Vec<&str>>()[..] else {
             return Err(invalid());
         };

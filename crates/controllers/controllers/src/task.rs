@@ -96,8 +96,33 @@ fn plan(
     });
 }
 
+/// The tasks as they now stand: their starts filled in, then what needs the user.
+pub(crate) fn settled(state: &mut AppState, now: Timestamp) {
+    began(state);
+    attention(state, now);
+}
+
+/// A task the source gives no start date starts the day its first session did.
+fn began(state: &mut AppState) {
+    let mut first: std::collections::BTreeMap<ExternalId, groove_types::Day> =
+        std::collections::BTreeMap::new();
+    for living in &state.session.living {
+        let SessionKind::Task { external_id } = &living.session.kind else {
+            continue;
+        };
+        let day = living.session.created_at.day();
+        let held = first.entry(external_id.clone()).or_insert(day);
+        *held = (*held).min(day);
+    }
+    for task in &mut state.task.tasks {
+        if task.dates.start.is_none() {
+            task.dates.start = first.get(&task.external_id).copied();
+        }
+    }
+}
+
 /// What needs the user, read again from the tasks as they now stand.
-pub(crate) fn attention(state: &mut AppState, now: Timestamp) {
+fn attention(state: &mut AppState, now: Timestamp) {
     let thresholds = state.config.thresholds();
     let facts = std::collections::BTreeMap::new();
     state.task.attention = groove_task_service::folded(&state.task.tasks, &facts, now, &thresholds);
@@ -226,7 +251,7 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
                 Ok(tasks) => state.task.loaded(tasks),
                 Err(e) => state.errors.push(e),
             }
-            attention(state, Timestamp::now());
+            settled(state, Timestamp::now());
         }) as Continuation
     }));
 }
@@ -248,7 +273,7 @@ fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
                 Ok(read) => state.task.synced(read),
                 Err(e) => state.errors.push(e),
             }
-            attention(state, Timestamp::now());
+            settled(state, Timestamp::now());
         }) as Continuation
     }));
 }

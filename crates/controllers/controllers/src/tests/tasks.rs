@@ -396,3 +396,45 @@ fn an_explorer_is_measured_against_no_task() {
     spawner.drain(&mut state, &services);
     assert!(state.task.time.is_empty(), "nothing was measured");
 }
+
+#[test]
+fn a_task_with_no_start_of_its_own_starts_where_its_session_did() {
+    let (_runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+    assert!(
+        state.task.tasks[0].dates.start.is_none(),
+        "the source names no start"
+    );
+
+    dispatch(
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.task.tasks[0].dates.start.is_some()
+    });
+    assert_eq!(
+        state.task.tasks[0].dates.start,
+        Some(groove_types::Timestamp::now().day()),
+        "the day the work began here"
+    );
+}

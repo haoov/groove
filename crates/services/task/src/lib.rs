@@ -6,8 +6,8 @@ mod service;
 mod timer;
 
 pub use groove_plan::Placed;
-pub use groove_provider::{Fetched, Github, Source, Token};
-use groove_types::{Config, GithubConfig, Result, Task, TaskKey};
+pub use groove_provider::{Fetched, Github, Notion, Source, Token};
+use groove_types::{Config, GithubConfig, NotionConfig, Result, Task, TaskKey};
 
 pub use attention::folded;
 pub use order::{Planned, moved, ordered};
@@ -88,11 +88,20 @@ impl State {
 /// The sources the config turns on. A source it does not name is not read.
 pub fn sources(config: Option<&Config>) -> Vec<Source> {
     let github = config.and_then(|config| config.github.clone());
-    github.into_iter().filter_map(github_source).collect()
+    let notion = config.and_then(|config| config.notion.clone());
+    github
+        .into_iter()
+        .filter_map(github_source)
+        .chain(notion.into_iter().filter_map(notion_source))
+        .collect()
 }
 
 fn github_source(config: GithubConfig) -> Option<Source> {
     Github::new(config).ok().map(Source::Github)
+}
+
+fn notion_source(config: NotionConfig) -> Option<Source> {
+    Notion::new(config).ok().map(Source::Notion)
 }
 
 /// Every task the sources hold, in the order they answer.

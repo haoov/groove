@@ -3,6 +3,7 @@
 
 mod error;
 mod github;
+mod notion;
 mod token;
 
 #[cfg(test)]
@@ -11,12 +12,14 @@ mod tests;
 pub use error::{Error, Result};
 pub use github::Github;
 use groove_types::{StatusIntent, Task, TaskKey};
+pub use notion::Notion;
 pub use token::Token;
 
 /// Every source Groove reads. A new provider is a new arm, and the compiler asks for
 /// it everywhere at once.
 pub enum Source {
     Github(Github),
+    Notion(Notion),
 }
 
 /// One task as its source holds it, with the text the overview shows.
@@ -29,6 +32,7 @@ impl Source {
     pub fn id(&self) -> groove_types::ProviderId {
         match self {
             Source::Github(_) => groove_types::ProviderId::Github,
+            Source::Notion(_) => groove_types::ProviderId::Notion,
         }
     }
 
@@ -36,6 +40,7 @@ impl Source {
     pub async fn list(&self) -> Result<Vec<Task>> {
         match self {
             Source::Github(github) => github.list().await,
+            Source::Notion(notion) => notion.list().await,
         }
     }
 
@@ -43,6 +48,7 @@ impl Source {
     pub async fn fetch(&self, key: &TaskKey) -> Result<Fetched> {
         match self {
             Source::Github(github) => github.fetch(key).await,
+            Source::Notion(notion) => notion.fetch(key).await,
         }
     }
 
@@ -50,6 +56,7 @@ impl Source {
     pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
         match self {
             Source::Github(github) => github.set_status(key, intent).await,
+            Source::Notion(notion) => notion.set_status(key, intent).await,
         }
     }
 
@@ -57,6 +64,7 @@ impl Source {
     pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
         match self {
             Source::Github(github) => github.log_hours(key, hours).await,
+            Source::Notion(notion) => notion.log_hours(key, hours).await,
         }
     }
 }

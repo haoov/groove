@@ -137,12 +137,13 @@ pub fn list(services: &Services, spawner: &dyn Spawner) {
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.living().await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            match read {
                 Ok(living) => state.session.living = living,
                 Err(e) => state.errors.push(e),
-            },
-        ) as Continuation
+            }
+            crate::task::settled(state, Timestamp::now());
+        }) as Continuation
     }));
 }
 

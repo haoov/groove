@@ -132,7 +132,13 @@ impl Github {
             repo,
             number,
             ..
-        } = key;
+        } = key
+        else {
+            return Err(Error::Invalid(format!(
+                "{} is not an issue of a repository",
+                key.external_id()
+            )));
+        };
         let at = serde_json::json!({ "owner": owner, "repo": repo, "number": number });
         let reply = self.ask(&query::issue(), at).await?;
         let issue = reply["data"]["repository"]["issue"].clone();

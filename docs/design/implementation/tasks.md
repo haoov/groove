@@ -12,8 +12,9 @@ measured. A new task, a changed body, any other property: the agent asks for it 
 `approvals`, and the review sheet shows it. The board and the overview never edit.
 
 **The six properties**, named per source in the config, with what each provider calls
-them: status, priority, start, due, estimate, and the one hours are logged to. A name
-left out is a gap, not an error — Setup lists the six and what a gap costs. `status_map`
+them: status, priority, start, due, estimate, and the one hours are logged to. A task
+whose source names no start date starts the day its first session did. A name left out
+is a gap, not an error — Setup lists the six and what a gap costs. `status_map`
 and `priority_map` say which of the source's own values mean what, and the first value
 of each is the one Groove writes.
 
@@ -25,6 +26,17 @@ list and the bodies in its slice.
 **GitHub** reads the open issues assigned to you that sit on a project board, and takes
 the six from the board's fields. Its token comes from `gh auth token`, or from the
 config when a host has one of its own.
+
+**Notion** reads one database's rows: the ones the assignee property gives you, less
+the statuses the config excludes, and in the sprint that is running. The six come from
+the page's own properties, the short id from its `unique_id`, and the body from the
+page's blocks as plain lines. Its token is the config's.
+
+**The sprint** is a relation the config names. Groove reads the task database to find
+what the relation points at, reads that database to find its own status property, and
+asks it which rows carry the current label; those page ids become one `or` of
+`relation contains` terms. The ids stand for five minutes. A sprint property the
+database lacks yields no term at all, never a term Notion would refuse the query for.
 
 | Still to build | Does |
 |---|---|
@@ -110,4 +122,4 @@ the UI sets a status by hand.
 - [x] The ledger, the timer, and the hours written to the source.
 - [x] Attention rules and thresholds in `types`.
 - [x] The attention fold in the `task` service.
-- [ ] Notion on the same `Source` enum: its row, its mapping, its body read.
+- [x] Notion on the same `Source` enum: its row, its mapping, its body read.
