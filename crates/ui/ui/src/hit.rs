@@ -50,6 +50,11 @@ pub enum Target {
     Board,
     /// A task on the board, which a click opens the session for.
     Task(String),
+    /// The board's filter, and one row it offers.
+    Filter,
+    Offer(usize),
+    /// What starts a task, at the right of the board's header.
+    AddTask,
     /// A live item's twisty, which shows its worktrees.
     Unfold(SessionId),
     /// A boundary between two columns.
@@ -117,11 +122,13 @@ impl Target {
             | Target::Read(_)
             | Target::Board
             | Target::Task(_)
+            | Target::Offer(_)
+            | Target::AddTask
             | Target::Unfold(_)
             | Target::Head(_)
             | Target::Found(_)
             | Target::FoundIn(_) => Cursor::Pointer,
-            Target::Term(_) | Target::Finding => Cursor::Text,
+            Target::Term(_) | Target::Finding | Target::Filter => Cursor::Text,
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,

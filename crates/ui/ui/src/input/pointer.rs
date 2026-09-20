@@ -1,21 +1,23 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
+mod board;
 mod drag;
 mod menu;
 mod surface;
 
 pub(super) use menu::asked;
 
-use groove_controllers::{AppState, Command, session, task, workspace};
-use groove_types::{DiffView, Edit, Motion, SessionId};
+use groove_controllers::{AppState, Command, workspace};
+use groove_types::{DiffView, Edit, Motion};
 
+use self::board::{board, explorer, filtering, offered, opened_session, task, unfolded};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::views::session::{Tab, Term};
-use crate::{Focus, Surface, Ui};
+use crate::{Focus, Ui};
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
 pub(super) fn press(
@@ -98,6 +100,9 @@ fn acted(
     match target {
         Some(Target::Board) => board(ui),
         Some(Target::Task(short_id)) => task(ui, short_id),
+        Some(Target::Filter) => filtering(ui),
+        Some(Target::Offer(at)) => offered(ui, app, at),
+        Some(Target::AddTask) => explorer(ui),
         Some(Target::Unfold(session)) => unfolded(ui, &session),
         Some(Target::Session(session)) => opened_session(ui, session),
         Some(Target::Tab(tab)) => tabbed(ui, tab),
@@ -131,33 +136,6 @@ fn acted(
         )
         | None => Vec::new(),
     }
-}
-
-/// The board, with a read of the sessions and the sources behind it.
-fn board(ui: &mut Ui) -> Vec<Command> {
-    ui.surface = Surface::Board;
-    vec![
-        Command::Session(session::Command::List),
-        Command::Task(task::Command::Load),
-    ]
-}
-
-/// A task picked on the board: its session opens, and the window goes to it.
-fn task(ui: &mut Ui, short_id: String) -> Vec<Command> {
-    ui.surface = Surface::Session;
-    vec![Command::Task(task::Command::Open { short_id })]
-}
-
-/// A live item's worktrees shown under it, or hidden again.
-fn unfolded(ui: &mut Ui, session: &groove_types::SessionId) -> Vec<Command> {
-    ui.board.fold(session);
-    Vec::new()
-}
-
-/// A session picked, wherever it was picked from, with the window back on it.
-fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
-    ui.surface = Surface::Session;
-    vec![Command::Session(session::Command::Open { session })]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

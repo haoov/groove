@@ -21,6 +21,12 @@ impl Field {
         self.at = 0;
     }
 
+    /// Takes this text whole, with the caret at its end.
+    pub fn set(&mut self, text: &str) {
+        self.text = text.to_string();
+        self.at = self.chars();
+    }
+
     pub fn insert(&mut self, c: char) {
         self.text.insert(self.byte(self.at), c);
         self.at += 1;

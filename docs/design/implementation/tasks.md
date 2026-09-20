@@ -44,8 +44,16 @@ there, and its Live column says how to start. Three columns, each scrolling on i
 Live reads every session on disk — closed ones included, dimmed until picked — Up next
 the tasks no session works, Review waits for the forge. A Live item opens on its twisty to show its worktrees with what git says about
 each; an Up next item carries its place in the plan and opens its session when picked.
-Still to draw: the filter, the plan's own order and its *later* divider, the attention
-lines, the timeline band.
+
+**The filter** is the header, with **+ task** beside it, which opens an explorer. It
+holds bare words, matched against the title, and `field:value` tokens — status,
+priority, board, kind, repo — matched with case and word breaks ignored. Every term
+must answer, in all three columns at once; a token naming a field an item has no value
+for takes that item out. `/` opens the filter, Escape clears it then leaves it, and the
+rows it offers come from what the board itself holds.
+
+Still to draw: the plan's own order and its *later* divider, the attention lines, the
+timeline band.
 
 **Attention** is computed in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,

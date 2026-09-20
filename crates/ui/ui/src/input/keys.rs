@@ -2,6 +2,7 @@
 
 mod agent;
 mod bar;
+mod filter;
 mod panes;
 
 use groove_controllers::{AppState, Command, session, task, workspace};
@@ -13,7 +14,8 @@ use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
 use agent::to_agent;
-use bar::{finding, in_bar, opened};
+use bar::{finding, in_bar, opened, typing};
+use filter::on_board;
 use panes::{in_file, in_rail, in_sidebar};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
@@ -41,7 +43,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         return Vec::new();
     }
     if ui.showing(app) == Surface::Board {
-        return Vec::new();
+        return on_board(key, mods, ui, app);
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),

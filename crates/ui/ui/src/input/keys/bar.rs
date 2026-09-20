@@ -43,7 +43,7 @@ pub(super) fn finding(
 }
 
 /// One keystroke in a field. True when what it holds changed, which a motion does not.
-fn typing(key: Key, mods: Modifiers, field: &mut Field) -> bool {
+pub(super) fn typing(key: Key, mods: Modifiers, field: &mut Field) -> bool {
     match key {
         Key::Left => field.left(),
         Key::Right => field.right(),

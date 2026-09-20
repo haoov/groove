@@ -36,7 +36,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
 fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
     match list {
         List::Live => live(app, ui),
-        List::Next => planned(app)
+        List::Next => planned(app, ui)
             .into_iter()
             .enumerate()
             .map(|(at, task)| Line::Task(at + 1, task))
@@ -45,16 +45,23 @@ fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
     }
 }
 
-/// Every session on disk, each with its worktrees under it while it is open. What git
-/// says comes from the rail's row, which only an open session has.
+/// Every session the filter lets through, with its worktrees under it while it is open.
 fn live<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
-    if app.session.living.is_empty() {
-        return vec![Line::Nothing(
-            "nothing here. Ctrl+Shift+N starts an explorer",
-        )];
+    let query = ui.board.query();
+    let living: Vec<&Living> = app
+        .session
+        .living
+        .iter()
+        .filter(|living| query.lets_session(living))
+        .collect();
+    if living.is_empty() {
+        return vec![Line::Nothing(match query.is_empty() {
+            true => "nothing here. Ctrl+Shift+N starts an explorer",
+            false => "nothing the filter lets through",
+        })];
     }
     let mut lines = Vec::new();
-    for living in &app.session.living {
+    for living in living {
         lines.push(Line::Session(living));
         if !ui.board.is_open(&living.session.id) {
             continue;
@@ -73,12 +80,14 @@ fn live<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     lines
 }
 
-/// The tasks no session works yet, in the order the source answered.
-fn planned(app: &AppState) -> Vec<&Task> {
+/// The tasks the filter lets through that no session works yet, in the source's order.
+fn planned<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Task> {
+    let query = ui.board.query();
     app.task
         .tasks
         .iter()
         .filter(|task| !app.session.living.iter().any(|living| holds(living, task)))
+        .filter(|task| query.lets_task(task))
         .collect()
 }
 
@@ -99,7 +108,7 @@ fn counted(lines: &[Line<'_>]) -> usize {
 }
 
 fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
-    ctx.quad(line, ctx.styles.panel());
+    ctx.quad(line, ctx.styles.band());
     hairline(ctx, line, ctx.styles.line());
     let label = match count {
         0 => list.name().to_string(),
@@ -122,7 +131,7 @@ fn edge(ctx: &mut Ctx, area: Rect) {
 
 /// The lines a column has room for, scrolled and clipped to it.
 fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
-    let height = ctx.tokens.row;
+    let height = item(ctx);
     let extent = (height * lines.len() as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Column(list as u8), extent);
     let scroll = ui.board.scroll(list).min(extent);
@@ -132,12 +141,23 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
             if y + height < body.y || y > body.bottom() {
                 continue;
             }
-            one(ctx, Rect::new(body.x, y, body.w, height), app, ui, line);
+            let rect = Rect::new(body.x, y, body.w, height);
+            one(ctx, rect, app, ui, line, closes(lines, at));
         }
     });
 }
 
-fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>) {
+/// How tall one line of a column is.
+fn item(ctx: &Ctx) -> f32 {
+    ctx.tokens.row + ctx.tokens.sm
+}
+
+/// Whether this line ends its item: the next one starts another, or there is none.
+fn closes(lines: &[Line<'_>], at: usize) -> bool {
+    !matches!(lines.get(at + 1), Some(Line::Worktree(_, _)))
+}
+
+fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, closes: bool) {
     match line {
         Line::Session(living) => session(ctx, rect, app, ui, living),
         Line::Worktree(worktree, delivery) => worktree_row::draw(ctx, rect, worktree, *delivery),
@@ -147,7 +167,9 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>) {
             return row(ctx, rect, ctx.tokens.md, text, style);
         }
     }
-    hairline(ctx, rect, ctx.styles.line());
+    if closes {
+        hairline(ctx, rect, ctx.styles.line());
+    }
 }
 
 /// One session: a twisty for its worktrees, its kind, its title, what it holds.
@@ -189,14 +211,14 @@ fn held(living: &Living) -> String {
 
 /// What opens a session's worktrees under it. Returns where the kind icon goes.
 fn twisty(ctx: &mut Ctx, line: Rect, ui: &Ui, living: &Living) -> f32 {
-    let box_ = leading(ctx, line, line.x + ctx.tokens.xs);
+    let box_ = leading(ctx, line, line.x + ctx.tokens.sm);
     let turn = match ui.board.is_open(&living.session.id) {
         true => 0,
         false => Mark::RIGHTWARDS,
     };
     ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Ghost));
     ctx.hit(box_, Target::Unfold(living.session.id.clone()));
-    after_mark(ctx, ctx.tokens.xs)
+    after_mark(ctx, ctx.tokens.sm)
 }
 
 /// One task waiting: its place in the plan, its title, and what it is worth.
