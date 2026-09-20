@@ -15,7 +15,16 @@ fn issue() -> serde_json::Value {
         "body": "Close the gates.",
         "repository": { "name": "groove", "owner": { "login": "haoov" } },
         "projectItems": { "nodes": [{
-            "project": { "title": "Platform" },
+            "id": "ITEM_1",
+            "project": {
+                "id": "BOARD_1",
+                "title": "Platform",
+                "fields": { "nodes": [{ "id": "FIELD_STATUS", "name": "Status", "options": [
+                    { "id": "OPT_TODO", "name": "Todo" },
+                    { "id": "OPT_DOING", "name": "In progress" },
+                    { "id": "OPT_DONE", "name": "Done" }
+                ]}]}
+            },
             "fieldValues": { "nodes": [
                 { "__typename": "ProjectV2ItemFieldSingleSelectValue",
                   "name": "In progress", "field": { "name": "Status" } },
@@ -148,6 +157,95 @@ fn opening_a_task_starts_a_session_that_works_it() {
     );
     assert_eq!(state.session.selected.as_ref(), Some(&open.session.id));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn opening_a_task_tells_the_source_it_is_in_progress() {
+    let (runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+    let task = state.task.tasks.first_mut().expect("the task");
+    task.status = "Todo".into();
+    task.intent = Some(StatusIntent::Ready);
+
+    dispatch(
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    let sent: Vec<serde_json::Value> = runtime
+        .block_on(server.received_requests())
+        .expect("the calls")
+        .iter()
+        .map(|call| call.body_json().expect("json"))
+        .collect();
+    assert!(
+        sent.iter()
+            .any(|call| call["variables"]["option"] == "OPT_DOING"),
+        "the option the status map points at: {sent:?}"
+    );
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn a_task_already_in_progress_is_not_written_again() {
+    let (runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+
+    dispatch(
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    let sent: Vec<serde_json::Value> = runtime
+        .block_on(server.received_requests())
+        .expect("the calls")
+        .iter()
+        .map(|call| call.body_json().expect("json"))
+        .collect();
+    assert!(
+        !sent.iter().any(|call| call["query"]
+            .as_str()
+            .is_some_and(|query| query.starts_with("mutation"))),
+        "the source already says so: {sent:?}"
+    );
 }
 
 #[test]

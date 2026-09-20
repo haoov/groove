@@ -10,7 +10,7 @@ mod tests;
 
 pub use error::{Error, Result};
 pub use github::Github;
-use groove_types::{Task, TaskKey};
+use groove_types::{StatusIntent, Task, TaskKey};
 pub use token::Token;
 
 /// Every source Groove reads. A new provider is a new arm, and the compiler asks for
@@ -43,6 +43,13 @@ impl Source {
     pub async fn fetch(&self, key: &TaskKey) -> Result<Fetched> {
         match self {
             Source::Github(github) => github.fetch(key).await,
+        }
+    }
+
+    /// Sets the task's status to what the source calls this intent. Returns that label.
+    pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
+        match self {
+            Source::Github(github) => github.set_status(key, intent).await,
         }
     }
 

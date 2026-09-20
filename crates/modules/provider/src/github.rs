@@ -4,7 +4,7 @@ mod query;
 mod read;
 
 use groove_http::{Client, Method};
-use groove_types::{GithubConfig, Task, TaskKey};
+use groove_types::{GithubConfig, StatusIntent, Task, TaskKey};
 
 use crate::token::{GhToken, Token};
 use crate::{Error, Result};
@@ -71,6 +71,30 @@ impl Github {
         })
     }
 
+    /// Sets the board's status field to the label the config maps this intent to.
+    pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
+        let name = self.config.properties.status.clone();
+        let label = self
+            .config
+            .status_map
+            .label(intent)
+            .ok_or_else(|| Error::Invalid(format!("{} maps nothing to {intent:?}", self.host)))?
+            .to_string();
+        let issue = self.issue(key).await?;
+        let item = read::item(&issue).ok_or_else(|| self.off_board(key))?;
+        let ids = read::ids(item, &name).ok_or_else(|| self.no_field(&name))?;
+        let option = read::option(item, &name, &label)
+            .ok_or_else(|| Error::Invalid(format!("{name} has no option called {label}")))?;
+        let at = serde_json::json!({
+            "project": ids.project,
+            "item": ids.item,
+            "field": ids.field,
+            "option": option,
+        });
+        self.ask(&query::set_select(), at).await?;
+        Ok(label)
+    }
+
     /// Adds `hours` to what the board's own field holds against the issue.
     pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
         let name = self
@@ -80,11 +104,8 @@ impl Github {
             .clone()
             .ok_or_else(|| Error::Invalid(format!("{} names no hours field", self.host)))?;
         let issue = self.issue(key).await?;
-        let item = read::item(&issue).ok_or_else(|| {
-            Error::Invalid(format!("{} is on no project board", key.external_id()))
-        })?;
-        let ids = read::ids(item, &name)
-            .ok_or_else(|| Error::Invalid(format!("the board has no field called {name}")))?;
+        let item = read::item(&issue).ok_or_else(|| self.off_board(key))?;
+        let ids = read::ids(item, &name).ok_or_else(|| self.no_field(&name))?;
         let whole = read::number(item, &name).unwrap_or_default() + hours;
         let at = serde_json::json!({
             "project": ids.project,
@@ -94,6 +115,14 @@ impl Github {
         });
         self.ask(&query::set_number(), at).await?;
         Ok(whole)
+    }
+
+    fn off_board(&self, key: &TaskKey) -> Error {
+        Error::Invalid(format!("{} is on no project board", key.external_id()))
+    }
+
+    fn no_field(&self, name: &str) -> Error {
+        Error::Invalid(format!("the board has no field called {name}"))
     }
 
     /// One issue, by the owner, repo and number its key carries.

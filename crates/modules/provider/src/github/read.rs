@@ -27,6 +27,19 @@ pub(super) fn ids(item: &serde_json::Value, name: &str) -> Option<Ids> {
     })
 }
 
+/// The id of the option of this name, of the field of that name.
+pub(super) fn option(item: &serde_json::Value, field: &str, name: &str) -> Option<String> {
+    let options = item["project"]["fields"]["nodes"]
+        .as_array()?
+        .iter()
+        .find(|one| one["name"].as_str() == Some(field))?;
+    let option = options["options"]
+        .as_array()?
+        .iter()
+        .find(|one| one["name"].as_str() == Some(name))?;
+    Some(text(&option["id"]))
+}
+
 /// What the board holds for a number field of this name.
 pub(super) fn number(item: &serde_json::Value, name: &str) -> Option<f32> {
     hours(field(item, Some(name)))

@@ -73,7 +73,6 @@ Board row sums them.
 |---|---|
 | `task.finish` | status done, teardown, remove from the rail |
 | `task.delete` · `task.delete_local` | at the provider; locally only |
-| `task.set_status` | by lifecycle only: in progress on open, done on finish |
 | `task.get_time` | read: tracked and logged hours |
 | `task.create` · `task.set_property` · `task.set_body` | the agent's own writes, through `approvals` |
 
@@ -93,13 +92,17 @@ absence credits nothing. The ledger takes what it measured every minute.
 then adds it to `logged_seconds`; the overview offers it as a button on the Logged
 line, and the number GitHub answers with next is what the line shows.
 
+**`task.set_status`** is the lifecycle's alone: opening a task's first session sets it
+in progress, and finishing will set it done. It writes the option the `status_map`'s
+first name points at, and writes nothing when the source already says so. Nothing in
+the UI sets a status by hand.
+
 **Removed.** Pause. The activity heatmap and `get_activity_days`. *Blocked by*.
 
 ## Needs
 
 - [x] The six properties named per source, with a status map and a priority map.
-- [ ] The status written back on open and on finish, which needs a single select
-      mutation; the board's item and field ids are read already.
+- [x] The status written back on open; on finish with `task.finish`.
 - [x] Local order per task and the *later* position, in the database.
 - [x] The ledger, the timer, and the hours written to the source.
 - [x] Attention rules and thresholds in `types`.

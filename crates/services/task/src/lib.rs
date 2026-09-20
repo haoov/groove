@@ -94,6 +94,15 @@ pub async fn list(sources: &[Source]) -> Result<Vec<Task>> {
     Ok(tasks)
 }
 
+/// Sets one task's status to what its source calls this intent.
+pub async fn set_status(
+    sources: &[Source],
+    key: &TaskKey,
+    intent: groove_types::StatusIntent,
+) -> Result<String> {
+    Ok(source_of(sources, key)?.set_status(key, intent).await?)
+}
+
 /// Adds hours to what the source holds against one task. Returns its new total.
 pub async fn log_hours(sources: &[Source], key: &TaskKey, hours: f32) -> Result<f32> {
     Ok(source_of(sources, key)?.log_hours(key, hours).await?)

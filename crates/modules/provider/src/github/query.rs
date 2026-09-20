@@ -7,7 +7,15 @@ const FIELDS: &str = r"
   projectItems(first: 5) {
     nodes {
       id
-      project { id title fields(first: 50) { nodes { ... on ProjectV2FieldCommon { id name } } } }
+      project {
+        id title
+        fields(first: 50) {
+          nodes {
+            ... on ProjectV2FieldCommon { id name }
+            ... on ProjectV2SingleSelectField { options { id name } }
+          }
+        }
+      }
       fieldValues(first: 25) {
         nodes {
           __typename
@@ -28,6 +36,16 @@ const FIELDS: &str = r"
     }
   }
 ";
+
+/// One of a field's own options into one field of one board item.
+pub fn set_select() -> String {
+    r"mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option }
+  }) { projectV2Item { id } }
+}"
+    .to_string()
+}
 
 /// One number into one field of one board item.
 pub fn set_number() -> String {

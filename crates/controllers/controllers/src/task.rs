@@ -1,10 +1,11 @@
 //! The `task` controller: one function per user action on the `task` service.
 
+mod status;
 pub mod time;
 
 use groove_session_service::task_session;
 use groove_task_service::{fetch, list, sources};
-use groove_types::{ExternalId, SessionId, SessionKind, Task, TaskKey, Timestamp};
+use groove_types::{ExternalId, SessionId, SessionKind, StatusIntent, Task, TaskKey, Timestamp};
 
 use crate::{AppState, Continuation, Services, Spawner, agent, session};
 
@@ -18,6 +19,11 @@ pub enum Command {
     Open { short_id: String },
     /// `task.log_hours`: what the clock measured and the source has not been told.
     LogHours { external_id: ExternalId },
+    /// `task.set_status`: by lifecycle only, in progress on open and done on finish.
+    SetStatus {
+        external_id: ExternalId,
+        intent: StatusIntent,
+    },
     /// `task.plan`: one task moved above another, or to the end of its own side.
     Plan {
         external_id: ExternalId,
@@ -33,6 +39,7 @@ impl Command {
             Command::Sync { .. } => "task.sync",
             Command::Open { .. } => "task.open",
             Command::LogHours { .. } => "task.log_hours",
+            Command::SetStatus { .. } => "task.set_status",
             Command::Plan { .. } => "task.plan",
         }
     }
@@ -51,6 +58,10 @@ pub fn dispatch(
         Command::LogHours { external_id } => {
             time::log_hours(state, services, spawner, &external_id)
         }
+        Command::SetStatus {
+            external_id,
+            intent,
+        } => status::set(state, spawner, &external_id, intent),
         Command::Plan {
             external_id,
             before,
@@ -124,6 +135,7 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     state.session.open(session.clone(), now);
     crate::workspace::follow(state, spawner);
     follow(state, spawner);
+    status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
     agent::start(state, spawner, id, session::FIRST_SIZE);
     let service = services.session.clone();
     session::record(spawner, session::NO_PENDING, async move {
