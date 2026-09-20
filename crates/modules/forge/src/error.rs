@@ -13,7 +13,7 @@ pub enum Error {
 impl From<Error> for groove_types::Error {
     fn from(e: Error) -> Self {
         let kind = match e {
-            Error::Http(_) | Error::Refused { .. } => ErrorKind::Provider,
+            Error::Http(_) | Error::Refused { .. } => ErrorKind::Forge,
             Error::Invalid(_) => ErrorKind::Invalid,
         };
         groove_types::Error::new(kind, e.to_string())

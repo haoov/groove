@@ -51,6 +51,59 @@ impl Timestamp {
     pub fn day(self) -> Day {
         Day::from_days(self.0.div_euclid(SECONDS_PER_DAY))
     }
+
+    /// `YYYY-MM-DDTHH:MM:SS`, with `Z`, an offset or neither.
+    pub fn parse(text: &str) -> Result<Self> {
+        let invalid = || Error::invalid(format!("not a time: {text}"));
+        let (date, clock) = text.split_once('T').ok_or_else(invalid)?;
+        let (clock, offset) = without_zone(clock);
+        let into_day = seconds_of(clock).ok_or_else(invalid)?;
+        Ok(Self(
+            Day::parse(date)?.days() * SECONDS_PER_DAY + into_day - offset,
+        ))
+    }
+}
+
+/// The clock, and the zone after it in seconds east of UTC.
+fn without_zone(clock: &str) -> (&str, i64) {
+    if let Some(rest) = clock.strip_suffix('Z') {
+        return (rest, 0);
+    }
+    match clock.rfind(['+', '-']) {
+        Some(at) => (&clock[..at], zone(&clock[at..])),
+        None => (clock, 0),
+    }
+}
+
+/// `+HH:MM` or `-HH:MM` as seconds east of UTC.
+fn zone(text: &str) -> i64 {
+    let sign = match text.starts_with('-') {
+        true => -1,
+        false => 1,
+    };
+    let mut parts = text.trim_start_matches(['+', '-']).splitn(2, ':');
+    let hours: i64 = parts
+        .next()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or_default();
+    let minutes: i64 = parts
+        .next()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or_default();
+    sign * (hours * 3600 + minutes * 60)
+}
+
+/// `HH:MM:SS`, with or without a fraction, as seconds into the day.
+fn seconds_of(clock: &str) -> Option<i64> {
+    let mut parts = clock.splitn(3, ':');
+    let hours: i64 = parts.next()?.parse().ok()?;
+    let minutes: i64 = parts.next()?.parse().ok()?;
+    let seconds: i64 = match parts.next() {
+        Some(text) => text.split('.').next()?.parse().ok()?,
+        None => 0,
+    };
+    let sane = hours < 24 && minutes < 60 && seconds < 61;
+    sane.then_some(hours * 3600 + minutes * 60 + seconds)
 }
 
 /// A calendar day, `YYYY-MM-DD`.

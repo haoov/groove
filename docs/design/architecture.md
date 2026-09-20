@@ -10,7 +10,7 @@ layer above it. Nothing calls up. This file holds the rules; the code holds the 
 | ui | `groove` (bin) · `ui` · `mcp-server` | present, translate input |
 | controllers | `controllers` | one module per service; one function per action |
 | services | `task` · `session` · `workspace` · `agent` · `config` | one per capability |
-| modules | `provider` · `sessions` · `worktree` · `git` · `diff` · `grep` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
+| modules | `provider` · `sessions` · `worktree` · `git` · `diff` · `grep` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `token` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
 | base | `db` · `http` · `exec` · `gfx` | one way out of the process each |
 | shared | `types` | the vocabulary: data and pure rules, used from modules up; depends on nothing; the base never touches it |
 
@@ -78,7 +78,7 @@ One directory per layer under `crates/`. What each holds:
 | Crate | Holds |
 |---|---|
 | `db` | pool, migrations, in-memory database for tests |
-| `http` | one client: auth header, timeout, retry, redaction |
+| `http` | one client: auth header, timeout, retry, redaction; a GraphQL endpoint |
 | `exec` | a process: run to completion with capture, timeout, kill on drop, redaction; a pty with streaming and resize |
 | `gfx` | wgpu device, glyph atlas, cell grid, box quads, theme |
 | `types` | the vocabulary and the pure rules over it |
@@ -93,6 +93,7 @@ One directory per layer under `crates/`. What each holds:
 | `text` | rope, tree-sitter, transactions, semantic hook |
 | `terminal` | emulation over `exec::pty`; terminals per worktree |
 | `agent-launch` | flags, session uuid, core prompt, the agent's terminal |
+| `token` | a host's bearer token, asked of `gh` or `glab`, held for the run |
 | `forge` | gitlab, github PRs, review queue |
 | `tools` | MCP tool definitions, arguments, the tier table |
 | `hooks` | the loopback receiver for the agent's hooks |

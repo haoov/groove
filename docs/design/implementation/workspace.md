@@ -140,11 +140,15 @@ From the agent, every one of these goes through `approvals` unless auto-approve 
 
 ## Forge
 
-**Module `forge`**, on `http` and `exec`: gitlab and github, tokens from `gh` and `glab`,
-cached, never stored; the forge decided by the remote's host; one trait, two
-implementations. One MR per worktree at most. Create with the worktree's branch as source
-and its `base_ref` or the repo default as target, a footer linking the task. Plus requested
+**Module `forge`**: gitlab and github behind one `Remote` enum, the forge decided by the
+host alone. Tokens come from module `token` — `gh auth token` and `glab auth status`, held
+for the run, never stored. One read call brings a `Snapshot`: the MR, its CI and its
+threads. One MR per worktree at most. Create with the worktree's branch as source and its
+`base_ref` or the repo default as target, a footer linking the task. Plus requested
 reviewers and a review with a verdict on both forges.
+
+The GraphQL transport is `http::Graphql`, shared with `provider`: it carries the token and
+turns the errors a forge answers 200 with into an error.
 
 **Service `workspace`** holds the selected worktree's MR, CI and threads; the `session`
 slice sums them into `WorktreeDelivery` per worktree.

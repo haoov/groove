@@ -1279,6 +1279,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-forge"
+version = "0.1.0"
+dependencies = [
+ "groove-http",
+ "groove-token",
+ "groove-types",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "groove-gfx"
 version = "0.1.0"
 dependencies = [
@@ -1362,8 +1375,8 @@ dependencies = [
 name = "groove-provider"
 version = "0.1.0"
 dependencies = [
- "groove-exec",
  "groove-http",
+ "groove-token",
  "groove-types",
  "serde_json",
  "thiserror 2.0.20",
@@ -1425,6 +1438,15 @@ dependencies = [
  "tree-sitter-python",
  "tree-sitter-rust",
  "tree-sitter-yaml",
+]
+
+[[package]]
+name = "groove-token"
+version = "0.1.0"
+dependencies = [
+ "groove-exec",
+ "groove-http",
+ "tokio",
 ]
 
 [[package]]

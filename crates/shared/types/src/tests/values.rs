@@ -56,3 +56,26 @@ fn names_parse_both_ways() {
     assert_eq!(json["kind"], "review");
     assert_eq!(json["iid"], 7);
 }
+
+#[test]
+fn an_instant_a_forge_wrote_reads_back_as_seconds() {
+    let noon = Timestamp::parse("2026-09-20T12:00:00Z").unwrap();
+    assert_eq!(noon.day().to_string(), "2026-09-20");
+    assert_eq!(noon.seconds() % 86_400, 12 * 3600);
+}
+
+#[test]
+fn a_fraction_and_an_offset_are_both_understood() {
+    let utc = Timestamp::parse("2026-09-20T12:00:00Z").unwrap();
+    assert_eq!(Timestamp::parse("2026-09-20T12:00:00.482Z").unwrap(), utc);
+    assert_eq!(Timestamp::parse("2026-09-20T14:00:00+02:00").unwrap(), utc);
+    assert_eq!(Timestamp::parse("2026-09-20T09:00:00-03:00").unwrap(), utc);
+    assert_eq!(Timestamp::parse("2026-09-20T12:00:00").unwrap(), utc);
+}
+
+#[test]
+fn what_is_not_an_instant_is_refused() {
+    assert!(Timestamp::parse("2026-09-20").is_err());
+    assert!(Timestamp::parse("2026-09-20T25:00:00Z").is_err());
+    assert!(Timestamp::parse("").is_err());
+}

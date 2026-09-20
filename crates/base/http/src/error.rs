@@ -19,6 +19,8 @@ pub enum Error {
     },
     #[error("no token: {0}")]
     Auth(String),
+    #[error("{url} refused the query: {message}")]
+    Refused { url: String, message: String },
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

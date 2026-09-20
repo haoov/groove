@@ -3,26 +3,22 @@
 mod query;
 mod read;
 
-use groove_http::{Client, Method};
-use groove_types::{GithubConfig, StatusIntent, Task, TaskKey};
+use groove_http::Graphql;
+use groove_token::{Cli, Token};
+use groove_types::{Forge, GithubConfig, StatusIntent, Task, TaskKey};
 
-use crate::token::{GhToken, Token};
 use crate::{Error, Result};
 
 pub struct Github {
     host: String,
     config: GithubConfig,
-    client: Client,
-    token: Token,
+    api: Graphql<Token>,
 }
 
 impl Github {
     /// A source called with the config's own token, or the one `gh` holds.
     pub fn new(config: GithubConfig) -> Result<Self> {
-        let token = match config.token.clone() {
-            Some(token) => Token::Fixed(token),
-            None => Token::Gh(GhToken::new(&config.host)),
-        };
+        let token = Token::configured(config.token.clone(), Cli::Gh, &config.host);
         Self::with_token(config, token)
     }
 
@@ -30,20 +26,9 @@ impl Github {
     pub fn with_token(config: GithubConfig, token: Token) -> Result<Self> {
         Ok(Self {
             host: config.host.clone(),
+            api: Graphql::new(Forge::graphql(&config.host), token)?,
             config,
-            client: Client::new()?,
-            token,
         })
-    }
-
-    /// The endpoint every query goes to. A host that carries its own scheme is taken
-    /// as it stands.
-    fn url(&self) -> String {
-        match self.host.as_str() {
-            "github.com" => "https://api.github.com/graphql".to_string(),
-            host if host.starts_with("http") => format!("{host}/api/graphql"),
-            host => format!("https://{host}/api/graphql"),
-        }
     }
 
     pub async fn list(&self) -> Result<Vec<Task>> {
@@ -152,31 +137,7 @@ impl Github {
         }
     }
 
-    /// One GraphQL call, with the errors GitHub answers 200 with.
     async fn ask(&self, query: &str, variables: serde_json::Value) -> Result<serde_json::Value> {
-        let body = serde_json::json!({ "query": query, "variables": variables });
-        let reply: serde_json::Value = self
-            .client
-            .request(Method::POST, self.url())
-            .json(&body)
-            .send_authed_json(&self.token)
-            .await?;
-        match refusal(&reply) {
-            Some(message) => Err(Error::Refused {
-                host: self.host.clone(),
-                message,
-            }),
-            None => Ok(reply),
-        }
+        Ok(self.api.ask(query, variables).await?)
     }
-}
-
-/// What GitHub said was wrong with a query it still answered 200 to.
-fn refusal(reply: &serde_json::Value) -> Option<String> {
-    let errors = reply["errors"].as_array()?;
-    let said: Vec<&str> = errors
-        .iter()
-        .filter_map(|one| one["message"].as_str())
-        .collect();
-    (!said.is_empty()).then(|| said.join("; "))
 }

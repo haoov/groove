@@ -15,6 +15,23 @@ impl Forge {
         }
     }
 
+    /// The forge a host names; nothing but the host decides it.
+    pub fn of_host(host: &str) -> Self {
+        match host.contains("github") {
+            true => Forge::Github,
+            false => Forge::Gitlab,
+        }
+    }
+
+    /// The GraphQL endpoint of a host. One carrying its own scheme stands as it is.
+    pub fn graphql(host: &str) -> String {
+        match host {
+            "github.com" => "https://api.github.com/graphql".to_string(),
+            host if host.starts_with("http") => format!("{host}/api/graphql"),
+            host => format!("https://{host}/api/graphql"),
+        }
+    }
+
     pub fn parse(name: &str) -> Result<Self> {
         match name {
             "gitlab" => Ok(Forge::Gitlab),

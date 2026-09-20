@@ -4,16 +4,15 @@
 mod error;
 mod github;
 mod notion;
-mod token;
 
 #[cfg(test)]
 mod tests;
 
 pub use error::{Error, Result};
 pub use github::Github;
+pub use groove_token::Token;
 use groove_types::{StatusIntent, Task, TaskKey};
 pub use notion::Notion;
-pub use token::Token;
 
 /// Every source Groove reads. A new provider is a new arm, and the compiler asks for
 /// it everywhere at once.

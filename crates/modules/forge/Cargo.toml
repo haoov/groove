@@ -1,6 +1,6 @@
 [package]
-name = "groove-provider"
-description = "Where a task comes from: the sources Groove reads it out of"
+name = "groove-forge"
+description = "The forge a repo's host names: its MRs, their CI and their threads"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
