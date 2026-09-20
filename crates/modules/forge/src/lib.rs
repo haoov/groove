@@ -40,6 +40,11 @@ impl Remote {
         }
     }
 
+    /// Whether Groove can read this host's forge yet.
+    pub fn reads(host: &str) -> bool {
+        matches!(Forge::of_host(host), Forge::Github)
+    }
+
     pub fn kind(&self) -> Forge {
         match self {
             Remote::Github(_) => Forge::Github,

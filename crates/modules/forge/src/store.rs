@@ -64,6 +64,17 @@ impl Store {
         Ok(row.map(Mr::from))
     }
 
+    /// Every open MR, whatever worktree it belongs to.
+    pub async fn open(&self) -> Result<Vec<Mr>> {
+        let rows: Vec<Row> = sqlx::query_as(
+            "SELECT id, worktree_id, platform, remote_id, url, state
+             FROM mrs WHERE state = 'open' ORDER BY worktree_id",
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+        Ok(rows.into_iter().map(Mr::from).collect())
+    }
+
     /// What the forge answered, written down. A worktree keeps one MR, so any other
     /// row of it goes.
     pub async fn save(&self, worktree: &WorktreeId, forge: Forge, read: &Snapshot) -> Result<Mr> {

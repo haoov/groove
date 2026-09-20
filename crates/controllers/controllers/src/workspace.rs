@@ -3,6 +3,7 @@
 mod diff;
 mod editor;
 mod git;
+pub(crate) mod mr;
 mod search;
 
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ use self::search::grep;
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
+pub use mr::{known, poll, polls};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.

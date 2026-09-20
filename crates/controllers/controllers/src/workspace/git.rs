@@ -36,6 +36,8 @@ pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
         return;
     };
     let job = state.begin(act.label());
+    let pushed = matches!(act, Remote::Push);
+    let id = worktree.id.clone();
     spawner.spawn(Box::pin(async move {
         let done = match act {
             Remote::Push => groove_workspace_service::push(&dir, &worktree.branch).await,
@@ -46,6 +48,9 @@ pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
                 state.end(job);
                 if let Err(e) = done {
                     state.errors.push(e);
+                }
+                if pushed {
+                    state.workspace.poll.forget(&id);
                 }
                 crate::session::refresh_status(state, services, spawner);
                 reread(state, spawner);

@@ -1,13 +1,46 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
 use groove_forge::{Remote, Snapshot, Store};
-use groove_types::{Mr, Repo, Result, Worktree, WorktreeId};
+use groove_types::{CiState, Mr, MrDelivery, Repo, Result, Worktree, WorktreeId};
 
 /// One MR as the forge answered and the database now holds it.
 #[derive(Debug)]
 pub struct Delivered {
     pub mr: Mr,
     pub read: Snapshot,
+}
+
+impl Delivered {
+    /// The MR part of the worktree's row.
+    pub fn shown(&self) -> MrDelivery {
+        MrDelivery {
+            state: self.mr.state,
+            url: self.mr.url.clone(),
+            approved: self
+                .read
+                .details
+                .approval
+                .as_ref()
+                .is_some_and(|one| one.approved),
+            changes_requested: self.read.details.changes_requested(),
+        }
+    }
+
+    /// The state of the run on its head commit, where it reported one.
+    pub fn ci(&self) -> Option<CiState> {
+        self.read.ci.as_ref().map(|one| one.state)
+    }
+
+    /// The threads nobody has resolved.
+    pub fn notes(&self) -> u32 {
+        let open = self
+            .read
+            .threads
+            .iter()
+            .filter(|thread| thread.notes.iter().any(|note| !note.resolved))
+            .count();
+        u32::try_from(open).unwrap_or(u32::MAX)
+    }
 }
 
 /// The workspace capability's module handles, cheap to clone into a job.
@@ -31,9 +64,19 @@ impl Service {
         Self::new(Store::new(sessions.db().clone()))
     }
 
+    /// Every open MR the database holds, whichever worktree it belongs to.
+    pub async fn open(&self) -> Result<Vec<Mr>> {
+        Ok(self.mrs.open().await?)
+    }
+
     /// The MR the database holds for a worktree.
     pub async fn stored(&self, worktree: &WorktreeId) -> Result<Option<Mr>> {
         Ok(self.mrs.get(worktree).await?)
+    }
+
+    /// Whether Groove can read the forge a host carries.
+    pub fn reads(host: &str) -> bool {
+        Remote::reads(host)
     }
 
     /// The forge that serves a repo, called with the token its CLI holds.

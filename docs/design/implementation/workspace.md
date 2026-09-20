@@ -153,13 +153,16 @@ turns the errors a forge answers 200 with into an error.
 **Service `workspace`** holds the selected worktree's MR, CI and threads; the `session`
 slice sums them into `WorktreeDelivery` per worktree.
 
-**Polling**, spawned by the service: only sessions with an open MR, only while the window
-is focused, once on focus, fixed interval, one call per MR with its threads on the same
-tick; a failed poll ages the row to *stale*.
+**Polling**, on the window's own clock: only while the window is focused, and only the
+selected worktree until its forge has been asked once, then every worktree whose row says
+its MR is open. One call per MR, with its CI and its threads on the same tick. A read that
+fails ages the row to *stale* and leaves what stands. A focus gain asks about everything
+again; a push forgets what was asked of that worktree. A host whose forge Groove cannot
+read yet is skipped, not reported.
 
 | Still to build | Does |
 |---|---|
-| `workspace.get_mr` · `workspace.get_ci` · `workspace.get_threads` · `workspace.get_review_queue` | reads |
+| `workspace.get_review_queue` | the review column |
 | `workspace.create_mr` · `workspace.update_mr` · `workspace.close_mr` | through `approvals` from the agent |
 | `workspace.request_review` | add reviewers |
 | `workspace.review` | post a verdict with the pending annotations as its comments |

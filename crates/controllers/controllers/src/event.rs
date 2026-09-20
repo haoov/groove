@@ -25,6 +25,11 @@ pub fn apply(event: Event, state: &mut AppState) {
         Event::Workspace(e) => groove_workspace_service::apply(&mut state.workspace, e),
         Event::Agent(e) => groove_agent_service::apply(&mut state.agent, e),
         Event::Config(e) => groove_config_service::apply(&mut state.config, e),
-        Event::Window(Window::Focus(focused)) => state.focused = focused,
+        Event::Window(Window::Focus(focused)) => {
+            state.focused = focused;
+            if focused {
+                state.workspace.poll.woke();
+            }
+        }
     }
 }

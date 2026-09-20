@@ -41,16 +41,20 @@ impl Open {
 
     /// What git says about one worktree now.
     pub fn told(&mut self, worktree: &WorktreeId, status: WorktreeStatus) {
-        match self.delivery.iter_mut().find(|(id, _)| id == worktree) {
-            Some((_, delivery)) => delivery.status = status,
-            None => self.delivery.push((
-                worktree.clone(),
-                WorktreeDelivery {
-                    status,
-                    ..WorktreeDelivery::default()
-                },
-            )),
-        }
+        self.row(worktree).status = status;
+    }
+
+    /// The worktree's row, made blank if it has none yet.
+    pub fn row(&mut self, worktree: &WorktreeId) -> &mut WorktreeDelivery {
+        let at = match self.delivery.iter().position(|(id, _)| id == worktree) {
+            Some(at) => at,
+            None => {
+                self.delivery
+                    .push((worktree.clone(), WorktreeDelivery::default()));
+                self.delivery.len() - 1
+            }
+        };
+        &mut self.delivery[at].1
     }
 
     pub fn delivery_of(&self, worktree: &WorktreeId) -> Option<&WorktreeDelivery> {

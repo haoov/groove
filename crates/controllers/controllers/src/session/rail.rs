@@ -39,7 +39,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     spawner.spawn(Box::pin(async move {
         let result = service.contents(&id).await;
         Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 match result {
                     Ok(contents) => {
                         if let Some(open) = state.session.get_mut(&id) {
@@ -58,6 +58,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                     Err(e) => state.errors.push(e),
                 }
                 crate::workspace::follow(state, spawner);
+                crate::workspace::known(services, spawner);
             },
         ) as Continuation
     }));

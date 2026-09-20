@@ -121,7 +121,8 @@ impl App {
         if moving {
             return Some(Duration::from_millis(FRAME_MS));
         }
-        let waiting = !self.state.agent.agents.is_empty();
+        let waiting = !self.state.agent.agents.is_empty()
+            || groove_controllers::workspace::polls(&self.state);
         waiting.then(|| Duration::from_secs(CLOCK_S))
     }
 
@@ -165,10 +166,11 @@ impl App {
         self.redraw();
     }
 
-    /// The clock on the task being worked, which the ledger takes from.
+    /// The clock on the task being worked, and the poll on the open MRs.
     fn clock(&mut self) {
         let now = groove_types::Timestamp::now();
         groove_controllers::task::time::tick(&mut self.state, &self.services, &self.spawner, now);
+        groove_controllers::workspace::poll(&mut self.state, &self.services, &self.spawner, now);
     }
 
     fn metrics(&mut self) -> Option<Metrics> {
