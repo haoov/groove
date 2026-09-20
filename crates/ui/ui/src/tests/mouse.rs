@@ -324,8 +324,10 @@ fn a_column_narrower_than_its_minimum_opens_at_it() {
         agent: 1.0,
         sidebar: 1.0,
         commit: 1.0,
+        band: 1.0,
     };
     let split = Split::of(panes);
     assert_eq!(split.rail, RAIL_MIN);
     assert_eq!(split.agent, AGENT_MIN);
+    assert_eq!(split.band, crate::tokens::BAND_MIN);
 }

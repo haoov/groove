@@ -8,4 +8,11 @@ pub struct Panes {
     pub agent: f32,
     pub sidebar: f32,
     pub commit: f32,
+    /// How tall the board's timeline stands.
+    #[serde(default = "band")]
+    pub band: f32,
+}
+
+fn band() -> f32 {
+    260.0
 }

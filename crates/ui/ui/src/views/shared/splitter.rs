@@ -39,5 +39,6 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
             let top = ctx.layout.commit.y;
             Rect::new(aside.x, top - grab / 2.0, aside.w, grab)
         }),
+        Edge::Band => None,
     }
 }

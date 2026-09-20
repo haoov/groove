@@ -10,7 +10,7 @@ use groove_controllers::{AppState, Command};
 
 use crate::Ui;
 use crate::ctx::Metrics;
-use crate::hit::{Cursor, Hits};
+use crate::hit::{Cursor, Hits, Target};
 
 pub use keys::encode;
 
@@ -73,8 +73,26 @@ pub enum Input {
 /// What a wheel reports: whole lines, or pixels from a trackpad.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Delta {
-    Lines(f32),
-    Pixels(f32),
+    Lines { across: f32, down: f32 },
+    Pixels { across: f32, down: f32 },
+}
+
+impl Delta {
+    /// How far down it carries, in pixels, with `line` the height of one line.
+    pub fn down(self, line: f32) -> f32 {
+        match self {
+            Delta::Lines { down, .. } => down * line,
+            Delta::Pixels { down, .. } => down,
+        }
+    }
+
+    /// How far across it carries, in pixels, with `step` the width of one.
+    pub fn across(self, step: f32) -> f32 {
+        match self {
+            Delta::Lines { across, .. } => across * step,
+            Delta::Pixels { across, .. } => across,
+        }
+    }
 }
 
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
@@ -99,8 +117,8 @@ pub fn handle(
             ui.mapping = false;
             pointer::dropped(ui, app)
         }
-        Input::Scroll { x, delta, .. } => {
-            scroll::scroll(x, delta, ui, app, hits, metrics);
+        Input::Scroll { x, y, delta } => {
+            scroll::scroll((x, y), delta, ui, app, hits, metrics);
             Vec::new()
         }
     }
@@ -109,8 +127,10 @@ pub fn handle(
 /// The row under the pointer. True when it changed, and the window must redraw.
 pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
     let at = hits.at(x, y);
-    let changed = at != ui.hover;
+    let moved = matches!(at, Some(Target::Bar(_)));
+    let changed = at != ui.hover || (moved && (x, y) != ui.at);
     ui.hover = at;
+    ui.at = (x, y);
     changed
 }
 

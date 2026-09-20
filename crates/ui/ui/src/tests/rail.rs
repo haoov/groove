@@ -130,7 +130,10 @@ fn the_wheel_scrolls_the_rows_and_a_row_off_the_top_cannot_be_clicked() {
         Input::Scroll {
             x: 0.0,
             y: 0.0,
-            delta: Delta::Pixels(-top.h * 2.0),
+            delta: Delta::Pixels {
+                across: 0.0,
+                down: -top.h * 2.0,
+            },
         },
         &mut ui,
         &app,

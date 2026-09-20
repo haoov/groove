@@ -120,11 +120,13 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
         .rect_of(&Target::Place(first.clone()))
         .expect("the row carries its place");
     pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits);
+    let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let width = (board.w / 3.0).floor();
+    let (_, body, _) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let width = (body.w / 3.0).floor();
     drag_at(
-        board.x + width + 10.0,
-        board.bottom() - 1.0,
+        body.x + width + 10.0,
+        body.bottom() - 1.0,
         &mut ui,
         &app,
         &hits,

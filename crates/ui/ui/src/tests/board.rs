@@ -3,6 +3,7 @@
 mod attention;
 mod filter;
 mod plan;
+mod timeline;
 
 use groove_controllers::AppState;
 use groove_gfx::Fonts;
@@ -238,7 +239,7 @@ fn an_unfolded_item_holds_no_rule_between_its_own_rows() {
         .filter(|quad| quad.rect.x >= board.x && quad.rect.x < board.x + width)
         .count();
     assert_eq!(
-        rules, 4,
-        "the header, the heading, the item's last row, the session under it"
+        rules, 5,
+        "the header, the heading, the item's last row, the session, the band"
     );
 }

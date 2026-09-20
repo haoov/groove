@@ -95,8 +95,9 @@ pub struct Ui {
     pub discarding: Option<Losing>,
     /// What the right button opened, and where.
     pub menu: Option<Menu>,
-    /// What the pointer is over, for the row under it to say so.
+    /// What the pointer is over, for the row under it to say so, and where it stands.
     pub hover: Option<Target>,
+    pub at: (f32, f32),
     /// The colours the last frames read, kept while they still hold.
     pub painted: painted::Painted,
 }

@@ -26,6 +26,13 @@ pub const CLICK_SLOP: f32 = 4.0;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
+/// How far a gesture carries the timeline one day.
+pub const DAY_PIXELS: f32 = 24.0;
+
+/// The smallest the timeline's band may be, and the room it leaves the columns.
+pub const BAND_MIN: f32 = 120.0;
+pub const COLUMNS_MIN: f32 = 200.0;
+
 /// The smallest the commit box and the list above it may be.
 pub const COMMIT_MIN: f32 = 72.0;
 pub const FILES_MIN: f32 = 120.0;
@@ -49,6 +56,8 @@ pub struct Tokens {
     pub rail: f32,
     pub agent: f32,
     pub sidebar: f32,
+    /// The timeline's band, when it stands open.
+    pub band: f32,
     /// One line of text, with its leading.
     pub line: f32,
     pub hairline: f32,
@@ -97,6 +106,7 @@ const LOGICAL: Tokens = Tokens {
     rail: 220.0,
     agent: 380.0,
     sidebar: 260.0,
+    band: 260.0,
     line: 18.0,
     hairline: 1.0,
     grab: 8.0,
@@ -139,6 +149,7 @@ impl Tokens {
             rail: s(LOGICAL.rail),
             agent: s(LOGICAL.agent),
             sidebar: s(LOGICAL.sidebar),
+            band: s(LOGICAL.band),
             line: row(LINE, code),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),

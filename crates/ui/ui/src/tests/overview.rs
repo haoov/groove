@@ -96,7 +96,10 @@ fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
         Input::Scroll {
             x: workspace.x + 10.0,
             y: workspace.y + 10.0,
-            delta: Delta::Pixels(-120.0),
+            delta: Delta::Pixels {
+                across: 0.0,
+                down: -120.0,
+            },
         },
         &mut ui,
         &app,

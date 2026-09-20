@@ -54,6 +54,10 @@ pub enum Target {
     Place(groove_types::ExternalId),
     /// What hands the source the hours the clock measured.
     LogHours(groove_types::ExternalId),
+    /// The timeline's own bar, which folds it away.
+    Timeline,
+    /// One task's bar on the timeline, which names it under the pointer.
+    Bar(String),
     /// The board's filter, and one row it offers.
     Filter,
     Offer(usize),
@@ -129,6 +133,7 @@ impl Target {
             | Target::Offer(_)
             | Target::AddTask
             | Target::LogHours(_)
+            | Target::Timeline
             | Target::Unfold(_)
             | Target::Head(_)
             | Target::Found(_)
@@ -138,6 +143,7 @@ impl Target {
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
+            Target::Bar(_) => Cursor::Default,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

@@ -30,7 +30,10 @@ fn the_wheel_over_the_workspace_scrolls_the_file() {
             Input::Scroll {
                 x: workspace.x + 1.0,
                 y: workspace.y + 1.0,
-                delta: Delta::Pixels(pixels),
+                delta: Delta::Pixels {
+                    across: 0.0,
+                    down: pixels,
+                },
             },
             ui,
             &app,
@@ -244,7 +247,10 @@ fn a_wheel_notch_over_the_file_moves_one_code_line() {
         Input::Scroll {
             x: workspace.x + 1.0,
             y: workspace.y + 1.0,
-            delta: Delta::Lines(-1.0),
+            delta: Delta::Lines {
+                across: 0.0,
+                down: -1.0,
+            },
         },
         &mut ui,
         &app,

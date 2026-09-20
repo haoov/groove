@@ -13,25 +13,27 @@ use crate::{Surface, Ui};
 /// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
 /// far end.
 pub(super) fn scroll(
-    x: f32,
+    point: (f32, f32),
     delta: Delta,
     ui: &mut Ui,
     app: &AppState,
     hits: &Hits,
     metrics: Metrics,
 ) {
+    let (x, y) = point;
     let layout = Layout::of(metrics, ui);
     let tokens = metrics.tokens();
-    let pixels = |height: f32| match delta {
-        Delta::Lines(lines) => lines * height,
-        Delta::Pixels(pixels) => pixels,
-    };
+    let pixels = |height: f32| delta.down(height);
     if x <= layout.rail.right() {
         let far = hits.extent(Scroller::Rail);
         ui.rail.scroll = moved(ui.rail.scroll, pixels(tokens.row), far);
         return;
     }
     if ui.showing(app) == Surface::Board {
+        let (_, _, band) = crate::views::board::regions(&tokens, app, ui, layout.board);
+        if band.contains(x, y) {
+            return carry(delta, ui, tokens);
+        }
         return column(x, pixels(tokens.row), ui, hits, layout);
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
@@ -52,6 +54,16 @@ pub(super) fn scroll(
             ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
         }
     }
+}
+
+/// A gesture over the band: it carries time only while it goes sideways.
+fn carry(delta: Delta, ui: &mut Ui, tokens: crate::tokens::Tokens) {
+    let day = crate::tokens::DAY_PIXELS;
+    let across = delta.across(day);
+    if across.abs() <= delta.down(tokens.row).abs() {
+        return;
+    }
+    ui.board.carry(across);
 }
 
 /// The board column the pointer is over.

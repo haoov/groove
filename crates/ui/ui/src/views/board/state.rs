@@ -20,6 +20,12 @@ pub struct BoardUi {
     /// The task a drag holds, and the line it would land on.
     pub dragging: Option<groove_types::ExternalId>,
     pub drop: Option<usize>,
+    /// The user folded the timeline away.
+    pub shut: bool,
+    /// How many days the timeline has been carried from today, and the pixels of a
+    /// gesture that have not made a day yet.
+    pub horizon: i64,
+    pub carried: f32,
 }
 
 impl BoardUi {
@@ -32,6 +38,15 @@ impl BoardUi {
 
     pub fn is_open(&self, id: &SessionId) -> bool {
         self.open.contains(id)
+    }
+
+    /// The timeline carried by a gesture of `across` pixels, whole days at a time and
+    /// nothing of it lost, inside a year either way.
+    pub fn carry(&mut self, across: f32) {
+        self.carried += across;
+        let days = (self.carried / crate::tokens::DAY_PIXELS).trunc();
+        self.carried -= days * crate::tokens::DAY_PIXELS;
+        self.horizon = (self.horizon - days as i64).clamp(-365, 365);
     }
 
     /// What the three columns are narrowed by.

@@ -144,8 +144,11 @@ impl App {
 /// A wheel notch is lines; a trackpad is pixels, and up is away from the user.
 fn delta_of(delta: MouseScrollDelta) -> Delta {
     match delta {
-        MouseScrollDelta::LineDelta(_, lines) => Delta::Lines(lines),
-        MouseScrollDelta::PixelDelta(position) => Delta::Pixels(position.y as f32),
+        MouseScrollDelta::LineDelta(across, down) => Delta::Lines { across, down },
+        MouseScrollDelta::PixelDelta(at) => Delta::Pixels {
+            across: at.x as f32,
+            down: at.y as f32,
+        },
     }
 }
 

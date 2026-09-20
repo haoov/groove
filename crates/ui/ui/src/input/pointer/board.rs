@@ -5,10 +5,26 @@ use groove_gfx::Rect;
 use groove_types::{ExternalId, SessionId};
 
 use crate::ctx::Metrics;
+use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tokens::Tokens;
 use crate::views::board::{List, plan};
 use crate::{Surface, Ui};
+
+/// What a click on one of the board's own targets does, if it is one.
+pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    Some(match target {
+        Target::Board => board(ui),
+        Target::Task(short_id) => task(ui, short_id.clone()),
+        Target::Filter => filtering(ui),
+        Target::Offer(at) => offered(ui, app, *at),
+        Target::AddTask => explorer(ui),
+        Target::Unfold(session) => unfolded(ui, session),
+        Target::Timeline => timeline(ui),
+        Target::Place(_) => Vec::new(),
+        _ => return None,
+    })
+}
 
 /// The board, with a read of the sessions and the sources behind it.
 pub(super) fn board(ui: &mut Ui) -> Vec<Command> {
@@ -61,6 +77,12 @@ pub(super) fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
     vec![Command::Session(session::Command::Open { session })]
 }
 
+/// The timeline folded away, or back.
+pub(super) fn timeline(ui: &mut Ui) -> Vec<Command> {
+    ui.board.shut = !ui.board.shut;
+    Vec::new()
+}
+
 /// A press on a task's place takes hold of it.
 pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
     ui.board.dragging = Some(id);
@@ -72,7 +94,7 @@ pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
 pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metrics) {
     let ctx = Tokens::new(metrics.scale);
     let layout = Layout::of(metrics, ui);
-    let body = next_column(&ctx, layout);
+    let body = next_column(&ctx, app, ui, layout);
     if !body.contains(x, y) {
         ui.board.drop = None;
         return;
@@ -97,10 +119,9 @@ pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 /// Up next's own room, which a drag is measured against.
-fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
-    let board = layout.board;
-    let width = (board.w / List::ALL.len() as f32).floor();
-    let x = board.x + width;
-    let top = board.y + tokens.header + tokens.header;
-    Rect::new(x, top, width, board.bottom() - top)
+fn next_column(tokens: &Tokens, app: &AppState, ui: &Ui, layout: Layout) -> Rect {
+    let (_, body, _) = crate::views::board::regions(tokens, app, ui, layout.board);
+    let width = (body.w / List::ALL.len() as f32).floor();
+    let top = body.y + tokens.header;
+    Rect::new(body.x + width, top, width, body.bottom() - top)
 }

@@ -11,9 +11,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
-use self::board::{
-    board, carried, explorer, filtering, offered, opened_session, takes, task, unfolded,
-};
+use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
@@ -107,13 +105,10 @@ fn acted(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
+    if let Some(commands) = target.as_ref().and_then(|one| board::acted(one, ui, app)) {
+        return commands;
+    }
     match target {
-        Some(Target::Board) => board(ui),
-        Some(Target::Task(short_id)) => task(ui, short_id),
-        Some(Target::Filter) => filtering(ui),
-        Some(Target::Offer(at)) => offered(ui, app, at),
-        Some(Target::AddTask) => explorer(ui),
-        Some(Target::Unfold(session)) => unfolded(ui, &session),
         Some(Target::Session(session)) => opened_session(ui, session),
         Some(Target::Tab(tab)) => tabbed(ui, tab),
         Some(Target::Fold) => aside(ui),
@@ -138,15 +133,7 @@ fn acted(
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::LogHours(id)) => logging(id),
-        Some(
-            Target::Place(_)
-            | Target::Agent
-            | Target::Palette
-            | Target::Pinned
-            | Target::Split(_)
-            | Target::MenuRow(_),
-        )
-        | None => Vec::new(),
+        Some(_) | None => Vec::new(),
     }
 }
 

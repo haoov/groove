@@ -10,7 +10,8 @@ use groove_types::Panes;
 use crate::Ui;
 use crate::ctx::Metrics;
 use crate::tokens::{
-    AGENT_MIN, COMMIT_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
+    AGENT_MIN, BAND_MIN, COLUMNS_MIN, COMMIT_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN, SIDEBAR_MIN,
+    Tokens, WORKSPACE_MIN,
 };
 
 /// A boundary the user drags.
@@ -24,6 +25,8 @@ pub enum Edge {
     Sidebar,
     /// Between the changed files and the commit box under them.
     Commit,
+    /// Between the board's columns and the timeline under them.
+    Band,
 }
 
 impl Edge {
@@ -32,7 +35,7 @@ impl Edge {
 
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        self != Edge::Commit
+        !matches!(self, Edge::Commit | Edge::Band)
     }
 }
 
@@ -45,6 +48,8 @@ pub struct Split {
     pub sidebar: f32,
     /// How tall the commit box stands at the sidebar's foot.
     pub commit: f32,
+    /// How tall the board's timeline stands under its columns.
+    pub band: f32,
 }
 
 impl Default for Split {
@@ -55,6 +60,7 @@ impl Default for Split {
             agent: tokens.agent,
             sidebar: tokens.sidebar,
             commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
+            band: tokens.band,
         }
     }
 }
@@ -67,6 +73,7 @@ impl Split {
             agent: panes.agent.max(AGENT_MIN),
             sidebar: panes.sidebar.max(SIDEBAR_MIN),
             commit: panes.commit.max(COMMIT_MIN),
+            band: panes.band.max(BAND_MIN),
         }
     }
 
@@ -76,6 +83,7 @@ impl Split {
             agent: self.agent,
             sidebar: self.sidebar,
             commit: self.commit,
+            band: self.band,
         }
     }
 
@@ -102,6 +110,10 @@ impl Split {
                 let most = (height - FILES_MIN).max(COMMIT_MIN);
                 self.commit = (height - at).clamp(COMMIT_MIN, most);
             }
+            Edge::Band => {
+                let most = (height - COLUMNS_MIN).max(BAND_MIN);
+                self.band = (height - at).clamp(BAND_MIN, most);
+            }
         }
     }
 
@@ -112,6 +124,7 @@ impl Split {
             Edge::Agent => self.rail + self.agent,
             Edge::Sidebar => width - self.aside(sidebar),
             Edge::Commit => height - self.commit,
+            Edge::Band => height - self.band,
         }
     }
 
