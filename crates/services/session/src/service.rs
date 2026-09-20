@@ -41,6 +41,11 @@ impl Service {
         Self { store, pool }
     }
 
+    /// The session rows, whose database the other stores share.
+    pub fn store(&self) -> &Store {
+        &self.store
+    }
+
     /// On a private in-memory database, the pool under `root`, for tests up the stack.
     pub async fn in_memory(root: &Path) -> Result<Self, Error> {
         let store = Store::in_memory().await?;

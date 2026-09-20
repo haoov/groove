@@ -1166,6 +1166,7 @@ dependencies = [
  "groove-config",
  "groove-controllers",
  "groove-db",
+ "groove-forge",
  "groove-gfx",
  "groove-hooks",
  "groove-ledger",
@@ -1282,12 +1283,15 @@ dependencies = [
 name = "groove-forge"
 version = "0.1.0"
 dependencies = [
+ "groove-db",
  "groove-http",
  "groove-token",
  "groove-types",
  "serde_json",
+ "sqlx",
  "thiserror 2.0.20",
  "tokio",
+ "uuid",
  "wiremock",
 ]
 
@@ -1482,11 +1486,17 @@ version = "0.1.0"
 dependencies = [
  "groove-diff",
  "groove-editor",
+ "groove-forge",
  "groove-git",
  "groove-grep",
+ "groove-sessions",
  "groove-text",
  "groove-types",
  "groove-watch",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]

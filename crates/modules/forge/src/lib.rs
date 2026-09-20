@@ -3,14 +3,16 @@
 
 mod error;
 mod github;
+mod store;
 
 #[cfg(test)]
 mod tests;
 
 pub use error::{Error, Result};
 pub use github::Github;
-use groove_token::Token;
+pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo};
+pub use store::Store;
 
 /// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
 pub enum Remote {
@@ -35,14 +37,6 @@ impl Remote {
                 "{} is a GitLab host, which Groove cannot read yet",
                 repo.host
             ))),
-        }
-    }
-
-    /// The same, called with a token of your own.
-    pub fn with_token(repo: &Repo, token: Token) -> Result<Self> {
-        match Forge::of_host(&repo.host) {
-            Forge::Github => Ok(Remote::Github(Github::with_token(&repo.host, token)?)),
-            Forge::Gitlab => Err(Error::Invalid(format!("{} is a GitLab host", repo.host))),
         }
     }
 

@@ -8,12 +8,20 @@ publish.workspace = true
 
 [dependencies]
 groove-diff = { path = "../../modules/diff" }
+groove-forge = { path = "../../modules/forge" }
 groove-grep = { path = "../../modules/grep" }
+groove-sessions = { path = "../../modules/sessions" }
 groove-git = { path = "../../modules/git" }
 groove-text = { path = "../../modules/text" }
 groove-editor = { path = "../../modules/editor" }
 groove-types = { path = "../../shared/types" }
 groove-watch = { path = "../../modules/watch" }
+
+[dev-dependencies]
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+wiremock.workspace = true
 
 [lints]
 workspace = true

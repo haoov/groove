@@ -7,22 +7,25 @@ pub use groove_diff::{
     from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
+pub use groove_forge::Snapshot;
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
+use groove_types::{DiffMode, DiffView, FileDiff, Mr, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
 mod git;
 mod read;
+mod service;
 
 #[cfg(test)]
 mod tests;
 
 pub use git::{commit, discard, pull, push, stage, unstage};
 pub use read::{FOUND_MAX, changes, derived, grep, opened, painted, reopened, summary};
+pub use service::{Delivered, Service};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -49,6 +52,8 @@ pub struct State {
     pub stamp: u64,
     /// What the commit box holds, typed on the same buffer as a file.
     pub message: Buffer,
+    /// The MR of the selected worktree, and what the forge last said about it.
+    pub delivery: Delivery,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,
@@ -127,8 +132,37 @@ impl State {
         self.opened = None;
         self.status = None;
         self.watching = None;
+        self.delivery.none();
         self.deriving = None;
         self.watch = None;
+    }
+}
+
+/// The selected worktree's MR: the row, and the forge's last answer about it.
+#[derive(Debug, Default)]
+pub struct Delivery {
+    pub mr: Option<Mr>,
+    pub read: Option<Snapshot>,
+    /// The last read failed; what stands here is older than it looks.
+    pub stale: bool,
+}
+
+impl Delivery {
+    /// What one read brought back.
+    pub fn taken(&mut self, delivered: Delivered) {
+        self.mr = Some(delivered.mr);
+        self.read = Some(delivered.read);
+        self.stale = false;
+    }
+
+    /// The forge has no MR for the worktree.
+    pub fn none(&mut self) {
+        *self = Self::default();
+    }
+
+    /// A read that failed leaves what stands, and ages it.
+    pub fn aged(&mut self) {
+        self.stale = true;
     }
 }
 
