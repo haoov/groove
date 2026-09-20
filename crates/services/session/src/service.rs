@@ -74,8 +74,9 @@ impl Service {
     }
 
     /// The session's worktrees off disk, then its row and everything under it.
-    pub async fn remove(&self, id: &SessionId) -> Result<(), Error> {
-        self.pool.cleanup_session(id).await?;
+    /// The session gone: its worktrees, its row. Unforced, work not yet landed stops it.
+    pub async fn remove(&self, id: &SessionId, force: bool) -> Result<(), Error> {
+        self.pool.cleanup_session(id, force).await?;
         Ok(self.store.remove(id).await?)
     }
 

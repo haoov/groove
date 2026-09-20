@@ -21,10 +21,17 @@ impl Pool {
         Ok(worktree)
     }
 
-    /// Every worktree of the session, its directory and its branch, then the session directory.
-    pub async fn cleanup_session(&self, session: &SessionId) -> Result<()> {
+    /// Every worktree of the session, its directory and its branch, then the session
+    /// directory. Unforced, it refuses to lose work that is not committed or pushed.
+    pub async fn cleanup_session(&self, session: &SessionId, force: bool) -> Result<()> {
         let dir = self.layout.session_dir(session.as_str());
-        for worktree in self.worktrees_of(session).await? {
+        let worktrees = self.worktrees_of(session).await?;
+        if !force {
+            for worktree in &worktrees {
+                self.refuse_loss(worktree).await?;
+            }
+        }
+        for worktree in worktrees {
             self.tear_down(&worktree, &dir).await?;
             self.remove_worktree(&worktree.id).await?;
         }

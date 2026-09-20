@@ -372,3 +372,38 @@ fn the_board_holds_every_session_without_being_asked() {
     });
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 }
+
+#[test]
+fn a_session_taken_away_leaves_the_board_at_once() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    dispatch(
+        Cmd::Session(Command::OpenExplorer { title: None }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.living.is_empty()
+    });
+    let session = state.session.open[0].session.id.clone();
+    assert_eq!(state.session.living.len(), 1, "the board holds it");
+
+    dispatch(
+        Cmd::Session(Command::Delete {
+            session: session.clone(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.session.living.is_empty()
+    });
+    assert!(
+        state.session.living.is_empty(),
+        "and lets it go without being asked again"
+    );
+}

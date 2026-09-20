@@ -5,10 +5,10 @@ mod repos;
 
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
-pub(crate) use rail::record;
 pub use rail::{
     close, delete, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
 };
+pub(crate) use rail::{listed, record};
 pub use repos::{
     add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
 };
@@ -109,7 +109,7 @@ pub fn dispatch(
         Command::RenameExplorer { session, title } => {
             rename_explorer(state, services, spawner, &session, &title)
         }
-        Command::Delete { session } => delete(state, services, spawner, &session),
+        Command::Delete { session } => delete(state, services, spawner, &session, true),
         Command::Select { session } => select(state, services, spawner, &session),
         Command::Open { session } => open(state, services, spawner, &session),
         Command::List => list(services, spawner),

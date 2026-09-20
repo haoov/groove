@@ -181,3 +181,58 @@ fn the_header_s_button_is_drawn_with_a_border_around_it() {
         .count();
     assert_eq!(edges, 4, "one edge a side");
 }
+
+#[test]
+fn a_live_item_answers_for_the_task_its_session_works() {
+    let mut app = full_app();
+    let external = groove_types::ExternalId::new("github.com/a/b#1");
+    let mut one = task("gh-a-b-1", "already open", external.as_str());
+    one.priority = Some(groove_types::Priority::High);
+    app.task.tasks = vec![one];
+    let kind = groove_types::SessionKind::Task {
+        external_id: external,
+    };
+    app.session
+        .open
+        .first_mut()
+        .expect("the fixture has one")
+        .session
+        .kind = kind.clone();
+    app.session
+        .living
+        .first_mut()
+        .expect("and it lives")
+        .session
+        .kind = kind;
+    let mut ui = Ui {
+        surface: Surface::Board,
+        ..Ui::default()
+    };
+    ui.board.filter.set("priority:high");
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "LIVE · 1"), "{drawn:?}");
+
+    ui.board.filter.set("priority:low");
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "LIVE"), "no count: {drawn:?}");
+    assert!(
+        drawn.iter().any(|t| t == "nothing the filter lets through"),
+        "{drawn:?}"
+    );
+}
+
+#[test]
+fn a_source_can_be_named_and_the_other_one_s_tasks_go() {
+    let mut app = full_app();
+    let mut notion = task("TASKS2-1", "from notion", "1f2e3d4c");
+    notion.provider = groove_types::ProviderId::Notion;
+    app.task.tasks = vec![task("gh-a-b-1", "from github", "github.com/a/b#1"), notion];
+    let mut ui = Ui {
+        surface: Surface::Board,
+        ..Ui::default()
+    };
+    ui.board.filter.set("provider:notion");
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "from notion"), "{drawn:?}");
+    assert!(!drawn.iter().any(|t| t == "from github"), "{drawn:?}");
+}

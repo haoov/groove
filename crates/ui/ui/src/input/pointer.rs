@@ -133,8 +133,30 @@ fn acted(
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::LogHours(id)) => logging(id),
+        Some(Target::Finish(session)) => finishing(session),
+        Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         Some(_) | None => Vec::new(),
     }
+}
+
+/// The rest of the task's actions, under the caret that opened them.
+fn task_menu(ui: &mut Ui, hits: &Hits, session: groove_types::SessionId) -> Vec<Command> {
+    let at = hits
+        .rect_of(&Target::TaskActions(session.clone()))
+        .map(|caret| (caret.x, caret.bottom()))
+        .unwrap_or_default();
+    ui.menu = Some(crate::Menu {
+        at,
+        corner: crate::Corner::TopLeft,
+        of: crate::Of::Session(session),
+    });
+    Vec::new()
+}
+
+/// The task done at its source, and its session taken away.
+fn finishing(session: groove_types::SessionId) -> Vec<Command> {
+    let finish = groove_controllers::task::Command::Finish { session };
+    vec![Command::Task(finish)]
 }
 
 /// The hours the clock measured, handed to the source.

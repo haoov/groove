@@ -9,15 +9,17 @@ pub enum Name {
     Status,
     Priority,
     Board,
+    Provider,
     Kind,
     Repo,
 }
 
 impl Name {
-    pub const ALL: [Name; 5] = [
+    pub const ALL: [Name; 6] = [
         Name::Status,
         Name::Priority,
         Name::Board,
+        Name::Provider,
         Name::Kind,
         Name::Repo,
     ];
@@ -27,6 +29,7 @@ impl Name {
             Name::Status => "status",
             Name::Priority => "priority",
             Name::Board => "board",
+            Name::Provider => "provider",
             Name::Kind => "kind",
             Name::Repo => "repo",
         }
@@ -63,19 +66,14 @@ impl Query {
     pub fn lets_task(&self, task: &Task) -> bool {
         self.terms.iter().all(|term| match term {
             Term::Word(word) => like(&task.title, word),
-            Term::Field(Name::Status, value) => like(&task.status, value),
-            Term::Field(Name::Priority, value) => {
-                task.priority.is_some_and(|one| like(one.label(), value))
-            }
-            Term::Field(Name::Board, value) => {
-                task.board.as_ref().is_some_and(|one| like(one, value))
-            }
             Term::Field(Name::Kind, value) => like("task", value),
             Term::Field(Name::Repo, _) => false,
+            Term::Field(name, value) => of_task(*name, value, task),
         })
     }
 
-    pub fn lets_session(&self, living: &Living) -> bool {
+    /// A session answers for the task it works, and for what it holds here.
+    pub fn lets_session(&self, living: &Living, task: Option<&Task>) -> bool {
         self.terms.iter().all(|term| match term {
             Term::Word(word) => like(&living.session.title, word),
             Term::Field(Name::Kind, value) => like(living.session.kind.name(), value),
@@ -83,8 +81,19 @@ impl Query {
                 .worktrees
                 .iter()
                 .any(|worktree| like(worktree.repo.as_str(), value)),
-            Term::Field(_, _) => false,
+            Term::Field(name, value) => task.is_some_and(|task| of_task(*name, value, task)),
         })
+    }
+}
+
+/// What a task holds for one of the fields its own properties answer.
+fn of_task(name: Name, value: &str, task: &Task) -> bool {
+    match name {
+        Name::Status => like(&task.status, value),
+        Name::Priority => task.priority.is_some_and(|one| like(one.label(), value)),
+        Name::Board => task.board.as_ref().is_some_and(|one| like(one, value)),
+        Name::Provider => like(task.provider.as_str(), value),
+        Name::Kind | Name::Repo => false,
     }
 }
 

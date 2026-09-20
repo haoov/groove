@@ -27,4 +27,9 @@ impl WorktreeDelivery {
     pub fn is_delivered(&self) -> bool {
         self.mr.as_ref().is_some_and(|mr| mr.state != MrState::Open)
     }
+
+    /// An MR of its own still open.
+    pub fn is_open(&self) -> bool {
+        self.mr.as_ref().is_some_and(|mr| mr.state == MrState::Open)
+    }
 }

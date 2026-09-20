@@ -5,6 +5,7 @@ mod column;
 pub mod complete;
 pub mod filter;
 mod header;
+mod live;
 pub mod plan;
 mod state;
 mod timeline;

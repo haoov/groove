@@ -11,7 +11,7 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{button, hairline, row};
 
-const PLACEHOLDER: &str = "filter — status:, priority:, board:, kind:, repo:";
+const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";
 
 /// The header line. Returns where the filter was drawn.

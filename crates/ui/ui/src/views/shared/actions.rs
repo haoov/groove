@@ -13,10 +13,14 @@ pub const FILE: [&str; 1] = ["discard changes"];
 /// The actions of the worktree, from the commit box.
 pub const WORKTREE: [&str; 3] = ["push", "pull", "discard every change"];
 
+/// The actions of the session, from the header.
+pub const SESSION: [&str; 1] = ["delete locally"];
+
 pub fn rows(of: &Of) -> &'static [&'static str] {
     match of {
         Of::File(_) => &FILE,
         Of::Worktree => &WORKTREE,
+        Of::Session(_) => &SESSION,
     }
 }
 
@@ -47,6 +51,12 @@ pub fn picked(of: &Of, at: usize) -> (Vec<Command>, Option<Losing>) {
         (Of::Worktree, Some(&"discard every change")) => (Vec::new(), Some(Losing::Everything)),
         (Of::Worktree, Some(&"push")) => commanded(workspace::Command::Push),
         (Of::Worktree, Some(&"pull")) => commanded(workspace::Command::Pull),
+        (Of::Session(session), Some(&"delete locally")) => {
+            let away = groove_controllers::task::Command::DeleteLocal {
+                session: session.clone(),
+            };
+            (vec![Command::Task(away)], None)
+        }
         _ => (Vec::new(), None),
     }
 }

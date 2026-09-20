@@ -64,9 +64,10 @@ each; an Up next item carries its place in the plan and opens its session when p
 
 **The filter** is the header, with **+ explorer** beside it, which starts one. It
 holds bare words, matched against the title, and `field:value` tokens — status,
-priority, board, kind, repo — matched with case and word breaks ignored. Every term
-must answer, in all three columns at once; a token naming a field an item has no value
-for takes that item out. `/` opens the filter, Escape clears it then leaves it, and the
+priority, board, provider, kind, repo — matched with case and word breaks ignored.
+Every term must answer, in all three columns at once; a token naming a field an item
+has no value for takes that item out. A Live item answers for the task its session
+works, so the task's own properties narrow it as they narrow Up next. `/` opens the filter, Escape clears it then leaves it, and the
 rows it offers come from what the board itself holds.
 
 **Up next** stands in that order. A row's place is its handle: a press on the number
@@ -94,8 +95,7 @@ day. The forge facts are empty until `forge` lands, so only the dates speak toda
 
 | Still to build | Does |
 |---|---|
-| `task.finish` | status done, teardown, remove from the rail |
-| `task.delete` · `task.delete_local` | at the provider; locally only |
+| `task.delete` | the task at the provider, and the session with it |
 | `task.get_time` | read: tracked and logged hours |
 | `task.create` · `task.set_property` · `task.set_body` | the agent's own writes, through `approvals` |
 
@@ -115,8 +115,16 @@ absence credits nothing. The ledger takes what it measured every minute.
 then adds it to `logged_seconds`; the overview offers it as a button on the Logged
 line, and the number GitHub answers with next is what the line shows.
 
+**`task.finish`** tells the source the task is done, and only then takes the session
+away: its agent, its worktrees, its row. Work that is not committed or pushed stops the
+teardown and the status stands, so nothing is lost by finishing early. The header offers
+it while no worktree of the session still carries an open MR, and a caret beside it
+opens the rest. **`task.delete_local`** is the same teardown with nothing said at the
+source, from that menu. `session.delete` is the explorer's way out, and that one
+forces.
+
 **`task.set_status`** is the lifecycle's alone: opening a task's first session sets it
-in progress, and finishing will set it done. It writes the option the `status_map`'s
+in progress, and finishing sets it done. It writes the option the `status_map`'s
 first name points at, and writes nothing when the source already says so. Nothing in
 the UI sets a status by hand.
 

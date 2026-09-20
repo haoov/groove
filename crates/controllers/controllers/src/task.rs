@@ -1,5 +1,6 @@
 //! The `task` controller: one function per user action on the `task` service.
 
+mod finish;
 mod status;
 pub mod time;
 
@@ -19,6 +20,10 @@ pub enum Command {
     Open { short_id: String },
     /// `task.log_hours`: what the clock measured and the source has not been told.
     LogHours { external_id: ExternalId },
+    /// `task.finish`: the task done at its source, and its session taken away.
+    Finish { session: SessionId },
+    /// `task.delete_local`: the session taken away here, the source left alone.
+    DeleteLocal { session: SessionId },
     /// `task.set_status`: by lifecycle only, in progress on open and done on finish.
     SetStatus {
         external_id: ExternalId,
@@ -39,6 +44,8 @@ impl Command {
             Command::Sync { .. } => "task.sync",
             Command::Open { .. } => "task.open",
             Command::LogHours { .. } => "task.log_hours",
+            Command::Finish { .. } => "task.finish",
+            Command::DeleteLocal { .. } => "task.delete_local",
             Command::SetStatus { .. } => "task.set_status",
             Command::Plan { .. } => "task.plan",
         }
@@ -58,6 +65,8 @@ pub fn dispatch(
         Command::LogHours { external_id } => {
             time::log_hours(state, services, spawner, &external_id)
         }
+        Command::Finish { session } => finish::finish(state, services, spawner, &session),
+        Command::DeleteLocal { session } => finish::locally(state, services, spawner, &session),
         Command::SetStatus {
             external_id,
             intent,
@@ -170,10 +179,9 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
     agent::start(state, spawner, id, session::FIRST_SIZE);
     let service = services.session.clone();
-    session::record(spawner, session::NO_PENDING, async move {
+    session::listed(spawner, session::NO_PENDING, async move {
         service.create_task(&session, &task, now).await
     });
-    session::list(services, spawner);
 }
 
 /// The task of the selected session, read once with its body.

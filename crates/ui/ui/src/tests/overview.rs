@@ -1,4 +1,6 @@
-//! The session header and the overview tab: what they name and what they count.
+//! The overview tab: what it names, what it counts, and what it offers.
+
+mod header;
 
 use groove_types::{Day, ExternalId, SessionId, SessionKind};
 
@@ -236,36 +238,6 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
 }
 
 #[test]
-fn the_header_names_the_session_and_what_it_points_at() {
-    let app = full_app();
-    let metrics = metrics(1280, 800, 1.0);
-    let (frame, _) = view(
-        &app,
-        &Ui::default(),
-        metrics,
-        &mut groove_gfx::Fonts::embedded(),
-    );
-    let texts: Vec<String> = frame.layers()[0]
-        .texts
-        .iter()
-        .map(|t| t.text.clone())
-        .collect();
-    assert!(texts.iter().any(|t| t == "Alpha"), "the title");
-    assert!(texts.iter().any(|t| t == "mayo"), "the repo picker");
-    assert_eq!(
-        texts.iter().filter(|t| *t == "explorer/alpha").count(),
-        2,
-        "the worktree picker and the overview row"
-    );
-    let carets = frame.layers()[0]
-        .icons
-        .iter()
-        .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
-        .count();
-    assert_eq!(carets, 2, "one per picker");
-}
-
-#[test]
 fn a_session_without_a_worktree_says_so() {
     let mut app = app();
     app.session.selected = Some(SessionId::new("a"));
@@ -283,68 +255,6 @@ fn a_session_without_a_worktree_says_so() {
         .collect();
     assert!(texts.iter().any(|t| t == "no repo"));
     assert!(texts.iter().any(|t| t == "no worktree"));
-}
-
-#[test]
-fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
-    let mut app = full_app();
-    app.session
-        .get_mut(&SessionId::new("a"))
-        .expect("the fixture's session")
-        .session
-        .title = "Harden Groove: CI gates, security fixes, defect fixes, typed errors".into();
-    let window = metrics(1280, 800, 1.0);
-    let ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let header = crate::layout::Layout::of(window, &ui).header;
-    for picker in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
-        let box_ = hits
-            .rect_of(&crate::hit::Target::Picker(picker))
-            .expect("the header holds both pickers");
-        assert!(
-            box_.right() <= header.right(),
-            "{picker:?} at {box_:?} runs past {header:?}"
-        );
-    }
-    let cut = frame.layers()[0]
-        .texts
-        .iter()
-        .any(|t| t.text.starts_with("Harden Groove") && t.text.ends_with('\u{2026}'));
-    assert!(cut, "the title carries the ellipsis");
-}
-
-#[test]
-fn the_header_holds_the_title_over_the_pickers() {
-    let app = full_app();
-    let window = metrics(1280, 800, 1.0);
-    let ui = Ui::default();
-    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let layout = crate::layout::Layout::of(window, &ui);
-    let tokens = crate::tokens::Tokens::new(1.0);
-    let title = frame.layers()[0]
-        .texts
-        .iter()
-        .find(|t| t.text == "Alpha" && t.x >= layout.header.x)
-        .expect("the header's title")
-        .y;
-    let box_ = hits
-        .rect_of(&crate::hit::Target::Picker(crate::hit::Picks::Repo))
-        .expect("the repo picker");
-    assert!(title < tokens.header, "the title is on the first line");
-    assert!(box_.y >= tokens.header, "the pickers are on the second");
-    assert!(box_.bottom() <= layout.header.bottom());
-    assert_eq!(
-        layout.workspace.y,
-        layout.header.bottom(),
-        "the tabs start under both lines"
-    );
-    let styles = crate::style::Styles::new(app.config.theme(), tokens);
-    let grounds = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.color == styles.band() && quad.rect.h == box_.h)
-        .count();
-    assert_eq!(grounds, 2, "each picker is a button");
 }
 
 #[test]

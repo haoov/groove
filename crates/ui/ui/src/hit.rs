@@ -56,6 +56,9 @@ pub enum Target {
     LogHours(groove_types::ExternalId),
     /// The timeline's own bar, which folds it away.
     Timeline,
+    /// What finishes the task a session works, and what opens its other actions.
+    Finish(groove_types::SessionId),
+    TaskActions(groove_types::SessionId),
     /// One task's bar on the timeline, which names it under the pointer.
     Bar(String),
     /// The board's filter, and one row it offers.
@@ -134,6 +137,8 @@ impl Target {
             | Target::AddTask
             | Target::LogHours(_)
             | Target::Timeline
+            | Target::Finish(_)
+            | Target::TaskActions(_)
             | Target::Unfold(_)
             | Target::Head(_)
             | Target::Found(_)

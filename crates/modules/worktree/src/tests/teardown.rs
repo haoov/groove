@@ -89,7 +89,7 @@ async fn cleanup_removes_every_worktree_and_the_session_dir() {
         .await
         .unwrap();
     assert_eq!(fx.pool.worktrees_of(&fx.session.id).await.unwrap().len(), 2);
-    fx.pool.cleanup_session(&fx.session.id).await.unwrap();
+    fx.pool.cleanup_session(&fx.session.id, true).await.unwrap();
     assert!(!fx.root.path().join("worktrees/explorer-ab12cd34").exists());
     assert_eq!(
         sh(&fx.clone, &["branch", "--list", "explorer/*"]),

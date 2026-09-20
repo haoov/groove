@@ -125,6 +125,8 @@ pub enum Of {
     File(String),
     /// The worktree, from the commit box.
     Worktree,
+    /// The session, from the header's own actions.
+    Session(groove_types::SessionId),
 }
 
 /// What is asked before a change is thrown away.

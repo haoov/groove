@@ -76,10 +76,9 @@ pub fn open_explorer(
     crate::workspace::follow(state, spawner);
     agent::start(state, spawner, id, FIRST_SIZE);
     let service = services.session.clone();
-    record(spawner, NO_PENDING, async move {
+    listed(spawner, NO_PENDING, async move {
         service.create_explorer(&session, now).await
     });
-    list(services, spawner);
 }
 
 /// What git says about the selected worktree, read again for the overview.
@@ -117,7 +116,15 @@ pub fn rename_explorer(
     });
 }
 
-pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
+/// The session taken away: its agent, its worktrees, its row. Unforced, it stops at
+/// work that is not committed or pushed.
+pub fn delete(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &SessionId,
+    force: bool,
+) {
     agent::end(state, id);
     let title = state
         .session
@@ -128,8 +135,11 @@ pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     crate::workspace::follow(state, spawner);
     let pending = state.begin(format!("deleting {title}"));
     let (service, at) = (services.session.clone(), id.clone());
-    record(spawner, pending, async move { service.remove(&at).await });
-    list(services, spawner);
+    listed(
+        spawner,
+        pending,
+        async move { service.remove(&at, force).await },
+    );
 }
 
 /// Every session that lives on disk, for the board's Live column.
@@ -210,6 +220,26 @@ pub(super) fn persist_selection(
     record(spawner, NO_PENDING, async move {
         service.set_selected_worktree(&id, selected.as_ref()).await
     });
+}
+
+/// The same, with the board's own list read again once the write has landed.
+pub(crate) fn listed(
+    spawner: &dyn Spawner,
+    pending: u64,
+    write: impl Future<Output = Result<(), Error>> + Send + 'static,
+) {
+    spawner.spawn(Box::pin(async move {
+        let result = write.await;
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(pending);
+                if let Err(e) = result {
+                    state.errors.push(e);
+                }
+                list(services, spawner);
+            },
+        ) as Continuation
+    }));
 }
 
 /// A write whose only result is success or an error for the feed, ending `pending` when it lands.
