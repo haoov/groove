@@ -10,7 +10,10 @@ pub(super) use menu::asked;
 use groove_controllers::{AppState, Command, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
-use self::board::{board, explorer, filtering, offered, opened_session, task, unfolded};
+pub(super) use self::board::dropped;
+use self::board::{
+    board, carried, explorer, filtering, offered, opened_session, takes, task, unfolded,
+};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
@@ -29,11 +32,14 @@ pub(super) fn press(
     metrics: Metrics,
 ) -> Vec<Command> {
     ui.clicked = Some(counted(ui.clicked, x, y, metrics));
-    if let Some(Target::Split(edge)) = hits.at(x, y) {
-        grab(ui, edge, x, y, metrics);
-        return Vec::new();
+    match hits.at(x, y) {
+        Some(Target::Split(edge)) => {
+            grab(ui, edge, x, y, metrics);
+            Vec::new()
+        }
+        Some(Target::Place(id)) => takes(ui, id),
+        _ => click(x, y, ui, app, hits, metrics),
     }
-    click(x, y, ui, app, hits, metrics)
 }
 
 /// The pointer moved: a boundary follows it, or the open file holds more.
@@ -47,6 +53,10 @@ pub(super) fn moved(
 ) -> Vec<Command> {
     if ui.drag.is_some() {
         drag_to(ui, x, y, metrics);
+        return Vec::new();
+    }
+    if ui.board.dragging.is_some() {
+        carried(x, y, ui, app, metrics);
         return Vec::new();
     }
     if ui.mapping {
@@ -127,6 +137,7 @@ fn acted(
         Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
+        Some(Target::Place(_)) => Vec::new(),
         Some(
             Target::Agent
             | Target::Palette

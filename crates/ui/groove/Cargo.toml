@@ -14,6 +14,7 @@ groove-types = { path = "../../shared/types" }
 groove-config = { path = "../../modules/config" }
 groove-db = { path = "../../base/db" }
 groove-hooks = { path = "../../modules/hooks" }
+groove-plan = { path = "../../modules/plan" }
 groove-sessions = { path = "../../modules/sessions" }
 groove-worktree = { path = "../../modules/worktree" }
 tokio.workspace = true

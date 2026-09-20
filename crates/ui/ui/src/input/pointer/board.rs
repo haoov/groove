@@ -1,8 +1,13 @@
 //! What a click on the board does: its rows, its filter, its button.
 
 use groove_controllers::{AppState, Command, session, task};
-use groove_types::SessionId;
+use groove_gfx::Rect;
+use groove_types::{ExternalId, SessionId};
 
+use crate::ctx::Metrics;
+use crate::layout::Layout;
+use crate::tokens::Tokens;
+use crate::views::board::{List, plan};
 use crate::{Surface, Ui};
 
 /// The board, with a read of the sessions and the sources behind it.
@@ -54,4 +59,49 @@ pub(super) fn unfolded(ui: &mut Ui, session: &groove_types::SessionId) -> Vec<Co
 pub(super) fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
     ui.surface = Surface::Session;
     vec![Command::Session(session::Command::Open { session })]
+}
+
+/// A press on a task's place takes hold of it.
+pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
+    ui.board.dragging = Some(id);
+    ui.board.drop = None;
+    Vec::new()
+}
+
+/// The dragged row follows the pointer while it stands over the column.
+pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metrics) {
+    let ctx = Tokens::new(metrics.scale);
+    let layout = Layout::of(metrics, ui);
+    let body = next_column(&ctx, layout);
+    if !body.contains(x, y) {
+        ui.board.drop = None;
+        return;
+    }
+    let lines = plan::count(app, ui);
+    let scroll = ui.board.next;
+    ui.board.drop = Some(plan::dropped(&ctx, body, lines, scroll, y));
+}
+
+/// The drag let go: the plan takes the row where it landed.
+pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let moving = plan::moving(app, ui);
+    ui.board.dragging = None;
+    ui.board.drop = None;
+    let Some((external_id, before, later)) = moving else {
+        return Vec::new();
+    };
+    vec![Command::Task(task::Command::Plan {
+        external_id,
+        before,
+        later,
+    })]
+}
+
+/// Up next's own room, which a drag is measured against.
+fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
+    let board = layout.board;
+    let width = (board.w / List::ALL.len() as f32).floor();
+    let x = board.x + width;
+    let top = board.y + tokens.header + tokens.header;
+    Rect::new(x, top, width, board.bottom() - top)
 }

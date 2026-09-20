@@ -29,7 +29,7 @@ The board replaces the agent pane, the workspace and the sidebar; the rail stays
 columns, one per list, each scrolling on its own.
 
 **Header.** The filter — `field:value` tokens and bare words, with autocomplete — applied
-to all three columns at once. On the right, **+ task**, which opens an explorer; filing
+to all three columns at once. On the right, **+ explorer**, which starts one; filing
 the task at the provider is the agent's own write.
 
 | Column | Holds | Sort |

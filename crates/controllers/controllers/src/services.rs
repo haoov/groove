@@ -8,6 +8,7 @@ use groove_workspace_service::{Clipboard, Memory};
 #[derive(Clone)]
 pub struct Services {
     pub session: groove_session_service::Service,
+    pub task: groove_task_service::Service,
     /// What the open file copies through.
     pub clipboard: Arc<dyn Clipboard>,
 }
@@ -18,6 +19,7 @@ impl Services {
     pub async fn in_memory(root: &std::path::Path) -> groove_types::Result<Self> {
         Ok(Self {
             session: groove_session_service::Service::in_memory(root).await?,
+            task: groove_task_service::Service::in_memory().await?,
             clipboard: Arc::new(Memory::default()),
         })
     }

@@ -50,6 +50,8 @@ pub enum Target {
     Board,
     /// A task on the board, which a click opens the session for.
     Task(String),
+    /// A task's place in the plan, which a drag moves.
+    Place(groove_types::ExternalId),
     /// The board's filter, and one row it offers.
     Filter,
     Offer(usize),
@@ -132,7 +134,7 @@ impl Target {
             Target::Message => Cursor::Text,
             Target::Code => Cursor::Text,
             Target::Agent | Target::Pinned => Cursor::Default,
-            Target::Map => Cursor::RowResize,
+            Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

@@ -2,7 +2,7 @@
 
 use groove_session_service::task_session;
 use groove_task_service::{fetch, list, sources};
-use groove_types::{SessionId, SessionKind, Task, TaskKey, Timestamp};
+use groove_types::{ExternalId, SessionId, SessionKind, Task, TaskKey, Timestamp};
 
 use crate::{AppState, Continuation, Services, Spawner, agent, session};
 
@@ -14,6 +14,12 @@ pub enum Command {
     Sync { key: TaskKey },
     /// `task.open`: the session that works this task, created or selected.
     Open { short_id: String },
+    /// `task.plan`: one task moved above another, or to the end of its own side.
+    Plan {
+        external_id: ExternalId,
+        before: Option<ExternalId>,
+        later: bool,
+    },
 }
 
 impl Command {
@@ -22,6 +28,7 @@ impl Command {
             Command::Load => "task.load",
             Command::Sync { .. } => "task.sync",
             Command::Open { .. } => "task.open",
+            Command::Plan { .. } => "task.plan",
         }
     }
 }
@@ -33,9 +40,64 @@ pub fn dispatch(
     spawner: &dyn Spawner,
 ) {
     match command {
-        Command::Load => load(state, spawner),
+        Command::Load => load(state, services, spawner),
         Command::Sync { key } => sync(state, spawner, key),
         Command::Open { short_id } => open(state, services, spawner, &short_id),
+        Command::Plan {
+            external_id,
+            before,
+            later,
+        } => plan(
+            state,
+            services,
+            spawner,
+            &external_id,
+            before.as_ref(),
+            later,
+        ),
+    }
+}
+
+/// One task moved in the plan, kept in the slice and written to disk.
+fn plan(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &ExternalId,
+    before: Option<&ExternalId>,
+    later: bool,
+) {
+    let waiting = waiting(state);
+    let shown = state.task.planned(&waiting);
+    let order = groove_task_service::moved(&shown, id, before, later);
+    state.task.plan = order.clone();
+    let service = services.task.clone();
+    session::record(spawner, session::NO_PENDING, async move {
+        service.save(order).await
+    });
+}
+
+/// The tasks no session works: the ones the plan orders.
+fn waiting(state: &AppState) -> Vec<&Task> {
+    state
+        .task
+        .tasks
+        .iter()
+        .filter(|task| {
+            !state
+                .session
+                .living
+                .iter()
+                .any(|living| holds(living, task))
+        })
+        .collect()
+}
+
+/// Whether this session is the one working that task.
+fn holds(living: &groove_session_service::Living, task: &Task) -> bool {
+    match &living.session.kind {
+        SessionKind::Task { external_id } => *external_id == task.external_id,
+        _ => false,
     }
 }
 
@@ -97,8 +159,23 @@ fn working(state: &AppState, task: &Task) -> Option<SessionId> {
         .map(|open| open.session.id.clone())
 }
 
-/// Reads every source in a job; the continuation puts the list in the slice.
-pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
+/// Reads the order the user gave the plan.
+fn order(services: &Services, spawner: &dyn Spawner) {
+    let service = services.task.clone();
+    spawner.spawn(Box::pin(async move {
+        let read = service.order().await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+                Ok(order) => state.task.plan = order,
+                Err(e) => state.errors.push(e),
+            },
+        ) as Continuation
+    }));
+}
+
+/// Reads the plan, then every source in a job; the continuations fill the slice.
+pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    order(services, spawner);
     if state.task.reading {
         return;
     }

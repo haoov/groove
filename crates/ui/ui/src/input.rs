@@ -97,7 +97,7 @@ pub fn handle(
             ui.drag = None;
             ui.selecting = false;
             ui.mapping = false;
-            Vec::new()
+            pointer::dropped(ui, app)
         }
         Input::Scroll { x, delta, .. } => {
             scroll::scroll(x, delta, ui, app, hits, metrics);

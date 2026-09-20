@@ -17,6 +17,9 @@ pub struct BoardUi {
     pub typing: bool,
     /// Which suggestion the keyboard stands on.
     pub offer: usize,
+    /// The task a drag holds, and the line it would land on.
+    pub dragging: Option<groove_types::ExternalId>,
+    pub drop: Option<usize>,
 }
 
 impl BoardUi {

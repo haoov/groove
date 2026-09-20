@@ -60,9 +60,11 @@ async fn services(
     std::fs::create_dir_all(&env.data_dir)?;
     let db = groove_db::Db::open(&env.data_dir.join("app.db")).await?;
     let store = groove_sessions::Store::new(db.clone());
+    let plan = groove_plan::Plan::new(db.clone());
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
         session: groove_controllers::session_service::Service::new(store, pool),
+        task: groove_controllers::task_service::Service::new(plan),
         clipboard: groove_controllers::workspace_service::clipboard(),
     })
 }

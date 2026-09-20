@@ -1168,6 +1168,7 @@ dependencies = [
  "groove-db",
  "groove-gfx",
  "groove-hooks",
+ "groove-plan",
  "groove-sessions",
  "groove-types",
  "groove-ui",
@@ -1337,6 +1338,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-plan"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-types",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "groove-provider"
 version = "0.1.0"
 dependencies = [
@@ -1375,6 +1386,7 @@ dependencies = [
 name = "groove-task-service"
 version = "0.1.0"
 dependencies = [
+ "groove-plan",
  "groove-provider",
  "groove-types",
 ]

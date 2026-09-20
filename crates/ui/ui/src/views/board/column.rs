@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
 use groove_gfx::Rect;
-use groove_types::{SessionKind, Task, Worktree, WorktreeDelivery};
+use groove_types::{Task, Worktree, WorktreeDelivery};
 
 use super::List;
 use crate::Ui;
@@ -14,12 +14,13 @@ use crate::style::Role;
 use crate::views::session::worktree_row;
 use crate::widget::{after_mark, elide, hairline, icon, leading, row};
 
-/// One line of a column: an item, or a worktree under an item that is open.
-enum Line<'a> {
+/// One line of a column: an item, a worktree under an open one, or the plan's divider.
+pub(super) enum Line<'a> {
     Session(&'a Living),
     Worktree(&'a Worktree, Option<&'a WorktreeDelivery>),
     /// Its place in the plan, counted from one.
     Task(usize, &'a Task),
+    Divider,
     Nothing(&'static str),
 }
 
@@ -36,11 +37,7 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: Lis
 fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
     match list {
         List::Live => live(app, ui),
-        List::Next => planned(app, ui)
-            .into_iter()
-            .enumerate()
-            .map(|(at, task)| Line::Task(at + 1, task))
-            .collect(),
+        List::Next => super::plan::lines(app, ui),
         List::Review => vec![Line::Nothing("reviews arrive with the MRs")],
     }
 }
@@ -80,25 +77,6 @@ fn live<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     lines
 }
 
-/// The tasks the filter lets through that no session works yet, in the source's order.
-fn planned<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Task> {
-    let query = ui.board.query();
-    app.task
-        .tasks
-        .iter()
-        .filter(|task| !app.session.living.iter().any(|living| holds(living, task)))
-        .filter(|task| query.lets_task(task))
-        .collect()
-}
-
-/// Whether this session is the one working that task.
-fn holds(living: &Living, task: &Task) -> bool {
-    match &living.session.kind {
-        SessionKind::Task { external_id } => *external_id == task.external_id,
-        _ => false,
-    }
-}
-
 /// How many items a column holds; its worktrees and its hints are not items.
 fn counted(lines: &[Line<'_>]) -> usize {
     lines
@@ -131,7 +109,7 @@ fn edge(ctx: &mut Ctx, area: Rect) {
 
 /// The lines a column has room for, scrolled and clipped to it.
 fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
-    let height = item(ctx);
+    let height = item(&ctx.tokens);
     let extent = (height * lines.len() as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Column(list as u8), extent);
     let scroll = ui.board.scroll(list).min(extent);
@@ -144,12 +122,15 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
             let rect = Rect::new(body.x, y, body.w, height);
             one(ctx, rect, app, ui, line, closes(lines, at));
         }
+        if list == List::Next && ui.board.dragging.is_some() {
+            super::plan::dragging(ctx, body, ui, scroll);
+        }
     });
 }
 
 /// How tall one line of a column is.
-fn item(ctx: &Ctx) -> f32 {
-    ctx.tokens.row + ctx.tokens.sm
+pub(super) fn item(tokens: &crate::tokens::Tokens) -> f32 {
+    tokens.row + tokens.sm
 }
 
 /// Whether this line ends its item: the next one starts another, or there is none.
@@ -162,6 +143,7 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, clos
         Line::Session(living) => session(ctx, rect, app, ui, living),
         Line::Worktree(worktree, delivery) => worktree_row::draw(ctx, rect, worktree, *delivery),
         Line::Task(at, task) => waiting(ctx, rect, ui, *at, task),
+        Line::Divider => return super::plan::divider(ctx, rect),
         Line::Nothing(text) => {
             let style = ctx.styles.small(Role::Faint);
             return row(ctx, rect, ctx.tokens.md, text, style);
@@ -228,20 +210,20 @@ fn waiting(ctx: &mut Ctx, line: Rect, ui: &Ui, at: usize, task: &Task) {
         ctx.quad(line, ctx.styles.hover());
     }
     ctx.hit(line, target);
-    let start = place(ctx, line, at);
+    let start = place(ctx, line, at, task);
     let until = aside(ctx, line, &worth(task));
     named(ctx, line, &task.title, until, start);
 }
 
-/// Where a task sits in the plan, right-aligned in its own room. Returns where the
-/// title starts.
-fn place(ctx: &mut Ctx, line: Rect, at: usize) -> f32 {
+/// Where a task sits in the plan, and what a drag takes hold of. Returns the title's x.
+fn place(ctx: &mut Ctx, line: Rect, at: usize, task: &Task) -> f32 {
     let style = ctx.styles.code(Role::Ghost);
     let text = at.to_string();
     let room = ctx.measure("00", &style);
     let width = ctx.measure(&text, &style);
     let box_ = Rect::new(line.x + ctx.tokens.md, line.y, room, line.h);
     row(ctx, box_, room - width, &text, style);
+    ctx.hit(box_, Target::Place(task.external_id.clone()));
     box_.right() - line.x + ctx.tokens.sm
 }
 

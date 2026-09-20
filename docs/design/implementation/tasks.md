@@ -36,6 +36,11 @@ config when a host has one of its own.
 due and start dates and duration read as properties, the attention state per item.
 The board reads this slice and the `session` slice; nothing else.
 
+**Module `plan`**, on `db`: the order the user gave, one row a task, written whole in
+one transaction. It is Groove's own and no provider is told. The service turns it into
+the shown order: the placed tasks first, then the ones no order names, then everything
+under the divider.
+
 **Board**, in `ui`, as [../design.md](../design.md): a surface of its own beside the
 rail, reached from the rail's Board row or `ctrl+shift+K`, left by the same chord or by
 picking a session. It is a surface, not an overlay: while it is up the rail holds no
@@ -45,15 +50,19 @@ Live reads every session on disk — closed ones included, dimmed until picked �
 the tasks no session works, Review waits for the forge. A Live item opens on its twisty to show its worktrees with what git says about
 each; an Up next item carries its place in the plan and opens its session when picked.
 
-**The filter** is the header, with **+ task** beside it, which opens an explorer. It
+**The filter** is the header, with **+ explorer** beside it, which starts one. It
 holds bare words, matched against the title, and `field:value` tokens — status,
 priority, board, kind, repo — matched with case and word breaks ignored. Every term
 must answer, in all three columns at once; a token naming a field an item has no value
 for takes that item out. `/` opens the filter, Escape clears it then leaves it, and the
 rows it offers come from what the board itself holds.
 
-Still to draw: the plan's own order and its *later* divider, the attention lines, the
-timeline band.
+**Up next** stands in that order. A row's place is its handle: a press on the number
+takes hold, the rule follows the pointer, and the drop asks `task.plan` to put the task
+above the row it landed on. Below the **later** divider a task keeps its place but
+leaves the plan.
+
+Still to draw: the attention lines, the timeline band.
 
 **Attention** is computed in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,

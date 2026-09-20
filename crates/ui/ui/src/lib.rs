@@ -157,6 +157,6 @@ impl Ui {
 
     /// The pointer is down on something that follows it, so its moves are input.
     pub fn pointing(&self) -> bool {
-        self.drag.is_some() || self.selecting || self.mapping
+        self.drag.is_some() || self.selecting || self.mapping || self.board.dragging.is_some()
     }
 }

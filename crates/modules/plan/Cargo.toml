@@ -1,0 +1,18 @@
+[package]
+name = "groove-plan"
+description = "The user's own order for the tasks waiting"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-db = { path = "../../base/db" }
+groove-types = { path = "../../shared/types" }
+sqlx.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

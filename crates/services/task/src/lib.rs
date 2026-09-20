@@ -1,7 +1,14 @@
 //! The task capability. Its slice of `AppState`, the operations on it, its events.
 
+mod order;
+mod service;
+
+pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Source, Token};
 use groove_types::{Config, GithubConfig, Result, Task, TaskKey};
+
+pub use order::{Planned, moved, ordered};
+pub use service::Service;
 
 /// The `task` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -13,6 +20,8 @@ pub struct State {
     pub reading: bool,
     /// The tasks a read is out for.
     pub syncing: std::collections::BTreeSet<groove_types::ExternalId>,
+    /// The order the user gave them.
+    pub plan: Vec<Placed>,
 }
 
 impl State {
@@ -48,6 +57,11 @@ impl State {
 
     pub fn body(&self, short_id: &str) -> Option<&str> {
         self.bodies.get(short_id).map(String::as_str)
+    }
+
+    /// The tasks no session works, in the user's own order.
+    pub fn planned<'a>(&'a self, waiting: &[&'a Task]) -> Vec<Planned<'a>> {
+        ordered(&self.plan, waiting)
     }
 }
 
