@@ -203,27 +203,24 @@ async fn branch_point(clone: &Git, target: Option<&str>, default: Option<&str>) 
     Ok(clone.base_ref(default).await?)
 }
 
-/// Fetches origin and moves the clone's default branch forward. Every failure is a note,
-/// not an error: a new branch still comes from `origin/<default>`.
+/// Every remote-tracking ref, in one fetch.
+const TRACKING: &str = "+refs/heads/*:refs/remotes/origin/*";
+
+/// Reads origin once and moves the clone's default branch forward with it. A failure is a note.
 async fn refresh(clone: &Git, label: &str, notes: &mut Vec<String>) -> Option<String> {
-    if let Err(e) = clone.fetch(&[]).await {
-        notes.push(format!(
-            "{label}: could not fetch origin, the worktree may start from stale history: {e}"
-        ));
-    }
-    let default = clone.default_branch().await.ok().flatten()?;
+    let default = clone.default_branch().await.ok().flatten();
     let current = clone.current_branch().await.unwrap_or_default();
-    let moved = if current == default {
-        clone.pull().await
-    } else {
-        clone.fetch(&[&format!("{default}:{default}")]).await
+    let read = match &default {
+        Some(name) if *name != current => clone.fetch(&[TRACKING, &format!("{name}:{name}")]).await,
+        Some(_) => clone.pull().await,
+        None => clone.fetch(&[]).await,
     };
-    if let Err(e) = moved {
+    if let Err(e) = read {
         notes.push(format!(
-            "{label}: {default} in the clone could not fast-forward: {e}"
+            "{label}: could not read origin, the worktree may start from stale history: {e}"
         ));
     }
-    Some(default)
+    default
 }
 
 /// `worktree add`, or align the checkout when the directory already holds one.
