@@ -140,6 +140,21 @@ pub struct TimeSummary {
     pub unlogged_seconds: i64,
 }
 
+impl TimeSummary {
+    pub fn tracked_hours(self) -> f32 {
+        hours(self.tracked_seconds)
+    }
+
+    pub fn unlogged_hours(self) -> f32 {
+        hours(self.unlogged_seconds)
+    }
+}
+
+/// Seconds as the hours a tenth is read in.
+pub fn hours(seconds: i64) -> f32 {
+    (seconds as f32 / 360.0).round() / 10.0
+}
+
 /// The dates a task carries as properties.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct TaskDates {

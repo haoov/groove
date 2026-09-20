@@ -61,10 +61,11 @@ async fn services(
     let db = groove_db::Db::open(&env.data_dir.join("app.db")).await?;
     let store = groove_sessions::Store::new(db.clone());
     let plan = groove_plan::Plan::new(db.clone());
+    let ledger = groove_ledger::Ledger::new(db.clone());
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {
         session: groove_controllers::session_service::Service::new(store, pool),
-        task: groove_controllers::task_service::Service::new(plan),
+        task: groove_controllers::task_service::Service::new(plan, ledger),
         clipboard: groove_controllers::workspace_service::clipboard(),
     })
 }

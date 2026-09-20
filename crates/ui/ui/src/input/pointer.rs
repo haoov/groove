@@ -137,9 +137,10 @@ fn acted(
         Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
-        Some(Target::Place(_)) => Vec::new(),
+        Some(Target::LogHours(id)) => logging(id),
         Some(
-            Target::Agent
+            Target::Place(_)
+            | Target::Agent
             | Target::Palette
             | Target::Pinned
             | Target::Split(_)
@@ -147,6 +148,12 @@ fn acted(
         )
         | None => Vec::new(),
     }
+}
+
+/// The hours the clock measured, handed to the source.
+fn logging(external_id: groove_types::ExternalId) -> Vec<Command> {
+    let log = groove_controllers::task::Command::LogHours { external_id };
+    vec![Command::Task(log)]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

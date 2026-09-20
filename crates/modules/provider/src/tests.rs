@@ -37,7 +37,12 @@ fn issue() -> serde_json::Value {
         "body": "the body",
         "repository": { "name": "groove", "owner": { "login": "haoov" } },
         "projectItems": { "nodes": [{
-            "project": { "title": "Platform" },
+            "id": "ITEM_1",
+            "project": {
+                "id": "BOARD_1",
+                "title": "Platform",
+                "fields": { "nodes": [{ "id": "FIELD_SPENT", "name": "Spent" }] }
+            },
             "fieldValues": { "nodes": [
                 { "__typename": "ProjectV2ItemFieldSingleSelectValue",
                   "name": "In progress", "field": { "name": "Status" } },
@@ -137,6 +142,57 @@ async fn a_property_the_config_does_not_name_is_left_out() {
         Some(14),
         "the rest stands"
     );
+}
+
+#[tokio::test]
+async fn logging_hours_adds_them_to_what_the_board_already_holds() {
+    let reply = serde_json::json!({ "data": { "repository": { "issue": issue() } } });
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(reply))
+        .mount(&server)
+        .await;
+    let host = format!("http://{}", server.address());
+    let github = Github::with_token(config(&host), Token::Fixed("t".into())).expect("a client");
+    let key = groove_types::TaskKey::Github {
+        host: "github.com".into(),
+        owner: "haoov".into(),
+        repo: "groove".into(),
+        number: 50,
+    };
+    let whole = github.log_hours(&key, 0.5).await.expect("the write lands");
+    assert_eq!(whole, 2.0, "1.5 already spent and half an hour more");
+    let sent: Vec<serde_json::Value> = server
+        .received_requests()
+        .await
+        .expect("the calls")
+        .iter()
+        .map(|call| call.body_json().expect("json"))
+        .collect();
+    let write = sent.last().expect("the mutation");
+    assert_eq!(write["variables"]["field"], "FIELD_SPENT");
+    assert_eq!(write["variables"]["item"], "ITEM_1");
+    assert_eq!(write["variables"]["project"], "BOARD_1");
+    assert_eq!(write["variables"]["value"], 2.0);
+}
+
+#[tokio::test]
+async fn a_board_without_the_hours_field_says_so_and_writes_nothing() {
+    let mut bare = issue();
+    bare["projectItems"]["nodes"][0]["project"]["fields"]["nodes"] = serde_json::json!([]);
+    let reply = serde_json::json!({ "data": { "repository": { "issue": bare } } });
+    let (_server, github) = source(reply).await;
+    let key = groove_types::TaskKey::Github {
+        host: "github.com".into(),
+        owner: "haoov".into(),
+        repo: "groove".into(),
+        number: 50,
+    };
+    let refused = github
+        .log_hours(&key, 1.0)
+        .await
+        .expect_err("it is refused");
+    assert!(refused.to_string().contains("Spent"), "{refused}");
 }
 
 #[tokio::test]

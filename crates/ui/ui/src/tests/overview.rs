@@ -362,3 +362,50 @@ fn a_rule_stands_between_the_overview_s_sections() {
         .count();
     assert_eq!(rules, 2, "one above the repos, one above the body");
 }
+
+#[test]
+fn the_hours_the_clock_measured_are_offered_to_the_source() {
+    let mut app = working_a_task();
+    let id = ExternalId::new("github.com/haoov/groove#50");
+    app.task.time.insert(
+        id.clone(),
+        groove_types::TimeSummary {
+            tracked_seconds: 5400,
+            logged_seconds: 1800,
+            today_seconds: 5400,
+            unlogged_seconds: 3600,
+        },
+    );
+    let window = metrics(1280, 800, 1.0);
+    let mut ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(texts.iter().any(|t| t == "log 1h"), "{texts:?}");
+    let button = hits
+        .rect_of(&crate::hit::Target::LogHours(id.clone()))
+        .expect("the hours are offered");
+    let commands = crate::tests::click(button, &mut ui, &app, &hits);
+    assert_eq!(
+        commands,
+        [groove_controllers::Command::Task(
+            groove_controllers::task::Command::LogHours { external_id: id }
+        )]
+    );
+}
+
+#[test]
+fn a_task_with_nothing_measured_offers_no_hours() {
+    let app = working_a_task();
+    let (_, hits) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let id = ExternalId::new("github.com/haoov/groove#50");
+    assert!(hits.rect_of(&crate::hit::Target::LogHours(id)).is_none());
+}

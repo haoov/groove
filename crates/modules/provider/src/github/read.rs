@@ -2,9 +2,39 @@
 
 use groove_types::{Day, GithubConfig, Task, TaskDates, TaskKey, Timestamp};
 
+/// The board item the issue sits on, if it sits on one.
+pub(super) fn item(issue: &serde_json::Value) -> Option<&serde_json::Value> {
+    issue["projectItems"]["nodes"].as_array()?.first()
+}
+
+/// What a write needs to name: the board, the item on it, and the field.
+pub(super) struct Ids {
+    pub project: String,
+    pub item: String,
+    pub field: String,
+}
+
+/// The ids of the field of this name on the item's own board.
+pub(super) fn ids(item: &serde_json::Value, name: &str) -> Option<Ids> {
+    let field = item["project"]["fields"]["nodes"]
+        .as_array()?
+        .iter()
+        .find(|one| one["name"].as_str() == Some(name))?;
+    Some(Ids {
+        project: text(&item["project"]["id"]),
+        item: text(&item["id"]),
+        field: text(&field["id"]),
+    })
+}
+
+/// What the board holds for a number field of this name.
+pub(super) fn number(item: &serde_json::Value, name: &str) -> Option<f32> {
+    hours(field(item, Some(name)))
+}
+
 /// The issue as Groove reads it, or nothing when it sits on no board.
 pub(super) fn task(issue: &serde_json::Value, host: &str, config: &GithubConfig) -> Option<Task> {
-    let item = issue["projectItems"]["nodes"].as_array()?.first()?;
+    let item = item(issue)?;
     let owner = text(&issue["repository"]["owner"]["login"]);
     let repo = text(&issue["repository"]["name"]);
     let number = issue["number"].as_u64()?;

@@ -52,6 +52,7 @@ impl ApplicationHandler<Message> for App {
 
     /// Nothing moving, nothing to draw: the loop sleeps until an event.
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        self.clock();
         let Some(after) = self.pace() else {
             return event_loop.set_control_flow(ControlFlow::Wait);
         };

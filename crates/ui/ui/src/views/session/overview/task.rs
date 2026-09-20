@@ -1,16 +1,26 @@
 //! What the overview shows of the task a session works: its properties, then its body.
 
 use groove_gfx::Rect;
-use groove_types::Task;
+use groove_types::{Task, TimeSummary};
 
+use crate::Ui;
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::style::Role;
-use crate::widget::{Row, list, row, wrapped};
+use crate::widget::{Row, button, list, row, wrapped};
 
 const UNSET: &str = "—";
 
-/// The six properties, each on its own line. Returns the y under the last.
-pub(super) fn properties(ctx: &mut Ctx, area: Rect, top: f32, task: &Task) -> f32 {
+/// The six properties, each on its own line, the hours with what the clock measured.
+/// Returns the y under the last.
+pub(super) fn properties(
+    ctx: &mut Ctx,
+    area: Rect,
+    top: f32,
+    task: &Task,
+    time: Option<TimeSummary>,
+    ui: &Ui,
+) -> f32 {
     let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
     let at = ctx.tokens.aside_near + ctx.tokens.md;
     let held = [
@@ -25,12 +35,37 @@ pub(super) fn properties(ctx: &mut Ctx, area: Rect, top: f32, task: &Task) -> f3
         .iter()
         .map(|(name, held)| Row::new(ctx.tokens.md, name, label).aside(at, held, value))
         .collect();
-    list(
+    let bottom = list(
         ctx,
         Rect::new(area.x, top, area.w, ctx.tokens.row),
         &rows,
         None,
-    )
+    );
+    let hours = Rect::new(area.x, bottom - ctx.tokens.row, area.w, ctx.tokens.row);
+    logging(ctx, hours, task, time, ui);
+    bottom
+}
+
+/// What hands the source the hours the clock measured, at the end of their own line.
+fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>, ui: &Ui) {
+    let left = time.map(TimeSummary::unlogged_hours).unwrap_or_default();
+    if left <= 0.0 {
+        return;
+    }
+    let target = Target::LogHours(task.external_id.clone());
+    let ground = match ui.hover.as_ref() == Some(&target) {
+        true => ctx.styles.hover(),
+        false => ctx.styles.band(),
+    };
+    let label = format!("log {}", hours(left));
+    let box_ = button(
+        ctx,
+        line,
+        &label,
+        ctx.styles.small(Role::Working),
+        Some(ground),
+    );
+    ctx.hit(box_, target);
 }
 
 /// The body as text, wrapped to the area's width. Returns the y under the last line.

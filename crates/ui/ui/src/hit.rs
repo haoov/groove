@@ -52,6 +52,8 @@ pub enum Target {
     Task(String),
     /// A task's place in the plan, which a drag moves.
     Place(groove_types::ExternalId),
+    /// What hands the source the hours the clock measured.
+    LogHours(groove_types::ExternalId),
     /// The board's filter, and one row it offers.
     Filter,
     Offer(usize),
@@ -126,6 +128,7 @@ impl Target {
             | Target::Task(_)
             | Target::Offer(_)
             | Target::AddTask
+            | Target::LogHours(_)
             | Target::Unfold(_)
             | Target::Head(_)
             | Target::Found(_)

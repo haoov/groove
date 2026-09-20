@@ -74,25 +74,34 @@ Board row sums them.
 | `task.finish` | status done, teardown, remove from the rail |
 | `task.delete` · `task.delete_local` | at the provider; locally only |
 | `task.set_status` | by lifecycle only: in progress on open, done on finish |
-| `task.log_hours` | the unlogged hours to the ledger and the source |
 | `task.get_time` | read: tracked and logged hours |
-| `task.reorder` | move an item in Up next; above or below *later* |
 | `task.create` · `task.set_property` · `task.set_body` | the agent's own writes, through `approvals` |
 
-The board's **+ task** opens an explorer; filing the task is what the agent does from
-it.
+The board's **+ explorer** starts one; filing the task is what the agent does from it.
 
-The timer is the `task` service's own: it credits the focused session on a clock
-while the window has focus and there is input or a busy agent. No controller.
+**Module `ledger`**, on `db`: two counters a task, never one. `tracked_seconds` is what
+Groove measured, `logged_seconds` what the source has been told, and the difference is
+what is left to log — so logging twice cannot count the same hour twice. `today_*` is
+the share of the day, which starts again when the day does.
+
+**The timer** is the `task` service's own, and the app's loop turns it: it credits the
+selected session's task while the window has focus and either the user acted in the
+last two minutes or its agent is working. No run longer than that is trusted, so an
+absence credits nothing. The ledger takes what it measured every minute.
+
+**`task.log_hours`** writes the difference to the source's own hours field and only
+then adds it to `logged_seconds`; the overview offers it as a button on the Logged
+line, and the number GitHub answers with next is what the line shows.
 
 **Removed.** Pause. The activity heatmap and `get_activity_days`. *Blocked by*.
 
 ## Needs
 
 - [x] The six properties named per source, with a status map and a priority map.
-- [ ] The status written back on open and on finish, which needs a mutation and the
-      board's own field and item ids.
-- [ ] Local order per task and the *later* position, in the database.
+- [ ] The status written back on open and on finish, which needs a single select
+      mutation; the board's item and field ids are read already.
+- [x] Local order per task and the *later* position, in the database.
+- [x] The ledger, the timer, and the hours written to the source.
 - [x] Attention rules and thresholds in `types`.
 - [ ] The attention fold in the `task` service.
 - [ ] Notion on the same `Source` enum: its row, its mapping, its body read.

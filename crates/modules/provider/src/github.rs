@@ -71,6 +71,31 @@ impl Github {
         })
     }
 
+    /// Adds `hours` to what the board's own field holds against the issue.
+    pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
+        let name = self
+            .config
+            .properties
+            .logged
+            .clone()
+            .ok_or_else(|| Error::Invalid(format!("{} names no hours field", self.host)))?;
+        let issue = self.issue(key).await?;
+        let item = read::item(&issue).ok_or_else(|| {
+            Error::Invalid(format!("{} is on no project board", key.external_id()))
+        })?;
+        let ids = read::ids(item, &name)
+            .ok_or_else(|| Error::Invalid(format!("the board has no field called {name}")))?;
+        let whole = read::number(item, &name).unwrap_or_default() + hours;
+        let at = serde_json::json!({
+            "project": ids.project,
+            "item": ids.item,
+            "field": ids.field,
+            "value": whole,
+        });
+        self.ask(&query::set_number(), at).await?;
+        Ok(whole)
+    }
+
     /// One issue, by the owner, repo and number its key carries.
     async fn issue(&self, key: &TaskKey) -> Result<serde_json::Value> {
         let TaskKey::Github {

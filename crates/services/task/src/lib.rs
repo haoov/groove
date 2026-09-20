@@ -2,6 +2,7 @@
 
 mod order;
 mod service;
+mod timer;
 
 pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Source, Token};
@@ -9,6 +10,7 @@ use groove_types::{Config, GithubConfig, Result, Task, TaskKey};
 
 pub use order::{Planned, moved, ordered};
 pub use service::Service;
+pub use timer::{IDLE, Timer};
 
 /// The `task` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -22,6 +24,9 @@ pub struct State {
     pub syncing: std::collections::BTreeSet<groove_types::ExternalId>,
     /// The order the user gave them.
     pub plan: Vec<Placed>,
+    /// What each task has measured, and the clock that measures it.
+    pub time: std::collections::BTreeMap<groove_types::ExternalId, groove_types::TimeSummary>,
+    pub timer: Timer,
 }
 
 impl State {
@@ -59,6 +64,11 @@ impl State {
         self.bodies.get(short_id).map(String::as_str)
     }
 
+    /// What one task has measured, if anything.
+    pub fn measured(&self, id: &groove_types::ExternalId) -> Option<groove_types::TimeSummary> {
+        self.time.get(id).copied()
+    }
+
     /// The tasks no session works, in the user's own order.
     pub fn planned<'a>(&'a self, waiting: &[&'a Task]) -> Vec<Planned<'a>> {
         ordered(&self.plan, waiting)
@@ -84,15 +94,22 @@ pub async fn list(sources: &[Source]) -> Result<Vec<Task>> {
     Ok(tasks)
 }
 
+/// Adds hours to what the source holds against one task. Returns its new total.
+pub async fn log_hours(sources: &[Source], key: &TaskKey, hours: f32) -> Result<f32> {
+    Ok(source_of(sources, key)?.log_hours(key, hours).await?)
+}
+
 /// One task and its body, read again from the source that owns it.
 pub async fn fetch(sources: &[Source], key: &TaskKey) -> Result<Fetched> {
-    let source = sources
+    Ok(source_of(sources, key)?.fetch(key).await?)
+}
+
+/// The source that owns the key, of the ones the config turned on.
+fn source_of<'a>(sources: &'a [Source], key: &TaskKey) -> Result<&'a Source> {
+    sources
         .iter()
         .find(|source| source.id() == key.provider())
-        .ok_or_else(|| {
-            groove_types::Error::invalid(format!("no source for {}", key.external_id()))
-        })?;
-    Ok(source.fetch(key).await?)
+        .ok_or_else(|| groove_types::Error::invalid(format!("no source for {}", key.external_id())))
 }
 
 /// What the outside world tells this capability.

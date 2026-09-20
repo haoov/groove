@@ -155,12 +155,20 @@ impl App {
         let Some(metrics) = self.metrics() else {
             return;
         };
+        self.state.acted_at = groove_types::Timestamp::now();
         let commands =
             groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits, metrics);
         for command in commands {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
+        self.clock();
         self.redraw();
+    }
+
+    /// The clock on the task being worked, which the ledger takes from.
+    fn clock(&mut self) {
+        let now = groove_types::Timestamp::now();
+        groove_controllers::task::time::tick(&mut self.state, &self.services, &self.spawner, now);
     }
 
     fn metrics(&mut self) -> Option<Metrics> {

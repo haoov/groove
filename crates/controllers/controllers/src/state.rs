@@ -22,6 +22,8 @@ pub struct Env {
 pub struct AppState {
     pub env: Env,
     pub focused: bool,
+    /// When the user last did anything, which is what the clock counts as work.
+    pub acted_at: groove_types::Timestamp,
     /// What a job could not do, newest last; the feed shows them.
     pub errors: Vec<groove_types::Error>,
     /// What a job wants the user to hear, newest last.

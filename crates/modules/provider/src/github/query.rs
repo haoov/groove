@@ -1,12 +1,13 @@
-//! The two GraphQL queries: every task of yours, and one issue by number.
+//! The GraphQL Groove sends: the two reads, and the one write it makes itself.
 
-/// What both queries read from an issue.
+/// What both queries read from an issue. The ids are what a write needs.
 const FIELDS: &str = r"
   number title url body
   repository { name owner { login } }
   projectItems(first: 5) {
     nodes {
-      project { title }
+      id
+      project { id title fields(first: 50) { nodes { ... on ProjectV2FieldCommon { id name } } } }
       fieldValues(first: 25) {
         nodes {
           __typename
@@ -27,6 +28,16 @@ const FIELDS: &str = r"
     }
   }
 ";
+
+/// One number into one field of one board item.
+pub fn set_number() -> String {
+    r"mutation($project: ID!, $item: ID!, $field: ID!, $value: Float!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $project, itemId: $item, fieldId: $field, value: { number: $value }
+  }) { projectV2Item { id } }
+}"
+    .to_string()
+}
 
 /// Every open issue assigned to the viewer.
 pub fn assigned() -> String {

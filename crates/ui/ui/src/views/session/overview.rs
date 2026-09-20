@@ -21,7 +21,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let top = area.y - ui.session.overview;
     let mut bottom = top;
     ctx.clipped(area, |ctx| {
-        let mut y = properties(ctx, app, open, area, top);
+        let mut y = properties(ctx, app, open, area, top, ui);
         y = section(ctx, area, y, "Repos and worktrees", y > top);
         y = repos(ctx, open, area, y);
         bottom = body(ctx, app, open, area, y);
@@ -31,12 +31,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 }
 
 /// The task's six properties, for a session that works one.
-fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
+fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, ui: &Ui) -> f32 {
     let Some(one) = working(app, open) else {
         return top;
     };
     let y = section(ctx, area, top, "Properties", false);
-    task::properties(ctx, area, y, one) + ctx.tokens.sm
+    let time = app.task.measured(&one.external_id);
+    task::properties(ctx, area, y, one, time, ui) + ctx.tokens.sm
 }
 
 /// The task's body, under everything the session holds.

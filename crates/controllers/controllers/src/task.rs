@@ -1,5 +1,7 @@
 //! The `task` controller: one function per user action on the `task` service.
 
+pub mod time;
+
 use groove_session_service::task_session;
 use groove_task_service::{fetch, list, sources};
 use groove_types::{ExternalId, SessionId, SessionKind, Task, TaskKey, Timestamp};
@@ -14,6 +16,8 @@ pub enum Command {
     Sync { key: TaskKey },
     /// `task.open`: the session that works this task, created or selected.
     Open { short_id: String },
+    /// `task.log_hours`: what the clock measured and the source has not been told.
+    LogHours { external_id: ExternalId },
     /// `task.plan`: one task moved above another, or to the end of its own side.
     Plan {
         external_id: ExternalId,
@@ -28,6 +32,7 @@ impl Command {
             Command::Load => "task.load",
             Command::Sync { .. } => "task.sync",
             Command::Open { .. } => "task.open",
+            Command::LogHours { .. } => "task.log_hours",
             Command::Plan { .. } => "task.plan",
         }
     }
@@ -43,6 +48,9 @@ pub fn dispatch(
         Command::Load => load(state, services, spawner),
         Command::Sync { key } => sync(state, spawner, key),
         Command::Open { short_id } => open(state, services, spawner, &short_id),
+        Command::LogHours { external_id } => {
+            time::log_hours(state, services, spawner, &external_id)
+        }
         Command::Plan {
             external_id,
             before,
@@ -159,23 +167,28 @@ fn working(state: &AppState, task: &Task) -> Option<SessionId> {
         .map(|open| open.session.id.clone())
 }
 
-/// Reads the order the user gave the plan.
-fn order(services: &Services, spawner: &dyn Spawner) {
+/// Reads what the database holds of the tasks: the user's order and the hours.
+fn stored(services: &Services, spawner: &dyn Spawner) {
     let service = services.task.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.order().await;
-        Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+        let time = service.time().await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            match read {
                 Ok(order) => state.task.plan = order,
                 Err(e) => state.errors.push(e),
-            },
-        ) as Continuation
+            }
+            match time {
+                Ok(time) => state.task.time = time.into_iter().collect(),
+                Err(e) => state.errors.push(e),
+            }
+        }) as Continuation
     }));
 }
 
 /// Reads the plan, then every source in a job; the continuations fill the slice.
 pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
-    order(services, spawner);
+    stored(services, spawner);
     if state.task.reading {
         return;
     }

@@ -53,7 +53,9 @@ pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use session::{Session, SessionKind, SessionState};
 pub use syntax::{Capture, Highlight};
-pub use task::{Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary};
+pub use task::{
+    Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours,
+};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};

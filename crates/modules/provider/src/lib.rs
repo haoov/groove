@@ -45,4 +45,11 @@ impl Source {
             Source::Github(github) => github.fetch(key).await,
         }
     }
+
+    /// Adds hours to what the source holds against the task. Returns its new total.
+    pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
+        match self {
+            Source::Github(github) => github.log_hours(key, hours).await,
+        }
+    }
 }

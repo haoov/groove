@@ -7,6 +7,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-ledger = { path = "../../modules/ledger" }
 groove-plan = { path = "../../modules/plan" }
 groove-provider = { path = "../../modules/provider" }
 groove-types = { path = "../../shared/types" }
