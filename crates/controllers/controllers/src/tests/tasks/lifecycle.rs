@@ -313,3 +313,37 @@ fn deleting_a_task_session_here_says_nothing_to_the_source() {
         "nothing was written: {sent:?}"
     );
 }
+
+#[test]
+fn a_task_past_its_due_date_asks_for_the_user() {
+    let (_runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    let mut config: groove_types::GithubConfig =
+        serde_json::from_value(source(&host)).expect("the source");
+    config.properties.due = Some("Due".into());
+    state.config.config.as_mut().expect("a config").github = Some(config);
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+
+    let id = state.task.tasks[0].external_id.clone();
+    assert!(!state.task.asks(&id), "nothing is due yet");
+    let task = state.task.tasks.first_mut().expect("the task");
+    task.dates.due = Some(groove_types::Timestamp::now().day().plus_days(-2));
+    task::attention::reread(&mut state, groove_types::Timestamp::now());
+    assert_eq!(
+        state.task.needs(&id),
+        [groove_types::Attention::Overdue { by_days: 2 }],
+        "two days past it"
+    );
+}

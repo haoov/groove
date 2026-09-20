@@ -7,6 +7,7 @@ pub mod filter;
 mod header;
 mod live;
 pub mod plan;
+mod row;
 mod state;
 mod timeline;
 
@@ -42,32 +43,40 @@ impl List {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.layout.board;
     ctx.quad(area, ctx.styles.ground());
-    let (head, body, band) = regions(&ctx.tokens, app, ui, area);
-    let field = header::draw(ctx, head, app, ui);
-    let width = (body.w / List::ALL.len() as f32).floor();
+    let bands = bands(&ctx.tokens, app, ui, area);
+    let field = header::draw(ctx, bands.header, app, ui);
+    let (body, width) = (
+        bands.columns,
+        (bands.columns.w / List::ALL.len() as f32).floor(),
+    );
     for (at, list) in List::ALL.into_iter().enumerate() {
         let x = body.x + width * at as f32;
         column::draw(ctx, Rect::new(x, body.y, width, body.h), app, ui, list);
     }
-    timeline::draw(ctx, band, app, ui);
+    timeline::draw(ctx, bands.timeline, app, ui);
     header::offers(ctx, field, app, ui);
 }
 
-/// What the board is made of: its header, its columns, and the timeline's band.
-pub fn regions(
-    tokens: &crate::tokens::Tokens,
-    app: &AppState,
-    ui: &Ui,
-    area: Rect,
-) -> (Rect, Rect, Rect) {
-    let head = Rect::new(area.x, area.y, area.w, tokens.header);
-    let band = timeline::tall(tokens, app, ui);
-    let body = Rect::new(
+/// What the board is made of.
+pub struct Bands {
+    pub header: Rect,
+    pub columns: Rect,
+    pub timeline: Rect,
+}
+
+/// The board's own three bands, top to bottom.
+pub fn bands(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui, area: Rect) -> Bands {
+    let header = Rect::new(area.x, area.y, area.w, tokens.header);
+    let tall = timeline::height(tokens, app, ui);
+    let columns = Rect::new(
         area.x,
-        head.bottom(),
+        header.bottom(),
         area.w,
-        (area.h - head.h - band).max(0.0),
+        (area.h - header.h - tall).max(0.0),
     );
-    let under = Rect::new(area.x, body.bottom(), area.w, band);
-    (head, body, under)
+    Bands {
+        timeline: Rect::new(area.x, columns.bottom(), area.w, tall),
+        header,
+        columns,
+    }
 }

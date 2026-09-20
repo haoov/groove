@@ -26,7 +26,7 @@ impl Service {
 
     /// What every task has measured, and how much of it the source has been told.
     pub async fn time(&self) -> Result<Vec<(ExternalId, TimeSummary)>> {
-        self.ledger.read().await
+        self.ledger.summaries().await
     }
 
     /// The seconds the clock measured, task by task.

@@ -50,7 +50,7 @@ fn a_board_with_no_dates_in_the_horizon_folds_the_band_away() {
     };
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, _, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     assert_eq!(band.h, tokens.header, "its own bar and nothing more");
     let drawn = texts(&app, &ui);
     assert_eq!(
@@ -65,14 +65,16 @@ fn the_band_s_bar_folds_it_away_and_gives_the_room_to_the_columns() {
     let (app, mut ui) = running();
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, open, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let bands = crate::views::board::bands(&tokens, &app, &ui, board);
+    let (open, band) = (bands.columns, bands.timeline);
     assert_eq!(band.h, tokens.band, "the whole of it stands");
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let bar = hits.rect_of(&Target::Timeline).expect("the band's own bar");
     assert!(click(bar, &mut ui, &app, &hits).is_empty(), "no command");
     assert!(ui.board.shut);
-    let (_, shut, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let bands = crate::views::board::bands(&tokens, &app, &ui, board);
+    let (shut, band) = (bands.columns, bands.timeline);
     assert_eq!(band.h, tokens.header);
     assert!(shut.h > open.h, "the columns take what it gave up");
 }
@@ -82,7 +84,7 @@ fn a_sideways_turn_over_the_band_carries_it_through_time() {
     let (app, mut ui) = running();
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, _, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let before = texts(&app, &ui)
         .into_iter()
@@ -116,7 +118,7 @@ fn a_turn_straight_down_over_the_band_carries_nothing() {
     let (app, mut ui) = running();
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, _, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     crate::input::handle(
         crate::input::Input::Scroll {
@@ -171,7 +173,7 @@ fn a_sweep_too_small_for_a_day_is_kept_for_the_next_one() {
     let (app, mut ui) = running();
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, _, band) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let sweep = |across: f32, ui: &mut Ui, hits: &crate::hit::Hits| {
         crate::input::handle(

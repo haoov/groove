@@ -3,9 +3,8 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
 use groove_gfx::Rect;
-use groove_types::{SessionKind, Task};
 
-use super::column::{Line, aside, named};
+use super::row::{Line, aside, named};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -20,7 +19,7 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         .session
         .living
         .iter()
-        .filter(|living| query.lets_session(living, worked(app, living)))
+        .filter(|living| query.lets_session(living, app.task.worked(&living.session)))
         .collect();
     if living.is_empty() {
         return vec![Line::Nothing(match query.is_empty() {
@@ -46,14 +45,6 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         }
     }
     lines
-}
-
-/// The task a session works, as the task slice holds it.
-fn worked<'a>(app: &'a AppState, living: &Living) -> Option<&'a Task> {
-    match &living.session.kind {
-        SessionKind::Task { external_id } => app.task.by_external(external_id),
-        _ => None,
-    }
 }
 
 /// One session: a twisty for its worktrees, its kind, its title, what it holds.

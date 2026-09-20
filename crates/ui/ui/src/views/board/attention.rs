@@ -14,7 +14,7 @@ fn old(since: Timestamp, now: Timestamp) -> String {
 }
 
 /// The reasons an item carries, as the line under its title.
-pub(super) fn said(reasons: &[Attention], now: Timestamp) -> String {
+pub(super) fn line(reasons: &[Attention], now: Timestamp) -> String {
     reasons
         .iter()
         .map(|one| words(*one, now))

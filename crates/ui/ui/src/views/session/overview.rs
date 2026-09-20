@@ -3,7 +3,6 @@ mod task;
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
-use groove_types::SessionKind;
 
 use super::worktree_row;
 use crate::Ui;
@@ -32,7 +31,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 
 /// The task's six properties, for a session that works one.
 fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, ui: &Ui) -> f32 {
-    let Some(one) = working(app, open) else {
+    let Some(one) = app.task.worked(&open.session) else {
         return top;
     };
     let y = section(ctx, area, top, "Properties", false);
@@ -42,7 +41,7 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, 
 
 /// The task's body, under everything the session holds.
 fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
-    let Some(one) = working(app, open) else {
+    let Some(one) = app.task.worked(&open.session) else {
         return top;
     };
     let Some(text) = app.task.body(&one.short_id).filter(|text| !text.is_empty()) else {
@@ -50,14 +49,6 @@ fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32
     };
     let y = section(ctx, area, top, "Body", true);
     task::body(ctx, area, y, text)
-}
-
-/// The task this session works, as the task slice holds it.
-fn working<'a>(app: &'a AppState, open: &Open) -> Option<&'a groove_types::Task> {
-    match &open.session.kind {
-        SessionKind::Task { external_id } => app.task.by_external(external_id),
-        _ => None,
-    }
 }
 
 /// Whether a scrolled line is inside the tab.

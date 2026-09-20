@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
-use groove_types::{Span, Task, Timestamp};
+use groove_types::{Day, Span, Task, Timestamp};
 
 use super::{DAYS, first};
 use crate::Ui;
@@ -60,17 +60,12 @@ fn placed<'a>(app: &'a AppState, ui: &Ui) -> Vec<(&'a Task, Span, usize)> {
 
 /// A span's days, counted from today, which no horizon moves.
 fn from_today(span: Span) -> (i64, i64) {
-    let today = Timestamp::now().day();
-    match span {
-        Span::Bar { from, to } => (today.days_until(from), today.days_until(to)),
-        Span::Open { from } => (today.days_until(from), 0),
-        Span::Point(due) => (today.days_until(due), today.days_until(due)),
-    }
+    days_from(Timestamp::now().day(), span)
 }
 
 /// One bar: its ground, its edge, and its title inside it.
 fn one(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task, open: bool) {
-    let asking = !app.task.needs(&task.external_id).is_empty();
+    let asking = app.task.asks(&task.external_id);
     let box_ = Rect::new(
         line.x,
         line.y + ctx.tokens.xs,
@@ -94,7 +89,7 @@ fn one(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task, open: bool) {
 
 /// A task with a due date and nothing else: a mark, and its title beside it.
 fn point(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task) {
-    let asking = !app.task.needs(&task.external_id).is_empty();
+    let asking = app.task.asks(&task.external_id);
     let role = match asking {
         true => Role::Attention,
         false => Role::Muted,
@@ -142,11 +137,15 @@ fn inside(span: Span, ui: &Ui) -> bool {
 
 /// A span's own days, counted from the band's first.
 fn days(span: Span, ui: &Ui) -> (i64, i64) {
-    let day = first(ui);
-    let today = day.days_until(Timestamp::now().day());
+    days_from(first(ui), span)
+}
+
+/// Where a span starts and ends, in days from `origin`. An open one ends today.
+fn days_from(origin: Day, span: Span) -> (i64, i64) {
+    let today = origin.days_until(Timestamp::now().day());
     match span {
-        Span::Bar { from, to } => (day.days_until(from), day.days_until(to)),
-        Span::Open { from } => (day.days_until(from), today),
-        Span::Point(due) => (day.days_until(due), day.days_until(due)),
+        Span::Bar { from, to } => (origin.days_until(from), origin.days_until(to)),
+        Span::Open { from } => (origin.days_until(from), today),
+        Span::Point(due) => (origin.days_until(due), origin.days_until(due)),
     }
 }

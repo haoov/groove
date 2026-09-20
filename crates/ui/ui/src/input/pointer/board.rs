@@ -99,28 +99,23 @@ pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metr
         ui.board.drop = None;
         return;
     }
-    let scroll = ui.board.next;
-    ui.board.drop = Some(plan::dropped(&ctx, app, ui, body, scroll, y));
+    ui.board.drop = Some(plan::dropped(&ctx, app, ui, body, y));
 }
 
 /// The drag let go: the plan takes the row where it landed.
 pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let moving = plan::moving(app, ui);
+    let landing = plan::landing(app, ui);
     ui.board.dragging = None;
     ui.board.drop = None;
-    let Some((external_id, before, later)) = moving else {
-        return Vec::new();
-    };
-    vec![Command::Task(task::Command::Plan {
-        external_id,
-        before,
-        later,
-    })]
+    match landing {
+        Some(landing) => vec![Command::Task(task::Command::Plan(landing))],
+        None => Vec::new(),
+    }
 }
 
 /// Up next's own room, which a drag is measured against.
 fn next_column(tokens: &Tokens, app: &AppState, ui: &Ui, layout: Layout) -> Rect {
-    let (_, body, _) = crate::views::board::regions(tokens, app, ui, layout.board);
+    let body = crate::views::board::bands(tokens, app, ui, layout.board).columns;
     let width = (body.w / List::ALL.len() as f32).floor();
     let top = body.y + tokens.header;
     Rect::new(body.x + width, top, width, body.bottom() - top)

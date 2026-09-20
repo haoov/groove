@@ -1,7 +1,11 @@
 //! The `task` controller: one function per user action on the `task` service.
 
+pub mod attention;
 mod finish;
+mod plan;
 mod status;
+
+pub use plan::Landing;
 pub mod time;
 
 use groove_session_service::task_session;
@@ -30,11 +34,7 @@ pub enum Command {
         intent: StatusIntent,
     },
     /// `task.plan`: one task moved above another, or to the end of its own side.
-    Plan {
-        external_id: ExternalId,
-        before: Option<ExternalId>,
-        later: bool,
-    },
+    Plan(Landing),
 }
 
 impl Command {
@@ -71,93 +71,7 @@ pub fn dispatch(
             external_id,
             intent,
         } => status::set(state, spawner, &external_id, intent),
-        Command::Plan {
-            external_id,
-            before,
-            later,
-        } => plan(
-            state,
-            services,
-            spawner,
-            &external_id,
-            before.as_ref(),
-            later,
-        ),
-    }
-}
-
-/// One task moved in the plan, kept in the slice and written to disk.
-fn plan(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &ExternalId,
-    before: Option<&ExternalId>,
-    later: bool,
-) {
-    let waiting = waiting(state);
-    let shown = state.task.planned(&waiting);
-    let order = groove_task_service::moved(&shown, id, before, later);
-    state.task.plan = order.clone();
-    let service = services.task.clone();
-    session::record(spawner, session::NO_PENDING, async move {
-        service.save(order).await
-    });
-}
-
-/// The tasks as they now stand: their starts filled in, then what needs the user.
-pub(crate) fn settled(state: &mut AppState, now: Timestamp) {
-    began(state);
-    attention(state, now);
-}
-
-/// A task the source gives no start date starts the day its first session did.
-fn began(state: &mut AppState) {
-    let mut first: std::collections::BTreeMap<ExternalId, groove_types::Day> =
-        std::collections::BTreeMap::new();
-    for living in &state.session.living {
-        let SessionKind::Task { external_id } = &living.session.kind else {
-            continue;
-        };
-        let day = living.session.created_at.day();
-        let held = first.entry(external_id.clone()).or_insert(day);
-        *held = (*held).min(day);
-    }
-    for task in &mut state.task.tasks {
-        if task.dates.start.is_none() {
-            task.dates.start = first.get(&task.external_id).copied();
-        }
-    }
-}
-
-/// What needs the user, read again from the tasks as they now stand.
-fn attention(state: &mut AppState, now: Timestamp) {
-    let thresholds = state.config.thresholds();
-    let facts = std::collections::BTreeMap::new();
-    state.task.attention = groove_task_service::folded(&state.task.tasks, &facts, now, &thresholds);
-}
-
-/// The tasks no session works: the ones the plan orders.
-fn waiting(state: &AppState) -> Vec<&Task> {
-    state
-        .task
-        .tasks
-        .iter()
-        .filter(|task| {
-            !state
-                .session
-                .living
-                .iter()
-                .any(|living| holds(living, task))
-        })
-        .collect()
-}
-
-/// Whether this session is the one working that task.
-fn holds(living: &groove_session_service::Living, task: &Task) -> bool {
-    match &living.session.kind {
-        SessionKind::Task { external_id } => *external_id == task.external_id,
-        _ => false,
+        Command::Plan(landing) => plan::reorder(state, services, spawner, &landing),
     }
 }
 
@@ -212,10 +126,7 @@ fn working(state: &AppState, task: &Task) -> Option<SessionId> {
         .session
         .open
         .iter()
-        .find(|open| match &open.session.kind {
-            SessionKind::Task { external_id } => *external_id == task.external_id,
-            _ => false,
-        })
+        .find(|open| open.session.kind.works(&task.external_id))
         .map(|open| open.session.id.clone())
 }
 
@@ -259,7 +170,7 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
                 Ok(tasks) => state.task.loaded(tasks),
                 Err(e) => state.errors.push(e),
             }
-            settled(state, Timestamp::now());
+            attention::reread(state, Timestamp::now());
         }) as Continuation
     }));
 }
@@ -281,7 +192,7 @@ fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
                 Ok(read) => state.task.synced(read),
                 Err(e) => state.errors.push(e),
             }
-            settled(state, Timestamp::now());
+            attention::reread(state, Timestamp::now());
         }) as Continuation
     }));
 }

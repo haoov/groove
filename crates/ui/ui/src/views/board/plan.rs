@@ -1,12 +1,12 @@
 //! Up next: the tasks in the user's own order, and the divider they stand either side of.
 
 use groove_controllers::AppState;
-use groove_controllers::session_service::Living;
+use groove_controllers::task::Landing;
 use groove_controllers::task_service::Planned;
 use groove_gfx::Rect;
-use groove_types::{ExternalId, SessionKind, Task};
+use groove_types::Task;
 
-use super::column::Line;
+use super::row::Line;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::style::Role;
@@ -17,7 +17,7 @@ const LATER: &str = "LATER";
 /// What Up next holds: the tasks over the divider, the divider, the ones under it.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     let mut lines = Vec::new();
-    for (at, planned) in waiting(app, ui).into_iter().enumerate() {
+    for (at, planned) in upcoming(app, ui).into_iter().enumerate() {
         if planned.later && !lines.iter().any(is_divider) {
             lines.push(Line::Divider);
         }
@@ -34,7 +34,7 @@ fn edges(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
     let lines = lines(app, ui);
     let mut at = 0.0;
     let mut edges = vec![0.0];
-    for height in super::column::heights(tokens, app, &lines) {
+    for height in super::row::heights(tokens, app, &lines) {
         at += height;
         edges.push(at);
     }
@@ -43,27 +43,19 @@ fn edges(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
 
 /// The tasks the filter lets through that no session works, in the user's order, the
 /// ones that need the user first.
-fn waiting<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
+fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
     let query = ui.board.query();
     let left: Vec<&Task> = app
         .task
-        .tasks
-        .iter()
-        .filter(|task| !app.session.living.iter().any(|living| holds(living, task)))
+        .waiting(&app.session.worked())
+        .into_iter()
         .filter(|task| query.lets_task(task))
         .collect();
     let planned = app.task.planned(&left);
     let (asking, rest): (Vec<Planned<'_>>, Vec<Planned<'_>>) = planned
         .into_iter()
-        .partition(|one| !app.task.needs(&one.task.external_id).is_empty());
+        .partition(|one| app.task.asks(&one.task.external_id));
     asking.into_iter().chain(rest).collect()
-}
-
-fn holds(living: &Living, task: &Task) -> bool {
-    match &living.session.kind {
-        SessionKind::Task { external_id } => *external_id == task.external_id,
-        _ => false,
-    }
 }
 
 fn is_divider(line: &Line<'_>) -> bool {
@@ -86,10 +78,11 @@ pub(super) fn divider(ctx: &mut Ctx, line: Rect) {
 }
 
 /// The rule where a dragged row would land, over the rows it moves between.
-pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, scroll: f32) {
+pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let Some(at) = ui.board.drop else {
         return;
     };
+    let scroll = ui.board.scroll(super::List::Next);
     let edges = edges(&ctx.tokens, app, ui);
     let Some(edge) = edges.get(at) else {
         return;
@@ -108,10 +101,9 @@ pub fn dropped(
     app: &AppState,
     ui: &Ui,
     body: Rect,
-    scroll: f32,
     y: f32,
 ) -> usize {
-    let at = y - body.y + scroll;
+    let at = y - body.y + ui.board.scroll(super::List::Next);
     let edges = edges(tokens, app, ui);
     edges
         .iter()
@@ -121,15 +113,12 @@ pub fn dropped(
         .unwrap_or_default()
 }
 
-/// What the drop asks of the plan: the task, the one it lands above, and its side.
-pub fn moving(app: &AppState, ui: &Ui) -> Option<(ExternalId, Option<ExternalId>, bool)> {
-    let id = ui.board.dragging.clone()?;
+/// What the drop asks of the plan, or nothing when the row would not move.
+pub fn landing(app: &AppState, ui: &Ui) -> Option<Landing> {
+    let external_id = ui.board.dragging.clone()?;
     let at = ui.board.drop?;
     let lines = lines(app, ui);
-    let later = lines
-        .iter()
-        .position(is_divider)
-        .is_some_and(|at_| at_ < at);
+    let later = lines.iter().position(is_divider).is_some_and(|it| it < at);
     let before = lines
         .get(at..)
         .unwrap_or_default()
@@ -138,8 +127,12 @@ pub fn moving(app: &AppState, ui: &Ui) -> Option<(ExternalId, Option<ExternalId>
             Line::Task(_, task) => Some(task.external_id.clone()),
             _ => None,
         });
-    match before.as_ref() == Some(&id) {
+    match before.as_ref() == Some(&external_id) {
         true => None,
-        false => Some((id, before, later)),
+        false => Some(Landing {
+            external_id,
+            before,
+            later,
+        }),
     }
 }

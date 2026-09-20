@@ -30,7 +30,7 @@ pub(super) fn scroll(
         return;
     }
     if ui.showing(app) == Surface::Board {
-        let (_, _, band) = crate::views::board::regions(&tokens, app, ui, layout.board);
+        let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
         if band.contains(x, y) {
             return carry(delta, ui, tokens);
         }

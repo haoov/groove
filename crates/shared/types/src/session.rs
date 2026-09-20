@@ -10,6 +10,19 @@ pub enum SessionKind {
 }
 
 impl SessionKind {
+    /// The task this session works, if it works one.
+    pub fn task(&self) -> Option<&ExternalId> {
+        match self {
+            SessionKind::Task { external_id } => Some(external_id),
+            _ => None,
+        }
+    }
+
+    /// Whether this session works that task.
+    pub fn works(&self, task: &ExternalId) -> bool {
+        self.task() == Some(task)
+    }
+
     pub fn name(&self) -> &'static str {
         match self {
             SessionKind::Task { .. } => "task",

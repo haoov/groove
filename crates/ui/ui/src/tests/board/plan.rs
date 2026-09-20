@@ -101,11 +101,11 @@ fn a_task_dragged_by_its_place_lands_where_it_was_dropped() {
     assert_eq!(
         commands,
         [groove_controllers::Command::Task(
-            groove_controllers::task::Command::Plan {
+            groove_controllers::task::Command::Plan(groove_controllers::task::Landing {
                 external_id: third,
                 before: Some(ExternalId::new("github.com/a/b#1")),
                 later: false,
-            }
+            })
         )]
     );
     assert!(ui.board.dragging.is_none(), "the drag is spent");
@@ -122,7 +122,7 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
     pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits);
     let tokens = crate::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let (_, body, _) = crate::views::board::regions(&tokens, &app, &ui, board);
+    let body = crate::views::board::bands(&tokens, &app, &ui, board).columns;
     let width = (body.w / 3.0).floor();
     drag_at(
         body.x + width + 10.0,
@@ -135,11 +135,11 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
     assert_eq!(
         commands,
         [groove_controllers::Command::Task(
-            groove_controllers::task::Command::Plan {
+            groove_controllers::task::Command::Plan(groove_controllers::task::Landing {
                 external_id: first,
                 before: None,
                 later: true,
-            }
+            })
         )],
         "the end of the later side"
     );

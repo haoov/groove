@@ -135,6 +135,14 @@ impl State {
         self.open.iter().find(|o| &o.session.id == id)
     }
 
+    /// The tasks the sessions on disk are working.
+    pub fn worked(&self) -> Vec<groove_types::ExternalId> {
+        self.living
+            .iter()
+            .filter_map(|living| living.session.kind.task().cloned())
+            .collect()
+    }
+
     pub fn selected(&self) -> Option<&Open> {
         self.get(self.selected.as_ref()?)
     }

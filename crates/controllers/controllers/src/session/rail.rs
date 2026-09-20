@@ -152,7 +152,7 @@ pub fn list(services: &Services, spawner: &dyn Spawner) {
                 Ok(living) => state.session.living = living,
                 Err(e) => state.errors.push(e),
             }
-            crate::task::settled(state, Timestamp::now());
+            crate::task::attention::reread(state, Timestamp::now());
         }) as Continuation
     }));
 }

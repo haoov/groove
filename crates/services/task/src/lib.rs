@@ -7,7 +7,10 @@ mod timer;
 
 pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Notion, Source, Token};
-use groove_types::{Config, GithubConfig, NotionConfig, Result, Task, TaskKey};
+use groove_types::{
+    Attention, Config, ExternalId, GithubConfig, NotionConfig, Result, Session, Task, TaskKey,
+    TimeSummary,
+};
 
 pub use attention::folded;
 pub use order::{Planned, moved, ordered};
@@ -23,14 +26,13 @@ pub struct State {
     /// A read of the sources is out.
     pub reading: bool,
     /// The tasks a read is out for.
-    pub syncing: std::collections::BTreeSet<groove_types::ExternalId>,
+    pub syncing: std::collections::BTreeSet<ExternalId>,
     /// The order the user gave them.
     pub plan: Vec<Placed>,
     /// What needs the user, by task.
-    pub attention:
-        std::collections::BTreeMap<groove_types::ExternalId, Vec<groove_types::Attention>>,
+    pub attention: std::collections::BTreeMap<ExternalId, Vec<Attention>>,
     /// What each task has measured, and the clock that measures it.
-    pub time: std::collections::BTreeMap<groove_types::ExternalId, groove_types::TimeSummary>,
+    pub time: std::collections::BTreeMap<ExternalId, TimeSummary>,
     pub timer: Timer,
 }
 
@@ -59,10 +61,15 @@ impl State {
         self.tasks.iter().find(|task| task.short_id == short_id)
     }
 
-    pub fn by_external(&self, external_id: &groove_types::ExternalId) -> Option<&Task> {
+    pub fn by_external(&self, external_id: &ExternalId) -> Option<&Task> {
         self.tasks
             .iter()
             .find(|task| task.external_id == *external_id)
+    }
+
+    /// The task a session works, as the slice holds it.
+    pub fn worked(&self, session: &Session) -> Option<&Task> {
+        self.by_external(session.kind.task()?)
     }
 
     pub fn body(&self, short_id: &str) -> Option<&str> {
@@ -70,13 +77,26 @@ impl State {
     }
 
     /// Why one task needs the user, if it does.
-    pub fn needs(&self, id: &groove_types::ExternalId) -> &[groove_types::Attention] {
+    pub fn needs(&self, id: &ExternalId) -> &[Attention] {
         self.attention.get(id).map_or(&[], Vec::as_slice)
     }
 
+    /// Whether one task needs the user at all.
+    pub fn asks(&self, id: &ExternalId) -> bool {
+        !self.needs(id).is_empty()
+    }
+
     /// What one task has measured, if anything.
-    pub fn measured(&self, id: &groove_types::ExternalId) -> Option<groove_types::TimeSummary> {
+    pub fn measured(&self, id: &ExternalId) -> Option<TimeSummary> {
         self.time.get(id).copied()
+    }
+
+    /// The tasks none of `worked` names.
+    pub fn waiting(&self, worked: &[ExternalId]) -> Vec<&Task> {
+        self.tasks
+            .iter()
+            .filter(|task| !worked.contains(&task.external_id))
+            .collect()
     }
 
     /// The tasks no session works, in the user's own order.

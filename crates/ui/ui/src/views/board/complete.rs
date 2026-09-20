@@ -32,11 +32,11 @@ pub fn offers(app: &AppState, text: &str) -> Vec<String> {
         },
         None => fields(token),
     };
-    whole(offers, token)
+    unless_whole(offers, token)
 }
 
 /// A token that already reads as the only thing it could become is offered nothing.
-fn whole(offers: Vec<String>, token: &str) -> Vec<String> {
+fn unless_whole(offers: Vec<String>, token: &str) -> Vec<String> {
     match offers.iter().any(|one| one.eq_ignore_ascii_case(token)) {
         true => Vec::new(),
         false => offers,

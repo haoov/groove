@@ -18,7 +18,7 @@ pub(super) const DAYS: i64 = 28;
 const BEFORE: i64 = 7;
 
 /// How tall the band stands: its own bar alone, or as tall as the user left it.
-pub(super) fn tall(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
+pub(super) fn height(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
     match shut(app, ui) {
         true => tokens.header,
         false => ui.split.band * tokens.scale,

@@ -6,6 +6,16 @@ mod tests;
 use groove_db::Db;
 use groove_types::{Day, Error, ExternalId, Result, TimeSummary, Timestamp};
 
+/// One row of the ledger, as the table holds it.
+#[derive(sqlx::FromRow)]
+struct Row {
+    external_id: String,
+    tracked_seconds: i64,
+    logged_seconds: i64,
+    today_day: String,
+    today_seconds: i64,
+}
+
 /// The ledger on disk, cheap to clone: a handle on the pool.
 #[derive(Clone)]
 pub struct Ledger {
@@ -26,8 +36,8 @@ impl Ledger {
     }
 
     /// What every task the ledger holds has measured.
-    pub async fn read(&self) -> Result<Vec<(ExternalId, TimeSummary)>> {
-        let rows: Vec<(String, i64, i64, String, i64)> = sqlx::query_as(
+    pub async fn summaries(&self) -> Result<Vec<(ExternalId, TimeSummary)>> {
+        let rows: Vec<Row> = sqlx::query_as(
             "SELECT external_id, tracked_seconds, logged_seconds, today_day, today_seconds
              FROM ledger",
         )
@@ -81,18 +91,17 @@ impl Ledger {
 }
 
 /// One row as the app reads it: today's share counts only while the day stands.
-fn summary(row: (String, i64, i64, String, i64), today: &str) -> (ExternalId, TimeSummary) {
-    let (id, tracked, logged, day, seconds) = row;
+fn summary(row: Row, today: &str) -> (ExternalId, TimeSummary) {
     let summary = TimeSummary {
-        tracked_seconds: tracked,
-        logged_seconds: logged,
-        today_seconds: match day == today {
-            true => seconds,
+        tracked_seconds: row.tracked_seconds,
+        logged_seconds: row.logged_seconds,
+        today_seconds: match row.today_day == today {
+            true => row.today_seconds,
             false => 0,
         },
-        unlogged_seconds: (tracked - logged).max(0),
+        unlogged_seconds: (row.tracked_seconds - row.logged_seconds).max(0),
     };
-    (ExternalId::new(id), summary)
+    (ExternalId::new(row.external_id), summary)
 }
 
 fn failed(source: sqlx::Error) -> Error {
