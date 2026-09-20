@@ -50,7 +50,20 @@ fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let box_ = leading(ctx, rect, ctx.tokens.md);
     icon(ctx, box_, Mark::Board, Role::Faint);
     row(ctx, rect, after_mark(ctx, ctx.tokens.md), "Board", style);
+    asking(ctx, rect, app.task.attention.len());
     hairline(ctx, rect, rule);
+}
+
+/// How many items need the user, at the row's right end.
+fn asking(ctx: &mut Ctx, rect: Rect, count: usize) {
+    if count == 0 {
+        return;
+    }
+    let style = ctx.styles.small(Role::Attention);
+    let text = count.to_string();
+    let width = ctx.measure(&text, &style);
+    let at = rect.right() - ctx.tokens.md - width;
+    row(ctx, Rect::new(at, rect.y, width, rect.h), 0.0, &text, style);
 }
 
 /// One item per open session, scrolled and clipped to `area`.

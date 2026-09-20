@@ -23,6 +23,14 @@ pub fn load(config_dir: &Path) -> Result<Option<Config>, Error> {
 }
 
 impl State {
+    /// The days a rule waits before it asks for the user.
+    pub fn thresholds(&self) -> groove_types::Thresholds {
+        self.config
+            .as_ref()
+            .map(|c| c.preferences.thresholds)
+            .unwrap_or_default()
+    }
+
     pub fn theme(&self) -> ThemeName {
         self.config.as_ref().map(|c| c.ui.theme).unwrap_or_default()
     }

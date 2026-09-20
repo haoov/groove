@@ -1,5 +1,6 @@
 //! The board: what its columns hold, and how the window gets to it and back.
 
+mod attention;
 mod filter;
 mod plan;
 

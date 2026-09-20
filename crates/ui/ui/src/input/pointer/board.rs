@@ -77,9 +77,8 @@ pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metr
         ui.board.drop = None;
         return;
     }
-    let lines = plan::count(app, ui);
     let scroll = ui.board.next;
-    ui.board.drop = Some(plan::dropped(&ctx, body, lines, scroll, y));
+    ui.board.drop = Some(plan::dropped(&ctx, app, ui, body, scroll, y));
 }
 
 /// The drag let go: the plan takes the row where it landed.

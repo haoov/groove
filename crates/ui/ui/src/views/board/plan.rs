@@ -29,12 +29,20 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     lines
 }
 
-/// How many lines Up next holds, the divider counted.
-pub fn count(app: &AppState, ui: &Ui) -> usize {
-    lines(app, ui).len()
+/// Where every line of Up next starts, and where the last one ends.
+fn edges(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
+    let lines = lines(app, ui);
+    let mut at = 0.0;
+    let mut edges = vec![0.0];
+    for height in super::column::heights(tokens, app, &lines) {
+        at += height;
+        edges.push(at);
+    }
+    edges
 }
 
-/// The tasks the filter lets through that no session works, in the user's order.
+/// The tasks the filter lets through that no session works, in the user's order, the
+/// ones that need the user first.
 fn waiting<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
     let query = ui.board.query();
     let left: Vec<&Task> = app
@@ -44,7 +52,11 @@ fn waiting<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
         .filter(|task| !app.session.living.iter().any(|living| holds(living, task)))
         .filter(|task| query.lets_task(task))
         .collect();
-    app.task.planned(&left)
+    let planned = app.task.planned(&left);
+    let (asking, rest): (Vec<Planned<'_>>, Vec<Planned<'_>>) = planned
+        .into_iter()
+        .partition(|one| !app.task.needs(&one.task.external_id).is_empty());
+    asking.into_iter().chain(rest).collect()
 }
 
 fn holds(living: &Living, task: &Task) -> bool {
@@ -74,12 +86,16 @@ pub(super) fn divider(ctx: &mut Ctx, line: Rect) {
 }
 
 /// The rule where a dragged row would land, over the rows it moves between.
-pub(super) fn dragging(ctx: &mut Ctx, body: Rect, ui: &Ui, scroll: f32) {
+pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, scroll: f32) {
     let Some(at) = ui.board.drop else {
         return;
     };
+    let edges = edges(&ctx.tokens, app, ui);
+    let Some(edge) = edges.get(at) else {
+        return;
+    };
     let thick = ctx.tokens.hairline * 2.0;
-    let y = body.y - scroll + super::column::item(&ctx.tokens) * at as f32 - thick / 2.0;
+    let y = body.y - scroll + edge - thick / 2.0;
     ctx.quad(
         Rect::new(body.x, y, body.w, thick),
         ctx.styles.color(Role::Working),
@@ -89,13 +105,20 @@ pub(super) fn dragging(ctx: &mut Ctx, body: Rect, ui: &Ui, scroll: f32) {
 /// Which insertion point a drag lands on, counted in lines from the column's top.
 pub fn dropped(
     tokens: &crate::tokens::Tokens,
+    app: &AppState,
+    ui: &Ui,
     body: Rect,
-    lines: usize,
     scroll: f32,
     y: f32,
 ) -> usize {
-    let at = (y - body.y + scroll) / super::column::item(tokens);
-    (at.round().max(0.0) as usize).min(lines)
+    let at = y - body.y + scroll;
+    let edges = edges(tokens, app, ui);
+    edges
+        .iter()
+        .enumerate()
+        .min_by(|(_, one), (_, other)| (*one - at).abs().total_cmp(&(*other - at).abs()))
+        .map(|(index, _)| index)
+        .unwrap_or_default()
 }
 
 /// What the drop asks of the plan: the task, the one it lands above, and its side.

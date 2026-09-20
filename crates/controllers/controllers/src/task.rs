@@ -96,6 +96,13 @@ fn plan(
     });
 }
 
+/// What needs the user, read again from the tasks as they now stand.
+pub(crate) fn attention(state: &mut AppState, now: Timestamp) {
+    let thresholds = state.config.thresholds();
+    let facts = std::collections::BTreeMap::new();
+    state.task.attention = groove_task_service::folded(&state.task.tasks, &facts, now, &thresholds);
+}
+
 /// The tasks no session works: the ones the plan orders.
 fn waiting(state: &AppState) -> Vec<&Task> {
     state
@@ -219,6 +226,7 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
                 Ok(tasks) => state.task.loaded(tasks),
                 Err(e) => state.errors.push(e),
             }
+            attention(state, Timestamp::now());
         }) as Continuation
     }));
 }
@@ -240,6 +248,7 @@ fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
                 Ok(read) => state.task.synced(read),
                 Err(e) => state.errors.push(e),
             }
+            attention(state, Timestamp::now());
         }) as Continuation
     }));
 }

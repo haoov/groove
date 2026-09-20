@@ -1,5 +1,6 @@
 //! The task capability. Its slice of `AppState`, the operations on it, its events.
 
+mod attention;
 mod order;
 mod service;
 mod timer;
@@ -8,6 +9,7 @@ pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Source, Token};
 use groove_types::{Config, GithubConfig, Result, Task, TaskKey};
 
+pub use attention::folded;
 pub use order::{Planned, moved, ordered};
 pub use service::Service;
 pub use timer::{IDLE, Timer};
@@ -24,6 +26,9 @@ pub struct State {
     pub syncing: std::collections::BTreeSet<groove_types::ExternalId>,
     /// The order the user gave them.
     pub plan: Vec<Placed>,
+    /// What needs the user, by task.
+    pub attention:
+        std::collections::BTreeMap<groove_types::ExternalId, Vec<groove_types::Attention>>,
     /// What each task has measured, and the clock that measures it.
     pub time: std::collections::BTreeMap<groove_types::ExternalId, groove_types::TimeSummary>,
     pub timer: Timer,
@@ -62,6 +67,11 @@ impl State {
 
     pub fn body(&self, short_id: &str) -> Option<&str> {
         self.bodies.get(short_id).map(String::as_str)
+    }
+
+    /// Why one task needs the user, if it does.
+    pub fn needs(&self, id: &groove_types::ExternalId) -> &[groove_types::Attention] {
+        self.attention.get(id).map_or(&[], Vec::as_slice)
     }
 
     /// What one task has measured, if anything.

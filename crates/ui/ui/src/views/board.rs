@@ -1,5 +1,6 @@
 //! The board: every task, live or not, in three columns beside the rail.
 
+mod attention;
 mod column;
 pub mod complete;
 pub mod filter;

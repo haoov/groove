@@ -62,12 +62,15 @@ takes hold, the rule follows the pointer, and the drop asks `task.plan` to put t
 above the row it landed on. Below the **later** divider a task keeps its place but
 leaves the plan.
 
-Still to draw: the attention lines, the timeline band.
+Still to draw: the timeline band.
 
-**Attention** is computed in the service from `forge` facts and dates against the
+**Attention** is folded in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,
-approved and unmerged, due soon, overdue. Each yields a reason and an age; the rail's
-Board row sums them.
+approved and unmerged, due soon, overdue. Each yields a reason and an age. An item that
+carries one stands one line taller, says why under its title in peach, and floats over
+the ones that carry none; the rail's Board row sums them. The fold is read again when
+the tasks are, and every time the ledger takes the clock, so a date rule turns with the
+day. The forge facts are empty until `forge` lands, so only the dates speak today.
 
 | Still to build | Does |
 |---|---|
@@ -106,5 +109,5 @@ the UI sets a status by hand.
 - [x] Local order per task and the *later* position, in the database.
 - [x] The ledger, the timer, and the hours written to the source.
 - [x] Attention rules and thresholds in `types`.
-- [ ] The attention fold in the `task` service.
+- [x] The attention fold in the `task` service.
 - [ ] Notion on the same `Source` enum: its row, its mapping, its body read.

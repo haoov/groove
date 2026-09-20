@@ -109,26 +109,51 @@ fn edge(ctx: &mut Ctx, area: Rect) {
 
 /// The lines a column has room for, scrolled and clipped to it.
 fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
-    let height = item(&ctx.tokens);
-    let extent = (height * lines.len() as f32 - body.h).max(0.0);
+    let heights = heights(&ctx.tokens, app, lines);
+    let extent = (heights.iter().sum::<f32>() - body.h).max(0.0);
     ctx.scrolls(Scroller::Column(list as u8), extent);
     let scroll = ui.board.scroll(list).min(extent);
     ctx.clipped(body, |ctx| {
+        let mut y = body.y - scroll;
         for (at, line) in lines.iter().enumerate() {
-            let y = body.y - scroll + height * at as f32;
-            if y + height < body.y || y > body.bottom() {
-                continue;
+            let height = heights[at];
+            if y + height >= body.y && y <= body.bottom() {
+                let rect = Rect::new(body.x, y, body.w, height);
+                one(ctx, rect, app, ui, line, closes(lines, at));
             }
-            let rect = Rect::new(body.x, y, body.w, height);
-            one(ctx, rect, app, ui, line, closes(lines, at));
+            y += height;
         }
         if list == List::Next && ui.board.dragging.is_some() {
-            super::plan::dragging(ctx, body, ui, scroll);
+            super::plan::dragging(ctx, body, app, ui, scroll);
         }
     });
 }
 
-/// How tall one line of a column is.
+/// How tall a line of a column stands: one row, and one more line when it says why it
+/// needs the user.
+pub(super) fn heights(
+    tokens: &crate::tokens::Tokens,
+    app: &AppState,
+    lines: &[Line<'_>],
+) -> Vec<f32> {
+    lines
+        .iter()
+        .map(|line| match reasons(app, line).is_empty() {
+            true => item(tokens),
+            false => item(tokens) + tokens.line,
+        })
+        .collect()
+}
+
+/// Why this line needs the user.
+fn reasons<'a>(app: &'a AppState, line: &Line<'_>) -> &'a [groove_types::Attention] {
+    match line {
+        Line::Task(_, task) => app.task.needs(&task.external_id),
+        _ => &[],
+    }
+}
+
+/// How tall one plain line of a column is.
 pub(super) fn item(tokens: &crate::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
@@ -142,7 +167,7 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, clos
     match line {
         Line::Session(living) => session(ctx, rect, app, ui, living),
         Line::Worktree(worktree, delivery) => worktree_row::draw(ctx, rect, worktree, *delivery),
-        Line::Task(at, task) => waiting(ctx, rect, ui, *at, task),
+        Line::Task(at, task) => waiting(ctx, rect, app, ui, *at, task),
         Line::Divider => return super::plan::divider(ctx, rect),
         Line::Nothing(text) => {
             let style = ctx.styles.small(Role::Faint);
@@ -203,16 +228,25 @@ fn twisty(ctx: &mut Ctx, line: Rect, ui: &Ui, living: &Living) -> f32 {
     after_mark(ctx, ctx.tokens.sm)
 }
 
-/// One task waiting: its place in the plan, its title, and what it is worth.
-fn waiting(ctx: &mut Ctx, line: Rect, ui: &Ui, at: usize, task: &Task) {
+/// One task waiting: its place in the plan, its title, what it is worth, and why it
+/// needs the user.
+fn waiting(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, at: usize, task: &Task) {
     let target = Target::Task(task.short_id.clone());
     if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
+        ctx.quad(rect, ctx.styles.hover());
     }
-    ctx.hit(line, target);
+    ctx.hit(rect, target);
+    let line = Rect::new(rect.x, rect.y, rect.w, item(&ctx.tokens));
     let start = place(ctx, line, at, task);
     let until = aside(ctx, line, &worth(task));
     named(ctx, line, &task.title, until, start);
+    let reasons = app.task.needs(&task.external_id);
+    if reasons.is_empty() {
+        return;
+    }
+    let under = Rect::new(rect.x, line.bottom(), rect.w, ctx.tokens.line);
+    let said = super::attention::said(reasons, groove_types::Timestamp::now());
+    super::attention::draw(ctx, under, start, &said);
 }
 
 /// Where a task sits in the plan, and what a drag takes hold of. Returns the title's x.
