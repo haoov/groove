@@ -97,6 +97,8 @@ fn acted(
 ) -> Vec<Command> {
     match target {
         Some(Target::Board) => board(ui),
+        Some(Target::Task(short_id)) => task(ui, short_id),
+        Some(Target::Unfold(session)) => unfolded(ui, &session),
         Some(Target::Session(session)) => opened_session(ui, session),
         Some(Target::Tab(tab)) => tabbed(ui, tab),
         Some(Target::Fold) => aside(ui),
@@ -131,16 +133,31 @@ fn acted(
     }
 }
 
-/// The board, with a read of the sources behind it.
+/// The board, with a read of the sessions and the sources behind it.
 fn board(ui: &mut Ui) -> Vec<Command> {
     ui.surface = Surface::Board;
-    vec![Command::Task(task::Command::Load)]
+    vec![
+        Command::Session(session::Command::List),
+        Command::Task(task::Command::Load),
+    ]
+}
+
+/// A task picked on the board: its session opens, and the window goes to it.
+fn task(ui: &mut Ui, short_id: String) -> Vec<Command> {
+    ui.surface = Surface::Session;
+    vec![Command::Task(task::Command::Open { short_id })]
+}
+
+/// A live item's worktrees shown under it, or hidden again.
+fn unfolded(ui: &mut Ui, session: &groove_types::SessionId) -> Vec<Command> {
+    ui.board.fold(session);
+    Vec::new()
 }
 
 /// A session picked, wherever it was picked from, with the window back on it.
 fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
     ui.surface = Surface::Session;
-    vec![Command::Session(session::Command::Select { session })]
+    vec![Command::Session(session::Command::Open { session })]
 }
 
 fn one(command: workspace::Command) -> Vec<Command> {

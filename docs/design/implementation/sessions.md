@@ -28,9 +28,13 @@ The pickers for source and target list `origin`'s heads from `worktree`.
 One overview for the three kinds, drawn from the `session` slice, in the order of
 [../design.md](../design.md): properties, repos with their worktree rows, body.
 
+**Closing is not deleting.** A closed session keeps its worktrees, its repos and its
+row; it leaves the rail and stays on the board's Live column, which lists every session
+on disk. Picking it there puts it back on the rail with its agent.
+Only `session.delete` takes it away.
+
 | Still to build | Does |
 |---|---|
-| `session.open` | create or load a task session, provision what is missing, `agent.start`, set the task in progress, select the last-touched worktree |
 | `session.discard_explorer` · `session.convert_explorer` | discard; or file the task and move the worktrees, the rows and the agent onto the new id |
 | `session.open_review` | register the MR's clone, provision the review worktree, `agent.start` |
 | `session.get_active` · `session.get` | reads for the MCP tools |

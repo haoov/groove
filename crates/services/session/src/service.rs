@@ -4,10 +4,12 @@ use std::path::Path;
 
 use groove_sessions::Store;
 use groove_types::{
-    Error, PoolEntry, Repo, RepoId, Session, SessionId, SessionState, Timestamp, Worktree,
+    Error, PoolEntry, Repo, RepoId, Session, SessionId, SessionState, Task, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId, WorktreeSpec, WorktreeStatus,
 };
 use groove_worktree::Pool;
+
+use crate::Living;
 
 /// What a session holds, as recorded and as git reports it.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -46,6 +48,19 @@ impl Service {
         Ok(Self::new(store, pool))
     }
 
+    /// Inserts the task's session, the task beside it, and puts it on the rail.
+    pub async fn create_task(
+        &self,
+        session: &Session,
+        task: &Task,
+        now: Timestamp,
+    ) -> Result<(), Error> {
+        self.store.create_task(session, task).await?;
+        self.store.set_opened(&session.id, Some(now)).await?;
+        self.store.set_seen(&session.id, now).await?;
+        Ok(())
+    }
+
     /// Inserts the explorer and puts it on the rail.
     pub async fn create_explorer(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
         self.store.create_explorer(session).await?;
@@ -81,6 +96,22 @@ impl Service {
     }
 
     /// The rail as it was: every session with an `opened_at`, in that order.
+    /// Every session on disk, with its repos and worktrees. The rail's own list is
+    /// `opened`.
+    pub async fn living(&self) -> Result<Vec<Living>, Error> {
+        let mut out = Vec::new();
+        for (session, _) in self.store.living().await? {
+            let worktrees = self.pool.worktrees_of(&session.id).await?;
+            let repos = self.store.repos_of(&session.id).await?.len();
+            out.push(Living {
+                session,
+                worktrees,
+                repos,
+            });
+        }
+        Ok(out)
+    }
+
     pub async fn opened(&self) -> Result<Vec<(Session, SessionState)>, Error> {
         Ok(self.store.opened().await?)
     }

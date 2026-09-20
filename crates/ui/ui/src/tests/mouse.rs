@@ -19,7 +19,7 @@ fn regions(app: &AppState, ui: &Ui) -> Hits {
 }
 
 #[test]
-fn a_click_on_a_rail_row_selects_that_session() {
+fn a_click_on_a_rail_row_opens_that_session() {
     let app = full_app();
     let mut ui = Ui::default();
     let hits = regions(&app, &ui);
@@ -28,7 +28,7 @@ fn a_click_on_a_rail_row_selects_that_session() {
         .expect("Beta has a row");
     let commands = click(rect, &mut ui, &app, &hits);
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].id(), "session.select");
+    assert_eq!(commands[0].id(), "session.open");
 }
 
 #[test]

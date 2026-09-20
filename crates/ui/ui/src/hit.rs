@@ -48,6 +48,10 @@ pub enum Target {
     Palette,
     /// The rail's own first row, which opens the board.
     Board,
+    /// A task on the board, which a click opens the session for.
+    Task(String),
+    /// A live item's twisty, which shows its worktrees.
+    Unfold(SessionId),
     /// A boundary between two columns.
     Split(Edge),
     /// What folds the sidebar away.
@@ -112,6 +116,8 @@ impl Target {
             | Target::View(_)
             | Target::Read(_)
             | Target::Board
+            | Target::Task(_)
+            | Target::Unfold(_)
             | Target::Head(_)
             | Target::Found(_)
             | Target::FoundIn(_) => Cursor::Pointer,

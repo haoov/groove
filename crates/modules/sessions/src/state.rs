@@ -85,6 +85,27 @@ impl Store {
         Ok(out)
     }
 
+    /// Every session on disk, whether or not it is on the rail, the most recently
+    /// opened first.
+    pub async fn living(&self) -> Result<Vec<(Session, SessionState)>> {
+        let rows: Vec<SessionRow> = sqlx::query_as(
+            "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
+                    s.created_at
+             FROM sessions s
+             LEFT JOIN session_state st ON st.session_id = s.id
+             ORDER BY COALESCE(st.opened_at, s.created_at) DESC, s.id",
+        )
+        .fetch_all(self.db.pool())
+        .await?;
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let session = Session::from(row);
+            let state = self.state(&session.id).await?;
+            out.push((session, state));
+        }
+        Ok(out)
+    }
+
     /// One integer column, the row created when missing.
     async fn upsert_state(&self, column: Column, value: Option<i64>, id: &SessionId) -> Result<()> {
         let sql = match column {

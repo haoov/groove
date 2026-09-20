@@ -60,7 +60,7 @@ fn the_rail_s_board_row_opens_the_board_and_reads_the_sources() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         commands.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["task.load"]
+        ["session.list", "task.load"]
     );
 }
 
@@ -84,10 +84,21 @@ fn a_task_with_a_session_of_its_own_is_live_and_not_up_next() {
     let mut app = full_app();
     let external = ExternalId::new("github.com/a/b#1");
     app.task.tasks = vec![task("gh-a-b-1", "already open", external.as_str())];
-    let open = app.session.open.first_mut().expect("the fixture has one");
-    open.session.kind = SessionKind::Task {
+    let kind = SessionKind::Task {
         external_id: external,
     };
+    app.session
+        .open
+        .first_mut()
+        .expect("the fixture has one")
+        .session
+        .kind = kind.clone();
+    app.session
+        .living
+        .first_mut()
+        .expect("and it lives")
+        .session
+        .kind = kind;
     let (ui, _) = on_board(&app);
     let drawn = texts(&app, &ui);
     assert!(drawn.iter().any(|t| t == "UP NEXT"), "no count: {drawn:?}");
@@ -102,7 +113,7 @@ fn the_chord_opens_the_board_and_closes_it_again() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         opened.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["task.load"]
+        ["session.list", "task.load"]
     );
     let closed = press(Key::Char('k'), CHORD, &mut ui, &app);
     assert_eq!(ui.surface, Surface::Session);
@@ -149,7 +160,7 @@ fn a_session_picked_while_the_board_is_up_puts_the_window_back_on_it() {
     assert_eq!(ui.surface, Surface::Session);
     assert_eq!(
         commands.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["session.select"]
+        ["session.open"]
     );
 }
 
@@ -190,4 +201,58 @@ fn closing_the_last_session_leaves_the_board_showing() {
     app.session.open.clear();
     app.session.selected = None;
     assert_eq!(ui.showing(&app), Surface::Board, "nothing is left to show");
+}
+
+#[test]
+fn a_live_item_opens_to_show_its_worktrees() {
+    let app = full_app();
+    let (mut ui, hits) = on_board(&app);
+    let id = app
+        .session
+        .open
+        .first()
+        .map(|open| open.session.id.clone())
+        .expect("the fixture has a session");
+    let before = texts(&app, &ui);
+    assert!(!before.iter().any(|t| t == "explorer/alpha"), "{before:?}");
+
+    let twisty = hits
+        .rect_of(&Target::Unfold(id.clone()))
+        .expect("the item has a twisty");
+    assert!(click(twisty, &mut ui, &app, &hits).is_empty(), "no command");
+    assert!(ui.board.is_open(&id));
+    let after = texts(&app, &ui);
+    assert!(
+        after.iter().any(|t| t == "explorer/alpha"),
+        "the worktree's branch: {after:?}"
+    );
+}
+
+#[test]
+fn a_task_picked_up_next_opens_its_session() {
+    let mut app = full_app();
+    app.task.tasks = vec![task("gh-a-b-1", "waiting one", "github.com/a/b#1")];
+    let (mut ui, hits) = on_board(&app);
+    let row = hits
+        .rect_of(&Target::Task("gh-a-b-1".into()))
+        .expect("the task has a row");
+    let commands = click(row, &mut ui, &app, &hits);
+    assert_eq!(ui.surface, Surface::Session, "the window goes to the work");
+    assert_eq!(
+        commands.iter().map(|c| c.id()).collect::<Vec<_>>(),
+        ["task.open"]
+    );
+}
+
+#[test]
+fn a_task_up_next_shows_where_it_sits_in_the_plan() {
+    let mut app = full_app();
+    app.task.tasks = vec![
+        task("gh-a-b-1", "waiting one", "github.com/a/b#1"),
+        task("gh-a-b-2", "waiting two", "github.com/a/b#2"),
+    ];
+    let (ui, _) = on_board(&app);
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "1"), "{drawn:?}");
+    assert!(drawn.iter().any(|t| t == "2"), "{drawn:?}");
 }

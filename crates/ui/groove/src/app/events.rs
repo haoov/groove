@@ -39,6 +39,7 @@ impl ApplicationHandler<Message> for App {
         self.window = Some(window);
         for command in [
             Command::Session(session::Command::Restore),
+            Command::Session(session::Command::List),
             Command::Task(task::Command::Load),
         ] {
             dispatch(command, &mut self.state, &self.services, &self.spawner);

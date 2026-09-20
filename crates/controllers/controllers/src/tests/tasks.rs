@@ -96,3 +96,83 @@ fn nothing_is_read_while_no_source_is_configured() {
     assert!(state.errors.is_empty(), "{:?}", state.errors);
     assert!(!state.task.reading, "and nothing is left in flight");
 }
+
+#[test]
+fn opening_a_task_starts_a_session_that_works_it() {
+    let (_runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+
+    dispatch(
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.agent
+            .agent(&groove_types::SessionId::new("gh-haoov-groove-50"))
+            .is_some()
+    });
+    let open = state.session.open.first().expect("a session on the rail");
+    assert_eq!(open.session.title, "Harden Groove");
+    assert!(
+        matches!(&open.session.kind, groove_types::SessionKind::Task { external_id }
+            if external_id.as_str().ends_with("/haoov/groove#50")),
+        "it works that task: {:?}",
+        open.session.kind
+    );
+    assert_eq!(state.session.selected.as_ref(), Some(&open.session.id));
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn opening_a_task_that_is_already_open_selects_its_session() {
+    let (_runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+    let open = || {
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        })
+    };
+    dispatch(open(), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.open.is_empty()
+    });
+
+    dispatch(open(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.session.open.len(), 1, "one session, not two");
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}

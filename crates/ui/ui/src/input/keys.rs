@@ -18,7 +18,10 @@ use panes::{in_file, in_rail, in_sidebar};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if mods.ctrl && mods.shift {
-        return chord(key, ui, app).into_iter().collect();
+        return match key {
+            Key::Char('k' | 'K') => board(ui),
+            key => chord(key, ui, app).into_iter().collect(),
+        };
     }
     if let Some(palette) = &mut ui.palette {
         let outcome = palette.key(key, app);
@@ -49,12 +52,18 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
 }
 
 /// The board, or the session it was opened from.
-fn board(ui: &mut Ui) -> Option<Command> {
+fn board(ui: &mut Ui) -> Vec<Command> {
     ui.surface = match ui.surface {
         Surface::Board => Surface::Session,
         Surface::Session => Surface::Board,
     };
-    (ui.surface == Surface::Board).then_some(Command::Task(task::Command::Load))
+    match ui.surface {
+        Surface::Board => vec![
+            Command::Session(session::Command::List),
+            Command::Task(task::Command::Load),
+        ],
+        Surface::Session => Vec::new(),
+    }
 }
 
 /// Groove's own shortcuts.
@@ -74,7 +83,6 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
             ui.session.folded = !ui.session.folded;
             None
         }
-        Key::Char('k' | 'K') => board(ui),
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
         Key::Char('f' | 'F') => {
             opened(ui, Term::Text);

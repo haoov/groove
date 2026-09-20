@@ -37,7 +37,7 @@ fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
     assert!(texts.iter().any(|t| t == "Board"));
     assert!(texts.iter().any(|t| t == "LIVE"), "{texts:?}");
     assert!(
-        texts.iter().any(|t| t.starts_with("nothing open")),
+        texts.iter().any(|t| t.starts_with("nothing here")),
         "{texts:?}"
     );
 }

@@ -1,9 +1,9 @@
 //! One column of the board: its heading, then a row per item.
 
 use groove_controllers::AppState;
-use groove_controllers::session_service::Open;
+use groove_controllers::session_service::Living;
 use groove_gfx::Rect;
-use groove_types::{SessionKind, Task};
+use groove_types::{SessionKind, Task, Worktree, WorktreeDelivery};
 
 use super::List;
 use crate::Ui;
@@ -11,50 +11,91 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
+use crate::views::session::worktree_row;
 use crate::widget::{after_mark, elide, hairline, icon, leading, row};
 
-pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
-    let live: Vec<&Open> = app.session.open.iter().collect();
-    let next: Vec<&Task> = planned(app);
-    let count = match list {
-        List::Live => live.len(),
-        List::Next => next.len(),
-        List::Review => 0,
-    };
-    let head = Rect::new(area.x, area.y, area.w, ctx.tokens.header);
-    heading(ctx, head, list, count);
-    edge(ctx, area);
+/// One line of a column: an item, or a worktree under an item that is open.
+enum Line<'a> {
+    Session(&'a Living),
+    Worktree(&'a Worktree, Option<&'a WorktreeDelivery>),
+    /// Its place in the plan, counted from one.
+    Task(usize, &'a Task),
+    Nothing(&'static str),
+}
 
+pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
+    let lines = lines(app, ui, list);
+    let head = Rect::new(area.x, area.y, area.w, ctx.tokens.header);
+    heading(ctx, head, list, counted(&lines));
+    edge(ctx, area);
     let body = Rect::new(area.x, head.bottom(), area.w, area.h - head.h);
+    rows(ctx, body, app, ui, list, &lines);
+}
+
+/// What a column holds, top to bottom.
+fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
     match list {
-        List::Live if live.is_empty() => {
-            said(ctx, body, "nothing open. Ctrl+Shift+N starts an explorer")
-        }
-        List::Live => rows(ctx, body, ui, list, live.len(), |ctx, line, at| {
-            session(ctx, line, ui, live[at])
-        }),
-        List::Next => rows(ctx, body, ui, list, next.len(), |ctx, line, at| {
-            task(ctx, line, next[at])
-        }),
-        List::Review => said(ctx, body, "reviews arrive with the MRs"),
+        List::Live => live(app, ui),
+        List::Next => planned(app)
+            .into_iter()
+            .enumerate()
+            .map(|(at, task)| Line::Task(at + 1, task))
+            .collect(),
+        List::Review => vec![Line::Nothing("reviews arrive with the MRs")],
     }
 }
 
-/// The tasks with no session of their own, in the order the source answered.
+/// Every session on disk, each with its worktrees under it while it is open. What git
+/// says comes from the rail's row, which only an open session has.
+fn live<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
+    if app.session.living.is_empty() {
+        return vec![Line::Nothing(
+            "nothing here. Ctrl+Shift+N starts an explorer",
+        )];
+    }
+    let mut lines = Vec::new();
+    for living in &app.session.living {
+        lines.push(Line::Session(living));
+        if !ui.board.is_open(&living.session.id) {
+            continue;
+        }
+        let open = app.session.get(&living.session.id);
+        for worktree in &living.worktrees {
+            let delivery = open.and_then(|open| {
+                open.delivery
+                    .iter()
+                    .find(|(id, _)| *id == worktree.id)
+                    .map(|(_, delivery)| delivery)
+            });
+            lines.push(Line::Worktree(worktree, delivery));
+        }
+    }
+    lines
+}
+
+/// The tasks no session works yet, in the order the source answered.
 fn planned(app: &AppState) -> Vec<&Task> {
     app.task
         .tasks
         .iter()
-        .filter(|task| !app.session.open.iter().any(|open| holds(open, task)))
+        .filter(|task| !app.session.living.iter().any(|living| holds(living, task)))
         .collect()
 }
 
 /// Whether this session is the one working that task.
-fn holds(open: &Open, task: &Task) -> bool {
-    match &open.session.kind {
+fn holds(living: &Living, task: &Task) -> bool {
+    match &living.session.kind {
         SessionKind::Task { external_id } => *external_id == task.external_id,
         _ => false,
     }
+}
+
+/// How many items a column holds; its worktrees and its hints are not items.
+fn counted(lines: &[Line<'_>]) -> usize {
+    lines
+        .iter()
+        .filter(|line| matches!(line, Line::Session(_) | Line::Task(_, _)))
+        .count()
 }
 
 fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
@@ -79,55 +120,107 @@ fn edge(ctx: &mut Ctx, area: Rect) {
     ctx.quad(Rect::new(area.x, area.y, thickness, area.h), rule);
 }
 
-/// The rows a column has room for, scrolled and clipped to it.
-fn rows(
-    ctx: &mut Ctx,
-    body: Rect,
-    ui: &Ui,
-    list: List,
-    count: usize,
-    mut one: impl FnMut(&mut Ctx, Rect, usize),
-) {
+/// The lines a column has room for, scrolled and clipped to it.
+fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
     let height = ctx.tokens.row;
-    let extent = (height * count as f32 - body.h).max(0.0);
+    let extent = (height * lines.len() as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Column(list as u8), extent);
     let scroll = ui.board.scroll(list).min(extent);
     ctx.clipped(body, |ctx| {
-        for at in 0..count {
+        for (at, line) in lines.iter().enumerate() {
             let y = body.y - scroll + height * at as f32;
             if y + height < body.y || y > body.bottom() {
                 continue;
             }
-            let line = Rect::new(body.x, y, body.w, height);
-            one(ctx, line, at);
-            hairline(ctx, line, ctx.styles.line());
+            one(ctx, Rect::new(body.x, y, body.w, height), app, ui, line);
         }
     });
 }
 
-/// One open session: its kind, its title, and how many repos it holds.
-fn session(ctx: &mut Ctx, line: Rect, ui: &Ui, open: &Open) {
-    let target = Target::Session(open.session.id.clone());
+fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>) {
+    match line {
+        Line::Session(living) => session(ctx, rect, app, ui, living),
+        Line::Worktree(worktree, delivery) => worktree_row::draw(ctx, rect, worktree, *delivery),
+        Line::Task(at, task) => waiting(ctx, rect, ui, *at, task),
+        Line::Nothing(text) => {
+            let style = ctx.styles.small(Role::Faint);
+            return row(ctx, rect, ctx.tokens.md, text, style);
+        }
+    }
+    hairline(ctx, rect, ctx.styles.line());
+}
+
+/// One session: a twisty for its worktrees, its kind, its title, what it holds.
+fn session(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, living: &Living) {
+    let id = &living.session.id;
+    let target = Target::Session(id.clone());
     if ui.hover.as_ref() == Some(&target) {
         ctx.quad(line, ctx.styles.hover());
     }
     ctx.hit(line, target);
-    let box_ = leading(ctx, line, ctx.tokens.md);
-    icon(ctx, box_, Mark::of_kind(&open.session.kind), Role::Faint);
-    let repos = match open.repos.len() {
-        0 => String::new(),
-        n => format!("{n} repos"),
+    let kind = twisty(ctx, line, ui, living);
+    let box_ = leading(ctx, line, line.x + kind);
+    let role = match app.session.get(id).is_some() {
+        true => Role::Working,
+        false => Role::Ghost,
     };
-    let at = aside(ctx, line, &repos);
-    named(ctx, line, &open.session.title, at);
+    icon(ctx, box_, Mark::of_kind(&living.session.kind), role);
+    let until = aside(ctx, line, &held(living));
+    named(
+        ctx,
+        line,
+        &living.session.title,
+        until,
+        after_mark(ctx, kind),
+    );
 }
 
-/// One task waiting: its title, and what it is worth.
-fn task(ctx: &mut Ctx, line: Rect, task: &Task) {
-    let box_ = leading(ctx, line, ctx.tokens.md);
-    icon(ctx, box_, Mark::Task, Role::Ghost);
-    let at = aside(ctx, line, &worth(task));
-    named(ctx, line, &task.title, at);
+/// What a session holds, as the row's right-hand text.
+fn held(living: &Living) -> String {
+    let repos = match living.repos {
+        1 => "1 repo".to_string(),
+        n => format!("{n} repos"),
+    };
+    match living.worktrees.len() {
+        1 => repos,
+        n => format!("{repos} · {n} worktrees"),
+    }
+}
+
+/// What opens a session's worktrees under it. Returns where the kind icon goes.
+fn twisty(ctx: &mut Ctx, line: Rect, ui: &Ui, living: &Living) -> f32 {
+    let box_ = leading(ctx, line, line.x + ctx.tokens.xs);
+    let turn = match ui.board.is_open(&living.session.id) {
+        true => 0,
+        false => Mark::RIGHTWARDS,
+    };
+    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Ghost));
+    ctx.hit(box_, Target::Unfold(living.session.id.clone()));
+    after_mark(ctx, ctx.tokens.xs)
+}
+
+/// One task waiting: its place in the plan, its title, and what it is worth.
+fn waiting(ctx: &mut Ctx, line: Rect, ui: &Ui, at: usize, task: &Task) {
+    let target = Target::Task(task.short_id.clone());
+    if ui.hover.as_ref() == Some(&target) {
+        ctx.quad(line, ctx.styles.hover());
+    }
+    ctx.hit(line, target);
+    let start = place(ctx, line, at);
+    let until = aside(ctx, line, &worth(task));
+    named(ctx, line, &task.title, until, start);
+}
+
+/// Where a task sits in the plan, right-aligned in its own room. Returns where the
+/// title starts.
+fn place(ctx: &mut Ctx, line: Rect, at: usize) -> f32 {
+    let style = ctx.styles.code(Role::Ghost);
+    let text = at.to_string();
+    let room = ctx.measure("00", &style);
+    let width = ctx.measure(&text, &style);
+    let box_ = Rect::new(line.x + ctx.tokens.md, line.y, room, line.h);
+    row(ctx, box_, room - width, &text, style);
+    box_.right() - line.x + ctx.tokens.sm
 }
 
 /// The priority and the estimate, as the row's right-hand text.
@@ -153,18 +246,10 @@ fn aside(ctx: &mut Ctx, line: Rect, text: &str) -> f32 {
     at
 }
 
-/// A row's title, cut where its right-hand text starts.
-fn named(ctx: &mut Ctx, line: Rect, title: &str, until: f32) {
+/// A row's title, from `start`, cut where its right-hand text begins.
+fn named(ctx: &mut Ctx, line: Rect, title: &str, until: f32, start: f32) {
     let style = ctx.styles.label(Role::Text);
-    let indent = after_mark(ctx, ctx.tokens.md);
-    let room = (until - line.x - indent - ctx.tokens.sm).max(0.0);
+    let room = (until - line.x - start - ctx.tokens.sm).max(0.0);
     let text = elide(ctx, title, &style, room);
-    row(ctx, line, indent, &text, style);
-}
-
-/// What a column says while it holds nothing.
-fn said(ctx: &mut Ctx, body: Rect, text: &str) {
-    let style = ctx.styles.small(Role::Faint);
-    let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
-    row(ctx, line, ctx.tokens.md, text, style);
+    row(ctx, line, start, &text, style);
 }

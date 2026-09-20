@@ -5,7 +5,7 @@ mod service;
 use std::collections::{BTreeMap, BTreeSet};
 
 use groove_types::{
-    Repo, RepoId, Session, SessionId, SessionKind, SessionState, Timestamp, Worktree,
+    Repo, RepoId, Session, SessionId, SessionKind, SessionState, Task, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId, WorktreeStatus,
 };
 pub use service::{Added, Service};
@@ -113,11 +113,21 @@ impl Open {
 #[derive(Debug, Default)]
 pub struct State {
     pub open: Vec<Open>,
+    /// Every session on disk, for the board's Live column.
+    pub living: Vec<Living>,
     pub selected: Option<SessionId>,
     /// The pool as last listed, for the pickers.
     pub pool: Vec<groove_types::PoolEntry>,
     /// Origin's heads per repo as last listed, for the pickers.
     pub branches: Vec<(RepoId, Vec<String>)>,
+}
+
+/// A session that exists on disk, on the rail or not.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Living {
+    pub session: Session,
+    pub worktrees: Vec<Worktree>,
+    pub repos: usize,
 }
 
 impl State {
@@ -191,6 +201,18 @@ impl State {
 }
 
 /// An explorer: no ticket yet, a title the user gave or the default.
+/// The session that works a task: its short id is the session's own.
+pub fn task_session(task: &Task, now: Timestamp) -> Session {
+    Session {
+        id: SessionId::new(task.short_id.clone()),
+        title: task.title.clone(),
+        kind: SessionKind::Task {
+            external_id: task.external_id.clone(),
+        },
+        created_at: now,
+    }
+}
+
 pub fn explorer(title: Option<&str>, now: Timestamp) -> Session {
     let short = uuid::Uuid::new_v4().simple().to_string();
     let title = title

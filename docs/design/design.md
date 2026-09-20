@@ -34,7 +34,7 @@ the task at the provider is the agent's own write.
 
 | Column | Holds | Sort |
 |---|---|---|
-| **Live** | sessions with a worktree | last activity |
+| **Live** | every session on disk, open or closed | last opened |
 | **Up next** | tickets with no session, in the user's local order — the plan | the user's order |
 | **Review** | the forge queue: MRs where the user is a requested reviewer | updated |
 

@@ -9,7 +9,9 @@ mod tests;
 
 pub use error::{Error, Result};
 use groove_db::Db;
-use groove_types::{RepoId, Session, SessionId, SessionKind, Timestamp, WorktreeId};
+use groove_types::{
+    RepoId, Session, SessionId, SessionKind, StatusIntent, Task, Timestamp, WorktreeId,
+};
 
 use rows::SessionRow;
 
@@ -56,6 +58,59 @@ impl Store {
         .bind(session.id.as_str())
         .bind(&session.title)
         .bind(session.created_at.seconds())
+        .execute(self.db.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The session of a task, with the task it works on beside it.
+    pub async fn create_task(&self, session: &Session, task: &Task) -> Result<()> {
+        let SessionKind::Task { external_id } = &session.kind else {
+            return Err(Error::NotExplorer(session.id.clone()));
+        };
+        self.remember(task).await?;
+        sqlx::query(
+            "INSERT INTO sessions (id, kind, title, external_id, created_at)
+             VALUES (?, 'task', ?, ?, ?)",
+        )
+        .bind(session.id.as_str())
+        .bind(&session.title)
+        .bind(external_id.as_str())
+        .bind(session.created_at.seconds())
+        .execute(self.db.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The task as its source last reported it, for a restart to show.
+    pub async fn remember(&self, task: &Task) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO provider_tasks
+                (external_id, short_id, title, status, priority, synced_at, provider,
+                 url, board, branch_tag, intent, start_day, due_day, estimate)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(external_id) DO UPDATE SET
+                title = excluded.title, status = excluded.status,
+                priority = excluded.priority, synced_at = excluded.synced_at,
+                url = excluded.url, board = excluded.board,
+                branch_tag = excluded.branch_tag, intent = excluded.intent,
+                start_day = excluded.start_day, due_day = excluded.due_day,
+                estimate = excluded.estimate",
+        )
+        .bind(task.external_id.as_str())
+        .bind(&task.short_id)
+        .bind(&task.title)
+        .bind(&task.status)
+        .bind(task.priority.map(|one| one.label()))
+        .bind(task.synced_at.seconds())
+        .bind(task.provider.as_str())
+        .bind(&task.url)
+        .bind(&task.board)
+        .bind(&task.branch_tag)
+        .bind(task.intent.map(intent_of))
+        .bind(task.dates.start.map(|day| day.to_string()))
+        .bind(task.dates.due.map(|day| day.to_string()))
+        .bind(task.estimate)
         .execute(self.db.pool())
         .await?;
         Ok(())
@@ -160,4 +215,13 @@ fn found(rows: u64, what: &'static str, id: &SessionId) -> Result<()> {
         });
     }
     Ok(())
+}
+
+/// The one word a status intent is stored as.
+fn intent_of(intent: StatusIntent) -> &'static str {
+    match intent {
+        StatusIntent::Ready => "ready",
+        StatusIntent::InProgress => "in_progress",
+        StatusIntent::Done => "done",
+    }
 }

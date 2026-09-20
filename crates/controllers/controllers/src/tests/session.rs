@@ -269,3 +269,106 @@ fn open_explorer(state: &mut AppState, services: &Services, spawner: &SyncSpawne
         spawner,
     );
 }
+
+#[test]
+fn a_closed_session_stays_on_the_board_and_comes_back_when_picked() {
+    let home = tempfile::tempdir().unwrap();
+    crate::tests::fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = crate::tests::fixture::worktree(&mut state, &services, &spawner);
+    assert!(!dir.is_empty(), "the session has a worktree");
+    let id = state.session.selected.clone().expect("a session");
+
+    dispatch(
+        Cmd::Session(Command::Close {
+            session: id.clone(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert!(state.session.open.is_empty(), "the rail lets it go");
+
+    dispatch(Cmd::Session(Command::List), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.living.is_empty()
+    });
+    let living = state.session.living.first().expect("the board keeps it");
+    assert_eq!(living.session.id, id);
+    assert_eq!(living.worktrees.len(), 1, "its worktree is still on disk");
+    assert_eq!(living.repos, 1, "and so is its repo");
+
+    dispatch(
+        Cmd::Session(Command::Open {
+            session: id.clone(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.agent(&id).is_some()
+    });
+    assert_eq!(state.session.open.len(), 1, "picking it brings it back");
+    assert_eq!(state.session.selected.as_ref(), Some(&id));
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn an_explorer_with_no_worktree_is_still_on_the_board() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    open_explorer(&mut state, &services, &spawner, "bare");
+    let id = state.session.selected.clone().expect("a session");
+    dispatch(
+        Cmd::Session(Command::Close {
+            session: id.clone(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+
+    dispatch(Cmd::Session(Command::List), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.living.is_empty()
+    });
+    let living = state.session.living.first().expect("it is on the board");
+    assert_eq!(living.session.id, id);
+    assert!(living.worktrees.is_empty(), "with nothing under it");
+}
+
+#[test]
+fn the_board_holds_every_session_without_being_asked() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    open_explorer(&mut state, &services, &spawner, "one");
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.living.is_empty()
+    });
+    assert_eq!(state.session.living.len(), 1, "opening one lists it");
+
+    open_explorer(&mut state, &services, &spawner, "two");
+    until(&spawner, &services, &mut state, |s| {
+        s.session.living.len() == 2
+    });
+    let id = state.session.selected.clone().expect("the second");
+    dispatch(
+        Cmd::Session(Command::Delete { session: id }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.session.living.len() == 1
+    });
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}

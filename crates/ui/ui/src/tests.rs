@@ -179,7 +179,17 @@ fn with_repo(mut app: AppState) -> AppState {
     app.session
         .get_mut(&SessionId::new("a"))
         .unwrap()
-        .add_worktree(repo, wt);
+        .add_worktree(repo, wt.clone());
+    app.session.living = app
+        .session
+        .open
+        .iter()
+        .map(|open| groove_controllers::session_service::Living {
+            session: open.session.clone(),
+            worktrees: open.worktrees.clone(),
+            repos: open.repos.len(),
+        })
+        .collect();
     app
 }
 

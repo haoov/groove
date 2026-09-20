@@ -41,9 +41,11 @@ rail, reached from the rail's Board row or `ctrl+shift+K`, left by the same chor
 picking a session. It is a surface, not an overlay: while it is up the rail holds no
 selection, and with no session open it is the window — closing the last one lands
 there, and its Live column says how to start. Three columns, each scrolling on its own:
-Live reads the open sessions, Up next the tasks no session holds, Review waits for the
-forge. Still to draw: the filter, folded and expanded items, the plan's order and its
-*later* divider, the attention lines, the timeline band.
+Live reads every session on disk — closed ones included, dimmed until picked — Up next
+the tasks no session works, Review waits for the forge. A Live item opens on its twisty to show its worktrees with what git says about
+each; an Up next item carries its place in the plan and opens its session when picked.
+Still to draw: the filter, the plan's own order and its *later* divider, the attention
+lines, the timeline band.
 
 **Attention** is computed in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,
@@ -52,7 +54,6 @@ Board row sums them.
 
 | Still to build | Does |
 |---|---|
-| `task.open` | create or load the session, then `session.open` |
 | `task.finish` | status done, teardown, remove from the rail |
 | `task.delete` · `task.delete_local` | at the provider; locally only |
 | `task.set_status` | by lifecycle only: in progress on open, done on finish |
@@ -72,6 +73,8 @@ while the window has focus and there is input or a busy agent. No controller.
 ## Needs
 
 - [x] The six properties named per source, with a status map and a priority map.
+- [ ] The status written back on open and on finish, which needs a mutation and the
+      board's own field and item ids.
 - [ ] Local order per task and the *later* position, in the database.
 - [x] Attention rules and thresholds in `types`.
 - [ ] The attention fold in the `task` service.

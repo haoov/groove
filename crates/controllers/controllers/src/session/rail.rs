@@ -78,6 +78,7 @@ pub fn open_explorer(
     record(spawner, NO_PENDING, async move {
         service.create_explorer(&session, now).await
     });
+    list(services, spawner);
 }
 
 /// What git says about the selected worktree, read again for the overview.
@@ -125,8 +126,49 @@ pub fn delete(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     state.session.close(id);
     crate::workspace::follow(state, spawner);
     let pending = state.begin(format!("deleting {title}"));
-    let (service, id) = (services.session.clone(), id.clone());
-    record(spawner, pending, async move { service.remove(&id).await });
+    let (service, at) = (services.session.clone(), id.clone());
+    record(spawner, pending, async move { service.remove(&at).await });
+    list(services, spawner);
+}
+
+/// Every session that lives on disk, for the board's Live column.
+pub fn list(services: &Services, spawner: &dyn Spawner) {
+    let service = services.session.clone();
+    spawner.spawn(Box::pin(async move {
+        let read = service.living().await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+                Ok(living) => state.session.living = living,
+                Err(e) => state.errors.push(e),
+            },
+        ) as Continuation
+    }));
+}
+
+/// A session picked: the one on the rail is selected, one closed comes back to it
+/// with its agent.
+pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
+    if state.session.get(id).is_some() {
+        return select(state, services, spawner, id);
+    }
+    let now = Timestamp::now();
+    let Some(living) = state
+        .session
+        .living
+        .iter()
+        .find(|living| living.session.id == *id)
+        .cloned()
+    else {
+        return;
+    };
+    state.session.open(living.session, now);
+    load_contents(services, spawner, id);
+    agent::start(state, spawner, id.clone(), FIRST_SIZE);
+    select(state, services, spawner, id);
+    let (service, at) = (services.session.clone(), id.clone());
+    record(spawner, NO_PENDING, async move {
+        service.set_opened(&at, Some(now)).await
+    });
 }
 
 pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
@@ -143,10 +185,11 @@ pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
     agent::end(state, id);
     state.session.close(id);
     crate::workspace::follow(state, spawner);
-    let (service, id) = (services.session.clone(), id.clone());
+    let (service, at) = (services.session.clone(), id.clone());
     record(spawner, NO_PENDING, async move {
-        service.set_opened(&id, None).await
+        service.set_opened(&at, None).await
     });
+    list(services, spawner);
 }
 
 /// Writes the row's selected worktree to its leaf.
@@ -167,7 +210,7 @@ pub(super) fn persist_selection(
 }
 
 /// A write whose only result is success or an error for the feed, ending `pending` when it lands.
-pub(super) fn record(
+pub(crate) fn record(
     spawner: &dyn Spawner,
     pending: u64,
     write: impl Future<Output = Result<(), Error>> + Send + 'static,

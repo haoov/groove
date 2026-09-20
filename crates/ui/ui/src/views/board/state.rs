@@ -1,11 +1,26 @@
 //! What the board remembers between frames.
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct BoardUi {
     /// How far each column is scrolled, in pixels.
     pub live: f32,
     pub next: f32,
     pub review: f32,
+    /// The Live items opened to show their worktrees.
+    pub open: std::collections::BTreeSet<groove_types::SessionId>,
+}
+
+impl BoardUi {
+    /// Shows a Live item's worktrees, or hides them again.
+    pub fn fold(&mut self, id: &groove_types::SessionId) {
+        if !self.open.remove(id) {
+            self.open.insert(id.clone());
+        }
+    }
+
+    pub fn is_open(&self, id: &groove_types::SessionId) -> bool {
+        self.open.contains(id)
+    }
 }
 
 impl BoardUi {

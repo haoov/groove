@@ -5,7 +5,10 @@ mod repos;
 
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
-pub use rail::{close, delete, open_explorer, refresh_status, rename_explorer, restore, select};
+pub(crate) use rail::record;
+pub use rail::{
+    close, delete, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
+};
 pub use repos::{
     add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
 };
@@ -13,10 +16,10 @@ pub use repos::{
 use crate::{AppState, Services, Spawner};
 
 /// The grid an agent starts on; the pane resizes it on its first frame.
-const FIRST_SIZE: (u16, u16) = (80, 24);
+pub(crate) const FIRST_SIZE: (u16, u16) = (80, 24);
 
 /// A write nobody waits on.
-const NO_PENDING: u64 = 0;
+pub(crate) const NO_PENDING: u64 = 0;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `session.restore`: the rail as it was when the app last closed, agents started.
@@ -29,6 +32,10 @@ pub enum Command {
     Delete { session: SessionId },
     /// `session.select`: make it the current one.
     Select { session: SessionId },
+    /// `session.open`: a session picked anywhere, back on the rail if it had left.
+    Open { session: SessionId },
+    /// `session.list`: every session that lives on disk.
+    List,
     /// `session.close`: end the agent, drop the row; the session stays on disk.
     Close { session: SessionId },
     /// `session.add_repo`: a pool repo by name, or a URL to clone, its first worktree cut.
@@ -74,6 +81,8 @@ impl Command {
             Command::RenameExplorer { .. } => "session.rename_explorer",
             Command::Delete { .. } => "session.delete",
             Command::Select { .. } => "session.select",
+            Command::Open { .. } => "session.open",
+            Command::List => "session.list",
             Command::Close { .. } => "session.close",
             Command::AddRepo { .. } => "session.add_repo",
             Command::RemoveRepo { .. } => "session.remove_repo",
@@ -102,6 +111,8 @@ pub fn dispatch(
         }
         Command::Delete { session } => delete(state, services, spawner, &session),
         Command::Select { session } => select(state, services, spawner, &session),
+        Command::Open { session } => open(state, services, spawner, &session),
+        Command::List => list(services, spawner),
         Command::Close { session } => close(state, services, spawner, &session),
         Command::AddRepo {
             session,
