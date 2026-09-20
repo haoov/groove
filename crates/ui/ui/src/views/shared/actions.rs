@@ -33,7 +33,8 @@ pub fn draw(ctx: &mut Ctx, ui: &Ui, open: &Menu) {
         Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
     };
     ctx.layer();
-    menu(ctx, at, within, rows, hovered);
+    let edge = ctx.styles.border();
+    menu(ctx, at, within, rows, hovered, edge);
 }
 
 /// What picking row `at` of this menu does: a command, or a question first.

@@ -14,7 +14,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
     if total == 0 {
         return;
     }
-    ctx.quad(rect, ctx.styles.panel());
+    ctx.quad(rect, ctx.styles.band());
     let per = rect.h / total as f32;
     match ui.session.view {
         DiffView::File => whole(ctx, rect, per, app),
@@ -77,7 +77,7 @@ fn band(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize), file: &Aligned)
     let (start, shown) = at;
     let top = rect.y + start as f32 * per;
     let high = (shown as f32 * per).max(ctx.tokens.hairline);
-    ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.inner());
+    ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.ground());
     if shown == 0 {
         return;
     }

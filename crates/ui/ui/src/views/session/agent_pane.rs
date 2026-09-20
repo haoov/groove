@@ -13,7 +13,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         return;
     };
     let pane = ctx.layout.agent;
-    let (ground, line, hairline) = (ctx.styles.inner(), ctx.styles.line(), ctx.tokens.hairline);
+    let (ground, line, hairline) = (ctx.styles.deep(), ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(pane, ground);
     ctx.hit(pane, Target::Agent);
     ctx.quad(

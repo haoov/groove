@@ -111,6 +111,11 @@ impl Bar {
         }
     }
 
+    /// Whether a search is on, so the bar stands on both its terms.
+    pub fn in_use(&self) -> bool {
+        self.typing.is_some() || !self.path.is_empty() || !self.text.is_empty()
+    }
+
     /// Whether the results are lines rather than files.
     pub fn greps(&self) -> bool {
         !self.text.is_empty()

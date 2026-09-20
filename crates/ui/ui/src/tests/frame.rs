@@ -30,7 +30,7 @@ fn with_nothing_open_the_board_is_the_window_and_says_how_to_start() {
     assert_eq!(rail.rect.w, 220.0);
     assert_eq!(
         rail.color,
-        Palette::LATTE.crust,
+        Palette::LATTE.mantle,
         "the chrome sits under the work"
     );
     let texts = texts(&frame);

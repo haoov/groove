@@ -62,12 +62,19 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .expect("the gap says how much it hides");
     assert!(band.starts_with('\u{2026}'), "{band}");
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let panels = frame.layers()[0]
+    let at = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|text| text.text.contains("lines"))
+        .expect("the gap's own text")
+        .y;
+    let under = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.panel() && quad.rect.h == Tokens::new(1.0).line)
+        .filter(|quad| quad.color == styles.band() && quad.rect.h == Tokens::new(1.0).line)
+        .filter(|quad| quad.rect.y == at)
         .count();
-    assert_eq!(panels, 1, "one band, the height of a row");
+    assert_eq!(under, 1, "the gap stands on a band of its own");
 }
 
 #[test]

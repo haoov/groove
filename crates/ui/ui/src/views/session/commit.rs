@@ -58,7 +58,15 @@ fn count(files: &[FileDiff], staged: bool) -> u32 {
 fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let held = ui.session.composing && !ui.session.typing();
     let composing = held && ui.focus == Focus::Sidebar;
-    ctx.quad(rect, ctx.styles.inner());
+    ctx.quad(rect, ctx.styles.ground());
+    ctx.border(rect, ctx.styles.border());
+    let pad = ctx.tokens.xs;
+    let box_ = Rect::new(
+        rect.x + pad,
+        rect.y + pad,
+        rect.w - pad * 2.0,
+        rect.h - pad * 2.0,
+    );
     let buffer = &app.workspace.message;
     let caret = buffer.caret();
     let held: Vec<String> = (0..buffer.lines().max(1))
@@ -72,7 +80,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
             Line::new(text).caret(on.then_some(caret.column))
         })
         .collect();
-    ctx.clipped(rect, |ctx| {
+    ctx.clipped(box_, |ctx| {
         let rows = Rows {
             lines: &lines,
             first: 0,
@@ -81,12 +89,13 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
                 digits: 0,
             },
         };
-        code(ctx, rect, rows, 0.0);
+        code(ctx, box_, rows, 0.0);
     });
-    ctx.hit(rect, Target::Message);
+    ctx.hit(box_, Target::Message);
     if buffer.text().is_empty() && !composing {
         let style = ctx.styles.code(Role::Ghost);
-        row(ctx, rect, 0.0, "a message", style);
+        let line = Rect::new(box_.x, box_.y, box_.w, ctx.tokens.line);
+        row(ctx, line, 0.0, "a message", style);
     }
 }
 
@@ -153,8 +162,6 @@ fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
     if can {
         ctx.hit(word, Target::Do);
     }
-    let split = Rect::new(word.right(), word.y, ctx.tokens.hairline, word.h);
-    ctx.quad(split, ctx.styles.border());
     word.x
 }
 

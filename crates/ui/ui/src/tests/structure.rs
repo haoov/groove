@@ -153,8 +153,8 @@ fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Col
         ("action", styles.action()),
         ("held", styles.held()),
         ("here", styles.here()),
-        ("panel", styles.panel()),
-        ("inner", styles.inner()),
+        ("band", styles.band()),
+        ("deep", styles.deep()),
         ("ground", styles.ground()),
     ]
 }

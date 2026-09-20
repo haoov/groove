@@ -23,9 +23,9 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{icon, leading, row, tabs};
 
-/// The session: one header line, then the agent pane and the workspace.
+/// The session: the header, then the agent pane and the workspace.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    header::draw(ctx, app);
+    header::draw(ctx, app, ui);
     if app.session.selected().is_none() {
         return empty(ctx);
     }
@@ -36,7 +36,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// The workspace: the tab strip, then the tab.
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.layout.workspace;
-    let strip = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
+    let strip = Rect::new(area.x, area.y, area.w, ctx.tokens.row + ctx.tokens.sm);
     let labels: Vec<&str> = Tab::ALL.iter().map(|tab| tab.label()).collect();
     let at = Tab::ALL
         .iter()

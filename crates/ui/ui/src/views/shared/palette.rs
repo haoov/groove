@@ -18,14 +18,18 @@ fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize)
     palette.anchor.is_none() || free || rows > PALETTE_ROWS || !palette.query.is_empty()
 }
 
-/// How wide an anchored panel stands: its widest row, padded, at least a menu's width.
-fn wide(ctx: &mut Ctx, rows: &[(String, String)]) -> f32 {
+/// How wide an anchored panel stands: its widest drawn row, at least a menu's width.
+fn wide(ctx: &mut Ctx, rows: &[(String, String)], asked: bool) -> f32 {
     let style = ctx.styles.label(Role::Text);
+    let pad = ctx.tokens.md;
     let widest = rows
         .iter()
-        .map(|(group, label)| ctx.measure(&format!("{group}{label}"), &style))
+        .map(|(group, label)| match asked {
+            true => pad + ctx.measure(group, &style),
+            false => ctx.tokens.aside_near + ctx.measure(label, &style),
+        })
         .fold(0.0, f32::max);
-    (widest + ctx.tokens.md * 2.0).max(ctx.tokens.menu)
+    (widest + pad).max(ctx.tokens.menu)
 }
 
 /// The command palette: an input line, then the entries or the prompt's options.
@@ -34,13 +38,21 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let rows = listed(app, palette, &prompt);
     let shown = rows.len().clamp(1, PALETTE_ROWS);
     let asks = asks(palette, &prompt, rows.len());
-    let height = ctx.tokens.row * (shown + usize::from(asks)) as f32 + ctx.tokens.sm;
+    let rows_high = ctx.tokens.row * (shown + usize::from(asks)) as f32;
+    let height = match asks {
+        true => rows_high + ctx.tokens.sm,
+        false => rows_high,
+    };
     let rect = match palette.anchor {
         Some(anchor) => {
-            let width = wide(ctx, &rows);
-            panel_at(ctx, anchor.point(), anchor.corner, (width, height))
+            let width = wide(ctx, &rows, prompt.is_some());
+            let edge = ctx.styles.deep();
+            panel_at(ctx, anchor.point(), anchor.corner, (width, height), edge)
         }
-        None => modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top),
+        None => {
+            let edge = ctx.styles.deep();
+            modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top, edge)
+        }
     };
     ctx.hit(rect, Target::Palette);
     let under = match asks {

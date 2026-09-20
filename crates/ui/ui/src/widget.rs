@@ -16,7 +16,7 @@ mod terminal;
 mod text;
 mod time;
 
-pub use button::{button, slot};
+pub use button::{button, slot, slot_at};
 pub use code::{Gutters, Line, Rows, chars_of, code, code_at, first, head_mark, height, visible};
 pub use counts::counts;
 pub use field::Field;
@@ -25,7 +25,7 @@ pub use input::input;
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{modal, panel_at};
-pub use picker::{divider, picker};
+pub use picker::picker;
 pub use tabs::tabs;
 #[cfg(test)]
 pub(crate) use terminal::grid_of;

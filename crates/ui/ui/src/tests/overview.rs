@@ -70,9 +70,7 @@ fn a_task_session_shows_the_six_properties_and_the_body() {
 fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
     let mut app = working_a_task();
     let long = "Close the gates and every one of the paths behind them. ".repeat(80);
-    app.task
-        .bodies
-        .insert("gh-haoov-groove-50".into(), long);
+    app.task.bodies.insert("gh-haoov-groove-50".into(), long);
     let window = metrics(1280, 800, 1.0);
     let mut ui = Ui::default();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
@@ -282,4 +280,85 @@ fn a_session_without_a_worktree_says_so() {
         .collect();
     assert!(texts.iter().any(|t| t == "no repo"));
     assert!(texts.iter().any(|t| t == "no worktree"));
+}
+
+#[test]
+fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
+    let mut app = full_app();
+    app.session
+        .get_mut(&SessionId::new("a"))
+        .expect("the fixture's session")
+        .session
+        .title = "Harden Groove: CI gates, security fixes, defect fixes, typed errors".into();
+    let window = metrics(1280, 800, 1.0);
+    let ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let header = crate::layout::Layout::of(window, &ui).header;
+    for picker in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
+        let box_ = hits
+            .rect_of(&crate::hit::Target::Picker(picker))
+            .expect("the header holds both pickers");
+        assert!(
+            box_.right() <= header.right(),
+            "{picker:?} at {box_:?} runs past {header:?}"
+        );
+    }
+    let cut = frame.layers()[0]
+        .texts
+        .iter()
+        .any(|t| t.text.starts_with("Harden Groove") && t.text.ends_with('\u{2026}'));
+    assert!(cut, "the title carries the ellipsis");
+}
+
+#[test]
+fn the_header_holds_the_title_over_the_pickers() {
+    let app = full_app();
+    let window = metrics(1280, 800, 1.0);
+    let ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let layout = crate::layout::Layout::of(window, &ui);
+    let tokens = crate::tokens::Tokens::new(1.0);
+    let title = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|t| t.text == "Alpha" && t.x >= layout.header.x)
+        .expect("the header's title")
+        .y;
+    let box_ = hits
+        .rect_of(&crate::hit::Target::Picker(crate::hit::Picks::Repo))
+        .expect("the repo picker");
+    assert!(title < tokens.header, "the title is on the first line");
+    assert!(box_.y >= tokens.header, "the pickers are on the second");
+    assert!(box_.bottom() <= layout.header.bottom());
+    assert_eq!(
+        layout.workspace.y,
+        layout.header.bottom(),
+        "the tabs start under both lines"
+    );
+    let styles = crate::style::Styles::new(app.config.theme(), tokens);
+    let grounds = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == styles.band() && quad.rect.h == box_.h)
+        .count();
+    assert_eq!(grounds, 2, "each picker is a button");
+}
+
+#[test]
+fn a_rule_stands_between_the_overview_s_sections() {
+    let app = working_a_task();
+    let window = metrics(1280, 800, 1.0);
+    let ui = Ui::default();
+    let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let tokens = crate::tokens::Tokens::new(1.0);
+    let styles = crate::style::Styles::new(app.config.theme(), tokens);
+    let workspace = crate::layout::Layout::of(window, &ui).workspace;
+    let wide = workspace.w - tokens.md * 2.0;
+    let rules = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.color == styles.line() && quad.rect.h == tokens.hairline)
+        .filter(|quad| quad.rect.x == workspace.x + tokens.md && quad.rect.w == wide)
+        .count();
+    assert_eq!(rules, 2, "one above the repos, one above the body");
 }

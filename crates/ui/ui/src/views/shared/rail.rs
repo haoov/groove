@@ -19,7 +19,7 @@ pub struct RailUi {
 /// The opened sessions, in the order opened. The Board row above, the footer below.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.rail;
-    let panel = ctx.styles.panel();
+    let panel = ctx.styles.band();
     ctx.quad(rect, panel);
     edge(ctx, rect);
 

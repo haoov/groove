@@ -155,19 +155,19 @@ impl Styles {
         }
     }
 
-    /// The window's own ground.
+    /// The work's own ground: the window, the workspace, the agent's pane.
     pub fn ground(&self) -> Color {
         self.palette.base
     }
 
-    /// A band beside the work: the rail, the header, the sidebar.
-    pub fn panel(&self) -> Color {
-        self.palette.crust
+    /// A band beside the work or across it: the rail, the sidebar, a heading, a menu.
+    pub fn band(&self) -> Color {
+        self.palette.mantle
     }
 
-    /// A surface inside the work that is not the work: the agent pane, the commit box.
-    pub fn inner(&self) -> Color {
-        self.palette.mantle
+    /// The deepest ground, a terminal's own.
+    pub fn deep(&self) -> Color {
+        self.palette.crust
     }
 
     /// A row under the pointer, the quietest of the three grounds a row can take.
@@ -199,6 +199,7 @@ impl Styles {
         self.palette.surface0
     }
 
+    /// A lighter edge, for a panel that stands over a band.
     pub fn border(&self) -> Color {
         self.palette.surface1
     }

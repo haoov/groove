@@ -117,7 +117,7 @@ fn caret(ctx: &mut Ctx, rect: Rect, text: &str, column: usize) {
 
 /// A row across the width: its own ground, its text in the middle.
 fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
-    let (panel, style) = (ctx.styles.panel(), ctx.styles.code(Role::Ghost));
+    let (panel, style) = (ctx.styles.band(), ctx.styles.code(Role::Ghost));
     ctx.quad(line, panel);
     let width = ctx.measure(text, &style);
     let at = line.x + (line.w - width) / 2.0;
@@ -126,7 +126,7 @@ fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
 
 /// A row naming a directory: its own ground, its path faint at the margin.
 fn band(ctx: &mut Ctx, line: Rect, text: &str) {
-    let (ground, style) = (ctx.styles.inner(), ctx.styles.small(Role::Faint));
+    let (ground, style) = (ctx.styles.band(), ctx.styles.small(Role::Faint));
     ctx.quad(line, ground);
     row(ctx, line, ctx.tokens.md, text, style);
 }

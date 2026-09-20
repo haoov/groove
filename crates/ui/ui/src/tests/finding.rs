@@ -286,7 +286,7 @@ fn the_bar_pops_over_the_rows_on_a_ground_of_its_own() {
         above.quads.iter().any(|quad| quad.color == styles.action()),
         "the bar stands on its own ground"
     );
-    for other in [styles.raised(), styles.panel(), styles.inner()] {
+    for other in [styles.raised(), styles.band(), styles.deep()] {
         assert_ne!(
             styles.action(),
             other,
@@ -411,9 +411,27 @@ fn a_found_line_opens_its_file_where_it_sits() {
 }
 
 #[test]
-fn both_terms_stand_in_the_bar_and_a_click_takes_the_keyboard() {
+fn the_bar_stands_on_one_term_until_a_search_asks_for_the_other() {
     let app = app();
     let mut ui = crate::tests::sidebar_ui();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(
+        hits.rect_of(&crate::hit::Target::Term(Term::Path))
+            .is_some(),
+        "the path stands on its own"
+    );
+    assert!(
+        hits.rect_of(&crate::hit::Target::Term(Term::Text))
+            .is_none(),
+        "the text waits to be asked for"
+    );
+
+    press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
+    assert_eq!(
+        ui.session.bar.typing,
+        Some(Term::Text),
+        "the chord opens it"
+    );
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     for term in [Term::Path, Term::Text] {
         let row = hits

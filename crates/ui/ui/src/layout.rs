@@ -1,7 +1,8 @@
 //! The window's regions, from the tokens, the window's size and the user's drags.
 //!
 //! Four columns full height: the rail, the agent's pane, the workspace and the
-//! sidebar. The session header is the workspace's first line.
+//! sidebar. The session header is the workspace's two first lines: the title, then
+//! what the session points at.
 
 use groove_gfx::{CellSize, Rect, Size};
 use groove_types::Panes;
@@ -131,7 +132,7 @@ pub struct Layout {
     pub window: Rect,
     pub rail: Rect,
     pub agent: Rect,
-    /// The workspace's first line: what the session is, and what it points at.
+    /// The workspace's two first lines: the title, then what it points at.
     pub header: Rect,
     /// Under the header: the tabs and the tab.
     pub workspace: Rect,
@@ -153,13 +154,14 @@ impl Layout {
         let work_x = rail + agent;
         let work_width = (window.w - work_x - aside).max(0.0);
         let box_ = scale(split.commit).min(window.h);
+        let head = tokens.header + tokens.row + tokens.sm;
         Self {
             window,
             commit: Rect::new(work_x + work_width, window.h - box_, aside, box_),
             rail: Rect::new(0.0, 0.0, rail, window.h),
             agent: Rect::new(rail, 0.0, agent, window.h),
-            header: Rect::new(work_x, 0.0, work_width, tokens.header),
-            workspace: Rect::new(work_x, tokens.header, work_width, window.h - tokens.header),
+            header: Rect::new(work_x, 0.0, work_width, head),
+            workspace: Rect::new(work_x, head, work_width, window.h - head),
             sidebar: Rect::new(work_x + work_width, 0.0, aside, window.h),
             board: Rect::new(rail, 0.0, (window.w - rail).max(0.0), window.h),
         }

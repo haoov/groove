@@ -25,7 +25,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if rect.is_empty() {
         return;
     }
-    let panel = ctx.styles.panel();
+    let panel = ctx.styles.band();
     ctx.quad(rect, panel);
     edge(ctx, rect);
 

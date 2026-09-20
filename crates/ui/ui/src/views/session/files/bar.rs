@@ -13,11 +13,15 @@ use crate::widget::{hairline, row};
 /// A row for each term the search narrows by. Returns what they took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     let bar = &ui.session.bar;
-    let height = ctx.tokens.row * Term::ALL.len() as f32;
+    let shown: &[Term] = match bar.in_use() {
+        true => &Term::ALL,
+        false => &Term::ALL[..1],
+    };
+    let height = ctx.tokens.row * shown.len() as f32;
     let whole = Rect::new(rect.x, rect.y, rect.w, height);
     ctx.quad(whole, ctx.styles.ground());
     hairline(ctx, whole, ctx.styles.line());
-    for (at, term) in Term::ALL.into_iter().enumerate() {
+    for (at, term) in shown.iter().copied().enumerate() {
         let y = whole.y + ctx.tokens.row * at as f32;
         let line = Rect::new(whole.x, y, whole.w, ctx.tokens.row);
         narrowing(ctx, line, bar, term, at == 0);

@@ -180,8 +180,8 @@ fn the_map_holds_a_band_for_every_file_and_a_lens_over_the_rows() {
         .iter()
         .filter(|quad| inside(quad))
         .collect();
-    let bands = quads.iter().filter(|q| q.color == styles.inner()).count();
-    assert_eq!(bands, 2, "one band a file");
+    let bands = quads.iter().filter(|q| q.color == styles.ground()).count();
+    assert_eq!(bands, 2, "one band a file, over the column's own");
     let marks = quads
         .iter()
         .filter(|q| {

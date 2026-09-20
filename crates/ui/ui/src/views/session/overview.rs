@@ -22,7 +22,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let mut bottom = top;
     ctx.clipped(area, |ctx| {
         let mut y = properties(ctx, app, open, area, top);
-        y = section(ctx, area, y, "Repos and worktrees");
+        y = section(ctx, area, y, "Repos and worktrees", y > top);
         y = repos(ctx, open, area, y);
         bottom = body(ctx, app, open, area, y);
     });
@@ -35,7 +35,7 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) 
     let Some(one) = working(app, open) else {
         return top;
     };
-    let y = section(ctx, area, top, "Properties");
+    let y = section(ctx, area, top, "Properties", false);
     task::properties(ctx, area, y, one) + ctx.tokens.sm
 }
 
@@ -47,7 +47,7 @@ fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32
     let Some(text) = app.task.body(&one.short_id).filter(|text| !text.is_empty()) else {
         return top;
     };
-    let y = section(ctx, area, top, "Body");
+    let y = section(ctx, area, top, "Body", true);
     task::body(ctx, area, y, text)
 }
 
@@ -64,11 +64,16 @@ fn seen(area: Rect, line: Rect) -> bool {
     line.bottom() > area.y && line.y < area.bottom()
 }
 
-/// A section's name, and the y its content starts at.
-fn section(ctx: &mut Ctx, area: Rect, y: f32, title: &str) -> f32 {
-    let style = ctx.styles.heading(Role::Faint);
+/// A section's name under a rule when one stands above it. Returns where its content starts.
+fn section(ctx: &mut Ctx, area: Rect, y: f32, title: &str, under: bool) -> f32 {
     let pad = ctx.tokens.md;
-    let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
+    let mut line = Rect::new(area.x, y, area.w, ctx.tokens.row);
+    if under {
+        line = Rect::new(area.x, y + ctx.tokens.sm, area.w, ctx.tokens.row);
+        let rule = Rect::new(area.x + pad, y, area.w - pad * 2.0, ctx.tokens.hairline);
+        ctx.quad(rule, ctx.styles.line());
+    }
+    let style = ctx.styles.heading(Role::Faint);
     row(ctx, line, pad, &title.to_uppercase(), style);
     line.bottom()
 }

@@ -20,15 +20,27 @@ pub fn button(
     box_
 }
 
-/// Room of `content` plus the padding either side, at the row's right end, on
-/// `ground`. Returns its box, for the caller to fill and to register.
+/// Room of `content` plus the padding either side, at the row's right end.
 pub fn slot(ctx: &mut Ctx, line: Rect, content: f32, ground: Option<Color>) -> Rect {
-    let (pad, inset) = (ctx.tokens.sm, ctx.tokens.xs);
-    let width = content + pad * 2.0;
-    let at = line.right() - pad - width;
-    let box_ = Rect::new(at, line.y + inset, width, line.h - inset * 2.0);
+    let pad = ctx.tokens.sm;
+    let at = line.right() - pad - (content + pad * 2.0);
+    slot_at(ctx, line, at, content, ground)
+}
+
+/// The same room, from `x`, on `ground`, which carries a border. Returns its box, for
+/// the caller to fill and to register.
+pub fn slot_at(ctx: &mut Ctx, line: Rect, x: f32, content: f32, ground: Option<Color>) -> Rect {
+    let pad = ctx.tokens.sm;
+    let height = (ctx.tokens.row - ctx.tokens.xs).min(line.h - ctx.tokens.xs);
+    let box_ = Rect::new(
+        x,
+        line.y + (line.h - height) / 2.0,
+        content + pad * 2.0,
+        height,
+    );
     if let Some(ground) = ground {
         ctx.quad(box_, ground);
+        ctx.border(box_, ctx.styles.line());
     }
     box_
 }

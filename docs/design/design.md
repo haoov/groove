@@ -134,10 +134,12 @@ sidebar folds from the far end of the tab strip or with `ctrl+shift+B`.
 
 ### Workspace
 
-**Header.** One line across the agent pane, the workspace and the sidebar: type icon,
-title, the repo and worktree pickers — the session's selector, which every tab and the
-manual section follow — the selected worktree's MR and CI, a refresh button, then the task
-actions: finish, and a menu with delete and open in provider.
+**Header.** Two lines, above the workspace alone — not the agent pane, not the sidebar.
+The first holds the type icon and the title, with the task actions at its right: finish,
+and a menu with delete and open in provider. The second holds the repo and worktree
+pickers as buttons — the session's selector, which every tab and the manual section
+follow — with the selected worktree's MR and CI and a refresh button at its right. A
+title or a label too long for its line is cut with an ellipsis; the header never wraps.
 
 **Tabs.** `overview · diff · editor`.
 
@@ -203,9 +205,11 @@ Commit commits the index. The message is typed on the same kind of buffer a file
 caret, a selection and an undo work there too; Enter is a line of the message and
 `ctrl+Enter` commits. A rebase waits for conflict resolution, which is its own feature.
 
-**Three grounds, deepest first.** The bands beside the work — rail, header, sidebar — sit
-lowest; a surface inside the work that is not the work — the agent pane, the commit box —
-sits between; the work itself is the brightest the theme has.
+**Three grounds, brightest first.** The work is the brightest the theme has: the
+workspace, its header, the board's own header, the commit box, the agent pane's frame.
+The bands sit under it: the rail, the sidebar, a column's heading, a menu, a band across
+the rows. A terminal is the deepest — the agent's pty and the terminal widget, and
+nothing else.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
