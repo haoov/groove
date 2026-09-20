@@ -196,3 +196,22 @@ fn with_repo(mut app: AppState) -> AppState {
 fn full_app() -> AppState {
     with_repo(app())
 }
+
+fn task(short_id: &str, title: &str, external: &str) -> groove_types::Task {
+    groove_types::Task {
+        external_id: groove_types::ExternalId::new(external),
+        short_id: short_id.to_string(),
+        title: title.to_string(),
+        status: "In progress".into(),
+        intent: Some(groove_types::StatusIntent::InProgress),
+        priority: Some(groove_types::Priority::High),
+        dates: groove_types::TaskDates::default(),
+        estimate: Some(4.0),
+        logged: Some(1.5),
+        synced_at: Timestamp::now(),
+        provider: groove_types::ProviderId::Github,
+        url: None,
+        board: Some("Platform".into()),
+        branch_tag: Some("50".into()),
+    }
+}

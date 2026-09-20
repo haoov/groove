@@ -7,6 +7,7 @@ use crate::ctx::Metrics;
 use crate::hit::{Hits, Scroller};
 use crate::layout::Layout;
 use crate::views::board::List;
+use crate::views::session::Tab;
 use crate::{Surface, Ui};
 
 /// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
@@ -38,9 +39,18 @@ pub(super) fn scroll(
         ui.session.files = moved(ui.session.files, pixels(tokens.row), far);
         return;
     }
-    if x >= layout.workspace.x {
-        let far = hits.extent(Scroller::Code);
-        ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
+    if x < layout.workspace.x {
+        return;
+    }
+    match ui.session.tab {
+        Tab::Overview => {
+            let far = hits.extent(Scroller::Overview);
+            ui.session.overview = moved(ui.session.overview, pixels(tokens.row), far);
+        }
+        Tab::Diff => {
+            let far = hits.extent(Scroller::Code);
+            ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
+        }
     }
 }
 

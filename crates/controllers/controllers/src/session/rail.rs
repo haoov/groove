@@ -27,6 +27,7 @@ pub fn restore(services: &Services, spawner: &dyn Spawner) {
                     agent::start(state, spawner, id, FIRST_SIZE);
                 }
                 state.session.selected = last_seen;
+                crate::task::follow(state, spawner);
             },
         ) as Continuation
     }));
@@ -175,6 +176,7 @@ pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     let now = Timestamp::now();
     state.session.select(id, now);
     crate::workspace::follow(state, spawner);
+    crate::task::follow(state, spawner);
     let (service, id) = (services.session.clone(), id.clone());
     record(spawner, NO_PENDING, async move {
         service.set_seen(&id, now).await

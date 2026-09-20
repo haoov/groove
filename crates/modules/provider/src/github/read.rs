@@ -29,7 +29,8 @@ pub(super) fn task(issue: &serde_json::Value, host: &str, config: &GithubConfig)
             due: day(field(item, names.due.as_deref())),
             duration_days: None,
         },
-        estimate: field(item, names.estimate.as_deref()).and_then(|v| v.parse().ok()),
+        estimate: hours(field(item, names.estimate.as_deref())),
+        logged: hours(field(item, names.logged.as_deref())),
         synced_at: Timestamp::now(),
         provider: groove_types::ProviderId::Github,
         url: Some(text(&issue["url"])),
@@ -66,6 +67,10 @@ fn shown(value: &serde_json::Value) -> Option<String> {
 
 fn day(value: Option<String>) -> Option<Day> {
     Day::parse(&value?).ok()
+}
+
+fn hours(value: Option<String>) -> Option<f32> {
+    value?.parse().ok()
 }
 
 fn text(value: &serde_json::Value) -> String {

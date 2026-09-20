@@ -43,6 +43,8 @@ pub struct SessionUi {
     pub folded: bool,
     /// How far the open file is scrolled, in pixels.
     pub diff: f32,
+    /// How far the overview is scrolled, in pixels.
+    pub overview: f32,
     /// Which of the three views the open file is drawn in.
     pub view: DiffView,
     /// The keyboard is in the commit box.

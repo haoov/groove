@@ -26,7 +26,9 @@ The pickers for source and target list `origin`'s heads from `worktree`.
 ## Overview
 
 One overview for the three kinds, drawn from the `session` slice, in the order of
-[../design.md](../design.md): properties, repos with their worktree rows, body.
+[../design.md](../design.md): properties, repos with their worktree rows, body. A task
+session takes its properties and its body from the `task` slice, which the selected
+session reads once; an explorer draws neither.
 
 **Closing is not deleting.** A closed session keeps its worktrees, its repos and its
 row; it leaves the rail and stays on the board's Live column, which lists every session

@@ -30,5 +30,5 @@ pub use tabs::tabs;
 #[cfg(test)]
 pub(crate) use terminal::grid_of;
 pub use terminal::screen;
-pub use text::{elide, elide_start, hairline, row, ruled};
+pub use text::{elide, elide_start, hairline, row, ruled, wrapped};
 pub use time::ago;

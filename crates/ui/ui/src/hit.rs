@@ -152,6 +152,7 @@ pub enum Scroller {
     Rail,
     Files,
     Code,
+    Overview,
     /// One of the board's columns.
     Column(u8),
 }
@@ -163,7 +164,8 @@ impl Scroller {
             Scroller::Rail => 0,
             Scroller::Files => 1,
             Scroller::Code => 2,
-            Scroller::Column(which) => 3 + which as usize,
+            Scroller::Overview => 3,
+            Scroller::Column(which) => 4 + which as usize,
         }
     }
 }
@@ -175,7 +177,7 @@ pub struct Hits {
     /// The rows the code surface drew.
     shown: std::ops::Range<usize>,
     /// How far each column can scroll, one per `Scroller`.
-    extents: [f32; 6],
+    extents: [f32; 7],
     chars: Chars,
 }
 

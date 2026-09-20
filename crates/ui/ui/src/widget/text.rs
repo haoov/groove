@@ -54,6 +54,28 @@ pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> 
     format!("{ELLIPSIS}{}", &text[cuts[low]..])
 }
 
+/// The text as lines that fit `width`, broken at spaces and at its own newlines.
+pub fn wrapped(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> Vec<String> {
+    let mut lines = Vec::new();
+    for paragraph in text.split('\n') {
+        let mut line = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = match line.is_empty() {
+                true => word.to_string(),
+                false => format!("{line} {word}"),
+            };
+            if ctx.measure(&candidate, style) > width && !line.is_empty() {
+                lines.push(std::mem::take(&mut line));
+                line = word.to_string();
+                continue;
+            }
+            line = candidate;
+        }
+        lines.push(line);
+    }
+    lines
+}
+
 /// A hairline above `rect` and one below it.
 pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;

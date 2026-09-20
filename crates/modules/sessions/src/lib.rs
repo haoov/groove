@@ -87,15 +87,15 @@ impl Store {
         sqlx::query(
             "INSERT INTO provider_tasks
                 (external_id, short_id, title, status, priority, synced_at, provider,
-                 url, board, branch_tag, intent, start_day, due_day, estimate)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 url, board, branch_tag, intent, start_day, due_day, estimate, logged)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(external_id) DO UPDATE SET
                 title = excluded.title, status = excluded.status,
                 priority = excluded.priority, synced_at = excluded.synced_at,
                 url = excluded.url, board = excluded.board,
                 branch_tag = excluded.branch_tag, intent = excluded.intent,
                 start_day = excluded.start_day, due_day = excluded.due_day,
-                estimate = excluded.estimate",
+                estimate = excluded.estimate, logged = excluded.logged",
         )
         .bind(task.external_id.as_str())
         .bind(&task.short_id)
@@ -111,6 +111,7 @@ impl Store {
         .bind(task.dates.start.map(|day| day.to_string()))
         .bind(task.dates.due.map(|day| day.to_string()))
         .bind(task.estimate)
+        .bind(task.logged)
         .execute(self.db.pool())
         .await?;
         Ok(())

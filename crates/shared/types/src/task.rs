@@ -52,6 +52,24 @@ impl TaskKey {
             TaskKey::Github { .. } => ProviderId::Github,
         }
     }
+
+    /// The key an external id reads as: `<host>/<owner>/<repo>#<number>` is GitHub's.
+    pub fn parse(id: &ExternalId) -> Result<Self> {
+        let invalid = || Error::invalid(format!("not a task id: {}", id.as_str()));
+        let (path, number) = id.as_str().rsplit_once('#').ok_or_else(invalid)?;
+        let [repo, owner, host] = path.rsplitn(3, '/').collect::<Vec<&str>>()[..] else {
+            return Err(invalid());
+        };
+        if host.is_empty() || owner.is_empty() || repo.is_empty() {
+            return Err(invalid());
+        }
+        Ok(TaskKey::Github {
+            host: host.to_string(),
+            owner: owner.to_string(),
+            repo: repo.to_string(),
+            number: number.parse().map_err(|_| invalid())?,
+        })
+    }
 }
 
 /// How much a task matters, whatever its provider calls it.
@@ -88,8 +106,9 @@ pub struct Task {
     pub intent: Option<StatusIntent>,
     pub priority: Option<Priority>,
     pub dates: TaskDates,
-    /// The hours the task is estimated at.
+    /// The hours the task is estimated at, and the hours logged against it.
     pub estimate: Option<f32>,
+    pub logged: Option<f32>,
     pub synced_at: Timestamp,
     pub provider: ProviderId,
     pub url: Option<String>,

@@ -60,15 +60,15 @@ impl Github {
             .collect())
     }
 
-    pub async fn fetch(&self, key: &TaskKey) -> Result<Task> {
+    pub async fn fetch(&self, key: &TaskKey) -> Result<crate::Fetched> {
         let issue = self.issue(key).await?;
-        read::task(&issue, &self.host, &self.config)
-            .ok_or_else(|| Error::Invalid(format!("{} is on no project board", key.external_id())))
-    }
-
-    pub async fn body(&self, key: &TaskKey) -> Result<String> {
-        let issue = self.issue(key).await?;
-        Ok(issue["body"].as_str().unwrap_or_default().to_string())
+        let task = read::task(&issue, &self.host, &self.config).ok_or_else(|| {
+            Error::Invalid(format!("{} is on no project board", key.external_id()))
+        })?;
+        Ok(crate::Fetched {
+            task,
+            body: issue["body"].as_str().unwrap_or_default().to_string(),
+        })
     }
 
     /// One issue, by the owner, repo and number its key carries.

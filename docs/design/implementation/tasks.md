@@ -17,9 +17,10 @@ left out is a gap, not an error — Setup lists the six and what a gap costs. `s
 and `priority_map` say which of the source's own values mean what, and the first value
 of each is the one Groove writes.
 
-**Module `provider`**, on `http`: one `Source` per provider, read-only — list, fetch,
-body. The enum is the registry: a new provider is a new arm, and the compiler asks for
-it everywhere at once. **Service `task`** holds the list in its slice.
+**Module `provider`**, on `http`: one `Source` per provider, read-only — list, and a
+fetch that brings one task with its body. The enum is the registry: a new provider is a
+new arm, and the compiler asks for it everywhere at once. **Service `task`** holds the
+list and the bodies in its slice.
 
 **GitHub** reads the open issues assigned to you that sit on a project board, and takes
 the six from the board's fields. Its token comes from `gh auth token`, or from the
@@ -28,7 +29,6 @@ config when a host has one of its own.
 | Still to build | Does |
 |---|---|
 | `task.get` · `task.list` | reads for the MCP tools |
-| `task.body` | the task's body, as the overview shows it |
 
 ## Tasks management
 

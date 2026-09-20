@@ -53,12 +53,35 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     let id = session.id.clone();
     state.session.open(session.clone(), now);
     crate::workspace::follow(state, spawner);
+    follow(state, spawner);
     agent::start(state, spawner, id, session::FIRST_SIZE);
     let service = services.session.clone();
     session::record(spawner, session::NO_PENDING, async move {
         service.create_task(&session, &task, now).await
     });
     session::list(services, spawner);
+}
+
+/// The task of the selected session, read once with its body.
+pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(open) = state.session.selected() else {
+        return;
+    };
+    let SessionKind::Task { external_id } = &open.session.kind else {
+        return;
+    };
+    let external_id = external_id.clone();
+    let known = state
+        .task
+        .by_external(&external_id)
+        .is_some_and(|task| state.task.body(&task.short_id).is_some());
+    if known {
+        return;
+    }
+    match TaskKey::parse(&external_id) {
+        Ok(key) => sync(state, spawner, key),
+        Err(e) => state.errors.push(e),
+    }
 }
 
 /// The open session working this task, if one already is.
@@ -98,16 +121,21 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// One task read again, for the row that shows it.
+/// One task read again, with its body, for the views that show it.
 fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
+    let id = key.external_id();
+    if !state.task.syncing.insert(id.clone()) {
+        return;
+    }
     let sources = sources(state.config.config.as_ref());
-    let job = state.begin(format!("reading {}", key.external_id()));
+    let job = state.begin(format!("reading {id}"));
     spawner.spawn(Box::pin(async move {
         let read = fetch(&sources, &key).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
+            state.task.syncing.remove(&id);
             match read {
-                Ok(task) => state.task.synced(task),
+                Ok(read) => state.task.synced(read),
                 Err(e) => state.errors.push(e),
             }
         }) as Continuation

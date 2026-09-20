@@ -2,32 +2,12 @@
 
 use groove_controllers::AppState;
 use groove_gfx::Fonts;
-use groove_types::{
-    ExternalId, Priority, ProviderId, SessionKind, StatusIntent, Task, TaskDates, Timestamp,
-};
+use groove_types::{ExternalId, SessionKind};
 
 use crate::hit::{Hits, Target};
 use crate::input::Key;
-use crate::tests::{CHORD, click, full_app, press, window};
+use crate::tests::{CHORD, click, full_app, press, task, window};
 use crate::{Surface, Ui, view};
-
-fn task(short_id: &str, title: &str, external: &str) -> Task {
-    Task {
-        external_id: ExternalId::new(external),
-        short_id: short_id.to_string(),
-        title: title.to_string(),
-        status: "In progress".into(),
-        intent: Some(StatusIntent::InProgress),
-        priority: Some(Priority::High),
-        dates: TaskDates::default(),
-        estimate: Some(4.0),
-        synced_at: Timestamp::now(),
-        provider: ProviderId::Github,
-        url: None,
-        board: Some("Platform".into()),
-        branch_tag: Some("50".into()),
-    }
-}
 
 fn on_board(app: &AppState) -> (Ui, Hits) {
     let ui = Ui {

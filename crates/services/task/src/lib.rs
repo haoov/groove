@@ -1,14 +1,18 @@
 //! The task capability. Its slice of `AppState`, the operations on it, its events.
 
-pub use groove_provider::{Github, Source, Token};
+pub use groove_provider::{Fetched, Github, Source, Token};
 use groove_types::{Config, GithubConfig, Result, Task, TaskKey};
 
 /// The `task` slice of `AppState`.
 #[derive(Debug, Default)]
 pub struct State {
     pub tasks: Vec<Task>,
+    /// The body each read task carries, by short id.
+    pub bodies: std::collections::BTreeMap<String, String>,
     /// A read of the sources is out.
     pub reading: bool,
+    /// The tasks a read is out for.
+    pub syncing: std::collections::BTreeSet<groove_types::ExternalId>,
 }
 
 impl State {
@@ -18,8 +22,10 @@ impl State {
         self.reading = false;
     }
 
-    /// One task as its source now reports it.
-    pub fn synced(&mut self, task: Task) {
+    /// One task and its body as its source now reports them.
+    pub fn synced(&mut self, read: Fetched) {
+        let Fetched { task, body } = read;
+        self.bodies.insert(task.short_id.clone(), body);
         match self
             .tasks
             .iter_mut()
@@ -32,6 +38,16 @@ impl State {
 
     pub fn get(&self, short_id: &str) -> Option<&Task> {
         self.tasks.iter().find(|task| task.short_id == short_id)
+    }
+
+    pub fn by_external(&self, external_id: &groove_types::ExternalId) -> Option<&Task> {
+        self.tasks
+            .iter()
+            .find(|task| task.external_id == *external_id)
+    }
+
+    pub fn body(&self, short_id: &str) -> Option<&str> {
+        self.bodies.get(short_id).map(String::as_str)
     }
 }
 
@@ -54,8 +70,8 @@ pub async fn list(sources: &[Source]) -> Result<Vec<Task>> {
     Ok(tasks)
 }
 
-/// One task, read again from the source that owns it.
-pub async fn fetch(sources: &[Source], key: &TaskKey) -> Result<Task> {
+/// One task and its body, read again from the source that owns it.
+pub async fn fetch(sources: &[Source], key: &TaskKey) -> Result<Fetched> {
     let source = sources
         .iter()
         .find(|source| source.id() == key.provider())

@@ -7,12 +7,12 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use crate::tests::fixture::{services, state, until};
 use crate::{Command as Cmd, SyncSpawner, dispatch, task};
 
-fn issues() -> serde_json::Value {
-    serde_json::json!({ "data": { "search": { "nodes": [{
+fn issue() -> serde_json::Value {
+    serde_json::json!({
         "number": 50,
         "title": "Harden Groove",
         "url": "https://example.test/haoov/groove/issues/50",
-        "body": "",
+        "body": "Close the gates.",
         "repository": { "name": "groove", "owner": { "login": "haoov" } },
         "projectItems": { "nodes": [{
             "project": { "title": "Platform" },
@@ -23,7 +23,15 @@ fn issues() -> serde_json::Value {
                   "name": "P1", "field": { "name": "Priority" } }
             ]}
         }]}
-    }]}}})
+    })
+}
+
+/// One answer for both queries: the search the list makes, the issue a read makes.
+fn issues() -> serde_json::Value {
+    serde_json::json!({ "data": {
+        "search": { "nodes": [issue()] },
+        "repository": { "issue": issue() }
+    }})
 }
 
 /// The config a source needs: the host, and what its fields are called.
@@ -139,6 +147,44 @@ fn opening_a_task_starts_a_session_that_works_it() {
         open.session.kind
     );
     assert_eq!(state.session.selected.as_ref(), Some(&open.session.id));
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn the_task_a_session_works_arrives_with_its_body() {
+    let (_runtime, server) = answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    dispatch(
+        Cmd::Task(task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+
+    dispatch(
+        Cmd::Task(task::Command::Open {
+            short_id: "gh-haoov-groove-50".into(),
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.task.body("gh-haoov-groove-50").is_some()
+    });
+    assert_eq!(
+        state.task.body("gh-haoov-groove-50"),
+        Some("Close the gates.")
+    );
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 }
 

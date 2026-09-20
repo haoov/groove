@@ -58,7 +58,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
                 body.w,
                 body.h - ctx.tokens.sm,
             );
-            overview::draw(ctx, app, inset)
+            overview::draw(ctx, app, ui, inset)
         }
         Tab::Diff => diff::draw(ctx, app, ui, body),
     }

@@ -48,7 +48,9 @@ fn issue() -> serde_json::Value {
                 { "__typename": "ProjectV2ItemFieldDateValue",
                   "date": "2026-09-30", "field": { "name": "Due" } },
                 { "__typename": "ProjectV2ItemFieldNumberValue",
-                  "number": 6.5, "field": { "name": "Estimate" } }
+                  "number": 6.5, "field": { "name": "Estimate" } },
+                { "__typename": "ProjectV2ItemFieldNumberValue",
+                  "number": 1.5, "field": { "name": "Spent" } }
             ]}
         }]}
     })
@@ -85,8 +87,24 @@ async fn an_issue_on_a_board_reads_as_a_task_through_the_mapping() {
     assert_eq!(task.priority, Some(Priority::High));
     assert_eq!(task.dates.due.map(|day| day.day), Some(30));
     assert_eq!(task.estimate, Some(6.5));
+    assert_eq!(task.logged, Some(1.5));
     assert_eq!(task.branch_tag.as_deref(), Some("50"));
     assert_eq!(task.board.as_deref(), Some("Platform"));
+}
+
+#[tokio::test]
+async fn a_read_brings_the_task_and_the_issue_body() {
+    let reply = serde_json::json!({ "data": { "repository": { "issue": issue() } } });
+    let (_server, github) = source(reply).await;
+    let key = groove_types::TaskKey::Github {
+        host: "github.com".into(),
+        owner: "haoov".into(),
+        repo: "groove".into(),
+        number: 50,
+    };
+    let read = github.fetch(&key).await.expect("the issue answers");
+    assert_eq!(read.task.short_id, "gh-haoov-groove-50");
+    assert_eq!(read.body, "the body");
 }
 
 #[tokio::test]

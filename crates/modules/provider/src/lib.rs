@@ -19,6 +19,12 @@ pub enum Source {
     Github(Github),
 }
 
+/// One task as its source holds it, with the text the overview shows.
+pub struct Fetched {
+    pub task: Task,
+    pub body: String,
+}
+
 impl Source {
     pub fn id(&self) -> groove_types::ProviderId {
         match self {
@@ -33,17 +39,10 @@ impl Source {
         }
     }
 
-    /// One task, read again from its source.
-    pub async fn fetch(&self, key: &TaskKey) -> Result<Task> {
+    /// One task and its body, read again from its source.
+    pub async fn fetch(&self, key: &TaskKey) -> Result<Fetched> {
         match self {
             Source::Github(github) => github.fetch(key).await,
-        }
-    }
-
-    /// The task's body, as the text the overview shows.
-    pub async fn body(&self, key: &TaskKey) -> Result<String> {
-        match self {
-            Source::Github(github) => github.body(key).await,
         }
     }
 }

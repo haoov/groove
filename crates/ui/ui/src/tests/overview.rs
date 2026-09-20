@@ -1,9 +1,160 @@
 //! The session header and the overview tab: what they name and what they count.
 
-use groove_types::SessionId;
+use groove_types::{Day, ExternalId, SessionId, SessionKind};
 
-use crate::tests::{app, full_app, metrics};
+use crate::input::{Delta, Input, handle};
+use crate::tests::{app, full_app, metrics, task};
 use crate::{Ui, view};
+
+/// A session that works a task, with the task and its body read.
+fn working_a_task() -> groove_controllers::AppState {
+    let mut app = full_app();
+    let external = ExternalId::new("github.com/haoov/groove#50");
+    let mut one = task("gh-haoov-groove-50", "Harden Groove", external.as_str());
+    one.dates.start = Some(Day::parse("2026-09-14").unwrap());
+    one.dates.due = Some(Day::parse("2026-09-30").unwrap());
+    app.task.tasks = vec![one];
+    app.task.bodies.insert(
+        "gh-haoov-groove-50".into(),
+        "Close the gates before the release.".into(),
+    );
+    app.session
+        .get_mut(&SessionId::new("a"))
+        .expect("the fixture's session")
+        .session
+        .kind = SessionKind::Task {
+        external_id: external,
+    };
+    app
+}
+
+#[test]
+fn a_task_session_shows_the_six_properties_and_the_body() {
+    let app = working_a_task();
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    for named in [
+        "PROPERTIES",
+        "Status",
+        "Priority",
+        "Start",
+        "Due",
+        "Estimate",
+        "Logged",
+    ] {
+        assert!(texts.iter().any(|t| t == named), "{named}: {texts:?}");
+    }
+    assert!(texts.iter().any(|t| t == "In progress"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "2026-09-30"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "4h"), "the estimate: {texts:?}");
+    assert!(texts.iter().any(|t| t == "1.5h"), "the hours: {texts:?}");
+    assert!(texts.iter().any(|t| t == "BODY"), "{texts:?}");
+    assert!(
+        texts
+            .iter()
+            .any(|t| t == "Close the gates before the release."),
+        "{texts:?}"
+    );
+}
+
+#[test]
+fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
+    let mut app = working_a_task();
+    let long = "Close the gates and every one of the paths behind them. ".repeat(80);
+    app.task
+        .bodies
+        .insert("gh-haoov-groove-50".into(), long);
+    let window = metrics(1280, 800, 1.0);
+    let mut ui = Ui::default();
+    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let workspace = crate::layout::Layout::of(window, &ui).workspace;
+    assert!(
+        hits.extent(crate::hit::Scroller::Overview) > 0.0,
+        "the body is taller than the tab"
+    );
+    let over = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|t| t.x > workspace.right())
+        .count();
+    assert_eq!(over, 0, "every line is wrapped inside the tab");
+
+    let first = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|t| t.text.starts_with("Close the gates"))
+        .map(|t| t.y)
+        .expect("the body's first line");
+    handle(
+        Input::Scroll {
+            x: workspace.x + 10.0,
+            y: workspace.y + 10.0,
+            delta: Delta::Pixels(-120.0),
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window,
+    );
+    assert!(ui.session.overview > 0.0, "the wheel moved the tab");
+    let (scrolled, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let now = scrolled.layers()[0]
+        .texts
+        .iter()
+        .find(|t| t.text.starts_with("Close the gates"))
+        .map(|t| t.y);
+    assert!(
+        now.is_none_or(|y| y < first),
+        "the body moved up: {now:?} was {first}"
+    );
+}
+
+#[test]
+fn an_explorer_shows_no_properties_and_no_body() {
+    let app = full_app();
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(!texts.iter().any(|t| t == "PROPERTIES"), "{texts:?}");
+    assert!(!texts.iter().any(|t| t == "BODY"), "{texts:?}");
+}
+
+#[test]
+fn a_property_the_task_has_no_value_for_reads_as_a_dash() {
+    let mut app = working_a_task();
+    let one = app.task.tasks.first_mut().expect("the task");
+    one.logged = None;
+    one.dates.start = None;
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let dashes = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|t| t.text == "—")
+        .count();
+    assert_eq!(dashes, 2, "the start and the hours");
+}
 
 #[test]
 fn the_overview_lists_repos_and_worktrees_with_the_selected_one_marked() {
