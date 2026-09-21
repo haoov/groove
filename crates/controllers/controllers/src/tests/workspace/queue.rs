@@ -30,7 +30,7 @@ fn mr(project: &str) -> groove_types::ReviewMr {
 }
 
 #[test]
-fn every_host_the_pool_knows_is_asked_once_and_only_where_groove_reads_it() {
+fn every_host_the_pool_knows_is_asked_once_whichever_forge_it_carries() {
     let home = tempfile::tempdir().unwrap();
     let mut state = state(home.path());
     state.session.pool = vec![
@@ -40,8 +40,8 @@ fn every_host_the_pool_knows_is_asked_once_and_only_where_groove_reads_it() {
     ];
     assert_eq!(
         hosts(&state),
-        ["github.com"],
-        "one github host, and no gitlab one"
+        ["github.com", "gitlab.wiremind.io"],
+        "each host once, both forges"
     );
 }
 

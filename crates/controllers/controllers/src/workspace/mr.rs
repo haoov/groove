@@ -34,7 +34,7 @@ fn first(state: &AppState) -> Vec<WorktreeId> {
         .and_then(|open| open.selected_worktree())
         .map(|worktree| worktree.id.clone());
     selected
-        .filter(|id| state.workspace.poll.asks(id) && readable(state, id))
+        .filter(|id| state.workspace.poll.asks(id))
         .into_iter()
         .collect()
 }
@@ -48,25 +48,8 @@ fn again(state: &AppState) -> Vec<WorktreeId> {
         .flat_map(|open| open.delivery.iter())
         .filter(|(_, delivery)| delivery.is_open())
         .map(|(id, _)| id.clone())
-        .filter(|id| !state.workspace.poll.is_out(id) && readable(state, id))
+        .filter(|id| !state.workspace.poll.is_out(id))
         .collect()
-}
-
-/// Whether the forge of this worktree's repo is one Groove reads.
-fn readable(state: &AppState, id: &WorktreeId) -> bool {
-    host_of(state, id).is_some_and(groove_workspace_service::Service::reads)
-}
-
-/// The host the repo of this worktree lives on.
-fn host_of<'a>(state: &'a AppState, id: &WorktreeId) -> Option<&'a str> {
-    for open in state.session.open.iter() {
-        let Some(worktree) = open.worktrees.iter().find(|one| &one.id == id) else {
-            continue;
-        };
-        let repo = open.repos.iter().find(|repo| repo.id == worktree.repo)?;
-        return Some(repo.host.as_str());
-    }
-    None
 }
 
 /// Whether the window should keep waking for the poll.

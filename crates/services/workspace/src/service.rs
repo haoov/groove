@@ -96,11 +96,6 @@ impl Service {
         Ok(Remote::of_host(host)?.review_queue().await?)
     }
 
-    /// Whether Groove can read the forge a host carries.
-    pub fn reads(host: &str) -> bool {
-        Remote::reads(host)
-    }
-
     /// The forge that serves a repo, called with the token its CLI holds.
     pub fn remote(repo: &Repo) -> Result<Remote> {
         Ok(Remote::of(repo)?)

@@ -21,11 +21,9 @@ fn a_host_names_the_forge_that_serves_it() {
 }
 
 #[test]
-fn a_github_repo_gets_a_client_and_a_gitlab_one_says_so() {
-    let remote = Remote::of(&repo("github.com")).expect("a client");
-    assert_eq!(remote.kind(), Forge::Github);
-    let refused = Remote::of(&repo("gitlab.wiremind.io"))
-        .err()
-        .expect("no client yet");
-    assert!(refused.to_string().contains("GitLab"), "{refused}");
+fn each_host_gets_the_client_its_own_forge_asks_for() {
+    let github = Remote::of(&repo("github.com")).expect("a github client");
+    assert_eq!(github.kind(), Forge::Github);
+    let gitlab = Remote::of(&repo("gitlab.wiremind.io")).expect("a gitlab client");
+    assert_eq!(gitlab.kind(), Forge::Gitlab);
 }

@@ -3,6 +3,7 @@
 
 mod error;
 mod github;
+mod gitlab;
 mod store;
 
 #[cfg(test)]
@@ -10,6 +11,7 @@ mod tests;
 
 pub use error::{Error, Result};
 pub use github::{Github, Proposed};
+pub use gitlab::Gitlab;
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr};
 pub use store::Store;
@@ -17,6 +19,7 @@ pub use store::Store;
 /// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
 pub enum Remote {
     Github(Github),
+    Gitlab(Gitlab),
 }
 
 /// One MR as its forge holds it now: what a single call brings back.
@@ -33,23 +36,13 @@ pub struct Snapshot {
 impl Remote {
     /// The forge that serves this repo's host.
     pub fn of(repo: &Repo) -> Result<Self> {
-        match Forge::of_host(&repo.host) {
-            Forge::Github => Ok(Remote::Github(Github::new(&repo.host)?)),
-            Forge::Gitlab => Err(Error::Invalid(format!(
-                "{} is a GitLab host, which Groove cannot read yet",
-                repo.host
-            ))),
-        }
-    }
-
-    /// Whether Groove can read this host's forge yet.
-    pub fn reads(host: &str) -> bool {
-        matches!(Forge::of_host(host), Forge::Github)
+        Self::of_host(&repo.host)
     }
 
     pub fn kind(&self) -> Forge {
         match self {
             Remote::Github(_) => Forge::Github,
+            Remote::Gitlab(_) => Forge::Gitlab,
         }
     }
 
@@ -57,6 +50,7 @@ impl Remote {
     pub async fn open_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
         match self {
             Remote::Github(github) => github.open_mr(repo, branch).await,
+            Remote::Gitlab(gitlab) => gitlab.open_mr(repo, branch).await,
         }
     }
 
@@ -64,6 +58,7 @@ impl Remote {
     pub async fn read_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.read_mr(repo, number).await,
+            Remote::Gitlab(gitlab) => gitlab.read_mr(repo, number).await,
         }
     }
 
@@ -71,6 +66,7 @@ impl Remote {
     pub async fn open_mr_for(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.open_new(repo, mr).await,
+            Remote::Gitlab(gitlab) => gitlab.open_new(repo, mr).await,
         }
     }
 
@@ -84,6 +80,7 @@ impl Remote {
     ) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.edit_mr(repo, number, title, body).await,
+            Remote::Gitlab(gitlab) => gitlab.edit_mr(repo, number, title, body).await,
         }
     }
 
@@ -91,6 +88,7 @@ impl Remote {
     pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.shut_mr(repo, number).await,
+            Remote::Gitlab(gitlab) => gitlab.shut_mr(repo, number).await,
         }
     }
 
@@ -98,6 +96,7 @@ impl Remote {
     pub async fn review_queue(&self) -> Result<Vec<ReviewMr>> {
         match self {
             Remote::Github(github) => github.review_queue().await,
+            Remote::Gitlab(gitlab) => gitlab.review_queue().await,
         }
     }
 
@@ -105,9 +104,7 @@ impl Remote {
     pub fn of_host(host: &str) -> Result<Self> {
         match Forge::of_host(host) {
             Forge::Github => Ok(Remote::Github(Github::new(host)?)),
-            Forge::Gitlab => Err(Error::Invalid(format!(
-                "{host} is a GitLab host, which Groove cannot read yet"
-            ))),
+            Forge::Gitlab => Ok(Remote::Gitlab(Gitlab::new(host)?)),
         }
     }
 }

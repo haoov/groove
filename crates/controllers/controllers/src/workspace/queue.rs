@@ -32,14 +32,13 @@ pub(super) fn read(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The hosts of the pool's repos, each once, and only those Groove reads.
+/// The hosts of the pool's repos, each once.
 pub(crate) fn hosts(state: &AppState) -> Vec<String> {
     let mut out: Vec<String> = state
         .session
         .pool
         .iter()
         .filter_map(|entry| entry.slug.split('/').next())
-        .filter(|host| Service::reads(host))
         .map(str::to_string)
         .collect();
     out.sort();

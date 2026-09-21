@@ -163,18 +163,19 @@ fn the_window_coming_back_asks_about_everything_again() {
 }
 
 #[test]
-fn a_forge_groove_cannot_read_is_never_asked_about() {
+fn a_gitlab_worktree_is_asked_about_like_any_other() {
     let home = tempfile::tempdir().unwrap();
     pooled_clone(home.path());
     let spawner = SyncSpawner::new().unwrap();
     let services = services(&spawner, home.path());
     let mut state = state(home.path());
     let id = working(&mut state, &services, &spawner);
-    assert_eq!(wanted(&state, now()), vec![id]);
+    assert_eq!(wanted(&state, now()), vec![id.clone()]);
 
     host(&mut state, "gitlab.wiremind.io");
-    assert!(
-        wanted(&state, now()).is_empty(),
-        "a gitlab host is skipped, not reported"
+    assert_eq!(
+        wanted(&state, now()),
+        vec![id],
+        "gitlab has a client of its own now"
     );
 }

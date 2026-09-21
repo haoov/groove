@@ -150,7 +150,9 @@ threads. One MR per worktree at most. Create with the worktree's branch as sourc
 reviewers and a review with a verdict on both forges.
 
 The GraphQL transport is `http::Graphql`, shared with `provider`: it carries the token and
-turns the errors a forge answers 200 with into an error.
+turns the errors a forge answers 200 with into an error. GitHub addresses a write by the
+node id a read carries; GitLab addresses one by project path and iid, and answers a refused
+write in the mutation's own `errors`, which the client reads as the failure.
 
 **Service `workspace`** holds the selected worktree's MR, CI and threads; the `session`
 slice sums them into `WorktreeDelivery` per worktree.
@@ -196,6 +198,8 @@ header for the selected worktree.
       `MrDetails`.
 - [ ] The poll reads `poll_interval_secs` and `stale_after_secs`, which the config
       already carries and nothing reads; the controller holds its own constant. Slice 7.
-- [ ] GitLab behind the same `Remote` enum: its own queries, the `glab` token, the `!`
-      sigil. `Remote::reads` opens up when it lands.
+- [x] GitLab behind the same `Remote` enum: its own queries, the `glab` token, the `!`
+      sigil.
+- [ ] A GitLab verdict has no time of its own in the schema, so the MR's own `updatedAt`
+      stands for it; the four MR rules age from that on GitLab.
 - [ ] The watcher's debounce window.
