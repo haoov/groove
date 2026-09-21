@@ -196,4 +196,6 @@ header for the selected worktree.
       `MrDetails`.
 - [ ] The poll reads `poll_interval_secs` and `stale_after_secs`, which the config
       already carries and nothing reads; the controller holds its own constant. Slice 7.
+- [ ] GitLab behind the same `Remote` enum: its own queries, the `glab` token, the `!`
+      sigil. `Remote::reads` opens up when it lands.
 - [ ] The watcher's debounce window.

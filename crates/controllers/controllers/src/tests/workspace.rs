@@ -5,6 +5,7 @@ mod diff;
 mod editor;
 mod git;
 mod poll;
+mod queue;
 mod search;
 
 use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};

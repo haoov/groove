@@ -17,12 +17,13 @@ pub(super) enum Line<'a> {
     Worktree(&'a Worktree, Option<&'a WorktreeDelivery>),
     /// Its place in the plan, counted from one.
     Task(usize, &'a Task),
+    /// One MR the forge asks this user to review.
+    Review(&'a groove_types::ReviewMr),
     Divider,
     Nothing(&'static str),
 }
 
-/// How tall a line of a column stands: one row, and one more line when it says why it
-/// needs the user.
+/// How tall a line stands: one row, and one more when it carries a second line.
 pub(super) fn heights(
     tokens: &crate::tokens::Tokens,
     app: &AppState,
@@ -30,11 +31,19 @@ pub(super) fn heights(
 ) -> Vec<f32> {
     lines
         .iter()
-        .map(|line| match reasons(app, line).is_empty() {
-            true => item(tokens),
-            false => item(tokens) + tokens.line,
+        .map(|line| match under(app, line) {
+            true => item(tokens) + tokens.line,
+            false => item(tokens),
         })
         .collect()
+}
+
+/// Whether this line carries a second line under its title.
+fn under(app: &AppState, line: &Line<'_>) -> bool {
+    match line {
+        Line::Review(_) => true,
+        _ => !reasons(app, line).is_empty(),
+    }
 }
 
 /// How tall one plain line of a column is.

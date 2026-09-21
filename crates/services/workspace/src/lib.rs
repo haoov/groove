@@ -13,7 +13,9 @@ pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use groove_types::{DiffMode, DiffView, FileDiff, MrFacts, Result, WorktreeId, WorktreeStatus};
+use groove_types::{
+    DiffMode, DiffView, FileDiff, MrFacts, Result, ReviewMr, WorktreeId, WorktreeStatus,
+};
 use groove_watch::{QUIET, Watch};
 
 mod delivery;
@@ -66,6 +68,8 @@ pub struct State {
     pub poll: Polling,
     /// What the attention rules read of each worktree's MR.
     pub facts: BTreeMap<WorktreeId, MrFacts>,
+    /// The board's review column: what the forges ask this user to look at.
+    pub reviews: Vec<ReviewMr>,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,

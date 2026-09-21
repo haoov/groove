@@ -106,3 +106,20 @@ pub fn shut() -> String {
 }}"
     )
 }
+
+/// Every open merge request the viewer is asked to review.
+pub fn review_queue() -> String {
+    r#"query($first: Int!) {
+  search(query: "is:open is:pr review-requested:@me archived:false", type: ISSUE, first: $first) {
+    nodes {
+      ... on PullRequest {
+        number title url isDraft updatedAt reviewDecision
+        author { login }
+        headRefName baseRefName
+        repository { nameWithOwner }
+      }
+    }
+  }
+}"#
+    .to_string()
+}

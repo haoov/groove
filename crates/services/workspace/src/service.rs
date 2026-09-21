@@ -1,7 +1,9 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
 use groove_forge::{Proposed, Remote, Snapshot, Store};
-use groove_types::{CiState, Error, Mr, MrDelivery, MrFacts, Repo, Result, Worktree, WorktreeId};
+use groove_types::{
+    CiState, Error, Mr, MrDelivery, MrFacts, Repo, Result, ReviewMr, Worktree, WorktreeId,
+};
 
 /// One MR as the forge answered and the database now holds it.
 #[derive(Debug)]
@@ -87,6 +89,11 @@ impl Service {
     /// The MR the database holds for a worktree.
     pub async fn stored(&self, worktree: &WorktreeId) -> Result<Option<Mr>> {
         Ok(self.mrs.get(worktree).await?)
+    }
+
+    /// Every open MR a host asks this user to review.
+    pub async fn review_queue(host: &str) -> Result<Vec<ReviewMr>> {
+        Ok(Remote::of_host(host)?.review_queue().await?)
     }
 
     /// Whether Groove can read the forge a host carries.

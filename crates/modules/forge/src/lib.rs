@@ -11,7 +11,7 @@ mod tests;
 pub use error::{Error, Result};
 pub use github::{Github, Proposed};
 pub use groove_token::Token;
-use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo};
+use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr};
 pub use store::Store;
 
 /// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
@@ -91,6 +91,23 @@ impl Remote {
     pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.shut_mr(repo, number).await,
+        }
+    }
+
+    /// Every open MR the host asks this user to review.
+    pub async fn review_queue(&self) -> Result<Vec<ReviewMr>> {
+        match self {
+            Remote::Github(github) => github.review_queue().await,
+        }
+    }
+
+    /// The forge of a host, called with the token its CLI holds.
+    pub fn of_host(host: &str) -> Result<Self> {
+        match Forge::of_host(host) {
+            Forge::Github => Ok(Remote::Github(Github::new(host)?)),
+            Forge::Gitlab => Err(Error::Invalid(format!(
+                "{host} is a GitLab host, which Groove cannot read yet"
+            ))),
         }
     }
 }

@@ -3,6 +3,7 @@
 mod attention;
 mod filter;
 mod plan;
+mod review;
 mod timeline;
 
 use groove_controllers::AppState;
@@ -98,7 +99,8 @@ fn the_chord_opens_the_board_and_closes_it_again() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         opened.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["session.list", "task.load"]
+        ["session.list", "task.load", "workspace.review_queue"],
+        "the board reads all three of its columns"
     );
     let closed = press(Key::Char('k'), CHORD, &mut ui, &app);
     assert_eq!(ui.surface, Surface::Session);

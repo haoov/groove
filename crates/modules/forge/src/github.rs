@@ -6,6 +6,9 @@ mod write;
 
 pub use write::Proposed;
 
+/// How many of the queue a call asks for.
+const QUEUE_MAX: i64 = 50;
+
 use groove_http::Graphql;
 use groove_token::Token;
 use groove_types::{Forge, Repo};
@@ -59,6 +62,13 @@ impl Github {
                 repo.slug()
             ))
         })
+    }
+
+    /// Every open MR the viewer is asked to review, newest first.
+    pub async fn review_queue(&self) -> Result<Vec<groove_types::ReviewMr>> {
+        let at = serde_json::json!({ "first": QUEUE_MAX });
+        let reply = self.api.ask(&query::review_queue(), at).await?;
+        Ok(read::queue::queue(&reply))
     }
 
     fn host(&self) -> &str {

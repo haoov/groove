@@ -72,6 +72,17 @@ impl Query {
         })
     }
 
+    /// An MR waiting on the user answers by its title, its author and its project.
+    pub fn lets_review(&self, mr: &groove_types::ReviewMr) -> bool {
+        self.terms.iter().all(|term| match term {
+            Term::Word(word) => like(&mr.title, word) || like(&mr.author, word),
+            Term::Field(Name::Kind, value) => like("review", value),
+            Term::Field(Name::Repo, value) => like(&mr.project, value),
+            Term::Field(Name::Provider, value) => like(mr.forge.as_str(), value),
+            Term::Field(..) => false,
+        })
+    }
+
     /// A session answers for the task it works, and for what it holds here.
     pub fn lets_session(&self, living: &Living, task: Option<&Task>) -> bool {
         self.terms.iter().all(|term| match term {

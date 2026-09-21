@@ -56,6 +56,8 @@ pub enum Target {
     LogHours(groove_types::ExternalId),
     /// The timeline's own bar, which folds it away.
     Timeline,
+    /// One MR of the review column, by its project and its number.
+    Review(String, u64),
     /// What finishes the task a session works, and what opens its other actions.
     Finish(groove_types::SessionId),
     /// What reads the selected worktree's MR again.
@@ -140,6 +142,7 @@ impl Target {
             | Target::LogHours(_)
             | Target::Timeline
             | Target::Finish(_)
+            | Target::Review(_, _)
             | Target::Refresh
             | Target::TaskActions(_)
             | Target::Unfold(_)

@@ -1,6 +1,7 @@
 //! What one reply says: the MR itself, and the parts each file below reads.
 
 mod ci;
+pub(super) mod queue;
 mod reviews;
 mod threads;
 

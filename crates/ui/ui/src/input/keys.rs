@@ -63,6 +63,7 @@ fn board(ui: &mut Ui) -> Vec<Command> {
         Surface::Board => vec![
             Command::Session(session::Command::List),
             Command::Task(task::Command::Load),
+            Command::Workspace(workspace::Command::ReviewQueue),
         ],
         Surface::Session => Vec::new(),
     }
