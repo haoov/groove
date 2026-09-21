@@ -38,8 +38,12 @@ Only `session.delete` takes it away.
 | Still to build | Does |
 |---|---|
 | `session.discard_explorer` · `session.convert_explorer` | discard; or file the task and move the worktrees, the rows and the agent onto the new id |
-| `session.open_review` | register the MR's clone, provision the review worktree, `agent.start` |
 | `session.get_active` · `session.get` | reads for the MCP tools |
+
+`session.open_review` takes an MR of the board's queue: its session id is derived from the
+project and the number, so reopening finds the session it already has. The repo comes from
+the pool when it holds it and is cloned from the MR's own page when it does not, and the
+worktree tracks the MR's source branch rather than cutting one.
 
 The worktree row's delivery icons come from `WorktreeDelivery`; its skill button sends
 `agent.send_skill`. Property and body edits, finish and delete are `task.*` controllers;

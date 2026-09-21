@@ -225,6 +225,19 @@ pub fn task_session(task: &Task, now: Timestamp) -> Session {
     }
 }
 
+/// The session that reviews an MR: the same id every time, its own title.
+pub fn review_session(mr: &groove_types::ReviewMr, now: Timestamp) -> Session {
+    Session {
+        id: SessionId::new(mr.session_id()),
+        title: mr.title.clone(),
+        kind: SessionKind::Review {
+            project: mr.project.clone(),
+            iid: mr.iid,
+        },
+        created_at: now,
+    }
+}
+
 pub fn explorer(title: Option<&str>, now: Timestamp) -> Session {
     let short = uuid::Uuid::new_v4().simple().to_string();
     let title = title

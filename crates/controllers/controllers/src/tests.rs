@@ -3,6 +3,7 @@ mod fixture;
 mod layers;
 mod loop_;
 mod perf;
+mod reviews;
 mod session;
 mod tasks;
 mod workspace;

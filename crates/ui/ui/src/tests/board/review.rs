@@ -111,3 +111,30 @@ fn the_filter_narrows_the_column_by_title_author_and_repo() {
         "both stay, and the other columns empty: {drawn:?}"
     );
 }
+
+#[test]
+fn clicking_an_mr_opens_the_session_that_reviews_it() {
+    let app = waiting();
+    let (mut ui, hits) = on_board(&app);
+    let target = Target::Review("acme/groove".into(), 7);
+    let rect = hits.rect_of(&target).expect("the row was drawn");
+    let asked = crate::input::handle(
+        crate::input::Input::Press {
+            x: rect.x + rect.w / 2.0,
+            y: rect.y + rect.h / 2.0,
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert_eq!(
+        asked,
+        vec![groove_controllers::Command::Session(
+            groove_controllers::session::Command::OpenReview {
+                project: "acme/groove".into(),
+                iid: 7,
+            }
+        )]
+    );
+}

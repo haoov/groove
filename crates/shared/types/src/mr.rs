@@ -257,6 +257,31 @@ pub struct ReviewMr {
     pub approved: bool,
 }
 
+impl ReviewMr {
+    /// The session that reviews it, the same one every time it is opened.
+    pub fn session_id(&self) -> String {
+        let project = self
+            .project
+            .chars()
+            .map(|c| match c.is_ascii_alphanumeric() {
+                true => c.to_ascii_lowercase(),
+                false => '-',
+            })
+            .collect::<String>();
+        format!("review-{project}-{}", self.iid)
+    }
+
+    /// Where its repo is cloned from, read off the page the MR stands on.
+    pub fn clone_url(&self) -> Option<String> {
+        let at = self
+            .web_url
+            .find("/-/merge_requests/")
+            .or_else(|| self.web_url.find("/pull/"))?;
+        let repo = self.web_url.get(..at)?;
+        Some(format!("{repo}.git"))
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReviewVerdict {

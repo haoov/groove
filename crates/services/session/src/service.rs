@@ -66,6 +66,14 @@ impl Service {
         Ok(())
     }
 
+    /// Inserts the review's session and puts it on the rail.
+    pub async fn create_review(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
+        self.store.create_review(session).await?;
+        self.store.set_opened(&session.id, Some(now)).await?;
+        self.store.set_seen(&session.id, now).await?;
+        Ok(())
+    }
+
     /// Inserts the explorer and puts it on the rail.
     pub async fn create_explorer(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
         self.store.create_explorer(session).await?;

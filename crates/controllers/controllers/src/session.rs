@@ -2,6 +2,7 @@
 
 mod rail;
 mod repos;
+mod review;
 
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
@@ -12,8 +13,28 @@ pub(crate) use rail::{listed, record};
 pub use repos::{
     add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
 };
+pub use review::open_review;
 
 use crate::{AppState, Services, Spawner};
+
+/// The queue's own row for this MR, which the command names by project and number.
+fn reviewed(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    project: &str,
+    iid: u64,
+) {
+    let found = state
+        .workspace
+        .reviews
+        .iter()
+        .find(|mr| mr.project == project && mr.iid == iid)
+        .cloned();
+    if let Some(at) = found {
+        open_review(state, services, spawner, &at);
+    }
+}
 
 /// The grid an agent starts on; the pane resizes it on its first frame.
 pub(crate) const FIRST_SIZE: (u16, u16) = (80, 24);
@@ -26,6 +47,8 @@ pub enum Command {
     Restore,
     /// `session.open_explorer`: a session with no ticket yet, its agent started.
     OpenExplorer { title: Option<String> },
+    /// `session.open_review`: the session that reviews one of the queue's MRs.
+    OpenReview { project: String, iid: u64 },
     /// `session.rename_explorer`
     RenameExplorer { session: SessionId, title: String },
     /// `session.delete`: end the agent, remove the worktrees and their branches, delete the row.
@@ -78,6 +101,7 @@ impl Command {
         match self {
             Command::Restore => "session.restore",
             Command::OpenExplorer { .. } => "session.open_explorer",
+            Command::OpenReview { .. } => "session.open_review",
             Command::RenameExplorer { .. } => "session.rename_explorer",
             Command::Delete { .. } => "session.delete",
             Command::Select { .. } => "session.select",
@@ -106,6 +130,7 @@ pub fn dispatch(
         Command::OpenExplorer { title } => {
             open_explorer(state, services, spawner, title.as_deref())
         }
+        Command::OpenReview { project, iid } => reviewed(state, services, spawner, &project, iid),
         Command::RenameExplorer { session, title } => {
             rename_explorer(state, services, spawner, &session, &title)
         }

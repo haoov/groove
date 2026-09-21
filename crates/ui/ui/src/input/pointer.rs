@@ -7,7 +7,7 @@ mod surface;
 
 pub(super) use menu::asked;
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
@@ -135,6 +135,12 @@ fn acted(
         Some(Target::LogHours(id)) => logging(id),
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
+        Some(Target::Review(project, iid)) => {
+            vec![Command::Session(session::Command::OpenReview {
+                project,
+                iid,
+            })]
+        }
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         Some(_) | None => Vec::new(),
     }

@@ -202,7 +202,8 @@ lands with its first consumer and only as wide as that consumer needs.
    3. the workspace diff — the rest of `git`, `diff`, `text`, `grep`, the code surface in
       three views, the files and diff tabs, the editor on the same surface
    4. the board and tasks — `provider`, the three columns, the filter
-   5. MR and forge — `forge`, the header's MR and CI, the review sheet
+   5. MR and forge — `forge`, the header's MR and CI, the review column and its
+      sessions; gitlab behind the same enum last
    5b. files and the editor — the diff tab becomes `file` with an `editor` mode in place
       of `file`, the explorer tree, the file operations
    6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`

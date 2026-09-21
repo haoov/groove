@@ -79,3 +79,46 @@ fn what_is_not_an_instant_is_refused() {
     assert!(Timestamp::parse("2026-09-20T25:00:00Z").is_err());
     assert!(Timestamp::parse("").is_err());
 }
+
+fn asked(project: &str, iid: u64, web_url: &str) -> crate::ReviewMr {
+    crate::ReviewMr {
+        forge: Forge::Github,
+        project: project.into(),
+        iid,
+        title: "fix: one".into(),
+        author: "someone".into(),
+        source_branch: "fix/one".into(),
+        target_branch: "main".into(),
+        draft: false,
+        web_url: web_url.into(),
+        updated_at: Timestamp::new(0),
+        local_path: None,
+        approved: false,
+    }
+}
+
+#[test]
+fn an_mr_names_the_session_that_reviews_it_the_same_way_every_time() {
+    let one = asked("acme/groove", 7, "https://github.com/acme/groove/pull/7");
+    assert_eq!(one.session_id(), "review-acme-groove-7");
+    assert_eq!(one.session_id(), asked("ACME/Groove", 7, "").session_id());
+}
+
+#[test]
+fn an_mrs_own_page_says_where_its_repo_is_cloned_from() {
+    let github = asked("acme/groove", 7, "https://github.com/acme/groove/pull/7");
+    assert_eq!(
+        github.clone_url().as_deref(),
+        Some("https://github.com/acme/groove.git")
+    );
+    let gitlab = asked(
+        "devops/charts",
+        3,
+        "https://gitlab.example.com/devops/charts/-/merge_requests/3",
+    );
+    assert_eq!(
+        gitlab.clone_url().as_deref(),
+        Some("https://gitlab.example.com/devops/charts.git")
+    );
+    assert_eq!(asked("a/b", 1, "").clone_url(), None);
+}

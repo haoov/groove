@@ -82,6 +82,25 @@ impl Store {
         Ok(())
     }
 
+    /// The session that reviews someone else's MR.
+    pub async fn create_review(&self, session: &Session) -> Result<()> {
+        let SessionKind::Review { project, iid } = &session.kind else {
+            return Err(Error::NotExplorer(session.id.clone()));
+        };
+        sqlx::query(
+            "INSERT INTO sessions (id, kind, title, review_project, review_iid, created_at)
+             VALUES (?, 'review', ?, ?, ?, ?)",
+        )
+        .bind(session.id.as_str())
+        .bind(&session.title)
+        .bind(project)
+        .bind(i64::try_from(*iid).unwrap_or_default())
+        .bind(session.created_at.seconds())
+        .execute(self.db.pool())
+        .await?;
+        Ok(())
+    }
+
     /// The task as its source last reported it, for a restart to show.
     pub async fn remember(&self, task: &Task) -> Result<()> {
         sqlx::query(
