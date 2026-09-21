@@ -1,11 +1,14 @@
 use crate::{CiState, Day, MrState, TaskDates, Timestamp};
 
-/// Days, from Config › Preferences.
+/// How long a fact stands before it asks for the user, from Config › Preferences.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Thresholds {
     pub review_waiting_days: u32,
     pub due_soon_days: u32,
     pub approved_unmerged_days: u32,
+    /// A failure is left alone this long, for the push that fixes it.
+    pub ci_failed_minutes: u32,
 }
 
 impl Default for Thresholds {
@@ -14,6 +17,7 @@ impl Default for Thresholds {
             review_waiting_days: 3,
             due_soon_days: 2,
             approved_unmerged_days: 1,
+            ci_failed_minutes: 10,
         }
     }
 }
@@ -27,6 +31,48 @@ pub struct MrFacts {
     pub ci: Option<CiState>,
     pub ci_finished_at: Option<Timestamp>,
     pub approved_at: Option<Timestamp>,
+}
+
+impl MrFacts {
+    /// Two MRs of one task as one: earliest wait, worst run, approval only if both.
+    pub fn and(self, other: Self) -> Self {
+        Self {
+            state: open_of(self.state, other.state),
+            review_requested_at: earliest(self.review_requested_at, other.review_requested_at),
+            changes_requested_at: earliest(self.changes_requested_at, other.changes_requested_at),
+            ci: match (self.ci, other.ci) {
+                (Some(one), Some(two)) => Some(one.worst(two)),
+                (one, two) => one.or(two),
+            },
+            ci_finished_at: latest(self.ci_finished_at, other.ci_finished_at),
+            approved_at: match (self.approved_at, other.approved_at) {
+                (Some(one), Some(two)) => Some(one.max(two)),
+                _ => None,
+            },
+        }
+    }
+}
+
+/// A task with one MR still open has an open MR.
+fn open_of(one: Option<MrState>, two: Option<MrState>) -> Option<MrState> {
+    match (one, two) {
+        (Some(MrState::Open), _) | (_, Some(MrState::Open)) => Some(MrState::Open),
+        (one, two) => one.or(two),
+    }
+}
+
+fn earliest(one: Option<Timestamp>, two: Option<Timestamp>) -> Option<Timestamp> {
+    match (one, two) {
+        (Some(one), Some(two)) => Some(one.min(two)),
+        (one, two) => one.or(two),
+    }
+}
+
+fn latest(one: Option<Timestamp>, two: Option<Timestamp>) -> Option<Timestamp> {
+    match (one, two) {
+        (Some(one), Some(two)) => Some(one.max(two)),
+        (one, two) => one.or(two),
+    }
 }
 
 /// One reason an item needs the user, with the fact it rests on.
@@ -60,7 +106,7 @@ fn open_mr(mr: &MrFacts, now: Timestamp, t: &Thresholds) -> Vec<Attention> {
     if let Some(since) = mr.changes_requested_at {
         out.push(Attention::ChangesRequested { since });
     }
-    if mr.ci == Some(CiState::Failed) {
+    if mr.ci == Some(CiState::Failed) && settled(mr.ci_finished_at, now, t) {
         out.push(Attention::CiFailed {
             since: mr.ci_finished_at,
         });
@@ -78,6 +124,12 @@ fn open_mr(mr: &MrFacts, now: Timestamp, t: &Thresholds) -> Vec<Attention> {
         }
     }
     out
+}
+
+/// Whether a failure has stood long enough to mention. One with no time to it has.
+fn settled(at: Option<Timestamp>, now: Timestamp, t: &Thresholds) -> bool {
+    let waited = u64::from(t.ci_failed_minutes) * 60;
+    at.is_none_or(|at| at.age_at(now).as_secs() >= waited)
 }
 
 fn due(dates: &TaskDates, today: Day, t: &Thresholds) -> Option<Attention> {

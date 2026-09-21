@@ -138,4 +138,5 @@ the UI sets a status by hand.
 - [x] The ledger, the timer, and the hours written to the source.
 - [x] Attention rules and thresholds in `types`.
 - [x] The attention fold in the `task` service.
+- [x] The forge's facts behind its four rules, per worktree and merged per task.
 - [x] Notion on the same `Source` enum: its row, its mapping, its body read.

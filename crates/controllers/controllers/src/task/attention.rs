@@ -1,6 +1,8 @@
 //! What the tasks mean once they are read: their own start dates, and what asks.
 
-use groove_types::{Day, ExternalId, Timestamp};
+use std::collections::BTreeMap;
+
+use groove_types::{Day, ExternalId, MrFacts, Timestamp};
 
 use crate::AppState;
 
@@ -31,6 +33,25 @@ fn start_dates(state: &mut AppState) {
 /// What needs the user, read again from the tasks as they now stand.
 fn folded(state: &mut AppState, now: Timestamp) {
     let thresholds = state.config.thresholds();
-    let facts = std::collections::BTreeMap::new();
+    let facts = by_task(state);
     state.task.attention = groove_task_service::folded(&state.task.tasks, &facts, now, &thresholds);
+}
+
+/// Each worktree's MR against the task its session works, several as one.
+fn by_task(state: &AppState) -> BTreeMap<ExternalId, MrFacts> {
+    let mut out: BTreeMap<ExternalId, MrFacts> = BTreeMap::new();
+    for open in &state.session.open {
+        let Some(external_id) = open.session.kind.task() else {
+            continue;
+        };
+        for worktree in &open.worktrees {
+            let Some(facts) = state.workspace.facts.get(&worktree.id) else {
+                continue;
+            };
+            out.entry(external_id.clone())
+                .and_modify(|held| *held = held.and(*facts))
+                .or_insert(*facts);
+        }
+    }
+    out
 }

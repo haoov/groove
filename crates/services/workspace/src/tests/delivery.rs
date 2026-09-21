@@ -176,3 +176,55 @@ fn a_failed_read_ages_what_stands_and_a_missing_mr_clears_it() {
     assert!(delivery.mr.is_none());
     assert!(delivery.read.is_none());
 }
+
+#[tokio::test]
+async fn what_a_read_says_becomes_the_facts_the_rules_rest_on() {
+    let mut asked = pr("OPEN");
+    asked["reviewDecision"] = serde_json::json!("CHANGES_REQUESTED");
+    asked["latestReviews"] = serde_json::json!({ "nodes": [
+        { "state": "CHANGES_REQUESTED", "submittedAt": "2026-09-19T09:00:00Z",
+          "author": { "login": "reviewer" } }
+    ]});
+    asked["reviewRequests"] = serde_json::json!({ "nodes": [
+        { "requestedReviewer": { "login": "awaited" } }
+    ]});
+    asked["timelineItems"] = serde_json::json!({ "nodes": [
+        { "createdAt": "2026-09-18T08:05:00Z", "requestedReviewer": { "login": "awaited" } }
+    ]});
+    asked["commits"] = serde_json::json!({ "nodes": [{ "commit": { "statusCheckRollup": {
+        "contexts": { "nodes": [
+            { "__typename": "CheckRun", "status": "COMPLETED", "conclusion": "FAILURE",
+              "detailsUrl": "https://example.test/runs/2",
+              "completedAt": "2026-09-19T09:25:00Z" }
+        ]}
+    }}}]});
+
+    let server = host(
+        answer("pullRequests", serde_json::json!({ "nodes": [asked] })),
+        serde_json::Value::Null,
+    )
+    .await;
+    let (repo, remote) = remote(&server);
+    let service = service().await;
+    let read = service
+        .read(&remote, &repo, &worktree())
+        .await
+        .unwrap()
+        .expect("one mr");
+    let facts = read.facts();
+    assert_eq!(facts.state, Some(MrState::Open));
+    assert_eq!(
+        facts.review_requested_at,
+        Some(groove_types::Timestamp::parse("2026-09-18T08:05:00Z").unwrap())
+    );
+    assert_eq!(
+        facts.changes_requested_at,
+        Some(groove_types::Timestamp::parse("2026-09-19T09:00:00Z").unwrap())
+    );
+    assert_eq!(facts.ci, Some(groove_types::CiState::Failed));
+    assert_eq!(
+        facts.ci_finished_at,
+        Some(groove_types::Timestamp::parse("2026-09-19T09:25:00Z").unwrap())
+    );
+    assert_eq!(facts.approved_at, None, "nobody approved it");
+}

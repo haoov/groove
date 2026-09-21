@@ -13,7 +13,7 @@ pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use groove_types::{DiffMode, DiffView, FileDiff, Result, WorktreeId, WorktreeStatus};
+use groove_types::{DiffMode, DiffView, FileDiff, MrFacts, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
 mod delivery;
@@ -62,6 +62,8 @@ pub struct State {
     pub delivery: Delivery,
     /// The poll's clock, and which worktrees it has asked about.
     pub poll: Polling,
+    /// What the attention rules read of each worktree's MR.
+    pub facts: BTreeMap<WorktreeId, MrFacts>,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,
@@ -133,6 +135,7 @@ impl State {
         self.stop();
         self.found.clear();
         self.paths.clear();
+        self.facts.clear();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();

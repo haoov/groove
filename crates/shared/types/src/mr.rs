@@ -126,11 +126,27 @@ impl MrDetails {
     }
 
     pub fn review_requested_at(&self) -> Option<Timestamp> {
+        self.at_of(ReviewState::Requested).min()
+    }
+
+    /// When a reviewer first asked for changes.
+    pub fn changes_requested_at(&self) -> Option<Timestamp> {
+        self.at_of(ReviewState::ChangesRequested).min()
+    }
+
+    /// When the last approval landed, and only while it stands approved.
+    pub fn approved_at(&self) -> Option<Timestamp> {
+        let approved = self.approval.as_ref().is_some_and(|one| one.approved);
+        approved
+            .then(|| self.at_of(ReviewState::Approved).max())
+            .flatten()
+    }
+
+    fn at_of(&self, state: ReviewState) -> impl Iterator<Item = Timestamp> + '_ {
         self.reviewers
             .iter()
-            .filter(|r| r.state == ReviewState::Requested)
-            .filter_map(|r| r.at)
-            .min()
+            .filter(move |one| one.state == state)
+            .filter_map(|one| one.at)
     }
 }
 
@@ -157,6 +173,27 @@ impl CiState {
             CiState::Canceled => "canceled",
             CiState::Skipped => "skipped",
             CiState::Unknown => "unknown",
+        }
+    }
+
+    /// The state that wins when two checks disagree.
+    pub fn worst(self, other: Self) -> Self {
+        match Self::rank(other) > Self::rank(self) {
+            true => other,
+            false => self,
+        }
+    }
+
+    /// How much a state is worth showing; the higher wins.
+    fn rank(state: Self) -> u8 {
+        match state {
+            CiState::Failed => 6,
+            CiState::Running => 5,
+            CiState::Pending => 4,
+            CiState::Canceled => 3,
+            CiState::Unknown => 2,
+            CiState::Success => 1,
+            CiState::Skipped => 0,
         }
     }
 

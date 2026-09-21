@@ -162,6 +162,10 @@ fails ages the row to *stale* and leaves what stands. A focus gain asks about ev
 again; a push forgets what was asked of that worktree. A host whose forge Groove cannot
 read yet is skipped, not reported.
 
+Every read records the `MrFacts` of its worktree. The `task` controller folds them per
+task, through the session that works it: several worktrees of one task read as one — the
+earliest wait, the worst run, and an approval only where all of them have it.
+
 | Still to build | Does |
 |---|---|
 | `workspace.get_review_queue` | the review column |
@@ -184,5 +188,6 @@ header for the selected worktree.
 - [x] A file is marked read by the user, never by scrolling past it.
 - [ ] Request reviewers and a review with a verdict, both forges; reviewer state in
       `MrDetails`.
-- [ ] The poll's interval and the stale threshold in Config › Preferences.
+- [ ] The poll reads `poll_interval_secs` and `stale_after_secs`, which the config
+      already carries and nothing reads; the controller holds its own constant. Slice 7.
 - [ ] The watcher's debounce window.

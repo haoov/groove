@@ -62,9 +62,9 @@ the age, in peach — and floats to the top of its column whatever the sort:
 ```
 
 The rules, each with an age and a threshold in Config › Preferences: a review waiting
-longer than the threshold; changes requested; CI failed; approved and green but not merged
-for a day; due soon and overdue. The rail's Board row carries the count of items with
-attention, in peach, and nothing else.
+longer than the threshold; changes requested; a run that failed and stayed failed for ten
+minutes; approved and green but not merged for a day; due soon and overdue. The rail's
+Board row carries the count of items with attention, in peach, and nothing else.
 
 **Timeline.** A band under the three columns, full width, collapsible; collapsed by itself
 when nothing falls in the horizon. Four weeks, today about a quarter in, days as hairlines,
@@ -264,6 +264,6 @@ groups, paths and ids in mono.
 | Setup | environment check — git, gh, glab, claude — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font · agent font · font size |
-| Preferences | suggest actions · auto-approve default · attention thresholds in days: review waiting, due soon, approved unmerged · git: clone pool path |
+| Preferences | suggest actions · auto-approve default · attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold · git: clone pool path |
 
 Every change saves to the config file on the spot. No save button.

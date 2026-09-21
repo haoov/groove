@@ -1,7 +1,7 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
 use groove_forge::{Remote, Snapshot, Store};
-use groove_types::{CiState, Mr, MrDelivery, Repo, Result, Worktree, WorktreeId};
+use groove_types::{CiState, Mr, MrDelivery, MrFacts, Repo, Result, Worktree, WorktreeId};
 
 /// One MR as the forge answered and the database now holds it.
 #[derive(Debug)]
@@ -25,6 +25,19 @@ impl Delivered {
                 .as_ref()
                 .is_some_and(|one| one.approved),
             changes_requested: self.read.details.changes_requested(),
+        }
+    }
+
+    /// What the attention rules read of this MR.
+    pub fn facts(&self) -> MrFacts {
+        let details = &self.read.details;
+        MrFacts {
+            state: Some(self.mr.state),
+            review_requested_at: details.review_requested_at(),
+            changes_requested_at: details.changes_requested_at(),
+            ci: self.ci(),
+            ci_finished_at: self.read.ci.as_ref().and_then(|one| one.finished_at),
+            approved_at: details.approved_at(),
         }
     }
 

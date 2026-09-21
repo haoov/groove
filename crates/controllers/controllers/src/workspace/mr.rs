@@ -172,9 +172,14 @@ fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
                 row.notes = delivered.notes();
                 row.stale = false;
             });
+            state
+                .workspace
+                .facts
+                .insert(worktree.clone(), delivered.facts());
             if selected {
                 state.workspace.delivery.taken(delivered);
             }
+            crate::task::attention::reread(state, Timestamp::now());
         }
         Ok(None) => {
             onto(state, worktree, |row| {
@@ -183,9 +188,11 @@ fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
                     ..WorktreeDelivery::default()
                 }
             });
+            state.workspace.facts.remove(worktree);
             if selected {
                 state.workspace.delivery.none();
             }
+            crate::task::attention::reread(state, Timestamp::now());
         }
         Err(e) => {
             onto(state, worktree, |row| row.stale = true);

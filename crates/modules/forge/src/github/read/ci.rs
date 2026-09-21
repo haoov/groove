@@ -16,7 +16,7 @@ struct Check {
 pub(super) fn status(pr: &serde_json::Value) -> Option<CiStatus> {
     let rollup = &pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"];
     let checks: Vec<Check> = nodes(&rollup["contexts"]).iter().map(check).collect();
-    let state = checks.iter().map(|one| one.state).reduce(worst)?;
+    let state = checks.iter().map(|one| one.state).reduce(CiState::worst)?;
     let shown = checks
         .iter()
         .find(|one| one.state == state)
@@ -68,24 +68,5 @@ fn of_commit_status(state: &str) -> CiState {
         "PENDING" => CiState::Pending,
         "FAILURE" | "ERROR" => CiState::Failed,
         _ => CiState::Unknown,
-    }
-}
-
-/// The state that wins when two checks disagree.
-fn worst(one: CiState, other: CiState) -> CiState {
-    match rank(other) > rank(one) {
-        true => other,
-        false => one,
-    }
-}
-
-fn rank(state: CiState) -> u8 {
-    match state {
-        CiState::Failed => 5,
-        CiState::Running => 4,
-        CiState::Pending => 3,
-        CiState::Canceled => 2,
-        CiState::Unknown => 1,
-        CiState::Success | CiState::Skipped => 0,
     }
 }
