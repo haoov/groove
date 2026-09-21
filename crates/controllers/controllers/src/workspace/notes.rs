@@ -20,6 +20,9 @@ pub enum Act {
     Resolve {
         id: AnnotationId,
     },
+    Reopen {
+        id: AnnotationId,
+    },
     Delete {
         id: AnnotationId,
     },
@@ -31,6 +34,7 @@ impl Act {
             Act::Create { .. } => "workspace.create_note",
             Act::Update { .. } => "workspace.update_note",
             Act::Resolve { .. } => "workspace.resolve_note",
+            Act::Reopen { .. } => "workspace.reopen_note",
             Act::Delete { .. } => "workspace.delete_note",
         }
     }
@@ -40,6 +44,7 @@ impl Act {
             Act::Create { .. } => "leaving a note",
             Act::Update { .. } => "writing the note again",
             Act::Resolve { .. } => "resolving the note",
+            Act::Reopen { .. } => "opening the note again",
             Act::Delete { .. } => "deleting the note",
         }
     }
@@ -109,6 +114,7 @@ async fn apply(
         }
         Act::Update { id, content } => service.update_note(&id, &content).await.map(drop),
         Act::Resolve { id } => service.resolve_note(&id).await.map(drop),
+        Act::Reopen { id } => service.reopen_note(&id).await.map(drop),
         Act::Delete { id } => service.delete_note(&id).await,
     }
 }

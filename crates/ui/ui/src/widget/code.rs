@@ -19,8 +19,21 @@ use crate::tokens::Tokens;
 #[derive(Debug, Clone, Copy)]
 pub struct Noted<'a> {
     pub author: &'a str,
+    /// The lines the note is about, on the row that opens it.
+    pub lines: &'a str,
     pub opens: bool,
     pub resolved: bool,
+}
+
+/// The buttons a note's last row carries, and the note they act on.
+#[derive(Debug, Clone)]
+pub struct Acting {
+    pub id: groove_types::AnnotationId,
+    pub resolved: bool,
+    /// The session reviews someone else's work, so the note can be posted.
+    pub review: bool,
+    /// The one of them the pointer stands on.
+    pub hovered: Option<crate::hit::NoteButton>,
 }
 
 /// One row of code: what its gutters say, its text, and the colour over it.
@@ -54,12 +67,16 @@ pub struct Line<'a> {
     pub standing: Option<(usize, usize)>,
     /// One row of a note left on the line above it.
     pub said: Option<Noted<'a>>,
+    /// The buttons under what a note says.
+    pub acting: Option<Acting>,
+    /// A row of code a note stands on.
+    pub noted: bool,
 }
 
 impl<'a> Line<'a> {
     /// Whether the row carries gutters; a row that names a file or directory has none.
     pub fn numbered(&self) -> bool {
-        !self.band && !self.head && !self.banner && self.said.is_none()
+        !self.band && !self.head && !self.banner && self.said.is_none() && self.acting.is_none()
     }
 
     pub fn new(text: &'a str) -> Self {
@@ -81,6 +98,8 @@ impl<'a> Line<'a> {
             word: None,
             standing: None,
             said: None,
+            acting: None,
+            noted: false,
         }
     }
 
@@ -90,6 +109,20 @@ impl<'a> Line<'a> {
             said: Some(said),
             ..Self::new(text)
         }
+    }
+
+    /// The row of buttons under what a note says.
+    pub fn acting(acting: Acting) -> Self {
+        Self {
+            acting: Some(acting),
+            ..Self::new("")
+        }
+    }
+
+    /// A row of code a note stands on.
+    pub fn noted(mut self, noted: bool) -> Self {
+        self.noted = noted;
+        self
     }
 
     /// A row that spans the width, centred, on its own ground.

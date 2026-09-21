@@ -1,6 +1,10 @@
 //! What the pointer can reach. A view registers a rect and what it means; a click
 //! resolves to the last one registered over that point.
 
+mod note;
+
+pub use note::NoteButton;
+
 use groove_gfx::Rect;
 use groove_types::{SessionId, WorktreeId};
 
@@ -117,6 +121,8 @@ pub enum Target {
     View(DiffView),
     /// The agent's pane.
     Agent,
+    /// One button of a note's own row.
+    Note(groove_types::AnnotationId, NoteButton),
 }
 
 impl Target {
@@ -128,6 +134,7 @@ impl Target {
             | Target::Picker(_)
             | Target::Worktree(_)
             | Target::PaletteRow(_)
+            | Target::Note(_, _)
             | Target::Fold
             | Target::File(_)
             | Target::Stage(_)

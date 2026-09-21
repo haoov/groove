@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use groove_gfx::Rect;
 use groove_types::FileDiff;
 
-use super::rows::entry;
+use super::rows::{Reading, entry};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -131,7 +131,14 @@ fn name_of(path: &str) -> &str {
 }
 
 /// The tree drawn, scrolled and clipped to the list's own room.
-pub(super) fn draw(ctx: &mut Ctx, body: Rect, held: &[Row<'_>], open: Option<&String>, ui: &Ui) {
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    body: Rect,
+    app: &groove_controllers::AppState,
+    held: &[Row<'_>],
+    open: Option<&String>,
+    ui: &Ui,
+) {
     let height = ctx.tokens.row;
     let extent = (height * held.len() as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Files, extent);
@@ -141,14 +148,21 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, held: &[Row<'_>], open: Option<&St
         for one in held {
             let line = Rect::new(body.x, y, body.w, height);
             if y + height >= body.y && y <= body.bottom() {
-                one_row(ctx, line, one, open, ui);
+                one_row(ctx, line, app, one, open, ui);
             }
             y += height;
         }
     });
 }
 
-fn one_row(ctx: &mut Ctx, line: Rect, held: &Row<'_>, open: Option<&String>, ui: &Ui) {
+fn one_row(
+    ctx: &mut Ctx,
+    line: Rect,
+    app: &groove_controllers::AppState,
+    held: &Row<'_>,
+    open: Option<&String>,
+    ui: &Ui,
+) {
     let indent = ctx.tokens.md + ctx.tokens.md * held.depth as f32;
     if held.path.is_empty() || renaming(ui, held) {
         return naming(ctx, line, indent, ui);
@@ -158,7 +172,13 @@ fn one_row(ctx: &mut Ctx, line: Rect, held: &Row<'_>, open: Option<&String>, ui:
     }
     match (held.dir, held.file) {
         (true, _) => directory(ctx, line, held, indent, ui),
-        (false, Some(file)) => entry(ctx, line, file, indent, open == Some(&file.path), ui),
+        (false, Some(file)) => {
+            let reading = Reading {
+                open: open == Some(&file.path),
+                noted: super::noted(app, &file.path),
+            };
+            entry(ctx, line, file, indent, reading, ui)
+        }
         (false, None) => plain(ctx, line, held, indent, open, ui),
     }
 }

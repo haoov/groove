@@ -50,7 +50,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         let held = explorer::rows(&app.workspace.paths, &files, ui);
         return match held.is_empty() {
             true => says(ctx, body, empty(app)),
-            false => explorer::draw(ctx, body, &held, open, ui),
+            false => explorer::draw(ctx, body, app, &held, open, ui),
         };
     }
     if files.is_empty() {
@@ -60,7 +60,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         };
         return says(ctx, body, said);
     }
-    rows::draw(ctx, body, &listing(&files), open, ui);
+    rows::draw(ctx, body, app, &listing(&files), open, ui);
 }
 
 /// Whether the list is the whole worktree, which a query flattens back to matches.
@@ -196,4 +196,12 @@ pub(crate) fn changed(app: &AppState) -> &[FileDiff] {
         .and_then(|open| open.selected_worktree())
         .map(|worktree| &worktree.id);
     app.workspace.files_of(selected)
+}
+
+/// Whether a note of this session stands on a file.
+pub(super) fn noted(app: &AppState, path: &str) -> bool {
+    app.workspace
+        .notes
+        .iter()
+        .any(|note| note.anchor.as_ref().is_some_and(|one| one.path == path))
 }

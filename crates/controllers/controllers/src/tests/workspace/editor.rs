@@ -279,3 +279,54 @@ fn an_undo_after_a_save_takes_back_what_was_typed() {
     assert_eq!(buffer(&state), "one\ntwo\n", "the buffer kept its history");
     assert!(state.workspace.dirty(), "and owes the disk again");
 }
+
+#[test]
+fn a_file_saved_back_to_what_it_was_stays_open() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    editing(&mut state, &services, &spawner);
+    assert_eq!(buffer(&state), "one\ntwo\n");
+
+    edit(
+        &mut state,
+        &services,
+        &spawner,
+        &[
+            Edit::Move(Motion::To(Caret::new(1, 0))),
+            Edit::SelectLine,
+            Edit::Delete,
+            Edit::Backspace,
+        ],
+    );
+    assert_eq!(buffer(&state), "one\n", "back to what the commit holds");
+    send(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::SaveFile,
+    );
+    send(&mut state, &services, &spawner, workspace::Command::Load);
+    assert!(
+        state.workspace.files.is_empty(),
+        "nothing is changed any more: {:?}",
+        changed(&state)
+    );
+    assert!(
+        state.workspace.opened.is_some(),
+        "and the file is still the open one"
+    );
+}
+
+/// One command, run to the end of everything it starts.
+fn send(
+    state: &mut crate::AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    command: workspace::Command,
+) {
+    dispatch(Cmd::Workspace(command), state, services, spawner);
+    until(spawner, services, state, |s| s.pending.is_empty());
+}

@@ -13,6 +13,7 @@ use crate::{Losing, Ui};
 pub(super) fn draw(
     ctx: &mut Ctx,
     body: Rect,
+    app: &groove_controllers::AppState,
     listing: &Listing<'_>,
     open: Option<&String>,
     ui: &Ui,
@@ -33,26 +34,55 @@ pub(super) fn draw(
             y += height;
         }
         for group in &listing.groups {
-            if !group.dir.is_empty() {
-                path(
-                    ctx,
-                    Rect::new(body.x, y, body.w, height),
-                    &group.dir,
-                    Role::Faint,
-                );
-                y += height;
-            }
-            for file in &group.files {
-                let line = Rect::new(body.x, y, body.w, height);
-                let indent = match group.dir.is_empty() {
-                    true => ctx.tokens.md,
-                    false => ctx.tokens.md + ctx.tokens.md,
-                };
-                entry(ctx, line, file, indent, open == Some(&file.path), ui);
-                y += height;
-            }
+            y = grouped(
+                ctx,
+                Rect::new(body.x, y, body.w, height),
+                app,
+                group,
+                (open, ui),
+            );
         }
     });
+}
+
+/// One directory's row, then a row per file in it; returns where the next starts.
+fn grouped(
+    ctx: &mut Ctx,
+    line: Rect,
+    app: &groove_controllers::AppState,
+    group: &super::tree::Group<'_>,
+    (open, ui): (Option<&String>, &Ui),
+) -> f32 {
+    let mut y = line.y;
+    if !group.dir.is_empty() {
+        path(
+            ctx,
+            Rect::new(line.x, y, line.w, line.h),
+            &group.dir,
+            Role::Faint,
+        );
+        y += line.h;
+    }
+    let indent = match group.dir.is_empty() {
+        true => ctx.tokens.md,
+        false => ctx.tokens.md + ctx.tokens.md,
+    };
+    for file in &group.files {
+        let reading = Reading {
+            open: open == Some(&file.path),
+            noted: super::noted(app, &file.path),
+        };
+        entry(
+            ctx,
+            Rect::new(line.x, y, line.w, line.h),
+            file,
+            indent,
+            reading,
+            ui,
+        );
+        y += line.h;
+    }
+    y
 }
 
 /// How many rows the whole listing stands: its root, its groups, its files.
@@ -73,7 +103,21 @@ fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
     row(ctx, line, ctx.tokens.md, &text, style);
 }
 
-pub(super) fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, indent: f32, open: bool, ui: &Ui) {
+/// How a file's row reads: whether it is the open one, and whether it carries a note.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Reading {
+    pub open: bool,
+    pub noted: bool,
+}
+
+pub(super) fn entry(
+    ctx: &mut Ctx,
+    line: Rect,
+    file: &FileDiff,
+    indent: f32,
+    reading: Reading,
+    ui: &Ui,
+) {
     if ui.discarding == Some(Losing::File(file.path.clone())) {
         return asking(ctx, line, "discard changes?", ui);
     }
@@ -82,7 +126,7 @@ pub(super) fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, indent: f32, ope
         let hover = ctx.styles.hover();
         ctx.quad(line, hover);
     }
-    if open {
+    if reading.open {
         let here = ctx.styles.here();
         ruled(ctx, line, here);
     }
@@ -94,6 +138,10 @@ pub(super) fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, indent: f32, ope
     let at = match on_row {
         true => offer(ctx, line, file, ui),
         false => counts(ctx, line, file),
+    };
+    let at = match reading.noted {
+        true => marked(ctx, line, at),
+        false => at,
     };
     let start = indent + ctx.tokens.md;
     let room = (at - line.x - start - ctx.tokens.sm).max(0.0);
@@ -121,6 +169,20 @@ fn named(ctx: &mut Ctx, line: Rect, file: &FileDiff, start: f32, room: f32) {
     let rest = elide(ctx, &behind, &quiet, left);
     let at = line.x + start + width + ctx.tokens.sm;
     row(ctx, Rect::new(at, line.y, left, line.h), 0.0, &rest, quiet);
+}
+
+/// The mark a file carrying a note takes, left of its counts. Returns where it starts.
+fn marked(ctx: &mut Ctx, line: Rect, at: f32) -> f32 {
+    let size = ctx.tokens.small;
+    let x = at - size - ctx.tokens.sm;
+    let box_ = Rect::new(x, line.y + (line.h - size) / 2.0, size, size);
+    ctx.icon(
+        box_,
+        crate::mark::Mark::Note,
+        0,
+        ctx.styles.color(Role::Faint),
+    );
+    x
 }
 
 /// Whether the pointer is on this row, or on what the row is offering.

@@ -1,6 +1,6 @@
 //! What the session surface remembers between frames.
 
-use groove_types::DiffView;
+use groove_types::{Anchor, DiffView};
 
 use super::find::Finding;
 use crate::widget::Field;
@@ -62,6 +62,43 @@ pub struct SessionUi {
     pub opened: std::collections::BTreeSet<String>,
     /// A path being named, where the tree asked for it.
     pub naming: Option<Naming>,
+    /// A note being typed, on the lines it will stand on.
+    pub noting: Option<Noting>,
+}
+
+/// A note being typed in the surface: the lines it is about, and its words.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Noting {
+    pub anchor: Anchor,
+    pub field: Field,
+    /// The note being rewritten, when the words replace an old note's.
+    pub over: Option<groove_types::AnnotationId>,
+}
+
+impl Noting {
+    pub fn new(anchor: Anchor) -> Self {
+        Self {
+            anchor,
+            field: Field::default(),
+            over: None,
+        }
+    }
+
+    /// A note's own words, opened to be written again.
+    pub fn over(anchor: Anchor, id: groove_types::AnnotationId, said: &str) -> Self {
+        let mut field = Field::default();
+        field.set(said);
+        Self {
+            anchor,
+            field,
+            over: Some(id),
+        }
+    }
+
+    /// What the note says, with nothing around it.
+    pub fn said(&self) -> &str {
+        self.field.text().trim()
+    }
 }
 
 /// A name being typed in the tree: what it is for, and where it stands.
@@ -187,7 +224,9 @@ impl Bar {
 impl SessionUi {
     /// Whether a bar has the keyboard, so no surface should draw its caret.
     pub fn typing(&self) -> bool {
-        self.bar.typing.is_some() || self.find.as_ref().is_some_and(|find| find.typing)
+        self.bar.typing.is_some()
+            || self.find.as_ref().is_some_and(|find| find.typing)
+            || self.noting.is_some()
     }
 
     /// Whether the sidebar stands beside the workspace right now.

@@ -192,6 +192,13 @@ impl Styles {
         self.palette.text
     }
 
+    /// The ground of a line a note stands on, a colour of its own.
+    pub fn noted(&self) -> Color {
+        self.palette
+            .base
+            .mix(self.palette.yellow, crate::tokens::NOTED)
+    }
+
     /// Under a match a search found, where the caret is not.
     pub fn found(&self) -> Color {
         self.palette.yellow.with_alpha(GROUND_ALPHA)

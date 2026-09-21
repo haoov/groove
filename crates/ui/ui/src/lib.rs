@@ -123,6 +123,8 @@ pub enum Corner {
 pub enum Of {
     /// One file of the list.
     File(String),
+    /// The lines a note would stand on, from a click in the rows.
+    Line { path: String, lines: (u32, u32) },
     /// One path of the explorer; `dir` while it is a directory.
     Path { path: String, dir: bool },
     /// The worktree, from the commit box; `mr` while it has one to write.

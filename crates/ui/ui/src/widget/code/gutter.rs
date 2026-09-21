@@ -23,6 +23,16 @@ impl Block {
         }
     }
 
+    /// Where the last number cell ends, which every number is right-aligned to.
+    pub(super) fn numbers_end(&self, ctx: &Ctx, rect: Rect) -> f32 {
+        if self.cells == 0 {
+            return rect.x;
+        }
+        let small = ctx.tokens.sm;
+        let before = (self.width + small) * (self.cells - 1) as f32;
+        rect.x + small + before + self.width
+    }
+
     /// Where a line's text starts, past every gutter and the hairline.
     pub(super) fn content(&self, ctx: &Ctx, rect: Rect) -> f32 {
         if self.cells == 0 {

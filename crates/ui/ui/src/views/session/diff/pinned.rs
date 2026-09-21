@@ -61,7 +61,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
 
 /// The file and the scopes the top of the surface stands in.
 fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
-    let inline = super::notes::Inline::of(app, ui.session.view);
+    let inline = super::notes::Inline::of(app, ui, ui.session.view);
     let top = inline.base(first(ctx.tokens.line, ui.session.diff));
     let Some((path, at)) = standing(app, ui, top) else {
         return Vec::new();

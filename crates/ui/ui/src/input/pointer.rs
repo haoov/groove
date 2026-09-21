@@ -120,6 +120,7 @@ fn acted(
         Some(Target::View(view)) => viewing(ui, app, view, metrics),
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
+        Some(Target::Note(id, button)) => surface::noted(ui, app, id, button),
         Some(Target::Head(path)) => folded(ui, app, metrics, path),
         Some(Target::Term(term)) => narrowing(ui, term),
         Some(Target::Finding) => finding(ui),
@@ -139,15 +140,18 @@ fn acted(
         Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
         Some(Target::Scope(scope)) => scoped(ui, scope),
         Some(Target::Dir(path)) => twisty(ui, path),
-        Some(Target::Review(project, iid)) => {
-            vec![Command::Session(session::Command::OpenReview {
-                project,
-                iid,
-            })]
-        }
+        Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         Some(_) | None => Vec::new(),
     }
+}
+
+/// One MR of the review column, opened as a session of its own.
+fn review(project: String, iid: u64) -> Vec<Command> {
+    vec![Command::Session(session::Command::OpenReview {
+        project,
+        iid,
+    })]
 }
 
 /// The rest of the task's actions, under the caret that opened them.

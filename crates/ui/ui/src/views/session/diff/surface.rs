@@ -5,12 +5,17 @@ use groove_types::{DiffView, RowKind};
 
 use groove_controllers::AppState;
 
-use super::notes::{Inline, Slot, said};
+use super::notes::{Inline, Slot, lines, said};
 use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
-use crate::widget::{Gutters, Line, Noted, Rows, chars_of, code, head_mark, height, visible};
+use crate::widget::{
+    Acting, Gutters, Line, Noted, Rows, chars_of, code, head_mark, height, visible,
+};
+
+/// Who a note left in the app is by.
+pub(crate) const AUTHOR: &str = "you";
 
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     match ui.session.view {
@@ -47,7 +52,7 @@ fn surface(
     side: Side,
     clickable: bool,
 ) {
-    let inline = Inline::of(app, view);
+    let inline = Inline::of(app, ui, view);
     let total = inline.total(count(app, view));
     let extent = (height(ctx, total) - rect.h).max(0.0);
     ctx.scrolls(Scroller::Code, extent);
@@ -57,12 +62,18 @@ fn surface(
     let code_rows = inline.code_window(window.clone());
     let rows = drawn(app, ui, view, side, code_rows.clone());
     let gutters = gutters_of(&rows);
-    let words: Vec<(String, String)> = slots.iter().map(|slot| words_of(app, *slot)).collect();
+    let words: Vec<Words> = slots.iter().map(|slot| words_of(app, ui, *slot)).collect();
+    let noted: Vec<bool> = slots
+        .iter()
+        .map(|slot| matches!(slot, Slot::Code(at) if inline.notes(*at)))
+        .collect();
     let held = Held {
         slots: &slots,
         rows: &rows,
         gutters: &gutters,
         words: &words,
+        noted: &noted,
+        hovered: hovered(ui),
         first: code_rows.start,
     };
     let lines = lines_of(ctx, app, held);
@@ -101,7 +112,11 @@ struct Held<'a> {
     slots: &'a [Slot],
     rows: &'a [Drawn],
     gutters: &'a [Vec<&'a str>],
-    words: &'a [(String, String)],
+    words: &'a [Words],
+    /// Which rows of the window a note stands on.
+    noted: &'a [bool],
+    /// The note button the pointer stands on, and whose note it is.
+    hovered: Option<(groove_types::AnnotationId, crate::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
 }
@@ -113,29 +128,101 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .enumerate()
         .map(|(on, slot)| match slot {
             Slot::Code(at) => match held.rows.get(at - held.first) {
-                Some(row) => lined(ctx, row, &held.gutters[at - held.first]),
+                Some(row) => lined(ctx, row, &held.gutters[at - held.first]).noted(held.noted[on]),
                 None => Line::new(""),
             },
             Slot::Note { at, row } => Line::note(
-                &held.words[on].1,
+                &held.words[on].body,
                 Noted {
-                    author: &held.words[on].0,
+                    author: &held.words[on].author,
+                    lines: &held.words[on].lines,
                     opens: *row == 0,
                     resolved: app.workspace.notes.get(*at).is_some_and(|one| one.resolved),
+                },
+            ),
+            Slot::Acts { at } => match app.workspace.notes.get(*at).and_then(acting_of) {
+                Some(acting) => Line::acting(Acting {
+                    hovered: on_it(held.hovered.as_ref(), &acting.id),
+                    ..acting
+                }),
+                None => Line::new(""),
+            },
+            Slot::Typed => Line::note(
+                &held.words[on].body,
+                Noted {
+                    author: &held.words[on].author,
+                    lines: &held.words[on].lines,
+                    opens: true,
+                    resolved: false,
                 },
             ),
         })
         .collect()
 }
 
+/// The note button under the pointer, and whose note it belongs to.
+fn hovered(ui: &Ui) -> Option<(groove_types::AnnotationId, crate::hit::NoteButton)> {
+    match &ui.hover {
+        Some(crate::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
+        _ => None,
+    }
+}
+
+/// The button of this note the pointer stands on.
+fn on_it(
+    hovered: Option<&(groove_types::AnnotationId, crate::hit::NoteButton)>,
+    id: &groove_types::AnnotationId,
+) -> Option<crate::hit::NoteButton> {
+    hovered
+        .filter(|(whose, _)| whose == id)
+        .map(|(_, button)| *button)
+}
+
+/// What a note's own row of buttons acts on; a thread is the forge's to write.
+fn acting_of(note: &groove_types::Note) -> Option<Acting> {
+    Some(Acting {
+        id: note.id()?.clone(),
+        resolved: note.resolved,
+        review: false,
+        hovered: None,
+    })
+}
+
+/// What a note row says: the words, who said them, and the lines they are about.
+#[derive(Default)]
+struct Words {
+    author: String,
+    lines: String,
+    body: String,
+}
+
 /// Who said what on a note row; a row of code says nothing.
-fn words_of(app: &AppState, slot: Slot) -> (String, String) {
+fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
     match slot {
         Slot::Note { at, row } => match app.workspace.notes.get(at) {
-            Some(note) => said(note, row),
-            None => (String::new(), String::new()),
+            Some(note) => {
+                let (author, body) = said(note, row);
+                let shown = match row {
+                    0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
+                    _ => String::new(),
+                };
+                Words {
+                    author,
+                    lines: shown,
+                    body,
+                }
+            }
+            None => Words::default(),
         },
-        Slot::Code(_) => (String::new(), String::new()),
+        Slot::Typed => match ui.session.noting.as_ref() {
+            Some(noting) => Words {
+                author: AUTHOR.to_string(),
+                lines: lines(&noting.anchor),
+                body: noting.field.shown(),
+            },
+            None => Words::default(),
+        },
+        Slot::Acts { .. } | Slot::Code(_) => Words::default(),
     }
 }
 

@@ -104,6 +104,10 @@ impl Service {
         self.notes.resolve(id).await
     }
 
+    pub async fn reopen_note(&self, id: &AnnotationId) -> Result<Annotation> {
+        self.notes.reopen(id).await
+    }
+
     pub async fn delete_note(&self, id: &AnnotationId) -> Result<()> {
         self.notes.delete(id).await
     }

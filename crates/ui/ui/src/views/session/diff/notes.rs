@@ -3,21 +3,30 @@
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_types::{DiffView, Note};
+use groove_types::{Anchor, DiffView, Note};
+
+use crate::Ui;
 
 /// One note's rows, standing after the row its last line sits on.
 struct Block {
     after: usize,
+    /// The first row the note is about.
+    from: usize,
     rows: usize,
-    /// Which note of the workspace it draws.
-    at: usize,
+    /// Which note of the workspace it draws; none while it is being typed.
+    at: Option<usize>,
+    /// The note's own row of buttons, under what it says.
+    acts: bool,
 }
 
-/// A row of the surface: a row of the view, or one row of a note under it.
+/// A row of the surface: a row of the view, one row of a note under it, the buttons
+/// of a note, or the note being typed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Slot {
     Code(usize),
     Note { at: usize, row: usize },
+    Acts { at: usize },
+    Typed,
 }
 
 /// Where the notes stand among the rows of one view.
@@ -28,20 +37,27 @@ pub(crate) struct Inline {
 
 impl Inline {
     /// The notes of this view, each on the row its file shows it on.
-    pub(crate) fn of(app: &AppState, view: DiffView) -> Self {
+    pub(crate) fn of(app: &AppState, ui: &Ui, view: DiffView) -> Self {
+        let over = ui.session.noting.as_ref().and_then(|one| one.over.as_ref());
         let mut blocks: Vec<Block> = app
             .workspace
             .notes
             .iter()
             .enumerate()
-            .filter_map(|(at, note)| {
-                Some(Block {
-                    after: row_of(app, view, note)?,
-                    rows: note.said.len().max(1),
-                    at,
-                })
-            })
+            .filter(|(_, note)| !written(note, over))
+            .filter_map(|(at, note)| block(app, view, note, at))
             .collect();
+        if let Some(noting) = ui.session.noting.as_ref()
+            && let Some(after) = anchored(app, view, &noting.anchor)
+        {
+            blocks.push(Block {
+                after,
+                from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
+                rows: 1,
+                at: None,
+                acts: false,
+            });
+        }
         blocks.sort_by_key(|block| (block.after, block.at));
         Self { blocks }
     }
@@ -70,11 +86,7 @@ impl Inline {
                 break;
             }
             if row < start + block.rows {
-                let slot = Slot::Note {
-                    at: block.at,
-                    row: row - start,
-                };
-                return (slot, block.after);
+                return (block.slot(row - start), block.after);
             }
             shift += block.rows;
         }
@@ -90,6 +102,13 @@ impl Inline {
             .map(|block| block.rows)
             .sum();
         code + taken
+    }
+
+    /// Whether a note of the surface stands on this row of the view.
+    pub(crate) fn notes(&self, code: usize) -> bool {
+        self.blocks
+            .iter()
+            .any(|block| block.at.is_some() && (block.from..=block.after).contains(&code))
     }
 
     /// The rows of the view that `window` covers, as the builders ask for them.
@@ -108,9 +127,45 @@ impl Inline {
     }
 }
 
-/// The row a note's last line stands on, in the view that draws it.
-fn row_of(app: &AppState, view: DiffView, note: &Note) -> Option<usize> {
+impl Block {
+    /// What one row of the block holds, counted from its first.
+    fn slot(&self, row: usize) -> Slot {
+        let Some(at) = self.at else {
+            return Slot::Typed;
+        };
+        match self.acts && row + 1 == self.rows {
+            true => Slot::Acts { at },
+            false => Slot::Note { at, row },
+        }
+    }
+}
+
+/// Whether this note is the one being written again.
+fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
+    over.is_some_and(|id| note.id() == Some(id))
+}
+
+/// One note's block, on the rows of the file it is about.
+fn block(app: &AppState, view: DiffView, note: &Note, at: usize) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
+    let after = anchored(app, view, anchor)?;
+    let acts = note.is_local();
+    Some(Block {
+        after,
+        from: anchored(app, view, &starts(anchor)).unwrap_or(after),
+        rows: note.said.len().max(1) + usize::from(acts),
+        at: Some(at),
+        acts,
+    })
+}
+
+/// The anchor's own first line, as an anchor of its own.
+fn starts(anchor: &Anchor) -> Anchor {
+    Anchor::line(anchor.path.clone(), anchor.start_line)
+}
+
+/// The row an anchor's last line stands on, in the view that draws it.
+fn anchored(app: &AppState, view: DiffView, anchor: &Anchor) -> Option<usize> {
     match view {
         DiffView::Editor => {
             let open = app.workspace.opened.as_ref()?;
@@ -126,6 +181,15 @@ pub(crate) fn said(note: &Note, row: usize) -> (String, String) {
     match note.said.get(row) {
         Some(said) => (said.author.clone(), one_line(&said.body)),
         None => (String::new(), String::new()),
+    }
+}
+
+/// The lines an anchor covers, as a file numbers them.
+pub(crate) fn lines(anchor: &Anchor) -> String {
+    let (from, to) = (anchor.start_line + 1, anchor.end_line + 1);
+    match from == to {
+        true => from.to_string(),
+        false => format!("{from}-{to}"),
     }
 }
 

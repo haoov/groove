@@ -323,3 +323,45 @@ fn a_task_with_nothing_measured_offers_no_hours() {
     let id = ExternalId::new("github.com/haoov/groove#50");
     assert!(hits.rect_of(&crate::hit::Target::LogHours(id)).is_none());
 }
+
+#[test]
+fn a_long_repo_name_stops_before_its_path() {
+    let mut app = full_app();
+    let long = "a-service-with-a-very-long-name-indeed-for-one-repository";
+    if let Some(repo) = app
+        .session
+        .get_mut(&SessionId::new("a"))
+        .and_then(|open| open.repos.first_mut())
+    {
+        repo.project = long.into();
+    }
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let mut fonts = groove_gfx::Fonts::embedded();
+    let path = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text.starts_with("gitlab.example.com"))
+        .expect("the repo's path");
+    let name = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text.starts_with("a-service") && run.y == path.y)
+        .expect("the repo's name, on the same row");
+    let style = name.style;
+    let ends = name.x + fonts.measure(&name.text, style.font, style.weight, style.size);
+    assert!(
+        ends <= path.x,
+        "the name ends before the path starts: {ends} against {}",
+        path.x
+    );
+    assert!(
+        name.text.ends_with('\u{2026}'),
+        "and says it is cut: {}",
+        name.text
+    );
+}

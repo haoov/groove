@@ -114,18 +114,17 @@ impl State {
         let shut = self.changes.folds();
         self.changes = changes;
         self.changes.refold(shut);
-        if self
-            .opened
-            .as_ref()
-            .is_some_and(|open| self.gone(&open.path))
-        {
-            self.opened = None;
-        }
     }
 
-    /// Whether the summary still holds this path.
-    fn gone(&self, path: &str) -> bool {
-        !self.files.iter().any(|file| file.path == path)
+    /// Shuts the open file when the path that is gone is it, or holds it.
+    pub fn shut_if_gone(&mut self, path: &str) {
+        let held = self
+            .opened
+            .as_ref()
+            .is_some_and(|open| open.path == path || open.path.starts_with(&format!("{path}/")));
+        if held {
+            self.opened = None;
+        }
     }
 
     /// Whether any of these paths is git's own state rather than a file of it.

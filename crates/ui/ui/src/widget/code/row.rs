@@ -1,5 +1,9 @@
 //! One row drawn: its ground, its marks, its numbers and its text.
 
+mod note;
+
+use self::note::{acts, note};
+
 use groove_gfx::{Color, Rect, TextStyle};
 
 use super::gutter::Block;
@@ -20,7 +24,18 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
         return banner(ctx, line, code.text);
     }
     if let Some(said) = code.said {
-        return note(ctx, line, code.text, said);
+        return note(ctx, line, code.text, said, gutter);
+    }
+    if let Some(acting) = code.acting.as_ref() {
+        return acts(ctx, line, acting, gutter);
+    }
+    coded(ctx, line, code, gutter);
+}
+
+/// A line of code: its grounds, its marks, its numbers and its text.
+fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+    if code.noted {
+        ctx.quad(line, ctx.styles.noted());
     }
     if let Some(ground) = code.ground {
         ctx.quad(line, ground);
@@ -29,14 +44,7 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
         let width = ctx.tokens.hairline * 2.0;
         ctx.quad(Rect::new(line.x, line.y, width, line.h), mark);
     }
-    let numbers = ctx.styles.code(Role::Ghost);
-    let mut at = line.x + ctx.tokens.sm;
-    for text in code.gutters {
-        let width = ctx.measure(text, &numbers);
-        let cell = Rect::new(at + gutter.width - width, line.y, width, line.h);
-        row(ctx, cell, 0.0, text, numbers);
-        at += gutter.width + ctx.tokens.sm;
-    }
+    numbers(ctx, line, code, gutter);
     let at = gutter.content(ctx, line);
     let rect = Rect::new(at, line.y, line.right() - at, line.h);
     if let Some(color) = code.word {
@@ -57,6 +65,18 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if let Some(column) = code.caret {
         caret(ctx, rect, code.text, column);
         here(ctx, line);
+    }
+}
+
+/// The row's own line numbers, one to a gutter cell.
+fn numbers(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+    let style = ctx.styles.code(Role::Ghost);
+    let mut at = line.x + ctx.tokens.sm;
+    for text in code.gutters {
+        let width = ctx.measure(text, &style);
+        let cell = Rect::new(at + gutter.width - width, line.y, width, line.h);
+        row(ctx, cell, 0.0, text, style);
+        at += gutter.width + ctx.tokens.sm;
     }
 }
 
@@ -116,44 +136,6 @@ fn caret(ctx: &mut Ctx, rect: Rect, text: &str, column: usize) {
     let at = rect.x + upto(ctx, text, column, &style);
     let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
     ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
-}
-
-/// One row of a note: its own ground, the author, then what they said.
-fn note(ctx: &mut Ctx, line: Rect, text: &str, said: super::Noted<'_>) {
-    ctx.quad(line, ctx.styles.deep());
-    let role = match said.resolved {
-        true => Role::Faint,
-        false => Role::Muted,
-    };
-    let size = ctx.tokens.small;
-    let mut at = line.x + ctx.tokens.md;
-    if said.opens {
-        let box_ = Rect::new(at, line.y + (line.h - size) / 2.0, size, size);
-        ctx.icon(box_, Mark::Note, 0, ctx.styles.color(role));
-    }
-    at += size + ctx.tokens.sm;
-    let author = ctx.styles.small(role);
-    let width = ctx.measure(said.author, &author);
-    row(
-        ctx,
-        Rect::new(at, line.y, width, line.h),
-        0.0,
-        said.author,
-        author,
-    );
-    at += width + ctx.tokens.sm;
-    let words = match said.resolved {
-        true => ctx.styles.body(Role::Faint),
-        false => ctx.styles.body(Role::Text),
-    };
-    let rest = Rect::new(
-        at,
-        line.y,
-        (line.right() - ctx.tokens.md - at).max(0.0),
-        line.h,
-    );
-    let text = crate::widget::elide(ctx, text, &words, rest.w);
-    row(ctx, rest, 0.0, &text, words);
 }
 
 /// A row across the width: its own ground, its text in the middle.

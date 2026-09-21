@@ -30,8 +30,40 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             of: Of::File(path),
         }),
         Some(Target::Actions) => Some(worktree_menu(ui, app, hits, metrics)),
+        Some(Target::Code) => lines(ui, app, hits, metrics, (x, y)).map(|of| Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of,
+        }),
         _ => None,
     };
+}
+
+/// The lines a note would be left on: what is selected under the click, else the
+/// one line the click lands on.
+fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32)) -> Option<Of> {
+    let (path, caret) = super::surface::at(ui, app, hits, metrics, at)?;
+    let line = caret.line as u32;
+    let held = selected(app, &path).filter(|(from, to)| (*from..=*to).contains(&line));
+    let lines = held.unwrap_or((line, line));
+    let noted = app
+        .workspace
+        .notes
+        .iter()
+        .any(|note| note.over(&path, lines));
+    (!noted).then_some(Of::Line { path, lines })
+}
+
+/// The lines a selection of the open file covers.
+fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
+    let open = app
+        .workspace
+        .opened
+        .as_ref()
+        .filter(|one| one.path == path)?;
+    let one = open.new.selections().iter().find(|one| !one.is_empty())?;
+    let (from, to) = one.ends();
+    Some((from.line as u32, to.line as u32))
 }
 
 /// The worktree's actions stand above the caret that opened them, ending on the rule
@@ -79,10 +111,11 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
-    let (commands, asking, naming) = crate::views::shared::actions::picked(&menu.of, at);
-    ui.discarding = asking;
-    ui.session.naming = naming;
-    commands
+    let picked = crate::views::shared::actions::picked(&menu.of, at);
+    ui.discarding = picked.asking;
+    ui.session.naming = picked.naming;
+    ui.session.noting = picked.noting;
+    picked.commands
 }
 
 /// Either picker opens the worktree selector, under the picker itself.

@@ -4,12 +4,15 @@ use groove_controllers::{Command, workspace};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use crate::views::session::{Asked, Naming};
+use crate::views::session::{Asked, Naming, Noting};
 use crate::widget::{menu, menu_size};
 use crate::{Corner, Losing, Menu, Of, Ui};
 
 /// The actions of one file.
 pub const FILE: [&str; 1] = ["discard changes"];
+
+/// What the lines under a click offer.
+pub const LINE: [&str; 1] = ["note"];
 
 /// The actions of the worktree, from the commit box.
 pub const WORKTREE: [&str; 3] = ["push", "pull", "discard every change"];
@@ -32,6 +35,7 @@ pub const SESSION: [&str; 1] = ["delete locally"];
 pub fn rows(of: &Of) -> &'static [&'static str] {
     match of {
         Of::File(_) => &FILE,
+        Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
         Of::Worktree { mr: true } => &WORKTREE_MR,
         Of::Worktree { mr: false } => &WORKTREE,
@@ -73,45 +77,82 @@ fn name_of(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-/// What picking row `at` of this menu does: a command, a question, or a name to type.
-pub fn picked(of: &Of, at: usize) -> (Vec<Command>, Option<Losing>, Option<Naming>) {
-    let commanded = |command| (vec![Command::Workspace(command)], None, None);
+/// What picking a row of a menu leaves: commands to send, and what the surface
+/// now asks of the user.
+#[derive(Debug, Default, PartialEq)]
+pub struct Picked {
+    pub commands: Vec<Command>,
+    pub asking: Option<Losing>,
+    pub naming: Option<Naming>,
+    pub noting: Option<Noting>,
+}
+
+impl Picked {
+    fn sends(command: workspace::Command) -> Self {
+        Self {
+            commands: vec![Command::Workspace(command)],
+            ..Self::default()
+        }
+    }
+
+    fn asks(losing: Losing) -> Self {
+        Self {
+            asking: Some(losing),
+            ..Self::default()
+        }
+    }
+
+    fn names(naming: Naming) -> Self {
+        Self {
+            naming: Some(naming),
+            ..Self::default()
+        }
+    }
+
+    fn notes(anchor: groove_types::Anchor) -> Self {
+        Self {
+            noting: Some(Noting::new(anchor)),
+            ..Self::default()
+        }
+    }
+}
+
+/// What picking row `at` of this menu does: a command, a question, or words to type.
+pub fn picked(of: &Of, at: usize) -> Picked {
     match (of, rows(of).get(at)) {
-        (Of::File(path), Some(&"discard changes")) => {
-            (Vec::new(), Some(Losing::File(path.clone())), None)
-        }
-        (Of::Worktree { .. }, Some(&"discard every change")) => {
-            (Vec::new(), Some(Losing::Everything), None)
-        }
-        (Of::Worktree { .. }, Some(&"push")) => commanded(workspace::Command::Push),
-        (Of::Worktree { .. }, Some(&"pull")) => commanded(workspace::Command::Pull),
-        (Of::Worktree { .. }, Some(&"update mr")) => commanded(workspace::Command::UpdateMr),
-        (Of::Worktree { .. }, Some(&"close mr")) => commanded(workspace::Command::CloseMr),
+        (Of::File(path), Some(&"discard changes")) => Picked::asks(Losing::File(path.clone())),
+        (Of::Line { path, lines }, Some(&"note")) => Picked::notes(groove_types::Anchor {
+            path: path.clone(),
+            start_line: lines.0,
+            end_line: lines.1,
+        }),
+        (Of::Worktree { .. }, Some(&"discard every change")) => Picked::asks(Losing::Everything),
+        (Of::Worktree { .. }, Some(&"push")) => Picked::sends(workspace::Command::Push),
+        (Of::Worktree { .. }, Some(&"pull")) => Picked::sends(workspace::Command::Pull),
+        (Of::Worktree { .. }, Some(&"update mr")) => Picked::sends(workspace::Command::UpdateMr),
+        (Of::Worktree { .. }, Some(&"close mr")) => Picked::sends(workspace::Command::CloseMr),
         (Of::Path { path, dir }, Some(&"new file")) => {
-            (Vec::new(), None, Some(named(Asked::File, path, *dir, "")))
+            Picked::names(named(Asked::File, path, *dir, ""))
         }
         (Of::Path { path, dir }, Some(&"new directory")) => {
-            (Vec::new(), None, Some(named(Asked::Folder, path, *dir, "")))
+            Picked::names(named(Asked::Folder, path, *dir, ""))
         }
-        (Of::Path { path, .. }, Some(&"rename")) => (
-            Vec::new(),
-            None,
-            Some(Naming::new(Asked::Rename, path, name_of(path))),
-        ),
-        (Of::Path { path, .. }, Some(&"copy")) => (
-            Vec::new(),
-            None,
-            Some(Naming::new(Asked::Copy, path, name_of(path))),
-        ),
-        (Of::Path { path, .. }, Some(&"delete")) => {
-            (Vec::new(), Some(Losing::Path(path.clone())), None)
+        (Of::Path { path, .. }, Some(&"rename")) => {
+            Picked::names(Naming::new(Asked::Rename, path, name_of(path)))
         }
+        (Of::Path { path, .. }, Some(&"copy")) => {
+            Picked::names(Naming::new(Asked::Copy, path, name_of(path)))
+        }
+        (Of::Path { path, .. }, Some(&"delete")) => Picked::asks(Losing::Path(path.clone())),
         (Of::Session(session), Some(&"delete locally")) => {
             let away = groove_controllers::task::Command::DeleteLocal {
                 session: session.clone(),
             };
-            (vec![Command::Task(away)], None, None)
+            Picked {
+                commands: vec![Command::Task(away)],
+                ..Picked::default()
+            }
         }
-        _ => (Vec::new(), None, None),
+        _ => Picked::default(),
     }
 }

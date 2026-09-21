@@ -6,6 +6,9 @@ pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
 pub const GROUND_ALPHA: u8 = 38;
+
+/// How much of the note's own colour a line carrying one takes.
+pub const NOTED: f32 = 0.18;
 /// The words of a row its pair does not have, over that ground.
 pub const WORD_ALPHA: u8 = 96;
 

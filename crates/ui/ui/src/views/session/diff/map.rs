@@ -17,7 +17,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
     }
     ctx.quad(rect, ctx.styles.band());
     let per = rect.h / total as f32;
-    let inline = Inline::of(app, ui.session.view);
+    let inline = Inline::of(app, ui, ui.session.view);
     match ui.session.view {
         DiffView::Editor => whole(ctx, rect, per, app, &inline),
         _ => change(ctx, rect, per, app, &inline),
@@ -29,7 +29,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
 /// What the column stands for: the rows of the view, and the notes in them.
 pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
     let view = ui.session.view;
-    Inline::of(app, view).total(super::row::count(app, view))
+    Inline::of(app, ui, view).total(super::row::count(app, view))
 }
 
 /// Every changed file, one band under another.

@@ -75,6 +75,13 @@ impl Note {
         self.said.len().saturating_sub(1)
     }
 
+    /// Whether the note stands on any of these rows of this file.
+    pub fn over(&self, path: &str, lines: (u32, u32)) -> bool {
+        self.anchor.as_ref().is_some_and(|one| {
+            one.path == path && one.start_line <= lines.1 && lines.0 <= one.end_line
+        })
+    }
+
     /// Whether the note stands on this row of this file.
     pub fn on(&self, path: &str, line: u32) -> bool {
         self.anchor

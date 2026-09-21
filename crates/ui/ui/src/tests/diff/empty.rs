@@ -22,7 +22,7 @@ fn the_editor_stands_one_row_tall_on_an_empty_file() {
     let (app, ui) = nothing();
     assert_eq!(diff::rows_of(&app, &ui), 1, "there is a line to type on");
     assert_eq!(
-        diff::line_at(&app, DiffView::Editor, 0),
+        diff::line_at(&app, &ui, DiffView::Editor, 0),
         Some(("src/new.rs".to_string(), 0)),
         "and a click on it lands on that line"
     );

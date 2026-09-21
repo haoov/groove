@@ -3,7 +3,7 @@ use groove_gfx::{Color, Rect, TextStyle};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::mark::Mark;
-use crate::widget::{after_mark, leading, row};
+use crate::widget::{after_mark, elide, leading, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a> {
@@ -71,10 +71,18 @@ pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>
             ctx.icon(box_, mark, turn, item.style.color);
             indent = after_mark(ctx, indent);
         }
-        row(ctx, line, indent, item.text, item.style);
+        let start = line.x + indent;
+        let ends = match item.aside {
+            Some((at, _, _)) => rect.x + at - ctx.tokens.sm,
+            None => line.right() - ctx.tokens.md,
+        };
+        let text = elide(ctx, item.text, &item.style, (ends - start).max(0.0));
+        row(ctx, line, indent, &text, item.style);
         if let Some((at, text, style)) = item.aside {
-            let aside = Rect::new(rect.x + at, y, rect.w - at, height);
-            row(ctx, aside, 0.0, text, style);
+            let room = (rect.right() - ctx.tokens.md - (rect.x + at)).max(0.0);
+            let aside = Rect::new(rect.x + at, y, room, height);
+            let text = elide(ctx, text, &style, room);
+            row(ctx, aside, 0.0, &text, style);
         }
         if let Some(target) = &item.target {
             ctx.hit(line, target.clone());

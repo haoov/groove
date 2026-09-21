@@ -19,7 +19,7 @@ mod time;
 
 pub use button::{button, slot, slot_at};
 pub use code::{
-    Gutters, Line, Noted, Rows, chars_of, code, code_at, first, head_mark, height, visible,
+    Acting, Gutters, Line, Noted, Rows, chars_of, code, code_at, first, head_mark, height, visible,
 };
 pub use counts::{counts, counts_room};
 pub use delivery::{delivered, room_for};

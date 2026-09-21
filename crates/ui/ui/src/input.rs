@@ -109,6 +109,10 @@ fn pasted(text: &str, ui: &mut Ui) -> Vec<Command> {
         palette.selected = 0;
         return Vec::new();
     }
+    if let Some(noting) = ui.session.noting.as_mut() {
+        noting.field.paste(text);
+        return Vec::new();
+    }
     if let Some(term) = ui.session.bar.typing {
         ui.session.bar.of(term).paste(text);
         return Vec::new();

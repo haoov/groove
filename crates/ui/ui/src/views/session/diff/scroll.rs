@@ -7,19 +7,26 @@ use groove_types::DiffView;
 /// The scroll that keeps the same line in view once the view changes.
 pub(crate) fn scrolled(
     app: &AppState,
+    ui: &crate::Ui,
     from: DiffView,
     to: DiffView,
     scroll: f32,
     line: f32,
 ) -> f32 {
     let at = (scroll / line).floor().max(0.0) as usize;
-    moved(app, from, to, at) as f32 * line
+    moved(app, ui, from, to, at) as f32 * line
 }
 
 /// The row that holds the same line once the view changes.
-pub(crate) fn moved(app: &AppState, from: DiffView, to: DiffView, row: usize) -> usize {
-    let there = super::notes::Inline::of(app, to);
-    let row = super::notes::Inline::of(app, from).base(row);
+pub(crate) fn moved(
+    app: &AppState,
+    ui: &crate::Ui,
+    from: DiffView,
+    to: DiffView,
+    row: usize,
+) -> usize {
+    let there = super::notes::Inline::of(app, ui, to);
+    let row = super::notes::Inline::of(app, ui, from).base(row);
     let Some(file) = app.workspace.opened.as_ref() else {
         return there.shifted(row);
     };
