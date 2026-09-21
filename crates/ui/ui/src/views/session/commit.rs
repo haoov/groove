@@ -121,7 +121,7 @@ fn wants_mr(app: &AppState) -> bool {
         .session
         .selected()
         .and_then(|open| open.selected_worktree())
-        .is_some_and(|worktree| app.workspace.poll.asked_about(&worktree.id));
+        .is_some_and(|worktree| app.workspace.poll.knows(&worktree.id));
     known && app.workspace.delivery.mr.is_none()
 }
 

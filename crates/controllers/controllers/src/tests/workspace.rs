@@ -7,6 +7,7 @@ mod git;
 mod poll;
 mod queue;
 mod search;
+mod write;
 
 use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, session, workspace};

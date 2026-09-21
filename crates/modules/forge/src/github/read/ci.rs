@@ -12,7 +12,7 @@ struct Check {
     at: Option<Timestamp>,
 }
 
-/// The state of the whole run: the worst any check reports. No check is no CI.
+/// The run as the check that decides it: the worst state, its page, its own time.
 pub(super) fn status(pr: &serde_json::Value) -> Option<CiStatus> {
     let rollup = &pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"];
     let checks: Vec<Check> = nodes(&rollup["contexts"]).iter().map(check).collect();
@@ -27,7 +27,7 @@ pub(super) fn status(pr: &serde_json::Value) -> Option<CiStatus> {
             true => text(&pr["url"]),
             false => shown.url.clone(),
         },
-        finished_at: checks.iter().filter_map(|one| one.at).max(),
+        finished_at: shown.at,
     })
 }
 

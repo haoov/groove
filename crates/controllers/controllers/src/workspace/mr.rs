@@ -1,8 +1,6 @@
 //! The MR of a worktree: read when it is selected, then polled while it stays open.
 
-use groove_types::{
-    Mr, MrDelivery, Repo, Result, Timestamp, Worktree, WorktreeDelivery, WorktreeId,
-};
+use groove_types::{Mr, MrDelivery, Result, Timestamp, WorktreeDelivery, WorktreeId};
 use groove_workspace_service::Delivered;
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -22,18 +20,14 @@ pub fn wanted(state: &AppState, now: Timestamp) -> Vec<WorktreeId> {
     if state.workspace.poll.due(now, INTERVAL) {
         out.extend(again(state));
     }
+    out.sort();
     out.dedup();
     out
 }
 
 /// The selected worktree, while nothing has asked its forge yet.
 fn first(state: &AppState) -> Vec<WorktreeId> {
-    let selected = state
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .map(|worktree| worktree.id.clone());
-    selected
+    crate::workspace::selected(state)
         .filter(|id| state.workspace.poll.asks(id))
         .into_iter()
         .collect()
@@ -122,7 +116,10 @@ fn remembered(state: &mut AppState, mrs: Vec<Mr>) {
 
 /// One worktree's MR, read from its forge and written down.
 fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &WorktreeId) {
-    let Some((repo, worktree)) = pair(state, id) else {
+    if state.workspace.poll.is_out(id) {
+        return;
+    }
+    let Some((repo, worktree)) = crate::workspace::pair(state, id) else {
         return;
     };
     let remote = match groove_workspace_service::Service::remote(&repo) {
@@ -197,16 +194,4 @@ fn onto(state: &mut AppState, worktree: &WorktreeId, write: impl Fn(&mut Worktre
             write(open.row(worktree));
         }
     }
-}
-
-/// The repo and the worktree one id names, in whichever open session holds it.
-fn pair(state: &AppState, id: &WorktreeId) -> Option<(Repo, Worktree)> {
-    for open in state.session.open.iter() {
-        let Some(worktree) = open.worktrees.iter().find(|one| &one.id == id) else {
-            continue;
-        };
-        let repo = open.repos.iter().find(|repo| repo.id == worktree.repo)?;
-        return Some((repo.clone(), worktree.clone()));
-    }
-    None
 }

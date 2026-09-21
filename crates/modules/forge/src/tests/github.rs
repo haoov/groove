@@ -43,7 +43,7 @@ fn pr() -> serde_json::Value {
         "commits": { "nodes": [{ "commit": { "statusCheckRollup": { "contexts": { "nodes": [
             { "__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS",
               "detailsUrl": "https://github.com/acme/groove/runs/1",
-              "completedAt": "2026-09-19T09:20:00Z" },
+              "completedAt": "2026-09-19T09:40:00Z" },
             { "__typename": "CheckRun", "status": "COMPLETED", "conclusion": "FAILURE",
               "detailsUrl": "https://github.com/acme/groove/runs/2",
               "completedAt": "2026-09-19T09:25:00Z" }

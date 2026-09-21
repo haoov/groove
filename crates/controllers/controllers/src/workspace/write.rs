@@ -1,6 +1,6 @@
 //! The writes to a worktree's forge: an MR opened, written again, or closed.
 
-use groove_types::{Repo, Result, Task, Worktree, WorktreeId};
+use groove_types::{MrState, Repo, Result, Task, Worktree, WorktreeId};
 use groove_workspace_service::{Delivered, Remote, Service, Text, text_of};
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -25,12 +25,15 @@ impl Act {
 
 /// One write against the selected worktree's forge, its answer written down.
 pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
-    let Some((repo, worktree)) = selected(state) else {
+    let Some(id) = crate::workspace::selected(state) else {
         return;
     };
-    if act != Act::Open && state.workspace.delivery.mr.is_none() {
+    if state.workspace.poll.is_out(&id) || !allows(state, act) {
         return;
     }
+    let Some((repo, worktree)) = crate::workspace::pair(state, &id) else {
+        return;
+    };
     let message = state.workspace.message.text();
     let text = text_of(&message, worked(state), &worktree.branch);
     if act == Act::Edit && text.title.is_empty() {
@@ -40,10 +43,6 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
         Ok(remote) => remote,
         Err(e) => return state.errors.push(e),
     };
-    let id = worktree.id.clone();
-    if state.workspace.poll.is_out(&id) {
-        return;
-    }
     state.workspace.poll.sent(&id);
     let job = state.begin(act.label());
     let service = services.workspace.clone();
@@ -55,6 +54,20 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
             landed(state, &id, wrote);
         }) as Continuation
     }));
+}
+
+/// Whether this write can be made: one open MR to write or close, none to offer one.
+fn allows(state: &AppState, act: Act) -> bool {
+    let open = state
+        .workspace
+        .delivery
+        .mr
+        .as_ref()
+        .is_some_and(|mr| mr.state == MrState::Open);
+    match act {
+        Act::Open => !open,
+        Act::Edit | Act::Close => open,
+    }
 }
 
 async fn made(
@@ -84,12 +97,4 @@ fn landed(state: &mut AppState, worktree: &WorktreeId, wrote: Result<Delivered>)
 fn worked(state: &AppState) -> Option<&Task> {
     let open = state.session.selected()?;
     state.task.worked(&open.session)
-}
-
-/// The selected worktree and its repo.
-fn selected(state: &AppState) -> Option<(Repo, Worktree)> {
-    let open = state.session.selected()?;
-    let worktree = open.selected_worktree()?;
-    let repo = open.repos.iter().find(|repo| repo.id == worktree.repo)?;
-    Some((repo.clone(), worktree.clone()))
 }

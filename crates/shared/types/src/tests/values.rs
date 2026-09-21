@@ -122,3 +122,20 @@ fn an_mrs_own_page_says_where_its_repo_is_cloned_from() {
     );
     assert_eq!(asked("a/b", 1, "").clone_url(), None);
 }
+
+#[test]
+fn a_pooled_clone_holds_only_the_project_whose_whole_path_it_ends_with() {
+    let entry = crate::PoolEntry {
+        slug: "gitlab.example.com/wiremind/big/p".into(),
+        path: std::path::PathBuf::from("/pool/p"),
+    };
+    assert!(entry.holds("wiremind/big/p"), "its own path");
+    assert!(entry.holds("big/p"), "the tail of it, on a segment");
+    assert!(!entry.holds("g/p"), "not half a segment");
+    assert!(!entry.holds("other/p"));
+    let bare = crate::PoolEntry {
+        slug: "acme/groove".into(),
+        path: std::path::PathBuf::from("/pool/groove"),
+    };
+    assert!(bare.holds("acme/groove"), "the whole slug");
+}

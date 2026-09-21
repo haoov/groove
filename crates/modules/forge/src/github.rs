@@ -71,10 +71,6 @@ impl Github {
         Ok(read::queue::queue(&reply))
     }
 
-    fn host(&self) -> &str {
-        &self.host
-    }
-
     fn numbered(&self, number: &str) -> Result<i64> {
         number
             .parse()

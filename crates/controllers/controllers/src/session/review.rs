@@ -45,7 +45,7 @@ fn repo_name(state: &AppState, at: &ReviewMr) -> Option<String> {
         .session
         .pool
         .iter()
-        .find(|entry| entry.slug.ends_with(&at.project))
+        .find(|entry| entry.holds(&at.project))
         .map(|entry| entry.slug.clone());
     pooled.or_else(|| at.clone_url())
 }

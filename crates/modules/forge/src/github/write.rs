@@ -67,7 +67,7 @@ impl Github {
             true => Err(Error::Invalid(format!(
                 "{} is not a repository {} knows",
                 repo.slug(),
-                self.host()
+                self.host
             ))),
             false => Ok((node, read::text(&found["defaultBranchRef"]["name"]))),
         }
@@ -85,7 +85,7 @@ impl Github {
         read::snapshot(pr, &me).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} answered {mutation} with no merge request",
-                self.host()
+                self.host
             ))
         })
     }

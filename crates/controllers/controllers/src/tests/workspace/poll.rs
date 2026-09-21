@@ -179,3 +179,19 @@ fn a_gitlab_worktree_is_asked_about_like_any_other() {
         "gitlab has a client of its own now"
     );
 }
+
+#[test]
+fn a_worktree_the_tick_wants_twice_is_read_once() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = working(&mut state, &services, &spawner);
+    holds(&mut state, &id, MrState::Open);
+    assert_eq!(
+        wanted(&state, now()),
+        vec![id],
+        "never asked and its row is open, and still once"
+    );
+}

@@ -152,17 +152,36 @@ async fn a_branch_the_forge_has_no_mr_for_leaves_no_row() {
 }
 
 #[tokio::test]
-async fn an_mr_the_user_closed_is_forgotten() {
+async fn a_second_mr_on_the_branch_is_found_once_the_first_is_closed() {
+    let mut closed = pr("CLOSED");
+    closed["number"] = serde_json::json!(7);
+    let mut second = pr("OPEN");
+    second["number"] = serde_json::json!(8);
     let server = host(
-        answer("pullRequests", serde_json::json!({ "nodes": [pr("OPEN")] })),
-        serde_json::Value::Null,
+        answer("pullRequests", serde_json::json!({ "nodes": [second] })),
+        answer("pullRequest", closed),
     )
     .await;
     let (repo, remote) = remote(&server);
     let service = service().await;
-    service.read(&remote, &repo, &worktree()).await.unwrap();
-    service.forget(&worktree().id).await.unwrap();
-    assert!(service.stored(&worktree().id).await.unwrap().is_none());
+    let first = service
+        .read(&remote, &repo, &worktree())
+        .await
+        .unwrap()
+        .expect("found by branch");
+    assert_eq!(first.mr.remote_id, "8", "the open one");
+
+    sqlx::query("UPDATE mrs SET state = 'closed', remote_id = '7'")
+        .execute(service.store().db().pool())
+        .await
+        .unwrap();
+    let again = service
+        .read(&remote, &repo, &worktree())
+        .await
+        .unwrap()
+        .expect("the branch answers");
+    assert_eq!(again.mr.remote_id, "8", "the new mr, not the closed one");
+    assert_eq!(again.mr.state, MrState::Open);
 }
 
 #[test]

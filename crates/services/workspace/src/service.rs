@@ -2,7 +2,7 @@
 
 use groove_forge::{Proposed, Remote, Snapshot, Store};
 use groove_types::{
-    CiState, Error, Mr, MrDelivery, MrFacts, Repo, Result, ReviewMr, Worktree, WorktreeId,
+    CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result, ReviewMr, Worktree, WorktreeId,
 };
 
 /// One MR as the forge answered and the database now holds it.
@@ -101,21 +101,25 @@ impl Service {
         Ok(Remote::of(repo)?)
     }
 
-    /// The worktree's MR read again: by the number already known, so a merge is seen,
-    /// and by the branch until one is.
+    /// An open MR read by its number, a settled one by the branch it came from.
     pub async fn read(
         &self,
         remote: &Remote,
         repo: &Repo,
         worktree: &Worktree,
     ) -> Result<Option<Delivered>> {
-        let read = match self.mrs.get(&worktree.id).await? {
+        let held = self.mrs.get(&worktree.id).await?;
+        let read = match held.as_ref().filter(|mr| mr.state == MrState::Open) {
             Some(mr) => Some(remote.read_mr(repo, &mr.remote_id).await?),
             None => remote.open_mr(repo, &worktree.branch).await?,
         };
-        let Some(read) = read else {
-            self.mrs.remove(&worktree.id).await?;
-            return Ok(None);
+        let read = match (read, held) {
+            (Some(read), _) => read,
+            (None, Some(mr)) => remote.read_mr(repo, &mr.remote_id).await?,
+            (None, None) => {
+                self.mrs.remove(&worktree.id).await?;
+                return Ok(None);
+            }
         };
         let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
         Ok(Some(Delivered { mr, read }))
@@ -187,11 +191,6 @@ impl Service {
     ) -> Result<Delivered> {
         let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
         Ok(Delivered { mr, read })
-    }
-
-    /// Forgets a worktree's MR, for one the user closed.
-    pub async fn forget(&self, worktree: &WorktreeId) -> Result<()> {
-        Ok(self.mrs.remove(worktree).await?)
     }
 
     /// The rows themselves, for a test to seed.

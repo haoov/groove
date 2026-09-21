@@ -57,6 +57,13 @@ pub struct PoolEntry {
     pub path: PathBuf,
 }
 
+impl PoolEntry {
+    /// Whether this clone is the forge's own `<group…>/<project>`, whole segments only.
+    pub fn holds(&self, project: &str) -> bool {
+        self.slug == project || self.slug.ends_with(&format!("/{project}"))
+    }
+}
+
 /// What a new worktree should be.
 #[derive(Clone, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct WorktreeSpec {

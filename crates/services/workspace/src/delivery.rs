@@ -66,8 +66,8 @@ impl Polling {
         !self.asked.contains(worktree) && !self.out.contains(worktree)
     }
 
-    /// Whether its forge has answered at all, so no MR means no MR.
-    pub fn asked_about(&self, worktree: &WorktreeId) -> bool {
+    /// Whether its forge has answered, so no MR on the row means it has none.
+    pub fn knows(&self, worktree: &WorktreeId) -> bool {
         self.asked.contains(worktree) && !self.out.contains(worktree)
     }
 
@@ -85,7 +85,7 @@ impl Polling {
         self.out.remove(worktree);
     }
 
-    /// Forgets what was asked about one worktree, for a branch that just got an MR.
+    /// Forgets that this worktree was asked about.
     pub fn forget(&mut self, worktree: &WorktreeId) {
         self.asked.remove(worktree);
     }

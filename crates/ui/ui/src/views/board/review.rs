@@ -10,7 +10,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{after_mark, ago, icon, leading};
+use crate::widget::{after_mark, ago, elide, icon, leading, row};
 
 /// Every MR the filter lets through, newest first.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
@@ -47,22 +47,17 @@ pub(super) fn item(ctx: &mut Ctx, line: Rect, ui: &Ui, mr: &ReviewMr) {
 /// The project, the number and the author, under the title.
 fn under(ctx: &mut Ctx, line: Rect, mr: &ReviewMr, until: f32) {
     let style = ctx.styles.small(Role::Faint);
-    let named = format!("{}{}{}", mr.project, sigil(mr), mr.iid);
+    let named = format!("{}{}{}", mr.project, mr.forge.sigil(), mr.iid);
     let text = match mr.author.is_empty() {
         true => named,
         false => format!("{named} · {}", mr.author),
     };
     let room = (until - line.x - after_mark(ctx, ctx.tokens.md)).max(0.0);
-    let text = crate::widget::elide(ctx, &text, &style, room);
+    let text = elide(ctx, &text, &style, room);
     let second = Rect::new(line.x, line.y + ctx.tokens.row, line.w, ctx.tokens.row);
-    crate::widget::row(ctx, second, after_mark(ctx, ctx.tokens.md), &text, style);
+    row(ctx, second, after_mark(ctx, ctx.tokens.md), &text, style);
 }
 
-fn sigil(mr: &ReviewMr) -> char {
-    mr.forge.sigil()
-}
-
-/// A draft is quieter; one that is approved has been answered.
 fn role(mr: &ReviewMr) -> Role {
     match (mr.draft, mr.approved) {
         (true, _) => Role::Ghost,

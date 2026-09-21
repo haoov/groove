@@ -170,6 +170,21 @@ pub(super) fn selected(state: &AppState) -> Option<WorktreeId> {
     Some(open.selected_worktree()?.id.clone())
 }
 
+/// The repo and the worktree one id names, in whichever open session holds it.
+pub(super) fn pair(
+    state: &AppState,
+    id: &WorktreeId,
+) -> Option<(groove_types::Repo, groove_types::Worktree)> {
+    for open in state.session.open.iter() {
+        let Some(worktree) = open.worktrees.iter().find(|one| &one.id == id) else {
+            continue;
+        };
+        let repo = open.repos.iter().find(|repo| repo.id == worktree.repo)?;
+        return Some((repo.clone(), worktree.clone()));
+    }
+    None
+}
+
 pub fn loaded_for(state: &AppState) -> Option<&WorktreeId> {
     state.workspace.worktree.as_ref()
 }
