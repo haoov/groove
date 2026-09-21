@@ -5,7 +5,7 @@ use super::*;
 use crate::views::session::Scope;
 
 /// The sidebar on the whole worktree, with these paths walked.
-fn browsing(paths: &[&str]) -> (AppState, Ui) {
+pub(super) fn browsing(paths: &[&str]) -> (AppState, Ui) {
     let mut app = with_files(&[]);
     with_paths(&mut app, paths);
     let mut ui = on_diff();

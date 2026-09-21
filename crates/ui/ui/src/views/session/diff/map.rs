@@ -26,14 +26,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
 
 /// What the column stands for: the whole change, or the file the view shows.
 pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
-    match ui.session.view {
-        DiffView::Editor => app
-            .workspace
-            .opened
-            .as_ref()
-            .map_or(0, |open| open.new.lines()),
-        _ => app.workspace.changes.rows(),
-    }
+    super::row::count(app, ui.session.view)
 }
 
 /// Every changed file, one band under another.

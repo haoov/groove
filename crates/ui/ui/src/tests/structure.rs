@@ -182,3 +182,45 @@ fn no_two_grounds_a_row_can_take_share_a_value() {
         }
     }
 }
+
+/// How much brighter one colour is than another, by WCAG's own reckoning.
+fn contrast(one: groove_gfx::Color, two: groove_gfx::Color) -> f32 {
+    let light = |c: groove_gfx::Color| {
+        let part = |v: u8| {
+            let v = f32::from(v) / 255.0;
+            match v <= 0.04045 {
+                true => v / 12.92,
+                false => ((v + 0.055) / 1.055).powf(2.4),
+            }
+        };
+        0.2126 * part(c.r) + 0.7152 * part(c.g) + 0.0722 * part(c.b)
+    };
+    let (one, two) = (light(one), light(two));
+    (one.max(two) + 0.05) / (one.min(two) + 0.05)
+}
+
+/// The grounds a line of code is drawn on, which its text must stand out from.
+const UNDER_CODE: [&str; 5] = ["held", "hover", "band", "deep", "ground"];
+
+#[test]
+fn code_stays_readable_on_every_ground_it_is_drawn_on() {
+    for theme in [
+        groove_types::ThemeName::Latte,
+        groove_types::ThemeName::Frappe,
+        groove_types::ThemeName::Macchiato,
+        groove_types::ThemeName::Mocha,
+    ] {
+        let styles = crate::style::Styles::new(theme, crate::tokens::Tokens::new(1.0));
+        let text = styles.color(crate::style::Role::Text);
+        for (named, ground) in grounds(theme) {
+            if !UNDER_CODE.contains(&named) {
+                continue;
+            }
+            let ratio = contrast(text, ground);
+            assert!(
+                ratio >= 4.5,
+                "{theme:?} {named}: code stands at {ratio:.2} to 1 on it"
+            );
+        }
+    }
+}

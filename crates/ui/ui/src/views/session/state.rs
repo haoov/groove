@@ -60,6 +60,44 @@ pub struct SessionUi {
     pub scope: Scope,
     /// The explorer's own directories that stand open.
     pub opened: std::collections::BTreeSet<String>,
+    /// A path being named, where the tree asked for it.
+    pub naming: Option<Naming>,
+}
+
+/// A name being typed in the tree: what it is for, and where it stands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Naming {
+    pub asked: Asked,
+    /// The directory a new path goes in, or the path being renamed or copied.
+    pub at: String,
+    pub field: Field,
+}
+
+impl Naming {
+    /// A name asked for at this path, prefilled with what it starts from.
+    pub fn new(asked: Asked, at: &str, from: &str) -> Self {
+        let mut field = Field::default();
+        field.set(from);
+        Self {
+            asked,
+            at: at.to_string(),
+            field,
+        }
+    }
+
+    /// What the name says, with nothing around it.
+    pub fn named(&self) -> &str {
+        self.field.text().trim()
+    }
+}
+
+/// What a name typed in the tree is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Asked {
+    File,
+    Folder,
+    Rename,
+    Copy,
 }
 
 /// Which files the sidebar lists.

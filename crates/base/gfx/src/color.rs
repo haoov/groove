@@ -20,6 +20,19 @@ impl Color {
         Self { r, g, b, a }
     }
 
+    /// `t` of the way from this colour to `other`, opaque.
+    pub fn mix(self, other: Color, t: f32) -> Color {
+        let at = |a: u8, b: u8| {
+            let (a, b) = (f32::from(a), f32::from(b));
+            (a + (b - a) * t.clamp(0.0, 1.0)).round() as u8
+        };
+        Color::rgb(
+            at(self.r, other.r),
+            at(self.g, other.g),
+            at(self.b, other.b),
+        )
+    }
+
     /// `0xRRGGBB`.
     pub const fn hex(rgb: u32) -> Self {
         Self::rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)

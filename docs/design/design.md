@@ -141,24 +141,23 @@ pickers as buttons — the session's selector, which every tab and the manual se
 follow — with the selected worktree's MR and CI and a refresh button at its right. A
 title or a label too long for its line is cut with an ellipsis; the header never wraps.
 
-**Tabs.** `overview · diff · editor`.
+**Tabs.** `overview · file`.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the body as text. Close task when every worktree is merged or closed | folded |
-| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — path and text, both live; a path alone lists the changed files it names and then any other file of the worktree, so an unchanged file opens from here — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
-| editor | any file, on the same surface; a changed file keeps its marks and its views | file explorer, search, grep results |
+| file | the file on one code surface, in three modes — editor, inline, split — notes inline; the diff modes are the default when the session has changes | a search bar — path and text, both live; a path alone lists the changed files it names and then any other file of the worktree, so an unchanged file opens from here — then a heading that picks what it lists — the files that changed, or the whole worktree as a tree — with stage, unstage, discard and the path operations by right click, and the commit box under them; then two more tabs: commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
 
-**One code surface.** The diff and the editor are one surface in three views, which the
+**One code surface.** The diff and the editor are one surface in three modes, which the
 gutter holds together.
 
-| View | Shows | Gutter |
+| Mode | Shows | Gutter |
 |---|---|---|
-| file | the file as it is now | a mark on every line the change touched |
+| editor | the file as it is now | a mark on every line the change touched |
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 
-The new side is editable in every view. A caret lives in the document, never in a row, so
+The new side is editable in every mode. A caret lives in the document, never in a row, so
 it stays where the user left it while the rows move under it. A removed line belongs to the
 old document and takes no caret. **Where the caret is** is two rules, above its row and
 below it, across the surface — never a ground.

@@ -3,6 +3,7 @@ use groove_gfx::{Fonts, Size};
 use groove_types::{FileDiff, FileStatus};
 
 mod explorer;
+mod paths;
 mod search;
 
 use crate::hit::Target;

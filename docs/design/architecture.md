@@ -89,7 +89,7 @@ One directory per layer under `crates/`. What each holds:
 | `diff` | alignment, the whole change as one surface, the open file, word diff |
 | `grep` | text across a worktree, walked in parallel, reported in batches |
 | `annotations` | store, post to MR |
-| `editor` | file operations, the clipboard |
+| `editor` | the path operations under one worktree, and the clipboard |
 | `text` | rope, tree-sitter, transactions, semantic hook |
 | `terminal` | emulation over `exec::pty`; terminals per worktree |
 | `agent-launch` | flags, session uuid, core prompt, the agent's terminal |
@@ -204,8 +204,8 @@ lands with its first consumer and only as wide as that consumer needs.
    4. the board and tasks — `provider`, the three columns, the filter
    5. MR and forge — `forge` on both hosts, the header's MR and CI, the review column
       and its sessions
-   5b. files and the editor — the diff tab becomes `file` with an `editor` mode in place
-      of `file`, the explorer tree, the file operations
+   5b. files and the editor — the `file` tab with its three modes, the explorer tree,
+      the path operations
    6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`
    7. settings — `config`, `skills`, `watch`; the keymap gets its pass here
    8. modal editing — a normal mode over the selections the editor already keeps

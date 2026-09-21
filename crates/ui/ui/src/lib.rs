@@ -29,7 +29,7 @@ pub use render::{layout_commands, view};
 pub use style::Role;
 pub use tokens::Tokens;
 pub use views::board::BoardUi;
-pub use views::session::{Scope, SessionUi, Tab};
+pub use views::session::{Asked, Naming, Scope, SessionUi, Tab};
 pub use views::shared::rail::RailUi;
 
 /// What the window shows beside the rail.
@@ -123,6 +123,8 @@ pub enum Corner {
 pub enum Of {
     /// One file of the list.
     File(String),
+    /// One path of the explorer; `dir` while it is a directory.
+    Path { path: String, dir: bool },
     /// The worktree, from the commit box; `mr` while it has one to write.
     Worktree { mr: bool },
     /// The session, from the header's own actions.
@@ -133,6 +135,8 @@ pub enum Of {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Losing {
     File(String),
+    /// One path of the explorer, with everything under it.
+    Path(String),
     Everything,
 }
 

@@ -3,6 +3,7 @@
 mod agent;
 mod bar;
 mod filter;
+mod naming;
 mod panes;
 
 use groove_controllers::{AppState, Command, session, task, workspace};
@@ -16,6 +17,7 @@ pub use agent::encode;
 use agent::to_agent;
 use bar::{finding, in_bar, opened, typing};
 use filter::on_board;
+use naming::in_name;
 use panes::{in_file, in_rail, in_sidebar};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
@@ -31,6 +33,9 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
             ui.palette = None;
         }
         return outcome.commands;
+    }
+    if ui.session.naming.is_some() {
+        return in_name(key, mods, ui);
     }
     if ui.session.bar.typing.is_some() {
         return in_bar(key, mods, ui, app);

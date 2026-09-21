@@ -4,6 +4,7 @@ mod diff;
 mod editor;
 mod git;
 pub(crate) mod mr;
+mod paths;
 pub(crate) mod queue;
 mod search;
 mod write;
@@ -71,6 +72,8 @@ pub enum Command {
     ListPaths,
     /// `workspace.review_queue`: the MRs the forges ask this user to review.
     ReviewQueue,
+    /// `workspace.path`: one file or directory made, moved, copied or taken away.
+    Path(groove_workspace_service::PathOp),
     /// `workspace.create_mr`: the worktree's branch offered to its base.
     CreateMr,
     /// `workspace.update_mr`: its title and body written again from the box.
@@ -104,6 +107,7 @@ impl Command {
             Command::RefreshMr => "workspace.refresh_mr",
             Command::ListPaths => "workspace.list_paths",
             Command::ReviewQueue => "workspace.review_queue",
+            Command::Path(_) => "workspace.path",
             Command::CreateMr => "workspace.create_mr",
             Command::UpdateMr => "workspace.update_mr",
             Command::CloseMr => "workspace.close_mr",
@@ -140,6 +144,7 @@ pub fn dispatch(
         Command::RefreshMr => mr::refresh(state, services, spawner),
         Command::ListPaths => list_paths(state, spawner),
         Command::ReviewQueue => queue::read(state, spawner),
+        Command::Path(op) => paths::act(state, spawner, op),
         Command::CreateMr => write(state, services, spawner, Mr::Open),
         Command::UpdateMr => write(state, services, spawner, Mr::Edit),
         Command::CloseMr => write(state, services, spawner, Mr::Close),

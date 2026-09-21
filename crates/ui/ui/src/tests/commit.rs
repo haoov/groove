@@ -382,7 +382,7 @@ fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
         .iter()
         .position(|row| *row == "close mr")
         .expect("the row");
-    let (commands, asking) =
+    let (commands, asking, _) =
         crate::views::shared::actions::picked(&crate::Of::Worktree { mr: true }, at);
     assert!(asking.is_none(), "closing an mr asks nothing first");
     assert_eq!(

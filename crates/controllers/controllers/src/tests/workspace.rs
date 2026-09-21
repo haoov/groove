@@ -4,6 +4,7 @@ mod attention;
 mod diff;
 mod editor;
 mod git;
+mod paths;
 mod poll;
 mod queue;
 mod search;

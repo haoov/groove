@@ -67,7 +67,7 @@ pub(super) fn drawn(
 /// How many rows the view stands, all of it.
 pub(super) fn count(app: &AppState, view: DiffView) -> usize {
     match view {
-        DiffView::Editor => open(app).map_or(0, |file| file.new.lines()),
+        DiffView::Editor => open(app).map_or(0, |file| file.new.lines().max(1)),
         _ => app.workspace.changes.rows(),
     }
 }
@@ -170,7 +170,7 @@ pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<(Str
     match view {
         DiffView::Editor => {
             let file = open(app)?;
-            (row < file.new.lines()).then(|| (file.path.clone(), row))
+            (row < file.new.lines().max(1)).then(|| (file.path.clone(), row))
         }
         _ => match app.workspace.changes.at(row)? {
             At::Band(_) | At::Head(_) => None,

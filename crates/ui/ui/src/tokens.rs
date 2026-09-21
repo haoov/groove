@@ -40,6 +40,9 @@ pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
+/// How much of the accent stands in the band under a selection.
+pub const HELD: f32 = 0.25;
+
 /// Sizes in pixels, scaled to the window.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Tokens {

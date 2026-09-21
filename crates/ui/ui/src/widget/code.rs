@@ -47,6 +47,11 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
+    /// Whether the row carries gutters; a row that names a file or directory has none.
+    pub fn numbered(&self) -> bool {
+        !self.band && !self.head && !self.banner
+    }
+
     pub fn new(text: &'a str) -> Self {
         Self {
             gutters: &[],
@@ -197,11 +202,13 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
         for line in rows.lines {
             let at = Rect::new(rect.x, y, rect.w, height);
             draw(ctx, at, line, block);
+            if line.numbered() {
+                rule(ctx, at, block);
+            }
             drawn.push(at);
             y += height;
         }
     });
-    rule(ctx, rect, block);
     drawn
 }
 

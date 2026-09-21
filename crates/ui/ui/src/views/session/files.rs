@@ -2,7 +2,7 @@
 //! once and then a group per directory under it.
 
 mod bar;
-mod explorer;
+pub(crate) mod explorer;
 mod results;
 mod rows;
 mod tree;
@@ -47,7 +47,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     }
     let open = app.workspace.opened.as_ref().map(|file| &file.path);
     if browsing(ui) {
-        let held = explorer::rows(&app.workspace.paths, &files, &ui.session.opened);
+        let held = explorer::rows(&app.workspace.paths, &files, ui);
         return match held.is_empty() {
             true => says(ctx, body, empty(app)),
             false => explorer::draw(ctx, body, &held, open, ui),

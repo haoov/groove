@@ -110,9 +110,11 @@ impl Styles {
         }
     }
 
-    /// The band under what a caret holds, above every ground a row can take.
+    /// The band under what a caret holds: the accent a quarter into the ground.
     pub fn held(&self) -> Color {
-        self.palette.overlay1
+        self.palette
+            .base
+            .mix(self.palette.lavender, crate::tokens::HELD)
     }
 
     /// The rules above and below the row the caret is on. Brighter than a panel's

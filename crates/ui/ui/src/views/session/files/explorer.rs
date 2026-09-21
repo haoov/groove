@@ -11,6 +11,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
+use crate::views::session::Asked;
 use crate::widget::{box_in, elide, row};
 
 /// One row of the tree: a directory to open, or a file to read.
@@ -30,16 +31,41 @@ struct Node {
     files: BTreeSet<String>,
 }
 
-/// The rows the open directories leave, in reading order.
-pub(crate) fn rows<'a>(
-    paths: &[FileDiff],
-    changed: &[&'a FileDiff],
-    opened: &BTreeSet<String>,
-) -> Vec<Row<'a>> {
+/// The rows the open directories leave, and the row a new path is being named in.
+pub(crate) fn rows<'a>(paths: &[FileDiff], changed: &[&'a FileDiff], ui: &Ui) -> Vec<Row<'a>> {
     let tree = tree(paths);
     let mut out = Vec::new();
-    walk(&tree, "", 0, opened, changed, &mut out);
+    walk(&tree, "", 0, &ui.session.opened, changed, &mut out);
+    if let Some(naming) = ui
+        .session
+        .naming
+        .as_ref()
+        .filter(|one| matches!(one.asked, Asked::File | Asked::Folder))
+    {
+        let (at, depth) = under(&out, &naming.at);
+        out.insert(
+            at,
+            Row {
+                depth,
+                path: String::new(),
+                name: String::new(),
+                dir: naming.asked == Asked::Folder,
+                file: None,
+            },
+        );
+    }
     out
+}
+
+/// Where a new path's row goes: just inside the directory it belongs to.
+fn under(rows: &[Row<'_>], dir: &str) -> (usize, usize) {
+    if dir.is_empty() {
+        return (0, 0);
+    }
+    match rows.iter().position(|one| one.dir && one.path == dir) {
+        Some(at) => (at + 1, rows[at].depth + 1),
+        None => (0, 0),
+    }
 }
 
 /// Every directory of the worktree, with what stands directly in it.
@@ -124,11 +150,38 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, held: &[Row<'_>], open: Option<&St
 
 fn one_row(ctx: &mut Ctx, line: Rect, held: &Row<'_>, open: Option<&String>, ui: &Ui) {
     let indent = ctx.tokens.md + ctx.tokens.md * held.depth as f32;
+    if held.path.is_empty() || renaming(ui, held) {
+        return naming(ctx, line, indent, ui);
+    }
+    if ui.discarding == Some(crate::Losing::Path(held.path.clone())) {
+        return super::asking(ctx, line, "delete it?", ui);
+    }
     match (held.dir, held.file) {
         (true, _) => directory(ctx, line, held, indent, ui),
         (false, Some(file)) => entry(ctx, line, file, indent, open == Some(&file.path), ui),
         (false, None) => plain(ctx, line, held, indent, open, ui),
     }
+}
+
+/// Whether this row is the one whose name is being typed over.
+fn renaming(ui: &Ui, held: &Row<'_>) -> bool {
+    ui.session.naming.as_ref().is_some_and(|naming| {
+        matches!(naming.asked, Asked::Rename | Asked::Copy) && naming.at == held.path
+    })
+}
+
+/// The name being typed, in the row's own place.
+pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
+    let Some(naming) = ui.session.naming.as_ref() else {
+        return;
+    };
+    ctx.quad(line, ctx.styles.raised());
+    let style = ctx.styles.code(Role::Text);
+    let at = indent + ctx.tokens.small + ctx.tokens.xs;
+    let room = (line.w - at - ctx.tokens.md).max(0.0);
+    let held = Rect::new(line.x, line.y, room + at, line.h);
+    let text = naming.field.shown();
+    row(ctx, held, at, &text, style);
 }
 
 /// A directory: a twisty, then its own name.

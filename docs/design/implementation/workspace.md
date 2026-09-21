@@ -78,9 +78,17 @@ path resolved against the worktree root and refused when it escapes, and the cli
 which falls back to one of its own when there is no desktop. **Module `text`**: rope,
 tree-sitter, transactions, the semantic hook.
 
-The editor tab opens any file on the same surface, from a diff line or the explorer, and
-stays where it is on save. A save, a create, a rename or a delete reaches the diff and the
-explorer through `watch`, and the alignment follows.
+There is no editor tab: the `file` tab holds all three modes, and `editor` is the one that
+draws the file itself. It opens any file on that surface — from a diff line, the path term
+or the explorer — and stays where it is on save. A save, a create, a rename or a delete
+reaches the diff through `watch`, and drops the walk so the explorer reads the worktree
+again.
+
+**The sidebar lists one of two things**, picked by the heading: the files that changed, or
+the whole worktree as a tree whose open directories the ui remembers. A path typed in the
+bar flattens either one to its matches. One `workspace.path` command carries all four
+operations; the tree asks for a name in the row the name will stand in, and asks before it
+deletes, in that row's own place.
 
 **The rules of editing:**
 
@@ -106,7 +114,6 @@ session over the open file or the whole change is the ui's own state.
 | Still to build | Does |
 |---|---|
 | `workspace.get_open_file` · `workspace.list_files` · `workspace.read_file` | reads for the MCP tools |
-| `workspace.create_path` · `workspace.rename_path` · `workspace.copy_path` · `workspace.delete_path` | the file operations |
 
 ## Terminal
 

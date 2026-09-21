@@ -14,6 +14,16 @@ use crate::{Corner, Losing, Menu, Of, Ui};
 pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     ui.discarding = None;
     ui.menu = match hits.at(x, y) {
+        Some(Target::Dir(path)) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Path { path, dir: true },
+        }),
+        Some(Target::File(path)) if browsing(ui) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: Of::Path { path, dir: false },
+        }),
         Some(Target::File(path)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -39,6 +49,11 @@ pub(super) fn worktree_menu(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metri
     }
 }
 
+/// Whether the sidebar is browsing the worktree rather than listing its change.
+fn browsing(ui: &Ui) -> bool {
+    crate::views::session::files::browsing(ui)
+}
+
 /// Whether the selected worktree has a merge request to write.
 fn has_mr(app: &AppState) -> bool {
     app.workspace.delivery.mr.is_some()
@@ -49,6 +64,9 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
     let asked = ui.discarding.take();
     let command = match asked {
         Some(Losing::File(path)) => workspace::Command::Discard { path },
+        Some(Losing::Path(path)) => {
+            workspace::Command::Path(groove_controllers::workspace_service::PathOp::Delete { path })
+        }
         Some(Losing::Everything) => workspace::Command::DiscardAll,
         None => return Vec::new(),
     };
@@ -61,8 +79,9 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
-    let (commands, asking) = crate::views::shared::actions::picked(&menu.of, at);
+    let (commands, asking, naming) = crate::views::shared::actions::picked(&menu.of, at);
     ui.discarding = asking;
+    ui.session.naming = naming;
     commands
 }
 
