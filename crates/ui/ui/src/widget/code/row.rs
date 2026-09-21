@@ -19,6 +19,9 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if code.banner {
         return banner(ctx, line, code.text);
     }
+    if let Some(said) = code.said {
+        return note(ctx, line, code.text, said);
+    }
     if let Some(ground) = code.ground {
         ctx.quad(line, ground);
     }
@@ -113,6 +116,44 @@ fn caret(ctx: &mut Ctx, rect: Rect, text: &str, column: usize) {
     let at = rect.x + upto(ctx, text, column, &style);
     let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
     ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
+}
+
+/// One row of a note: its own ground, the author, then what they said.
+fn note(ctx: &mut Ctx, line: Rect, text: &str, said: super::Noted<'_>) {
+    ctx.quad(line, ctx.styles.deep());
+    let role = match said.resolved {
+        true => Role::Faint,
+        false => Role::Muted,
+    };
+    let size = ctx.tokens.small;
+    let mut at = line.x + ctx.tokens.md;
+    if said.opens {
+        let box_ = Rect::new(at, line.y + (line.h - size) / 2.0, size, size);
+        ctx.icon(box_, Mark::Note, 0, ctx.styles.color(role));
+    }
+    at += size + ctx.tokens.sm;
+    let author = ctx.styles.small(role);
+    let width = ctx.measure(said.author, &author);
+    row(
+        ctx,
+        Rect::new(at, line.y, width, line.h),
+        0.0,
+        said.author,
+        author,
+    );
+    at += width + ctx.tokens.sm;
+    let words = match said.resolved {
+        true => ctx.styles.body(Role::Faint),
+        false => ctx.styles.body(Role::Text),
+    };
+    let rest = Rect::new(
+        at,
+        line.y,
+        (line.right() - ctx.tokens.md - at).max(0.0),
+        line.h,
+    );
+    let text = crate::widget::elide(ctx, text, &words, rest.w);
+    row(ctx, rest, 0.0, &text, words);
 }
 
 /// A row across the width: its own ground, its text in the middle.

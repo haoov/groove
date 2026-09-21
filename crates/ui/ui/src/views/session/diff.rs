@@ -3,6 +3,7 @@
 mod finder;
 mod header;
 mod map;
+mod notes;
 mod pinned;
 mod row;
 mod scroll;

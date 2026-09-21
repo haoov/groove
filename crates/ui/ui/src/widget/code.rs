@@ -15,6 +15,14 @@ use crate::hit::Chars;
 use crate::style::Role;
 use crate::tokens::Tokens;
 
+/// What a note row carries: who said it, whether it opens the note, and its state.
+#[derive(Debug, Clone, Copy)]
+pub struct Noted<'a> {
+    pub author: &'a str,
+    pub opens: bool,
+    pub resolved: bool,
+}
+
 /// One row of code: what its gutters say, its text, and the colour over it.
 pub struct Line<'a> {
     pub gutters: &'a [&'a str],
@@ -44,12 +52,14 @@ pub struct Line<'a> {
     pub word: Option<Color>,
     /// The one of them it stands on, drawn as a selection is.
     pub standing: Option<(usize, usize)>,
+    /// One row of a note left on the line above it.
+    pub said: Option<Noted<'a>>,
 }
 
 impl<'a> Line<'a> {
     /// Whether the row carries gutters; a row that names a file or directory has none.
     pub fn numbered(&self) -> bool {
-        !self.band && !self.head && !self.banner
+        !self.band && !self.head && !self.banner && self.said.is_none()
     }
 
     pub fn new(text: &'a str) -> Self {
@@ -70,6 +80,15 @@ impl<'a> Line<'a> {
             words: &[],
             word: None,
             standing: None,
+            said: None,
+        }
+    }
+
+    /// One row of a note, under the line it was left on.
+    pub fn note(text: &'a str, said: Noted<'a>) -> Self {
+        Self {
+            said: Some(said),
+            ..Self::new(text)
         }
     }
 

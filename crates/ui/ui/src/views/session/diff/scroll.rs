@@ -18,20 +18,23 @@ pub(crate) fn scrolled(
 
 /// The row that holds the same line once the view changes.
 pub(crate) fn moved(app: &AppState, from: DiffView, to: DiffView, row: usize) -> usize {
+    let there = super::notes::Inline::of(app, to);
+    let row = super::notes::Inline::of(app, from).base(row);
     let Some(file) = app.workspace.opened.as_ref() else {
-        return row;
+        return there.shifted(row);
     };
     let Some(number) = number(file, from, row) else {
-        return row;
+        return there.shifted(row);
     };
-    match to {
+    let at = match to {
         DiffView::Editor => number as usize,
         _ => file
             .rows
             .iter()
             .position(|at| at.new.is_some_and(|line| line >= number))
             .unwrap_or(row),
-    }
+    };
+    there.shifted(at)
 }
 
 /// The new-side line the top of the view is on.

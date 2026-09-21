@@ -158,3 +158,28 @@ fn a_fold_outlives_the_worktree_being_read_again() {
     assert!(again.is_folded("src/a.rs"), "still shut");
     assert!(!again.is_folded("src/b.rs"), "a file it never shut");
 }
+
+#[test]
+fn a_line_says_which_row_of_the_change_it_stands_on() {
+    let change = Changes::new(vec![aligned("src/lib.rs", "one\ntwo\n", "one\nTWO\n")]);
+    let row = change.row_of("src/lib.rs", 1).expect("the line's row");
+    let At::Row(file, at) = change.at(row).expect("a row") else {
+        panic!("the row of a line is a row");
+    };
+    assert_eq!(file.path, "src/lib.rs");
+    assert_eq!(file.rows[at].new, Some(1));
+}
+
+#[test]
+fn a_folded_file_stands_its_lines_on_no_row() {
+    let mut change = Changes::new(vec![aligned("src/lib.rs", "one\ntwo\n", "one\nTWO\n")]);
+    change.fold("src/lib.rs");
+    assert_eq!(change.row_of("src/lib.rs", 1), None);
+}
+
+#[test]
+fn a_line_no_file_of_the_change_has_stands_on_no_row() {
+    let change = Changes::new(vec![aligned("src/lib.rs", "one\n", "two\n")]);
+    assert_eq!(change.row_of("other.rs", 0), None);
+    assert_eq!(change.row_of("src/lib.rs", 99), None);
+}

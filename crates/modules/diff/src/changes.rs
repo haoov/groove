@@ -164,6 +164,20 @@ impl Changes {
         }
     }
 
+    /// The row a file's new-side line stands on; a folded file shows none.
+    pub fn row_of(&self, path: &str, line: u32) -> Option<usize> {
+        let at = self.files.iter().position(|file| file.path == path)?;
+        if self.is_folded(path) {
+            return None;
+        }
+        let head = self.starts[at] + usize::from(self.bands[at]);
+        let row = self.files[at]
+            .rows
+            .iter()
+            .position(|row| row.new == Some(line))?;
+        Some(head + 1 + row)
+    }
+
     /// The row this file's own band or head sits on.
     pub fn head_of(&self, path: &str) -> Option<usize> {
         let at = self.files.iter().position(|file| file.path == path)?;

@@ -167,6 +167,9 @@ pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
 
 /// The file and line a row of the whole surface shows, on the new side.
 pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<(String, usize)> {
+    let super::notes::Slot::Code(row) = super::notes::Inline::of(app, view).slot(row) else {
+        return None;
+    };
     match view {
         DiffView::Editor => {
             let file = open(app)?;

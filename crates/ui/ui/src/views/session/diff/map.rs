@@ -5,6 +5,7 @@ use groove_controllers::workspace_service::Aligned;
 use groove_gfx::Rect;
 use groove_types::{DiffView, LineMark, RowKind};
 
+use super::notes::Inline;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -16,27 +17,36 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
     }
     ctx.quad(rect, ctx.styles.band());
     let per = rect.h / total as f32;
+    let inline = Inline::of(app, ui.session.view);
     match ui.session.view {
-        DiffView::Editor => whole(ctx, rect, per, app),
-        _ => change(ctx, rect, per, app),
+        DiffView::Editor => whole(ctx, rect, per, app, &inline),
+        _ => change(ctx, rect, per, app, &inline),
     }
     lens(ctx, rect, per, body, ui);
     ctx.hit(rect, Target::Map);
 }
 
-/// What the column stands for: the whole change, or the file the view shows.
+/// What the column stands for: the rows of the view, and the notes in them.
 pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
-    super::row::count(app, ui.session.view)
+    let view = ui.session.view;
+    Inline::of(app, view).total(super::row::count(app, view))
 }
 
 /// Every changed file, one band under another.
-fn change(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState) {
+fn change(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
     for (start, shown, file) in app.workspace.changes.placed() {
+        let run = run(inline, start, shown);
         match super::row::is_read(app, &file.path) {
-            true => read(ctx, rect, per, (start, shown)),
-            false => band(ctx, rect, per, (start, shown), file),
+            true => read(ctx, rect, per, run),
+            false => band(ctx, rect, per, run, file, inline, start),
         }
     }
+}
+
+/// Where a run of rows stands and how tall it is, with the notes inside it.
+fn run(inline: &Inline, start: usize, shown: usize) -> (usize, usize) {
+    let top = inline.shifted(start);
+    (top, inline.shifted(start + shown) - top)
 }
 
 /// A file already read: its own ground, and none of its marks.
@@ -48,7 +58,7 @@ fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
 }
 
 /// The open file alone: what the change did to each of its lines.
-fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState) {
+fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
     let Some(open) = app.workspace.opened.as_ref() else {
         return;
     };
@@ -61,21 +71,29 @@ fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState) {
         }
     }
     for (at, run, mark) in runs {
-        marked(ctx, rect, per, at, run, mark);
+        marked(ctx, rect, per, inline.shifted(at), run, mark);
     }
 }
 
 /// One file: its own ground, and a mark for every run its change touched.
-fn band(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize), file: &Aligned) {
-    let (start, shown) = at;
-    let top = rect.y + start as f32 * per;
-    let high = (shown as f32 * per).max(ctx.tokens.hairline);
-    ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.ground());
-    if shown == 0 {
+fn band(
+    ctx: &mut Ctx,
+    rect: Rect,
+    per: f32,
+    at: (usize, usize),
+    file: &Aligned,
+    inline: &Inline,
+    start: usize,
+) {
+    let (top, high) = at;
+    let y = rect.y + top as f32 * per;
+    let height = (high as f32 * per).max(ctx.tokens.hairline);
+    ctx.quad(Rect::new(rect.x, y, rect.w, height), ctx.styles.ground());
+    if high == 0 {
         return;
     }
     for (at, run, mark) in runs(file) {
-        marked(ctx, rect, per, start + 1 + at, run, mark);
+        marked(ctx, rect, per, inline.shifted(start + 1 + at), run, mark);
     }
 }
 
