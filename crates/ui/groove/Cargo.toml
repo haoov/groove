@@ -13,6 +13,7 @@ groove-ui = { path = "../ui" }
 groove-types = { path = "../../shared/types" }
 groove-config = { path = "../../modules/config" }
 groove-db = { path = "../../base/db" }
+groove-annotations = { path = "../../modules/annotations" }
 groove-forge = { path = "../../modules/forge" }
 groove-hooks = { path = "../../modules/hooks" }
 groove-ledger = { path = "../../modules/ledger" }

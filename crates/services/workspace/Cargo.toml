@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 groove-diff = { path = "../../modules/diff" }
+groove-annotations = { path = "../../modules/annotations" }
 groove-forge = { path = "../../modules/forge" }
 groove-grep = { path = "../../modules/grep" }
 groove-sessions = { path = "../../modules/sessions" }

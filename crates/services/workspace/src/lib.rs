@@ -14,12 +14,14 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use groove_types::{
-    DiffMode, DiffView, FileDiff, MrFacts, Result, ReviewMr, WorktreeId, WorktreeStatus,
+    Annotation, DiffMode, DiffView, FileDiff, MrFacts, Note, Result, ReviewMr, WorktreeId,
+    WorktreeStatus,
 };
 use groove_watch::{QUIET, Watch};
 
 mod delivery;
 mod git;
+mod notes;
 mod propose;
 mod read;
 mod service;
@@ -29,6 +31,8 @@ mod tests;
 
 pub use delivery::{Delivery, Polling};
 pub use git::{commit, discard, pull, push, stage, unstage};
+pub use groove_annotations::New as NewNote;
+pub use notes::merged;
 pub use propose::{Text, text_of};
 pub use read::{
     FOUND_MAX, PATHS_MAX, changes, derived, grep, opened, painted, paths, reopened, summary,
@@ -72,6 +76,10 @@ pub struct State {
     pub facts: BTreeMap<WorktreeId, MrFacts>,
     /// The board's review column: what the forges ask this user to look at.
     pub reviews: Vec<ReviewMr>,
+    /// The notes the selected session left, as the database holds them.
+    pub own: Vec<Annotation>,
+    /// Those notes and the selected MR's threads, as one list.
+    pub notes: Vec<Note>,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,
@@ -81,6 +89,17 @@ pub struct State {
 impl State {
     pub fn holds(&self, worktree: &WorktreeId) -> bool {
         self.worktree.as_ref() == Some(worktree)
+    }
+
+    /// The notes and the threads, as one list, from the two halves it holds.
+    pub fn remerge(&mut self) {
+        let threads = self
+            .delivery
+            .read
+            .as_ref()
+            .map(|read| read.threads.as_slice())
+            .unwrap_or_default();
+        self.notes = notes::merged(&self.own, threads);
     }
 
     /// The documents it holds are not the ones it held.
@@ -145,6 +164,8 @@ impl State {
         self.paths.clear();
         self.walking = false;
         self.facts.clear();
+        self.own.clear();
+        self.notes.clear();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();

@@ -183,6 +183,7 @@ pub(super) fn took(state: &mut AppState, worktree: &WorktreeId, delivered: Deliv
         .insert(worktree.clone(), delivered.facts());
     if state.workspace.holds(worktree) {
         state.workspace.delivery.taken(delivered);
+        state.workspace.remerge();
     }
     crate::task::attention::reread(state, Timestamp::now());
 }

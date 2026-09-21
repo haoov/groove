@@ -4,6 +4,7 @@ mod diff;
 mod editor;
 mod git;
 pub(crate) mod mr;
+pub(crate) mod notes;
 mod paths;
 pub(crate) mod queue;
 mod search;
@@ -22,6 +23,7 @@ use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
 pub use mr::{known, poll, polls, refresh};
+pub use notes::Act as NoteAct;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
@@ -80,6 +82,10 @@ pub enum Command {
     UpdateMr,
     /// `workspace.close_mr`: closed, with nothing merged.
     CloseMr,
+    /// `workspace.get_notes`: this session's notes and the MR's threads.
+    GetNotes,
+    /// One note of this session made, written again, resolved or taken away.
+    Note(NoteAct),
 }
 
 impl Command {
@@ -111,6 +117,8 @@ impl Command {
             Command::CreateMr => "workspace.create_mr",
             Command::UpdateMr => "workspace.update_mr",
             Command::CloseMr => "workspace.close_mr",
+            Command::GetNotes => "workspace.get_notes",
+            Command::Note(act) => act.id(),
         }
     }
 }
@@ -148,6 +156,8 @@ pub fn dispatch(
         Command::CreateMr => write(state, services, spawner, Mr::Open),
         Command::UpdateMr => write(state, services, spawner, Mr::Edit),
         Command::CloseMr => write(state, services, spawner, Mr::Close),
+        Command::GetNotes => notes::list(state, services, spawner),
+        Command::Note(act) => notes::write(state, services, spawner, act),
     }
 }
 

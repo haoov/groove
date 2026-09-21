@@ -1163,6 +1163,7 @@ dependencies = [
 name = "groove"
 version = "0.1.0"
 dependencies = [
+ "groove-annotations",
  "groove-config",
  "groove-controllers",
  "groove-db",
@@ -1497,6 +1498,7 @@ dependencies = [
 name = "groove-workspace-service"
 version = "0.1.0"
 dependencies = [
+ "groove-annotations",
  "groove-diff",
  "groove-editor",
  "groove-forge",

@@ -1,8 +1,10 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
+use groove_annotations::{New, Store as Notes};
 use groove_forge::{Proposed, Remote, Snapshot, Store};
 use groove_types::{
-    CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result, ReviewMr, Worktree, WorktreeId,
+    Annotation, AnnotationId, CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result,
+    ReviewMr, SessionId, Timestamp, Worktree, WorktreeId,
 };
 
 /// One MR as the forge answered and the database now holds it.
@@ -64,21 +66,46 @@ impl Delivered {
 #[derive(Clone)]
 pub struct Service {
     mrs: Store,
+    notes: Notes,
 }
 
 impl Service {
-    pub fn new(mrs: Store) -> Self {
-        Self { mrs }
+    pub fn new(mrs: Store, notes: Notes) -> Self {
+        Self { mrs, notes }
     }
 
     /// On a private in-memory database, for tests of the service itself.
     pub async fn in_memory() -> Result<Self> {
-        Ok(Self::new(Store::in_memory().await?))
+        let mrs = Store::in_memory().await?;
+        let notes = Notes::new(mrs.db().clone());
+        Ok(Self::new(mrs, notes))
     }
 
     /// On the database the sessions live in, where the worktrees an MR hangs off are.
     pub fn beside(sessions: &groove_sessions::Store) -> Self {
-        Self::new(Store::new(sessions.db().clone()))
+        let db = sessions.db().clone();
+        Self::new(Store::new(db.clone()), Notes::new(db))
+    }
+
+    /// The notes this session left, whichever file they stand on.
+    pub async fn notes(&self, session: &SessionId) -> Result<Vec<Annotation>> {
+        self.notes.list(session).await
+    }
+
+    pub async fn create_note(&self, new: New, now: Timestamp) -> Result<Annotation> {
+        self.notes.create(new, now).await
+    }
+
+    pub async fn update_note(&self, id: &AnnotationId, content: &str) -> Result<Annotation> {
+        self.notes.update(id, content).await
+    }
+
+    pub async fn resolve_note(&self, id: &AnnotationId) -> Result<Annotation> {
+        self.notes.resolve(id).await
+    }
+
+    pub async fn delete_note(&self, id: &AnnotationId) -> Result<()> {
+        self.notes.delete(id).await
     }
 
     /// Every open MR the database holds, whichever worktree it belongs to.

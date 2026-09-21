@@ -13,6 +13,7 @@ mod ids;
 mod mr;
 mod naming;
 mod narrowing;
+mod note;
 mod panes;
 mod repo;
 mod session;
@@ -49,6 +50,7 @@ pub use mr::{
 };
 pub use naming::names_session;
 pub use narrowing::{narrows, score};
+pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use session::{Session, SessionKind, SessionState};
