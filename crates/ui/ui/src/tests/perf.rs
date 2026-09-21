@@ -61,8 +61,8 @@ fn time_what_tabs_cost() {
         for tabs in [false, true] {
             let app = tabbed(lines, tabs);
             let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
-            ui.session.view = DiffView::File;
+            ui.session.tab = Tab::File;
+            ui.session.view = DiffView::Editor;
             let _ = view(&app, &ui, window(), &mut fonts);
             let runs = 50;
             let started = Instant::now();
@@ -85,9 +85,9 @@ fn time_the_frame() {
     let mut fonts = Fonts::embedded();
     for lines in [200, 2000, 20000] {
         let app = big(lines);
-        for view_kind in [DiffView::File, DiffView::Inline, DiffView::Split] {
+        for view_kind in [DiffView::Editor, DiffView::Inline, DiffView::Split] {
             let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
+            ui.session.tab = Tab::File;
             ui.session.view = view_kind;
             let _ = view(&app, &ui, window(), &mut fonts);
             let started = Instant::now();
@@ -110,9 +110,9 @@ fn time_the_draw() {
     let mut renderer = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
     for lines in [300, 3000] {
         let app = big(lines);
-        for view_kind in [DiffView::File, DiffView::Inline] {
+        for view_kind in [DiffView::Editor, DiffView::Inline] {
             let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
+            ui.session.tab = Tab::File;
             ui.session.view = view_kind;
             for _ in 0..3 {
                 let (frame, _) = view(&app, &ui, window(), renderer.fonts());
@@ -217,7 +217,7 @@ fn time_a_frame_over_several_files() {
         for kind in [DiffView::Inline, DiffView::Split] {
             let mut app = several(files);
             let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
+            ui.session.tab = Tab::File;
             ui.session.view = kind;
             ui.focus = crate::Focus::Workspace;
             let (frame, _) = view(&app, &ui, window(), renderer.fonts());

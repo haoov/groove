@@ -50,12 +50,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 
 /// Whether the file view has a file to draw, whatever the change holds.
 fn as_a_file(app: &AppState, ui: &Ui) -> bool {
-    ui.session.view == DiffView::File && app.workspace.opened.is_some()
+    ui.session.view == DiffView::Editor && app.workspace.opened.is_some()
 }
 
 /// What the file view has to say instead of rows: nothing open, or too long to show.
 fn whole_file(app: &AppState, ui: &Ui) -> Option<bool> {
-    if ui.session.view != DiffView::File {
+    if ui.session.view != DiffView::Editor {
         return None;
     }
     match app.workspace.opened.as_ref() {
@@ -69,7 +69,7 @@ fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
     if let Some(open) = app.workspace.opened.as_ref() {
         return open.path.clone();
     }
-    if ui.session.view == DiffView::File {
+    if ui.session.view == DiffView::Editor {
         return String::new();
     }
     let top = first(ctx.tokens.line, ui.session.diff);

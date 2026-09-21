@@ -3,7 +3,7 @@
 pub mod agent_pane;
 pub mod commit;
 pub mod diff;
-pub mod files;
+pub(crate) mod files;
 pub mod find;
 pub mod header;
 pub mod overview;
@@ -11,7 +11,7 @@ mod state;
 pub mod worktree_row;
 
 pub(crate) use files::changed;
-pub use state::{Bar, SessionUi, Tab, Term};
+pub use state::{Bar, Scope, SessionUi, Tab, Term};
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
@@ -60,7 +60,7 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             );
             overview::draw(ctx, app, ui, inset)
         }
-        Tab::Diff => diff::draw(ctx, app, ui, body),
+        Tab::File => diff::draw(ctx, app, ui, body),
     }
     if ui.session.sidebar() {
         files::draw(ctx, app, ui);

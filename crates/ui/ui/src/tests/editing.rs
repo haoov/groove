@@ -23,7 +23,7 @@ const CTRL: Modifiers = Modifiers {
 
 fn editing() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     ui.focus = Focus::Workspace;
     ui
 }

@@ -47,7 +47,7 @@ fn with_files() -> AppState {
 
 fn on_diff() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     ui
 }
 
@@ -97,7 +97,7 @@ fn view_of(app: &AppState, ui: &Ui) -> (groove_gfx::Frame, crate::Hits) {
 /// The marks the file view drew, by colour.
 fn marks(app: &AppState) -> Vec<LineMark> {
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (frame, _) = view_of(app, &ui);
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let width = Tokens::new(1.0).hairline * 2.0;

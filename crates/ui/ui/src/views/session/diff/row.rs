@@ -59,7 +59,7 @@ pub(super) fn drawn(
     window: Range<usize>,
 ) -> Vec<Drawn> {
     match view {
-        DiffView::File => whole(app, ui, window),
+        DiffView::Editor => whole(app, ui, window),
         _ => streamed(app, ui, view, side, window),
     }
 }
@@ -67,7 +67,7 @@ pub(super) fn drawn(
 /// How many rows the view stands, all of it.
 pub(super) fn count(app: &AppState, view: DiffView) -> usize {
     match view {
-        DiffView::File => open(app).map_or(0, |file| file.new.lines()),
+        DiffView::Editor => open(app).map_or(0, |file| file.new.lines()),
         _ => app.workspace.changes.rows(),
     }
 }
@@ -168,7 +168,7 @@ pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
 /// The file and line a row of the whole surface shows, on the new side.
 pub(crate) fn line_at(app: &AppState, view: DiffView, row: usize) -> Option<(String, usize)> {
     match view {
-        DiffView::File => {
+        DiffView::Editor => {
             let file = open(app)?;
             (row < file.new.lines()).then(|| (file.path.clone(), row))
         }

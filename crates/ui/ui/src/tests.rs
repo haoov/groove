@@ -12,6 +12,7 @@ mod mouse;
 mod overview;
 mod painted;
 mod palette;
+mod pasting;
 mod perf;
 mod rail;
 mod staging;
@@ -103,7 +104,7 @@ fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
 /// The sidebar with the keyboard, for the bar's own clicks.
 fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.session.tab = crate::views::session::Tab::File;
     ui.focus = crate::Focus::Sidebar;
     ui
 }

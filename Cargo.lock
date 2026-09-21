@@ -1175,6 +1175,8 @@ dependencies = [
  "groove-types",
  "groove-ui",
  "groove-worktree",
+ "serde_json",
+ "tempfile",
  "tokio",
  "winit",
 ]

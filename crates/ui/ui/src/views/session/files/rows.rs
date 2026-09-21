@@ -44,8 +44,11 @@ pub(super) fn draw(
             }
             for file in &group.files {
                 let line = Rect::new(body.x, y, body.w, height);
-                let at_root = group.dir.is_empty();
-                entry(ctx, line, file, at_root, open == Some(&file.path), ui);
+                let indent = match group.dir.is_empty() {
+                    true => ctx.tokens.md,
+                    false => ctx.tokens.md + ctx.tokens.md,
+                };
+                entry(ctx, line, file, indent, open == Some(&file.path), ui);
                 y += height;
             }
         }
@@ -70,7 +73,7 @@ fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
     row(ctx, line, ctx.tokens.md, &text, style);
 }
 
-fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool, open: bool, ui: &Ui) {
+pub(super) fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, indent: f32, open: bool, ui: &Ui) {
     if ui.discarding == Some(Losing::File(file.path.clone())) {
         return asking(ctx, line, "discard changes?", ui);
     }
@@ -84,10 +87,6 @@ fn entry(ctx: &mut Ctx, line: Rect, file: &FileDiff, at_root: bool, open: bool, 
         ruled(ctx, line, here);
     }
     let letter = ctx.styles.small(Role::Ghost);
-    let indent = match at_root {
-        true => ctx.tokens.md,
-        false => ctx.tokens.md + ctx.tokens.md,
-    };
     let mark = file.status.letter().to_string();
     row(ctx, line, indent, &mark, letter);
 

@@ -12,8 +12,8 @@ pub enum DiffMode {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DiffView {
-    /// The file as it is now, marked where the change touched it.
-    File,
+    /// The file as it is now, marked where the change touched it, and edited here.
+    Editor,
     /// Both sides in one column.
     #[default]
     Inline,
@@ -22,11 +22,11 @@ pub enum DiffView {
 }
 
 impl DiffView {
-    pub const ALL: [DiffView; 3] = [DiffView::File, DiffView::Inline, DiffView::Split];
+    pub const ALL: [DiffView; 3] = [DiffView::Editor, DiffView::Inline, DiffView::Split];
 
     pub fn label(self) -> &'static str {
         match self {
-            DiffView::File => "file",
+            DiffView::Editor => "editor",
             DiffView::Inline => "inline",
             DiffView::Split => "split",
         }

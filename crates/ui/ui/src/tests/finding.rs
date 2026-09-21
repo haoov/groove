@@ -36,7 +36,7 @@ fn app() -> AppState {
 
 fn on_code() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     ui.focus = Focus::Workspace;
     ui
 }
@@ -157,7 +157,7 @@ fn the_file_view_searches_only_the_file_it_shows() {
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
     let mut ui = on_code();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
     let find = ui.session.find.as_ref().expect("the bar");
@@ -178,7 +178,7 @@ fn the_surface_stands_on_the_match_with_rows_above_it() {
     let after = before.replace("value_40 = 40", "value_40 = 41");
     shows(&mut app, "src/lib.rs", &before, &after);
     let mut ui = on_code();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("value_40", &mut ui, &app);
     let line = Tokens::new(1.0).line;
@@ -248,7 +248,7 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
     shows(&mut app, FILES[0].0, FILES[0].1, FILES[0].2);
     changed_files(&mut app, &FILES);
     let mut ui = on_code();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let carets = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));

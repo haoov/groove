@@ -22,7 +22,7 @@ fn a_file_in_the_sidebar_opens_on_a_click() {
 fn the_wheel_over_the_workspace_scrolls_the_file() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     let wheel = |pixels: f32, ui: &mut Ui| {
@@ -219,7 +219,7 @@ fn changing_the_view_keeps_the_same_line_in_view() {
     let height = Tokens::new(1.0).line;
     ui.session.diff = height * 6.0;
     let (_, hits) = view_of(&app, &ui);
-    let file = hits.rect_of(&Target::View(DiffView::File)).expect("file");
+    let file = hits.rect_of(&Target::View(DiffView::Editor)).expect("file");
     assert!(click(file, &mut ui, &app, &hits).is_empty());
     assert_eq!(
         ui.session.diff,
@@ -240,7 +240,7 @@ fn changing_the_view_keeps_the_same_line_in_view() {
 fn a_wheel_notch_over_the_file_moves_one_code_line() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     handle(

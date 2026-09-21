@@ -49,7 +49,7 @@ pub(super) fn scroll(
             let far = hits.extent(Scroller::Overview);
             ui.session.overview = moved(ui.session.overview, pixels(tokens.row), far);
         }
-        Tab::Diff => {
+        Tab::File => {
             let far = hits.extent(Scroller::Code);
             ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
         }

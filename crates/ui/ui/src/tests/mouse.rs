@@ -206,7 +206,7 @@ fn the_pointer_resizes_over_a_boundary_and_stays_so_while_dragging() {
 fn the_sidebar_edge_drags_only_where_the_sidebar_stands() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = crate::views::session::Tab::Diff;
+    ui.session.tab = crate::views::session::Tab::File;
     let hits = regions(&app, &ui);
     let edge = hits
         .rect_of(&Target::Split(Edge::Sidebar))
@@ -255,7 +255,7 @@ fn wide(split: Split) -> Layout {
 fn the_commit_box_is_dragged_taller_and_the_list_keeps_its_room() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let band = hits
         .rect_of(&Target::Split(Edge::Commit))

@@ -40,7 +40,7 @@ fn file(lines: usize) -> AppState {
 /// How many text runs a frame of that file draws.
 fn runs(app: &AppState, view_kind: DiffView, window: Metrics) -> usize {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     ui.session.view = view_kind;
     let (frame, _) = view(app, &ui, window, &mut Fonts::embedded());
     frame.layers().iter().map(|layer| layer.texts.len()).sum()
@@ -65,8 +65,8 @@ fn a_frame_draws_the_window_not_the_file() {
 #[test]
 fn a_taller_window_draws_more_rows() {
     let app = file(20_000);
-    let short = runs(&app, DiffView::File, metrics(1280, 400, 1.0));
-    let tall = runs(&app, DiffView::File, window());
+    let short = runs(&app, DiffView::Editor, metrics(1280, 400, 1.0));
+    let tall = runs(&app, DiffView::Editor, window());
     assert!(
         tall > short,
         "800px draws more rows than 400px: {tall} against {short}"

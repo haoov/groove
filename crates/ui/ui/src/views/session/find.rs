@@ -88,7 +88,7 @@ pub fn found(app: &AppState, view: DiffView, query: &str) -> Vec<Hit> {
         return Vec::new();
     }
     match view {
-        DiffView::File => in_file(app, query),
+        DiffView::Editor => in_file(app, query),
         _ => in_change(app, query),
     }
 }

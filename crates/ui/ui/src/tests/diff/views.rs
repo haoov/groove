@@ -16,7 +16,7 @@ fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
         "one line went and one came in its place"
     );
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (frame, _) = view_of(&app, &ui);
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let grounds = frame.layers()[0]
@@ -50,7 +50,7 @@ fn a_line_added_and_a_line_removed_are_marked_apart() {
 
 #[test]
 fn the_file_view_shows_what_is_there_now_and_nothing_that_went() {
-    let drawn = in_view(&opened(), DiffView::File);
+    let drawn = in_view(&opened(), DiffView::Editor);
     assert!(drawn.iter().any(|t| t == "TWO"), "the new line: {drawn:?}");
     assert!(!drawn.iter().any(|t| t == "two"), "not the old one");
     let numbers: Vec<&String> = drawn.iter().filter(|t| t.parse::<u32>().is_ok()).collect();
@@ -78,7 +78,7 @@ fn the_file_view_draws_the_whole_file_not_the_alignment() {
         inline.iter().any(|t| t.starts_with('\u{2026}')),
         "the diff elides the head: {inline:?}"
     );
-    let file = in_view(&long(), DiffView::File);
+    let file = in_view(&long(), DiffView::Editor);
     assert!(
         !file.iter().any(|t| t.starts_with('\u{2026}')),
         "the file view elides nothing"
@@ -99,7 +99,7 @@ fn tabbed() -> AppState {
 
 #[test]
 fn a_tab_is_drawn_run_out_to_its_stop() {
-    let drawn = in_view(&tabbed(), DiffView::File);
+    let drawn = in_view(&tabbed(), DiffView::Editor);
     let joined = drawn.join("");
     assert!(
         joined.contains("    return"),
@@ -115,7 +115,7 @@ fn a_tab_is_drawn_run_out_to_its_stop() {
 fn a_click_past_a_tab_lands_on_the_character_it_points_at() {
     let app = tabbed();
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let chars = hits.chars();

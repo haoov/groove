@@ -44,6 +44,23 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 
 /// The commands a new window size implies: every agent's grid to the pane's grid.
 pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
+    let mut out = walks(app, ui);
+    out.extend(fitted(app, ui, metrics));
+    out
+}
+
+/// The walk the explorer needs before it can draw a tree.
+fn walks(app: &AppState, ui: &Ui) -> Vec<Command> {
+    match crate::views::session::files::needs_walk(app, ui) {
+        true => vec![Command::Workspace(
+            groove_controllers::workspace::Command::ListPaths,
+        )],
+        false => Vec::new(),
+    }
+}
+
+/// Every agent's grid to the pane it stands in.
+fn fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
     let tokens = metrics.tokens();
     let layout = Layout::of(metrics, ui);
     let (cols, rows) = layout.agent_grid(&tokens, metrics.cell);

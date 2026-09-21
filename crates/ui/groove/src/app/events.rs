@@ -87,7 +87,10 @@ impl ApplicationHandler<Message> for App {
                 is_synthetic: true, ..
             } => {}
             WindowEvent::KeyboardInput { event, .. } => {
-                if let Some(input) = input_of(&event, self.modifiers) {
+                if let Some(input) = self
+                    .pasting(&event)
+                    .or_else(|| input_of(&event, self.modifiers))
+                {
                     self.input(input);
                 }
             }
@@ -111,6 +114,21 @@ impl ApplicationHandler<Message> for App {
 }
 
 impl App {
+    /// The chord that pastes, with what the clipboard holds in it.
+    fn pasting(&self, event: &winit::event::KeyEvent) -> Option<Input> {
+        let chord = self.modifiers.control_key()
+            && matches!(
+                event.logical_key.to_text(),
+                Some("v") | Some("V") | Some("\u{16}")
+            );
+        let inserted = self.modifiers.shift_key()
+            && event.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Insert);
+        if event.state != ElementState::Pressed || !(chord || inserted) {
+            return None;
+        }
+        Some(Input::Paste(self.services.clipboard.read()?))
+    }
+
     /// The pointer moved: what is under it, and the drag or the selection it carries.
     fn moved_to(&mut self, at: (f32, f32)) {
         self.cursor = at;

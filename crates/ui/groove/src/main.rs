@@ -4,6 +4,9 @@
 mod app;
 mod keys;
 
+#[cfg(test)]
+mod tests;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 

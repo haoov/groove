@@ -3,6 +3,7 @@
 mod board;
 mod drag;
 mod menu;
+mod sidebar;
 mod surface;
 
 pub(super) use menu::asked;
@@ -14,10 +15,11 @@ pub(super) use self::board::dropped;
 use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
+use self::sidebar::{finding, narrowing, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
-use crate::views::session::{Tab, Term};
+use crate::views::session::Tab;
 use crate::{Focus, Ui};
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
@@ -135,6 +137,8 @@ fn acted(
         Some(Target::LogHours(id)) => logging(id),
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
+        Some(Target::Scope(scope)) => scoped(ui, scope),
+        Some(Target::Dir(path)) => twisty(ui, path),
         Some(Target::Review(project, iid)) => {
             vec![Command::Session(session::Command::OpenReview {
                 project,
@@ -208,22 +212,6 @@ fn selecting(
 ) -> Vec<Command> {
     ui.selecting = true;
     landed(ui, app, hits, metrics, point)
-}
-
-/// The keyboard into one term of the sidebar's bar.
-fn narrowing(ui: &mut Ui, term: Term) -> Vec<Command> {
-    ui.session.composing = false;
-    ui.session.bar.focus(term);
-    Vec::new()
-}
-
-/// The keyboard back into the find bar, at the end of what it holds.
-fn finding(ui: &mut Ui) -> Vec<Command> {
-    if let Some(find) = ui.session.find.as_mut() {
-        find.typing = true;
-        find.query.end();
-    }
-    Vec::new()
 }
 
 /// One file's found lines hidden under their own row, or shown again.

@@ -120,7 +120,7 @@ fn marks(ctx: &mut Ctx, drawn: &[Rect], rows: &[Drawn]) {
 /// one width over the whole change.
 pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
     let digits = match view {
-        DiffView::File => match app.workspace.opened.as_ref() {
+        DiffView::Editor => match app.workspace.opened.as_ref() {
             Some(file) => file.new.lines().to_string().len(),
             None => 1,
         },

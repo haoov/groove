@@ -17,7 +17,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
     ctx.quad(rect, ctx.styles.band());
     let per = rect.h / total as f32;
     match ui.session.view {
-        DiffView::File => whole(ctx, rect, per, app),
+        DiffView::Editor => whole(ctx, rect, per, app),
         _ => change(ctx, rect, per, app),
     }
     lens(ctx, rect, per, body, ui);
@@ -27,7 +27,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
 /// What the column stands for: the whole change, or the file the view shows.
 pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
     match ui.session.view {
-        DiffView::File => app
+        DiffView::Editor => app
             .workspace
             .opened
             .as_ref()

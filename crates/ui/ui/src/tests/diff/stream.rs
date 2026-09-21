@@ -137,7 +137,7 @@ fn nested() -> AppState {
 fn the_scopes_above_the_first_row_stand_over_it() {
     let app = nested();
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     ui.session.diff = Tokens::new(1.0).line * 20.0;
     let band = band(&app, &ui);
     for scope in ["mod one {", "impl Two {", "fn three() {"] {
@@ -152,7 +152,7 @@ fn the_scopes_above_the_first_row_stand_over_it() {
 fn a_scope_already_on_screen_does_not_stand_over_it_as_well() {
     let app = nested();
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     assert_eq!(band(&app, &ui), "", "the scopes are in the rows themselves");
 }
 
@@ -216,7 +216,7 @@ fn a_press_on_the_map_holds_the_rows_it_points_at() {
 fn the_file_view_makes_the_map_the_file_s_own_scrollbar() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let (frame, hits) = view_of(&app, &ui);
     let column = hits.rect_of(&Target::Map).expect("the map is drawn");
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));

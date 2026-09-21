@@ -25,7 +25,7 @@ pub(crate) fn moved(app: &AppState, from: DiffView, to: DiffView, row: usize) ->
         return row;
     };
     match to {
-        DiffView::File => number as usize,
+        DiffView::Editor => number as usize,
         _ => file
             .rows
             .iter()
@@ -37,7 +37,7 @@ pub(crate) fn moved(app: &AppState, from: DiffView, to: DiffView, row: usize) ->
 /// The new-side line the top of the view is on.
 fn number(file: &Opened, view: DiffView, at: usize) -> Option<u32> {
     match view {
-        DiffView::File => Some(at as u32),
+        DiffView::Editor => Some(at as u32),
         _ => file.rows.get(at..)?.iter().find_map(|row| row.new),
     }
 }

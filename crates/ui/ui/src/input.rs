@@ -6,7 +6,7 @@ mod keys;
 mod pointer;
 mod scroll;
 
-use groove_controllers::{AppState, Command};
+use groove_controllers::{AppState, Command, workspace};
 
 use crate::Ui;
 use crate::ctx::Metrics;
@@ -40,7 +40,7 @@ pub struct Modifiers {
     pub alt: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Input {
     Key {
         key: Key,
@@ -57,6 +57,8 @@ pub enum Input {
         y: f32,
     },
     Release,
+    /// What the clipboard holds, for whatever has the keyboard.
+    Paste(String),
     /// The right button went down here.
     Menu {
         x: f32,
@@ -95,6 +97,38 @@ impl Delta {
     }
 }
 
+/// The clipboard into whatever holds the keyboard: a field here, a buffer by command.
+fn pasted(text: &str, ui: &mut Ui) -> Vec<Command> {
+    if text.trim().is_empty() {
+        return Vec::new();
+    }
+    if let Some(palette) = ui.palette.as_mut() {
+        palette
+            .query
+            .push_str(&crate::widget::Field::one_line(text));
+        palette.selected = 0;
+        return Vec::new();
+    }
+    if let Some(term) = ui.session.bar.typing {
+        ui.session.bar.of(term).paste(text);
+        return Vec::new();
+    }
+    if let Some(find) = ui.session.find.as_mut().filter(|find| find.typing) {
+        find.query.paste(text);
+        return Vec::new();
+    }
+    if ui.board.typing {
+        ui.board.filter.paste(text);
+        ui.board.offer = 0;
+        return Vec::new();
+    }
+    let edit = groove_types::Edit::Insert(text.to_string());
+    match ui.session.composing {
+        true => vec![Command::Workspace(workspace::Command::Message(edit))],
+        false => vec![Command::Workspace(workspace::Command::Paste)],
+    }
+}
+
 /// Mutates the ui's own state on the spot; returns the commands a domain action needs.
 pub fn handle(
     input: Input,
@@ -111,6 +145,7 @@ pub fn handle(
             Vec::new()
         }
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
+        Input::Paste(text) => pasted(&text, ui),
         Input::Release => {
             ui.drag = None;
             ui.selecting = false;

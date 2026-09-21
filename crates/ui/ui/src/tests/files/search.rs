@@ -121,7 +121,7 @@ fn the_board_holds_no_file_list_so_the_chord_takes_nothing() {
 }
 
 /// The worktree's own files, as the walk leaves them in the slice.
-fn with_paths(app: &mut AppState, paths: &[&str]) {
+pub(super) fn with_paths(app: &mut AppState, paths: &[&str]) {
     app.workspace.paths = paths
         .iter()
         .map(|path| FileDiff {
@@ -233,7 +233,7 @@ fn a_file_with_no_change_shows_its_own_lines() {
         "one\ntwo\n",
     ));
     let mut ui = on_diff();
-    ui.session.view = groove_types::DiffView::File;
+    ui.session.view = groove_types::DiffView::Editor;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let texts: Vec<String> = frame
         .layers()
@@ -278,7 +278,7 @@ fn opening_a_file_the_change_does_not_hold_shows_it_as_a_file() {
     assert_eq!(asked[0].id(), "workspace.open_file");
     assert_eq!(
         ui.session.view,
-        groove_types::DiffView::File,
+        groove_types::DiffView::Editor,
         "an unchanged file has only one view that can show it"
     );
 }

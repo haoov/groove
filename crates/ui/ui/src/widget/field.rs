@@ -32,6 +32,18 @@ impl Field {
         self.at += 1;
     }
 
+    /// `text` at the caret, on the one line a field holds.
+    pub fn paste(&mut self, text: &str) {
+        for c in Self::one_line(text).chars() {
+            self.insert(c);
+        }
+    }
+
+    /// The text a one-line field can hold: every break a space, and none at its ends.
+    pub fn one_line(text: &str) -> String {
+        text.replace(['\n', '\r'], " ").trim().to_string()
+    }
+
     /// Takes the character before the caret.
     pub fn backspace(&mut self) {
         if self.at == 0 {

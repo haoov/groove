@@ -69,11 +69,11 @@ pub(super) fn shown(app: &AppState, path: String) -> Vec<Command> {
 
 /// The stream scrolled to where this file starts; one the change lacks becomes a file.
 pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) {
-    if ui.session.view == DiffView::File {
+    if ui.session.view == DiffView::Editor {
         return;
     }
     let Some(head) = app.workspace.changes.head_of(path) else {
-        ui.session.view = DiffView::File;
+        ui.session.view = DiffView::Editor;
         return;
     };
     ui.session.diff = head as f32 * metrics.tokens().line;
@@ -101,7 +101,7 @@ pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) 
         return Vec::new();
     };
     ui.focus = Focus::Workspace;
-    ui.session.view = DiffView::File;
+    ui.session.view = DiffView::Editor;
     let above = one.line.saturating_sub(ABOVE_MATCH);
     ui.session.diff = above as f32 * metrics.tokens().line;
     let held = Selection {

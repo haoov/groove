@@ -38,6 +38,16 @@ fn the_switch_names_the_three_views_and_picks_one() {
     let split = hits.rect_of(&Target::View(DiffView::Split)).expect("split");
     assert!(click(split, &mut ui, &app, &hits).is_empty());
     assert_eq!(ui.session.view, DiffView::Split);
+
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|one| one.text.clone())
+        .collect();
+    for named in ["editor", "inline", "split"] {
+        assert!(texts.iter().any(|one| one == named), "{named}: {texts:?}");
+    }
 }
 
 #[test]

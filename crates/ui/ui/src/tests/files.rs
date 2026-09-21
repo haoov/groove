@@ -2,6 +2,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Fonts, Size};
 use groove_types::{FileDiff, FileStatus};
 
+mod explorer;
 mod search;
 
 use crate::hit::Target;
@@ -41,7 +42,7 @@ fn with_files(paths: &[&str]) -> AppState {
 
 fn on_diff() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     ui
 }
 
@@ -170,7 +171,11 @@ fn the_files_tab_names_the_files_with_what_they_changed() {
         .filter(|run| run.x >= sidebar.x)
         .map(|run| run.text.clone())
         .collect();
-    assert!(texts.iter().any(|t| t == "FILES · 2"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "CHANGED · 2"), "{texts:?}");
+    assert!(
+        texts.iter().any(|t| t == "ALL"),
+        "the other scope: {texts:?}"
+    );
     assert!(texts.iter().any(|t| t == "tokens.rs"));
     assert!(texts.iter().any(|t| t == "session.rs"));
     assert!(
@@ -278,7 +283,7 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
         "crates/other/src/views/session/mod.rs",
     ]);
     let mut ui = on_diff();
-    ui.session.tab = Tab::Diff;
+    ui.session.tab = Tab::File;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let sidebar = Layout::of(window(), &ui).sidebar;
     let texts: Vec<String> = frame.layers()[0]
@@ -296,4 +301,18 @@ fn a_row_reads_as_its_name_with_the_rest_of_its_path_behind_it() {
         !texts.iter().any(|t| t == "mod.rs"),
         "never a bare mod.rs, which says nothing"
     );
+}
+
+#[test]
+fn the_strip_names_the_two_tabs_the_workspace_has() {
+    let app = with_files(&["src/one/alpha.rs"]);
+    let (frame, _) = view(&app, &on_diff(), window(), &mut Fonts::embedded());
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|one| one.text.clone())
+        .collect();
+    assert!(texts.iter().any(|one| one == "overview"), "{texts:?}");
+    assert!(texts.iter().any(|one| one == "file"), "{texts:?}");
+    assert!(!texts.iter().any(|one| one == "diff"), "{texts:?}");
 }

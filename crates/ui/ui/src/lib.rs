@@ -29,7 +29,7 @@ pub use render::{layout_commands, view};
 pub use style::Role;
 pub use tokens::Tokens;
 pub use views::board::BoardUi;
-pub use views::session::{SessionUi, Tab};
+pub use views::session::{Scope, SessionUi, Tab};
 pub use views::shared::rail::RailUi;
 
 /// What the window shows beside the rail.

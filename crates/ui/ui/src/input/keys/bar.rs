@@ -112,7 +112,7 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
         return;
     }
     if !ui.session.tab.has_sidebar() {
-        ui.session.tab = crate::views::session::Tab::Diff;
+        ui.session.tab = crate::views::session::Tab::File;
     }
     ui.session.folded = false;
     ui.session.bar.open(term);
@@ -139,7 +139,7 @@ pub(super) fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> 
                 return Vec::new();
             };
             if app.workspace.changes.head_of(&path).is_none() {
-                ui.session.view = groove_types::DiffView::File;
+                ui.session.view = groove_types::DiffView::Editor;
             }
             return vec![Command::Workspace(workspace::Command::OpenFile {
                 path,

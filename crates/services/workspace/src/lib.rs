@@ -56,6 +56,8 @@ pub struct State {
     pub found: Vec<Found>,
     /// Every file of the worktree, for the path term to narrow by.
     pub paths: Vec<FileDiff>,
+    /// A walk of the worktree is out.
+    pub walking: bool,
     /// That search, while it still runs.
     pub searching: Option<std::sync::Arc<Search>>,
     /// Bumped whenever a document is read again, for a cache to know.
@@ -141,6 +143,7 @@ impl State {
         self.stop();
         self.found.clear();
         self.paths.clear();
+        self.walking = false;
         self.facts.clear();
         self.worktree = None;
         self.files.clear();

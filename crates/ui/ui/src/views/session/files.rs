@@ -2,6 +2,7 @@
 //! once and then a group per directory under it.
 
 mod bar;
+mod explorer;
 mod results;
 mod rows;
 mod tree;
@@ -14,6 +15,7 @@ use groove_gfx::Rect;
 use groove_types::FileDiff;
 
 use super::commit;
+use super::state::Scope;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -30,13 +32,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     edge(ctx, rect);
 
     let files = narrowed(app, ui);
-    let listing = listing(&files);
     let bar = bar::draw(ctx, rect, ui);
     let grep = ui.session.bar.greps();
     let head = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.header);
     match grep {
         true => found(ctx, head, app.workspace.found.len()),
-        false => heading(ctx, head, files.len()),
+        false => heading(ctx, head, files.len(), ui),
     }
     let under = ctx.layout.commit;
     let body = Rect::new(rect.x, head.bottom(), rect.w, under.y - head.bottom());
@@ -44,17 +45,55 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if grep {
         return results::draw(ctx, body, app, ui);
     }
+    let open = app.workspace.opened.as_ref().map(|file| &file.path);
+    if browsing(ui) {
+        let held = explorer::rows(&app.workspace.paths, &files, &ui.session.opened);
+        return match held.is_empty() {
+            true => says(ctx, body, empty(app)),
+            false => explorer::draw(ctx, body, &held, open, ui),
+        };
+    }
     if files.is_empty() {
-        let style = ctx.styles.small(Role::Faint);
-        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
         let said = match ui.session.bar.path.is_empty() {
             true => "nothing changed",
             false => "no file of that name",
         };
-        return row(ctx, line, ctx.tokens.md, said, style);
+        return says(ctx, body, said);
     }
-    let open = app.workspace.opened.as_ref().map(|file| &file.path);
-    rows::draw(ctx, body, &listing, open, ui);
+    rows::draw(ctx, body, &listing(&files), open, ui);
+}
+
+/// Whether the list is the whole worktree, which a query flattens back to matches.
+pub(crate) fn browsing(ui: &Ui) -> bool {
+    ui.session.scope == Scope::All && ui.session.bar.path.is_empty()
+}
+
+/// Whether the explorer still needs the worktree walked before it can draw a tree.
+pub(crate) fn needs_walk(app: &AppState, ui: &Ui) -> bool {
+    browsing(ui) && holds(app) && app.workspace.paths.is_empty() && !app.workspace.walking
+}
+
+/// Whether a worktree is selected at all.
+fn holds(app: &AppState) -> bool {
+    app.session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .is_some()
+}
+
+/// What the tree has to say instead of rows.
+fn empty(app: &AppState) -> &'static str {
+    match (holds(app), app.workspace.walking) {
+        (false, _) => "no worktree to read",
+        (true, true) => "reading the worktree…",
+        (true, false) => "nothing in this worktree",
+    }
+}
+
+fn says(ctx: &mut Ctx, body: Rect, text: &str) {
+    let style = ctx.styles.small(Role::Faint);
+    let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+    row(ctx, line, ctx.tokens.md, text, style);
 }
 
 fn edge(ctx: &mut Ctx, rect: Rect) {
@@ -102,16 +141,28 @@ fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
     hairline(ctx, rect, ctx.styles.line());
 }
 
-fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
-    let (rule, pad) = (ctx.styles.line(), ctx.tokens.md);
-    let style = ctx.styles.heading(Role::Faint);
-    let label = match count {
-        0 => "FILES".to_string(),
-        n if n >= ROWS_MAX => format!("FILES · {n}+"),
-        n => format!("FILES · {n}"),
-    };
-    row(ctx, rect, pad, &label, style);
-    hairline(ctx, rect, rule);
+/// The two scopes, the one in use lit and counted, each a word to click.
+fn heading(ctx: &mut Ctx, rect: Rect, count: usize, ui: &Ui) {
+    hairline(ctx, rect, ctx.styles.line());
+    let mut at = rect.x + ctx.tokens.md;
+    for scope in Scope::ALL {
+        let here = ui.session.scope == scope;
+        let role = match here {
+            true => Role::Muted,
+            false => Role::Ghost,
+        };
+        let style = ctx.styles.heading(role);
+        let label = match (here, count) {
+            (true, n) if n >= ROWS_MAX => format!("{} · {n}+", scope.label().to_uppercase()),
+            (true, n) if n > 0 => format!("{} · {n}", scope.label().to_uppercase()),
+            _ => scope.label().to_uppercase(),
+        };
+        let width = ctx.measure(&label, &style);
+        let line = Rect::new(at, rect.y, width, rect.h);
+        row(ctx, line, 0.0, &label, style);
+        ctx.hit(line, Target::Scope(scope));
+        at += width + ctx.tokens.md;
+    }
 }
 
 /// One word at the end of a row, with a ground of its own under the pointer.

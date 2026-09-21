@@ -22,5 +22,9 @@ groove-worktree = { path = "../../modules/worktree" }
 tokio.workspace = true
 winit.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+
 [lints]
 workspace = true

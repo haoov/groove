@@ -66,7 +66,7 @@ fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
         return Vec::new();
     };
     let mut pins: Vec<Pin> = Vec::new();
-    if ui.session.view != DiffView::File {
+    if ui.session.view != DiffView::Editor {
         pins.push(Pin {
             number: String::new(),
             text: path.clone(),
@@ -103,7 +103,7 @@ fn room(ctx: &Ctx, body: Rect) -> usize {
 
 /// The row the top of the surface shows: its file, and the line it stands on.
 fn standing(app: &AppState, ui: &Ui, top: usize) -> Option<(String, Option<(usize, bool)>)> {
-    if ui.session.view == DiffView::File {
+    if ui.session.view == DiffView::Editor {
         let file = app.workspace.opened.as_ref()?;
         return Some((file.path.clone(), Some((top, false))));
     }

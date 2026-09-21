@@ -10,11 +10,19 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(dir) = worktree_dir(state) else {
         return;
     };
+    if state.workspace.walking {
+        return;
+    }
+    state.workspace.walking = true;
     spawner.spawn(Box::pin(async move {
         let read = tokio::task::spawn_blocking(move || groove_workspace_service::paths(&dir)).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if let Ok(paths) = read {
-                state.workspace.paths = paths;
+            state.workspace.walking = false;
+            match read {
+                Ok(paths) => state.workspace.paths = paths,
+                Err(e) => state.errors.push(groove_types::Error::internal(format!(
+                    "the walk failed: {e}"
+                ))),
             }
         }) as Continuation
     }));

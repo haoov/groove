@@ -10,17 +10,18 @@ use crate::widget::Field;
 pub enum Tab {
     #[default]
     Overview,
-    Diff,
+    /// The file: its own text, or the change in it.
+    File,
 }
 
 impl Tab {
     /// Every tab, in the order the strip shows them.
-    pub const ALL: [Tab; 2] = [Tab::Overview, Tab::Diff];
+    pub const ALL: [Tab; 2] = [Tab::Overview, Tab::File];
 
     pub fn label(self) -> &'static str {
         match self {
             Tab::Overview => "overview",
-            Tab::Diff => "diff",
+            Tab::File => "file",
         }
     }
 
@@ -28,7 +29,7 @@ impl Tab {
     pub fn has_sidebar(self) -> bool {
         match self {
             Tab::Overview => false,
-            Tab::Diff => true,
+            Tab::File => true,
         }
     }
 }
@@ -55,6 +56,29 @@ pub struct SessionUi {
     pub shut: std::collections::BTreeSet<String>,
     /// The bar over the rows, while a search of them is live.
     pub find: Option<Finding>,
+    /// Which files the sidebar lists: the ones that changed, or the whole worktree.
+    pub scope: Scope,
+    /// The explorer's own directories that stand open.
+    pub opened: std::collections::BTreeSet<String>,
+}
+
+/// Which files the sidebar lists.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Scope {
+    #[default]
+    Changed,
+    All,
+}
+
+impl Scope {
+    pub const ALL: [Scope; 2] = [Scope::Changed, Scope::All];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Scope::Changed => "changed",
+            Scope::All => "all",
+        }
+    }
 }
 
 /// What the sidebar's bar narrows by: a path, some text, or both at once. The path
