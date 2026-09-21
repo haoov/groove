@@ -179,7 +179,12 @@ fn a_file_of_a_commit_reads_as_that_commit_left_it() {
     std::fs::write(dir.join("a.txt"), "second\n").unwrap();
     sh(&dir, &["commit", "-am", "second"]);
     std::fs::write(dir.join("a.txt"), "working\n").unwrap();
-    send(&mut state, &services, &spawner, workspace::Command::GetCommits);
+    send(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::GetCommits,
+    );
     let sha = state.workspace.log[0].sha.clone();
 
     send(

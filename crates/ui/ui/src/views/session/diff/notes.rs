@@ -38,6 +38,9 @@ pub(crate) struct Inline {
 impl Inline {
     /// The notes of this view, each on the row its file shows it on.
     pub(crate) fn of(app: &AppState, ui: &Ui, view: DiffView) -> Self {
+        if app.workspace.commit.is_some() {
+            return Self::default();
+        }
         let over = ui.session.noting.as_ref().and_then(|one| one.over.as_ref());
         let mut blocks: Vec<Block> = app
             .workspace

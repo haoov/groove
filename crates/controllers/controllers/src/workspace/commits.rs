@@ -8,8 +8,10 @@ use crate::{AppState, Continuation, Services, Spawner};
 /// The newest commits of the selected worktree's branch.
 pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(dir) = worktree_dir(state) else {
+        state.workspace.logged = None;
         return state.workspace.log.clear();
     };
+    state.workspace.logged = super::selected(state);
     let base = base_of(state);
     let job = state.begin("reading the commits");
     spawner.spawn(Box::pin(async move {

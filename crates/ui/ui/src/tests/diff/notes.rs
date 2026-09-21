@@ -357,3 +357,27 @@ fn only_the_row_that_opens_a_note_says_its_lines() {
         "the line's own number, and the note's once: {drawn:?}"
     );
 }
+
+#[test]
+fn a_commit_shows_none_of_the_sessions_notes() {
+    let mut app = noted(vec![own(1, "issue: this leaks")]);
+    let ui = on_diff();
+    app.workspace.commit = Some(groove_types::CommitEntry {
+        sha: "abc".into(),
+        short_sha: "abc".into(),
+        message: "feat: one".into(),
+        author: "T".into(),
+        at: Timestamp::new(0),
+        is_base: false,
+    });
+    assert_eq!(
+        crate::views::session::diff::rows_of(&app, &ui),
+        crate::views::session::diff::rows_of(&opened(), &ui),
+        "a note stands on the working tree's lines, not a commit's"
+    );
+    let drawn = in_editor(&app);
+    assert!(
+        !drawn.iter().any(|one| one.contains("this leaks")),
+        "{drawn:?}"
+    );
+}

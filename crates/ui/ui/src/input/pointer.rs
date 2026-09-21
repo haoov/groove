@@ -141,6 +141,8 @@ fn acted(
         Some(Target::Scope(scope)) => scoped(ui, scope),
         Some(Target::Pane(pane)) => paned(ui, pane),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
+        Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
+        Some(Target::Working) => one(workspace::Command::LeaveCommit),
         Some(Target::Dir(path)) => twisty(ui, path),
         Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),

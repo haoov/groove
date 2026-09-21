@@ -22,6 +22,7 @@ use groove_watch::{QUIET, Watch};
 mod delivery;
 mod git;
 mod notes;
+mod paths;
 mod propose;
 mod read;
 mod service;
@@ -33,6 +34,7 @@ pub use delivery::{Delivery, Polling};
 pub use git::{commit, discard, pull, push, stage, unstage};
 pub use groove_annotations::New as NewNote;
 pub use notes::merged;
+pub use paths::{PathOp, path_op};
 pub use propose::{Text, text_of};
 pub use read::{
     COMMITS_MAX, FOUND_MAX, PATHS_MAX, at_commit, changes, commits, derived, grep, opened,
@@ -79,6 +81,8 @@ pub struct State {
     pub reviews: Vec<ReviewMr>,
     /// The branch's own commits, newest first.
     pub log: Vec<CommitEntry>,
+    /// The worktree whose commits it holds, or has a read out for.
+    pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
     /// The notes the selected session left, as the database holds them.
@@ -176,6 +180,7 @@ impl State {
         self.walking = false;
         self.facts.clear();
         self.log.clear();
+        self.logged = None;
         self.commit = None;
         self.own.clear();
         self.noted = None;
@@ -261,25 +266,6 @@ pub fn watch(
 /// Writes the buffer to the file it came from.
 pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
     groove_editor::save(dir, path, text)
-}
-
-/// What one path operation does to the worktree.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PathOp {
-    Create { path: String, folder: bool },
-    Rename { from: String, to: String },
-    Copy { from: String, to: String },
-    Delete { path: String },
-}
-
-/// One path operation, under the worktree and nowhere else.
-pub fn path_op(dir: &Path, op: &PathOp) -> Result<()> {
-    match op {
-        PathOp::Create { path, folder } => groove_editor::create(dir, path, *folder),
-        PathOp::Rename { from, to } => groove_editor::rename(dir, from, to),
-        PathOp::Copy { from, to } => groove_editor::copy(dir, from, to),
-        PathOp::Delete { path } => groove_editor::delete(dir, path),
-    }
 }
 
 /// The filesystem watcher and the forge poll speak here.

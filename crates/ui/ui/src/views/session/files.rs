@@ -2,6 +2,7 @@
 //! once and then a group per directory under it.
 
 mod bar;
+mod commits;
 pub(crate) mod explorer;
 mod notes;
 mod results;
@@ -35,23 +36,35 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     panes(ctx, strip, app, ui);
     match ui.session.pane {
         Pane::Files => changed_files(ctx, rect, strip, app, ui),
-        Pane::Commits => says(
-            ctx,
-            Rect::new(rect.x, strip.bottom(), rect.w, rect.h),
-            "commits are not read yet",
-        ),
-        Pane::Notes => notes::draw(
-            ctx,
-            Rect::new(
-                rect.x,
-                strip.bottom(),
-                rect.w,
-                rect.bottom() - strip.bottom(),
-            ),
-            app,
-            ui,
-        ),
+        Pane::Commits => {
+            let body = showing(ctx, under(rect, strip), app, ui);
+            commits::draw(ctx, body, app, ui);
+        }
+        Pane::Notes => {
+            let body = showing(ctx, under(rect, strip), app, ui);
+            notes::draw(ctx, body, app, ui);
+        }
     }
+}
+
+/// The room a list has under the strip.
+fn under(rect: Rect, strip: Rect) -> Rect {
+    Rect::new(
+        rect.x,
+        strip.bottom(),
+        rect.w,
+        (rect.bottom() - strip.bottom()).max(0.0),
+    )
+}
+
+/// The commit the surface shows, over the list. Returns the room the list keeps.
+fn showing(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> Rect {
+    if app.workspace.commit.is_none() {
+        return body;
+    }
+    commit::showing(ctx, body, app, ui);
+    let taken = ctx.tokens.row;
+    Rect::new(body.x, body.y + taken, body.w, (body.h - taken).max(0.0))
 }
 
 /// The three lists the sidebar offers, the one up lit and counted.
@@ -79,7 +92,7 @@ fn labelled(app: &AppState, pane: Pane) -> String {
 fn counted(app: &AppState, pane: Pane) -> usize {
     match pane {
         Pane::Files => changed(app).len(),
-        Pane::Commits => 0,
+        Pane::Commits => app.workspace.log.iter().filter(|one| !one.is_base).count(),
         Pane::Notes => app
             .workspace
             .notes
@@ -125,6 +138,16 @@ fn changed_files(ctx: &mut Ctx, rect: Rect, strip: Rect, app: &AppState, ui: &Ui
 /// Whether the list is the whole worktree, which a query flattens back to matches.
 pub(crate) fn browsing(ui: &Ui) -> bool {
     ui.session.scope == Scope::All && ui.session.bar.path.is_empty()
+}
+
+/// Whether the commits list still needs this worktree's commits read.
+pub(crate) fn needs_commits(app: &AppState, ui: &Ui) -> bool {
+    let selected = app
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|worktree| worktree.id.clone());
+    ui.session.pane == Pane::Commits && selected.is_some() && app.workspace.logged != selected
 }
 
 /// Whether the notes list still needs this session's notes read.

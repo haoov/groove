@@ -68,6 +68,10 @@ pub enum Target {
     Pane(crate::views::session::Pane),
     /// One note of the sidebar's list, which a click opens the line of.
     NoteAt(usize),
+    /// One commit of the sidebar's list, which a click shows the change of.
+    Commit(String),
+    /// What leaves the commit and shows the working tree again.
+    Working,
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
     /// What finishes the task a session works, and what opens its other actions.
@@ -130,55 +134,19 @@ pub enum Target {
 }
 
 impl Target {
-    /// What the pointer says over it.
+    /// What the pointer says over it: a row is a pointer, and these are not.
     fn cursor(&self) -> Cursor {
         match self {
-            Target::Session(_)
-            | Target::Tab(_)
-            | Target::Picker(_)
-            | Target::Worktree(_)
-            | Target::PaletteRow(_)
-            | Target::Note(_, _)
-            | Target::Pane(_)
-            | Target::NoteAt(_)
-            | Target::Fold
-            | Target::File(_)
-            | Target::Stage(_)
-            | Target::Unstage(_)
-            | Target::Discard
-            | Target::Keep
-            | Target::Actions
-            | Target::MenuRow(_)
-            | Target::Do
-            | Target::View(_)
-            | Target::Read(_)
-            | Target::Board
-            | Target::Task(_)
-            | Target::Offer(_)
-            | Target::AddTask
-            | Target::LogHours(_)
-            | Target::Timeline
-            | Target::Finish(_)
-            | Target::Dir(_)
-            | Target::Scope(_)
-            | Target::Review(_, _)
-            | Target::Refresh
-            | Target::TaskActions(_)
-            | Target::Unfold(_)
-            | Target::Head(_)
-            | Target::Found(_)
-            | Target::FoundIn(_) => Cursor::Pointer,
-            Target::Term(_) | Target::Finding | Target::Filter => Cursor::Text,
-            Target::Message => Cursor::Text,
-            Target::Code => Cursor::Text,
-            Target::Agent | Target::Pinned => Cursor::Default,
+            Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
+                Cursor::Text
+            }
+            Target::Agent | Target::Pinned | Target::Bar(_) | Target::Palette => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
-            Target::Bar(_) => Cursor::Default,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,
             },
-            Target::Palette => Cursor::Default,
+            _ => Cursor::Pointer,
         }
     }
 }

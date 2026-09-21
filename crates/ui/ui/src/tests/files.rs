@@ -2,6 +2,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Fonts, Size};
 use groove_types::{FileDiff, FileStatus};
 
+mod commits;
 mod explorer;
 mod panes;
 mod paths;

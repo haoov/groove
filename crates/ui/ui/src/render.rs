@@ -46,8 +46,19 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
     let mut out = walks(app, ui);
     out.extend(notes(app, ui));
+    out.extend(log(app, ui));
     out.extend(fitted(app, ui, metrics));
     out
+}
+
+/// The commits the sidebar's list needs before it can show them.
+fn log(app: &AppState, ui: &Ui) -> Vec<Command> {
+    match crate::views::session::files::needs_commits(app, ui) {
+        true => vec![Command::Workspace(
+            groove_controllers::workspace::Command::GetCommits,
+        )],
+        false => Vec::new(),
+    }
 }
 
 /// The notes the sidebar's list needs before it can show them.
