@@ -39,7 +39,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         return commands;
     }
     if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && ui.focus != Focus::Agent {
-        opened(ui, Term::Path);
+        opened(ui, app, Term::Path);
         return Vec::new();
     }
     if ui.showing(app) == Surface::Board {
@@ -87,7 +87,7 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
         }
         Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
         Key::Char('f' | 'F') => {
-            opened(ui, Term::Text);
+            opened(ui, app, Term::Text);
             None
         }
         Key::Left | Key::Right => {

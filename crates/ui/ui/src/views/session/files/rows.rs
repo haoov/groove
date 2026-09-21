@@ -132,9 +132,11 @@ fn pointed(ui: &Ui, path: &str) -> bool {
     }
 }
 
-/// What the row offers the pointer. Returns where it starts.
+/// What the row offers the pointer, or its counts when it has no change to stage.
 fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff, ui: &Ui) -> f32 {
-    let staged = file.staged == Some(true);
+    let Some(staged) = file.staged else {
+        return counts(ctx, line, file);
+    };
     let (label, target) = match staged {
         true => ("unstage", Target::Unstage(file.path.clone())),
         false => ("stage", Target::Stage(file.path.clone())),

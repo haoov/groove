@@ -15,6 +15,14 @@ impl Forge {
         }
     }
 
+    /// The mark its forge puts before a merge request number.
+    pub fn sigil(self) -> char {
+        match self {
+            Forge::Github => '#',
+            Forge::Gitlab => '!',
+        }
+    }
+
     /// The forge a host names; nothing but the host decides it.
     pub fn of_host(host: &str) -> Self {
         match host.contains("github") {
@@ -47,6 +55,16 @@ pub enum MrState {
     Open,
     Merged,
     Closed,
+}
+
+impl MrState {
+    pub fn label(self) -> &'static str {
+        match self {
+            MrState::Open => "open",
+            MrState::Merged => "merged",
+            MrState::Closed => "closed",
+        }
+    }
 }
 
 /// The one MR a worktree may have.
@@ -129,6 +147,19 @@ pub enum CiState {
 }
 
 impl CiState {
+    /// The one word a row shows for it.
+    pub fn label(self) -> &'static str {
+        match self {
+            CiState::Pending => "pending",
+            CiState::Running => "running",
+            CiState::Success => "passed",
+            CiState::Failed => "failed",
+            CiState::Canceled => "canceled",
+            CiState::Skipped => "skipped",
+            CiState::Unknown => "unknown",
+        }
+    }
+
     pub fn is_green(self) -> bool {
         self == CiState::Success
     }

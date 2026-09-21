@@ -1,14 +1,24 @@
 //! What a worktree row shows of its delivery: the MR, the CI, the counts.
 
-use crate::{CiState, MrState, WorktreeStatus};
+use crate::{CiState, Forge, MrState, WorktreeStatus};
 
 /// The MR part of a worktree row.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct MrDelivery {
+    pub forge: Forge,
+    /// What the forge calls it, without the sigil.
+    pub number: String,
     pub state: MrState,
     pub url: String,
     pub approved: bool,
     pub changes_requested: bool,
+}
+
+impl MrDelivery {
+    /// What its forge calls it, sigil and number.
+    pub fn named(&self) -> String {
+        format!("{}{}", self.forge.sigil(), self.number)
+    }
 }
 
 /// Everything a worktree row shows as icons and counts.

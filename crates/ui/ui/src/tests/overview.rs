@@ -1,5 +1,6 @@
 //! The overview tab: what it names, what it counts, and what it offers.
 
+mod delivery;
 mod header;
 
 use groove_types::{Day, ExternalId, SessionId, SessionKind};

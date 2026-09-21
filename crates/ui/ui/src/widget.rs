@@ -4,6 +4,7 @@
 mod button;
 mod code;
 mod counts;
+mod delivery;
 mod field;
 mod icon;
 mod input;
@@ -18,7 +19,8 @@ mod time;
 
 pub use button::{button, slot, slot_at};
 pub use code::{Gutters, Line, Rows, chars_of, code, code_at, first, head_mark, height, visible};
-pub use counts::counts;
+pub use counts::{counts, counts_room};
+pub use delivery::{delivered, room_for};
 pub use field::Field;
 pub use icon::{after_mark, box_in, icon, leading, turn};
 pub use input::input;

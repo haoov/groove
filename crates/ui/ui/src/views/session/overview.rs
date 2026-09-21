@@ -1,3 +1,4 @@
+mod mr;
 mod task;
 
 use groove_controllers::AppState;
@@ -23,6 +24,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         let mut y = properties(ctx, app, open, area, top, ui);
         y = section(ctx, area, y, "Repos and worktrees", y > top);
         y = repos(ctx, open, area, y);
+        y = merge_request(ctx, app, area, y);
         bottom = body(ctx, app, open, area, y);
     });
     let height = bottom - top + ctx.tokens.md;
@@ -37,6 +39,15 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, 
     let y = section(ctx, area, top, "Properties", false);
     let time = app.task.measured(&one.external_id);
     task::properties(ctx, area, y, one, time, ui) + ctx.tokens.sm
+}
+
+/// The selected worktree's MR, when its forge has answered for it.
+fn merge_request(ctx: &mut Ctx, app: &AppState, area: Rect, top: f32) -> f32 {
+    if app.workspace.delivery.read.is_none() {
+        return top;
+    }
+    let y = section(ctx, area, top, "Merge request", true);
+    mr::rows(ctx, area, y, &app.workspace.delivery)
 }
 
 /// The task's body, under everything the session holds.

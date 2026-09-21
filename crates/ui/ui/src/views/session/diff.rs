@@ -23,7 +23,7 @@ pub(crate) use row::{line_at, text_at};
 pub(crate) use scroll::scrolled;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    if app.workspace.changes.is_empty() {
+    if app.workspace.changes.is_empty() && !as_a_file(app, ui) {
         return hint(ctx, app, area);
     }
     let head = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
@@ -46,6 +46,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
             finder::draw(ctx, body, ui);
         }
     }
+}
+
+/// Whether the file view has a file to draw, whatever the change holds.
+fn as_a_file(app: &AppState, ui: &Ui) -> bool {
+    ui.session.view == DiffView::File && app.workspace.opened.is_some()
 }
 
 /// What the file view has to say instead of rows: nothing open, or too long to show.

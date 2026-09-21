@@ -5,6 +5,17 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{box_in, row};
 
+/// The room `counts` needs, for a caller placing it against a right edge.
+pub fn counts_room(ctx: &mut Ctx, items: &[(Mark, u32, Role)]) -> f32 {
+    let mut wide = 0.0;
+    for (_, value, role) in items.iter().filter(|(_, value, _)| *value > 0) {
+        let style = ctx.styles.small(*role);
+        wide += style.size + ctx.tokens.xs;
+        wide += ctx.measure(&value.to_string(), &style) + ctx.tokens.md;
+    }
+    wide
+}
+
 /// Icon and number pairs from `x`, left to right, in the row's middle. A count of
 /// zero is not drawn. Returns the x after the last pair.
 pub fn counts(ctx: &mut Ctx, line: Rect, x: f32, items: &[(Mark, u32, Role)]) -> f32 {

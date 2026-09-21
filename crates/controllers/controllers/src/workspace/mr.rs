@@ -94,6 +94,18 @@ pub fn poll(state: &mut AppState, services: &Services, spawner: &dyn Spawner, no
     }
 }
 
+/// The selected worktree's MR, read again whatever the clock says.
+pub fn refresh(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let Some(id) = crate::workspace::selected(state) else {
+        return;
+    };
+    if state.workspace.poll.is_out(&id) {
+        return;
+    }
+    state.workspace.poll.forget(&id);
+    read(state, services, spawner, &id);
+}
+
 /// The MR rows the database already holds, onto the worktrees they belong to.
 pub fn known(services: &Services, spawner: &dyn Spawner) {
     let service = services.workspace.clone();
@@ -114,6 +126,8 @@ fn remembered(state: &mut AppState, mrs: Vec<Mr>) {
         let worktree = mr.worktree.clone();
         onto(state, &worktree, |row| {
             row.mr = Some(MrDelivery {
+                forge: mr.forge,
+                number: mr.remote_id.clone(),
                 state: mr.state,
                 url: mr.url.clone(),
                 approved: false,

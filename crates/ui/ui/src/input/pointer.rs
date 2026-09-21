@@ -134,6 +134,7 @@ fn acted(
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::LogHours(id)) => logging(id),
         Some(Target::Finish(session)) => finishing(session),
+        Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         Some(_) | None => Vec::new(),
     }

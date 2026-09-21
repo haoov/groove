@@ -26,7 +26,9 @@ mod tests;
 
 pub use delivery::{Delivery, Polling};
 pub use git::{commit, discard, pull, push, stage, unstage};
-pub use read::{FOUND_MAX, changes, derived, grep, opened, painted, reopened, summary};
+pub use read::{
+    FOUND_MAX, PATHS_MAX, changes, derived, grep, opened, painted, paths, reopened, summary,
+};
 pub use service::{Delivered, Service};
 
 /// What the workspace holds for the selected worktree.
@@ -48,6 +50,8 @@ pub struct State {
     pub showing: Range<usize>,
     /// What the last search across the worktree has found so far.
     pub found: Vec<Found>,
+    /// Every file of the worktree, for the path term to narrow by.
+    pub paths: Vec<FileDiff>,
     /// That search, while it still runs.
     pub searching: Option<std::sync::Arc<Search>>,
     /// Bumped whenever a document is read again, for a cache to know.
@@ -128,6 +132,7 @@ impl State {
         self.moved();
         self.stop();
         self.found.clear();
+        self.paths.clear();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();

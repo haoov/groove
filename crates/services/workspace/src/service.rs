@@ -14,6 +14,8 @@ impl Delivered {
     /// The MR part of the worktree's row.
     pub fn shown(&self) -> MrDelivery {
         MrDelivery {
+            forge: self.mr.forge,
+            number: self.mr.remote_id.clone(),
             state: self.mr.state,
             url: self.mr.url.clone(),
             approved: self

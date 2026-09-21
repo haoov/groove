@@ -67,12 +67,13 @@ pub(super) fn shown(app: &AppState, path: String) -> Vec<Command> {
     commands
 }
 
-/// The stream scrolled to where this file starts.
+/// The stream scrolled to where this file starts; one the change lacks becomes a file.
 pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) {
     if ui.session.view == DiffView::File {
         return;
     }
     let Some(head) = app.workspace.changes.head_of(path) else {
+        ui.session.view = DiffView::File;
         return;
     };
     ui.session.diff = head as f32 * metrics.tokens().line;

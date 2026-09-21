@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use groove_types::{FileDiff, Result};
+use groove_types::{FileDiff, FileStatus, Result};
 
 use crate::{Changes, Derived, Document, Found, Opened, Painted, Search};
 
@@ -28,6 +28,23 @@ pub fn grep(
 
 /// How many matches a search across the worktree keeps.
 pub const FOUND_MAX: usize = 500;
+
+/// Every file of the worktree, for the path term to narrow by.
+pub fn paths(dir: &Path) -> Vec<FileDiff> {
+    groove_grep::paths(dir, PATHS_MAX)
+        .into_iter()
+        .map(|path| FileDiff {
+            path,
+            added: 0,
+            deleted: 0,
+            status: FileStatus::Unchanged,
+            staged: None,
+        })
+        .collect()
+}
+
+/// How many of a worktree's paths the list keeps.
+pub const PATHS_MAX: usize = 20_000;
 
 /// Both sides of these paths, parsed, read in one git process.
 pub async fn painted(dir: &Path, paths: Vec<String>) -> Vec<(String, Painted)> {

@@ -5,6 +5,21 @@ use groove_workspace_service::Search;
 use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
 
+/// Every file of the selected worktree, for the path term to narrow by.
+pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(dir) = worktree_dir(state) else {
+        return;
+    };
+    spawner.spawn(Box::pin(async move {
+        let read = tokio::task::spawn_blocking(move || groove_workspace_service::paths(&dir)).await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Ok(paths) = read {
+                state.workspace.paths = paths;
+            }
+        }) as Continuation
+    }));
+}
+
 /// Every line of the worktree holding `query`, walked on a thread of its own and
 /// reported in batches. A search still running gives up for this one.
 pub(super) fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, under: String) {

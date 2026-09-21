@@ -27,6 +27,10 @@ pub enum Mark {
     Down,
     /// What folds the sidebar away.
     Sidebar,
+    /// A check that failed.
+    Failed,
+    /// A note somebody left on the MR.
+    Note,
 }
 
 impl Mark {
@@ -61,6 +65,8 @@ impl Mark {
             Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,
             Mark::Sidebar => Icon::Sidebar,
+            Mark::Failed => Icon::Cross,
+            Mark::Note => Icon::Chat,
         }
     }
 }

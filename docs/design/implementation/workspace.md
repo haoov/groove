@@ -97,9 +97,11 @@ explorer through `watch`, and the alignment follows.
 - **An undo takes back a typing run**, not a character. A motion or a newline closes the
   run.
 
-**Search** is two things. Module `grep` walks the worktree in parallel, reports in batches,
-caps what it returns and stops when the next search starts. In the surface, a find session
-over the open file or the whole change is the ui's own state.
+**Search** is three things. Module `grep` walks the worktree in parallel for a text,
+reports in batches, caps what it returns and stops when the next search starts; the same
+module lists the worktree's own paths, which `workspace.list_paths` reads once per search
+so the path term narrows the whole worktree and not only the diff. In the surface, a find
+session over the open file or the whole change is the ui's own state.
 
 | Still to build | Does |
 |---|---|

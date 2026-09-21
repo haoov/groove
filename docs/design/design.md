@@ -41,9 +41,9 @@ the task at the provider is the agent's own write.
 Each column header carries its count.
 
 **Live item.** Folded: kind icon, title, repo count, twisty. Expanded: one row per
-worktree — branch, then git counts, MR, CI and notes as icons, zero and absent omitted —
-and a link to the forge. The title opens the session, which joins the rail. Right click:
-open in provider, finish, delete, delete locally.
+worktree — branch, then git counts, the MR's number, its checks and its notes, zero and
+absent omitted — and a link to the forge. The title opens the session, which joins the
+rail. Right click: open in provider, finish, delete, delete locally.
 
 **Up next item.** A position number, title, priority and size as text. Drag to reorder. One
 divider, **later**, that items can be dragged under. The order is Groove's and is never
@@ -145,8 +145,8 @@ title or a label too long for its line is cut with an ellipsis; the header never
 
 | Tab | Shows | Sidebar |
 |---|---|---|
-| overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — branch, git status, MR, CI and notes as icons and counts, zero counts and absent MR or CI omitted, and the row's skill button; then the body as text. Close task when every worktree is merged or closed | folded |
-| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — path and text, both live — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
+| overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the body as text. Close task when every worktree is merged or closed | folded |
+| diff | the change on one code surface, in three views, notes inline; default when the session has changes | a search bar — path and text, both live; a path alone lists the changed files it names and then any other file of the worktree, so an unchanged file opens from here — then three tabs: files — changed files as a tree, list by right click, with stage, unstage, discard, and the commit box under them; commits — the list, a commit opens its diff; notes — the session's annotations and threads, a note opens its line |
 | editor | any file, on the same surface; a changed file keeps its marks and its views | file explorer, search, grep results |
 
 **One code surface.** The diff and the editor are one surface in three views, which the

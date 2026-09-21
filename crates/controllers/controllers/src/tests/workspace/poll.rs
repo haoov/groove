@@ -39,6 +39,8 @@ fn holds(state: &mut crate::AppState, worktree: &WorktreeId, mr: MrState) {
         .get_mut(&selected_session(state))
         .expect("the open session");
     open.row(worktree).mr = Some(MrDelivery {
+        forge: groove_types::Forge::Github,
+        number: "7".into(),
         state: mr,
         url: "https://example.com/mr/1".into(),
         approved: false,

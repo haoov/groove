@@ -41,6 +41,8 @@ pub enum FileStatus {
     Deleted,
     Renamed,
     Untracked,
+    /// In the worktree with nothing changed in it.
+    Unchanged,
 }
 
 impl FileStatus {
@@ -52,6 +54,7 @@ impl FileStatus {
             FileStatus::Deleted => 'D',
             FileStatus::Renamed => 'R',
             FileStatus::Untracked => '?',
+            FileStatus::Unchanged => ' ',
         }
     }
 }

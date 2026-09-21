@@ -105,9 +105,16 @@ fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         .collect()
 }
 
-/// The bar open on one of its terms, the other kept as the scope it already is. Only
-/// one thing takes what is typed, so the commit box gives the keyboard up.
-pub(super) fn opened(ui: &mut Ui, term: Term) {
+/// The bar open on one of its terms, on the tab that shows it, the commit box giving
+/// the keyboard up. The board has no file list, so nothing opens there.
+pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
+    if ui.showing(app) != crate::Surface::Session {
+        return;
+    }
+    if !ui.session.tab.has_sidebar() {
+        ui.session.tab = crate::views::session::Tab::Diff;
+    }
+    ui.session.folded = false;
     ui.session.bar.open(term);
     ui.session.composing = false;
 }
@@ -128,13 +135,16 @@ pub(super) fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> 
                 .first()
                 .map(|file| file.path.clone());
             ui.session.bar.typing = None;
-            return match first {
-                Some(path) => vec![Command::Workspace(workspace::Command::OpenFile {
-                    path,
-                    at: None,
-                })],
-                None => Vec::new(),
+            let Some(path) = first else {
+                return Vec::new();
             };
+            if app.workspace.changes.head_of(&path).is_none() {
+                ui.session.view = groove_types::DiffView::File;
+            }
+            return vec![Command::Workspace(workspace::Command::OpenFile {
+                path,
+                at: None,
+            })];
         }
         key => {
             if typing(key, mods, ui.session.bar.of(term)) {
@@ -152,15 +162,18 @@ fn other(term: Term) -> Term {
     }
 }
 
-/// The worktree searched again for what the bar now holds, when it holds any text.
+/// What the bar asks for: the worktree's files, and the search while it holds text.
 fn searches(ui: &Ui) -> Vec<Command> {
     let bar = &ui.session.bar;
-    if !bar.greps() {
-        return Vec::new();
+    let mut asks = Vec::new();
+    if bar.path.text().chars().count() == 1 {
+        asks.push(Command::Workspace(workspace::Command::ListPaths));
     }
-    let grep = workspace::Command::Grep {
-        query: bar.text.text().to_string(),
-        under: bar.path.text().to_string(),
-    };
-    vec![Command::Workspace(grep)]
+    if bar.greps() {
+        asks.push(Command::Workspace(workspace::Command::Grep {
+            query: bar.text.text().to_string(),
+            under: bar.path.text().to_string(),
+        }));
+    }
+    asks
 }

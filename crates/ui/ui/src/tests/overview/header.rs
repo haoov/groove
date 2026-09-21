@@ -90,12 +90,18 @@ fn the_header_holds_the_title_over_the_pickers() {
         "the tabs start under both lines"
     );
     let styles = crate::style::Styles::new(app.config.theme(), tokens);
-    let grounds = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.color == styles.band() && quad.rect.h == box_.h)
-        .count();
-    assert_eq!(grounds, 2, "each picker is a button");
+    for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
+        let box_ = hits
+            .rect_of(&crate::hit::Target::Picker(which))
+            .expect("a picker");
+        assert!(
+            frame.layers()[0]
+                .quads
+                .iter()
+                .any(|quad| quad.color == styles.band() && quad.rect == box_),
+            "{which:?} is a button"
+        );
+    }
 }
 
 #[test]
@@ -136,6 +142,8 @@ fn a_worktree_with_an_open_mr_holds_the_finish_back() {
         worktree,
         groove_types::WorktreeDelivery {
             mr: Some(groove_types::MrDelivery {
+                forge: groove_types::Forge::Github,
+                number: "1".into(),
                 state: groove_types::MrState::Open,
                 url: "https://example.test/mr/1".into(),
                 approved: false,

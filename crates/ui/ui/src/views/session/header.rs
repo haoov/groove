@@ -9,7 +9,8 @@ use crate::hit::{Picks, Target};
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{
-    after_mark, box_in, button, elide, hairline, icon, leading, picker, row, slot,
+    after_mark, box_in, button, delivered, elide, hairline, icon, leading, picker, room_for, row,
+    slot, turn,
 };
 
 /// The workspace's two first lines: what the session is, then what it points at.
@@ -26,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     };
     let until = actions(ctx, top, open, ui);
     titled(ctx, top, open, until);
-    pickers(ctx, under, open, ui);
+    pickers(ctx, under, app, open, ui);
 }
 
 /// The task's own actions. Returns where they start, which the title stops at.
@@ -92,13 +93,14 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, until: f32) {
 }
 
 /// The pickers every tab follows, each label cut to the room the line has.
-fn pickers(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) {
+fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) {
     let worktree = open.selected_worktree();
     let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
     let (repo, branch) = named(open);
     let style = ctx.styles.body(Role::Muted);
     let x = line.x + ctx.tokens.md;
-    let room = (line.right() - ctx.tokens.md - x - around(ctx)).max(0.0);
+    let until = forge(ctx, line, app, open, ui);
+    let room = (until - ctx.tokens.md - x - around(ctx)).max(0.0);
     let repo_room = ctx.measure(repo, &style).min(room / 2.0);
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
@@ -110,6 +112,51 @@ fn pickers(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) {
     let role = role_of(worktree.is_some());
     let box_ = picker(ctx, line, x, &branch_text, role, lit(ui, Picks::Branch));
     ctx.hit(box_, Target::Picker(Picks::Branch));
+}
+
+/// What the selected worktree's forge says, at the right end; the pickers stop there.
+fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32 {
+    let Some(worktree) = open.selected_worktree() else {
+        return line.right();
+    };
+    let until = refresh(ctx, line, app, ui);
+    let Some(delivery) = open.delivery_of(&worktree.id) else {
+        return until;
+    };
+    let wide = room_for(ctx, delivery);
+    if wide <= 0.0 {
+        return until;
+    }
+    let x = until - ctx.tokens.sm - wide;
+    delivered(ctx, line, x, delivery);
+    x
+}
+
+/// What reads the MR again, turning while a read is out.
+fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> f32 {
+    let out = app
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .is_some_and(|worktree| app.workspace.poll.is_out(&worktree.id));
+    let ground = match ui.hover.as_ref() == Some(&Target::Refresh) {
+        true => ctx.styles.hover(),
+        false => ctx.styles.band(),
+    };
+    let size = ctx.tokens.small;
+    let box_ = slot(ctx, line, size, Some(ground));
+    let mark = box_in(box_, box_.x + (box_.w - size) / 2.0, size);
+    let turning = match out {
+        true => turn(ctx.tick),
+        false => 0,
+    };
+    let role = match out {
+        true => Role::Working,
+        false => Role::Faint,
+    };
+    ctx.icon(mark, Mark::Busy, turning, ctx.styles.color(role));
+    ctx.hit(box_, Target::Refresh);
+    box_.x
 }
 
 /// What the two buttons add around their labels: a caret and the padding each side.

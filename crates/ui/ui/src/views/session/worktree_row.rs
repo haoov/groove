@@ -4,30 +4,38 @@ use groove_types::{Worktree, WorktreeDelivery};
 use crate::ctx::Ctx;
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{after_mark, counts, row};
+use crate::widget::{after_mark, counts, counts_room, delivered, elide, room_for, row};
 
-/// One worktree: its branch, then what git says about it as icons and counts.
-/// Its text starts under the repo's name, and the counts follow the branch.
+/// One worktree: its branch cut short, then git and the forge at the row's right end.
 pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&WorktreeDelivery>) {
-    let branch = ctx.styles.body(Role::Muted);
+    let style = ctx.styles.body(Role::Muted);
     let indent = after_mark(ctx, ctx.tokens.md);
-    row(ctx, line, indent, &worktree.branch, branch);
-
     let Some(delivery) = delivery else {
-        return;
+        let text = elide(
+            ctx,
+            &worktree.branch,
+            &style,
+            line.w - indent - ctx.tokens.md,
+        );
+        return row(ctx, line, indent, &text, style);
     };
+    let git = told(delivery);
+    let needed = counts_room(ctx, &git) + room_for(ctx, delivery);
+    let right = line.right() - ctx.tokens.md;
+    let room = (right - needed - line.x - indent - ctx.tokens.md).max(0.0);
+    let text = elide(ctx, &worktree.branch, &style, room);
+    row(ctx, line, indent, &text, style);
+    let at = counts(ctx, line, right - needed, &git);
+    delivered(ctx, line, at, delivery);
+}
+
+/// What git says about the worktree, as the counts it draws.
+fn told(delivery: &WorktreeDelivery) -> [(Mark, u32, Role); 4] {
     let status = delivery.status;
-    let width = ctx.measure(&worktree.branch, &branch);
-    let at = line.x + indent + width + ctx.tokens.lg;
-    counts(
-        ctx,
-        line,
-        at,
-        &[
-            (Mark::Ahead, status.ahead, Role::Working),
-            (Mark::Behind, status.behind, Role::Ghost),
-            (Mark::Staged, status.staged, Role::Ok),
-            (Mark::Modified, status.modified, Role::Warn),
-        ],
-    );
+    [
+        (Mark::Ahead, status.ahead, Role::Working),
+        (Mark::Behind, status.behind, Role::Ghost),
+        (Mark::Staged, status.staged, Role::Ok),
+        (Mark::Modified, status.modified, Role::Warn),
+    ]
 }

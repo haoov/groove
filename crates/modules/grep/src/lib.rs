@@ -1,5 +1,4 @@
-//! Text across a worktree: every file the ignore rules leave, walked in parallel,
-//! reported in batches while it runs and stopped the moment nothing wants it.
+//! Across a worktree: the lines holding a text, and the paths themselves.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -46,6 +45,29 @@ impl Search {
     fn took(&self, more: usize) -> usize {
         self.found.fetch_add(more, Ordering::Relaxed) + more
     }
+}
+
+/// Every file under `dir` the ignore rules leave, at most `cap`, from the root.
+pub fn paths(dir: &Path, cap: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let walk = WalkBuilder::new(dir)
+        .hidden(false)
+        .require_git(false)
+        .filter_entry(|entry| entry.file_name() != ".git")
+        .build();
+    for entry in walk.flatten() {
+        if out.len() >= cap {
+            break;
+        }
+        if !entry.metadata().is_ok_and(|meta| meta.is_file()) {
+            continue;
+        }
+        if let Ok(path) = entry.path().strip_prefix(dir) {
+            out.push(path.to_string_lossy().into_owned());
+        }
+    }
+    out.sort();
+    out
 }
 
 /// Every line under `dir` holding `query`, handed over in batches. Blocks until the

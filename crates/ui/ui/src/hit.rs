@@ -58,6 +58,8 @@ pub enum Target {
     Timeline,
     /// What finishes the task a session works, and what opens its other actions.
     Finish(groove_types::SessionId),
+    /// What reads the selected worktree's MR again.
+    Refresh,
     TaskActions(groove_types::SessionId),
     /// One task's bar on the timeline, which names it under the pointer.
     Bar(String),
@@ -138,6 +140,7 @@ impl Target {
             | Target::LogHours(_)
             | Target::Timeline
             | Target::Finish(_)
+            | Target::Refresh
             | Target::TaskActions(_)
             | Target::Unfold(_)
             | Target::Head(_)

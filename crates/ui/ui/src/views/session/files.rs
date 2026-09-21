@@ -47,7 +47,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if files.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
-        return row(ctx, line, ctx.tokens.md, "nothing changed", style);
+        let said = match ui.session.bar.path.is_empty() {
+            true => "nothing changed",
+            false => "no file of that name",
+        };
+        return row(ctx, line, ctx.tokens.md, said, style);
     }
     let open = app.workspace.opened.as_ref().map(|file| &file.path);
     rows::draw(ctx, body, &listing, open, ui);
@@ -58,14 +62,32 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
 }
 
-/// The changed files the bar's path term leaves, every one of them when it is empty.
+/// How many rows the path term leaves at most, since every one of them is drawn.
+pub(crate) const ROWS_MAX: usize = 200;
+
+/// The changed files the path term leaves, then the other worktree files it names.
 pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
-    let files: Vec<&FileDiff> = changed(app).iter().collect();
+    let changed: Vec<&FileDiff> = changed(app).iter().collect();
     let query = ui.session.bar.path.text();
-    match query.is_empty() {
-        true => files,
-        false => crate::palette::matching(files, |file| file.path.clone(), query),
+    if query.is_empty() {
+        return changed;
     }
+    let mut left = crate::palette::matching(changed, |file| file.path.clone(), query);
+    let shown: std::collections::HashSet<&str> =
+        left.iter().map(|file| file.path.as_str()).collect();
+    let rest: Vec<&FileDiff> = app
+        .workspace
+        .paths
+        .iter()
+        .filter(|file| !shown.contains(file.path.as_str()))
+        .collect();
+    left.extend(crate::palette::matching(
+        rest,
+        |file| file.path.clone(),
+        query,
+    ));
+    left.truncate(ROWS_MAX);
+    left
 }
 
 /// How much the search across the worktree has turned up.
@@ -85,6 +107,7 @@ fn heading(ctx: &mut Ctx, rect: Rect, count: usize) {
     let style = ctx.styles.heading(Role::Faint);
     let label = match count {
         0 => "FILES".to_string(),
+        n if n >= ROWS_MAX => format!("FILES · {n}+"),
         n => format!("FILES · {n}"),
     };
     row(ctx, rect, pad, &label, style);

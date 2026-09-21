@@ -13,11 +13,11 @@ use groove_types::{Edit, Selection, WorktreeId};
 use self::diff::{mark_read, reread, show};
 use self::editor::{copy, edit_file, open_file, paste, save_file};
 use self::git::{Act, Remote, commit, discard_all, index, remote};
-use self::search::grep;
+use self::search::{grep, list_paths};
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
-pub use mr::{known, poll, polls};
+pub use mr::{known, poll, polls, refresh};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
@@ -62,6 +62,10 @@ pub enum Command {
     Pull,
     /// `workspace.discard_all`: every change in the worktree, thrown away.
     DiscardAll,
+    /// `workspace.refresh_mr`: the selected worktree's MR, read again now.
+    RefreshMr,
+    /// `workspace.list_paths`: every file of the worktree, for the path term.
+    ListPaths,
 }
 
 impl Command {
@@ -86,6 +90,8 @@ impl Command {
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
             Command::DiscardAll => "workspace.discard_all",
+            Command::RefreshMr => "workspace.refresh_mr",
+            Command::ListPaths => "workspace.list_paths",
         }
     }
 }
@@ -116,6 +122,8 @@ pub fn dispatch(
         Command::Push => remote(state, spawner, Remote::Push),
         Command::Pull => remote(state, spawner, Remote::Pull),
         Command::DiscardAll => discard_all(state, spawner),
+        Command::RefreshMr => mr::refresh(state, services, spawner),
+        Command::ListPaths => list_paths(state, spawner),
     }
 }
 
