@@ -1206,6 +1206,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-annotations"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-types",
+ "sqlx",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "groove-config"
 version = "0.1.0"
 dependencies = [

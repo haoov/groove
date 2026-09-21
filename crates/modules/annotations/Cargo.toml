@@ -1,0 +1,19 @@
+[package]
+name = "groove-annotations"
+description = "The notes a session leaves on a range of a file"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-db = { path = "../../base/db" }
+groove-types = { path = "../../shared/types" }
+sqlx.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true
