@@ -13,10 +13,10 @@ use crate::widget::{hairline, row};
 /// A row for each term the search narrows by. Returns what they took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     let bar = &ui.session.bar;
-    let shown: &[Term] = match bar.in_use() {
-        true => &Term::ALL,
-        false => &Term::ALL[..1],
-    };
+    if !bar.in_use() {
+        return Rect::new(rect.x, rect.y, rect.w, 0.0);
+    }
+    let shown: &[Term] = &Term::ALL;
     let height = ctx.tokens.row * shown.len() as f32;
     let whole = Rect::new(rect.x, rect.y, rect.w, height);
     ctx.quad(whole, ctx.styles.ground());

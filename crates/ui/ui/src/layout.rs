@@ -182,7 +182,11 @@ impl Layout {
 
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
         let tokens = metrics.tokens();
-        Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar())
+        let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
+        if !ui.session.commits() {
+            held.commit = Rect::new(held.commit.x, held.window.h, held.commit.w, 0.0);
+        }
+        held
     }
 
     /// Where the agent's grid starts inside its pane.

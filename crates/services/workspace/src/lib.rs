@@ -78,6 +78,8 @@ pub struct State {
     pub reviews: Vec<ReviewMr>,
     /// The notes the selected session left, as the database holds them.
     pub own: Vec<Annotation>,
+    /// The session whose notes it holds, or has a read out for.
+    pub noted: Option<groove_types::SessionId>,
     /// Those notes and the selected MR's threads, as one list.
     pub notes: Vec<Note>,
     pub watching: Option<WorktreeId>,
@@ -164,6 +166,7 @@ impl State {
         self.walking = false;
         self.facts.clear();
         self.own.clear();
+        self.noted = None;
         self.notes.clear();
         self.worktree = None;
         self.files.clear();

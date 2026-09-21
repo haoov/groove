@@ -3,6 +3,7 @@ use groove_gfx::{Fonts, Size};
 use groove_types::{FileDiff, FileStatus};
 
 mod explorer;
+mod panes;
 mod paths;
 mod search;
 
@@ -172,9 +173,9 @@ fn the_files_tab_names_the_files_with_what_they_changed() {
         .filter(|run| run.x >= sidebar.x)
         .map(|run| run.text.clone())
         .collect();
-    assert!(texts.iter().any(|t| t == "CHANGED · 2"), "{texts:?}");
+    assert!(texts.iter().any(|t| t == "changed · 2"), "{texts:?}");
     assert!(
-        texts.iter().any(|t| t == "ALL"),
+        texts.iter().any(|t| t == "all"),
         "the other scope: {texts:?}"
     );
     assert!(texts.iter().any(|t| t == "tokens.rs"));

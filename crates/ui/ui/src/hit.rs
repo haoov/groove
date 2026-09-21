@@ -64,6 +64,10 @@ pub enum Target {
     Dir(String),
     /// Which files the sidebar lists.
     Scope(crate::views::session::Scope),
+    /// Which of the sidebar's lists is up.
+    Pane(crate::views::session::Pane),
+    /// One note of the sidebar's list, which a click opens the line of.
+    NoteAt(usize),
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
     /// What finishes the task a session works, and what opens its other actions.
@@ -135,6 +139,8 @@ impl Target {
             | Target::Worktree(_)
             | Target::PaletteRow(_)
             | Target::Note(_, _)
+            | Target::Pane(_)
+            | Target::NoteAt(_)
             | Target::Fold
             | Target::File(_)
             | Target::Stage(_)

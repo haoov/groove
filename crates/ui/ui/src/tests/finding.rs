@@ -411,20 +411,16 @@ fn a_found_line_opens_its_file_where_it_sits() {
 }
 
 #[test]
-fn the_bar_stands_on_one_term_until_a_search_asks_for_the_other() {
+fn the_bar_stands_only_once_a_search_asks_for_it() {
     let app = app();
     let mut ui = crate::tests::sidebar_ui();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    assert!(
-        hits.rect_of(&crate::hit::Target::Term(Term::Path))
-            .is_some(),
-        "the path stands on its own"
-    );
-    assert!(
-        hits.rect_of(&crate::hit::Target::Term(Term::Text))
-            .is_none(),
-        "the text waits to be asked for"
-    );
+    for term in [Term::Path, Term::Text] {
+        assert!(
+            hits.rect_of(&crate::hit::Target::Term(term)).is_none(),
+            "{term:?} waits to be asked for"
+        );
+    }
 
     press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
     assert_eq!(

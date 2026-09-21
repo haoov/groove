@@ -58,6 +58,8 @@ pub struct SessionUi {
     pub find: Option<Finding>,
     /// Which files the sidebar lists: the ones that changed, or the whole worktree.
     pub scope: Scope,
+    /// Which of the sidebar's lists is up.
+    pub pane: Pane,
     /// The explorer's own directories that stand open.
     pub opened: std::collections::BTreeSet<String>,
     /// A path being named, where the tree asked for it.
@@ -135,6 +137,28 @@ pub enum Asked {
     Folder,
     Rename,
     Copy,
+}
+
+/// Which of the sidebar's three lists is up.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Pane {
+    #[default]
+    Files,
+    Commits,
+    Notes,
+}
+
+impl Pane {
+    /// Every pane, in the order the strip shows them.
+    pub const ALL: [Pane; 3] = [Pane::Files, Pane::Commits, Pane::Notes];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Pane::Files => "files",
+            Pane::Commits => "commits",
+            Pane::Notes => "notes",
+        }
+    }
 }
 
 /// Which files the sidebar lists.
@@ -232,5 +256,10 @@ impl SessionUi {
     /// Whether the sidebar stands beside the workspace right now.
     pub fn sidebar(&self) -> bool {
         self.tab.has_sidebar() && !self.folded
+    }
+
+    /// Whether the commit box stands under the sidebar, which only the files list has.
+    pub fn commits(&self) -> bool {
+        self.sidebar() && self.pane == Pane::Files
     }
 }

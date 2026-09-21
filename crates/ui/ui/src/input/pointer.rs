@@ -15,7 +15,7 @@ pub(super) use self::board::dropped;
 use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
-use self::sidebar::{finding, narrowing, scoped, twisty};
+use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
@@ -139,6 +139,8 @@ fn acted(
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
         Some(Target::Scope(scope)) => scoped(ui, scope),
+        Some(Target::Pane(pane)) => paned(ui, pane),
+        Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Dir(path)) => twisty(ui, path),
         Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),

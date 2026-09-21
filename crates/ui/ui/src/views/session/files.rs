@@ -3,6 +3,7 @@
 
 mod bar;
 pub(crate) mod explorer;
+mod notes;
 mod results;
 mod rows;
 mod tree;
@@ -15,26 +16,84 @@ use groove_gfx::Rect;
 use groove_types::FileDiff;
 
 use super::commit;
-use super::state::Scope;
+use super::state::{Pane, Scope};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::style::Role;
-use crate::widget::{button, elide, hairline, row};
+use crate::widget::{button, elide, hairline, row, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.sidebar;
     if rect.is_empty() {
         return;
     }
-    let panel = ctx.styles.band();
-    ctx.quad(rect, panel);
+    ctx.quad(rect, ctx.styles.band());
     edge(ctx, rect);
-
-    let files = narrowed(app, ui);
     let bar = bar::draw(ctx, rect, ui);
+    let strip = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.row + ctx.tokens.sm);
+    panes(ctx, strip, app, ui);
+    match ui.session.pane {
+        Pane::Files => changed_files(ctx, rect, strip, app, ui),
+        Pane::Commits => says(
+            ctx,
+            Rect::new(rect.x, strip.bottom(), rect.w, rect.h),
+            "commits are not read yet",
+        ),
+        Pane::Notes => notes::draw(
+            ctx,
+            Rect::new(
+                rect.x,
+                strip.bottom(),
+                rect.w,
+                rect.bottom() - strip.bottom(),
+            ),
+            app,
+            ui,
+        ),
+    }
+}
+
+/// The three lists the sidebar offers, the one up lit and counted.
+fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
+    let labels: Vec<String> = Pane::ALL.iter().map(|pane| labelled(app, *pane)).collect();
+    let shown: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let at = Pane::ALL
+        .iter()
+        .position(|pane| *pane == ui.session.pane)
+        .unwrap_or(0);
+    for (pane, line) in Pane::ALL.iter().zip(tabs(ctx, rect, &shown, at)) {
+        ctx.hit(line, Target::Pane(*pane));
+    }
+}
+
+/// A list's own name, with what it holds when it holds anything.
+fn labelled(app: &AppState, pane: Pane) -> String {
+    match counted(app, pane) {
+        0 => pane.label().to_string(),
+        n => format!("{} · {n}", pane.label()),
+    }
+}
+
+/// What a pane's own name counts beside it.
+fn counted(app: &AppState, pane: Pane) -> usize {
+    match pane {
+        Pane::Files => changed(app).len(),
+        Pane::Commits => 0,
+        Pane::Notes => app
+            .workspace
+            .notes
+            .iter()
+            .filter(|one| !one.resolved)
+            .count(),
+    }
+}
+
+/// The files that changed, under their own heading, with the commit box below.
+fn changed_files(ctx: &mut Ctx, rect: Rect, strip: Rect, app: &AppState, ui: &Ui) {
+    let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    let head = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.header);
+    let head = Rect::new(rect.x, strip.bottom(), rect.w, ctx.tokens.header);
     match grep {
         true => found(ctx, head, app.workspace.found.len()),
         false => heading(ctx, head, files.len(), ui),
@@ -66,6 +125,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// Whether the list is the whole worktree, which a query flattens back to matches.
 pub(crate) fn browsing(ui: &Ui) -> bool {
     ui.session.scope == Scope::All && ui.session.bar.path.is_empty()
+}
+
+/// Whether the notes list still needs this session's notes read.
+pub(crate) fn needs_notes(app: &AppState, ui: &Ui) -> bool {
+    ui.session.pane == Pane::Notes
+        && app.session.selected.is_some()
+        && app.workspace.noted != app.session.selected
 }
 
 /// Whether the explorer still needs the worktree walked before it can draw a tree.
@@ -141,27 +207,28 @@ fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
     hairline(ctx, rect, ctx.styles.line());
 }
 
-/// The two scopes, the one in use lit and counted, each a word to click.
+/// The two scopes, the one in use lit and counted, each a tab to click.
 fn heading(ctx: &mut Ctx, rect: Rect, count: usize, ui: &Ui) {
-    hairline(ctx, rect, ctx.styles.line());
-    let mut at = rect.x + ctx.tokens.md;
-    for scope in Scope::ALL {
-        let here = ui.session.scope == scope;
-        let role = match here {
-            true => Role::Muted,
-            false => Role::Ghost,
-        };
-        let style = ctx.styles.heading(role);
-        let label = match (here, count) {
-            (true, n) if n >= ROWS_MAX => format!("{} · {n}+", scope.label().to_uppercase()),
-            (true, n) if n > 0 => format!("{} · {n}", scope.label().to_uppercase()),
-            _ => scope.label().to_uppercase(),
-        };
-        let width = ctx.measure(&label, &style);
-        let line = Rect::new(at, rect.y, width, rect.h);
-        row(ctx, line, 0.0, &label, style);
-        ctx.hit(line, Target::Scope(scope));
-        at += width + ctx.tokens.md;
+    let labels: Vec<String> = Scope::ALL
+        .iter()
+        .map(|scope| scoped(*scope, count, ui.session.scope == *scope))
+        .collect();
+    let shown: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let at = Scope::ALL
+        .iter()
+        .position(|scope| *scope == ui.session.scope)
+        .unwrap_or(0);
+    for (scope, line) in Scope::ALL.iter().zip(tabs(ctx, rect, &shown, at)) {
+        ctx.hit(line, Target::Scope(*scope));
+    }
+}
+
+/// A scope's own name, with what the list holds under it.
+fn scoped(scope: Scope, count: usize, here: bool) -> String {
+    match (here, count) {
+        (true, n) if n >= ROWS_MAX => format!("{} · {n}+", scope.label()),
+        (true, n) if n > 0 => format!("{} · {n}", scope.label()),
+        _ => scope.label().to_string(),
     }
 }
 

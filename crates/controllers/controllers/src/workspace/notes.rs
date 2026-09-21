@@ -54,8 +54,10 @@ impl Act {
 pub(crate) fn list(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let Some(session) = state.session.selected.clone() else {
         state.workspace.own.clear();
+        state.workspace.noted = None;
         return state.workspace.remerge();
     };
+    state.workspace.noted = Some(session.clone());
     let service = services.workspace.clone();
     let job = state.begin("reading the notes");
     spawner.spawn(Box::pin(async move {

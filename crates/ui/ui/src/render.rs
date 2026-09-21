@@ -45,8 +45,19 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
 /// The commands a new window size implies: every agent's grid to the pane's grid.
 pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
     let mut out = walks(app, ui);
+    out.extend(notes(app, ui));
     out.extend(fitted(app, ui, metrics));
     out
+}
+
+/// The notes the sidebar's list needs before it can show them.
+fn notes(app: &AppState, ui: &Ui) -> Vec<Command> {
+    match crate::views::session::files::needs_notes(app, ui) {
+        true => vec![Command::Workspace(
+            groove_controllers::workspace::Command::GetNotes,
+        )],
+        false => Vec::new(),
+    }
 }
 
 /// The walk the explorer needs before it can draw a tree.
