@@ -5,7 +5,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::{Delivery, Service};
 
-fn repo(host: &str) -> Repo {
+pub(super) fn repo(host: &str) -> Repo {
     Repo {
         id: RepoId::new("r1"),
         host: host.to_string(),
@@ -15,7 +15,7 @@ fn repo(host: &str) -> Repo {
     }
 }
 
-fn worktree() -> Worktree {
+pub(super) fn worktree() -> Worktree {
     Worktree {
         id: WorktreeId::new("w1"),
         session: SessionId::new("s1"),
@@ -28,7 +28,7 @@ fn worktree() -> Worktree {
 }
 
 /// One pull request, in whichever state the test wants it.
-fn pr(state: &str) -> serde_json::Value {
+pub(super) fn pr(state: &str) -> serde_json::Value {
     serde_json::json!({
         "number": 7,
         "title": "fix: one",
@@ -45,7 +45,7 @@ fn pr(state: &str) -> serde_json::Value {
 }
 
 /// A service on its own database, with the rows an MR hangs off already seeded.
-async fn service() -> Service {
+pub(super) async fn service() -> Service {
     let service = Service::in_memory().await.expect("a database");
     for statement in [
         "INSERT INTO sessions (id, kind, title, created_at)
@@ -65,7 +65,7 @@ async fn service() -> Service {
 
 /// A host answering the branch query with `by_branch` and the number query with
 /// `by_number`.
-async fn host(by_branch: serde_json::Value, by_number: serde_json::Value) -> MockServer {
+pub(super) async fn host(by_branch: serde_json::Value, by_number: serde_json::Value) -> MockServer {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(body_string_contains("pullRequests("))
@@ -80,7 +80,7 @@ async fn host(by_branch: serde_json::Value, by_number: serde_json::Value) -> Moc
     server
 }
 
-fn answer(key: &str, pr: serde_json::Value) -> serde_json::Value {
+pub(super) fn answer(key: &str, pr: serde_json::Value) -> serde_json::Value {
     serde_json::json!({ "data": {
         "viewer": { "login": "haoov" },
         "repository": { key: pr }
@@ -89,7 +89,7 @@ fn answer(key: &str, pr: serde_json::Value) -> serde_json::Value {
 
 /// A repo on the mock host, and a GitHub client named outright: the host rule cannot
 /// read a forge out of an address.
-fn remote(server: &MockServer) -> (Repo, Remote) {
+pub(super) fn remote(server: &MockServer) -> (Repo, Remote) {
     let host = format!("http://{}", server.address());
     let client = Github::with_token(&host, Token::Fixed("t".into())).expect("a client");
     (repo(&host), Remote::Github(client))

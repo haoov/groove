@@ -7,7 +7,7 @@ pub use groove_diff::{
     from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
-pub use groove_forge::Snapshot;
+pub use groove_forge::{Remote, Snapshot};
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
@@ -18,6 +18,7 @@ use groove_watch::{QUIET, Watch};
 
 mod delivery;
 mod git;
+mod propose;
 mod read;
 mod service;
 
@@ -26,6 +27,7 @@ mod tests;
 
 pub use delivery::{Delivery, Polling};
 pub use git::{commit, discard, pull, push, stage, unstage};
+pub use propose::{Text, text_of};
 pub use read::{
     FOUND_MAX, PATHS_MAX, changes, derived, grep, opened, painted, paths, reopened, summary,
 };

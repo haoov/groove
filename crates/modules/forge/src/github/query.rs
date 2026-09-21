@@ -2,7 +2,7 @@
 
 /// Everything one read of an MR brings back, down to the threads.
 const FIELDS: &str = r"
-  number title body state isDraft url createdAt updatedAt
+  id number title body state isDraft url createdAt updatedAt
   headRefName baseRefName reviewDecision
   author { login }
   latestReviews(first: 50) { nodes { state submittedAt author { login } } }
@@ -62,6 +62,47 @@ pub fn by_number() -> String {
         r"query($owner: String!, $repo: String!, $number: Int!) {{
   viewer {{ login }}
   repository(owner: $owner, name: $repo) {{ pullRequest(number: $number) {{ {FIELDS} }} }}
+}}"
+    )
+}
+
+/// The repository a merge request is opened on.
+pub fn repository() -> String {
+    r"query($owner: String!, $repo: String!) {
+  repository(owner: $owner, name: $repo) { id defaultBranchRef { name } }
+}"
+    .to_string()
+}
+
+/// One merge request opened, and read back in the same call.
+pub fn open() -> String {
+    format!(
+        r"mutation($repo: ID!, $base: String!, $head: String!, $title: String!, $body: String!) {{
+  viewer {{ login }}
+  createPullRequest(input: {{
+    repositoryId: $repo, baseRefName: $base, headRefName: $head, title: $title, body: $body
+  }}) {{ pullRequest {{ {FIELDS} }} }}
+}}"
+    )
+}
+
+/// Its title and its body written again.
+pub fn edit() -> String {
+    format!(
+        r"mutation($mr: ID!, $title: String!, $body: String!) {{
+  viewer {{ login }}
+  updatePullRequest(input: {{ pullRequestId: $mr, title: $title, body: $body }})
+    {{ pullRequest {{ {FIELDS} }} }}
+}}"
+    )
+}
+
+/// The merge request closed, with nothing merged.
+pub fn shut() -> String {
+    format!(
+        r"mutation($mr: ID!) {{
+  viewer {{ login }}
+  closePullRequest(input: {{ pullRequestId: $mr }}) {{ pullRequest {{ {FIELDS} }} }}
 }}"
     )
 }

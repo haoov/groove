@@ -9,7 +9,7 @@ mod store;
 mod tests;
 
 pub use error::{Error, Result};
-pub use github::Github;
+pub use github::{Github, Proposed};
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo};
 pub use store::Store;
@@ -22,6 +22,8 @@ pub enum Remote {
 /// One MR as its forge holds it now: what a single call brings back.
 #[derive(Debug)]
 pub struct Snapshot {
+    /// What the forge's own writes address it by.
+    pub node: String,
     pub number: String,
     pub details: MrDetails,
     pub ci: Option<CiStatus>,
@@ -62,6 +64,33 @@ impl Remote {
     pub async fn read_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         match self {
             Remote::Github(github) => github.read_mr(repo, number).await,
+        }
+    }
+
+    /// A new MR, from the worktree's branch into the base it names.
+    pub async fn open_mr_for(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
+        match self {
+            Remote::Github(github) => github.open_new(repo, mr).await,
+        }
+    }
+
+    /// Its title and its body written again.
+    pub async fn edit_mr(
+        &self,
+        repo: &Repo,
+        number: &str,
+        title: &str,
+        body: &str,
+    ) -> Result<Snapshot> {
+        match self {
+            Remote::Github(github) => github.edit_mr(repo, number, title, body).await,
+        }
+    }
+
+    /// The MR closed, with nothing merged.
+    pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
+        match self {
+            Remote::Github(github) => github.shut_mr(repo, number).await,
         }
     }
 }

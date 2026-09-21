@@ -221,8 +221,9 @@ rows, nothing behind it dimmed, and it asks for a query only once the list is lo
 it shows. The palette stays in the middle of the window and dims it.
 
 **One button says what to do now.** The commit box offers a single action — commit while
-something is staged, push while ahead, pull while behind — with a caret beside it for
-everything else the worktree can do. The menu hangs from that caret and ends on the rule
+something is staged, push while ahead, pull while behind, open an MR once the branch is
+landed and has none — with a caret beside it for everything else the worktree can do,
+which includes writing that MR's text again or closing it. The menu hangs from that caret and ends on the rule
 that separates the box from the list.
 
 **A row offers, it never surprises.** Pointing at a file shows one word at its end — stage,

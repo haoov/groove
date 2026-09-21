@@ -99,7 +99,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     }
 }
 
-/// What the worktree most wants doing, if anything.
+/// What the worktree most wants doing: commit, then push, then open an MR.
 pub(crate) fn primary(app: &AppState) -> Option<workspace::Command> {
     let files = super::files::changed(app);
     let ready = !app.workspace.message.text().trim().is_empty();
@@ -110,8 +110,19 @@ pub(crate) fn primary(app: &AppState) -> Option<workspace::Command> {
         (false, _, _) => Some(workspace::Command::Commit),
         (true, ahead, _) if ahead > 0 => Some(workspace::Command::Push),
         (true, _, behind) if behind > 0 => Some(workspace::Command::Pull),
+        (true, _, _) if wants_mr(app) => Some(workspace::Command::CreateMr),
         _ => None,
     }
+}
+
+/// Whether the branch is landed and has no merge request of its own yet.
+fn wants_mr(app: &AppState) -> bool {
+    let known = app
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .is_some_and(|worktree| app.workspace.poll.asked_about(&worktree.id));
+    known && app.workspace.delivery.mr.is_none()
 }
 
 /// Whether the action can be taken now, or is only what the box would do next.
@@ -129,6 +140,7 @@ fn label(act: &workspace::Command) -> &'static str {
     match act {
         workspace::Command::Push => "push",
         workspace::Command::Pull => "pull",
+        workspace::Command::CreateMr => "open mr",
         _ => "commit",
     }
 }

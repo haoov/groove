@@ -156,7 +156,7 @@ fn the_box_offers_the_worktree_s_own_actions() {
     let mut ui = sidebar();
     hit(&Target::Actions, &mut ui, &app);
     let menu = ui.menu.clone().expect("the actions are open");
-    assert_eq!(menu.of, crate::Of::Worktree);
+    assert_eq!(menu.of, crate::Of::Worktree { mr: false });
     let hits = drawn(&app, &ui);
     for at in 0..crate::views::shared::actions::WORKTREE.len() {
         assert!(
@@ -313,5 +313,80 @@ fn a_click_on_the_second_line_of_the_message_lands_on_it() {
         [Command::Workspace(workspace::Command::Message(
             groove_types::Edit::Move(groove_types::Motion::To(groove_types::Caret::new(1, 2)))
         ))]
+    );
+}
+
+/// The worktree pushed and clean, its forge already asked about.
+fn landed() -> AppState {
+    let mut app = listed(&[]);
+    let worktree = app
+        .session
+        .selected()
+        .and_then(|open| open.selected_worktree())
+        .map(|w| w.id.clone())
+        .expect("the fixture has a worktree");
+    app.workspace.poll.sent(&worktree);
+    app.workspace.poll.answered(&worktree);
+    app
+}
+
+#[test]
+fn a_branch_with_nothing_left_to_push_offers_a_merge_request() {
+    let app = landed();
+    assert_eq!(
+        crate::views::session::commit::primary(&app),
+        Some(workspace::Command::CreateMr)
+    );
+    let (frame, _) = view(&app, &sidebar(), window(), &mut Fonts::embedded());
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
+    assert!(texts.iter().any(|t| t == "open mr"), "{texts:?}");
+}
+
+#[test]
+fn a_branch_whose_forge_has_not_answered_offers_nothing() {
+    let app = listed(&[]);
+    assert_eq!(
+        crate::views::session::commit::primary(&app),
+        None,
+        "nothing is known of its mr yet"
+    );
+}
+
+#[test]
+fn a_branch_that_already_has_one_offers_nothing_on_the_button() {
+    let mut app = landed();
+    app.workspace.delivery.mr = Some(groove_types::Mr {
+        id: groove_types::MrId::new("m1"),
+        worktree: groove_types::WorktreeId::new("wt-1"),
+        forge: groove_types::Forge::Github,
+        remote_id: "7".into(),
+        url: "https://example.test/pull/7".into(),
+        state: groove_types::MrState::Open,
+    });
+    assert_eq!(crate::views::session::commit::primary(&app), None);
+}
+
+#[test]
+fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
+    let plain = crate::views::shared::actions::rows(&crate::Of::Worktree { mr: false });
+    assert!(!plain.contains(&"update mr"), "{plain:?}");
+
+    let with_mr = crate::views::shared::actions::rows(&crate::Of::Worktree { mr: true });
+    assert!(with_mr.contains(&"update mr"), "{with_mr:?}");
+    assert!(with_mr.contains(&"close mr"), "{with_mr:?}");
+    let at = with_mr
+        .iter()
+        .position(|row| *row == "close mr")
+        .expect("the row");
+    let (commands, asking) =
+        crate::views::shared::actions::picked(&crate::Of::Worktree { mr: true }, at);
+    assert!(asking.is_none(), "closing an mr asks nothing first");
+    assert_eq!(
+        commands,
+        vec![Command::Workspace(workspace::Command::CloseMr)]
     );
 }

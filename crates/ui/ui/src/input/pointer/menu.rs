@@ -11,7 +11,7 @@ use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::{Corner, Losing, Menu, Of, Ui};
 
 /// The right button on a file's row opens its actions; anywhere else closes them.
-pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, hits: &Hits, metrics: Metrics) {
+pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     ui.discarding = None;
     ui.menu = match hits.at(x, y) {
         Some(Target::File(path)) => Some(Menu {
@@ -19,14 +19,14 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, hits: &Hits, metrics: Metrics) 
             corner: Corner::TopLeft,
             of: Of::File(path),
         }),
-        Some(Target::Actions) => Some(worktree_menu(ui, hits, metrics)),
+        Some(Target::Actions) => Some(worktree_menu(ui, app, hits, metrics)),
         _ => None,
     };
 }
 
 /// The worktree's actions stand above the caret that opened them, ending on the rule
 /// that separates the box from the list.
-pub(super) fn worktree_menu(ui: &Ui, hits: &Hits, metrics: Metrics) -> Menu {
+pub(super) fn worktree_menu(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Menu {
     let box_ = Layout::of(metrics, ui).commit;
     let right = hits
         .rect_of(&Target::Actions)
@@ -35,8 +35,13 @@ pub(super) fn worktree_menu(ui: &Ui, hits: &Hits, metrics: Metrics) -> Menu {
     Menu {
         at: (right, box_.y),
         corner: Corner::BottomRight,
-        of: Of::Worktree,
+        of: Of::Worktree { mr: has_mr(app) },
     }
+}
+
+/// Whether the selected worktree has a merge request to write.
+fn has_mr(app: &AppState) -> bool {
+    app.workspace.delivery.mr.is_some()
 }
 
 /// The answer that throws the change away: one file's, or every one.

@@ -166,10 +166,16 @@ Every read records the `MrFacts` of its worktree. The `task` controller folds th
 task, through the session that works it: several worktrees of one task read as one — the
 earliest wait, the worst run, and an approval only where all of them have it.
 
+The writes go through the commit box: `create_mr` is what the one button offers once the
+branch is pushed and has no MR, and `update_mr` and `close_mr` hang off its caret while it
+has one. The message titles the MR and its remaining lines are the body; an empty box takes
+the task's own title, and a footer names the task by url. From the agent they will go
+through `approvals`, which slice 6 builds.
+
 | Still to build | Does |
 |---|---|
 | `workspace.get_review_queue` | the review column |
-| `workspace.create_mr` · `workspace.update_mr` · `workspace.close_mr` | through `approvals` from the agent |
+| every forge write from the agent | through `approvals`, once it exists |
 | `workspace.request_review` | add reviewers |
 | `workspace.review` | post a verdict with the pending annotations as its comments |
 | `workspace.comment` | a general note |

@@ -123,8 +123,8 @@ pub enum Corner {
 pub enum Of {
     /// One file of the list.
     File(String),
-    /// The worktree, from the commit box.
-    Worktree,
+    /// The worktree, from the commit box; `mr` while it has one to write.
+    Worktree { mr: bool },
     /// The session, from the header's own actions.
     Session(groove_types::SessionId),
 }

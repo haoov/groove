@@ -2,6 +2,9 @@
 
 mod query;
 mod read;
+mod write;
+
+pub use write::Proposed;
 
 use groove_http::Graphql;
 use groove_token::Token;
@@ -56,6 +59,10 @@ impl Github {
                 repo.slug()
             ))
         })
+    }
+
+    fn host(&self) -> &str {
+        &self.host
     }
 
     fn numbered(&self, number: &str) -> Result<i64> {

@@ -1,7 +1,7 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
-use groove_forge::{Remote, Snapshot, Store};
-use groove_types::{CiState, Mr, MrDelivery, MrFacts, Repo, Result, Worktree, WorktreeId};
+use groove_forge::{Proposed, Remote, Snapshot, Store};
+use groove_types::{CiState, Error, Mr, MrDelivery, MrFacts, Repo, Result, Worktree, WorktreeId};
 
 /// One MR as the forge answered and the database now holds it.
 #[derive(Debug)]
@@ -117,6 +117,74 @@ impl Service {
         };
         let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
         Ok(Some(Delivered { mr, read }))
+    }
+
+    /// A new MR from the worktree's branch, written down as the forge answers.
+    pub async fn open_mr(
+        &self,
+        remote: &Remote,
+        repo: &Repo,
+        worktree: &Worktree,
+        text: &crate::Text,
+    ) -> Result<Delivered> {
+        let read = remote
+            .open_mr_for(
+                repo,
+                Proposed {
+                    head: &worktree.branch,
+                    base: worktree.base_ref.as_deref(),
+                    title: &text.title,
+                    body: &text.body,
+                },
+            )
+            .await?;
+        self.kept(remote, worktree, read).await
+    }
+
+    /// The MR's title and body written again.
+    pub async fn edit_mr(
+        &self,
+        remote: &Remote,
+        repo: &Repo,
+        worktree: &Worktree,
+        text: &crate::Text,
+    ) -> Result<Delivered> {
+        let mr = self.held(&worktree.id).await?;
+        let read = remote
+            .edit_mr(repo, &mr.remote_id, &text.title, &text.body)
+            .await?;
+        self.kept(remote, worktree, read).await
+    }
+
+    /// The MR closed, and the row left saying so.
+    pub async fn close_mr(
+        &self,
+        remote: &Remote,
+        repo: &Repo,
+        worktree: &Worktree,
+    ) -> Result<Delivered> {
+        let mr = self.held(&worktree.id).await?;
+        let read = remote.close_mr(repo, &mr.remote_id).await?;
+        self.kept(remote, worktree, read).await
+    }
+
+    /// The MR the worktree has, or the error that it has none.
+    async fn held(&self, worktree: &WorktreeId) -> Result<Mr> {
+        self.mrs
+            .get(worktree)
+            .await?
+            .ok_or_else(|| Error::not_found(format!("{worktree} has no merge request")))
+    }
+
+    /// What a write answered, written down.
+    async fn kept(
+        &self,
+        remote: &Remote,
+        worktree: &Worktree,
+        read: Snapshot,
+    ) -> Result<Delivered> {
+        let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
+        Ok(Delivered { mr, read })
     }
 
     /// Forgets a worktree's MR, for one the user closed.

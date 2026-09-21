@@ -66,6 +66,11 @@ impl Polling {
         !self.asked.contains(worktree) && !self.out.contains(worktree)
     }
 
+    /// Whether its forge has answered at all, so no MR means no MR.
+    pub fn asked_about(&self, worktree: &WorktreeId) -> bool {
+        self.asked.contains(worktree) && !self.out.contains(worktree)
+    }
+
     /// Whether a read is out for it.
     pub fn is_out(&self, worktree: &WorktreeId) -> bool {
         self.out.contains(worktree)

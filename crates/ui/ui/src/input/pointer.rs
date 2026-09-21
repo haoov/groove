@@ -128,7 +128,7 @@ fn acted(
         Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
-        Some(Target::Actions) => actions(ui, hits, metrics),
+        Some(Target::Actions) => actions(ui, app, hits, metrics),
         Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
@@ -240,8 +240,8 @@ fn kept(ui: &mut Ui) -> Vec<Command> {
     Vec::new()
 }
 
-fn actions(ui: &mut Ui, hits: &Hits, metrics: Metrics) -> Vec<Command> {
-    ui.menu = Some(worktree_menu(ui, hits, metrics));
+fn actions(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Vec<Command> {
+    ui.menu = Some(worktree_menu(ui, app, hits, metrics));
     Vec::new()
 }
 

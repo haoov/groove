@@ -165,22 +165,7 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &W
 fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
     let selected = state.workspace.holds(worktree);
     match read {
-        Ok(Some(delivered)) => {
-            onto(state, worktree, |row| {
-                row.mr = Some(delivered.shown());
-                row.ci = delivered.ci();
-                row.notes = delivered.notes();
-                row.stale = false;
-            });
-            state
-                .workspace
-                .facts
-                .insert(worktree.clone(), delivered.facts());
-            if selected {
-                state.workspace.delivery.taken(delivered);
-            }
-            crate::task::attention::reread(state, Timestamp::now());
-        }
+        Ok(Some(delivered)) => took(state, worktree, delivered),
         Ok(None) => {
             onto(state, worktree, |row| {
                 *row = WorktreeDelivery {
@@ -202,6 +187,24 @@ fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
             state.errors.push(e);
         }
     }
+}
+
+/// One MR in hand, from a read or from a write: onto the rows, the facts, the slice.
+pub(super) fn took(state: &mut AppState, worktree: &WorktreeId, delivered: Delivered) {
+    onto(state, worktree, |row| {
+        row.mr = Some(delivered.shown());
+        row.ci = delivered.ci();
+        row.notes = delivered.notes();
+        row.stale = false;
+    });
+    state
+        .workspace
+        .facts
+        .insert(worktree.clone(), delivered.facts());
+    if state.workspace.holds(worktree) {
+        state.workspace.delivery.taken(delivered);
+    }
+    crate::task::attention::reread(state, Timestamp::now());
 }
 
 /// Writes on the row of whichever open session holds this worktree.
