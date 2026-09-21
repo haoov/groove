@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use groove_types::{FileDiff, FileStatus, Result};
+use groove_types::{CommitEntry, FileDiff, FileStatus, Result};
 
 use crate::{Changes, Derived, Document, Found, Opened, Painted, Search};
 
@@ -14,6 +14,24 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
 pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
     groove_diff::changes(dir, files).await
 }
+
+/// The newest commits of the branch, the base's own marked as its.
+pub async fn commits(dir: &Path, base: Option<&str>, limit: usize) -> Result<Vec<CommitEntry>> {
+    groove_diff::commits(dir, base, limit).await
+}
+
+/// What one commit changed, which nothing may edit.
+pub async fn at_commit(dir: &Path, sha: &str) -> Result<(Vec<FileDiff>, Changes)> {
+    groove_diff::at_commit(dir, sha).await
+}
+
+/// One file as a commit left it, which nothing may edit.
+pub async fn opened_at(dir: &Path, sha: &str, path: &str) -> Result<Opened> {
+    groove_diff::opened_at(dir, sha, path).await
+}
+
+/// How many commits the list holds.
+pub const COMMITS_MAX: usize = 100;
 
 /// Every line under the worktree holding `query`, in batches as they are found.
 pub fn grep(

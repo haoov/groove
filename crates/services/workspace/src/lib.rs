@@ -14,8 +14,8 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use groove_types::{
-    Annotation, DiffMode, DiffView, FileDiff, MrFacts, Note, Result, ReviewMr, WorktreeId,
-    WorktreeStatus,
+    Annotation, CommitEntry, DiffMode, DiffView, FileDiff, MrFacts, Note, Result, ReviewMr,
+    WorktreeId, WorktreeStatus,
 };
 use groove_watch::{QUIET, Watch};
 
@@ -35,7 +35,8 @@ pub use groove_annotations::New as NewNote;
 pub use notes::merged;
 pub use propose::{Text, text_of};
 pub use read::{
-    FOUND_MAX, PATHS_MAX, changes, derived, grep, opened, painted, paths, reopened, summary,
+    COMMITS_MAX, FOUND_MAX, PATHS_MAX, at_commit, changes, commits, derived, grep, opened,
+    opened_at, painted, paths, reopened, summary,
 };
 pub use service::{Delivered, Service};
 
@@ -76,6 +77,10 @@ pub struct State {
     pub facts: BTreeMap<WorktreeId, MrFacts>,
     /// The board's review column: what the forges ask this user to look at.
     pub reviews: Vec<ReviewMr>,
+    /// The branch's own commits, newest first.
+    pub log: Vec<CommitEntry>,
+    /// The commit the surface shows instead of the working tree.
+    pub commit: Option<CommitEntry>,
     /// The notes the selected session left, as the database holds them.
     pub own: Vec<Annotation>,
     /// The session whose notes it holds, or has a read out for.
@@ -116,6 +121,11 @@ impl State {
         let shut = self.changes.folds();
         self.changes = changes;
         self.changes.refold(shut);
+    }
+
+    /// Whether what it shows is a commit, which nothing may write.
+    pub fn readonly(&self) -> bool {
+        self.commit.is_some()
     }
 
     /// Shuts the open file when the path that is gone is it, or holds it.
@@ -165,6 +175,8 @@ impl State {
         self.paths.clear();
         self.walking = false;
         self.facts.clear();
+        self.log.clear();
+        self.commit = None;
         self.own.clear();
         self.noted = None;
         self.notes.clear();

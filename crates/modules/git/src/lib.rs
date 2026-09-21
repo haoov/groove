@@ -7,6 +7,7 @@ mod diff;
 mod error;
 mod facts;
 mod index;
+mod log;
 pub mod parse;
 mod remote;
 mod status;

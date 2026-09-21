@@ -1,5 +1,6 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
+mod commits;
 mod diff;
 mod editor;
 mod git;
@@ -82,6 +83,12 @@ pub enum Command {
     UpdateMr,
     /// `workspace.close_mr`: closed, with nothing merged.
     CloseMr,
+    /// `workspace.get_commits`: the newest commits of the worktree's branch.
+    GetCommits,
+    /// `workspace.open_commit`: one commit shown as the change it made.
+    OpenCommit { sha: String },
+    /// `workspace.leave_commit`: the working tree shown again.
+    LeaveCommit,
     /// `workspace.get_notes`: this session's notes and the MR's threads.
     GetNotes,
     /// One note of this session made, written again, resolved or taken away.
@@ -117,9 +124,32 @@ impl Command {
             Command::CreateMr => "workspace.create_mr",
             Command::UpdateMr => "workspace.update_mr",
             Command::CloseMr => "workspace.close_mr",
+            Command::GetCommits => "workspace.get_commits",
+            Command::OpenCommit { .. } => "workspace.open_commit",
+            Command::LeaveCommit => "workspace.leave_commit",
             Command::GetNotes => "workspace.get_notes",
             Command::Note(act) => act.id(),
         }
+    }
+}
+
+impl Command {
+    /// Whether it writes what the surface shows, which a commit never allows.
+    pub fn writes(&self) -> bool {
+        matches!(
+            self,
+            Command::Edit(_)
+                | Command::SaveFile
+                | Command::Cut
+                | Command::Paste
+                | Command::Stage { .. }
+                | Command::Unstage { .. }
+                | Command::Discard { .. }
+                | Command::DiscardAll
+                | Command::Commit
+                | Command::Path(_)
+                | Command::Note(_)
+        )
     }
 }
 
@@ -129,6 +159,9 @@ pub fn dispatch(
     services: &Services,
     spawner: &dyn Spawner,
 ) {
+    if state.workspace.readonly() && command.writes() {
+        return;
+    }
     match command {
         Command::Load => reread(state, spawner),
         Command::OpenFile { path, at } => open_file(state, spawner, path, at),
@@ -156,6 +189,9 @@ pub fn dispatch(
         Command::CreateMr => write(state, services, spawner, Mr::Open),
         Command::UpdateMr => write(state, services, spawner, Mr::Edit),
         Command::CloseMr => write(state, services, spawner, Mr::Close),
+        Command::GetCommits => commits::list(state, spawner),
+        Command::OpenCommit { sha } => commits::open(state, spawner, sha),
+        Command::LeaveCommit => commits::leave(state, spawner),
         Command::GetNotes => notes::list(state, services, spawner),
         Command::Note(act) => notes::write(state, services, spawner, act),
     }

@@ -3,7 +3,9 @@
 use std::path::Path;
 
 use groove_types::{Edit, Error, ErrorKind, Result, Selection};
-use groove_workspace_service::{Derived, Document, Opened, by_line, derived, opened, reopened};
+use groove_workspace_service::{
+    Derived, Document, Opened, by_line, derived, opened, opened_at, reopened,
+};
 
 use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
@@ -186,8 +188,12 @@ pub(super) fn read(
         return;
     };
     let job = state.begin(format!("opening {path}"));
+    let sha = state.workspace.commit.as_ref().map(|one| one.sha.clone());
     spawner.spawn(Box::pin(async move {
-        let file = sides(&dir, &path, old).await;
+        let file = match sha {
+            Some(sha) => opened_at(&dir, &sha, &path).await,
+            None => sides(&dir, &path, old).await,
+        };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match file {

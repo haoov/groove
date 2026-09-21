@@ -3,6 +3,7 @@
 
 mod alignment;
 mod changes;
+mod commit;
 mod opened;
 mod summary;
 mod words;
@@ -12,6 +13,7 @@ mod tests;
 
 pub use alignment::{Words, align, by_line, marks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
+pub use commit::{at_commit, commits, opened_at};
 pub use groove_text::{Buffer, Document};
 
 /// A line as the surface draws it, and its colours over it.
