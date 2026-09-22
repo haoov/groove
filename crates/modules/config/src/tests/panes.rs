@@ -8,6 +8,7 @@ const LEFT: Panes = Panes {
     sidebar: 380.0,
     commit: 120.0,
     band: 300.0,
+    feed: 200.0,
 };
 
 #[test]

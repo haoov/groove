@@ -1,5 +1,6 @@
 //! The `session` controller: one function per user action on the `session` service.
 
+pub(crate) mod feed;
 mod rail;
 mod repos;
 mod review;

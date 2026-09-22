@@ -11,5 +11,8 @@ groove-controllers = { path = "../../controllers/controllers" }
 groove-gfx = { path = "../../base/gfx" }
 groove-types = { path = "../../shared/types" }
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

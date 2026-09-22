@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 
 use super::Delta;
 use crate::ctx::Metrics;
-use crate::hit::{Hits, Scroller};
+use crate::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
 use crate::views::board::List;
 use crate::views::session::Tab;
@@ -25,9 +25,7 @@ pub(super) fn scroll(
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
     if x <= layout.rail.right() {
-        let far = hits.extent(Scroller::Rail);
-        ui.rail.scroll = moved(ui.rail.scroll, pixels(tokens.row), far);
-        return;
+        return in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
     }
     if ui.showing(app) == Surface::Board {
         let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
@@ -67,6 +65,20 @@ fn carry(delta: Delta, ui: &mut Ui, tokens: crate::tokens::Tokens) {
 }
 
 /// The board column the pointer is over.
+/// The rail's rows, or the feed under them where the pointer stands on it.
+fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
+    let on_feed = hits
+        .rect_of(&Target::Feed)
+        .is_some_and(|head| y >= head.y && !ui.rail.folded);
+    if on_feed {
+        let far = hits.extent(Scroller::Feed);
+        ui.rail.feed = moved(ui.rail.feed, lines, far);
+        return;
+    }
+    let far = hits.extent(Scroller::Rail);
+    ui.rail.scroll = moved(ui.rail.scroll, rows, far);
+}
+
 fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, layout: Layout) {
     let board = layout.board;
     let width = board.w / List::ALL.len() as f32;

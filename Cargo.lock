@@ -1494,6 +1494,7 @@ dependencies = [
  "groove-controllers",
  "groove-gfx",
  "groove-types",
+ "serde_json",
 ]
 
 [[package]]

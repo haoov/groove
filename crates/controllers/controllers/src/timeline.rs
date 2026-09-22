@@ -37,11 +37,12 @@ pub(crate) fn logged(
     let timeline = services.timeline.clone();
     spawner.spawn(Box::pin(async move {
         let written = timeline.append(&event).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if let Err(e) = written {
-                state.errors.push(e);
-            }
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match written {
+                Err(e) => state.errors.push(e),
+                Ok(()) => crate::session::feed::read(state, services, spawner),
+            },
+        ) as Continuation
     }));
 }
 

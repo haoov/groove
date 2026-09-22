@@ -14,6 +14,12 @@ use crate::{Surface, Ui};
 pub struct RailUi {
     /// How far the rows are scrolled, in pixels.
     pub scroll: f32,
+    /// How far the feed is scrolled, in pixels.
+    pub feed: f32,
+    /// The feed is folded to its own heading.
+    pub folded: bool,
+    /// The feed shows the selected session alone.
+    pub mine: bool,
 }
 
 /// The opened sessions, in the order opened. The Board row above, the footer below.
@@ -27,8 +33,15 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let board = Rect::new(0.0, 0.0, width, ctx.tokens.header);
     let foot = Rect::new(0.0, rect.h - ctx.tokens.row, width, ctx.tokens.row);
     board_row(ctx, app, ui, board);
-    let rows = Rect::new(0.0, board.bottom(), width, foot.y - board.bottom());
+    let band = ctx.layout.feed;
+    let rows = Rect::new(
+        0.0,
+        board.bottom(),
+        width,
+        (band.y - board.bottom()).max(0.0),
+    );
     items(ctx, app, ui, rows);
+    super::feed::draw(ctx, Rect::new(0.0, band.y, width, band.h), app, ui);
     footer(ctx, app, foot);
 }
 

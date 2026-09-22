@@ -125,7 +125,12 @@ pub struct State {
     pub pool: Vec<groove_types::PoolEntry>,
     /// Origin's heads per repo as last listed, for the pickers.
     pub branches: Vec<(RepoId, Vec<String>)>,
+    /// What the opened sessions have done, newest first.
+    pub feed: Vec<groove_types::TimelineEvent>,
 }
+
+/// How many lines the feed holds, over every session it reads.
+pub const FEED_MAX: usize = 200;
 
 /// A session that exists on disk, on the rail or not.
 #[derive(Clone, Debug, PartialEq)]

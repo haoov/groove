@@ -3,6 +3,7 @@
 mod board;
 mod drag;
 mod menu;
+mod rail;
 mod sidebar;
 mod surface;
 
@@ -107,11 +108,10 @@ fn acted(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    if let Some(commands) = target.as_ref().and_then(|one| board::acted(one, ui, app)) {
+    if let Some(commands) = elsewhere(target.as_ref(), ui, app) {
         return commands;
     }
     match target {
-        Some(Target::Session(session)) => opened_session(ui, session),
         Some(Target::Tab(tab)) => tabbed(ui, tab),
         Some(Target::Fold) => aside(ui),
         Some(Target::Picker(which)) => selector(ui, app, hits, which),
@@ -156,6 +156,12 @@ fn review(project: String, iid: u64) -> Vec<Command> {
         project,
         iid,
     })]
+}
+
+/// What another surface answers for: the board's own rows, or the rail's.
+fn elsewhere(target: Option<&Target>, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+    let target = target?;
+    board::acted(target, ui, app).or_else(|| rail::acted(target, ui))
 }
 
 /// The rest of the task's actions, under the caret that opened them.

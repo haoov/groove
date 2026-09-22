@@ -3,6 +3,7 @@ mod budget;
 mod commit;
 mod diff;
 mod editing;
+mod feed;
 mod field;
 mod files;
 mod finding;

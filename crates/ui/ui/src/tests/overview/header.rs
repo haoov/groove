@@ -28,10 +28,12 @@ fn the_header_names_the_session_and_what_it_points_at() {
         2,
         "the worktree picker and the overview row"
     );
+    let head = crate::layout::Layout::of(metrics, &Ui::default()).header;
     let carets = frame.layers()[0]
         .icons
         .iter()
         .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
+        .filter(|i| head.contains(i.rect.x, i.rect.y))
         .count();
     assert_eq!(carets, 2, "one per picker");
 }

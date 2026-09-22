@@ -10,8 +10,8 @@ use groove_types::Panes;
 use crate::Ui;
 use crate::ctx::Metrics;
 use crate::tokens::{
-    AGENT_MIN, BAND_MIN, COLUMNS_MIN, COMMIT_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN, SIDEBAR_MIN,
-    Tokens, WORKSPACE_MIN,
+    AGENT_MIN, BAND_MIN, COLUMNS_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN,
+    SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
 };
 
 /// A boundary the user drags.
@@ -27,6 +27,8 @@ pub enum Edge {
     Commit,
     /// Between the board's columns and the timeline under them.
     Band,
+    /// Between the rail's own rows and the feed under them.
+    Feed,
 }
 
 impl Edge {
@@ -35,7 +37,7 @@ impl Edge {
 
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        !matches!(self, Edge::Commit | Edge::Band)
+        !matches!(self, Edge::Commit | Edge::Band | Edge::Feed)
     }
 }
 
@@ -50,6 +52,8 @@ pub struct Split {
     pub commit: f32,
     /// How tall the board's timeline stands under its columns.
     pub band: f32,
+    /// How tall the rail's feed stands, the footer under it included.
+    pub feed: f32,
 }
 
 impl Default for Split {
@@ -61,6 +65,7 @@ impl Default for Split {
             sidebar: tokens.sidebar,
             commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
             band: tokens.band,
+            feed: FEED_MIN * 2.0,
         }
     }
 }
@@ -74,6 +79,7 @@ impl Split {
             sidebar: panes.sidebar.max(SIDEBAR_MIN),
             commit: panes.commit.max(COMMIT_MIN),
             band: panes.band.max(BAND_MIN),
+            feed: panes.feed.max(FEED_MIN),
         }
     }
 
@@ -84,6 +90,7 @@ impl Split {
             sidebar: self.sidebar,
             commit: self.commit,
             band: self.band,
+            feed: self.feed,
         }
     }
 
@@ -114,6 +121,10 @@ impl Split {
                 let most = (height - COLUMNS_MIN).max(BAND_MIN);
                 self.band = (height - at).clamp(BAND_MIN, most);
             }
+            Edge::Feed => {
+                let most = (height - SESSIONS_MIN).max(FEED_MIN);
+                self.feed = (height - at).clamp(FEED_MIN, most);
+            }
         }
     }
 
@@ -125,6 +136,7 @@ impl Split {
             Edge::Sidebar => width - self.aside(sidebar),
             Edge::Commit => height - self.commit,
             Edge::Band => height - self.band,
+            Edge::Feed => height - self.feed,
         }
     }
 
@@ -153,6 +165,8 @@ pub struct Layout {
     pub sidebar: Rect,
     /// The commit box at the sidebar's foot, as tall as the user has dragged it.
     pub commit: Rect,
+    /// The rail's feed, above its footer, as tall as the user has dragged it.
+    pub feed: Rect,
     /// Everything the board takes: the window but the rail.
     pub board: Rect,
 }
@@ -167,9 +181,12 @@ impl Layout {
         let work_x = rail + agent;
         let work_width = (window.w - work_x - aside).max(0.0);
         let box_ = scale(split.commit).min(window.h);
+        let foot = tokens.row;
+        let band = (scale(split.feed).min(window.h) - foot).max(tokens.row);
         let head = tokens.header + tokens.row + tokens.sm;
         Self {
             window,
+            feed: Rect::new(0.0, window.h - foot - band, rail, band),
             commit: Rect::new(work_x + work_width, window.h - box_, aside, box_),
             rail: Rect::new(0.0, 0.0, rail, window.h),
             agent: Rect::new(rail, 0.0, agent, window.h),
@@ -183,6 +200,10 @@ impl Layout {
     pub fn of(metrics: Metrics, ui: &Ui) -> Self {
         let tokens = metrics.tokens();
         let mut held = Self::new(metrics.size, &tokens, ui.split, ui.session.sidebar());
+        if ui.rail.folded {
+            let row = tokens.row;
+            held.feed = Rect::new(0.0, held.feed.bottom() - row, held.feed.w, row);
+        }
         if !ui.session.commits() {
             held.commit = Rect::new(held.commit.x, held.window.h, held.commit.w, 0.0);
         }

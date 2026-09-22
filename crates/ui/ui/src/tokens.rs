@@ -34,6 +34,12 @@ pub const DAY_PIXELS: f32 = 24.0;
 
 /// The smallest the timeline's band may be, and the room it leaves the columns.
 pub const BAND_MIN: f32 = 120.0;
+
+/// The feed and the footer under it, at their shortest.
+pub const FEED_MIN: f32 = 96.0;
+
+/// What the rail's own rows keep whatever the feed takes.
+pub const SESSIONS_MIN: f32 = 120.0;
 pub const COLUMNS_MIN: f32 = 200.0;
 
 /// The smallest the commit box and the list above it may be.

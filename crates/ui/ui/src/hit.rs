@@ -72,6 +72,10 @@ pub enum Target {
     Commit(String),
     /// What leaves the commit and shows the working tree again.
     Working,
+    /// The feed's own heading, which folds it away.
+    Feed,
+    /// Which sessions the feed shows.
+    FeedScope,
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
     /// What finishes the task a session works, and what opens its other actions.
@@ -169,6 +173,8 @@ pub enum Scroller {
     Files,
     Code,
     Overview,
+    /// The rail's own log.
+    Feed,
     /// One of the board's columns.
     Column(u8),
 }
@@ -181,7 +187,8 @@ impl Scroller {
             Scroller::Files => 1,
             Scroller::Code => 2,
             Scroller::Overview => 3,
-            Scroller::Column(which) => 4 + which as usize,
+            Scroller::Feed => 4,
+            Scroller::Column(which) => 5 + which as usize,
         }
     }
 }
@@ -193,7 +200,7 @@ pub struct Hits {
     /// The rows the code surface drew.
     shown: std::ops::Range<usize>,
     /// How far each column can scroll, one per `Scroller`.
-    extents: [f32; 7],
+    extents: [f32; 8],
     chars: Chars,
 }
 
