@@ -13,12 +13,12 @@ groove-session-service = { path = "../../services/session" }
 groove-workspace-service = { path = "../../services/workspace" }
 groove-agent-service = { path = "../../services/agent" }
 groove-config-service = { path = "../../services/config" }
+serde_json.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
 wiremock.workspace = true
 tempfile.workspace = true
-serde_json.workspace = true
 
 [lints]
 workspace = true

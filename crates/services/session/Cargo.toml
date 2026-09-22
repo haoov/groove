@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 groove-types = { path = "../../shared/types" }
+groove-timeline = { path = "../../modules/timeline" }
 groove-sessions = { path = "../../modules/sessions" }
 groove-worktree = { path = "../../modules/worktree" }
 groove-git = { path = "../../modules/git" }

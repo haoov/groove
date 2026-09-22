@@ -48,11 +48,13 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
     let service = services.workspace.clone();
     spawner.spawn(Box::pin(async move {
         let wrote = made(&service, &remote, &repo, &worktree, &text, act).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.end(job);
-            state.workspace.poll.answered(&id);
-            landed(state, &id, wrote);
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                state.workspace.poll.answered(&id);
+                landed(state, services, spawner, &id, wrote);
+            },
+        ) as Continuation
     }));
 }
 
@@ -86,9 +88,15 @@ async fn made(
 }
 
 /// What the write answered, onto the rows and the slice, as a read would.
-fn landed(state: &mut AppState, worktree: &WorktreeId, wrote: Result<Delivered>) {
+fn landed(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: &WorktreeId,
+    wrote: Result<Delivered>,
+) {
     match wrote {
-        Ok(delivered) => super::mr::took(state, worktree, delivered),
+        Ok(delivered) => super::mr::took(state, services, spawner, worktree, delivered),
         Err(e) => state.errors.push(e),
     }
 }

@@ -1,5 +1,6 @@
 //! What git is asked to do: the index, a commit, a push, a pull, a change thrown away.
 
+use groove_types::TimelineKind;
 use groove_workspace_service::Buffer;
 
 use super::diff::{load, reread};
@@ -38,6 +39,7 @@ pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
     let job = state.begin(act.label());
     let pushed = matches!(act, Remote::Push);
     let id = worktree.id.clone();
+    let branch = worktree.branch.clone();
     spawner.spawn(Box::pin(async move {
         let done = match act {
             Remote::Push => groove_workspace_service::push(&dir, &worktree.branch).await,
@@ -48,6 +50,12 @@ pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
                 state.end(job);
                 if let Err(e) = done {
                     state.errors.push(e);
+                } else {
+                    let kind = match pushed {
+                        true => TimelineKind::Push,
+                        false => TimelineKind::Pull,
+                    };
+                    crate::timeline::log(state, services, spawner, kind, branch);
                 }
                 if pushed {
                     state.workspace.poll.forget(&id);
@@ -144,15 +152,29 @@ pub(super) fn commit(state: &mut AppState, spawner: &dyn Spawner) {
     spawner.spawn(Box::pin(async move {
         let done = groove_workspace_service::commit(&dir, message.trim()).await;
         Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 match done {
-                    Ok(()) => committed(state, spawner),
+                    Ok(()) => {
+                        let said = subject(&message);
+                        crate::timeline::log(state, services, spawner, TimelineKind::Commit, said);
+                        committed(state, spawner);
+                    }
                     Err(e) => state.errors.push(e),
                 }
             },
         ) as Continuation
     }));
+}
+
+/// What a commit is known by: the first line of its message.
+fn subject(message: &str) -> String {
+    message
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
 
 /// The message is spent, and every side of the diff is read again.

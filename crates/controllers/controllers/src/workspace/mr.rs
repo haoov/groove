@@ -1,6 +1,8 @@
 //! The MR of a worktree: read when it is selected, then polled while it stays open.
 
-use groove_types::{Mr, MrDelivery, Result, Timestamp, WorktreeDelivery, WorktreeId};
+use groove_types::{
+    CiState, Mr, MrDelivery, MrState, Result, TimelineKind, Timestamp, WorktreeDelivery, WorktreeId,
+};
 use groove_workspace_service::Delivered;
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -134,18 +136,26 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &W
     let service = services.workspace.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.read(&remote, &repo, &worktree).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.workspace.poll.answered(&worktree.id);
-            answered(state, &worktree.id, read);
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.workspace.poll.answered(&worktree.id);
+                answered(state, services, spawner, &worktree.id, read);
+            },
+        ) as Continuation
     }));
 }
 
 /// What the read brought back, onto the row and onto the selected worktree's slice.
-fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
+fn answered(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: &WorktreeId,
+    read: Answer,
+) {
     let selected = state.workspace.holds(worktree);
     match read {
-        Ok(Some(delivered)) => took(state, worktree, delivered),
+        Ok(Some(delivered)) => took(state, services, spawner, worktree, delivered),
         Ok(None) => {
             onto(state, worktree, |row| {
                 *row = WorktreeDelivery {
@@ -170,7 +180,14 @@ fn answered(state: &mut AppState, worktree: &WorktreeId, read: Answer) {
 }
 
 /// One MR in hand, from a read or from a write: onto the rows, the facts, the slice.
-pub(super) fn took(state: &mut AppState, worktree: &WorktreeId, delivered: Delivered) {
+pub(super) fn took(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: &WorktreeId,
+    delivered: Delivered,
+) {
+    let before = stood(state, worktree);
     onto(state, worktree, |row| {
         row.mr = Some(delivered.shown());
         row.ci = delivered.ci();
@@ -186,6 +203,70 @@ pub(super) fn took(state: &mut AppState, worktree: &WorktreeId, delivered: Deliv
         state.workspace.remerge();
     }
     crate::task::attention::reread(state, Timestamp::now());
+    moved(state, services, spawner, worktree, before);
+}
+
+/// What the row said before a read or a write landed on it.
+fn stood(state: &AppState, worktree: &WorktreeId) -> (Option<MrState>, Option<CiState>) {
+    let row = state
+        .session
+        .open
+        .iter()
+        .flat_map(|open| open.delivery.iter())
+        .find(|(id, _)| id == worktree)
+        .map(|(_, row)| row);
+    (
+        row.and_then(|row| row.mr.as_ref()).map(|mr| mr.state),
+        row.and_then(|row| row.ci),
+    )
+}
+
+/// The lines a read leaves: what the merge request became, and what its run said.
+fn moved(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: &WorktreeId,
+    before: (Option<MrState>, Option<CiState>),
+) {
+    let (was, ran) = before;
+    let now = state
+        .session
+        .open
+        .iter()
+        .flat_map(|open| open.delivery.iter())
+        .find(|(id, _)| id == worktree)
+        .map(|(_, row)| row);
+    let Some(row) = now else {
+        return;
+    };
+    let (state_now, ci_now) = (row.mr.as_ref().map(|mr| mr.state), row.ci);
+    let named = row
+        .mr
+        .as_ref()
+        .map(|mr| format!("{}{}", mr.forge.sigil(), mr.number))
+        .unwrap_or_default();
+    if let Some(kind) = state_now.filter(|now| Some(*now) != was).and_then(became) {
+        crate::timeline::log(state, services, spawner, kind, named.clone());
+    }
+    if let Some(ci) = ci_now.filter(|now| Some(*now) != ran && finished(*now)) {
+        let said = format!("{named} {}", ci.label());
+        crate::timeline::log(state, services, spawner, TimelineKind::Ci, said);
+    }
+}
+
+/// Whether a run is over, so its result is worth a line.
+fn finished(ci: CiState) -> bool {
+    !matches!(ci, CiState::Pending | CiState::Running | CiState::Unknown)
+}
+
+/// The line an MR's own state is worth, once it is not the state it was.
+fn became(state: MrState) -> Option<TimelineKind> {
+    match state {
+        MrState::Open => Some(TimelineKind::MrOpened),
+        MrState::Merged => Some(TimelineKind::MrMerged),
+        MrState::Closed => Some(TimelineKind::MrClosed),
+    }
 }
 
 /// Writes on the row of whichever open session holds this worktree.

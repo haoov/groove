@@ -105,6 +105,7 @@ pub(crate) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
     };
     let service = services.workspace.clone();
     let job = state.begin(act.label());
+    let left = left_by(&act);
     spawner.spawn(Box::pin(async move {
         let done = apply(&service, act, session, repo, Timestamp::now()).await;
         Box::new(
@@ -112,7 +113,13 @@ pub(crate) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
                 state.end(job);
                 match done {
                     Err(e) => state.errors.push(e),
-                    Ok(()) => list(state, services, spawner),
+                    Ok(()) => {
+                        if let Some(said) = left.as_ref() {
+                            let kind = groove_types::TimelineKind::Note;
+                            crate::timeline::log(state, services, spawner, kind, said);
+                        }
+                        list(state, services, spawner);
+                    }
                 }
             },
         ) as Continuation
@@ -148,6 +155,14 @@ async fn apply(
         Act::Reopen { id } => service.reopen_note(&id).await.map(drop),
         Act::Delete { id } => service.delete_note(&id).await,
         Act::Post { .. } | Act::Reply { .. } | Act::Thread { .. } => Ok(()),
+    }
+}
+
+/// What a write leaves on the log, or nothing for one that only moves a note about.
+fn left_by(act: &Act) -> Option<String> {
+    match act {
+        Act::Create { anchor, .. } => Some(format!("{} {}", anchor.path, anchor.start_line + 1)),
+        _ => None,
     }
 }
 

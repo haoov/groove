@@ -151,6 +151,23 @@ pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) 
     }));
 }
 
+/// The line a provisioning leaves: the worktree it made, and where it stands.
+fn logged_added(
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &groove_types::SessionId,
+    added: &Added,
+) {
+    crate::timeline::logged(
+        services,
+        spawner,
+        session.clone(),
+        groove_types::TimelineKind::WorktreeAdded,
+        added.worktree.branch.clone(),
+        serde_json::json!({ "worktree": added.worktree.id.as_str() }),
+    );
+}
+
 /// A provisioning result into the session's row: the repo, the worktree, the notes.
 fn added(
     spawner: &dyn Spawner,
@@ -165,6 +182,7 @@ fn added(
                 match result {
                     Ok(added) => {
                         let id = added.worktree.session.clone();
+                        logged_added(services, spawner, &id, &added);
                         state.notes.extend(added.notes);
                         if let Some(open) = state.session.get_mut(&id) {
                             open.add_worktree(added.repo, added.worktree);

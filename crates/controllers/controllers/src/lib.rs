@@ -12,6 +12,7 @@ mod event;
 mod services;
 mod spawn;
 mod state;
+mod timeline;
 
 #[cfg(test)]
 mod tests;

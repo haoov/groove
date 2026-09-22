@@ -6,5 +6,6 @@ mod perf;
 mod reviews;
 mod session;
 mod tasks;
+mod timeline;
 mod workspace;
 mod worktrees;

@@ -27,6 +27,8 @@ pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spaw
     };
     let service = services.workspace.clone();
     let job = state.begin(act.label());
+    let act = act.clone();
+    let told = act.clone();
     spawner.spawn(Box::pin(async move {
         let done = made(&service, &remote, &repo, &id, act, posted).await;
         Box::new(
@@ -34,7 +36,11 @@ pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spaw
                 state.end(job);
                 match done {
                     Err(e) => state.errors.push(e),
-                    Ok(()) => landed(state, services, spawner),
+                    Ok(()) => {
+                        let kind = kind_of(&told);
+                        crate::timeline::log(state, services, spawner, kind, subject(&told));
+                        landed(state, services, spawner);
+                    }
                 }
             },
         ) as Continuation
@@ -61,6 +67,27 @@ async fn made(
         }
         Act::Thread { thread, resolve } => service.resolve_thread(remote, &thread, resolve).await,
         _ => Ok(()),
+    }
+}
+
+/// The line one of these writes leaves.
+fn kind_of(act: &Act) -> groove_types::TimelineKind {
+    match act {
+        Act::Post { .. } => groove_types::TimelineKind::Note,
+        _ => groove_types::TimelineKind::Review,
+    }
+}
+
+/// What the line says it was about.
+fn subject(act: &Act) -> String {
+    match act {
+        Act::Post { .. } => "posted".to_string(),
+        Act::Reply { .. } => "replied".to_string(),
+        Act::Thread { resolve, .. } => match resolve {
+            true => "thread resolved".to_string(),
+            false => "thread opened again".to_string(),
+        },
+        _ => String::new(),
     }
 }
 
@@ -95,7 +122,7 @@ impl Say {
         }
     }
 
-    fn label(&self) -> &'static str {
+    pub(super) fn label(&self) -> &'static str {
         match self {
             Say::Comment => "commenting on the merge request",
             Say::Review(_) => "reviewing the merge request",
@@ -123,6 +150,7 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     };
     let service = services.workspace.clone();
     let job = state.begin(say.label());
+    let told = say.clone();
     spawner.spawn(Box::pin(async move {
         let done = said(&service, &remote, &repo, &id, &say, &body, &notes).await;
         Box::new(
@@ -132,6 +160,8 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
                     Err(e) => state.errors.push(e),
                     Ok(()) => {
                         state.workspace.message = groove_workspace_service::Buffer::default();
+                        let kind = groove_types::TimelineKind::Review;
+                        crate::timeline::log(state, services, spawner, kind, told.label());
                         landed(state, services, spawner);
                     }
                 }

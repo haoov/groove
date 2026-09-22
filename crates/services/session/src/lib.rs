@@ -4,6 +4,7 @@ mod service;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+pub use groove_timeline::Timeline;
 use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Task, Timestamp, Worktree,
     WorktreeDelivery, WorktreeId, WorktreeStatus,
