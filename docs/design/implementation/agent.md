@@ -72,10 +72,19 @@ tools are coalesced before they reach the loop.
 **Module `activity`**: the fold from hook events to status, used by the `agent`
 service's `apply`.
 
-**Module `timeline`**: one table — session, time, kind, subject, payload. Written by
-`apply` for hook kinds worth keeping (turn start, turn end, tool with a file), by
-`approvals` for every write, by `forge` for MR and CI events, by `annotations` for
-notes. Read by the rail's feed and the session's timeline.
+**Module `timeline`**: one table — session, time, kind, subject, payload — indexed the
+way it is read, newest first, with the row's own id breaking a tie inside one second.
+
+**What belongs in it**: what a session did to its own work. Git — commit, push, pull,
+rebase. The forge — an MR opened, written again, merged or closed, a CI result, a review.
+Its notes, its repos and its worktrees. And the turns around them, so the feed can say
+when the agent was working. **What does not**: the tools the agent ran on files. A write
+or a shell command is the agent's status, which the rail shows live, not its history.
+
+Written by `apply` for the turn kinds, by the controllers that make each action, and by
+`approvals` for an approved write, which is one of those actions by another name. Read by
+the rail's feed and the session's timeline. A stored kind this version does not know is
+skipped rather than guessed at.
 
 ## Core prompt
 
@@ -96,5 +105,5 @@ any write.
 
 - [x] `SessionActivity` in `types`: status, asks, auto-approve, last change, last seen.
 - [x] `seen_at` and `auto_approve` on the `session_state` row.
-- [ ] Timeline table and its migration.
+- [x] Timeline table and its migration.
 - [ ] Hook coalescing window.

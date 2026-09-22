@@ -1459,6 +1459,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-timeline"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-types",
+ "serde_json",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "groove-token"
 version = "0.1.0"
 dependencies = [
