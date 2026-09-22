@@ -73,8 +73,18 @@ pub struct SessionUi {
 pub struct Noting {
     pub anchor: Anchor,
     pub field: Field,
-    /// The note being rewritten, when the words replace an old note's.
-    pub over: Option<groove_types::AnnotationId>,
+    pub writing: Writing,
+}
+
+/// What the words being typed become.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub enum Writing {
+    #[default]
+    New,
+    /// The note they replace.
+    Over(groove_types::AnnotationId),
+    /// The thread they answer.
+    Reply(String),
 }
 
 impl Noting {
@@ -82,7 +92,7 @@ impl Noting {
         Self {
             anchor,
             field: Field::default(),
-            over: None,
+            writing: Writing::New,
         }
     }
 
@@ -93,7 +103,24 @@ impl Noting {
         Self {
             anchor,
             field,
-            over: Some(id),
+            writing: Writing::Over(id),
+        }
+    }
+
+    /// An empty row under a thread, for the words that answer it.
+    pub fn reply(anchor: Anchor, thread: String) -> Self {
+        Self {
+            anchor,
+            field: Field::default(),
+            writing: Writing::Reply(thread),
+        }
+    }
+
+    /// The note it stands over, when it stands over one.
+    pub fn over_id(&self) -> Option<&groove_types::AnnotationId> {
+        match &self.writing {
+            Writing::Over(id) => Some(id),
+            _ => None,
         }
     }
 

@@ -1,10 +1,13 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
-use groove_annotations::{New, Store as Notes};
+mod notes;
+
+pub use notes::Said;
+
+use groove_annotations::Store as Notes;
 use groove_forge::{Proposed, Remote, Snapshot, Store};
 use groove_types::{
-    Annotation, AnnotationId, CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result,
-    ReviewMr, SessionId, Timestamp, Worktree, WorktreeId,
+    CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result, ReviewMr, Worktree, WorktreeId,
 };
 
 /// One MR as the forge answered and the database now holds it.
@@ -85,31 +88,6 @@ impl Service {
     pub fn beside(sessions: &groove_sessions::Store) -> Self {
         let db = sessions.db().clone();
         Self::new(Store::new(db.clone()), Notes::new(db))
-    }
-
-    /// The notes this session left, whichever file they stand on.
-    pub async fn notes(&self, session: &SessionId) -> Result<Vec<Annotation>> {
-        self.notes.list(session).await
-    }
-
-    pub async fn create_note(&self, new: New, now: Timestamp) -> Result<Annotation> {
-        self.notes.create(new, now).await
-    }
-
-    pub async fn update_note(&self, id: &AnnotationId, content: &str) -> Result<Annotation> {
-        self.notes.update(id, content).await
-    }
-
-    pub async fn resolve_note(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.resolve(id).await
-    }
-
-    pub async fn reopen_note(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.notes.reopen(id).await
-    }
-
-    pub async fn delete_note(&self, id: &AnnotationId) -> Result<()> {
-        self.notes.delete(id).await
     }
 
     /// Every open MR the database holds, whichever worktree it belongs to.

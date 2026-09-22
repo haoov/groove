@@ -120,7 +120,7 @@ fn acted(
         Some(Target::View(view)) => viewing(ui, app, view, metrics),
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
-        Some(Target::Note(id, button)) => surface::noted(ui, app, id, button),
+        Some(Target::Note(origin, button)) => surface::noted(ui, app, origin, button),
         Some(Target::Head(path)) => folded(ui, app, metrics, path),
         Some(Target::Term(term)) => narrowing(ui, term),
         Some(Target::Finding) => finding(ui),

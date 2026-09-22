@@ -27,6 +27,8 @@ fn pr() -> serde_json::Value {
         "createdAt": "2026-09-18T08:00:00Z",
         "updatedAt": "2026-09-19T09:30:00Z",
         "headRefName": "fix/checks",
+        "headRefOid": "cafe1234",
+        "id": "PR_node",
         "baseRefName": "main",
         "reviewDecision": "APPROVED",
         "author": { "login": "haoov" },
@@ -255,6 +257,8 @@ fn asked(number: u64, updated: &str, decision: serde_json::Value) -> serde_json:
         "reviewDecision": decision,
         "author": { "login": "someone" },
         "headRefName": "fix/checks",
+        "headRefOid": "cafe1234",
+        "id": "PR_node",
         "baseRefName": "main",
         "repository": { "nameWithOwner": "acme/groove" }
     })
@@ -284,4 +288,160 @@ async fn the_review_queue_answers_newest_first_and_skips_what_is_not_an_mr() {
         "the pool answers that, not the forge"
     );
     assert!(!queue[1].approved);
+}
+
+/// One PR as a read by its number answers, and the mutations after it.
+fn by_number(one: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({ "data": {
+        "viewer": { "login": "haoov" },
+        "repository": { "pullRequest": one },
+        "addPullRequestReviewThread": { "thread": { "id": "PRRT_1" } },
+        "addPullRequestReview": { "pullRequestReview": { "id": "PRR_1" } },
+        "addComment": { "clientMutationId": null },
+        "addPullRequestReviewThreadReply": { "comment": { "id": "PRRC_1" } },
+        "resolveReviewThread": { "thread": { "id": "PRRT_1" } },
+        "unresolveReviewThread": { "thread": { "id": "PRRT_1" } }
+    }})
+}
+
+async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
+    server
+        .received_requests()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|one| serde_json::from_slice(&one.body).ok())
+        .collect()
+}
+
+/// The variables of the call that carried `mutation`.
+fn variables(sent: &[serde_json::Value], mutation: &str) -> serde_json::Value {
+    sent.iter()
+        .find(|one| one["query"].as_str().is_some_and(|q| q.contains(mutation)))
+        .map(|one| one["variables"].clone())
+        .unwrap_or_default()
+}
+
+#[tokio::test]
+async fn a_note_opens_a_thread_on_the_lines_it_covers() {
+    let (server, github) = github(by_number(pr())).await;
+    github
+        .note_on(
+            &repo(),
+            "7",
+            crate::Posted {
+                path: "src/lib.rs",
+                from: 12,
+                to: 14,
+                body: "issue: this leaks",
+            },
+        )
+        .await
+        .expect("the thread is opened");
+    let at = variables(&sent(&server).await, "addPullRequestReviewThread");
+    assert_eq!(at["mr"], "PR_node");
+    assert_eq!(at["path"], "src/lib.rs");
+    assert_eq!(
+        (at["from"].as_u64(), at["to"].as_u64()),
+        (Some(12), Some(14)),
+        "the range reads from its first line to its last"
+    );
+    assert_eq!(at["body"], "issue: this leaks");
+}
+
+#[tokio::test]
+async fn a_reply_goes_under_the_thread_it_answers() {
+    let (server, github) = github(by_number(pr())).await;
+    github.reply_to("PRRT_1", "fixed").await.expect("replied");
+    let at = variables(&sent(&server).await, "addPullRequestReviewThreadReply");
+    assert_eq!(at["thread"], "PRRT_1");
+    assert_eq!(at["body"], "fixed");
+}
+
+#[tokio::test]
+async fn a_thread_resolves_and_opens_again() {
+    let (server, github) = github(by_number(pr())).await;
+    github.resolve("PRRT_1", true).await.expect("resolved");
+    github.resolve("PRRT_1", false).await.expect("opened again");
+    let asked: Vec<String> = sent(&server)
+        .await
+        .into_iter()
+        .filter_map(|one| one["query"].as_str().map(str::to_string))
+        .collect();
+    assert!(
+        asked.iter().any(|q| q.contains("resolveReviewThread(")),
+        "{asked:?}"
+    );
+    assert!(
+        asked.iter().any(|q| q.contains("unresolveReviewThread(")),
+        "{asked:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_review_carries_its_verdict_its_words_and_its_notes() {
+    let (server, github) = github(by_number(pr())).await;
+    let notes = [crate::Posted {
+        path: "src/lib.rs",
+        from: 12,
+        to: 14,
+        body: "issue: this leaks",
+    }];
+    github
+        .review(
+            &repo(),
+            "7",
+            crate::Verdict {
+                said: groove_types::ReviewVerdict::RequestChanges,
+                body: "two things to fix",
+                notes: &notes,
+            },
+        )
+        .await
+        .expect("the review is posted");
+    let at = variables(&sent(&server).await, "addPullRequestReview(");
+    assert_eq!(at["mr"], "PR_node");
+    assert_eq!(at["event"], "REQUEST_CHANGES");
+    assert_eq!(at["body"], "two things to fix");
+    let threads = at["threads"].as_array().expect("its notes");
+    assert_eq!(threads.len(), 1, "one call carries all of it");
+    assert_eq!(threads[0]["path"], "src/lib.rs");
+    assert_eq!(
+        (
+            threads[0]["startLine"].as_u64(),
+            threads[0]["line"].as_u64()
+        ),
+        (Some(12), Some(14))
+    );
+}
+
+#[tokio::test]
+async fn an_approval_says_so_in_githubs_own_word() {
+    let (server, github) = github(by_number(pr())).await;
+    github
+        .review(
+            &repo(),
+            "7",
+            crate::Verdict {
+                said: groove_types::ReviewVerdict::Approve,
+                body: "",
+                notes: &[],
+            },
+        )
+        .await
+        .expect("approved");
+    let at = variables(&sent(&server).await, "addPullRequestReview(");
+    assert_eq!(at["event"], "APPROVE");
+}
+
+#[tokio::test]
+async fn a_comment_goes_on_the_pull_request_itself() {
+    let (server, github) = github(by_number(pr())).await;
+    github
+        .comment(&repo(), "7", "note: the ci is flaky")
+        .await
+        .expect("commented");
+    let at = variables(&sent(&server).await, "addComment");
+    assert_eq!(at["mr"], "PR_node");
+    assert_eq!(at["body"], "note: the ci is flaky");
 }

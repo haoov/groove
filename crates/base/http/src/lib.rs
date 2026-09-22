@@ -6,6 +6,7 @@ mod error;
 mod graphql;
 mod redact;
 mod response;
+mod rest;
 
 #[cfg(test)]
 mod tests;
@@ -16,3 +17,4 @@ pub use error::{Error, Result};
 pub use graphql::Graphql;
 pub use reqwest::{Method, StatusCode};
 pub use response::Response;
+pub use rest::Rest;

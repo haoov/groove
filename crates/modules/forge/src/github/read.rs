@@ -14,6 +14,7 @@ pub(super) fn snapshot(pr: &serde_json::Value, me: &str) -> Option<Snapshot> {
     let number = pr["number"].as_i64()?;
     Some(Snapshot {
         node: text(&pr["id"]),
+        head: text(&pr["headRefOid"]),
         number: number.to_string(),
         details: details(pr, me),
         ci: ci::status(pr),

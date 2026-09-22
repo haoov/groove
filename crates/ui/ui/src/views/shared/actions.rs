@@ -1,6 +1,8 @@
 //! What a menu offers, and where it is drawn.
 
+use groove_controllers::workspace::Say;
 use groove_controllers::{Command, workspace};
+use groove_types::ReviewVerdict;
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -18,10 +20,21 @@ pub const LINE: [&str; 1] = ["note"];
 pub const WORKTREE: [&str; 3] = ["push", "pull", "discard every change"];
 
 /// The same, for a worktree whose branch already has a merge request.
-pub const WORKTREE_MR: [&str; 5] = [
+pub const WORKTREE_MR: [&str; 6] = [
     "push",
     "pull",
     "update mr",
+    "comment",
+    "close mr",
+    "discard every change",
+];
+
+/// What a session reviewing someone else's merge request offers.
+pub const WORKTREE_REVIEW: [&str; 6] = [
+    "pull",
+    "comment",
+    "approve",
+    "request changes",
     "close mr",
     "discard every change",
 ];
@@ -37,8 +50,9 @@ pub fn rows(of: &Of) -> &'static [&'static str] {
         Of::File(_) => &FILE,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
-        Of::Worktree { mr: true } => &WORKTREE_MR,
-        Of::Worktree { mr: false } => &WORKTREE,
+        Of::Worktree { review: true, .. } => &WORKTREE_REVIEW,
+        Of::Worktree { mr: true, .. } => &WORKTREE_MR,
+        Of::Worktree { mr: false, .. } => &WORKTREE,
         Of::Session(_) => &SESSION,
     }
 }
@@ -131,6 +145,15 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         (Of::Worktree { .. }, Some(&"pull")) => Picked::sends(workspace::Command::Pull),
         (Of::Worktree { .. }, Some(&"update mr")) => Picked::sends(workspace::Command::UpdateMr),
         (Of::Worktree { .. }, Some(&"close mr")) => Picked::sends(workspace::Command::CloseMr),
+        (Of::Worktree { .. }, Some(&"comment")) => {
+            Picked::sends(workspace::Command::Say(Say::Comment))
+        }
+        (Of::Worktree { .. }, Some(&"approve")) => {
+            Picked::sends(workspace::Command::Say(Say::Review(ReviewVerdict::Approve)))
+        }
+        (Of::Worktree { .. }, Some(&"request changes")) => Picked::sends(workspace::Command::Say(
+            Say::Review(ReviewVerdict::RequestChanges),
+        )),
         (Of::Path { path, dir }, Some(&"new file")) => {
             Picked::names(named(Asked::File, path, *dir, ""))
         }

@@ -26,9 +26,29 @@ pub enum Act {
     Delete {
         id: AnnotationId,
     },
+    /// This session's note posted on the merge request, and resolved here.
+    Post {
+        id: AnnotationId,
+    },
+    Reply {
+        thread: String,
+        body: String,
+    },
+    Thread {
+        thread: String,
+        resolve: bool,
+    },
 }
 
 impl Act {
+    /// Whether the forge answers it, rather than this session's own rows.
+    fn forged(&self) -> bool {
+        matches!(
+            self,
+            Act::Post { .. } | Act::Reply { .. } | Act::Thread { .. }
+        )
+    }
+
     pub fn id(&self) -> &'static str {
         match self {
             Act::Create { .. } => "workspace.create_note",
@@ -36,16 +56,22 @@ impl Act {
             Act::Resolve { .. } => "workspace.resolve_note",
             Act::Reopen { .. } => "workspace.reopen_note",
             Act::Delete { .. } => "workspace.delete_note",
+            Act::Post { .. } => "workspace.post_note",
+            Act::Reply { .. } => "workspace.reply_thread",
+            Act::Thread { .. } => "workspace.resolve_thread",
         }
     }
 
-    fn label(&self) -> &'static str {
+    pub(super) fn label(&self) -> &'static str {
         match self {
             Act::Create { .. } => "leaving a note",
             Act::Update { .. } => "writing the note again",
             Act::Resolve { .. } => "resolving the note",
             Act::Reopen { .. } => "opening the note again",
             Act::Delete { .. } => "deleting the note",
+            Act::Post { .. } => "posting the note",
+            Act::Reply { .. } => "replying to the thread",
+            Act::Thread { .. } => "resolving the thread",
         }
     }
 }
@@ -71,6 +97,9 @@ pub(crate) fn list(state: &mut AppState, services: &Services, spawner: &dyn Spaw
 
 /// One write, then the list read again.
 pub(crate) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
+    if act.forged() {
+        return super::forge::note(state, services, spawner, act);
+    }
     let Some((session, repo)) = whose(state) else {
         return;
     };
@@ -118,6 +147,7 @@ async fn apply(
         Act::Resolve { id } => service.resolve_note(&id).await.map(drop),
         Act::Reopen { id } => service.reopen_note(&id).await.map(drop),
         Act::Delete { id } => service.delete_note(&id).await,
+        Act::Post { .. } | Act::Reply { .. } | Act::Thread { .. } => Ok(()),
     }
 }
 

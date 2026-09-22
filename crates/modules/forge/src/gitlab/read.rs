@@ -12,6 +12,7 @@ pub(super) fn snapshot(mr: &serde_json::Value, me: &str, host: &str) -> Option<S
     let iid = mr["iid"].as_str()?;
     Some(Snapshot {
         node: text(&mr["id"]),
+        head: text(&mr["diffHeadSha"]),
         number: iid.to_string(),
         details: details(mr, me),
         ci: ci(mr, host),

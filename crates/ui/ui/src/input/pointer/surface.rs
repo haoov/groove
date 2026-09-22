@@ -1,5 +1,9 @@
 //! Where a click in the rows lands: the caret, the file it names, the lens, a match.
 
+mod noted;
+
+pub(super) use noted::noted;
+
 use groove_controllers::workspace_service::columns;
 use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
@@ -186,60 +190,4 @@ pub(super) fn composed(
     vec![Command::Workspace(workspace::Command::Message(Edit::Move(
         Motion::To(caret),
     )))]
-}
-
-/// What a note's own button does: rewrite it in place, or act on it now.
-pub(super) fn noted(
-    ui: &mut Ui,
-    app: &AppState,
-    id: groove_types::AnnotationId,
-    button: crate::hit::NoteButton,
-) -> Vec<Command> {
-    use crate::hit::NoteButton;
-    use groove_controllers::workspace::NoteAct;
-    let act = match button {
-        NoteButton::Edit => return editing(ui, app, id),
-        NoteButton::Resolve => resolving(app, id),
-        NoteButton::Delete => Some(NoteAct::Delete { id }),
-        NoteButton::Post => None,
-    };
-    act.map(|act| Command::Workspace(workspace::Command::Note(act)))
-        .into_iter()
-        .collect()
-}
-
-/// The note opened in its own row again, with what it says already in it.
-fn editing(ui: &mut Ui, app: &AppState, id: groove_types::AnnotationId) -> Vec<Command> {
-    let Some(note) = held(app, &id) else {
-        return Vec::new();
-    };
-    let Some(anchor) = note.anchor.clone() else {
-        return Vec::new();
-    };
-    let said = note
-        .opening()
-        .map(|said| said.body.clone())
-        .unwrap_or_default();
-    ui.session.noting = Some(crate::views::session::Noting::over(anchor, id, &said));
-    Vec::new()
-}
-
-/// A note resolved, or opened again when it already is.
-fn resolving(
-    app: &AppState,
-    id: groove_types::AnnotationId,
-) -> Option<groove_controllers::workspace::NoteAct> {
-    use groove_controllers::workspace::NoteAct;
-    let resolved = held(app, &id).is_some_and(|note| note.resolved);
-    Some(match resolved {
-        true => NoteAct::Reopen { id },
-        false => NoteAct::Resolve { id },
-    })
-}
-
-fn held<'a>(app: &'a AppState, id: &groove_types::AnnotationId) -> Option<&'a groove_types::Note> {
-    app.workspace
-        .notes
-        .iter()
-        .find(|note| note.id() == Some(id))
 }

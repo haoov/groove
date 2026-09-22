@@ -13,7 +13,7 @@ pub use error::{Error, Result};
 pub use github::{Github, Proposed};
 pub use gitlab::Gitlab;
 pub use groove_token::Token;
-use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr};
+use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr, ReviewVerdict};
 pub use store::Store;
 
 /// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
@@ -27,10 +27,29 @@ pub enum Remote {
 pub struct Snapshot {
     /// What the forge's own writes address it by.
     pub node: String,
+    /// The commit the diff a note is posted on ends at.
+    pub head: String,
     pub number: String,
     pub details: MrDetails,
     pub ci: Option<CiStatus>,
     pub threads: Vec<MrThread>,
+}
+
+/// A note posted on a line of the new side, as the forges take it.
+#[derive(Clone, Copy)]
+pub struct Posted<'a> {
+    pub path: &'a str,
+    /// The lines it covers, as a file numbers them.
+    pub from: u32,
+    pub to: u32,
+    pub body: &'a str,
+}
+
+/// A review as the forges take it: its verdict, its words, and the notes it carries.
+pub struct Verdict<'a> {
+    pub said: ReviewVerdict,
+    pub body: &'a str,
+    pub notes: &'a [Posted<'a>],
 }
 
 impl Remote {
@@ -89,6 +108,52 @@ impl Remote {
         match self {
             Remote::Github(github) => github.shut_mr(repo, number).await,
             Remote::Gitlab(gitlab) => gitlab.shut_mr(repo, number).await,
+        }
+    }
+
+    /// A note of this session posted on the merge request, at its own lines.
+    pub async fn post_note(&self, repo: &Repo, number: &str, at: Posted<'_>) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.note_on(repo, number, at).await,
+            Remote::Gitlab(gitlab) => gitlab.note_on(repo, number, at).await,
+        }
+    }
+
+    /// Words under a thread the forge holds.
+    pub async fn reply_thread(
+        &self,
+        repo: &Repo,
+        number: &str,
+        thread: &str,
+        body: &str,
+    ) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.reply_to(thread, body).await,
+            Remote::Gitlab(gitlab) => gitlab.reply_to(repo, number, thread, body).await,
+        }
+    }
+
+    /// A thread resolved, or opened again.
+    pub async fn resolve_thread(&self, thread: &str, resolve: bool) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.resolve(thread, resolve).await,
+            Remote::Gitlab(gitlab) => gitlab.resolve(thread, resolve).await,
+        }
+    }
+
+    /// A comment on the merge request itself, under no line.
+    pub async fn comment(&self, repo: &Repo, number: &str, body: &str) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.comment(repo, number, body).await,
+            Remote::Gitlab(gitlab) => gitlab.comment(repo, number, body).await,
+        }
+    }
+
+    /// A verdict on the merge request, with the notes it carries.
+    pub async fn review(&self, repo: &Repo, number: &str, said: Verdict<'_>) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.review(repo, number, said).await,
+            Remote::Gitlab(gitlab) => gitlab.review(repo, number, said).await,
         }
     }
 

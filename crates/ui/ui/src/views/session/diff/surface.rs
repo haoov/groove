@@ -116,7 +116,7 @@ struct Held<'a> {
     /// Which rows of the window a note stands on.
     noted: &'a [bool],
     /// The note button the pointer stands on, and whose note it is.
-    hovered: Option<(groove_types::AnnotationId, crate::hit::NoteButton)>,
+    hovered: Option<(groove_types::NoteOrigin, crate::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
 }
@@ -140,11 +140,14 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     resolved: app.workspace.notes.get(*at).is_some_and(|one| one.resolved),
                 },
             ),
-            Slot::Acts { at } => match app.workspace.notes.get(*at).and_then(acting_of) {
-                Some(acting) => Line::acting(Acting {
-                    hovered: on_it(held.hovered.as_ref(), &acting.id),
-                    ..acting
-                }),
+            Slot::Acts { at } => match app.workspace.notes.get(*at) {
+                Some(note) => {
+                    let acting = acting_of(app, note);
+                    Line::acting(Acting {
+                        hovered: on_it(held.hovered.as_ref(), &acting.origin),
+                        ..acting
+                    })
+                }
                 None => Line::new(""),
             },
             Slot::Typed => Line::note(
@@ -161,7 +164,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
 }
 
 /// The note button under the pointer, and whose note it belongs to.
-fn hovered(ui: &Ui) -> Option<(groove_types::AnnotationId, crate::hit::NoteButton)> {
+fn hovered(ui: &Ui) -> Option<(groove_types::NoteOrigin, crate::hit::NoteButton)> {
     match &ui.hover {
         Some(crate::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
         _ => None,
@@ -170,22 +173,23 @@ fn hovered(ui: &Ui) -> Option<(groove_types::AnnotationId, crate::hit::NoteButto
 
 /// The button of this note the pointer stands on.
 fn on_it(
-    hovered: Option<&(groove_types::AnnotationId, crate::hit::NoteButton)>,
-    id: &groove_types::AnnotationId,
+    hovered: Option<&(groove_types::NoteOrigin, crate::hit::NoteButton)>,
+    origin: &groove_types::NoteOrigin,
 ) -> Option<crate::hit::NoteButton> {
     hovered
-        .filter(|(whose, _)| whose == id)
+        .filter(|(whose, _)| whose == origin)
         .map(|(_, button)| *button)
 }
 
-/// What a note's own row of buttons acts on; a thread is the forge's to write.
-fn acting_of(note: &groove_types::Note) -> Option<Acting> {
-    Some(Acting {
-        id: note.id()?.clone(),
+/// What a note's own row of buttons acts on.
+fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
+    Acting {
+        origin: note.origin.clone(),
         resolved: note.resolved,
-        review: false,
+        thread: !note.is_local(),
+        post: app.workspace.delivery.mr.is_some(),
         hovered: None,
-    })
+    }
 }
 
 /// What a note row says: the words, who said them, and the lines they are about.

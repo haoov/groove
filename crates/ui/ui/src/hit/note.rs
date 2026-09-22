@@ -7,6 +7,7 @@ pub enum NoteButton {
     Resolve,
     Delete,
     Post,
+    Reply,
 }
 
 impl NoteButton {
@@ -18,6 +19,7 @@ impl NoteButton {
             (NoteButton::Resolve, true) => "reopen",
             (NoteButton::Delete, _) => "delete",
             (NoteButton::Post, _) => "post",
+            (NoteButton::Reply, _) => "reply",
         }
     }
 }

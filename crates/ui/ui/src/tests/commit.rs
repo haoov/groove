@@ -156,7 +156,13 @@ fn the_box_offers_the_worktree_s_own_actions() {
     let mut ui = sidebar();
     hit(&Target::Actions, &mut ui, &app);
     let menu = ui.menu.clone().expect("the actions are open");
-    assert_eq!(menu.of, crate::Of::Worktree { mr: false });
+    assert_eq!(
+        menu.of,
+        crate::Of::Worktree {
+            mr: false,
+            review: false
+        }
+    );
     let hits = drawn(&app, &ui);
     for at in 0..crate::views::shared::actions::WORKTREE.len() {
         assert!(
@@ -372,21 +378,90 @@ fn a_branch_that_already_has_one_offers_nothing_on_the_button() {
 
 #[test]
 fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
-    let plain = crate::views::shared::actions::rows(&crate::Of::Worktree { mr: false });
+    let plain = crate::views::shared::actions::rows(&crate::Of::Worktree {
+        mr: false,
+        review: false,
+    });
     assert!(!plain.contains(&"update mr"), "{plain:?}");
 
-    let with_mr = crate::views::shared::actions::rows(&crate::Of::Worktree { mr: true });
+    let with_mr = crate::views::shared::actions::rows(&crate::Of::Worktree {
+        mr: true,
+        review: false,
+    });
     assert!(with_mr.contains(&"update mr"), "{with_mr:?}");
     assert!(with_mr.contains(&"close mr"), "{with_mr:?}");
     let at = with_mr
         .iter()
         .position(|row| *row == "close mr")
         .expect("the row");
-    let picked = crate::views::shared::actions::picked(&crate::Of::Worktree { mr: true }, at);
+    let picked = crate::views::shared::actions::picked(
+        &crate::Of::Worktree {
+            mr: true,
+            review: false,
+        },
+        at,
+    );
     let (commands, asking) = (picked.commands, picked.asking);
     assert!(asking.is_none(), "closing an mr asks nothing first");
     assert_eq!(
         commands,
         vec![Command::Workspace(workspace::Command::CloseMr)]
+    );
+}
+
+#[test]
+fn a_review_session_offers_a_verdict_and_a_comment() {
+    let rows = crate::views::shared::actions::rows(&crate::Of::Worktree {
+        mr: true,
+        review: true,
+    });
+    for named in ["comment", "approve", "request changes"] {
+        assert!(rows.contains(&named), "{named}: {rows:?}");
+    }
+    assert!(
+        !rows.contains(&"update mr"),
+        "someone else's text is not ours to write: {rows:?}"
+    );
+}
+
+#[test]
+fn a_session_of_its_own_work_offers_a_comment_and_no_verdict() {
+    let rows = crate::views::shared::actions::rows(&crate::Of::Worktree {
+        mr: true,
+        review: false,
+    });
+    assert!(rows.contains(&"comment"), "{rows:?}");
+    for named in ["approve", "request changes"] {
+        assert!(!rows.contains(&named), "{named}: {rows:?}");
+    }
+}
+
+#[test]
+fn picking_a_verdict_asks_for_the_review() {
+    use groove_controllers::workspace::Say;
+    let of = crate::Of::Worktree {
+        mr: true,
+        review: true,
+    };
+    let rows = crate::views::shared::actions::rows(&of);
+    let at = |label: &str| rows.iter().position(|one| *one == label).expect(label);
+    let picked = |label: &str| crate::views::shared::actions::picked(&of, at(label)).commands;
+    assert_eq!(
+        picked("approve"),
+        [groove_controllers::Command::Workspace(
+            workspace::Command::Say(Say::Review(groove_types::ReviewVerdict::Approve))
+        )]
+    );
+    assert_eq!(
+        picked("request changes"),
+        [groove_controllers::Command::Workspace(
+            workspace::Command::Say(Say::Review(groove_types::ReviewVerdict::RequestChanges))
+        )]
+    );
+    assert_eq!(
+        picked("comment"),
+        [groove_controllers::Command::Workspace(
+            workspace::Command::Say(Say::Comment)
+        )]
     );
 }

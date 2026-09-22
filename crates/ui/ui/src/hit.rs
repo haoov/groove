@@ -130,7 +130,7 @@ pub enum Target {
     /// The agent's pane.
     Agent,
     /// One button of a note's own row.
-    Note(groove_types::AnnotationId, NoteButton),
+    Note(groove_types::NoteOrigin, NoteButton),
 }
 
 impl Target {

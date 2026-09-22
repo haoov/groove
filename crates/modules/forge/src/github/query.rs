@@ -3,7 +3,7 @@
 /// Everything one read of an MR brings back, down to the threads.
 const FIELDS: &str = r"
   id number title body state isDraft url createdAt updatedAt
-  headRefName baseRefName reviewDecision
+  headRefName headRefOid baseRefName reviewDecision
   author { login }
   latestReviews(first: 50) { nodes { state submittedAt author { login } } }
   reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login } } } }
@@ -121,5 +121,59 @@ pub fn review_queue() -> String {
     }
   }
 }"#
+    .to_string()
+}
+
+/// A thread opened on a range of one file's new side.
+pub fn note_on_line() -> String {
+    r"mutation($mr: ID!, $path: String!, $from: Int!, $to: Int!, $body: String!) {
+  addPullRequestReviewThread(input: {
+    pullRequestId: $mr, path: $path, line: $to, startLine: $from,
+    side: RIGHT, startSide: RIGHT, body: $body
+  }) { thread { id } }
+}"
+    .to_string()
+}
+
+/// A reply under a thread that stands.
+pub fn reply() -> String {
+    r"mutation($thread: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: {
+    pullRequestReviewThreadId: $thread, body: $body
+  }) { comment { id } }
+}"
+    .to_string()
+}
+
+/// A thread resolved, or opened again.
+pub fn resolve() -> String {
+    r"mutation($thread: ID!) {
+  resolveReviewThread(input: { threadId: $thread }) { thread { id } }
+}"
+    .to_string()
+}
+
+pub fn unresolve() -> String {
+    r"mutation($thread: ID!) {
+  unresolveReviewThread(input: { threadId: $thread }) { thread { id } }
+}"
+    .to_string()
+}
+
+/// A review with its verdict, its words, and the threads it opens.
+pub fn review() -> String {
+    r"mutation($mr: ID!, $event: PullRequestReviewEvent!, $body: String!, $threads: [DraftPullRequestReviewThread!]) {
+  addPullRequestReview(input: {
+    pullRequestId: $mr, event: $event, body: $body, threads: $threads
+  }) { pullRequestReview { id } }
+}"
+    .to_string()
+}
+
+/// A comment on the merge request itself.
+pub fn comment() -> String {
+    r"mutation($mr: ID!, $body: String!) {
+  addComment(input: { subjectId: $mr, body: $body }) { clientMutationId }
+}"
     .to_string()
 }

@@ -6,6 +6,7 @@ use groove_controllers::{Command, workspace};
 use super::super::{Key, Modifiers};
 use super::typing;
 use crate::Ui;
+use crate::views::session::Writing;
 use crate::views::session::diff::AUTHOR;
 
 /// One keystroke while a note is being typed.
@@ -35,12 +36,16 @@ fn left(noting: &crate::views::session::Noting) -> Option<NoteAct> {
     if said.is_empty() {
         return None;
     }
-    match noting.over.clone() {
-        Some(id) => Some(NoteAct::Update {
+    match noting.writing.clone() {
+        Writing::Over(id) => Some(NoteAct::Update {
             id,
             content: said.to_string(),
         }),
-        None => Some(NoteAct::Create {
+        Writing::Reply(thread) => Some(NoteAct::Reply {
+            thread,
+            body: said.to_string(),
+        }),
+        Writing::New => Some(NoteAct::Create {
             anchor: noting.anchor.clone(),
             content: said.to_string(),
             author: AUTHOR.to_string(),

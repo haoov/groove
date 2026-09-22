@@ -77,7 +77,10 @@ pub(super) fn worktree_menu(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metri
     Menu {
         at: (right, box_.y),
         corner: Corner::BottomRight,
-        of: Of::Worktree { mr: has_mr(app) },
+        of: Of::Worktree {
+            mr: has_mr(app),
+            review: reviews(app),
+        },
     }
 }
 
@@ -89,6 +92,13 @@ fn browsing(ui: &Ui) -> bool {
 /// Whether the selected worktree has a merge request to write.
 fn has_mr(app: &AppState) -> bool {
     app.workspace.delivery.mr.is_some()
+}
+
+/// Whether the session looks at someone else's merge request.
+fn reviews(app: &AppState) -> bool {
+    app.session
+        .selected()
+        .is_some_and(|open| matches!(open.session.kind, groove_types::SessionKind::Review { .. }))
 }
 
 /// The answer that throws the change away: one file's, or every one.

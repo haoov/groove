@@ -127,8 +127,9 @@ pub enum Of {
     Line { path: String, lines: (u32, u32) },
     /// One path of the explorer; `dir` while it is a directory.
     Path { path: String, dir: bool },
-    /// The worktree, from the commit box; `mr` while it has one to write.
-    Worktree { mr: bool },
+    /// The worktree, from the commit box: `mr` while it has one to write, `review`
+    /// while the session reviews someone else's work.
+    Worktree { mr: bool, review: bool },
     /// The session, from the header's own actions.
     Session(groove_types::SessionId),
 }

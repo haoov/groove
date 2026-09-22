@@ -27,6 +27,7 @@ async fn store() -> Store {
 
 fn snapshot(number: &str, state: MrState, url: &str) -> Snapshot {
     Snapshot {
+        head: "cafe1234".into(),
         node: "PR_node".into(),
         number: number.to_string(),
         details: MrDetails {

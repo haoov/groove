@@ -57,26 +57,31 @@ fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, color: Color) {
 /// What a note offers, as buttons from the column its words start on.
 pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
     ctx.quad(line, ctx.styles.deep());
-    let offered = match acting.review {
-        true => [
-            NoteButton::Edit,
-            NoteButton::Resolve,
-            NoteButton::Delete,
-            NoteButton::Post,
-        ]
-        .as_slice(),
-        false => [NoteButton::Edit, NoteButton::Resolve, NoteButton::Delete].as_slice(),
-    };
+    let offered = offered(acting);
     let mut at = gutter.content(ctx, line);
     for button in offered {
         at = acted(ctx, line, at, *button, acting) + ctx.tokens.sm;
     }
 }
 
+/// What this note lets a hand do: a thread is answered, its own is written.
+fn offered(acting: &Acting) -> &'static [NoteButton] {
+    match (acting.thread, acting.post) {
+        (true, _) => &[NoteButton::Reply, NoteButton::Resolve],
+        (false, true) => &[
+            NoteButton::Edit,
+            NoteButton::Resolve,
+            NoteButton::Delete,
+            NoteButton::Post,
+        ],
+        (false, false) => &[NoteButton::Edit, NoteButton::Resolve, NoteButton::Delete],
+    }
+}
+
 /// One button of a note's row, from `at`. Returns where it ends.
 fn acted(ctx: &mut Ctx, line: Rect, at: f32, button: NoteButton, acting: &Acting) -> f32 {
     let label = button.label(acting.resolved);
-    let target = Target::Note(acting.id.clone(), button);
+    let target = Target::Note(acting.origin.clone(), button);
     let on_it = acting.hovered == Some(button);
     let role = match on_it {
         true => Role::Text,

@@ -5,10 +5,10 @@ mod read;
 
 use groove_http::Graphql;
 use groove_token::Token;
-use groove_types::{Forge, Repo, ReviewMr};
+use groove_types::{Forge, Repo, ReviewMr, ReviewVerdict};
 
 use crate::github::Proposed;
-use crate::{Error, Result, Snapshot};
+use crate::{Error, Posted, Result, Snapshot, Verdict};
 
 /// How many of the queue a call asks for.
 const QUEUE_MAX: i64 = 50;
@@ -100,6 +100,77 @@ impl Gitlab {
     }
 
     /// Every open MR the host asks this user to review, newest first.
+    /// One note on a line of the latest diff, which the MR's own head names.
+    pub async fn note_on(&self, repo: &Repo, number: &str, at: Posted<'_>) -> Result<()> {
+        let mr = self.read_mr(repo, number).await?;
+        let sent = serde_json::json!({
+            "mr": mr.node,
+            "head": mr.head,
+            "path": at.path,
+            "from": at.from,
+            "to": at.to,
+            "body": at.body,
+        });
+        self.api.ask(&query::note_on_line(), sent).await?;
+        Ok(())
+    }
+
+    /// Words under a discussion that stands.
+    pub async fn reply_to(
+        &self,
+        repo: &Repo,
+        number: &str,
+        thread: &str,
+        body: &str,
+    ) -> Result<()> {
+        let mr = self.read_mr(repo, number).await?;
+        let sent = serde_json::json!({ "mr": mr.node, "thread": thread, "body": body });
+        self.api.ask(&query::reply(), sent).await?;
+        Ok(())
+    }
+
+    /// A discussion resolved, or opened again.
+    pub async fn resolve(&self, thread: &str, resolve: bool) -> Result<()> {
+        let sent = serde_json::json!({ "thread": thread, "resolve": resolve });
+        self.api.ask(&query::resolve(), sent).await?;
+        Ok(())
+    }
+
+    /// A comment on the merge request itself, under no discussion.
+    pub async fn comment(&self, repo: &Repo, number: &str, body: &str) -> Result<()> {
+        let mr = self.read_mr(repo, number).await?;
+        let sent = serde_json::json!({ "mr": mr.node, "body": body });
+        self.api.ask(&query::comment(), sent).await?;
+        Ok(())
+    }
+
+    /// One review: every note it carries, its words, then the verdict itself.
+    pub async fn review(&self, repo: &Repo, number: &str, said: Verdict<'_>) -> Result<()> {
+        for note in said.notes {
+            self.note_on(repo, number, *note).await?;
+        }
+        if !said.body.is_empty() {
+            self.comment(repo, number, said.body).await?;
+        }
+        self.verdict(repo, number, said.said).await
+    }
+
+    /// What the verdict takes: a mutation for changes, and a REST call to approve.
+    async fn verdict(&self, repo: &Repo, number: &str, said: ReviewVerdict) -> Result<()> {
+        match said {
+            ReviewVerdict::Comment => Ok(()),
+            ReviewVerdict::RequestChanges => {
+                let sent = serde_json::json!({ "path": path(repo), "iid": number });
+                self.api.ask(&query::request_changes(), sent).await?;
+                Ok(())
+            }
+            ReviewVerdict::Approve => {
+                let url = approve_url(&self.host, repo, number);
+                Ok(self.api.beside().post(&url).await?)
+            }
+        }
+    }
+
     pub async fn review_queue(&self) -> Result<Vec<ReviewMr>> {
         let at = serde_json::json!({ "first": QUEUE_MAX });
         let reply = self.api.ask(&query::review_queue(), at).await?;
@@ -149,6 +220,21 @@ fn refused(payload: &serde_json::Value) -> Option<String> {
     let errors = payload["errors"].as_array()?;
     let said: Vec<&str> = errors.iter().filter_map(|one| one.as_str()).collect();
     (!said.is_empty()).then(|| said.join("; "))
+}
+
+/// What approves an MR, which GitLab keeps out of GraphQL.
+fn approve_url(host: &str, repo: &Repo, number: &str) -> String {
+    let project = urlencoding(&path(repo));
+    let root = match host.starts_with("http") {
+        true => host.to_string(),
+        false => format!("https://{host}"),
+    };
+    format!("{root}/api/v4/projects/{project}/merge_requests/{number}/approve")
+}
+
+/// A path as one segment of a url: only the slash needs saying.
+fn urlencoding(path: &str) -> String {
+    path.replace('/', "%2F")
 }
 
 /// GitLab's own name for a repo: its group path and its project.

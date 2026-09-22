@@ -41,7 +41,7 @@ impl Inline {
         if app.workspace.commit.is_some() {
             return Self::default();
         }
-        let over = ui.session.noting.as_ref().and_then(|one| one.over.as_ref());
+        let over = ui.session.noting.as_ref().and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
             .workspace
             .notes
@@ -152,13 +152,12 @@ fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
 fn block(app: &AppState, view: DiffView, note: &Note, at: usize) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
-    let acts = note.is_local();
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: note.said.len().max(1) + usize::from(acts),
+        rows: note.said.len().max(1) + 1,
         at: Some(at),
-        acts,
+        acts: true,
     })
 }
 

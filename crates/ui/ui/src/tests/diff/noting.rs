@@ -1,6 +1,8 @@
 //! Leaving a note: the menu a right click opens, the words typed in place, the note
 //! the keyboard asks for.
 
+mod forged;
+
 use groove_controllers::workspace;
 use groove_gfx::Fonts;
 use groove_types::{Anchor, Caret, Selection};
@@ -225,7 +227,7 @@ fn on_button(
     button: crate::hit::NoteButton,
 ) -> Vec<groove_controllers::Command> {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
-    let id = groove_types::AnnotationId::new("n1");
+    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     let rect = hits
         .rect_of(&Target::Note(id, button))
         .expect("the button is drawn");
@@ -377,7 +379,7 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let mut ui = on_diff();
     ui.hover = Some(Target::Note(
-        groove_types::AnnotationId::new("n1"),
+        groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
         crate::hit::NoteButton::Edit,
     ));
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());

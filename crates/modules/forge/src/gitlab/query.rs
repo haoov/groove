@@ -3,7 +3,7 @@
 /// Everything one read of an MR brings back, down to the discussions.
 const FIELDS: &str = r"
   id iid title description state draft webUrl createdAt updatedAt
-  sourceBranch targetBranch
+  diffHeadSha sourceBranch targetBranch
   author { username }
   approved
   approvedBy { nodes { username } }
@@ -103,6 +103,51 @@ pub fn review_queue() -> String {
       }
     }
   }
+}"
+    .to_string()
+}
+
+/// A note on a line of the latest diff, which needs no position of its own.
+pub fn note_on_line() -> String {
+    r"mutation($mr: MergeRequestID!, $head: String!, $path: String!, $from: Int!, $to: Int!, $body: String!) {
+  createLatestDiffNote(input: {
+    noteableId: $mr, headSha: $head, filePath: $path,
+    newLine: $from, endNewLine: $to, body: $body
+  }) { errors note { id } }
+}"
+    .to_string()
+}
+
+/// A reply under a discussion that stands.
+pub fn reply() -> String {
+    r"mutation($mr: NoteableID!, $thread: DiscussionID!, $body: String!) {
+  createNote(input: { noteableId: $mr, discussionId: $thread, body: $body })
+    { errors note { id } }
+}"
+    .to_string()
+}
+
+/// A discussion resolved, or opened again.
+pub fn resolve() -> String {
+    r"mutation($thread: DiscussionID!, $resolve: Boolean!) {
+  discussionToggleResolve(input: { id: $thread, resolve: $resolve })
+    { errors discussion { resolved } }
+}"
+    .to_string()
+}
+
+/// A comment on the merge request itself, under no discussion.
+pub fn comment() -> String {
+    r"mutation($mr: NoteableID!, $body: String!) {
+  createNote(input: { noteableId: $mr, body: $body }) { errors note { id } }
+}"
+    .to_string()
+}
+
+/// The changes a reviewer asks for, which GitLab addresses by path and number.
+pub fn request_changes() -> String {
+    r"mutation($path: ID!, $iid: String!) {
+  mergeRequestRequestChanges(input: { projectPath: $path, iid: $iid }) { errors }
 }"
     .to_string()
 }

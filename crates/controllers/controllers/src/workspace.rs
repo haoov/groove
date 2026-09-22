@@ -3,6 +3,7 @@
 mod commits;
 mod diff;
 mod editor;
+pub(crate) mod forge;
 mod git;
 pub(crate) mod mr;
 pub(crate) mod notes;
@@ -23,6 +24,7 @@ use self::write::{Act as Mr, write};
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
+pub use forge::Say;
 pub use mr::{known, poll, polls, refresh};
 pub use notes::Act as NoteAct;
 #[derive(Debug, Clone, PartialEq)]
@@ -93,6 +95,8 @@ pub enum Command {
     GetNotes,
     /// One note of this session made, written again, resolved or taken away.
     Note(NoteAct),
+    /// What the commit box says on the merge request: a comment, or a verdict.
+    Say(Say),
 }
 
 impl Command {
@@ -129,6 +133,7 @@ impl Command {
             Command::LeaveCommit => "workspace.leave_commit",
             Command::GetNotes => "workspace.get_notes",
             Command::Note(act) => act.id(),
+            Command::Say(say) => say.id(),
         }
     }
 }
@@ -194,6 +199,7 @@ pub fn dispatch(
         Command::LeaveCommit => commits::leave(state, spawner),
         Command::GetNotes => notes::list(state, services, spawner),
         Command::Note(act) => notes::write(state, services, spawner, act),
+        Command::Say(one) => forge::say(state, services, spawner, one),
     }
 }
 

@@ -28,10 +28,12 @@ pub struct Noted<'a> {
 /// The buttons a note's last row carries, and the note they act on.
 #[derive(Debug, Clone)]
 pub struct Acting {
-    pub id: groove_types::AnnotationId,
+    pub origin: groove_types::NoteOrigin,
     pub resolved: bool,
-    /// The session reviews someone else's work, so the note can be posted.
-    pub review: bool,
+    /// The merge request holds it, so the forge answers for it.
+    pub thread: bool,
+    /// The session's work is its own, so a note of it can be posted.
+    pub post: bool,
     /// The one of them the pointer stands on.
     pub hovered: Option<crate::hit::NoteButton>,
 }

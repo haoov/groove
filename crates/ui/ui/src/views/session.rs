@@ -11,7 +11,7 @@ mod state;
 pub mod worktree_row;
 
 pub(crate) use files::changed;
-pub use state::{Asked, Bar, Naming, Noting, Pane, Scope, SessionUi, Tab, Term};
+pub use state::{Asked, Bar, Naming, Noting, Pane, Scope, SessionUi, Tab, Term, Writing};
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;

@@ -174,6 +174,7 @@ fn a_thread_the_forge_answered_joins_the_list_without_a_read() {
 /// What a read of the MR brings back: one thread on a later line.
 fn snapshot() -> groove_workspace_service::Snapshot {
     groove_workspace_service::Snapshot {
+        head: "cafe1234".into(),
         node: "n1".into(),
         number: "7".into(),
         details: details(),

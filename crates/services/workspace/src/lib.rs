@@ -7,7 +7,7 @@ pub use groove_diff::{
     from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
-pub use groove_forge::{Remote, Snapshot};
+pub use groove_forge::{Posted, Remote, Snapshot};
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
@@ -40,7 +40,7 @@ pub use read::{
     COMMITS_MAX, FOUND_MAX, PATHS_MAX, at_commit, changes, commits, derived, grep, opened,
     opened_at, painted, paths, reopened, summary,
 };
-pub use service::{Delivered, Service};
+pub use service::{Delivered, Said, Service};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]

@@ -54,7 +54,8 @@ fn a_note_takes_a_row_of_the_surface() {
     ui.session.view = DiffView::Editor;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&bare, &ui) + 1
+        crate::views::session::diff::rows_of(&bare, &ui) + 2,
+        "the note and the row of buttons under it"
     );
 }
 
@@ -68,7 +69,8 @@ fn a_thread_takes_a_row_for_every_note_of_it() {
     ui.session.view = DiffView::Editor;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&bare, &ui) + 2
+        crate::views::session::diff::rows_of(&bare, &ui) + 3,
+        "a row for each note of it, and the buttons under them"
     );
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|one| one == "fixed"), "{drawn:?}");
@@ -129,6 +131,11 @@ fn a_click_on_a_note_moves_no_caret() {
     );
     assert_eq!(
         crate::views::session::diff::line_at(&app, &on_diff(), DiffView::Editor, 2),
+        None,
+        "row 2 is what the note offers"
+    );
+    assert_eq!(
+        crate::views::session::diff::line_at(&app, &on_diff(), DiffView::Editor, 3),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );
@@ -230,7 +237,7 @@ fn the_buttons_start_where_the_words_do() {
     let app = noted(vec![own(1, "issue: this leaks")]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = groove_types::AnnotationId::new("n1");
+    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     let first = hits
         .rect_of(&Target::Note(id, crate::hit::NoteButton::Edit))
         .expect("the first button");
@@ -262,7 +269,7 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
     let app = noted(vec![own(1, "issue: this leaks")]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = groove_types::AnnotationId::new("n1");
+    let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     for button in [
         crate::hit::NoteButton::Edit,
         crate::hit::NoteButton::Resolve,
@@ -281,22 +288,21 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
 }
 
 #[test]
-fn a_thread_offers_nothing_of_its_own_yet() {
+fn a_thread_offers_what_the_forge_answers_for_it() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let id = groove_types::AnnotationId::new("t1");
-    for button in [
-        crate::hit::NoteButton::Edit,
-        crate::hit::NoteButton::Resolve,
-        crate::hit::NoteButton::Delete,
-        crate::hit::NoteButton::Post,
-    ] {
-        assert!(
-            hits.rect_of(&Target::Note(id.clone(), button)).is_none(),
-            "a thread is the forge's to write: {button:?}"
-        );
-    }
+    let origin = NoteOrigin::Thread("t1".into());
+    assert!(
+        hits.rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
+            .is_some(),
+        "a thread takes a reply"
+    );
+    assert!(
+        hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
+            .is_none(),
+        "and none of this session's own writes"
+    );
 }
 
 #[test]
@@ -316,7 +322,7 @@ fn a_button_under_the_pointer_takes_the_acted_ground() {
     assert_eq!(grounds(&ui), 0, "nothing is under the pointer");
     let mut on_it = on_diff();
     on_it.hover = Some(Target::Note(
-        groove_types::AnnotationId::new("n1"),
+        groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
         crate::hit::NoteButton::Edit,
     ));
     assert_eq!(grounds(&on_it), 1, "the one it stands on");

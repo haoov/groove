@@ -1,6 +1,6 @@
 //! A GraphQL endpoint: one call, and the errors a 200 can carry.
 
-use crate::{Client, Error, Method, Result, TokenSource};
+use crate::{Client, Error, Method, Rest, Result, TokenSource};
 
 /// One endpoint, called with one token.
 pub struct Graphql<T: TokenSource> {
@@ -20,6 +20,11 @@ impl<T: TokenSource> Graphql<T> {
 
     pub fn url(&self) -> &str {
         &self.url
+    }
+
+    /// The plain calls beside it, on the same pool and the same token.
+    pub fn beside(&self) -> Rest<'_, T> {
+        Rest::new(&self.client, &self.token)
     }
 
     /// One query with its variables; the errors a 200 carries become an error.

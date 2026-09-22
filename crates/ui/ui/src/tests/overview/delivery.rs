@@ -99,6 +99,7 @@ fn what_the_reviewers_said_shows_beside_the_number() {
 /// A read of the MR, as the poll leaves it in the slice.
 fn read() -> groove_controllers::workspace_service::Snapshot {
     groove_controllers::workspace_service::Snapshot {
+        head: "cafe1234".into(),
         node: "PR_node".into(),
         number: "7".into(),
         details: MrDetails {
