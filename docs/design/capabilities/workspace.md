@@ -13,6 +13,7 @@
 
 - actions: create, update, resolve, delete, post to MR
 - MR threads: reply, resolve
+- review: approve, request changes, comment
 
 ## Editor
 

@@ -50,6 +50,7 @@ fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32))
         .workspace
         .notes
         .iter()
+        .filter(|note| note.is_local() && !note.resolved)
         .any(|note| note.over(&path, lines));
     (!noted).then_some(Of::Line { path, lines })
 }

@@ -157,3 +157,33 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
         })
     );
 }
+
+#[test]
+fn a_line_someone_else_commented_on_still_takes_a_note() {
+    let app = delivered(vec![thread()]);
+    let mut ui = on_diff();
+    ui.session.view = DiffView::Editor;
+    asked(&app, &mut ui, 1);
+    assert_eq!(
+        ui.menu.as_ref().map(|menu| &menu.of),
+        Some(&crate::Of::Line {
+            path: "src/lib.rs".into(),
+            lines: (1, 1),
+        }),
+        "a thread is not this session's note"
+    );
+}
+
+#[test]
+fn a_line_whose_note_is_resolved_takes_another() {
+    let mut one = own();
+    one.resolved = true;
+    let app = delivered(vec![one]);
+    let mut ui = on_diff();
+    ui.session.view = DiffView::Editor;
+    asked(&app, &mut ui, 1);
+    assert!(
+        ui.menu.is_some(),
+        "a note that is dealt with holds the line no longer"
+    );
+}

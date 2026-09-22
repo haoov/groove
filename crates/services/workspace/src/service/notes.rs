@@ -3,7 +3,7 @@
 use groove_annotations::New;
 use groove_forge::{Posted, Remote, Verdict};
 use groove_types::{
-    Annotation, AnnotationId, Repo, Result, ReviewVerdict, SessionId, Timestamp, WorktreeId,
+    Annotation, AnnotationId, Forge, Repo, Result, ReviewVerdict, SessionId, Timestamp, WorktreeId,
 };
 
 use super::Service;
@@ -13,6 +13,17 @@ pub struct Said<'a> {
     pub verdict: ReviewVerdict,
     pub body: &'a str,
     pub notes: &'a [Annotation],
+}
+
+/// A note of another repo has no line on this merge request.
+fn elsewhere(note: &Annotation, repo: &Repo) -> Result<()> {
+    match note.repo == repo.id {
+        true => Ok(()),
+        false => Err(groove_types::Error::invalid(format!(
+            "{} is a note of {}, not of {}",
+            note.id, note.repo, repo.id
+        ))),
+    }
 }
 
 /// One note of this session as the forges take it, lines and all.
@@ -59,6 +70,7 @@ impl Service {
         worktree: &WorktreeId,
         note: &Annotation,
     ) -> Result<()> {
+        elsewhere(note, repo)?;
         let mr = self.held(worktree).await?;
         remote.post_note(repo, &mr.remote_id, posted(note)).await?;
         self.notes.resolve(&note.id).await?;
@@ -101,6 +113,20 @@ impl Service {
         worktree: &WorktreeId,
         said: Said<'_>,
     ) -> Result<()> {
+        match remote.kind() {
+            Forge::Github => self.reviewed(remote, repo, worktree, said).await,
+            Forge::Gitlab => self.one_by_one(remote, repo, worktree, said).await,
+        }
+    }
+
+    /// One call carries the verdict and every note, so all of them land or none do.
+    async fn reviewed(
+        &self,
+        remote: &Remote,
+        repo: &Repo,
+        worktree: &WorktreeId,
+        said: Said<'_>,
+    ) -> Result<()> {
         let mr = self.held(worktree).await?;
         let notes: Vec<Posted<'_>> = said.notes.iter().map(posted).collect();
         let verdict = Verdict {
@@ -113,6 +139,27 @@ impl Service {
             self.notes.resolve(&note.id).await?;
         }
         Ok(())
+    }
+
+    /// A note at a time, each resolved as it lands, then the verdict on its own: a
+    /// call that fails leaves nothing to post twice.
+    async fn one_by_one(
+        &self,
+        remote: &Remote,
+        repo: &Repo,
+        worktree: &WorktreeId,
+        said: Said<'_>,
+    ) -> Result<()> {
+        for note in said.notes {
+            self.post_note(remote, repo, worktree, note).await?;
+        }
+        let mr = self.held(worktree).await?;
+        let verdict = Verdict {
+            said: said.verdict,
+            body: said.body,
+            notes: &[],
+        };
+        Ok(remote.review(repo, &mr.remote_id, verdict).await?)
     }
 
     /// A thread of the MR resolved, or opened again.

@@ -116,7 +116,7 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     if say == Say::Comment && body.is_empty() {
         return;
     }
-    let notes = pending(state);
+    let notes = pending(state, &repo.id);
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
         Err(e) => return state.errors.push(e),
@@ -162,12 +162,13 @@ async fn said(
     }
 }
 
-/// The notes of this session the forge has not been told about.
-fn pending(state: &AppState) -> Vec<Annotation> {
+/// The notes of this repo the forge has not been told about.
+fn pending(state: &AppState, repo: &groove_types::RepoId) -> Vec<Annotation> {
     state
         .workspace
         .own
         .iter()
+        .filter(|note| &note.repo == repo)
         .filter(|note| note.status == groove_types::AnnotationStatus::Open)
         .cloned()
         .collect()

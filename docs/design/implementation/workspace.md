@@ -45,14 +45,19 @@ folds, the find session and the scroll.
 **Finding your way** is drawn as [../design.md](../design.md) describes it. A file marked
 read dims in the change column; the marks sit on the session, beside the selected worktree.
 
+**Commits.** `get_commits` reads the branch's own log, the base's commits marked as its.
+`open_commit` shows one as the change it made, read from the commit and its parent rather
+than the disk. A shown commit is read-only: `dispatch` drops every command whose `writes()`
+says so, and `leave_commit` puts the working tree back. The sidebar's commits list shows
+them; a bar in the commit box's place names the one that stands.
+
 | Still to build | Does |
 |---|---|
-| `workspace.get_diff` · `workspace.get_commits` · `workspace.get_status` | reads for the MCP tools |
+| `workspace.get_diff` · `workspace.get_status` | reads for the MCP tools |
 | `workspace.refresh` | reload status, summary, MR, CI and threads at once |
 | `workspace.set_mode` | base, working, vs-remote; reload the summary |
 | `workspace.expand` | a gap's hidden lines, from the document already held |
 | `workspace.blame` | blame for the file, uncommitted lines marked |
-| `workspace.open_commit` | one commit's diff |
 
 ## Annotations
 
@@ -60,16 +65,17 @@ read dims in the change column; the marks sit on the session, beside the selecte
 `workspace`** holds the notes of the selected worktree — annotations and threads — as one
 list. A row is session, repo, path, a line range on the new side, content, author, status.
 
-**One inline layer.** Annotations and threads render at their line in the same block,
-author and origin shown, at the code's line height, full width. The sidebar's notes tab
-lists them with file and line; a note opens its line.
+**One inline layer.** A note stands in rows of the surface under the line it was left on:
+its mark where that row's number would be, its words on the code's own column, the lines it
+covers and its author at the row's end, and a row of buttons under it. A line carrying one
+takes its own ground, and one line holds one open note of this session. The sidebar's notes
+list shows them with file and line; a note opens its line.
 
-| Still to build | Does |
-|---|---|
-| `workspace.get_notes` | read: annotations and threads of the selected worktree |
-| `workspace.create_note` · `workspace.update_note` · `workspace.resolve_note` · `workspace.delete_note` | the store; from the agent, local writes |
-| `workspace.post_note` | post as an MR discussion at its line, resolve the local copy |
-| `workspace.reply_thread` · `workspace.resolve_thread` | on the forge |
+**What a note offers**, by what holds it: its own are written again, resolved, deleted, and
+posted where the worktree has an MR; a thread of the forge is replied to and resolved.
+`post_note` resolves the local copy once it is up. A verdict carries every open note of the
+repo: one call on GitHub, which is atomic, and a note at a time on GitLab, each resolved as
+it lands.
 
 ## Editor
 
@@ -181,13 +187,14 @@ has one. The message titles the MR and its remaining lines are the body; an empt
 the task's own title, and a footer names the task by url. From the agent they will go
 through `approvals`, which slice 6 builds.
 
+**The verdict** is `approve` or `request changes` from the worktree's own menu, in a review
+session only, and the commit box's words go up as the comment beside it. GitLab keeps
+approval out of GraphQL, so `http` carries the plain calls that stand beside an endpoint.
+
 | Still to build | Does |
 |---|---|
-| `workspace.get_review_queue` | the review column |
 | every forge write from the agent | through `approvals`, once it exists |
 | `workspace.request_review` | add reviewers |
-| `workspace.review` | post a verdict with the pending annotations as its comments |
-| `workspace.comment` | a general note |
 
 The MR surface is one for own and reviewed MRs; CI shows on the worktree row and on the
 header for the selected worktree.
