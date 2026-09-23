@@ -8,7 +8,8 @@ mod review;
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 pub use rail::{
-    close, delete, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
+    close, delete, delete_local, list, open, open_explorer, refresh_status, rename_explorer,
+    restore, select,
 };
 pub(crate) use rail::{listed, record, set_auto_approve};
 pub use repos::{
@@ -54,6 +55,8 @@ pub enum Command {
     RenameExplorer { session: SessionId, title: String },
     /// `session.delete`: end the agent, remove the worktrees and their branches, delete the row.
     Delete { session: SessionId },
+    /// `session.delete_local`: the session and its worktrees gone from this machine.
+    DeleteLocal { session: SessionId },
     /// `session.select`: make it the current one.
     Select { session: SessionId },
     /// `session.open`: a session picked anywhere, back on the rail if it had left.
@@ -105,6 +108,7 @@ impl Command {
             Command::OpenReview { .. } => "session.open_review",
             Command::RenameExplorer { .. } => "session.rename_explorer",
             Command::Delete { .. } => "session.delete",
+            Command::DeleteLocal { .. } => "session.delete_local",
             Command::Select { .. } => "session.select",
             Command::Open { .. } => "session.open",
             Command::List => "session.list",
@@ -136,6 +140,7 @@ pub fn dispatch(
             rename_explorer(state, services, spawner, &session, &title)
         }
         Command::Delete { session } => delete(state, services, spawner, &session, true),
+        Command::DeleteLocal { session } => delete_local(state, services, spawner, &session),
         Command::Select { session } => select(state, services, spawner, &session),
         Command::Open { session } => open(state, services, spawner, &session),
         Command::List => list(services, spawner),

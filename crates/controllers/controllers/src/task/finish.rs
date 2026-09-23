@@ -42,16 +42,6 @@ pub(super) fn finish(
     }));
 }
 
-/// The session taken away here, with nothing said at the source.
-pub(super) fn locally(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &SessionId,
-) {
-    torn_down(state, services, spawner, id);
-}
-
 /// The session gone, its worktrees with it, and the tasks read again.
 fn torn_down(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     session::delete(state, services, spawner, id, false);

@@ -190,8 +190,59 @@ fn the_task_s_menu_offers_to_delete_the_session_here() {
     let commands = crate::tests::click(row, &mut ui, &app, &hits);
     assert_eq!(
         commands,
-        [groove_controllers::Command::Task(
-            groove_controllers::task::Command::DeleteLocal { session }
+        [groove_controllers::Command::Session(
+            groove_controllers::session::Command::DeleteLocal { session }
         )]
+    );
+}
+
+/// The fixture's session, reviewing someone else's merge request.
+fn reviewing() -> groove_controllers::AppState {
+    let mut app = crate::tests::full_app();
+    app.session
+        .get_mut(&SessionId::new("a"))
+        .expect("the fixture's session")
+        .session
+        .kind = groove_types::SessionKind::Review {
+        project: "g/mayo".into(),
+        iid: 7,
+    };
+    app
+}
+
+#[test]
+fn a_review_is_deleted_here_the_way_a_task_is() {
+    let app = reviewing();
+    let mut ui = Ui::default();
+    let window = metrics(1280, 800, 1.0);
+    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let session = SessionId::new("a");
+    let caret = hits
+        .rect_of(&crate::hit::Target::TaskActions(session.clone()))
+        .expect("a review offers the rest too");
+    crate::tests::click(caret, &mut ui, &app, &hits);
+
+    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let row = hits
+        .rect_of(&crate::hit::Target::MenuRow(0))
+        .expect("it holds a row");
+    assert_eq!(
+        crate::tests::click(row, &mut ui, &app, &hits),
+        [groove_controllers::Command::Session(
+            groove_controllers::session::Command::DeleteLocal { session }
+        )]
+    );
+}
+
+#[test]
+fn an_explorer_offers_no_such_menu() {
+    let app = crate::tests::full_app();
+    let ui = Ui::default();
+    let window = metrics(1280, 800, 1.0);
+    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    assert!(
+        hits.rect_of(&crate::hit::Target::TaskActions(SessionId::new("a")))
+            .is_none(),
+        "an explorer is thrown away from the palette"
     );
 }

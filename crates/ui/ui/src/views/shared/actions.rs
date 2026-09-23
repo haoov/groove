@@ -168,11 +168,11 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         }
         (Of::Path { path, .. }, Some(&"delete")) => Picked::asks(Losing::Path(path.clone())),
         (Of::Session(session), Some(&"delete locally")) => {
-            let away = groove_controllers::task::Command::DeleteLocal {
+            let away = groove_controllers::session::Command::DeleteLocal {
                 session: session.clone(),
             };
             Picked {
-                commands: vec![Command::Task(away)],
+                commands: vec![Command::Session(away)],
                 ..Picked::default()
             }
         }

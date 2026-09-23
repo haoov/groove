@@ -290,7 +290,7 @@ fn deleting_a_task_session_here_says_nothing_to_the_source() {
         .len();
 
     dispatch(
-        Cmd::Task(task::Command::DeleteLocal {
+        Cmd::Session(crate::session::Command::DeleteLocal {
             session: session.clone(),
         }),
         &mut state,

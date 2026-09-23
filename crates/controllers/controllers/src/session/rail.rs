@@ -143,6 +143,17 @@ pub fn delete(
     );
 }
 
+/// The session and its worktrees gone from this machine; a dirty one is refused.
+pub fn delete_local(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &SessionId,
+) {
+    delete(state, services, spawner, id, false);
+    crate::task::load(state, services, spawner);
+}
+
 /// Every session that lives on disk, for the board's Live column.
 pub fn list(services: &Services, spawner: &dyn Spawner) {
     let service = services.session.clone();

@@ -30,9 +30,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     pickers(ctx, under, app, open, ui);
 }
 
-/// The task's own actions. Returns where they start, which the title stops at.
+/// The session's own actions. Returns where they start, which the title stops at.
 fn actions(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) -> f32 {
-    if !matches!(open.session.kind, SessionKind::Task { .. }) {
+    if matches!(open.session.kind, SessionKind::Explorer) {
         return line.right();
     }
     let more = menu_caret(ctx, line, open, ui);
