@@ -5,6 +5,15 @@ use winit::event::{ElementState, KeyEvent};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 
 /// A pressed key as the ui reads it; releases and unmapped keys are nothing.
+/// The modifiers as the ui reads them.
+pub fn mods_of(mods: ModifiersState) -> Modifiers {
+    Modifiers {
+        ctrl: mods.control_key(),
+        shift: mods.shift_key(),
+        alt: mods.alt_key(),
+    }
+}
+
 pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
     if event.state != ElementState::Pressed {
         return None;
@@ -29,10 +38,6 @@ pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
     };
     Some(Input::Key {
         key,
-        mods: Modifiers {
-            ctrl: mods.control_key(),
-            shift: mods.shift_key(),
-            alt: mods.alt_key(),
-        },
+        mods: mods_of(mods),
     })
 }

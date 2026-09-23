@@ -122,6 +122,7 @@ fn clicking_an_mr_opens_the_session_that_reviews_it() {
         crate::input::Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

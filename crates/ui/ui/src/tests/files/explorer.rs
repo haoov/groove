@@ -47,6 +47,7 @@ fn opening_a_directory_shows_what_it_holds() {
         crate::input::Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -89,6 +90,7 @@ fn picking_the_whole_worktree_switches_the_scope_and_the_frame_asks_for_the_walk
         crate::input::Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

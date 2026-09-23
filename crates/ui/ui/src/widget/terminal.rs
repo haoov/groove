@@ -1,13 +1,30 @@
-use groove_gfx::{Cell, CellGrid, Color, Rect, WIDE_SPACER};
-use groove_types::{Rgb, Screen};
+use groove_gfx::{Cell, CellGrid, CellSize, Color, Rect, WIDE_SPACER};
+use groove_types::{Rgb, Screen, Selected};
 
 use crate::ctx::Ctx;
 
 /// A terminal screen as a cell grid at `origin`, clipped to `rect`.
 pub fn screen(ctx: &mut Ctx, rect: Rect, origin: (f32, f32), screen: &Screen) {
+    let cell = ctx.cell;
     let ground = ctx.styles.deep();
     let grid = grid_of(screen, origin.0, origin.1, ctx.tokens.code, ground);
-    ctx.clipped(rect, |ctx| ctx.grid(grid));
+    let held = ctx.styles.held();
+    ctx.clipped(rect, |ctx| {
+        for one in &screen.selected {
+            ctx.quad(selected(one, origin, cell), held);
+        }
+        ctx.grid(grid);
+    });
+}
+
+/// The band under one row's selected columns.
+fn selected(one: &Selected, origin: (f32, f32), cell: CellSize) -> Rect {
+    Rect::new(
+        origin.0 + one.from as f32 * cell.width,
+        origin.1 + one.row as f32 * cell.height,
+        one.to.saturating_sub(one.from) as f32 * cell.width,
+        cell.height,
+    )
 }
 
 /// The cells, the cursor drawn as the cell with its colours swapped.

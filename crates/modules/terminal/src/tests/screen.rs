@@ -143,3 +143,104 @@ fn the_wheel_moves_a_plain_screen_and_types_nothing() {
         "nothing was typed at the child: {said}"
     );
 }
+
+#[test]
+fn a_selection_takes_the_cells_it_covers() {
+    let (term, rx) = run("echo hello world; sleep 0.2", 20, 3);
+    wait(&rx);
+    term.select_from((0, 0), crate::Select::Cells);
+    term.select_to((4, 0));
+    assert_eq!(term.selected().as_deref(), Some("hello"));
+
+    let spans = term.screen().selected;
+    assert_eq!(spans.len(), 1);
+    assert_eq!((spans[0].row, spans[0].from, spans[0].to), (0, 0, 5));
+
+    term.select_nothing();
+    assert!(term.selected().is_none());
+    assert!(term.screen().selected.is_empty());
+}
+
+#[test]
+fn a_word_and_a_line_are_taken_whole() {
+    let (term, rx) = run("echo hello world; sleep 0.2", 20, 3);
+    wait(&rx);
+    term.select_from((7, 0), crate::Select::Word);
+    assert_eq!(term.selected().as_deref(), Some("world"));
+
+    term.select_from((2, 0), crate::Select::Line);
+    assert_eq!(
+        term.selected().as_deref(),
+        Some("hello world\n"),
+        "a line carries its own end"
+    );
+}
+
+#[test]
+fn what_the_program_repaints_does_not_take_the_selection_away() {
+    let paint = "printf '\\033[2J\\033[Hhello world\\n'";
+    let (term, rx) = run(&format!("{paint}; read -r a; {paint}; read -r b"), 20, 3);
+    std::thread::sleep(Duration::from_millis(200));
+    term.select_from((0, 0), crate::Select::Cells);
+    term.write(b"\n").unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    term.select_to((4, 0));
+    assert_eq!(
+        term.selected().as_deref(),
+        Some("hello"),
+        "a repaint between the two ends of a drag"
+    );
+    term.write(b"\n").unwrap();
+    wait(&rx);
+    std::thread::sleep(Duration::from_millis(100));
+    assert_eq!(
+        term.selected().as_deref(),
+        Some("hello"),
+        "and a repaint after it"
+    );
+}
+
+#[test]
+fn a_program_that_asks_for_motion_is_sent_the_drag() {
+    let ask = "printf '\\033[?1003h\\033[?1006h'";
+    let (term, rx) = run(&format!("{ask}; read -r one"), 20, 4);
+    std::thread::sleep(Duration::from_millis(200));
+    term.click((3, 2), true).unwrap();
+    term.drag((6, 2)).unwrap();
+    term.click((6, 2), false).unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    let screen = term.screen();
+    let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
+    assert!(
+        said.contains("[<32;7;3M"),
+        "the drag, at its own cell: {said}"
+    );
+    term.write(b"\n").unwrap();
+    wait(&rx);
+}
+
+#[test]
+fn a_paste_is_bracketed_only_for_a_program_that_asked() {
+    let (plain, rx) = run("read -r one; printf 'got %s' \"$one\"", 40, 4);
+    std::thread::sleep(Duration::from_millis(200));
+    plain.paste("hello\n").unwrap();
+    wait(&rx);
+    assert!(
+        plain.screen().line(1).contains("got hello"),
+        "{:?}",
+        plain.screen().line(1)
+    );
+
+    let (asked, rx) = run("printf '\\033[?2004h'; read -r one", 40, 4);
+    std::thread::sleep(Duration::from_millis(200));
+    asked.paste("hello\n").unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    let screen = asked.screen();
+    let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
+    assert!(
+        said.contains("[200~hello"),
+        "the child reads the brackets: {said}"
+    );
+    asked.write(b"\r").unwrap();
+    wait(&rx);
+}

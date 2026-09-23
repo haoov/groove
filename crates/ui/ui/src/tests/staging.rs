@@ -54,6 +54,7 @@ fn hit(target: &Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         ui,
         app,

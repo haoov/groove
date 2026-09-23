@@ -54,6 +54,7 @@ fn hit(target: &Target, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         ui,
         app,
@@ -278,6 +279,7 @@ fn a_click_in_the_message_puts_the_caret_where_it_landed() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -308,6 +310,7 @@ fn a_click_on_the_second_line_of_the_message_lands_on_it() {
         Input::Press {
             x,
             y: box_.y + line * 1.5,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

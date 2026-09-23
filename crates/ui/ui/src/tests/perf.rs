@@ -154,6 +154,7 @@ fn screen(cols: usize, rows: usize) -> Screen {
         rows,
         cells,
         cursor: Some((0, 0)),
+        selected: Vec::new(),
     }
 }
 

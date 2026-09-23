@@ -58,6 +58,6 @@ pub use syntax::{Capture, Highlight};
 pub use task::{
     Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours,
 };
-pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell};
+pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};

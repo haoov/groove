@@ -43,6 +43,7 @@ fn pick(app: &AppState, ui: &mut Ui, label: &str) -> Vec<Command> {
         Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         ui,
         app,
@@ -216,6 +217,7 @@ fn deleting_a_path_asks_in_its_own_row_first() {
         Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

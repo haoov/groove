@@ -29,7 +29,7 @@ pub(super) fn scroll(
         return Vec::new();
     }
     if ui.showing(app) == Surface::Session && x < layout.workspace.x {
-        return agent(app, delta, point, &layout, metrics);
+        return agent(ui, app, delta, point, &layout, metrics);
     }
     if ui.showing(app) == Surface::Board {
         let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
@@ -58,8 +58,9 @@ pub(super) fn scroll(
     Vec::new()
 }
 
-/// The wheel over the agent's own screen, at the cell the pointer stands on.
+/// The wheel over the agent's screen. What is not yet worth a line is carried on.
 fn agent(
+    ui: &mut Ui,
     app: &AppState,
     delta: Delta,
     point: (f32, f32),
@@ -70,7 +71,13 @@ fn agent(
         return Vec::new();
     };
     let tokens = metrics.tokens();
-    let lines = (delta.down(tokens.line) / tokens.line).round() as i32;
+    let pixels = match delta {
+        Delta::Lines { down, .. } => down * tokens.line * crate::tokens::NOTCH,
+        Delta::Pixels { down, .. } => down,
+    };
+    let carried = pixels + ui.agent.carried;
+    let lines = (carried / tokens.line) as i32;
+    ui.agent.carried = carried - lines as f32 * tokens.line;
     if lines == 0 {
         return Vec::new();
     }

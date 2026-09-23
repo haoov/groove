@@ -29,6 +29,9 @@ pub const CLICK_SLOP: f32 = 4.0;
 
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
+/// How many lines one notch of a wheel carries the agent's screen.
+pub const NOTCH: f32 = 3.0;
+
 /// How far a gesture carries the timeline one day.
 pub const DAY_PIXELS: f32 = 24.0;
 

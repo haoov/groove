@@ -68,6 +68,7 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -93,6 +94,7 @@ fn a_click_on_a_removed_line_takes_no_caret() {
         Input::Press {
             x: code.x + tokens.sm + 1.0,
             y: code.y + tokens.line * 3.0 + 1.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -278,6 +280,7 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

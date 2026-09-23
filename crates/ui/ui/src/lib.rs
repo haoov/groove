@@ -83,6 +83,7 @@ pub struct Ui {
     pub session: SessionUi,
     pub rail: RailUi,
     pub board: BoardUi,
+    pub agent: AgentUi,
     pub split: Split,
     pub drag: Option<Drag>,
     /// The pointer is down on the open file, so it is choosing what to hold.
@@ -100,6 +101,19 @@ pub struct Ui {
     pub at: (f32, f32),
     /// The colours the last frames read, kept while they still hold.
     pub painted: painted::Painted,
+}
+
+/// What the pointer is doing to the agent's screen.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct AgentUi {
+    /// Wheel pixels not yet worth a line.
+    pub carried: f32,
+    /// The pointer holds a selection of our own.
+    pub selecting: bool,
+    /// The pointer is down, and the program in the screen is sent the reports.
+    pub clicking: bool,
+    /// Shift was held, so the selection is ours where the program reads the mouse.
+    pub bypassed: bool,
 }
 
 /// An open menu: what it belongs to, at the point it was asked for.
@@ -181,6 +195,11 @@ impl Ui {
 
     /// The pointer is down on something that follows it, so its moves are input.
     pub fn pointing(&self) -> bool {
-        self.drag.is_some() || self.selecting || self.mapping || self.board.dragging.is_some()
+        self.drag.is_some()
+            || self.selecting
+            || self.mapping
+            || self.board.dragging.is_some()
+            || self.agent.selecting
+            || self.agent.clicking
     }
 }

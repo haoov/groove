@@ -1,3 +1,4 @@
+mod agent;
 mod bar;
 mod board;
 mod budget;
@@ -53,6 +54,7 @@ fn click(rect: Rect, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
     let input = Input::Press {
         x: rect.x + rect.w / 2.0,
         y: rect.y + rect.h / 2.0,
+        mods: Default::default(),
     };
     handle(input, ui, app, hits, window())
 }
@@ -69,7 +71,17 @@ fn drag_at(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Comm
 
 /// A press at a point.
 fn pressed(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
-    handle(Input::Press { x, y }, ui, app, hits, window())
+    handle(
+        Input::Press {
+            x,
+            y,
+            mods: Default::default(),
+        },
+        ui,
+        app,
+        hits,
+        window(),
+    )
 }
 
 fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {

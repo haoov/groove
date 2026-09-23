@@ -147,7 +147,10 @@ impl App {
     fn button(&mut self, state: ElementState, button: MouseButton) {
         let (x, y) = self.cursor;
         match (state, button) {
-            (ElementState::Pressed, MouseButton::Left) => self.input(Input::Press { x, y }),
+            (ElementState::Pressed, MouseButton::Left) => {
+                let mods = crate::keys::mods_of(self.modifiers);
+                self.input(Input::Press { x, y, mods })
+            }
             (ElementState::Pressed, MouseButton::Right) => self.input(Input::Menu { x, y }),
             (ElementState::Released, MouseButton::Left) => {
                 let dragged = self.ui.dragging();

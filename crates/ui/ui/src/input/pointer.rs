@@ -31,12 +31,14 @@ use crate::views::session::Tab;
 pub(super) fn press(
     x: f32,
     y: f32,
+    mods: super::Modifiers,
     ui: &mut Ui,
     app: &AppState,
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
     ui.clicked = Some(counted(ui.clicked, x, y, metrics));
+    ui.agent.bypassed = mods.shift;
     match hits.at(x, y) {
         Some(Target::Split(edge)) => {
             grab(ui, edge, x, y, metrics);
@@ -46,6 +48,9 @@ pub(super) fn press(
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
+
+pub(crate) use agent::copied as agent_copied;
+pub(crate) use agent::released as agent_released;
 
 /// The pointer moved: a boundary follows it, or the open file holds more.
 pub(super) fn moved(
@@ -67,6 +72,9 @@ pub(super) fn moved(
     if ui.mapping {
         lensed(y, ui, app, hits, metrics);
         return Vec::new();
+    }
+    if ui.agent.selecting || ui.agent.clicking {
+        return agent::dragged(ui, app, (x, y), metrics);
     }
     if !ui.selecting {
         return Vec::new();
@@ -112,7 +120,7 @@ fn acted(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    if let Some(commands) = elsewhere(target.as_ref(), ui, app, hits, metrics) {
+    if let Some(commands) = elsewhere(target.as_ref(), point, ui, app, hits, metrics) {
         return commands;
     }
     match target {
@@ -166,6 +174,7 @@ fn review(project: String, iid: u64) -> Vec<Command> {
 /// What another surface answers for: the board's own rows, or the rail's.
 fn elsewhere(
     target: Option<&Target>,
+    point: (f32, f32),
     ui: &mut Ui,
     app: &AppState,
     hits: &Hits,
@@ -174,7 +183,7 @@ fn elsewhere(
     let target = target?;
     board::acted(target, ui, app)
         .or_else(|| rail::acted(target, ui))
-        .or_else(|| agent::acted(target, ui, app, hits, metrics))
+        .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
 }
 
 /// The rest of the task's actions, under the caret that opened them.

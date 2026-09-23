@@ -144,6 +144,7 @@ fn a_drag_over_the_file_holds_more_of_it() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -235,6 +236,7 @@ fn clicks(times: usize, apart: u64) -> Vec<Command> {
             Input::Press {
                 x: point.0,
                 y: point.1,
+                mods: Default::default(),
             },
             &mut ui,
             &app,

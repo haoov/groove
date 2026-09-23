@@ -128,6 +128,7 @@ fn a_click_past_a_tab_lands_on_the_character_it_points_at() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

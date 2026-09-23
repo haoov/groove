@@ -222,6 +222,7 @@ fn the_header_offers_to_read_the_mr_again() {
         crate::input::Input::Press {
             x: box_.x + box_.w / 2.0,
             y: box_.y + box_.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

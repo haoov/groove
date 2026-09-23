@@ -44,6 +44,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
         Input::Press {
             x: point.0,
             y: point.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -261,6 +262,7 @@ fn a_click_on_a_file_head_folds_it() {
         Input::Press {
             x: head.0,
             y: head.1,
+            mods: Default::default(),
         },
         &mut ui,
         &app,
@@ -299,6 +301,7 @@ fn folding_from_the_pinned_head_lands_on_the_file_it_shut() {
         Input::Press {
             x: band.x + band.w / 2.0,
             y: band.y + 1.0,
+            mods: Default::default(),
         },
         &mut ui,
         &app,

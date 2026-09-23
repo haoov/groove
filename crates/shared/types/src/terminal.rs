@@ -45,6 +45,16 @@ pub struct Screen {
     pub rows: usize,
     pub cells: Vec<ScreenCell>,
     pub cursor: Option<(usize, usize)>,
+    /// What the pointer has selected, as the columns of each row it covers.
+    pub selected: Vec<Selected>,
+}
+
+/// One row's selected columns, `from` up to but not including `to`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Selected {
+    pub row: usize,
+    pub from: usize,
+    pub to: usize,
 }
 
 impl Screen {

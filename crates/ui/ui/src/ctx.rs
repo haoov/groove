@@ -36,6 +36,8 @@ pub struct Ctx<'a> {
     pub tokens: Tokens,
     pub styles: Styles,
     pub layout: Layout,
+    /// One cell of the code font, which the agent's own grid stands on.
+    pub cell: CellSize,
     pub tick: u64,
     pub now: Timestamp,
     frame: &'a mut Frame,
@@ -58,6 +60,7 @@ impl<'a> Ctx<'a> {
             tokens,
             styles: Styles::new(app.config.theme(), tokens),
             layout,
+            cell: metrics.cell,
             tick: metrics.tick,
             now: metrics.now,
             frame,

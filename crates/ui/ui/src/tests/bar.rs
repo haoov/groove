@@ -9,7 +9,7 @@ use crate::tests::{app, click, window};
 use crate::{Surface, Ui};
 
 /// The fixture's session, with the writes it waits on.
-fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
+pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
     let mut app = app();
     let activity = SessionActivity {
         status: AgentStatus::Idle,
@@ -407,4 +407,84 @@ fn one_source_files_without_naming_it() {
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = everywhere(&frame);
     assert!(drawn.iter().any(|one| one == "create task"), "{drawn:?}");
+}
+
+/// Where the pointer lands in the middle of the agent's own screen.
+fn on_screen(ui: &Ui) -> (f32, f32) {
+    let pane = crate::layout::Layout::of(window(), ui).agent;
+    (pane.x + pane.w / 2.0, pane.y + pane.h / 3.0)
+}
+
+#[test]
+fn a_press_on_the_screen_begins_a_selection() {
+    let app = offering(Vec::new());
+    let mut ui = session_ui();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let (x, y) = on_screen(&ui);
+    let acted = crate::input::handle(
+        crate::input::Input::Press {
+            x,
+            y,
+            mods: Default::default(),
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    assert!(ui.agent.selecting, "the pointer is choosing what to hold");
+    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
+    assert_eq!(said, ["agent.select"]);
+
+    let moved = crate::input::handle(
+        crate::input::Input::Move { x: x + 40.0, y },
+        &mut ui,
+        &app,
+        &hits,
+        window(),
+    );
+    let said: Vec<&str> = moved.iter().map(|one| one.id()).collect();
+    assert_eq!(said, ["agent.select"], "and it carries while it is down");
+
+    crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
+    assert!(!ui.agent.selecting, "the release ends it");
+}
+
+#[test]
+fn the_chord_copies_what_the_screen_holds() {
+    let app = offering(Vec::new());
+    let mut ui = session_ui();
+    let chord = crate::tests::CHORD;
+    let acted = crate::tests::press(crate::input::Key::Char('c'), chord, &mut ui, &app);
+    let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
+    assert_eq!(said, ["agent.copy"]);
+}
+
+#[test]
+fn a_trackpad_that_moves_a_little_still_moves_the_screen() {
+    let app = offering(Vec::new());
+    let mut ui = session_ui();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let (x, y) = on_screen(&ui);
+    let nudge = |ui: &mut Ui| {
+        crate::input::handle(
+            crate::input::Input::Scroll {
+                x,
+                y,
+                delta: crate::input::Delta::Pixels {
+                    across: 0.0,
+                    down: 7.0,
+                },
+            },
+            ui,
+            &app,
+            &hits,
+            window(),
+        )
+    };
+    let mut asked = 0;
+    for _ in 0..3 {
+        asked += nudge(&mut ui).len();
+    }
+    assert!(asked > 0, "what is under a line is carried, not lost");
 }

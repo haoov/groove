@@ -105,6 +105,11 @@ fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
             let session = app.session.selected.clone()?;
             Some(Command::Session(session::Command::Close { session }))
         }
+        Key::Char('c' | 'C') => {
+            let session = app.session.selected.clone()?;
+            let copy = groove_controllers::agent::Command::Copy { session };
+            Some(Command::Agent(copy))
+        }
         _ => None,
     }
 }

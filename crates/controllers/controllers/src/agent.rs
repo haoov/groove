@@ -1,8 +1,9 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
+mod pointer;
 pub mod skills;
 
-use groove_agent_service::{Event as AgentEvent, LaunchPaths, launch, palette};
+use groove_agent_service::{Event as AgentEvent, LaunchPaths, Select, launch, palette};
 use groove_types::{ApprovalId, Session, SessionId, Timestamp};
 
 use crate::spawn::coalesced;
@@ -32,6 +33,31 @@ pub enum Command {
     Refuse { id: ApprovalId },
     /// `agent.auto_approve`: every write of this session runs without asking.
     AutoApprove { session: SessionId, on: bool },
+    /// `agent.select`: a selection of the agent's screen, begun or carried on.
+    Select {
+        session: SessionId,
+        col: usize,
+        row: usize,
+        kind: Select,
+        from: bool,
+    },
+    /// `agent.click`: the left button on the screen, for the program that reads it.
+    Click {
+        session: SessionId,
+        col: usize,
+        row: usize,
+        down: bool,
+    },
+    /// `agent.drag`: the pointer moved with the button down, for that same program.
+    Drag {
+        session: SessionId,
+        col: usize,
+        row: usize,
+    },
+    /// `agent.paste`: the clipboard typed at the agent, bracketed when it asked.
+    Paste { session: SessionId, text: String },
+    /// `agent.copy`: what is selected on the agent's screen, to the clipboard.
+    Copy { session: SessionId },
     /// `agent.scroll`: the wheel over the agent's own screen, at the cell it stands on.
     Scroll {
         session: SessionId,
@@ -67,6 +93,11 @@ impl Command {
             Command::Approve { .. } => "agent.approve",
             Command::Refuse { .. } => "agent.refuse",
             Command::AutoApprove { .. } => "agent.auto_approve",
+            Command::Select { .. } => "agent.select",
+            Command::Click { .. } => "agent.click",
+            Command::Drag { .. } => "agent.drag",
+            Command::Paste { .. } => "agent.paste",
+            Command::Copy { .. } => "agent.copy",
             Command::Scroll { .. } => "agent.scroll",
             Command::Reload { .. } => "agent.reload",
             Command::ListSkills => "agent.list_skills",
@@ -105,17 +136,12 @@ pub fn dispatch(
             cols,
             rows,
         } => reload(state, spawner, session, (cols, rows)),
-        Command::Scroll {
-            session,
-            lines,
-            col,
-            row,
-        } => scroll(state, &session, lines, (col, row)),
         Command::ListSkills => skills::list(state, spawner),
         Command::SendSkill { session, id, args } => {
             skills::send(state, spawner, &session, &id, args.as_deref())
         }
         Command::DeleteSkill { name } => skills::delete(state, spawner, name),
+        pointing => pointer::acted(state, services, pointing),
     }
 }
 
@@ -179,13 +205,6 @@ pub fn end(state: &mut AppState, session: &SessionId) {
     crate::tools::drop_asks(state, session);
     if let Some(terminal) = state.agent.end(session).and_then(|a| a.terminal) {
         let _ = terminal.terminate();
-    }
-}
-
-/// The wheel over the agent's screen, at the cell the pointer stands on.
-pub fn scroll(state: &mut AppState, session: &SessionId, lines: i32, cell: (usize, usize)) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
-        let _ = terminal.wheel(lines, cell);
     }
 }
 

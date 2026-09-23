@@ -2,6 +2,7 @@
 
 use alacritty_terminal::event::EventListener;
 use alacritty_terminal::grid::Dimensions;
+use alacritty_terminal::selection::SelectionRange;
 use alacritty_terminal::term::cell::{Cell, Flags};
 use alacritty_terminal::term::color::Colors;
 use alacritty_terminal::term::{Term, TermMode};
@@ -9,6 +10,36 @@ use alacritty_terminal::vte::ansi::{Color, CursorShape, NamedColor};
 use groove_types::{AnsiPalette, Screen, ScreenCell};
 
 use crate::color::resolve;
+
+/// The rows a selection covers, each with the columns it takes.
+fn spans(
+    held: Option<SelectionRange>,
+    scrolled: i32,
+    cols: usize,
+    rows: usize,
+) -> Vec<groove_types::Selected> {
+    let Some(held) = held else {
+        return Vec::new();
+    };
+    let (top, foot) = (held.start.line.0 + scrolled, held.end.line.0 + scrolled);
+    (top.max(0)..=foot.min(rows as i32 - 1))
+        .map(|row| {
+            let from = match row == top {
+                true => held.start.column.0,
+                false => 0,
+            };
+            let to = match row == foot {
+                true => (held.end.column.0 + 1).min(cols),
+                false => cols,
+            };
+            groove_types::Selected {
+                row: row as usize,
+                from: from.min(to),
+                to,
+            }
+        })
+        .collect()
+}
 
 /// The visible grid as cells with resolved colours.
 pub(crate) fn snapshot<L: EventListener>(term: &Term<L>, palette: &AnsiPalette) -> Screen {
@@ -37,6 +68,7 @@ pub(crate) fn snapshot<L: EventListener>(term: &Term<L>, palette: &AnsiPalette) 
         rows,
         cells,
         cursor,
+        selected: spans(content.selection, scrolled, cols, rows),
     }
 }
 

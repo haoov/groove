@@ -4,7 +4,7 @@ use groove_ui::input::{Input, handle};
 use groove_ui::{Metrics, Tokens, Ui, view};
 
 /// A window's worth of metrics, as the app builds them.
-fn window() -> Metrics {
+pub(super) fn window() -> Metrics {
     let design = Tokens::new(1.0);
     Metrics {
         size: groove_gfx::Size::new(1600, 900),
@@ -21,7 +21,7 @@ fn window() -> Metrics {
 }
 
 /// A bare origin, a pooled clone of it, and a session holding a worktree of it.
-fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppState, Services) {
+pub(super) fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppState, Services) {
     let origin = home.join("origin.git");
     let seed = home.join("seed");
     for dir in [&origin, &seed] {
@@ -84,7 +84,7 @@ fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppState, Services
     (state, services)
 }
 
-fn sh(dir: &std::path::Path, args: &[&str]) {
+pub(super) fn sh(dir: &std::path::Path, args: &[&str]) {
     let out = std::process::Command::new("git")
         .args(["-c", "user.email=t@t", "-c", "user.name=t"])
         .args(args)
@@ -127,6 +127,7 @@ fn picking_the_whole_worktree_fills_the_tree_it_draws() {
         Input::Press {
             x: rect.x + rect.w / 2.0,
             y: rect.y + rect.h / 2.0,
+            mods: Default::default(),
         },
         &mut ui,
         &state,

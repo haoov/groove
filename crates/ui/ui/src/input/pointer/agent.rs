@@ -1,5 +1,6 @@
 //! What a click on the agent's own row does: its skills, or its reload.
 
+use groove_controllers::agent_service::Select;
 use groove_controllers::{AppState, Command, agent};
 use groove_types::{ProviderId, SessionId};
 
@@ -11,6 +12,7 @@ use crate::{Corner, Menu, Of, Offer, Ui};
 /// The agent's own targets; anything else is not its to answer.
 pub(super) fn acted(
     target: &Target,
+    point: (f32, f32),
     ui: &mut Ui,
     app: &AppState,
     hits: &Hits,
@@ -19,8 +21,101 @@ pub(super) fn acted(
     match target {
         Target::Skills(session) => Some(menu(ui, app, hits, session.clone())),
         Target::Reload(session) => Some(reloaded(ui, session.clone(), metrics)),
+        Target::Agent => Some(pressed(ui, app, point, metrics)),
         _ => None,
     }
+}
+
+/// A press on the screen: the program that reads the mouse is sent it, shift aside.
+fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let (col, row) = cell(point, ui, metrics);
+    if reads_mouse(app, &session) && !ui.agent.bypassed {
+        ui.agent.clicking = true;
+        return vec![Command::Agent(agent::Command::Click {
+            session,
+            col,
+            row,
+            down: true,
+        })];
+    }
+    let kind = match ui.clicked.map(|one| one.count).unwrap_or(1) {
+        1 => Select::Cells,
+        2 => Select::Word,
+        _ => Select::Line,
+    };
+    ui.agent.selecting = true;
+    vec![Command::Agent(agent::Command::Select {
+        session,
+        col,
+        row,
+        kind,
+        from: true,
+    })]
+}
+
+/// The pointer moved while it is down: the drag sent on, or the selection carried.
+pub(super) fn dragged(
+    ui: &Ui,
+    app: &AppState,
+    point: (f32, f32),
+    metrics: Metrics,
+) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let (col, row) = cell(point, ui, metrics);
+    match ui.agent.clicking {
+        true => vec![Command::Agent(agent::Command::Drag { session, col, row })],
+        false => vec![Command::Agent(agent::Command::Select {
+            session,
+            col,
+            row,
+            kind: Select::Cells,
+            from: false,
+        })],
+    }
+}
+
+/// The button let go where it stands, for the program that was sent the press.
+pub(crate) fn released(ui: &Ui, app: &AppState, metrics: Metrics) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let (col, row) = cell(ui.at, ui, metrics);
+    vec![Command::Agent(agent::Command::Click {
+        session,
+        col,
+        row,
+        down: false,
+    })]
+}
+
+/// What a selection of our own leaves on the clipboard when the button is let go.
+pub(crate) fn copied(app: &AppState) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    vec![Command::Agent(agent::Command::Copy { session })]
+}
+
+/// Whether the program in the agent reads the mouse itself.
+fn reads_mouse(app: &AppState, session: &SessionId) -> bool {
+    app.agent
+        .agent(session)
+        .and_then(|one| one.terminal.as_ref())
+        .is_some_and(|one| one.reads_mouse())
+}
+
+/// The cell of the agent's own grid the point stands on.
+fn cell(point: (f32, f32), ui: &Ui, metrics: Metrics) -> (usize, usize) {
+    let tokens = metrics.tokens();
+    let (x, y) = Layout::of(metrics, ui).agent_origin(&tokens);
+    let col = ((point.0 - x) / metrics.cell.width).floor().max(0.0) as usize;
+    let row = ((point.1 - y) / metrics.cell.height).floor().max(0.0) as usize;
+    (col, row)
 }
 
 /// What the agent can be sent, under the word that opened it.

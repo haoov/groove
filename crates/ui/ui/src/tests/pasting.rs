@@ -105,7 +105,10 @@ fn the_commit_box_takes_it_as_an_edit_of_its_own() {
 #[test]
 fn with_nothing_typing_the_open_file_takes_it() {
     let app = full_app();
-    let mut ui = Ui::default();
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
     ui.session.tab = Tab::File;
     let asked = paste("one", &mut ui, &app);
     assert_eq!(
@@ -121,4 +124,20 @@ fn an_empty_clipboard_asks_nothing() {
     let mut ui = Ui::default();
     assert!(paste("\n", &mut ui, &app).is_empty());
     assert!(paste("", &mut ui, &app).is_empty());
+}
+
+#[test]
+fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::File;
+    let asked = paste("one\ntwo", &mut ui, &app);
+    assert_eq!(
+        asked,
+        vec![Command::Agent(groove_controllers::agent::Command::Paste {
+            session: groove_types::SessionId::new("a"),
+            text: "one\ntwo".into(),
+        })],
+        "the program types it, not the buffer"
+    );
 }

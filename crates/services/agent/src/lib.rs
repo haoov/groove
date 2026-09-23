@@ -14,7 +14,7 @@ pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
 pub use groove_skills as skills;
-pub use groove_terminal::Terminal;
+pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
 pub use groove_types::Screen;
 pub use launch::{LaunchPaths, launch, palette};

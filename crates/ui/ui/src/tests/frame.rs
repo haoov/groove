@@ -105,6 +105,7 @@ fn a_screen_becomes_a_grid_with_a_swapped_cursor_cell() {
         rows: 2,
         cells,
         cursor: Some((0, 1)),
+        selected: Vec::new(),
     };
     let grid = grid_of(&screen, 10.0, 20.0, 12.5, Palette::MOCHA.base);
     assert_eq!((grid.cols, grid.rows), (3, 2));
