@@ -107,15 +107,21 @@ pub fn review_queue() -> String {
     .to_string()
 }
 
-/// A note on a line of the latest diff, which needs no position of its own.
-pub fn note_on_line() -> String {
-    r"mutation($mr: MergeRequestID!, $head: String!, $path: String!, $from: Int!, $to: Int!, $body: String!) {
-  createLatestDiffNote(input: {
+/// A note on the latest diff. Only a note over more than one line names its last.
+pub fn note_on_line(range: bool) -> String {
+    let (takes, ends) = match range {
+        true => (", $to: Int!", "endNewLine: $to, "),
+        false => ("", ""),
+    };
+    format!(
+        "mutation($mr: MergeRequestID!, $head: String!, $path: String!, $from: Int!{takes}, \
+         $body: String!) {{
+  createLatestDiffNote(input: {{
     noteableId: $mr, headSha: $head, filePath: $path,
-    newLine: $from, endNewLine: $to, body: $body
-  }) { errors note { id } }
-}"
-    .to_string()
+    newLine: $from, {ends}body: $body
+  }}) {{ errors note {{ id }} }}
+}}"
+    )
 }
 
 /// A reply under a discussion that stands.

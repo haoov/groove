@@ -95,14 +95,17 @@ impl Github {
     /// One thread opened on a file's new side, over the lines an anchor covers.
     pub async fn note_on(&self, repo: &Repo, number: &str, at: Posted<'_>) -> Result<()> {
         let node = self.node_of(repo, number).await?;
-        let sent = serde_json::json!({
+        let mut sent = serde_json::json!({
             "mr": node,
             "path": at.path,
-            "from": at.from,
             "to": at.to,
             "body": at.body,
         });
-        self.api.ask(&query::note_on_line(), sent).await?;
+        let range = at.to > at.from;
+        if range {
+            sent["from"] = at.from.into();
+        }
+        self.api.ask(&query::note_on_line(range), sent).await?;
         Ok(())
     }
 
@@ -149,16 +152,19 @@ impl Github {
     }
 }
 
-/// One note as a thread the review opens.
+/// One note as a thread the review opens; only a range names where it starts.
 fn drafted(note: &Posted<'_>) -> serde_json::Value {
-    serde_json::json!({
+    let mut out = serde_json::json!({
         "path": note.path,
         "line": note.to,
-        "startLine": note.from,
         "side": "RIGHT",
-        "startSide": "RIGHT",
         "body": note.body,
-    })
+    });
+    if note.to > note.from {
+        out["startLine"] = note.from.into();
+        out["startSide"] = "RIGHT".into();
+    }
+    out
 }
 
 /// The event a verdict is, in GitHub's own words.

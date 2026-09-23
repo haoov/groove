@@ -438,3 +438,34 @@ async fn a_comment_goes_on_the_merge_request_itself() {
     assert_eq!(at["mr"], "gid://gitlab/MergeRequest/99");
     assert_eq!(at["body"], "note: the pipeline is flaky");
 }
+
+#[tokio::test]
+async fn a_note_on_one_line_names_no_end_at_all() {
+    let (server, gitlab) = gitlab(by_iid(mr("opened"))).await;
+    gitlab
+        .note_on(
+            &repo(),
+            "7",
+            crate::Posted {
+                path: "src/lib.rs",
+                from: 12,
+                to: 12,
+                body: "issue: this leaks",
+            },
+        )
+        .await
+        .expect("the note is posted");
+    let sent = sent(&server).await;
+    let at = variables(&sent, "createLatestDiffNote");
+    assert_eq!(at["from"].as_u64(), Some(12));
+    assert!(
+        at["to"].is_null(),
+        "gitlab refuses an end that is not past it"
+    );
+    let query = sent
+        .iter()
+        .filter_map(|one| one["query"].as_str())
+        .find(|one| one.contains("createLatestDiffNote"))
+        .expect("the mutation");
+    assert!(!query.contains("endNewLine"), "{query}");
+}

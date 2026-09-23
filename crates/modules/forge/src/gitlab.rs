@@ -103,15 +103,18 @@ impl Gitlab {
     /// One note on a line of the latest diff, which the MR's own head names.
     pub async fn note_on(&self, repo: &Repo, number: &str, at: Posted<'_>) -> Result<()> {
         let mr = self.read_mr(repo, number).await?;
-        let sent = serde_json::json!({
+        let mut sent = serde_json::json!({
             "mr": mr.node,
             "head": mr.head,
             "path": at.path,
             "from": at.from,
-            "to": at.to,
             "body": at.body,
         });
-        self.api.ask(&query::note_on_line(), sent).await?;
+        let range = at.to > at.from;
+        if range {
+            sent["to"] = at.to.into();
+        }
+        self.api.ask(&query::note_on_line(range), sent).await?;
         Ok(())
     }
 

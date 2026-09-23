@@ -445,3 +445,31 @@ async fn a_comment_goes_on_the_pull_request_itself() {
     assert_eq!(at["mr"], "PR_node");
     assert_eq!(at["body"], "note: the ci is flaky");
 }
+
+#[tokio::test]
+async fn a_thread_on_one_line_names_no_start() {
+    let (server, github) = github(by_number(pr())).await;
+    github
+        .note_on(
+            &repo(),
+            "7",
+            crate::Posted {
+                path: "src/lib.rs",
+                from: 12,
+                to: 12,
+                body: "issue: this leaks",
+            },
+        )
+        .await
+        .expect("the thread is opened");
+    let sent = sent(&server).await;
+    let at = variables(&sent, "addPullRequestReviewThread");
+    assert_eq!(at["to"].as_u64(), Some(12));
+    assert!(at["from"].is_null(), "a start must be above the line");
+    let query = sent
+        .iter()
+        .filter_map(|one| one["query"].as_str())
+        .find(|one| one.contains("addPullRequestReviewThread"))
+        .expect("the mutation");
+    assert!(!query.contains("startLine"), "{query}");
+}

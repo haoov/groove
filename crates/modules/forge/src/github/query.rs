@@ -124,15 +124,19 @@ pub fn review_queue() -> String {
     .to_string()
 }
 
-/// A thread opened on a range of one file's new side.
-pub fn note_on_line() -> String {
-    r"mutation($mr: ID!, $path: String!, $from: Int!, $to: Int!, $body: String!) {
-  addPullRequestReviewThread(input: {
-    pullRequestId: $mr, path: $path, line: $to, startLine: $from,
-    side: RIGHT, startSide: RIGHT, body: $body
-  }) { thread { id } }
-}"
-    .to_string()
+/// A thread on one file's new side. Only a range names the line it starts on.
+pub fn note_on_line(range: bool) -> String {
+    let (takes, starts) = match range {
+        true => (", $from: Int!", "startLine: $from, startSide: RIGHT, "),
+        false => ("", ""),
+    };
+    format!(
+        "mutation($mr: ID!, $path: String!, $to: Int!{takes}, $body: String!) {{
+  addPullRequestReviewThread(input: {{
+    pullRequestId: $mr, path: $path, line: $to, {starts}side: RIGHT, body: $body
+  }}) {{ thread {{ id }} }}
+}}"
+    )
 }
 
 /// A reply under a thread that stands.
