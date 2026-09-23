@@ -13,7 +13,6 @@ pub struct Env {
     pub config_dir: PathBuf,
     /// `~/.local/share/groove`
     pub data_dir: PathBuf,
-    pub plugin_dirs: Vec<PathBuf>,
     pub hooks: Option<Receiver>,
     pub tools: Option<Server>,
 }

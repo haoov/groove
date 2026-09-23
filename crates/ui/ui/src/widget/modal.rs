@@ -16,6 +16,7 @@ pub fn panel_at(
     let (width, height) = size;
     let (x, y) = match corner {
         Corner::TopLeft => at,
+        Corner::BottomLeft => (at.0, at.1 - height),
         Corner::BottomRight => (at.0 - width, at.1 - height),
     };
     let x = x.min(window.right() - width).max(window.x);

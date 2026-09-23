@@ -81,6 +81,9 @@ pub enum Target {
     /// The write the agent asked for, taken or refused.
     Approve(groove_types::ApprovalId),
     Refuse(groove_types::ApprovalId),
+    /// The agent's own row: what it can be sent, and its reload.
+    Skills(SessionId),
+    Reload(SessionId),
     /// Which sessions the feed shows.
     FeedScope,
     /// One MR of the review column, by its project and its number.

@@ -1,6 +1,6 @@
 //! What the agent may change: git, the forge, the task's own rows, and its notes.
 
-use crate::wording::{NOTE, SUBJECT, TARGET_BRANCH, mr_description};
+use crate::wording::{NOTE, SKILL, SUBJECT, TARGET_BRANCH, mr_description};
 use crate::{Tool, number, takes, task, text, worktree};
 
 /// One tool a human decides on before it runs.
@@ -20,6 +20,7 @@ pub(crate) fn all() -> Vec<Tool> {
     out.extend(posting());
     out.extend(threads());
     out.extend(repos());
+    out.extend(skills());
     out.extend(rows());
     out
 }
@@ -243,6 +244,29 @@ fn repos() -> Vec<Tool> {
 }
 
 /// What the task's own rows take.
+/// What the user's own skills take.
+fn skills() -> Vec<Tool> {
+    vec![write(
+        "save_user_skill",
+        "Write one skill of the user's own. Read it first with read_user_skill and keep \
+         what they wrote. The body is a SKILL.md: front matter, then what to do.",
+        takes(
+            &["name", "body"],
+            vec![
+                (
+                    "name",
+                    text("Lower case letters, digits and dashes; it becomes a directory."),
+                ),
+                ("body", text(SKILL)),
+                (
+                    "previous",
+                    text("The name this one replaces, when it is a rename or a rewrite."),
+                ),
+            ],
+        ),
+    )]
+}
+
 fn rows() -> Vec<Tool> {
     vec![
         write(

@@ -94,7 +94,6 @@ fn env() -> Env {
         config_dir: config.join("groove"),
         data_dir: data.join("groove"),
         home,
-        plugin_dirs: Vec::new(),
         hooks: None,
         tools: None,
     }

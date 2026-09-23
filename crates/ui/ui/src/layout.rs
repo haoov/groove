@@ -161,6 +161,8 @@ pub struct Layout {
     pub header: Rect,
     /// Under the header: the tabs and the tab.
     pub workspace: Rect,
+    /// The row of the agent's own actions, under its screen.
+    pub agent_bar: Rect,
     /// The tab's own list, folded to nothing when the tab has none.
     pub sidebar: Rect,
     /// The commit box at the sidebar's foot, as tall as the user has dragged it.
@@ -190,6 +192,7 @@ impl Layout {
             commit: Rect::new(work_x + work_width, window.h - box_, aside, box_),
             rail: Rect::new(0.0, 0.0, rail, window.h),
             agent: Rect::new(rail, 0.0, agent, window.h),
+            agent_bar: Rect::new(rail, window.h - tokens.bar, agent, tokens.bar),
             header: Rect::new(work_x, 0.0, work_width, head),
             workspace: Rect::new(work_x, head, work_width, window.h - head),
             sidebar: Rect::new(work_x + work_width, 0.0, aside, window.h),
@@ -210,7 +213,7 @@ impl Layout {
         held
     }
 
-    /// Where the agent's grid starts inside its pane.
+    /// Where the agent's grid starts inside its pane, under the bar.
     pub fn agent_origin(&self, tokens: &Tokens) -> (f32, f32) {
         (self.agent.x + tokens.sm, self.agent.y + tokens.sm)
     }
@@ -218,8 +221,9 @@ impl Layout {
     /// The columns and rows the agent pane holds at this cell size.
     pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
         let pad = tokens.sm * 2.0;
+        let held = self.agent.h - self.agent_bar.h;
         let cols = ((self.agent.w - pad) / cell.width).floor().max(1.0);
-        let rows = ((self.agent.h - pad) / cell.height).floor().max(1.0);
+        let rows = ((held - pad) / cell.height).floor().max(1.0);
         (cols as u16, rows as u16)
     }
 }

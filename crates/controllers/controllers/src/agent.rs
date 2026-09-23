@@ -1,5 +1,7 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
+pub mod skills;
+
 use groove_agent_service::{Event as AgentEvent, LaunchPaths, launch, palette};
 use groove_types::{ApprovalId, Session, SessionId, Timestamp};
 
@@ -30,6 +32,29 @@ pub enum Command {
     Refuse { id: ApprovalId },
     /// `agent.auto_approve`: every write of this session runs without asking.
     AutoApprove { session: SessionId, on: bool },
+    /// `agent.scroll`: the wheel over the agent's own screen, at the cell it stands on.
+    Scroll {
+        session: SessionId,
+        lines: i32,
+        col: usize,
+        row: usize,
+    },
+    /// `agent.reload`: the agent ended and started again, resuming its own thread.
+    Reload {
+        session: SessionId,
+        cols: u16,
+        rows: u16,
+    },
+    /// `agent.list_skills`: both plugins written, then what they offer.
+    ListSkills,
+    /// `agent.send_skill`: one skill typed into the agent's own prompt.
+    SendSkill {
+        session: SessionId,
+        id: String,
+        args: Option<String>,
+    },
+    /// `agent.delete_skill`: one skill of the user's own.
+    DeleteSkill { name: String },
 }
 
 impl Command {
@@ -42,6 +67,11 @@ impl Command {
             Command::Approve { .. } => "agent.approve",
             Command::Refuse { .. } => "agent.refuse",
             Command::AutoApprove { .. } => "agent.auto_approve",
+            Command::Scroll { .. } => "agent.scroll",
+            Command::Reload { .. } => "agent.reload",
+            Command::ListSkills => "agent.list_skills",
+            Command::SendSkill { .. } => "agent.send_skill",
+            Command::DeleteSkill { .. } => "agent.delete_skill",
         }
     }
 }
@@ -70,7 +100,29 @@ pub fn dispatch(
         Command::AutoApprove { session, on } => {
             auto_approve(state, services, spawner, &session, on)
         }
+        Command::Reload {
+            session,
+            cols,
+            rows,
+        } => reload(state, spawner, session, (cols, rows)),
+        Command::Scroll {
+            session,
+            lines,
+            col,
+            row,
+        } => scroll(state, &session, lines, (col, row)),
+        Command::ListSkills => skills::list(state, spawner),
+        Command::SendSkill { session, id, args } => {
+            skills::send(state, spawner, &session, &id, args.as_deref())
+        }
+        Command::DeleteSkill { name } => skills::delete(state, spawner, name),
     }
+}
+
+/// The agent ended and started again. The launch resumes its own thread by itself.
+fn reload(state: &mut AppState, spawner: &dyn Spawner, session: SessionId, size: (u16, u16)) {
+    end(state, &session);
+    start(state, spawner, session, size);
 }
 
 /// Every write of this session runs without asking, or waits again.
@@ -100,7 +152,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
     let paths = LaunchPaths {
         home: state.env.home.clone(),
         launch_dir: state.env.data_dir.join("agent-launch"),
-        plugin_dirs: state.env.plugin_dirs.clone(),
+        plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     };
@@ -127,6 +179,13 @@ pub fn end(state: &mut AppState, session: &SessionId) {
     crate::tools::drop_asks(state, session);
     if let Some(terminal) = state.agent.end(session).and_then(|a| a.terminal) {
         let _ = terminal.terminate();
+    }
+}
+
+/// The wheel over the agent's screen, at the cell the pointer stands on.
+pub fn scroll(state: &mut AppState, session: &SessionId, lines: i32, cell: (usize, usize)) {
+    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+        let _ = terminal.wheel(lines, cell);
     }
 }
 

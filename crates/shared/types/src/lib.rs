@@ -53,7 +53,7 @@ pub use narrowing::{narrows, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
-pub use session::{Session, SessionKind, SessionState};
+pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};
 pub use task::{
     Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours,

@@ -1,7 +1,9 @@
 //! What a press, a drag and a click do, through what the last frame drew.
 
+mod agent;
 mod board;
 mod drag;
+mod focus;
 mod menu;
 mod rail;
 mod sidebar;
@@ -16,13 +18,14 @@ pub(super) use self::board::dropped;
 pub(super) use self::board::reads as board_reads;
 use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
+use self::focus::focused;
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
+use crate::Ui;
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
-use crate::{Focus, Ui};
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
 pub(super) fn press(
@@ -109,7 +112,7 @@ fn acted(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    if let Some(commands) = elsewhere(target.as_ref(), ui, app) {
+    if let Some(commands) = elsewhere(target.as_ref(), ui, app, hits, metrics) {
         return commands;
     }
     match target {
@@ -161,9 +164,17 @@ fn review(project: String, iid: u64) -> Vec<Command> {
 }
 
 /// What another surface answers for: the board's own rows, or the rail's.
-fn elsewhere(target: Option<&Target>, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+fn elsewhere(
+    target: Option<&Target>,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Option<Vec<Command>> {
     let target = target?;
-    board::acted(target, ui, app).or_else(|| rail::acted(target, ui))
+    board::acted(target, ui, app)
+        .or_else(|| rail::acted(target, ui))
+        .or_else(|| agent::acted(target, ui, app, hits, metrics))
 }
 
 /// The rest of the task's actions, under the caret that opened them.
@@ -272,23 +283,4 @@ fn acting(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     ui.session.composing = false;
     let act = crate::views::session::commit::primary(app);
     act.map(Command::Workspace).into_iter().collect()
-}
-
-/// The pane a click lands in. What it lands on says which.
-fn focused(target: &Option<Target>, focus: Focus) -> Focus {
-    match target {
-        Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
-        Some(Target::Agent) => Focus::Agent,
-        Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
-        Some(
-            Target::File(_)
-            | Target::Stage(_)
-            | Target::Unstage(_)
-            | Target::Discard
-            | Target::Keep
-            | Target::Message
-            | Target::Do,
-        ) => Focus::Sidebar,
-        _ => focus,
-    }
 }

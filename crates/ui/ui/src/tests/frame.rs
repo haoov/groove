@@ -70,9 +70,14 @@ fn the_agent_pane_grid_follows_the_cell_size() {
         },
     );
     let pane = layout.agent;
+    let under = pane.h - layout.agent_bar.h;
     assert_eq!(pane.w, Split::default().agent, "a width, not a share");
     assert_eq!(cols, ((pane.w - 16.0) / 8.0).floor() as u16);
-    assert_eq!(rows, ((pane.h - 16.0) / 17.0).floor() as u16);
+    assert_eq!(
+        rows,
+        ((under - 16.0) / 17.0).floor() as u16,
+        "the bar takes a row of the pane"
+    );
 }
 
 #[test]

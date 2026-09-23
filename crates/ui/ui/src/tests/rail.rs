@@ -42,6 +42,7 @@ fn working(app: &mut AppState, id: &str, changed_at: i64) {
     let agent = Agent {
         terminal: None,
         activity,
+        started_at: Timestamp::new(0),
     };
     app.agent.agents.push((SessionId::new(id), agent));
 }

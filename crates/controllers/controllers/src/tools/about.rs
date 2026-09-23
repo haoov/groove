@@ -49,6 +49,40 @@ pub(super) fn repos(state: &AppState, services: &Services, call: Call) {
         .json(&json!({ "count": pool.len(), "repos": pool }));
 }
 
+/// Every skill this session can be sent, with what each one is for.
+pub(super) fn skills(state: &AppState, call: Call) {
+    let Some(open) = state.session.get(&super::session(&call)) else {
+        return call.reply.failed(super::NO_SESSION);
+    };
+    let offered: Vec<Value> = state
+        .agent
+        .skills_for(&open.session.kind)
+        .iter()
+        .map(|one| {
+            json!({
+                "id": one.id,
+                "name": one.name,
+                "description": one.description,
+                "yours": one.editable,
+            })
+        })
+        .collect();
+    call.reply
+        .json(&json!({ "count": offered.len(), "skills": offered }));
+}
+
+/// One skill of the user's own, as its file stands.
+pub(super) fn skill(state: &AppState, call: Call) {
+    let Some(name) = call.text("name") else {
+        return call.reply.failed("read_user_skill needs a name");
+    };
+    let dirs = crate::agent::skills::dirs(state);
+    match groove_agent_service::skills::read(&dirs, &format!("user:{name}")) {
+        Ok(body) => call.reply.said(body),
+        Err(e) => call.reply.failed(e.message),
+    }
+}
+
 fn repo(one: &Repo) -> Value {
     json!({
         "id": one.id,

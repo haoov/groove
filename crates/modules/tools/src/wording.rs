@@ -33,3 +33,8 @@ pub fn mr_description() -> String {
          automatically."
     )
 }
+
+/// What a skill's own file holds.
+pub const SKILL: &str = "Front matter first: name, description, and the groove- keys \
+     (label, hint, kinds). Then the steps, in the imperative. It says WHAT to do; how to \
+     word a commit or a note belongs to the tool that takes it.";

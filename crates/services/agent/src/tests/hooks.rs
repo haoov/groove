@@ -7,6 +7,7 @@ fn state() -> State {
     let agent = Agent {
         terminal: None,
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
+        started_at: Timestamp::new(100),
     };
     state.agents.push((SessionId::new("s"), agent));
     state

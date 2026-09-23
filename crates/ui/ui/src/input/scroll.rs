@@ -1,6 +1,6 @@
 //! Where the wheel leaves each column that scrolls.
 
-use groove_controllers::AppState;
+use groove_controllers::{AppState, Command, agent};
 
 use super::Delta;
 use crate::ctx::Metrics;
@@ -19,28 +19,31 @@ pub(super) fn scroll(
     app: &AppState,
     hits: &Hits,
     metrics: Metrics,
-) {
+) -> Vec<Command> {
     let (x, y) = point;
     let layout = Layout::of(metrics, ui);
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
     if x <= layout.rail.right() {
-        return in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
+        in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
+        return Vec::new();
+    }
+    if ui.showing(app) == Surface::Session && x < layout.workspace.x {
+        return agent(app, delta, point, &layout, metrics);
     }
     if ui.showing(app) == Surface::Board {
         let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
         if band.contains(x, y) {
-            return carry(delta, ui, tokens);
+            carry(delta, ui, tokens);
+        } else {
+            column(x, pixels(tokens.row), ui, hits, layout);
         }
-        return column(x, pixels(tokens.row), ui, hits, layout);
+        return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
         let far = hits.extent(Scroller::Files);
         ui.session.files = moved(ui.session.files, pixels(tokens.row), far);
-        return;
-    }
-    if x < layout.workspace.x {
-        return;
+        return Vec::new();
     }
     match ui.session.tab {
         Tab::Overview => {
@@ -52,6 +55,35 @@ pub(super) fn scroll(
             ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
         }
     }
+    Vec::new()
+}
+
+/// The wheel over the agent's own screen, at the cell the pointer stands on.
+fn agent(
+    app: &AppState,
+    delta: Delta,
+    point: (f32, f32),
+    layout: &Layout,
+    metrics: Metrics,
+) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let tokens = metrics.tokens();
+    let lines = (delta.down(tokens.line) / tokens.line).round() as i32;
+    if lines == 0 {
+        return Vec::new();
+    }
+    let (origin_x, origin_y) = layout.agent_origin(&tokens);
+    let cell = metrics.cell;
+    let col = ((point.0 - origin_x) / cell.width).floor().max(0.0) as usize;
+    let row = ((point.1 - origin_y) / cell.height).floor().max(0.0) as usize;
+    vec![Command::Agent(agent::Command::Scroll {
+        session,
+        lines,
+        col,
+        row,
+    })]
 }
 
 /// A gesture over the band: it carries time only while it goes sideways.

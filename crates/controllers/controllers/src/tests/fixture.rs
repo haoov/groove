@@ -28,7 +28,6 @@ pub fn state(home: &Path) -> AppState {
         home: home.to_path_buf(),
         config_dir: home.join("config"),
         data_dir: home.join("data"),
-        plugin_dirs: vec![],
         hooks: None,
         tools: None,
     });

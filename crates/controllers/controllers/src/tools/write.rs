@@ -10,6 +10,7 @@ mod forge;
 mod git;
 mod notes;
 mod repos;
+mod skills;
 mod task;
 
 /// One write, from the call that asked for it or the approval that let it through.
@@ -129,6 +130,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "add_task_worktree" => repos::add_worktree(state, services, spawner, write),
         "log_task_hours" => task::log_hours(state, services, spawner, write),
         "finish_task" => task::finish(state, services, spawner, write),
+        "save_user_skill" => skills::save(state, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

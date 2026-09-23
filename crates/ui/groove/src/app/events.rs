@@ -42,6 +42,7 @@ impl ApplicationHandler<Message> for App {
             Command::Session(session::Command::List),
             Command::Task(task::Command::Load),
             Command::Workspace(groove_controllers::workspace::Command::ReviewQueue),
+            Command::Agent(groove_controllers::agent::Command::ListSkills),
         ] {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }

@@ -8,8 +8,8 @@ mod timer;
 pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Notion, Source, Token};
 use groove_types::{
-    Attention, Config, ExternalId, GithubConfig, NotionConfig, Result, Session, Task, TaskKey,
-    TimeSummary,
+    Attention, Config, ExternalId, GithubConfig, NotionConfig, ProviderId, Result, Session, Task,
+    TaskKey, TimeSummary,
 };
 
 pub use attention::folded;
@@ -106,6 +106,20 @@ impl State {
 }
 
 /// The sources the config turns on. A source it does not name is not read.
+/// The task sources this machine is set up for, in the order they are offered.
+pub fn source_ids(config: Option<&Config>) -> Vec<ProviderId> {
+    let Some(config) = config else {
+        return Vec::new();
+    };
+    ProviderId::ALL
+        .into_iter()
+        .filter(|one| match one {
+            ProviderId::Github => config.github.is_some(),
+            ProviderId::Notion => config.notion.is_some(),
+        })
+        .collect()
+}
+
 pub fn sources(config: Option<&Config>) -> Vec<Source> {
     let github = config.and_then(|config| config.github.clone());
     let notion = config.and_then(|config| config.notion.clone());

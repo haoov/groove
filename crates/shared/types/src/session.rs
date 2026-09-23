@@ -48,3 +48,30 @@ pub struct SessionState {
     pub auto_approve: bool,
     pub selected_worktree: Option<WorktreeId>,
 }
+
+/// One skill an agent can be sent, from the core plugin or the user's own.
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Skill {
+    /// `groove:start-task` — what the agent is sent, and the ui's key.
+    pub id: String,
+    pub plugin: String,
+    pub name: String,
+    /// What it does and when to use it, as the agent's own menu shows it.
+    pub description: String,
+    /// The one line the ui shows under the label; never the description.
+    pub hint: String,
+    pub label: String,
+    /// The kinds of session that offer it, by name; empty offers it to every kind.
+    pub kinds: Vec<String>,
+    /// A skill of the user's own, which they may write again or delete.
+    pub editable: bool,
+    /// When its file was last written.
+    pub changed_at: Timestamp,
+}
+
+impl Skill {
+    /// Whether a session of this kind offers it.
+    pub fn offered_to(&self, kind: &SessionKind) -> bool {
+        self.kinds.is_empty() || self.kinds.iter().any(|one| one == kind.name())
+    }
+}

@@ -10,6 +10,14 @@ pub enum ProviderId {
 impl ProviderId {
     pub const ALL: [ProviderId; 2] = [ProviderId::Github, ProviderId::Notion];
 
+    /// What a human calls it.
+    pub fn label(self) -> &'static str {
+        match self {
+            ProviderId::Github => "GitHub",
+            ProviderId::Notion => "Notion",
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             ProviderId::Github => "github",

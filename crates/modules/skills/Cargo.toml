@@ -1,0 +1,17 @@
+[package]
+name = "groove-skills"
+description = "The skills an agent can be sent, core and the user's own"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

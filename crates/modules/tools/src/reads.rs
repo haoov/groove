@@ -15,8 +15,30 @@ fn read(name: &'static str, description: &str, schema: serde_json::Value) -> Too
 pub(crate) fn all() -> Vec<Tool> {
     let mut out = about();
     out.extend(work());
+    out.extend(skills());
     out.extend(files());
     out
+}
+
+/// What the session can be sent, and what one of those skills says.
+fn skills() -> Vec<Tool> {
+    vec![
+        read(
+            "list_skills",
+            "Every skill this session can be sent, core and the user's own, with what each \
+             one is for.",
+            nothing(),
+        ),
+        read(
+            "read_user_skill",
+            "One skill of the user's own, as its file stands. Read it before you write it \
+             again, so nothing of theirs is lost.",
+            takes(
+                &["name"],
+                vec![("name", text("The skill's own name, from list_skills."))],
+            ),
+        ),
+    ]
 }
 
 /// What the session itself is.

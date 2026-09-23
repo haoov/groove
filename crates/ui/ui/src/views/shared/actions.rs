@@ -45,8 +45,8 @@ pub const PATH: [&str; 5] = ["new file", "new directory", "rename", "copy", "del
 /// The actions of the session, from the header.
 pub const SESSION: [&str; 1] = ["delete locally"];
 
-pub fn rows(of: &Of) -> &'static [&'static str] {
-    match of {
+pub fn rows(of: &Of) -> Vec<&str> {
+    let held: &'static [&'static str] = match of {
         Of::File(_) => &FILE,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
@@ -54,7 +54,11 @@ pub fn rows(of: &Of) -> &'static [&'static str] {
         Of::Worktree { mr: true, .. } => &WORKTREE_MR,
         Of::Worktree { mr: false, .. } => &WORKTREE,
         Of::Session(_) => &SESSION,
-    }
+        Of::Skills { offered, .. } => {
+            return offered.iter().map(|one| one.label.as_str()).collect();
+        }
+    };
+    held.to_vec()
 }
 
 pub fn draw(ctx: &mut Ctx, ui: &Ui, open: &Menu) {
@@ -64,14 +68,31 @@ pub fn draw(ctx: &mut Ctx, ui: &Ui, open: &Menu) {
         _ => None,
     };
     let rows = rows(&open.of);
-    let (wide, tall) = menu_size(ctx, rows);
+    let (wide, tall) = menu_size(ctx, &rows);
     let at = match open.corner {
         Corner::TopLeft => open.at,
+        Corner::BottomLeft => (open.at.0, open.at.1 - tall),
         Corner::BottomRight => (open.at.0 - wide, open.at.1 - tall),
     };
     ctx.layer();
     let edge = ctx.styles.border();
-    menu(ctx, at, within, rows, hovered, edge);
+    menu(ctx, at, within, &rows, hovered, edge);
+}
+
+/// One skill typed into the agent's own prompt.
+fn sent(session: &groove_types::SessionId, offer: Option<&crate::Offer>) -> Picked {
+    let Some(one) = offer else {
+        return Picked::default();
+    };
+    let send = groove_controllers::agent::Command::SendSkill {
+        session: session.clone(),
+        id: one.id.clone(),
+        args: one.args.clone(),
+    };
+    Picked {
+        commands: vec![Command::Agent(send)],
+        ..Picked::default()
+    }
 }
 
 /// The directory a new path goes in: the one clicked, or the one its file stands in.
@@ -133,6 +154,9 @@ impl Picked {
 
 /// What picking row `at` of this menu does: a command, a question, or words to type.
 pub fn picked(of: &Of, at: usize) -> Picked {
+    if let Of::Skills { session, offered } = of {
+        return sent(session, offered.get(at));
+    }
     match (of, rows(of).get(at)) {
         (Of::File(path), Some(&"discard changes")) => Picked::asks(Losing::File(path.clone())),
         (Of::Line { path, lines }, Some(&"note")) => Picked::notes(groove_types::Anchor {

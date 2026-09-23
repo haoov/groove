@@ -53,7 +53,6 @@ fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppState, Services
         home: home.to_path_buf(),
         config_dir: home.join("config"),
         data_dir: home.join("data"),
-        plugin_dirs: vec![],
         hooks: None,
         tools: None,
     });
@@ -176,7 +175,6 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         home: home.path().to_path_buf(),
         config_dir: home.path().join("config"),
         data_dir: home.path().join("data"),
-        plugin_dirs: vec![],
         hooks: None,
         tools: None,
     });

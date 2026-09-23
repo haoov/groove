@@ -227,3 +227,85 @@ fn a_worktree_with_no_merge_request_says_none() {
     );
     assert_eq!(said(&answer)["mr"], Value::Null);
 }
+
+#[test]
+fn the_skills_a_session_is_offered_are_the_ones_for_its_kind() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = state.session.selected.clone();
+    assert!(id.is_none(), "nothing is open yet");
+    fixture::pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    assert!(!dir.is_empty());
+    let id = state.session.selected.clone().expect("a session");
+
+    crate::agent::skills::list(&mut state, &spawner);
+    spawner.drain(&mut state, &services);
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "list_skills",
+        json!({}),
+    );
+    let said = said(&answer);
+    let ids: Vec<&str> = said["skills"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|one| one["id"].as_str())
+        .collect();
+    assert!(ids.contains(&"groove:create-task"), "{ids:?}");
+    assert!(
+        !ids.contains(&"groove:save-task"),
+        "an explorer has no task to land: {ids:?}"
+    );
+}
+
+#[test]
+fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    assert!(!dir.is_empty());
+    let id = state.session.selected.clone().expect("a session");
+    state.agent.auto_approve(&id, true);
+    crate::agent::skills::list(&mut state, &spawner);
+    spawner.drain(&mut state, &services);
+
+    let body = "---\ndescription: Ship it.\ngroove-label: ship it\n---\n\nDo it.\n";
+    let wrote = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "save_user_skill",
+        json!({ "name": "ship-it", "body": body }),
+    );
+    assert!(!wrote.failed, "{}", wrote.text);
+    assert!(wrote.text.contains("user:ship-it"), "{}", wrote.text);
+
+    let read = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "read_user_skill",
+        json!({ "name": "ship-it" }),
+    );
+    assert_eq!(read.text, body);
+    assert!(
+        state
+            .agent
+            .skills
+            .iter()
+            .any(|one| one.id == "user:ship-it"),
+        "the list holds it at once"
+    );
+}

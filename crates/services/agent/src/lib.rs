@@ -13,6 +13,7 @@ use groove_types::{
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
+pub use groove_skills as skills;
 pub use groove_terminal::Terminal;
 pub use groove_tools as tools;
 pub use groove_types::Screen;
@@ -23,17 +24,39 @@ pub use launch::{LaunchPaths, launch, palette};
 pub struct Agent {
     pub terminal: Option<Terminal>,
     pub activity: SessionActivity,
+    /// When this agent was launched, which says whether a skill is newer than it.
+    pub started_at: Timestamp,
 }
 
 /// The `agent` slice of `AppState`.
 #[derive(Debug, Default)]
 pub struct State {
     pub agents: Vec<(SessionId, Agent)>,
+    /// Every skill both plugins offer, as the last read found them.
+    pub skills: Vec<groove_types::Skill>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
 }
 
 impl State {
+    /// The skills a session of this kind offers, in the order they are listed.
+    pub fn skills_for(&self, kind: &groove_types::SessionKind) -> Vec<&groove_types::Skill> {
+        self.skills
+            .iter()
+            .filter(|one| one.offered_to(kind))
+            .collect()
+    }
+
+    /// Whether a skill has been written since this session's agent started.
+    pub fn stale(&self, session: &SessionId) -> bool {
+        let Some(agent) = self.agent(session) else {
+            return false;
+        };
+        self.skills
+            .iter()
+            .any(|one| one.changed_at > agent.started_at)
+    }
+
     pub fn agent(&self, session: &SessionId) -> Option<&Agent> {
         self.agents
             .iter()
@@ -54,6 +77,7 @@ impl State {
         let agent = Agent {
             terminal,
             activity: activity(status, now),
+            started_at: now,
         };
         self.agents.retain(|(id, _)| id != &session);
         self.agents.push((session, agent));

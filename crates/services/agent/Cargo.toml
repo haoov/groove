@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 groove-approvals = { path = "../../modules/approvals" }
 groove-mcp = { path = "../../modules/mcp" }
+groove-skills = { path = "../../modules/skills" }
 groove-tools = { path = "../../modules/tools" }
 groove-types = { path = "../../shared/types" }
 groove-terminal = { path = "../../modules/terminal" }

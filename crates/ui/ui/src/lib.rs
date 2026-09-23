@@ -115,6 +115,7 @@ pub struct Menu {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
     TopLeft,
+    BottomLeft,
     BottomRight,
 }
 
@@ -132,6 +133,19 @@ pub enum Of {
     Worktree { mr: bool, review: bool },
     /// The session, from the header's own actions.
     Session(groove_types::SessionId),
+    /// The skills this session can be sent, from the agent's own bar.
+    Skills {
+        session: groove_types::SessionId,
+        offered: Vec<Offer>,
+    },
+}
+
+/// One skill a menu row stands for, with what it is sent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Offer {
+    pub id: String,
+    pub args: Option<String>,
+    pub label: String,
 }
 
 /// What is asked before a change is thrown away.
