@@ -7,7 +7,7 @@ mod naming;
 mod noting;
 mod panes;
 
-use groove_controllers::{AppState, Command, session, task, workspace};
+use groove_controllers::{AppState, Command, session, workspace};
 
 use super::{Key, Modifiers};
 use crate::palette::Palette;
@@ -70,11 +70,7 @@ fn board(ui: &mut Ui) -> Vec<Command> {
         Surface::Session => Surface::Board,
     };
     match ui.surface {
-        Surface::Board => vec![
-            Command::Session(session::Command::List),
-            Command::Task(task::Command::Load),
-            Command::Workspace(workspace::Command::ReviewQueue),
-        ],
+        Surface::Board => crate::input::pointer::board_reads(),
         Surface::Session => Vec::new(),
     }
 }

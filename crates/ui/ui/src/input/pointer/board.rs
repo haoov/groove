@@ -1,6 +1,6 @@
 //! What a click on the board does: its rows, its filter, its button.
 
-use groove_controllers::{AppState, Command, session, task};
+use groove_controllers::{AppState, Command, session, task, workspace};
 use groove_gfx::Rect;
 use groove_types::{ExternalId, SessionId};
 
@@ -29,9 +29,15 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
 /// The board, with a read of the sessions and the sources behind it.
 pub(super) fn board(ui: &mut Ui) -> Vec<Command> {
     ui.surface = Surface::Board;
+    reads()
+}
+
+/// What the board stands on, read again whenever it is opened.
+pub(crate) fn reads() -> Vec<Command> {
     vec![
         Command::Session(session::Command::List),
         Command::Task(task::Command::Load),
+        Command::Workspace(workspace::Command::ReviewQueue),
     ]
 }
 

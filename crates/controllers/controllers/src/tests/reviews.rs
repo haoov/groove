@@ -131,3 +131,26 @@ fn an_mr_the_queue_does_not_hold_opens_nothing() {
     assert!(state.session.open.is_empty());
     assert!(state.errors.is_empty(), "and nothing is reported");
 }
+
+#[test]
+fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    state.workspace.reviews = vec![asked()];
+    assert!(state.session.pool.is_empty(), "nothing has listed it yet");
+
+    opened(&mut state, &services, &spawner);
+    let id = SessionId::new("review-g-mayo-7");
+    until(&spawner, &services, &mut state, |s| {
+        s.session
+            .get(&id)
+            .is_some_and(|open| !open.worktrees.is_empty())
+            || !s.errors.is_empty()
+    });
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let open = state.session.get(&id).expect("the review's session");
+    assert_eq!(open.repos.len(), 1, "the pool's own clone, not a new one");
+}

@@ -16,7 +16,7 @@ pub fn open_review(
     if state.session.get(&id).is_some() {
         return session::select(state, services, spawner, &id);
     }
-    let Some(name) = repo_name(state, at) else {
+    let Some(name) = repo_name(services, at) else {
         return state.failed(groove_types::Error::invalid(format!(
             "{} says nothing of where {} is cloned from",
             at.web_url, at.project
@@ -40,10 +40,10 @@ pub fn open_review(
 }
 
 /// The pool's own name for the MR's repo, or the URL it must be cloned from.
-fn repo_name(state: &AppState, at: &ReviewMr) -> Option<String> {
-    let pooled = state
+fn repo_name(services: &Services, at: &ReviewMr) -> Option<String> {
+    let pooled = services
         .session
-        .pool
+        .list_pool()
         .iter()
         .find(|entry| entry.holds(&at.project))
         .map(|entry| entry.slug.clone());

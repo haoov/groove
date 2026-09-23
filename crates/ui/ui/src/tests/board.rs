@@ -46,7 +46,22 @@ fn the_rail_s_board_row_opens_the_board_and_reads_the_sources() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         commands.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["session.list", "task.load"]
+        ["session.list", "task.load", "workspace.review_queue"]
+    );
+}
+
+#[test]
+fn the_key_into_the_board_reads_what_a_click_reads() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let row = hits.rect_of(&Target::Board).expect("the board row");
+    let clicked = click(row, &mut ui, &app, &hits);
+    ui.surface = Surface::Session;
+    let pressed = crate::tests::press(crate::input::Key::Char('k'), CHORD, &mut ui, &app);
+    assert_eq!(
+        pressed.iter().map(|c| c.id()).collect::<Vec<_>>(),
+        clicked.iter().map(|c| c.id()).collect::<Vec<_>>()
     );
 }
 

@@ -6,18 +6,14 @@ use groove_workspace_service::Service;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// Every host's queue, read at once and gathered into the board's column.
-pub(super) fn read(state: &mut AppState, spawner: &dyn Spawner) {
-    let hosts = hosts(state);
-    if hosts.is_empty() {
-        state.workspace.reviews.clear();
-        return;
-    }
-    let pool = state.session.pool.clone();
+pub(super) fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let service = services.session.clone();
     let job = state.begin("reading the review queue");
     spawner.spawn(Box::pin(async move {
+        let pool = service.list_pool();
         let mut found: Vec<ReviewMr> = Vec::new();
         let mut failed = Vec::new();
-        for host in hosts {
+        for host in hosts(&pool) {
             match Service::review_queue(&host).await {
                 Ok(queue) => found.extend(queue),
                 Err(e) => failed.push(e),
@@ -34,11 +30,9 @@ pub(super) fn read(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The hosts of the pool's repos, each once.
-pub(crate) fn hosts(state: &AppState) -> Vec<String> {
-    let mut out: Vec<String> = state
-        .session
-        .pool
+/// The hosts of the pool's clones, each once.
+pub(crate) fn hosts(pool: &[PoolEntry]) -> Vec<String> {
+    let mut out: Vec<String> = pool
         .iter()
         .filter_map(|entry| entry.slug.split('/').next())
         .map(str::to_string)

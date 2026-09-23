@@ -189,7 +189,7 @@ pub fn dispatch(
         Command::DiscardAll => discard_all(state, spawner),
         Command::RefreshMr => mr::refresh(state, services, spawner),
         Command::ListPaths => list_paths(state, spawner),
-        Command::ReviewQueue => queue::read(state, spawner),
+        Command::ReviewQueue => queue::read(state, services, spawner),
         Command::Path(op) => paths::act(state, spawner, op),
         Command::CreateMr => write(state, services, spawner, Mr::Open),
         Command::UpdateMr => write(state, services, spawner, Mr::Edit),

@@ -13,6 +13,7 @@ use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
+pub(super) use self::board::reads as board_reads;
 use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
