@@ -106,18 +106,28 @@ fn the_prompt_file_is_private_and_names_the_session() {
 fn the_token_reaches_the_files_and_never_the_command_line() {
     let root = tempfile::tempdir().unwrap();
     let loopback = Loopback {
-        sse_url: Some("http://127.0.0.1:27413/sse?session=explorer-ab12cd34".into()),
+        tools: Some(crate::Tools {
+            sse_url: "http://127.0.0.1:41823/sse?task=explorer-ab12cd34".into(),
+            token: "t00l-token".into(),
+        }),
         hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
         token: "s3cr3t-token".into(),
     };
     let launch = Launch::plan(&explorer(), &paths(root.path()), &[], Some(&loopback)).unwrap();
     assert!(
-        launch.args.iter().all(|a| !a.contains("s3cr3t")),
+        launch
+            .args
+            .iter()
+            .all(|a| !a.contains("s3cr3t") && !a.contains("t00l")),
         "{:?}",
         launch.args
     );
     let mcp = std::fs::read_to_string(flag_value(&launch.args, "--mcp-config").unwrap()).unwrap();
-    assert!(mcp.contains("Bearer s3cr3t-token"));
+    assert!(mcp.contains("Bearer t00l-token"));
+    assert!(
+        !mcp.contains("s3cr3t"),
+        "the hooks token stays with the hooks"
+    );
     let settings =
         std::fs::read_to_string(flag_value(&launch.args, "--settings").unwrap()).unwrap();
     assert!(
@@ -142,7 +152,7 @@ fn the_core_prompt_keeps_its_rules() {
 fn hooks_run_without_the_tool_server() {
     let root = tempfile::tempdir().unwrap();
     let loopback = Loopback {
-        sse_url: None,
+        tools: None,
         hook_url: "http://127.0.0.1:27413/hook/explorer-ab12cd34".into(),
         token: "s3cr3t-token".into(),
     };

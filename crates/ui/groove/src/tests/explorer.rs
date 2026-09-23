@@ -55,6 +55,7 @@ fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppState, Services
         data_dir: home.join("data"),
         plugin_dirs: vec![],
         hooks: None,
+        tools: None,
     });
     let config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/code" } }"#).unwrap();
@@ -177,6 +178,7 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         data_dir: home.path().join("data"),
         plugin_dirs: vec![],
         hooks: None,
+        tools: None,
     });
     dispatch(
         groove_controllers::Command::Session(session::Command::OpenExplorer { title: None }),

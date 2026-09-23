@@ -2,10 +2,10 @@
 
 use std::path::PathBuf;
 
-use groove_agent_service::Receiver;
+use groove_agent_service::{Receiver, Server};
 
 /// The machine the app runs on: the directories the controllers need, and the
-/// loopback the binary opened for the agents' hooks.
+/// loopbacks the binary opened for the agents.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Env {
     pub home: PathBuf,
@@ -15,6 +15,7 @@ pub struct Env {
     pub data_dir: PathBuf,
     pub plugin_dirs: Vec<PathBuf>,
     pub hooks: Option<Receiver>,
+    pub tools: Option<Server>,
 }
 
 /// The sum of the services' slices, owned on the main thread.

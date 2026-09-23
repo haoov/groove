@@ -1171,6 +1171,7 @@ dependencies = [
  "groove-gfx",
  "groove-hooks",
  "groove-ledger",
+ "groove-mcp",
  "groove-plan",
  "groove-sessions",
  "groove-types",
@@ -1202,6 +1203,7 @@ version = "0.1.0"
 dependencies = [
  "groove-agent-launch",
  "groove-hooks",
+ "groove-mcp",
  "groove-terminal",
  "groove-types",
 ]
@@ -1377,6 +1379,21 @@ dependencies = [
  "groove-types",
  "sqlx",
  "tokio",
+]
+
+[[package]]
+name = "groove-mcp"
+version = "0.1.0"
+dependencies = [
+ "groove-tools",
+ "groove-types",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

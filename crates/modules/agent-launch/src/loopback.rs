@@ -7,8 +7,14 @@ use crate::files::LaunchDir;
 /// hooks stand on their own, and a broken tool server is worse than none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Loopback {
-    pub sse_url: Option<String>,
+    pub tools: Option<Tools>,
     pub hook_url: String,
+    pub token: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tools {
+    pub sse_url: String,
     pub token: String,
 }
 
@@ -26,27 +32,13 @@ impl Loopback {
     pub(crate) fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
         let curl = files.write("hooks.curl", &self.curl_config())?;
         let mut args = Vec::new();
-        if let Some(sse_url) = &self.sse_url {
+        if let Some(tools) = &self.tools {
             args.push("--mcp-config".into());
-            args.push(files.write("mcp.json", &self.mcp_config(sse_url))?);
+            args.push(files.write("mcp.json", &tools.mcp_config())?);
         }
         args.push("--settings".into());
         args.push(files.write("settings.json", &self.hook_settings(&curl))?);
         Ok(args)
-    }
-
-    /// The server name is the agent's tool prefix, `mcp__groove__*`.
-    fn mcp_config(&self, sse_url: &str) -> String {
-        serde_json::json!({
-            "mcpServers": {
-                "groove": {
-                    "type": "sse",
-                    "url": sse_url,
-                    "headers": { "Authorization": format!("Bearer {}", self.token) }
-                }
-            }
-        })
-        .to_string()
     }
 
     /// The bearer header as a curl config file, never on a command line.
@@ -66,5 +58,21 @@ impl Loopback {
             .map(|e| (e.to_string(), post.clone()))
             .collect();
         serde_json::json!({ "hooks": hooks }).to_string()
+    }
+}
+
+impl Tools {
+    /// The server name is the agent's tool prefix, `mcp__groove__*`.
+    fn mcp_config(&self) -> String {
+        serde_json::json!({
+            "mcpServers": {
+                "groove": {
+                    "type": "sse",
+                    "url": self.sse_url,
+                    "headers": { "Authorization": format!("Bearer {}", self.token) }
+                }
+            }
+        })
+        .to_string()
     }
 }

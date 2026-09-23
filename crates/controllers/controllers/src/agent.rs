@@ -76,6 +76,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
         launch_dir: state.env.data_dir.join("agent-launch"),
         plugin_dirs: state.env.plugin_dirs.clone(),
         hooks: state.env.hooks.clone(),
+        tools: state.env.tools.clone(),
     };
     let cwd = state.config.worktree_root(&state.env.home);
     let palette = palette(state.config.theme());

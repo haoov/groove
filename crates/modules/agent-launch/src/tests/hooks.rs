@@ -46,7 +46,7 @@ fn the_hook_command_posts_the_payload_to_the_receiver() {
     let (receiver, posts) = listening(runtime.handle());
     let root = tempfile::tempdir().expect("a temp dir");
     let loopback = Loopback {
-        sse_url: None,
+        tools: None,
         hook_url: receiver.hook_url("gh-groove-50"),
         token: receiver.token.clone(),
     };

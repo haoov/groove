@@ -7,6 +7,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-mcp = { path = "../../modules/mcp" }
 groove-types = { path = "../../shared/types" }
 groove-terminal = { path = "../../modules/terminal" }
 groove-agent-launch = { path = "../../modules/agent-launch" }

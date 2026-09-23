@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let explore = std::env::args().any(|a| a == "--explore");
     let mut env = env();
     env.hooks = Some(hooks(runtime.handle(), event_loop.create_proxy())?);
+    env.tools = Some(groove_mcp::serve(runtime.handle())?);
     let config = groove_controllers::config_service::load(&env.config_dir)?;
     let config_state = groove_controllers::config_service::State { config };
     let root = config_state.worktree_root(&env.home);
@@ -95,6 +96,7 @@ fn env() -> Env {
         home,
         plugin_dirs: Vec::new(),
         hooks: None,
+        tools: None,
     }
 }
 

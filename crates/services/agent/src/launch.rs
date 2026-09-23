@@ -2,8 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use groove_agent_launch::{Launch, Loopback, Paths};
+use groove_agent_launch::{Launch, Loopback, Paths, Tools};
 use groove_hooks::Receiver;
+use groove_mcp::Server;
 use groove_terminal::{Hooks, Terminal};
 use groove_types::{AnsiPalette, Error, Session, ThemeName};
 
@@ -15,6 +16,8 @@ pub struct LaunchPaths {
     pub plugin_dirs: Vec<PathBuf>,
     /// The loopback the agent's hooks post to, when one is listening.
     pub hooks: Option<Receiver>,
+    /// The loopback the agent asks its tools of, when one is listening.
+    pub tools: Option<Server>,
 }
 
 /// Plans the command line and spawns it on a terminal of `cols` by `rows`.
@@ -42,11 +45,14 @@ pub fn launch(
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
 }
 
-/// Every session posts its hooks to its own url; the tool server comes with the asks.
+/// Every session posts its hooks to its own url, and asks its tools on its own stream.
 pub(crate) fn loopback(paths: &LaunchPaths, session: &Session) -> Option<Loopback> {
     let hooks = paths.hooks.as_ref()?;
     Some(Loopback {
-        sse_url: None,
+        tools: paths.tools.as_ref().map(|tools| Tools {
+            sse_url: tools.sse_url(session.id.as_str()),
+            token: tools.token.clone(),
+        }),
         hook_url: hooks.hook_url(session.id.as_str()),
         token: hooks.token.clone(),
     })

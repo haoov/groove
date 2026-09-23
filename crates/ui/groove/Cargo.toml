@@ -16,6 +16,7 @@ groove-db = { path = "../../base/db" }
 groove-annotations = { path = "../../modules/annotations" }
 groove-forge = { path = "../../modules/forge" }
 groove-hooks = { path = "../../modules/hooks" }
+groove-mcp = { path = "../../modules/mcp" }
 groove-ledger = { path = "../../modules/ledger" }
 groove-plan = { path = "../../modules/plan" }
 groove-sessions = { path = "../../modules/sessions" }

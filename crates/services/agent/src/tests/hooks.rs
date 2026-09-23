@@ -101,6 +101,10 @@ fn a_session_posts_its_hooks_to_its_own_url() {
             port: 41234,
             token: "s3cr3t".into(),
         }),
+        tools: Some(crate::Server {
+            port: 41823,
+            token: "t00l".into(),
+        }),
         ..Default::default()
     };
     let loopback = crate::launch::loopback(&paths, &session).expect("a loopback");
@@ -109,7 +113,12 @@ fn a_session_posts_its_hooks_to_its_own_url() {
         "http://127.0.0.1:41234/hook/gh-groove-50"
     );
     assert_eq!(loopback.token, "s3cr3t");
-    assert!(loopback.sse_url.is_none(), "the tool server comes later");
+    let tools = loopback.tools.expect("the tool server");
+    assert_eq!(
+        tools.sse_url,
+        "http://127.0.0.1:41823/sse?task=gh-groove-50"
+    );
+    assert_eq!(tools.token, "t00l");
     assert!(
         crate::launch::loopback(&crate::LaunchPaths::default(), &session).is_none(),
         "no receiver, no hooks"
