@@ -93,7 +93,7 @@ pub fn known(services: &Services, spawner: &dyn Spawner) {
         Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
                 Ok(mrs) => remembered(state, mrs),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             },
         ) as Continuation
     }));
@@ -129,7 +129,7 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &W
         Err(e) => {
             state.workspace.poll.sent(id);
             state.workspace.poll.answered(id);
-            return state.errors.push(e);
+            return state.failed(e);
         }
     };
     state.workspace.poll.sent(id);
@@ -174,7 +174,7 @@ fn answered(
             if selected {
                 state.workspace.delivery.aged();
             }
-            state.errors.push(e);
+            state.failed(e);
         }
     }
 }

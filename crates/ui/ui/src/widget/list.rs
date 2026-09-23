@@ -42,12 +42,6 @@ impl<'a> Row<'a> {
         self
     }
 
-    /// A mark that turns, for something in flight.
-    pub fn turning(mut self, mark: Mark, turn: u8) -> Self {
-        self.mark = Some((mark, turn));
-        self
-    }
-
     pub fn aside(mut self, at: f32, text: &'a str, style: TextStyle) -> Self {
         self.aside = Some((at, text, style));
         self

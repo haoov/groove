@@ -41,7 +41,7 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
     }
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
-        Err(e) => return state.errors.push(e),
+        Err(e) => return state.failed(e),
     };
     state.workspace.poll.sent(&id);
     let job = state.begin(act.label());
@@ -97,7 +97,7 @@ fn landed(
 ) {
     match wrote {
         Ok(delivered) => super::mr::took(state, services, spawner, worktree, delivered),
-        Err(e) => state.errors.push(e),
+        Err(e) => state.failed(e),
     }
 }
 

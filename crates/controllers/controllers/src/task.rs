@@ -116,7 +116,7 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
     }
     match TaskKey::parse(&external_id) {
         Ok(key) => sync(state, spawner, key),
-        Err(e) => state.errors.push(e),
+        Err(e) => state.failed(e),
     }
 }
 
@@ -139,11 +139,11 @@ fn stored(services: &Services, spawner: &dyn Spawner) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             match read {
                 Ok(order) => state.task.plan = order,
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
             match time {
                 Ok(time) => state.task.time = time.into_iter().collect(),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
@@ -168,7 +168,7 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
             state.task.reading = false;
             match read {
                 Ok(tasks) => state.task.loaded(tasks),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
             attention::reread(state, Timestamp::now());
         }) as Continuation
@@ -190,7 +190,7 @@ fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
             state.task.syncing.remove(&id);
             match read {
                 Ok(read) => state.task.synced(read),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
             attention::reread(state, Timestamp::now());
         }) as Continuation

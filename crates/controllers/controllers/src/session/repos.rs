@@ -71,7 +71,7 @@ pub fn remove_repo(
                         persist_selection(state, services, spawner, &id);
                         crate::workspace::follow(state, spawner);
                     }
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation
@@ -117,8 +117,9 @@ pub fn close_worktree(
                             open.remove_worktree(&closed.id);
                         }
                         persist_selection(state, services, spawner, &id);
+                        crate::workspace::follow(state, spawner);
                     }
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation
@@ -145,7 +146,7 @@ pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) 
                     state.session.branches.retain(|(r, _)| r != &repo);
                     state.session.branches.push((repo, heads));
                 }
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             },
         ) as Continuation
     }));
@@ -183,14 +184,16 @@ fn added(
                     Ok(added) => {
                         let id = added.worktree.session.clone();
                         logged_added(services, spawner, &id, &added);
-                        state.notes.extend(added.notes);
+                        for said in added.notes {
+                            state.say(said);
+                        }
                         if let Some(open) = state.session.get_mut(&id) {
                             open.add_worktree(added.repo, added.worktree);
                         }
                         persist_selection(state, services, spawner, &id);
                         crate::workspace::follow(state, spawner);
                     }
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation

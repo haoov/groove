@@ -27,7 +27,9 @@ pub(super) fn read(state: &mut AppState, spawner: &dyn Spawner) {
             state.end(job);
             found.sort_by_key(|mr| std::cmp::Reverse(mr.updated_at.seconds()));
             state.workspace.reviews = found.into_iter().map(|mr| local(mr, &pool)).collect();
-            state.errors.extend(failed);
+            for one in failed {
+                state.failed(one);
+            }
         }) as Continuation
     }));
 }

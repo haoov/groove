@@ -21,7 +21,7 @@ pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if let Err(e) = done {
-                    return state.errors.push(e);
+                    return state.failed(e);
                 }
                 state.workspace.paths.clear();
                 if let Some(path) = gone.as_ref() {

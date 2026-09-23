@@ -26,9 +26,9 @@ pub struct AppState {
     /// When the user last did anything, which is what the clock counts as work.
     pub acted_at: groove_types::Timestamp,
     /// What a job could not do, newest last; the feed shows them.
-    pub errors: Vec<groove_types::Error>,
+    pub errors: Vec<Told<groove_types::Error>>,
     /// What a job wants the user to hear, newest last.
-    pub notes: Vec<String>,
+    pub notes: Vec<Told<String>>,
     /// Jobs the user is waiting on, oldest first.
     pub pending: Vec<Pending>,
     next_pending: u64,
@@ -39,11 +39,35 @@ pub struct AppState {
     pub config: groove_config_service::State,
 }
 
-/// One job in flight, as the status line names it.
+/// One job in flight, as the feed names it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pending {
     pub id: u64,
     pub label: String,
+}
+
+/// Something a job left for the user, at the moment it did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Told<T> {
+    pub at: groove_types::Timestamp,
+    pub what: T,
+}
+
+impl<T> Told<T> {
+    pub fn now(what: T) -> Self {
+        Self {
+            at: groove_types::Timestamp::now(),
+            what,
+        }
+    }
+}
+
+impl<T> std::ops::Deref for Told<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.what
+    }
 }
 
 impl AppState {
@@ -67,5 +91,15 @@ impl AppState {
 
     pub fn end(&mut self, id: u64) {
         self.pending.retain(|p| p.id != id);
+    }
+
+    /// What a job could not do, for the feed to say.
+    pub fn failed(&mut self, error: groove_types::Error) {
+        self.errors.push(Told::now(error));
+    }
+
+    /// What a job wants the user to hear.
+    pub fn say(&mut self, said: impl Into<String>) {
+        self.notes.push(Told::now(said.into()));
     }
 }

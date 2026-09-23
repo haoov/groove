@@ -332,3 +332,64 @@ fn a_git_url_is_cloned_into_the_pool_and_a_bad_name_is_not() {
     );
     assert!(state.session.get(&id).unwrap().repos.is_empty());
 }
+
+/// The repo added, and its first worktree.
+fn first_worktree(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    id: &SessionId,
+) -> groove_types::Worktree {
+    dispatch(
+        session_cmd(Command::AddRepo {
+            session: id.clone(),
+            name: "mayo".into(),
+            spec: WorktreeSpec::default(),
+        }),
+        state,
+        services,
+        spawner,
+    );
+    until(spawner, services, state, |s| {
+        s.session.get(id).is_some_and(|o| !o.worktrees.is_empty())
+    });
+    state.session.get(id).unwrap().worktrees[0].clone()
+}
+
+#[test]
+fn closing_the_last_worktree_stops_watching_it() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+    let only = first_worktree(&mut state, &services, &spawner, &id);
+
+    crate::workspace::follow(&mut state, &spawner);
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.workspace.watching.as_ref(), Some(&only.id));
+
+    close(&mut state, &services, &spawner, &id, &only.id, true);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.workspace.watching.is_none(), "nothing watches it");
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(!std::path::Path::new(&only.path).exists());
+}
+
+#[test]
+fn a_worktree_that_is_gone_is_read_without_an_error() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+    let only = first_worktree(&mut state, &services, &spawner, &id);
+
+    std::fs::remove_dir_all(&only.path).unwrap();
+    crate::workspace::load(&mut state, &spawner);
+    spawner.drain(&mut state, &services);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(state.pending.is_empty(), "the job ended");
+}

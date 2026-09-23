@@ -30,7 +30,7 @@ pub fn tick(state: &mut AppState, services: &Services, spawner: &dyn Spawner, no
         Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
                 Ok(time) => state.task.time = time.into_iter().collect(),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             },
         ) as Continuation
     }));
@@ -69,7 +69,7 @@ pub(super) fn log_hours(
     }
     let key = match TaskKey::parse(id) {
         Ok(key) => key,
-        Err(e) => return state.errors.push(e),
+        Err(e) => return state.failed(e),
     };
     let sources = sources(state.config.config.as_ref());
     let (service, id) = (services.task.clone(), id.clone());
@@ -85,7 +85,7 @@ pub(super) fn log_hours(
                 state.end(job);
                 match read {
                     Ok(time) => state.task.time = time.into_iter().collect(),
-                    Err(e) => return state.errors.push(e),
+                    Err(e) => return state.failed(e),
                 }
                 super::sync(state, spawner, key);
             },

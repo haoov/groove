@@ -17,7 +17,7 @@ pub fn open_review(
         return session::select(state, services, spawner, &id);
     }
     let Some(name) = repo_name(state, at) else {
-        return state.errors.push(groove_types::Error::invalid(format!(
+        return state.failed(groove_types::Error::invalid(format!(
             "{} says nothing of where {} is cloned from",
             at.web_url, at.project
         )));

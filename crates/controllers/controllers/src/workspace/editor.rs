@@ -87,7 +87,7 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
             state.end(job);
             match written {
                 Ok(()) => saved(state, &path),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
@@ -122,7 +122,7 @@ pub(super) fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spaw
         let written = clipboard.write(&held);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = written {
-                state.errors.push(Error::new(ErrorKind::Io, e.to_string()));
+                state.failed(Error::new(ErrorKind::Io, e.to_string()));
             }
         }) as Continuation
     }));
@@ -198,7 +198,7 @@ pub(super) fn read(
             state.end(job);
             match file {
                 Ok(file) => arrived(state, file, at),
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
         }) as Continuation
     }));

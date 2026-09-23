@@ -71,7 +71,7 @@ pub(super) fn mark_read(
         let done = service.set_read(&id, &worktree, &path, read).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             if let Err(e) = done {
-                state.errors.push(e);
+                state.failed(e);
             }
         }) as Continuation
     }));
@@ -118,11 +118,13 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
             Ok(files) => changes(&dir, files).await,
             Err(_) => Default::default(),
         };
+        let gone = !dir.exists();
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match files {
                 Ok(files) => state.workspace.loaded(id, files, read),
-                Err(e) => state.errors.push(e),
+                Err(_) if gone => {}
+                Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
@@ -150,6 +152,9 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: Workt
         let git = groove_workspace_service::git_dir(&dir).await;
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                if !dir.exists() {
+                    return;
+                }
                 let on_change = reload(spawner.sink(), worktree.clone());
                 let watched = groove_workspace_service::watch(
                     &mut state.workspace,
@@ -159,7 +164,7 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: Workt
                     on_change,
                 );
                 if let Err(e) = watched {
-                    state.errors.push(e);
+                    state.failed(e);
                 }
             },
         ) as Continuation

@@ -112,7 +112,7 @@ pub(crate) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 match done {
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                     Ok(()) => {
                         if let Some(said) = left.as_ref() {
                             let kind = groove_types::TimelineKind::Note;
@@ -172,7 +172,7 @@ fn held(state: &mut AppState, session: &SessionId, read: Result<Vec<Annotation>>
         return;
     }
     match read {
-        Err(e) => state.errors.push(e),
+        Err(e) => state.failed(e),
         Ok(own) => {
             state.workspace.own = own;
             state.workspace.remerge();

@@ -23,7 +23,7 @@ pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spaw
     };
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
-        Err(e) => return state.errors.push(e),
+        Err(e) => return state.failed(e),
     };
     let service = services.workspace.clone();
     let job = state.begin(act.label());
@@ -35,7 +35,7 @@ pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spaw
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 match done {
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                     Ok(()) => {
                         let kind = kind_of(&told);
                         crate::timeline::log(state, services, spawner, kind, subject(&told));
@@ -146,7 +146,7 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     let notes = pending(state, &repo.id);
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
-        Err(e) => return state.errors.push(e),
+        Err(e) => return state.failed(e),
     };
     let service = services.workspace.clone();
     let job = state.begin(say.label());
@@ -157,7 +157,7 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 match done {
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                     Ok(()) => {
                         state.workspace.message = groove_workspace_service::Buffer::default();
                         let kind = groove_types::TimelineKind::Review;

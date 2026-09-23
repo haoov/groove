@@ -20,7 +20,7 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
             state.workspace.walking = false;
             match read {
                 Ok(paths) => state.workspace.paths = paths,
-                Err(e) => state.errors.push(groove_types::Error::internal(format!(
+                Err(e) => state.failed(groove_types::Error::internal(format!(
                     "the walk failed: {e}"
                 ))),
             }

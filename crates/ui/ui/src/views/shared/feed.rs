@@ -1,15 +1,15 @@
 //! What the opened sessions have done, under their rows: newest first, quiet.
 
-use groove_controllers::AppState;
+use groove_controllers::{AppState, Told};
 use groove_gfx::Rect;
-use groove_types::TimelineEvent;
+use groove_types::{Error, SessionId, TimelineEvent, Timestamp};
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{ago, box_in, elide, hairline, row};
+use crate::widget::{ago, box_in, elide, hairline, row, turn};
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -83,47 +83,156 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         let line = Rect::new(body.x, body.y, body.w, ctx.tokens.line);
         return row(ctx, line, ctx.tokens.md, "nothing yet", style);
     }
-    let height = ctx.tokens.line;
+    let height = ctx.tokens.feed_row;
     let extent = (height * shown.len() as f32 - body.h).max(0.0);
     ctx.scrolls(Scroller::Feed, extent);
     let scroll = ui.rail.feed.min(extent);
     ctx.clipped(body, |ctx| {
         let mut y = body.y - scroll;
-        for one in shown {
+        for one in &shown {
             if y + height >= body.y && y <= body.bottom() {
-                one_line(ctx, Rect::new(body.x, y, body.w, height), one, ctx.now);
+                one_line(ctx, Rect::new(body.x, y, body.w, height), one, ui);
             }
             y += height;
         }
     });
 }
 
-/// The lines the feed stands on: every session's, or the selected one's alone.
-fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a TimelineEvent> {
-    app.session
+/// One line of the feed: a job running now, or something that happened.
+enum Line<'a> {
+    Job(&'a str),
+    Bad(&'a Told<Error>),
+    Said(&'a Told<String>),
+    Event(&'a TimelineEvent),
+}
+
+/// The running jobs first, then what happened, newest first.
+fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
+    let mut out: Vec<Line<'a>> = app
+        .pending
+        .iter()
+        .rev()
+        .map(|job| Line::Job(&job.label))
+        .collect();
+    let mut over = happened(app, ui);
+    over.sort_by_key(|(at, _)| std::cmp::Reverse(at.seconds()));
+    out.extend(over.into_iter().map(|(_, line)| line));
+    out
+}
+
+/// What is over, each at its own moment: this session's lines, or every session's.
+fn happened<'a>(app: &'a AppState, ui: &Ui) -> Vec<(Timestamp, Line<'a>)> {
+    let mut out: Vec<(Timestamp, Line<'a>)> = app
+        .session
         .feed
         .iter()
         .filter(|one| !ui.rail.mine || app.session.selected.as_ref() == Some(&one.session))
-        .collect()
+        .map(|one| (one.at, Line::Event(one)))
+        .collect();
+    out.extend(app.errors.iter().map(|one| (one.at, Line::Bad(one))));
+    out.extend(app.notes.iter().map(|one| (one.at, Line::Said(one))));
+    out
 }
 
-/// One line: when it was, what it was, and what it was about.
-fn one_line(ctx: &mut Ctx, line: Rect, one: &TimelineEvent, now: groove_types::Timestamp) {
-    let quiet = ctx.styles.small(Role::Ghost);
-    let when = ago(one.at.age_at(now));
-    let width = ctx.measure(&when, &quiet);
-    row(ctx, line, ctx.tokens.md, &when, quiet);
-    let said = ctx.styles.small(Role::Muted);
-    let at = ctx.tokens.md + width + ctx.tokens.sm;
-    let room = (line.w - at - ctx.tokens.md).max(0.0);
-    let text = elide(ctx, &told(one), &said, room);
-    row(ctx, line, at, &text, said);
+/// What a line says: when it was, what was done, and what it was done to.
+struct Said<'a> {
+    at: Timestamp,
+    act: &'a str,
+    subject: &'a str,
+    role: Role,
 }
 
-/// What one line says: its kind, and its subject where it has one.
-fn told(one: &TimelineEvent) -> String {
-    match one.subject.is_empty() {
-        true => one.kind.label().to_string(),
-        false => format!("{} {}", one.kind.label(), one.subject),
+fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>, ui: &Ui) {
+    match one {
+        Line::Job(label) => running(ctx, line, label),
+        Line::Bad(bad) => over(
+            ctx,
+            line,
+            Said {
+                at: bad.at,
+                act: "error",
+                subject: &bad.message,
+                role: Role::Bad,
+            },
+        ),
+        Line::Said(said) => over(
+            ctx,
+            line,
+            Said {
+                at: said.at,
+                act: "note",
+                subject: &said.what,
+                role: Role::Accent,
+            },
+        ),
+        Line::Event(event) => {
+            reachable(ctx, line, &event.session, ui);
+            over(
+                ctx,
+                line,
+                Said {
+                    at: event.at,
+                    act: event.kind.label(),
+                    subject: &event.subject,
+                    role: Role::Accent,
+                },
+            );
+        }
     }
+}
+
+/// The line takes the pointer to the session it belongs to.
+fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId, ui: &Ui) {
+    let target = Target::FeedLine(session.clone());
+    if ui.hover.as_ref() == Some(&target) {
+        ctx.quad(line, ctx.styles.hover());
+    }
+    ctx.hit(line, target);
+}
+
+/// A job the user waits on, with the mark that keeps turning.
+fn running(ctx: &mut Ctx, line: Rect, label: &str) {
+    let style = ctx.styles.strong(Role::Working);
+    let top = Rect::new(line.x, line.y, line.w, line.h / 2.0);
+    let size = ctx.tokens.small;
+    let box_ = box_in(top, line.x + column(ctx) - size, size);
+    ctx.icon(
+        box_,
+        Mark::Busy,
+        turn(ctx.tick),
+        ctx.styles.color(Role::Working),
+    );
+    let at = column(ctx) + ctx.tokens.sm;
+    let text = elide(ctx, label, &style, room(ctx, line, at));
+    row(ctx, top, at, &text, style);
+}
+
+/// The age against its own column, then the act over the subject.
+fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>) {
+    let half = line.h / 2.0;
+    let top = Rect::new(line.x, line.y, line.w, half);
+    let quiet = ctx.styles.small(Role::Ghost);
+    let when = ago(said.at.age_at(ctx.now));
+    let width = ctx.measure(&when, &quiet);
+    row(ctx, top, column(ctx) - width, &when, quiet);
+    let at = column(ctx) + ctx.tokens.sm;
+    let act = ctx.styles.strong(said.role);
+    let text = elide(ctx, said.act, &act, room(ctx, line, at));
+    row(ctx, top, at, &text, act);
+    if said.subject.is_empty() {
+        return;
+    }
+    let under = Rect::new(line.x, line.y + half, line.w, half);
+    let style = ctx.styles.small(Role::Muted);
+    let text = elide(ctx, said.subject, &style, room(ctx, line, at));
+    row(ctx, under, at, &text, style);
+}
+
+/// Where the age's column ends, which every text stands after.
+fn column(ctx: &Ctx) -> f32 {
+    ctx.tokens.md + ctx.tokens.feed_age
+}
+
+fn room(ctx: &Ctx, line: Rect, at: f32) -> f32 {
+    (line.w - at - ctx.tokens.md).max(0.0)
 }

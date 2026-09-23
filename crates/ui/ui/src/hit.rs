@@ -74,6 +74,8 @@ pub enum Target {
     Working,
     /// The feed's own heading, which folds it away.
     Feed,
+    /// A line of the feed, and the session it belongs to.
+    FeedLine(SessionId),
     /// Which sessions the feed shows.
     FeedScope,
     /// One MR of the review column, by its project and its number.

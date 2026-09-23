@@ -72,6 +72,9 @@ pub struct Tokens {
     pub band: f32,
     /// One line of text, with its leading.
     pub line: f32,
+    /// One line of the feed, which holds two texts, and its own age column.
+    pub feed_row: f32,
+    pub feed_age: f32,
     pub hairline: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
@@ -104,6 +107,8 @@ const ICON: f32 = 16.0 / 13.0;
 const ROW: f32 = 26.0 / 13.0;
 const HEADER: f32 = 36.0 / 13.0;
 const LINE: f32 = 18.0 / 12.5;
+const FEED_ROW: f32 = 34.0 / 13.0;
+const FEED_AGE: f32 = 30.0 / 13.0;
 
 /// The design's numbers, at scale 1.
 const LOGICAL: Tokens = Tokens {
@@ -120,6 +125,8 @@ const LOGICAL: Tokens = Tokens {
     sidebar: 260.0,
     band: 260.0,
     line: 18.0,
+    feed_row: 34.0,
+    feed_age: 30.0,
     hairline: 1.0,
     grab: 8.0,
     map: 14.0,
@@ -163,6 +170,8 @@ impl Tokens {
             sidebar: s(LOGICAL.sidebar),
             band: s(LOGICAL.band),
             line: row(LINE, code),
+            feed_row: row(FEED_ROW, text),
+            feed_age: of_text(FEED_AGE),
             hairline: s(LOGICAL.hairline),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),

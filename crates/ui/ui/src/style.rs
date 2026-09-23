@@ -83,6 +83,11 @@ impl Styles {
         self.sans(self.tokens.small, Weight::Regular, role)
     }
 
+    /// A small word that names what was done.
+    pub fn strong(&self, role: Role) -> TextStyle {
+        self.sans(self.tokens.small, Weight::Bold, role)
+    }
+
     /// Code: the agent, the terminal, the diff and the editor, and nowhere else.
     pub fn code(&self, role: Role) -> TextStyle {
         TextStyle {

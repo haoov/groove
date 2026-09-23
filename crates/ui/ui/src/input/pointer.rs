@@ -275,7 +275,7 @@ fn acting(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 /// The pane a click lands in. What it lands on says which.
 fn focused(target: &Option<Target>, focus: Focus) -> Focus {
     match target {
-        Some(Target::Session(_)) => Focus::Rail,
+        Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
         Some(Target::Agent) => Focus::Agent,
         Some(Target::Code) | Some(Target::View(_)) => Focus::Workspace,
         Some(

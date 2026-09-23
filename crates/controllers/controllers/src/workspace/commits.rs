@@ -19,7 +19,7 @@ pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match read {
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
                 Ok(log) => state.workspace.log = log,
             }
         }) as Continuation
@@ -53,7 +53,7 @@ pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match read {
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
                 Ok((files, changes)) => shown(state, entry, files, changes),
             }
         }) as Continuation

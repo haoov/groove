@@ -39,7 +39,7 @@ pub(crate) fn logged(
         let written = timeline.append(&event).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match written {
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
                 Ok(()) => crate::session::feed::read(state, services, spawner),
             },
         ) as Continuation

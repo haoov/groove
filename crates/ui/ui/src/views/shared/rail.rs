@@ -1,7 +1,7 @@
 use groove_controllers::AppState;
 use groove_gfx::Rect;
 
-use super::{rail_item, status};
+use super::rail_item;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
@@ -42,7 +42,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     );
     items(ctx, app, ui, rows);
     super::feed::draw(ctx, Rect::new(0.0, band.y, width, band.h), app, ui);
-    footer(ctx, app, foot);
+    footer(ctx, foot);
 }
 
 fn edge(ctx: &mut Ctx, rect: Rect) {
@@ -95,10 +95,8 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     });
 }
 
-/// The jobs in flight, then settings.
-fn footer(ctx: &mut Ctx, app: &AppState, rect: Rect) {
+fn footer(ctx: &mut Ctx, rect: Rect) {
     let rule = ctx.styles.line();
-    status::draw(ctx, app, rect.y);
     hairline(
         ctx,
         Rect::new(rect.x, rect.y - rect.h, rect.w, rect.h),

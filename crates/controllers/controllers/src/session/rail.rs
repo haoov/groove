@@ -14,7 +14,7 @@ pub fn restore(services: &Services, spawner: &dyn Spawner) {
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 let rows = match result {
                     Ok(rows) => rows,
-                    Err(e) => return state.errors.push(e),
+                    Err(e) => return state.failed(e),
                 };
                 let last_seen = rows
                     .iter()
@@ -55,7 +55,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                             }
                         }
                     }
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
                 crate::workspace::follow(state, spawner);
                 crate::workspace::known(services, spawner);
@@ -151,7 +151,7 @@ pub fn list(services: &Services, spawner: &dyn Spawner) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             match read {
                 Ok(living) => state.session.living = living,
-                Err(e) => state.errors.push(e),
+                Err(e) => state.failed(e),
             }
             crate::task::attention::reread(state, Timestamp::now());
         }) as Continuation
@@ -235,7 +235,7 @@ pub(crate) fn listed(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);
                 if let Err(e) = result {
-                    state.errors.push(e);
+                    state.failed(e);
                 }
                 list(services, spawner);
             },
@@ -254,7 +254,7 @@ pub(crate) fn record(
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(pending);
             if let Err(e) = result {
-                state.errors.push(e);
+                state.failed(e);
             }
         }) as Continuation
     }));

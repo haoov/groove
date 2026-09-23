@@ -21,7 +21,7 @@ pub(super) fn set(
     }
     let key = match TaskKey::parse(id) {
         Ok(key) => key,
-        Err(e) => return state.errors.push(e),
+        Err(e) => return state.failed(e),
     };
     let sources = groove_task_service::sources(state.config.config.as_ref());
     if sources.is_empty() {
@@ -35,7 +35,7 @@ pub(super) fn set(
                 state.end(job);
                 match wrote {
                     Ok(_) => sync(state, spawner, key),
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation

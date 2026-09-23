@@ -210,7 +210,7 @@ impl App {
     fn keep_panes(&mut self) {
         let path = groove_config::panes::path(&self.state.env.data_dir);
         if let Err(e) = groove_config::panes::save(&path, &self.ui.split.panes()) {
-            self.state.errors.push(e.into());
+            self.state.failed(e.into());
         }
     }
 

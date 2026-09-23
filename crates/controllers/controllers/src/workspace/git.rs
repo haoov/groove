@@ -49,7 +49,7 @@ pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 if let Err(e) = done {
-                    state.errors.push(e);
+                    state.failed(e);
                 } else {
                     let kind = match pushed {
                         true => TimelineKind::Push,
@@ -89,7 +89,7 @@ pub(super) fn discard_all(state: &mut AppState, spawner: &dyn Spawner) {
                 state.end(job);
                 match done {
                     Ok(()) => load(state, spawner),
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation
@@ -132,7 +132,7 @@ pub(super) fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path:
                 state.end(job);
                 match done {
                     Ok(()) => load(state, spawner),
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation
@@ -160,7 +160,7 @@ pub(super) fn commit(state: &mut AppState, spawner: &dyn Spawner) {
                         crate::timeline::log(state, services, spawner, TimelineKind::Commit, said);
                         committed(state, spawner);
                     }
-                    Err(e) => state.errors.push(e),
+                    Err(e) => state.failed(e),
                 }
             },
         ) as Continuation
