@@ -9,19 +9,15 @@ pub enum DiffMode {
     Base,
     /// What is not committed yet.
     Working,
-    /// The branch's own tip on origin.
-    VsRemote,
 }
 
 impl DiffMode {
-    /// The modes the change is read in, in the order they are offered.
     pub const ALL: [DiffMode; 2] = [DiffMode::Base, DiffMode::Working];
 
     pub fn label(self) -> &'static str {
         match self {
             DiffMode::Base => "base",
             DiffMode::Working => "working",
-            DiffMode::VsRemote => "remote",
         }
     }
 }

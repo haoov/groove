@@ -19,10 +19,9 @@ colours the rows inside it.
 **Word diff** runs on one-for-one pairs, the rule in `types`. The columns a row of a pair
 does not share with the other are marked over the row's ground.
 
-**Three modes:** base, the merge-base with the base branch, the MR's target for a review;
-working, uncommitted against HEAD; vs-remote, the branch's remote tip or the base when
-unpushed. Untracked files are all additions. A throttled background fetch keeps base and
-remote fresh.
+**Two modes:** base, the merge-base with the base branch, the MR's target for a review;
+working, uncommitted against HEAD. Untracked files are all additions. A throttled
+background fetch keeps the base fresh.
 
 **The whole change is one surface.** The numeric summary builds the file list with no
 content. Rows are aligned per file; the files on screen hold their documents, the others
@@ -55,7 +54,6 @@ them; a bar in the commit box's place names the one that stands.
 |---|---|
 | `workspace.get_diff` · `workspace.get_status` | reads for the MCP tools |
 | `workspace.refresh` | reload status, summary, MR, CI and threads at once |
-| `workspace.set_mode` | base, working, vs-remote; reload the summary |
 | `workspace.expand` | a gap's hidden lines, from the document already held |
 | `workspace.blame` | blame for the file, uncommitted lines marked |
 

@@ -2,7 +2,7 @@
 
 ## Diff
 
-- modes: base, working, vs-remote
+- modes: base, working
 - blame
 - expansion
 - views: file, inline, split
