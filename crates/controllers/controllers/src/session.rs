@@ -10,7 +10,7 @@ use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 pub use rail::{
     close, delete, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
 };
-pub(crate) use rail::{listed, record};
+pub(crate) use rail::{listed, record, set_auto_approve};
 pub use repos::{
     add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
 };

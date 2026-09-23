@@ -3,10 +3,11 @@
 mod about;
 mod files;
 mod work;
+mod write;
 
 use groove_agent_service::Call;
 use groove_session_service::Open;
-use groove_types::{ExternalId, SessionId, Worktree, WorktreeId};
+use groove_types::{ExternalId, SessionId, TimelineKind, Worktree, WorktreeId};
 
 use crate::{AppState, Services, Spawner};
 
@@ -25,8 +26,32 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_mr_state" => work::mr(state, services, spawner, call),
         "get_open_file" => files::open_file(state, call),
         "read_file" => files::read(state, spawner, call),
-        tool => call.reply.failed(format!("groove answers no {tool} yet")),
+        tool => match groove_agent_service::tools::named(tool) {
+            Some(one) if one.writes => write::asked(state, services, spawner, call),
+            _ => call.reply.failed(format!("groove answers no {tool} yet")),
+        },
     }
+}
+
+pub use write::{allow, drop_asks, refuse};
+
+/// One line on the session's log, for a write its agent made.
+pub(crate) fn logged(
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    kind: TimelineKind,
+    subject: &str,
+    worktree: &WorktreeId,
+) {
+    crate::timeline::logged(
+        services,
+        spawner,
+        session.clone(),
+        kind,
+        subject,
+        serde_json::json!({ "worktree": worktree.as_str() }),
+    );
 }
 
 /// The session the call was made from.
@@ -58,7 +83,12 @@ pub(crate) fn worktrees(state: &AppState, call: &Call) -> Option<Vec<Worktree>> 
 
 /// The worktree a call names, in whichever open session holds it.
 pub(crate) fn worktree(state: &AppState, call: &Call) -> Option<Worktree> {
-    let id = WorktreeId::new(call.text("worktree_id")?);
+    worktree_named(state, call.text("worktree_id"))
+}
+
+/// The same, by the id itself.
+pub(crate) fn worktree_named(state: &AppState, named: Option<&str>) -> Option<Worktree> {
+    let id = WorktreeId::new(named?);
     state
         .session
         .open

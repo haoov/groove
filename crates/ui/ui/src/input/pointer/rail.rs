@@ -1,6 +1,7 @@
 //! What a click on the rail's own parts does: the feed folded, or narrowed.
+//! The agent's own asks answer here too.
 
-use groove_controllers::Command;
+use groove_controllers::{Command, agent};
 
 use crate::Ui;
 use crate::hit::Target;
@@ -13,6 +14,12 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         Target::Session(session) | Target::FeedLine(session) => {
             Some(super::opened_session(ui, session.clone()))
         }
+        Target::Approve(id) => Some(vec![Command::Agent(agent::Command::Approve {
+            id: id.clone(),
+        })]),
+        Target::Refuse(id) => Some(vec![Command::Agent(agent::Command::Refuse {
+            id: id.clone(),
+        })]),
         _ => None,
     }
 }

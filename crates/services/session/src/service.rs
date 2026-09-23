@@ -109,6 +109,10 @@ impl Service {
         Ok(self.store.set_selected_worktree(id, worktree).await?)
     }
 
+    pub async fn set_auto_approve(&self, id: &SessionId, on: bool) -> Result<(), Error> {
+        Ok(self.store.set_auto_approve(id, on).await?)
+    }
+
     /// The rail as it was: every session with an `opened_at`, in that order.
     /// Every session on disk, with its repos and worktrees. The rail's own list is
     /// `opened`.

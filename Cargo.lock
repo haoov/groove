@@ -1202,9 +1202,11 @@ name = "groove-agent-service"
 version = "0.1.0"
 dependencies = [
  "groove-agent-launch",
+ "groove-approvals",
  "groove-hooks",
  "groove-mcp",
  "groove-terminal",
+ "groove-tools",
  "groove-types",
 ]
 
@@ -1216,6 +1218,15 @@ dependencies = [
  "groove-types",
  "sqlx",
  "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "groove-approvals"
+version = "0.1.0"
+dependencies = [
+ "groove-types",
+ "serde_json",
  "uuid",
 ]
 

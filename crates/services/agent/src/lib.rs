@@ -5,11 +5,16 @@ pub(crate) mod launch;
 #[cfg(test)]
 mod tests;
 
-use groove_types::{AgentStatus, Error, HookKind, SessionActivity, SessionId, Timestamp, ToolCall};
+use groove_types::{
+    AgentStatus, Approval, ApprovalId, Error, HookKind, SessionActivity, SessionId, Timestamp,
+    ToolCall,
+};
 
+pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
 pub use groove_terminal::Terminal;
+pub use groove_tools as tools;
 pub use groove_types::Screen;
 pub use launch::{LaunchPaths, launch, palette};
 
@@ -24,6 +29,8 @@ pub struct Agent {
 #[derive(Debug, Default)]
 pub struct State {
     pub agents: Vec<(SessionId, Agent)>,
+    /// The writes waiting on the user, each holding the answer it owes its agent.
+    asks: Queue<Reply>,
 }
 
 impl State {
@@ -56,6 +63,47 @@ impl State {
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
         let at = self.agents.iter().position(|(id, _)| id == session)?;
         Some(self.agents.remove(at).1)
+    }
+
+    /// One write on the queue, and on the row that asks for it.
+    pub fn asked(&mut self, new: NewAsk, reply: Reply) -> Approval {
+        let session = new.session.clone();
+        let approval = self.asks.queue(new, reply);
+        self.told(&session);
+        approval
+    }
+
+    /// The write one id names, taken off the queue and off the row.
+    pub fn resolved(&mut self, id: &ApprovalId) -> Option<(Approval, Reply)> {
+        let taken = self.asks.resolve(id)?;
+        if let Some(session) = &taken.0.session {
+            self.told(session);
+        }
+        Some(taken)
+    }
+
+    /// Every write of a session, taken off the queue for the caller to refuse.
+    pub fn forget_asks(&mut self, session: &SessionId) -> Vec<(Approval, Reply)> {
+        let dropped = self.asks.forget(session);
+        self.told(session);
+        dropped
+    }
+
+    /// Whether this session's writes run without asking.
+    pub fn auto_approve(&mut self, session: &SessionId, on: bool) {
+        if let Some(activity) = self.activity_mut(session) {
+            activity.auto_approve = on;
+        }
+    }
+
+    /// The row says what the queue holds.
+    fn told(&mut self, session: &SessionId) {
+        let asks = self
+            .asks
+            .asks(session, |one| groove_tools::subject(&one.op, &one.payload));
+        if let Some(activity) = self.activity_mut(session) {
+            activity.asks = asks;
+        }
     }
 
     fn activity_mut(&mut self, session: &SessionId) -> Option<&mut SessionActivity> {

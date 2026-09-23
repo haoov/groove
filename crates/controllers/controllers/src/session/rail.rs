@@ -206,6 +206,20 @@ pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
     list(services, spawner);
 }
 
+/// Writes the session's auto-approve flag to its leaf.
+pub(crate) fn set_auto_approve(
+    _state: &AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &SessionId,
+    on: bool,
+) {
+    let (service, id) = (services.session.clone(), id.clone());
+    record(spawner, NO_PENDING, async move {
+        service.set_auto_approve(&id, on).await
+    });
+}
+
 /// Writes the row's selected worktree to its leaf.
 pub(super) fn persist_selection(
     state: &AppState,

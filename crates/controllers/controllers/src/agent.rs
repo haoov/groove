@@ -1,7 +1,7 @@
 //! The `agent` controller: one function per user action on the `agent` service.
 
 use groove_agent_service::{Event as AgentEvent, LaunchPaths, launch, palette};
-use groove_types::{Session, SessionId, Timestamp};
+use groove_types::{ApprovalId, Session, SessionId, Timestamp};
 
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
@@ -24,6 +24,12 @@ pub enum Command {
         cols: u16,
         rows: u16,
     },
+    /// `agent.approve`: the write the agent asked for runs.
+    Approve { id: ApprovalId },
+    /// `agent.refuse`: it does not, and its agent hears so.
+    Refuse { id: ApprovalId },
+    /// `agent.auto_approve`: every write of this session runs without asking.
+    AutoApprove { session: SessionId, on: bool },
 }
 
 impl Command {
@@ -33,6 +39,9 @@ impl Command {
             Command::End { .. } => "agent.end",
             Command::Send { .. } => "agent.send",
             Command::Resize { .. } => "agent.resize",
+            Command::Approve { .. } => "agent.approve",
+            Command::Refuse { .. } => "agent.refuse",
+            Command::AutoApprove { .. } => "agent.auto_approve",
         }
     }
 }
@@ -40,7 +49,7 @@ impl Command {
 pub fn dispatch(
     command: Command,
     state: &mut AppState,
-    _services: &Services,
+    services: &Services,
     spawner: &dyn Spawner,
 ) {
     match command {
@@ -56,7 +65,24 @@ pub fn dispatch(
             cols,
             rows,
         } => resize(state, &session, cols, rows),
+        Command::Approve { id } => crate::tools::allow(state, services, spawner, &id),
+        Command::Refuse { id } => crate::tools::refuse(state, &id),
+        Command::AutoApprove { session, on } => {
+            auto_approve(state, services, spawner, &session, on)
+        }
     }
+}
+
+/// Every write of this session runs without asking, or waits again.
+fn auto_approve(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    on: bool,
+) {
+    state.agent.auto_approve(session, on);
+    crate::session::set_auto_approve(state, services, spawner, session, on);
 }
 
 /// The launch runs as a job; its continuation stores the terminal or the error.
@@ -98,6 +124,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
 }
 
 pub fn end(state: &mut AppState, session: &SessionId) {
+    crate::tools::drop_asks(state, session);
     if let Some(terminal) = state.agent.end(session).and_then(|a| a.terminal) {
         let _ = terminal.terminate();
     }

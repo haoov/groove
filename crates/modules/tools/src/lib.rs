@@ -84,3 +84,26 @@ pub(crate) fn worktree() -> (&'static str, serde_json::Value) {
 pub(crate) fn task() -> (&'static str, serde_json::Value) {
     ("task_id", text("Defaults to your own task."))
 }
+
+/// What a write acts on, as a human reads it on the row that asks.
+pub fn subject(tool: &str, arguments: &serde_json::Value) -> String {
+    named_by(tool)
+        .iter()
+        .find_map(|name| arguments[*name].as_str())
+        .and_then(|said| said.lines().next())
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// The argument that names what a write acts on, per tool.
+fn named_by(tool: &str) -> &'static [&'static str] {
+    match tool {
+        "git_commit" => &["message"],
+        "create_mr" | "update_mr" => &["title"],
+        "comment_mr" | "reply_thread" => &["body"],
+        "create_annotation" => &["path"],
+        "add_task_repo" => &["repo"],
+        "add_task_worktree" => &["branch"],
+        _ => &["thread", "id", "worktree_id", "task_id"],
+    }
+}

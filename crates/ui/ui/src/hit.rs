@@ -76,6 +76,9 @@ pub enum Target {
     Feed,
     /// A line of the feed, and the session it belongs to.
     FeedLine(SessionId),
+    /// The write the agent asked for, taken or refused.
+    Approve(groove_types::ApprovalId),
+    Refuse(groove_types::ApprovalId),
     /// Which sessions the feed shows.
     FeedScope,
     /// One MR of the review column, by its project and its number.

@@ -1,6 +1,7 @@
 //! The session surface: the header, the agent pane, the workspace and its tabs.
 
 pub mod agent_pane;
+pub mod asks;
 pub mod commit;
 pub mod diff;
 pub(crate) mod files;
@@ -30,6 +31,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return empty(ctx);
     }
     agent_pane::draw(ctx, app);
+    asks::draw(ctx, app, ui);
     workspace(ctx, app, ui);
 }
 

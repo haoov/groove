@@ -117,3 +117,24 @@ fn a_tool_is_listed_as_the_harness_reads_it() {
 fn a_name_nothing_answers_for_is_none() {
     assert!(named("rm_rf").is_none());
 }
+
+#[test]
+fn a_write_says_what_it_acts_on() {
+    let said = |tool, arguments| crate::subject(tool, &arguments);
+    assert_eq!(
+        said(
+            "git_commit",
+            serde_json::json!({ "message": "fix: one\n\nbody" })
+        ),
+        "fix: one"
+    );
+    assert_eq!(
+        said("create_mr", serde_json::json!({ "title": "feat: two" })),
+        "feat: two"
+    );
+    assert_eq!(
+        said("resolve_thread", serde_json::json!({ "thread": "t-1" })),
+        "t-1"
+    );
+    assert_eq!(said("git_push", serde_json::json!({})), "");
+}
