@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::{asked, changed, settled, stage, waited, waiting};
 use crate::SyncSpawner;
-use crate::tests::fixture::{self, services, sh, state};
+use crate::tests::fixture::{self, services, sh, state, until};
 
 #[test]
 fn a_tool_groove_does_not_answer_yet_says_so() {
@@ -188,4 +188,234 @@ fn a_session_that_ends_leaves_no_agent_waiting() {
     let answer = answered.try_recv().expect("an answer");
     assert!(answer.failed);
     assert!(answer.text.contains("closed"), "{}", answer.text);
+}
+
+#[test]
+fn every_tool_groove_lists_is_one_it_answers() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new("gh-nothing"), true);
+
+    let mut unanswered = Vec::new();
+    for tool in groove_agent_service::tools::all() {
+        let answer = waited(
+            &mut state,
+            &services,
+            &spawner,
+            "gh-nothing",
+            tool.name,
+            json!({}),
+        );
+        let said = answer.map(|one| one.text).unwrap_or_default();
+        if said.contains("answers no") || said.contains("runs no") {
+            unanswered.push(tool.name);
+        }
+    }
+    assert_eq!(
+        unanswered,
+        ["get_mr_threads", "get_mr_ci", "get_annotations"],
+        "these are the reads still to build, and nothing else"
+    );
+}
+
+#[test]
+fn a_note_the_agent_leaves_stands_on_its_own_line() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, _) = changed(&mut state, &services, &spawner);
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(&id), true);
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "create_annotation",
+        json!({ "worktree_id": worktree, "path": "a.txt", "line": 2, "content": "issue: this" }),
+    );
+    assert!(!answer.failed, "{}", answer.text);
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.own.is_empty()
+    });
+    let note = &state.workspace.own[0];
+    assert_eq!(note.file_path, "a.txt");
+    assert_eq!(
+        note.start_line, 1,
+        "the agent counts from one, the row from zero"
+    );
+    assert_eq!(note.author, "agent");
+
+    let again = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "create_annotation",
+        json!({ "worktree_id": worktree, "path": "a.txt", "line": 2, "content": "issue: again" }),
+    );
+    assert!(again.failed, "one note a line: {}", again.text);
+}
+
+#[test]
+fn a_note_is_written_again_and_resolved_by_its_id() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, _) = changed(&mut state, &services, &spawner);
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(&id), true);
+    asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "create_annotation",
+        json!({ "worktree_id": worktree, "path": "a.txt", "line": 1, "content": "issue: one" }),
+    );
+    until(&spawner, &services, &mut state, |s| {
+        !s.workspace.own.is_empty()
+    });
+    let note = state.workspace.own[0].id.as_str().to_string();
+
+    let wrote = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "update_annotation",
+        json!({ "id": note, "content": "issue: two" }),
+    );
+    assert!(!wrote.failed, "{}", wrote.text);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace
+            .own
+            .first()
+            .is_some_and(|one| one.content == "issue: two")
+    });
+
+    let done = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "resolve_annotation",
+        json!({ "id": note }),
+    );
+    assert!(!done.failed, "{}", done.text);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace
+            .own
+            .first()
+            .is_some_and(|one| one.status == groove_types::AnnotationStatus::Resolved)
+    });
+}
+
+#[test]
+fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = fixture::worktree(&mut state, &services, &spawner);
+    assert!(!dir.is_empty());
+    let id = state.session.selected.clone().expect("a session");
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(id.as_str()), true);
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "add_task_worktree",
+        json!({ "branch": "explorer/second", "target_branch": "main" }),
+    );
+    assert!(!answer.failed, "{}", answer.text);
+    assert!(answer.text.contains("worktree_id"), "{}", answer.text);
+    let open = state.session.get(&id).expect("the session");
+    assert_eq!(open.repos.len(), 1, "the repo it already had");
+    assert_eq!(open.worktrees.len(), 2, "and a second worktree on it");
+}
+
+#[test]
+fn the_agent_and_the_surface_commit_through_the_same_function() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, dir) = changed(&mut state, &services, &spawner);
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(&id), true);
+    stage(&dir);
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "git_commit",
+        json!({ "worktree_id": worktree, "message": "fix: from the agent" }),
+    );
+    assert!(!answer.failed, "{}", answer.text);
+    until(&spawner, &services, &mut state, |s| {
+        s.session
+            .feed
+            .iter()
+            .any(|one| one.subject == "fix: from the agent")
+    });
+    let line = state
+        .session
+        .feed
+        .iter()
+        .find(|one| one.subject == "fix: from the agent")
+        .expect("the commit's own line");
+    assert_eq!(line.kind, groove_types::TimelineKind::Commit);
+}
+
+#[test]
+fn a_write_the_forge_refuses_is_answered_and_not_left_to_the_feed() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, _) = changed(&mut state, &services, &spawner);
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(&id), true);
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "update_mr",
+        json!({ "worktree_id": worktree, "title": "feat: nothing" }),
+    );
+    assert!(answer.failed, "{}", answer.text);
+    assert!(
+        answer.text.contains("no open merge request"),
+        "{}",
+        answer.text
+    );
+    assert!(
+        state.errors.is_empty(),
+        "the agent hears it, the feed does not"
+    );
 }

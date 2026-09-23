@@ -116,10 +116,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     let job = state.begin("changed files");
     spawner.spawn(Box::pin(async move {
         let rev = against(&dir, mode, base.as_deref()).await;
-        let files = match mode {
-            DiffMode::Working => summary(&dir).await,
-            _ => summary_against(&dir, &rev).await,
-        };
+        let files = files_in(&dir, mode, &rev).await;
         let read = match &files {
             Ok(files) => changes(&dir, files, &rev).await,
             Err(_) => Default::default(),
@@ -145,8 +142,20 @@ pub(super) fn set_mode(state: &mut AppState, spawner: &dyn Spawner, mode: DiffMo
     reread(state, spawner);
 }
 
+/// What changed in a worktree, read the way the mode asks for it.
+pub(crate) async fn files_in(
+    dir: &std::path::Path,
+    mode: DiffMode,
+    rev: &str,
+) -> groove_types::Result<Vec<groove_types::FileDiff>> {
+    match mode {
+        DiffMode::Working => summary(dir).await,
+        _ => summary_against(dir, rev).await,
+    }
+}
+
 /// The rev the change is read against, for the mode in hand.
-pub(super) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<&str>) -> String {
+pub(crate) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<&str>) -> String {
     match mode {
         DiffMode::Working => HEAD.to_string(),
         _ => base_rev(dir, base).await,

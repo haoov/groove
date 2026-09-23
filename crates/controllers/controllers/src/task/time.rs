@@ -3,6 +3,7 @@
 use groove_task_service::{IDLE, sources};
 use groove_types::{AgentStatus, ExternalId, SessionKind, TaskKey, Timestamp, hours};
 
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// How often the ledger takes what the clock measured.
@@ -54,22 +55,23 @@ fn worked(state: &AppState, now: Timestamp) -> Option<ExternalId> {
 }
 
 /// The hours the clock measured, to the source and then to the ledger.
-pub(super) fn log_hours(
+pub(crate) fn log_hours(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     id: &ExternalId,
+    asker: Asker,
 ) {
     let Some(time) = state.task.measured(id) else {
-        return;
+        return asker.refused("nothing has been measured for it yet");
     };
     let seconds = time.unlogged_seconds;
     if seconds <= 0 {
-        return;
+        return asker.done(|| "the source already has every hour of it".into());
     }
     let key = match TaskKey::parse(id) {
         Ok(key) => key,
-        Err(e) => return state.failed(e),
+        Err(e) => return asker.failed(state, e),
     };
     let sources = sources(state.config.config.as_ref());
     let (service, id) = (services.task.clone(), id.clone());
@@ -83,11 +85,13 @@ pub(super) fn log_hours(
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                match read {
-                    Ok(time) => state.task.time = time.into_iter().collect(),
-                    Err(e) => return state.failed(e),
-                }
+                let time = match read {
+                    Ok(time) => time,
+                    Err(e) => return asker.failed(state, e),
+                };
+                state.task.time = time.into_iter().collect();
                 super::sync(state, spawner, key);
+                asker.done(|| format!("logged {}h", hours(seconds)));
             },
         ) as Continuation
     }));

@@ -1,26 +1,27 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
 mod commits;
-mod diff;
+pub(crate) mod diff;
 mod editor;
 pub(crate) mod forge;
-mod git;
+pub(crate) mod git;
 pub(crate) mod mr;
 pub(crate) mod notes;
 mod paths;
 pub(crate) mod queue;
 mod search;
-mod write;
+pub(crate) mod write;
 
 use std::path::PathBuf;
 
+use crate::asker::Asker;
 use groove_types::{DiffMode, Edit, Selection, WorktreeId};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{copy, edit_file, open_file, paste, save_file};
-use self::git::{Act, Remote, commit, discard_all, index, remote};
+use self::git::{Act, Remote, discard_all, index};
 use self::search::{grep, list_paths};
-use self::write::{Act as Mr, write};
+use self::write::{Act as Mr, here as write_mr};
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
@@ -187,23 +188,23 @@ pub fn dispatch(
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Discard { path } => index(state, spawner, Act::Discard, path),
         Command::Message(edit) => state.workspace.message.edit(&edit),
-        Command::Commit => commit(state, spawner),
-        Command::Push => remote(state, spawner, Remote::Push),
-        Command::Pull => remote(state, spawner, Remote::Pull),
+        Command::Commit => commit_here(state, spawner),
+        Command::Push => on_remote(state, services, spawner, Remote::Push),
+        Command::Pull => on_remote(state, services, spawner, Remote::Pull),
         Command::DiscardAll => discard_all(state, spawner),
         Command::RefreshMr => mr::refresh(state, services, spawner),
         Command::ListPaths => list_paths(state, spawner),
         Command::ReviewQueue => queue::read(state, services, spawner),
         Command::Path(op) => paths::act(state, spawner, op),
-        Command::CreateMr => write(state, services, spawner, Mr::Open),
-        Command::UpdateMr => write(state, services, spawner, Mr::Edit),
-        Command::CloseMr => write(state, services, spawner, Mr::Close),
+        Command::CreateMr => write_mr(state, services, spawner, Mr::Open),
+        Command::UpdateMr => write_mr(state, services, spawner, Mr::Edit),
+        Command::CloseMr => write_mr(state, services, spawner, Mr::Close),
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
         Command::GetNotes => notes::list(state, services, spawner),
-        Command::Note(act) => notes::write(state, services, spawner, act),
-        Command::Say(one) => forge::say(state, services, spawner, one),
+        Command::Note(act) => notes::here(state, services, spawner, act),
+        Command::Say(one) => forge::here(state, services, spawner, one),
     }
 }
 
@@ -227,6 +228,28 @@ pub fn stale(state: &AppState) -> bool {
 }
 
 /// The branch the selected worktree merges into.
+/// The words of the commit box on the selected worktree, from the surface.
+fn commit_here(state: &mut AppState, spawner: &dyn Spawner) {
+    let Some(worktree) = worktree_now(state) else {
+        return;
+    };
+    let message = state.workspace.message.text();
+    git::commit(state, spawner, worktree, message, Asker::Ui);
+}
+
+/// A push or a pull of the selected worktree, from the surface.
+fn on_remote(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Remote) {
+    let Some(worktree) = worktree_now(state) else {
+        return;
+    };
+    git::remote(state, services, spawner, worktree, act, Asker::Ui);
+}
+
+/// The worktree the surface has selected.
+pub(crate) fn worktree_now(state: &AppState) -> Option<groove_types::Worktree> {
+    state.session.selected()?.selected_worktree().cloned()
+}
+
 pub(super) fn selected_base(state: &AppState) -> Option<String> {
     state
         .session

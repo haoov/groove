@@ -1,6 +1,8 @@
 //! The writes to a worktree's forge: an MR opened, written again, or closed.
 
 use groove_types::{MrState, Repo, Result, Task, Worktree, WorktreeId};
+
+use crate::asker::Asker;
 use groove_workspace_service::{Delivered, Remote, Service, Text, text_of};
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -14,6 +16,14 @@ pub enum Act {
 }
 
 impl Act {
+    /// Why the forge's own state leaves no room for it.
+    fn refusal(self) -> &'static str {
+        match self {
+            Act::Open => "this worktree already has an open merge request",
+            Act::Edit | Act::Close => "this worktree has no open merge request",
+        }
+    }
+
     fn label(self) -> &'static str {
         match self {
             Act::Open => "opening the merge request",
@@ -23,15 +33,9 @@ impl Act {
     }
 }
 
-/// One write against the selected worktree's forge, its answer written down.
-pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
-    let Some(id) = crate::workspace::selected(state) else {
-        return;
-    };
-    if state.workspace.poll.is_out(&id) || !allows(state, act) {
-        return;
-    }
-    let Some((repo, worktree)) = crate::workspace::pair(state, &id) else {
+/// The selected worktree's merge request, from the surface's own box.
+pub(super) fn here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
+    let Some(worktree) = crate::workspace::worktree_now(state) else {
         return;
     };
     let message = state.workspace.message.text();
@@ -39,9 +43,32 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
     if act == Act::Edit && text.title.is_empty() {
         return;
     }
+    write(state, services, spawner, worktree, text, act, Asker::Ui);
+}
+
+/// One write against a worktree's forge, its answer written down.
+pub(crate) fn write(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: Worktree,
+    text: Text,
+    act: Act,
+    asker: Asker,
+) {
+    let id = worktree.id.clone();
+    if state.workspace.poll.is_out(&id) {
+        return asker.refused("a read of this merge request is still out");
+    }
+    if !allows(state, act) {
+        return asker.refused(act.refusal());
+    }
+    let Some((repo, worktree)) = crate::workspace::pair(state, &id) else {
+        return asker.refused(crate::tools::NO_WORKTREE);
+    };
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
-        Err(e) => return state.failed(e),
+        Err(e) => return asker.failed(state, e),
     };
     state.workspace.poll.sent(&id);
     let job = state.begin(act.label());
@@ -52,7 +79,8 @@ pub(super) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spa
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 state.workspace.poll.answered(&id);
-                landed(state, services, spawner, &id, wrote);
+                let said = wrote.as_ref().ok().map(|one| one.mr.url.clone());
+                landed(state, services, spawner, &id, wrote, asker, said);
             },
         ) as Continuation
     }));
@@ -94,10 +122,15 @@ fn landed(
     spawner: &dyn Spawner,
     worktree: &WorktreeId,
     wrote: Result<Delivered>,
+    asker: Asker,
+    url: Option<String>,
 ) {
     match wrote {
-        Ok(delivered) => super::mr::took(state, services, spawner, worktree, delivered),
-        Err(e) => state.failed(e),
+        Ok(delivered) => {
+            super::mr::took(state, services, spawner, worktree, delivered);
+            asker.done(|| url.unwrap_or_default());
+        }
+        Err(e) => asker.failed(state, e),
     }
 }
 

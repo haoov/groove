@@ -3,6 +3,7 @@
 use groove_types::{Anchor, Annotation, AnnotationId, RepoId, Result, SessionId, Timestamp};
 use groove_workspace_service::NewNote;
 
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// One write on a note, named as the ask that sends it.
@@ -62,6 +63,25 @@ impl Act {
         }
     }
 
+    /// What it did, in the words the agent reads back.
+    pub(crate) fn said(&self) -> String {
+        match self {
+            Act::Create { anchor, .. } => {
+                format!("noted {} {}", anchor.path, anchor.start_line + 1)
+            }
+            Act::Update { .. } => "wrote the note again".into(),
+            Act::Resolve { .. } => "resolved the note".into(),
+            Act::Reopen { .. } => "opened the note again".into(),
+            Act::Delete { .. } => "deleted the note".into(),
+            Act::Post { .. } => "posted the note".into(),
+            Act::Reply { .. } => "answered the thread".into(),
+            Act::Thread { resolve, .. } => match resolve {
+                true => "resolved the thread".into(),
+                false => "opened the thread again".into(),
+            },
+        }
+    }
+
     pub(super) fn label(&self) -> &'static str {
         match self {
             Act::Create { .. } => "leaving a note",
@@ -95,35 +115,74 @@ pub(crate) fn list(state: &mut AppState, services: &Services, spawner: &dyn Spaw
     }));
 }
 
-/// One write, then the list read again.
-pub(crate) fn write(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
-    if act.forged() {
-        return super::forge::note(state, services, spawner, act);
-    }
-    let Some((session, repo)) = whose(state) else {
+/// Whose note it is: the session that leaves it, and the worktree it stands on.
+#[derive(Debug, Clone)]
+pub(crate) struct Whose {
+    pub session: SessionId,
+    pub repo: groove_types::Repo,
+    pub worktree: groove_types::WorktreeId,
+}
+
+/// The selected session and worktree, which the surface's own notes belong to.
+pub(super) fn here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
+    let Some(whose) = selected(state) else {
         return;
     };
+    write(state, services, spawner, act, whose, Asker::Ui);
+}
+
+/// One write, then the list read again.
+pub(crate) fn write(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    act: Act,
+    whose: Whose,
+    asker: Asker,
+) {
+    if let Act::Create { anchor, .. } = &act
+        && noted(state, &anchor.path, (anchor.start_line, anchor.end_line))
+    {
+        return asker.refused(ALREADY_NOTED);
+    }
+    if act.forged() {
+        return super::forge::note(state, services, spawner, act, whose, asker);
+    }
     let service = services.workspace.clone();
     let job = state.begin(act.label());
     let left = left_by(&act);
+    let said = act.said();
+    let (session, repo) = (whose.session.clone(), whose.repo.id.clone());
     spawner.spawn(Box::pin(async move {
         let done = apply(&service, act, session, repo, Timestamp::now()).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                match done {
-                    Err(e) => state.failed(e),
-                    Ok(()) => {
-                        if let Some(said) = left.as_ref() {
-                            let kind = groove_types::TimelineKind::Note;
-                            crate::timeline::log(state, services, spawner, kind, said);
-                        }
-                        list(state, services, spawner);
+                if done.is_ok() {
+                    if let Some(subject) = left.as_ref() {
+                        let kind = groove_types::TimelineKind::Note;
+                        let at = &whose.worktree;
+                        crate::tools::logged(services, spawner, &whose.session, kind, subject, at);
                     }
+                    list(state, services, spawner);
                 }
+                asker.answer(state, done, || said);
             },
         ) as Continuation
     }));
+}
+
+pub(crate) const ALREADY_NOTED: &str = "a note of this session already stands on one of those lines: write that one again, \
+     or resolve it first";
+
+/// Whether an open note of this session already covers any of those lines.
+fn noted(state: &AppState, path: &str, lines: (u32, u32)) -> bool {
+    state
+        .workspace
+        .notes
+        .iter()
+        .filter(|note| note.is_local() && !note.resolved)
+        .any(|note| note.over(path, lines))
 }
 
 async fn apply(
@@ -180,9 +239,14 @@ fn held(state: &mut AppState, session: &SessionId, read: Result<Vec<Annotation>>
     }
 }
 
-/// The session a note belongs to, and the repo its file is in.
-fn whose(state: &AppState) -> Option<(SessionId, RepoId)> {
+/// The session a note belongs to, and the worktree its file is in.
+pub(crate) fn selected(state: &AppState) -> Option<Whose> {
     let open = state.session.selected()?;
     let worktree = open.selected_worktree()?;
-    Some((open.session.id.clone(), worktree.repo.clone()))
+    let repo = open.repos.iter().find(|one| one.id == worktree.repo)?;
+    Some(Whose {
+        session: open.session.id.clone(),
+        repo: repo.clone(),
+        worktree: worktree.id.clone(),
+    })
 }

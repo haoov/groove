@@ -7,6 +7,8 @@ mod review;
 
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
+use crate::asker::Asker;
+
 pub use rail::{
     close, delete, delete_local, list, open, open_explorer, refresh_status, rename_explorer,
     restore, select,
@@ -149,7 +151,7 @@ pub fn dispatch(
             session,
             name,
             spec,
-        } => add_repo(state, services, spawner, &session, &name, spec),
+        } => add_repo(state, services, spawner, &session, &name, spec, Asker::Ui),
         Command::RemoveRepo {
             session,
             repo,
@@ -159,7 +161,7 @@ pub fn dispatch(
             session,
             repo,
             spec,
-        } => add_worktree(state, services, spawner, &session, &repo, spec),
+        } => add_worktree(state, services, spawner, &session, &repo, spec, Asker::Ui),
         Command::SelectWorktree { session, worktree } => {
             select_worktree(state, services, spawner, &session, &worktree)
         }

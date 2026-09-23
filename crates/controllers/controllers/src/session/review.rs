@@ -3,6 +3,7 @@
 use groove_session_service::review_session;
 use groove_types::{ReviewMr, SessionId, Timestamp, WorktreeSpec};
 
+use crate::asker::Asker;
 use crate::{AppState, Services, Spawner, agent, session};
 
 /// The session that reviews this MR: the one it has, or a new one on the MR's branch.
@@ -36,7 +37,7 @@ pub fn open_review(
     session::listed(spawner, session::NO_PENDING, async move {
         service.create_review(&session, now).await
     });
-    session::add_repo(state, services, spawner, &id, &name, spec);
+    session::add_repo(state, services, spawner, &id, &name, spec, Asker::Ui);
 }
 
 /// The pool's own name for the MR's repo, or the URL it must be cloned from.

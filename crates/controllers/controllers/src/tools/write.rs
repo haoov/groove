@@ -3,9 +3,14 @@
 use groove_agent_service::{Call, NewAsk, Reply};
 use groove_types::{Approval, ApprovalId, Origin, SessionId, Timestamp};
 
+use crate::workspace::git::Remote;
 use crate::{AppState, Services, Spawner};
 
+mod forge;
 mod git;
+mod notes;
+mod repos;
+mod task;
 
 /// One write, from the call that asked for it or the approval that let it through.
 pub(crate) struct Write {
@@ -36,6 +41,14 @@ impl Write {
 
     pub(crate) fn text(&self, name: &str) -> Option<&str> {
         self.arguments[name].as_str().filter(|one| !one.is_empty())
+    }
+
+    pub(crate) fn number(&self, name: &str) -> Option<i64> {
+        self.arguments[name].as_i64()
+    }
+
+    pub(crate) fn flag(&self, name: &str) -> Option<bool> {
+        self.arguments[name].as_bool()
     }
 }
 
@@ -85,11 +98,37 @@ pub fn drop_asks(state: &mut AppState, session: &SessionId) {
     }
 }
 
+/// The worktree the write names, or the one its own session has selected.
+pub(crate) fn worktree_of(state: &AppState, write: &Write) -> Option<groove_types::Worktree> {
+    let named = crate::tools::worktree_named(state, write.text("worktree_id"));
+    named.or_else(|| {
+        state
+            .session
+            .get(&write.session)?
+            .selected_worktree()
+            .cloned()
+    })
+}
+
 fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: Write) {
     match write.tool.as_str() {
         "git_commit" => git::commit(state, spawner, write),
-        "git_push" => git::remote(state, services, spawner, write, git::Act::Push),
-        "git_pull" => git::remote(state, services, spawner, write, git::Act::Pull),
+        "git_push" => git::remote(state, services, spawner, write, Remote::Push),
+        "git_pull" => git::remote(state, services, spawner, write, Remote::Pull),
+        "create_mr" => forge::mr(state, services, spawner, write, forge::Act::Open),
+        "update_mr" => forge::mr(state, services, spawner, write, forge::Act::Edit),
+        "close_mr" => forge::mr(state, services, spawner, write, forge::Act::Close),
+        "comment_mr" => forge::comment(state, services, spawner, write),
+        "create_annotation" => notes::create(state, services, spawner, write),
+        "update_annotation" => notes::on_note(state, services, spawner, write, false),
+        "resolve_annotation" => notes::on_note(state, services, spawner, write, true),
+        "post_annotation" => notes::post(state, services, spawner, write),
+        "reply_thread" => notes::thread(state, services, spawner, write, true),
+        "resolve_thread" => notes::thread(state, services, spawner, write, false),
+        "add_task_repo" => repos::add_repo(state, services, spawner, write),
+        "add_task_worktree" => repos::add_worktree(state, services, spawner, write),
+        "log_task_hours" => task::log_hours(state, services, spawner, write),
+        "finish_task" => task::finish(state, services, spawner, write),
         _ => write
             .reply
             .failed(format!("groove runs no {} yet", write.tool)),

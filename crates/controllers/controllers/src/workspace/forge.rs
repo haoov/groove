@@ -3,27 +3,30 @@
 use groove_types::{Annotation, Result};
 use groove_workspace_service::{Remote, Service};
 
-use super::notes::Act;
+use super::notes::{Act, Whose};
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// One write against the selected worktree's forge, then the notes read again.
-pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Act) {
-    let Some(id) = super::selected(state) else {
-        return;
-    };
-    let Some((repo, _)) = super::pair(state, &id) else {
-        return;
-    };
+/// One write against a worktree's forge, then the notes read again.
+pub(super) fn note(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    act: Act,
+    whose: Whose,
+    asker: Asker,
+) {
+    let (repo, id) = (whose.repo.clone(), whose.worktree.clone());
     let posted = match &act {
         Act::Post { id } => match held(state, id) {
             Some(note) => Some(note),
-            None => return,
+            None => return asker.refused("this session left no note by that id"),
         },
         _ => None,
     };
     let remote = match Service::remote(&repo) {
         Ok(remote) => remote,
-        Err(e) => return state.failed(e),
+        Err(e) => return asker.failed(state, e),
     };
     let service = services.workspace.clone();
     let job = state.begin(act.label());
@@ -34,14 +37,14 @@ pub(super) fn note(state: &mut AppState, services: &Services, spawner: &dyn Spaw
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                match done {
-                    Err(e) => state.failed(e),
-                    Ok(()) => {
-                        let kind = kind_of(&told);
-                        crate::timeline::log(state, services, spawner, kind, subject(&told));
-                        landed(state, services, spawner);
-                    }
+                if done.is_ok() {
+                    let kind = kind_of(&told);
+                    let at = &whose.worktree;
+                    let subject = subject(&told);
+                    crate::tools::logged(services, spawner, &whose.session, kind, &subject, at);
+                    landed(state, services, spawner);
                 }
+                asker.answer(state, done, || told.said());
             },
         ) as Continuation
     }));
@@ -128,20 +131,42 @@ impl Say {
             Say::Review(_) => "reviewing the merge request",
         }
     }
+
+    /// What it did, in the words the agent reads back.
+    fn said(&self) -> &'static str {
+        match self {
+            Say::Comment => "commented on the merge request",
+            Say::Review(_) => "left the review",
+        }
+    }
 }
 
 /// The words of the commit box on the merge request: a comment, or a verdict with
 /// every note this session has not posted.
-pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawner, say: Say) {
-    let Some(id) = super::selected(state) else {
-        return;
-    };
-    let Some((repo, _)) = super::pair(state, &id) else {
+pub(super) fn here(state: &mut AppState, services: &Services, spawner: &dyn Spawner, said: Say) {
+    let Some(whose) = super::notes::selected(state) else {
         return;
     };
     let body = state.workspace.message.text().trim().to_string();
-    if say == Say::Comment && body.is_empty() {
+    if said == Say::Comment && body.is_empty() {
         return;
+    }
+    say(state, services, spawner, said, body, whose, Asker::Ui);
+}
+
+/// The same, on the worktree and with the words the caller names.
+pub(crate) fn say(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    say: Say,
+    body: String,
+    whose: Whose,
+    asker: Asker,
+) {
+    let (repo, id) = (whose.repo.clone(), whose.worktree.clone());
+    if say == Say::Comment && body.is_empty() {
+        return asker.refused("a comment needs a body");
     }
     let notes = pending(state, &repo.id);
     let remote = match Service::remote(&repo) {
@@ -151,20 +176,23 @@ pub(super) fn say(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     let service = services.workspace.clone();
     let job = state.begin(say.label());
     let told = say.clone();
+    let clears = asker.carries_a_box();
     spawner.spawn(Box::pin(async move {
         let done = said(&service, &remote, &repo, &id, &say, &body, &notes).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                match done {
-                    Err(e) => state.failed(e),
-                    Ok(()) => {
+                if done.is_ok() {
+                    if clears {
                         state.workspace.message = groove_workspace_service::Buffer::default();
-                        let kind = groove_types::TimelineKind::Review;
-                        crate::timeline::log(state, services, spawner, kind, told.label());
-                        landed(state, services, spawner);
                     }
+                    let kind = groove_types::TimelineKind::Review;
+                    let at = &whose.worktree;
+                    let subject = told.label();
+                    crate::tools::logged(services, spawner, &whose.session, kind, subject, at);
+                    landed(state, services, spawner);
                 }
+                asker.answer(state, done, || told.said().to_string());
             },
         ) as Continuation
     }));

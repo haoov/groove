@@ -4,6 +4,7 @@ use groove_session_service::Added;
 use groove_types::{Error, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use super::rail::persist_selection;
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
 pub fn add_repo(
@@ -13,9 +14,10 @@ pub fn add_repo(
     id: &SessionId,
     name: &str,
     spec: WorktreeSpec,
+    asker: Asker,
 ) {
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
-        return;
+        return asker.refused(crate::tools::NO_SESSION);
     };
     let verb = if name.contains("://") || name.contains('@') {
         "cloning"
@@ -24,7 +26,7 @@ pub fn add_repo(
     };
     let pending = state.begin(format!("{verb} {name}"));
     let (service, name) = (services.session.clone(), name.to_string());
-    added(spawner, pending, async move {
+    added(spawner, pending, asker, async move {
         service.add_repo(&session, &name, &spec, None).await
     });
 }
@@ -36,14 +38,15 @@ pub fn add_worktree(
     id: &SessionId,
     repo: &RepoId,
     spec: WorktreeSpec,
+    asker: Asker,
 ) {
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
-        return;
+        return asker.refused(crate::tools::NO_SESSION);
     };
     let branch = spec.branch.clone().unwrap_or_default();
     let pending = state.begin(format!("adding worktree {branch}"));
     let (service, repo) = (services.session.clone(), repo.clone());
-    added(spawner, pending, async move {
+    added(spawner, pending, asker, async move {
         service.add_worktree(&session, &repo, &spec, None).await
     });
 }
@@ -173,6 +176,7 @@ fn logged_added(
 fn added(
     spawner: &dyn Spawner,
     pending: u64,
+    asker: Asker,
     work: impl Future<Output = Result<Added, Error>> + Send + 'static,
 ) {
     spawner.spawn(Box::pin(async move {
@@ -180,21 +184,28 @@ fn added(
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);
-                match result {
-                    Ok(added) => {
-                        let id = added.worktree.session.clone();
-                        logged_added(services, spawner, &id, &added);
-                        for said in added.notes {
-                            state.say(said);
-                        }
-                        if let Some(open) = state.session.get_mut(&id) {
-                            open.add_worktree(added.repo, added.worktree);
-                        }
-                        persist_selection(state, services, spawner, &id);
-                        crate::workspace::follow(state, spawner);
-                    }
-                    Err(e) => state.failed(e),
+                let added = match result {
+                    Ok(added) => added,
+                    Err(e) => return asker.failed(state, e),
+                };
+                let id = added.worktree.session.clone();
+                let said = format!(
+                    "{} on {} at {} · worktree_id {}",
+                    added.worktree.branch,
+                    added.repo.project,
+                    added.worktree.path,
+                    added.worktree.id.as_str()
+                );
+                logged_added(services, spawner, &id, &added);
+                for one in added.notes {
+                    state.say(one);
                 }
+                if let Some(open) = state.session.get_mut(&id) {
+                    open.add_worktree(added.repo, added.worktree);
+                }
+                persist_selection(state, services, spawner, &id);
+                crate::workspace::follow(state, spawner);
+                asker.done(|| said);
             },
         ) as Continuation
     }));

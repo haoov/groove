@@ -232,7 +232,7 @@ pub(crate) fn set_auto_approve(
 }
 
 /// Writes the row's selected worktree to its leaf.
-pub(super) fn persist_selection(
+pub(crate) fn persist_selection(
     state: &AppState,
     services: &Services,
     spawner: &dyn Spawner,

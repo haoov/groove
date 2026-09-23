@@ -1,15 +1,19 @@
 //! What git is asked to do: the index, a commit, a push, a pull, a change thrown away.
+//! The surface and the agent ask through the same functions, and say who asked.
 
-use groove_types::TimelineKind;
-use groove_workspace_service::Buffer;
+use std::path::PathBuf;
+
+use groove_types::{SessionId, TimelineKind, Worktree};
+use groove_workspace_service::{Buffer, summary};
 
 use super::diff::{load, reread};
 use super::worktree_dir;
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// What one action does against the remote or the base.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Remote {
+pub(crate) enum Remote {
     Push,
     Pull,
 }
@@ -21,50 +25,139 @@ impl Remote {
             Remote::Pull => "pulling",
         }
     }
+
+    fn kind(self) -> TimelineKind {
+        match self {
+            Remote::Push => TimelineKind::Push,
+            Remote::Pull => TimelineKind::Pull,
+        }
+    }
+
+    fn said(self) -> &'static str {
+        match self {
+            Remote::Push => "pushed",
+            Remote::Pull => "pulled",
+        }
+    }
+}
+
+const NOTHING_STAGED: &str =
+    "nothing is staged: stage what this commit holds with git add, then call again";
+
+/// The index committed, then every side of the diff read again.
+pub(crate) fn commit(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    worktree: Worktree,
+    message: String,
+    asker: Asker,
+) {
+    if message.trim().is_empty() {
+        return asker.refused("a commit needs a message");
+    }
+    let session = worktree.session.clone();
+    let dir = PathBuf::from(&worktree.path);
+    let job = state.begin("committing");
+    let clears = asker.carries_a_box();
+    spawner.spawn(Box::pin(async move {
+        let done = match staged(&dir).await {
+            true => groove_workspace_service::commit(&dir, message.trim()).await,
+            false => Err(groove_types::Error::invalid(NOTHING_STAGED)),
+        };
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                let said = subject(&message);
+                if done.is_ok() {
+                    let kind = TimelineKind::Commit;
+                    logged(services, spawner, &session, kind, &said, &worktree.id);
+                    if clears {
+                        state.workspace.message = Buffer::default();
+                    }
+                    reread(state, spawner);
+                }
+                asker.answer(state, done, || format!("committed {said}"));
+            },
+        ) as Continuation
+    }));
+}
+
+/// Whether the index holds anything at all.
+async fn staged(dir: &std::path::Path) -> bool {
+    summary(dir)
+        .await
+        .unwrap_or_default()
+        .iter()
+        .any(|file| file.staged == Some(true))
 }
 
 /// One action against the remote. HEAD may move, so everything is read again.
-pub(super) fn remote(state: &mut AppState, spawner: &dyn Spawner, act: Remote) {
-    let Some(dir) = worktree_dir(state) else {
-        return;
-    };
-    let Some(worktree) = state
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .cloned()
-    else {
-        return;
-    };
+pub(crate) fn remote(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    worktree: Worktree,
+    act: Remote,
+    asker: Asker,
+) {
+    let session = worktree.session.clone();
+    let dir = PathBuf::from(&worktree.path);
     let job = state.begin(act.label());
-    let pushed = matches!(act, Remote::Push);
-    let id = worktree.id.clone();
-    let branch = worktree.branch.clone();
+    let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let done = match act {
             Remote::Push => groove_workspace_service::push(&dir, &worktree.branch).await,
             Remote::Pull => groove_workspace_service::pull(&dir).await,
         };
+        let status = service.status(&worktree).await.ok();
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                if let Err(e) = done {
-                    state.failed(e);
-                } else {
-                    let kind = match pushed {
-                        true => TimelineKind::Push,
-                        false => TimelineKind::Pull,
-                    };
-                    crate::timeline::log(state, services, spawner, kind, branch);
+                let branch = worktree.branch.clone();
+                if done.is_ok() {
+                    let kind = act.kind();
+                    logged(services, spawner, &session, kind, &branch, &worktree.id);
+                    if act == Remote::Push {
+                        state.workspace.poll.forget(&worktree.id);
+                    }
+                    if let (Some(open), Some(status)) = (state.session.get_mut(&session), status) {
+                        open.told(&worktree.id, status);
+                    }
+                    reread(state, spawner);
                 }
-                if pushed {
-                    state.workspace.poll.forget(&id);
-                }
-                crate::session::refresh_status(state, services, spawner);
-                reread(state, spawner);
+                asker.answer(state, done, || format!("{} {branch}", act.said()));
             },
         ) as Continuation
     }));
+}
+
+/// One line on the session's log, for the action just made.
+fn logged(
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    kind: TimelineKind,
+    subject: &str,
+    worktree: &groove_types::WorktreeId,
+) {
+    crate::timeline::logged(
+        services,
+        spawner,
+        session.clone(),
+        kind,
+        subject,
+        serde_json::json!({ "worktree": worktree.as_str() }),
+    );
+}
+
+/// What a commit is known by: the first line of its message.
+fn subject(message: &str) -> String {
+    message
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string()
 }
 
 /// Every change in the worktree, thrown away.
@@ -137,48 +230,4 @@ pub(super) fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path:
             },
         ) as Continuation
     }));
-}
-
-/// The index committed, then every side of the diff read again.
-pub(super) fn commit(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = worktree_dir(state) else {
-        return;
-    };
-    let message = state.workspace.message.text();
-    if message.trim().is_empty() {
-        return;
-    }
-    let job = state.begin("committing");
-    spawner.spawn(Box::pin(async move {
-        let done = groove_workspace_service::commit(&dir, message.trim()).await;
-        Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
-                state.end(job);
-                match done {
-                    Ok(()) => {
-                        let said = subject(&message);
-                        crate::timeline::log(state, services, spawner, TimelineKind::Commit, said);
-                        committed(state, spawner);
-                    }
-                    Err(e) => state.failed(e),
-                }
-            },
-        ) as Continuation
-    }));
-}
-
-/// What a commit is known by: the first line of its message.
-fn subject(message: &str) -> String {
-    message
-        .lines()
-        .next()
-        .unwrap_or_default()
-        .trim()
-        .to_string()
-}
-
-/// The message is spent, and every side of the diff is read again.
-pub(super) fn committed(state: &mut AppState, spawner: &dyn Spawner) {
-    state.workspace.message = Buffer::default();
-    reread(state, spawner);
 }

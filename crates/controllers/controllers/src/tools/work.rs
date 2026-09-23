@@ -4,26 +4,31 @@ use std::path::Path;
 
 use groove_agent_service::Call;
 use groove_types::Worktree;
-use groove_workspace_service::{COMMITS_MAX, commits, summary};
+use groove_workspace_service::{COMMITS_MAX, commits};
+
+use crate::workspace::diff::{against, files_in};
 use serde_json::{Value, json};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// Every worktree of the task, and what changed in each against its base.
+/// Every worktree of the task, and what changed in each, as the surface reads it.
 pub(super) fn diff(state: &AppState, spawner: &dyn Spawner, call: Call) {
     let Some(worktrees) = super::worktrees(state, &call) else {
         return call.reply.failed(super::NO_SESSION);
     };
-    let reply = call.reply;
+    let (mode, reply) = (state.workspace.mode, call.reply);
     spawner.spawn(Box::pin(async move {
         let mut out = Vec::new();
         for one in worktrees {
-            let files = summary(Path::new(&one.path)).await.unwrap_or_default();
+            let dir = Path::new(&one.path);
+            let rev = against(dir, mode, one.base_ref.as_deref()).await;
+            let files = files_in(dir, mode, &rev).await.unwrap_or_default();
             out.push(json!({
                 "worktree_id": one.id,
                 "repo": one.repo,
                 "branch": one.branch,
                 "target_branch": one.base_ref,
+                "against": mode.label(),
                 "files": files,
             }));
         }

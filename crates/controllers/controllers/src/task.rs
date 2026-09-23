@@ -5,9 +5,12 @@ mod finish;
 mod plan;
 mod status;
 
+pub(crate) use finish::finish;
 pub use plan::Landing;
+pub(crate) use time::log_hours;
 pub mod time;
 
+use crate::asker::Asker;
 use groove_session_service::task_session;
 use groove_task_service::{fetch, list, sources};
 use groove_types::{ExternalId, SessionId, SessionKind, StatusIntent, Task, TaskKey, Timestamp};
@@ -60,9 +63,11 @@ pub fn dispatch(
         Command::Sync { key } => sync(state, spawner, key),
         Command::Open { short_id } => open(state, services, spawner, &short_id),
         Command::LogHours { external_id } => {
-            time::log_hours(state, services, spawner, &external_id)
+            time::log_hours(state, services, spawner, &external_id, Asker::Ui)
         }
-        Command::Finish { session } => finish::finish(state, services, spawner, &session),
+        Command::Finish { session } => {
+            finish::finish(state, services, spawner, &session, Asker::Ui)
+        }
         Command::SetStatus {
             external_id,
             intent,

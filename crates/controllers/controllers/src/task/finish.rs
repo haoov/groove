@@ -2,29 +2,32 @@
 
 use groove_types::{SessionId, SessionKind, StatusIntent, TaskKey};
 
+use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner, session};
 
 /// The task done at its source, and only then its session taken away. Work that is
 /// not committed or pushed stops the teardown, and the status stands.
-pub(super) fn finish(
+pub(crate) fn finish(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     id: &SessionId,
+    asker: Asker,
 ) {
     let Some(open) = state.session.get(id) else {
-        return;
+        return asker.refused(crate::tools::NO_SESSION);
     };
     let SessionKind::Task { external_id } = &open.session.kind else {
-        return;
+        return asker.refused("this session works no task");
     };
     let key = match TaskKey::parse(external_id) {
         Ok(key) => key,
-        Err(e) => return state.failed(e),
+        Err(e) => return asker.failed(state, e),
     };
     let sources = groove_task_service::sources(state.config.config.as_ref());
     if sources.is_empty() {
-        return torn_down(state, services, spawner, id);
+        torn_down(state, services, spawner, id);
+        return asker.done(|| "no source holds it; its session goes".into());
     }
     let job = state.begin(format!("finishing {}", open.session.title));
     let id = id.clone();
@@ -34,8 +37,11 @@ pub(super) fn finish(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 match wrote {
-                    Ok(_) => torn_down(state, services, spawner, &id),
-                    Err(e) => state.failed(e),
+                    Ok(_) => {
+                        asker.done(|| "the task is done at its source; its session goes".into());
+                        torn_down(state, services, spawner, &id);
+                    }
+                    Err(e) => asker.failed(state, e),
                 }
             },
         ) as Continuation

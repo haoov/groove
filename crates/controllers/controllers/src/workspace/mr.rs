@@ -180,7 +180,7 @@ fn answered(
 }
 
 /// One MR in hand, from a read or from a write: onto the rows, the facts, the slice.
-pub(super) fn took(
+pub(crate) fn took(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,

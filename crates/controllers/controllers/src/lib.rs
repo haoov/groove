@@ -2,6 +2,7 @@
 //! continuations, the outside world arrives as events. One thread applies all three.
 
 pub mod agent;
+pub mod asker;
 pub mod config;
 pub mod session;
 pub mod task;
