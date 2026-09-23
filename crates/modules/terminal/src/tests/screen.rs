@@ -109,3 +109,37 @@ fn terminate_ends_a_waiting_child() {
     let code = wait(&rx);
     assert_ne!(code, 0);
 }
+
+#[test]
+fn the_wheel_reaches_a_program_that_reads_the_mouse() {
+    let read = "printf '\\033[?1000h\\033[?1006h'; read -r one; printf 'got %s' \"${one#?}\"";
+    let (term, rx) = run(read, 40, 4);
+    std::thread::sleep(Duration::from_millis(300));
+    term.wheel(1, (3, 2)).unwrap();
+    term.write(b"\n").unwrap();
+    wait(&rx);
+    let said = term.screen().line(1);
+    assert!(
+        said.contains("[<64;4;3M"),
+        "the wheel, at its own cell: {said}"
+    );
+}
+
+#[test]
+fn the_wheel_moves_a_plain_screen_and_types_nothing() {
+    let lines = "for i in 1 2 3 4 5 6 7 8; do echo line$i; done; read -r one";
+    let (term, rx) = run(lines, 20, 4);
+    std::thread::sleep(Duration::from_millis(300));
+    let before = term.screen().line(0);
+    term.wheel(2, (0, 0)).unwrap();
+    let after = term.screen().line(0);
+    assert_ne!(before, after, "the lines it holds moved");
+
+    term.write(b"\n").unwrap();
+    wait(&rx);
+    let said = term.screen().line(3);
+    assert!(
+        !said.contains("64;"),
+        "nothing was typed at the child: {said}"
+    );
+}

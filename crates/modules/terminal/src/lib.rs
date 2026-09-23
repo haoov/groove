@@ -15,7 +15,8 @@ use std::fmt;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use alacritty_terminal::term::{Config, Term};
+use alacritty_terminal::grid::Scroll;
+use alacritty_terminal::term::{Config, Term, TermMode};
 pub use groove_exec::pty::PtySpec;
 pub use groove_exec::{Error, Result};
 pub use groove_types::{AnsiPalette, Screen, ScreenCell};
@@ -82,6 +83,24 @@ impl Terminal {
         screen::snapshot(&lock(&self.term), &self.palette)
     }
 
+    /// The wheel over the grid. A program that reads the mouse is sent the wheel
+    /// itself, at `cell`; anything else scrolls the lines the terminal holds.
+    pub fn wheel(&self, lines: i32, cell: (usize, usize)) -> Result<()> {
+        if lines == 0 {
+            return Ok(());
+        }
+        let mut term = lock(&self.term);
+        let mode = *term.mode();
+        if mode.intersects(TermMode::MOUSE_MODE) {
+            drop(term);
+            return self.write(&reported(lines, cell, mode.contains(TermMode::SGR_MOUSE)));
+        }
+        if !mode.contains(TermMode::ALT_SCREEN) {
+            term.scroll_display(Scroll::Delta(lines));
+        }
+        Ok(())
+    }
+
     /// Asks the child to end with SIGTERM, even when its input is blocked. The exit hook fires when it has.
     pub fn terminate(&self) -> Result<()> {
         match self.pid {
@@ -104,7 +123,32 @@ impl fmt::Debug for Terminal {
     }
 }
 
+/// The wheel as a program that reads the mouse takes it: one report a line.
+fn reported(lines: i32, cell: (usize, usize), sgr: bool) -> Vec<u8> {
+    let button = match lines > 0 {
+        true => 64,
+        false => 65,
+    };
+    let (col, row) = (cell.0 + 1, cell.1 + 1);
+    let one = match sgr {
+        true => format!("\x1b[<{button};{col};{row}M"),
+        false => x10(button, col, row),
+    };
+    one.repeat(lines.unsigned_abs() as usize).into_bytes()
+}
+
+/// The older encoding, whose one byte a coordinate cannot take past 223.
+fn x10(button: u8, col: usize, row: usize) -> String {
+    let byte = |one: usize| char::from(32u8.saturating_add(one.min(223) as u8));
+    format!(
+        "\x1b[M{}{}{}",
+        char::from(32 + button),
+        byte(col),
+        byte(row)
+    )
+}
+
 /// A poisoned lock still holds a usable grid.
-pub(crate) fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

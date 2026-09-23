@@ -14,9 +14,11 @@ use crate::color::resolve;
 pub(crate) fn snapshot<L: EventListener>(term: &Term<L>, palette: &AnsiPalette) -> Screen {
     let content = term.renderable_content();
     let (cols, rows) = (term.columns(), term.screen_lines());
+    let scrolled = content.display_offset as i32;
     let mut cells = vec![blank(palette); cols * rows];
     for indexed in content.display_iter {
-        let (col, row) = (indexed.point.column.0, indexed.point.line.0);
+        let col = indexed.point.column.0;
+        let row = indexed.point.line.0 + scrolled;
         if row < 0 {
             continue;
         }
@@ -28,7 +30,7 @@ pub(crate) fn snapshot<L: EventListener>(term: &Term<L>, palette: &AnsiPalette) 
         content.mode.contains(TermMode::SHOW_CURSOR) && content.cursor.shape != CursorShape::Hidden;
     let cursor = shown.then(|| {
         let p = content.cursor.point;
-        (p.column.0, p.line.0.max(0) as usize)
+        (p.column.0, (p.line.0 + scrolled).max(0) as usize)
     });
     Screen {
         cols,
