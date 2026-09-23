@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let explore = std::env::args().any(|a| a == "--explore");
     let mut env = env();
     env.hooks = Some(hooks(runtime.handle(), event_loop.create_proxy())?);
-    env.tools = Some(groove_mcp::serve(runtime.handle())?);
+    env.tools = Some(tools(runtime.handle(), event_loop.create_proxy())?);
     let config = groove_controllers::config_service::load(&env.config_dir)?;
     let config_state = groove_controllers::config_service::State { config };
     let root = config_state.worktree_root(&env.home);
@@ -98,6 +98,22 @@ fn env() -> Env {
         hooks: None,
         tools: None,
     }
+}
+
+/// The loopback every agent asks its tools of. Each call is answered on the loop.
+fn tools(
+    handle: &tokio::runtime::Handle,
+    proxy: EventLoopProxy<Message>,
+) -> Result<groove_mcp::Server, Box<dyn std::error::Error>> {
+    let server = groove_mcp::serve(handle, move |call: groove_mcp::Call| {
+        let answer = Box::new(
+            move |state: &mut _, services: &Services, spawner: &dyn groove_controllers::Spawner| {
+                groove_controllers::tools::answer(state, services, spawner, call);
+            },
+        ) as Continuation;
+        let _ = proxy.send_event(Message::Continue(answer));
+    })?;
+    Ok(server)
 }
 
 /// The loopback every agent's hooks post to. Each post is one event in the loop.

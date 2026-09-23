@@ -1,6 +1,7 @@
 //! The loopback server an agent asks its tools of: MCP over HTTP and SSE.
 //! `GET /sse?task=<session>` opens the stream, `POST /message?sessionId=` carries the calls.
 
+mod call;
 mod rpc;
 mod stream;
 
@@ -9,6 +10,7 @@ mod tests;
 
 use std::convert::Infallible;
 use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 
 use groove_types::{Error, ErrorKind, Result};
 use http_body_util::{BodyExt, Limited};
@@ -21,6 +23,8 @@ use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 
 use stream::{Body, Connections, param, reply};
+
+pub use call::{Answer, Call, Reply};
 
 const BODY_MAX: usize = 1 << 20;
 
@@ -38,12 +42,14 @@ impl Server {
     }
 }
 
+type Sink = Arc<dyn Fn(Call) + Send + Sync>;
+
 /// Takes a free loopback port and serves it until the process ends.
-pub fn serve(handle: &Handle) -> Result<Server> {
+pub fn serve(handle: &Handle, on_call: impl Fn(Call) + Send + Sync + 'static) -> Result<Server> {
     let listener = handle.block_on(bind())?;
     let port = listener.local_addr().map_err(failed)?.port();
     let token = uuid::Uuid::new_v4().simple().to_string();
-    handle.spawn(accept(listener, token.clone()));
+    handle.spawn(accept(listener, token.clone(), Arc::new(on_call)));
     Ok(Server { port, token })
 }
 
@@ -57,17 +63,17 @@ fn failed(e: std::io::Error) -> Error {
 }
 
 /// One connection at a time off the socket, each served on its own task.
-async fn accept(listener: TcpListener, token: String) {
+async fn accept(listener: TcpListener, token: String, sink: Sink) {
     let live = Connections::default();
     loop {
         let Ok((stream, _)) = listener.accept().await else {
             continue;
         };
-        let (token, live) = (token.clone(), live.clone());
+        let (token, live, sink) = (token.clone(), live.clone(), sink.clone());
         tokio::spawn(async move {
             let service = service_fn(move |request| {
-                let (token, live) = (token.clone(), live.clone());
-                async move { Ok::<_, Infallible>(route(request, &token, &live).await) }
+                let (token, live, sink) = (token.clone(), live.clone(), sink.clone());
+                async move { Ok::<_, Infallible>(route(request, &token, &live, &sink).await) }
             });
             let _ = http1::Builder::new()
                 .serve_connection(TokioIo::new(stream), service)
@@ -77,19 +83,24 @@ async fn accept(listener: TcpListener, token: String) {
 }
 
 /// The two routes: the stream that answers, and the calls that ask.
-async fn route(request: Request<Incoming>, token: &str, live: &Connections) -> Response<Body> {
+async fn route(
+    request: Request<Incoming>,
+    token: &str,
+    live: &Connections,
+    sink: &Sink,
+) -> Response<Body> {
     if !bearer(&request, token) {
         return reply(StatusCode::UNAUTHORIZED);
     }
     match (request.method(), request.uri().path()) {
         (&Method::GET, "/sse") => stream::open(live, request.uri().query()),
-        (&Method::POST, "/message") => message(request, live).await,
+        (&Method::POST, "/message") => message(request, live, sink).await,
         _ => reply(StatusCode::NOT_FOUND),
     }
 }
 
 /// One JSON-RPC message. The answer goes back on the stream, never on this response.
-async fn message(request: Request<Incoming>, live: &Connections) -> Response<Body> {
+async fn message(request: Request<Incoming>, live: &Connections, sink: &Sink) -> Response<Body> {
     let Some(id) = param(request.uri().query(), "sessionId") else {
         return reply(StatusCode::BAD_REQUEST);
     };
@@ -105,7 +116,11 @@ async fn message(request: Request<Incoming>, live: &Connections) -> Response<Bod
     if call.get("id").is_none_or(serde_json::Value::is_null) {
         return reply(StatusCode::ACCEPTED);
     }
-    tokio::spawn(async move { open.send(&rpc::answer(&call, &open.session).await).await });
+    let sink = sink.clone();
+    tokio::spawn(async move {
+        open.send(&rpc::answer(&call, &open.session, &sink).await)
+            .await
+    });
     reply(StatusCode::ACCEPTED)
 }
 

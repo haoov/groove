@@ -7,5 +7,6 @@ mod reviews;
 mod session;
 mod tasks;
 mod timeline;
+mod tools;
 mod workspace;
 mod worktrees;

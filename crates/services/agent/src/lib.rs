@@ -8,7 +8,7 @@ mod tests;
 use groove_types::{AgentStatus, Error, HookKind, SessionActivity, SessionId, Timestamp, ToolCall};
 
 pub use groove_hooks::{Post, Receiver};
-pub use groove_mcp::Server;
+pub use groove_mcp::{Answer, Call, Reply, Server};
 pub use groove_terminal::Terminal;
 pub use groove_types::Screen;
 pub use launch::{LaunchPaths, launch, palette};

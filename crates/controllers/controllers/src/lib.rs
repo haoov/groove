@@ -5,6 +5,7 @@ pub mod agent;
 pub mod config;
 pub mod session;
 pub mod task;
+pub mod tools;
 pub mod workspace;
 
 mod command;

@@ -9,8 +9,16 @@ use crate::{Server, serve};
 const SESSION: &str = "gh-haoov-groove-50";
 
 fn started() -> (Runtime, Server) {
+    answering(|call| {
+        call.reply
+            .said(format!("{} on {}", call.tool, call.session))
+    })
+}
+
+/// A server whose calls the given closure answers, as the app would.
+fn answering(on_call: impl Fn(crate::Call) + Send + Sync + 'static) -> (Runtime, Server) {
     let runtime = Runtime::new().expect("a runtime");
-    let server = serve(runtime.handle()).expect("a loopback port");
+    let server = serve(runtime.handle(), on_call).expect("a loopback port");
     (runtime, server)
 }
 
@@ -199,5 +207,76 @@ fn a_method_we_do_not_answer_says_so() {
         let (mut stream, post) = connected(&server).await;
         ask(&server, &post, call(4, "resources/list", json!({}))).await;
         assert_eq!(answer(&mut stream).await["error"]["code"], -32601);
+    });
+}
+
+#[test]
+fn a_call_reaches_the_app_with_its_session_and_its_arguments() {
+    let (runtime, server) = answering(|call| {
+        let said = json!({
+            "session": call.session,
+            "tool": call.tool,
+            "worktree": call.text("worktree_id"),
+        });
+        call.reply.json(&said);
+    });
+    runtime.block_on(async {
+        let (mut stream, post) = connected(&server).await;
+        let asked = json!({
+            "name": "get_mr_state",
+            "arguments": { "worktree_id": "w-1" },
+        });
+        assert_eq!(ask(&server, &post, call(9, "tools/call", asked)).await, 202);
+        let answer = answer(&mut stream).await;
+        assert_eq!(answer["result"]["isError"], false);
+        let said: Value = serde_json::from_str(
+            answer["result"]["content"][0]["text"]
+                .as_str()
+                .expect("the text"),
+        )
+        .expect("json");
+        assert_eq!(said["session"], SESSION);
+        assert_eq!(said["tool"], "get_mr_state");
+        assert_eq!(said["worktree"], "w-1");
+    });
+}
+
+#[test]
+fn a_tool_that_failed_says_so_in_its_answer() {
+    let (runtime, server) = answering(|call| call.reply.failed("no worktree by that id"));
+    runtime.block_on(async {
+        let (mut stream, post) = connected(&server).await;
+        let asked = json!({ "name": "get_mr_state", "arguments": {} });
+        ask(&server, &post, call(1, "tools/call", asked)).await;
+        let answer = answer(&mut stream).await;
+        assert_eq!(answer["result"]["isError"], true);
+        assert_eq!(
+            answer["result"]["content"][0]["text"],
+            "no worktree by that id"
+        );
+    });
+}
+
+#[test]
+fn a_tool_groove_does_not_have_is_refused_before_the_app_sees_it() {
+    let (runtime, server) = answering(|call| call.reply.said("this should never run"));
+    runtime.block_on(async {
+        let (mut stream, post) = connected(&server).await;
+        let asked = json!({ "name": "rm_rf", "arguments": {} });
+        ask(&server, &post, call(1, "tools/call", asked)).await;
+        let answer = answer(&mut stream).await;
+        assert_eq!(answer["error"]["code"], -32602);
+    });
+}
+
+#[test]
+fn an_app_that_never_answers_fails_the_call() {
+    let (runtime, server) = answering(|call| drop(call.reply));
+    runtime.block_on(async {
+        let (mut stream, post) = connected(&server).await;
+        let asked = json!({ "name": "get_active_task", "arguments": {} });
+        ask(&server, &post, call(1, "tools/call", asked)).await;
+        let answer = answer(&mut stream).await;
+        assert_eq!(answer["error"]["code"], -32603);
     });
 }
