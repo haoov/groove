@@ -39,7 +39,7 @@ pub(super) fn read(state: &AppState, spawner: &dyn Spawner, call: Call) {
         let dir = std::path::PathBuf::from(&worktree.path);
         let read = match &commit {
             Some(sha) => opened_at(&dir, sha, &path).await,
-            None => opened(&dir, &path).await,
+            None => opened(&dir, &path, groove_workspace_service::HEAD).await,
         };
         Box::new(
             move |_: &mut AppState, _: &Services, _: &dyn Spawner| match read {

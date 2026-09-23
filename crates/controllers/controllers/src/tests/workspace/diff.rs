@@ -325,3 +325,97 @@ fn a_file_marked_read_is_remembered_by_the_session() {
         .expect("the contents");
     assert!(gone.read.is_empty(), "marked again takes it off");
 }
+
+#[test]
+fn the_base_mode_holds_what_the_branch_committed_and_working_does_not() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    based(&mut state, "main");
+
+    std::fs::write(at.join("a.txt"), "one\ntwo\n").unwrap();
+    sh(at, &["add", "-A"]);
+    sh(at, &["commit", "-m", "fix: one"]);
+    dispatch(
+        Cmd::Workspace(workspace::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(
+        state.workspace.files.is_empty(),
+        "working holds only what is uncommitted: {:?}",
+        state.workspace.files
+    );
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::SetMode {
+            mode: groove_types::DiffMode::Base,
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.pending.is_empty() && !s.workspace.files.is_empty()
+    });
+    let files = &state.workspace.files;
+    assert_eq!(files.len(), 1, "{files:?}");
+    assert_eq!(files[0].path, "a.txt");
+    assert_eq!(files[0].status, FileStatus::Modified);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+}
+
+#[test]
+fn the_base_mode_holds_what_is_uncommitted_as_well() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    based(&mut state, "main");
+
+    std::fs::write(at.join("a.txt"), "one\ntwo\n").unwrap();
+    sh(at, &["add", "-A"]);
+    sh(at, &["commit", "-m", "fix: one"]);
+    std::fs::write(at.join("b.txt"), "fresh\n").unwrap();
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::SetMode {
+            mode: groove_types::DiffMode::Base,
+        }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.pending.is_empty() && s.workspace.files.len() > 1
+    });
+    let paths: Vec<&str> = state
+        .workspace
+        .files
+        .iter()
+        .map(|file| file.path.as_str())
+        .collect();
+    assert_eq!(
+        paths,
+        ["a.txt", "b.txt"],
+        "the commit and the untracked file"
+    );
+}
+
+/// The branch the selected worktree merges into, as a task's own would carry it.
+fn based(state: &mut crate::AppState, branch: &str) {
+    let id = state.session.selected.clone().expect("a session");
+    let open = state.session.get_mut(&id).expect("the session");
+    for worktree in &mut open.worktrees {
+        worktree.base_ref = Some(branch.to_string());
+    }
+}

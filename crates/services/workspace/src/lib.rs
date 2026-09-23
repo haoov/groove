@@ -37,8 +37,8 @@ pub use notes::merged;
 pub use paths::{PathOp, path_op};
 pub use propose::{Text, text_of};
 pub use read::{
-    COMMITS_MAX, FOUND_MAX, PATHS_MAX, at_commit, changes, commits, derived, grep, opened,
-    opened_at, painted, paths, reopened, summary,
+    COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, at_commit, base_rev, changes, commits, derived, grep,
+    opened, opened_at, painted, paths, reopened, summary, summary_against,
 };
 pub use service::{Delivered, Said, Service};
 

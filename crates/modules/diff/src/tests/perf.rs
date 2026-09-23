@@ -18,7 +18,9 @@ fn source(lines: usize) -> String {
 
 fn read(dir: &Path, path: &str) -> Opened {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
-    runtime.block_on(opened(dir, path)).expect("the file opens")
+    runtime
+        .block_on(opened(dir, path, "HEAD"))
+        .expect("the file opens")
 }
 
 #[test]

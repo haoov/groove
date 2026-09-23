@@ -40,6 +40,8 @@ pub enum Cursor {
 pub enum Target {
     /// A rail row.
     Session(SessionId),
+    /// What the change is read against.
+    Mode(groove_types::DiffMode),
     /// A tab of the workspace.
     Tab(Tab),
     /// One of the header's two pickers.

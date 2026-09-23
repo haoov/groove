@@ -76,3 +76,62 @@ fn whole_file(dir: &Path, path: &str) -> (Option<u32>, Option<u32>) {
         Err(_) => (None, None),
     }
 }
+
+/// Every file the branch changed since `rev`, committed or not, untracked included.
+pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
+    let git = Git::at(dir);
+    let counts = git.numstat(rev).await?;
+    let paths: Vec<String> = counts.iter().map(|one| one.path.clone()).collect();
+    let before = git.blobs(rev, &paths).await.unwrap_or_default();
+    let staged = staged_now(&git).await;
+    let mut files: Vec<FileDiff> = counts
+        .iter()
+        .map(|one| against(one, dir, &before, &staged))
+        .collect();
+    files.extend(untracked(&git, dir).await);
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(files)
+}
+
+/// One file of that change: its counts, and what it became.
+fn against(
+    counts: &Counts,
+    dir: &Path,
+    before: &std::collections::HashMap<String, String>,
+    staged: &std::collections::HashMap<String, bool>,
+) -> FileDiff {
+    let path = unquote_path(&counts.path);
+    let held = before.contains_key(&path);
+    let gone = !dir.join(&path).exists();
+    FileDiff {
+        added: counts.added.unwrap_or(0),
+        deleted: counts.deleted.unwrap_or(0),
+        status: match (held, gone) {
+            (false, _) => FileStatus::Added,
+            (true, true) => FileStatus::Deleted,
+            (true, false) => FileStatus::Modified,
+        },
+        staged: staged.get(&path).copied(),
+        path,
+    }
+}
+
+/// What the index holds, for the files it holds anything of.
+async fn staged_now(git: &Git) -> std::collections::HashMap<String, bool> {
+    git.status()
+        .await
+        .unwrap_or_default()
+        .iter()
+        .map(|change| (unquote_path(&change.path), change.is_staged()))
+        .collect()
+}
+
+/// The files git does not track, which no rev can be compared against.
+async fn untracked(git: &Git, dir: &Path) -> Vec<FileDiff> {
+    let changes = git.status().await.unwrap_or_default();
+    changes
+        .iter()
+        .filter(|change| change.is_untracked())
+        .map(|change| file(change, &[], dir))
+        .collect()
+}

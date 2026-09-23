@@ -1,12 +1,29 @@
 use crate::{RepoId, Timestamp, WorktreeId};
 
+/// What the change is read against.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DiffMode {
+    /// Where the branch left the one it is based on.
     #[default]
     Base,
+    /// What is not committed yet.
     Working,
+    /// The branch's own tip on origin.
     VsRemote,
+}
+
+impl DiffMode {
+    /// The modes the change is read in, in the order they are offered.
+    pub const ALL: [DiffMode; 2] = [DiffMode::Base, DiffMode::Working];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            DiffMode::Base => "base",
+            DiffMode::Working => "working",
+            DiffMode::VsRemote => "remote",
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]

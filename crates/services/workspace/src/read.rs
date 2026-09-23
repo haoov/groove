@@ -10,9 +10,26 @@ pub async fn summary(dir: &Path) -> Result<Vec<FileDiff>> {
     groove_diff::summary(dir).await
 }
 
+/// Every file the branch changed since `rev`, committed or not.
+pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
+    groove_diff::summary_against(dir, rev).await
+}
+
+/// Where the branch left the one it is based on, or the clone's own default branch.
+pub async fn base_rev(dir: &Path, base: Option<&str>) -> String {
+    groove_git::Git::at(dir)
+        .merge_base(base.unwrap_or(ORIGIN_HEAD), HEAD)
+        .await
+        .unwrap_or_else(|_| HEAD.to_string())
+}
+
+/// The rev the working mode reads against.
+pub const HEAD: &str = "HEAD";
+const ORIGIN_HEAD: &str = "origin/HEAD";
+
 /// Every changed file aligned, with no document held.
-pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
-    groove_diff::changes(dir, files).await
+pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Changes {
+    groove_diff::changes(dir, files, rev).await
 }
 
 /// The newest commits of the branch, the base's own marked as its.
@@ -85,8 +102,8 @@ pub async fn painted(dir: &Path, paths: Vec<String>) -> Vec<(String, Painted)> {
 }
 
 /// One file of the worktree, both sides and the rows between them.
-pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
-    groove_diff::opened(dir, path).await
+pub async fn opened(dir: &Path, path: &str, rev: &str) -> Result<Opened> {
+    groove_diff::opened(dir, path, rev).await
 }
 
 /// The same file, against the HEAD side already read for it.

@@ -31,8 +31,8 @@ pub struct Opened {
 }
 
 /// The file at `path` as it is on disk against the version in HEAD.
-pub async fn opened(dir: &Path, path: &str) -> Result<Opened> {
-    let before = committed(dir, path).await;
+pub async fn opened(dir: &Path, path: &str, rev: &str) -> Result<Opened> {
+    let before = committed(dir, path, rev).await;
     let after = working(dir, path);
     Ok(from_text(path, &before, &after))
 }
@@ -91,9 +91,9 @@ pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
 }
 
 /// The file in HEAD, or nothing when it was never committed.
-async fn committed(dir: &Path, path: &str) -> String {
+async fn committed(dir: &Path, path: &str, rev: &str) -> String {
     Git::at(dir)
-        .show("HEAD", path)
+        .show(rev, path)
         .await
         .unwrap_or_else(|_| String::new())
 }

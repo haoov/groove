@@ -3,8 +3,8 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::WorktreeId;
-use groove_workspace_service::{changes, painted, summary};
+use groove_types::{DiffMode, WorktreeId};
+use groove_workspace_service::{HEAD, base_rev, changes, painted, summary, summary_against};
 
 use super::editor::{Head, reopen};
 use super::{directory, selected, stale, worktree_dir};
@@ -111,11 +111,17 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
         return;
     };
     let (id, dir) = (worktree.id.clone(), PathBuf::from(&worktree.path));
+    let base = worktree.base_ref.clone();
+    let mode = state.workspace.mode;
     let job = state.begin("changed files");
     spawner.spawn(Box::pin(async move {
-        let files = summary(&dir).await;
+        let rev = against(&dir, mode, base.as_deref()).await;
+        let files = match mode {
+            DiffMode::Working => summary(&dir).await,
+            _ => summary_against(&dir, &rev).await,
+        };
         let read = match &files {
-            Ok(files) => changes(&dir, files).await,
+            Ok(files) => changes(&dir, files, &rev).await,
             Err(_) => Default::default(),
         };
         let gone = !dir.exists();
@@ -130,17 +136,43 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
+/// What the change is read against; the rows and the open file follow it.
+pub(super) fn set_mode(state: &mut AppState, spawner: &dyn Spawner, mode: DiffMode) {
+    if state.workspace.mode == mode {
+        return;
+    }
+    state.workspace.mode = mode;
+    reread(state, spawner);
+}
+
+/// The rev the change is read against, for the mode in hand.
+pub(super) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<&str>) -> String {
+    match mode {
+        DiffMode::Working => HEAD.to_string(),
+        _ => base_rev(dir, base).await,
+    }
+}
+
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(worktree) = selected(state) else {
         return state.workspace.clear();
     };
     if stale(state) {
+        state.workspace.mode = opens_in(state);
         state.workspace.opened = None;
         load(state, spawner);
     }
     if state.workspace.watching.as_ref() != Some(&worktree) {
         watch(state, spawner, worktree);
+    }
+}
+
+/// A review opens on the whole change; every other session on what is not committed.
+fn opens_in(state: &AppState) -> DiffMode {
+    match state.session.selected().map(|open| &open.session.kind) {
+        Some(groove_types::SessionKind::Review { .. }) => DiffMode::Base,
+        _ => DiffMode::Working,
     }
 }
 

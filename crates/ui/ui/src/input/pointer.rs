@@ -119,6 +119,7 @@ fn acted(
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => opened(ui, app, path, metrics),
         Some(Target::View(view)) => viewing(ui, app, view, metrics),
+        Some(Target::Mode(mode)) => vec![Command::Workspace(workspace::Command::SetMode { mode })],
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
         Some(Target::Note(origin, button)) => surface::noted(ui, app, origin, button),
@@ -278,7 +279,7 @@ fn focused(target: &Option<Target>, focus: Focus) -> Focus {
     match target {
         Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
         Some(Target::Agent) => Focus::Agent,
-        Some(Target::Code) | Some(Target::View(_)) => Focus::Workspace,
+        Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
             Target::File(_)
             | Target::Stage(_)

@@ -14,7 +14,7 @@ mod write;
 
 use std::path::PathBuf;
 
-use groove_types::{Edit, Selection, WorktreeId};
+use groove_types::{DiffMode, Edit, Selection, WorktreeId};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{copy, edit_file, open_file, paste, save_file};
@@ -31,6 +31,8 @@ pub use notes::Act as NoteAct;
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
     Load,
+    /// `workspace.set_mode`: what the change is read against, then read it again.
+    SetMode { mode: DiffMode },
     /// `workspace.open_file`: one file's two sides and the rows between them.
     OpenFile {
         path: String,
@@ -103,6 +105,7 @@ impl Command {
     pub fn id(&self) -> &'static str {
         match self {
             Command::Load => "workspace.load",
+            Command::SetMode { .. } => "workspace.set_mode",
             Command::OpenFile { .. } => "workspace.open_file",
             Command::MarkRead { .. } => "workspace.mark_read",
             Command::Grep { .. } => "workspace.grep",
@@ -169,6 +172,7 @@ pub fn dispatch(
     }
     match command {
         Command::Load => reread(state, spawner),
+        Command::SetMode { mode } => diff::set_mode(state, spawner, mode),
         Command::OpenFile { path, at } => open_file(state, spawner, path, at),
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
         Command::Grep { query, under } => grep(state, spawner, query, under),
@@ -220,6 +224,16 @@ pub fn stale(state: &AppState) -> bool {
         Some(worktree) => !state.workspace.holds(&worktree),
         None => false,
     }
+}
+
+/// The branch the selected worktree merges into.
+pub(super) fn selected_base(state: &AppState) -> Option<String> {
+    state
+        .session
+        .selected()?
+        .selected_worktree()?
+        .base_ref
+        .clone()
 }
 
 pub(super) fn selected(state: &AppState) -> Option<WorktreeId> {

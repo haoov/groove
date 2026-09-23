@@ -154,3 +154,35 @@ fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
     let open = state.session.get(&id).expect("the review's session");
     assert_eq!(open.repos.len(), 1, "the pool's own clone, not a new one");
 }
+
+#[test]
+fn a_review_opens_on_the_whole_change_and_a_task_on_what_is_uncommitted() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    state.workspace.reviews = vec![asked()];
+
+    opened(&mut state, &services, &spawner);
+    let id = SessionId::new("review-g-mayo-7");
+    until(&spawner, &services, &mut state, |s| {
+        s.session
+            .get(&id)
+            .is_some_and(|open| !open.worktrees.is_empty())
+    });
+    assert_eq!(
+        state.workspace.mode,
+        groove_types::DiffMode::Base,
+        "a review reads the branch's whole change"
+    );
+
+    let explorer = crate::tests::fixture::worktree(&mut state, &services, &spawner);
+    assert!(!explorer.is_empty());
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert_eq!(
+        state.workspace.mode,
+        groove_types::DiffMode::Working,
+        "every other session reads what is not committed"
+    );
+}

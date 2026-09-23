@@ -220,9 +220,9 @@ fn widest(file: &Aligned) -> usize {
 }
 
 /// Every changed file aligned, the HEAD sides read in one git process.
-pub async fn changes(dir: &Path, files: &[FileDiff]) -> Changes {
+pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Changes {
     let paths: Vec<String> = files.iter().map(|file| file.path.clone()).collect();
-    let heads = Git::at(dir).blobs("HEAD", &paths).await.unwrap_or_default();
+    let heads = Git::at(dir).blobs(rev, &paths).await.unwrap_or_default();
     let aligned = paths
         .iter()
         .map(|path| {

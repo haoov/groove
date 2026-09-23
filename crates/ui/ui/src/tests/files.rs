@@ -319,3 +319,59 @@ fn the_strip_names_the_two_tabs_the_workspace_has() {
     assert!(texts.iter().any(|one| one == "file"), "{texts:?}");
     assert!(!texts.iter().any(|one| one == "diff"), "{texts:?}");
 }
+
+#[test]
+fn the_list_says_what_the_change_is_read_against_and_picks_one() {
+    let app = with_files(&["a.txt"]);
+    let mut ui = on_diff();
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let drawn: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|run| run.text.clone())
+        .collect();
+    for mode in groove_types::DiffMode::ALL {
+        assert!(
+            drawn.iter().any(|one| one == mode.label()),
+            "{mode:?}: {drawn:?}"
+        );
+        assert!(hits.rect_of(&Target::Mode(mode)).is_some(), "{mode:?}");
+    }
+
+    let base = hits
+        .rect_of(&Target::Mode(groove_types::DiffMode::Base))
+        .expect("the base mode");
+    assert_eq!(
+        click(base, &mut ui, &app, &hits),
+        [groove_controllers::Command::Workspace(
+            groove_controllers::workspace::Command::SetMode {
+                mode: groove_types::DiffMode::Base
+            }
+        )]
+    );
+}
+
+#[test]
+fn the_rule_under_the_heading_runs_the_whole_width() {
+    let app = with_files(&["a.txt"]);
+    let ui = on_diff();
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let mode = hits
+        .rect_of(&Target::Mode(groove_types::DiffMode::Base))
+        .expect("the base mode");
+    let sidebar = Layout::of(window(), &ui).sidebar;
+    let under = frame.layers()[0]
+        .quads
+        .iter()
+        .filter(|quad| quad.rect.h <= 1.0 && quad.rect.x >= sidebar.x)
+        .filter(|quad| quad.rect.y > mode.y && quad.rect.y <= mode.bottom())
+        .max_by(|a, b| a.rect.w.total_cmp(&b.rect.w))
+        .expect("a rule under the heading");
+    assert!(
+        under.rect.right() >= mode.right(),
+        "it runs past the modes: {} against {}",
+        under.rect.right(),
+        mode.right()
+    );
+    assert!(under.rect.w >= sidebar.w - 1.0, "{}", under.rect.w);
+}

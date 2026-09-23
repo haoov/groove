@@ -152,7 +152,7 @@ async fn reading_the_worktree_leaves_git_s_own_state_alone() {
 
     for _ in 0..3 {
         crate::summary(dir.path()).await.expect("a summary");
-        crate::opened(dir.path(), "src/lib.rs")
+        crate::opened(dir.path(), "src/lib.rs", "HEAD")
             .await
             .expect("the file");
     }

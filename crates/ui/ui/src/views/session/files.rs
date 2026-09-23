@@ -4,6 +4,7 @@
 mod bar;
 mod commits;
 pub(crate) mod explorer;
+mod heading;
 mod notes;
 mod results;
 mod rows;
@@ -12,7 +13,6 @@ mod tree;
 pub(crate) use tree::{Listing, listing, reads_as};
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::FOUND_MAX;
 use groove_gfx::Rect;
 use groove_types::FileDiff;
 
@@ -22,7 +22,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::style::Role;
-use crate::widget::{button, elide, hairline, row, tabs};
+use crate::widget::{button, elide, row, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.sidebar;
@@ -108,8 +108,8 @@ fn changed_files(ctx: &mut Ctx, rect: Rect, strip: Rect, app: &AppState, ui: &Ui
     let grep = ui.session.bar.greps();
     let head = Rect::new(rect.x, strip.bottom(), rect.w, ctx.tokens.header);
     match grep {
-        true => found(ctx, head, app.workspace.found.len()),
-        false => heading(ctx, head, files.len(), ui),
+        true => heading::found(ctx, head, app.workspace.found.len()),
+        false => heading::heading(ctx, head, files.len(), app, ui),
     }
     let under = ctx.layout.commit;
     let body = Rect::new(rect.x, head.bottom(), rect.w, under.y - head.bottom());
@@ -216,43 +216,6 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
     ));
     left.truncate(ROWS_MAX);
     left
-}
-
-/// How much the search across the worktree has turned up.
-fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
-    let style = ctx.styles.heading(Role::Faint);
-    let label = match count {
-        0 => "NOTHING FOUND".to_string(),
-        n if n >= FOUND_MAX => format!("FOUND {n}+"),
-        n => format!("FOUND · {n}"),
-    };
-    row(ctx, rect, ctx.tokens.md, &label, style);
-    hairline(ctx, rect, ctx.styles.line());
-}
-
-/// The two scopes, the one in use lit and counted, each a tab to click.
-fn heading(ctx: &mut Ctx, rect: Rect, count: usize, ui: &Ui) {
-    let labels: Vec<String> = Scope::ALL
-        .iter()
-        .map(|scope| scoped(*scope, count, ui.session.scope == *scope))
-        .collect();
-    let shown: Vec<&str> = labels.iter().map(String::as_str).collect();
-    let at = Scope::ALL
-        .iter()
-        .position(|scope| *scope == ui.session.scope)
-        .unwrap_or(0);
-    for (scope, line) in Scope::ALL.iter().zip(tabs(ctx, rect, &shown, at)) {
-        ctx.hit(line, Target::Scope(*scope));
-    }
-}
-
-/// A scope's own name, with what the list holds under it.
-fn scoped(scope: Scope, count: usize, here: bool) -> String {
-    match (here, count) {
-        (true, n) if n >= ROWS_MAX => format!("{} · {n}+", scope.label()),
-        (true, n) if n > 0 => format!("{} · {n}", scope.label()),
-        _ => scope.label().to_string(),
-    }
 }
 
 /// One word at the end of a row, with a ground of its own under the pointer.

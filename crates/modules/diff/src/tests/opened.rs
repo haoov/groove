@@ -7,7 +7,9 @@ use crate::opened;
 
 fn open(dir: &std::path::Path, path: &str) -> crate::Opened {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
-    runtime.block_on(opened(dir, path)).expect("the file opens")
+    runtime
+        .block_on(opened(dir, path, "HEAD"))
+        .expect("the file opens")
 }
 
 #[test]

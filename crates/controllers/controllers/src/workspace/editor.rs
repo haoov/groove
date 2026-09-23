@@ -189,10 +189,13 @@ pub(super) fn read(
     };
     let job = state.begin(format!("opening {path}"));
     let sha = state.workspace.commit.as_ref().map(|one| one.sha.clone());
+    let mode = state.workspace.mode;
+    let base = super::selected_base(state);
     spawner.spawn(Box::pin(async move {
+        let rev = super::diff::against(&dir, mode, base.as_deref()).await;
         let file = match sha {
             Some(sha) => opened_at(&dir, &sha, &path).await,
-            None => sides(&dir, &path, old).await,
+            None => sides(&dir, &path, old, &rev).await,
         };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
@@ -255,10 +258,10 @@ fn replaced(state: &mut AppState, mut file: Opened, at: Option<Selection>) {
     state.workspace.moved();
 }
 
-/// The file's two sides, reading HEAD only when the old one is not in hand.
-async fn sides(dir: &Path, path: &str, old: Option<Document>) -> Result<Opened> {
+/// The file's two sides, reading the old one only when it is not in hand.
+async fn sides(dir: &Path, path: &str, old: Option<Document>, rev: &str) -> Result<Opened> {
     match old {
         Some(old) => Ok(reopened(dir, path, old)),
-        None => opened(dir, path).await,
+        None => opened(dir, path, rev).await,
     }
 }
