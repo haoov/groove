@@ -19,6 +19,7 @@ pub const USER: &str = "user";
 const BUILT_IN: &[(&str, &str)] = &[
     ("close-task", include_str!("core/close-task.md")),
     ("co-review", include_str!("core/co-review.md")),
+    ("convert-explorer", include_str!("core/convert-explorer.md")),
     ("create-task", include_str!("core/create-task.md")),
     ("fix-ci", include_str!("core/fix-ci.md")),
     ("fix-notes", include_str!("core/fix-notes.md")),

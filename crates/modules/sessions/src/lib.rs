@@ -1,6 +1,7 @@
 //! Sessions on disk: the `sessions` row, its `session_state` leaf, its repos.
 
 mod error;
+mod promote;
 mod rows;
 mod state;
 
@@ -13,6 +14,7 @@ use groove_types::{
     RepoId, Session, SessionId, SessionKind, StatusIntent, Task, Timestamp, WorktreeId,
 };
 
+pub use promote::Moved;
 use rows::SessionRow;
 
 /// The store, cheap to clone: a handle on the pool.

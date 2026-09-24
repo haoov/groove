@@ -1,10 +1,12 @@
 //! The `task` controller: one function per user action on the `task` service.
 
+mod adopt;
 pub mod attention;
 mod finish;
 mod plan;
 mod status;
 
+pub use adopt::adopt;
 pub(crate) use finish::finish;
 pub use plan::Landing;
 pub(crate) use time::log_hours;
@@ -122,7 +124,7 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
 }
 
 /// The open session working this task, if one already is.
-fn working(state: &AppState, task: &Task) -> Option<SessionId> {
+pub(super) fn working(state: &AppState, task: &Task) -> Option<SessionId> {
     state
         .session
         .open

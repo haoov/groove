@@ -279,5 +279,18 @@ fn rows() -> Vec<Tool> {
             "Close the task: every worktree merged or closed, and the source told.",
             takes(&[], vec![task()]),
         ),
+        write(
+            "adopt_task",
+            "Make this explorer the session of a task you have filed at its source: a \
+             Notion page or a GitHub issue you created. The session keeps its repos and \
+             its worktrees. Groove never files the task itself.",
+            takes(
+                &["task"],
+                vec![(
+                    "task",
+                    text("The task's URL, as its source shows it, or its id."),
+                )],
+            ),
+        ),
     ]
 }

@@ -14,9 +14,25 @@ pub fn session_uuid(session_id: &str) -> String {
     uuid::Uuid::new_v5(&NAMESPACE, session_id.as_bytes()).to_string()
 }
 
+/// The conversation a session carries on: the one an earlier session handed it, or its own.
+pub fn thread_of(launch_dir: &Path, session_id: &str) -> String {
+    let handed = launch_dir.join(format!("{session_id}.thread"));
+    match std::fs::read_to_string(handed) {
+        Ok(uuid) if !uuid.trim().is_empty() => uuid.trim().to_string(),
+        _ => session_uuid(session_id),
+    }
+}
+
+/// Hands `from`'s conversation to `to`, for `to`'s next launch to resume.
+pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> std::io::Result<()> {
+    std::fs::create_dir_all(launch_dir)?;
+    let uuid = thread_of(launch_dir, from);
+    std::fs::write(launch_dir.join(format!("{to}.thread")), uuid)
+}
+
 /// `--session-id` on the first launch, `--resume` once Claude has a file for it.
 pub(crate) fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
-    let uuid = session_uuid(session.id.as_str());
+    let uuid = thread_of(paths.launch_dir, session.id.as_str());
     let flag = if session_file(paths.home, paths.cwd, &uuid).is_file() {
         "--resume"
     } else {

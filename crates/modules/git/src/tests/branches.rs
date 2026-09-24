@@ -65,3 +65,45 @@ async fn switch_creates_or_checks_out_and_prune_forgets_a_removed_worktree() {
     assert!(!sh(&fx.work, &["branch", "--list", "tmp-2"]).contains("tmp-2"));
     assert!(git.branch_delete("tmp-2").await.is_err(), "already gone");
 }
+
+#[tokio::test]
+async fn a_worktree_renamed_and_moved_keeps_its_work_and_goes_back_the_same_way() {
+    let fx = Fixture::new();
+    let git = fx.git();
+    git.branch_create("explorer/grid", "HEAD").await.unwrap();
+    let from = fx
+        .root
+        .path()
+        .join("worktrees/explorer-1/work/explorer/grid");
+    git.worktree_add(&from, "explorer/grid").await.unwrap();
+    std::fs::write(from.join("kept.txt"), "work in hand\n").unwrap();
+
+    let to = fx.root.path().join("worktrees/gh-50/work/feat/grid-gh-50");
+    let inner = crate::Git::at(&from);
+    inner
+        .branch_rename("explorer/grid", "feat/grid-gh-50")
+        .await
+        .unwrap();
+    git.worktree_move(&from, &to).await.unwrap();
+    assert!(!from.exists(), "the old path is gone");
+    assert_eq!(
+        crate::Git::at(&to).current_branch().await.unwrap(),
+        "feat/grid-gh-50"
+    );
+    assert_eq!(
+        std::fs::read_to_string(to.join("kept.txt")).unwrap(),
+        "work in hand\n",
+        "and what was not committed came with it"
+    );
+
+    git.worktree_move(&to, &from).await.unwrap();
+    crate::Git::at(&from)
+        .branch_rename("feat/grid-gh-50", "explorer/grid")
+        .await
+        .unwrap();
+    assert_eq!(
+        crate::Git::at(&from).current_branch().await.unwrap(),
+        "explorer/grid",
+        "undone step by step"
+    );
+}

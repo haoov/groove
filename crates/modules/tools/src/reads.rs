@@ -63,8 +63,9 @@ fn about() -> Vec<Tool> {
         ),
         read(
             "get_task_template",
-            "The headings a new task starts from, as markdown. Empty when the source \
-             holds no template. Mirror them in the body you draft.",
+            "The headings a new task starts from, as markdown, empty when the source \
+             holds no template, and `file_at`: where to file it and what to set on it. \
+             Mirror the headings in the body you draft.",
             takes(
                 &[],
                 vec![(

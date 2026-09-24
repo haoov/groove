@@ -48,6 +48,23 @@ impl Git {
         self.text(&["branch", "-D", name]).await.map(drop)
     }
 
+    /// The branch renamed, wherever it is checked out.
+    pub async fn branch_rename(&self, from: &str, to: &str) -> Result<()> {
+        self.text(&["branch", "-m", from, to]).await.map(drop)
+    }
+
+    /// The worktree at `from` moved to `to`, the directories above `to` made first.
+    pub async fn worktree_move(&self, from: &Path, to: &Path) -> Result<()> {
+        if let Some(above) = to.parent() {
+            std::fs::create_dir_all(above).map_err(|e| Error::Failed {
+                command: format!("mkdir -p {}", above.display()),
+                stderr: e.to_string(),
+            })?;
+        }
+        let (from, to) = (from.to_string_lossy(), to.to_string_lossy());
+        self.text(&["worktree", "move", &from, &to]).await.map(drop)
+    }
+
     /// Forget worktrees whose directory is gone.
     pub async fn worktree_prune(&self) -> Result<()> {
         self.text(&["worktree", "prune"]).await.map(drop)

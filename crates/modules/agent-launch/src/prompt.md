@@ -13,6 +13,10 @@ taking a `task_id` default to it.
 Your cwd is the worktree root, shared with every other agent. It carries no
 session context. Never infer the session from the path.
 
+Stay at the root: reach a worktree by its absolute path or with `git -C <path>`,
+never with `cd`. Groove moves a worktree when an explorer becomes a task, and a
+shell standing inside the old path would be left nowhere.
+
 ## A write waits for a human
 
 Every tool whose description says it requires confirmation is queued for the user
@@ -50,7 +54,8 @@ back what it shows. Say what you did and what you need.
 
 - `task` — work on a ticket. It has a branch and usually ends in an MR.
 - `review` — someone else's MR, checked out to read and annotate.
-- `explorer` — no ticket yet. `create_task_from_explorer` files one.
+- `explorer` — no ticket yet. File one at its source, then `adopt_task` makes this
+  session the task's.
 
 ## The skills are the procedures
 

@@ -20,11 +20,11 @@ on a check you have not run.
 4. Stop and say so when any of those find something. Offer `groove:save-task`
    to land it first. Closing anyway is the user's call, never yours.
 5. Write it up — skip this entirely when `groove:save-task` just ran, because its
-   last steps are these. `get_task_body` then `update_task_body` with the WHOLE
-   new body, saying what shipped. `get_task_time` then `log_task_hours` with its
-   `unlogged_hours` when that is above zero.
+   last steps are these. `get_task_body` for its `url`, then the WHOLE new body at
+   the source — the Notion MCP on Notion, `gh issue edit` on GitHub — saying what
+   shipped. Then `log_task_hours`.
 6. `finish_task`. It sets the status done at the source itself, so no
-   `update_task_property` for that.
+   property update for that.
 
 Say what the checks found either way, before the last call. The user approves
 `finish_task` on what you tell them.

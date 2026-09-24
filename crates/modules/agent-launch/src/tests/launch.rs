@@ -74,6 +74,32 @@ fn a_first_launch_names_the_session_and_a_second_resumes_it() {
 }
 
 #[test]
+fn a_session_handed_an_explorer_s_conversation_resumes_it() {
+    let root = tempfile::tempdir().unwrap();
+    let explorer = explorer();
+    let uuid = session_uuid(explorer.id.as_str());
+    let file = session_file(root.path(), root.path(), &uuid);
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "").unwrap();
+
+    let task = Session {
+        id: SessionId::new("gh-haoov-groove-50"),
+        title: "Harden Groove".into(),
+        kind: SessionKind::Task {
+            external_id: groove_types::ExternalId::new("github.com/haoov/groove#50"),
+        },
+        created_at: Timestamp::new(0),
+    };
+    crate::hand_over(root.path(), explorer.id.as_str(), task.id.as_str()).unwrap();
+    let launch = Launch::plan(&task, &paths(root.path()), &[], None).unwrap();
+    assert_eq!(
+        &launch.args[..2],
+        &["--resume".to_string(), uuid],
+        "the task carries on the explorer's conversation"
+    );
+}
+
+#[test]
 fn the_prompt_file_is_private_and_names_the_session() {
     let root = tempfile::tempdir().unwrap();
     let launch = Launch::plan(

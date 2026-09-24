@@ -117,3 +117,70 @@ async fn remove_cascades_to_the_leaf_and_the_repos() {
     assert!(store.repos_of(&a).await.unwrap().is_empty());
     assert!(store.opened().await.unwrap().is_empty());
 }
+
+fn task() -> groove_types::Task {
+    groove_types::Task {
+        external_id: groove_types::ExternalId::new("github.com/haoov/groove#50"),
+        short_id: "gh-haoov-groove-50".into(),
+        title: "Harden Groove".into(),
+        status: "In progress".into(),
+        intent: None,
+        priority: None,
+        dates: groove_types::TaskDates::default(),
+        estimate: None,
+        logged: None,
+        synced_at: Timestamp::new(0),
+        provider: groove_types::ProviderId::Github,
+        url: None,
+        board: None,
+        branch_tag: None,
+    }
+}
+
+fn promoted() -> Session {
+    Session {
+        id: SessionId::new("gh-haoov-groove-50"),
+        title: "Harden Groove".into(),
+        kind: SessionKind::Task {
+            external_id: groove_types::ExternalId::new("github.com/haoov/groove#50"),
+        },
+        created_at: Timestamp::new(20),
+    }
+}
+
+#[tokio::test]
+async fn an_explorer_promoted_hands_what_it_held_to_the_task_and_is_gone() {
+    let store = Store::in_memory().await.unwrap();
+    let explorer = explorer("explorer-1", 10);
+    store.create_explorer(&explorer).await.unwrap();
+    store.set_auto_approve(&explorer.id, true).await.unwrap();
+
+    let session = promoted();
+    store
+        .promote(&explorer.id, &session, &task(), &[])
+        .await
+        .unwrap();
+    assert!(
+        store.get(&explorer.id).await.unwrap().is_none(),
+        "the explorer is gone"
+    );
+    assert_eq!(store.get(&session.id).await.unwrap(), Some(session.clone()));
+    assert!(
+        store.state(&session.id).await.unwrap().auto_approve,
+        "what the explorer held is the task's now"
+    );
+}
+
+#[tokio::test]
+async fn only_an_explorer_is_promoted_and_a_refusal_leaves_nothing_behind() {
+    let store = Store::in_memory().await.unwrap();
+    let session = promoted();
+    let refused = store
+        .promote(&SessionId::new("nope"), &session, &task(), &[])
+        .await;
+    assert!(matches!(refused, Err(Error::NotExplorer(_))));
+    assert!(
+        store.get(&session.id).await.unwrap().is_none(),
+        "no row was left"
+    );
+}

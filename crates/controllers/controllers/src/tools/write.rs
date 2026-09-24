@@ -130,6 +130,7 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "add_task_worktree" => repos::add_worktree(state, services, spawner, write),
         "log_task_hours" => task::log_hours(state, services, spawner, write),
         "finish_task" => task::finish(state, services, spawner, write),
+        "adopt_task" => task::adopt(state, spawner, write),
         "save_user_skill" => skills::save(state, spawner, write),
         _ => write
             .reply

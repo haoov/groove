@@ -301,8 +301,14 @@ fn a_task_files_in_each_source_that_is_set_up() {
 
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = everywhere(&frame);
-    assert!(drawn.iter().any(|one| one == "file in GitHub"), "{drawn:?}");
-    assert!(drawn.iter().any(|one| one == "file in Notion"), "{drawn:?}");
+    assert!(
+        drawn.iter().any(|one| one == "create task in GitHub"),
+        "{drawn:?}"
+    );
+    assert!(
+        drawn.iter().any(|one| one == "create task in Notion"),
+        "{drawn:?}"
+    );
     assert!(!drawn.iter().any(|one| one == "create task"), "{drawn:?}");
 
     let row = hits
@@ -318,6 +324,37 @@ fn a_task_files_in_each_source_that_is_set_up() {
                 args: Some("github".into()),
             }
         )]
+    );
+}
+
+#[test]
+fn filing_and_converting_each_name_their_own_rows() {
+    let app = sourced(
+        offering(vec![
+            skill("create-task", "create task", &[]),
+            skill("convert-explorer", "convert to task", &[]),
+        ]),
+        true,
+        true,
+    );
+    let mut ui = session_ui();
+    let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let word = hits
+        .rect_of(&Target::Skills(SessionId::new("a")))
+        .expect("the skills word");
+    click(word, &mut ui, &app, &hits);
+
+    let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let drawn = everywhere(&frame);
+    let rows: Vec<&String> = drawn.iter().filter(|one| one.contains(" in ")).collect();
+    let mut once = rows.clone();
+    once.sort();
+    once.dedup();
+    assert_eq!(rows.len(), 4, "two sources, two skills: {rows:?}");
+    assert_eq!(
+        once.len(),
+        rows.len(),
+        "no row says what another says: {rows:?}"
     );
 }
 

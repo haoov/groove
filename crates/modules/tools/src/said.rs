@@ -19,6 +19,7 @@ pub fn verb(tool: &str) -> &'static str {
         "add_task_repo" => "add a repo",
         "add_task_worktree" => "add a worktree",
         "save_user_skill" => "save a skill",
+        "adopt_task" => "become a task",
         _ => "write",
     }
 }
@@ -34,6 +35,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "add_task_repo" => joined(&said("repo"), &said("branch")),
         "add_task_worktree" => said("branch"),
         "log_task_hours" => format!("{} h", arguments["hours"]),
+        "adopt_task" => said("task"),
         _ => shown(arguments),
     }
 }

@@ -1,5 +1,6 @@
 //! What the agent's tools answer, from a session the fixture opened.
 
+mod adopt;
 mod reads;
 mod writes;
 

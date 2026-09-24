@@ -1,5 +1,7 @@
 //! What the session capability asks of the store and the pool.
 
+mod promote;
+
 use std::path::Path;
 
 use groove_sessions::Store;

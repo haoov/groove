@@ -21,7 +21,7 @@ fn the_core_plugin_is_written_from_the_ones_compiled_in() {
     let ids = named(&skills);
     assert!(ids.contains(&"groove:save-task"), "{ids:?}");
     assert!(ids.contains(&"groove:co-review"), "{ids:?}");
-    assert_eq!(ids.len(), 8, "every core skill, and no user one yet");
+    assert_eq!(ids.len(), 9, "every core skill, and no user one yet");
 
     let one = skills
         .iter()
@@ -137,4 +137,24 @@ fn a_plugin_with_no_skill_is_not_handed_to_the_launch() {
         plugin_dirs(&dirs),
         vec![dirs.core.clone(), dirs.user.clone()]
     );
+}
+
+#[test]
+fn filing_a_task_is_offered_everywhere_and_converting_only_to_an_explorer() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = dirs(home.path());
+    sync(&dirs).expect("both plugins");
+    let skills = list(&dirs);
+    let skill = |id: &str| skills.iter().find(|one| one.id == id).expect(id);
+    let task = SessionKind::Task {
+        external_id: ExternalId::new("gh/haoov/groove#50"),
+    };
+
+    let create = skill("groove:create-task");
+    assert!(create.offered_to(&task), "a task files a follow-up");
+    assert!(create.offered_to(&SessionKind::Explorer));
+
+    let convert = skill("groove:convert-explorer");
+    assert!(convert.offered_to(&SessionKind::Explorer));
+    assert!(!convert.offered_to(&task), "a task is one already");
 }

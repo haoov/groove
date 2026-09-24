@@ -33,6 +33,16 @@ pub(super) fn finish(
     crate::task::finish(state, services, spawner, &session, asker);
 }
 
+/// The explorer made the session of the task the write names.
+pub(super) fn adopt(state: &mut AppState, spawner: &dyn Spawner, write: Write) {
+    let key = match groove_task_service::referenced(write.text("task").unwrap_or_default()) {
+        Ok(key) => key,
+        Err(e) => return write.reply.failed(e.to_string()),
+    };
+    let session = write.session.clone();
+    crate::task::adopt(state, spawner, &session, key, Asker::Agent(write.reply));
+}
+
 /// The task the write's own session works.
 fn worked(state: &AppState, write: &Write) -> Option<ExternalId> {
     let open = state.session.get(&write.session)?;

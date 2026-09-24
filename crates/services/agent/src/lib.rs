@@ -10,6 +10,7 @@ use groove_types::{
     ToolCall,
 };
 
+pub use groove_agent_launch::hand_over;
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};

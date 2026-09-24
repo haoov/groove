@@ -390,6 +390,11 @@ fn a_source_with_no_template_answers_an_empty_one() {
         json!({}),
     );
     assert_eq!(said(&answer)["template_markdown"], "");
+    assert_eq!(
+        said(&answer)["file_at"]["provider"],
+        "github",
+        "and where a new one is filed"
+    );
 }
 
 #[test]

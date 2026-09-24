@@ -160,6 +160,9 @@ fn auto_approve(
     on: bool,
 ) {
     state.agent.auto_approve(session, on);
+    if let Some(open) = state.session.get_mut(session) {
+        open.state.auto_approve = on;
+    }
     crate::session::set_auto_approve(state, services, spawner, session, on);
 }
 
@@ -196,7 +199,14 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
             on_exit(&sink, &session),
         );
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.agent.started(session.id, result, Timestamp::now())
+            let on = state
+                .session
+                .get(&session.id)
+                .is_some_and(|open| open.state.auto_approve);
+            state
+                .agent
+                .started(session.id.clone(), result, Timestamp::now());
+            state.agent.auto_approve(&session.id, on);
         }) as Continuation
     }));
 }

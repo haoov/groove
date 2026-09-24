@@ -149,7 +149,8 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
 /// One row a skill offers. A task filed in one of several sources gets a row each,
 /// naming the source it files in.
 fn rows_of(skill: &groove_types::Skill, sources: &[ProviderId]) -> Vec<Offer> {
-    if skill.name != "create-task" || sources.len() < 2 {
+    let files = matches!(skill.name.as_str(), "create-task" | "convert-explorer");
+    if !files || sources.len() < 2 {
         return vec![Offer {
             id: skill.id.clone(),
             args: None,
@@ -161,7 +162,7 @@ fn rows_of(skill: &groove_types::Skill, sources: &[ProviderId]) -> Vec<Offer> {
         .map(|one| Offer {
             id: skill.id.clone(),
             args: Some(one.as_str().to_string()),
-            label: format!("file in {}", one.label()),
+            label: format!("{} in {}", skill.label, one.label()),
         })
         .collect()
 }

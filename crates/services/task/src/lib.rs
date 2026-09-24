@@ -2,6 +2,7 @@
 
 mod attention;
 mod order;
+mod referenced;
 mod service;
 mod timer;
 
@@ -14,6 +15,7 @@ use groove_types::{
 
 pub use attention::folded;
 pub use order::{Planned, moved, ordered};
+pub use referenced::referenced;
 pub use service::Service;
 pub use timer::{IDLE, Timer};
 

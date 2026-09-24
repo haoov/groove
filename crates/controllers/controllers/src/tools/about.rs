@@ -39,6 +39,7 @@ pub(super) fn body(state: &AppState, spawner: &dyn Spawner, call: Call) {
                     reply.json(&json!({
                         "task_id": read.task.short_id,
                         "title": read.task.title,
+                        "url": read.task.url,
                         "body_markdown": read.body,
                     }));
                     state.task.synced(read);
@@ -56,12 +57,16 @@ pub(super) fn template(state: &AppState, spawner: &dyn Spawner, call: Call) {
         Err(e) => return call.reply.failed(e.to_string()),
     };
     let sources = groove_task_service::sources(state.config.config.as_ref());
+    let file_at = super::filing::file_at(state.config.config.as_ref(), which);
     let reply = call.reply;
     spawner.spawn(Box::pin(async move {
         let read = groove_task_service::template(&sources, which).await;
         Box::new(
             move |_: &mut AppState, _: &Services, _: &dyn Spawner| match read {
-                Ok(held) => reply.json(&json!({ "template_markdown": held.unwrap_or_default() })),
+                Ok(held) => reply.json(&json!({
+                    "template_markdown": held.unwrap_or_default(),
+                    "file_at": file_at,
+                })),
                 Err(e) => reply.failed(e.to_string()),
             },
         ) as Continuation
