@@ -11,13 +11,18 @@ use super::{directory, selected, stale, worktree_dir};
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
 
-/// The rows on screen: their files take their colours, the others give theirs up.
+/// The fewest rows past the screen a file is read at, when the pane is short.
+const AHEAD: usize = 100;
+
+/// The rows on screen and the ones around them: their files take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
     if state.workspace.showing == rows {
         return;
     }
     state.workspace.showing = rows.clone();
-    let wanted = state.workspace.over(rows);
+    let ahead = rows.len().max(AHEAD);
+    let near = rows.start.saturating_sub(ahead)..rows.end + ahead;
+    let wanted = state.workspace.over(near);
     state
         .workspace
         .coloured

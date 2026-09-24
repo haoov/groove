@@ -16,7 +16,14 @@ struct Pin {
     number: String,
     text: String,
     spans: Vec<Highlight>,
-    head: bool,
+    kind: Kind,
+}
+
+/// What a pin stands for: the file, or a scope around the rows.
+#[derive(PartialEq)]
+enum Kind {
+    Head,
+    Scope,
 }
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: Gutters) {
@@ -28,13 +35,14 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
     let height = ctx.tokens.line * pins.len() as f32;
     let band = Rect::new(body.x, body.y, body.w, height);
     let ground = ctx.styles.raised();
-    let read = super::row::is_read(app, &pins[0].text);
+    let named = pins.iter().find(|pin| pin.kind == Kind::Head);
+    let read = named.is_some_and(|pin| super::row::is_read(app, &pin.text));
     let lines: Vec<Line<'_>> = pins
         .iter()
         .enumerate()
-        .map(|(at, pin)| match pin.head {
-            true => Line::head(&pin.text).read(read),
-            false => Line::new(&pin.text)
+        .map(|(at, pin)| match pin.kind {
+            Kind::Head => Line::head(&pin.text).read(read),
+            Kind::Scope => Line::new(&pin.text)
                 .gutters(&numbers[at])
                 .spans(&pin.spans)
                 .ground(ground),
@@ -52,32 +60,63 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
         0.0,
     );
     ctx.hit(band, Target::Pinned);
-    if let (Some(line), true) = (drawn.first(), pins[0].head) {
-        let path = pins[0].text.clone();
+    let named = pins.iter().position(|pin| pin.kind == Kind::Head);
+    if let Some((line, at)) = named.and_then(|at| Some((drawn.get(at)?, at))) {
+        let path = pins[at].text.clone();
         ctx.hit(*line, Target::Head(path.clone()));
         ctx.hit(head_mark(ctx, *line), Target::Read(path));
     }
 }
 
-/// The file and the scopes the top of the surface stands in.
+/// The scopes around the first row the band leaves showing, which is not the first
+/// row of the surface: what a pin covers is off screen as surely as what scrolled past.
 fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
     let inline = super::notes::Inline::of(app, ui, ui.session.view);
-    let top = inline.base(first(ctx.tokens.line, ui.session.diff));
+    let mut pins = Vec::new();
+    for _ in 0..=PINNED_DEEP {
+        let next = pins_under(ctx, body, app, ui, &inline, pins.len());
+        if next.len() <= pins.len() {
+            return next;
+        }
+        pins = next;
+    }
+    pins
+}
+
+/// The pins for the row that stands `under` rows below the top of the surface.
+fn pins_under(
+    ctx: &Ctx,
+    body: Rect,
+    app: &AppState,
+    ui: &Ui,
+    inline: &super::notes::Inline,
+    under: usize,
+) -> Vec<Pin> {
+    let rows = inline.total(super::row::count(app, ui.session.view));
+    let at = (first(ctx.tokens.line, ui.session.diff) + under).min(rows.saturating_sub(1));
+    let top = inline.base(at);
     let Some((path, at)) = standing(app, ui, top) else {
         return Vec::new();
     };
     let mut pins: Vec<Pin> = Vec::new();
-    if ui.session.view != DiffView::Editor {
-        pins.push(Pin {
-            number: String::new(),
-            text: path.clone(),
-            spans: Vec::new(),
-            head: true,
-        });
+    if ui.session.view == DiffView::Editor {
+        pins.extend(scopes(app, &path, at));
+        pins.truncate(room(ctx, body));
+        return pins;
     }
-    pins.extend(scopes(app, &path, at));
+    pins.push(said(&path, Kind::Head));
     pins.truncate(room(ctx, body));
     pins
+}
+
+/// One pin that names something rather than holding a line of code.
+fn said(text: &str, kind: Kind) -> Pin {
+    Pin {
+        number: String::new(),
+        text: text.to_string(),
+        spans: Vec::new(),
+        kind,
+    }
 }
 
 /// The innermost scopes around the line, as lines of their own.
@@ -108,16 +147,25 @@ fn standing(app: &AppState, ui: &Ui, top: usize) -> Option<(String, Option<(usiz
         let file = app.workspace.opened.as_ref()?;
         return Some((file.path.clone(), Some((top, false))));
     }
-    let At::Row(file, at) = app.workspace.changes.at(top)? else {
-        return None;
-    };
-    let row = &file.rows[at];
-    let line = match (row.new, row.old) {
-        (Some(line), _) => Some((line as usize, false)),
-        (None, Some(line)) => Some((line as usize, true)),
-        (None, None) => None,
-    };
-    Some((file.path.clone(), line))
+    match app.workspace.changes.at(top)? {
+        At::Row(file, at) => {
+            let row = &file.rows[at];
+            let line = match (row.new, row.old) {
+                (Some(line), _) => Some((line as usize, false)),
+                (None, Some(line)) => Some((line as usize, true)),
+                (None, None) => None,
+            };
+            Some((file.path.clone(), line))
+        }
+        At::Head(_) => above(app, top),
+    }
+}
+
+/// The file the row above a head row belongs to.
+fn above(app: &AppState, top: usize) -> Option<(String, Option<(usize, bool)>)> {
+    let before = app.workspace.changes.at(top.checked_sub(1)?)?;
+    let (At::Row(file, _) | At::Head(file)) = before;
+    Some((file.path.clone(), None))
 }
 
 fn pin(doc: &Document, at: usize) -> Option<Pin> {
@@ -128,6 +176,6 @@ fn pin(doc: &Document, at: usize) -> Option<Pin> {
         number: (at + 1).to_string(),
         text,
         spans,
-        head: false,
+        kind: Kind::Scope,
     })
 }

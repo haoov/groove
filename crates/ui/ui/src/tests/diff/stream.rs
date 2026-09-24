@@ -10,7 +10,7 @@ const FILES: [(&str, &str, &str); 2] = [
     ("src/b.rs", "two\n", "TWO\n"),
 ];
 
-fn both() -> AppState {
+pub(super) fn both() -> AppState {
     let mut app = with_files();
     changed_files(&mut app, &FILES);
     app
@@ -19,14 +19,12 @@ fn both() -> AppState {
 #[test]
 fn every_changed_file_draws_under_a_row_naming_it() {
     let drawn = texts(&both(), &on_diff());
-    assert_eq!(
-        drawn.iter().filter(|text| *text == "src").count(),
-        1,
-        "the directory is named once: {drawn:?}"
+    assert!(
+        !drawn.iter().any(|text| text == "src"),
+        "no directory stands on a row of its own: {drawn:?}"
     );
     for (path, before, after) in FILES {
-        let name = path.rsplit('/').next().expect("a name");
-        assert!(drawn.iter().any(|text| text == name), "{name}: {drawn:?}");
+        assert!(drawn.iter().any(|text| text == path), "{path}: {drawn:?}");
         assert!(drawn.iter().any(|text| text == before.trim()));
         assert!(drawn.iter().any(|text| text == after.trim()));
     }
@@ -39,7 +37,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
     let (_, hits) = view_of(&app, &ui);
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (hits.chars().left + 1.0, code.y + tokens.line * 3.0 + 1.0);
+    let point = (hits.chars().left + 1.0, code.y + tokens.line * 2.0 + 1.0);
     let commands = handle(
         Input::Press {
             x: point.0,
@@ -57,7 +55,7 @@ fn a_click_in_a_file_that_is_not_open_opens_it_where_it_was_clicked() {
             path: "src/a.rs".into(),
             at: Some(groove_types::Selection::at(Caret::new(0, 0))),
         })],
-        "the band, the head, the line that went, then the line that came"
+        "the head, the line that went, then the line that came"
     );
 }
 
@@ -103,67 +101,6 @@ fn a_keystroke_shows_in_the_stream_before_the_rows_are_aligned_again() {
         drawn.iter().any(|text| text.starts_with("typed")),
         "the rows read the buffer, not the last alignment: {drawn:?}"
     );
-}
-
-/// What the band standing over the rows says, its coloured runs joined.
-fn band(app: &AppState, ui: &Ui) -> String {
-    let (frame, _) = view_of(app, ui);
-    let layers = frame.layers();
-    match layers.len() > 1 {
-        true => layers
-            .iter()
-            .skip(1)
-            .flat_map(|layer| layer.texts.iter())
-            .map(|run| run.text.as_str())
-            .collect(),
-        false => String::new(),
-    }
-}
-
-/// One file deep enough to scroll inside a scope.
-fn nested() -> AppState {
-    let mut app = with_files();
-    let body: String = (0..40)
-        .map(|at| format!("            let value_{at} = {at};\n"))
-        .collect();
-    let before = format!(
-        "mod one {{\n    impl Two {{\n        fn three() {{\n{body}        }}\n    }}\n}}\n"
-    );
-    let after = before.replace("let value_3 = 3;", "let value_3 = 33;");
-    crate::tests::shows(&mut app, "src/lib.rs", &before, &after);
-    app
-}
-
-#[test]
-fn the_scopes_above_the_first_row_stand_over_it() {
-    let app = nested();
-    let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
-    ui.session.diff = Tokens::new(1.0).line * 20.0;
-    let band = band(&app, &ui);
-    for scope in ["mod one {", "impl Two {", "fn three() {"] {
-        assert!(
-            band.contains(scope.trim()),
-            "{scope} stands over the rows: {band}"
-        );
-    }
-}
-
-#[test]
-fn a_scope_already_on_screen_does_not_stand_over_it_as_well() {
-    let app = nested();
-    let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
-    assert_eq!(band(&app, &ui), "", "the scopes are in the rows themselves");
-}
-
-#[test]
-fn the_stream_pins_the_file_it_stands_in() {
-    let app = both();
-    let mut ui = on_diff();
-    let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
-    ui.session.diff = (head + 1) as f32 * Tokens::new(1.0).line;
-    assert!(band(&app, &ui).contains("src/b.rs"), "{}", band(&app, &ui));
 }
 
 #[test]
@@ -256,8 +193,7 @@ fn a_click_on_a_file_head_folds_it() {
     let mut ui = on_diff();
     let (_, hits) = view_of(&app, &ui);
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let tokens = Tokens::new(1.0);
-    let head = (hits.chars().left + 1.0, code.y + tokens.line + 1.0);
+    let head = (hits.chars().left + 1.0, code.y + 1.0);
     let commands = handle(
         Input::Press {
             x: head.0,
@@ -274,7 +210,7 @@ fn a_click_on_a_file_head_folds_it() {
         [Command::Workspace(workspace::Command::Fold {
             path: "src/a.rs".into()
         })],
-        "the row under the band is the first file's head"
+        "the first row is the first file's head"
     );
 }
 
@@ -300,7 +236,7 @@ fn folding_from_the_pinned_head_lands_on_the_file_it_shut() {
     let commands = handle(
         Input::Press {
             x: band.x + band.w / 2.0,
-            y: band.y + 1.0,
+            y: band.bottom() - 1.0,
             mods: Default::default(),
         },
         &mut ui,
@@ -353,7 +289,7 @@ fn the_mark_on_a_file_head_says_it_is_read() {
 }
 
 #[test]
-fn a_file_read_dims_its_head_and_its_band() {
+fn a_file_read_dims_its_head() {
     let mut app = both();
     let worktree = selected(&app);
     let id = app.session.selected.clone().expect("a session");
@@ -372,10 +308,12 @@ fn a_file_read_dims_its_head_and_its_band() {
         .filter(|quad| quad.color == styles.hover())
         .count();
     assert_eq!(dimmed, 1, "the band of the file that was read");
+    let code = hits.rect_of(&Target::Code).expect("the rows");
     let faint = frame.layers()[0]
         .texts
         .iter()
-        .find(|run| run.text == "a.rs")
+        .filter(|run| code.contains(run.x, run.y))
+        .find(|run| run.text == "src/a.rs")
         .expect("its head");
     assert_eq!(
         faint.style.color,

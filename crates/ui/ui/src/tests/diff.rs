@@ -2,6 +2,7 @@ mod empty;
 mod header;
 mod notes;
 mod noting;
+mod pinned;
 mod pointer;
 mod rows;
 mod stream;

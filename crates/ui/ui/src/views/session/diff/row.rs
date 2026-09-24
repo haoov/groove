@@ -182,7 +182,7 @@ pub(crate) fn line_at(
             (row < file.new.lines().max(1)).then(|| (file.path.clone(), row))
         }
         _ => match app.workspace.changes.at(row)? {
-            At::Band(_) | At::Head(_) => None,
+            At::Head(_) => None,
             At::Row(file, at) => {
                 let line = file.rows[at].new?;
                 Some((file.path.clone(), line as usize))

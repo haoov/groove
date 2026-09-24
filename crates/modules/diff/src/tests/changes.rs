@@ -52,12 +52,7 @@ fn every_row_of_the_change_belongs_to_a_file() {
 
     let second = changes.head_of("src/lib.rs").expect("where it starts");
     assert_eq!(second, changes.files()[0].rows.len() + 1);
-    assert_eq!(
-        changes.at(second),
-        Some(At::Band(&changes.files()[1])),
-        "src/ opens a directory of its own"
-    );
-    assert_eq!(changes.at(second + 1), Some(At::Head(&changes.files()[1])));
+    assert_eq!(changes.at(second), Some(At::Head(&changes.files()[1])));
     assert_eq!(changes.at(changes.rows()), None, "past the end");
 }
 
@@ -73,7 +68,7 @@ fn a_file_with_no_head_side_is_all_additions() {
 }
 
 #[test]
-fn a_directory_is_named_once_over_the_files_that_share_it() {
+fn every_file_is_named_by_its_own_head_row() {
     let files = ["src/a.rs", "src/b.rs", "docs/c.md", "top.rs"];
     let changes = Changes::new(
         files
@@ -81,23 +76,16 @@ fn a_directory_is_named_once_over_the_files_that_share_it() {
             .map(|path| aligned(path, "one\n", "two\n"))
             .collect(),
     );
-    let bands: Vec<&str> = (0..changes.rows())
-        .filter_map(|row| match changes.at(row) {
-            Some(At::Band(file)) => Some(file.dir()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(bands, ["src", "docs"], "one band a directory, in order");
     let heads: Vec<&str> = (0..changes.rows())
         .filter_map(|row| match changes.at(row) {
-            Some(At::Head(file)) => Some(file.name()),
+            Some(At::Head(file)) => Some(file.path.as_str()),
             _ => None,
         })
         .collect();
     assert_eq!(
         heads,
-        ["a.rs", "b.rs", "c.md", "top.rs"],
-        "every file, named"
+        ["src/a.rs", "src/b.rs", "docs/c.md", "top.rs"],
+        "every file, named by its path"
     );
 }
 
@@ -124,9 +112,9 @@ fn a_folded_file_keeps_its_head_and_hides_its_rows() {
         Some(second - file.rows.len()),
         "what follows moves up"
     );
-    assert!(matches!(changes.at(1), Some(At::Head(_))), "the head stays");
+    assert!(matches!(changes.at(0), Some(At::Head(_))), "the head stays");
     assert!(
-        matches!(changes.at(2), Some(At::Head(_))),
+        matches!(changes.at(1), Some(At::Head(_))),
         "then the next file"
     );
 

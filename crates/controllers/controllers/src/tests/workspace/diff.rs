@@ -238,8 +238,47 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
     );
     assert_eq!(
         state.workspace.coloured.keys().collect::<Vec<_>>(),
-        ["a.txt"],
-        "a file off screen gives its documents up"
+        ["a.txt", "b.rs"],
+        "a file just off screen keeps its documents, ready for the row it takes"
+    );
+}
+
+#[test]
+fn a_file_is_read_before_its_rows_are_on_screen() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(
+        std::path::Path::new(&dir).join("a.txt"),
+        "two
+",
+    )
+    .unwrap();
+    std::fs::write(
+        std::path::Path::new(&dir).join("b.rs"),
+        "fn b() {}
+",
+    )
+    .unwrap();
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.changes.files().len() == 2
+    });
+
+    dispatch(
+        Cmd::Workspace(workspace::Command::Show { rows: 0..1 }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.coloured.contains_key("b.rs")
+    });
+    assert!(
+        state.workspace.sides("b.rs").is_some(),
+        "the file has its colours before a row of it is drawn"
     );
 }
 

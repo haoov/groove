@@ -23,7 +23,6 @@ pub(super) fn streamed(
     let colours = coloured(app, ui, window.clone());
     window
         .map(|row| match changes.at(row) {
-            Some(At::Band(file)) => band(file),
             Some(At::Head(file)) => head(app, file, changes.is_folded(&file.path)),
             Some(At::Row(file, at)) => {
                 let side = source(&file.rows[at], view, side);
@@ -91,20 +90,11 @@ fn stretch(range: &mut Range<usize>, line: Option<u32>) {
 /// The row that names a file, standing above its own rows.
 fn head(app: &AppState, file: &Aligned, folded: bool) -> Drawn {
     Drawn {
-        text: file.name().to_string(),
+        text: file.path.clone(),
         head: true,
         folded,
         read: is_read(app, &file.path),
         file: Some(file.path.clone()),
-        ..Drawn::default()
-    }
-}
-
-/// The row that names the directory the files under it share.
-fn band(file: &Aligned) -> Drawn {
-    Drawn {
-        text: file.dir().to_string(),
-        band: true,
         ..Drawn::default()
     }
 }

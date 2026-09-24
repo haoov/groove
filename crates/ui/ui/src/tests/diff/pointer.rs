@@ -63,7 +63,7 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 4.0 + 1.0);
+    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 3.0 + 1.0);
     let commands = handle(
         Input::Press {
             x: point.0,
@@ -79,7 +79,7 @@ fn a_click_in_the_file_lands_on_a_row_and_a_column() {
     assert_eq!(
         commands,
         [Command::Workspace(workspace::Command::Edit(wanted))],
-        "the fifth row is the new side's second line"
+        "the fourth row is the new side's second line"
     );
 }
 
@@ -93,7 +93,7 @@ fn a_click_on_a_removed_line_takes_no_caret() {
     let commands = handle(
         Input::Press {
             x: code.x + tokens.sm + 1.0,
-            y: code.y + tokens.line * 3.0 + 1.0,
+            y: code.y + tokens.line * 2.0 + 1.0,
             mods: Default::default(),
         },
         &mut ui,
@@ -204,9 +204,10 @@ fn the_sidebar_says_which_file_is_open() {
         .expect("the file's row");
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let hairline = Tokens::new(1.0).hairline;
-    let rules = frame.layers()[0]
-        .quads
+    let rules = frame
+        .layers()
         .iter()
+        .flat_map(|layer| layer.quads.iter())
         .filter(|quad| quad.color == styles.here() && quad.rect.h == hairline)
         .filter(|quad| quad.rect.x == row.x && quad.rect.w == row.w)
         .count();
@@ -275,7 +276,7 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
     let tokens = Tokens::new(1.0);
-    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 4.0 + 1.0);
+    let point = (code.x + tokens.sm + 1.0, code.y + tokens.line * 3.0 + 1.0);
     let commands = handle(
         Input::Press {
             x: point.0,

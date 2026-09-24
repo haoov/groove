@@ -43,8 +43,6 @@ impl Aligned {
 /// Where a row of the whole surface belongs.
 #[derive(Debug, PartialEq, Eq)]
 pub enum At<'a> {
-    /// The row naming the directory the files below it share.
-    Band(&'a Aligned),
     Head(&'a Aligned),
     Row(&'a Aligned, usize),
 }
@@ -54,8 +52,6 @@ pub struct Changes {
     files: Vec<Aligned>,
     /// Where each file's own rows begin, the chrome above them included.
     starts: Vec<usize>,
-    /// Whether each file opens a directory of its own.
-    bands: Vec<bool>,
     /// The files whose rows are hidden under their own head.
     shut: BTreeSet<String>,
     rows: usize,
@@ -69,25 +65,19 @@ impl Changes {
 
     fn indexed(files: Vec<Aligned>, shut: BTreeSet<String>) -> Self {
         let mut starts = Vec::with_capacity(files.len());
-        let mut bands = Vec::with_capacity(files.len());
         let mut rows = 0;
-        let mut dir = None;
         for file in &files {
-            let band = !file.dir().is_empty() && dir != Some(file.dir());
-            dir = Some(file.dir());
             starts.push(rows);
-            bands.push(band);
             let shown = match shut.contains(&file.path) {
                 true => 0,
                 false => file.rows.len(),
             };
-            rows += shown + 1 + usize::from(band);
+            rows += shown + 1;
         }
         let digits = files.iter().map(widest).max().unwrap_or(1);
         Self {
             files,
             starts,
-            bands,
             shut,
             rows,
             digits,
@@ -155,12 +145,10 @@ impl Changes {
             .partition_point(|start| *start <= row)
             .checked_sub(1)?;
         let file = self.files.get(at)?;
-        let band = usize::from(self.bands[at]);
-        let head = self.starts[at] + band;
-        match row {
-            _ if row < head => Some(At::Band(file)),
-            _ if row == head => Some(At::Head(file)),
-            _ => Some(At::Row(file, row - head - 1)),
+        let head = self.starts[at];
+        match row == head {
+            true => Some(At::Head(file)),
+            false => Some(At::Row(file, row - head - 1)),
         }
     }
 
@@ -170,7 +158,7 @@ impl Changes {
         if self.is_folded(path) {
             return None;
         }
-        let head = self.starts[at] + usize::from(self.bands[at]);
+        let head = self.starts[at];
         let row = self.files[at]
             .rows
             .iter()
@@ -178,7 +166,7 @@ impl Changes {
         Some(head + 1 + row)
     }
 
-    /// The row this file's own band or head sits on.
+    /// The row this file's own head sits on.
     pub fn head_of(&self, path: &str) -> Option<usize> {
         let at = self.files.iter().position(|file| file.path == path)?;
         Some(self.starts[at])
