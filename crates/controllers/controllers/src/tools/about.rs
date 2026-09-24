@@ -1,10 +1,10 @@
 //! What the session itself is: its own task, the tasks it knows, the repos it may take.
 
 use groove_agent_service::Call;
-use groove_types::{Repo, Task, Worktree};
+use groove_types::{Repo, Task, TaskKey, Worktree};
 use serde_json::{Value, json};
 
-use crate::{AppState, Services};
+use crate::{AppState, Continuation, Services, Spawner};
 
 /// The session the call comes from, with its repos and its worktrees.
 pub(super) fn active(state: &AppState, call: Call) {
@@ -18,6 +18,35 @@ pub(super) fn active(state: &AppState, call: Call) {
         "worktrees": open.worktrees.iter().map(worktree).collect::<Vec<Value>>(),
     });
     call.reply.json(&said);
+}
+
+/// The task's page, as its source holds it now.
+pub(super) fn body(state: &AppState, spawner: &dyn Spawner, call: Call) {
+    let Some(id) = super::task_of(state, &call) else {
+        return call.reply.failed(super::NO_TASK);
+    };
+    let key = match TaskKey::parse(&id) {
+        Ok(key) => key,
+        Err(e) => return call.reply.failed(e.to_string()),
+    };
+    let sources = groove_task_service::sources(state.config.config.as_ref());
+    let reply = call.reply;
+    spawner.spawn(Box::pin(async move {
+        let read = groove_task_service::fetch(&sources, &key).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+                Ok(read) => {
+                    reply.json(&json!({
+                        "task_id": read.task.short_id,
+                        "title": read.task.title,
+                        "body_markdown": read.body,
+                    }));
+                    state.task.synced(read);
+                }
+                Err(e) => reply.failed(e.to_string()),
+            },
+        ) as Continuation
+    }));
 }
 
 /// Every task the app has read, explorers and reviews aside.

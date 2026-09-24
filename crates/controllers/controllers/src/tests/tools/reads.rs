@@ -309,3 +309,63 @@ fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
         "the list holds it at once"
     );
 }
+
+#[test]
+fn the_task_body_is_read_again_from_its_source() {
+    let (_runtime, server) = crate::tests::tasks::answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(crate::tests::tasks::source(&host)).expect("the source"));
+    crate::dispatch(
+        crate::Command::Task(crate::task::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    crate::tests::fixture::until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        "gh-haoov-groove-50",
+        "get_task_body",
+        json!({ "task_id": "gh-haoov-groove-50" }),
+    );
+    let said = said(&answer);
+    assert_eq!(said["title"], "Harden Groove");
+    assert_eq!(said["body_markdown"], "Close the gates.");
+    assert_eq!(
+        state.task.body("gh-haoov-groove-50"),
+        Some("Close the gates."),
+        "and what was read is kept"
+    );
+}
+
+#[test]
+fn a_session_with_no_task_of_its_own_is_told_so() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    let id = state.session.selected.clone().unwrap();
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        id.as_str(),
+        "get_task_body",
+        json!({}),
+    );
+    assert!(answer.failed, "{}", answer.text);
+    assert!(answer.text.contains("works no task"), "{}", answer.text);
+}

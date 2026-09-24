@@ -56,6 +56,12 @@ fn about() -> Vec<Tool> {
             nothing(),
         ),
         read(
+            "get_task_body",
+            "The task's page as markdown, read again from its source. Read it before \
+             update_task_body, which replaces the page whole.",
+            takes(&[], vec![task()]),
+        ),
+        read(
             "list_repos",
             "Every repo cloned locally, each flagged `attached` when it is already on your \
              task, and each with the `local_path` of its clone. Use it for the exact name \

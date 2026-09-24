@@ -46,7 +46,7 @@ fn issues() -> serde_json::Value {
 }
 
 /// The config a source needs: the host, and what its fields are called.
-fn source(host: &str) -> serde_json::Value {
+pub(super) fn source(host: &str) -> serde_json::Value {
     serde_json::json!({
         "host": host,
         "token": "t",
@@ -57,7 +57,7 @@ fn source(host: &str) -> serde_json::Value {
 }
 
 /// A server answering the GraphQL call, on a runtime of its own that outlives it.
-fn answering() -> (tokio::runtime::Runtime, MockServer) {
+pub(super) fn answering() -> (tokio::runtime::Runtime, MockServer) {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
     let server = runtime.block_on(async {
         let server = MockServer::start().await;

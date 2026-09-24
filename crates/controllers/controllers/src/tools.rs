@@ -13,6 +13,7 @@ use crate::{AppState, Services, Spawner};
 
 pub(crate) const NO_SESSION: &str = "this call belongs to no open session";
 pub(crate) const NO_WORKTREE: &str = "no worktree of an open session has that id";
+pub(crate) const NO_TASK: &str = "this session works no task, and none was named";
 
 /// The call answered from the state, or handed to a job that answers later.
 pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
@@ -26,6 +27,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_mr_state" => work::mr(state, services, spawner, call),
         "list_skills" => about::skills(state, call),
         "read_user_skill" => about::skill(state, call),
+        "get_task_body" => about::body(state, spawner, call),
         "get_open_file" => files::open_file(state, call),
         "read_file" => files::read(state, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {
@@ -76,6 +78,15 @@ pub(crate) fn about<'a>(state: &'a AppState, call: &Call) -> Option<&'a Open> {
         .open
         .iter()
         .find(|open| open.session.kind.works(&external))
+}
+
+/// The task a read is about: the one its `task_id` names, or the session's own.
+pub(crate) fn task_of(state: &AppState, call: &Call) -> Option<ExternalId> {
+    let Some(named) = call.text("task_id") else {
+        return about(state, call).and_then(|open| open.session.kind.task().cloned());
+    };
+    let known = state.task.get(named).map(|one| one.external_id.clone());
+    Some(known.unwrap_or_else(|| ExternalId::new(named)))
 }
 
 /// Every worktree of that session.
