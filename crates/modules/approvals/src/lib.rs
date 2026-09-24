@@ -50,16 +50,12 @@ impl<T> Queue<T> {
         theirs
     }
 
-    /// What that session waits on, as the rail says it.
-    pub fn asks(&self, session: &SessionId, subject: impl Fn(&Approval) -> String) -> Vec<Ask> {
+    /// What that session waits on, each one as `ask` says it.
+    pub fn asks(&self, session: &SessionId, ask: impl Fn(&Approval) -> Ask) -> Vec<Ask> {
         self.waiting
             .iter()
             .filter(|(one, _)| one.session.as_ref() == Some(session))
-            .map(|(one, _)| Ask {
-                id: one.id.clone(),
-                op: one.op.clone(),
-                subject: subject(one),
-            })
+            .map(|(one, _)| ask(one))
             .collect()
     }
 

@@ -21,6 +21,7 @@ pub(super) fn acted(
     match target {
         Target::Skills(session) => Some(menu(ui, app, hits, session.clone())),
         Target::Reload(session) => Some(reloaded(ui, session.clone(), metrics)),
+        Target::AutoApprove(session) => Some(switched(app, session.clone())),
         Target::Agent => Some(pressed(ui, app, point, metrics)),
         _ => None,
     }
@@ -163,6 +164,15 @@ fn rows_of(skill: &groove_types::Skill, sources: &[ProviderId]) -> Vec<Offer> {
             label: format!("file in {}", one.label()),
         })
         .collect()
+}
+
+/// Every write of the session let through without asking, or asking again.
+fn switched(app: &AppState, session: SessionId) -> Vec<Command> {
+    let on = !app
+        .agent
+        .activity(&session)
+        .is_some_and(|one| one.auto_approve);
+    vec![Command::Agent(agent::Command::AutoApprove { session, on })]
 }
 
 /// The agent ended and started again, on the grid its pane holds now.

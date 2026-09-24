@@ -81,14 +81,19 @@ fn asking(ctx: &mut Ctx, rect: Rect, count: usize) {
 
 /// One item per open session, scrolled and clipped to `area`.
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let height = rail_item::height(ctx);
-    let content = height * app.session.open.len() as f32;
+    let heights: Vec<f32> = app
+        .session
+        .open
+        .iter()
+        .map(|open| rail_item::height(ctx, app, &open.session.id))
+        .collect();
+    let content: f32 = heights.iter().sum();
     let extent = (content - area.h).max(0.0);
     ctx.scrolls(Scroller::Rail, extent);
     let scroll = ui.rail.scroll.min(extent);
     ctx.clipped(area, |ctx| {
         let mut y = area.y - scroll;
-        for open in &app.session.open {
+        for (open, height) in app.session.open.iter().zip(heights) {
             rail_item::draw(ctx, app, ui, Rect::new(area.x, y, area.w, height), open);
             y += height;
         }

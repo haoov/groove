@@ -29,6 +29,10 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
             key => chord(key, ui, app).into_iter().collect(),
         };
     }
+    if ui.examining.is_some() && key == Key::Escape {
+        ui.examining = None;
+        return Vec::new();
+    }
     if let Some(palette) = &mut ui.palette {
         let outcome = palette.key(key, app);
         if outcome.close {

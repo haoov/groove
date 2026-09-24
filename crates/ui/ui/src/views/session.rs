@@ -8,6 +8,7 @@ pub(crate) mod files;
 pub mod find;
 pub mod header;
 pub mod overview;
+mod sheet;
 mod state;
 pub mod worktree_row;
 
@@ -33,6 +34,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     agent_pane::draw(ctx, app);
     bar::draw(ctx, app, ui);
     workspace(ctx, app, ui);
+    sheet::draw(ctx, app, ui);
 }
 
 /// The workspace: the tab strip, then the tab.

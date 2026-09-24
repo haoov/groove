@@ -80,6 +80,12 @@ pub enum Target {
     FeedLine(SessionId),
     /// The write the agent asked for, taken or refused.
     Approve(groove_types::ApprovalId),
+    /// The sheet that shows a write before it is decided.
+    Examine(groove_types::ApprovalId),
+    /// The sheet itself, which keeps a click from what it covers.
+    Sheet,
+    /// The switch that lets a session's writes through without asking.
+    AutoApprove(groove_types::SessionId),
     Refuse(groove_types::ApprovalId),
     /// The agent's own row: what it can be sent, and its reload.
     Skills(SessionId),

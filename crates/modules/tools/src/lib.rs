@@ -1,8 +1,11 @@
 //! What the agent may ask of Groove: one definition per tool, as the harness lists them.
 
 mod reads;
+mod said;
 pub mod wording;
 mod writes;
+
+pub use said::{acts_in, said, verb};
 
 #[cfg(test)]
 mod tests;

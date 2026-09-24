@@ -96,6 +96,8 @@ pub struct Ui {
     pub discarding: Option<Losing>,
     /// What the right button opened, and where.
     pub menu: Option<Menu>,
+    /// The write the review sheet shows.
+    pub examining: Option<groove_types::ApprovalId>,
     /// What the pointer is over, for the row under it to say so, and where it stands.
     pub hover: Option<Target>,
     pub at: (f32, f32),

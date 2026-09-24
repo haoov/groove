@@ -12,8 +12,14 @@ fn new(session: &str, op: &str) -> New {
     }
 }
 
-fn said(one: &Approval) -> String {
-    one.payload["message"].as_str().unwrap_or_default().into()
+fn said(one: &Approval) -> groove_types::Ask {
+    groove_types::Ask {
+        id: one.id.clone(),
+        op: one.op.clone(),
+        subject: one.payload["message"].as_str().unwrap_or_default().into(),
+        text: String::new(),
+        worktree: None,
+    }
 }
 
 #[test]

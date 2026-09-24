@@ -122,9 +122,7 @@ impl State {
 
     /// The row says what the queue holds.
     fn told(&mut self, session: &SessionId) {
-        let asks = self
-            .asks
-            .asks(session, |one| groove_tools::subject(&one.op, &one.payload));
+        let asks = self.asks.asks(session, ask_of);
         if let Some(activity) = self.activity_mut(session) {
             activity.asks = asks;
         }
@@ -207,4 +205,15 @@ fn hook(activity: &mut SessionActivity, kind: HookKind, tool: Option<ToolCall>, 
         activity.changed_at = at;
     }
     activity.status = status;
+}
+
+/// A queued write as the rail and the review sheet say it.
+fn ask_of(one: &groove_types::Approval) -> groove_types::Ask {
+    groove_types::Ask {
+        id: one.id.clone(),
+        op: one.op.clone(),
+        subject: groove_tools::subject(&one.op, &one.payload),
+        text: groove_tools::said(&one.op, &one.payload),
+        worktree: groove_tools::acts_in(&one.payload).map(groove_types::WorktreeId::new),
+    }
 }

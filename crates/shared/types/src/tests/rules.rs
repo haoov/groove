@@ -199,6 +199,8 @@ fn the_attention_class_follows_asks_then_status() {
         id: ApprovalId::new("a"),
         op: "git.commit".into(),
         subject: "feat: x".into(),
+        text: String::new(),
+        worktree: None,
     });
     assert_eq!(asked.class(), AttentionClass::NeedsYou);
 }

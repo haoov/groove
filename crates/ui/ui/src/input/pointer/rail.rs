@@ -14,14 +14,21 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         Target::Session(session) | Target::FeedLine(session) => {
             Some(super::opened_session(ui, session.clone()))
         }
-        Target::Approve(id) => Some(vec![Command::Agent(agent::Command::Approve {
-            id: id.clone(),
-        })]),
-        Target::Refuse(id) => Some(vec![Command::Agent(agent::Command::Refuse {
-            id: id.clone(),
-        })]),
+        Target::Approve(id) => Some(answered(ui, agent::Command::Approve { id: id.clone() })),
+        Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
+        Target::Sheet => Some(Vec::new()),
+        Target::Examine(id) => {
+            ui.examining = Some(id.clone());
+            Some(Vec::new())
+        }
         _ => None,
     }
+}
+
+/// A write decided, and the sheet that showed it put away.
+fn answered(ui: &mut Ui, answer: agent::Command) -> Vec<Command> {
+    ui.examining = None;
+    vec![Command::Agent(answer)]
 }
 
 /// The feed folded to its own heading, or opened again.

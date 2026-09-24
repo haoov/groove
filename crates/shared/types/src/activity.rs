@@ -48,6 +48,12 @@ pub struct Ask {
     pub id: ApprovalId,
     pub op: String,
     pub subject: String,
+    /// The whole of what it writes, as the review sheet shows it.
+    #[serde(default)]
+    pub text: String,
+    /// The worktree it writes in, when it writes in one.
+    #[serde(default)]
+    pub worktree: Option<crate::WorktreeId>,
 }
 
 /// The `agent` service's slice for one open session.
