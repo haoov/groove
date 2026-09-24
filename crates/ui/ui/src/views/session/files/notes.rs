@@ -1,4 +1,4 @@
-//! The sidebar's notes: every note of the session, its file and its line.
+//! The sidebar's notes: the session's own, and the threads still open on its lines.
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
@@ -12,7 +12,13 @@ use crate::style::Role;
 use crate::widget::{elide, row};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
-    let notes = &app.workspace.notes;
+    let notes: Vec<(usize, &Note)> = app
+        .workspace
+        .notes
+        .iter()
+        .enumerate()
+        .filter(|(_, note)| listed(note))
+        .collect();
     if notes.is_empty() {
         let style = ctx.styles.small(Role::Faint);
         let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
@@ -24,7 +30,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let scroll = ui.session.files.min(extent);
     ctx.clipped(body, |ctx| {
         let mut y = body.y - scroll;
-        for (at, note) in notes.iter().enumerate() {
+        for (at, note) in notes {
             let line = Rect::new(body.x, y, body.w, height);
             if y + height >= body.y && y <= body.bottom() {
                 one(ctx, line, note, at, ui);
@@ -32,6 +38,11 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
             y += height;
         }
     });
+}
+
+/// A note of this session's own, or a thread still open on a line of the change.
+pub(super) fn listed(note: &Note) -> bool {
+    note.is_local() || (!note.resolved && note.anchor.is_some())
 }
 
 /// One note: where it stands, then what it says.

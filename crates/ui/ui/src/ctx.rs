@@ -87,6 +87,10 @@ impl<'a> Ctx<'a> {
         self.hits.characters(chars);
     }
 
+    pub fn wraps(&mut self, cols: usize) {
+        self.hits.wraps(cols);
+    }
+
     pub fn scrolls(&mut self, which: Scroller, extent: f32) {
         self.hits.scrolls(which, extent);
     }

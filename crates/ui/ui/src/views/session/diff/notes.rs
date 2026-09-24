@@ -5,6 +5,7 @@ use std::ops::Range;
 use groove_controllers::AppState;
 use groove_types::{Anchor, DiffView, Note};
 
+use super::wrap::{cols_of, wrapped};
 use crate::Ui;
 
 /// One note's rows, standing after the row its last line sits on.
@@ -48,7 +49,7 @@ impl Inline {
             .iter()
             .enumerate()
             .filter(|(_, note)| !written(note, over))
-            .filter_map(|(at, note)| block(app, view, note, at))
+            .filter_map(|(at, note)| block(app, view, note, at, cols_of(ui)))
             .collect();
         if let Some(noting) = ui.session.noting.as_ref()
             && let Some(after) = anchored(app, view, &noting.anchor)
@@ -149,13 +150,13 @@ fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
 }
 
 /// One note's block, on the rows of the file it is about.
-fn block(app: &AppState, view: DiffView, note: &Note, at: usize) -> Option<Block> {
+fn block(app: &AppState, view: DiffView, note: &Note, at: usize, cols: usize) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: note.said.len().max(1) + 1,
+        rows: wrapped(note, cols).len().max(1) + 1,
         at: Some(at),
         acts: true,
     })
@@ -178,12 +179,9 @@ fn anchored(app: &AppState, view: DiffView, anchor: &Anchor) -> Option<usize> {
     }
 }
 
-/// What one row of a note says: who said it, and the words themselves.
-pub(crate) fn said(note: &Note, row: usize) -> (String, String) {
-    match note.said.get(row) {
-        Some(said) => (said.author.clone(), one_line(&said.body)),
-        None => (String::new(), String::new()),
-    }
+/// What one row of a note says: who said it, and the words on that row.
+pub(crate) fn said(note: &Note, row: usize, cols: usize) -> (String, String) {
+    wrapped(note, cols).into_iter().nth(row).unwrap_or_default()
 }
 
 /// The lines an anchor covers, as a file numbers them.
@@ -192,15 +190,5 @@ pub(crate) fn lines(anchor: &Anchor) -> String {
     match from == to {
         true => from.to_string(),
         false => format!("{from}-{to}"),
-    }
-}
-
-/// A body on one row: its first line, and a mark that more of it stands under.
-fn one_line(body: &str) -> String {
-    let mut lines = body.lines();
-    let first = lines.next().unwrap_or_default().trim();
-    match lines.next().is_some() {
-        true => format!("{first} \u{2026}"),
-        false => first.to_string(),
     }
 }

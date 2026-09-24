@@ -1,6 +1,6 @@
 //! What the workspace capability asks of the forge and of the MR rows.
 
-mod notes;
+pub(crate) mod notes;
 
 pub use notes::Said;
 

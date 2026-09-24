@@ -204,3 +204,8 @@ impl Default for Tokens {
         LOGICAL
     }
 }
+
+/// How much wider than the average a note's characters are taken to be, and how many
+/// of them who said it and its lines keep at the row's end.
+pub const NOTE_SLACK: f32 = 1.15;
+pub const NOTE_BY: f32 = 22.0;

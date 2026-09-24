@@ -138,3 +138,22 @@ fn a_note_stands_on_every_row_of_its_range() {
     assert!(!note.on("src/lib.rs", 13));
     assert!(!note.on("other.rs", 11));
 }
+
+#[test]
+fn a_posted_note_comes_back_on_the_line_it_left() {
+    let local = own("src/lib.rs", 9, 1);
+    let up = crate::service::notes::posted(&local);
+    assert_eq!((up.from, up.to), (10, 10), "the forge counts from one");
+
+    let threads = vec![thread(
+        "t1",
+        vec![note("me", false, Some(on("src/lib.rs", up.from)))],
+    )];
+    let read = merged(&[], &threads);
+    let anchor = read[0].anchor.as_ref().expect("on a line");
+    assert_eq!(
+        (anchor.start_line, anchor.end_line),
+        (local.start_line, local.end_line),
+        "and comes back where the note stood"
+    );
+}

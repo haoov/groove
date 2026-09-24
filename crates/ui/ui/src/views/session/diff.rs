@@ -9,6 +9,7 @@ mod pinned;
 mod row;
 mod scroll;
 mod surface;
+mod wrap;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::At;

@@ -97,7 +97,7 @@ fn counted(app: &AppState, pane: Pane) -> usize {
             .workspace
             .notes
             .iter()
-            .filter(|one| !one.resolved)
+            .filter(|one| !one.resolved && notes::listed(one))
             .count(),
     }
 }

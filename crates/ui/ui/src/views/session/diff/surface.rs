@@ -10,6 +10,8 @@ use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
+use crate::style::Role;
+use crate::tokens::{NOTE_BY, NOTE_SLACK};
 use crate::widget::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 
 /// Who a note left in the app is by.
@@ -103,7 +105,18 @@ fn asks(ctx: &mut Ctx, rect: Rect, rows: std::ops::Range<usize>, numbers: Gutter
     ctx.showing(rows);
     ctx.hit(rect, Target::Code);
     let chars = chars_of(ctx, numbers, rect, scroll);
+    let cols = note_cols(ctx, rect, chars.left);
     ctx.characters(chars);
+    ctx.wraps(cols);
+}
+
+/// How many characters of a note fit between its column and who said it.
+fn note_cols(ctx: &mut Ctx, rect: Rect, left: f32) -> usize {
+    let sample = "the quick brown fox jumps over the lazy dog";
+    let words = ctx.styles.body(Role::Text);
+    let each = ctx.measure(sample, &words) / sample.len() as f32 * NOTE_SLACK;
+    let room = rect.right() - left - ctx.tokens.md - each * NOTE_BY;
+    (room / each).floor().max(0.0) as usize
 }
 
 /// What the surface holds for the rows it is about to draw.
@@ -204,7 +217,7 @@ fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
     match slot {
         Slot::Note { at, row } => match app.workspace.notes.get(at) {
             Some(note) => {
-                let (author, body) = said(note, row);
+                let (author, body) = said(note, row, super::wrap::cols_of(ui));
                 let shown = match row {
                     0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
                     _ => String::new(),

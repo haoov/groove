@@ -90,7 +90,7 @@ async fn open_notes(service: &Service) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn a_note_that_went_up_is_resolved_even_when_the_next_one_fails() {
+async fn a_note_that_went_up_is_gone_even_when_the_next_one_fails() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(body_string_contains("line 20"))
@@ -120,10 +120,17 @@ async fn a_note_that_went_up_is_resolved_even_when_the_next_one_fails() {
         .await
         .expect_err("the second note is refused");
     assert!(format!("{refused}").contains("500"), "{refused}");
+    let left: Vec<String> = service
+        .notes(&SessionId::new("s1"))
+        .await
+        .expect("the notes")
+        .into_iter()
+        .map(|note| note.content)
+        .collect();
     assert_eq!(
-        open_notes(&service).await,
+        left,
         ["issue: line 20"],
-        "the first is up and resolved; only the second is left to post"
+        "the first is up and gone; only the second is left to post"
     );
 }
 

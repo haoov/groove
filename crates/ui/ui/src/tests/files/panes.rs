@@ -216,3 +216,56 @@ fn the_search_bar_stands_only_while_it_is_used() {
     let under = hits.rect_of(&Target::Pane(Pane::Files)).expect("the strip");
     assert!(under.y > strip.y, "the bar pushes it down");
 }
+
+/// A thread the forge holds, on a line or on the MR itself.
+fn thread(id: &str, line: Option<u32>, resolved: bool) -> Note {
+    Note {
+        origin: NoteOrigin::Thread(id.into()),
+        anchor: line.map(|at| Anchor::line("src/lib.rs", at)),
+        resolved,
+        said: vec![Said {
+            author: "reviewer".into(),
+            body: format!("said on {id}"),
+            at: Timestamp::new(0),
+        }],
+    }
+}
+
+#[test]
+fn the_notes_list_holds_the_session_s_own_and_the_open_threads_alone() {
+    let (app, ui) = noting(vec![
+        thread("pipeline", None, false),
+        thread("closed", Some(3), true),
+        note("src/lib.rs", 11, "issue: this leaks"),
+        thread("open", Some(20), false),
+    ]);
+    let drawn = in_sidebar(&app, &ui);
+    let said = |text: &str| drawn.iter().any(|one| one.contains(text));
+    assert!(said("issue: this leaks"), "the session's own: {drawn:?}");
+    assert!(said("said on open"), "a thread still open: {drawn:?}");
+    assert!(!said("said on pipeline"), "not a comment on the MR");
+    assert!(!said("said on closed"), "not a resolved thread");
+    assert!(drawn.iter().any(|one| one == "notes · 2"), "{drawn:?}");
+}
+
+#[test]
+fn a_row_left_after_the_others_are_left_out_opens_its_own_note() {
+    let (app, mut ui) = noting(vec![
+        thread("pipeline", None, false),
+        note("src/lib.rs", 11, "issue: this leaks"),
+    ]);
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    assert!(
+        hits.rect_of(&Target::NoteAt(0)).is_none(),
+        "the comment has no row"
+    );
+    let line = hits.rect_of(&Target::NoteAt(1)).expect("the note's row");
+    let commands = click(line, &mut ui, &app, &hits);
+    let at = commands.iter().find_map(|one| match one {
+        groove_controllers::Command::Workspace(
+            groove_controllers::workspace::Command::OpenFile { at, .. },
+        ) => *at,
+        _ => None,
+    });
+    assert_eq!(at.map(|held| held.head.line), Some(11), "the note it names");
+}

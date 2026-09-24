@@ -96,7 +96,17 @@ impl App {
         let _ = renderer.render(&frame);
         self.hits = hits;
         self.showing();
+        self.wrapping();
         self.point();
+    }
+
+    /// The width a note row holds, so the next frame wraps notes to it.
+    fn wrapping(&mut self) {
+        let cols = self.hits.wrap();
+        if cols != 0 && cols != self.ui.session.note_cols {
+            self.ui.session.note_cols = cols;
+            self.redraw();
+        }
     }
 
     /// The rows the frame drew, so their files can take their colours.

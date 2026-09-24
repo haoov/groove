@@ -387,3 +387,39 @@ fn a_commit_shows_none_of_the_sessions_notes() {
         "{drawn:?}"
     );
 }
+
+#[test]
+fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
+    let body = "issue: this leaks the handle every time the file is opened again \
+                and nothing ever closes it";
+    let app = noted(vec![note(1, "reviewer", body)]);
+    let mut ui = on_diff();
+    ui.session.view = DiffView::Editor;
+    ui.session.note_cols = 24;
+    let drawn = row_texts(&app, &ui);
+    for word in body.split_whitespace() {
+        assert!(
+            drawn
+                .iter()
+                .any(|one| one.split_whitespace().any(|w| w == word)),
+            "{word} is drawn: {drawn:?}"
+        );
+    }
+    assert!(
+        !drawn.iter().any(|one| one.ends_with('\u{2026}')),
+        "nothing is cut: {drawn:?}"
+    );
+    let rows = drawn
+        .iter()
+        .filter(|one| body.contains(one.trim()) && !one.trim().is_empty())
+        .count();
+    assert!(rows >= 4, "it takes the rows it needs: {drawn:?}");
+}
+
+#[test]
+fn a_note_keeps_the_lines_it_was_written_with() {
+    let app = noted(vec![note(1, "reviewer", "first line\nsecond line")]);
+    let drawn = in_editor(&app);
+    assert!(drawn.iter().any(|one| one == "first line"), "{drawn:?}");
+    assert!(drawn.iter().any(|one| one == "second line"), "{drawn:?}");
+}

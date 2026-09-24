@@ -51,15 +51,17 @@ fn of_thread(thread: &MrThread) -> Option<Note> {
     })
 }
 
-/// Where the thread hangs, when the forge put it on a line of the new side.
+/// Where the thread hangs, when the forge put it on a line of the new side. The forge
+/// counts lines from one, and an anchor from zero.
 fn anchor_of(note: &MrNote) -> Option<Anchor> {
     let position = note.position.as_ref()?;
     let path = position.new_path.clone()?;
-    let start = position.new_line?;
+    let start = position.new_line?.checked_sub(1)?;
+    let end = position.end_new_line.and_then(|end| end.checked_sub(1));
     Some(Anchor {
         path,
         start_line: start,
-        end_line: position.end_new_line.unwrap_or(start).max(start),
+        end_line: end.unwrap_or(start).max(start),
     })
 }
 

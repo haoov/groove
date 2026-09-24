@@ -27,7 +27,7 @@ fn elsewhere(note: &Annotation, repo: &Repo) -> Result<()> {
 }
 
 /// One note of this session as the forges take it, lines and all.
-fn posted(note: &Annotation) -> Posted<'_> {
+pub(crate) fn posted(note: &Annotation) -> Posted<'_> {
     Posted {
         path: &note.file_path,
         from: note.start_line + 1,
@@ -73,8 +73,7 @@ impl Service {
         elsewhere(note, repo)?;
         let mr = self.held(worktree).await?;
         remote.post_note(repo, &mr.remote_id, posted(note)).await?;
-        self.notes.resolve(&note.id).await?;
-        Ok(())
+        self.notes.delete(&note.id).await
     }
 
     /// Words under a thread of the MR.
@@ -136,12 +135,12 @@ impl Service {
         };
         remote.review(repo, &mr.remote_id, verdict).await?;
         for note in said.notes {
-            self.notes.resolve(&note.id).await?;
+            self.notes.delete(&note.id).await?;
         }
         Ok(())
     }
 
-    /// A note at a time, each resolved as it lands, then the verdict on its own: a
+    /// A note at a time, each taken away as it lands, then the verdict on its own: a
     /// call that fails leaves nothing to post twice.
     async fn one_by_one(
         &self,
