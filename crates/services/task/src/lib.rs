@@ -161,6 +161,22 @@ pub async fn log_hours(sources: &[Source], key: &TaskKey, hours: f32) -> Result<
     Ok(source_of(sources, key)?.log_hours(key, hours).await?)
 }
 
+/// The template one source holds, or nothing when it holds none.
+pub async fn template(sources: &[Source], which: Option<ProviderId>) -> Result<Option<String>> {
+    let Some(source) = pick(sources, which) else {
+        return Err(groove_types::Error::invalid("no source is set up"));
+    };
+    Ok(source.template().await?)
+}
+
+/// The source named, or the only one there is.
+fn pick(sources: &[Source], which: Option<ProviderId>) -> Option<&Source> {
+    match which {
+        Some(id) => sources.iter().find(|one| one.id() == id),
+        None => sources.first().filter(|_| sources.len() == 1),
+    }
+}
+
 /// One task and its body, read again from the source that owns it.
 pub async fn fetch(sources: &[Source], key: &TaskKey) -> Result<Fetched> {
     Ok(source_of(sources, key)?.fetch(key).await?)

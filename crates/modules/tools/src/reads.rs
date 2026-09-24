@@ -62,6 +62,18 @@ fn about() -> Vec<Tool> {
             takes(&[], vec![task()]),
         ),
         read(
+            "get_task_template",
+            "The headings a new task starts from, as markdown. Empty when the source \
+             holds no template. Mirror them in the body you draft.",
+            takes(
+                &[],
+                vec![(
+                    "provider",
+                    text("Which source, when more than one is set up."),
+                )],
+            ),
+        ),
+        read(
             "list_repos",
             "Every repo cloned locally, each flagged `attached` when it is already on your \
              task, and each with the `local_path` of its clone. Use it for the exact name \

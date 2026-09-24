@@ -65,6 +65,16 @@ impl Notion {
         Ok(crate::Fetched { task, body: blocks })
     }
 
+    /// The page the config names as the template for a new task.
+    pub async fn template(&self) -> Result<Option<String>> {
+        let Some(page) = self.config.task_template_page_id.clone() else {
+            return Ok(None);
+        };
+        let url = format!("{}/v1/blocks/{page}/children?page_size=100", self.host);
+        let reply = self.ask(Method::GET, url, None).await?;
+        Ok(Some(body::text(&reply)))
+    }
+
     /// The pages of the sprint that is running, or nothing at all: a filter on a
     /// property the database lacks fails the whole query.
     async fn running(&self) -> Vec<String> {

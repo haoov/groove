@@ -19,8 +19,8 @@ fn line(block: &serde_json::Value) -> String {
     match kind {
         "bulleted_list_item" | "numbered_list_item" => format!("- {words}"),
         "to_do" => match block["to_do"]["checked"].as_bool() {
-            Some(true) => format!("[x] {words}"),
-            _ => format!("[ ] {words}"),
+            Some(true) => format!("- [x] {words}"),
+            _ => format!("- [ ] {words}"),
         },
         _ => words,
     }

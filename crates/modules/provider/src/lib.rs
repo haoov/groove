@@ -51,6 +51,14 @@ impl Source {
         }
     }
 
+    /// The body a new task starts from, when the source holds one.
+    pub async fn template(&self) -> Result<Option<String>> {
+        match self {
+            Source::Github(_) => Ok(None),
+            Source::Notion(notion) => notion.template().await,
+        }
+    }
+
     /// Sets the task's status to what the source calls this intent. Returns that label.
     pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
         match self {

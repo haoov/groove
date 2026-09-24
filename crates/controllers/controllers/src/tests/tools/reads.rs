@@ -369,3 +369,43 @@ fn a_session_with_no_task_of_its_own_is_told_so() {
     assert!(answer.failed, "{}", answer.text);
     assert!(answer.text.contains("works no task"), "{}", answer.text);
 }
+
+#[test]
+fn a_source_with_no_template_answers_an_empty_one() {
+    let (_runtime, server) = crate::tests::tasks::answering();
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(crate::tests::tasks::source(&host)).expect("the source"));
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        "gh-haoov-groove-50",
+        "get_task_template",
+        json!({}),
+    );
+    assert_eq!(said(&answer)["template_markdown"], "");
+}
+
+#[test]
+fn a_template_asked_of_a_source_that_is_not_set_up_is_refused() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        "gh-nothing",
+        "get_task_template",
+        json!({ "provider": "notion" }),
+    );
+    assert!(answer.failed, "{}", answer.text);
+}

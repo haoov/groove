@@ -267,7 +267,7 @@ async fn a_read_brings_the_page_and_its_blocks_as_text() {
     assert_eq!(read.task.short_id, "TASKS2-4244");
     assert_eq!(
         read.body,
-        "The runbook.\n- stop the writes\n[x] take a backup"
+        "The runbook.\n- stop the writes\n- [x] take a backup"
     );
 }
 
@@ -317,4 +317,27 @@ async fn what_notion_refuses_comes_back_as_the_reason_it_gave() {
     let (_server, notion) = source(reply).await;
     let refused = notion.list().await.expect_err("the query is refused");
     assert!(refused.to_string().contains("Unauthorized"), "{refused}");
+}
+
+#[tokio::test]
+async fn a_template_page_is_read_as_the_markdown_a_task_starts_from() {
+    let (_server, notion) = source(blocks()).await;
+    assert_eq!(notion.template().await.expect("a read"), None);
+
+    let mut config = config();
+    config.task_template_page_id = Some("TEMPLATE_1".into());
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(blocks()))
+        .mount(&server)
+        .await;
+    let host = format!("http://{}", server.address());
+    let notion = Notion::at(&host, config).expect("a client");
+    let held = notion
+        .template()
+        .await
+        .expect("a read")
+        .expect("a template");
+    assert!(held.starts_with("The runbook."), "{held}");
+    assert!(held.contains("- [x] take a backup"), "{held}");
 }

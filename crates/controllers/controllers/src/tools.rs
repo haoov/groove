@@ -28,6 +28,7 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "list_skills" => about::skills(state, call),
         "read_user_skill" => about::skill(state, call),
         "get_task_body" => about::body(state, spawner, call),
+        "get_task_template" => about::template(state, spawner, call),
         "get_open_file" => files::open_file(state, call),
         "read_file" => files::read(state, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {

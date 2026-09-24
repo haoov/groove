@@ -1,7 +1,7 @@
 //! What the session itself is: its own task, the tasks it knows, the repos it may take.
 
 use groove_agent_service::Call;
-use groove_types::{Repo, Task, TaskKey, Worktree};
+use groove_types::{ProviderId, Repo, Task, TaskKey, Worktree};
 use serde_json::{Value, json};
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -43,6 +43,25 @@ pub(super) fn body(state: &AppState, spawner: &dyn Spawner, call: Call) {
                     }));
                     state.task.synced(read);
                 }
+                Err(e) => reply.failed(e.to_string()),
+            },
+        ) as Continuation
+    }));
+}
+
+/// The headings a new task starts from, from the source that holds them.
+pub(super) fn template(state: &AppState, spawner: &dyn Spawner, call: Call) {
+    let which = match call.text("provider").map(ProviderId::parse).transpose() {
+        Ok(which) => which,
+        Err(e) => return call.reply.failed(e.to_string()),
+    };
+    let sources = groove_task_service::sources(state.config.config.as_ref());
+    let reply = call.reply;
+    spawner.spawn(Box::pin(async move {
+        let read = groove_task_service::template(&sources, which).await;
+        Box::new(
+            move |_: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+                Ok(held) => reply.json(&json!({ "template_markdown": held.unwrap_or_default() })),
                 Err(e) => reply.failed(e.to_string()),
             },
         ) as Continuation
