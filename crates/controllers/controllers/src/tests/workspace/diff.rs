@@ -451,7 +451,7 @@ fn the_base_mode_holds_what_is_uncommitted_as_well() {
 }
 
 /// The branch the selected worktree merges into, as a task's own would carry it.
-fn based(state: &mut crate::AppState, branch: &str) {
+pub(super) fn based(state: &mut crate::AppState, branch: &str) {
     let id = state.session.selected.clone().expect("a session");
     let open = state.session.get_mut(&id).expect("the session");
     for worktree in &mut open.worktrees {

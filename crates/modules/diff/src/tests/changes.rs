@@ -171,3 +171,80 @@ fn a_line_no_file_of_the_change_has_stands_on_no_row() {
     assert_eq!(change.row_of("other.rs", 0), None);
     assert_eq!(change.row_of("src/lib.rs", 99), None);
 }
+
+/// A file that changes at both ends, so one gap stands between them.
+fn far_apart() -> (String, String) {
+    let before: String = (0..40).map(|at| format!("line {at}\n")).collect();
+    let after = before
+        .replace("line 0\n", "LINE 0\n")
+        .replace("line 39\n", "LINE 39\n");
+    (before, after)
+}
+
+#[test]
+#[allow(clippy::single_range_in_vec_init)]
+fn a_gap_gives_up_the_lines_the_reader_opens() {
+    let (before, after) = far_apart();
+    let shut = crate::changes::aligned("src/lib.rs", &before, &after);
+    let gaps: Vec<u32> = shut
+        .rows
+        .iter()
+        .filter_map(|row| match row.kind {
+            RowKind::Gap(lines) => Some(lines),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(gaps, [32], "one gap, of everything between the two changes");
+
+    let sides = (
+        groove_text::Document::plain("src/lib.rs", &before),
+        groove_text::Document::plain("src/lib.rs", &after),
+    );
+    let open = crate::changes::from_sides("src/lib.rs", &sides.0, &sides.1, &[4..14]);
+    let gaps: Vec<u32> = open
+        .rows
+        .iter()
+        .filter_map(|row| match row.kind {
+            RowKind::Gap(lines) => Some(lines),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(gaps, [22], "the rest of it stays hidden");
+    assert!(
+        open.lines.iter().any(|line| line == "line 4"),
+        "the first line it gave up: {:?}",
+        open.lines
+    );
+    assert!(
+        open.lines.iter().any(|line| line == "line 13"),
+        "and the last one"
+    );
+    assert!(
+        !open.lines.iter().any(|line| line == "line 14"),
+        "and no more than that"
+    );
+}
+
+#[test]
+#[allow(clippy::single_range_in_vec_init)]
+fn opening_a_gap_twice_joins_what_it_gave_up() {
+    let (before, after) = far_apart();
+    let (old, new) = (
+        groove_text::Document::plain("src/lib.rs", &before),
+        groove_text::Document::plain("src/lib.rs", &after),
+    );
+    let mut changes = Changes::new(vec![aligned("src/lib.rs", &before, &after)]);
+    let whole = changes.rows();
+
+    changes.open_gap("src/lib.rs", 4..14, &old, &new);
+    assert_eq!(changes.opened_of("src/lib.rs"), &[4..14]);
+    assert_eq!(changes.rows(), whole + 10, "ten more rows stand");
+
+    changes.open_gap("src/lib.rs", 10..20, &old, &new);
+    assert_eq!(
+        changes.opened_of("src/lib.rs"),
+        &[4..20],
+        "the two runs stand as one"
+    );
+    assert_eq!(changes.rows(), whole + 16);
+}

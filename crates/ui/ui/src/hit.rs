@@ -131,6 +131,11 @@ pub enum Target {
     Read(String),
     /// The row a file starts on, which folds it.
     Head(String),
+    /// The lines a gap hides, and which end gives them up.
+    Gap {
+        row: usize,
+        way: groove_controllers::workspace::Way,
+    },
     /// One line a search across the worktree found, by its place in the list.
     Found(usize),
     /// The row naming a file the search found lines in, which folds them.

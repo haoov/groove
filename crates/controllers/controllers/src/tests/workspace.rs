@@ -4,6 +4,7 @@ mod attention;
 mod commits;
 mod diff;
 mod editor;
+mod gaps;
 mod git;
 mod notes;
 mod paths;

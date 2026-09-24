@@ -11,7 +11,7 @@ fn doc(text: &str) -> Document {
 
 /// Every row as `(old, new, kind)`, with lines counted from one as a reader sees them.
 fn rows(old: &str, new: &str, context: u32) -> Vec<(Option<u32>, Option<u32>, RowKind)> {
-    align(&doc(old), &doc(new), context)
+    align(&doc(old), &doc(new), context, &[])
         .into_iter()
         .map(|row: Row| (row.old.map(|at| at + 1), row.new.map(|at| at + 1), row.kind))
         .collect()

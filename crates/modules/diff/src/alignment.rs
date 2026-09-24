@@ -60,8 +60,9 @@ impl Rows for Row {
     }
 }
 
-/// How the two files line up, as the rows a reader sees.
-pub fn align(old: &Document, new: &Document, context: u32) -> Vec<Row> {
+/// How the two files line up, as the rows a reader sees. `opened` names the old-side
+/// lines a gap gives up.
+pub fn align(old: &Document, new: &Document, context: u32, opened: &[Range<u32>]) -> Vec<Row> {
     let input = interned(old, new);
     let diff = Diff::compute(Algorithm::Histogram, &input);
     let mut rows = Vec::new();
@@ -72,19 +73,26 @@ pub fn align(old: &Document, new: &Document, context: u32) -> Vec<Row> {
             at,
             (hunk.before.start, hunk.after.start),
             context,
+            opened,
         );
         rows.extend(hunk.before.clone().map(Row::removed));
         rows.extend(hunk.after.clone().map(Row::added));
         at = (hunk.before.end, hunk.after.end);
     }
     let ends = (lines(old), lines(new));
-    trail(&mut rows, at, ends, context);
+    trail(&mut rows, at, ends, context, opened);
     rows
 }
 
 /// The unchanged lines between where the last hunk ended and where this one starts:
 /// context on each side, and a gap for what neither side needs.
-fn lead(rows: &mut Vec<Row>, from: (u32, u32), to: (u32, u32), context: u32) {
+fn lead(
+    rows: &mut Vec<Row>,
+    from: (u32, u32),
+    to: (u32, u32),
+    context: u32,
+    opened: &[Range<u32>],
+) {
     let unchanged = to.0.saturating_sub(from.0);
     let head = unchanged.min(context);
     let tail = unchanged.saturating_sub(head).min(context);
@@ -93,12 +101,18 @@ fn lead(rows: &mut Vec<Row>, from: (u32, u32), to: (u32, u32), context: u32) {
         return rows.extend(run(from, unchanged));
     }
     rows.extend(run(from, head));
-    rows.push(Row::gap(skipped));
+    hidden(rows, (from.0 + head, from.1 + head), skipped, opened);
     rows.extend(run((to.0 - tail, to.1 - tail), tail));
 }
 
 /// The context after the last hunk, and the gap to the end of the file.
-fn trail(rows: &mut Vec<Row>, from: (u32, u32), ends: (u32, u32), context: u32) {
+fn trail(
+    rows: &mut Vec<Row>,
+    from: (u32, u32),
+    ends: (u32, u32),
+    context: u32,
+    opened: &[Range<u32>],
+) {
     let left = ends.0.saturating_sub(from.0);
     let shown = left.min(context);
     let skipped = left - shown;
@@ -106,7 +120,34 @@ fn trail(rows: &mut Vec<Row>, from: (u32, u32), ends: (u32, u32), context: u32) 
         return rows.extend(run(from, left));
     }
     rows.extend(run(from, shown));
-    rows.push(Row::gap(skipped));
+    hidden(rows, (from.0 + shown, from.1 + shown), skipped, opened);
+}
+
+/// The lines a gap covers: the opened ones as rows, the rest as gaps of their own.
+fn hidden(rows: &mut Vec<Row>, from: (u32, u32), lines: u32, opened: &[Range<u32>]) {
+    let mut at = 0;
+    for span in opened {
+        let start = span.start.max(from.0).min(from.0 + lines);
+        let end = span.end.max(from.0).min(from.0 + lines);
+        if start >= end {
+            continue;
+        }
+        let before = start - from.0 - at;
+        if before > 0 {
+            push_gap(rows, before);
+        }
+        rows.extend(run((start, from.1 + (start - from.0)), end - start));
+        at = end - from.0;
+    }
+    push_gap(rows, lines - at);
+}
+
+/// A gap for lines nothing shows, when there are enough of them to say so.
+fn push_gap(rows: &mut Vec<Row>, lines: u32) {
+    match lines {
+        0 => {}
+        _ => rows.push(Row::gap(lines)),
+    }
 }
 
 fn run(from: (u32, u32), lines: u32) -> impl Iterator<Item = Row> {

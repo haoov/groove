@@ -48,12 +48,30 @@ pub fn from_text(path: &str, before: &str, after: &str) -> Opened {
     from_parts(path, Document::new(path, before), after)
 }
 
+/// The same, from two documents already read, which nothing parses again.
+pub fn from_documents(path: &str, old: Document, new: Document) -> Opened {
+    let long = old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES;
+    let rows = match long {
+        true => Vec::new(),
+        false => align(&old, &new, CONTEXT, &[]),
+    };
+    Opened {
+        path: path.to_string(),
+        marks: marks(&rows),
+        words: by_line(&rows, &words(&rows, &old, &new)),
+        old,
+        new: Buffer::new(new),
+        rows,
+        long,
+    }
+}
+
 fn from_parts(path: &str, old: Document, after: &str) -> Opened {
     let new = Document::new(path, after);
     let long = old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES;
     let rows = match long {
         true => Vec::new(),
-        false => align(&old, &new, CONTEXT),
+        false => align(&old, &new, CONTEXT, &[]),
     };
     Opened {
         path: path.to_string(),
@@ -74,7 +92,7 @@ pub struct Derived {
 
 /// Aligns the file again, and colours `new` from the tree it carries.
 pub fn derived(path: &str, old: &Document, new: Document) -> Derived {
-    let rows = align(old, &new, CONTEXT);
+    let rows = align(old, &new, CONTEXT, &[]);
     let aligned = Aligned {
         lines: rows.iter().map(|row| text_of(old, &new, row)).collect(),
         marks: marks(&rows),

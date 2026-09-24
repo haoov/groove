@@ -82,9 +82,9 @@ pub fn paths(dir: &Path) -> Vec<FileDiff> {
 pub const PATHS_MAX: usize = 20_000;
 
 /// Both sides of these paths, parsed, read in one git process.
-pub async fn painted(dir: &Path, paths: Vec<String>) -> Vec<(String, Painted)> {
+pub async fn painted(dir: &Path, paths: Vec<String>, rev: &str) -> Vec<(String, Painted)> {
     let heads = groove_git::Git::at(dir)
-        .blobs("HEAD", &paths)
+        .blobs(rev, &paths)
         .await
         .unwrap_or_default();
     paths

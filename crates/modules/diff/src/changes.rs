@@ -1,14 +1,21 @@
 //! The whole change as one surface: every file's alignment, and no document behind it.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Range;
 use std::path::Path;
 
 use groove_git::Git;
 use groove_text::Document;
-use groove_types::{FileDiff, LineMark, Row, RowKind};
+use groove_types::{FileDiff, LineMark, Row};
 
-use crate::alignment::{CONTEXT, Words, align, marks, words};
-use crate::opened::MAX_SHOWN_BYTES;
+mod build;
+
+pub(crate) use build::text_of;
+pub use build::{aligned, from_sides};
+
+use build::merge;
+
+use crate::alignment::Words;
 
 /// One changed file: how its sides line up, and what each row shows.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -54,6 +61,8 @@ pub struct Changes {
     starts: Vec<usize>,
     /// The files whose rows are hidden under their own head.
     shut: BTreeSet<String>,
+    /// The old-side lines each file's gaps have given up.
+    opened: BTreeMap<String, Vec<Range<u32>>>,
     rows: usize,
     digits: usize,
 }
@@ -79,6 +88,7 @@ impl Changes {
             files,
             starts,
             shut,
+            opened: BTreeMap::new(),
             rows,
             digits,
         }
@@ -91,6 +101,27 @@ impl Changes {
             shut.insert(path.to_string());
         }
         *self = Self::indexed(std::mem::take(&mut self.files), shut);
+    }
+
+    /// A gap gives up a run of its old-side lines, and the file lines up again.
+    pub fn open_gap(&mut self, path: &str, span: Range<u32>, old: &Document, new: &Document) {
+        let mut opened = std::mem::take(&mut self.opened);
+        let spans = opened.entry(path.to_string()).or_default();
+        spans.push(span);
+        spans.sort_by_key(|one| one.start);
+        merge(spans);
+        let Some(at) = self.files.iter().position(|file| file.path == path) else {
+            return;
+        };
+        let mut files = std::mem::take(&mut self.files);
+        files[at] = from_sides(path, old, new, &opened[path]);
+        *self = Self::indexed(files, std::mem::take(&mut self.shut));
+        self.opened = opened;
+    }
+
+    /// What this file's gaps have already given up.
+    pub fn opened_of(&self, path: &str) -> &[Range<u32>] {
+        self.opened.get(path).map(Vec::as_slice).unwrap_or_default()
     }
 
     /// The folds carried over from the change this one replaces.
@@ -220,47 +251,4 @@ pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Changes {
         })
         .collect();
     Changes::new(aligned)
-}
-
-/// One file's rows, from its two sides.
-pub fn aligned(path: &str, before: &str, after: &str) -> Aligned {
-    let (old, new) = (Document::plain(path, before), Document::plain(path, after));
-    let indent = new.indent().width();
-    if old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES {
-        return Aligned {
-            path: path.to_string(),
-            rows: vec![Row {
-                old: None,
-                new: None,
-                kind: RowKind::Gap(0),
-            }],
-            lines: vec![String::new()],
-            indent,
-            long: true,
-            ..Aligned::default()
-        };
-    }
-    let rows = align(&old, &new, CONTEXT);
-    Aligned {
-        lines: rows.iter().map(|row| text_of(&old, &new, row)).collect(),
-        marks: marks(&rows),
-        words: words(&rows, &old, &new),
-        path: path.to_string(),
-        rows,
-        indent,
-        long: false,
-    }
-}
-
-/// What a row shows: its own side's line, or how many lines a gap hides.
-pub(crate) fn text_of(old: &Document, new: &Document, row: &Row) -> String {
-    if let RowKind::Gap(lines) = row.kind {
-        return format!("\u{2026} {lines} lines");
-    }
-    let line = match (row.new, row.old) {
-        (Some(at), _) => new.line(at as usize),
-        (None, Some(at)) => old.line(at as usize),
-        (None, None) => None,
-    };
-    line.unwrap_or_default().to_string()
 }

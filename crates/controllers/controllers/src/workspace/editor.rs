@@ -4,7 +4,7 @@ use std::path::Path;
 
 use groove_types::{Edit, Error, ErrorKind, Result, Selection};
 use groove_workspace_service::{
-    Derived, Document, Opened, by_line, derived, opened, opened_at, reopened,
+    Derived, Document, Opened, by_line, derived, from_documents, opened, opened_at, reopened,
 };
 
 use super::worktree_dir;
@@ -172,9 +172,25 @@ pub(super) fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
     read(state, spawner, path, old, None);
 }
 
-/// Reads both sides in a job; the continuation stores them for the tab to draw.
+/// The file opened from the documents the stream holds, or read in a job when it has none.
 pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: Option<Selection>) {
+    if let Some(file) = in_hand(state, &path) {
+        return arrived(state, file, at);
+    }
     read(state, spawner, path, None, at);
+}
+
+/// The two sides of a file the stream holds, aligned again for the buffer.
+fn in_hand(state: &AppState, path: &str) -> Option<Opened> {
+    if state.workspace.commit.is_some() {
+        return None;
+    }
+    let painted = state.workspace.coloured.get(path)?;
+    Some(from_documents(
+        path,
+        painted.old.clone(),
+        painted.new.clone(),
+    ))
 }
 
 pub(super) fn read(
@@ -238,7 +254,6 @@ fn refreshed(state: &mut AppState, file: Opened, at: Option<Selection>) {
     if let Some(held) = at {
         open.new.holding(held);
     }
-    state.workspace.moved();
 }
 
 /// A different text: the buffer gives way, keeping only where the caret was.

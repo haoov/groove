@@ -6,12 +6,13 @@ mod drag;
 mod focus;
 mod menu;
 mod rail;
+mod rows;
 mod sidebar;
 mod surface;
 
 pub(super) use menu::asked;
 
-use groove_controllers::{AppState, Command, session, workspace};
+use groove_controllers::{AppState, Command, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
@@ -20,6 +21,7 @@ use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
+use self::rows::{elsewhere, finishing, review, task_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
 use crate::Ui;
@@ -135,15 +137,12 @@ fn acted(
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
         Some(Target::Note(origin, button)) => surface::noted(ui, app, origin, button),
         Some(Target::Head(path)) => folded(ui, app, metrics, path),
+        Some(Target::Gap { row, way }) => one(workspace::Command::OpenGap { row, way }),
         Some(Target::Term(term)) => narrowing(ui, term),
         Some(Target::Finding) => finding(ui),
         Some(Target::Found(at)) => reached(ui, app, metrics, at),
         Some(Target::FoundIn(path)) => shut(ui, path),
         Some(Target::Map) => mapping(point.1, ui, app, hits, metrics),
-        Some(Target::Stage(path)) => one(workspace::Command::Stage { path }),
-        Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
-        Some(Target::Discard) => lose(ui),
-        Some(Target::Keep) => kept(ui),
         Some(Target::Actions) => actions(ui, app, hits, metrics),
         Some(Target::Message) => composing(ui, app, hits, metrics, point),
         Some(Target::Do) => acting(ui, app),
@@ -159,51 +158,19 @@ fn acted(
         Some(Target::Dir(path)) => twisty(ui, path),
         Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
-        Some(_) | None => Vec::new(),
+        one => staging(one, ui),
     }
 }
 
-/// One MR of the review column, opened as a session of its own.
-fn review(project: String, iid: u64) -> Vec<Command> {
-    vec![Command::Session(session::Command::OpenReview {
-        project,
-        iid,
-    })]
-}
-
-/// What another surface answers for: the board's own rows, or the rail's.
-fn elsewhere(
-    target: Option<&Target>,
-    point: (f32, f32),
-    ui: &mut Ui,
-    app: &AppState,
-    hits: &Hits,
-    metrics: Metrics,
-) -> Option<Vec<Command>> {
-    let target = target?;
-    board::acted(target, ui, app)
-        .or_else(|| rail::acted(target, ui))
-        .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
-}
-
-/// The rest of the task's actions, under the caret that opened them.
-fn task_menu(ui: &mut Ui, hits: &Hits, session: groove_types::SessionId) -> Vec<Command> {
-    let at = hits
-        .rect_of(&Target::TaskActions(session.clone()))
-        .map(|caret| (caret.x, caret.bottom()))
-        .unwrap_or_default();
-    ui.menu = Some(crate::Menu {
-        at,
-        corner: crate::Corner::TopLeft,
-        of: crate::Of::Session(session),
-    });
-    Vec::new()
-}
-
-/// The task done at its source, and its session taken away.
-fn finishing(session: groove_types::SessionId) -> Vec<Command> {
-    let finish = groove_controllers::task::Command::Finish { session };
-    vec![Command::Task(finish)]
+/// What the change itself is asked to keep or give up.
+fn staging(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
+    match target {
+        Some(Target::Stage(path)) => one(workspace::Command::Stage { path }),
+        Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
+        Some(Target::Discard) => lose(ui),
+        Some(Target::Keep) => kept(ui),
+        _ => Vec::new(),
+    }
 }
 
 /// The hours the clock measured, handed to the source.

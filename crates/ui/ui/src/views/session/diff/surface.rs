@@ -10,9 +10,7 @@ use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
-use crate::widget::{
-    Acting, Gutters, Line, Noted, Rows, chars_of, code, head_mark, height, visible,
-};
+use crate::widget::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 
 /// Who a note left in the app is by.
 pub(crate) const AUTHOR: &str = "you";
@@ -88,7 +86,8 @@ fn surface(
     };
     let drawn = code(ctx, rect, shown, scroll);
     if clickable {
-        marks(ctx, &drawn, &slots, &rows, code_rows.start);
+        let at = (numbers, view, side);
+        super::offers::marks(ctx, &drawn, &slots, &rows, code_rows.start, at);
     }
 }
 
@@ -253,23 +252,6 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
     match ctx.styles.row_ground(row.kind) {
         Some(color) => line.ground(color),
         None => line,
-    }
-}
-
-/// What a head row offers: the row itself folds, its box marks the file read.
-fn marks(ctx: &mut Ctx, drawn: &[Rect], slots: &[Slot], rows: &[Drawn], first: usize) {
-    for (line, slot) in drawn.iter().zip(slots) {
-        let Slot::Code(at) = slot else {
-            continue;
-        };
-        let Some(row) = rows.get(at - first) else {
-            continue;
-        };
-        let Some(path) = row.file.as_ref().filter(|_| row.head) else {
-            continue;
-        };
-        ctx.hit(*line, Target::Head(path.clone()));
-        ctx.hit(head_mark(ctx, *line), Target::Read(path.clone()));
     }
 }
 

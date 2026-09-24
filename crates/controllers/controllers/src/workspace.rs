@@ -28,6 +28,14 @@ pub use diff::{follow, load};
 pub use forge::Say;
 pub use mr::{known, poll, polls, refresh};
 pub use notes::Act as NoteAct;
+/// Which end of a gap gives its lines up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Way {
+    Up,
+    Down,
+    All,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `workspace.load`: the selected worktree's changed files.
@@ -46,6 +54,8 @@ pub enum Command {
     Grep { query: String, under: String },
     /// `workspace.fold`: one file's rows hidden under its head, or shown again.
     Fold { path: String },
+    /// `workspace.open_gap`: a gap gives up the lines it hides, from one end or whole.
+    OpenGap { row: usize, way: Way },
     /// `workspace.show`: which rows of the whole change are on screen.
     Show { rows: std::ops::Range<usize> },
     /// `workspace.edit`: one keystroke on the open buffer.
@@ -111,6 +121,7 @@ impl Command {
             Command::MarkRead { .. } => "workspace.mark_read",
             Command::Grep { .. } => "workspace.grep",
             Command::Fold { .. } => "workspace.fold",
+            Command::OpenGap { .. } => "workspace.open_gap",
             Command::Show { .. } => "workspace.show",
             Command::Edit(_) => "workspace.edit",
             Command::SaveFile => "workspace.save_file",
@@ -178,6 +189,7 @@ pub fn dispatch(
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
         Command::Grep { query, under } => grep(state, spawner, query, under),
         Command::Fold { path } => state.workspace.changes.fold(&path),
+        Command::OpenGap { row, way } => diff::open_gap(state, row, way),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
         Command::SaveFile => save_file(state, spawner),

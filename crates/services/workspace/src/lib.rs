@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
     Aligned, At, Changes, Derived, Document, Opened, Words, aligned, by_line, columns, display_at,
-    from_text, shown,
+    from_documents, from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
 pub use groove_forge::{Posted, Remote, Snapshot};
@@ -125,6 +125,8 @@ impl State {
         let shut = self.changes.folds();
         self.changes = changes;
         self.changes.refold(shut);
+        self.coloured.clear();
+        self.showing = 0..0;
     }
 
     /// Whether what it shows is a commit, which nothing may write.
@@ -224,6 +226,18 @@ impl State {
     }
 
     /// The colours of one file, from the buffer when it is the open one.
+    /// A gap gives up a run of its old-side lines, from the documents already read.
+    pub fn open_gap(&mut self, path: &str, span: std::ops::Range<u32>) {
+        let sides = match self.opened.as_ref().filter(|open| open.path == path) {
+            Some(open) => (&open.old, open.new.document()),
+            None => match self.coloured.get(path) {
+                Some(painted) => (&painted.old, &painted.new),
+                None => return,
+            },
+        };
+        self.changes.open_gap(path, span, sides.0, sides.1);
+    }
+
     pub fn sides(&self, path: &str) -> Option<(&Document, &Document)> {
         if let Some(open) = self.opened.as_ref().filter(|open| open.path == path) {
             return Some((&open.old, open.new.document()));

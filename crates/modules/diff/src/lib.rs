@@ -37,5 +37,5 @@ pub fn display_at(line: &str, column: usize, width: usize) -> usize {
 pub fn columns(line: &str, display: usize, width: usize) -> usize {
     groove_text::column_of(line, display, width)
 }
-pub use opened::{Derived, Opened, derived, from_text, opened, reopened};
+pub use opened::{Derived, Opened, derived, from_documents, from_text, opened, reopened};
 pub use summary::{MAX_BYTES, summary, summary_against};
