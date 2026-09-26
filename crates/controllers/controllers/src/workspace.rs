@@ -277,7 +277,7 @@ pub(super) fn selected(state: &AppState) -> Option<WorktreeId> {
 }
 
 /// The repo and the worktree one id names, in whichever open session holds it.
-pub(super) fn pair(
+pub(crate) fn pair(
     state: &AppState,
     id: &WorktreeId,
 ) -> Option<(groove_types::Repo, groove_types::Worktree)> {

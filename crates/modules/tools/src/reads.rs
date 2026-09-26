@@ -129,8 +129,8 @@ fn files() -> Vec<Tool> {
     vec![
         read(
             "get_annotations",
-            "Every note on this session: the ones left here, and the merge request's own \
-             threads, each with its file and line.",
+            "Every note left on this session, by the user or by you, each with its file, \
+             lines and status. The MR's own threads come from get_mr_threads.",
             takes(&[], vec![task()]),
         ),
         read(

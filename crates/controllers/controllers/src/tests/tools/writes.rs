@@ -19,11 +19,11 @@ fn a_tool_groove_does_not_answer_yet_says_so() {
         &services,
         &spawner,
         "gh-nothing",
-        "get_mr_threads",
+        "get_nothing",
         json!({}),
     );
     assert!(answer.failed);
-    assert!(answer.text.contains("get_mr_threads"), "{}", answer.text);
+    assert!(answer.text.contains("get_nothing"), "{}", answer.text);
 }
 
 #[test]
@@ -215,11 +215,7 @@ fn every_tool_groove_lists_is_one_it_answers() {
             unanswered.push(tool.name);
         }
     }
-    assert_eq!(
-        unanswered,
-        ["get_mr_threads", "get_mr_ci", "get_annotations"],
-        "these are the reads still to build, and nothing else"
-    );
+    assert!(unanswered.is_empty(), "{unanswered:?}");
 }
 
 #[test]

@@ -3,6 +3,7 @@
 mod about;
 mod files;
 mod filing;
+mod forge;
 mod work;
 mod write;
 
@@ -26,6 +27,9 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_commit_log" => work::log(state, spawner, call),
         "get_status" => work::status(state, services, spawner, call),
         "get_mr_state" => work::mr(state, services, spawner, call),
+        "get_mr_threads" => forge::threads(state, services, spawner, call),
+        "get_mr_ci" => forge::ci(state, services, spawner, call),
+        "get_annotations" => files::notes(state, services, spawner, call),
         "list_skills" => about::skills(state, call),
         "read_user_skill" => about::skill(state, call),
         "get_task_body" => about::body(state, spawner, call),

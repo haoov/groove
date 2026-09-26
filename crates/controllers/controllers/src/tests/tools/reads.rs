@@ -414,3 +414,61 @@ fn a_template_asked_of_a_source_that_is_not_set_up_is_refused() {
     );
     assert!(answer.failed, "{}", answer.text);
 }
+
+#[test]
+fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, _) = changed(&mut state, &services, &spawner);
+    state
+        .agent
+        .auto_approve(&groove_types::SessionId::new(&id), true);
+    let note =
+        json!({ "worktree_id": worktree, "path": "a.txt", "line": 1, "content": "issue: one" });
+    asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "create_annotation",
+        note,
+    );
+    fixture::until(&spawner, &services, &mut state, |s| {
+        !s.workspace.own.is_empty()
+    });
+
+    let answer = asked(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "get_annotations",
+        json!({}),
+    );
+    let notes = said(&answer)["annotations"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert_eq!(notes[0]["id"], state.workspace.own[0].id.as_str());
+    assert_eq!(notes[0]["content"], "issue: one");
+}
+
+#[test]
+fn the_forge_reads_name_a_worktree_of_an_open_session() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    let id = state.session.selected.clone().unwrap();
+    for tool in ["get_mr_threads", "get_mr_ci"] {
+        let args = json!({ "worktree_id": "wt-nowhere" });
+        let answer = asked(&mut state, &services, &spawner, id.as_str(), tool, args);
+        assert!(answer.failed, "{tool}: {}", answer.text);
+    }
+}
