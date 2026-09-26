@@ -28,5 +28,6 @@ hold the decisions and the rules; the code holds how they are carried out.
 | [capabilities/](capabilities/) | one file per capability: its tool sets and what each manages |
 | [implementation/](implementation/) | one file per capability: the decisions each tool set is made of, and what is left to build |
 | [architecture.md](architecture.md) | layers, boundaries, splitting, state ownership, rendering, tests, migration |
+| [homes.md](homes.md) | the services, and the one home of each concept |
 | [design.md](design.md) | the surfaces — board, rail, session, review sheet, settings — and the rules they follow |
 | [maquette.html](maquette.html) | the surfaces as a working page; open it in a browser |

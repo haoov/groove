@@ -106,4 +106,3 @@ any write.
 - [x] `SessionActivity` in `types`: status, asks, auto-approve, last change, last seen.
 - [x] `seen_at` and `auto_approve` on the `session_state` row.
 - [x] Timeline table and its migration.
-- [ ] Hook coalescing window.

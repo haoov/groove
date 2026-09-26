@@ -67,5 +67,4 @@ this agent has; stale after a save until reload.
 
 - [x] `session_state`: one leaf row per session, so `sessions` is never altered again.
 - [x] `WorktreeDelivery` in `types` and its fold in the `session` service.
-- [ ] The last-touched worktree per session, from the timeline.
-- [ ] Explorer conversion as one controller over `task`, `session` and `agent`.
+- [x] Explorer conversion as one controller over `task`, `session` and `agent`.

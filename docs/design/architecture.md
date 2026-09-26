@@ -136,7 +136,8 @@ world. One thread applies all three.
   change.
 
 **Firehoses never enter the loop.** The terminal's reader thread parses bytes into the grid
-and sets a dirty flag; one damage event per frame at most. Hook bursts are coalesced.
+and sets a dirty flag; one damage event per frame at most. A hook is one event, and its
+redraw merges with the frame's others.
 
 **Keystrokes never touch a device on the main thread.** The terminal module's writer thread
 owns the pty's input side; send and resize queue on its channel and return.
