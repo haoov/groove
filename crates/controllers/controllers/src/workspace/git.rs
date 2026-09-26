@@ -118,7 +118,7 @@ pub(crate) fn remote(
                     let kind = act.kind();
                     logged(services, spawner, &session, kind, &branch, &worktree.id);
                     if act == Remote::Push {
-                        state.workspace.poll.forget(&worktree.id);
+                        state.delivery.poll.forget(&worktree.id);
                     }
                     if let (Some(open), Some(status)) = (state.session.get_mut(&session), status) {
                         open.told(&worktree.id, status);

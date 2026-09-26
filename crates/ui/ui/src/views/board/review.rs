@@ -16,7 +16,7 @@ use crate::widget::{after_mark, ago, elide, icon, leading, row};
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     let query = ui.board.query();
     let asked: Vec<&ReviewMr> = app
-        .workspace
+        .delivery
         .reviews
         .iter()
         .filter(|mr| query.lets_review(mr))

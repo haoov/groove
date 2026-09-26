@@ -1,6 +1,6 @@
 //! The commit box: its message, its one button, and the menu behind it.
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};
 
@@ -214,7 +214,7 @@ fn keeping_everything_asks_nothing_of_git() {
 }
 
 /// The one action the box offers now.
-fn offered(app: &AppState, ui: &Ui) -> Option<workspace::Command> {
+fn offered(app: &AppState, ui: &Ui) -> Option<Command> {
     let _ = drawn(app, ui);
     crate::views::session::commit::primary(app)
 }
@@ -225,7 +225,7 @@ fn the_box_offers_what_the_worktree_most_wants_doing() {
     let ui = sidebar();
     assert_eq!(
         offered(&app, &ui),
-        Some(workspace::Command::Commit),
+        Some(Command::Workspace(workspace::Command::Commit)),
         "a change wants committing"
     );
 
@@ -334,8 +334,8 @@ fn landed() -> AppState {
         .and_then(|open| open.selected_worktree())
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
-    app.workspace.poll.sent(&worktree);
-    app.workspace.poll.answered(&worktree);
+    app.delivery.poll.sent(&worktree);
+    app.delivery.poll.answered(&worktree);
     app
 }
 
@@ -344,7 +344,7 @@ fn a_branch_with_nothing_left_to_push_offers_a_merge_request() {
     let app = landed();
     assert_eq!(
         crate::views::session::commit::primary(&app),
-        Some(workspace::Command::CreateMr)
+        Some(Command::Delivery(delivery::Command::CreateMr))
     );
     let (frame, _) = view(&app, &sidebar(), window(), &mut Fonts::embedded());
     let texts: Vec<String> = frame.layers()[0]
@@ -368,14 +368,14 @@ fn a_branch_whose_forge_has_not_answered_offers_nothing() {
 #[test]
 fn a_branch_that_already_has_one_offers_nothing_on_the_button() {
     let mut app = landed();
-    app.workspace.delivery.mr = Some(groove_types::Mr {
+    app.delivery.remembered(vec![groove_types::Mr {
         id: groove_types::MrId::new("m1"),
         worktree: groove_types::WorktreeId::new("wt-1"),
         forge: groove_types::Forge::Github,
         remote_id: "7".into(),
         url: "https://example.test/pull/7".into(),
         state: groove_types::MrState::Open,
-    });
+    }]);
     assert_eq!(crate::views::session::commit::primary(&app), None);
 }
 
@@ -408,7 +408,7 @@ fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
     assert!(asking.is_none(), "closing an mr asks nothing first");
     assert_eq!(
         commands,
-        vec![Command::Workspace(workspace::Command::CloseMr)]
+        vec![Command::Delivery(delivery::Command::CloseMr)]
     );
 }
 
@@ -441,7 +441,7 @@ fn a_session_of_its_own_work_offers_a_comment_and_no_verdict() {
 
 #[test]
 fn picking_a_verdict_asks_for_the_review() {
-    use groove_controllers::workspace::Say;
+    use groove_controllers::delivery::Say;
     let of = crate::Of::Worktree {
         mr: true,
         review: true,
@@ -451,20 +451,20 @@ fn picking_a_verdict_asks_for_the_review() {
     let picked = |label: &str| crate::views::shared::actions::picked(&of, at(label)).commands;
     assert_eq!(
         picked("approve"),
-        [groove_controllers::Command::Workspace(
-            workspace::Command::Say(Say::Review(groove_types::ReviewVerdict::Approve))
+        [groove_controllers::Command::Delivery(
+            delivery::Command::Say(Say::Review(groove_types::ReviewVerdict::Approve))
         )]
     );
     assert_eq!(
         picked("request changes"),
-        [groove_controllers::Command::Workspace(
-            workspace::Command::Say(Say::Review(groove_types::ReviewVerdict::RequestChanges))
+        [groove_controllers::Command::Delivery(
+            delivery::Command::Say(Say::Review(groove_types::ReviewVerdict::RequestChanges))
         )]
     );
     assert_eq!(
         picked("comment"),
-        [groove_controllers::Command::Workspace(
-            workspace::Command::Say(Say::Comment)
+        [groove_controllers::Command::Delivery(
+            delivery::Command::Say(Say::Comment)
         )]
     );
 }

@@ -27,8 +27,8 @@ pub(super) fn note_at(
     at: usize,
 ) -> Vec<Command> {
     let Some(anchor) = app
-        .workspace
-        .notes
+        .delivery
+        .shown
         .get(at)
         .and_then(|note| note.anchor.clone())
     else {

@@ -1255,6 +1255,7 @@ version = "0.1.0"
 dependencies = [
  "groove-agent-service",
  "groove-config-service",
+ "groove-delivery-service",
  "groove-session-service",
  "groove-task-service",
  "groove-types",
@@ -1273,6 +1274,20 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "groove-delivery-service"
+version = "0.1.0"
+dependencies = [
+ "groove-annotations",
+ "groove-forge",
+ "groove-sessions",
+ "groove-types",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -1557,20 +1572,13 @@ dependencies = [
 name = "groove-workspace-service"
 version = "0.1.0"
 dependencies = [
- "groove-annotations",
  "groove-diff",
  "groove-editor",
- "groove-forge",
  "groove-git",
  "groove-grep",
- "groove-sessions",
  "groove-text",
  "groove-types",
  "groove-watch",
- "serde_json",
- "sqlx",
- "tokio",
- "wiremock",
 ]
 
 [[package]]

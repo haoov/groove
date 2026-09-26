@@ -22,7 +22,7 @@ fn note(path: &str, line: u32, body: &str) -> Note {
 /// The fixture with those notes and the notes list up.
 fn noting(notes: Vec<Note>) -> (AppState, Ui) {
     let mut app = with_files(&["src/lib.rs"]);
-    app.workspace.notes = notes;
+    app.delivery.shown = notes;
     let mut ui = sidebar_ui();
     ui.session.pane = Pane::Notes;
     (app, ui)
@@ -113,9 +113,7 @@ fn picking_the_notes_list_reads_the_notes() {
     assert!(
         asked.iter().any(|one| matches!(
             one,
-            groove_controllers::Command::Workspace(
-                groove_controllers::workspace::Command::GetNotes
-            )
+            groove_controllers::Command::Delivery(groove_controllers::delivery::Command::GetNotes)
         )),
         "the frame asks for them: {asked:?}"
     );
@@ -132,15 +130,16 @@ fn the_notes_are_read_once_a_session() {
             .filter(|one| {
                 matches!(
                     one,
-                    groove_controllers::Command::Workspace(
-                        groove_controllers::workspace::Command::GetNotes
+                    groove_controllers::Command::Delivery(
+                        groove_controllers::delivery::Command::GetNotes
                     )
                 )
             })
             .count()
     };
     assert_eq!(asks(&app, &ui), 1, "nothing is held yet");
-    app.workspace.noted = app.session.selected.clone();
+    let session = app.session.selected.clone().expect("a session");
+    app.delivery.reading(&session);
     assert_eq!(asks(&app, &ui), 0, "the read is out or landed");
     app.session.selected = Some(groove_types::SessionId::new("b"));
     assert_eq!(asks(&app, &ui), 1, "another session brings its own");

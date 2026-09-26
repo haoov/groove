@@ -90,7 +90,9 @@ fn closes(lines: &[Line<'_>], at: usize) -> bool {
 fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, closes: bool) {
     match line {
         Line::Session(living) => super::live::session(ctx, rect, app, ui, living),
-        Line::Worktree(worktree, delivery) => worktree_row::draw(ctx, rect, worktree, *delivery),
+        Line::Worktree(worktree, delivery) => {
+            worktree_row::draw(ctx, rect, worktree, delivery.as_ref())
+        }
         Line::Task(at, task) => row::up_next(ctx, rect, app, ui, *at, task),
         Line::Review(mr) => return super::review::item(ctx, rect, ui, mr),
         Line::Divider => return super::plan::divider(ctx, rect),

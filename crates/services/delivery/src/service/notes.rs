@@ -1,4 +1,4 @@
-//! What the capability asks of the notes: this session's own, and the forge's threads.
+//! The session's notes, and what it says on the forge's threads.
 
 use groove_annotations::New;
 use groove_forge::{Posted, Remote, Verdict};
@@ -65,13 +65,12 @@ impl Service {
     /// One note of this session posted on the MR, and resolved here once it is there.
     pub async fn post_note(
         &self,
-        remote: &Remote,
         repo: &Repo,
         worktree: &WorktreeId,
         note: &Annotation,
     ) -> Result<()> {
         elsewhere(note, repo)?;
-        let mr = self.held(worktree).await?;
+        let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
         remote.post_note(repo, &mr.remote_id, posted(note)).await?;
         self.notes.delete(&note.id).await
     }
@@ -79,42 +78,30 @@ impl Service {
     /// Words under a thread of the MR.
     pub async fn reply_thread(
         &self,
-        remote: &Remote,
         repo: &Repo,
         worktree: &WorktreeId,
         thread: &str,
         body: &str,
     ) -> Result<()> {
-        let mr = self.held(worktree).await?;
+        let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
         Ok(remote
             .reply_thread(repo, &mr.remote_id, thread, body)
             .await?)
     }
 
     /// A comment on the MR itself, under no line.
-    pub async fn comment(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &WorktreeId,
-        body: &str,
-    ) -> Result<()> {
-        let mr = self.held(worktree).await?;
+    pub async fn comment(&self, repo: &Repo, worktree: &WorktreeId, body: &str) -> Result<()> {
+        let (remote, mr) = (self.remote(repo)?, self.held(worktree).await?);
         Ok(remote.comment(repo, &mr.remote_id, body).await?)
     }
 
     /// A verdict on the MR, carrying the notes this session has not posted, which
     /// it resolves once they are up.
-    pub async fn review(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &WorktreeId,
-        said: Said<'_>,
-    ) -> Result<()> {
+    pub async fn review(&self, repo: &Repo, worktree: &WorktreeId, said: Said<'_>) -> Result<()> {
+        let remote = self.remote(repo)?;
         match remote.kind() {
-            Forge::Github => self.reviewed(remote, repo, worktree, said).await,
-            Forge::Gitlab => self.one_by_one(remote, repo, worktree, said).await,
+            Forge::Github => self.reviewed(&remote, repo, worktree, said).await,
+            Forge::Gitlab => self.one_by_one(&remote, repo, worktree, said).await,
         }
     }
 
@@ -150,7 +137,7 @@ impl Service {
         said: Said<'_>,
     ) -> Result<()> {
         for note in said.notes {
-            self.post_note(remote, repo, worktree, note).await?;
+            self.post_note(repo, worktree, note).await?;
         }
         let mr = self.held(worktree).await?;
         let verdict = Verdict {
@@ -162,7 +149,7 @@ impl Service {
     }
 
     /// A thread of the MR resolved, or opened again.
-    pub async fn resolve_thread(&self, remote: &Remote, thread: &str, resolve: bool) -> Result<()> {
-        Ok(remote.resolve_thread(thread, resolve).await?)
+    pub async fn resolve_thread(&self, repo: &Repo, thread: &str, resolve: bool) -> Result<()> {
+        Ok(self.remote(repo)?.resolve_thread(thread, resolve).await?)
     }
 }

@@ -1,43 +1,77 @@
 //! What the row, the header and the overview show of a worktree's merge request.
 
+use groove_controllers::AppState;
+use groove_controllers::delivery_service::{Delivered, Snapshot};
 use groove_gfx::Icon;
 use groove_types::{
-    CiState, CiStatus, Forge, MrApproval, MrDelivery, MrDetails, MrNote, MrState, MrThread,
-    ReviewState, Reviewer, SessionId, Timestamp, WorktreeDelivery,
+    CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrId, MrNote, MrState, MrThread,
+    ReviewState, Reviewer, SessionId, Timestamp, WorktreeId,
 };
 
 use crate::tests::{app as bare, full_app, metrics};
 use crate::{Ui, view};
 
-fn delivery(state: MrState, ci: Option<CiState>) -> WorktreeDelivery {
-    WorktreeDelivery {
-        mr: Some(MrDelivery {
-            forge: Forge::Github,
-            number: "7".into(),
-            state,
-            url: "https://github.com/acme/groove/pull/7".into(),
-            approved: false,
-            changes_requested: false,
-        }),
-        ci,
-        notes: 2,
-        ..Default::default()
+/// The MR row the database holds, in this state.
+fn mr(worktree: &WorktreeId, state: MrState) -> Mr {
+    Mr {
+        id: MrId::new("m1"),
+        worktree: worktree.clone(),
+        forge: Forge::Github,
+        remote_id: "7".into(),
+        url: "https://github.com/acme/groove/pull/7".into(),
+        state,
     }
 }
 
-/// The fixture's worktree carrying this delivery.
-fn showing(delivery: WorktreeDelivery) -> groove_controllers::AppState {
+/// A read of the MR in this state: its run, no reviewer yet, two threads nobody resolved.
+fn snapshot(state: MrState, ci: Option<CiState>) -> Snapshot {
+    let mut read = read();
+    read.details.state = state;
+    read.details.approval = None;
+    read.details.reviewers = Vec::new();
+    read.ci = ci.map(|state| CiStatus {
+        state,
+        url: String::new(),
+        finished_at: None,
+    });
+    read.threads = vec![thread("t1"), thread("t2")];
+    read
+}
+
+fn thread(id: &str) -> MrThread {
+    MrThread {
+        id: id.into(),
+        notes: vec![MrNote {
+            author: "reviewer".into(),
+            body: "issue: this drops the error".into(),
+            created_at: Timestamp::new(0),
+            resolved: false,
+            resolvable: true,
+            position: None,
+        }],
+    }
+}
+
+/// The fixture's worktree, its MR read as the poll leaves it.
+fn showing(state: MrState, read: Snapshot) -> AppState {
     let mut app = full_app();
-    let open = app
+    let worktree = app
         .session
-        .get_mut(&SessionId::new("a"))
-        .expect("the fixture's session");
-    let worktree = open.worktrees[0].id.clone();
-    open.delivery.push((worktree, delivery));
+        .get(&SessionId::new("a"))
+        .expect("the fixture's session")
+        .worktrees[0]
+        .id
+        .clone();
+    let mr = mr(&worktree, state);
+    app.delivery.took(&worktree, Delivered { mr, read });
     app
 }
 
-fn drawn(app: &groove_controllers::AppState) -> (Vec<String>, Vec<Icon>) {
+fn open_with(ci: Option<CiState>) -> AppState {
+    showing(MrState::Open, snapshot(MrState::Open, ci))
+}
+
+fn drawn(app: &AppState) -> (Vec<String>, Vec<Icon>) {
     let (frame, _) = view(
         app,
         &Ui::default(),
@@ -53,7 +87,7 @@ fn drawn(app: &groove_controllers::AppState) -> (Vec<String>, Vec<Icon>) {
 
 #[test]
 fn an_open_mr_shows_its_number_and_its_notes() {
-    let app = showing(delivery(MrState::Open, None));
+    let app = open_with(None);
     let (texts, icons) = drawn(&app);
     assert!(texts.iter().any(|t| t == "#7"), "{texts:?}");
     assert!(icons.contains(&Icon::Chat), "the notes mark");
@@ -62,43 +96,47 @@ fn an_open_mr_shows_its_number_and_its_notes() {
 
 #[test]
 fn checks_that_failed_show_a_cross_and_ones_that_passed_a_check() {
-    let (_, icons) = drawn(&showing(delivery(MrState::Open, Some(CiState::Failed))));
+    let (_, icons) = drawn(&open_with(Some(CiState::Failed)));
     assert!(icons.contains(&Icon::Cross), "the run failed");
 
-    let (_, icons) = drawn(&showing(delivery(MrState::Open, Some(CiState::Success))));
+    let (_, icons) = drawn(&open_with(Some(CiState::Success)));
     assert!(icons.contains(&Icon::Check), "the run passed");
 
-    let (_, icons) = drawn(&showing(delivery(MrState::Open, Some(CiState::Running))));
+    let (_, icons) = drawn(&open_with(Some(CiState::Running)));
     assert!(icons.contains(&Icon::Notch), "the run is going");
 }
 
 #[test]
 fn a_worktree_with_no_mr_draws_nothing_of_one() {
-    let (texts, icons) = drawn(&showing(WorktreeDelivery::default()));
+    let (texts, icons) = drawn(&full_app());
     assert!(!texts.iter().any(|t| t.starts_with('#')), "{texts:?}");
     assert!(!icons.contains(&Icon::Chat));
 }
 
 #[test]
 fn what_the_reviewers_said_shows_beside_the_number() {
-    let mut asked = delivery(MrState::Open, None);
-    if let Some(mr) = asked.mr.as_mut() {
-        mr.changes_requested = true;
-    }
-    let (_, icons) = drawn(&showing(asked));
+    let mut asked = snapshot(MrState::Open, None);
+    asked.details.reviewers = vec![Reviewer {
+        name: "reviewer".into(),
+        state: ReviewState::ChangesRequested,
+        at: None,
+    }];
+    let (_, icons) = drawn(&showing(MrState::Open, asked));
     assert!(icons.contains(&Icon::Cross), "changes were requested");
 
-    let mut approved = delivery(MrState::Open, None);
-    if let Some(mr) = approved.mr.as_mut() {
-        mr.approved = true;
-    }
-    let (_, icons) = drawn(&showing(approved));
+    let mut approved = snapshot(MrState::Open, None);
+    approved.details.approval = Some(MrApproval {
+        approved: true,
+        approved_by_me: false,
+        approved_by: vec!["reviewer".into()],
+    });
+    let (_, icons) = drawn(&showing(MrState::Open, approved));
     assert!(icons.contains(&Icon::Check), "it is approved");
 }
 
 /// A read of the MR, as the poll leaves it in the slice.
-fn read() -> groove_controllers::workspace_service::Snapshot {
-    groove_controllers::workspace_service::Snapshot {
+fn read() -> Snapshot {
+    Snapshot {
         head: "cafe1234".into(),
         node: "PR_node".into(),
         number: "7".into(),
@@ -145,17 +183,8 @@ fn read() -> groove_controllers::workspace_service::Snapshot {
 
 #[test]
 fn the_overview_names_the_mr_and_what_it_stands_at() {
-    let mut app = showing(delivery(MrState::Open, Some(CiState::Failed)));
+    let mut app = showing(MrState::Open, read());
     app.workspace.worktree = Some(app.session.open[0].worktrees[0].id.clone());
-    app.workspace.delivery.read = Some(read());
-    app.workspace.delivery.mr = Some(groove_types::Mr {
-        id: groove_types::MrId::new("m1"),
-        worktree: app.session.open[0].worktrees[0].id.clone(),
-        forge: Forge::Github,
-        remote_id: "7".into(),
-        url: "https://github.com/acme/groove/pull/7".into(),
-        state: MrState::Open,
-    });
     let (texts, _) = drawn(&app);
     assert!(texts.iter().any(|t| t == "MERGE REQUEST"), "{texts:?}");
     assert!(texts.iter().any(|t| t == "open"), "the state: {texts:?}");
@@ -180,7 +209,7 @@ fn a_session_with_no_mr_read_has_no_merge_request_section() {
 
 #[test]
 fn a_long_branch_is_cut_so_the_row_never_reaches_past_its_area() {
-    let mut app = showing(delivery(MrState::Open, Some(CiState::Failed)));
+    let mut app = open_with(Some(CiState::Failed));
     let open = app
         .session
         .get_mut(&SessionId::new("a"))
@@ -211,7 +240,7 @@ fn a_long_branch_is_cut_so_the_row_never_reaches_past_its_area() {
 
 #[test]
 fn the_header_offers_to_read_the_mr_again() {
-    let app = showing(delivery(MrState::Open, None));
+    let app = open_with(None);
     let mut ui = Ui::default();
     let window = metrics(1280, 800, 1.0);
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
@@ -231,8 +260,8 @@ fn the_header_offers_to_read_the_mr_again() {
     );
     assert_eq!(
         commands,
-        vec![groove_controllers::Command::Workspace(
-            groove_controllers::workspace::Command::RefreshMr
+        vec![groove_controllers::Command::Delivery(
+            groove_controllers::delivery::Command::RefreshMr
         )]
     );
 }

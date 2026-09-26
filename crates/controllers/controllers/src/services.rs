@@ -9,7 +9,7 @@ use groove_workspace_service::{Clipboard, Memory};
 pub struct Services {
     pub session: groove_session_service::Service,
     pub task: groove_task_service::Service,
-    pub workspace: groove_workspace_service::Service,
+    pub delivery: groove_delivery_service::Service,
     /// What every session did to its own work.
     pub timeline: groove_session_service::Timeline,
     /// What the open file copies through.
@@ -22,7 +22,7 @@ impl Services {
     pub async fn in_memory(root: &std::path::Path) -> groove_types::Result<Self> {
         let session = groove_session_service::Service::in_memory(root).await?;
         Ok(Self {
-            workspace: groove_workspace_service::Service::beside(session.store()),
+            delivery: groove_delivery_service::Service::beside(session.store()),
             timeline: groove_session_service::Timeline::new(session.store().db().clone()),
             session,
             task: groove_task_service::Service::in_memory().await?,

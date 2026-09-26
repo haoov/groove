@@ -45,12 +45,13 @@ fn by_task(state: &AppState) -> BTreeMap<ExternalId, MrFacts> {
             continue;
         };
         for worktree in &open.worktrees {
-            let Some(facts) = state.workspace.facts.get(&worktree.id) else {
+            let held = state.delivery.held(&worktree.id);
+            let Some(facts) = held.and_then(groove_delivery_service::Held::facts) else {
                 continue;
             };
             out.entry(external_id.clone())
-                .and_modify(|held| *held = held.and(*facts))
-                .or_insert(*facts);
+                .and_modify(|held| *held = held.and(facts))
+                .or_insert(facts);
         }
     }
     out

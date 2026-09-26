@@ -32,7 +32,7 @@ pub(super) fn notes(state: &AppState, services: &Services, spawner: &dyn Spawner
     };
     let (session, service, reply) = (
         open.session.id.clone(),
-        services.workspace.clone(),
+        services.delivery.clone(),
         call.reply,
     );
     spawner.spawn(Box::pin(async move {

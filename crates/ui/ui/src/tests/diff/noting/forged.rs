@@ -1,6 +1,7 @@
 //! What the forge answers for: a note posted, a thread replied to or resolved.
 
 use super::*;
+use groove_controllers::delivery;
 
 /// A thread of the merge request, on line 1.
 fn thread() -> groove_types::Note {
@@ -19,15 +20,15 @@ fn thread() -> groove_types::Note {
 /// The app with an MR of its own, so a note of it can be posted.
 fn delivered(notes: Vec<groove_types::Note>) -> AppState {
     let mut app = opened();
-    app.workspace.notes = notes;
-    app.workspace.delivery.mr = Some(groove_types::Mr {
+    app.delivery.shown = notes;
+    app.delivery.remembered(vec![groove_types::Mr {
         id: groove_types::MrId::new("m1"),
         worktree: groove_types::WorktreeId::new("wt-1"),
         forge: groove_types::Forge::Gitlab,
         remote_id: "7".into(),
         url: "https://example.com/7".into(),
         state: groove_types::MrState::Open,
-    });
+    }]);
     app
 }
 
@@ -56,7 +57,7 @@ fn a_note_of_a_session_with_an_mr_offers_to_post_it() {
     let commands = on(&app, &mut ui, local(), crate::hit::NoteButton::Post);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Post {
+        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Post {
             id: groove_types::AnnotationId::new("n1")
         })
     );
@@ -65,7 +66,7 @@ fn a_note_of_a_session_with_an_mr_offers_to_post_it() {
 #[test]
 fn a_session_with_no_mr_offers_no_post() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
@@ -112,7 +113,7 @@ fn resolving_a_thread_asks_the_forge() {
     let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Thread {
+        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
             thread: "t1".into(),
             resolve: true
         })
@@ -129,7 +130,7 @@ fn a_resolved_thread_asks_to_be_opened_again() {
     let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Thread {
+        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
             thread: "t1".into(),
             resolve: false
         })
@@ -151,7 +152,7 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
     let commands = press(Key::Enter, &mut ui, &app);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Reply {
+        delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Reply {
             thread: "t1".into(),
             body: "fixed".into()
         })

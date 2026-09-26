@@ -102,7 +102,7 @@ pub(super) fn mr(state: &AppState, services: &Services, spawner: &dyn Spawner, c
     let Some(worktree) = super::worktree(state, &call) else {
         return call.reply.failed(super::NO_WORKTREE);
     };
-    let (service, reply) = (services.workspace.clone(), call.reply);
+    let (service, reply) = (services.delivery.clone(), call.reply);
     spawner.spawn(Box::pin(async move {
         let stored = service.stored(&worktree.id).await;
         Box::new(

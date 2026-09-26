@@ -199,18 +199,15 @@ fn a_worktrees_counts_show_as_icons_and_zeros_do_not() {
     let mut app = full_app();
     let open = app.session.get_mut(&SessionId::new("a")).unwrap();
     let worktree = open.worktrees[0].id.clone();
-    open.delivery.push((
+    open.status.insert(
         worktree,
-        groove_types::WorktreeDelivery {
-            status: groove_types::WorktreeStatus {
-                modified: 3,
-                staged: 0,
-                ahead: 1,
-                behind: 0,
-            },
-            ..Default::default()
+        groove_types::WorktreeStatus {
+            modified: 3,
+            staged: 0,
+            ahead: 1,
+            behind: 0,
         },
-    ));
+    );
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(
         &app,

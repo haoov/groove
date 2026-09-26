@@ -13,8 +13,8 @@ use crate::widget::{elide, row};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let notes: Vec<(usize, &Note)> = app
-        .workspace
-        .notes
+        .delivery
+        .shown
         .iter()
         .enumerate()
         .filter(|(_, note)| listed(note))

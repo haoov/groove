@@ -1,0 +1,22 @@
+[package]
+name = "groove-delivery-service"
+description = "The delivery capability: each worktree's MR, its CI and threads, the session's notes, the poll and the review queue"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-annotations = { path = "../../modules/annotations" }
+groove-forge = { path = "../../modules/forge" }
+groove-sessions = { path = "../../modules/sessions" }
+groove-types = { path = "../../shared/types" }
+
+[dev-dependencies]
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+wiremock.workspace = true
+
+[lints]
+workspace = true

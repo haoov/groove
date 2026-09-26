@@ -64,8 +64,8 @@ fn log(app: &AppState, ui: &Ui) -> Vec<Command> {
 /// The notes the sidebar's list needs before it can show them.
 fn notes(app: &AppState, ui: &Ui) -> Vec<Command> {
     match crate::views::session::files::needs_notes(app, ui) {
-        true => vec![Command::Workspace(
-            groove_controllers::workspace::Command::GetNotes,
+        true => vec![Command::Delivery(
+            groove_controllers::delivery::Command::GetNotes,
         )],
         false => Vec::new(),
     }

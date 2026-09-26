@@ -1,6 +1,7 @@
 //! What a note's own buttons do: its words written again, or the forge asked.
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::delivery::{self, NoteAct, ThreadAct};
+use groove_controllers::{AppState, Command};
 use groove_types::{AnnotationId, Note, NoteOrigin};
 
 use crate::Ui;
@@ -18,24 +19,19 @@ pub(crate) fn noted(
         NoteOrigin::Local(id) => return own(ui, app, id, button),
         NoteOrigin::Thread(thread) => thread_act(ui, app, thread, button),
     };
-    act.map(|act| Command::Workspace(workspace::Command::Note(act)))
-        .into_iter()
-        .collect()
+    act.map(Command::Delivery).into_iter().collect()
 }
 
 /// What a button does to one of this session's own notes.
 fn own(ui: &mut Ui, app: &AppState, id: AnnotationId, button: NoteButton) -> Vec<Command> {
-    use groove_controllers::workspace::NoteAct;
     let act = match button {
         NoteButton::Edit => return editing(ui, app, id),
-        NoteButton::Resolve => resolving(app, id),
-        NoteButton::Delete => Some(NoteAct::Delete { id }),
-        NoteButton::Post => Some(NoteAct::Post { id }),
+        NoteButton::Resolve => Some(delivery::Command::Note(resolving(app, id))),
+        NoteButton::Delete => Some(delivery::Command::Note(NoteAct::Delete { id })),
+        NoteButton::Post => Some(delivery::Command::Thread(ThreadAct::Post { id })),
         NoteButton::Reply => None,
     };
-    act.map(|act| Command::Workspace(workspace::Command::Note(act)))
-        .into_iter()
-        .collect()
+    act.map(Command::Delivery).into_iter().collect()
 }
 
 /// What a button does to a thread the forge holds.
@@ -44,17 +40,16 @@ fn thread_act(
     app: &AppState,
     thread: String,
     button: NoteButton,
-) -> Option<groove_controllers::workspace::NoteAct> {
-    use groove_controllers::workspace::NoteAct;
+) -> Option<delivery::Command> {
     match button {
         NoteButton::Reply => {
             replying(ui, app, thread);
             None
         }
-        NoteButton::Resolve => Some(NoteAct::Thread {
+        NoteButton::Resolve => Some(delivery::Command::Thread(ThreadAct::Resolve {
             resolve: !resolved(app, &thread),
             thread,
-        }),
+        })),
         _ => None,
     }
 }
@@ -72,8 +67,8 @@ fn resolved(app: &AppState, thread: &str) -> bool {
 }
 
 fn held_thread<'a>(app: &'a AppState, thread: &str) -> Option<&'a Note> {
-    app.workspace
-        .notes
+    app.delivery
+        .shown
         .iter()
         .find(|note| matches!(&note.origin, NoteOrigin::Thread(id) if id == thread))
 }
@@ -95,18 +90,14 @@ fn editing(ui: &mut Ui, app: &AppState, id: AnnotationId) -> Vec<Command> {
 }
 
 /// A note resolved, or opened again when it already is.
-fn resolving(app: &AppState, id: AnnotationId) -> Option<groove_controllers::workspace::NoteAct> {
-    use groove_controllers::workspace::NoteAct;
+fn resolving(app: &AppState, id: AnnotationId) -> NoteAct {
     let resolved = held(app, &id).is_some_and(|note| note.resolved);
-    Some(match resolved {
+    match resolved {
         true => NoteAct::Reopen { id },
         false => NoteAct::Resolve { id },
-    })
+    }
 }
 
 fn held<'a>(app: &'a AppState, id: &AnnotationId) -> Option<&'a Note> {
-    app.workspace
-        .notes
-        .iter()
-        .find(|note| note.id() == Some(id))
+    app.delivery.shown.iter().find(|note| note.id() == Some(id))
 }

@@ -23,7 +23,7 @@ fn asked(project: &str, iid: u64, title: &str, author: &str, ago: i64) -> Review
 
 fn waiting() -> AppState {
     let mut app = full_app();
-    app.workspace.reviews = vec![
+    app.delivery.reviews = vec![
         asked(
             "acme/groove",
             7,

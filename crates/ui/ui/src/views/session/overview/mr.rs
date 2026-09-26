@@ -1,6 +1,6 @@
 //! What the overview shows of the selected worktree's merge request.
 
-use groove_controllers::workspace_service::{Delivery, Snapshot};
+use groove_controllers::delivery_service::{Held, Snapshot};
 use groove_gfx::Rect;
 use groove_types::{MrDetails, ReviewState};
 
@@ -11,7 +11,7 @@ use crate::widget::{Row, elide, list};
 const UNSET: &str = "—";
 
 /// The MR's own line, then what it stands at. Returns the y under the last.
-pub(super) fn rows(ctx: &mut Ctx, area: Rect, top: f32, delivery: &Delivery) -> f32 {
+pub(super) fn rows(ctx: &mut Ctx, area: Rect, top: f32, delivery: &Held) -> f32 {
     let (Some(mr), Some(read)) = (delivery.mr.as_ref(), delivery.read.as_ref()) else {
         return top;
     };

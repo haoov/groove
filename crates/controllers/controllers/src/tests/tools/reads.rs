@@ -437,7 +437,10 @@ fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
         note,
     );
     fixture::until(&spawner, &services, &mut state, |s| {
-        !s.workspace.own.is_empty()
+        !s.delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()
+            .is_empty()
     });
 
     let answer = asked(
@@ -453,7 +456,15 @@ fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
         .cloned()
         .unwrap_or_default();
     assert_eq!(notes.len(), 1, "{notes:?}");
-    assert_eq!(notes[0]["id"], state.workspace.own[0].id.as_str());
+    assert_eq!(
+        notes[0]["id"],
+        state
+            .delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()[0]
+            .id
+            .as_str()
+    );
     assert_eq!(notes[0]["content"], "issue: one");
 }
 

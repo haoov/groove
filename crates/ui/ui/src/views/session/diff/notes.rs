@@ -44,8 +44,8 @@ impl Inline {
         }
         let over = ui.session.noting.as_ref().and_then(|one| one.over_id());
         let mut blocks: Vec<Block> = app
-            .workspace
-            .notes
+            .delivery
+            .shown
             .iter()
             .enumerate()
             .filter(|(_, note)| !written(note, over))

@@ -31,7 +31,7 @@ fn reviewed(
     iid: u64,
 ) {
     let found = state
-        .workspace
+        .delivery
         .reviews
         .iter()
         .find(|mr| mr.project == project && mr.iid == iid)

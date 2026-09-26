@@ -23,7 +23,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     ctx.clipped(area, |ctx| {
         let mut y = properties(ctx, app, open, area, top, ui);
         y = section(ctx, area, y, "Repos and worktrees", y > top);
-        y = repos(ctx, open, area, y);
+        y = repos(ctx, app, open, area, y);
         y = merge_request(ctx, app, area, y);
         bottom = body(ctx, app, open, area, y);
     });
@@ -43,11 +43,15 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, 
 
 /// The selected worktree's MR, when its forge has answered for it.
 fn merge_request(ctx: &mut Ctx, app: &AppState, area: Rect, top: f32) -> f32 {
-    if app.workspace.delivery.read.is_none() {
+    let held = app
+        .session
+        .selected_worktree()
+        .and_then(|worktree| app.delivery.held(&worktree.id));
+    let Some(held) = held.filter(|one| one.read.is_some()) else {
         return top;
-    }
+    };
     let y = section(ctx, area, top, "Merge request", true);
-    mr::rows(ctx, area, y, &app.workspace.delivery)
+    mr::rows(ctx, area, y, held)
 }
 
 /// The task's body, under everything the session holds.
@@ -82,7 +86,7 @@ fn section(ctx: &mut Ctx, area: Rect, y: f32, title: &str, under: bool) -> f32 {
 }
 
 /// One block per repo: the repo, then its worktrees. Returns the y under the last.
-fn repos(ctx: &mut Ctx, open: &Open, area: Rect, top: f32) -> f32 {
+fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
     let pad = ctx.tokens.md;
     if open.repos.is_empty() {
         let style = ctx.styles.body(Role::Faint);
@@ -107,7 +111,8 @@ fn repos(ctx: &mut Ctx, open: &Open, area: Rect, top: f32) -> f32 {
         );
         for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
             let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
-            worktree_row::draw(ctx, line, worktree, open.delivery_of(&worktree.id));
+            let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
+            worktree_row::draw(ctx, line, worktree, Some(&delivery));
             if seen(area, line) {
                 ctx.hit(line, Target::Worktree(worktree.id.clone()));
             }

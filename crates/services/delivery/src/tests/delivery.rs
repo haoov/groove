@@ -3,7 +3,7 @@ use groove_types::{MrState, Repo, RepoId, SessionId, Timestamp, Worktree, Worktr
 use wiremock::matchers::{body_string_contains, method};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::{Delivery, Service};
+use crate::{Held, Service, State};
 
 pub(super) fn repo(host: &str) -> Repo {
     Repo {
@@ -89,10 +89,16 @@ pub(super) fn answer(key: &str, pr: serde_json::Value) -> serde_json::Value {
 
 /// A repo on the mock host, and a GitHub client named outright: the host rule cannot
 /// read a forge out of an address.
-pub(super) fn remote(server: &MockServer) -> (Repo, Remote) {
-    let host = format!("http://{}", server.address());
-    let client = Github::with_token(&host, Token::Fixed("t".into())).expect("a client");
-    (repo(&host), Remote::Github(client))
+/// The repo on the mock host, and the service that reaches it as GitHub.
+pub(super) async fn github(server: &MockServer) -> (Repo, Service) {
+    let at = repo(&format!("http://{}", server.address()));
+    let service = service().await.connecting(|repo| {
+        Ok(Remote::Github(Github::with_token(
+            &repo.host,
+            Token::Fixed("t".into()),
+        )?))
+    });
+    (at, service)
 }
 
 #[tokio::test]
@@ -102,10 +108,9 @@ async fn a_worktree_with_no_mr_asks_the_branch_and_writes_the_row() {
         serde_json::Value::Null,
     )
     .await;
-    let (repo, remote) = remote(&server);
-    let service = service().await;
+    let (repo, service) = github(&server).await;
     let read = service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .expect("the forge answers")
         .expect("one mr");
@@ -122,15 +127,14 @@ async fn once_the_number_is_known_the_read_follows_it_and_sees_the_merge() {
         answer("pullRequest", pr("MERGED")),
     )
     .await;
-    let (repo, remote) = remote(&server);
-    let service = service().await;
+    let (repo, service) = github(&server).await;
     service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .unwrap()
         .expect("found by branch");
     let again = service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .unwrap()
         .expect("found by number");
@@ -144,9 +148,8 @@ async fn a_branch_the_forge_has_no_mr_for_leaves_no_row() {
         serde_json::Value::Null,
     )
     .await;
-    let (repo, remote) = remote(&server);
-    let service = service().await;
-    let read = service.read(&remote, &repo, &worktree()).await.unwrap();
+    let (repo, service) = github(&server).await;
+    let read = service.read(&repo, &worktree()).await.unwrap();
     assert!(read.is_none());
     assert!(service.stored(&worktree().id).await.unwrap().is_none());
 }
@@ -162,10 +165,9 @@ async fn a_second_mr_on_the_branch_is_found_once_the_first_is_closed() {
         answer("pullRequest", closed),
     )
     .await;
-    let (repo, remote) = remote(&server);
-    let service = service().await;
+    let (repo, service) = github(&server).await;
     let first = service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .unwrap()
         .expect("found by branch");
@@ -176,7 +178,7 @@ async fn a_second_mr_on_the_branch_is_found_once_the_first_is_closed() {
         .await
         .unwrap();
     let again = service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .unwrap()
         .expect("the branch answers");
@@ -184,16 +186,30 @@ async fn a_second_mr_on_the_branch_is_found_once_the_first_is_closed() {
     assert_eq!(again.mr.state, MrState::Open);
 }
 
-#[test]
-fn a_failed_read_ages_what_stands_and_a_missing_mr_clears_it() {
-    let mut delivery = Delivery::default();
-    assert!(!delivery.stale);
-    delivery.aged();
-    assert!(delivery.stale, "nothing read, and it says so");
-    delivery.none();
-    assert!(!delivery.stale);
-    assert!(delivery.mr.is_none());
-    assert!(delivery.read.is_none());
+#[tokio::test]
+async fn a_failed_read_ages_what_stands_and_a_missing_mr_clears_it() {
+    let server = host(
+        answer("pullRequests", serde_json::json!({ "nodes": [pr("OPEN")] })),
+        serde_json::Value::Null,
+    )
+    .await;
+    let (repo, service) = github(&server).await;
+    let read = service
+        .read(&repo, &worktree())
+        .await
+        .unwrap()
+        .expect("one mr");
+    let mut state = State::default();
+    let id = worktree().id;
+    state.took(&id, read);
+    state.aged(&id);
+    assert!(
+        state.row(&id, Default::default()).stale,
+        "nothing read, and it says so"
+    );
+    state.gone(&id);
+    assert!(state.held(&id).is_none());
+    assert!(state.row(&id, Default::default()).mr.is_none());
 }
 
 #[tokio::test]
@@ -223,14 +239,13 @@ async fn what_a_read_says_becomes_the_facts_the_rules_rest_on() {
         serde_json::Value::Null,
     )
     .await;
-    let (repo, remote) = remote(&server);
-    let service = service().await;
+    let (repo, service) = github(&server).await;
     let read = service
-        .read(&remote, &repo, &worktree())
+        .read(&repo, &worktree())
         .await
         .unwrap()
         .expect("one mr");
-    let facts = read.facts();
+    let facts = Held::from(read).facts().expect("a read");
     assert_eq!(facts.state, Some(MrState::Open));
     assert_eq!(
         facts.review_requested_at,

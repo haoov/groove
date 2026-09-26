@@ -1,5 +1,8 @@
 //! What needs the user, task by task.
 
+#[cfg(test)]
+mod tests;
+
 use std::collections::BTreeMap;
 
 use groove_types::{Attention, ExternalId, MrFacts, Task, Thresholds, Timestamp, attention};

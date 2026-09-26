@@ -28,7 +28,7 @@ pub fn apply(event: Event, state: &mut AppState) {
         Event::Window(Window::Focus(focused)) => {
             state.focused = focused;
             if focused {
-                state.workspace.poll.woke();
+                state.delivery.poll.woke();
             }
         }
     }

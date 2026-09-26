@@ -1,14 +1,15 @@
-//! What the workspace capability asks of the forge and of the MR rows.
+//! What delivery asks of the forge and of the MR rows.
 
 pub(crate) mod notes;
+pub(crate) mod queue;
 
-pub use notes::Said;
+use std::sync::Arc;
 
 use groove_annotations::Store as Notes;
 use groove_forge::{Proposed, Remote, Snapshot, Store};
-use groove_types::{
-    CiState, Error, Mr, MrDelivery, MrFacts, MrState, Repo, Result, ReviewMr, Worktree, WorktreeId,
-};
+use groove_types::{Error, Mr, MrState, Repo, Result, Worktree, WorktreeId};
+
+pub use notes::Said;
 
 /// One MR as the forge answered and the database now holds it.
 #[derive(Debug)]
@@ -17,64 +18,46 @@ pub struct Delivered {
     pub read: Snapshot,
 }
 
-impl Delivered {
-    /// The MR part of the worktree's row.
-    pub fn shown(&self) -> MrDelivery {
-        MrDelivery {
-            forge: self.mr.forge,
-            number: self.mr.remote_id.clone(),
-            state: self.mr.state,
-            url: self.mr.url.clone(),
-            approved: self
-                .read
-                .details
-                .approval
-                .as_ref()
-                .is_some_and(|one| one.approved),
-            changes_requested: self.read.details.changes_requested(),
+impl From<Delivered> for crate::Held {
+    fn from(delivered: Delivered) -> Self {
+        Self {
+            mr: Some(delivered.mr),
+            read: Some(delivered.read),
+            stale: false,
         }
-    }
-
-    /// What the attention rules read of this MR.
-    pub fn facts(&self) -> MrFacts {
-        let details = &self.read.details;
-        MrFacts {
-            state: Some(self.mr.state),
-            review_requested_at: details.review_requested_at(),
-            changes_requested_at: details.changes_requested_at(),
-            ci: self.ci(),
-            ci_finished_at: self.read.ci.as_ref().and_then(|one| one.finished_at),
-            approved_at: details.approved_at(),
-        }
-    }
-
-    /// The state of the run on its head commit, where it reported one.
-    pub fn ci(&self) -> Option<CiState> {
-        self.read.ci.as_ref().map(|one| one.state)
-    }
-
-    /// The threads nobody has resolved.
-    pub fn notes(&self) -> u32 {
-        let open = self
-            .read
-            .threads
-            .iter()
-            .filter(|thread| thread.notes.iter().any(|note| !note.resolved))
-            .count();
-        u32::try_from(open).unwrap_or(u32::MAX)
     }
 }
 
-/// The workspace capability's module handles, cheap to clone into a job.
+/// How the forge that serves a repo is reached.
+pub type Connect = Arc<dyn Fn(&Repo) -> Result<Remote> + Send + Sync>;
+
+/// The capability's module handles, cheap to clone into a job.
 #[derive(Clone)]
 pub struct Service {
     mrs: Store,
     notes: Notes,
+    connect: Connect,
 }
 
 impl Service {
+    /// Reaches each forge with the token its CLI holds.
     pub fn new(mrs: Store, notes: Notes) -> Self {
-        Self { mrs, notes }
+        Self {
+            mrs,
+            notes,
+            connect: Arc::new(|repo| Ok(Remote::of(repo)?)),
+        }
+    }
+
+    /// The same, reaching the forge another way.
+    pub fn connecting(
+        self,
+        connect: impl Fn(&Repo) -> Result<Remote> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            connect: Arc::new(connect),
+            ..self
+        }
     }
 
     /// On a private in-memory database, for tests of the service itself.
@@ -90,6 +73,10 @@ impl Service {
         Self::new(Store::new(db.clone()), Notes::new(db))
     }
 
+    fn remote(&self, repo: &Repo) -> Result<Remote> {
+        (self.connect)(repo)
+    }
+
     /// Every open MR the database holds, whichever worktree it belongs to.
     pub async fn open(&self) -> Result<Vec<Mr>> {
         Ok(self.mrs.open().await?)
@@ -100,23 +87,9 @@ impl Service {
         Ok(self.mrs.get(worktree).await?)
     }
 
-    /// Every open MR a host asks this user to review.
-    pub async fn review_queue(host: &str) -> Result<Vec<ReviewMr>> {
-        Ok(Remote::of_host(host)?.review_queue().await?)
-    }
-
-    /// The forge that serves a repo, called with the token its CLI holds.
-    pub fn remote(repo: &Repo) -> Result<Remote> {
-        Ok(Remote::of(repo)?)
-    }
-
     /// An open MR read by its number, a settled one by the branch it came from.
-    pub async fn read(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &Worktree,
-    ) -> Result<Option<Delivered>> {
+    pub async fn read(&self, repo: &Repo, worktree: &Worktree) -> Result<Option<Delivered>> {
+        let remote = self.remote(repo)?;
         let held = self.mrs.get(&worktree.id).await?;
         let read = match held.as_ref().filter(|mr| mr.state == MrState::Open) {
             Some(mr) => Some(remote.read_mr(repo, &mr.remote_id).await?),
@@ -130,57 +103,46 @@ impl Service {
                 return Ok(None);
             }
         };
-        let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
-        Ok(Some(Delivered { mr, read }))
+        self.kept(&remote, worktree, read).await.map(Some)
     }
 
     /// A new MR from the worktree's branch, written down as the forge answers.
     pub async fn open_mr(
         &self,
-        remote: &Remote,
         repo: &Repo,
         worktree: &Worktree,
         text: &crate::Text,
     ) -> Result<Delivered> {
-        let read = remote
-            .open_mr_for(
-                repo,
-                Proposed {
-                    head: &worktree.branch,
-                    base: worktree.base_ref.as_deref(),
-                    title: &text.title,
-                    body: &text.body,
-                },
-            )
-            .await?;
-        self.kept(remote, worktree, read).await
+        let remote = self.remote(repo)?;
+        let proposed = Proposed {
+            head: &worktree.branch,
+            base: worktree.base_ref.as_deref(),
+            title: &text.title,
+            body: &text.body,
+        };
+        let read = remote.open_mr_for(repo, proposed).await?;
+        self.kept(&remote, worktree, read).await
     }
 
     /// The MR's title and body written again.
     pub async fn edit_mr(
         &self,
-        remote: &Remote,
         repo: &Repo,
         worktree: &Worktree,
         text: &crate::Text,
     ) -> Result<Delivered> {
-        let mr = self.held(&worktree.id).await?;
+        let (remote, mr) = (self.remote(repo)?, self.held(&worktree.id).await?);
         let read = remote
             .edit_mr(repo, &mr.remote_id, &text.title, &text.body)
             .await?;
-        self.kept(remote, worktree, read).await
+        self.kept(&remote, worktree, read).await
     }
 
     /// The MR closed, and the row left saying so.
-    pub async fn close_mr(
-        &self,
-        remote: &Remote,
-        repo: &Repo,
-        worktree: &Worktree,
-    ) -> Result<Delivered> {
-        let mr = self.held(&worktree.id).await?;
+    pub async fn close_mr(&self, repo: &Repo, worktree: &Worktree) -> Result<Delivered> {
+        let (remote, mr) = (self.remote(repo)?, self.held(&worktree.id).await?);
         let read = remote.close_mr(repo, &mr.remote_id).await?;
-        self.kept(remote, worktree, read).await
+        self.kept(&remote, worktree, read).await
     }
 
     /// The MR the worktree has, or the error that it has none.
@@ -191,7 +153,7 @@ impl Service {
             .ok_or_else(|| Error::not_found(format!("{worktree} has no merge request")))
     }
 
-    /// What a write answered, written down.
+    /// What the forge answered, written down.
     async fn kept(
         &self,
         remote: &Remote,

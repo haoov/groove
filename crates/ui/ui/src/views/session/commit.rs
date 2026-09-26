@@ -1,7 +1,7 @@
 //! The commit box under the changed files: what the index holds, what commits it,
 //! and the message.
 
-use groove_controllers::{AppState, workspace};
+use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Rect;
 use groove_types::FileDiff;
 
@@ -130,35 +130,35 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
 }
 
 /// What the worktree most wants doing: commit, then push, then open an MR.
-pub(crate) fn primary(app: &AppState) -> Option<workspace::Command> {
+pub(crate) fn primary(app: &AppState) -> Option<Command> {
     let files = super::files::changed(app);
     let ready = !app.workspace.message.text().trim().is_empty();
     let staged = count(files, true);
     let status = status(app);
     match (files.is_empty(), status.ahead, status.behind) {
-        (false, _, _) if staged > 0 && ready => Some(workspace::Command::Commit),
-        (false, _, _) => Some(workspace::Command::Commit),
-        (true, ahead, _) if ahead > 0 => Some(workspace::Command::Push),
-        (true, _, behind) if behind > 0 => Some(workspace::Command::Pull),
-        (true, _, _) if wants_mr(app) => Some(workspace::Command::CreateMr),
+        (false, _, _) if staged > 0 && ready => {
+            Some(Command::Workspace(workspace::Command::Commit))
+        }
+        (false, _, _) => Some(Command::Workspace(workspace::Command::Commit)),
+        (true, ahead, _) if ahead > 0 => Some(Command::Workspace(workspace::Command::Push)),
+        (true, _, behind) if behind > 0 => Some(Command::Workspace(workspace::Command::Pull)),
+        (true, _, _) if wants_mr(app) => Some(Command::Delivery(delivery::Command::CreateMr)),
         _ => None,
     }
 }
 
 /// Whether the branch is landed and has no merge request of its own yet.
 fn wants_mr(app: &AppState) -> bool {
-    let known = app
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .is_some_and(|worktree| app.workspace.poll.knows(&worktree.id));
-    known && app.workspace.delivery.mr.is_none()
+    let Some(worktree) = app.session.selected_worktree() else {
+        return false;
+    };
+    app.delivery.poll.knows(&worktree.id) && !app.delivery.has_mr(&worktree.id)
 }
 
 /// Whether the action can be taken now, or is only what the box would do next.
-fn ready(app: &AppState, act: &workspace::Command) -> bool {
+fn ready(app: &AppState, act: &Command) -> bool {
     match act {
-        workspace::Command::Commit => {
+        Command::Workspace(workspace::Command::Commit) => {
             let staged = count(super::files::changed(app), true);
             staged > 0 && !app.workspace.message.text().trim().is_empty()
         }
@@ -166,11 +166,11 @@ fn ready(app: &AppState, act: &workspace::Command) -> bool {
     }
 }
 
-fn label(act: &workspace::Command) -> &'static str {
+fn label(act: &Command) -> &'static str {
     match act {
-        workspace::Command::Push => "push",
-        workspace::Command::Pull => "pull",
-        workspace::Command::CreateMr => "open mr",
+        Command::Workspace(workspace::Command::Push) => "push",
+        Command::Workspace(workspace::Command::Pull) => "pull",
+        Command::Delivery(delivery::Command::CreateMr) => "open mr",
         _ => "commit",
     }
 }
@@ -209,12 +209,10 @@ fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
 
 /// What git says about the selected worktree.
 fn status(app: &AppState) -> groove_types::WorktreeStatus {
-    app.session
-        .selected()
-        .and_then(|open| {
-            let worktree = open.selected_worktree()?;
-            open.delivery_of(&worktree.id)
-        })
-        .map(|delivery| delivery.status)
+    let Some(open) = app.session.selected() else {
+        return Default::default();
+    };
+    open.selected_worktree()
+        .map(|worktree| open.status_of(&worktree.id))
         .unwrap_or_default()
 }

@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub use groove_timeline::Timeline;
 use groove_types::{
     Repo, RepoId, Session, SessionId, SessionKind, SessionState, Task, Timestamp, Worktree,
-    WorktreeDelivery, WorktreeId, WorktreeStatus,
+    WorktreeId, WorktreeStatus,
 };
 pub use service::{Added, Service};
 
@@ -18,7 +18,8 @@ pub struct Open {
     pub state: SessionState,
     pub repos: Vec<Repo>,
     pub worktrees: Vec<Worktree>,
-    pub delivery: Vec<(WorktreeId, WorktreeDelivery)>,
+    /// What git says of each worktree.
+    pub status: BTreeMap<WorktreeId, WorktreeStatus>,
     /// The files read, per worktree, as the session remembers them.
     pub read: BTreeMap<WorktreeId, BTreeSet<String>>,
 }
@@ -42,27 +43,11 @@ impl Open {
 
     /// What git says about one worktree now.
     pub fn told(&mut self, worktree: &WorktreeId, status: WorktreeStatus) {
-        self.row(worktree).status = status;
+        self.status.insert(worktree.clone(), status);
     }
 
-    /// The worktree's row, made blank if it has none yet.
-    pub fn row(&mut self, worktree: &WorktreeId) -> &mut WorktreeDelivery {
-        let at = match self.delivery.iter().position(|(id, _)| id == worktree) {
-            Some(at) => at,
-            None => {
-                self.delivery
-                    .push((worktree.clone(), WorktreeDelivery::default()));
-                self.delivery.len() - 1
-            }
-        };
-        &mut self.delivery[at].1
-    }
-
-    pub fn delivery_of(&self, worktree: &WorktreeId) -> Option<&WorktreeDelivery> {
-        self.delivery
-            .iter()
-            .find(|(id, _)| id == worktree)
-            .map(|(_, delivery)| delivery)
+    pub fn status_of(&self, worktree: &WorktreeId) -> WorktreeStatus {
+        self.status.get(worktree).copied().unwrap_or_default()
     }
 
     pub fn selected_worktree(&self) -> Option<&Worktree> {
@@ -157,6 +142,26 @@ impl State {
         self.get(self.selected.as_ref()?)
     }
 
+    /// The worktree the selected session has selected.
+    pub fn selected_worktree(&self) -> Option<&Worktree> {
+        self.selected()?.selected_worktree()
+    }
+
+    /// A worktree by id, with the session and the repo that hold it.
+    pub fn find(&self, id: &WorktreeId) -> Option<(&Open, &Repo, &Worktree)> {
+        self.open.iter().find_map(|open| {
+            let worktree = open.worktrees.iter().find(|one| &one.id == id)?;
+            let repo = open.repos.iter().find(|one| one.id == worktree.repo)?;
+            Some((open, repo, worktree))
+        })
+    }
+
+    /// Every worktree of the sessions on the rail.
+    pub fn worktrees(&self) -> Vec<WorktreeId> {
+        let all = self.open.iter().flat_map(|open| open.worktrees.iter());
+        all.map(|one| one.id.clone()).collect()
+    }
+
     pub fn get_mut(&mut self, id: &SessionId) -> Option<&mut Open> {
         self.open.iter_mut().find(|o| &o.session.id == id)
     }
@@ -173,7 +178,7 @@ impl State {
             },
             repos: Vec::new(),
             worktrees: Vec::new(),
-            delivery: Vec::new(),
+            status: BTreeMap::new(),
             read: BTreeMap::new(),
         });
         self.selected = Some(id);
@@ -201,7 +206,7 @@ impl State {
             state,
             repos: Vec::new(),
             worktrees: Vec::new(),
-            delivery: Vec::new(),
+            status: BTreeMap::new(),
             read: BTreeMap::new(),
         });
     }

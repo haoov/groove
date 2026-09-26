@@ -3,7 +3,7 @@
 
 mod forged;
 
-use groove_controllers::workspace;
+use groove_controllers::delivery;
 use groove_gfx::Fonts;
 use groove_types::{Anchor, Caret, Selection};
 
@@ -146,12 +146,12 @@ fn the_words_leave_a_note_when_the_keyboard_says_so() {
     typed("issue: this leaks", &mut ui, &app);
     let commands = press(Key::Enter, &mut ui, &app);
     assert!(ui.session.noting.is_none(), "the row closes behind it");
-    let workspace::Command::Note(act) = one_command(commands) else {
+    let delivery::Command::Note(act) = one_command(commands) else {
         panic!("a note is asked for");
     };
     assert_eq!(
         act,
-        groove_controllers::workspace::NoteAct::Create {
+        groove_controllers::delivery::NoteAct::Create {
             anchor: Anchor::line("src/lib.rs", 1),
             content: "issue: this leaks".into(),
             author: crate::views::session::diff::AUTHOR.into(),
@@ -199,10 +199,10 @@ fn what_is_pasted_goes_into_the_note() {
 }
 
 /// The one command a keystroke asked for.
-fn one_command(commands: Vec<groove_controllers::Command>) -> workspace::Command {
+fn one_command(commands: Vec<groove_controllers::Command>) -> delivery::Command {
     match commands.into_iter().next() {
-        Some(groove_controllers::Command::Workspace(command)) => command,
-        other => panic!("one workspace command, not {other:?}"),
+        Some(groove_controllers::Command::Delivery(command)) => command,
+        other => panic!("one delivery command, not {other:?}"),
     }
 }
 
@@ -237,12 +237,12 @@ fn on_button(
 #[test]
 fn resolve_asks_for_the_note_to_be_resolved() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Resolve {
+        delivery::Command::Note(groove_controllers::delivery::NoteAct::Resolve {
             id: groove_types::AnnotationId::new("n1")
         })
     );
@@ -253,12 +253,12 @@ fn a_resolved_note_offers_to_open_again() {
     let mut app = opened();
     let mut note = own();
     note.resolved = true;
-    app.workspace.notes = vec![note];
+    app.delivery.shown = vec![note];
     let mut ui = on_diff();
     let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Reopen {
+        delivery::Command::Note(groove_controllers::delivery::NoteAct::Reopen {
             id: groove_types::AnnotationId::new("n1")
         })
     );
@@ -267,12 +267,12 @@ fn a_resolved_note_offers_to_open_again() {
 #[test]
 fn delete_asks_for_the_note_to_go() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Delete);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Delete {
+        delivery::Command::Note(groove_controllers::delivery::NoteAct::Delete {
             id: groove_types::AnnotationId::new("n1")
         })
     );
@@ -281,7 +281,7 @@ fn delete_asks_for_the_note_to_go() {
 #[test]
 fn edit_opens_the_note_with_its_own_words_in_it() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert!(commands.is_empty(), "nothing is asked of the app yet");
@@ -293,7 +293,7 @@ fn edit_opens_the_note_with_its_own_words_in_it() {
 #[test]
 fn what_is_typed_over_a_note_writes_that_note_again() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     if let Some(noting) = ui.session.noting.as_mut() {
@@ -302,7 +302,7 @@ fn what_is_typed_over_a_note_writes_that_note_again() {
     let commands = press(Key::Enter, &mut ui, &app);
     assert_eq!(
         one_command(commands),
-        workspace::Command::Note(groove_controllers::workspace::NoteAct::Update {
+        delivery::Command::Note(groove_controllers::delivery::NoteAct::Update {
             id: groove_types::AnnotationId::new("n1"),
             content: "nitpick: name it".into()
         })
@@ -312,7 +312,7 @@ fn what_is_typed_over_a_note_writes_that_note_again() {
 #[test]
 fn a_line_that_already_carries_a_note_takes_no_other() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
@@ -326,7 +326,7 @@ fn a_line_that_already_carries_a_note_takes_no_other() {
 #[test]
 fn a_line_beside_a_noted_one_still_takes_a_note() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 0);
@@ -342,7 +342,7 @@ fn a_line_beside_a_noted_one_still_takes_a_note() {
 #[test]
 fn a_selection_that_runs_into_a_note_takes_no_note() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let file = app.workspace.opened.as_mut().expect("the open file");
     file.new.holding(Selection {
         anchor: Caret::new(0, 0),
@@ -357,7 +357,7 @@ fn a_selection_that_runs_into_a_note_takes_no_note() {
 #[test]
 fn writing_a_note_again_shows_one_row_not_two() {
     let mut app = opened();
-    app.workspace.notes = vec![own()];
+    app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     let with_note = crate::views::session::diff::rows_of(&app, &ui);
@@ -375,7 +375,7 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
     let mut second = own();
     second.origin = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n2"));
     second.anchor = Some(Anchor::line("src/lib.rs", 2));
-    app.workspace.notes = vec![own(), second];
+    app.delivery.shown = vec![own(), second];
     let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let mut ui = on_diff();
     ui.hover = Some(Target::Note(
@@ -396,7 +396,7 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
 fn a_noted_line_takes_no_other_note_in_the_diff_views() {
     for view_kind in [DiffView::Inline, DiffView::Split] {
         let mut app = opened();
-        app.workspace.notes = vec![own()];
+        app.delivery.shown = vec![own()];
         let mut ui = on_diff();
         ui.session.view = view_kind;
         let row = noted_row(&app, &ui);

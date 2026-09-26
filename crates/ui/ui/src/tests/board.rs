@@ -46,7 +46,7 @@ fn the_rail_s_board_row_opens_the_board_and_reads_the_sources() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         commands.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["session.list", "task.load", "workspace.review_queue"]
+        ["session.list", "task.load", "delivery.review_queue"]
     );
 }
 
@@ -114,7 +114,7 @@ fn the_chord_opens_the_board_and_closes_it_again() {
     assert_eq!(ui.surface, Surface::Board);
     assert_eq!(
         opened.iter().map(|c| c.id()).collect::<Vec<_>>(),
-        ["session.list", "task.load", "workspace.review_queue"],
+        ["session.list", "task.load", "delivery.review_queue"],
         "the board reads all three of its columns"
     );
     let closed = press(Key::Char('k'), CHORD, &mut ui, &app);

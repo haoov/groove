@@ -3,14 +3,9 @@
 mod commits;
 pub(crate) mod diff;
 mod editor;
-pub(crate) mod forge;
 pub(crate) mod git;
-pub(crate) mod mr;
-pub(crate) mod notes;
 mod paths;
-pub(crate) mod queue;
 mod search;
-pub(crate) mod write;
 
 use std::path::PathBuf;
 
@@ -21,13 +16,9 @@ use self::diff::{mark_read, reread, show};
 use self::editor::{copy, edit_file, open_file, paste, save_file};
 use self::git::{Act, Remote, discard_all, index};
 use self::search::{grep, list_paths};
-use self::write::{Act as Mr, here as write_mr};
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
-pub use forge::Say;
-pub use mr::{known, poll, polls, refresh};
-pub use notes::Act as NoteAct;
 /// Which end of a gap gives its lines up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Way {
@@ -84,32 +75,16 @@ pub enum Command {
     Pull,
     /// `workspace.discard_all`: every change in the worktree, thrown away.
     DiscardAll,
-    /// `workspace.refresh_mr`: the selected worktree's MR, read again now.
-    RefreshMr,
     /// `workspace.list_paths`: every file of the worktree, for the path term.
     ListPaths,
-    /// `workspace.review_queue`: the MRs the forges ask this user to review.
-    ReviewQueue,
     /// `workspace.path`: one file or directory made, moved, copied or taken away.
     Path(groove_workspace_service::PathOp),
-    /// `workspace.create_mr`: the worktree's branch offered to its base.
-    CreateMr,
-    /// `workspace.update_mr`: its title and body written again from the box.
-    UpdateMr,
-    /// `workspace.close_mr`: closed, with nothing merged.
-    CloseMr,
     /// `workspace.get_commits`: the newest commits of the worktree's branch.
     GetCommits,
     /// `workspace.open_commit`: one commit shown as the change it made.
     OpenCommit { sha: String },
     /// `workspace.leave_commit`: the working tree shown again.
     LeaveCommit,
-    /// `workspace.get_notes`: this session's notes and the MR's threads.
-    GetNotes,
-    /// One note of this session made, written again, resolved or taken away.
-    Note(NoteAct),
-    /// What the commit box says on the merge request: a comment, or a verdict.
-    Say(Say),
 }
 
 impl Command {
@@ -136,19 +111,11 @@ impl Command {
             Command::Push => "workspace.push",
             Command::Pull => "workspace.pull",
             Command::DiscardAll => "workspace.discard_all",
-            Command::RefreshMr => "workspace.refresh_mr",
             Command::ListPaths => "workspace.list_paths",
-            Command::ReviewQueue => "workspace.review_queue",
             Command::Path(_) => "workspace.path",
-            Command::CreateMr => "workspace.create_mr",
-            Command::UpdateMr => "workspace.update_mr",
-            Command::CloseMr => "workspace.close_mr",
             Command::GetCommits => "workspace.get_commits",
             Command::OpenCommit { .. } => "workspace.open_commit",
             Command::LeaveCommit => "workspace.leave_commit",
-            Command::GetNotes => "workspace.get_notes",
-            Command::Note(act) => act.id(),
-            Command::Say(say) => say.id(),
         }
     }
 }
@@ -168,7 +135,6 @@ impl Command {
                 | Command::DiscardAll
                 | Command::Commit
                 | Command::Path(_)
-                | Command::Note(_)
         )
     }
 }
@@ -204,19 +170,11 @@ pub fn dispatch(
         Command::Push => on_remote(state, services, spawner, Remote::Push),
         Command::Pull => on_remote(state, services, spawner, Remote::Pull),
         Command::DiscardAll => discard_all(state, spawner),
-        Command::RefreshMr => mr::refresh(state, services, spawner),
         Command::ListPaths => list_paths(state, spawner),
-        Command::ReviewQueue => queue::read(state, services, spawner),
         Command::Path(op) => paths::act(state, spawner, op),
-        Command::CreateMr => write_mr(state, services, spawner, Mr::Open),
-        Command::UpdateMr => write_mr(state, services, spawner, Mr::Edit),
-        Command::CloseMr => write_mr(state, services, spawner, Mr::Close),
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
-        Command::GetNotes => notes::list(state, services, spawner),
-        Command::Note(act) => notes::here(state, services, spawner, act),
-        Command::Say(one) => forge::here(state, services, spawner, one),
     }
 }
 
@@ -274,21 +232,6 @@ pub(super) fn selected_base(state: &AppState) -> Option<String> {
 pub(super) fn selected(state: &AppState) -> Option<WorktreeId> {
     let open = state.session.selected()?;
     Some(open.selected_worktree()?.id.clone())
-}
-
-/// The repo and the worktree one id names, in whichever open session holds it.
-pub(crate) fn pair(
-    state: &AppState,
-    id: &WorktreeId,
-) -> Option<(groove_types::Repo, groove_types::Worktree)> {
-    for open in state.session.open.iter() {
-        let Some(worktree) = open.worktrees.iter().find(|one| &one.id == id) else {
-            continue;
-        };
-        let repo = open.repos.iter().find(|repo| repo.id == worktree.repo)?;
-        return Some((repo.clone(), worktree.clone()));
-    }
-    None
 }
 
 pub fn loaded_for(state: &AppState) -> Option<&WorktreeId> {

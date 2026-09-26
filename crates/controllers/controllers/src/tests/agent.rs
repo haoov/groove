@@ -22,7 +22,7 @@ fn state(home: &std::path::Path) -> AppState {
         state: SessionState::default(),
         repos: vec![],
         worktrees: vec![],
-        delivery: vec![],
+        status: Default::default(),
         read: Default::default(),
     });
     state

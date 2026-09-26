@@ -4,21 +4,7 @@ use groove_types::{SessionId, TimelineEvent, TimelineKind, Timestamp};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// One line on the selected session's log; a write with no session behind it is none.
-pub(crate) fn log(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    kind: TimelineKind,
-    subject: impl Into<String>,
-) {
-    let Some(session) = state.session.selected.clone() else {
-        return;
-    };
-    logged(services, spawner, session, kind, subject, payload(state));
-}
-
-/// The same, for a session the caller names.
+/// One line on a session's log.
 pub(crate) fn logged(
     services: &Services,
     spawner: &dyn Spawner,
@@ -44,12 +30,4 @@ pub(crate) fn logged(
             },
         ) as Continuation
     }));
-}
-
-/// Which worktree the line belongs to, for a reader that wants to go there.
-fn payload(state: &AppState) -> serde_json::Value {
-    match crate::workspace::selected(state) {
-        Some(worktree) => serde_json::json!({ "worktree": worktree.as_str() }),
-        None => serde_json::Value::Null,
-    }
 }

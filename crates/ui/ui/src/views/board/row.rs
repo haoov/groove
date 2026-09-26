@@ -14,7 +14,7 @@ use crate::widget::{elide, row};
 /// One line of a column: an item, a worktree under an open one, or the plan's divider.
 pub(super) enum Line<'a> {
     Session(&'a Living),
-    Worktree(&'a Worktree, Option<&'a WorktreeDelivery>),
+    Worktree(&'a Worktree, Option<WorktreeDelivery>),
     /// Its place in the plan, counted from one.
     Task(usize, &'a Task),
     /// One MR the forge asks this user to review.

@@ -1,17 +1,12 @@
 //! The workspace controller, one file per feature, on the helpers they share.
 
-mod attention;
 mod commits;
 mod diff;
 mod editor;
 mod gaps;
 mod git;
-mod notes;
 mod paths;
-mod poll;
-mod queue;
 mod search;
-mod write;
 
 use crate::tests::fixture::{pooled_clone, services, sh, state, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, session, workspace};

@@ -45,7 +45,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                         if let Some(open) = state.session.get_mut(&id) {
                             open.repos = contents.repos;
                             open.worktrees = contents.worktrees;
-                            open.delivery = contents.delivery;
+                            open.status = contents.status;
                             for (worktree, path) in contents.read {
                                 open.mark(&worktree, &path, true);
                             }
@@ -58,7 +58,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
                     Err(e) => state.failed(e),
                 }
                 crate::workspace::follow(state, spawner);
-                crate::workspace::known(services, spawner);
+                crate::delivery::known(services, spawner);
             },
         ) as Continuation
     }));

@@ -5,6 +5,7 @@ use groove_types::{Approval, ApprovalId, Origin, SessionId, Timestamp};
 
 use crate::workspace::git::Remote;
 use crate::{AppState, Services, Spawner};
+use groove_delivery_service::MrAct;
 
 mod forge;
 mod git;
@@ -123,16 +124,16 @@ fn run(state: &mut AppState, services: &Services, spawner: &dyn Spawner, write: 
         "git_commit" => git::commit(state, spawner, write),
         "git_push" => git::remote(state, services, spawner, write, Remote::Push),
         "git_pull" => git::remote(state, services, spawner, write, Remote::Pull),
-        "create_mr" => forge::mr(state, services, spawner, write, forge::Act::Open),
-        "update_mr" => forge::mr(state, services, spawner, write, forge::Act::Edit),
-        "close_mr" => forge::mr(state, services, spawner, write, forge::Act::Close),
+        "create_mr" => forge::mr(state, services, spawner, write, MrAct::Open),
+        "update_mr" => forge::mr(state, services, spawner, write, MrAct::Edit),
+        "close_mr" => forge::mr(state, services, spawner, write, MrAct::Close),
         "comment_mr" => forge::comment(state, services, spawner, write),
         "create_annotation" => notes::create(state, services, spawner, write),
-        "update_annotation" => notes::on_note(state, services, spawner, write, false),
-        "resolve_annotation" => notes::on_note(state, services, spawner, write, true),
+        "update_annotation" => notes::update(state, services, spawner, write),
+        "resolve_annotation" => notes::resolve(state, services, spawner, write),
         "post_annotation" => notes::post(state, services, spawner, write),
-        "reply_thread" => notes::thread(state, services, spawner, write, true),
-        "resolve_thread" => notes::thread(state, services, spawner, write, false),
+        "reply_thread" => notes::reply(state, services, spawner, write),
+        "resolve_thread" => notes::resolve_thread(state, services, spawner, write),
         "add_task_repo" => repos::add_repo(state, services, spawner, write),
         "add_task_worktree" => repos::add_worktree(state, services, spawner, write),
         "log_task_hours" => task::log_hours(state, services, spawner, write),

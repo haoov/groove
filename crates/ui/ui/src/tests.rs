@@ -155,7 +155,7 @@ fn open(id: &str, title: &str) -> Open {
         state: SessionState::default(),
         repos: vec![],
         worktrees: vec![],
-        delivery: vec![],
+        status: Default::default(),
         read: Default::default(),
     }
 }

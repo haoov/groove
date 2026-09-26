@@ -1,38 +1,11 @@
-//! What the forge says about the selected worktree, and the poll that keeps it fresh.
+//! When the forge is asked about a worktree again.
 
 use std::collections::BTreeSet;
 
-use groove_types::{Mr, Timestamp, WorktreeId};
+use groove_types::{Timestamp, WorktreeId};
 
-use crate::{Delivered, Snapshot};
-
-/// The selected worktree's MR: the row, and the forge's last answer about it.
-#[derive(Debug, Default)]
-pub struct Delivery {
-    pub mr: Option<Mr>,
-    pub read: Option<Snapshot>,
-    /// The last read failed; what stands here is older than it looks.
-    pub stale: bool,
-}
-
-impl Delivery {
-    /// What one read brought back.
-    pub fn taken(&mut self, delivered: Delivered) {
-        self.mr = Some(delivered.mr);
-        self.read = Some(delivered.read);
-        self.stale = false;
-    }
-
-    /// The forge has no MR for the worktree.
-    pub fn none(&mut self) {
-        *self = Self::default();
-    }
-
-    /// A read that failed leaves what stands, and ages it.
-    pub fn aged(&mut self) {
-        self.stale = true;
-    }
-}
+/// How often an open MR is read again, in seconds.
+pub const INTERVAL: i64 = 60;
 
 /// The poll's own state: when it last ran, what it has asked about, what is out.
 #[derive(Debug, Default)]

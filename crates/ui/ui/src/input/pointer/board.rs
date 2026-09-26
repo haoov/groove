@@ -1,6 +1,6 @@
 //! What a click on the board does: its rows, its filter, its button.
 
-use groove_controllers::{AppState, Command, session, task, workspace};
+use groove_controllers::{AppState, Command, delivery, session, task};
 use groove_gfx::Rect;
 use groove_types::{ExternalId, SessionId};
 
@@ -37,7 +37,7 @@ pub(crate) fn reads() -> Vec<Command> {
     vec![
         Command::Session(session::Command::List),
         Command::Task(task::Command::Load),
-        Command::Workspace(workspace::Command::ReviewQueue),
+        Command::Delivery(delivery::Command::ReviewQueue),
     ]
 }
 

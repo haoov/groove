@@ -12,7 +12,7 @@ mod surface;
 
 pub(super) use menu::asked;
 
-use groove_controllers::{AppState, Command, workspace};
+use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
@@ -149,7 +149,7 @@ fn acted(
         Some(Target::PaletteRow(at)) => palette_row(at, ui, app),
         Some(Target::LogHours(id)) => logging(id),
         Some(Target::Finish(session)) => finishing(session),
-        Some(Target::Refresh) => vec![Command::Workspace(workspace::Command::RefreshMr)],
+        Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::Scope(scope)) => scoped(ui, scope),
         Some(Target::Pane(pane)) => paned(ui, pane),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
@@ -258,5 +258,5 @@ fn composing(
 fn acting(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     ui.session.composing = false;
     let act = crate::views::session::commit::primary(app);
-    act.map(Command::Workspace).into_iter().collect()
+    act.into_iter().collect()
 }

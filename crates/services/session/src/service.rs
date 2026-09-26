@@ -7,7 +7,7 @@ use std::path::Path;
 use groove_sessions::Store;
 use groove_types::{
     Error, PoolEntry, Repo, RepoId, Session, SessionId, SessionState, Task, Timestamp, Worktree,
-    WorktreeDelivery, WorktreeId, WorktreeSpec, WorktreeStatus,
+    WorktreeId, WorktreeSpec, WorktreeStatus,
 };
 use groove_worktree::Pool;
 
@@ -18,7 +18,7 @@ use crate::Living;
 pub struct Contents {
     pub repos: Vec<Repo>,
     pub worktrees: Vec<Worktree>,
-    pub delivery: Vec<(WorktreeId, WorktreeDelivery)>,
+    pub status: std::collections::BTreeMap<WorktreeId, WorktreeStatus>,
     /// The files marked read, by the worktree they belong to.
     pub read: Vec<(WorktreeId, String)>,
 }
@@ -153,22 +153,16 @@ impl Service {
             repos.push(self.pool.repo(&repo_id).await?);
         }
         let worktrees = self.pool.worktrees_of(id).await?;
-        let mut delivery = Vec::with_capacity(worktrees.len());
+        let mut status = std::collections::BTreeMap::new();
         for worktree in &worktrees {
-            let status = self.pool.status(worktree).await.unwrap_or_default();
-            delivery.push((
-                worktree.id.clone(),
-                WorktreeDelivery {
-                    status,
-                    ..WorktreeDelivery::default()
-                },
-            ));
+            let told = self.pool.status(worktree).await.unwrap_or_default();
+            status.insert(worktree.id.clone(), told);
         }
         Ok(Contents {
             read: self.store.reads_of(id).await?,
             repos,
             worktrees,
-            delivery,
+            status,
         })
     }
 

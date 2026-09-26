@@ -149,10 +149,10 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     author: &held.words[on].author,
                     lines: &held.words[on].lines,
                     opens: *row == 0,
-                    resolved: app.workspace.notes.get(*at).is_some_and(|one| one.resolved),
+                    resolved: app.delivery.shown.get(*at).is_some_and(|one| one.resolved),
                 },
             ),
-            Slot::Acts { at } => match app.workspace.notes.get(*at) {
+            Slot::Acts { at } => match app.delivery.shown.get(*at) {
                 Some(note) => {
                     let acting = acting_of(app, note);
                     Line::acting(Acting {
@@ -199,7 +199,10 @@ fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
         origin: note.origin.clone(),
         resolved: note.resolved,
         thread: !note.is_local(),
-        post: app.workspace.delivery.mr.is_some(),
+        post: app
+            .session
+            .selected_worktree()
+            .is_some_and(|worktree| app.delivery.has_mr(&worktree.id)),
         hovered: None,
     }
 }
@@ -215,7 +218,7 @@ struct Words {
 /// Who said what on a note row; a row of code says nothing.
 fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
     match slot {
-        Slot::Note { at, row } => match app.workspace.notes.get(at) {
+        Slot::Note { at, row } => match app.delivery.shown.get(at) {
             Some(note) => {
                 let (author, body) = said(note, row, super::wrap::cols_of(ui));
                 let shown = match row {

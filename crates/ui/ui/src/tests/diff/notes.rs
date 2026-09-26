@@ -25,7 +25,7 @@ fn said(author: &str, body: &str) -> Said {
 /// The app with those notes on the open file.
 fn noted(notes: Vec<Note>) -> AppState {
     let mut app = opened();
-    app.workspace.notes = notes;
+    app.delivery.shown = notes;
     app
 }
 

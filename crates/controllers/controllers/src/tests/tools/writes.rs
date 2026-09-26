@@ -240,9 +240,15 @@ fn a_note_the_agent_leaves_stands_on_its_own_line() {
     );
     assert!(!answer.failed, "{}", answer.text);
     until(&spawner, &services, &mut state, |s| {
-        !s.workspace.own.is_empty()
+        !s.delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()
+            .is_empty()
     });
-    let note = &state.workspace.own[0];
+    let note = &state
+        .delivery
+        .notes_of(&groove_types::SessionId::new(&id))
+        .unwrap_or_default()[0];
     assert_eq!(note.file_path, "a.txt");
     assert_eq!(
         note.start_line, 1,
@@ -281,9 +287,18 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
         json!({ "worktree_id": worktree, "path": "a.txt", "line": 1, "content": "issue: one" }),
     );
     until(&spawner, &services, &mut state, |s| {
-        !s.workspace.own.is_empty()
+        !s.delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()
+            .is_empty()
     });
-    let note = state.workspace.own[0].id.as_str().to_string();
+    let note = state
+        .delivery
+        .notes_of(&groove_types::SessionId::new(&id))
+        .unwrap_or_default()[0]
+        .id
+        .as_str()
+        .to_string();
 
     let wrote = asked(
         &mut state,
@@ -295,8 +310,9 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
     );
     assert!(!wrote.failed, "{}", wrote.text);
     until(&spawner, &services, &mut state, |s| {
-        s.workspace
-            .own
+        s.delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()
             .first()
             .is_some_and(|one| one.content == "issue: two")
     });
@@ -311,8 +327,9 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
     );
     assert!(!done.failed, "{}", done.text);
     until(&spawner, &services, &mut state, |s| {
-        s.workspace
-            .own
+        s.delivery
+            .notes_of(&groove_types::SessionId::new(&id))
+            .unwrap_or_default()
             .first()
             .is_some_and(|one| one.status == groove_types::AnnotationStatus::Resolved)
     });

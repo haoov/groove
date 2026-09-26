@@ -35,12 +35,8 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         }
         let open = app.session.get(&living.session.id);
         for worktree in &living.worktrees {
-            let delivery = open.and_then(|open| {
-                open.delivery
-                    .iter()
-                    .find(|(id, _)| *id == worktree.id)
-                    .map(|(_, delivery)| delivery)
-            });
+            let delivery =
+                open.map(|open| app.delivery.row(&worktree.id, open.status_of(&worktree.id)));
             lines.push(Line::Worktree(worktree, delivery));
         }
     }

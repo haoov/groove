@@ -25,18 +25,18 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         let style = ctx.styles.title(Role::Text);
         return row(ctx, top, ctx.tokens.md, "Groove", style);
     };
-    let until = actions(ctx, top, open, ui);
+    let until = actions(ctx, top, app, open, ui);
     titled(ctx, top, open, until);
     pickers(ctx, under, app, open, ui);
 }
 
 /// The session's own actions. Returns where they start, which the title stops at.
-fn actions(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) -> f32 {
+fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32 {
     if matches!(open.session.kind, SessionKind::Explorer) {
         return line.right();
     }
     let more = menu_caret(ctx, line, open, ui);
-    if !finishable(open) {
+    if !finishable(app, open) {
         return more;
     }
     let target = Target::Finish(open.session.id.clone());
@@ -72,12 +72,12 @@ fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) -> f32 {
 }
 
 /// Whether the session works a task with no worktree still carrying an open MR.
-fn finishable(open: &Open) -> bool {
+fn finishable(app: &AppState, open: &Open) -> bool {
     matches!(open.session.kind, SessionKind::Task { .. })
-        && open.worktrees.iter().all(|worktree| {
-            open.delivery_of(&worktree.id)
-                .is_none_or(|one| !one.is_open())
-        })
+        && open
+            .worktrees
+            .iter()
+            .all(|worktree| !app.delivery.is_open(&worktree.id))
 }
 
 /// The session's kind and its title, cut where the actions begin.
@@ -120,15 +120,13 @@ fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32
         return line.right();
     };
     let until = refresh(ctx, line, app, ui);
-    let Some(delivery) = open.delivery_of(&worktree.id) else {
-        return until;
-    };
-    let wide = room_for(ctx, delivery);
+    let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
+    let wide = room_for(ctx, &delivery);
     if wide <= 0.0 {
         return until;
     }
     let x = until - ctx.tokens.sm - wide;
-    delivered(ctx, line, x, delivery);
+    delivered(ctx, line, x, &delivery);
     x
 }
 
@@ -138,7 +136,7 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> f32 {
         .session
         .selected()
         .and_then(|open| open.selected_worktree())
-        .is_some_and(|worktree| app.workspace.poll.is_out(&worktree.id));
+        .is_some_and(|worktree| app.delivery.poll.is_out(&worktree.id));
     let ground = match ui.hover.as_ref() == Some(&Target::Refresh) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),

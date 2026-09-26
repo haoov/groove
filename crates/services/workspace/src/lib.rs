@@ -7,40 +7,27 @@ pub use groove_diff::{
     from_documents, from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
-pub use groove_forge::{Posted, Remote, Snapshot};
 pub use groove_grep::{Found, Search};
 pub use groove_text::{Buffer, Colours};
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-use groove_types::{
-    Annotation, CommitEntry, DiffMode, DiffView, FileDiff, MrFacts, Note, Result, ReviewMr,
-    WorktreeId, WorktreeStatus,
-};
+use groove_types::{CommitEntry, DiffMode, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
-mod delivery;
 mod git;
-mod notes;
 mod paths;
-mod propose;
 mod read;
-mod service;
 
 #[cfg(test)]
 mod tests;
 
-pub use delivery::{Delivery, Polling};
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
-pub use groove_annotations::New as NewNote;
-pub use notes::merged;
 pub use paths::{PathOp, path_op};
-pub use propose::{Text, text_of};
 pub use read::{
     COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, at_commit, base_rev, changes, commits, derived, grep,
     opened, opened_at, painted, paths, reopened, summary, summary_against,
 };
-pub use service::{Delivered, Said, Service};
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -48,7 +35,6 @@ pub struct State {
     /// Which worktree the summary below belongs to.
     pub worktree: Option<WorktreeId>,
     pub mode: DiffMode,
-    pub view: DiffView,
     pub status: Option<WorktreeStatus>,
     pub files: Vec<FileDiff>,
     /// Every changed file's rows, the whole change as one surface.
@@ -71,26 +57,12 @@ pub struct State {
     pub stamp: u64,
     /// What the commit box holds, typed on the same buffer as a file.
     pub message: Buffer,
-    /// The MR of the selected worktree, and what the forge last said about it.
-    pub delivery: Delivery,
-    /// The poll's clock, and which worktrees it has asked about.
-    pub poll: Polling,
-    /// What the attention rules read of each worktree's MR.
-    pub facts: BTreeMap<WorktreeId, MrFacts>,
-    /// The board's review column: what the forges ask this user to look at.
-    pub reviews: Vec<ReviewMr>,
     /// The branch's own commits, newest first.
     pub log: Vec<CommitEntry>,
     /// The worktree whose commits it holds, or has a read out for.
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
-    /// The notes the selected session left, as the database holds them.
-    pub own: Vec<Annotation>,
-    /// The session whose notes it holds, or has a read out for.
-    pub noted: Option<groove_types::SessionId>,
-    /// Those notes and the selected MR's threads, as one list.
-    pub notes: Vec<Note>,
     pub watching: Option<WorktreeId>,
     /// The buffer revision a read of the colours and the rows is out for.
     pub deriving: Option<u64>,
@@ -100,17 +72,6 @@ pub struct State {
 impl State {
     pub fn holds(&self, worktree: &WorktreeId) -> bool {
         self.worktree.as_ref() == Some(worktree)
-    }
-
-    /// The notes and the threads, as one list, from the two halves it holds.
-    pub fn remerge(&mut self) {
-        let threads = self
-            .delivery
-            .read
-            .as_ref()
-            .map(|read| read.threads.as_slice())
-            .unwrap_or_default();
-        self.notes = notes::merged(&self.own, threads);
     }
 
     /// The documents it holds are not the ones it held.
@@ -180,13 +141,9 @@ impl State {
         self.found.clear();
         self.paths.clear();
         self.walking = false;
-        self.facts.clear();
         self.log.clear();
         self.logged = None;
         self.commit = None;
-        self.own.clear();
-        self.noted = None;
-        self.notes.clear();
         self.worktree = None;
         self.files.clear();
         self.changes = Changes::default();
@@ -195,7 +152,6 @@ impl State {
         self.opened = None;
         self.status = None;
         self.watching = None;
-        self.delivery.none();
         self.deriving = None;
         self.watch = None;
     }
@@ -225,7 +181,6 @@ impl State {
         paths
     }
 
-    /// The colours of one file, from the buffer when it is the open one.
     /// A gap gives up a run of its old-side lines, from the documents already read.
     pub fn open_gap(&mut self, path: &str, span: std::ops::Range<u32>) {
         let sides = match self.opened.as_ref().filter(|open| open.path == path) {

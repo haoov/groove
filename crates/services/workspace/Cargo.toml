@@ -1,6 +1,6 @@
 [package]
 name = "groove-workspace-service"
-description = "The workspace capability: the selected worktree's diff, status, MR, CI and threads"
+description = "The workspace capability: the selected worktree's change, its open file, search and git"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,21 +8,12 @@ publish.workspace = true
 
 [dependencies]
 groove-diff = { path = "../../modules/diff" }
-groove-annotations = { path = "../../modules/annotations" }
-groove-forge = { path = "../../modules/forge" }
 groove-grep = { path = "../../modules/grep" }
-groove-sessions = { path = "../../modules/sessions" }
 groove-git = { path = "../../modules/git" }
 groove-text = { path = "../../modules/text" }
 groove-editor = { path = "../../modules/editor" }
 groove-types = { path = "../../shared/types" }
 groove-watch = { path = "../../modules/watch" }
-
-[dev-dependencies]
-serde_json.workspace = true
-sqlx.workspace = true
-tokio.workspace = true
-wiremock.workspace = true
 
 [lints]
 workspace = true

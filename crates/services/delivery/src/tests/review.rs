@@ -8,12 +8,16 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::delivery::{repo, service, worktree};
 use crate::{Said, Service};
 
-/// A GitLab client on the mock host, named outright.
-fn gitlab(server: &MockServer) -> (groove_types::Repo, crate::Remote) {
-    let host = format!("http://{}", server.address());
-    let client = groove_forge::Gitlab::with_token(&host, groove_forge::Token::Fixed("t".into()))
-        .expect("a client");
-    (repo(&host), crate::Remote::Gitlab(client))
+/// The repo on the mock host, and the service reaching it as GitLab.
+fn gitlab(server: &MockServer, service: Service) -> (groove_types::Repo, Service) {
+    let at = repo(&format!("http://{}", server.address()));
+    let service = service.connecting(|repo| {
+        let token = groove_forge::Token::Fixed("t".into());
+        Ok(crate::Remote::Gitlab(groove_forge::Gitlab::with_token(
+            &repo.host, token,
+        )?))
+    });
+    (at, service)
 }
 
 /// The MR row the writes address, already held for the worktree.
@@ -104,11 +108,10 @@ async fn a_note_that_went_up_is_gone_even_when_the_next_one_fails() {
     let service = service().await;
     held(&service).await;
     let notes = two_notes(&service).await;
-    let (repo, remote) = gitlab(&server);
+    let (repo, service) = gitlab(&server, service);
 
     let refused = service
         .review(
-            &remote,
             &repo,
             &worktree().id,
             Said {
@@ -144,11 +147,10 @@ async fn a_verdict_resolves_every_note_it_carried() {
     let service = service().await;
     held(&service).await;
     let notes = two_notes(&service).await;
-    let (repo, remote) = gitlab(&server);
+    let (repo, service) = gitlab(&server, service);
 
     service
         .review(
-            &remote,
             &repo,
             &worktree().id,
             Said {
@@ -173,10 +175,10 @@ async fn a_note_of_another_repo_is_refused() {
     held(&service).await;
     let mut note = two_notes(&service).await.remove(0);
     note.repo = RepoId::new("another");
-    let (repo, remote) = gitlab(&server);
+    let (repo, service) = gitlab(&server, service);
 
     let refused = service
-        .post_note(&remote, &repo, &worktree().id, &note)
+        .post_note(&repo, &worktree().id, &note)
         .await
         .expect_err("it is not this repo's note");
     assert!(format!("{refused}").contains("not of r1"), "{refused}");

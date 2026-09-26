@@ -51,7 +51,7 @@ fn a_review_opens_a_session_of_its_own_on_the_mrs_branch() {
     until(&spawner, &services, &mut state, |s| {
         !s.session.pool.is_empty()
     });
-    state.workspace.reviews = vec![asked()];
+    state.delivery.reviews = vec![asked()];
 
     opened(&mut state, &services, &spawner);
     let id = SessionId::new("review-g-mayo-7");
@@ -102,7 +102,7 @@ fn opening_the_same_review_again_selects_the_session_it_already_has() {
     until(&spawner, &services, &mut state, |s| {
         !s.session.pool.is_empty()
     });
-    state.workspace.reviews = vec![asked()];
+    state.delivery.reviews = vec![asked()];
     opened(&mut state, &services, &spawner);
     let id = SessionId::new("review-g-mayo-7");
     until(&spawner, &services, &mut state, |s| {
@@ -139,7 +139,7 @@ fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
     let spawner = SyncSpawner::new().unwrap();
     let services = services(&spawner, home.path());
     let mut state = state(home.path());
-    state.workspace.reviews = vec![asked()];
+    state.delivery.reviews = vec![asked()];
     assert!(state.session.pool.is_empty(), "nothing has listed it yet");
 
     opened(&mut state, &services, &spawner);
@@ -162,7 +162,7 @@ fn a_review_opens_on_the_whole_change_and_a_task_on_what_is_uncommitted() {
     let spawner = SyncSpawner::new().unwrap();
     let services = services(&spawner, home.path());
     let mut state = state(home.path());
-    state.workspace.reviews = vec![asked()];
+    state.delivery.reviews = vec![asked()];
 
     opened(&mut state, &services, &spawner);
     let id = SessionId::new("review-g-mayo-7");

@@ -47,8 +47,8 @@ fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32))
     let held = selected(app, &path).filter(|(from, to)| (*from..=*to).contains(&line));
     let lines = held.unwrap_or((line, line));
     let noted = app
-        .workspace
-        .notes
+        .delivery
+        .shown
         .iter()
         .filter(|note| note.is_local() && !note.resolved)
         .any(|note| note.over(&path, lines));
@@ -92,7 +92,9 @@ fn browsing(ui: &Ui) -> bool {
 
 /// Whether the selected worktree has a merge request to write.
 fn has_mr(app: &AppState) -> bool {
-    app.workspace.delivery.mr.is_some()
+    app.session
+        .selected_worktree()
+        .is_some_and(|worktree| app.delivery.has_mr(&worktree.id))
 }
 
 /// Whether the session looks at someone else's merge request.

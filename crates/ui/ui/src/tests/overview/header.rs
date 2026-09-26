@@ -140,20 +140,14 @@ fn a_worktree_with_an_open_mr_holds_the_finish_back() {
         .get_mut(&SessionId::new("a"))
         .expect("the fixture's session");
     let worktree = open.worktrees[0].id.clone();
-    open.delivery.push((
+    app.delivery.remembered(vec![groove_types::Mr {
+        id: groove_types::MrId::new("m1"),
         worktree,
-        groove_types::WorktreeDelivery {
-            mr: Some(groove_types::MrDelivery {
-                forge: groove_types::Forge::Github,
-                number: "1".into(),
-                state: groove_types::MrState::Open,
-                url: "https://example.test/mr/1".into(),
-                approved: false,
-                changes_requested: false,
-            }),
-            ..Default::default()
-        },
-    ));
+        forge: groove_types::Forge::Github,
+        remote_id: "1".into(),
+        url: "https://example.test/mr/1".into(),
+        state: groove_types::MrState::Open,
+    }]);
     let (_, hits) = view(
         &app,
         &Ui::default(),

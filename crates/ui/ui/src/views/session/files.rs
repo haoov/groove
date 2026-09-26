@@ -94,8 +94,8 @@ fn counted(app: &AppState, pane: Pane) -> usize {
         Pane::Files => changed(app).len(),
         Pane::Commits => app.workspace.log.iter().filter(|one| !one.is_base).count(),
         Pane::Notes => app
-            .workspace
-            .notes
+            .delivery
+            .shown
             .iter()
             .filter(|one| !one.resolved && notes::listed(one))
             .count(),
@@ -153,8 +153,11 @@ pub(crate) fn needs_commits(app: &AppState, ui: &Ui) -> bool {
 /// Whether the notes list still needs this session's notes read.
 pub(crate) fn needs_notes(app: &AppState, ui: &Ui) -> bool {
     ui.session.pane == Pane::Notes
-        && app.session.selected.is_some()
-        && app.workspace.noted != app.session.selected
+        && app
+            .session
+            .selected
+            .as_ref()
+            .is_some_and(|session| app.delivery.notes_of(session).is_none())
 }
 
 /// Whether the explorer still needs the worktree walked before it can draw a tree.
@@ -253,8 +256,8 @@ pub(crate) fn changed(app: &AppState) -> &[FileDiff] {
 
 /// Whether a note of this session stands on a file.
 pub(super) fn noted(app: &AppState, path: &str) -> bool {
-    app.workspace
-        .notes
+    app.delivery
+        .shown
         .iter()
         .any(|note| note.anchor.as_ref().is_some_and(|one| one.path == path))
 }

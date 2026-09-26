@@ -1,7 +1,7 @@
 //! What a menu offers, and where it is drawn.
 
-use groove_controllers::workspace::Say;
-use groove_controllers::{Command, workspace};
+use groove_controllers::delivery::Say;
+use groove_controllers::{Command, delivery, workspace};
 use groove_types::ReviewVerdict;
 
 use crate::ctx::Ctx;
@@ -130,6 +130,13 @@ impl Picked {
         }
     }
 
+    fn delivers(command: delivery::Command) -> Self {
+        Self {
+            commands: vec![Command::Delivery(command)],
+            ..Self::default()
+        }
+    }
+
     fn asks(losing: Losing) -> Self {
         Self {
             asking: Some(losing),
@@ -167,17 +174,17 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         (Of::Worktree { .. }, Some(&"discard every change")) => Picked::asks(Losing::Everything),
         (Of::Worktree { .. }, Some(&"push")) => Picked::sends(workspace::Command::Push),
         (Of::Worktree { .. }, Some(&"pull")) => Picked::sends(workspace::Command::Pull),
-        (Of::Worktree { .. }, Some(&"update mr")) => Picked::sends(workspace::Command::UpdateMr),
-        (Of::Worktree { .. }, Some(&"close mr")) => Picked::sends(workspace::Command::CloseMr),
+        (Of::Worktree { .. }, Some(&"update mr")) => Picked::delivers(delivery::Command::UpdateMr),
+        (Of::Worktree { .. }, Some(&"close mr")) => Picked::delivers(delivery::Command::CloseMr),
         (Of::Worktree { .. }, Some(&"comment")) => {
-            Picked::sends(workspace::Command::Say(Say::Comment))
+            Picked::delivers(delivery::Command::Say(Say::Comment))
         }
         (Of::Worktree { .. }, Some(&"approve")) => {
-            Picked::sends(workspace::Command::Say(Say::Review(ReviewVerdict::Approve)))
+            Picked::delivers(delivery::Command::Say(Say::Review(ReviewVerdict::Approve)))
         }
-        (Of::Worktree { .. }, Some(&"request changes")) => Picked::sends(workspace::Command::Say(
-            Say::Review(ReviewVerdict::RequestChanges),
-        )),
+        (Of::Worktree { .. }, Some(&"request changes")) => Picked::delivers(
+            delivery::Command::Say(Say::Review(ReviewVerdict::RequestChanges)),
+        ),
         (Of::Path { path, dir }, Some(&"new file")) => {
             Picked::names(named(Asked::File, path, *dir, ""))
         }

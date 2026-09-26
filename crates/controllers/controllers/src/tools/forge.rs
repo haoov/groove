@@ -1,7 +1,7 @@
 //! What the forge says of a worktree's MR, read live.
 
 use groove_agent_service::Call;
-use groove_workspace_service::Delivered;
+use groove_delivery_service::Delivered;
 use serde_json::{Value, json};
 
 use crate::{AppState, Continuation, Services, Spawner};
@@ -33,7 +33,7 @@ pub(super) fn ci(state: &mut AppState, services: &Services, spawner: &dyn Spawne
     );
 }
 
-/// The worktree's MR read from its forge, answered, and put on the surface too.
+/// The worktree's MR read from its forge, answered, and taken as the poll takes it.
 fn live(
     state: &mut AppState,
     services: &Services,
@@ -44,23 +44,19 @@ fn live(
     let Some(named) = super::worktree(state, &call) else {
         return call.reply.failed(super::NO_WORKTREE);
     };
-    let Some((repo, worktree)) = crate::workspace::pair(state, &named.id) else {
+    let Some(whose) = crate::delivery::Whose::of(state, &named.id) else {
         return call.reply.failed(super::NO_WORKTREE);
     };
-    let remote = match groove_workspace_service::Service::remote(&repo) {
-        Ok(remote) => remote,
-        Err(e) => return call.reply.failed(e.message),
-    };
-    let (service, reply) = (services.workspace.clone(), call.reply);
+    let (service, reply) = (services.delivery.clone(), call.reply);
     spawner.spawn(Box::pin(async move {
-        let read = service.read(&remote, &repo, &worktree).await;
+        let read = service.read(&whose.repo, &whose.worktree).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match read {
                 Ok(Some(one)) => {
                     reply.json(&said(&one));
-                    crate::workspace::mr::took(state, services, spawner, &worktree.id, one);
+                    crate::delivery::poll::took(state, services, spawner, &whose, one);
                 }
-                Ok(None) => reply.failed(format!("{} has no MR", worktree.branch)),
+                Ok(None) => reply.failed(format!("{} has no MR", whose.worktree.branch)),
                 Err(e) => reply.failed(e.message),
             },
         ) as Continuation
