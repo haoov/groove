@@ -104,3 +104,20 @@ async fn cleanup_removes_every_worktree_and_the_session_dir() {
             .is_empty()
     );
 }
+
+#[tokio::test]
+async fn close_refuses_a_worktree_git_cannot_answer_for() {
+    let fx = Fixture::new().await;
+    let repo = fx.repo().await;
+    let wt = fx
+        .pool
+        .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
+        .await
+        .unwrap()
+        .worktree;
+    let path = std::path::PathBuf::from(&wt.path);
+    std::fs::remove_file(path.join(".git")).unwrap();
+    let err = fx.pool.close(&wt.id, false).await.unwrap_err();
+    assert!(matches!(err, Error::Unknown { .. }), "{err}");
+    assert!(path.exists(), "nothing is taken away");
+}

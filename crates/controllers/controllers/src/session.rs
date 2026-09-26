@@ -1,5 +1,6 @@
 //! The `session` controller: one function per user action on the `session` service.
 
+mod delete;
 pub(crate) mod feed;
 mod rail;
 mod repos;
@@ -9,9 +10,9 @@ use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
+pub use delete::{delete, delete_local, force_delete};
 pub use rail::{
-    close, delete, delete_local, force_delete, list, open, open_explorer, refresh_status,
-    rename_explorer, restore, select,
+    close, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
 };
 pub(crate) use rail::{listed, record, set_auto_approve};
 pub use repos::{

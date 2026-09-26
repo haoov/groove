@@ -38,21 +38,25 @@ impl Pool {
         remove_tree(&dir)
     }
 
+    /// Refuses a worktree holding work origin lacks, or one git cannot answer for.
     async fn refuse_loss(&self, worktree: &Worktree) -> Result<()> {
         if !Path::new(&worktree.path).is_dir() {
             return Ok(());
         }
-        if is_dirty(&worktree.path).await {
+        let git = Git::at(&worktree.path);
+        let unknown = || Error::Unknown {
+            branch: worktree.branch.clone(),
+        };
+        if !git.status().await.map_err(|_| unknown())?.is_empty() {
             return Err(Error::Dirty);
         }
-        let status = self.status(worktree).await?;
-        if status.ahead > 0 {
-            return Err(Error::Unpushed {
+        match unpushed(&git, worktree).await.ok_or_else(unknown)? {
+            0 => Ok(()),
+            ahead => Err(Error::Unpushed {
                 branch: worktree.branch.clone(),
-                ahead: status.ahead,
-            });
+                ahead,
+            }),
         }
-        Ok(())
     }
 
     /// The directory and its empty parents, the clone's registration, the local branch.
@@ -67,12 +71,13 @@ impl Pool {
     }
 }
 
-async fn is_dirty(path: &str) -> bool {
-    Git::at(path)
-        .status()
-        .await
-        .map(|c| !c.is_empty())
-        .unwrap_or(false)
+/// Commits origin lacks: past the branch on origin, else past its base.
+async fn unpushed(git: &Git, worktree: &Worktree) -> Option<u32> {
+    if let Some((ahead, _)) = git.ahead_behind(&worktree.branch).await.ok()? {
+        return Some(ahead);
+    }
+    let base = git.base_ref(worktree.base_ref.as_deref()).await.ok()?;
+    git.commits_since(&base).await.ok()
 }
 
 /// Deletes the tree and the empty parents above it, up to `stop_at`.

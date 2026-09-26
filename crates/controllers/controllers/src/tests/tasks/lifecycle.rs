@@ -211,8 +211,9 @@ fn finishing_a_task_tells_the_source_then_takes_the_session_away() {
         &services,
         &spawner,
     );
-    spawner.drain(&mut state, &services);
-    assert!(state.session.get(&session).is_none(), "the rail is clear");
+    until(&spawner, &services, &mut state, |s| {
+        s.session.get(&session).is_none()
+    });
     let sent: Vec<serde_json::Value> = runtime
         .block_on(server.received_requests())
         .expect("the calls")
@@ -297,8 +298,9 @@ fn deleting_a_task_session_here_says_nothing_to_the_source() {
         &services,
         &spawner,
     );
-    spawner.drain(&mut state, &services);
-    assert!(state.session.get(&session).is_none(), "the rail is clear");
+    until(&spawner, &services, &mut state, |s| {
+        s.session.get(&session).is_none()
+    });
     let sent: Vec<serde_json::Value> = runtime
         .block_on(server.received_requests())
         .expect("the calls")

@@ -117,56 +117,6 @@ pub fn rename_explorer(
     });
 }
 
-/// The session taken away: its agent, its worktrees, its row. Unforced, it stops at
-/// work that is not committed or pushed.
-pub fn delete(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &SessionId,
-    force: bool,
-) {
-    agent::end(state, id);
-    agent::forget(state, id);
-    state.session.feed.retain(|line| &line.session != id);
-    let title = state
-        .session
-        .get(id)
-        .map(|o| o.session.title.clone())
-        .unwrap_or_default();
-    state.session.close(id);
-    crate::workspace::follow(state, spawner);
-    let pending = state.begin(format!("deleting {title}"));
-    let (service, at) = (services.session.clone(), id.clone());
-    listed(
-        spawner,
-        pending,
-        async move { service.remove(&at, force).await },
-    );
-}
-
-/// The session and its worktrees gone from this machine; a dirty one is refused.
-pub fn delete_local(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &SessionId,
-) {
-    delete(state, services, spawner, id, false);
-    crate::task::load(state, services, spawner);
-}
-
-/// Uncommitted and unpushed work goes with it.
-pub fn force_delete(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    id: &SessionId,
-) {
-    delete(state, services, spawner, id, true);
-    crate::task::load(state, services, spawner);
-}
-
 /// Every session that lives on disk, for the board's Live column.
 pub fn list(services: &Services, spawner: &dyn Spawner) {
     let service = services.session.clone();

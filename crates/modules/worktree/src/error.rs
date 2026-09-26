@@ -42,6 +42,8 @@ pub enum Error {
     Dirty,
     #[error("{branch} has {ahead} commits origin does not; push first, or force")]
     Unpushed { branch: String, ahead: u32 },
+    #[error("git cannot tell whether {branch} holds work origin lacks; force to delete it anyway")]
+    Unknown { branch: String },
 }
 
 impl From<Error> for groove_types::Error {
@@ -62,7 +64,8 @@ impl From<Error> for groove_types::Error {
             | Error::Exists { .. }
             | Error::ForeignBranch { .. }
             | Error::Dirty
-            | Error::Unpushed { .. } => ErrorKind::Conflict,
+            | Error::Unpushed { .. }
+            | Error::Unknown { .. } => ErrorKind::Conflict,
         };
         groove_types::Error::new(kind, e.to_string())
     }

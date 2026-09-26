@@ -1,4 +1,5 @@
 mod agent;
+mod deleting;
 mod fixture;
 mod layers;
 mod loop_;
