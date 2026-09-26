@@ -12,6 +12,13 @@ pub fn entries(app: &AppState) -> Vec<Entry> {
         "New explorer",
         Command::Session(session::Command::OpenExplorer { title: None }),
     )];
+    if !app.session.living.is_empty() {
+        out.push(Entry::flow(
+            "Session",
+            "Force delete session",
+            Action::ForceDelete,
+        ));
+    }
     let Some(open) = app.session.selected() else {
         return out;
     };

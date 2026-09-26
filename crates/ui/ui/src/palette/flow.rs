@@ -12,6 +12,7 @@ pub enum Action {
     SelectWorktree,
     CloseWorktree,
     RenameExplorer,
+    ForceDelete,
 }
 
 impl Action {
@@ -24,6 +25,7 @@ impl Action {
             Action::SelectWorktree => "session.select_worktree",
             Action::CloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
+            Action::ForceDelete => "session.force_delete",
         }
     }
 }
@@ -81,6 +83,12 @@ impl Flow {
 
     /// The next question, or `None` when every answer is in.
     pub fn prompt(&self, app: &AppState) -> Option<Prompt> {
+        if self.action == Action::ForceDelete {
+            return self
+                .answers
+                .is_empty()
+                .then(|| Prompt::choose("session", session_choices(app)));
+        }
         let open = app.session.get(&self.session)?;
         let step = self.answers.len();
         match (self.action, step) {
@@ -125,6 +133,7 @@ impl Flow {
                 let known = app.session.branches.iter().any(|(r, _)| r == &repo);
                 (!known).then_some(Command::Session(session::Command::ListBranches { repo }))
             }
+            (Action::ForceDelete, 0) => Some(Command::Session(session::Command::List)),
             (Action::AddWorktree, 2) => {
                 let repo = RepoId::new(&self.answers[0]);
                 let known = app.session.branches.iter().any(|(r, _)| r == &repo);
@@ -177,6 +186,9 @@ impl Flow {
                 session,
                 title: answer(0),
             },
+            Action::ForceDelete => session::Command::ForceDelete {
+                session: SessionId::new(answer(0)),
+            },
         };
         Some(Command::Session(command))
     }
@@ -193,6 +205,20 @@ fn pool_choices(app: &AppState, open: &Open) -> Vec<(String, String)> {
             CLONE_LABEL.to_string(),
             CLONE.to_string(),
         )))
+        .collect()
+}
+
+/// Every session on disk, open or not.
+fn session_choices(app: &AppState) -> Vec<(String, String)> {
+    app.session
+        .living
+        .iter()
+        .map(|one| {
+            (
+                format!("{} · {}", one.session.title, one.session.id),
+                one.session.id.to_string(),
+            )
+        })
         .collect()
 }
 

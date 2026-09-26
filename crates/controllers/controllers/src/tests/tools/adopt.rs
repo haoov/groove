@@ -232,3 +232,30 @@ fn a_promotion_that_fails_puts_every_worktree_back_and_leaves_the_explorer() {
     );
     assert_eq!(branch.trim(), before.branch, "on its own branch again");
 }
+
+#[test]
+fn the_explorer_leaves_no_launch_file_and_no_feed_line_behind() {
+    let home = tempfile::tempdir().unwrap();
+    let mut at = exploring(home.path());
+    let explorer = at.id.clone();
+    let launch = home.path().join("data/agent-launch");
+    assert!(launch.join(format!("{explorer}.prompt.md")).is_file());
+
+    let answer = promoted(&mut at);
+    assert!(!answer.failed, "{}", answer.text);
+    let left: Vec<String> = std::fs::read_dir(&launch)
+        .unwrap()
+        .map(|one| one.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|name| name.starts_with(explorer.as_str()))
+        .collect();
+    assert!(left.is_empty(), "{left:?}");
+    assert!(
+        at.state
+            .session
+            .feed
+            .iter()
+            .all(|line| line.session != explorer),
+        "{:?}",
+        at.state.session.feed
+    );
+}

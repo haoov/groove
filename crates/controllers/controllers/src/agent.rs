@@ -180,7 +180,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
     };
     let paths = LaunchPaths {
         home: state.env.home.clone(),
-        launch_dir: state.env.data_dir.join("agent-launch"),
+        launch_dir: launch_dir(state),
         plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
@@ -209,6 +209,19 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
             state.agent.auto_approve(&session.id, on);
         }) as Continuation
     }));
+}
+
+pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {
+    state.env.data_dir.join("agent-launch")
+}
+
+pub(crate) fn forget(state: &mut AppState, session: &SessionId) {
+    if let Err(e) = groove_agent_service::forget(&launch_dir(state), session.as_str()) {
+        state.failed(groove_types::Error::new(
+            groove_types::ErrorKind::Io,
+            e.to_string(),
+        ));
+    }
 }
 
 pub fn end(state: &mut AppState, session: &SessionId) {

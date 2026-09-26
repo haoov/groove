@@ -127,6 +127,8 @@ pub fn delete(
     force: bool,
 ) {
     agent::end(state, id);
+    agent::forget(state, id);
+    state.session.feed.retain(|line| &line.session != id);
     let title = state
         .session
         .get(id)
@@ -151,6 +153,17 @@ pub fn delete_local(
     id: &SessionId,
 ) {
     delete(state, services, spawner, id, false);
+    crate::task::load(state, services, spawner);
+}
+
+/// Uncommitted and unpushed work goes with it.
+pub fn force_delete(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &SessionId,
+) {
+    delete(state, services, spawner, id, true);
     crate::task::load(state, services, spawner);
 }
 

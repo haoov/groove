@@ -221,3 +221,33 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     assert_eq!(run[0].id(), "session.close_worktree");
     assert!(ui.palette.is_none());
 }
+
+#[test]
+fn force_delete_picks_any_session_on_disk_and_deletes_it_changes_and_all() {
+    let mut app = AppState::default();
+    assert!(!labels(&app).contains(&"Force delete session".to_string()));
+    app.session.living = full_app().session.living;
+    let mut palette = Palette::default();
+    typed(&mut palette, "force delete", &app);
+    let opened = palette.key(Key::Enter, &app);
+    assert_eq!(
+        opened.commands[0].id(),
+        "session.list",
+        "the sessions read again"
+    );
+    let prompt = palette
+        .prompt(&app)
+        .expect("a session to pick, none selected");
+    assert_eq!(prompt.label, "session");
+    let picked = prompt.options[0].1.clone();
+    let done = palette.key(Key::Enter, &app);
+    assert!(done.close);
+    assert_eq!(
+        done.commands,
+        [groove_controllers::Command::Session(
+            groove_controllers::session::Command::ForceDelete {
+                session: groove_types::SessionId::new(picked)
+            }
+        )]
+    );
+}

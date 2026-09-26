@@ -170,8 +170,10 @@ impl Palette {
                 close: true,
             },
             Run::Flow(action) => {
-                let Some(session) = app.session.selected.clone() else {
-                    return Outcome::default();
+                let session = match (app.session.selected.clone(), action) {
+                    (Some(session), _) => session,
+                    (None, Action::ForceDelete) => groove_types::SessionId::new(""),
+                    (None, _) => return Outcome::default(),
                 };
                 let flow = Flow::new(action, session);
                 let refresh = flow.refresh(app);

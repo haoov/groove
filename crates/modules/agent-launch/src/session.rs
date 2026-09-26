@@ -30,6 +30,25 @@ pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> std::io::Result<()>
     std::fs::write(launch_dir.join(format!("{to}.thread")), uuid)
 }
 
+const NAMES: [&str; 5] = [
+    "prompt.md",
+    "settings.json",
+    "hooks.curl",
+    "mcp.json",
+    "thread",
+];
+
+/// The session's launch files taken away; one already gone is no error.
+pub fn forget(launch_dir: &Path, session_id: &str) -> std::io::Result<()> {
+    for name in NAMES {
+        match std::fs::remove_file(launch_dir.join(format!("{session_id}.{name}"))) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 /// `--session-id` on the first launch, `--resume` once Claude has a file for it.
 pub(crate) fn identity_args(session: &Session, paths: &Paths<'_>) -> Vec<String> {
     let uuid = thread_of(paths.launch_dir, session.id.as_str());

@@ -17,7 +17,7 @@ pub use error::{Error, Result};
 use groove_exec::pty::PtySpec;
 use groove_types::Session;
 pub use loopback::{Loopback, Tools};
-pub use session::hand_over;
+pub use session::{forget, hand_over};
 
 /// Where a launch reads and writes.
 pub struct Paths<'a> {

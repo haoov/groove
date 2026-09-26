@@ -10,8 +10,8 @@ use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 use crate::asker::Asker;
 
 pub use rail::{
-    close, delete, delete_local, list, open, open_explorer, refresh_status, rename_explorer,
-    restore, select,
+    close, delete, delete_local, force_delete, list, open, open_explorer, refresh_status,
+    rename_explorer, restore, select,
 };
 pub(crate) use rail::{listed, record, set_auto_approve};
 pub use repos::{
@@ -59,6 +59,8 @@ pub enum Command {
     Delete { session: SessionId },
     /// `session.delete_local`: the session and its worktrees gone from this machine.
     DeleteLocal { session: SessionId },
+    /// `session.force_delete`: any session gone from this machine, changes and all.
+    ForceDelete { session: SessionId },
     /// `session.select`: make it the current one.
     Select { session: SessionId },
     /// `session.open`: a session picked anywhere, back on the rail if it had left.
@@ -111,6 +113,7 @@ impl Command {
             Command::RenameExplorer { .. } => "session.rename_explorer",
             Command::Delete { .. } => "session.delete",
             Command::DeleteLocal { .. } => "session.delete_local",
+            Command::ForceDelete { .. } => "session.force_delete",
             Command::Select { .. } => "session.select",
             Command::Open { .. } => "session.open",
             Command::List => "session.list",
@@ -143,6 +146,7 @@ pub fn dispatch(
         }
         Command::Delete { session } => delete(state, services, spawner, &session, true),
         Command::DeleteLocal { session } => delete_local(state, services, spawner, &session),
+        Command::ForceDelete { session } => force_delete(state, services, spawner, &session),
         Command::Select { session } => select(state, services, spawner, &session),
         Command::Open { session } => open(state, services, spawner, &session),
         Command::List => list(services, spawner),

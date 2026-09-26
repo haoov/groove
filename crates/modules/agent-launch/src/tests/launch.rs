@@ -100,6 +100,22 @@ fn a_session_handed_an_explorer_s_conversation_resumes_it() {
 }
 
 #[test]
+fn forgetting_a_session_takes_its_launch_files_and_no_other() {
+    let root = tempfile::tempdir().unwrap();
+    Launch::plan(&explorer(), &paths(root.path()), &[], None).unwrap();
+    let explorer = explorer().id;
+    crate::hand_over(root.path(), explorer.as_str(), "gh-haoov-groove-50").unwrap();
+    crate::forget(root.path(), explorer.as_str()).unwrap();
+    crate::forget(root.path(), explorer.as_str()).unwrap();
+    let left: Vec<String> = std::fs::read_dir(root.path())
+        .unwrap()
+        .map(|one| one.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|name| !name.starts_with('.'))
+        .collect();
+    assert_eq!(left, ["gh-haoov-groove-50.thread"]);
+}
+
+#[test]
 fn the_prompt_file_is_private_and_names_the_session() {
     let root = tempfile::tempdir().unwrap();
     let launch = Launch::plan(

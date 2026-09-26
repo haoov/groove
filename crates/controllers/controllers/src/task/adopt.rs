@@ -123,7 +123,7 @@ fn became(
     worktrees: Vec<Worktree>,
     read: Fetched,
 ) {
-    let launch_dir = state.env.data_dir.join("agent-launch");
+    let launch_dir = crate::agent::launch_dir(state);
     if let Err(e) =
         groove_agent_service::hand_over(&launch_dir, explorer.as_str(), session.id.as_str())
     {
@@ -132,7 +132,16 @@ fn became(
             e.to_string(),
         ));
     }
+    crate::agent::forget(state, explorer);
     let id = session.id.clone();
+    for line in state
+        .session
+        .feed
+        .iter_mut()
+        .filter(|line| &line.session == explorer)
+    {
+        line.session = id.clone();
+    }
     if let Some(open) = state.session.get_mut(explorer) {
         open.session = session;
         open.worktrees = worktrees;
