@@ -36,6 +36,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "add_task_worktree" => said("branch"),
         "log_task_hours" => format!("{} h", arguments["hours"]),
         "adopt_task" => said("task"),
+        "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
         _ => shown(arguments),
     }
 }
@@ -43,6 +44,12 @@ pub fn said(tool: &str, arguments: &Value) -> String {
 /// The worktree a write acts in, when its arguments name one.
 pub fn acts_in(arguments: &Value) -> Option<String> {
     arguments["worktree_id"].as_str().map(str::to_string)
+}
+
+fn listed(lines: &Value) -> String {
+    let lines = lines.as_array().map(Vec::as_slice).unwrap_or_default();
+    let lines: Vec<&str> = lines.iter().filter_map(Value::as_str).collect();
+    lines.join("\n")
 }
 
 fn joined(head: &str, body: &str) -> String {

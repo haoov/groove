@@ -106,7 +106,7 @@ fn named_by(tool: &str) -> &'static [&'static str] {
         "comment_mr" | "reply_thread" => &["body"],
         "create_annotation" => &["path"],
         "add_task_repo" => &["repo"],
-        "add_task_worktree" => &["branch"],
+        "add_task_worktree" | "git_push" => &["branch"],
         _ => &["thread", "id", "worktree_id", "task_id"],
     }
 }

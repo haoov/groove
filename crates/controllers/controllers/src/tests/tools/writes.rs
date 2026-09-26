@@ -185,7 +185,7 @@ fn a_session_that_ends_leaves_no_agent_waiting() {
         },
     );
     crate::agent::end(&mut state, &groove_types::SessionId::new(&id));
-    let answer = answered.try_recv().expect("an answer");
+    let answer = settled(&spawner, &services, &mut state, &mut answered);
     assert!(answer.failed);
     assert!(answer.text.contains("closed"), "{}", answer.text);
 }
@@ -414,4 +414,42 @@ fn a_write_the_forge_refuses_is_answered_and_not_left_to_the_feed() {
         state.errors.is_empty(),
         "the agent hears it, the feed does not"
     );
+}
+
+#[test]
+fn a_push_waits_with_its_branch_and_the_commits_it_sends() {
+    let home = tempfile::tempdir().unwrap();
+    fixture::pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let (id, worktree, dir) = changed(&mut state, &services, &spawner);
+    stage(&dir);
+    sh(
+        std::path::Path::new(&dir),
+        &["commit", "-m", "feat: two lines\n\nthe body"],
+    );
+
+    let (reply, _answered) = Reply::new();
+    let call = Call {
+        session: id.clone(),
+        tool: "git_push".into(),
+        arguments: json!({ "worktree_id": worktree }),
+        reply,
+    };
+    crate::tools::answer(&mut state, &services, &spawner, call);
+    until(&spawner, &services, &mut state, |s| {
+        !waiting(s, &id).is_empty()
+    });
+    let ask = &waiting(&state, &id)[0];
+    let mut lines = ask.text.lines();
+    assert!(
+        lines.next().is_some_and(|one| one.starts_with("explorer/")),
+        "{}",
+        ask.text
+    );
+    assert_eq!(lines.next(), Some(""));
+    let sent: Vec<&str> = lines.collect();
+    assert_eq!(sent.len(), 1, "only the commit origin lacks: {}", ask.text);
+    assert!(sent[0].ends_with(" feat: two lines"), "{}", ask.text);
 }

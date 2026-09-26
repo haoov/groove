@@ -63,14 +63,21 @@ pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spa
     if auto {
         return run(state, services, spawner, Write::of(call));
     }
+    if call.tool == "git_push" {
+        return git::push_asked(state, spawner, Write::of(call));
+    }
+    queued(state, Write::of(call));
+}
+
+fn queued(state: &mut AppState, write: Write) {
     let new = NewAsk {
-        session,
-        op: call.tool.clone(),
-        payload: call.arguments.clone(),
+        session: write.session,
+        op: write.tool,
+        payload: write.arguments,
         origin: Origin::Mcp,
         at: Timestamp::now(),
     };
-    state.agent.asked(new, call.reply);
+    state.agent.asked(new, write.reply);
 }
 
 /// The write the user allowed, run at last.

@@ -31,7 +31,7 @@ mod service;
 mod tests;
 
 pub use delivery::{Delivery, Polling};
-pub use git::{commit, discard, pull, push, stage, unstage};
+pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use groove_annotations::New as NewNote;
 pub use notes::merged;
 pub use paths::{PathOp, path_op};

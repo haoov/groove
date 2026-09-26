@@ -31,6 +31,26 @@ pub async fn push(dir: &Path, branch: &str) -> Result<()> {
     Ok(())
 }
 
+/// The commits a push would send: over the branch on origin, or over its base when origin has none.
+pub async fn unpushed(
+    dir: &Path,
+    branch: &str,
+    base: Option<&str>,
+) -> Result<Vec<groove_types::CommitEntry>> {
+    let git = groove_git::Git::at(dir);
+    let upstream = format!("origin/{branch}");
+    let against = match (git.ref_exists(&upstream).await?, base) {
+        (true, _) => upstream,
+        (false, Some(base)) => base.to_string(),
+        (false, None) => git.base_ref(None).await?,
+    };
+    let log = git.log(Some(&against), UNPUSHED_MAX).await?;
+    Ok(log.into_iter().filter(|one| !one.is_base).collect())
+}
+
+/// How many of them a push ask lists.
+pub const UNPUSHED_MAX: usize = 20;
+
 pub async fn pull(dir: &Path) -> Result<()> {
     groove_git::Git::at(dir).pull().await?;
     Ok(())
