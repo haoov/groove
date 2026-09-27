@@ -67,12 +67,22 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     }));
 }
 
-/// A new session on the rail, selected, its workspace read and its agent started.
-pub(crate) fn begun(state: &mut AppState, spawner: &dyn Spawner, session: Session, now: Timestamp) {
+/// A new session on the rail, its agent started; returns whether its writes run unasked.
+pub(crate) fn begun(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: Session,
+    now: Timestamp,
+) -> bool {
     let id = session.id.clone();
+    let auto = state.config.auto_approve_default();
     state.session.open(session, now);
+    if let Some(open) = state.session.get_mut(&id) {
+        open.state.auto_approve = auto;
+    }
     crate::workspace::follow(state, spawner);
     agent::start(state, spawner, id, FIRST_SIZE);
+    auto
 }
 
 pub fn open_explorer(
@@ -83,10 +93,11 @@ pub fn open_explorer(
 ) {
     let now = Timestamp::now();
     let session = groove_session_service::explorer(title, now);
-    begun(state, spawner, session.clone(), now);
+    let auto = begun(state, spawner, session.clone(), now);
     let service = services.session.clone();
     listed(spawner, async move {
-        service.create_explorer(&session, now).await
+        service.create_explorer(&session, now).await?;
+        service.set_auto_approve(&session.id, auto).await
     });
 }
 

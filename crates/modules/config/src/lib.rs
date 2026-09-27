@@ -37,3 +37,19 @@ pub fn load(path: &Path) -> Result<Option<Config>> {
             source,
         })
 }
+
+/// The whole file written again, pretty, its directory made when missing.
+pub fn save(path: &Path, config: &Config) -> Result<()> {
+    let text = serde_json::to_string_pretty(config).map_err(|source| Error::Parse {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    let written = path
+        .parent()
+        .map_or(Ok(()), std::fs::create_dir_all)
+        .and_then(|()| std::fs::write(path, text));
+    written.map_err(|source| Error::Write {
+        path: path.to_path_buf(),
+        source,
+    })
+}

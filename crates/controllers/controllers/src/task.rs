@@ -88,12 +88,13 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     }
     let now = Timestamp::now();
     let session = task_session(&task, now);
-    session::begun(state, spawner, session.clone(), now);
+    let auto = session::begun(state, spawner, session.clone(), now);
     follow(state, spawner);
     status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
     let service = services.session.clone();
     session::listed(spawner, async move {
-        service.create_task(&session, &task, now).await
+        service.create_task(&session, &task, now).await?;
+        service.set_auto_approve(&session.id, auto).await
     });
 }
 

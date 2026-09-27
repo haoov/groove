@@ -14,7 +14,7 @@ pub use groove_annotations::New as NewNote;
 pub use groove_forge::{Remote, Snapshot};
 pub use held::Held;
 pub use notes::merged;
-pub use poll::{INTERVAL, Polling};
+pub use poll::Polling;
 pub use propose::{Text, text_of};
 pub use service::{Connect, Delivered, Said, Service};
 pub use state::{Line, MrAct, State};

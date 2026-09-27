@@ -201,7 +201,7 @@ async fn a_failed_read_ages_what_stands_and_a_missing_mr_clears_it() {
         .expect("one mr");
     let mut state = State::default();
     let id = worktree().id;
-    state.took(&id, read);
+    state.took(&id, read, groove_types::Timestamp::now());
     state.aged(&id);
     assert!(
         state.row(&id, Default::default()).stale,
@@ -210,6 +210,33 @@ async fn a_failed_read_ages_what_stands_and_a_missing_mr_clears_it() {
     state.gone(&id);
     assert!(state.held(&id).is_none());
     assert!(state.row(&id, Default::default()).mr.is_none());
+}
+
+#[tokio::test]
+async fn an_mr_read_longer_ago_than_the_config_allows_reads_as_old() {
+    let server = host(
+        answer("pullRequests", serde_json::json!({ "nodes": [pr("OPEN")] })),
+        serde_json::Value::Null,
+    )
+    .await;
+    let (repo, service) = github(&server).await;
+    let read = service
+        .read(&repo, &worktree())
+        .await
+        .unwrap()
+        .expect("one mr");
+    let mut state = State::default();
+    let id = worktree().id;
+    let read_at = groove_types::Timestamp::new(1_800_000_000);
+    state.took(&id, read, read_at);
+    let later = |secs: i64| groove_types::Timestamp::new(read_at.seconds() + secs);
+    state.aged_out(later(200), 300);
+    assert!(!state.row(&id, Default::default()).stale, "still fresh");
+    state.aged_out(later(400), 300);
+    assert!(
+        state.row(&id, Default::default()).stale,
+        "past the threshold"
+    );
 }
 
 #[tokio::test]

@@ -51,16 +51,15 @@ family means the bundled default.
 
 | Setting | Read by |
 |---|---|
-| auto-approve default | `agent`, when a session opens |
+| auto-approve default | a new session, as it goes on the rail |
 | attention thresholds — review waiting, due soon, approved unmerged, in days | the `task` service's attention fold |
-| poll interval and stale threshold | the `workspace` service's poll |
-| git: clone pool path | `worktree` |
+| poll interval, no shorter than ten seconds | the `delivery` poll |
+| stale threshold: an MR read longer ago reads as old, as a failed read does | the `delivery` poll |
+| git: clone pool path | `worktree`, set from Setup |
 
-| Still to build | Does |
-|---|---|
-| `config.set_preference` | one named preference; persist, republish |
-
-Every change saves on the spot. No save button; no restart.
+`config.set_preference` carries one named preference. The config service applies it, every
+reader sees it at once, and the file is written on the spot, as `panes.json` is. No save
+button; no restart.
 
 ## Needs
 

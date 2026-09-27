@@ -25,6 +25,7 @@ impl From<Delivered> for crate::Held {
             mr: Some(delivered.mr),
             read: Some(delivered.read),
             stale: false,
+            read_at: None,
         }
     }
 }

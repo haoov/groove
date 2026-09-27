@@ -4,9 +4,6 @@ use std::collections::BTreeSet;
 
 use groove_types::{Timestamp, WorktreeId};
 
-/// How often an open MR is read again, in seconds.
-pub const INTERVAL: i64 = 60;
-
 /// The poll's own state: when it last ran, what it has asked about, what is out.
 #[derive(Debug, Default)]
 pub struct Polling {

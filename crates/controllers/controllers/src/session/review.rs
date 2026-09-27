@@ -25,7 +25,7 @@ pub fn open_review(
     };
     let now = Timestamp::now();
     let session = review_session(at, now);
-    session::begun(state, spawner, session.clone(), now);
+    let auto = session::begun(state, spawner, session.clone(), now);
     let spec = WorktreeSpec {
         branch: Some(at.source_branch.clone()),
         target: Some(at.target_branch.clone()),
@@ -36,7 +36,9 @@ pub fn open_review(
         state.begin(format!("checking out {name}")),
     );
     session::added(spawner, pending, Asker::Ui, async move {
-        service.open_review(&session, &name, &spec, now).await
+        let added = service.open_review(&session, &name, &spec, now).await?;
+        service.set_auto_approve(&session.id, auto).await?;
+        Ok(added)
     });
 }
 

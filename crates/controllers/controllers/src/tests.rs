@@ -1,4 +1,5 @@
 mod agent;
+mod config;
 mod deleting;
 mod delivery;
 mod fixture;

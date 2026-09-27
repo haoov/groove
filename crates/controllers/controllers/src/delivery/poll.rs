@@ -1,6 +1,6 @@
 //! Reading a worktree's MR: the poll's tick, a read asked for now, and what it answered.
 
-use groove_delivery_service::{Delivered, INTERVAL};
+use groove_delivery_service::Delivered;
 use groove_types::{Result, Timestamp, WorktreeId};
 
 use super::Whose;
@@ -10,13 +10,15 @@ use crate::{AppState, Continuation, Services, Spawner};
 pub fn poll(state: &mut AppState, services: &Services, spawner: &dyn Spawner, now: Timestamp) {
     let selected = state.session.selected_worktree().map(|one| one.id.clone());
     let living = state.session.worktrees();
+    let every = state.config.poll_interval();
+    state.delivery.aged_out(now, state.config.stale_after());
     let wanted = state
         .delivery
-        .wanted(state.focused, selected.as_ref(), &living, now);
+        .wanted(state.focused, selected.as_ref(), &living, (now, every));
     if wanted.is_empty() {
         return;
     }
-    if state.delivery.poll.due(now, INTERVAL) {
+    if state.delivery.poll.due(now, every) {
         state.delivery.poll.ran(now);
     }
     for worktree in wanted {
@@ -111,7 +113,8 @@ pub(crate) fn took(
     whose: &Whose,
     delivered: Delivered,
 ) {
-    for line in state.delivery.took(&whose.worktree.id, delivered) {
+    let now = Timestamp::now();
+    for line in state.delivery.took(&whose.worktree.id, delivered, now) {
         let (kind, at) = (line.kind, &whose.worktree.id);
         crate::timeline::log(services, spawner, &whose.session, kind, &line.subject, at);
     }

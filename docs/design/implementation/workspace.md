@@ -201,8 +201,7 @@ header for the selected worktree.
 - [x] A file is marked read by the user, never by scrolling past it.
 - [ ] Request reviewers and a review with a verdict, both forges; reviewer state in
       `MrDetails`.
-- [ ] The poll reads `poll_interval_secs` and `stale_after_secs`, which the config
-      already carries and nothing reads; the controller holds its own constant. Slice 7.
+- [x] The poll reads `poll_interval_secs` and `stale_after_secs` from the config.
 - [x] GitLab behind the same `Remote` enum: its own queries, the `glab` token, the `!`
       sigil.
 - [ ] A GitLab verdict has no time of its own in the schema, so the MR's own `updatedAt`

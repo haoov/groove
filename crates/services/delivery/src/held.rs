@@ -7,8 +7,10 @@ use groove_types::{CiState, Mr, MrDelivery, MrFacts, MrState, MrThread};
 pub struct Held {
     pub mr: Option<Mr>,
     pub read: Option<Snapshot>,
-    /// The last read failed; what stands is older than it looks.
+    /// The last read failed, or is older than the config allows; what stands is older than it looks.
     pub stale: bool,
+    /// When the forge last answered for it.
+    pub read_at: Option<groove_types::Timestamp>,
 }
 
 impl Held {

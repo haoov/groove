@@ -7,7 +7,7 @@ use groove_types::{
     SessionId, TimelineKind, Timestamp, WorktreeDelivery, WorktreeId, WorktreeStatus,
 };
 
-use crate::{Delivered, Held, INTERVAL, Polling, merged};
+use crate::{Delivered, Held, Polling, merged};
 
 #[derive(Debug, Default)]
 pub struct State {
@@ -62,9 +62,15 @@ impl State {
     }
 
     /// What a read or a write answered, and the lines its changes are worth.
-    pub fn took(&mut self, worktree: &WorktreeId, delivered: Delivered) -> Vec<Line> {
+    pub fn took(
+        &mut self,
+        worktree: &WorktreeId,
+        delivered: Delivered,
+        now: Timestamp,
+    ) -> Vec<Line> {
         let before = self.held(worktree).map(|one| (one.state(), one.ci()));
-        let held = Held::from(delivered);
+        let mut held = Held::from(delivered);
+        held.read_at = Some(now);
         let lines = lines(before.unwrap_or_default(), &held);
         self.held.insert(worktree.clone(), held);
         lines
@@ -82,6 +88,16 @@ impl State {
         }
     }
 
+    /// Every MR the forge last answered for more than `after` seconds ago reads as old.
+    pub fn aged_out(&mut self, now: Timestamp, after: i64) {
+        for held in self.held.values_mut() {
+            let old = held
+                .read_at
+                .is_some_and(|at| now.seconds() - at.seconds() > after);
+            held.stale |= old;
+        }
+    }
+
     /// The rows the database holds, for worktrees the forge has not answered for yet.
     pub fn remembered(&mut self, mrs: Vec<Mr>) {
         for mr in mrs {
@@ -92,20 +108,20 @@ impl State {
         }
     }
 
-    /// What this tick reads: the selected worktree once, then `living`'s open MRs when due.
+    /// What this tick reads: the selected worktree once, then `living`'s open MRs every `every` seconds.
     pub fn wanted(
         &self,
         focused: bool,
         selected: Option<&WorktreeId>,
         living: &[WorktreeId],
-        now: Timestamp,
+        (now, every): (Timestamp, i64),
     ) -> Vec<WorktreeId> {
         if !focused {
             return Vec::new();
         }
         let first = selected.filter(|id| self.poll.asks(id)).cloned();
         let mut out: Vec<WorktreeId> = first.into_iter().collect();
-        if self.poll.due(now, INTERVAL) {
+        if self.poll.due(now, every) {
             let open = living.iter().filter(|id| self.is_open(id));
             out.extend(open.filter(|id| !self.poll.is_out(id)).cloned());
         }

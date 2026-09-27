@@ -2,14 +2,17 @@
 
 use groove_types::{Forge, Mr, MrId, MrState, Timestamp, WorktreeId};
 
-use crate::{INTERVAL, State};
+use crate::State;
+
+/// The interval the config asks for, in seconds.
+const EVERY: i64 = 60;
 
 fn now() -> Timestamp {
     Timestamp::new(1_800_000_000)
 }
 
 fn later() -> Timestamp {
-    Timestamp::new(now().seconds() + INTERVAL)
+    Timestamp::new(now().seconds() + EVERY)
 }
 
 fn id() -> WorktreeId {
@@ -34,7 +37,7 @@ fn holding(state: MrState) -> State {
 }
 
 fn wanted(state: &State, focused: bool, at: Timestamp) -> Vec<WorktreeId> {
-    state.wanted(focused, Some(&id()), &[id()], at)
+    state.wanted(focused, Some(&id()), &[id()], (at, EVERY))
 }
 
 #[test]
@@ -95,7 +98,7 @@ fn a_worktree_wanted_twice_is_read_once() {
 #[test]
 fn a_worktree_off_the_rail_is_not_polled() {
     let state = holding(MrState::Open);
-    assert!(state.wanted(true, None, &[], later()).is_empty());
+    assert!(state.wanted(true, None, &[], (later(), EVERY)).is_empty());
     assert!(!state.polls(true, &[]));
     assert!(state.polls(true, &[id()]));
 }

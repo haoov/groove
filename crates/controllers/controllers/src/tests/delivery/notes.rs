@@ -171,9 +171,11 @@ fn a_thread_the_forge_answered_joins_the_list_without_a_read() {
         state: groove_types::MrState::Open,
     };
     let read = snapshot();
-    state
-        .delivery
-        .took(&worktree, groove_delivery_service::Delivered { mr, read });
+    state.delivery.took(
+        &worktree,
+        groove_delivery_service::Delivered { mr, read },
+        groove_types::Timestamp::now(),
+    );
     crate::delivery::notes::show(&mut state);
     assert_eq!(
         said(&state),
