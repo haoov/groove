@@ -12,6 +12,7 @@ mod files;
 mod finding;
 mod focus;
 mod frame;
+mod manual;
 mod mouse;
 mod overview;
 mod painted;

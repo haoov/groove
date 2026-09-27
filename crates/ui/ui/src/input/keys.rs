@@ -15,7 +15,7 @@ use crate::views::session::Term;
 use crate::{Focus, Overlay, Surface, Ui};
 
 pub use agent::encode;
-use agent::to_agent;
+use agent::{to_agent, to_shell};
 use bar::{finding, in_bar, opened, typing};
 use filter::on_board;
 use naming::in_name;
@@ -52,7 +52,8 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     if let Some(commands) = finding(key, mods, ui, app) {
         return commands;
     }
-    if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && ui.focus != Focus::Agent {
+    let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
+    if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && !raw {
         opened(ui, app, Term::Path);
         return Vec::new();
     }
@@ -61,6 +62,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
+        Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, app),
         Focus::Sidebar => in_sidebar(key, mods, ui, app),
         Focus::Rail => in_rail(key, app),

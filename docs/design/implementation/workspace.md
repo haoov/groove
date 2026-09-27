@@ -116,16 +116,15 @@ session over the open file or the whole change is the ui's own state.
 ## Terminal
 
 **Base `exec::pty`**: spawn, stream, write, resize, end, batched. **Module `terminal`**:
-the `alacritty_terminal` grid over it, a dirty flag per frame, resize through `OnResize`,
-the terminals per worktree. The manual section draws the grids, split and resizable.
+the `alacritty_terminal` grid over it, a dirty flag per frame, resize through `OnResize`.
+**Service `shell`** holds each session's tabs: a tab is one terminal, or several side by
+side that `split` adds, and remembers which of them takes the keys. A terminal runs the user's login
+shell in the session's own directory, not in a worktree. Closing, deleting or adopting the
+session ends its terminals.
 
-Keys go to the pty as bytes; nothing is parsed.
-
-| Still to build | Does |
-|---|---|
-| `workspace.open_terminal` | a shell in the selected worktree |
-| `workspace.resize_terminal` | from the pane's layout, to the pty |
-| `workspace.close_terminal` · `workspace.split_terminal` | end it; a second one beside the first |
+Keys, a paste and the wheel go to the selected terminal as bytes; nothing is parsed. The
+manual section folds to its bar, and opens to a height the user drags and the panes file
+keeps; each frame fits every shown terminal to the grid its pane holds.
 
 ## Git
 

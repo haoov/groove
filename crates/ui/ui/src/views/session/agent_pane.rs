@@ -9,7 +9,7 @@ use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::screen;
 
 /// The agent's terminal, or why there is none.
-pub fn draw(ctx: &mut Ctx, app: &AppState) {
+pub fn draw(ctx: &mut Ctx, app: &AppState, focused: bool) {
     let Some(open) = app.session.selected() else {
         return;
     };
@@ -29,7 +29,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         (Some(terminal), _) => {
             let origin = ctx.app.layout.agent_origin(&ctx.tokens);
             let grid = terminal.screen();
-            screen(ctx, pane, origin, &grid);
+            screen(ctx, pane, origin, (&grid, focused));
         }
         (None, AgentStatus::Error { message }) => note(ctx, message),
         (None, _) => note(ctx, "starting the agent…"),

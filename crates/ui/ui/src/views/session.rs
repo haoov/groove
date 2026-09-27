@@ -7,6 +7,7 @@ pub mod diff;
 pub(crate) mod files;
 pub mod find;
 pub mod header;
+mod manual;
 mod open_files;
 pub mod overview;
 mod sheet;
@@ -34,9 +35,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if app.session.selected().is_none() {
         return empty(ctx);
     }
-    agent_pane::draw(ctx, app);
+    agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     bar::draw(ctx, app);
     workspace(ctx, app, ui);
+    if let Some(session) = app.session.selected.as_ref() {
+        manual::draw(ctx, app, ui, session);
+    }
     sheet::draw(ctx, app, ui);
 }
 

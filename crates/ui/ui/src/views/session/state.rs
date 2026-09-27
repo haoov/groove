@@ -17,6 +17,8 @@ pub struct SessionUi {
     pub files: f32,
     /// The user folded the sidebar away.
     pub folded: bool,
+    /// The manual section stands open under the tab.
+    pub manual: bool,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.

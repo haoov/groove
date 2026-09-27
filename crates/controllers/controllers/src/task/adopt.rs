@@ -92,6 +92,7 @@ fn promoted(
         return;
     };
     crate::agent::end(state, &explorer);
+    crate::shell::end(state, &explorer);
     let (service, task) = (services.session.clone(), read.task.clone());
     let job = state.begin(format!("making {explorer} {}", task.short_id));
     spawner.spawn(Box::pin(async move {

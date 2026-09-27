@@ -13,6 +13,13 @@ pub struct Panes {
     /// How tall the rail's feed stands, its footer included.
     #[serde(default = "feed")]
     pub feed: f32,
+    /// How tall the manual section stands open.
+    #[serde(default = "manual")]
+    pub manual: f32,
+}
+
+fn manual() -> f32 {
+    220.0
 }
 
 fn feed() -> f32 {

@@ -1,4 +1,6 @@
-use crate::{AppState, Services, Spawner, agent, config, delivery, session, task, workspace};
+use crate::{
+    AppState, Services, Spawner, agent, config, delivery, session, shell, task, workspace,
+};
 
 /// One variant per controller function, grouped by controller.
 #[derive(Debug, Clone, PartialEq)]
@@ -8,6 +10,7 @@ pub enum Command {
     Workspace(workspace::Command),
     Delivery(delivery::Command),
     Agent(agent::Command),
+    Shell(shell::Command),
     Config(config::Command),
 }
 
@@ -20,6 +23,7 @@ impl Command {
             Command::Workspace(c) => c.id(),
             Command::Delivery(c) => c.id(),
             Command::Agent(c) => c.id(),
+            Command::Shell(c) => c.id(),
             Command::Config(c) => c.id(),
         }
     }
@@ -38,6 +42,7 @@ pub fn dispatch(
         Command::Workspace(c) => workspace::dispatch(c, state, services, spawner),
         Command::Delivery(c) => delivery::dispatch(c, state, services, spawner),
         Command::Agent(c) => agent::dispatch(c, state, services, spawner),
+        Command::Shell(c) => shell::dispatch(c, state, services, spawner),
         Command::Config(c) => config::dispatch(c, state, services, spawner),
     }
 }

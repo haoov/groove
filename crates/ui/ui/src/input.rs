@@ -132,7 +132,26 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if ui.focus == Focus::Agent && ui.showing(app) == Surface::Session {
         return typed_at_agent(text, app);
     }
+    if ui.focus == Focus::Terminal && ui.showing(app) == Surface::Session {
+        return typed_at_shell(text, app);
+    }
     vec![Command::Workspace(workspace::Command::Paste)]
+}
+
+/// The clipboard at the open session's selected terminal.
+fn typed_at_shell(text: &str, app: &AppState) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone() else {
+        return Vec::new();
+    };
+    let Some(id) = app.shell.shells(&session).and_then(|one| one.focused()) else {
+        return Vec::new();
+    };
+    let text = text.to_string();
+    vec![Command::Shell(groove_controllers::shell::Command::Paste {
+        session,
+        id,
+        text,
+    })]
 }
 
 /// The clipboard at the agent of the open session.

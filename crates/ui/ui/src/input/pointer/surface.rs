@@ -194,3 +194,16 @@ pub(super) fn composed(
         Motion::To(caret),
     )))]
 }
+
+/// A tab closed, or the question first when its file owes the disk.
+pub(super) fn closing(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
+    let owes = app
+        .workspace
+        .buffer(&path)
+        .is_some_and(|one| one.new.dirty());
+    if owes {
+        ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Tab(path)));
+        return Vec::new();
+    }
+    vec![Command::Workspace(workspace::Command::CloseFile { path })]
+}

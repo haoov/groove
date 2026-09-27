@@ -23,8 +23,8 @@
 
 ## Terminal
 
-- several per worktree
-- actions: open, close
+- several per session, in its directory
+- actions: open, close, split
 
 ## Git
 

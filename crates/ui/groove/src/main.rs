@@ -93,6 +93,7 @@ fn env() -> Env {
         home,
         hooks: None,
         tools: None,
+        shell: std::env::var("SHELL").unwrap_or_default(),
     }
 }
 

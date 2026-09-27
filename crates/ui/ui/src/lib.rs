@@ -42,6 +42,8 @@ pub enum Focus {
     #[default]
     Agent,
     Workspace,
+    /// The manual section's selected terminal.
+    Terminal,
     Sidebar,
 }
 
@@ -51,12 +53,16 @@ impl Focus {
 
     /// The pane beside this one, or this one at the edge.
     pub fn beside(self, right: bool) -> Self {
-        let at = Self::ALL.iter().position(|it| *it == self).unwrap_or(1);
+        let from = match self {
+            Focus::Terminal => Focus::Workspace,
+            one => one,
+        };
+        let at = Self::ALL.iter().position(|it| *it == from).unwrap_or(1);
         let next = match right {
             true => at + 1,
             false => at.saturating_sub(1),
         };
-        Self::ALL.get(next).copied().unwrap_or(self)
+        Self::ALL.get(next).copied().unwrap_or(from)
     }
 }
 

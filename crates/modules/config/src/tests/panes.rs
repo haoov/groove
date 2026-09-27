@@ -9,6 +9,7 @@ const LEFT: Panes = Panes {
     commit: 120.0,
     band: 300.0,
     feed: 200.0,
+    manual: 220.0,
 };
 
 #[test]

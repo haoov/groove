@@ -38,6 +38,11 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
             let top = ctx.app.layout.commit.y;
             Rect::new(aside.x, top - grab / 2.0, aside.w, grab)
         }),
+        Edge::Manual => {
+            let manual = ctx.app.layout.manual;
+            let open = manual.h > ctx.tokens.bar;
+            open.then(|| Rect::new(manual.x, manual.y - grab / 2.0, manual.w, grab))
+        }
         Edge::Band | Edge::Feed => None,
     }
 }

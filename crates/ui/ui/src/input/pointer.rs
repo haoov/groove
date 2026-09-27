@@ -7,6 +7,7 @@ mod focus;
 mod header;
 mod menu;
 mod rail;
+mod shell;
 mod sidebar;
 mod surface;
 
@@ -25,7 +26,7 @@ use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, twisty};
 use self::surface::{
-    at, composed, folded, holds, in_files, jump, landed, lensed, reached, switch, unfolded,
+    at, closing, composed, folded, holds, in_files, jump, landed, lensed, reached, switch, unfolded,
 };
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
@@ -181,19 +182,6 @@ fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> 
     }
 }
 
-/// A tab closed, or the question first when its file owes the disk.
-fn closing(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
-    let owes = app
-        .workspace
-        .buffer(&path)
-        .is_some_and(|one| one.new.dirty());
-    if owes {
-        ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Tab(path)));
-        return Vec::new();
-    }
-    one(workspace::Command::CloseFile { path })
-}
-
 /// The hours the clock measured, handed to the source.
 fn logging(external_id: groove_types::ExternalId) -> Vec<Command> {
     let log = groove_controllers::task::Command::LogHours { external_id };
@@ -297,4 +285,5 @@ fn elsewhere(
     board::acted(target, ui, app)
         .or_else(|| rail::acted(target, ui))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
+        .or_else(|| shell::acted(target, ui, app, metrics))
 }

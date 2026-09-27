@@ -13,6 +13,7 @@ groove-session-service = { path = "../../services/session" }
 groove-workspace-service = { path = "../../services/workspace" }
 groove-delivery-service = { path = "../../services/delivery" }
 groove-agent-service = { path = "../../services/agent" }
+groove-shell-service = { path = "../../services/shell" }
 groove-config-service = { path = "../../services/config" }
 serde_json.workspace = true
 tokio.workspace = true

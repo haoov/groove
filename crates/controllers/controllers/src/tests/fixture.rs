@@ -30,6 +30,7 @@ pub fn state(home: &Path) -> AppState {
         data_dir: home.join("data"),
         hooks: None,
         tools: None,
+        shell: "/bin/sh".into(),
     });
     let config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/code" } }"#).unwrap();

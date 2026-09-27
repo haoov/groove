@@ -12,7 +12,7 @@ Every concept has one home. Whatever needs it calls that home and never derives 
 
 ## Services
 
-Six services, one part of the app each. `workspace` splits in two: the code in a worktree,
+Seven services, one part of the app each. `workspace` splits in two: the code in a worktree,
 and what the forge says about it.
 
 | Service | Owns | Modules |
@@ -22,6 +22,7 @@ and what the forge says about it.
 | `workspace` | the selected worktree's change: files, rows, colours, each worktree's open buffers, search, paths, history, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
 | `delivery` | each worktree's MR: state, CI, threads, the session's notes, verdicts, the poll, the review queue | `forge`, `mrs`, `annotations` |
 | `agent` | each session's agent: terminal, activity, asks, launch files, skills | `terminal`, `agent-launch`, `approvals`, `skills`, `hooks`, `mcp`, `tools` |
+| `shell` | each session's own terminals: its tabs, the terminals side by side in each, the one taking the keys | `terminal` |
 | `config` | the config file, preferences, settings | `config` |
 
 ## One home per concept

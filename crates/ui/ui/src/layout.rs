@@ -6,8 +6,8 @@ use groove_types::Panes;
 use crate::Ui;
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::{
-    AGENT_MIN, BAND_MIN, COLUMNS_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN,
-    SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
+    AGENT_MIN, BAND_MIN, CODE_MIN, COLUMNS_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MANUAL_MIN,
+    MANUAL_TALL, MESSAGE_LINES, RAIL_MIN, SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
 };
 
 /// A boundary the user drags.
@@ -25,15 +25,23 @@ pub enum Edge {
     Band,
     /// Between the rail's own rows and the feed under them.
     Feed,
+    /// Between the workspace's tab and the manual section under it.
+    Manual,
 }
 
 impl Edge {
-    /// Every boundary: the three columns, then the one across the sidebar.
-    pub const ALL: [Edge; 4] = [Edge::Rail, Edge::Agent, Edge::Sidebar, Edge::Commit];
+    /// Every boundary: the three columns, then the ones across the sidebar and the workspace.
+    pub const ALL: [Edge; 5] = [
+        Edge::Rail,
+        Edge::Agent,
+        Edge::Sidebar,
+        Edge::Commit,
+        Edge::Manual,
+    ];
 
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        !matches!(self, Edge::Commit | Edge::Band | Edge::Feed)
+        !matches!(self, Edge::Commit | Edge::Band | Edge::Feed | Edge::Manual)
     }
 }
 
@@ -49,6 +57,8 @@ pub struct Split {
     pub band: f32,
     /// How tall the rail's feed stands, the footer under it included.
     pub feed: f32,
+    /// How tall the manual section stands open.
+    pub manual: f32,
 }
 
 impl Default for Split {
@@ -61,6 +71,7 @@ impl Default for Split {
             commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
             band: tokens.band,
             feed: FEED_MIN * 2.0,
+            manual: MANUAL_TALL,
         }
     }
 }
@@ -75,6 +86,7 @@ impl Split {
             commit: panes.commit.max(COMMIT_MIN),
             band: panes.band.max(BAND_MIN),
             feed: panes.feed.max(FEED_MIN),
+            manual: panes.manual.max(MANUAL_MIN),
         }
     }
 
@@ -86,6 +98,7 @@ impl Split {
             commit: self.commit,
             band: self.band,
             feed: self.feed,
+            manual: self.manual,
         }
     }
 
@@ -119,6 +132,10 @@ impl Split {
                 let most = (height - SESSIONS_MIN).max(FEED_MIN);
                 self.feed = (height - at).clamp(FEED_MIN, most);
             }
+            Edge::Manual => {
+                let most = (height - CODE_MIN).max(MANUAL_MIN);
+                self.manual = (height - at).clamp(MANUAL_MIN, most);
+            }
         }
     }
 
@@ -131,6 +148,7 @@ impl Split {
             Edge::Commit => height - self.commit,
             Edge::Band => height - self.band,
             Edge::Feed => height - self.feed,
+            Edge::Manual => height - self.manual,
         }
     }
 
@@ -163,6 +181,8 @@ pub struct Layout {
     pub commit: Rect,
     /// The rail's feed, above its footer, as tall as the user has dragged it.
     pub feed: Rect,
+    /// The terminals under the workspace's tab: their bar alone while folded.
+    pub manual: Rect,
     /// Everything the board takes: the window but the rail.
     pub board: Rect,
 }
@@ -191,6 +211,7 @@ impl Layout {
             workspace: Rect::new(work_x, head, work_width, window.h - head),
             sidebar: Rect::new(work_x + work_width, 0.0, aside, window.h),
             board: Rect::new(rail, 0.0, (window.w - rail).max(0.0), window.h),
+            manual: Rect::new(work_x, window.h, work_width, 0.0),
         }
     }
 
@@ -204,6 +225,11 @@ impl Layout {
         if !ui.session.commits() {
             held.commit = Rect::new(held.commit.x, held.window.h, held.commit.w, 0.0);
         }
+        let tall = match ui.session.manual {
+            true => (ui.split.manual * tokens.scale).floor(),
+            false => tokens.bar,
+        };
+        held.manual = held.workspace.take_bottom(tall.min(held.workspace.h));
         held
     }
 
@@ -214,10 +240,36 @@ impl Layout {
 
     /// The columns and rows the agent pane holds at this cell size.
     pub fn agent_grid(&self, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
-        let pad = tokens.sm * 2.0;
-        let held = self.agent.h - self.agent_bar.h;
-        let cols = ((self.agent.w - pad) / cell.width).floor().max(1.0);
-        let rows = ((held - pad) / cell.height).floor().max(1.0);
-        (cols as u16, rows as u16)
+        let screen = Rect {
+            h: self.agent.h - self.agent_bar.h,
+            ..self.agent
+        };
+        grid_in(screen, tokens, cell)
     }
+
+    /// The manual section's grids under its bar: `count` side by side, a hairline between.
+    pub fn shell_panes(&self, tokens: &Tokens, count: usize) -> Vec<Rect> {
+        let mut body = self.manual;
+        body.take_top(tokens.bar);
+        let count = count.max(1);
+        let rules = tokens.hairline * (count - 1) as f32;
+        let wide = ((body.w - rules) / count as f32).floor();
+        let mut panes: Vec<Rect> = (1..count)
+            .map(|_| {
+                let pane = body.take_left(wide);
+                body.take_left(tokens.hairline);
+                pane
+            })
+            .collect();
+        panes.push(body);
+        panes
+    }
+}
+
+/// The columns and rows a terminal holds in `rect`, its padding kept, at this cell size.
+pub fn grid_in(rect: Rect, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
+    let pad = tokens.sm * 2.0;
+    let cols = ((rect.w - pad) / cell.width).floor().max(1.0);
+    let rows = ((rect.h - pad) / cell.height).floor().max(1.0);
+    (cols as u16, rows as u16)
 }

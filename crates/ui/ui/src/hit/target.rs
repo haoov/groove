@@ -35,6 +35,18 @@ pub enum Target {
     LogHours(groove_types::ExternalId),
     /// The timeline's own bar, which folds it away.
     Timeline,
+    /// What folds the manual section away, or opens it.
+    ShellFold,
+    /// What opens a terminal in a tab of its own.
+    ShellNew,
+    /// What opens one beside the terminals of the tab that is up.
+    ShellSplit,
+    /// One tab, and the cross that ends every terminal in it.
+    ShellTab(u64),
+    ShellCloseTab(u64),
+    /// One terminal's grid, which a click gives the keyboard, and the cross that ends it alone.
+    Shell(u64),
+    ShellClose(u64),
     /// An open file's tab, which a click makes the active one.
     OpenTab(String),
     /// What closes that tab.
@@ -140,7 +152,11 @@ impl Target {
             Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
                 Cursor::Text
             }
-            Target::Agent | Target::Pinned | Target::Bar(_) | Target::Palette => Cursor::Default,
+            Target::Agent
+            | Target::Shell(_)
+            | Target::Pinned
+            | Target::Bar(_)
+            | Target::Palette => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,

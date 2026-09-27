@@ -14,6 +14,8 @@ pub struct Env {
     pub data_dir: PathBuf,
     pub hooks: Option<Receiver>,
     pub tools: Option<Server>,
+    /// The login shell a terminal of the manual section runs.
+    pub shell: String,
 }
 
 /// The sum of the services' slices, owned on the main thread.
@@ -35,6 +37,7 @@ pub struct AppState {
     pub workspace: groove_workspace_service::State,
     pub delivery: groove_delivery_service::State,
     pub agent: groove_agent_service::State,
+    pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
 }
 

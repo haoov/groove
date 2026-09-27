@@ -128,6 +128,7 @@ pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 
 pub fn close(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     agent::end(state, id);
+    crate::shell::end(state, id);
     state.session.close(id);
     crate::workspace::follow(state, spawner);
     let (service, at) = (services.session.clone(), id.clone());

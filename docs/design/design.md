@@ -196,8 +196,8 @@ hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc e
   session and outlive the window.
 
 **Manual section.** Where the user acts by hand, as the agent pane is where the agent acts.
-Terminals for the selected worktree, splittable, resizable, collapsible; hidden entirely
-when collapsed.
+Terminals for the session, opened in its own directory, splittable, resizable, collapsible;
+its bar alone when collapsed.
 
 **Commit box.** In the sidebar under the changed files, since it acts on the staged set the
 list shows: git status, message, commit, and an actions menu — push, pull, discard all.

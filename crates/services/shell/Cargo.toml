@@ -1,0 +1,14 @@
+[package]
+name = "groove-shell-service"
+description = "The shell capability: each session's own terminals, opened in its directory"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-terminal = { path = "../../modules/terminal" }
+groove-types = { path = "../../shared/types" }
+
+[lints]
+workspace = true

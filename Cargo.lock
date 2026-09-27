@@ -1256,6 +1256,7 @@ dependencies = [
  "groove-config-service",
  "groove-delivery-service",
  "groove-session-service",
+ "groove-shell-service",
  "groove-task-service",
  "groove-types",
  "groove-workspace-service",
@@ -1476,6 +1477,14 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.20",
  "tokio",
+]
+
+[[package]]
+name = "groove-shell-service"
+version = "0.1.0"
+dependencies = [
+ "groove-terminal",
+ "groove-types",
 ]
 
 [[package]]

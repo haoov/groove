@@ -8,6 +8,7 @@ pub(super) fn focused(target: &Option<Target>, focus: Focus) -> Focus {
     match target {
         Some(Target::Session(_) | Target::FeedLine(_)) => Focus::Rail,
         Some(Target::Agent) => Focus::Agent,
+        Some(Target::Shell(_)) => Focus::Terminal,
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
         Some(
             Target::File(_)

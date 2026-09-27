@@ -16,6 +16,7 @@ pub fn delete(
 ) {
     let running = state.agent.agent(id).is_some();
     agent::end(state, id);
+    crate::shell::end(state, id);
     let title = state
         .session
         .get(id)

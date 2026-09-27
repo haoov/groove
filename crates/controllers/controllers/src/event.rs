@@ -13,6 +13,7 @@ pub enum Event {
     Session(groove_session_service::Event),
     Workspace(groove_workspace_service::Event),
     Agent(groove_agent_service::Event),
+    Shell(groove_shell_service::Event),
     Config(groove_config_service::Event),
     Window(Window),
 }
@@ -24,6 +25,7 @@ pub fn apply(event: Event, state: &mut AppState) {
         Event::Session(e) => groove_session_service::apply(&mut state.session, e),
         Event::Workspace(e) => groove_workspace_service::apply(&mut state.workspace, e),
         Event::Agent(e) => groove_agent_service::apply(&mut state.agent, e),
+        Event::Shell(e) => groove_shell_service::apply(&mut state.shell, e),
         Event::Config(e) => groove_config_service::apply(&mut state.config, e),
         Event::Window(Window::Focus(focused)) => {
             state.focused = focused;

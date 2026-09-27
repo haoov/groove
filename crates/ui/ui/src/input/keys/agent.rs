@@ -4,6 +4,18 @@ use groove_controllers::{AppState, Command, agent};
 
 use super::super::{Key, Modifiers};
 
+/// A key at the manual section's selected terminal.
+pub(super) fn to_shell(key: Key, mods: Modifiers, app: &AppState) -> Option<Command> {
+    let session = app.session.selected.clone()?;
+    let id = app.shell.shells(&session)?.focused()?;
+    let bytes = encode(key, mods)?;
+    Some(Command::Shell(groove_controllers::shell::Command::Send {
+        session,
+        id,
+        bytes,
+    }))
+}
+
 pub(super) fn to_agent(key: Key, mods: Modifiers, app: &AppState) -> Option<Command> {
     let session = app.session.selected.clone()?;
     let bytes = encode(key, mods)?;

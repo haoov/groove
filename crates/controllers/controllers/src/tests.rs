@@ -7,6 +7,7 @@ mod loop_;
 mod perf;
 mod reviews;
 mod session;
+mod shell;
 mod tasks;
 mod timeline;
 mod tools;

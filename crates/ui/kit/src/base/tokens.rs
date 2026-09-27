@@ -47,6 +47,10 @@ pub const COLUMNS_MIN: f32 = 200.0;
 /// The smallest the commit box and the list above it may be.
 pub const COMMIT_MIN: f32 = 72.0;
 pub const FILES_MIN: f32 = 120.0;
+/// The manual section open, as tall as it starts and no shorter, and the code it leaves above.
+pub const MANUAL_TALL: f32 = 220.0;
+pub const MANUAL_MIN: f32 = 96.0;
+pub const CODE_MIN: f32 = 160.0;
 pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;

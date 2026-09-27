@@ -46,6 +46,7 @@ pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command
     out.extend(notes(app, ui));
     out.extend(log(app, ui));
     out.extend(fitted(app, ui, metrics));
+    out.extend(shells_fitted(app, ui, metrics));
     out
 }
 
@@ -98,6 +99,36 @@ fn fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
                 session: session.clone(),
                 cols,
                 rows,
+            })
+        })
+        .collect()
+}
+
+/// The open section's terminals, each to the grid its pane now holds.
+fn shells_fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command> {
+    let Some(session) = app.session.selected.clone().filter(|_| ui.session.manual) else {
+        return Vec::new();
+    };
+    let Some(shells) = app.shell.shells(&session) else {
+        return Vec::new();
+    };
+    let (tokens, layout) = (metrics.tokens(), Layout::of(metrics, ui));
+    let shown = shells.shown();
+    let panes = layout.shell_panes(&tokens, shown.len());
+    shown
+        .iter()
+        .zip(panes)
+        .filter_map(|(shell, pane)| {
+            let (cols, rows) = crate::layout::grid_in(pane, &tokens, metrics.cell);
+            let terminal = shell.terminal.as_ref()?;
+            (terminal.size() != (cols, rows)).then(|| {
+                let (session, id) = (session.clone(), shell.id);
+                Command::Shell(groove_controllers::shell::Command::Resize {
+                    session,
+                    id,
+                    cols,
+                    rows,
+                })
             })
         })
         .collect()

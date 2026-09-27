@@ -67,8 +67,9 @@ The capabilities are five and do not move. Growth is answered inside them.
 |---|---|---|
 | task | provider (github issues, notion) · timeline | http, exec, db |
 | session | worktree → git · agent-launch → terminal · terminal · approvals | exec, db |
-| workspace | git · diff → git, text · grep · watch · annotations · editor → text · text · terminal · forge | exec, db, http |
+| workspace | git · diff → git, text · grep · watch · annotations · editor → text · text · forge | exec, db, http |
 | agent | tools → approvals · hooks → activity → timeline · skills · approvals | db |
+| shell | terminal | exec |
 | config | config · environment check | exec |
 
 ## Crates
@@ -91,7 +92,7 @@ One directory per layer under `crates/`. What each holds:
 | `annotations` | the notes a session leaves, as its own store |
 | `editor` | the path operations under one worktree, and the clipboard |
 | `text` | rope, tree-sitter, transactions, semantic hook |
-| `terminal` | emulation over `exec::pty`; terminals per worktree |
+| `terminal` | emulation over `exec::pty`: the agent's, and each session's own |
 | `agent-launch` | flags, session uuid, core prompt, the agent's terminal |
 | `token` | a host's bearer token, asked of `gh` or `glab`, held for the run |
 | `forge` | gitlab, github PRs, review queue |

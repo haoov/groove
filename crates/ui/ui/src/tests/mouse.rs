@@ -326,6 +326,7 @@ fn a_column_narrower_than_its_minimum_opens_at_it() {
         commit: 1.0,
         band: 1.0,
         feed: 1.0,
+        manual: 1.0,
     };
     let split = Split::of(panes);
     assert_eq!(split.rail, RAIL_MIN);

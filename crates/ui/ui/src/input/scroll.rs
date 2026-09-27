@@ -30,6 +30,9 @@ pub(super) fn scroll(
     if ui.showing(app) == Surface::Session && x < layout.workspace.x {
         return agent(ui, app, delta, point, &layout, metrics);
     }
+    if ui.showing(app) == Surface::Session && layout.manual.contains(x, y) {
+        return shelled(ui, app, delta, point, hits, metrics);
+    }
     if ui.showing(app) == Surface::Board {
         let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
         if band.contains(x, y) {
@@ -63,13 +66,7 @@ fn agent(
         return Vec::new();
     };
     let tokens = metrics.tokens();
-    let pixels = match delta {
-        Delta::Lines { down, .. } => down * tokens.line * groove_ui_kit::base::tokens::NOTCH,
-        Delta::Pixels { down, .. } => down,
-    };
-    let carried = pixels + ui.agent.carried;
-    let lines = (carried / tokens.line) as i32;
-    ui.agent.carried = carried - lines as f32 * tokens.line;
+    let lines = turned(ui, delta, tokens.line);
     if lines == 0 {
         return Vec::new();
     }
@@ -83,6 +80,57 @@ fn agent(
         col,
         row,
     })]
+}
+
+/// The wheel over one terminal of the manual section, at the cell it stands on.
+fn shelled(
+    ui: &mut Ui,
+    app: &AppState,
+    delta: Delta,
+    point: (f32, f32),
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
+    let (Some(session), Some(Target::Shell(id))) =
+        (app.session.selected.clone(), hits.at(point.0, point.1))
+    else {
+        return Vec::new();
+    };
+    let Some(pane) = hits.rect_of(&Target::Shell(id)) else {
+        return Vec::new();
+    };
+    let tokens = metrics.tokens();
+    let lines = turned(ui, delta, tokens.line);
+    if lines == 0 {
+        return Vec::new();
+    }
+    let cell = metrics.cell;
+    let col = ((point.0 - pane.x - tokens.sm) / cell.width)
+        .floor()
+        .max(0.0) as usize;
+    let row = ((point.1 - pane.y - tokens.sm) / cell.height)
+        .floor()
+        .max(0.0) as usize;
+    let scroll = groove_controllers::shell::Command::Scroll {
+        session,
+        id,
+        lines,
+        col,
+        row,
+    };
+    vec![Command::Shell(scroll)]
+}
+
+/// Whole lines the wheel has turned; what is not yet worth a line is carried on.
+fn turned(ui: &mut Ui, delta: Delta, line: f32) -> i32 {
+    let pixels = match delta {
+        Delta::Lines { down, .. } => down * line * groove_ui_kit::base::tokens::NOTCH,
+        Delta::Pixels { down, .. } => down,
+    };
+    let carried = pixels + ui.agent.carried;
+    let lines = (carried / line) as i32;
+    ui.agent.carried = carried - lines as f32 * line;
+    lines
 }
 
 /// A gesture over the band: it carries time only while it goes sideways.
