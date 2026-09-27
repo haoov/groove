@@ -118,7 +118,7 @@ pub(super) fn entry(
     reading: Reading,
     ui: &Ui,
 ) {
-    if ui.discarding == Some(Losing::File(file.path.clone())) {
+    if ui.losing() == Some(&Losing::File(file.path.clone())) {
         return asking(ctx, line, "discard changes?", ui);
     }
     let on_row = pointed(ui, &file.path);

@@ -134,7 +134,7 @@ fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
         &hits,
         window(),
     );
-    let menu = ui.menu.clone().expect("the actions are open");
+    let menu = ui.menu().cloned().expect("the actions are open");
     assert_eq!(menu.of, crate::Of::File("a.txt".into()));
     assert!(
         drawn(&app, &ui).rect_of(&Target::MenuRow(0)).is_some(),
@@ -143,10 +143,10 @@ fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
 
     let taken = hit(&Target::MenuRow(0), &mut ui, &app);
     assert!(taken.is_empty(), "discard is not done on the spot");
-    assert!(ui.menu.is_none(), "the actions close");
+    assert!(ui.menu().is_none(), "the actions close");
     assert_eq!(
-        ui.discarding,
-        Some(crate::Losing::File("a.txt".into())),
+        ui.losing(),
+        Some(&crate::Losing::File("a.txt".into())),
         "the row is asking instead"
     );
 }
@@ -155,7 +155,7 @@ fn the_right_button_opens_a_row_s_actions_and_a_click_closes_them() {
 fn the_row_asks_before_a_change_is_thrown_away() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    ui.discarding = Some(crate::Losing::File("a.txt".into()));
+    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::File("a.txt".into())));
     let hits = drawn(&app, &ui);
     assert!(
         hits.rect_of(&Target::File("a.txt".into())).is_none(),
@@ -170,17 +170,17 @@ fn the_row_asks_before_a_change_is_thrown_away() {
             path: "a.txt".into()
         })]
     );
-    assert!(ui.discarding.is_none(), "and the question is answered");
+    assert!(ui.losing().is_none(), "and the question is answered");
 }
 
 #[test]
 fn keeping_the_change_asks_nothing_of_git() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    ui.discarding = Some(crate::Losing::File("a.txt".into()));
+    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::File("a.txt".into())));
     let kept = hit(&Target::Keep, &mut ui, &app);
     assert!(kept.is_empty(), "nothing is asked");
-    assert!(ui.discarding.is_none());
+    assert!(ui.losing().is_none());
 }
 
 #[test]

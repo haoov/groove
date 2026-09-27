@@ -1,6 +1,6 @@
-use groove_types::{Forge, MrDetails, MrState, Timestamp, WorktreeId};
+use groove_types::{Forge, MrState, WorktreeId};
 
-use crate::{Snapshot, Store};
+use crate::{Answered, Store};
 
 fn worktree() -> WorktreeId {
     WorktreeId::new("w1")
@@ -25,27 +25,12 @@ async fn store() -> Store {
     store
 }
 
-fn snapshot(number: &str, state: MrState, url: &str) -> Snapshot {
-    Snapshot {
-        head: "cafe1234".into(),
-        node: "PR_node".into(),
+fn snapshot(number: &str, state: MrState, url: &str) -> Answered {
+    Answered {
+        forge: Forge::Github,
         number: number.to_string(),
-        details: MrDetails {
-            title: "fix: one".into(),
-            description: String::new(),
-            author: "haoov".into(),
-            source_branch: "fix/one".into(),
-            target_branch: "main".into(),
-            state,
-            draft: false,
-            created_at: Timestamp::new(0),
-            updated_at: Timestamp::new(0),
-            web_url: url.to_string(),
-            approval: None,
-            reviewers: Vec::new(),
-        },
-        ci: None,
-        threads: Vec::new(),
+        url: url.to_string(),
+        state,
     }
 }
 
@@ -60,7 +45,7 @@ async fn what_the_forge_answered_reads_back_as_the_worktrees_mr() {
     let store = store().await;
     let read = snapshot("7", MrState::Open, "https://github.com/acme/groove/pull/7");
     let saved = store
-        .save(&worktree(), Forge::Github, &read)
+        .save(&worktree(), &read)
         .await
         .expect("the mr is written");
     assert_eq!(saved.remote_id, "7");
@@ -74,16 +59,13 @@ async fn what_the_forge_answered_reads_back_as_the_worktrees_mr() {
 async fn the_same_mr_saved_again_keeps_its_id_and_takes_the_new_state() {
     let store = store().await;
     let open = snapshot("7", MrState::Open, "https://github.com/acme/groove/pull/7");
-    let first = store.save(&worktree(), Forge::Github, &open).await.unwrap();
+    let first = store.save(&worktree(), &open).await.unwrap();
     let merged = snapshot(
         "7",
         MrState::Merged,
         "https://github.com/acme/groove/pull/7",
     );
-    let again = store
-        .save(&worktree(), Forge::Github, &merged)
-        .await
-        .unwrap();
+    let again = store.save(&worktree(), &merged).await.unwrap();
     assert_eq!(again.id, first.id, "one row, updated");
     assert_eq!(again.state, MrState::Merged);
 }
@@ -96,15 +78,9 @@ async fn a_second_mr_on_the_branch_replaces_the_first() {
         MrState::Closed,
         "https://github.com/acme/groove/pull/7",
     );
-    store
-        .save(&worktree(), Forge::Github, &first)
-        .await
-        .unwrap();
+    store.save(&worktree(), &first).await.unwrap();
     let second = snapshot("8", MrState::Open, "https://github.com/acme/groove/pull/8");
-    let now = store
-        .save(&worktree(), Forge::Github, &second)
-        .await
-        .unwrap();
+    let now = store.save(&worktree(), &second).await.unwrap();
     assert_eq!(now.remote_id, "8");
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM mrs WHERE worktree_id = 'w1'")
         .fetch_one(store.db().pool())
@@ -117,11 +93,11 @@ async fn a_second_mr_on_the_branch_replaces_the_first() {
 async fn the_mr_goes_when_it_is_forgotten_and_when_the_worktree_goes() {
     let store = store().await;
     let read = snapshot("7", MrState::Open, "https://github.com/acme/groove/pull/7");
-    store.save(&worktree(), Forge::Github, &read).await.unwrap();
+    store.save(&worktree(), &read).await.unwrap();
     store.remove(&worktree()).await.unwrap();
     assert!(store.get(&worktree()).await.unwrap().is_none());
 
-    store.save(&worktree(), Forge::Github, &read).await.unwrap();
+    store.save(&worktree(), &read).await.unwrap();
     sqlx::query("DELETE FROM worktrees WHERE id = 'w1'")
         .execute(store.db().pool())
         .await

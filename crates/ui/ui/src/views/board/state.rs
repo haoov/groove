@@ -17,8 +17,7 @@ pub struct BoardUi {
     pub typing: bool,
     /// Which suggestion the keyboard stands on.
     pub offer: usize,
-    /// The task a drag holds, and the line it would land on.
-    pub dragging: Option<groove_types::ExternalId>,
+    /// The line a carried task would land on.
     pub drop: Option<usize>,
     /// The user folded the timeline away.
     pub shut: bool,

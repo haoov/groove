@@ -1,9 +1,19 @@
 //! The one MR a worktree has, as the database holds it.
 
-use groove_db::Db;
-use groove_types::{Forge, Mr, MrId, MrState, WorktreeId};
+#[cfg(test)]
+mod tests;
 
-use crate::{Error, Result, Snapshot};
+use groove_db::Db;
+use groove_types::{Error, Forge, Mr, MrId, MrState, Result, WorktreeId};
+
+/// What a forge answered of an MR, as the row keeps it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Answered {
+    pub forge: Forge,
+    pub number: String,
+    pub url: String,
+    pub state: MrState,
+}
 
 #[derive(sqlx::FromRow)]
 struct Row {
@@ -43,7 +53,7 @@ impl Store {
     pub async fn in_memory() -> Result<Self> {
         let db = Db::in_memory()
             .await
-            .map_err(|e| Error::Invalid(format!("no database: {e}")))?;
+            .map_err(|e| Error::db(format!("no database: {e}")))?;
         Ok(Self::new(db))
     }
 
@@ -60,7 +70,8 @@ impl Store {
         )
         .bind(worktree.as_str())
         .fetch_optional(self.db.pool())
-        .await?;
+        .await
+        .map_err(failed)?;
         Ok(row.map(Mr::from))
     }
 
@@ -71,18 +82,20 @@ impl Store {
              FROM mrs WHERE state = 'open' ORDER BY worktree_id",
         )
         .fetch_all(self.db.pool())
-        .await?;
+        .await
+        .map_err(failed)?;
         Ok(rows.into_iter().map(Mr::from).collect())
     }
 
     /// What the forge answered, written down as the worktree's one MR.
-    pub async fn save(&self, worktree: &WorktreeId, forge: Forge, read: &Snapshot) -> Result<Mr> {
-        let mut tx = self.db.pool().begin().await?;
+    pub async fn save(&self, worktree: &WorktreeId, answered: &Answered) -> Result<Mr> {
+        let mut tx = self.db.pool().begin().await.map_err(failed)?;
         sqlx::query("DELETE FROM mrs WHERE worktree_id = ? AND remote_id != ?")
             .bind(worktree.as_str())
-            .bind(&read.number)
+            .bind(&answered.number)
             .execute(&mut *tx)
-            .await?;
+            .await
+            .map_err(failed)?;
         sqlx::query(
             "INSERT INTO mrs (id, worktree_id, platform, remote_id, url, state)
              VALUES (?, ?, ?, ?, ?, ?)
@@ -91,16 +104,17 @@ impl Store {
         )
         .bind(uuid::Uuid::new_v4().to_string())
         .bind(worktree.as_str())
-        .bind(forge.as_str())
-        .bind(&read.number)
-        .bind(&read.details.web_url)
-        .bind(word_of(read.details.state))
+        .bind(answered.forge.as_str())
+        .bind(&answered.number)
+        .bind(&answered.url)
+        .bind(word_of(answered.state))
         .execute(&mut *tx)
-        .await?;
-        tx.commit().await?;
+        .await
+        .map_err(failed)?;
+        tx.commit().await.map_err(failed)?;
         self.get(worktree)
             .await?
-            .ok_or_else(|| Error::Invalid(format!("{worktree} lost its merge request")))
+            .ok_or_else(|| Error::db(format!("{worktree} lost its merge request")))
     }
 
     /// Forgets the worktree's MR, for one closed or a branch that lost it.
@@ -108,7 +122,8 @@ impl Store {
         sqlx::query("DELETE FROM mrs WHERE worktree_id = ?")
             .bind(worktree.as_str())
             .execute(self.db.pool())
-            .await?;
+            .await
+            .map_err(failed)?;
         Ok(())
     }
 }
@@ -128,4 +143,10 @@ fn state_of(word: &str) -> MrState {
         "closed" => MrState::Closed,
         _ => MrState::Open,
     }
+}
+
+fn failed(source: sqlx::Error) -> Error {
+    Error::db(format!(
+        "the MR rows could not be read or written: {source}"
+    ))
 }

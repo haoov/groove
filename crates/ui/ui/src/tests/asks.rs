@@ -66,7 +66,7 @@ fn review_shows_the_whole_write_and_its_two_answers() {
     let id = ApprovalId::new("ap-1");
     let rect = hits.rect_of(&Target::Examine(id.clone())).expect("review");
     assert!(click(rect, &mut ui, &app, &hits).is_empty());
-    assert_eq!(ui.examining, Some(id));
+    assert_eq!(ui.examining(), Some(&id));
 
     let drawn = texts(&app, &ui);
     for said in [
@@ -85,26 +85,26 @@ fn refusing_from_the_sheet_drops_the_write_and_puts_the_sheet_away() {
     let app = committing();
     let id = ApprovalId::new("ap-1");
     let mut ui = Ui {
-        examining: Some(id.clone()),
+        overlay: Some(crate::Overlay::Examining(id.clone())),
         ..session_ui()
     };
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let rect = hits.rect_of(&Target::Refuse(id.clone())).expect("refuse");
     let acted = click(rect, &mut ui, &app, &hits);
     assert_eq!(acted, [Command::Agent(agent::Command::Refuse { id })]);
-    assert_eq!(ui.examining, None);
+    assert_eq!(ui.examining(), None);
 }
 
 #[test]
 fn escape_puts_the_sheet_away_without_deciding() {
     let app = committing();
     let mut ui = Ui {
-        examining: Some(ApprovalId::new("ap-1")),
+        overlay: Some(crate::Overlay::Examining(ApprovalId::new("ap-1"))),
         ..session_ui()
     };
     let acted = press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(acted.is_empty(), "nothing decided: {acted:?}");
-    assert_eq!(ui.examining, None);
+    assert_eq!(ui.examining(), None);
 }
 
 #[test]

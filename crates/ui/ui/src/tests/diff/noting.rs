@@ -61,7 +61,7 @@ fn a_right_click_in_the_rows_offers_a_note_on_that_line() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
     assert_eq!(
-        ui.menu.as_ref().map(|menu| &menu.of),
+        ui.menu().map(|menu| &menu.of),
         Some(&crate::Of::Line {
             path: "src/lib.rs".into(),
             lines: (1, 1),
@@ -81,7 +81,7 @@ fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
     assert_eq!(
-        ui.menu.as_ref().map(|menu| &menu.of),
+        ui.menu().map(|menu| &menu.of),
         Some(&crate::Of::Line {
             path: "src/lib.rs".into(),
             lines: (0, 2),
@@ -101,7 +101,7 @@ fn picking_the_note_opens_an_empty_row_to_type_in() {
         ui.session.noting.as_ref().map(|one| one.anchor.clone()),
         Some(Anchor::line("src/lib.rs", 1))
     );
-    assert!(ui.menu.is_none(), "the menu shuts behind it");
+    assert!(ui.menu().is_none(), "the menu shuts behind it");
 }
 
 #[test]
@@ -317,9 +317,9 @@ fn a_line_that_already_carries_a_note_takes_no_other() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
     assert!(
-        ui.menu.is_none(),
+        ui.menu().is_none(),
         "one note a line: {:?}",
-        ui.menu.as_ref().map(|menu| &menu.of)
+        ui.menu().map(|menu| &menu.of)
     );
 }
 
@@ -331,7 +331,7 @@ fn a_line_beside_a_noted_one_still_takes_a_note() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 0);
     assert_eq!(
-        ui.menu.as_ref().map(|menu| &menu.of),
+        ui.menu().map(|menu| &menu.of),
         Some(&crate::Of::Line {
             path: "src/lib.rs".into(),
             lines: (0, 0),
@@ -351,7 +351,7 @@ fn a_selection_that_runs_into_a_note_takes_no_note() {
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 0);
-    assert!(ui.menu.is_none(), "the note on line 1 is inside it");
+    assert!(ui.menu().is_none(), "the note on line 1 is inside it");
 }
 
 #[test]
@@ -402,9 +402,9 @@ fn a_noted_line_takes_no_other_note_in_the_diff_views() {
         let row = noted_row(&app, &ui);
         asked(&app, &mut ui, row);
         assert!(
-            ui.menu.is_none(),
+            ui.menu().is_none(),
             "{view_kind:?} offers no second note: {:?}",
-            ui.menu.as_ref().map(|menu| &menu.of)
+            ui.menu().map(|menu| &menu.of)
         );
     }
 }

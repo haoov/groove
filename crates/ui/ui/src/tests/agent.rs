@@ -74,7 +74,10 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let acted = press(&mut ui, false);
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.click"], "the program's own selection stands");
-    assert!(!ui.agent.selecting, "and we take none of our own");
+    assert!(
+        !matches!(ui.held, Some(crate::Held::AgentText)),
+        "and we take none of our own"
+    );
 
     let released =
         crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
@@ -84,7 +87,7 @@ fn a_program_that_reads_the_mouse_keeps_the_pointer_and_shift_takes_it_back() {
     let acted = press(&mut ui, true);
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.select"], "shift takes the pointer back");
-    assert!(ui.agent.selecting);
+    assert!(matches!(ui.held, Some(crate::Held::AgentText)));
 }
 
 #[test]

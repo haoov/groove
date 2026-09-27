@@ -12,7 +12,7 @@ use groove_controllers::{AppState, Command, session, workspace};
 use super::{Key, Modifiers};
 use crate::palette::Palette;
 use crate::views::session::Term;
-use crate::{Focus, Surface, Ui};
+use crate::{Focus, Overlay, Surface, Ui};
 
 pub use agent::encode;
 use agent::to_agent;
@@ -29,14 +29,14 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
             key => chord(key, ui, app).into_iter().collect(),
         };
     }
-    if ui.examining.is_some() && key == Key::Escape {
-        ui.examining = None;
+    if ui.examining().is_some() && key == Key::Escape {
+        ui.overlay = None;
         return Vec::new();
     }
-    if let Some(palette) = &mut ui.palette {
+    if let Some(palette) = ui.palette_mut() {
         let outcome = palette.key(key, app);
         if outcome.close {
-            ui.palette = None;
+            ui.overlay = None;
         }
         return outcome.commands;
     }
@@ -83,10 +83,10 @@ fn board(ui: &mut Ui) -> Vec<Command> {
 fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
     match key {
         Key::Char('p' | 'P') => {
-            if ui.palette.take().is_some() {
+            if ui.close(|one| matches!(one, Overlay::Palette(_))).is_some() {
                 return None;
             }
-            ui.palette = Some(Palette::default());
+            ui.overlay = Some(Overlay::Palette(Palette::default()));
             Some(Command::Session(session::Command::ListRepos))
         }
         Key::Char('n' | 'N') => Some(Command::Session(session::Command::OpenExplorer {

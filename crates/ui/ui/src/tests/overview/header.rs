@@ -175,7 +175,7 @@ fn the_task_s_menu_offers_to_delete_the_session_here() {
         crate::tests::click(caret, &mut ui, &app, &hits).is_empty(),
         "opening it asks for nothing"
     );
-    assert!(ui.menu.is_some(), "the menu stands");
+    assert!(ui.menu().is_some(), "the menu stands");
 
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let row = hits

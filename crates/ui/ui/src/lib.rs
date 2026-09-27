@@ -76,25 +76,17 @@ pub struct Ui {
     /// Which surface the window is showing.
     pub surface: Surface,
     pub focus: Focus,
-    pub palette: Option<palette::Palette>,
+    /// What stands over the surface and takes the next key or click.
+    pub overlay: Option<Overlay>,
     pub session: SessionUi,
     pub rail: RailUi,
     pub board: BoardUi,
     pub agent: AgentUi,
     pub split: Split,
-    pub drag: Option<Drag>,
-    /// The pointer is down on the open file, choosing what to hold.
-    pub selecting: bool,
-    /// The pointer is down on the change map, dragging the lens.
-    pub mapping: bool,
+    /// What the pointer's button holds while it is down.
+    pub held: Option<Held>,
     /// The last press, for the next one to know whether it carries on the same click.
     pub clicked: Option<Click>,
-    /// What is asking before it throws a change away.
-    pub discarding: Option<Losing>,
-    /// What the right button opened, and where.
-    pub menu: Option<Menu>,
-    /// The write the review sheet shows.
-    pub examining: Option<groove_types::ApprovalId>,
     /// What the pointer is over, for the row under it to say so, and where it stands.
     pub hover: Option<Target>,
     pub at: (f32, f32),
@@ -102,15 +94,40 @@ pub struct Ui {
     pub painted: painted::Painted,
 }
 
+/// What stands over the surface, one at a time.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Overlay {
+    Palette(palette::Palette),
+    /// What the right button opened, and where.
+    Menu(Menu),
+    /// A change about to be thrown away, asking first.
+    Losing(Losing),
+    /// The write the review sheet shows.
+    Examining(groove_types::ApprovalId),
+}
+
+/// What the pointer's button holds while it is down.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Held {
+    /// A boundary between columns.
+    Edge(Drag),
+    /// Text of the open file, being selected.
+    Text,
+    /// The change map's lens.
+    Lens,
+    /// A task of the plan, carried to another line.
+    Task(groove_types::ExternalId),
+    /// A selection of the agent's screen, of our own.
+    AgentText,
+    /// The agent's screen, its program sent the reports.
+    AgentClick,
+}
+
 /// What the pointer is doing to the agent's screen.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct AgentUi {
     /// Wheel pixels not yet worth a line.
     pub carried: f32,
-    /// The pointer holds a selection of our own.
-    pub selecting: bool,
-    /// The pointer is down, and the program in the screen is sent the reports.
-    pub clicking: bool,
     /// Shift was held: the selection is ours even where the program reads the mouse.
     pub bypassed: bool,
 }
@@ -188,16 +205,62 @@ impl Ui {
     }
 
     pub fn dragging(&self) -> bool {
-        self.drag.is_some()
+        matches!(self.held, Some(Held::Edge(_)))
+    }
+
+    pub fn palette(&self) -> Option<&palette::Palette> {
+        match &self.overlay {
+            Some(Overlay::Palette(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    pub fn palette_mut(&mut self) -> Option<&mut palette::Palette> {
+        match &mut self.overlay {
+            Some(Overlay::Palette(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    pub fn menu(&self) -> Option<&Menu> {
+        match &self.overlay {
+            Some(Overlay::Menu(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    pub fn losing(&self) -> Option<&Losing> {
+        match &self.overlay {
+            Some(Overlay::Losing(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    pub fn examining(&self) -> Option<&groove_types::ApprovalId> {
+        match &self.overlay {
+            Some(Overlay::Examining(one)) => Some(one),
+            _ => None,
+        }
+    }
+
+    /// The overlay taken down when `which` says it is the one standing.
+    pub fn close(&mut self, which: impl Fn(&Overlay) -> bool) -> Option<Overlay> {
+        match self.overlay.as_ref().is_some_and(which) {
+            true => self.overlay.take(),
+            false => None,
+        }
+    }
+
+    /// The task a drag of the plan carries.
+    pub fn carried(&self) -> Option<&groove_types::ExternalId> {
+        match &self.held {
+            Some(Held::Task(id)) => Some(id),
+            _ => None,
+        }
     }
 
     /// The pointer is down on something that follows it.
     pub fn pointing(&self) -> bool {
-        self.drag.is_some()
-            || self.selecting
-            || self.mapping
-            || self.board.dragging.is_some()
-            || self.agent.selecting
-            || self.agent.clicking
+        self.held.is_some()
     }
 }

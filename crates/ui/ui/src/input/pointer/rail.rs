@@ -17,7 +17,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         Target::Refuse(id) => Some(answered(ui, agent::Command::Refuse { id: id.clone() })),
         Target::Sheet => Some(Vec::new()),
         Target::Examine(id) => {
-            ui.examining = Some(id.clone());
+            ui.overlay = Some(crate::Overlay::Examining(id.clone()));
             Some(Vec::new())
         }
         _ => None,
@@ -26,7 +26,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
 
 /// A write decided, and the sheet that showed it put away.
 fn answered(ui: &mut Ui, answer: agent::Command) -> Vec<Command> {
-    ui.examining = None;
+    ui.close(|one| matches!(one, crate::Overlay::Examining(_)));
     vec![Command::Agent(answer)]
 }
 

@@ -114,7 +114,7 @@ pub fn dropped(
 
 /// What the drop asks of the plan, or nothing when the row would not move.
 pub fn landing(app: &AppState, ui: &Ui) -> Option<Landing> {
-    let external_id = ui.board.dragging.clone()?;
+    let external_id = ui.carried()?.clone();
     let at = ui.board.drop?;
     let lines = lines(app, ui);
     let later = lines.iter().position(is_divider).is_some_and(|it| it < at);

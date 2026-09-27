@@ -399,7 +399,10 @@ fn a_press_on_the_screen_begins_a_selection() {
         &hits,
         window(),
     );
-    assert!(ui.agent.selecting, "the pointer is choosing what to hold");
+    assert!(
+        matches!(ui.held, Some(crate::Held::AgentText)),
+        "the pointer is choosing what to hold"
+    );
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.select"]);
 
@@ -414,7 +417,10 @@ fn a_press_on_the_screen_begins_a_selection() {
     assert_eq!(said, ["agent.select"], "and it carries while it is down");
 
     crate::input::handle(crate::input::Input::Release, &mut ui, &app, &hits, window());
-    assert!(!ui.agent.selecting, "the release ends it");
+    assert!(
+        !matches!(ui.held, Some(crate::Held::AgentText)),
+        "the release ends it"
+    );
 }
 
 #[test]

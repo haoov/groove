@@ -3,15 +3,7 @@
 use groove_types::Repo;
 
 use super::{Github, owner, query, read};
-use crate::{Error, Posted, Result, Snapshot, Verdict};
-
-/// What a new merge request says and where it goes.
-pub struct Proposed<'a> {
-    pub head: &'a str,
-    pub base: Option<&'a str>,
-    pub title: &'a str,
-    pub body: &'a str,
-}
+use crate::{Error, Posted, Proposed, Result, Snapshot, Verdict};
 
 impl Github {
     /// One merge request opened on the repo's default branch, or on the base given.

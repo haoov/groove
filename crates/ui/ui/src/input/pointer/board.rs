@@ -9,7 +9,7 @@ use crate::hit::Target;
 use crate::layout::Layout;
 use crate::tokens::Tokens;
 use crate::views::board::{List, plan};
-use crate::{Surface, Ui};
+use crate::{Held, Surface, Ui};
 
 /// What a click on one of the board's own targets does, if it is one.
 pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
@@ -91,7 +91,7 @@ pub(super) fn timeline(ui: &mut Ui) -> Vec<Command> {
 
 /// A press on a task's place takes hold of it.
 pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
-    ui.board.dragging = Some(id);
+    ui.held = Some(Held::Task(id));
     ui.board.drop = None;
     Vec::new()
 }
@@ -111,7 +111,6 @@ pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metr
 /// The drag let go: the plan takes the row where it landed.
 pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let landing = plan::landing(app, ui);
-    ui.board.dragging = None;
     ui.board.drop = None;
     match landing {
         Some(landing) => vec![Command::Task(task::Command::Plan(landing))],
@@ -125,4 +124,12 @@ fn next_column(tokens: &Tokens, app: &AppState, ui: &Ui, layout: Layout) -> Rect
     let width = (body.w / List::ALL.len() as f32).floor();
     let top = body.y + tokens.header;
     Rect::new(body.x + width, top, width, body.bottom() - top)
+}
+
+/// One MR of the review column, opened as a session of its own.
+pub(super) fn review(project: String, iid: u64) -> Vec<Command> {
+    vec![Command::Session(session::Command::OpenReview {
+        project,
+        iid,
+    })]
 }

@@ -155,7 +155,7 @@ fn the_box_offers_the_worktree_s_own_actions() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
     hit(&Target::Actions, &mut ui, &app);
-    let menu = ui.menu.clone().expect("the actions are open");
+    let menu = ui.menu().cloned().expect("the actions are open");
     assert_eq!(
         menu.of,
         crate::Of::Worktree {
@@ -180,7 +180,7 @@ fn push_and_pull_are_asked_for_on_the_spot() {
         hit(&Target::Actions, &mut ui, &app);
         let asked = hit(&Target::MenuRow(at), &mut ui, &app);
         assert_eq!(asked, [Command::Workspace(wanted)], "row {at}");
-        assert!(ui.discarding.is_none(), "and nothing is asked first");
+        assert!(ui.losing().is_none(), "and nothing is asked first");
     }
 }
 
@@ -191,7 +191,7 @@ fn discarding_everything_is_asked_in_the_box_before_it_is_done() {
     hit(&Target::Actions, &mut ui, &app);
     let taken = hit(&Target::MenuRow(2), &mut ui, &app);
     assert!(taken.is_empty(), "nothing is thrown away on the spot");
-    assert_eq!(ui.discarding, Some(crate::Losing::Everything));
+    assert_eq!(ui.losing(), Some(&crate::Losing::Everything));
     assert!(
         drawn(&app, &ui).rect_of(&Target::Do).is_none(),
         "the box is the question now"
@@ -199,17 +199,17 @@ fn discarding_everything_is_asked_in_the_box_before_it_is_done() {
 
     let done = hit(&Target::Discard, &mut ui, &app);
     assert_eq!(done, [Command::Workspace(workspace::Command::DiscardAll)]);
-    assert!(ui.discarding.is_none());
+    assert!(ui.losing().is_none());
 }
 
 #[test]
 fn keeping_everything_asks_nothing_of_git() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    ui.discarding = Some(crate::Losing::Everything);
+    ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Everything));
     let kept = hit(&Target::Keep, &mut ui, &app);
     assert!(kept.is_empty());
-    assert!(ui.discarding.is_none());
+    assert!(ui.losing().is_none());
 }
 
 /// The one action the box offers now.

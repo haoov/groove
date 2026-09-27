@@ -8,12 +8,11 @@ use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::Layout;
 use crate::palette::{Action, Anchor, Flow, Palette};
-use crate::{Corner, Losing, Menu, Of, Ui};
+use crate::{Corner, Losing, Menu, Of, Overlay, Ui};
 
 /// The right button on a file's row opens its actions; anywhere else closes them.
 pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
-    ui.discarding = None;
-    ui.menu = match hits.at(x, y) {
+    let menu = match hits.at(x, y) {
         Some(Target::Dir(path)) => Some(Menu {
             at: (x, y),
             corner: Corner::TopLeft,
@@ -37,6 +36,7 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
         }),
         _ => None,
     };
+    ui.overlay = menu.map(Overlay::Menu);
 }
 
 /// The lines a note would stand on: the selection under the click, else its line.
@@ -104,7 +104,10 @@ fn reviews(app: &AppState) -> bool {
 
 /// The answer that throws the change away: one file's, or every one.
 pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
-    let asked = ui.discarding.take();
+    let asked = match ui.close(|one| matches!(one, Overlay::Losing(_))) {
+        Some(Overlay::Losing(one)) => Some(one),
+        _ => None,
+    };
     let command = match asked {
         Some(Losing::File(path)) => workspace::Command::Discard { path },
         Some(Losing::Path(path)) => {
@@ -118,12 +121,15 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
 
 /// A click while a menu is open: a row of it, or anywhere to close it.
 pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
-    let menu = ui.menu.take();
+    let menu = match ui.close(|one| matches!(one, Overlay::Menu(_))) {
+        Some(Overlay::Menu(one)) => Some(one),
+        _ => None,
+    };
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
     let picked = crate::views::shared::actions::picked(&menu.of, at);
-    ui.discarding = picked.asking;
+    ui.overlay = picked.asking.map(Overlay::Losing);
     ui.session.naming = picked.naming;
     ui.session.noting = picked.noting;
     picked.commands
@@ -136,11 +142,11 @@ pub(super) fn selector(ui: &mut Ui, app: &AppState, hits: &Hits, which: Picks) -
     };
     let flow = Flow::new(Action::SelectWorktree, session);
     let commands = flow.refresh(app).into_iter().collect();
-    ui.palette = Some(Palette {
+    ui.overlay = Some(Overlay::Palette(Palette {
         flow: Some(flow),
         anchor: hits.rect_of(&Target::Picker(which)).map(Anchor::under),
         ..Palette::default()
-    });
+    }));
     commands
 }
 
@@ -156,13 +162,13 @@ pub(super) fn select_worktree(app: &AppState, worktree: WorktreeId) -> Vec<Comma
 
 /// A click on a row is that row selected, then confirmed.
 pub(super) fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let Some(palette) = &mut ui.palette else {
+    let Some(palette) = ui.palette_mut() else {
         return Vec::new();
     };
     palette.selected = at;
     let outcome = palette.key(Key::Enter, app);
     if outcome.close {
-        ui.palette = None;
+        ui.overlay = None;
     }
     outcome.commands
 }

@@ -4,9 +4,9 @@ mod agent;
 mod board;
 mod drag;
 mod focus;
+mod header;
 mod menu;
 mod rail;
-mod rows;
 mod sidebar;
 mod surface;
 
@@ -17,17 +17,18 @@ use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
 pub(super) use self::board::reads as board_reads;
+use self::board::review;
 use self::board::{carried, opened_session, takes};
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
+use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
-use self::rows::{elsewhere, finishing, review, task_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
-use crate::Ui;
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
+use crate::{Held, Overlay, Ui};
 
 /// A press on a boundary takes hold of it; anywhere else is a click.
 pub(super) fn press(
@@ -63,24 +64,28 @@ pub(super) fn moved(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    if ui.drag.is_some() {
-        drag_to(ui, x, y, metrics);
-        return Vec::new();
+    match &ui.held {
+        Some(Held::Edge(_)) => drag_to(ui, x, y, metrics),
+        Some(Held::Task(_)) => carried(x, y, ui, app, metrics),
+        Some(Held::Lens) => lensed(y, ui, app, hits, metrics),
+        Some(Held::AgentText | Held::AgentClick) => {
+            return agent::dragged(ui, app, (x, y), metrics);
+        }
+        Some(Held::Text) => return extended(x, y, ui, app, hits, metrics),
+        None => {}
     }
-    if ui.board.dragging.is_some() {
-        carried(x, y, ui, app, metrics);
-        return Vec::new();
-    }
-    if ui.mapping {
-        lensed(y, ui, app, hits, metrics);
-        return Vec::new();
-    }
-    if ui.agent.selecting || ui.agent.clicking {
-        return agent::dragged(ui, app, (x, y), metrics);
-    }
-    if !ui.selecting {
-        return Vec::new();
-    }
+    Vec::new()
+}
+
+/// The pointer moved while it holds text of the open file: the selection carried to it.
+fn extended(
+    x: f32,
+    y: f32,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Vec<Command> {
     let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
         return Vec::new();
     };
@@ -102,11 +107,11 @@ fn click(
 ) -> Vec<Command> {
     let target = hits.at(x, y);
     let inside = matches!(target, Some(Target::Palette | Target::PaletteRow(_)));
-    if ui.palette.is_some() && !inside {
-        ui.palette = None;
+    if ui.palette().is_some() && !inside {
+        ui.overlay = None;
         return Vec::new();
     }
-    if ui.menu.is_some() {
+    if ui.menu().is_some() {
         return chosen(target, ui);
     }
     ui.focus = focused(&target, ui.focus);
@@ -213,7 +218,7 @@ fn selecting(
     hits: &Hits,
     metrics: Metrics,
 ) -> Vec<Command> {
-    ui.selecting = true;
+    ui.held = Some(Held::Text);
     landed(ui, app, hits, metrics, point)
 }
 
@@ -227,18 +232,18 @@ fn shut(ui: &mut Ui, path: String) -> Vec<Command> {
 
 /// A press on the change column takes hold of the lens.
 fn mapping(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Vec<Command> {
-    ui.mapping = true;
+    ui.held = Some(Held::Lens);
     lensed(y, ui, app, hits, metrics);
     Vec::new()
 }
 
 fn kept(ui: &mut Ui) -> Vec<Command> {
-    ui.discarding = None;
+    ui.close(|one| matches!(one, Overlay::Losing(_)));
     Vec::new()
 }
 
 fn actions(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Vec<Command> {
-    ui.menu = Some(worktree_menu(ui, app, hits, metrics));
+    ui.overlay = Some(Overlay::Menu(worktree_menu(ui, app, hits, metrics)));
     Vec::new()
 }
 
@@ -259,4 +264,19 @@ fn acting(ui: &mut Ui, app: &AppState) -> Vec<Command> {
     ui.session.composing = false;
     let act = crate::views::session::commit::primary(app);
     act.into_iter().collect()
+}
+
+/// What another surface answers for: the board's own rows, or the rail's.
+fn elsewhere(
+    target: Option<&Target>,
+    point: (f32, f32),
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+    metrics: Metrics,
+) -> Option<Vec<Command>> {
+    let target = target?;
+    board::acted(target, ui, app)
+        .or_else(|| rail::acted(target, ui))
+        .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
 }

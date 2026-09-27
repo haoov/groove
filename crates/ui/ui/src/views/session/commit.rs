@@ -22,7 +22,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     if app.workspace.commit.is_some() {
         return showing(ctx, rect, app, ui);
     }
-    if ui.discarding == Some(Losing::Everything) {
+    if ui.losing() == Some(&Losing::Everything) {
         super::files::asking(ctx, top, "discard every change?", ui);
     } else {
         let acts = acts(ctx, app, ui, top);

@@ -1,7 +1,7 @@
 //! Where the agent's hooks post, and the token that names the session.
 
-use crate::Result;
 use crate::files::LaunchDir;
+use groove_types::Result;
 
 /// The app's loopback server as the agent reaches it; the MCP server is optional.
 #[derive(Debug, Clone, PartialEq, Eq)]

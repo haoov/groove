@@ -25,12 +25,12 @@ fn menu(app: &AppState, ui: &mut Ui, target: &Target) -> Of {
         &hits,
         window(),
     );
-    ui.menu.as_ref().expect("a menu is open").of.clone()
+    ui.menu().expect("a menu is open").of.clone()
 }
 
 /// Picks the row named `label` of the open menu.
 fn pick(app: &AppState, ui: &mut Ui, label: &str) -> Vec<Command> {
-    let of = ui.menu.as_ref().expect("a menu").of.clone();
+    let of = ui.menu().expect("a menu").of.clone();
     let at = crate::views::shared::actions::rows(&of)
         .iter()
         .position(|row| *row == label)
@@ -203,7 +203,7 @@ fn deleting_a_path_asks_in_its_own_row_first() {
     menu(&app, &mut ui, &Target::Dir("src".into()));
     let asked = pick(&app, &mut ui, "delete");
     assert!(asked.is_empty(), "it asks before it deletes");
-    assert_eq!(ui.discarding, Some(Losing::Path("src".into())));
+    assert_eq!(ui.losing(), Some(&Losing::Path("src".into())));
 
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let texts: Vec<String> = frame.layers()[0]

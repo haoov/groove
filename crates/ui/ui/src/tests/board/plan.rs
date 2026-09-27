@@ -89,7 +89,7 @@ fn a_task_dragged_by_its_place_lands_where_it_was_dropped() {
         pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits).is_empty(),
         "the press takes hold and asks for nothing"
     );
-    assert_eq!(ui.board.dragging.as_ref(), Some(&third));
+    assert_eq!(ui.carried(), Some(&third));
     assert!(
         ui.pointing(),
         "so the window sends what the pointer does next"
@@ -108,7 +108,7 @@ fn a_task_dragged_by_its_place_lands_where_it_was_dropped() {
             })
         )]
     );
-    assert!(ui.board.dragging.is_none(), "the drag is spent");
+    assert!(ui.carried().is_none(), "the drag is spent");
 }
 
 #[test]

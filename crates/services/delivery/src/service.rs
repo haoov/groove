@@ -6,7 +6,8 @@ pub(crate) mod queue;
 use std::sync::Arc;
 
 use groove_annotations::Store as Notes;
-use groove_forge::{Proposed, Remote, Snapshot, Store};
+use groove_forge::{Proposed, Remote, Snapshot};
+use groove_mrs::{Answered, Store};
 use groove_types::{Error, Mr, MrState, Repo, Result, Worktree, WorktreeId};
 
 pub use notes::Said;
@@ -79,12 +80,12 @@ impl Service {
 
     /// Every open MR the database holds, whichever worktree it belongs to.
     pub async fn open(&self) -> Result<Vec<Mr>> {
-        Ok(self.mrs.open().await?)
+        self.mrs.open().await
     }
 
     /// The MR the database holds for a worktree.
     pub async fn stored(&self, worktree: &WorktreeId) -> Result<Option<Mr>> {
-        Ok(self.mrs.get(worktree).await?)
+        self.mrs.get(worktree).await
     }
 
     /// An open MR read by its number, a settled one by the branch it came from.
@@ -160,7 +161,13 @@ impl Service {
         worktree: &Worktree,
         read: Snapshot,
     ) -> Result<Delivered> {
-        let mr = self.mrs.save(&worktree.id, remote.kind(), &read).await?;
+        let answered = Answered {
+            forge: remote.kind(),
+            number: read.number.clone(),
+            url: read.details.web_url.clone(),
+            state: read.details.state,
+        };
+        let mr = self.mrs.save(&worktree.id, &answered).await?;
         Ok(Delivered { mr, read })
     }
 

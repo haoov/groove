@@ -76,7 +76,7 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
             }
             y += height;
         }
-        if list == List::Next && ui.board.dragging.is_some() {
+        if list == List::Next && ui.carried().is_some() {
             super::plan::dragging(ctx, body, app, ui);
         }
     });

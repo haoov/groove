@@ -1167,11 +1167,11 @@ dependencies = [
  "groove-config",
  "groove-controllers",
  "groove-db",
- "groove-forge",
  "groove-gfx",
  "groove-hooks",
  "groove-ledger",
  "groove-mcp",
+ "groove-mrs",
  "groove-plan",
  "groove-sessions",
  "groove-types",
@@ -1192,7 +1192,6 @@ dependencies = [
  "groove-types",
  "serde_json",
  "tempfile",
- "thiserror 2.0.20",
  "tokio",
  "uuid",
 ]
@@ -1282,6 +1281,7 @@ version = "0.1.0"
 dependencies = [
  "groove-annotations",
  "groove-forge",
+ "groove-mrs",
  "groove-sessions",
  "groove-types",
  "serde_json",
@@ -1326,15 +1326,12 @@ dependencies = [
 name = "groove-forge"
 version = "0.1.0"
 dependencies = [
- "groove-db",
  "groove-http",
  "groove-token",
  "groove-types",
  "serde_json",
- "sqlx",
  "thiserror 2.0.20",
  "tokio",
- "uuid",
  "wiremock",
 ]
 
@@ -1419,6 +1416,17 @@ dependencies = [
  "hyper-util",
  "reqwest",
  "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "groove-mrs"
+version = "0.1.0"
+dependencies = [
+ "groove-db",
+ "groove-types",
+ "sqlx",
  "tokio",
  "uuid",
 ]

@@ -52,7 +52,7 @@ fn a_click_on_a_picker_opens_the_worktree_selector() {
         .rect_of(&Target::Picker(Picks::Repo))
         .expect("the header has one");
     assert!(click(rect, &mut ui, &app, &hits).is_empty());
-    let prompt = ui.palette.as_ref().and_then(|p| p.prompt(&app));
+    let prompt = ui.palette().and_then(|p| p.prompt(&app));
     assert_eq!(prompt.map(|p| p.label), Some("worktree"));
 }
 
@@ -79,7 +79,7 @@ fn a_click_on_a_palette_row_runs_it() {
         .expect("the palette lists its rows");
     let commands = click(rect, &mut ui, &app, &hits);
     assert_eq!(commands[0].id(), "session.open_explorer");
-    assert!(ui.palette.is_none());
+    assert!(ui.palette().is_none());
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn a_click_outside_the_palette_closes_it() {
         click(rect, &mut ui, &app, &hits).is_empty(),
         "the click closes the palette and does nothing else"
     );
-    assert!(ui.palette.is_none());
+    assert!(ui.palette().is_none());
 }
 
 #[test]
@@ -299,7 +299,7 @@ fn a_picker_asks_for_a_query_only_once_it_is_worth_one() {
             .any(|run| run.text.starts_with("worktree:"))
     };
     assert!(!shown(&ui), "two worktrees need no filter");
-    if let Some(palette) = ui.palette.as_mut() {
+    if let Some(palette) = ui.palette_mut() {
         palette.query.push('a');
     }
     assert!(shown(&ui), "and it appears the moment something is typed");

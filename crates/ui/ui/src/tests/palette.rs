@@ -219,7 +219,7 @@ fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     assert!(texts.iter().any(|t| t == "mayo · explorer/alpha"));
     let run = press(Key::Enter, Modifiers::default(), &mut ui, &app);
     assert_eq!(run[0].id(), "session.close_worktree");
-    assert!(ui.palette.is_none());
+    assert!(ui.palette().is_none());
 }
 
 #[test]

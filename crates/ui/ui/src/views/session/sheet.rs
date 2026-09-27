@@ -12,7 +12,7 @@ use crate::widget::{elide, row, slot_at};
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let Some(ask) = ui.examining.as_ref().and_then(|id| found(app, id)) else {
+    let Some(ask) = ui.examining().and_then(|id| found(app, id)) else {
         return;
     };
     ctx.layer();

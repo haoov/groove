@@ -31,10 +31,10 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             Surface::Board => board::draw(&mut ctx, app, ui),
         }
         shared::splitter::draw(&mut ctx, ui.showing(app));
-        if let Some(menu) = &ui.menu {
+        if let Some(menu) = ui.menu() {
             shared::actions::draw(&mut ctx, ui, menu);
         }
-        if let Some(palette) = &ui.palette {
+        if let Some(palette) = ui.palette() {
             shared::palette::draw(&mut ctx, app, palette);
         }
     }

@@ -65,7 +65,7 @@ async fn services(
     let store = groove_sessions::Store::new(db.clone());
     let plan = groove_plan::Plan::new(db.clone());
     let ledger = groove_ledger::Ledger::new(db.clone());
-    let mrs = groove_forge::Store::new(db.clone());
+    let mrs = groove_mrs::Store::new(db.clone());
     let notes = groove_annotations::Store::new(db.clone());
     let pool = groove_worktree::Pool::new(db, root);
     Ok(Services {

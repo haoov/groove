@@ -20,7 +20,7 @@ and what the forge says about it.
 | `session` | the sessions, their repos and worktrees, each worktree's git status, the rail, the log | `sessions`, `worktree`, `git`, `timeline` |
 | `task` | the tasks and their sources, the plan, the clock and hours, attention, where a new task is filed | `provider`, `plan`, `ledger` |
 | `workspace` | the selected worktree's change: files, rows, colours, the open file and its buffer, search, paths, history, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
-| `delivery` | each worktree's MR: state, CI, threads, the session's notes, verdicts, the poll, the review queue | `forge`, `annotations` |
+| `delivery` | each worktree's MR: state, CI, threads, the session's notes, verdicts, the poll, the review queue | `forge`, `mrs`, `annotations` |
 | `agent` | each session's agent: terminal, activity, asks, launch files, skills | `terminal`, `agent-launch`, `approvals`, `skills`, `hooks`, `mcp`, `tools` |
 | `config` | the config file, preferences, settings | `config` |
 
@@ -28,7 +28,7 @@ and what the forge says about it.
 
 | Concept | Module | Service | Replaces |
 |---|---|---|---|
-| A worktree's MR, CI and threads | `forge` reads | `delivery`: one map keyed by worktree | `workspace.delivery`, the mr/ci fields of session rows, `workspace.facts` |
+| A worktree's MR, CI and threads | `forge` reads, `mrs` stores | `delivery`: one map keyed by worktree | `workspace.delivery`, the mr/ci fields of session rows, `workspace.facts` |
 | Whether a CI run has finished; what an MR or CI change is worth on the log | — | `delivery` | `workspace/mr.rs` `finished`, `became`, `moved` |
 | Whether an MR can be opened, written or closed | — | `delivery`, for the worktree named | `workspace/write.rs` `allows` (read the selected one) |
 | When the poll reads which worktree | — | `delivery` | `workspace/mr.rs` `wanted`, `first`, `again` |
@@ -56,6 +56,12 @@ and what the forge says about it.
 | The terminal of a session | `terminal` | `agent` state | 8 copies of the lookup |
 | What a tool answers, and an ask's text | `tools` | — | JSON built in `controllers/tools`, push text in a controller |
 | A database failure, and a store on memory | `db` | — | four copies filed as `Invalid` |
+| A module's failure | the module | — | `agent-launch` enum of one variant |
+
+## Errors
+
+A module keeps its own error enum only when its variants map to different kinds, or a caller
+matches one. Every other module returns `groove_types::Error`.
 
 ## Controllers after the move
 

@@ -166,7 +166,7 @@ fn a_line_someone_else_commented_on_still_takes_a_note() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
     assert_eq!(
-        ui.menu.as_ref().map(|menu| &menu.of),
+        ui.menu().map(|menu| &menu.of),
         Some(&crate::Of::Line {
             path: "src/lib.rs".into(),
             lines: (1, 1),
@@ -184,7 +184,7 @@ fn a_line_whose_note_is_resolved_takes_another() {
     ui.session.view = DiffView::Editor;
     asked(&app, &mut ui, 1);
     assert!(
-        ui.menu.is_some(),
+        ui.menu().is_some(),
         "a note that is dealt with holds the line no longer"
     );
 }

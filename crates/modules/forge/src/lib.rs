@@ -3,17 +3,15 @@
 mod error;
 mod github;
 mod gitlab;
-mod store;
 
 #[cfg(test)]
 mod tests;
 
 pub use error::{Error, Result};
-pub use github::{Github, Proposed};
+pub use github::Github;
 pub use gitlab::Gitlab;
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr, ReviewVerdict};
-pub use store::Store;
 
 /// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
 pub enum Remote {
@@ -32,6 +30,14 @@ pub struct Snapshot {
     pub details: MrDetails,
     pub ci: Option<CiStatus>,
     pub threads: Vec<MrThread>,
+}
+
+/// What a new merge request says and where it goes.
+pub struct Proposed<'a> {
+    pub head: &'a str,
+    pub base: Option<&'a str>,
+    pub title: &'a str,
+    pub body: &'a str,
 }
 
 /// A note posted on a line of the new side, as the forges take it.

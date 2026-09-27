@@ -5,7 +5,7 @@ use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
-use crate::{Error, Result};
+use groove_types::{Error, ErrorKind, Result};
 
 /// The launch files of one session: `<dir>/<session>.<name>`, mode 0600.
 pub(crate) struct LaunchDir {
@@ -24,9 +24,11 @@ impl LaunchDir {
     /// Writes the file and returns its path as an argument.
     pub fn write(&self, name: &str, contents: &str) -> Result<String> {
         let path = self.dir.join(format!("{}.{name}", self.session));
-        write_private(&path, contents).map_err(|source| Error::Write {
-            path: path.clone(),
-            source,
+        write_private(&path, contents).map_err(|source| {
+            Error::new(
+                ErrorKind::Agent,
+                format!("cannot write {}: {source}", path.display()),
+            )
         })?;
         Ok(path.to_string_lossy().into_owned())
     }

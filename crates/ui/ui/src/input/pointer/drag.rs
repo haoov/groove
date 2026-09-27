@@ -3,7 +3,7 @@
 use crate::ctx::Metrics;
 use crate::layout::Edge;
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
-use crate::{Click, Drag, Ui};
+use crate::{Click, Drag, Held, Ui};
 
 /// This press against the last: soon and near, it carries the same click on.
 pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> Click {
@@ -24,10 +24,10 @@ pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
 pub(super) fn grab(ui: &mut Ui, edge: Edge, x: f32, y: f32, metrics: Metrics) {
     let at = ui.split.edge_at(edge, window_of(metrics), sidebar(ui));
-    ui.drag = Some(Drag {
+    ui.held = Some(Held::Edge(Drag {
         edge,
         offset: along(edge, x, y, metrics) - at,
-    });
+    }));
 }
 
 /// The pointer's place along the axis the boundary moves in, in logical pixels.
@@ -40,7 +40,7 @@ pub(super) fn along(edge: Edge, x: f32, y: f32, metrics: Metrics) -> f32 {
 
 /// The boundary follows the pointer.
 pub(super) fn drag_to(ui: &mut Ui, x: f32, y: f32, metrics: Metrics) {
-    let Some(drag) = ui.drag else {
+    let Some(Held::Edge(drag)) = ui.held.clone() else {
         return;
     };
     let at = along(drag.edge, x, y, metrics) - drag.offset;

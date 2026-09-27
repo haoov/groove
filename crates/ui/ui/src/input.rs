@@ -8,7 +8,7 @@ use groove_controllers::{AppState, Command, agent, workspace};
 
 use crate::ctx::Metrics;
 use crate::hit::{Cursor, Hits, Target};
-use crate::{Focus, Surface, Ui};
+use crate::{Focus, Held, Surface, Ui};
 
 pub use keys::encode;
 
@@ -101,7 +101,7 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if text.trim().is_empty() {
         return Vec::new();
     }
-    if let Some(palette) = ui.palette.as_mut() {
+    if let Some(palette) = ui.palette_mut() {
         palette
             .query
             .push_str(&crate::widget::Field::one_line(text));
@@ -164,17 +164,11 @@ pub fn handle(
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
         Input::Paste(text) => pasted(&text, ui, app),
         Input::Release => {
-            ui.drag = None;
-            ui.selecting = false;
-            ui.mapping = false;
-            let selecting = std::mem::take(&mut ui.agent.selecting);
-            let clicked = std::mem::take(&mut ui.agent.clicking);
             let mut out = pointer::dropped(ui, app);
-            if clicked {
-                out.extend(pointer::agent_released(ui, app, metrics));
-            }
-            if selecting {
-                out.extend(pointer::agent_copied(app));
+            match ui.held.take() {
+                Some(Held::AgentClick) => out.extend(pointer::agent_released(ui, app, metrics)),
+                Some(Held::AgentText) => out.extend(pointer::agent_copied(app)),
+                _ => {}
             }
             out
         }
@@ -194,9 +188,9 @@ pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
 
 /// The pointer: a drag in flight owns it, else whatever was drawn under it.
 pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
-    match ui.drag.map(|drag| drag.edge.upright()) {
-        Some(true) => Cursor::ColResize,
-        Some(false) => Cursor::RowResize,
-        None => hits.cursor_at(x, y),
+    match &ui.held {
+        Some(Held::Edge(drag)) if drag.edge.upright() => Cursor::ColResize,
+        Some(Held::Edge(_)) => Cursor::RowResize,
+        _ => hits.cursor_at(x, y),
     }
 }

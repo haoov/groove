@@ -4,8 +4,6 @@ mod query;
 mod read;
 mod write;
 
-pub use write::Proposed;
-
 /// How many of the queue a call asks for.
 const QUEUE_MAX: i64 = 50;
 

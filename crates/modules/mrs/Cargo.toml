@@ -1,20 +1,18 @@
 [package]
-name = "groove-agent-launch"
-description = "How the agent starts: the claude flags, the session id, the core prompt, the launch files"
+name = "groove-mrs"
+description = "The one MR each worktree has, as the database holds it"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
-groove-exec = { path = "../../base/exec" }
+groove-db = { path = "../../base/db" }
 groove-types = { path = "../../shared/types" }
-serde_json.workspace = true
+sqlx.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
-groove-hooks = { path = "../hooks" }
-tempfile.workspace = true
 tokio.workspace = true
 
 [lints]

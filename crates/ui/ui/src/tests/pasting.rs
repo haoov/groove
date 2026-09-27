@@ -19,20 +19,20 @@ const URL: &str = "git@gitlab.example.com:g/mayo.git";
 fn the_palette_takes_what_is_pasted_into_it() {
     let app = full_app();
     let mut ui = Ui {
-        palette: Some(crate::palette::Palette::default()),
+        overlay: Some(crate::Overlay::Palette(crate::palette::Palette::default())),
         ..Ui::default()
     };
     let asked = paste(URL, &mut ui, &app);
     assert!(asked.is_empty(), "the field takes it on the spot");
     assert_eq!(
-        ui.palette.as_ref().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.as_str()),
         Some(URL),
         "the url is in the query"
     );
 
     paste("/second", &mut ui, &app);
     assert_eq!(
-        ui.palette.as_ref().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.as_str()),
         Some("git@gitlab.example.com:g/mayo.git/second"),
         "and a second paste follows the first"
     );
@@ -42,12 +42,12 @@ fn the_palette_takes_what_is_pasted_into_it() {
 fn a_pasted_line_break_never_reaches_a_field() {
     let app = full_app();
     let mut ui = Ui {
-        palette: Some(crate::palette::Palette::default()),
+        overlay: Some(crate::Overlay::Palette(crate::palette::Palette::default())),
         ..Ui::default()
     };
     paste("one\ntwo\n", &mut ui, &app);
     assert_eq!(
-        ui.palette.as_ref().map(|one| one.query.as_str()),
+        ui.palette().map(|one| one.query.as_str()),
         Some("one two"),
         "a field holds one line, its breaks spaces"
     );

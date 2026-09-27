@@ -1,6 +1,5 @@
 //! One launch of `claude`: its session, prompt and skills, and the loopback's MCP config and hooks.
 
-mod error;
 mod files;
 mod loopback;
 mod prompt;
@@ -12,9 +11,8 @@ mod tests;
 use std::path::{Path, PathBuf};
 
 use crate::prompt::core_prompt;
-pub use error::{Error, Result};
 use groove_exec::pty::PtySpec;
-use groove_types::Session;
+use groove_types::{Result, Session};
 pub use loopback::{Loopback, Tools};
 pub use session::{forget, hand_over};
 

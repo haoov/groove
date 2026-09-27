@@ -140,14 +140,17 @@ fn a_press_on_the_map_holds_the_rows_it_points_at() {
     let (_, hits) = view_of(&app, &ui);
     let column = hits.rect_of(&Target::Map).expect("the map is drawn");
     pressed(column.x + 1.0, column.bottom() - 1.0, &mut ui, &app, &hits);
-    assert!(ui.mapping, "the lens follows the pointer");
+    assert!(
+        matches!(ui.held, Some(crate::Held::Lens)),
+        "the lens follows the pointer"
+    );
     assert_eq!(
         ui.session.diff,
         hits.extent(crate::hit::Scroller::Code),
         "the foot of the map is the end of the change"
     );
     release(&mut ui, &app, &hits);
-    assert!(!ui.mapping);
+    assert!(!matches!(ui.held, Some(crate::Held::Lens)));
 }
 
 #[test]

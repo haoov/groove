@@ -156,7 +156,7 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
     let opened = press(Key::Char('P'), chord, &mut ui, &app);
     assert_eq!(opened.len(), 1, "opening refreshes the pool");
     assert_eq!(opened[0].id(), "session.list_repos");
-    assert!(ui.palette.is_some());
+    assert!(ui.palette().is_some());
     let (frame, _) = view(
         &app,
         &ui,
@@ -169,7 +169,7 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
         "a typed key never leaks past the palette"
     );
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
-    assert!(ui.palette.is_none());
+    assert!(ui.palette().is_none());
 
     let open = press(Key::Char('n'), chord, &mut ui, &app);
     assert_eq!(open[0].id(), "session.open_explorer");

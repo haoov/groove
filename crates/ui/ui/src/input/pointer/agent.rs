@@ -7,7 +7,7 @@ use groove_types::{ProviderId, SessionId};
 use crate::ctx::Metrics;
 use crate::hit::{Hits, Target};
 use crate::layout::Layout;
-use crate::{Corner, Menu, Of, Offer, Ui};
+use crate::{Corner, Held, Menu, Of, Offer, Ui};
 
 /// The agent's own targets; anything else is not its to answer.
 pub(super) fn acted(
@@ -34,7 +34,7 @@ fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> 
     };
     let (col, row) = cell(point, ui, metrics);
     if reads_mouse(app, &session) && !ui.agent.bypassed {
-        ui.agent.clicking = true;
+        ui.held = Some(Held::AgentClick);
         return vec![Command::Agent(agent::Command::Click {
             session,
             col,
@@ -47,7 +47,7 @@ fn pressed(ui: &mut Ui, app: &AppState, point: (f32, f32), metrics: Metrics) -> 
         2 => Select::Word,
         _ => Select::Line,
     };
-    ui.agent.selecting = true;
+    ui.held = Some(Held::AgentText);
     vec![Command::Agent(agent::Command::Select {
         session,
         col,
@@ -68,7 +68,7 @@ pub(super) fn dragged(
         return Vec::new();
     };
     let (col, row) = cell(point, ui, metrics);
-    match ui.agent.clicking {
+    match matches!(ui.held, Some(Held::AgentClick)) {
         true => vec![Command::Agent(agent::Command::Drag { session, col, row })],
         false => vec![Command::Agent(agent::Command::Select {
             session,
@@ -138,11 +138,11 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
         .rect_of(&Target::Skills(session.clone()))
         .map(|word| (word.x, word.y))
         .unwrap_or_default();
-    ui.menu = Some(Menu {
+    ui.overlay = Some(crate::Overlay::Menu(Menu {
         at,
         corner: Corner::BottomLeft,
         of: Of::Skills { session, offered },
-    });
+    }));
     Vec::new()
 }
 
