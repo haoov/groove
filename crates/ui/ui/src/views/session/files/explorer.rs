@@ -12,7 +12,7 @@ use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
 use crate::views::session::Asked;
-use crate::widget::{box_in, elide, row};
+use crate::widget::{box_in, elide, row, scrolled};
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -140,19 +140,15 @@ pub(super) fn draw(
     ui: &Ui,
 ) {
     let height = ctx.tokens.row;
-    let extent = (height * held.len() as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Files, extent);
-    let scroll = ui.session.files.min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        for one in held {
-            let line = Rect::new(body.x, y, body.w, height);
-            if y + height >= body.y && y <= body.bottom() {
-                one_row(ctx, line, app, one, open, ui);
-            }
-            y += height;
-        }
-    });
+    let at = (Scroller::Files, ui.offset(Scroller::Files));
+    scrolled(
+        ctx,
+        body,
+        at,
+        held,
+        |_| height,
+        |ctx, line, one| one_row(ctx, line, app, one, open, ui),
+    );
 }
 
 fn one_row(

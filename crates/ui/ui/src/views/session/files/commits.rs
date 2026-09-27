@@ -8,7 +8,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::style::Role;
-use crate::widget::{elide, row, ruled};
+use crate::widget::{elide, row, ruled, scrolled};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let log = &app.workspace.log;
@@ -18,20 +18,16 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         return row(ctx, line, ctx.tokens.md, said(app), style);
     }
     let height = ctx.tokens.row;
-    let extent = (height * log.len() as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Files, extent);
-    let scroll = ui.session.files.min(extent);
     let shown = app.workspace.commit.as_ref().map(|one| one.sha.as_str());
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        for one in log {
-            let line = Rect::new(body.x, y, body.w, height);
-            if y + height >= body.y && y <= body.bottom() {
-                entry(ctx, line, one, shown == Some(one.sha.as_str()), ui);
-            }
-            y += height;
-        }
-    });
+    let at = (Scroller::Files, ui.offset(Scroller::Files));
+    scrolled(
+        ctx,
+        body,
+        at,
+        log,
+        |_| height,
+        |ctx, line, one| entry(ctx, line, one, shown == Some(one.sha.as_str()), ui),
+    );
 }
 
 /// What the list says instead of rows.

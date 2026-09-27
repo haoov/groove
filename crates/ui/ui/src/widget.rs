@@ -11,6 +11,7 @@ mod list;
 mod menu;
 mod modal;
 mod picker;
+mod scrolled;
 mod tabs;
 mod terminal;
 mod text;
@@ -29,6 +30,7 @@ pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{modal, panel_at};
 pub use picker::picker;
+pub use scrolled::scrolled;
 pub use tabs::tabs;
 #[cfg(test)]
 pub(crate) use terminal::grid_of;

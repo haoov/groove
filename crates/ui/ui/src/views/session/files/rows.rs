@@ -7,8 +7,13 @@ use super::{Listing, acted, asking, reads_as};
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::style::Role;
-use crate::widget::{elide, row, ruled};
+use crate::widget::{elide, row, ruled, scrolled};
 use crate::{Losing, Ui};
+
+enum Item<'a> {
+    Dir(&'a str, Role),
+    File(&'a FileDiff, f32),
+}
 
 pub(super) fn draw(
     ctx: &mut Ctx,
@@ -19,80 +24,44 @@ pub(super) fn draw(
     ui: &Ui,
 ) {
     let height = ctx.tokens.row;
-    let extent = (height * lines(listing) as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Files, extent);
-    let scroll = ui.session.files.min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        if !listing.root.is_empty() {
-            path(
-                ctx,
-                Rect::new(body.x, y, body.w, height),
-                &listing.root,
-                Role::Ghost,
-            );
-            y += height;
-        }
-        for group in &listing.groups {
-            y = grouped(
-                ctx,
-                Rect::new(body.x, y, body.w, height),
-                app,
-                group,
-                (open, ui),
-            );
-        }
-    });
+    let items = items(ctx, listing);
+    let at = (Scroller::Files, ui.offset(Scroller::Files));
+    scrolled(
+        ctx,
+        body,
+        at,
+        &items,
+        |_| height,
+        |ctx, line, item| match item {
+            Item::Dir(text, role) => path(ctx, line, text, *role),
+            Item::File(file, indent) => {
+                let reading = Reading {
+                    open: open == Some(&file.path),
+                    noted: super::noted(app, &file.path),
+                };
+                entry(ctx, line, file, *indent, reading, ui)
+            }
+        },
+    );
 }
 
-/// One directory's row, then a row per file in it; returns where the next starts.
-fn grouped(
-    ctx: &mut Ctx,
-    line: Rect,
-    app: &groove_controllers::AppState,
-    group: &super::tree::Group<'_>,
-    (open, ui): (Option<&String>, &Ui),
-) -> f32 {
-    let mut y = line.y;
-    if !group.dir.is_empty() {
-        path(
-            ctx,
-            Rect::new(line.x, y, line.w, line.h),
-            &group.dir,
-            Role::Faint,
-        );
-        y += line.h;
+/// The root, then each directory over its files.
+fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>) -> Vec<Item<'a>> {
+    let mut items = Vec::new();
+    if !listing.root.is_empty() {
+        items.push(Item::Dir(&listing.root, Role::Ghost));
     }
-    let indent = match group.dir.is_empty() {
-        true => ctx.tokens.md,
-        false => ctx.tokens.md + ctx.tokens.md,
-    };
-    for file in &group.files {
-        let reading = Reading {
-            open: open == Some(&file.path),
-            noted: super::noted(app, &file.path),
+    for group in &listing.groups {
+        let indent = match group.dir.is_empty() {
+            true => ctx.tokens.md,
+            false => {
+                items.push(Item::Dir(&group.dir, Role::Faint));
+                ctx.tokens.md + ctx.tokens.md
+            }
         };
-        entry(
-            ctx,
-            Rect::new(line.x, y, line.w, line.h),
-            file,
-            indent,
-            reading,
-            ui,
-        );
-        y += line.h;
+        items.extend(group.files.iter().map(|file| Item::File(file, indent)));
     }
-    y
-}
-
-/// How many rows the whole listing stands: its root, its groups, its files.
-fn lines(listing: &Listing<'_>) -> usize {
-    let groups: usize = listing
-        .groups
-        .iter()
-        .map(|g| g.files.len() + usize::from(!g.dir.is_empty()))
-        .sum();
-    usize::from(!listing.root.is_empty()) + groups
+    items
 }
 
 /// A row naming a directory, elided to the room it has.

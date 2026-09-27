@@ -56,6 +56,8 @@ and what the forge says about it.
 | The terminal of a session | `terminal` | `agent` state | 8 copies of the lookup |
 | What a tool answers, and an ask's text | `tools` | — | JSON built in `controllers/tools`, push text in a controller |
 | A database failure, and a store on memory | `db` | — | four copies filed as `Invalid` |
+| A list that scrolls: its extent, clip and culling | — | `ui` widget `scrolled` | eight copies in the views |
+| Where a scroller keeps its offset | — | `Ui::offset`, `Ui::wheeled` | five `moved` calls in the wheel input |
 | A module's failure | the module | — | `agent-launch` enum of one variant |
 
 ## Errors

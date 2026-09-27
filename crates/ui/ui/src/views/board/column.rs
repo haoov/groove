@@ -10,7 +10,7 @@ use crate::ctx::Ctx;
 use crate::hit::Scroller;
 use crate::style::Role;
 use crate::views::session::worktree_row;
-use crate::widget::{hairline, row};
+use crate::widget::{hairline, row, scrolled};
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
     let lines = lines(app, ui, list);
@@ -63,23 +63,19 @@ fn edge(ctx: &mut Ctx, area: Rect) {
 /// The lines a column has room for, scrolled and clipped to it.
 fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &[Line<'_>]) {
     let heights = row::heights(&ctx.tokens, app, lines);
-    let extent = (heights.iter().sum::<f32>() - body.h).max(0.0);
-    ctx.scrolls(Scroller::Column(list as u8), extent);
-    let scroll = ui.board.scroll(list).min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        for (at, line) in lines.iter().enumerate() {
-            let height = heights[at];
-            if y + height >= body.y && y <= body.bottom() {
-                let rect = Rect::new(body.x, y, body.w, height);
-                one(ctx, rect, app, ui, line, closes(lines, at));
-            }
-            y += height;
-        }
-        if list == List::Next && ui.carried().is_some() {
-            super::plan::dragging(ctx, body, app, ui);
-        }
-    });
+    let rows: Vec<(usize, f32)> = heights.into_iter().enumerate().collect();
+    let which = Scroller::Column(list as u8);
+    scrolled(
+        ctx,
+        body,
+        (which, ui.offset(which)),
+        &rows,
+        |(_, tall)| *tall,
+        |ctx, rect, (at, _)| one(ctx, rect, app, ui, &lines[*at], closes(lines, *at)),
+    );
+    if list == List::Next && ui.carried().is_some() {
+        ctx.clipped(body, |ctx| super::plan::dragging(ctx, body, app, ui));
+    }
 }
 
 /// Whether this line ends its item: the next one starts another, or there is none.

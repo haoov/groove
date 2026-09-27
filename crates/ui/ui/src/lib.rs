@@ -7,6 +7,7 @@ mod hit;
 pub mod input;
 mod layout;
 mod mark;
+mod offsets;
 mod painted;
 pub mod palette;
 mod render;

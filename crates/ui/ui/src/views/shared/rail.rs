@@ -6,7 +6,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{Row, after_mark, hairline, icon, leading, list, row};
+use crate::widget::{Row, after_mark, hairline, icon, leading, list, row, scrolled};
 use crate::{Surface, Ui};
 
 /// What the rail remembers between frames.
@@ -81,23 +81,21 @@ fn asking(ctx: &mut Ctx, rect: Rect, count: usize) {
 
 /// One item per open session, scrolled and clipped to `area`.
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let heights: Vec<f32> = app
+    let items: Vec<_> = app
         .session
         .open
         .iter()
-        .map(|open| rail_item::height(ctx, app, &open.session.id))
+        .map(|open| (open, rail_item::height(ctx, app, &open.session.id)))
         .collect();
-    let content: f32 = heights.iter().sum();
-    let extent = (content - area.h).max(0.0);
-    ctx.scrolls(Scroller::Rail, extent);
-    let scroll = ui.rail.scroll.min(extent);
-    ctx.clipped(area, |ctx| {
-        let mut y = area.y - scroll;
-        for (open, height) in app.session.open.iter().zip(heights) {
-            rail_item::draw(ctx, app, ui, Rect::new(area.x, y, area.w, height), open);
-            y += height;
-        }
-    });
+    let at = (Scroller::Rail, ui.offset(Scroller::Rail));
+    scrolled(
+        ctx,
+        area,
+        at,
+        &items,
+        |(_, tall)| *tall,
+        |ctx, rect, (open, _)| rail_item::draw(ctx, app, ui, rect, open),
+    );
 }
 
 fn footer(ctx: &mut Ctx, rect: Rect) {

@@ -40,19 +40,12 @@ pub(super) fn scroll(
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
-        let far = hits.extent(Scroller::Files);
-        ui.session.files = moved(ui.session.files, pixels(tokens.row), far);
+        ui.wheeled(Scroller::Files, pixels(tokens.row), hits);
         return Vec::new();
     }
     match ui.session.tab {
-        Tab::Overview => {
-            let far = hits.extent(Scroller::Overview);
-            ui.session.overview = moved(ui.session.overview, pixels(tokens.row), far);
-        }
-        Tab::File => {
-            let far = hits.extent(Scroller::Code);
-            ui.session.diff = moved(ui.session.diff, pixels(tokens.line), far);
-        }
+        Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
+        Tab::File => ui.wheeled(Scroller::Code, pixels(tokens.line), hits),
     }
     Vec::new()
 }
@@ -107,28 +100,17 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     let on_feed = hits
         .rect_of(&Target::Feed)
         .is_some_and(|head| y >= head.y && !ui.rail.folded);
-    if on_feed {
-        let far = hits.extent(Scroller::Feed);
-        ui.rail.feed = moved(ui.rail.feed, lines, far);
-        return;
+    match on_feed {
+        true => ui.wheeled(Scroller::Feed, lines, hits),
+        false => ui.wheeled(Scroller::Rail, rows, hits),
     }
-    let far = hits.extent(Scroller::Rail);
-    ui.rail.scroll = moved(ui.rail.scroll, rows, far);
 }
 
 fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, layout: Layout) {
     let board = layout.board;
     let width = board.w / List::ALL.len() as f32;
     let at = ((x - board.x) / width.max(1.0)).floor().max(0.0) as usize;
-    let Some(list) = List::ALL.get(at).copied() else {
-        return;
-    };
-    let far = hits.extent(Scroller::Column(list as u8));
-    let to = moved(ui.board.scroll(list), pixels, far);
-    ui.board.scrolled(list, to);
-}
-
-/// Where a column stands after the wheel turned, inside what it can scroll.
-fn moved(from: f32, pixels: f32, extent: f32) -> f32 {
-    (from - pixels).clamp(0.0, extent)
+    if let Some(list) = List::ALL.get(at).copied() {
+        ui.wheeled(Scroller::Column(list as u8), pixels, hits);
+    }
 }

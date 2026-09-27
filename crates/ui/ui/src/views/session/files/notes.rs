@@ -9,7 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{elide, row};
+use crate::widget::{elide, row, scrolled};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let notes: Vec<(usize, &Note)> = app
@@ -25,19 +25,15 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         return row(ctx, line, ctx.tokens.md, "no notes on this session", style);
     }
     let height = ctx.tokens.row;
-    let extent = (height * notes.len() as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Files, extent);
-    let scroll = ui.session.files.min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        for (at, note) in notes {
-            let line = Rect::new(body.x, y, body.w, height);
-            if y + height >= body.y && y <= body.bottom() {
-                one(ctx, line, note, at, ui);
-            }
-            y += height;
-        }
-    });
+    let at = (Scroller::Files, ui.offset(Scroller::Files));
+    scrolled(
+        ctx,
+        body,
+        at,
+        &notes,
+        |_| height,
+        |ctx, line, (at, note)| one(ctx, line, note, *at, ui),
+    );
 }
 
 /// A note of this session's own, or a thread still open on a line of the change.

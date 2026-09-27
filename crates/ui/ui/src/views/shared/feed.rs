@@ -9,7 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{ago, box_in, elide, hairline, row, turn};
+use crate::widget::{ago, box_in, elide, hairline, row, scrolled, turn};
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -84,18 +84,15 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         return row(ctx, line, ctx.tokens.md, "nothing yet", style);
     }
     let height = ctx.tokens.feed_row;
-    let extent = (height * shown.len() as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Feed, extent);
-    let scroll = ui.rail.feed.min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        for one in &shown {
-            if y + height >= body.y && y <= body.bottom() {
-                one_line(ctx, Rect::new(body.x, y, body.w, height), one, ui);
-            }
-            y += height;
-        }
-    });
+    let at = (Scroller::Feed, ui.offset(Scroller::Feed));
+    scrolled(
+        ctx,
+        body,
+        at,
+        &shown,
+        |_| height,
+        |ctx, line, one| one_line(ctx, line, one, ui),
+    );
 }
 
 /// One line of the feed: a job running now, or something that happened.

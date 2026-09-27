@@ -9,50 +9,45 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::mark::Mark;
 use crate::style::Role;
-use crate::widget::{elide, row};
+use crate::widget::{elide, row, scrolled};
+
+enum Item<'a> {
+    File(&'a str, usize),
+    Match(usize, &'a Found),
+}
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let height = ctx.tokens.row;
-    let found = &app.workspace.found;
-    let shut = |path: &String| ui.session.shut.contains(path);
-    let hidden = found.iter().filter(|one| shut(&one.path)).count();
-    let lines = found.len() - hidden + files_of(found);
-    let extent = (height * lines as f32 - body.h).max(0.0);
-    ctx.scrolls(Scroller::Files, extent);
-    let scroll = ui.session.files.min(extent);
-    ctx.clipped(body, |ctx| {
-        let mut y = body.y - scroll;
-        let mut over: Option<&str> = None;
-        for (at, one) in found.iter().enumerate() {
-            if over != Some(one.path.as_str()) {
-                if shows(body, y, height) {
-                    let count = found.iter().filter(|it| it.path == one.path).count();
-                    let line = Rect::new(body.x, y, body.w, height);
-                    file_found(ctx, line, &one.path, count, ui);
-                }
-                over = Some(one.path.as_str());
-                y += height;
-            }
-            if shut(&one.path) {
-                continue;
-            }
-            if shows(body, y, height) {
-                hit(ctx, Rect::new(body.x, y, body.w, height), one, at, ui);
-            }
-            y += height;
+    let items = items(&app.workspace.found, ui);
+    let at = (Scroller::Files, ui.offset(Scroller::Files));
+    scrolled(
+        ctx,
+        body,
+        at,
+        &items,
+        |_| height,
+        |ctx, line, item| match item {
+            Item::File(path, count) => file_found(ctx, line, path, *count, ui),
+            Item::Match(at, one) => hit(ctx, line, one, *at, ui),
+        },
+    );
+}
+
+/// Each file once, over its matches unless it is shut.
+fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
+    let mut items = Vec::new();
+    let mut over: Option<&str> = None;
+    for (at, one) in found.iter().enumerate() {
+        if over != Some(one.path.as_str()) {
+            let count = found.iter().filter(|it| it.path == one.path).count();
+            items.push(Item::File(&one.path, count));
+            over = Some(one.path.as_str());
         }
-    });
-}
-
-/// Whether a row at this height is on screen at all.
-fn shows(body: Rect, y: f32, height: f32) -> bool {
-    y + height >= body.y && y <= body.bottom()
-}
-
-fn files_of(found: &[Found]) -> usize {
-    let mut paths: Vec<&str> = found.iter().map(|one| one.path.as_str()).collect();
-    paths.dedup();
-    paths.len()
+        if !ui.session.shut.contains(&one.path) {
+            items.push(Item::Match(at, one));
+        }
+    }
+    items
 }
 
 /// The file a run of matches belongs to, how many, and a caret that hides them.
