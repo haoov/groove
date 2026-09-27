@@ -35,6 +35,11 @@ fn set_preference(state: &mut AppState, one: Preference) {
         let e = groove_types::Error::invalid("there is no config to change before the first run");
         return state.failed(e);
     };
+    if let Preference::Theme(theme) = one {
+        let palette = groove_agent_service::palette(theme);
+        state.agent.recolor(palette);
+        state.shell.recolor(palette);
+    }
     if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
         state.failed(e);
     }

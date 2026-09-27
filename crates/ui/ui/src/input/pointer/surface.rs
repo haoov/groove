@@ -179,7 +179,7 @@ pub(super) fn composed(
     };
     let chars = Chars {
         left: rect.x,
-        advance: metrics.cell.width,
+        advance: metrics.advance,
         scroll: 0.0,
     };
     let Some((row, display)) = code_at(&metrics.tokens(), chars, rect, point) else {

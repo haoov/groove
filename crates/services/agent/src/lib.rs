@@ -69,6 +69,12 @@ impl State {
         self.agent(session)?.terminal.as_ref()
     }
 
+    /// Every running agent in these colours.
+    pub fn recolor(&self, palette: groove_types::AnsiPalette) {
+        let running = self.agents.iter().filter_map(|(_, a)| a.terminal.as_ref());
+        running.for_each(|one| one.recolor(palette));
+    }
+
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {
         self.agent(session).map(|a| &a.activity)
     }

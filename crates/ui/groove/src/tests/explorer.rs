@@ -11,10 +11,12 @@ pub(super) fn window() -> Metrics {
         scale: 1.0,
         text: design.text,
         code: design.code,
+        terminal: design.code,
         cell: groove_gfx::CellSize {
             width: 8.0,
             height: 17.0,
         },
+        advance: 8.0,
         tick: 0,
         now: groove_types::Timestamp::now(),
     }

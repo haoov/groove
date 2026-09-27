@@ -1,5 +1,6 @@
 //! Every row Settings shows: its section, its label, the words a search finds it by, its value.
 
+mod appearance;
 mod preferences;
 
 use groove_controllers::AppState;
@@ -51,6 +52,8 @@ pub enum Value {
         less: Option<Preference>,
         more: Preference,
     },
+    /// One of a few, each with the preference that picks it; `true` is the one held.
+    Choice(Vec<(&'static str, bool, Preference)>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -74,7 +77,7 @@ impl Row {
 pub fn rows(app: &AppState) -> Vec<Row> {
     let mut out = setup(app);
     out.extend(providers(app));
-    out.extend(appearance(app));
+    out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
     out
 }
@@ -137,41 +140,6 @@ fn providers(app: &AppState) -> Vec<Row> {
         "provider notion github tasks",
         shown,
     )]
-}
-
-fn appearance(app: &AppState) -> Vec<Row> {
-    let ui = app
-        .config
-        .config
-        .as_ref()
-        .map(|c| c.ui.clone())
-        .unwrap_or_default();
-    let family = |name: &str| match name.is_empty() {
-        true => "bundled".to_string(),
-        false => name.to_string(),
-    };
-    let section = Section::Appearance;
-    vec![
-        text(
-            section,
-            "theme",
-            "latte frappe macchiato mocha colour dark light",
-            format!("{:?}", ui.theme),
-        ),
-        text(section, "ui font", "family type", family(&ui.font_family)),
-        text(
-            section,
-            "agent font",
-            "family terminal mono",
-            family(&ui.agent_font_family),
-        ),
-        text(
-            section,
-            "font size",
-            "text code points",
-            format!("{} · code {}", ui.font_size, ui.code_font_size),
-        ),
-    ]
 }
 
 /// A path under home as `~/…`.

@@ -42,10 +42,17 @@ The same four, read by `ui` and `gfx` at startup and on change: the theme picks 
 palette, the fonts load through the glyph atlas, the size sets the cell. An empty
 family means the bundled default.
 
+The theme is a preference: `config.set_preference` with `Theme` saves it, the next frame
+draws in it, and every running agent and shell terminal takes its colours.
+
+Three sizes, each a `FontSize` preference stepped by one point: the interface, the editor
+(code and diff), and the terminals (agent and shells). An unset terminal size is the
+editor's. The next frame lays out at the new size and the terminals resize to it.
+
 | Still to build | Does |
 |---|---|
 | `config.list_fonts` | read: the system's font families |
-| `config.set_theme` · `config.set_ui_font` · `config.set_agent_font` · `config.set_font_size` | persist, republish, redraw |
+| `config.set_ui_font` · `config.set_agent_font` | persist, republish, redraw |
 
 ## Preferences
 
@@ -65,5 +72,5 @@ button; no restart.
 
 - [x] The config file's fields: auto-approve default, thresholds, poll interval.
 - [x] Settings search: an index of every row's label and section, built from the form.
-- [x] The Settings surface: Preferences set in place; Setup, Providers and Appearance read only.
+- [x] The Settings surface: Preferences, the theme and the font sizes set in place; the rest read only.
 - [ ] The clipboard's home: `ui` through winit, since it is the window's, not a service's.

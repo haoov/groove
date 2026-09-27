@@ -137,10 +137,12 @@ fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
         scale,
         text: design.text,
         code: design.code,
+        terminal: design.code,
         cell: CellSize {
             width: 8.0 * scale,
             height: 17.0 * scale,
         },
+        advance: 8.0 * scale,
         tick: 0,
         now: Timestamp::new(0),
     }

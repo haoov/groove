@@ -40,7 +40,7 @@ pub struct Terminal {
     ops: Sender<Op>,
     pid: Option<u32>,
     size: Arc<Size>,
-    palette: AnsiPalette,
+    palette: Arc<Mutex<AnsiPalette>>,
     held: Mutex<Option<Held>>,
 }
 
@@ -50,7 +50,8 @@ impl Terminal {
         let spawned = groove_exec::pty::spawn(spec)?;
         let pid = spawned.pty.pid();
         let ops = writer::start(spawned.pty)?;
-        let listener = Listener::new(ops.clone(), size.clone(), palette);
+        let palette = Arc::new(Mutex::new(palette));
+        let listener = Listener::new(ops.clone(), size.clone(), palette.clone());
         let term = Term::new(Config::default(), &size.dims(), listener);
         let term = Arc::new(Mutex::new(term));
         reader::start(spawned.reader, spawned.child, term.clone(), hooks)?;
@@ -85,7 +86,13 @@ impl Terminal {
 
     pub fn screen(&self) -> Screen {
         self.apply();
-        screen::snapshot(&lock(&self.term), &self.palette)
+        let palette = *lock(&self.palette);
+        screen::snapshot(&lock(&self.term), &palette)
+    }
+
+    /// The colours the next screen and the next colour query read.
+    pub fn recolor(&self, palette: AnsiPalette) {
+        *lock(&self.palette) = palette;
     }
 
     /// Whether the program in it reads the mouse itself.

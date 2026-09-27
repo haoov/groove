@@ -1,7 +1,7 @@
 //! What the emulator reports while it reads: damage, and a title.
 
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 
 use alacritty_terminal::event::{Event, EventListener};
 use groove_types::AnsiPalette;
@@ -14,11 +14,11 @@ use crate::writer::Op;
 pub(crate) struct Listener {
     ops: Sender<Op>,
     size: Arc<Size>,
-    palette: AnsiPalette,
+    palette: Arc<Mutex<AnsiPalette>>,
 }
 
 impl Listener {
-    pub fn new(ops: Sender<Op>, size: Arc<Size>, palette: AnsiPalette) -> Self {
+    pub fn new(ops: Sender<Op>, size: Arc<Size>, palette: Arc<Mutex<AnsiPalette>>) -> Self {
         Self { ops, size, palette }
     }
 
@@ -32,7 +32,8 @@ impl EventListener for Listener {
         match event {
             Event::PtyWrite(text) => self.reply(&text),
             Event::ColorRequest(index, format) => {
-                let rgb = color::indexed(index, &self.palette);
+                let palette = *crate::lock(&self.palette);
+                let rgb = color::indexed(index, &palette);
                 self.reply(&format(color::to_vte(rgb)));
             }
             Event::TextAreaSizeRequest(format) => self.reply(&format(self.size.window())),

@@ -94,6 +94,14 @@ impl State {
         self.shells(session)?.get(id)?.terminal.as_ref()
     }
 
+    /// Every running terminal of every session in these colours.
+    pub fn recolor(&self, palette: AnsiPalette) {
+        let tabs = self.sessions.iter().flat_map(|(_, one)| &one.tabs);
+        let panes = tabs.flat_map(|tab| &tab.panes);
+        let running = panes.filter_map(|one| one.terminal.as_ref());
+        running.for_each(|one| one.recolor(palette));
+    }
+
     /// A new terminal's place while it starts: in a tab of its own, or beside the selected
     /// tab's. It takes the keys either way.
     pub fn reserve(&mut self, session: &SessionId, beside: bool) -> u64 {

@@ -8,15 +8,18 @@ use std::path::{Path, PathBuf};
 use groove_types::{Config, Error, Preferences, ThemeName, UiConfig};
 
 /// What a font size may be, whatever the file says.
-const MIN_FONT: f32 = 8.0;
+pub const MIN_FONT: f32 = 8.0;
 const MAX_FONT: f32 = 32.0;
 
 /// The shortest wait between two polls of the forges.
 const POLL_MIN: u64 = 10;
 
 /// One preference, as Settings changes it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Preference {
+    Theme(ThemeName),
+    /// In points; the file keeps it inside what a font can read as.
+    FontSize(Font, f32),
     AutoApproveDefault(bool),
     ReviewWaitingDays(u32),
     DueSoonDays(u32),
@@ -24,6 +27,17 @@ pub enum Preference {
     CiFailedMinutes(u32),
     PollIntervalSecs(u64),
     StaleAfterSecs(u64),
+}
+
+/// A size is never NaN: it comes from the file's number or a step of it.
+impl Eq for Preference {}
+
+/// What one font size draws.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Font {
+    Interface,
+    Editor,
+    Terminal,
 }
 
 /// The parsed config, or nothing before first run.
@@ -73,8 +87,17 @@ impl State {
     /// One preference changed; the config to write, or `None` before first run.
     pub fn set(&mut self, one: Preference) -> Option<&Config> {
         let config = self.config.as_mut()?;
-        let held = &mut config.preferences;
+        let (ui, held) = (&mut config.ui, &mut config.preferences);
         match one {
+            Preference::Theme(theme) => ui.theme = theme,
+            Preference::FontSize(font, size) => {
+                let size = size.clamp(MIN_FONT, MAX_FONT);
+                match font {
+                    Font::Interface => ui.font_size = size,
+                    Font::Editor => ui.code_font_size = size,
+                    Font::Terminal => ui.terminal_font_size = Some(size),
+                }
+            }
             Preference::AutoApproveDefault(on) => held.auto_approve_default = on,
             Preference::ReviewWaitingDays(days) => held.thresholds.review_waiting_days = days,
             Preference::DueSoonDays(days) => held.thresholds.due_soon_days = days,
@@ -90,13 +113,25 @@ impl State {
         self.config.as_ref().map(|c| c.ui.theme).unwrap_or_default()
     }
 
-    /// The interface's type size, and code's, both inside what a font can read as.
+    /// The interface's type size, code's and the terminals', each inside what a font can read as.
     pub fn text_size(&self) -> f32 {
         self.sized(|ui| ui.font_size)
     }
 
     pub fn code_size(&self) -> f32 {
         self.sized(|ui| ui.code_font_size)
+    }
+
+    pub fn terminal_size(&self) -> f32 {
+        self.sized(|ui| ui.terminal_font_size.unwrap_or(ui.code_font_size))
+    }
+
+    pub fn size(&self, font: Font) -> f32 {
+        match font {
+            Font::Interface => self.text_size(),
+            Font::Editor => self.code_size(),
+            Font::Terminal => self.terminal_size(),
+        }
     }
 
     fn sized(&self, of: impl Fn(&UiConfig) -> f32) -> f32 {

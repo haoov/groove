@@ -188,14 +188,21 @@ impl App {
             return None;
         };
         let scale = window.scale_factor() as f32;
-        let (text, code) = (self.state.config.text_size(), self.state.config.code_size());
-        let tokens = groove_ui::Tokens::sized(scale, text, code);
+        let config = &self.state.config;
+        let (text, code, terminal) = (
+            config.text_size(),
+            config.code_size(),
+            config.terminal_size(),
+        );
+        let fonts = renderer.fonts();
         Some(Metrics {
             size: size_of(window),
             scale,
             text,
             code,
-            cell: renderer.fonts().cell_size(tokens.code),
+            terminal,
+            cell: fonts.cell_size(terminal * scale),
+            advance: fonts.cell_size(code * scale).width,
             tick: self.started.elapsed().as_millis() as u64,
             now: Timestamp::now(),
         })

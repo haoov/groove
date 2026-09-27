@@ -12,7 +12,7 @@ pub fn screen<A: App>(
 ) {
     let cell = ctx.cell;
     let ground = ctx.styles.deep();
-    let mut grid = cells_of(screen, origin.0, origin.1, ctx.tokens.code);
+    let mut grid = cells_of(screen, origin.0, origin.1, ctx.terminal);
     let cursor = cursor_of(screen);
     if focused && let Some(at) = cursor {
         solid(&mut grid, at, ground);

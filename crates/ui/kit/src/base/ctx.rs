@@ -15,7 +15,11 @@ pub struct Metrics {
     /// What the config says to draw the interface and code with, in points.
     pub text: f32,
     pub code: f32,
+    pub terminal: f32,
+    /// One cell of the terminal font.
     pub cell: CellSize,
+    /// One character's width of the code font.
+    pub advance: f32,
     /// Milliseconds since start.
     pub tick: u64,
     /// The wall clock, for what says how long ago.
@@ -41,8 +45,10 @@ pub struct Ctx<'a, A: App> {
     pub styles: Styles,
     /// The whole window, which a modal centres in.
     pub window: Rect,
-    /// One cell of the code font, which the agent's own grid stands on.
+    /// One cell of the terminal font, which every terminal's grid stands on.
     pub cell: CellSize,
+    /// The terminal font's size, scaled.
+    pub terminal: f32,
     pub tick: u64,
     pub now: Timestamp,
     pub app: A,
@@ -67,6 +73,7 @@ impl<'a, A: App> Ctx<'a, A> {
             styles: Styles::new(theme, tokens),
             window: metrics.size.rect(),
             cell: metrics.cell,
+            terminal: metrics.terminal * metrics.scale,
             tick: metrics.tick,
             now: metrics.now,
             app,

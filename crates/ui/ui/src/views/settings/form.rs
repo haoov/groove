@@ -76,5 +76,15 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             Word::new("+", Target::SetPreference(*more), Role::Muted, ground)
                 .left(ctx, &mut room, sm);
         }
+        Value::Choice(options) => {
+            for (label, held, pick) in options {
+                let role = match held {
+                    true => Role::Text,
+                    false => Role::Muted,
+                };
+                Word::new(label, Target::SetPreference(*pick), role, ground)
+                    .left(ctx, &mut room, sm);
+            }
+        }
     }
 }

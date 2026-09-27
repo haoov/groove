@@ -32,6 +32,22 @@ pub enum ThemeName {
 }
 
 impl ThemeName {
+    pub const ALL: [ThemeName; 4] = [
+        ThemeName::Latte,
+        ThemeName::Frappe,
+        ThemeName::Macchiato,
+        ThemeName::Mocha,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            ThemeName::Latte => "latte",
+            ThemeName::Frappe => "frappé",
+            ThemeName::Macchiato => "macchiato",
+            ThemeName::Mocha => "mocha",
+        }
+    }
+
     pub fn is_dark(self) -> bool {
         self != ThemeName::Latte
     }
@@ -44,6 +60,9 @@ pub struct UiConfig {
     pub font_size: f32,
     #[serde(default = "default_code_font_size")]
     pub code_font_size: f32,
+    /// Unset means the code size.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub terminal_font_size: Option<f32>,
     #[serde(default)]
     pub theme: ThemeName,
     /// Empty means the bundled font.
@@ -58,6 +77,7 @@ impl Default for UiConfig {
         Self {
             font_size: default_font_size(),
             code_font_size: default_code_font_size(),
+            terminal_font_size: None,
             theme: ThemeName::default(),
             font_family: String::new(),
             agent_font_family: String::new(),

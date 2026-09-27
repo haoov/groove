@@ -1,6 +1,6 @@
 use groove_types::{Config, GitConfig, UiConfig};
 
-use crate::{Preference, State};
+use crate::{Font, Preference, State};
 
 fn with(font_size: f32, code_font_size: f32) -> State {
     let config = Config {
@@ -42,6 +42,23 @@ fn a_size_no_font_can_read_as_is_refused() {
         assert_eq!(state.text_size(), 13.0, "{text} is not a size");
         assert_eq!(state.code_size(), 12.5, "{code} is not a size");
     }
+}
+
+#[test]
+fn the_terminal_takes_the_code_size_until_it_has_its_own() {
+    let mut state = with(13.0, 17.0);
+    assert_eq!(state.terminal_size(), 17.0);
+    state.set(Preference::FontSize(Font::Terminal, 11.0));
+    assert_eq!(
+        (state.text_size(), state.code_size(), state.terminal_size()),
+        (13.0, 17.0, 11.0)
+    );
+    state.set(Preference::FontSize(Font::Interface, 90.0));
+    assert_eq!(
+        state.text_size(),
+        32.0,
+        "a step past the largest stops at it"
+    );
 }
 
 #[test]

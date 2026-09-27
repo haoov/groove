@@ -29,12 +29,12 @@ fn toggle(label: &'static str, words: &'static str, on: bool, flip: Preference) 
 }
 
 /// A count stepped by `step`, never under `least`; `set` makes the preference of a value.
-fn count<T>(
+pub(super) fn count<T>(
     label: &'static str,
     words: &'static str,
     (at, step, least): (T, T, T),
     unit: &str,
-    set: fn(T) -> Preference,
+    set: impl Fn(T) -> Preference,
 ) -> Row
 where
     T: Copy

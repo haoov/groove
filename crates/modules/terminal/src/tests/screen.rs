@@ -70,6 +70,17 @@ fn ansi_colours_resolve_through_the_palette() {
 }
 
 #[test]
+fn a_new_palette_recolours_what_is_already_on_the_grid() {
+    let (term, rx) = run("printf '\\033[31mr\\033[0mp'", 20, 2);
+    wait(&rx);
+    let latte = AnsiPalette::LATTE;
+    term.recolor(latte);
+    let s = term.screen();
+    assert_eq!(s.cell(0, 0).fg, latte.colors[1]);
+    assert_eq!(s.cell(1, 0).fg, latte.foreground);
+}
+
+#[test]
 fn a_wide_character_takes_two_cells() {
     let (term, rx) = run("printf '日本x'", 20, 2);
     wait(&rx);
