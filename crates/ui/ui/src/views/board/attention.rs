@@ -43,7 +43,7 @@ fn words(reason: Attention, now: Timestamp) -> String {
 }
 
 /// The line itself, under the title it belongs to.
-pub(super) fn draw(ctx: &mut Ctx, line: Rect, at: f32, text: &str) {
+pub(super) fn draw(ctx: &mut Ctx, line: Rect, text: &str) {
     let style = ctx.styles.small(Role::Attention);
-    row(ctx, line, at, text, style);
+    row(ctx, line, 0.0, text, style);
 }

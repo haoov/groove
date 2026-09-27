@@ -4,15 +4,15 @@ mod note;
 
 use self::note::{acts, note};
 
-use groove_gfx::{Color, Rect, TextStyle};
+use groove_gfx::{Align, Color, Edges, Rect, TextStyle};
 
 use super::gutter::Block;
 use super::{Line, head_mark};
 use crate::base::ctx::Ctx;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::ruled;
-use crate::text::row;
+use crate::shape::{ruled, square};
+use crate::text::{Label, row};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if code.band {
@@ -42,12 +42,15 @@ fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
         ctx.quad(line, ground);
     }
     if let Some(mark) = code.mark {
-        let width = ctx.tokens.hairline * 2.0;
-        ctx.quad(Rect::new(line.x, line.y, width, line.h), mark);
+        let edge = Rect {
+            w: ctx.tokens.hairline * 2.0,
+            ..line
+        };
+        ctx.quad(edge, mark);
     }
     numbers(ctx, line, code, gutter);
     let at = gutter.content(ctx, line);
-    let rect = Rect::new(at, line.y, line.right() - at, line.h);
+    let rect = line.pad(Edges::across(at - line.x, 0.0));
     if let Some(color) = code.word {
         for (from, to) in code.words {
             shade(ctx, rect, code.text, (*from, *to), color);
@@ -71,13 +74,13 @@ fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
 
 /// The row's own line numbers, one to a gutter cell.
 fn numbers(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
-    let style = ctx.styles.code(Role::Ghost);
-    let mut at = line.x + ctx.tokens.sm;
+    let (sm, style) = (ctx.tokens.sm, ctx.styles.code(Role::Ghost));
+    let mut room = line.pad(Edges::across(sm, 0.0));
     for text in code.gutters {
+        let cell = room.take_left(gutter.width);
+        room.take_left(sm);
         let width = ctx.measure(text, &style);
-        let cell = Rect::new(at + gutter.width - width, line.y, width, line.h);
-        row(ctx, cell, 0.0, text, style);
-        at += gutter.width + ctx.tokens.sm;
+        row(ctx, cell, cell.w - width, text, style);
     }
 }
 
@@ -139,11 +142,13 @@ fn caret(ctx: &mut Ctx, rect: Rect, text: &str, column: usize) {
 
 /// A row across the width: its own ground, its text in the middle.
 fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
-    let (panel, style) = (ctx.styles.band(), ctx.styles.code(Role::Ghost));
-    ctx.quad(line, panel);
-    let width = ctx.measure(text, &style);
-    let at = line.x + (line.w - width) / 2.0;
-    row(ctx, Rect::new(at, line.y, width, line.h), 0.0, text, style);
+    ctx.quad(line, ctx.styles.band());
+    let label = Label::new(text, ctx.styles.code(Role::Ghost));
+    let width = label.width(ctx);
+    label.draw(
+        ctx,
+        line.align((width, line.h), Align::Center, Align::Start),
+    );
 }
 
 /// A row naming a directory: its own ground, its path faint at the margin.
@@ -161,32 +166,22 @@ fn head(ctx: &mut Ctx, line: Rect, code: &Line<'_>) {
     };
     let (ground, style) = (ctx.styles.raised(), ctx.styles.label(role));
     ctx.quad(line, ground);
-    let size = ctx.tokens.icon;
-    let caret = Rect::new(
-        line.x + ctx.tokens.xs,
-        line.y + (line.h - size) / 2.0,
-        size,
-        size,
-    );
+    let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
+    let mut room = line.pad(Edges::across(xs, 0.0));
+    let caret = square(room.take_left(size), size);
+    room.take_left(xs);
     let turn = match code.folded {
         true => Mark::RIGHTWARDS,
         false => 0,
     };
     ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
-    let at = caret.right() - line.x + ctx.tokens.xs;
-    row(ctx, line, at, code.text, style);
+    row(ctx, room, 0.0, code.text, style);
     box_(ctx, head_mark(ctx, line), code.read);
 }
 
 /// The box that says whether a file is read, ticked once it is.
 fn box_(ctx: &mut Ctx, rect: Rect, read: bool) {
-    let inset = ctx.tokens.xs / 2.0;
-    let square = Rect::new(
-        rect.x + inset,
-        rect.y + inset,
-        rect.w - inset * 2.0,
-        rect.h - inset * 2.0,
-    );
+    let square = rect.pad(Edges::all(ctx.tokens.xs / 2.0));
     let role = match read {
         true => Role::Text,
         false => Role::Faint,

@@ -10,7 +10,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, hoverable, leading};
+use crate::shape::{hoverable, square};
 use crate::widgets::icon;
 
 /// Every session the filter lets through, with its worktrees under it while it is open.
@@ -47,23 +47,19 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
 /// One session: a twisty for its worktrees, its kind, its title, what it holds.
 pub(super) fn session(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, living: &Living) {
     let id = &living.session.id;
-    let target = Target::Session(id.clone());
-    hoverable(ctx, line, target);
-    let kind = twisty(ctx, line, ui, living);
-    let box_ = leading(ctx, line, line.x + kind);
+    hoverable(ctx, line, Target::Session(id.clone()));
+    let (sm, size) = (ctx.tokens.sm, ctx.tokens.icon);
+    let mut room = line;
+    twisty(ctx, &mut room, ui, living);
+    let kind = square(room.take_left(size), size);
+    room.take_left(sm);
     let role = match app.session.get(id).is_some() {
         true => Role::Working,
         false => Role::Ghost,
     };
-    icon(ctx, box_, Mark::of_kind(&living.session.kind), role);
-    let until = aside(ctx, line, &held(living));
-    named(
-        ctx,
-        line,
-        &living.session.title,
-        until,
-        after_mark(ctx, kind),
-    );
+    icon(ctx, kind, Mark::of_kind(&living.session.kind), role);
+    aside(ctx, &mut room, &held(living));
+    named(ctx, room, &living.session.title);
 }
 
 /// What a session holds, as the row's right-hand text.
@@ -78,14 +74,16 @@ fn held(living: &Living) -> String {
     }
 }
 
-/// What opens a session's worktrees under it. Returns where the kind icon goes.
-fn twisty(ctx: &mut Ctx, line: Rect, ui: &Ui, living: &Living) -> f32 {
-    let box_ = leading(ctx, line, line.x + ctx.tokens.sm);
+/// What opens a session's worktrees under it, from the left of `room`.
+fn twisty(ctx: &mut Ctx, room: &mut Rect, ui: &Ui, living: &Living) {
+    let (sm, size) = (ctx.tokens.sm, ctx.tokens.icon);
+    room.take_left(sm);
+    let box_ = square(room.take_left(size), size);
+    room.take_left(sm);
     let turn = match ui.board.is_open(&living.session.id) {
         true => 0,
         false => Mark::RIGHTWARDS,
     };
     ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Ghost));
     ctx.hit(box_, Target::Unfold(living.session.id.clone()));
-    after_mark(ctx, ctx.tokens.sm)
 }

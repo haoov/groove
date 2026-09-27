@@ -1,14 +1,14 @@
 //! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
 use crate::base::tokens::PALETTE_ROWS;
 use crate::palette::Palette;
-use crate::text::row;
+use crate::text::Label;
 use crate::widgets::{Row, input, list, modal, panel_at};
 
 /// Whether the panel offers a line to type in: the palette always, a picker once needed.
@@ -88,24 +88,25 @@ fn asked(
     palette: &Palette,
     prompt: &Option<crate::palette::Prompt>,
 ) -> Rect {
-    let line = Rect::new(rect.x, rect.y + ctx.tokens.xs, rect.w, ctx.tokens.row);
+    let mut rest = rect;
+    rest.take_top(ctx.tokens.xs);
+    let line = rest.take_top(ctx.tokens.row);
     let prefix = match prompt {
         Some(prompt) => format!("{}: ", prompt.label),
         None => "> ".to_string(),
     };
     input(ctx, line, &prefix, &palette.query);
-    Rect::new(rect.x, line.bottom(), rect.w, rect.bottom() - line.bottom())
+    rest
 }
 
 /// The rows' own room, inside the panel's edges.
 fn inset(ctx: &Ctx, body: Rect, shown: usize) -> Rect {
     let hairline = ctx.tokens.hairline;
-    Rect::new(
-        body.x + hairline,
-        body.y,
-        body.w - hairline * 2.0,
-        ctx.tokens.row * shown as f32,
-    )
+    let rows = Rect {
+        h: ctx.tokens.row * shown as f32,
+        ..body
+    };
+    rows.pad(Edges::across(hairline, hairline))
 }
 
 /// What stands in the list's place when it is empty.
@@ -115,8 +116,8 @@ fn nothing(ctx: &mut Ctx, body: Rect, prompt: &Option<crate::palette::Prompt>) {
         Some(_) => "nothing to pick",
         None => "no match",
     };
-    let style = ctx.styles.small(Role::Faint);
-    row(ctx, body, ctx.tokens.md, hint, style);
+    let room = body.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    Label::new(hint, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }
 
 /// The rows around the selected one, as far as the panel shows.

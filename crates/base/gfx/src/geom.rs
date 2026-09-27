@@ -51,6 +51,11 @@ impl Rect {
         Rect::new(self.x, self.y, (x - self.x).clamp(0.0, self.w), self.h)
     }
 
+    /// What lies above `y`.
+    pub fn until_y(self, y: f32) -> Rect {
+        Rect::new(self.x, self.y, self.w, (y - self.y).clamp(0.0, self.h))
+    }
+
     /// The first `w` of the width; `self` keeps the rest.
     pub fn take_left(&mut self, w: f32) -> Rect {
         let w = w.clamp(0.0, self.w);

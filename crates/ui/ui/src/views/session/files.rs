@@ -21,7 +21,7 @@ use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
-use crate::text::{Label, row};
+use crate::text::Label;
 use crate::widgets::{button, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -30,41 +30,36 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         return;
     }
     ctx.quad(rect, ctx.styles.band());
-    edge(ctx, rect);
+    let edge = Rect {
+        w: ctx.tokens.hairline,
+        ..rect
+    };
+    ctx.quad(edge, ctx.styles.line());
+    let mut column = rect;
     let bar = bar::draw(ctx, rect, ui);
-    let strip = Rect::new(rect.x, bar.bottom(), rect.w, ctx.tokens.row + ctx.tokens.sm);
+    column.take_top(bar.h);
+    let strip = column.take_top(ctx.tokens.row + ctx.tokens.sm);
     panes(ctx, strip, app, ui);
     match ui.session.pane {
-        Pane::Files => changed_files(ctx, rect, strip, app, ui),
+        Pane::Files => changed_files(ctx, column, app, ui),
         Pane::Commits => {
-            let body = showing(ctx, under(rect, strip), app);
+            let body = showing(ctx, column, app);
             commits::draw(ctx, body, app, ui);
         }
         Pane::Notes => {
-            let body = showing(ctx, under(rect, strip), app);
+            let body = showing(ctx, column, app);
             notes::draw(ctx, body, app, ui);
         }
     }
 }
 
-/// The room a list has under the strip.
-fn under(rect: Rect, strip: Rect) -> Rect {
-    Rect::new(
-        rect.x,
-        strip.bottom(),
-        rect.w,
-        (rect.bottom() - strip.bottom()).max(0.0),
-    )
-}
-
 /// The commit the surface shows, over the list. Returns the room the list keeps.
-fn showing(ctx: &mut Ctx, body: Rect, app: &AppState) -> Rect {
-    if app.workspace.commit.is_none() {
-        return body;
+fn showing(ctx: &mut Ctx, mut body: Rect, app: &AppState) -> Rect {
+    if app.workspace.commit.is_some() {
+        commit::showing(ctx, body, app);
+        body.take_top(ctx.tokens.row);
     }
-    commit::showing(ctx, body, app);
-    let taken = ctx.tokens.row;
-    Rect::new(body.x, body.y + taken, body.w, (body.h - taken).max(0.0))
+    body
 }
 
 /// The three lists the sidebar offers, the one up lit and counted.
@@ -103,16 +98,16 @@ fn counted(app: &AppState, pane: Pane) -> usize {
 }
 
 /// The files that changed, under their own heading, with the commit box below.
-fn changed_files(ctx: &mut Ctx, rect: Rect, strip: Rect, app: &AppState, ui: &Ui) {
+fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    let head = Rect::new(rect.x, strip.bottom(), rect.w, ctx.tokens.header);
+    let head = column.take_top(ctx.tokens.header);
     match grep {
         true => heading::found(ctx, head, app.workspace.found.len()),
         false => heading::heading(ctx, head, files.len(), app, ui),
     }
     let under = ctx.layout.commit;
-    let body = Rect::new(rect.x, head.bottom(), rect.w, under.y - head.bottom());
+    let body = column.until_y(under.y);
     commit::draw(ctx, app, ui, under);
     if grep {
         return results::draw(ctx, body, app, ui);
@@ -179,14 +174,12 @@ fn empty(app: &AppState) -> &'static str {
 }
 
 fn says(ctx: &mut Ctx, body: Rect, text: &str) {
-    let style = ctx.styles.small(Role::Faint);
-    let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
-    row(ctx, line, ctx.tokens.md, text, style);
-}
-
-fn edge(ctx: &mut Ctx, rect: Rect) {
-    let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
-    ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
+    let line = Rect {
+        h: ctx.tokens.row,
+        ..body
+    };
+    let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    Label::new(text, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }
 
 /// How many rows the path term keeps at most.

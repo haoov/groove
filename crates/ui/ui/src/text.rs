@@ -103,11 +103,21 @@ pub fn ago(age: Duration) -> String {
 pub struct Label<'a> {
     pub text: &'a str,
     pub style: TextStyle,
+    pub cut_start: bool,
 }
 
 impl<'a> Label<'a> {
     pub fn new(text: &'a str, style: TextStyle) -> Self {
-        Self { text, style }
+        Self {
+            text,
+            style,
+            cut_start: false,
+        }
+    }
+
+    pub fn cut_start(mut self) -> Self {
+        self.cut_start = true;
+        self
     }
 
     pub fn width(&self, ctx: &mut Ctx) -> f32 {
@@ -132,7 +142,10 @@ impl<'a> Label<'a> {
 
     /// Draws the text in `rect`; returns the box it took.
     pub fn draw(self, ctx: &mut Ctx, rect: Rect) -> Rect {
-        let text = elide(ctx, self.text, &self.style, rect.w);
+        let text = match self.cut_start {
+            true => elide_start(ctx, self.text, &self.style, rect.w),
+            false => elide(ctx, self.text, &self.style, rect.w),
+        };
         let width = ctx.measure(&text, &self.style).min(rect.w);
         row(ctx, rect, 0.0, &text, self.style);
         Rect::new(rect.x, rect.y, width, rect.h)

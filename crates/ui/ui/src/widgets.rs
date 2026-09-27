@@ -19,7 +19,7 @@ pub use button::{Word, button, mark_button, slot_at};
 pub use code::{
     Acting, Gutters, Line, Noted, Rows, chars_of, code, code_at, first, head_mark, height, visible,
 };
-pub use counts::{counts, counts_room};
+pub use counts::{changes, counts, counts_room};
 pub use delivery::{delivered, room_for};
 pub use field::Field;
 pub use icon::icon;

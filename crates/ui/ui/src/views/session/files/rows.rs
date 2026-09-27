@@ -10,7 +10,7 @@ use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::{ruled, square};
 use crate::text::{Label, elide, row};
-use crate::widgets::scrolled;
+use crate::widgets::{changes, scrolled};
 use crate::{Losing, Ui};
 
 enum Item<'a> {
@@ -153,13 +153,8 @@ fn offer(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
     acted(ctx, room, label, target)
 }
 
-/// What the file lost and gained, from the right of `room`.
 fn counts(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
-    room.take_right(ctx.tokens.md);
-    for (count, role, sign) in [(file.deleted, Role::Bad, '-'), (file.added, Role::Ok, '+')] {
-        if count > 0 {
-            let text = format!("{sign}{count}");
-            Label::new(&text, ctx.styles.small(role)).right(ctx, room, ctx.tokens.sm);
-        }
-    }
+    changes(ctx, room, (file.added, file.deleted), |ctx, role| {
+        ctx.styles.small(role)
+    });
 }

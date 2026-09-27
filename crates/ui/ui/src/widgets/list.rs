@@ -3,7 +3,7 @@ use groove_gfx::{Color, Rect, TextStyle};
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
-use crate::shape::{after_mark, leading};
+use crate::shape::{after_mark, hoverable, leading};
 use crate::text::{elide, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
@@ -59,6 +59,9 @@ pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>
         if let Some(color) = item.background.or((selected == Some(i)).then_some(raised)) {
             ctx.quad(line, color);
         }
+        if let Some(target) = &item.target {
+            hoverable(ctx, line, target.clone());
+        }
         let mut indent = item.indent;
         if let Some((mark, turn)) = item.mark {
             let box_ = leading(ctx, line, line.x + indent);
@@ -77,9 +80,6 @@ pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>
             let aside = Rect::new(rect.x + at, y, room, height);
             let text = elide(ctx, text, &style, room);
             row(ctx, aside, 0.0, &text, style);
-        }
-        if let Some(target) = &item.target {
-            ctx.hit(line, target.clone());
         }
         y += height;
     }

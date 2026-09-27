@@ -1,7 +1,7 @@
 //! Review: the merge requests the forges ask this user to look at.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::ReviewMr;
 
 use super::row::{Line, aside, named};
@@ -10,8 +10,8 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, hoverable, leading};
-use crate::text::{ago, elide, row};
+use crate::shape::{hoverable, square};
+use crate::text::{Label, ago};
 use crate::widgets::icon;
 
 /// Every MR the filter lets through, newest first.
@@ -34,27 +34,30 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
 
 /// One MR: its project and number, its title, its author, and when it last moved.
 pub(super) fn item(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
-    let target = Target::Review(mr.project.clone(), mr.iid);
-    hoverable(ctx, line, target);
-    let box_ = leading(ctx, line, line.x + ctx.tokens.md);
-    icon(ctx, box_, Mark::Review, role(mr));
-    let until = aside(ctx, line, &ago(mr.updated_at.age_at(ctx.now)));
-    named(ctx, line, &mr.title, until, after_mark(ctx, ctx.tokens.md));
-    under(ctx, line, mr, until);
+    hoverable(ctx, line, Target::Review(mr.project.clone(), mr.iid));
+    let size = ctx.tokens.icon;
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    let mark = square(room.take_left(size), size);
+    room.take_left(ctx.tokens.sm);
+    icon(ctx, mark, Mark::Review, role(mr));
+    aside(ctx, &mut room, &ago(mr.updated_at.age_at(ctx.now)));
+    under(ctx, room, mr);
+    named(ctx, room, &mr.title);
 }
 
 /// The project, the number and the author, under the title.
-fn under(ctx: &mut Ctx, line: Rect, mr: &ReviewMr, until: f32) {
-    let style = ctx.styles.small(Role::Faint);
+fn under(ctx: &mut Ctx, room: Rect, mr: &ReviewMr) {
     let named = format!("{}{}{}", mr.project, mr.forge.sigil(), mr.iid);
     let text = match mr.author.is_empty() {
         true => named,
         false => format!("{named} · {}", mr.author),
     };
-    let room = (until - line.x - after_mark(ctx, ctx.tokens.md)).max(0.0);
-    let text = elide(ctx, &text, &style, room);
-    let second = Rect::new(line.x, line.y + ctx.tokens.row, line.w, ctx.tokens.row);
-    row(ctx, second, after_mark(ctx, ctx.tokens.md), &text, style);
+    let second = Rect {
+        y: room.y + ctx.tokens.row,
+        h: ctx.tokens.row,
+        ..room
+    };
+    Label::new(&text, ctx.styles.small(Role::Faint)).draw(ctx, second);
 }
 
 fn role(mr: &ReviewMr) -> Role {

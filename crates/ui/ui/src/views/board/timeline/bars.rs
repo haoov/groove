@@ -1,7 +1,7 @@
 //! The bars themselves: the row each task keeps, and the shape its dates give it.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Day, Span, Task, Timestamp};
 
 use super::{DAYS, first};
@@ -9,7 +9,8 @@ use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::shape::square;
+use crate::text::Label;
 
 /// One bar a task, in the row the whole plan gives it, where the horizon puts it.
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
@@ -65,12 +66,7 @@ fn from_today(span: Span) -> (i64, i64) {
 /// One bar: its ground, its edge, and its title inside it.
 fn one(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task, open: bool) {
     let asking = app.task.asks(&task.external_id);
-    let box_ = Rect::new(
-        line.x,
-        line.y + ctx.tokens.xs,
-        line.w,
-        line.h - ctx.tokens.sm,
-    );
+    let box_ = line.pad(Edges::xy(0.0, ctx.tokens.xs));
     let role = match asking {
         true => Role::Attention,
         false => Role::Text,
@@ -81,9 +77,8 @@ fn one(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task, open: bool) {
     if asking || open {
         ctx.border(box_, ctx.styles.color(role));
     }
-    let style = ctx.styles.small(role);
-    let text = elide(ctx, &task.title, &style, box_.w - ctx.tokens.sm * 2.0);
-    row(ctx, box_, ctx.tokens.sm, &text, style);
+    let room = box_.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
+    Label::new(&task.title, ctx.styles.small(role)).draw(ctx, room);
 }
 
 /// A task with a due date and nothing else: a mark, and its title beside it.
@@ -93,14 +88,14 @@ fn point(ctx: &mut Ctx, line: Rect, app: &AppState, task: &Task) {
         true => Role::Attention,
         false => Role::Muted,
     };
-    let size = ctx.tokens.sm;
-    let dot = Rect::new(line.x, line.y + (line.h - size) / 2.0, size, size);
+    let dot = square(line, ctx.tokens.sm);
     ctx.quad(dot, ctx.styles.color(role));
-    let style = ctx.styles.small(role);
-    let room = ctx.tokens.aside_far;
-    let text = elide(ctx, &task.title, &style, room);
-    let at = dot.right() + ctx.tokens.xs;
-    row(ctx, Rect::new(at, line.y, room, line.h), 0.0, &text, style);
+    let room = Rect {
+        x: dot.right() + ctx.tokens.xs,
+        w: ctx.tokens.aside_far,
+        ..line
+    };
+    Label::new(&task.title, ctx.styles.small(role)).draw(ctx, room);
 }
 
 /// Every task the filter lets through whose dates fall in the horizon.

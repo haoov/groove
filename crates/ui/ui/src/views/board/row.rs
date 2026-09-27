@@ -2,14 +2,14 @@
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Task, Worktree, WorktreeDelivery};
 
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
 use crate::shape::hoverable;
-use crate::text::{elide, row};
+use crate::text::Label;
 
 /// One line of a column: an item, a worktree under an open one, or the plan's divider.
 pub(super) enum Line<'a> {
@@ -53,31 +53,31 @@ pub(super) fn item(tokens: &crate::base::tokens::Tokens) -> f32 {
 
 /// One task waiting: its place, its title, its worth, and why it needs the user.
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, at: usize, task: &Task) {
-    let target = Target::Task(task.short_id.clone());
-    hoverable(ctx, rect, target);
-    let line = Rect::new(rect.x, rect.y, rect.w, item(&ctx.tokens));
-    let start = place(ctx, line, at, task);
-    let until = aside(ctx, line, &worth(task));
-    named(ctx, line, &task.title, until, start);
+    hoverable(ctx, rect, Target::Task(task.short_id.clone()));
+    let mut rest = rect;
+    let line = rest.take_top(item(&ctx.tokens));
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    place(ctx, &mut room, at, task);
+    let start = room.x;
+    aside(ctx, &mut room, &worth(task));
+    named(ctx, room, &task.title);
     let reasons = app.task.needs(&task.external_id);
-    if reasons.is_empty() {
-        return;
+    if !reasons.is_empty() {
+        let under = rest.take_top(ctx.tokens.line);
+        let said = super::attention::line(reasons, groove_types::Timestamp::now());
+        super::attention::draw(ctx, under.pad(Edges::across(start - under.x, 0.0)), &said);
     }
-    let under = Rect::new(rect.x, line.bottom(), rect.w, ctx.tokens.line);
-    let said = super::attention::line(reasons, groove_types::Timestamp::now());
-    super::attention::draw(ctx, under, start, &said);
 }
 
-/// Where a task sits in the plan, and what a drag takes hold of. Returns the title's x.
-fn place(ctx: &mut Ctx, line: Rect, at: usize, task: &Task) -> f32 {
+/// Where a task sits in the plan, and what a drag takes hold of.
+fn place(ctx: &mut Ctx, room: &mut Rect, at: usize, task: &Task) {
     let style = ctx.styles.code(Role::Ghost);
-    let text = at.to_string();
-    let room = ctx.measure("00", &style);
-    let width = ctx.measure(&text, &style);
-    let box_ = Rect::new(line.x + ctx.tokens.md, line.y, room, line.h);
-    row(ctx, box_, room - width, &text, style);
-    ctx.hit(box_, Target::Place(task.external_id.clone()));
-    box_.right() - line.x + ctx.tokens.sm
+    let wide = ctx.measure("00", &style);
+    let held = room.take_left(wide);
+    room.take_left(ctx.tokens.sm);
+    let mut cell = held;
+    Label::new(&at.to_string(), style).right(ctx, &mut cell, 0.0);
+    ctx.hit(held, Target::Place(task.external_id.clone()));
 }
 
 /// The priority and the estimate, as the row's right-hand text.
@@ -91,24 +91,18 @@ fn worth(task: &Task) -> String {
         .join(" · ")
 }
 
-/// A row's right-hand text. Returns where it starts.
-pub(super) fn aside(ctx: &mut Ctx, line: Rect, text: &str) -> f32 {
-    if text.is_empty() {
-        return line.right() - ctx.tokens.md;
+/// A row's right-hand text, at the right of `room`.
+pub(super) fn aside(ctx: &mut Ctx, room: &mut Rect, text: &str) {
+    room.take_right(ctx.tokens.md);
+    if !text.is_empty() {
+        Label::new(text, ctx.styles.small(Role::Faint)).right(ctx, room, 0.0);
     }
-    let style = ctx.styles.small(Role::Faint);
-    let width = ctx.measure(text, &style);
-    let at = line.right() - ctx.tokens.md - width;
-    row(ctx, Rect::new(at, line.y, width, line.h), 0.0, text, style);
-    at
 }
 
-/// A row's title, from `start`, cut where its right-hand text begins.
-pub(super) fn named(ctx: &mut Ctx, line: Rect, title: &str, until: f32, start: f32) {
-    let style = ctx.styles.label(Role::Text);
-    let room = (until - line.x - start - ctx.tokens.sm).max(0.0);
-    let text = elide(ctx, title, &style, room);
-    row(ctx, line, start, &text, style);
+/// A row's title, a gap short of its right-hand text.
+pub(super) fn named(ctx: &mut Ctx, mut room: Rect, title: &str) {
+    room.take_right(ctx.tokens.sm);
+    Label::new(title, ctx.styles.label(Role::Text)).draw(ctx, room);
 }
 
 /// Why this line needs the user.
