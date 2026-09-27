@@ -21,10 +21,7 @@ fn mr(project: &str) -> groove_types::ReviewMr {
 
 #[test]
 fn an_empty_pool_asks_nothing_and_leaves_the_column_empty() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     state.delivery.reviews = vec![mr("acme/groove")];
     dispatch(
         Cmd::Delivery(delivery::Command::ReviewQueue),

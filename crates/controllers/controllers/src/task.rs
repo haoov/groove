@@ -78,8 +78,7 @@ pub fn dispatch(
     }
 }
 
-/// The session that works this task: the one it already has, or a new one with its
-/// agent started.
+/// The session that works this task: the one it has, or a new one with its agent started.
 pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, short_id: &str) {
     let Some(task) = state.task.get(short_id).cloned() else {
         return;

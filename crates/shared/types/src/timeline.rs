@@ -1,8 +1,6 @@
 use crate::{SessionId, Timestamp};
 
-/// What a line of the log is. Only what a session did to its own work belongs here:
-/// git, the forge, its repos and its worktrees, and the turns around them. A tool the
-/// agent ran on a file is its status, not its history.
+/// What a line of the log is: what a session did to its own work, never a tool on a file.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TimelineKind {

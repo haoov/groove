@@ -8,8 +8,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use ignore::WalkBuilder;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher as _};
 
-/// The directories being watched, one watch each. A watch reports the entries of its
-/// own directory only.
+/// The watched directories, one watch each, each reporting only its own entries.
 pub(crate) struct Tree {
     root: PathBuf,
     /// Watched whatever the walk says.
@@ -28,8 +27,7 @@ impl Tree {
         }
     }
 
-    /// Watches every directory under the root the ignore rules keep, and drops the
-    /// rest. Returns how many are watched.
+    /// Watches every directory the ignore rules keep and drops the rest; returns how many.
     pub(crate) fn reconcile(&mut self, watcher: &mut RecommendedWatcher) -> usize {
         let mut wanted: HashSet<PathBuf> = directories(&self.root).into_iter().collect();
         wanted.extend(self.fixed.iter().filter(|dir| dir.is_dir()).cloned());
@@ -48,8 +46,7 @@ impl Tree {
         self.watched.len()
     }
 
-    /// Whether a path is worth reporting: anything but a directory left unwatched,
-    /// and of git's own state only what a commit, a stage or a checkout moves.
+    /// Whether a path is worth reporting: not in an unwatched directory, and of git only what moves.
     pub(crate) fn keeps(&self, path: &Path) -> bool {
         if self.fixed.iter().any(|dir| path.starts_with(dir)) {
             return git_state(path);
@@ -58,8 +55,7 @@ impl Tree {
     }
 }
 
-/// The names inside git's own directory that say the repository moved: HEAD, the
-/// index, the refs.
+/// The names in git's own directory that a commit, a stage or a checkout moves.
 fn git_state(path: &Path) -> bool {
     let name = path.file_name().unwrap_or_default();
     let refs = path.components().any(|part| part.as_os_str() == "refs");

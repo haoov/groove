@@ -54,8 +54,7 @@ pub(super) fn mark_read(
     }));
 }
 
-/// The worktree and the file it is showing, read at the same time: the file's rows do
-/// not wait on the summary.
+/// The changed files and the open file, read at once.
 pub(super) fn reread(state: &mut AppState, spawner: &dyn Spawner) {
     load(state, spawner);
     reopen(state, spawner, Head::Read);

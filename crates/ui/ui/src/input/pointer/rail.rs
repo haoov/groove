@@ -1,5 +1,4 @@
-//! What a click on the rail's own parts does: the feed folded, or narrowed.
-//! The agent's own asks answer here too.
+//! A click on the rail's own parts: the feed folded or narrowed, and the agent's asks answered.
 
 use groove_controllers::{Command, agent};
 

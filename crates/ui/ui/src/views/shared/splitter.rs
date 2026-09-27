@@ -1,5 +1,4 @@
-//! The boundaries between the columns. They draw nothing; every pane carries its own
-//! hairline. They are here for the pointer to find.
+//! The column boundaries, drawn by nothing, there for the pointer to find.
 
 use groove_gfx::Rect;
 

@@ -67,7 +67,7 @@ impl Store {
     pub async fn in_memory() -> Result<Self> {
         let db = Db::in_memory()
             .await
-            .map_err(|e| Error::invalid(format!("no database: {e}")))?;
+            .map_err(|e| Error::db(format!("no database: {e}")))?;
         Ok(Self::new(db))
     }
 
@@ -197,9 +197,9 @@ fn status_of(word: &str) -> AnnotationStatus {
 }
 
 fn gone(id: &AnnotationId) -> Error {
-    Error::invalid(format!("no note {id}"))
+    Error::not_found(format!("no note {id}"))
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::invalid(format!("the notes could not be read or written: {source}"))
+    Error::db(format!("the notes could not be read or written: {source}"))
 }

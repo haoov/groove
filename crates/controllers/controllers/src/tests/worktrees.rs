@@ -86,11 +86,8 @@ fn add_repo_cuts_the_first_worktree_and_lists_the_pool() {
 
 #[test]
 fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
     let repo = RepoId::new(REPO);
     let second = second_worktree(&mut state, &services, &spawner, &id, &repo);
@@ -252,11 +249,8 @@ fn close(
 
 #[test]
 fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
 
     dispatch(
@@ -300,11 +294,8 @@ fn an_unknown_repo_or_target_is_an_error_not_a_worktree() {
 
 #[test]
 fn a_git_url_is_cloned_into_the_pool_and_a_bad_name_is_not() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
 
     let url = "ssh://git@gitlab.example.com/other/proj.git";
@@ -358,11 +349,8 @@ fn first_worktree(
 
 #[test]
 fn closing_the_last_worktree_stops_watching_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
     let only = first_worktree(&mut state, &services, &spawner, &id);
 
@@ -379,11 +367,8 @@ fn closing_the_last_worktree_stops_watching_it() {
 
 #[test]
 fn a_worktree_that_is_gone_is_read_without_an_error() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let id = explorer(&mut state, &services, &spawner);
     let only = first_worktree(&mut state, &services, &spawner, &id);
 

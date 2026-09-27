@@ -18,7 +18,7 @@ pub(super) enum Side {
     New,
 }
 
-/// A row as the surface needs it, owned so the lines can borrow it.
+/// A row as the surface needs it, owned.
 #[derive(Default)]
 pub(super) struct Drawn {
     pub(super) text: String,
@@ -49,8 +49,7 @@ pub(super) struct Drawn {
     pub(super) standing: Option<(usize, usize)>,
 }
 
-/// The rows of one view, inside `window`. The file view is the open file; the others
-/// are every changed file, one after another.
+/// The rows of one view inside `window`: the open file, or every changed file in turn.
 pub(super) fn drawn(
     app: &AppState,
     ui: &Ui,
@@ -107,8 +106,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
         .collect()
 }
 
-/// What a live search found on this row, in the columns the row draws. A side that
-/// draws the row blank marks nothing.
+/// What a live search found on this row, in the columns it draws.
 pub(super) fn matched(ui: &Ui, row: usize, text: &str, width: usize) -> Vec<(usize, usize)> {
     let Some(find) = ui.session.find.as_ref().filter(|_| !text.is_empty()) else {
         return Vec::new();
@@ -165,8 +163,7 @@ pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
     here.then(|| file.new.caret())
 }
 
-/// The file and line a row of the whole surface shows, on the new side. A note's
-/// own row shows none.
+/// The file and new-side line a row shows; a note's row shows none.
 pub(crate) fn line_at(
     app: &AppState,
     ui: &Ui,

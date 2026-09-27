@@ -6,8 +6,7 @@ use groove_types::{Worktree, WorktreeStatus};
 use crate::{Pool, Result};
 
 impl Pool {
-    /// The counts a worktree row shows: changes from status, ahead and behind from its own
-    /// head on origin, or ahead of the base when it was never pushed.
+    /// The counts a worktree row shows: changes, then ahead and behind origin or its base.
     pub async fn status(&self, worktree: &Worktree) -> Result<WorktreeStatus> {
         let git = Git::at(&worktree.path);
         let changes = git.status().await?;

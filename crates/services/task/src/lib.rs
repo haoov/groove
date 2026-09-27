@@ -147,7 +147,6 @@ impl State {
     }
 }
 
-/// The sources the config turns on. A source it does not name is not read.
 /// The task sources this machine is set up for, in the order they are offered.
 pub fn source_ids(config: Option<&Config>) -> Vec<ProviderId> {
     let Some(config) = config else {

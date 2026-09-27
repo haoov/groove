@@ -3,8 +3,7 @@
 use crate::Result;
 use crate::files::LaunchDir;
 
-/// The app's loopback server, as the agent reaches it. The MCP server is optional:
-/// hooks stand on their own, and a broken tool server is worse than none.
+/// The app's loopback server as the agent reaches it; the MCP server is optional.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Loopback {
     pub tools: Option<Tools>,

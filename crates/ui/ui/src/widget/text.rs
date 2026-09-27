@@ -35,7 +35,7 @@ pub fn elide(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String
     format!("{}{ELLIPSIS}", text[..cuts[low]].trim_end())
 }
 
-/// The text as it fits `width`, cut at the front so its end survives.
+/// The text as it fits `width`, cut at the front.
 pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String {
     if ctx.measure(text, style) <= width {
         return text.to_string();

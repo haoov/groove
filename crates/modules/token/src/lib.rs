@@ -1,5 +1,4 @@
-//! The bearer token a host is called with: what its own CLI holds, or one handed over.
-//! Nothing here is stored; a token lives as long as the run.
+//! The bearer token a host is called with, from its CLI or handed over; never stored.
 
 mod cli;
 

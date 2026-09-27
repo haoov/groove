@@ -2,8 +2,7 @@
 
 use groove_types::{Skill, Timestamp};
 
-/// One skill, as its file and its directory name describe it. The directory is the
-/// identity, never the `name:` key.
+/// One skill as its file describes it; its directory is its identity, never `name:`.
 pub(crate) fn skill(
     plugin: &str,
     name: &str,

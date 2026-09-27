@@ -22,8 +22,7 @@ pub enum Way {
 }
 
 impl State {
-    /// The rows on screen: the files far from them are let go, and the near ones not
-    /// yet read are returned.
+    /// The rows on screen: far files let go, near ones not yet read returned.
     pub fn show(&mut self, rows: Range<usize>) -> Vec<String> {
         if self.showing == rows {
             return Vec::new();

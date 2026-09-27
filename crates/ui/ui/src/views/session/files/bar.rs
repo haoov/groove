@@ -63,8 +63,7 @@ fn narrowing(ctx: &mut Ctx, line: Rect, bar: &Bar, term: Term, first: bool) {
     row(ctx, line, at, &text, ctx.styles.code(role));
 }
 
-/// The mark the bar carries, at the left of its first row. Returns where the text
-/// starts, which every row shares.
+/// The bar's mark at its left; returns where the text starts.
 fn glass(ctx: &mut Ctx, line: Rect, role: Role) -> f32 {
     let size = ctx.tokens.icon;
     let box_ = Rect::new(

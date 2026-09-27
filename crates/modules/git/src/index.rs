@@ -3,8 +3,7 @@
 use crate::{Git, Result};
 
 impl Git {
-    /// Puts `paths` in the index, whatever their state: a change, a new file, a
-    /// removal.
+    /// Puts `paths` in the index: a change, a new file or a removal.
     pub async fn stage(&self, paths: &[String]) -> Result<()> {
         self.on(&["add", "--"], paths).await
     }
@@ -14,8 +13,7 @@ impl Git {
         self.on(&["restore", "--staged", "--"], paths).await
     }
 
-    /// Throws away what `paths` hold: the index goes back to HEAD, the files HEAD
-    /// has go back to it, and what is left untracked is removed.
+    /// Throws away what `paths` hold: back to HEAD, and what is untracked removed.
     pub async fn discard(&self, paths: &[String]) -> Result<()> {
         let committed = self.in_head(paths).await?;
         let indexed = self.names(&["ls-files", "-z", "--"], paths).await?;

@@ -271,8 +271,7 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
     }
 }
 
-/// How wide the numbers stand: one column a side in split and file, two in inline,
-/// one width over the whole change.
+/// How wide the line numbers stand: one column a side in split and file, two in inline.
 pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
     let digits = match view {
         DiffView::Editor => match app.workspace.opened.as_ref() {

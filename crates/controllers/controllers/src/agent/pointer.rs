@@ -1,5 +1,4 @@
-//! What the pointer does to the agent's own screen: a selection, a click the program
-//! reads, the wheel, and what is copied out of it.
+//! What the pointer does to the agent's screen: select, click, wheel, copy.
 
 use groove_agent_service::Select;
 use groove_types::SessionId;
@@ -44,7 +43,7 @@ fn select(
     kind: Select,
     from: bool,
 ) {
-    let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) else {
+    let Some(terminal) = state.agent.terminal(session) else {
         return;
     };
     match from {
@@ -55,28 +54,28 @@ fn select(
 
 /// The left button on the agent's screen, for the program that reads the mouse.
 fn click(state: &mut AppState, session: &SessionId, cell: (usize, usize), down: bool) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.click(cell, down);
     }
 }
 
 /// The pointer moved with the button down, for that same program.
 fn drag(state: &mut AppState, session: &SessionId, cell: (usize, usize)) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.drag(cell);
     }
 }
 
 /// The clipboard typed at the program the agent runs.
 fn paste(state: &mut AppState, session: &SessionId, text: &str) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.paste(text);
     }
 }
 
 /// What is selected on the agent's screen, onto the clipboard.
 fn copy(state: &mut AppState, services: &Services, session: &SessionId) {
-    let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) else {
+    let Some(terminal) = state.agent.terminal(session) else {
         return;
     };
     if let Some(said) = terminal.selected() {
@@ -86,7 +85,7 @@ fn copy(state: &mut AppState, services: &Services, session: &SessionId) {
 
 /// The wheel over the agent's screen, at the cell the pointer stands on.
 fn scroll(state: &mut AppState, session: &SessionId, lines: i32, cell: (usize, usize)) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.wheel(lines, cell);
     }
 }

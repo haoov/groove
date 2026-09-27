@@ -68,8 +68,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
     }
 }
 
-/// The scopes around the first row the band leaves showing, which is not the first
-/// row of the surface: what a pin covers is off screen as surely as what scrolled past.
+/// The scopes around the first row the pinned band leaves showing.
 fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
     let inline = super::notes::Inline::of(app, ui, ui.session.view);
     let mut pins = Vec::new();

@@ -38,8 +38,7 @@ pub struct Said {
     pub at: Timestamp,
 }
 
-/// A note to act on, wherever it came from. `anchor` is absent on a comment left
-/// on the merge request itself.
+/// A note to act on; `anchor` is absent on a comment on the MR itself.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Note {
     pub origin: NoteOrigin,

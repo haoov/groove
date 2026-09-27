@@ -9,8 +9,7 @@ use groove_worktree::Pool;
 use super::{Added, Service};
 
 impl Service {
-    /// Resolve the name in the pool, or clone a URL into it; record and attach the repo;
-    /// cut its first worktree.
+    /// A pool clone, or a new clone of a URL, attached to the session with its first worktree.
     pub async fn add_repo(
         &self,
         session: &Session,

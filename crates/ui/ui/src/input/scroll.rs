@@ -10,8 +10,7 @@ use crate::views::board::List;
 use crate::views::session::Tab;
 use crate::{Surface, Ui};
 
-/// The column under the pointer scrolls. Wheel down is rows up; the view clamps the
-/// far end.
+/// The column under the pointer scrolls; wheel down is rows up.
 pub(super) fn scroll(
     point: (f32, f32),
     delta: Delta,
@@ -103,8 +102,7 @@ fn carry(delta: Delta, ui: &mut Ui, tokens: crate::tokens::Tokens) {
     ui.board.carry(across);
 }
 
-/// The board column the pointer is over.
-/// The rail's rows, or the feed under them where the pointer stands on it.
+/// The rail's rows, or the feed under them.
 fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
     let on_feed = hits
         .rect_of(&Target::Feed)

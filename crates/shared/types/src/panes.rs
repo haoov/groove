@@ -1,7 +1,6 @@
 //! Where the user left the window's boundaries, as the file on disk holds them.
 
-/// Every column's width but the workspace's, in logical pixels, and how tall the
-/// commit box stands.
+/// Every column's width but the workspace's, and the commit box's height, in logical pixels.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Panes {
     pub rail: f32,

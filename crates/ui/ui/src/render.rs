@@ -1,5 +1,4 @@
-//! The one place that owns a `Frame`: the window as a display list, and what a new
-//! window size asks of the agents.
+//! The one owner of a `Frame`, and what a new window size asks of the agents.
 
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};

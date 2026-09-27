@@ -1,6 +1,4 @@
-//! What the editing surface needs outside the buffer: the files of one worktree, and
-//! the clipboard. Every path is resolved against the worktree root, and a path that
-//! leaves it is refused rather than followed.
+//! The files of one worktree and the clipboard; a path that leaves the worktree is refused.
 
 mod clipboard;
 

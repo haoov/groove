@@ -48,8 +48,7 @@ impl Buffer {
         self.carets = self.carets.iter().map(|one| pick(self, one.head)).collect();
     }
 
-    /// The run of characters of one kind around the caret: a word, the spaces
-    /// between words, or a run of marks.
+    /// The run around the caret: a word, the spaces between words, or a run of marks.
     pub(super) fn word(&self, caret: Caret) -> Selection {
         let Some(line) = self.doc.line(caret.line) else {
             return Selection::at(caret);

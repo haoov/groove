@@ -70,14 +70,10 @@ fn expand_tilde(path: &str, home: &Path) -> PathBuf {
     }
 }
 
-/// The config file changed under the app.
+/// What the outside world tells this capability.
 #[derive(Debug)]
-pub enum Event {
-    Changed,
-}
+pub enum Event {}
 
 pub fn apply(_state: &mut State, event: Event) {
-    match event {
-        Event::Changed => {}
-    }
+    match event {}
 }

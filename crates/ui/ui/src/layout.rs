@@ -1,8 +1,4 @@
-//! The window's regions, from the tokens, the window's size and the user's drags.
-//!
-//! Four columns full height: the rail, the agent's pane, the workspace and the
-//! sidebar. The session header is the workspace's two first lines: the title, then
-//! what the session points at.
+//! The window's four columns, full height: the rail, the agent, the workspace, the sidebar.
 
 use groove_gfx::{CellSize, Rect, Size};
 use groove_types::Panes;
@@ -41,8 +37,7 @@ impl Edge {
     }
 }
 
-/// Every column's width but the workspace's, in logical pixels. The workspace takes
-/// what is left.
+/// Every column's width but the workspace's, which takes the rest, in logical pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Split {
     pub rail: f32,
@@ -94,8 +89,7 @@ impl Split {
         }
     }
 
-    /// Puts `edge` at `x`, moving only the two columns it stands between, and no
-    /// column under its minimum. Logical pixels throughout.
+    /// Puts `edge` at `x`, moving only its two columns and none under its minimum.
     pub fn drag(&mut self, edge: Edge, at: f32, window: (f32, f32), sidebar: bool) {
         let (width, height) = window;
         let x = at;

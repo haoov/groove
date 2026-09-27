@@ -7,7 +7,7 @@ use crate::Ui;
 /// How many characters a note row holds before the frame has said.
 const COLS: usize = 80;
 
-/// The fewest a row is ever given, so a narrow pane still reads.
+/// The fewest columns a row is given.
 const FEWEST: usize = 20;
 
 /// How many characters a note row holds, as the last frame measured it.

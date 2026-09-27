@@ -34,8 +34,7 @@ impl Action {
 pub const CLONE: &str = "\u{0}clone";
 const CLONE_LABEL: &str = "Clone from a URL…";
 
-/// One question. Options are `(label, value)`; `free` accepts typed text; `allow_empty`
-/// lets Enter on nothing mean the default.
+/// One question: `(label, value)` options, `free` for typed text, `allow_empty` for the default.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Prompt {
     pub label: &'static str,

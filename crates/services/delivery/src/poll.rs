@@ -39,7 +39,7 @@ impl Polling {
         !self.asked.contains(worktree) && !self.out.contains(worktree)
     }
 
-    /// Whether its forge has answered, so no MR on the row means it has none.
+    /// Whether the forge has answered for it.
     pub fn knows(&self, worktree: &WorktreeId) -> bool {
         self.asked.contains(worktree) && !self.out.contains(worktree)
     }

@@ -8,8 +8,7 @@ use crate::parse::{Counts, FORMAT, commits, numstat};
 use crate::{Git, Result};
 
 impl Git {
-    /// The newest commits of the checked-out branch, those the base already had
-    /// marked as its own.
+    /// The newest commits of the checked-out branch, the base's own marked.
     pub async fn log(&self, base: Option<&str>, limit: usize) -> Result<Vec<CommitEntry>> {
         let count = limit.to_string();
         let format = format!("--format={FORMAT}");
@@ -45,8 +44,7 @@ impl Git {
         Ok(numstat(&out))
     }
 
-    /// Both sides of every path a commit touched: as the parent had them, and as the
-    /// commit left them.
+    /// Both sides of every path a commit touched: the parent's and the commit's.
     pub async fn sides_in(
         &self,
         sha: &str,

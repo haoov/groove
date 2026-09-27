@@ -1,7 +1,4 @@
-//! The surfaces. `view` reads `AppState` and the ui's own state into a `Frame`;
-//! `input` turns a key or a click into commands. Nothing here talks to a service.
-//!
-//! One directory per surface under `views/`, the surface's own file named after it.
+//! The surfaces: `view` draws the state into a `Frame`, `input` turns keys and clicks into commands.
 
 use groove_controllers::AppState;
 
@@ -86,9 +83,9 @@ pub struct Ui {
     pub agent: AgentUi,
     pub split: Split,
     pub drag: Option<Drag>,
-    /// The pointer is down on the open file, so it is choosing what to hold.
+    /// The pointer is down on the open file, choosing what to hold.
     pub selecting: bool,
-    /// The pointer is down on the change map, so it is dragging the lens.
+    /// The pointer is down on the change map, dragging the lens.
     pub mapping: bool,
     /// The last press, for the next one to know whether it carries on the same click.
     pub clicked: Option<Click>,
@@ -114,7 +111,7 @@ pub struct AgentUi {
     pub selecting: bool,
     /// The pointer is down, and the program in the screen is sent the reports.
     pub clicking: bool,
-    /// Shift was held, so the selection is ours where the program reads the mouse.
+    /// Shift was held: the selection is ours even where the program reads the mouse.
     pub bypassed: bool,
 }
 
@@ -144,8 +141,7 @@ pub enum Of {
     Line { path: String, lines: (u32, u32) },
     /// One path of the explorer; `dir` while it is a directory.
     Path { path: String, dir: bool },
-    /// The worktree, from the commit box: `mr` while it has one to write, `review`
-    /// while the session reviews someone else's work.
+    /// The worktree, from the commit box: `mr` with one to write, `review` in a review.
     Worktree { mr: bool, review: bool },
     /// The session, from the header's own actions.
     Session(groove_types::SessionId),
@@ -195,7 +191,7 @@ impl Ui {
         self.drag.is_some()
     }
 
-    /// The pointer is down on something that follows it, so its moves are input.
+    /// The pointer is down on something that follows it.
     pub fn pointing(&self) -> bool {
         self.drag.is_some()
             || self.selecting

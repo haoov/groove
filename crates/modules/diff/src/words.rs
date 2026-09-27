@@ -59,8 +59,7 @@ struct Word<'a> {
     text: &'a str,
 }
 
-/// A line cut into runs of one kind. Every mark stands alone, so a changed bracket
-/// does not carry the name beside it.
+/// A line cut into runs of one kind; every mark is a run of its own.
 fn words(line: &str) -> Vec<Word<'_>> {
     let mut words = Vec::new();
     let mut from = (0, 0);

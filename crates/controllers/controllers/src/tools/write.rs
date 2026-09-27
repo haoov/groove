@@ -101,7 +101,7 @@ pub fn refuse(state: &mut AppState, id: &ApprovalId) {
     reply.failed(format!("the user refused {}", approval.op));
 }
 
-/// Every write of a session that ends, refused so no agent waits on it.
+/// Every write of a session that ends, refused.
 pub fn drop_asks(state: &mut AppState, session: &SessionId) {
     for (approval, reply) in state.agent.forget_asks(session) {
         reply.failed(format!("the session closed before {} ran", approval.op));

@@ -1,5 +1,4 @@
-//! Who asked for a write, and so who hears how it went. Every write takes one, and
-//! runs the same way whichever it is.
+//! Who asked for a write, and so who hears how it went.
 
 use groove_agent_service::Reply;
 use groove_types::Error;
@@ -8,8 +7,7 @@ use crate::AppState;
 
 #[derive(Debug)]
 pub enum Asker {
-    /// The user, from the surface: a failure lands in the feed, and the box that
-    /// carried the words is cleared.
+    /// The user, from the surface: a failure goes to the feed, and the box is cleared.
     Ui,
     /// The agent, which waits on an answer in words.
     Agent(Reply),
@@ -31,8 +29,7 @@ impl Asker {
         }
     }
 
-    /// The write cannot be made at all. The surface guards these before it asks, so
-    /// only the agent hears about them.
+    /// The write cannot be made at all; only the agent hears it.
     pub(crate) fn refused(self, why: impl Into<String>) {
         if let Asker::Agent(reply) = self {
             reply.failed(why.into());

@@ -16,8 +16,7 @@ pub enum Language {
     Go,
 }
 
-/// The capture names Groove reads, and what each one means. Several names can mean
-/// the same thing: grammars spell these differently and change their spelling.
+/// The capture names Groove reads, several spellings to a meaning.
 const RECOGNIZED: [(&str, Capture); 20] = [
     ("keyword", Capture::Keyword),
     ("function", Capture::Function),
@@ -59,8 +58,7 @@ impl Language {
         Language::Go,
     ];
 
-    /// What one indent step is in this language: what `gofmt`, `rustfmt` and the
-    /// like write, so a file keeps the shape its own tools give it.
+    /// One indent step in this language, as its own formatter writes it.
     pub fn indent(self) -> Indent {
         match self {
             Language::Go => Indent::Tab(4),

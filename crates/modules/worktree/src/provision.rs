@@ -16,8 +16,7 @@ pub struct Provisioned {
 }
 
 impl Pool {
-    /// Fetch the clone, cut the branch when needed, add the worktree, record it.
-    /// Idempotent: the session's existing worktree for the branch is aligned and returned.
+    /// Fetch, cut the branch if needed, add and record the worktree; an existing one is aligned.
     pub async fn provision(
         &self,
         session: &Session,

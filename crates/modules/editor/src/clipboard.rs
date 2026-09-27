@@ -17,8 +17,7 @@ pub fn clipboard() -> Arc<dyn Clipboard> {
     }
 }
 
-/// The clipboard the rest of the desktop shares. Keep it: on Wayland and X11 the
-/// window that copied serves the text to whoever pastes it.
+/// The desktop's clipboard. Keep it alive: on Wayland and X11 the window that copied serves the paste.
 pub struct System {
     held: Mutex<arboard::Clipboard>,
 }

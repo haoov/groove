@@ -62,7 +62,7 @@ pub struct Cached {
     pub lines: usize,
     /// Single glyphs held, for the terminal grid.
     pub glyphs: usize,
-    /// What it took to get there: cache misses since the window opened.
+    /// Cache misses since the window opened.
     pub shaped: u64,
 }
 

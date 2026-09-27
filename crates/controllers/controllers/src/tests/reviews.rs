@@ -2,7 +2,7 @@
 
 use groove_types::{Forge, ReviewMr, SessionId, SessionKind, Timestamp};
 
-use crate::tests::fixture::{pooled_clone, services, sh, state, until};
+use crate::tests::fixture::{pooled_clone, sh, until};
 use crate::{Command as Cmd, SyncSpawner, dispatch, session};
 
 /// An MR on the fixture's own repo, its source branch already on origin.
@@ -37,11 +37,8 @@ fn opened(state: &mut crate::AppState, services: &crate::Services, spawner: &Syn
 
 #[test]
 fn a_review_opens_a_session_of_its_own_on_the_mrs_branch() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     dispatch(
         Cmd::Session(session::Command::ListRepos),
         &mut state,
@@ -88,11 +85,8 @@ fn a_review_opens_a_session_of_its_own_on_the_mrs_branch() {
 
 #[test]
 fn opening_the_same_review_again_selects_the_session_it_already_has() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     dispatch(
         Cmd::Session(session::Command::ListRepos),
         &mut state,
@@ -123,10 +117,7 @@ fn opening_the_same_review_again_selects_the_session_it_already_has() {
 
 #[test]
 fn an_mr_the_queue_does_not_hold_opens_nothing() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     opened(&mut state, &services, &spawner);
     assert!(state.session.open.is_empty());
     assert!(state.errors.is_empty(), "and nothing is reported");
@@ -134,11 +125,8 @@ fn an_mr_the_queue_does_not_hold_opens_nothing() {
 
 #[test]
 fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     state.delivery.reviews = vec![asked()];
     assert!(state.session.pool.is_empty(), "nothing has listed it yet");
 
@@ -157,11 +145,8 @@ fn a_review_takes_the_clone_the_pool_holds_without_listing_it_first() {
 
 #[test]
 fn a_review_opens_on_the_whole_change_and_a_task_on_what_is_uncommitted() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     state.delivery.reviews = vec![asked()];
 
     opened(&mut state, &services, &spawner);

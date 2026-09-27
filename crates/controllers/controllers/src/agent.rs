@@ -166,8 +166,7 @@ fn auto_approve(
     crate::session::set_auto_approve(services, spawner, session, on);
 }
 
-/// The launch runs as a job; its continuation stores the terminal or the error.
-/// Every agent runs at the worktree root: the cwd carries no session.
+/// The agent launched in a job at the worktree root; the continuation stores it or the error.
 pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (u16, u16)) {
     let Some(session) = state
         .session
@@ -232,13 +231,13 @@ pub fn end(state: &mut AppState, session: &SessionId) {
 }
 
 pub fn send(state: &mut AppState, session: &SessionId, bytes: &[u8]) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.write(bytes);
     }
 }
 
 pub fn resize(state: &mut AppState, session: &SessionId, cols: u16, rows: u16) {
-    if let Some(terminal) = state.agent.agent(session).and_then(|a| a.terminal.as_ref()) {
+    if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.resize(cols, rows);
     }
 }

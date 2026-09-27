@@ -20,7 +20,7 @@ pub struct Tool {
     pub description: String,
     /// The arguments it takes, as JSON Schema.
     pub schema: serde_json::Value,
-    /// It changes something, so a human decides before it runs.
+    /// It changes something, and a human decides first.
     pub writes: bool,
 }
 
@@ -86,7 +86,7 @@ pub(crate) fn worktree() -> (&'static str, serde_json::Value) {
     )
 }
 
-/// The task a read is about, which is your own unless you say otherwise.
+/// The task a read is about, your own by default.
 pub(crate) fn task() -> (&'static str, serde_json::Value) {
     ("task_id", text("Defaults to your own task."))
 }

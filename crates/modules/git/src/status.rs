@@ -2,8 +2,7 @@ use crate::parse::{Change, porcelain};
 use crate::{Error, Git, Result};
 
 impl Git {
-    /// Every changed path, index and worktree letters as git wrote them. Untracked
-    /// files one by one: a new directory is a list of files, not one row.
+    /// Every changed path with its index and worktree letters, untracked files one by one.
     pub async fn status(&self) -> Result<Vec<Change>> {
         let out = self.text(&["status", "--porcelain", "-uall"]).await?;
         Ok(porcelain(&out))
@@ -20,8 +19,7 @@ impl Git {
         })
     }
 
-    /// Commits this branch is ahead of and behind its own head on origin; `None` when
-    /// the branch was never pushed.
+    /// Commits ahead of and behind the branch on origin; `None` when it was never pushed.
     pub async fn ahead_behind(&self, branch: &str) -> Result<Option<(u32, u32)>> {
         let upstream = format!("origin/{branch}");
         if !self.ref_exists(&upstream).await? {

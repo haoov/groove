@@ -203,7 +203,7 @@ fn lines(before: (Option<MrState>, Option<CiState>), held: &Held) -> Vec<Line> {
     out
 }
 
-/// Whether a run is over, so its result is worth a line.
+/// Whether a run is over.
 fn finished(ci: CiState) -> bool {
     !matches!(ci, CiState::Pending | CiState::Running | CiState::Unknown)
 }

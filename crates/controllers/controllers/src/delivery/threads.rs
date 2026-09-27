@@ -1,5 +1,4 @@
-//! What a session says on its MR: a note posted, a thread answered or resolved, a
-//! comment, a verdict.
+//! What a session says on its MR: a posted note, a thread answered or resolved, a verdict.
 
 use groove_delivery_service::Said;
 use groove_types::{AnnotationId, ReviewVerdict, TimelineKind};

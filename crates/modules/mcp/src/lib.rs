@@ -1,5 +1,4 @@
-//! The loopback server an agent asks its tools of: MCP over HTTP and SSE.
-//! `GET /sse?task=<session>` opens the stream, `POST /message?sessionId=` carries the calls.
+//! The agent's tool server, MCP over HTTP and SSE: `GET /sse?task=` streams, `POST /message?sessionId=` calls.
 
 mod call;
 mod rpc;
@@ -67,6 +66,7 @@ async fn accept(listener: TcpListener, token: String, sink: Sink) {
     let live = Connections::default();
     loop {
         let Ok((stream, _)) = listener.accept().await else {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             continue;
         };
         let (token, live, sink) = (token.clone(), live.clone(), sink.clone());

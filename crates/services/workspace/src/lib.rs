@@ -202,17 +202,10 @@ pub fn save(dir: &Path, path: &str, text: &str) -> Result<()> {
     groove_editor::save(dir, path, text)
 }
 
-/// The filesystem watcher and the forge poll speak here.
+/// What the outside world tells this capability.
 #[derive(Debug)]
-pub enum Event {
-    FilesChanged {
-        worktree: WorktreeId,
-        paths: Vec<String>,
-    },
-}
+pub enum Event {}
 
 pub fn apply(_state: &mut State, event: Event) {
-    match event {
-        Event::FilesChanged { .. } => {}
-    }
+    match event {}
 }

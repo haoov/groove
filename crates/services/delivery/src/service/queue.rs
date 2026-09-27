@@ -6,8 +6,7 @@ use groove_types::{Error, PoolEntry, ReviewMr};
 use super::Service;
 
 impl Service {
-    /// Every host's queue, newest first, each MR with where the pool holds its repo.
-    /// A host that fails is named in the errors and the others still answer.
+    /// Every host's queue, newest first, with where the pool holds each repo, and the hosts that failed.
     pub async fn review_queue(pool: &[PoolEntry]) -> (Vec<ReviewMr>, Vec<Error>) {
         let (mut found, mut failed) = (Vec::new(), Vec::new());
         for host in hosts(pool) {

@@ -69,8 +69,7 @@ fn batch(paths: &mut Vec<PathBuf>) -> Vec<PathBuf> {
     batch
 }
 
-/// Creates, writes, renames and removals. Opening a file is not a change: git opens
-/// the worktree to answer a read.
+/// Creates, writes, renames and removals; opening a file is not a change.
 fn is_change(kind: &EventKind) -> bool {
     matches!(
         kind,

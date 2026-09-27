@@ -4,11 +4,8 @@ use super::*;
 
 #[test]
 fn a_search_across_the_worktree_reports_what_it_finds() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let root = std::path::Path::new(&dir);
     std::fs::write(root.join("a.txt"), "one needle here\nplain\n").unwrap();
@@ -57,11 +54,8 @@ fn a_search_across_the_worktree_reports_what_it_finds() {
 
 #[test]
 fn a_search_looks_only_where_the_path_lets_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let root = std::path::Path::new(&dir);
     std::fs::write(root.join("a.txt"), "one needle here\n").unwrap();
@@ -91,11 +85,8 @@ fn a_search_looks_only_where_the_path_lets_it() {
 
 #[test]
 fn the_worktrees_own_files_are_listed_and_one_that_never_changed_opens() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
 
     dispatch(

@@ -62,7 +62,7 @@ and what the forge says about it.
 A controller function reads its arguments, calls services, puts the answers into state and
 calls the next controller. Nothing else.
 
-| Controller | Keeps | Moves out |
+| Controller | Keeps | Moved out |
 |---|---|---|
 | `session` | open, select, close, delete, repos: service calls in order | the open sequence and delete order → `session`; job helpers → `spawn` |
 | `task` | load, open, finish, adopt, log hours, status | attention and the worked rule → `task` |
@@ -70,12 +70,3 @@ calls the next controller. Nothing else.
 | `delivery` (new) | poll tick, MR writes, notes, verdicts | — |
 | `agent` | start, end, send, pointer, skills | the terminal lookup → `agent` state |
 | `tools` | one function per tool: call the controller or service, reply | JSON shapes → `tools`; filing → `task` |
-
-## Order
-
-1. `delivery`: MR, CI, threads, notes, poll and queue leave `workspace` and the session rows.
-   This removes the agent-write, feed and attention bugs.
-2. `session`: the selected worktree, worktree lookup, the log, the open and delete sequences.
-3. `workspace`: the change, the buffer and git, one base, stale answers checked.
-4. `task` and `tools`.
-5. The `db` helpers, dead code, comments, tests and docs.

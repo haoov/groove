@@ -6,10 +6,7 @@ use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
 #[test]
 fn opening_an_explorer_adds_a_row_selects_it_and_starts_its_agent() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     dispatch(
         Cmd::Session(Command::OpenExplorer {
             title: Some(" my idea ".into()),
@@ -45,10 +42,7 @@ fn opening_an_explorer_adds_a_row_selects_it_and_starts_its_agent() {
 
 #[test]
 fn closing_ends_the_agent_and_moves_the_selection() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     for _ in 0..3 {
         dispatch(
             Cmd::Session(Command::OpenExplorer { title: None }),
@@ -129,10 +123,7 @@ fn closing_ends_the_agent_and_moves_the_selection() {
 
 #[test]
 fn the_agent_runs_at_the_worktree_root_never_in_a_session_directory() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     std::fs::create_dir_all(home.path().join("wt")).unwrap();
     let mut config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/wt" } }"#).unwrap();
@@ -187,10 +178,7 @@ fn the_agent_runs_at_the_worktree_root_never_in_a_session_directory() {
 
 #[test]
 fn explorers_persist_and_the_rail_restores_with_agents() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     for title in ["keep", "drop", "closed"] {
         open_explorer(&mut state, &services, &spawner, title);
     }
@@ -324,10 +312,7 @@ fn a_closed_session_stays_on_the_board_and_comes_back_when_picked() {
 
 #[test]
 fn an_explorer_with_no_worktree_is_still_on_the_board() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     open_explorer(&mut state, &services, &spawner, "bare");
     let id = state.session.selected.clone().expect("a session");
     dispatch(
@@ -351,10 +336,7 @@ fn an_explorer_with_no_worktree_is_still_on_the_board() {
 
 #[test]
 fn the_board_holds_every_session_without_being_asked() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     open_explorer(&mut state, &services, &spawner, "one");
     until(&spawner, &services, &mut state, |s| {
         !s.session.living.is_empty()
@@ -380,10 +362,7 @@ fn the_board_holds_every_session_without_being_asked() {
 
 #[test]
 fn a_session_taken_away_leaves_the_board_at_once() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     dispatch(
         Cmd::Session(Command::OpenExplorer { title: None }),
         &mut state,

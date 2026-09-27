@@ -75,8 +75,7 @@ impl Store {
         Ok(rows.into_iter().map(Mr::from).collect())
     }
 
-    /// What the forge answered, written down. A worktree keeps one MR, so any other
-    /// row of it goes.
+    /// What the forge answered, written down as the worktree's one MR.
     pub async fn save(&self, worktree: &WorktreeId, forge: Forge, read: &Snapshot) -> Result<Mr> {
         let mut tx = self.db.pool().begin().await?;
         sqlx::query("DELETE FROM mrs WHERE worktree_id = ? AND remote_id != ?")

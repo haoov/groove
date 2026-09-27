@@ -142,9 +142,7 @@ pub struct BlameLine {
     pub uncommitted: bool,
 }
 
-/// The `(removed, added)` row pairs that get a word diff: a run of removed rows
-/// followed by a run of added rows of the same length, paired in order. Anything
-/// else is none.
+/// The `(removed, added)` row pairs of equal runs, which get a word diff.
 pub fn word_diff_pairs(rows: &[Row]) -> Vec<(usize, usize)> {
     let mut pairs = Vec::new();
     let mut at = 0;

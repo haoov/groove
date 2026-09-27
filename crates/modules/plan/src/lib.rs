@@ -37,7 +37,7 @@ impl Plan {
     pub async fn in_memory() -> Result<Self> {
         let db = Db::in_memory()
             .await
-            .map_err(|e| Error::invalid(format!("no database: {e}")))?;
+            .map_err(|e| Error::db(format!("no database: {e}")))?;
         Ok(Self::new(db))
     }
 
@@ -78,5 +78,5 @@ impl Plan {
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::invalid(format!("the plan could not be read or written: {source}"))
+    Error::db(format!("the plan could not be read or written: {source}"))
 }

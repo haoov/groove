@@ -1,5 +1,4 @@
-//! The skills an agent is sent: the list it offers, one written or deleted, and the
-//! send that types it into the agent's own prompt.
+//! The skills an agent is sent: listed, written, deleted, and typed into its prompt.
 
 use groove_agent_service::skills::{self, Dirs};
 use groove_types::{SessionId, Skill};
@@ -27,8 +26,7 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// One skill typed into the agent's prompt, then the return that sends it. The
-/// return waits a beat: the agent's own menu opens on the slash and eats it.
+/// One skill typed into the agent's prompt, then the return a beat later, once its menu settles.
 pub fn send(
     state: &mut AppState,
     spawner: &dyn Spawner,

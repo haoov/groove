@@ -50,8 +50,6 @@ impl From<WorktreeRow> for Worktree {
     }
 }
 
-const WORKTREE_COLUMNS: &str = "id, session_id, repo_id, branch, path, base_ref, created_at";
-
 impl Pool {
     pub async fn repo(&self, id: &RepoId) -> Result<Repo> {
         let row: Option<RepoRow> = sqlx::query_as(
@@ -164,6 +162,3 @@ impl Pool {
         Ok(())
     }
 }
-
-#[allow(dead_code)]
-const _: &str = WORKTREE_COLUMNS;

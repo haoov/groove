@@ -1,5 +1,4 @@
-//! Repos and worktrees on disk and in the database. The pool of clones lives under
-//! `<root>/main`, a session's worktrees under `<root>/worktrees/<session>/<project>/<branch>`.
+//! Repos and worktrees: clones under `<root>/main`, worktrees under `<root>/worktrees/<session>/<project>/<branch>`.
 
 mod error;
 mod layout;

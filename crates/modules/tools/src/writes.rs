@@ -243,7 +243,6 @@ fn repos() -> Vec<Tool> {
     ]
 }
 
-/// What the task's own rows take.
 /// What the user's own skills take.
 fn skills() -> Vec<Tool> {
     vec![write(

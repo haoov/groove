@@ -1,5 +1,4 @@
-//! The sidebar's files tab: what changed in the selected worktree, the common root
-//! once and then a group per directory under it.
+//! The sidebar's files tab: the selected worktree's changes, grouped by directory.
 
 mod bar;
 mod commits;
@@ -189,7 +188,7 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
     ctx.quad(Rect::new(rect.x, rect.y, thickness, rect.h), rule);
 }
 
-/// How many rows the path term leaves at most, since every one of them is drawn.
+/// How many rows the path term keeps at most.
 pub(crate) const ROWS_MAX: usize = 200;
 
 /// The changed files the path term leaves, then the other worktree files it names.

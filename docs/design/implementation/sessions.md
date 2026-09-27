@@ -35,17 +35,13 @@ row; it leaves the rail and stays on the board's Live column, which lists every 
 on disk. Picking it there puts it back on the rail with its agent.
 Only `session.delete` takes it away.
 
-| Still to build | Does |
-|---|---|
-| `session.discard_explorer` · `session.convert_explorer` | discard; or file the task and move the worktrees, the rows and the agent onto the new id |
-| `session.get_active` · `session.get` | reads for the MCP tools |
-
 `session.open_review` takes an MR of the board's queue: its session id is derived from the
 project and the number, so reopening finds the session it already has. The repo comes from
 the pool when it holds it and is cloned from the MR's own page when it does not, and the
 worktree tracks the MR's source branch rather than cutting one.
 
-The worktree row's delivery icons come from `WorktreeDelivery`; its skill button sends
+The worktree row joins the `session` service's git status to the `delivery` service's MR;
+its skill button sends
 `agent.send_skill`. Property and body edits, finish and delete are `task.*` controllers;
 the overview only renders them. Finish is offered when every worktree is merged or closed.
 
@@ -55,16 +51,11 @@ the overview only renders them. Finish is offered when every worktree is merged 
 reaches the TUI like any key. The action bar: the skills menu, reload, and the ask
 with Approve and Review.
 
-| Still to build | Does |
-|---|---|
-| `agent.send_skill` | write `/groove:<name>` and Enter |
-| `agent.reload` | end, then start with `--resume` |
-
 **Scoped skills**: `--plugin-dir` per launch, so the pane's menu lists exactly what
 this agent has; stale after a save until reload.
 
 ## Needs
 
 - [x] `session_state`: one leaf row per session, so `sessions` is never altered again.
-- [x] `WorktreeDelivery` in `types` and its fold in the `session` service.
+- [x] `WorktreeDelivery` in `types`, joined from `session` and `delivery`.
 - [x] Explorer conversion as one controller over `task`, `session` and `agent`.

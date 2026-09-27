@@ -1,5 +1,4 @@
-//! The loopback receiver: the agent's hooks come back here and nowhere else.
-//! One route, `POST /hook/<session>`, on 127.0.0.1, behind a bearer token.
+//! The loopback the agent's hooks post to: `POST /hook/<session>` on 127.0.0.1, behind a bearer token.
 
 mod parse;
 
@@ -63,6 +62,7 @@ fn failed(e: std::io::Error) -> Error {
 async fn accept(listener: TcpListener, token: String, sink: Sink) {
     loop {
         let Ok((stream, _)) = listener.accept().await else {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             continue;
         };
         let (token, sink) = (token.clone(), sink.clone());

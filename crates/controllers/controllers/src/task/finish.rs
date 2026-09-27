@@ -5,8 +5,7 @@ use groove_types::{SessionId, SessionKind, StatusIntent, TaskKey};
 use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner, session};
 
-/// The task done at its source, and only then its session taken away. Work that is
-/// not committed or pushed stops the teardown, and the status stands.
+/// The task done at its source, then its session taken away; lost work stops the teardown.
 pub(crate) fn finish(
     state: &mut AppState,
     services: &Services,

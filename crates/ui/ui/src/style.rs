@@ -122,8 +122,7 @@ impl Styles {
             .mix(self.palette.lavender, crate::tokens::HELD)
     }
 
-    /// The rules above and below the row the caret is on. Brighter than a panel's
-    /// hairlines, which are structure rather than a place.
+    /// The rules above and below the caret's row, brighter than a panel's hairlines.
     pub fn here(&self) -> Color {
         self.palette.overlay0
     }

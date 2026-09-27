@@ -4,11 +4,8 @@ use super::*;
 
 #[test]
 fn a_file_is_staged_then_taken_back_out() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -46,11 +43,8 @@ fn a_file_is_staged_then_taken_back_out() {
 
 #[test]
 fn discarding_a_file_puts_it_back_and_takes_it_off_the_list() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let file = std::path::Path::new(&dir).join("a.txt");
     let before = std::fs::read_to_string(&file).unwrap();
@@ -79,11 +73,8 @@ fn discarding_a_file_puts_it_back_and_takes_it_off_the_list() {
 
 #[test]
 fn a_commit_takes_the_index_and_empties_the_message() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -119,11 +110,8 @@ fn a_commit_takes_the_index_and_empties_the_message() {
 
 #[test]
 fn a_commit_with_no_message_is_not_made() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     state.workspace.message.edit(&Edit::Insert("   ".into()));
     act(&mut state, &services, &spawner, workspace::Command::Commit);
@@ -134,11 +122,8 @@ fn a_commit_with_no_message_is_not_made() {
 
 #[test]
 fn a_stage_from_outside_the_window_reaches_the_list() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -159,11 +144,8 @@ fn a_stage_from_outside_the_window_reaches_the_list() {
 
 #[test]
 fn a_commit_from_outside_the_window_reaches_the_diff() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
     std::fs::write(at.join("a.txt"), "changed\n").unwrap();
@@ -184,11 +166,8 @@ fn a_commit_from_outside_the_window_reaches_the_diff() {
 
 #[test]
 fn a_commit_is_pushed_and_the_branch_stops_being_ahead() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
     std::fs::write(at.join("a.txt"), "changed\n").unwrap();
@@ -211,11 +190,8 @@ fn a_commit_is_pushed_and_the_branch_stops_being_ahead() {
 
 #[test]
 fn discarding_everything_leaves_the_worktree_as_head_has_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
     let before = std::fs::read_to_string(at.join("a.txt")).unwrap();
@@ -240,11 +216,8 @@ fn discarding_everything_leaves_the_worktree_as_head_has_it() {
 
 #[test]
 fn pulling_a_branch_that_never_moved_says_nothing_went_wrong() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     act(&mut state, &services, &spawner, workspace::Command::Pull);
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());

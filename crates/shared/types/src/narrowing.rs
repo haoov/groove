@@ -1,7 +1,6 @@
 //! What a typed query keeps: one rule, wherever something is narrowed by text.
 
-/// Whether `hay` holds every word of `query`, ignoring case. An empty query keeps
-/// everything.
+/// Whether `hay` holds every word of `query`, ignoring case.
 pub fn narrows(hay: &str, query: &str) -> bool {
     score(hay, query).is_some()
 }

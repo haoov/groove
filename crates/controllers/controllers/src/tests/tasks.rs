@@ -6,8 +6,8 @@ use groove_types::{Priority, StatusIntent};
 use wiremock::matchers::method;
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::tests::fixture::{services, state, until};
-use crate::{Command as Cmd, SyncSpawner, dispatch, task};
+use crate::tests::fixture::until;
+use crate::{Command as Cmd, dispatch, task};
 
 fn issue() -> serde_json::Value {
     serde_json::json!({
@@ -73,10 +73,7 @@ pub(super) fn answering() -> (tokio::runtime::Runtime, MockServer) {
 #[test]
 fn the_tasks_a_source_answers_with_land_in_the_slice() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -99,10 +96,7 @@ fn the_tasks_a_source_answers_with_land_in_the_slice() {
 
 #[test]
 fn nothing_is_read_while_no_source_is_configured() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 
     dispatch(
         Cmd::Task(task::Command::Load),
@@ -119,10 +113,7 @@ fn nothing_is_read_while_no_source_is_configured() {
 #[test]
 fn opening_a_task_starts_a_session_that_works_it() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -164,10 +155,7 @@ fn opening_a_task_starts_a_session_that_works_it() {
 #[test]
 fn the_task_a_session_works_arrives_with_its_body() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -202,10 +190,7 @@ fn the_task_a_session_works_arrives_with_its_body() {
 #[test]
 fn opening_a_task_that_is_already_open_selects_its_session() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -237,10 +222,7 @@ fn opening_a_task_that_is_already_open_selects_its_session() {
 #[test]
 fn a_task_with_no_start_of_its_own_starts_where_its_session_did() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));

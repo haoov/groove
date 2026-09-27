@@ -10,8 +10,7 @@ impl Git {
         self.text(&args).await.map(drop)
     }
 
-    /// Every branch head on origin, asked of the remote itself. An error is an
-    /// unreachable origin, never a missing branch.
+    /// Every branch head on origin, asked of the remote; an error means origin is unreachable.
     pub async fn remote_heads(&self) -> Result<Vec<String>> {
         let out = self.text(&["ls-remote", "--heads", "origin"]).await?;
         let mut heads: Vec<String> = out

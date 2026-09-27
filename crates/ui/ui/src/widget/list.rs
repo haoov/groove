@@ -48,8 +48,7 @@ impl<'a> Row<'a> {
     }
 }
 
-/// Rows from the top of `rect`, one row height each, the selected one on a background.
-/// Returns the y under the last row.
+/// Rows from the top of `rect`, the selected one on a ground; returns the y under the last.
 pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>) -> f32 {
     let height = ctx.tokens.row;
     let raised = ctx.styles.raised();

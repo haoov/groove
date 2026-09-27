@@ -1,6 +1,4 @@
-//! An explorer promoted to the session of a task: its worktrees renamed and moved to
-//! the task's own directory, then its rows handed to the task's. A step that fails
-//! undoes the ones before it.
+//! An explorer promoted to a task's session: worktrees renamed and moved, rows handed over, undone on failure.
 
 use std::path::{Path, PathBuf};
 
@@ -48,8 +46,7 @@ impl Service {
         Ok((session, worktrees))
     }
 
-    /// Where each worktree goes: the task's branch for an explorer's own branch, one
-    /// per repo, and the task's directory for all of them.
+    /// Where each worktree goes: the task's branch for an explorer's own, in the task's directory.
     fn plan(
         &self,
         explorer: &SessionId,

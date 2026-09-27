@@ -52,16 +52,13 @@ them; a bar in the commit box's place names the one that stands.
 
 | Still to build | Does |
 |---|---|
-| `workspace.get_diff` · `workspace.get_status` | reads for the MCP tools |
 | `workspace.refresh` | reload status, summary, MR, CI and threads at once |
-| `workspace.expand` | a gap's hidden lines, from the document already held |
 | `workspace.blame` | blame for the file, uncommitted lines marked |
 
 ## Annotations
 
-**Module `annotations`**, on `db` and `forge`: the store and the post. **Service
-`workspace`** holds the notes of the selected worktree — annotations and threads — as one
-list. A row is session, repo, path, a line range on the new side, content, author, status.
+**Module `annotations`**, on `db`: the store. **Service `delivery`** holds each session's
+notes, and shows the selected one's beside its worktree's threads as one list. A row is session, repo, path, a line range on the new side, content, author, status.
 
 **One inline layer.** A note stands in rows of the surface under the line it was left on:
 its mark where that row's number would be, its words on the code's own column, the lines it
@@ -115,10 +112,6 @@ module lists the worktree's own paths, which `workspace.list_paths` reads once p
 so the path term narrows the whole worktree and not only the diff. In the surface, a find
 session over the open file or the whole change is the ui's own state.
 
-| Still to build | Does |
-|---|---|
-| `workspace.get_open_file` · `workspace.list_files` · `workspace.read_file` | reads for the MCP tools |
-
 ## Terminal
 
 **Base `exec::pty`**: spawn, stream, write, resize, end, batched. **Module `terminal`**:
@@ -154,7 +147,8 @@ From the agent, every one of these goes through `approvals` unless auto-approve 
 ## Forge
 
 **Module `forge`**: gitlab and github behind one `Remote` enum, the forge decided by the
-host alone. Tokens come from module `token` — `gh auth token` and `glab auth status`, held
+host alone. **Service `delivery`** owns each worktree's MR, CI and threads, the poll and
+the review queue, and connects to the forge itself. Tokens come from module `token` — `gh auth token` and `glab auth status`, held
 for the run, never stored. One read call brings a `Snapshot`: the MR, its CI and its
 threads. One MR per worktree at most. Create with the worktree's branch as source and its
 `base_ref` or the repo default as target, a footer linking the task. Plus requested
@@ -191,7 +185,6 @@ approval out of GraphQL, so `http` carries the plain calls that stand beside an 
 
 | Still to build | Does |
 |---|---|
-| every forge write from the agent | through `approvals`, once it exists |
 | `workspace.request_review` | add reviewers |
 
 The MR surface is one for own and reviewed MRs; CI shows on the worktree row and on the

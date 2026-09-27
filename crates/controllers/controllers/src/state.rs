@@ -4,8 +4,7 @@ use std::path::PathBuf;
 
 use groove_agent_service::{Receiver, Server};
 
-/// The machine the app runs on: the directories the controllers need, and the
-/// loopbacks the binary opened for the agents.
+/// The app's directories, and the loopbacks the binary opened for the agents.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Env {
     pub home: PathBuf,
@@ -95,11 +94,21 @@ impl AppState {
 
     /// What a job could not do, for the feed to say.
     pub fn failed(&mut self, error: groove_types::Error) {
-        self.errors.push(Told::now(error));
+        kept(&mut self.errors, Told::now(error));
     }
 
     /// What a job wants the user to hear.
     pub fn say(&mut self, said: impl Into<String>) {
-        self.notes.push(Told::now(said.into()));
+        kept(&mut self.notes, Told::now(said.into()));
     }
+}
+
+/// How many errors and notes the feed keeps.
+const TOLD_MAX: usize = 100;
+
+/// One more at the end, the oldest let go past `TOLD_MAX`.
+fn kept<T>(list: &mut Vec<Told<T>>, one: Told<T>) {
+    list.push(one);
+    let over = list.len().saturating_sub(TOLD_MAX);
+    list.drain(..over);
 }

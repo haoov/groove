@@ -20,8 +20,7 @@ struct Block {
     acts: bool,
 }
 
-/// A row of the surface: a row of the view, one row of a note under it, the buttons
-/// of a note, or the note being typed.
+/// A row of the surface: a view row, a note row, a note's buttons, or the note being typed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Slot {
     Code(usize),

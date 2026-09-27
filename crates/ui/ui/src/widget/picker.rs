@@ -5,8 +5,7 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{box_in, row, slot_at};
 
-/// A value the user can change, as a button with the caret that says so. Returns what
-/// it covers.
+/// A value the user can change, as a button with a caret; returns what it covers.
 pub fn picker(ctx: &mut Ctx, line: Rect, x: f32, label: &str, role: Role, lit: bool) -> Rect {
     let style = ctx.styles.body(role);
     let width = ctx.measure(label, &style);

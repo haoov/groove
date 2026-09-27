@@ -10,8 +10,7 @@ use crate::views::session::find::Finding;
 use crate::widget::Field;
 use crate::{Focus, Ui};
 
-/// The find bar's own keys, while the workspace holds the keyboard: the bar takes
-/// what is typed until `Enter` hands the code back, and the chords step either way.
+/// The find bar's keys: it takes what is typed until `Enter`, and the chords step either way.
 pub(super) fn finding(
     key: Key,
     mods: Modifiers,
@@ -105,8 +104,7 @@ fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         .collect()
 }
 
-/// The bar open on one of its terms, on the tab that shows it, the commit box giving
-/// the keyboard up. The board has no file list, so nothing opens there.
+/// The bar open on one term, on the tab that shows it; the board has none.
 pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
     if ui.showing(app) != crate::Surface::Session {
         return;
@@ -119,8 +117,7 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
     ui.session.composing = false;
 }
 
-/// What a keystroke asks of the bar: a term narrowed, the search run again, or the
-/// first file it left opened.
+/// What a keystroke asks of the bar: a term narrowed, the search run again, or a file opened.
 pub(super) fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let Some(term) = ui.session.bar.typing else {
         return Vec::new();

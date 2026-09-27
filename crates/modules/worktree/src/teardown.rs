@@ -8,8 +8,7 @@ use groove_types::{SessionId, Worktree, WorktreeId};
 use crate::{Error, Pool, Result};
 
 impl Pool {
-    /// Removes the directory, the local branch and the row. Uncommitted or unpushed work
-    /// is refused unless forced; origin's copy of the branch is never touched.
+    /// Removes the directory, the local branch and the row; unforced, lost work refuses it.
     pub async fn close(&self, id: &WorktreeId, force: bool) -> Result<Worktree> {
         let worktree = self.worktree(id).await?;
         if !force {
@@ -21,8 +20,7 @@ impl Pool {
         Ok(worktree)
     }
 
-    /// Every worktree of the session, its directory and its branch, then the session
-    /// directory. Unforced, it refuses to lose work that is not committed or pushed.
+    /// Every worktree of the session, then its directory; unforced, lost work refuses it.
     pub async fn cleanup_session(&self, session: &SessionId, force: bool) -> Result<()> {
         let dir = self.layout.session_dir(session.as_str());
         let worktrees = self.worktrees_of(session).await?;

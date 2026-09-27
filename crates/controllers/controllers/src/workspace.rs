@@ -8,7 +8,7 @@ mod paths;
 mod search;
 
 use crate::asker::Asker;
-use groove_types::{DiffMode, Edit, Selection, WorktreeId};
+use groove_types::{DiffMode, Edit, Selection};
 
 use self::diff::{mark_read, reread, show};
 use self::editor::{copy, cut, edit_file, open_file, paste, save_file};
@@ -220,8 +220,4 @@ fn on_remote(state: &mut AppState, services: &Services, spawner: &dyn Spawner, a
         return;
     };
     git::remote(state, services, spawner, worktree, act, Asker::Ui);
-}
-
-pub fn loaded_for(state: &AppState) -> Option<&WorktreeId> {
-    state.workspace.worktree.as_ref()
 }

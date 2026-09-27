@@ -6,8 +6,7 @@ use super::Buffer;
 use crate::history::{Change, History};
 
 impl Buffer {
-    /// A new line at every caret, under the one it leaves: what a reader writes next
-    /// starts where the line above it starts.
+    /// A new line at every caret, indented like the line above.
     pub(super) fn broke(&mut self) {
         let changes = self.at_each(|buffer, one| {
             let range = buffer.range(one);
@@ -69,8 +68,7 @@ impl Buffer {
         })
     }
 
-    /// One change per caret, in reverse reading order so the offsets ahead of each
-    /// change are still the ones it was built from.
+    /// One change per caret, last first.
     pub(super) fn at_each(
         &self,
         change: impl Fn(&Self, &Selection) -> Option<Change>,

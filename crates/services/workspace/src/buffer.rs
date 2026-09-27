@@ -19,7 +19,7 @@ impl State {
         self.changes.replace(read.aligned);
     }
 
-    /// The buffer owes the disk nothing, so a later read may replace it.
+    /// The buffer marked as what the disk holds.
     pub fn saved(&mut self, path: &str) {
         if let Some(open) = self.opened.as_mut().filter(|open| open.path == path) {
             open.new.saved();

@@ -70,8 +70,7 @@ pub fn paths(dir: &Path, cap: usize) -> Vec<String> {
     out
 }
 
-/// Every line under `dir` holding `query`, handed over in batches. Blocks until the
-/// walk is done or stopped, so it belongs on a thread of its own.
+/// Every line under `dir` holding `query`, in batches; blocks until the walk ends or stops.
 pub fn walk(
     dir: &Path,
     query: &str,

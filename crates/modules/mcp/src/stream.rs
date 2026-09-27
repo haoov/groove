@@ -82,7 +82,7 @@ pub fn open(live: &Connections, query: Option<&str>) -> Response<Body> {
         .unwrap_or_else(|_| reply(StatusCode::INTERNAL_SERVER_ERROR))
 }
 
-/// A comment now and then, so nothing between us takes the quiet for a death.
+/// A comment on the stream every `ALIVE_EVERY`.
 async fn alive(tx: mpsc::Sender<Bytes>) {
     loop {
         tokio::time::sleep(ALIVE_EVERY).await;

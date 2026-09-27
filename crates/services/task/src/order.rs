@@ -13,8 +13,7 @@ pub struct Planned<'a> {
     pub later: bool,
 }
 
-/// The tasks in the user's order: the placed ones first, then the rest as the source
-/// answered, all of them now.
+/// The tasks in the user's order: the placed ones, then the rest as the source answered.
 pub fn ordered<'a>(order: &[Placed], tasks: &[&'a Task]) -> Vec<Planned<'a>> {
     let mut left: Vec<&'a Task> = tasks.to_vec();
     let mut planned = Vec::with_capacity(left.len());
@@ -36,8 +35,7 @@ pub fn ordered<'a>(order: &[Placed], tasks: &[&'a Task]) -> Vec<Planned<'a>> {
     now.into_iter().chain(rest).chain(later).collect()
 }
 
-/// The order after `id` moves above `before`, or to the end of its side when nothing
-/// stands below it.
+/// The order after `id` moves above `before`, or to the end of its side.
 pub fn moved(
     shown: &[Planned<'_>],
     id: &ExternalId,

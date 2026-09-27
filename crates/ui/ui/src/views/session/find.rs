@@ -25,7 +25,7 @@ pub struct Finding {
     pub typing: bool,
     pub hits: Vec<Hit>,
     pub at: usize,
-    /// The view the hits were read from, since rows differ between views.
+    /// The view the hits were read from.
     pub view: DiffView,
 }
 

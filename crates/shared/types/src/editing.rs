@@ -36,8 +36,7 @@ impl Indent {
     }
 }
 
-/// What one caret owns: where its range began, and where the caret itself is. The
-/// two are equal when nothing is selected.
+/// One caret's range: where it began, and where the caret is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Selection {
     pub anchor: Caret,
@@ -64,8 +63,7 @@ impl Selection {
         }
     }
 
-    /// What of this selection lies on `line`: the columns it covers, and whether it
-    /// carries on past the line's end.
+    /// The columns this selection covers on `line`, and whether it runs past the end.
     pub fn on(&self, line: usize, chars: usize) -> Option<(usize, usize, bool)> {
         let (from, to) = self.ends();
         if self.is_empty() || line < from.line || line > to.line {
@@ -103,7 +101,7 @@ pub enum Edit {
     Insert(String),
     /// One indent step, as the language writes it.
     Indent,
-    /// Moves the caret and leaves the anchor, so the range between them grows.
+    /// Moves the caret and leaves the anchor.
     Extend(Motion),
     SelectAll,
     /// What a double click takes: the word, the spaces or the marks under the caret.

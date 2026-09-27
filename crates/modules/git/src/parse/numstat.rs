@@ -14,8 +14,7 @@ impl Counts {
     }
 }
 
-/// `-z` ends a row with a NUL and quotes no path: `added<TAB>deleted<TAB>path`. A
-/// file that moved leaves the path empty and writes its two names as the rows after.
+/// `-z` rows: `added<TAB>deleted<TAB>path`; a move leaves the path empty and names both after.
 pub fn numstat(text: &str) -> Vec<Counts> {
     let mut rows = Vec::new();
     let mut fields = text.split('\0').filter(|field| !field.is_empty());

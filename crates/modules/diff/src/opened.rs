@@ -37,8 +37,7 @@ pub async fn opened(dir: &Path, path: &str, rev: &str) -> Result<Opened> {
     Ok(from_text(path, &before, &after))
 }
 
-/// The file read again, against the HEAD side already read for it. Only a git
-/// command changes that side, and nothing here runs one.
+/// The file read again, against the HEAD side already read for it.
 pub fn reopened(dir: &Path, path: &str, old: Document) -> Opened {
     from_parts(path, old, &working(dir, path))
 }

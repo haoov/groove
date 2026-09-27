@@ -1,5 +1,4 @@
-//! A terminal. A reader thread feeds the child's bytes to the grid, a writer thread
-//! owns the PTY's input side; the owner takes a `Screen` when it draws.
+//! A terminal: a reader thread feeds the grid, a writer thread owns the PTY's input.
 
 mod color;
 mod listener;
@@ -139,8 +138,7 @@ impl Terminal {
         lock(&self.term).selection = None;
     }
 
-    /// The wheel over the grid. A program that reads the mouse is sent the wheel
-    /// itself, at `cell`; anything else scrolls the lines the terminal holds.
+    /// The wheel at `cell`: to a program that reads the mouse, else the held lines scroll.
     pub fn wheel(&self, lines: i32, cell: (usize, usize)) -> Result<()> {
         if lines == 0 {
             return Ok(());

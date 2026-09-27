@@ -10,8 +10,7 @@ use crate::style::Role;
 use crate::widget::{after_mark, ago, box_in, elide, hairline, icon, leading, row, slot_at, turn};
 use crate::{Surface, Ui};
 
-/// Padding, the head line, the gap, the state line, padding; and a line for the
-/// answers while the session asks.
+/// The row's lines: head, state, and the answers while the session asks.
 pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
     let base = (ctx.tokens.sm + ctx.tokens.line) * 2.0 + ctx.tokens.xs;
     match asked(app, id) {

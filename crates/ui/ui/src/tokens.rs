@@ -22,8 +22,7 @@ pub const PINNED_SHARE: f32 = 4.0;
 /// How many rows a search keeps above the match it lands on.
 pub const ABOVE_MATCH: usize = 4;
 
-/// How long after a press another one counts as the same click, and how far it may
-/// land from it, in logical pixels.
+/// How soon and how near a press counts as the same click, in milliseconds and logical pixels.
 pub const CLICK_MS: u64 = 400;
 pub const CLICK_SLOP: f32 = 4.0;
 
@@ -157,8 +156,7 @@ impl Tokens {
         Self::sized(scale, LOGICAL.text, LOGICAL.code)
     }
 
-    /// The same, with the interface's type at `text` and code's at `code`. What holds
-    /// type follows it; what holds the window does not.
+    /// The same, with the interface's type at `text` and code's at `code`.
     pub fn sized(scale: f32, text: f32, code: f32) -> Self {
         let s = |value: f32| value * scale;
         let of_text = |ratio: f32| s(text * ratio);
@@ -205,7 +203,6 @@ impl Default for Tokens {
     }
 }
 
-/// How much wider than the average a note's characters are taken to be, and how many
-/// of them who said it and its lines keep at the row's end.
+/// How much wider a note's characters are taken to be, and how many the author and lines keep.
 pub const NOTE_SLACK: f32 = 1.15;
 pub const NOTE_BY: f32 = 22.0;

@@ -1,5 +1,4 @@
-//! What a search of the worktree turned up: every line it found, its file above its
-//! own matches.
+//! What a search of the worktree found: each file over its own matches.
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Found;
@@ -56,8 +55,7 @@ fn files_of(found: &[Found]) -> usize {
     paths.len()
 }
 
-/// The file a run of matches belongs to, how many it holds, and a caret that hides
-/// them.
+/// The file a run of matches belongs to, how many, and a caret that hides them.
 fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
     let target = Target::FoundIn(path.to_string());
     ctx.quad(line, ctx.styles.raised());

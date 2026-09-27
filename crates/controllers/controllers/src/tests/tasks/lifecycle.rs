@@ -3,8 +3,8 @@
 use groove_types::StatusIntent;
 
 use super::{answering, source};
-use crate::tests::fixture::{services, state, until};
-use crate::{Command as Cmd, SyncSpawner, dispatch, task};
+use crate::tests::fixture::until;
+use crate::{Command as Cmd, dispatch, task};
 
 /// The window focused on the session, with input just now.
 fn at_work(state: &mut crate::AppState) {
@@ -15,10 +15,7 @@ fn at_work(state: &mut crate::AppState) {
 #[test]
 fn the_clock_credits_the_task_the_window_is_working() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -59,10 +56,7 @@ fn the_clock_credits_the_task_the_window_is_working() {
 
 #[test]
 fn an_explorer_is_measured_against_no_task() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     dispatch(
         Cmd::Session(crate::session::Command::OpenExplorer { title: None }),
         &mut state,
@@ -85,10 +79,7 @@ fn an_explorer_is_measured_against_no_task() {
 #[test]
 fn opening_a_task_tells_the_source_it_is_in_progress() {
     let (runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -131,10 +122,7 @@ fn opening_a_task_tells_the_source_it_is_in_progress() {
 #[test]
 fn a_task_already_in_progress_is_not_written_again() {
     let (runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -174,10 +162,7 @@ fn a_task_already_in_progress_is_not_written_again() {
 #[test]
 fn finishing_a_task_tells_the_source_then_takes_the_session_away() {
     let (runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -230,10 +215,7 @@ fn finishing_a_task_tells_the_source_then_takes_the_session_away() {
 
 #[test]
 fn a_session_that_works_no_task_is_not_finished() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     dispatch(
         Cmd::Session(crate::session::Command::OpenExplorer { title: None }),
         &mut state,
@@ -257,10 +239,7 @@ fn a_session_that_works_no_task_is_not_finished() {
 #[test]
 fn deleting_a_task_session_here_says_nothing_to_the_source() {
     let (runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(source(&host)).expect("the source"));
@@ -319,10 +298,7 @@ fn deleting_a_task_session_here_says_nothing_to_the_source() {
 #[test]
 fn a_task_past_its_due_date_asks_for_the_user() {
     let (_runtime, server) = answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     let mut config: groove_types::GithubConfig =
         serde_json::from_value(source(&host)).expect("the source");

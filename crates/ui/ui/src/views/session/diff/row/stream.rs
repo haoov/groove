@@ -169,8 +169,7 @@ fn spans_of(
     found.to_vec()
 }
 
-/// The caret's column when this row is the line it sits on. A removed line belongs
-/// to the old document and takes no caret.
+/// The caret's column when this row is its line; a removed line takes none.
 fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Option<usize> {
     let caret = caret?;
     let shows = row.new == Some(caret.line as u32) && row.kind != RowKind::Removed;
@@ -178,8 +177,7 @@ fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Optio
     shows.then(|| display_at(&text, caret.column, width))
 }
 
-/// Which file a row's line is read from: a pane's own side in split, and in the
-/// other views whichever side the row belongs to.
+/// The file a row's line is read from: a pane's own side in split, else the row's side.
 fn source(row: &Row, view: DiffView, side: Side) -> Side {
     match (view, row.kind) {
         (DiffView::Split, _) => side,
@@ -197,7 +195,7 @@ fn kind(row: &Row, view: DiffView, side: Side) -> RowKind {
     }
 }
 
-/// Where the line sits: one number a side in split, otherwise one row's own.
+/// Where the line sits: one number a side in split, else the row's own.
 fn gutters(row: &Row, view: DiffView, side: Side) -> Vec<String> {
     let number = |at: Option<u32>| at.map(|at| (at + 1).to_string()).unwrap_or_default();
     match (view, row.kind) {

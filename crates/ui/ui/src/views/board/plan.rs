@@ -41,8 +41,7 @@ fn edges(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
     edges
 }
 
-/// The tasks the filter lets through that no session works, in the user's order, the
-/// ones that need the user first.
+/// The tasks no session works, in the user's order, those that need the user first.
 fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
     let query = ui.board.query();
     let left: Vec<&Task> = app

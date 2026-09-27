@@ -209,8 +209,7 @@ impl Scope {
     }
 }
 
-/// What the sidebar's bar narrows by: a path, some text, or both at once. The path
-/// says which files to look at, the text what to look for in them.
+/// What the sidebar's bar narrows by: a path, some text, or both.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Bar {
     pub path: Field,
@@ -239,8 +238,7 @@ impl Term {
 }
 
 impl Bar {
-    /// The bar open on one term, keeping what the other holds. What that term held
-    /// is spent, since a chord asks for a new one.
+    /// The bar open on one term, the other kept, this one's text cleared.
     pub fn open(&mut self, term: Term) {
         self.typing = Some(term);
         self.of(term).clear();
@@ -263,7 +261,7 @@ impl Bar {
         }
     }
 
-    /// Whether a search is on, so the bar stands on both its terms.
+    /// Whether a search is on.
     pub fn in_use(&self) -> bool {
         self.typing.is_some() || !self.path.is_empty() || !self.text.is_empty()
     }
@@ -275,7 +273,7 @@ impl Bar {
 }
 
 impl SessionUi {
-    /// Whether a bar has the keyboard, so no surface should draw its caret.
+    /// Whether a bar has the keyboard.
     pub fn typing(&self) -> bool {
         self.bar.typing.is_some()
             || self.find.as_ref().is_some_and(|find| find.typing)

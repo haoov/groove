@@ -1,6 +1,4 @@
-//! An explorer promoted to the session of a task its agent filed at the task's source:
-//! the agent told, stopped, its worktrees moved, its rows handed over, then started
-//! again on the same conversation.
+//! An explorer promoted to the session of the task its agent filed, on the same conversation.
 
 use std::time::Duration;
 
@@ -13,7 +11,10 @@ use crate::{AppState, Continuation, Services, Spawner};
 pub(crate) const NOT_EXPLORER: &str = "only an explorer is made the session of a task";
 
 /// How long the agent has to take the answer in before it is stopped.
+#[cfg(not(test))]
 const GRACE: Duration = Duration::from_millis(1500);
+#[cfg(test)]
+const GRACE: Duration = Duration::from_millis(10);
 
 /// The task read at its source, then this explorer promoted to the session that works it.
 pub fn adopt(

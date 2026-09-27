@@ -77,7 +77,7 @@ fn a_thread_takes_a_row_for_every_note_of_it() {
 }
 
 #[test]
-fn the_line_under_a_note_still_draws_after_it() {
+fn a_note_pushes_the_lines_under_it_down() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
     let drawn = in_editor(&app);
     let at = |text: &str| drawn.iter().position(|one| one == text);

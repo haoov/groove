@@ -4,15 +4,11 @@ use groove_agent_service::{Call, Reply};
 use serde_json::json;
 
 use super::{asked, changed, settled, stage, waited, waiting};
-use crate::SyncSpawner;
-use crate::tests::fixture::{self, services, sh, state, until};
+use crate::tests::fixture::{self, sh, until};
 
 #[test]
 fn a_tool_groove_does_not_answer_yet_says_so() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 
     let answer = asked(
         &mut state,
@@ -28,11 +24,8 @@ fn a_tool_groove_does_not_answer_yet_says_so() {
 
 #[test]
 fn a_write_waits_for_the_user_and_says_so_on_the_row() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
 
@@ -53,11 +46,8 @@ fn a_write_waits_for_the_user_and_says_so_on_the_row() {
 
 #[test]
 fn the_write_the_user_allows_runs_and_answers_its_agent() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
 
@@ -84,11 +74,8 @@ fn the_write_the_user_allows_runs_and_answers_its_agent() {
 
 #[test]
 fn the_write_the_user_refuses_never_runs() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
 
@@ -115,11 +102,8 @@ fn the_write_the_user_refuses_never_runs() {
 
 #[test]
 fn a_session_that_auto_approves_never_asks() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
     state
@@ -141,11 +125,8 @@ fn a_session_that_auto_approves_never_asks() {
 
 #[test]
 fn a_commit_with_nothing_staged_is_an_error_not_a_commit() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -165,11 +146,8 @@ fn a_commit_with_nothing_staged_is_an_error_not_a_commit() {
 
 #[test]
 fn a_session_that_ends_leaves_no_agent_waiting() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
 
     let (reply, mut answered) = Reply::new();
@@ -192,10 +170,7 @@ fn a_session_that_ends_leaves_no_agent_waiting() {
 
 #[test]
 fn every_tool_groove_lists_is_one_it_answers() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     state
         .agent
         .auto_approve(&groove_types::SessionId::new("gh-nothing"), true);
@@ -220,11 +195,8 @@ fn every_tool_groove_lists_is_one_it_answers() {
 
 #[test]
 fn a_note_the_agent_leaves_stands_on_its_own_line() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -269,11 +241,8 @@ fn a_note_the_agent_leaves_stands_on_its_own_line() {
 
 #[test]
 fn a_note_is_written_again_and_resolved_by_its_id() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -337,11 +306,8 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
 
 #[test]
 fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = fixture::worktree(&mut state, &services, &spawner);
     assert!(!dir.is_empty());
     let id = state.session.selected.clone().expect("a session");
@@ -366,11 +332,8 @@ fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
 
 #[test]
 fn the_agent_and_the_surface_commit_through_the_same_function() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -403,11 +366,8 @@ fn the_agent_and_the_surface_commit_through_the_same_function() {
 
 #[test]
 fn a_write_the_forge_refuses_is_answered_and_not_left_to_the_feed() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -435,11 +395,8 @@ fn a_write_the_forge_refuses_is_answered_and_not_left_to_the_feed() {
 
 #[test]
 fn a_push_waits_with_its_branch_and_the_commits_it_sends() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
     sh(

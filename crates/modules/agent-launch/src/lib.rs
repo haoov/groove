@@ -1,5 +1,4 @@
-//! One launch of the agent: `claude` with its session, its prompt, its skills and,
-//! when the loopback server runs, its MCP config and hooks.
+//! One launch of `claude`: its session, prompt and skills, and the loopback's MCP config and hooks.
 
 mod error;
 mod files;

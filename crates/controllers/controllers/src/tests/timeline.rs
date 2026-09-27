@@ -2,7 +2,7 @@
 
 use groove_types::TimelineKind;
 
-use super::fixture::{pooled_clone, services, state, until, worktree};
+use super::fixture::{pooled_clone, until, worktree};
 use crate::{Command as Cmd, Services, SyncSpawner, dispatch, workspace};
 
 /// Every line the selected session's log holds, newest first.
@@ -33,11 +33,8 @@ fn send(
 
 #[test]
 fn a_commit_leaves_its_subject_on_the_log() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
     send(&mut state, &services, &spawner, workspace::Command::Load);
@@ -65,11 +62,8 @@ fn a_commit_leaves_its_subject_on_the_log() {
 
 #[test]
 fn a_worktree_made_says_so_on_the_log() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let read = log(&state, &services, &spawner);
     assert_eq!(read.len(), 1, "{read:?}");
@@ -79,11 +73,8 @@ fn a_worktree_made_says_so_on_the_log() {
 
 #[test]
 fn a_tool_the_agent_ran_on_a_file_leaves_nothing() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let before = log(&state, &services, &spawner).len();
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
@@ -118,11 +109,8 @@ fn a_tool_the_agent_ran_on_a_file_leaves_nothing() {
 
 #[test]
 fn the_rail_comes_back_with_its_feed() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     until(&spawner, &services, &mut state, |s| {
         !s.session.feed.is_empty()

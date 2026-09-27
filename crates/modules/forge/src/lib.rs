@@ -1,5 +1,4 @@
 //! The forge a repo lives on: the one MR a branch has, its CI and its threads.
-//! Groove reads these; the writes are the ones the user asks for.
 
 mod error;
 mod github;

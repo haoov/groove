@@ -5,8 +5,7 @@ use groove_types::{Error, ExternalId, Result, TaskKey};
 #[cfg(test)]
 mod tests;
 
-/// The key a reference names. An issue's URL or `host/owner/repo#number` is GitHub's;
-/// the id a Notion URL ends on, or a page id, is Notion's.
+/// The key a reference names: a GitHub issue URL or `host/owner/repo#n`, or a Notion URL or page id.
 pub fn referenced(text: &str) -> Result<TaskKey> {
     let text = text.trim();
     if let Some(key) = issue(text) {

@@ -1,5 +1,4 @@
-//! How the agent must write what a human reads. These words are the only place the
-//! rules are stated: no skill, no prompt and no CLAUDE.md restates them.
+//! How the agent writes what a human reads; the only place these rules are stated.
 
 /// Commit-subject grammar, for a commit and for both MR titles.
 pub const SUBJECT: &str = "Conventional commit subject: `type(scope): subject`, imperative, \

@@ -1,6 +1,4 @@
-//! Tabs as the surface shows them. A buffer keeps the tab a file has; a row draws it
-//! run out to the next stop, so what is drawn, what a click lands on and where the
-//! caret sits all count the same columns.
+//! Tabs as the surface counts them: run out to the next stop for drawing, clicks and the caret.
 
 use groove_types::Highlight;
 

@@ -60,8 +60,7 @@ impl Rows for Row {
     }
 }
 
-/// How the two files line up, as the rows a reader sees. `opened` names the old-side
-/// lines a gap gives up.
+/// How the two files line up, as rows; `opened` names the old-side lines a gap gives up.
 pub fn align(old: &Document, new: &Document, context: u32, opened: &[Range<u32>]) -> Vec<Row> {
     let input = interned(old, new);
     let diff = Diff::compute(Algorithm::Histogram, &input);
@@ -84,8 +83,7 @@ pub fn align(old: &Document, new: &Document, context: u32, opened: &[Range<u32>]
     rows
 }
 
-/// The unchanged lines between where the last hunk ended and where this one starts:
-/// context on each side, and a gap for what neither side needs.
+/// The unchanged lines between two hunks: context on each side, a gap between.
 fn lead(
     rows: &mut Vec<Row>,
     from: (u32, u32),
@@ -211,8 +209,7 @@ fn line(document: &Document, at: Option<u32>) -> Option<String> {
     Some(document.line(at? as usize)?.to_string())
 }
 
-/// What each line of the new file did. A removal with nothing in its place marks the
-/// line that closed the gap.
+/// What each line of the new file did; a removal with nothing in its place marks the next line.
 pub fn marks(rows: &[Row]) -> BTreeMap<u32, LineMark> {
     let mut marks = BTreeMap::new();
     let mut at = 0;

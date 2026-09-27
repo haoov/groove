@@ -41,9 +41,7 @@ pub use diff::{
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use error::{Error, ErrorKind, Result};
-pub use ids::{
-    AnnotationId, ApprovalId, ExternalId, Generation, MrId, RepoId, SessionId, WorktreeId,
-};
+pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use mr::{
     CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
     ReviewMr, ReviewState, ReviewVerdict, Reviewer,

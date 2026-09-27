@@ -1,5 +1,4 @@
-//! The primitives every view is made of. A widget draws into a rect and knows the
-//! context; it never knows `AppState`.
+//! The primitives every view is made of; a widget never knows `AppState`.
 
 mod button;
 mod code;

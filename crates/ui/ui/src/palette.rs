@@ -1,5 +1,4 @@
-//! The command palette: every action of every capability, filtered by what you type.
-//! An action that needs arguments asks for them one prompt at a time.
+//! The command palette: every action, filtered by what is typed, arguments asked one at a time.
 
 mod entries;
 mod flow;
@@ -90,7 +89,6 @@ impl Anchor {
     }
 }
 
-/// Every entry the state allows right now, in group order.
 /// The rows whose text holds every word of the query, best match first.
 pub fn matching<T>(rows: Vec<T>, text: impl Fn(&T) -> String, query: &str) -> Vec<T> {
     let mut scored: Vec<(usize, T)> = rows

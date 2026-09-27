@@ -31,8 +31,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     }
 }
 
-/// Every task with dates, in the row it keeps wherever the horizon stands: the first
-/// row no bar of it already reaches into.
+/// Every task with dates, each in the first row none of its bars already reach into.
 fn placed<'a>(app: &'a AppState, ui: &Ui) -> Vec<(&'a Task, Span, usize)> {
     let mut spans = dated(app, ui);
     spans.sort_by(|one, other| {

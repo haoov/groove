@@ -1,5 +1,4 @@
-//! How the changed files read as paths: the root they share, the groups under it, and
-//! the name a file goes by.
+//! The changed files as paths: their shared root, the groups under it, each file's name.
 
 use groove_types::FileDiff;
 
@@ -63,8 +62,7 @@ fn under(root: &str, path: &str) -> String {
     }
 }
 
-/// The name a file reads as, and the path behind it. `mod.rs` and its like read as
-/// the directory that holds them.
+/// The name a file reads as, and its path; `mod.rs` and its like read as their directory.
 pub(crate) fn reads_as(path: &str) -> (String, String) {
     let name = name_of(path);
     let parts = segments(path);

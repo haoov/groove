@@ -38,6 +38,15 @@ pub fn state(home: &Path) -> AppState {
     state
 }
 
+/// A home of its own with the fake `claude`, the services on it, and the state.
+pub fn fresh() -> (tempfile::TempDir, SyncSpawner, Services, AppState) {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let state = state(home.path());
+    (home, spawner, services, state)
+}
+
 /// Every service on an in-memory database, the pool under `<home>/code`.
 pub fn services(spawner: &SyncSpawner, home: &Path) -> Services {
     spawner

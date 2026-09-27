@@ -1,5 +1,4 @@
-//! An explorer made the session of a task: a row of its own under the task's short id,
-//! with everything the explorer held moved onto it.
+//! An explorer's rows moved onto the session of a task.
 
 use groove_types::{Session, SessionId, SessionKind, Task, WorktreeId};
 
@@ -26,8 +25,7 @@ pub struct Moved {
 }
 
 impl Store {
-    /// The explorer's row replaced by the task's, in one transaction: the new row, then
-    /// what the explorer held moved to it, then the explorer's row gone.
+    /// The explorer's row replaced by the task's in one transaction, everything it held moved over.
     pub async fn promote(
         &self,
         explorer: &SessionId,

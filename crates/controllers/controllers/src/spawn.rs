@@ -9,8 +9,7 @@ use groove_types::Error;
 
 use crate::{AppState, Services};
 
-/// A result on its way back to the main thread. It writes into `AppState` there, and
-/// may start the next step of its controller function.
+/// A result on its way back to the main thread, where it writes `AppState`.
 pub type Continuation = Box<dyn FnOnce(&mut AppState, &Services, &dyn Spawner) + Send>;
 
 /// The async part of a controller function, ending in its continuation.

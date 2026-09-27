@@ -22,8 +22,7 @@ pub struct BoardUi {
     pub drop: Option<usize>,
     /// The user folded the timeline away.
     pub shut: bool,
-    /// How many days the timeline has been carried from today, and the pixels of a
-    /// gesture that have not made a day yet.
+    /// How many days the timeline is carried from today, and the pixels not yet a day.
     pub horizon: i64,
     pub carried: f32,
 }
@@ -40,8 +39,7 @@ impl BoardUi {
         self.open.contains(id)
     }
 
-    /// The timeline carried by a gesture of `across` pixels, whole days at a time and
-    /// nothing of it lost, inside a year either way.
+    /// The timeline carried by `across` pixels, whole days at a time, within a year.
     pub fn carry(&mut self, across: f32) {
         self.carried += across;
         let days = (self.carried / crate::tokens::DAY_PIXELS).trunc();

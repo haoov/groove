@@ -19,7 +19,6 @@ the parsed config and the last check. The state database is
 | `config.check_environment` | git, gh, glab, claude: version, auth status, a mark |
 | `config.login` | open the CLI sign-in in a terminal |
 | `config.set_worktree_root` | the one path the user changes |
-| `config.open_path` | the config file or the state database, in the system |
 
 The Setup section of Settings is the check, the login and the three paths.
 
@@ -52,7 +51,6 @@ family means the bundled default.
 
 | Setting | Read by |
 |---|---|
-| suggest actions | the overview's chips |
 | auto-approve default | `agent`, when a session opens |
 | attention thresholds — review waiting, due soon, approved unmerged, in days | the `task` service's attention fold |
 | poll interval and stale threshold | the `workspace` service's poll |

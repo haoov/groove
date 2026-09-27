@@ -25,8 +25,7 @@ pub(super) fn height(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) ->
     }
 }
 
-/// Whether the band is folded away: by the user, or for want of anything in a horizon
-/// they have not moved.
+/// Whether the band is folded: by the user, or empty in a horizon they have not moved.
 fn shut(app: &AppState, ui: &Ui) -> bool {
     ui.board.shut || (ui.board.horizon == 0 && bars::drawn(app, ui).is_empty())
 }

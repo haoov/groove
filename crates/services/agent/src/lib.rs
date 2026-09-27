@@ -48,7 +48,7 @@ impl State {
             .collect()
     }
 
-    /// Whether a skill has been written since this session's agent started.
+    /// Whether a skill changed after this session's agent started.
     pub fn stale(&self, session: &SessionId) -> bool {
         let Some(agent) = self.agent(session) else {
             return false;
@@ -63,6 +63,10 @@ impl State {
             .iter()
             .find(|(id, _)| id == session)
             .map(|(_, a)| a)
+    }
+
+    pub fn terminal(&self, session: &SessionId) -> Option<&Terminal> {
+        self.agent(session)?.terminal.as_ref()
     }
 
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {

@@ -5,11 +5,8 @@ use super::*;
 #[test]
 #[allow(clippy::single_range_in_vec_init)]
 fn a_gap_gives_up_its_lines_from_the_end_that_was_asked() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let whole: String = (0..60).map(|at| format!("line {at}\n")).collect();
     let path = std::path::Path::new(&dir).join("a.txt");
@@ -87,11 +84,8 @@ fn gap_row(state: &crate::AppState) -> Option<usize> {
 
 #[test]
 fn reading_a_file_keeps_the_colours_the_others_already_have() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
     std::fs::write(std::path::Path::new(&dir).join("b.rs"), "fn b() {}\n").unwrap();
@@ -119,11 +113,8 @@ fn reading_a_file_keeps_the_colours_the_others_already_have() {
 
 #[test]
 fn opening_a_file_the_stream_holds_runs_no_job() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("b.rs"), "fn b() {}\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -161,11 +152,8 @@ fn opening_a_file_the_stream_holds_runs_no_job() {
 
 #[test]
 fn a_change_loaded_again_under_the_same_rows_reads_its_files() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let root = std::path::Path::new(&dir);
     std::fs::write(root.join("a.txt"), "two\n").unwrap();
@@ -210,11 +198,8 @@ fn a_change_loaded_again_under_the_same_rows_reads_its_files() {
 
 #[test]
 fn a_file_changed_on_disk_is_never_opened_from_what_was_read_before() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let file = std::path::Path::new(&dir).join("b.rs");
     std::fs::write(&file, "fn b() {}\n").unwrap();
@@ -291,11 +276,8 @@ fn reviewed(
 
 #[test]
 fn a_gap_in_a_committed_change_keeps_the_change_it_stands_in() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     reviewed(&mut state, &services, &spawner);
     state.workspace.mode = groove_types::DiffMode::Base;
     dispatch(
@@ -347,11 +329,8 @@ fn a_gap_in_a_committed_change_keeps_the_change_it_stands_in() {
 
 #[test]
 fn a_committed_change_opened_and_edited_keeps_what_it_changed() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     reviewed(&mut state, &services, &spawner);
     state.workspace.mode = groove_types::DiffMode::Base;
     dispatch(

@@ -32,8 +32,7 @@ impl Db {
         Self::migrated(pool).await
     }
 
-    /// A private in-memory database with the full schema, for tests. One connection:
-    /// every query sees the same memory.
+    /// A private in-memory database with the full schema, on one connection, for tests.
     pub async fn in_memory() -> Result<Self> {
         let options = SqliteConnectOptions::new()
             .filename(":memory:")

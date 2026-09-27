@@ -18,8 +18,7 @@ pub fn size(ctx: &mut Ctx, labels: &[&str]) -> (f32, f32) {
     (width, ctx.tokens.row * labels.len() as f32)
 }
 
-/// Draws the rows with their top-left at `at`, kept inside `within`. Registers a hit
-/// per row.
+/// The rows with their top-left at `at`, kept inside `within`, a hit each.
 pub fn menu(
     ctx: &mut Ctx,
     at: (f32, f32),

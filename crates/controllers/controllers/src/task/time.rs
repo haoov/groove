@@ -9,8 +9,7 @@ use crate::{AppState, Continuation, Services, Spawner};
 /// How often the ledger takes what the clock measured.
 const WRITE: i64 = 60;
 
-/// The clock: it credits the task of the session being worked, and the ledger takes
-/// what it measured every `WRITE` seconds.
+/// The clock on the task being worked; the ledger takes what it measured every `WRITE` seconds.
 pub fn tick(state: &mut AppState, services: &Services, spawner: &dyn Spawner, now: Timestamp) {
     state.task.timer.on(worked(state, now), now);
     if !state.task.timer.due(now, WRITE) {

@@ -1,4 +1,4 @@
-//! What an edit did, so it can be undone: one change, and the two stacks.
+//! The undo history: one change, and the two stacks.
 
 /// One change to a document: what `at` held, and what it holds now.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -23,15 +23,13 @@ impl Change {
         self.at + self.inserted.chars().count()
     }
 
-    /// Whether `next` carries on typing where this change stopped. What the run
-    /// first replaced belongs to it, so undoing brings the old text back.
+    /// Whether `next` carries on typing where this change stopped.
     fn continues(&self, next: &Change) -> bool {
         next.removed.is_empty() && !next.inserted.contains('\n') && next.at == self.after()
     }
 }
 
-/// One keystroke's worth of changes, undone together: a caret makes one, and several
-/// carets make one each.
+/// One keystroke's changes, one per caret, undone together.
 type Step = Vec<Change>;
 
 /// A typing run undone in one step; a motion or a newline closes it.
@@ -86,7 +84,7 @@ impl History {
         Some(step)
     }
 
-    /// Ends the current typing run, so the next change undoes on its own.
+    /// Ends the current typing run.
     pub(crate) fn close(&mut self) {
         self.open = false;
     }

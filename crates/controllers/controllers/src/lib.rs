@@ -1,5 +1,4 @@
-//! The controllers are the API. Commands go down as data, results come back as
-//! continuations, the outside world arrives as events. One thread applies all three.
+//! The controllers: commands go down, continuations come back, events arrive, on one thread.
 
 pub mod agent;
 pub mod asker;

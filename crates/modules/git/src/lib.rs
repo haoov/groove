@@ -1,5 +1,4 @@
-//! Git, one repository at a time. Every function runs one command through `exec::run`
-//! and hands back a typed value; the text git prints never leaves this crate.
+//! Git, one repository at a time: one command through `exec::run`, one typed answer.
 
 mod branches;
 mod command;

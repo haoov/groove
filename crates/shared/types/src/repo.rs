@@ -45,16 +45,6 @@ pub struct WorktreeStatus {
     pub behind: u32,
 }
 
-impl WorktreeStatus {
-    pub fn is_clean(&self) -> bool {
-        self.modified == 0 && self.staged == 0
-    }
-
-    pub fn is_pushed(&self) -> bool {
-        self.ahead == 0
-    }
-}
-
 /// A clone in the pool, named by its path under `main/`.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct PoolEntry {

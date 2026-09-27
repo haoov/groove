@@ -1,5 +1,4 @@
-//! Opens a window and draws the demo frame. `cargo run -p groove-gfx --example window`.
-//! `p` toggles the palette layer, Escape quits. `GROOVE_DEMO_PALETTE=1` opens with it.
+//! Opens a window on the demo frame: `p` toggles the palette layer, Escape quits.
 
 mod demo;
 

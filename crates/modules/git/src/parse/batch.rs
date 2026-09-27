@@ -2,8 +2,7 @@
 
 use std::collections::HashMap;
 
-/// The blobs it wrote, taken in the order they were asked for. A name it could not
-/// resolve writes a header and no content, and is left out.
+/// The blobs written, in the order asked; a name that did not resolve is left out.
 pub fn batch(out: &[u8], paths: &[&str]) -> HashMap<String, String> {
     let mut found = HashMap::new();
     let mut at = 0;

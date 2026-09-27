@@ -15,8 +15,7 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{Gutters, head_mark};
 
-/// What a head row offers: the row itself folds, its box marks the file read. What a
-/// gap offers: the lines it hides, from either end or whole.
+/// What a head row offers (fold, mark read) and what a gap offers (its lines, from either end).
 pub(super) fn marks(
     ctx: &mut Ctx,
     drawn: &[Rect],

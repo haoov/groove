@@ -40,7 +40,7 @@ fn file(change: &Change, counts: &[Counts], dir: &Path) -> FileDiff {
     }
 }
 
-/// The index letter when the file is staged, the worktree letter otherwise.
+/// The index letter for a staged file, the worktree letter for the rest.
 fn status_of(change: &Change) -> FileStatus {
     let letter = match change.is_staged() {
         true => change.x,
@@ -77,7 +77,7 @@ fn whole_file(dir: &Path, path: &str) -> (Option<u32>, Option<u32>) {
     }
 }
 
-/// Every file the branch changed since `rev`, committed or not, untracked included.
+/// Every file the branch changed since `rev`, committed, staged or untracked.
 pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
     let git = Git::at(dir);
     let counts = git.numstat(rev).await?;

@@ -1,5 +1,4 @@
-//! A file as a document: a rope of its text, the syntax spans over it, and search.
-//! It holds no colours, only what a span means.
+//! A file as a document: its text, the syntax spans over it, and search.
 
 mod buffer;
 mod highlight;
@@ -93,8 +92,7 @@ impl Document {
         self.language
     }
 
-    /// What one indent step writes here. A file Groove has no grammar for keeps the
-    /// shape it already has: four spaces.
+    /// One indent step here; four spaces without a grammar.
     pub fn indent(&self) -> Indent {
         match self.language {
             Some(language) => language.indent(),
@@ -106,8 +104,7 @@ impl Document {
         self.syntax.is_some()
     }
 
-    /// Lines as a reader counts them: a trailing newline ends the last one, and an
-    /// empty file has none.
+    /// Lines as a reader counts them: a trailing newline ends the last, an empty file has none.
     pub fn lines(&self) -> usize {
         if self.text.len_bytes() == 0 {
             return 0;
@@ -138,8 +135,7 @@ impl Document {
         self.colours(at..at + 1).of(at).to_vec()
     }
 
-    /// The lines the scopes around `line` begin on, outermost first. A scope that
-    /// begins on `line` itself is left out.
+    /// The lines the scopes around `line` begin on, outermost first, `line` itself left out.
     pub fn scopes(&self, line: usize) -> Vec<usize> {
         let (Some(syntax), Some(range)) = (&self.syntax, self.bytes_of(line)) else {
             return Vec::new();
@@ -174,8 +170,7 @@ impl Document {
         }
     }
 
-    /// The characters before `caret`, clamped to a place the text has. A line past the
-    /// last one is the end of the text.
+    /// The characters before `caret`, clamped to the text; a line past the last is the end.
     pub fn char_of(&self, caret: Caret) -> usize {
         if caret.line >= self.lines() {
             return self.text.len_chars();

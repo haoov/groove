@@ -31,7 +31,7 @@ impl Ledger {
     pub async fn in_memory() -> Result<Self> {
         let db = Db::in_memory()
             .await
-            .map_err(|e| Error::invalid(format!("no database: {e}")))?;
+            .map_err(|e| Error::db(format!("no database: {e}")))?;
         Ok(Self::new(db))
     }
 
@@ -105,5 +105,5 @@ fn summary(row: Row, today: &str) -> (ExternalId, TimeSummary) {
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::invalid(format!("the ledger could not be read or written: {source}"))
+    Error::db(format!("the ledger could not be read or written: {source}"))
 }

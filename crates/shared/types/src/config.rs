@@ -39,8 +39,7 @@ impl ThemeName {
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UiConfig {
-    /// The interface's type. Code has its own below: mono reads larger at the same
-    /// size, and a diff wants more of it on screen than a list does.
+    /// The interface's type size; code has its own.
     #[serde(default = "default_font_size")]
     pub font_size: f32,
     #[serde(default = "default_code_font_size")]

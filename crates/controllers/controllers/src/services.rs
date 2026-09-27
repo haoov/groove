@@ -15,8 +15,7 @@ pub struct Services {
 }
 
 impl Services {
-    /// Every service on a private in-memory database, the pool under `root`, and a
-    /// clipboard of its own, for tests.
+    /// Every service on a private in-memory database with the pool under `root`, for tests.
     pub async fn in_memory(root: &std::path::Path) -> groove_types::Result<Self> {
         let session = groove_session_service::Service::in_memory(root).await?;
         Ok(Self {

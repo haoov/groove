@@ -3,8 +3,7 @@ use groove_gfx::{Color, Rect};
 use crate::Corner;
 use crate::ctx::Ctx;
 
-/// A panel of its own at `at`, the named corner of it, edged in `border`, kept inside
-/// the window and dimming nothing behind it.
+/// A panel with its named corner at `at`, edged in `border`, inside the window.
 pub fn panel_at(
     ctx: &mut Ctx,
     at: (f32, f32),

@@ -1,7 +1,6 @@
 //! `git status --porcelain=v2`, as the files it names.
 
-/// One `git status --porcelain` row: the index letter, the worktree letter, and the
-/// path as git wrote it, quoting kept, a rename keyed on its new side.
+/// One `git status --porcelain` row: index letter, worktree letter, path, a rename on its new side.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Change {
     pub x: char,

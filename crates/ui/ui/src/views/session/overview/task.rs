@@ -11,8 +11,7 @@ use crate::widget::{Row, button, list, row, wrapped};
 
 const UNSET: &str = "—";
 
-/// The six properties, each on its own line, the hours with what the clock measured.
-/// Returns the y under the last.
+/// The six properties a line each, the hours with the clock's; returns the y under them.
 pub(super) fn properties(
     ctx: &mut Ctx,
     area: Rect,

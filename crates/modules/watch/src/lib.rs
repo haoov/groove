@@ -1,8 +1,5 @@
-//! A filesystem watcher on one worktree. Writes arrive in batches, and only the
-//! directories git keeps are watched.
-//!
-//! A batch names what the watcher saw, not every path that moved: a file written into
-//! a directory created in the same breath can beat the watch on it.
+//! A watcher on one worktree, in batches, over the directories git keeps.
+//! A batch names what was seen: a file written into a new directory can beat its watch.
 
 mod batch;
 mod tree;
@@ -18,8 +15,7 @@ use std::time::Duration;
 
 use groove_types::{Error, ErrorKind, Result};
 
-/// How long a burst must be quiet before it is reported. A save writes once or twice,
-/// so this only has to outlast a write and its rename; the reader coalesces the rest.
+/// How long a burst stays quiet before it is reported: longer than a write and its rename.
 pub const QUIET: Duration = Duration::from_millis(25);
 
 /// Watching, until this is dropped.
@@ -41,8 +37,7 @@ impl std::fmt::Debug for Watch {
     }
 }
 
-/// Calls `on_change` with what moved under `dir` or in one of `also`, once a burst
-/// has gone quiet.
+/// Calls `on_change` with what moved under `dir` or in `also`, once a burst is quiet.
 pub fn watch(
     dir: &Path,
     also: Vec<PathBuf>,

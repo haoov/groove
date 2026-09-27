@@ -100,7 +100,7 @@ impl App {
         self.point();
     }
 
-    /// The width a note row holds, so the next frame wraps notes to it.
+    /// The width a note row holds, for the next frame to wrap notes to.
     fn wrapping(&mut self) {
         let cols = self.hits.wrap();
         if cols != 0 && cols != self.ui.session.note_cols {

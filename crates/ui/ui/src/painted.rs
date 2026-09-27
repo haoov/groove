@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use groove_controllers::workspace_service::{Colours, Document};
 
-/// Lines read either side of the window, so a small scroll keeps what it has.
+/// Lines kept either side of the window.
 const PAD: usize = 40;
 
 /// What the colours of one file and side were read for.

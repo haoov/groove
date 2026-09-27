@@ -1,5 +1,4 @@
-//! The panel every choice is made in: the palette in the middle, a picker on what
-//! it belongs to.
+//! The panel every choice is made in: the palette, or a picker on what it belongs to.
 
 use groove_controllers::AppState;
 use groove_gfx::Rect;
@@ -11,8 +10,7 @@ use crate::style::Role;
 use crate::tokens::PALETTE_ROWS;
 use crate::widget::{Row, input, list, modal, panel_at, row};
 
-/// Whether the panel offers a line to type in: the palette always does, a picker
-/// once its list is longer than it can show or something has been typed.
+/// Whether the panel offers a line to type in: the palette always, a picker once needed.
 fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
     let free = prompt.as_ref().is_some_and(|prompt| prompt.free);
     palette.anchor.is_none() || free || rows > PALETTE_ROWS || !palette.query.is_empty()

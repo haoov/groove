@@ -3,16 +3,12 @@
 use serde_json::{Value, json};
 
 use super::{asked, changed, said};
-use crate::SyncSpawner;
-use crate::tests::fixture::{self, services, state, worktree};
+use crate::tests::fixture::{self, worktree};
 
 #[test]
 fn the_active_task_is_the_session_the_call_came_from() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let id = state.session.selected.clone().unwrap();
 
@@ -41,10 +37,7 @@ fn the_active_task_is_the_session_the_call_came_from() {
 
 #[test]
 fn a_call_from_no_open_session_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 
     let answer = asked(
         &mut state,
@@ -59,11 +52,8 @@ fn a_call_from_no_open_session_is_refused() {
 
 #[test]
 fn the_pool_says_which_repos_the_session_already_has() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let id = state.session.selected.clone().unwrap();
 
@@ -83,10 +73,7 @@ fn the_pool_says_which_repos_the_session_already_has() {
 
 #[test]
 fn no_open_file_is_said_as_none() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 
     let answer = asked(
         &mut state,
@@ -101,11 +88,8 @@ fn no_open_file_is_said_as_none() {
 
 #[test]
 fn the_diff_says_what_changed_in_every_worktree_of_the_task() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -125,11 +109,8 @@ fn the_diff_says_what_changed_in_every_worktree_of_the_task() {
 
 #[test]
 fn the_status_counts_what_the_worktree_holds() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -149,11 +130,8 @@ fn the_status_counts_what_the_worktree_holds() {
 
 #[test]
 fn the_log_holds_the_commits_the_branch_stands_on() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, _, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -170,11 +148,8 @@ fn the_log_holds_the_commits_the_branch_stands_on() {
 
 #[test]
 fn a_file_is_read_as_the_worktree_holds_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -190,11 +165,8 @@ fn a_file_is_read_as_the_worktree_holds_it() {
 
 #[test]
 fn a_worktree_no_session_holds_is_refused() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, _, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -210,11 +182,8 @@ fn a_worktree_no_session_holds_is_refused() {
 
 #[test]
 fn a_worktree_with_no_merge_request_says_none() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
 
     let answer = asked(
@@ -230,10 +199,7 @@ fn a_worktree_with_no_merge_request_says_none() {
 
 #[test]
 fn the_skills_a_session_is_offered_are_the_ones_for_its_kind() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let id = state.session.selected.clone();
     assert!(id.is_none(), "nothing is open yet");
     fixture::pooled_clone(home.path());
@@ -267,11 +233,8 @@ fn the_skills_a_session_is_offered_are_the_ones_for_its_kind() {
 
 #[test]
 fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     assert!(!dir.is_empty());
     let id = state.session.selected.clone().expect("a session");
@@ -313,10 +276,7 @@ fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
 #[test]
 fn the_task_body_is_read_again_from_its_source() {
     let (_runtime, server) = crate::tests::tasks::answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(crate::tests::tasks::source(&host)).expect("the source"));
@@ -350,11 +310,8 @@ fn the_task_body_is_read_again_from_its_source() {
 
 #[test]
 fn a_session_with_no_task_of_its_own_is_told_so() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let id = state.session.selected.clone().unwrap();
 
@@ -373,10 +330,7 @@ fn a_session_with_no_task_of_its_own_is_told_so() {
 #[test]
 fn a_source_with_no_template_answers_an_empty_one() {
     let (_runtime, server) = crate::tests::tasks::answering();
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let host = format!("http://{}", server.address());
     state.config.config.as_mut().expect("a config").github =
         Some(serde_json::from_value(crate::tests::tasks::source(&host)).expect("the source"));
@@ -399,10 +353,7 @@ fn a_source_with_no_template_answers_an_empty_one() {
 
 #[test]
 fn a_template_asked_of_a_source_that_is_not_set_up_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
 
     let answer = asked(
         &mut state,
@@ -417,11 +368,8 @@ fn a_template_asked_of_a_source_that_is_not_set_up_is_refused() {
 
 #[test]
 fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
     state
         .agent
@@ -470,11 +418,8 @@ fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
 
 #[test]
 fn the_forge_reads_name_a_worktree_of_an_open_session() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
     let id = state.session.selected.clone().unwrap();
     for tool in ["get_mr_threads", "get_mr_ci"] {

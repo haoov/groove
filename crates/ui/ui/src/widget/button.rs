@@ -5,8 +5,7 @@ use groove_gfx::{Color, Rect, TextStyle};
 use crate::ctx::Ctx;
 use crate::widget::row;
 
-/// A label with `ground` behind it, inset from the row's edges, at its right end.
-/// Returns its box, for the caller to register and to measure what is left.
+/// A label on `ground` at the row's right end; returns its box.
 pub fn button(
     ctx: &mut Ctx,
     line: Rect,
@@ -27,8 +26,7 @@ pub fn slot(ctx: &mut Ctx, line: Rect, content: f32, ground: Option<Color>) -> R
     slot_at(ctx, line, at, content, ground)
 }
 
-/// The same room, from `x`, on `ground`, which carries a border. Returns its box, for
-/// the caller to fill and to register.
+/// The same room from `x`, on a bordered `ground`; returns its box.
 pub fn slot_at(ctx: &mut Ctx, line: Rect, x: f32, content: f32, ground: Option<Color>) -> Rect {
     let pad = ctx.tokens.sm;
     let height = (ctx.tokens.row - ctx.tokens.xs).min(line.h - ctx.tokens.xs);

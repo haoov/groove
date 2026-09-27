@@ -19,7 +19,7 @@ pub struct Metrics {
     pub text: f32,
     pub code: f32,
     pub cell: CellSize,
-    /// Milliseconds since start, for what moves.
+    /// Milliseconds since start.
     pub tick: u64,
     /// The wall clock, for what says how long ago.
     pub now: Timestamp,

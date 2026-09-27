@@ -99,7 +99,6 @@ impl Gitlab {
         self.written(&reply, "mergeRequestUpdate")
     }
 
-    /// Every open MR the host asks this user to review, newest first.
     /// One note on a line of the latest diff, which the MR's own head names.
     pub async fn note_on(&self, repo: &Repo, number: &str, at: Posted<'_>) -> Result<()> {
         let mr = self.read_mr(repo, number).await?;

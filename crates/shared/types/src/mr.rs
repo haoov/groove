@@ -200,10 +200,6 @@ impl CiState {
     pub fn is_green(self) -> bool {
         self == CiState::Success
     }
-
-    pub fn is_red(self) -> bool {
-        self == CiState::Failed
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]

@@ -95,8 +95,7 @@ impl Service {
         Ok(remote.comment(repo, &mr.remote_id, body).await?)
     }
 
-    /// A verdict on the MR, carrying the notes this session has not posted, which
-    /// it resolves once they are up.
+    /// A verdict carrying the session's unposted notes, which are resolved once up.
     pub async fn review(&self, repo: &Repo, worktree: &WorktreeId, said: Said<'_>) -> Result<()> {
         let remote = self.remote(repo)?;
         match remote.kind() {
@@ -127,8 +126,7 @@ impl Service {
         Ok(())
     }
 
-    /// A note at a time, each taken away as it lands, then the verdict on its own: a
-    /// call that fails leaves nothing to post twice.
+    /// Each note posted and taken away in turn, then the verdict on its own.
     async fn one_by_one(
         &self,
         remote: &Remote,

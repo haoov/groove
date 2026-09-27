@@ -4,14 +4,11 @@ use super::*;
 
 #[test]
 fn load_lists_what_changed_in_the_selected_worktree() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     assert!(
-        workspace::loaded_for(&state).is_some(),
+        state.workspace.worktree.as_ref().is_some(),
         "adding the repo loaded its worktree"
     );
     assert!(
@@ -48,10 +45,7 @@ fn load_lists_what_changed_in_the_selected_worktree() {
 
 #[test]
 fn nothing_is_loaded_when_no_worktree_is_selected() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     dispatch(
         Cmd::Workspace(workspace::Command::Load),
         &mut state,
@@ -59,17 +53,14 @@ fn nothing_is_loaded_when_no_worktree_is_selected() {
         &spawner,
     );
     spawner.drain(&mut state, &services);
-    assert!(workspace::loaded_for(&state).is_none());
+    assert!(state.workspace.worktree.as_ref().is_none());
     assert!(!workspace::stale(&state), "nothing to load is not stale");
 }
 
 #[test]
 fn switching_to_a_session_with_no_worktree_forgets_the_last_one() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let first = state.session.selected.clone().expect("a session");
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "changed\n").unwrap();
@@ -100,7 +91,7 @@ fn switching_to_a_session_with_no_worktree_forgets_the_last_one() {
         &spawner,
     );
     assert!(
-        workspace::loaded_for(&state).is_none(),
+        state.workspace.worktree.as_ref().is_none(),
         "a session with no worktree has no changed files"
     );
     assert!(state.workspace.files.is_empty());
@@ -119,11 +110,8 @@ fn switching_to_a_session_with_no_worktree_forgets_the_last_one() {
 
 #[test]
 fn a_file_changing_on_disk_reads_the_worktree_again() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     assert!(
         state.workspace.watching.is_some(),
@@ -151,11 +139,8 @@ fn a_file_changing_on_disk_reads_the_worktree_again() {
 
 #[test]
 fn a_new_session_shows_nothing_of_the_one_before_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     assert!(state.workspace.opened.is_some(), "a file is open");
     assert!(!state.workspace.files.is_empty());
@@ -171,7 +156,7 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
         "the file belonged to the worktree that is no longer selected"
     );
     assert!(
-        workspace::loaded_for(&state).is_none(),
+        state.workspace.worktree.as_ref().is_none(),
         "and nothing is loaded for a session with no worktree"
     );
     let selected = state.session.selected_worktree().map(|w| &w.id);
@@ -183,11 +168,8 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
 
 #[test]
 fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
     std::fs::write(std::path::Path::new(&dir).join("b.rs"), "fn b() {}\n").unwrap();
@@ -241,11 +223,8 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
 
 #[test]
 fn a_file_is_read_before_its_rows_are_on_screen() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(
         std::path::Path::new(&dir).join("a.txt"),
@@ -280,11 +259,8 @@ fn a_file_is_read_before_its_rows_are_on_screen() {
 
 #[test]
 fn a_keystroke_reaches_the_rows_the_whole_change_shows() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     dispatch(
         Cmd::Workspace(workspace::Command::Edit(Edit::Insert("X".into()))),
@@ -302,11 +278,8 @@ fn a_keystroke_reaches_the_rows_the_whole_change_shows() {
 
 #[test]
 fn a_file_marked_read_is_remembered_by_the_session() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -362,11 +335,8 @@ fn a_file_marked_read_is_remembered_by_the_session() {
 
 #[test]
 fn the_base_mode_holds_what_the_branch_committed_and_working_does_not() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
     based(&mut state, "main");
@@ -407,11 +377,8 @@ fn the_base_mode_holds_what_the_branch_committed_and_working_does_not() {
 
 #[test]
 fn the_base_mode_holds_what_is_uncommitted_as_well() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
     based(&mut state, "main");
@@ -456,11 +423,8 @@ pub(super) fn based(state: &mut crate::AppState, branch: &str) {
 
 #[test]
 fn an_answer_read_for_another_selection_is_dropped() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
     dispatch(

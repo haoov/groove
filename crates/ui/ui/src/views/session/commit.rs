@@ -1,5 +1,4 @@
-//! The commit box under the changed files: what the index holds, what commits it,
-//! and the message.
+//! The commit box under the changed files: the index, the action, the message.
 
 use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Rect;
@@ -175,8 +174,7 @@ fn label(act: &Command) -> &'static str {
     }
 }
 
-/// One button: what to do now, and a caret to everything else it could do.
-/// Returns where it starts, so the counts know their room.
+/// One button for what to do now, a caret for the rest; returns where it starts.
 fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
     let act = primary(app);
     let can = act.as_ref().is_some_and(|act| ready(app, act));

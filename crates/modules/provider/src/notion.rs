@@ -75,8 +75,7 @@ impl Notion {
         Ok(Some(body::text(&reply)))
     }
 
-    /// The pages of the sprint that is running, or nothing at all: a filter on a
-    /// property the database lacks fails the whole query.
+    /// The pages of the running sprint, or none when the database has no sprint property.
     async fn running(&self) -> Vec<String> {
         let Some(name) = self.config.sprint.clone() else {
             return Vec::new();

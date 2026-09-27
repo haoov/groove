@@ -68,8 +68,7 @@ impl TaskKey {
         }
     }
 
-    /// The key an external id reads as: `<host>/<owner>/<repo>#<number>` is GitHub's,
-    /// and anything without a number of its own is a Notion page.
+    /// The key an external id reads as: `<host>/<owner>/<repo>#<n>` is GitHub, the rest Notion.
     pub fn parse(id: &ExternalId) -> Result<Self> {
         let invalid = || Error::invalid(format!("not a task id: {}", id.as_str()));
         let Some((path, number)) = id.as_str().rsplit_once('#') else {
@@ -161,10 +160,6 @@ pub struct TimeSummary {
 }
 
 impl TimeSummary {
-    pub fn tracked_hours(self) -> f32 {
-        hours(self.tracked_seconds)
-    }
-
     pub fn unlogged_hours(self) -> f32 {
         hours(self.unlogged_seconds)
     }

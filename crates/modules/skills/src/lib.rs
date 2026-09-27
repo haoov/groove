@@ -1,6 +1,4 @@
-//! The skills an agent can be sent. The core plugin is written from here at every
-//! start; the user's own is theirs to write. Both are handed to the launch as
-//! `--plugin-dir`, so a skill may take `mcp__groove__*` for granted.
+//! The skills an agent can be sent: the core plugin written at start, and the user's own.
 
 mod parse;
 
@@ -183,7 +181,7 @@ fn path_of(dirs: &Dirs, id: &str) -> Result<PathBuf> {
     Ok(dir.join("skills").join(name).join(FILE))
 }
 
-/// The skill directories of one plugin, sorted so the order is never the disk's.
+/// The skill directories of one plugin, sorted by name.
 fn names(dir: &Path) -> Vec<String> {
     let mut out: Vec<String> = std::fs::read_dir(dir.join("skills"))
         .into_iter()

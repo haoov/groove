@@ -1,6 +1,4 @@
-//! Keys and clicks to commands. With the agent pane focused every key is the agent's,
-//! except the `ctrl+shift` chords, which are Groove's everywhere. A click goes through
-//! what the last frame drew.
+//! Keys and clicks to commands; the agent pane takes every key but Groove's `ctrl+shift` chords.
 
 mod keys;
 mod pointer;

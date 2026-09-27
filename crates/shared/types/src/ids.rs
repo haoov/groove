@@ -17,10 +17,6 @@ macro_rules! id {
             pub fn as_str(&self) -> &str {
                 &self.0
             }
-
-            pub fn into_string(self) -> String {
-                self.0
-            }
         }
 
         impl fmt::Display for $name {
@@ -62,18 +58,3 @@ id!(MrId);
 id!(AnnotationId);
 id!(ApprovalId);
 id!(ExternalId);
-
-/// A counter per `(session, kind)`; a result tagged with an older value is dropped.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Default)]
-pub struct Generation(u64);
-
-impl Generation {
-    pub fn bump(&mut self) -> Generation {
-        self.0 += 1;
-        *self
-    }
-
-    pub fn is_current(self, current: Generation) -> bool {
-        self == current
-    }
-}

@@ -26,3 +26,14 @@ fn a_job_runs_and_its_continuation_writes_the_state() {
     spawner.drain(&mut state, &services);
     assert!(state.focused);
 }
+
+#[test]
+fn the_feed_keeps_the_newest_errors_and_lets_the_oldest_go() {
+    let mut state = AppState::default();
+    for at in 0..150 {
+        state.failed(groove_types::Error::internal(at.to_string()));
+    }
+    assert_eq!(state.errors.len(), 100);
+    assert_eq!(state.errors[0].message, "50");
+    assert_eq!(state.errors[99].message, "149");
+}

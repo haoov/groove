@@ -51,8 +51,7 @@ pub(super) fn item(tokens: &crate::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
 
-/// One task waiting: its place in the plan, its title, what it is worth, and why it
-/// needs the user.
+/// One task waiting: its place, its title, its worth, and why it needs the user.
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, at: usize, task: &Task) {
     let target = Target::Task(task.short_id.clone());
     if ui.hover.as_ref() == Some(&target) {

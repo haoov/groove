@@ -2,8 +2,7 @@
 
 use groove_types::{Day, NotionConfig, ProviderId, Task, TaskDates, TaskKey, Timestamp};
 
-/// The query the config describes: yours, none of the statuses it excludes, and in one
-/// of the sprints that are running.
+/// The query the config describes: yours, not excluded, in a running sprint.
 pub(super) fn filter(config: &NotionConfig, sprints: &[String]) -> serde_json::Value {
     let mut and: Vec<serde_json::Value> = Vec::new();
     if config.filters.filter_by_assignee {

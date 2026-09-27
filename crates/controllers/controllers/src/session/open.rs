@@ -90,8 +90,7 @@ pub fn open_explorer(
     });
 }
 
-/// A session picked: the one on the rail is selected, one closed comes back to it
-/// with its agent.
+/// A session picked: selected when on the rail, brought back with its agent when closed.
 pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     if state.session.get(id).is_some() {
         return select(state, services, spawner, id);

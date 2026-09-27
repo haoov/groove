@@ -34,21 +34,16 @@ impl Error {
         Self::new(ErrorKind::NotFound, message)
     }
 
-    pub fn conflict(message: impl Into<String>) -> Self {
-        Self::new(ErrorKind::Conflict, message)
-    }
-
     pub fn invalid(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Invalid, message)
     }
 
-    pub fn internal(message: impl Into<String>) -> Self {
-        Self::new(ErrorKind::Internal, message)
+    pub fn db(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Db, message)
     }
 
-    pub fn with_kind(mut self, kind: ErrorKind) -> Self {
-        self.kind = kind;
-        self
+    pub fn internal(message: impl Into<String>) -> Self {
+        Self::new(ErrorKind::Internal, message)
     }
 }
 

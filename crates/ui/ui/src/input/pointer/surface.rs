@@ -23,8 +23,7 @@ pub(super) fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metri
     ui.session.view = view;
 }
 
-/// Where a click in the open file puts the caret. A row the new side has no line
-/// on — a removed one, a gap — takes no caret.
+/// Where a click in the open file puts the caret; a row with no new-side line takes none.
 pub(super) fn landed(
     ui: &mut Ui,
     app: &AppState,
@@ -98,8 +97,7 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
     ui.session.diff = (at - rect.h / 2.0).clamp(0.0, far);
 }
 
-/// The file one found line belongs to, opened and stood on with that line held. A
-/// search reaches files the change never touched, which only the file view shows.
+/// The file of one found line, opened in the file view with that line held.
 pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) -> Vec<Command> {
     let Some(one) = app.workspace.found.get(at) else {
         return Vec::new();

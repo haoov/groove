@@ -16,11 +16,8 @@ fn act(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, 
 
 #[test]
 fn a_file_made_in_the_worktree_shows_up_as_a_change() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
 
     act(
@@ -48,11 +45,8 @@ fn a_file_made_in_the_worktree_shows_up_as_a_change() {
 
 #[test]
 fn a_path_renamed_leaves_its_old_name_behind() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
 
@@ -72,11 +66,8 @@ fn a_path_renamed_leaves_its_old_name_behind() {
 
 #[test]
 fn a_path_that_leaves_the_worktree_is_refused_and_says_so() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     worktree(&mut state, &services, &spawner);
 
     act(
@@ -98,11 +89,8 @@ fn a_path_that_leaves_the_worktree_is_refused_and_says_so() {
 
 #[test]
 fn a_directory_and_what_it_holds_go_together() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let at = std::path::Path::new(&dir);
 

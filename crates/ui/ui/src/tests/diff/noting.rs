@@ -355,7 +355,7 @@ fn a_selection_that_runs_into_a_note_takes_no_note() {
 }
 
 #[test]
-fn writing_a_note_again_shows_one_row_not_two() {
+fn a_note_written_again_is_typed_in_its_own_place() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();

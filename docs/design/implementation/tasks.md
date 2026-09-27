@@ -38,10 +38,6 @@ asks it which rows carry the current label; those page ids become one `or` of
 `relation contains` terms. The ids stand for five minutes. A sprint property the
 database lacks yields no term at all, never a term Notion would refuse the query for.
 
-| Still to build | Does |
-|---|---|
-| `task.get` · `task.list` | reads for the MCP tools |
-
 ## Tasks management
 
 **Service `task`**: the list with each task's provider fields, the local order, the
@@ -97,7 +93,6 @@ day. The forge facts are empty until `forge` lands, so only the dates speak toda
 |---|---|
 | `task.delete` | the task at the provider, and the session with it |
 | `task.get_time` | read: tracked and logged hours |
-| `task.create` · `task.set_property` · `task.set_body` | the agent's own writes, through `approvals` |
 
 The board's **+ explorer** starts one; filing the task is what the agent does from it.
 

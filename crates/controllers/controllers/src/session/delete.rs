@@ -6,8 +6,7 @@ use super::FIRST_SIZE;
 use super::rail::list;
 use crate::{AppState, Continuation, Services, Spawner, agent};
 
-/// The session taken away: its agent, its worktrees, its row. Unforced, it stops at
-/// work that is not committed or pushed.
+/// The session taken away: its agent, its worktrees, its row; unforced, lost work refuses it.
 pub fn delete(
     state: &mut AppState,
     services: &Services,

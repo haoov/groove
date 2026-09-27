@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use crate::tests::fixture::{pooled_clone, services, state, until, worktree};
+use crate::tests::fixture::{pooled_clone, until, worktree};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch, workspace};
 
 const RUNS: u32 = 5;
@@ -28,11 +28,8 @@ fn settle(
 #[test]
 #[ignore]
 fn time_a_save_reaching_the_state() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let file = Path::new(&dir).join("a.txt");
 

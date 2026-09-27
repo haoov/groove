@@ -1,5 +1,4 @@
-//! Groove. One window, one event loop, one writer of `AppState`.
-//! `groove --explore` opens an explorer at start, until the board exists.
+//! Groove: one window, one event loop, one writer of `AppState`; `--explore` opens an explorer.
 
 mod app;
 mod keys;

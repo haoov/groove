@@ -32,13 +32,6 @@ Preferences.
 when you look — done unseen; moving — working; quiet — idle. Colour and
 motion follow [../design.md](../design.md).
 
-| Still to build | Does |
-|---|---|
-| `agent.reload` | end, then start with `--resume` |
-| `agent.approve` · `agent.refuse` | `approvals.resolve`, then the row and the timeline |
-| `agent.auto_approve` | flips the session's flag |
-| `agent.get_activity` · `agent.get_asks` | reads for the MCP tools |
-
 The review sheet is ui state, not a command.
 
 **Rail** reads the slice and nothing else; the feed reads `timeline` for the opened
@@ -65,12 +58,9 @@ point to the tools; they never restate how to write.
 
 ## Activity
 
-**Module `hooks`**: the receiver, mounted on `mcp-server`. Each POST becomes
-`Event::Agent(Hook { session, kind, tool })` on the proxy. Bursts on file-editing
-tools are coalesced before they reach the loop.
-
-**Module `activity`**: the fold from hook events to status, used by the `agent`
-service's `apply`.
+**Module `hooks`**: a loopback server of its own. Each POST becomes
+`Event::Agent(Hook { session, kind, tool })` on the proxy; the `agent` service's `apply`
+folds it into the session's status.
 
 **Module `timeline`**: one table — session, time, kind, subject, payload — indexed the
 way it is read, newest first, with the row's own id breaking a tie inside one second.

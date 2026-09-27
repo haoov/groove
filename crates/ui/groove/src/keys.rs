@@ -4,7 +4,6 @@ use groove_ui::input::{Input, Key, Modifiers};
 use winit::event::{ElementState, KeyEvent};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
 
-/// A pressed key as the ui reads it; releases and unmapped keys are nothing.
 /// The modifiers as the ui reads them.
 pub fn mods_of(mods: ModifiersState) -> Modifiers {
     Modifiers {

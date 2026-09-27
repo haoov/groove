@@ -13,8 +13,7 @@ pub struct NotionConfig {
     /// The people property the assignee filter reads.
     #[serde(default)]
     pub assignee: Option<String>,
-    /// The relation property that names a task's sprint, and the status a sprint
-    /// carries while it is the one running.
+    /// The relation naming a task's sprint, and the status of the running sprint.
     #[serde(default)]
     pub sprint: Option<String>,
     #[serde(default)]
@@ -101,8 +100,7 @@ pub struct GithubConfig {
     pub priority_map: PriorityMap,
 }
 
-/// The provider's own name for each property Groove reads. An empty name is a gap,
-/// not an error: Setup says what it costs.
+/// The provider's own name for each property Groove reads; an empty name is a gap.
 impl fmt::Debug for GithubConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GithubConfig")
@@ -151,8 +149,7 @@ pub struct PropertyNames {
     pub logged: Option<String>,
 }
 
-/// Which of the provider's status values mean what. The first of each is the one
-/// Groove writes.
+/// Which status values mean what; the first of each is the one Groove writes.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct StatusMap {
     pub ready: Vec<String>,

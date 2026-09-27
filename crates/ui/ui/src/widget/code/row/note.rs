@@ -10,8 +10,7 @@ use crate::mark::Mark;
 use crate::style::Role;
 use crate::widget::{elide, row, slot_at};
 
-/// One row of a note: its own ground, the note's mark where a number would stand,
-/// the author, then what they said.
+/// One row of a note: its ground, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutter: Block) {
     ctx.quad(line, ctx.styles.deep());
     let role = match said.resolved {
@@ -29,8 +28,7 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutte
     row(ctx, rect, 0.0, &text, words);
 }
 
-/// Who said it and which lines it is about, at the row's own end. Returns where
-/// they start.
+/// Who said it and which lines, at the row's end; returns where they start.
 fn by(ctx: &mut Ctx, line: Rect, said: Noted<'_>) -> f32 {
     let style = ctx.styles.small(Role::Faint);
     let mut at = line.right() - ctx.tokens.md;

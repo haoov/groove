@@ -1,5 +1,4 @@
-//! The agent's own row, under its screen: whether its writes ask first, the skills it
-//! can be sent, and a reload.
+//! The agent's row under its screen: auto-approve, the skills, and a reload.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;

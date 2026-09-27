@@ -1,5 +1,4 @@
-//! What git is asked to do: the index, a commit, a push, a pull, a change thrown away.
-//! The surface and the agent ask through the same functions, and say who asked.
+//! What git is asked to do: the index, a commit, a push, a pull, a discard.
 
 use std::path::PathBuf;
 

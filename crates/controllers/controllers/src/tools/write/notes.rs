@@ -1,5 +1,4 @@
-//! What the agent leaves on a line, and what it says in the MR's threads. Each one
-//! builds the act the surface builds, and hands it to the same write.
+//! The agent's notes and thread answers, built as the surface builds them.
 
 use groove_types::{Anchor, AnnotationId};
 

@@ -86,8 +86,7 @@ fn here(ctx: &mut Ctx, line: Rect) {
     ruled(ctx, line, color);
 }
 
-/// What a caret holds, under the text: a band over the characters, run out past the
-/// line's end when the selection carries on to the next row.
+/// A caret's band under the text, run past the line's end when the selection carries on.
 fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
     let (from, to, through) = held;
     let style = ctx.styles.code(Role::Text);
@@ -103,8 +102,7 @@ fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
     );
 }
 
-/// What a search found, under the text. The one it stands on reads as a selection,
-/// which is what it is wherever a caret can hold it.
+/// What a search found, under the text; the one it stands on reads as a selection.
 fn marked(ctx: &mut Ctx, rect: Rect, text: &str, at: (usize, usize), standing: bool) {
     let color = match standing {
         true => ctx.styles.held(),

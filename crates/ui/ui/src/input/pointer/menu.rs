@@ -39,8 +39,7 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
     };
 }
 
-/// The lines a note would be left on: what is selected under the click, else the
-/// one line the click lands on.
+/// The lines a note would stand on: the selection under the click, else its line.
 fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32)) -> Option<Of> {
     let (path, caret) = super::surface::at(ui, app, hits, metrics, at)?;
     let line = caret.line as u32;
@@ -67,8 +66,7 @@ fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
     Some((from.line as u32, to.line as u32))
 }
 
-/// The worktree's actions stand above the caret that opened them, ending on the rule
-/// that separates the box from the list.
+/// The worktree's actions, above the caret that opened them.
 pub(super) fn worktree_menu(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics) -> Menu {
     let box_ = Layout::of(metrics, ui).commit;
     let right = hits

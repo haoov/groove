@@ -5,8 +5,7 @@ use crate::layout::Edge;
 use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::{Click, Drag, Ui};
 
-/// This press, against the one before it: a press soon after another and near it
-/// carries the same click on.
+/// This press against the last: soon and near, it carries the same click on.
 pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> Click {
     let slop = CLICK_SLOP * metrics.scale;
     let same = last.filter(|last| {

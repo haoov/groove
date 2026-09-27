@@ -4,11 +4,8 @@ use super::*;
 
 #[test]
 fn the_open_file_follows_a_change_on_disk() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     let file = std::path::Path::new(&dir).join("a.txt");
 
@@ -45,11 +42,8 @@ fn the_open_file_follows_a_change_on_disk() {
 
 #[test]
 fn typing_changes_the_buffer_and_the_rows_follow() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     let rows = state.workspace.opened.as_ref().map(|open| open.rows.len());
 
@@ -84,11 +78,8 @@ fn typing_changes_the_buffer_and_the_rows_follow() {
 
 #[test]
 fn saving_writes_the_buffer_and_clears_what_it_owes() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let file = editing(&mut state, &services, &spawner);
 
     edit(
@@ -114,11 +105,8 @@ fn saving_writes_the_buffer_and_clears_what_it_owes() {
 
 #[test]
 fn a_write_on_disk_does_not_take_unsaved_edits_away() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let file = editing(&mut state, &services, &spawner);
 
     edit(
@@ -137,11 +125,8 @@ fn a_write_on_disk_does_not_take_unsaved_edits_away() {
 
 #[test]
 fn what_is_held_is_copied_cut_and_pasted() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
 
     let hold = [
@@ -189,11 +174,8 @@ fn what_is_held_is_copied_cut_and_pasted() {
 
 #[test]
 fn a_copy_with_nothing_held_says_nothing() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     dispatch(
         Cmd::Workspace(workspace::Command::Copy),
@@ -211,11 +193,8 @@ fn a_copy_with_nothing_held_says_nothing() {
 
 #[test]
 fn a_file_opened_at_a_match_holds_it() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let dir = worktree(&mut state, &services, &spawner);
     std::fs::write(std::path::Path::new(&dir).join("a.txt"), "one two\nthree\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
@@ -243,11 +222,8 @@ fn a_file_opened_at_a_match_holds_it() {
 
 #[test]
 fn an_undo_after_a_save_takes_back_what_was_typed() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let file = editing(&mut state, &services, &spawner);
 
     edit(
@@ -282,11 +258,8 @@ fn an_undo_after_a_save_takes_back_what_was_typed() {
 
 #[test]
 fn a_file_saved_back_to_what_it_was_stays_open() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     editing(&mut state, &services, &spawner);
     assert_eq!(buffer(&state), "one\ntwo\n");
 

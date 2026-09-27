@@ -1,5 +1,4 @@
-//! What the pointer can reach. A view registers a rect and what it means; a click
-//! resolves to the last one registered over that point.
+//! What the pointer can reach: the last rect registered over a point wins.
 
 mod note;
 mod target;

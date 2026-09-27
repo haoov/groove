@@ -112,8 +112,7 @@ fn name_of(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
-/// What picking a row of a menu leaves: commands to send, and what the surface
-/// now asks of the user.
+/// What picking a menu row leaves: commands to send, and what the surface now asks.
 #[derive(Debug, Default, PartialEq)]
 pub struct Picked {
     pub commands: Vec<Command>,

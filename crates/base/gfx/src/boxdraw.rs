@@ -1,5 +1,4 @@
-//! Box-drawing and block glyphs as rectangles that tile the cell exactly.
-//! Dashed variants draw solid; double and rounded glyphs stay on the font.
+//! Box-drawing and block glyphs as rectangles that tile the cell; dashed ones draw solid.
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Arm {

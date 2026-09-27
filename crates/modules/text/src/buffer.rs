@@ -14,7 +14,7 @@ pub struct Buffer {
     carets: Vec<Selection>,
     history: History,
     dirty: bool,
-    /// Bumped by every change, so a job knows whether its answer is still wanted.
+    /// Bumped by every change.
     revision: u64,
 }
 

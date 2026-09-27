@@ -1,5 +1,4 @@
-//! Where a task comes from. Groove reads a task; only the agent writes one back,
-//! except the status and the hours Groove itself recorded.
+//! Where a task comes from: read here, written back only for the status and the hours.
 
 mod error;
 mod github;
@@ -14,8 +13,7 @@ pub use groove_token::Token;
 use groove_types::{StatusIntent, Task, TaskKey};
 pub use notion::Notion;
 
-/// Every source Groove reads. A new provider is a new arm, and the compiler asks for
-/// it everywhere at once.
+/// Every source Groove reads.
 pub enum Source {
     Github(Github),
     Notion(Notion),

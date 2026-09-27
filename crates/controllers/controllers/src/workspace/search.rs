@@ -31,8 +31,7 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// Every line of the worktree holding `query`, walked on a thread of its own and
-/// reported in batches. A search still running gives up for this one.
+/// Every line of the worktree holding `query`, walked on a thread and reported in batches.
 pub(super) fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, under: String) {
     state.workspace.stop();
     state.workspace.found.clear();

@@ -19,8 +19,7 @@ pub(super) fn edit_file(state: &mut AppState, spawner: &dyn Spawner, edit: Edit)
     }
 }
 
-/// Reads the colours and the alignment again, one read at a time: the last
-/// revision wins, and a read that lands stale starts the next one.
+/// The colours and the alignment read again, one read at a time, the last revision winning.
 pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(open) = state.workspace.opened.as_ref() else {
         return;
@@ -147,8 +146,7 @@ pub(super) enum Head {
     Keep,
 }
 
-/// Reads the open file again, now the worktree has moved under it. A buffer with
-/// unsaved edits is left alone: the user's text outranks the disk's.
+/// The open file read again after the worktree moved; unsaved edits are left alone.
 pub(super) fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
     let Some(open) = state.workspace.opened.as_ref() else {
         return;

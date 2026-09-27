@@ -16,8 +16,7 @@ pub fn counts_room(ctx: &mut Ctx, items: &[(Mark, u32, Role)]) -> f32 {
     wide
 }
 
-/// Icon and number pairs from `x`, left to right, in the row's middle. A count of
-/// zero is not drawn. Returns the x after the last pair.
+/// Icon and number pairs from `x`, zeros left out; returns the x after the last.
 pub fn counts(ctx: &mut Ctx, line: Rect, x: f32, items: &[(Mark, u32, Role)]) -> f32 {
     let gap = ctx.tokens.xs;
     let mut at = x;

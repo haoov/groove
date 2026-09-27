@@ -1,9 +1,9 @@
 //! Taking a session away: what goes with it, and what a refusal leaves standing.
 
 use crate::session::Command;
-use crate::tests::fixture::{self, services, state, until};
+use crate::tests::fixture::{self, until};
 use crate::tests::session::open_explorer;
-use crate::{Command as Cmd, SyncSpawner, dispatch};
+use crate::{Command as Cmd, dispatch};
 
 fn line(session: &groove_types::SessionId) -> groove_types::TimelineEvent {
     groove_types::TimelineEvent {
@@ -17,10 +17,7 @@ fn line(session: &groove_types::SessionId) -> groove_types::TimelineEvent {
 
 #[test]
 fn a_deleted_session_takes_its_feed_lines_and_launch_files() {
-    let home = tempfile::tempdir().unwrap();
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     open_explorer(&mut state, &services, &spawner, "keep");
     open_explorer(&mut state, &services, &spawner, "drop");
     let ids: Vec<_> = state
@@ -54,11 +51,8 @@ fn a_deleted_session_takes_its_feed_lines_and_launch_files() {
 
 #[test]
 fn force_delete_takes_a_session_with_unpushed_and_uncommitted_work() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let path = std::path::PathBuf::from(fixture::worktree(&mut state, &services, &spawner));
     std::fs::write(path.join("b.txt"), "committed\n").unwrap();
     fixture::sh(&path, &["add", "."]);
@@ -80,11 +74,8 @@ fn force_delete_takes_a_session_with_unpushed_and_uncommitted_work() {
 
 #[test]
 fn a_refused_delete_leaves_the_session_its_agent_and_its_files() {
-    let home = tempfile::tempdir().unwrap();
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
-    let spawner = SyncSpawner::new().unwrap();
-    let services = services(&spawner, home.path());
-    let mut state = state(home.path());
     let path = std::path::PathBuf::from(fixture::worktree(&mut state, &services, &spawner));
     std::fs::write(path.join("a.txt"), "dirty\n").unwrap();
     let id = state.session.selected.clone().expect("the session");

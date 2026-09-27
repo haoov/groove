@@ -30,9 +30,9 @@ pub struct Noted<'a> {
 pub struct Acting {
     pub origin: groove_types::NoteOrigin,
     pub resolved: bool,
-    /// The merge request holds it, so the forge answers for it.
+    /// The MR holds it.
     pub thread: bool,
-    /// The session's work is its own, so a note of it can be posted.
+    /// It can be posted.
     pub post: bool,
     /// The one of them the pointer stands on.
     pub hovered: Option<crate::hit::NoteButton>,

@@ -15,7 +15,7 @@ pub fn working(focused: bool, acted_at: Timestamp, busy: bool, now: Timestamp) -
     focused && (busy || now.seconds() - acted_at.seconds() <= IDLE)
 }
 
-/// What the timer stands on and what it has measured since the ledger last took it.
+/// The task the clock stands on, and what it measured since the ledger took it.
 #[derive(Debug, Default)]
 pub struct Timer {
     on: Option<(ExternalId, Timestamp)>,
