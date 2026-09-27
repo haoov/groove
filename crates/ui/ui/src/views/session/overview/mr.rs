@@ -5,29 +5,18 @@ use groove_gfx::Rect;
 use groove_types::{MrDetails, ReviewState};
 
 use crate::base::ctx::Ctx;
-use crate::base::style::Role;
-use crate::text::elide;
-use crate::widgets::{Row, list};
 
 const UNSET: &str = "—";
 
-/// The MR's own line, then what it stands at. Returns the y under the last.
-pub(super) fn rows(ctx: &mut Ctx, area: Rect, top: f32, delivery: &Held) -> f32 {
+/// The MR's own line, then what it stands at.
+pub(super) fn rows(ctx: &mut Ctx, column: &mut Rect, delivery: &Held) {
     let (Some(mr), Some(read)) = (delivery.mr.as_ref(), delivery.read.as_ref()) else {
-        return top;
+        return;
     };
-    let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
-    let at = ctx.tokens.aside_near + ctx.tokens.md;
     let details = &read.details;
-    let title = elide(
-        ctx,
-        &details.title,
-        &value,
-        area.w - at - ctx.tokens.md * 2.0,
-    );
     let named = format!("{}{}", mr.forge.sigil(), mr.remote_id);
     let held = [
-        (named.as_str(), title),
+        (named.as_str(), details.title.clone()),
         ("State", state(details, delivery.stale)),
         ("Into", details.target_branch.clone()),
         ("Author", details.author.clone()),
@@ -35,16 +24,11 @@ pub(super) fn rows(ctx: &mut Ctx, area: Rect, top: f32, delivery: &Held) -> f32 
         ("Review", review(details)),
         ("Notes", notes(read)),
     ];
-    let rows: Vec<Row<'_>> = held
+    let held: Vec<(&str, &str)> = held
         .iter()
-        .map(|(one, held)| Row::new(ctx.tokens.md, one, label).aside(at, held, value))
+        .map(|(name, one)| (*name, one.as_str()))
         .collect();
-    list(
-        ctx,
-        Rect::new(area.x, top, area.w, ctx.tokens.row),
-        &rows,
-        None,
-    )
+    super::table(ctx, column, &held);
 }
 
 /// Its state, and whether the last read failed.

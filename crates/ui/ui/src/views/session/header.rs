@@ -1,6 +1,6 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::SessionKind;
 
 use crate::base::ctx::Ctx;
@@ -8,9 +8,9 @@ use crate::base::hit::{Picks, Target};
 use crate::base::mark::Mark;
 use crate::base::motion::turn;
 use crate::base::style::Role;
-use crate::shape::{after_mark, box_in, hairline, leading};
-use crate::text::{elide, row};
-use crate::widgets::{button, delivered, icon, picker, room_for, slot};
+use crate::shape::{hairline, square};
+use crate::text::{Label, elide};
+use crate::widgets::{button, delivered, icon, mark_button, picker, room_for};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -18,14 +18,16 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     ctx.quad(rect, ctx.styles.ground());
     hairline(ctx, rect, ctx.styles.line());
 
-    let top = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.header);
-    let under = Rect::new(rect.x, top.bottom(), rect.w, ctx.tokens.row);
+    let mut body = rect;
+    let top = body.take_top(ctx.tokens.header);
+    let under = body.take_top(ctx.tokens.row);
     let Some(open) = app.session.selected() else {
-        let style = ctx.styles.title(Role::Text);
-        return row(ctx, top, ctx.tokens.md, "Groove", style);
+        let room = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+        Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
+        return;
     };
     let until = actions(ctx, top, app, open);
-    titled(ctx, top, open, until);
+    titled(ctx, top.until(until), open);
     pickers(ctx, under, app, open);
 }
 
@@ -43,10 +45,9 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };
-    let room = Rect::new(line.x, line.y, more - line.x, line.h);
     let box_ = button(
         ctx,
-        room,
+        line.until(more),
         "finish",
         ctx.styles.label(Role::Ok),
         Some(ground),
@@ -58,16 +59,8 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
 /// What opens the rest of them, at the line's right end.
 fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> f32 {
     let target = Target::TaskActions(open.session.id.clone());
-    let ground = match ctx.hovered(&target) {
-        true => ctx.styles.hover(),
-        false => ctx.styles.band(),
-    };
-    let size = ctx.tokens.small;
-    let box_ = slot(ctx, line, size, Some(ground));
-    let caret = box_in(box_, box_.x + (box_.w - size) / 2.0, size);
-    ctx.icon(caret, Mark::Down, 0, ctx.styles.color(Role::Muted));
-    ctx.hit(box_, target);
-    box_.x
+    let grounds = (ctx.styles.band(), ctx.styles.hover());
+    mark_button(ctx, line, target, (Mark::Down, 0, Role::Muted), grounds).x
 }
 
 /// Whether the session works a task with no worktree still carrying an open MR.
@@ -80,15 +73,13 @@ fn finishable(app: &AppState, open: &Open) -> bool {
 }
 
 /// The session's kind and its title, cut where the actions begin.
-fn titled(ctx: &mut Ctx, line: Rect, open: &Open, until: f32) {
-    let pad = ctx.tokens.md;
-    let box_ = leading(ctx, line, line.x + pad);
-    icon(ctx, box_, Mark::of_kind(&open.session.kind), Role::Faint);
-    let style = ctx.styles.title(Role::Text);
-    let at = after_mark(ctx, pad);
-    let room = (until - line.x - at - pad).max(0.0);
-    let text = elide(ctx, &open.session.title, &style, room);
-    row(ctx, line, at, &text, style);
+fn titled(ctx: &mut Ctx, line: Rect, open: &Open) {
+    let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
+    let mut room = line.pad(Edges::across(md, md));
+    let mark = square(room.take_left(size), size);
+    room.take_left(ctx.tokens.sm);
+    icon(ctx, mark, Mark::of_kind(&open.session.kind), Role::Faint);
+    Label::new(&open.session.title, ctx.styles.title(Role::Text)).draw(ctx, room);
 }
 
 /// The pickers every tab follows, each label cut to the room the line has.
@@ -135,24 +126,19 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
         .session
         .selected_worktree()
         .is_some_and(|worktree| app.delivery.poll.is_out(&worktree.id));
-    let ground = match ctx.hovered(&Target::Refresh) {
-        true => ctx.styles.hover(),
-        false => ctx.styles.band(),
+    let (turning, role) = match out {
+        true => (turn(ctx.tick), Role::Working),
+        false => (0, Role::Faint),
     };
-    let size = ctx.tokens.small;
-    let box_ = slot(ctx, line, size, Some(ground));
-    let mark = box_in(box_, box_.x + (box_.w - size) / 2.0, size);
-    let turning = match out {
-        true => turn(ctx.tick),
-        false => 0,
-    };
-    let role = match out {
-        true => Role::Working,
-        false => Role::Faint,
-    };
-    ctx.icon(mark, Mark::Busy, turning, ctx.styles.color(role));
-    ctx.hit(box_, Target::Refresh);
-    box_.x
+    let grounds = (ctx.styles.band(), ctx.styles.hover());
+    mark_button(
+        ctx,
+        line,
+        Target::Refresh,
+        (Mark::Busy, turning, role),
+        grounds,
+    )
+    .x
 }
 
 /// What the two buttons add around their labels: a caret and the padding each side.

@@ -12,7 +12,7 @@ mod tree;
 pub(crate) use tree::{Listing, listing, reads_as};
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::commit;
@@ -21,7 +21,7 @@ use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::text::{Label, row};
 use crate::widgets::{button, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -217,27 +217,23 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
     left
 }
 
-/// One word at the end of a row, with a ground of its own under the pointer.
-pub(crate) fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target) -> f32 {
+/// One word at the right of `room`, with a ground of its own under the pointer.
+pub(crate) fn acted(ctx: &mut Ctx, room: &mut Rect, label: &str, target: Target) {
     let style = ctx.styles.small(Role::Muted);
-    let on_it = ctx.hovered(&target);
-    let ground = on_it.then(|| ctx.styles.action());
-    let box_ = button(ctx, line, label, style, ground);
+    let ground = ctx.hovered(&target).then(|| ctx.styles.action());
+    let box_ = button(ctx, *room, label, style, ground);
     ctx.hit(box_, target);
-    box_.x
+    *room = room.until(box_.x);
 }
 
 /// A question in the row's own place, with its two answers at its end.
 pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str) {
     ctx.quad(line, ctx.styles.raised());
-    let keep = acted(ctx, line, "keep", Target::Keep);
-    let gone = Rect::new(line.x, line.y, keep - line.x, line.h);
-    let discard = acted(ctx, gone, "discard", Target::Discard);
-    let style = ctx.styles.small(Role::Bad);
-    let asked = Rect::new(line.x, line.y, discard - line.x, line.h);
-    let room = (asked.w - ctx.tokens.md * 2.0).max(0.0);
-    let text = elide(ctx, question, &style, room);
-    row(ctx, asked, ctx.tokens.md, &text, style);
+    let mut room = line;
+    acted(ctx, &mut room, "keep", Target::Keep);
+    acted(ctx, &mut room, "discard", Target::Discard);
+    let asked = room.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    Label::new(question, ctx.styles.small(Role::Bad)).draw(ctx, asked);
 }
 
 /// The files of the worktree the session points at, never another's.

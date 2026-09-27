@@ -9,7 +9,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
 use crate::text::{elide, row};
-use crate::widgets::slot_at;
+use crate::widgets::Word;
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -99,22 +99,14 @@ fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
 
 /// Approve in peach, and refuse, from the sheet's end.
 fn answers(ctx: &mut Ctx, line: Rect, id: &ApprovalId) {
-    let mut left = line.right();
-    for (label, target, role) in [
-        ("Refuse", Target::Refuse(id.clone()), Role::Muted),
-        ("Approve", Target::Approve(id.clone()), Role::Attention),
-    ] {
-        let hovered = ctx.hovered(&target);
-        let style = ctx.styles.small(match (hovered, role) {
-            (true, Role::Muted) => Role::Text,
-            _ => role,
-        });
-        let word = ctx.measure(label, &style);
-        let room = Rect::new(line.x, line.y, left - line.x, line.h);
-        let at = left - word - ctx.tokens.sm * 2.0;
-        let box_ = slot_at(ctx, room, at, word, Some(ctx.styles.raised()));
-        row(ctx, box_, ctx.tokens.sm, label, style);
-        ctx.hit(box_, target);
-        left = box_.x - ctx.tokens.xs;
-    }
+    let (mut room, raised) = (line, ctx.styles.raised());
+    let refuse = Word::new("Refuse", Target::Refuse(id.clone()), Role::Muted, raised);
+    refuse.right(ctx, &mut room, ctx.tokens.xs);
+    let approve = Word::new(
+        "Approve",
+        Target::Approve(id.clone()),
+        Role::Attention,
+        raised,
+    );
+    approve.right(ctx, &mut room, ctx.tokens.xs);
 }

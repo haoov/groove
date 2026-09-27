@@ -73,6 +73,10 @@ impl<'a> Ctx<'a> {
         }
     }
 
+    pub fn hover(&self) -> Option<&Target> {
+        self.hover.as_ref()
+    }
+
     pub fn hovered(&self, target: &Target) -> bool {
         self.hover.as_ref() == Some(target)
     }

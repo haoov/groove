@@ -1,13 +1,13 @@
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use super::rail_item;
 use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, hairline, leading};
-use crate::text::row;
+use crate::shape::{hairline, square};
+use crate::text::Label;
 use crate::widgets::{Row, icon, list, scrolled};
 use crate::{Surface, Ui};
 
@@ -27,32 +27,27 @@ pub struct RailUi {
 /// The opened sessions, in the order opened. The Board row above, the footer below.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.rail;
-    let panel = ctx.styles.band();
-    ctx.quad(rect, panel);
-    edge(ctx, rect);
+    ctx.quad(rect, ctx.styles.band());
+    let mut column = rect;
+    let edge = column.take_right(ctx.tokens.hairline);
+    ctx.quad(edge, ctx.styles.line());
 
-    let width = rect.w - ctx.tokens.hairline;
-    let board = Rect::new(0.0, 0.0, width, ctx.tokens.header);
-    let foot = Rect::new(0.0, rect.h - ctx.tokens.row, width, ctx.tokens.row);
+    let board = column.take_top(ctx.tokens.header);
+    let foot = column.take_bottom(ctx.tokens.row);
     board_row(ctx, app, ui, board);
     let band = ctx.layout.feed;
-    let rows = Rect::new(
-        0.0,
-        board.bottom(),
-        width,
-        (band.y - board.bottom()).max(0.0),
-    );
+    let rows = Rect {
+        h: (band.y - column.y).max(0.0),
+        ..column
+    };
     items(ctx, app, ui, rows);
-    super::feed::draw(ctx, Rect::new(0.0, band.y, width, band.h), app, ui);
+    let feed = Rect {
+        y: band.y,
+        h: band.h,
+        ..column
+    };
+    super::feed::draw(ctx, feed, app, ui);
     footer(ctx, foot);
-}
-
-fn edge(ctx: &mut Ctx, rect: Rect) {
-    let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
-    ctx.quad(
-        Rect::new(rect.right() - thickness, rect.y, thickness, rect.h),
-        rule,
-    );
 }
 
 /// The board. It carries the attention count when it is not zero.
@@ -61,24 +56,22 @@ fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
         ctx.quad(rect, ctx.styles.raised());
     }
     ctx.hit(rect, Target::Board);
-    let (rule, style) = (ctx.styles.line(), ctx.styles.label(Role::Text));
-    let box_ = leading(ctx, rect, ctx.tokens.md);
-    icon(ctx, box_, Mark::Board, Role::Faint);
-    row(ctx, rect, after_mark(ctx, ctx.tokens.md), "Board", style);
-    asking(ctx, rect, app.task.attention.len());
-    hairline(ctx, rect, rule);
+    let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
+    let mut room = rect.pad(Edges::across(md, md));
+    asking(ctx, &mut room, app.task.attention.len());
+    let mark = square(room.take_left(size), size);
+    room.take_left(ctx.tokens.sm);
+    icon(ctx, mark, Mark::Board, Role::Faint);
+    Label::new("Board", ctx.styles.label(Role::Text)).draw(ctx, room);
+    hairline(ctx, rect, ctx.styles.line());
 }
 
-/// How many items need the user, at the row's right end.
-fn asking(ctx: &mut Ctx, rect: Rect, count: usize) {
-    if count == 0 {
-        return;
+/// How many items need the user, at the right of `room`.
+fn asking(ctx: &mut Ctx, room: &mut Rect, count: usize) {
+    if count > 0 {
+        let style = ctx.styles.small(Role::Attention);
+        Label::new(&count.to_string(), style).right(ctx, room, ctx.tokens.sm);
     }
-    let style = ctx.styles.small(Role::Attention);
-    let text = count.to_string();
-    let width = ctx.measure(&text, &style);
-    let at = rect.right() - ctx.tokens.md - width;
-    row(ctx, Rect::new(at, rect.y, width, rect.h), 0.0, &text, style);
 }
 
 /// One item per open session, scrolled and clipped to `area`.

@@ -10,7 +10,8 @@ use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::box_in;
 use crate::text::row;
-use crate::widgets::slot_at;
+use crate::widgets::Word;
+use groove_gfx::Edges;
 
 /// What the agent waits on, or what it can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -29,43 +30,25 @@ fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let id = open.session.id.clone();
     let stale = app.agent.stale(&id);
     let auto = app.agent.activity(&id).is_some_and(|one| one.auto_approve);
-    let mut left = line.right();
-    for (label, target, role, caret) in [
-        (
+    let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
+    let mut room = line.pad(Edges::across(0.0, xs));
+    let words = [
+        Word::new(
             "reload",
             Target::Reload(id.clone()),
             reload_role(stale),
-            false,
+            ground,
         ),
-        ("skills", Target::Skills(id.clone()), Role::Muted, true),
-        (
+        Word::new("skills", Target::Skills(id.clone()), Role::Muted, ground).caret(),
+        Word::new(
             switched(auto),
             Target::AutoApprove(id.clone()),
             auto_role(auto),
-            false,
+            ground,
         ),
-    ] {
-        let hovered = ctx.hovered(&target);
-        let style = ctx.styles.small(match hovered {
-            true => Role::Text,
-            false => role,
-        });
-        let word = ctx.measure(label, &style);
-        let held = match caret {
-            true => word + ctx.tokens.xs + ctx.tokens.small,
-            false => word,
-        };
-        let room = Rect::new(line.x, line.y, left - line.x, line.h);
-        let at = left - held - ctx.tokens.sm * 2.0 - ctx.tokens.xs;
-        let box_ = slot_at(ctx, room, at, held, Some(ctx.styles.ground()));
-        row(ctx, box_, ctx.tokens.sm, label, style);
-        if caret {
-            let size = ctx.tokens.small;
-            let mark = box_in(box_, box_.right() - ctx.tokens.sm - size, size);
-            ctx.icon(mark, Mark::Down, Mark::UPWARDS, style.color);
-        }
-        ctx.hit(box_, target);
-        left = box_.x - ctx.tokens.xs;
+    ];
+    for word in words {
+        word.lit(Role::Text).right(ctx, &mut room, xs * 2.0);
     }
     said(ctx, line, app, open, stale);
 }

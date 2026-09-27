@@ -7,20 +7,12 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
 use crate::text::{row, wrapped};
-use crate::widgets::{Row, button, list};
+use crate::widgets::button;
 
 const UNSET: &str = "—";
 
-/// The six properties a line each, the hours with the clock's; returns the y under them.
-pub(super) fn properties(
-    ctx: &mut Ctx,
-    area: Rect,
-    top: f32,
-    task: &Task,
-    time: Option<TimeSummary>,
-) -> f32 {
-    let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
-    let at = ctx.tokens.aside_near + ctx.tokens.md;
+/// The six properties a line each, the hours with the clock's.
+pub(super) fn properties(ctx: &mut Ctx, column: &mut Rect, task: &Task, time: Option<TimeSummary>) {
     let held = [
         ("Status", text(said(&task.status))),
         ("Priority", text(task.priority.map(|one| one.label()))),
@@ -29,19 +21,12 @@ pub(super) fn properties(
         ("Estimate", text(task.estimate.map(hours))),
         ("Logged", text(task.logged.map(hours))),
     ];
-    let rows: Vec<Row<'_>> = held
+    let held: Vec<(&str, &str)> = held
         .iter()
-        .map(|(name, held)| Row::new(ctx.tokens.md, name, label).aside(at, held, value))
+        .map(|(name, one)| (*name, one.as_str()))
         .collect();
-    let bottom = list(
-        ctx,
-        Rect::new(area.x, top, area.w, ctx.tokens.row),
-        &rows,
-        None,
-    );
-    let hours = Rect::new(area.x, bottom - ctx.tokens.row, area.w, ctx.tokens.row);
-    logging(ctx, hours, task, time);
-    bottom
+    let mut taken = super::table(ctx, column, &held);
+    logging(ctx, taken.take_bottom(ctx.tokens.row), task, time);
 }
 
 /// What hands the source the hours the clock measured, at the end of their own line.
@@ -66,21 +51,17 @@ fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
     ctx.hit(box_, target);
 }
 
-/// The body as text, wrapped to the area's width. Returns the y under the last line.
-pub(super) fn body(ctx: &mut Ctx, area: Rect, top: f32, text: &str) -> f32 {
+/// The body as text, wrapped to the area's width.
+pub(super) fn body(ctx: &mut Ctx, area: Rect, column: &mut Rect, text: &str) {
     let style = ctx.styles.body(Role::Muted);
     let pad = ctx.tokens.md;
-    let height = ctx.tokens.line;
-    let lines = wrapped(ctx, text.trim(), &style, area.w - pad * 2.0);
-    let mut y = top;
+    let lines = wrapped(ctx, text.trim(), &style, column.w - pad * 2.0);
     for line in &lines {
-        if y + height >= area.y && y <= area.bottom() {
-            let at = Rect::new(area.x, y, area.w, height);
+        let at = column.take_top(ctx.tokens.line);
+        if at.bottom() >= area.y && at.y <= area.bottom() {
             row(ctx, at, pad, line, style);
         }
-        y += height;
     }
-    y
 }
 
 fn hours(value: f32) -> String {

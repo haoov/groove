@@ -33,7 +33,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         }
         shared::splitter::draw(&mut ctx, ui.showing(app));
         if let Some(menu) = ui.menu() {
-            shared::actions::draw(&mut ctx, ui, menu);
+            shared::actions::draw(&mut ctx, menu);
         }
         if let Some(palette) = ui.palette() {
             shared::palette::draw(&mut ctx, app, palette);

@@ -1,14 +1,15 @@
 //! One row per changed file: what it is, what it offers, what it counts.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::{Listing, acted, asking, reads_as};
 use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::ruled;
-use crate::text::{elide, row};
+use crate::shape::{ruled, square};
+use crate::text::{Label, elide, row};
 use crate::widgets::scrolled;
 use crate::{Losing, Ui};
 
@@ -92,7 +93,7 @@ pub(super) fn entry(
     if ui.losing() == Some(&Losing::File(file.path.clone())) {
         return asking(ctx, line, "discard changes?");
     }
-    let on_row = pointed(ui, &file.path);
+    let on_row = pointed(ctx, &file.path);
     if on_row {
         let hover = ctx.styles.hover();
         ctx.quad(line, hover);
@@ -101,98 +102,64 @@ pub(super) fn entry(
         let here = ctx.styles.here();
         ruled(ctx, line, here);
     }
-    let letter = ctx.styles.small(Role::Ghost);
-    let mark = file.status.letter().to_string();
-    row(ctx, line, indent, &mark, letter);
-
+    let letter = file.status.letter().to_string();
+    let at = line.pad(Edges::across(indent, 0.0));
+    Label::new(&letter, ctx.styles.small(Role::Ghost)).draw(ctx, at);
     ctx.hit(line, Target::File(file.path.clone()));
-    let at = match on_row {
-        true => offer(ctx, line, file),
-        false => counts(ctx, line, file),
-    };
-    let at = match reading.noted {
-        true => marked(ctx, line, at),
-        false => at,
-    };
-    let start = indent + ctx.tokens.md;
-    let room = (at - line.x - start - ctx.tokens.sm).max(0.0);
-    named(
-        ctx,
-        Rect::new(line.x, line.y, at - line.x, line.h),
-        file,
-        start,
-        room,
-    );
+
+    let sm = ctx.tokens.sm;
+    let mut room = line.pad(Edges::across(indent + ctx.tokens.md, 0.0));
+    match on_row {
+        true => offer(ctx, &mut room, file),
+        false => counts(ctx, &mut room, file),
+    }
+    if reading.noted {
+        room.take_right(sm);
+        let size = ctx.tokens.small;
+        let mark = square(room.take_right(size), size);
+        ctx.icon(mark, Mark::Note, 0, ctx.styles.color(Role::Faint));
+    }
+    room.take_right(sm);
+    named(ctx, room, file);
 }
 
 /// The file's name, then what is left of its path behind it, dimmed.
-fn named(ctx: &mut Ctx, line: Rect, file: &FileDiff, start: f32, room: f32) {
+fn named(ctx: &mut Ctx, mut room: Rect, file: &FileDiff) {
     let (name, behind) = reads_as(&file.path);
     let strong = ctx.styles.body(Role::Text);
-    let quiet = ctx.styles.small(Role::Ghost);
-    let text = elide(ctx, &name, &strong, room);
-    let width = ctx.measure(&text, &strong);
-    row(ctx, line, start, &text, strong);
-    let left = room - width - ctx.tokens.sm;
-    if behind.is_empty() || left <= 0.0 {
-        return;
+    Label::new(&name, strong).left(ctx, &mut room, ctx.tokens.sm);
+    if !behind.is_empty() && room.w > 0.0 {
+        Label::new(&behind, ctx.styles.small(Role::Ghost)).draw(ctx, room);
     }
-    let rest = elide(ctx, &behind, &quiet, left);
-    let at = line.x + start + width + ctx.tokens.sm;
-    row(ctx, Rect::new(at, line.y, left, line.h), 0.0, &rest, quiet);
-}
-
-/// The mark a file carrying a note takes, left of its counts. Returns where it starts.
-fn marked(ctx: &mut Ctx, line: Rect, at: f32) -> f32 {
-    let size = ctx.tokens.small;
-    let x = at - size - ctx.tokens.sm;
-    let box_ = Rect::new(x, line.y + (line.h - size) / 2.0, size, size);
-    ctx.icon(
-        box_,
-        crate::base::mark::Mark::Note,
-        0,
-        ctx.styles.color(Role::Faint),
-    );
-    x
 }
 
 /// Whether the pointer is on this row, or on what the row is offering.
-fn pointed(ui: &Ui, path: &str) -> bool {
-    match &ui.hover {
+fn pointed(ctx: &Ctx, path: &str) -> bool {
+    match ctx.hover() {
         Some(Target::File(at) | Target::Stage(at) | Target::Unstage(at)) => at == path,
         _ => false,
     }
 }
 
 /// What the row offers the pointer, or its counts when it has no change to stage.
-fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff) -> f32 {
+fn offer(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
     let Some(staged) = file.staged else {
-        return counts(ctx, line, file);
+        return counts(ctx, room, file);
     };
     let (label, target) = match staged {
         true => ("unstage", Target::Unstage(file.path.clone())),
         false => ("stage", Target::Stage(file.path.clone())),
     };
-    acted(ctx, line, label, target)
+    acted(ctx, room, label, target)
 }
 
-/// Returns where the counts start.
-fn counts(ctx: &mut Ctx, line: Rect, file: &FileDiff) -> f32 {
-    let mut at = line.right() - ctx.tokens.md;
-    for (count, role) in [(file.deleted, Role::Bad), (file.added, Role::Ok)] {
-        if count == 0 {
-            continue;
+/// What the file lost and gained, from the right of `room`.
+fn counts(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
+    room.take_right(ctx.tokens.md);
+    for (count, role, sign) in [(file.deleted, Role::Bad, '-'), (file.added, Role::Ok, '+')] {
+        if count > 0 {
+            let text = format!("{sign}{count}");
+            Label::new(&text, ctx.styles.small(role)).right(ctx, room, ctx.tokens.sm);
         }
-        let style = ctx.styles.small(role);
-        let sign = match role {
-            Role::Ok => '+',
-            _ => '-',
-        };
-        let text = format!("{sign}{count}");
-        let width = ctx.measure(&text, &style);
-        at -= width;
-        row(ctx, Rect::new(at, line.y, width, line.h), 0.0, &text, style);
-        at -= ctx.tokens.sm;
     }
-    at
 }

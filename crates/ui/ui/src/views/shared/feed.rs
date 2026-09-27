@@ -1,7 +1,7 @@
 //! What the opened sessions have done, under their rows: newest first, quiet.
 
 use groove_controllers::{AppState, Told};
-use groove_gfx::Rect;
+use groove_gfx::{Align, Edges, Rect};
 use groove_types::{Error, SessionId, TimelineEvent, Timestamp};
 
 use crate::Ui;
@@ -10,19 +10,18 @@ use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::motion::turn;
 use crate::base::style::Role;
-use crate::shape::{box_in, hairline, hoverable};
-use crate::text::{ago, elide, row};
+use crate::shape::{hairline, hoverable, square};
+use crate::text::{Label, ago};
 use crate::widgets::scrolled;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
-    let head = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
+    let mut body = area;
+    let head = body.take_top(ctx.tokens.row);
     heading(ctx, head, app, ui);
-    if ui.rail.folded {
-        return;
+    if !ui.rail.folded {
+        lines(ctx, body, app, ui);
     }
-    let body = Rect::new(area.x, head.bottom(), area.w, area.bottom() - head.bottom());
-    lines(ctx, body, app, ui);
 }
 
 /// The word that folds the feed, and the one that narrows it to the session in hand.
@@ -34,17 +33,17 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
     );
     grab(ctx, line);
     hoverable(ctx, line, Target::Feed);
-    let size = ctx.tokens.small;
-    let box_ = box_in(line, line.x + ctx.tokens.md, size);
+    let (md, size) = (ctx.tokens.md, ctx.tokens.small);
+    let mut room = line.pad(Edges::across(md, md));
+    narrowed(ctx, &mut room, app, ui);
+    let caret = square(room.take_left(size), size);
+    room.take_left(ctx.tokens.xs);
     let turn = match ui.rail.folded {
         true => Mark::RIGHTWARDS,
         false => 0,
     };
-    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Faint));
-    let style = ctx.styles.heading(Role::Faint);
-    let at = ctx.tokens.md + size + ctx.tokens.xs;
-    row(ctx, line, at, "FEED", style);
-    narrowed(ctx, line, app, ui);
+    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    Label::new("FEED", ctx.styles.heading(Role::Faint)).draw(ctx, room);
 }
 
 /// The band the pointer takes the feed's own edge by.
@@ -55,23 +54,15 @@ fn grab(ctx: &mut Ctx, line: Rect) {
 }
 
 /// Which sessions it shows, at the header's own end.
-fn narrowed(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
+fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
     if app.session.open.len() < 2 {
         return;
     }
-    let role = match ui.rail.mine {
-        true => Role::Muted,
-        false => Role::Ghost,
+    let (role, text) = match ui.rail.mine {
+        true => (Role::Muted, "this session"),
+        false => (Role::Ghost, "every session"),
     };
-    let style = ctx.styles.small(role);
-    let text = match ui.rail.mine {
-        true => "this session",
-        false => "every session",
-    };
-    let width = ctx.measure(text, &style);
-    let at = line.right() - ctx.tokens.md - width;
-    let box_ = Rect::new(at, line.y, width, line.h);
-    row(ctx, box_, 0.0, text, style);
+    let box_ = Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0);
     ctx.hit(box_, Target::FeedScope);
 }
 
@@ -80,8 +71,11 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let shown = shown(app, ui);
     if shown.is_empty() {
         let style = ctx.styles.small(Role::Ghost);
-        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.line);
-        return row(ctx, line, ctx.tokens.md, "nothing yet", style);
+        let line = body
+            .pad(Edges::across(ctx.tokens.md, ctx.tokens.md))
+            .take_top(ctx.tokens.line);
+        Label::new("nothing yet", style).draw(ctx, line);
+        return;
     }
     let height = ctx.tokens.feed_row;
     let at = (Scroller::Feed, ui.offset(Scroller::Feed));
@@ -186,47 +180,39 @@ fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId) {
 
 /// A job the user waits on, with the mark that keeps turning.
 fn running(ctx: &mut Ctx, line: Rect, label: &str) {
-    let style = ctx.styles.strong(Role::Working);
-    let top = Rect::new(line.x, line.y, line.w, line.h / 2.0);
+    let (mut top, _) = halves(ctx, line);
     let size = ctx.tokens.small;
-    let box_ = box_in(top, line.x + column(ctx) - size, size);
-    ctx.icon(
-        box_,
-        Mark::Busy,
-        turn(ctx.tick),
-        ctx.styles.color(Role::Working),
-    );
-    let at = column(ctx) + ctx.tokens.sm;
-    let text = elide(ctx, label, &style, room(ctx, line, at));
-    row(ctx, top, at, &text, style);
+    let age = top.take_left(column(ctx));
+    top.take_left(ctx.tokens.sm);
+    let box_ = age.align((size, size), Align::End, Align::Center);
+    let color = ctx.styles.color(Role::Working);
+    ctx.icon(box_, Mark::Busy, turn(ctx.tick), color);
+    Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
 }
 
 /// The age against its own column, then the act over the subject.
 fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>) {
-    let half = line.h / 2.0;
-    let top = Rect::new(line.x, line.y, line.w, half);
-    let quiet = ctx.styles.small(Role::Ghost);
+    let (mut top, mut under) = halves(ctx, line);
+    let mut age = top.take_left(column(ctx));
+    let gap = column(ctx) + ctx.tokens.sm;
+    top.take_left(ctx.tokens.sm);
+    under.take_left(gap);
     let when = ago(said.at.age_at(ctx.now));
-    let width = ctx.measure(&when, &quiet);
-    row(ctx, top, column(ctx) - width, &when, quiet);
-    let at = column(ctx) + ctx.tokens.sm;
-    let act = ctx.styles.strong(said.role);
-    let text = elide(ctx, said.act, &act, room(ctx, line, at));
-    row(ctx, top, at, &text, act);
-    if said.subject.is_empty() {
-        return;
+    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut age, 0.0);
+    Label::new(said.act, ctx.styles.strong(said.role)).draw(ctx, top);
+    if !said.subject.is_empty() {
+        Label::new(said.subject, ctx.styles.small(Role::Muted)).draw(ctx, under);
     }
-    let under = Rect::new(line.x, line.y + half, line.w, half);
-    let style = ctx.styles.small(Role::Muted);
-    let text = elide(ctx, said.subject, &style, room(ctx, line, at));
-    row(ctx, under, at, &text, style);
+}
+
+/// The line's two halves, each short of the right margin.
+fn halves(ctx: &Ctx, line: Rect) -> (Rect, Rect) {
+    let mut top = line.pad(Edges::across(0.0, ctx.tokens.md));
+    let under = top.take_bottom(line.h / 2.0);
+    (top, under)
 }
 
 /// Where the age's column ends, which every text stands after.
 fn column(ctx: &Ctx) -> f32 {
     ctx.tokens.md + ctx.tokens.feed_age
-}
-
-fn room(ctx: &Ctx, line: Rect, at: f32) -> f32 {
-    (line.w - at - ctx.tokens.md).max(0.0)
 }

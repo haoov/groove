@@ -15,7 +15,7 @@ mod scrolled;
 mod tabs;
 mod terminal;
 
-pub use button::{button, slot, slot_at};
+pub use button::{Word, button, mark_button, slot_at};
 pub use code::{
     Acting, Gutters, Line, Noted, Rows, chars_of, code, code_at, first, head_mark, height, visible,
 };

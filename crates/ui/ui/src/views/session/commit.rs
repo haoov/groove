@@ -1,16 +1,16 @@
 //! The commit box under the changed files: the index, the action, the message.
 
 use groove_controllers::{AppState, Command, delivery, workspace};
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{box_in, hairline};
-use crate::text::row;
-use crate::widgets::{Gutters, Line, Rows, button, code, counts, slot};
+use crate::shape::hairline;
+use crate::text::Label;
+use crate::widgets::{Gutters, Line, Rows, button, code, counts, mark_button};
 use crate::{Focus, Losing, Ui};
 
 /// The counts and what commits them on one line, the message under it.
@@ -20,17 +20,17 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
         Rect::new(rect.x, rect.y - ctx.tokens.hairline, rect.w, 0.0),
         ctx.styles.line(),
     );
-    let top = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
     if app.workspace.commit.is_some() {
         return showing(ctx, rect, app);
     }
+    let mut message = rect;
+    let top = message.take_top(ctx.tokens.row);
     if ui.losing() == Some(&Losing::Everything) {
         super::files::asking(ctx, top, "discard every change?");
     } else {
         let acts = acts(ctx, app, top);
-        state_of(ctx, app, ui, Rect::new(top.x, top.y, acts - top.x, top.h));
+        state_of(ctx, app, top.until(acts));
     }
-    let message = Rect::new(rect.x, top.bottom(), rect.w, rect.bottom() - top.bottom());
     typed(ctx, app, ui, message);
 }
 
@@ -39,43 +39,34 @@ pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState) {
     let Some(one) = app.workspace.commit.as_ref() else {
         return;
     };
-    let line = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
+    let line = Rect {
+        h: ctx.tokens.row,
+        ..rect
+    };
     ctx.quad(line, ctx.styles.band());
-    let target = Target::Working;
-    let on_it = ctx.hovered(&target);
-    let style = ctx.styles.small(Role::Muted);
-    let ground = match on_it {
+    let ground = match ctx.hovered(&Target::Working) {
         true => ctx.styles.action(),
         false => ctx.styles.raised(),
     };
+    let style = ctx.styles.small(Role::Muted);
     let box_ = button(ctx, line, "working tree", style, Some(ground));
-    ctx.hit(box_, target);
-    let name = ctx.styles.code(Role::Muted);
-    let width = ctx.measure(&one.short_sha, &name);
-    row(ctx, line, ctx.tokens.md, &one.short_sha, name);
-    let words = ctx.styles.body(Role::Text);
-    let start = ctx.tokens.md + width + ctx.tokens.sm;
-    let room = (box_.x - line.x - start - ctx.tokens.sm).max(0.0);
+    ctx.hit(box_, Target::Working);
+    let sm = ctx.tokens.sm;
+    let mut room = line.until(box_.x).pad(Edges::across(ctx.tokens.md, sm));
+    Label::new(&one.short_sha, ctx.styles.code(Role::Muted)).left(ctx, &mut room, sm);
     let said = one.message.lines().next().unwrap_or_default();
-    let text = crate::text::elide(ctx, said, &words, room);
-    row(ctx, line, start, &text, words);
+    Label::new(said, ctx.styles.body(Role::Text)).draw(ctx, room);
 }
 
 /// What the branch is ahead by, what the index holds, and what is still waiting.
-fn state_of(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) {
+fn state_of(ctx: &mut Ctx, app: &AppState, line: Rect) {
     let files = super::files::changed(app);
-    let ahead = ahead(app, ui);
     let items = [
-        (Mark::Ahead, ahead, Role::Working),
+        (Mark::Ahead, status(app).ahead, Role::Working),
         (Mark::Staged, count(files, true), Role::Ok),
         (Mark::Modified, count(files, false), Role::Warn),
     ];
     counts(ctx, line, line.x + ctx.tokens.md, &items);
-}
-
-/// Commits the branch has that its own head on origin does not.
-fn ahead(app: &AppState, _ui: &Ui) -> u32 {
-    status(app).ahead
 }
 
 fn count(files: &[FileDiff], staged: bool) -> u32 {
@@ -91,13 +82,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let composing = held && ui.focus == Focus::Sidebar;
     ctx.quad(rect, ctx.styles.ground());
     ctx.border(rect, ctx.styles.border());
-    let pad = ctx.tokens.xs;
-    let box_ = Rect::new(
-        rect.x + pad,
-        rect.y + pad,
-        rect.w - pad * 2.0,
-        rect.h - pad * 2.0,
-    );
+    let box_ = rect.pad(Edges::all(ctx.tokens.xs));
     let buffer = &app.workspace.message;
     let caret = buffer.caret();
     let held: Vec<String> = (0..buffer.lines().max(1))
@@ -124,9 +109,11 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     });
     ctx.hit(box_, Target::Message);
     if buffer.text().is_empty() && !composing {
-        let style = ctx.styles.code(Role::Ghost);
-        let line = Rect::new(box_.x, box_.y, box_.w, ctx.tokens.line);
-        row(ctx, line, 0.0, "a message", style);
+        let line = Rect {
+            h: ctx.tokens.line,
+            ..box_
+        };
+        Label::new("a message", ctx.styles.code(Role::Ghost)).draw(ctx, line);
     }
 }
 
@@ -186,21 +173,15 @@ fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
     };
     let style = ctx.styles.small(role);
     let word = act.as_ref().map(label).unwrap_or("commit");
-    let caret = ctx.tokens.small;
     let (action, raised) = (ctx.styles.action(), ctx.styles.raised());
-    let lit = |on: bool| match on {
+    let caret = (Mark::Down, Mark::UPWARDS, Role::Muted);
+    let arrow = mark_button(ctx, line, Target::Actions, caret, (raised, action));
+    let ground = match ctx.hovered(&Target::Do) {
         true => action,
         false => raised,
     };
-    let arrow = slot(ctx, line, caret, Some(lit(ctx.hovered(&Target::Actions))));
-    let middle = arrow.x + (arrow.w - caret) / 2.0;
-    let box_ = box_in(arrow, middle, caret);
-    let color = ctx.styles.color(Role::Muted);
-    ctx.icon(box_, Mark::Down, Mark::UPWARDS, color);
-    ctx.hit(arrow, Target::Actions);
-
-    let left = Rect::new(line.x, line.y, arrow.x - line.x + ctx.tokens.sm, line.h);
-    let word = button(ctx, left, word, style, Some(lit(ctx.hovered(&Target::Do))));
+    let left = line.until(arrow.x + ctx.tokens.sm);
+    let word = button(ctx, left, word, style, Some(ground));
     if can {
         ctx.hit(word, Target::Do);
     }

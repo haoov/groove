@@ -73,7 +73,7 @@ fn surface(
         gutters: &gutters,
         words: &words,
         noted: &noted,
-        hovered: hovered(ui),
+        hovered: hovered(ctx),
         first: code_rows.start,
     };
     let lines = lines_of(ctx, app, held);
@@ -176,8 +176,8 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
 }
 
 /// The note button under the pointer, and whose note it belongs to.
-fn hovered(ui: &Ui) -> Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)> {
-    match &ui.hover {
+fn hovered(ctx: &Ctx) -> Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)> {
+    match ctx.hover() {
         Some(crate::base::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
         _ => None,
     }

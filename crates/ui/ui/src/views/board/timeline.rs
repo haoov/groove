@@ -3,7 +3,7 @@
 mod bars;
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Day, Timestamp};
 
 use crate::Ui;
@@ -11,8 +11,8 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, leading};
-use crate::text::row;
+use crate::shape::{Panel, square};
+use crate::text::{Label, row};
 
 /// The days the band shows, and how many stand before today.
 pub(super) const DAYS: i64 = 28;
@@ -33,7 +33,8 @@ fn shut(app: &AppState, ui: &Ui) -> bool {
 
 /// The band: its own bar, then the grid and the bars over it.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui) {
-    let line = Rect::new(band.x, band.y, band.w, ctx.tokens.header);
+    let mut body = band;
+    let line = body.take_top(ctx.tokens.header);
     ctx.quad(band, ctx.styles.ground());
     rule(ctx, band);
     bar(ctx, line, app, ui);
@@ -41,7 +42,6 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui) {
         return;
     }
     grab(ctx, band);
-    let body = Rect::new(band.x, line.bottom(), band.w, band.bottom() - line.bottom());
     ctx.clipped(body, |ctx| {
         grid(ctx, body, ui);
         bars::draw(ctx, body, app, ui);
@@ -51,15 +51,15 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui) {
 
 /// The bar under the pointer, named where the pointer stands.
 fn named_bar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let Some(Target::Bar(short_id)) = &ui.hover else {
+    let Some(Target::Bar(short_id)) = ctx.hover() else {
         return;
     };
     let Some(task) = app.task.get(short_id) else {
         return;
     };
-    let style = ctx.styles.small(Role::Text);
+    let title = Label::new(&task.title, ctx.styles.small(Role::Text));
     let (pad, at) = (ctx.tokens.sm, ui.at);
-    let width = ctx.measure(&task.title, &style) + pad * 2.0;
+    let width = title.width(ctx) + pad * 2.0;
     let box_ = Rect::new(
         (at.0 + pad).min(ctx.layout.window.right() - width),
         at.1 - ctx.tokens.row - pad,
@@ -67,9 +67,9 @@ fn named_bar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         ctx.tokens.row,
     );
     ctx.layer();
-    ctx.quad(box_, ctx.styles.band());
-    ctx.border(box_, ctx.styles.deep());
-    row(ctx, box_, pad, &task.title, style);
+    let (band, deep) = (ctx.styles.band(), ctx.styles.deep());
+    Panel::default().ground(band).border(deep).draw(ctx, box_);
+    title.draw(ctx, box_.pad(Edges::across(pad, pad)));
 }
 
 /// What a drag takes the band's own height by.
@@ -90,33 +90,19 @@ fn rule(ctx: &mut Ctx, band: Rect) {
 
 /// What names the band and folds it away.
 fn bar(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    let box_ = leading(ctx, line, line.x + ctx.tokens.md);
+    let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
+    let mut room = line.pad(Edges::across(md, 0.0));
+    let caret = square(room.take_left(size), size);
+    room.take_left(sm);
     let turn = match shut(app, ui) {
         true => Mark::RIGHTWARDS,
         false => 0,
     };
-    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Ghost));
+    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Ghost));
     ctx.hit(line, Target::Timeline);
-    let at = line.x + after_mark(ctx, ctx.tokens.md);
-    let style = ctx.styles.heading(Role::Faint);
-    let width = ctx.measure("TIMELINE", &style);
-    row(
-        ctx,
-        Rect::new(at, line.y, width, line.h),
-        0.0,
-        "TIMELINE",
-        style,
-    );
+    Label::new("TIMELINE", ctx.styles.heading(Role::Faint)).left(ctx, &mut room, md);
     let horizon = format!("4 weeks · {} – {}", named(first(ui)), named(last(ui)));
-    let quiet = ctx.styles.small(Role::Ghost);
-    let at = at + width + ctx.tokens.md;
-    row(
-        ctx,
-        Rect::new(at, line.y, line.w, line.h),
-        0.0,
-        &horizon,
-        quiet,
-    );
+    Label::new(&horizon, ctx.styles.small(Role::Ghost)).draw(ctx, room);
 }
 
 /// The days, the weeks they fall in, and today among them.

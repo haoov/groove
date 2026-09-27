@@ -1,6 +1,6 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{AgentStatus, Ask, AttentionClass, SessionId};
 
 use crate::base::ctx::Ctx;
@@ -8,9 +8,9 @@ use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::motion::turn;
 use crate::base::style::Role;
-use crate::shape::{after_mark, box_in, hairline, leading};
-use crate::text::{ago, elide, row};
-use crate::widgets::{icon, slot_at};
+use crate::shape::{after_mark, hairline, square};
+use crate::text::{Label, ago};
+use crate::widgets::{Word, icon};
 use crate::{Surface, Ui};
 
 /// The row's lines: head, state, and the answers while the session asks.
@@ -27,21 +27,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     ground(ctx, rect, app, ui, id);
     ctx.hit(rect, Target::Session(id.clone()));
+    let (xs, sm, md, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
+    let mut body = rect;
+    body.take_top(sm);
+    let head = body.take_top(ctx.tokens.line);
+    body.take_top(xs);
+    let under = body.take_top(head.h);
 
-    let head = Rect::new(rect.x, rect.y + ctx.tokens.sm, rect.w, ctx.tokens.line);
-    let box_ = leading(ctx, head, ctx.tokens.md);
-    icon(ctx, box_, Mark::of_kind(&open.session.kind), Role::Faint);
-    let until = waited(ctx, app, head, id);
-    title(ctx, head, &open.session.title, until);
+    let mut room = head.pad(Edges::across(md, md));
+    waited(ctx, app, &mut room, id);
+    let mark = square(room.take_left(size), size);
+    room.take_left(sm);
+    icon(ctx, mark, Mark::of_kind(&open.session.kind), Role::Faint);
+    Label::new(&open.session.title, ctx.styles.label(Role::Text)).draw(ctx, room);
 
-    let under = Rect::new(rect.x, head.bottom() + ctx.tokens.xs, rect.w, head.h);
     match asked(app, id) {
         Some((ask, waiting)) => asking(ctx, under, &ask, waiting),
         None => state(ctx, app, under, open),
     }
-
-    let rule = ctx.styles.line();
-    hairline(ctx, rect, rule);
+    hairline(ctx, rect, ctx.styles.line());
 }
 
 /// The first write the session waits on, and how many wait in all.
@@ -52,38 +56,29 @@ fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
 
 /// The write in peach where the state stands, and its two answers on the line under it.
 fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
-    let style = ctx.styles.small(Role::Attention);
-    let indent = after_mark(ctx, ctx.tokens.md);
+    let (md, ground) = (ctx.tokens.md, ctx.styles.ground());
+    let room = line.pad(Edges::across(after_mark(ctx, md), md));
     let verb = groove_controllers::agent_service::tools::verb(&ask.op);
     let label = match waiting {
         1 => format!("asks to {verb}"),
         n => format!("asks to {verb} · +{}", n - 1),
     };
-    let room = (line.w - indent - ctx.tokens.md).max(0.0);
-    let label = elide(ctx, &label, &style, room);
-    row(ctx, line, indent, &label, style);
-    let under = Rect::new(line.x, line.bottom(), line.w, ctx.tokens.row);
-    answers(ctx, under, ask, line.x + indent);
-}
-
-/// Approve, then review, from where the text starts.
-fn answers(ctx: &mut Ctx, line: Rect, ask: &Ask, from: f32) {
-    let mut at = from;
-    for (label, target, role) in [
-        ("Approve", Target::Approve(ask.id.clone()), Role::Attention),
-        ("Review", Target::Examine(ask.id.clone()), Role::Muted),
-    ] {
-        let hovered = ctx.hovered(&target);
-        let style = ctx.styles.small(match (hovered, role) {
-            (true, Role::Muted) => Role::Text,
-            _ => role,
-        });
-        let word = ctx.measure(label, &style);
-        let box_ = slot_at(ctx, line, at, word, Some(ctx.styles.ground()));
-        row(ctx, box_, ctx.tokens.sm, label, style);
-        ctx.hit(box_, target);
-        at = box_.right() + ctx.tokens.xs;
-    }
+    Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
+    let mut under = Rect::new(room.x, line.bottom(), line.right() - room.x, ctx.tokens.row);
+    let approve = Word::new(
+        "Approve",
+        Target::Approve(ask.id.clone()),
+        Role::Attention,
+        ground,
+    );
+    approve.left(ctx, &mut under, ctx.tokens.xs);
+    let review = Word::new(
+        "Review",
+        Target::Examine(ask.id.clone()),
+        Role::Muted,
+        ground,
+    );
+    review.left(ctx, &mut under, ctx.tokens.xs);
 }
 
 /// A hovered row is raised, and a selected one while the session surface is up.
@@ -96,47 +91,28 @@ fn ground(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, id: &SessionId) {
     }
 }
 
-/// The title, cut with an ellipsis where the time starts.
-fn title(ctx: &mut Ctx, head: Rect, text: &str, until: f32) {
-    let style = ctx.styles.label(Role::Text);
-    let indent = after_mark(ctx, ctx.tokens.md);
-    let room = (until - head.x - indent - ctx.tokens.sm).max(0.0);
-    let text = elide(ctx, text, &style, room);
-    let line = Rect::new(head.x, head.y, indent + room, head.h);
-    row(ctx, line, indent, &text, style);
-}
-
-/// How long the agent has waited, right-aligned. Returns where it starts.
-fn waited(ctx: &mut Ctx, app: &AppState, head: Rect, id: &SessionId) -> f32 {
-    let right = head.right() - ctx.tokens.md;
+/// How long the agent has waited, at the right of `room`.
+fn waited(ctx: &mut Ctx, app: &AppState, room: &mut Rect, id: &SessionId) {
+    let sm = ctx.tokens.sm;
     let Some(activity) = app.agent.activity(id) else {
-        return right;
+        room.take_right(sm);
+        return;
     };
-    let style = ctx.styles.small(Role::Ghost);
     let text = ago(activity.changed_at.age_at(ctx.now));
-    let width = ctx.measure(&text, &style);
-    let at = right - width;
-    row(ctx, Rect::new(at, head.y, width, head.h), 0.0, &text, style);
-    at
+    Label::new(&text, ctx.styles.small(Role::Ghost)).right(ctx, room, sm);
 }
 
 /// The state line. A working agent's mark turns; every other state stands still.
 fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
     let (label, role) = state_of(app, open);
     let style = ctx.styles.small(role);
-    let indent = after_mark(ctx, ctx.tokens.md);
-    if role != Role::Working {
-        return row(ctx, rect, indent, &label, style);
+    let mut room = rect.pad(Edges::across(after_mark(ctx, ctx.tokens.md), 0.0));
+    if role == Role::Working {
+        let box_ = square(room.take_left(style.size), style.size);
+        room.take_left(ctx.tokens.xs);
+        ctx.icon(box_, Mark::Busy, turn(ctx.tick), style.color);
     }
-    let box_ = box_in(rect, rect.x + indent, style.size);
-    ctx.icon(box_, Mark::Busy, turn(ctx.tick), style.color);
-    row(
-        ctx,
-        rect,
-        indent + style.size + ctx.tokens.xs,
-        &label,
-        style,
-    );
+    Label::new(&label, style).draw(ctx, room);
 }
 
 /// What the agent is doing, and its colour.

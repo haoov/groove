@@ -8,7 +8,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::views::session::{Asked, Naming, Noting};
 use crate::widgets::{menu, menu_size};
-use crate::{Corner, Losing, Menu, Of, Ui};
+use crate::{Corner, Losing, Menu, Of};
 
 /// The actions of one file.
 pub const FILE: [&str; 1] = ["discard changes"];
@@ -61,10 +61,10 @@ pub fn rows(of: &Of) -> Vec<&str> {
     held.to_vec()
 }
 
-pub fn draw(ctx: &mut Ctx, ui: &Ui, open: &Menu) {
+pub fn draw(ctx: &mut Ctx, open: &Menu) {
     let within = ctx.layout.window;
-    let hovered = match ui.hover {
-        Some(Target::MenuRow(at)) => Some(at),
+    let hovered = match ctx.hover() {
+        Some(Target::MenuRow(at)) => Some(*at),
         _ => None,
     };
     let rows = rows(&open.of);

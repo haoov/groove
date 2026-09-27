@@ -3,7 +3,7 @@ mod task;
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use super::worktree_row;
 use crate::Ui;
@@ -11,7 +11,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::text::row;
+use crate::text::Label;
 use crate::widgets::{Row, list};
 
 /// The overview tab, scrolled: the properties, the repos with their worktrees, the body.
@@ -20,51 +20,68 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         return;
     };
     let top = area.y - ui.session.overview;
-    let mut bottom = top;
+    let mut column = Rect {
+        y: top,
+        h: f32::INFINITY,
+        ..area
+    };
     ctx.clipped(area, |ctx| {
-        let mut y = properties(ctx, app, open, area, top);
-        y = section(ctx, area, y, "Repos and worktrees", y > top);
-        y = repos(ctx, app, open, area, y);
-        y = merge_request(ctx, app, area, y);
-        bottom = body(ctx, app, open, area, y);
+        let placed = properties(ctx, app, open, &mut column);
+        section(ctx, &mut column, "Repos and worktrees", placed);
+        repos(ctx, app, open, area, &mut column);
+        merge_request(ctx, app, &mut column);
+        body(ctx, app, open, area, &mut column);
     });
-    let height = bottom - top + ctx.tokens.md;
+    let height = column.y - top + ctx.tokens.md;
     ctx.scrolls(Scroller::Overview, (height - area.h).max(0.0));
 }
 
-/// The task's six properties, for a session that works one.
-fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
+/// The task's six properties, for a session that works one; whether it drew them.
+fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, column: &mut Rect) -> bool {
     let Some(one) = app.task.worked(&open.session) else {
-        return top;
+        return false;
     };
-    let y = section(ctx, area, top, "Properties", false);
+    section(ctx, column, "Properties", false);
     let time = app.task.measured(&one.external_id);
-    task::properties(ctx, area, y, one, time) + ctx.tokens.sm
+    task::properties(ctx, column, one, time);
+    column.take_top(ctx.tokens.sm);
+    true
 }
 
 /// The selected worktree's MR, when its forge has answered for it.
-fn merge_request(ctx: &mut Ctx, app: &AppState, area: Rect, top: f32) -> f32 {
+fn merge_request(ctx: &mut Ctx, app: &AppState, column: &mut Rect) {
     let held = app
         .session
         .selected_worktree()
         .and_then(|worktree| app.delivery.held(&worktree.id));
-    let Some(held) = held.filter(|one| one.read.is_some()) else {
-        return top;
-    };
-    let y = section(ctx, area, top, "Merge request", true);
-    mr::rows(ctx, area, y, held)
+    if let Some(held) = held.filter(|one| one.read.is_some()) {
+        section(ctx, column, "Merge request", true);
+        mr::rows(ctx, column, held);
+    }
 }
 
 /// The task's body, under everything the session holds.
-fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
+fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Rect) {
     let Some(one) = app.task.worked(&open.session) else {
-        return top;
+        return;
     };
-    let Some(text) = app.task.body(&one.short_id).filter(|text| !text.is_empty()) else {
-        return top;
-    };
-    let y = section(ctx, area, top, "Body", true);
-    task::body(ctx, area, y, text)
+    if let Some(text) = app.task.body(&one.short_id).filter(|text| !text.is_empty()) {
+        section(ctx, column, "Body", true);
+        task::body(ctx, area, column, text);
+    }
+}
+
+/// Names down the left and what each holds at the aside column, a row each.
+fn table(ctx: &mut Ctx, column: &mut Rect, held: &[(&str, &str)]) -> Rect {
+    let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
+    let (md, at) = (ctx.tokens.md, ctx.tokens.aside_near + ctx.tokens.md);
+    let rows: Vec<Row<'_>> = held
+        .iter()
+        .map(|(name, held)| Row::new(md, name, label).aside(at, held, value))
+        .collect();
+    let taken = column.take_top(ctx.tokens.row * rows.len() as f32);
+    list(ctx, taken, &rows, None);
+    taken
 }
 
 /// Whether a scrolled line is inside the tab.
@@ -72,54 +89,49 @@ fn seen(area: Rect, line: Rect) -> bool {
     line.bottom() > area.y && line.y < area.bottom()
 }
 
-/// A section's name under a rule when one stands above it. Returns where its content starts.
-fn section(ctx: &mut Ctx, area: Rect, y: f32, title: &str, under: bool) -> f32 {
+/// A section's name, under a rule when one stands above it.
+fn section(ctx: &mut Ctx, column: &mut Rect, title: &str, under: bool) {
     let pad = ctx.tokens.md;
-    let mut line = Rect::new(area.x, y, area.w, ctx.tokens.row);
     if under {
-        line = Rect::new(area.x, y + ctx.tokens.sm, area.w, ctx.tokens.row);
-        let rule = Rect::new(area.x + pad, y, area.w - pad * 2.0, ctx.tokens.hairline);
+        let rule = Rect::new(
+            column.x + pad,
+            column.y,
+            column.w - pad * 2.0,
+            ctx.tokens.hairline,
+        );
         ctx.quad(rule, ctx.styles.line());
+        column.take_top(ctx.tokens.sm);
     }
-    let style = ctx.styles.heading(Role::Faint);
-    row(ctx, line, pad, &title.to_uppercase(), style);
-    line.bottom()
+    let line = column.take_top(ctx.tokens.row).pad(Edges::across(pad, pad));
+    Label::new(&title.to_uppercase(), ctx.styles.heading(Role::Faint)).draw(ctx, line);
 }
 
-/// One block per repo: the repo, then its worktrees. Returns the y under the last.
-fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
+/// One block per repo: the repo, then its worktrees.
+fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Rect) {
     let pad = ctx.tokens.md;
     if open.repos.is_empty() {
+        let line = column.take_top(ctx.tokens.row).pad(Edges::across(pad, pad));
         let style = ctx.styles.body(Role::Faint);
-        let line = Rect::new(area.x, top, area.w, ctx.tokens.row);
-        row(ctx, line, pad, "No repos. Add one from the palette.", style);
-        return line.bottom();
+        Label::new("No repos. Add one from the palette.", style).draw(ctx, line);
+        return;
     }
     let (name, slug) = (ctx.styles.label(Role::Text), ctx.styles.small(Role::Faint));
     let at_slug = ctx.tokens.aside_mid;
-    let mut y = top;
     for repo in &open.repos {
         let head = Row::new(pad, &repo.project, name).mark(Mark::Repo).aside(
             at_slug,
             repo.id.as_str(),
             slug,
         );
-        y = list(
-            ctx,
-            Rect::new(area.x, y, area.w, ctx.tokens.row),
-            &[head],
-            None,
-        );
+        list(ctx, column.take_top(ctx.tokens.row), &[head], None);
         for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
-            let line = Rect::new(area.x, y, area.w, ctx.tokens.row);
+            let line = column.take_top(ctx.tokens.row);
             let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
             worktree_row::draw(ctx, line, worktree, Some(&delivery));
             if seen(area, line) {
                 ctx.hit(line, Target::Worktree(worktree.id.clone()));
             }
-            y += ctx.tokens.row;
         }
-        y += ctx.tokens.sm;
+        column.take_top(ctx.tokens.sm);
     }
-    y
 }
