@@ -30,7 +30,7 @@ use groove_types::{
     Timestamp, Worktree, WorktreeId,
 };
 
-use crate::hit::Hits;
+use crate::base::hit::Hits;
 use crate::input::{Input, Key, Modifiers, handle};
 use crate::{Metrics, Ui};
 

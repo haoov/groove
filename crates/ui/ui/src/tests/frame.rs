@@ -2,11 +2,11 @@ use groove_controllers::AppState;
 use groove_gfx::{CellSize, Palette, Size};
 use groove_types::{Rgb, Screen, ScreenCell};
 
+use crate::base::tokens::Tokens;
 use crate::input::{Key, Modifiers, encode};
 use crate::layout::{Layout, Split};
 use crate::tests::{metrics, press};
-use crate::tokens::Tokens;
-use crate::widget::grid_of;
+use crate::widgets::grid_of;
 use crate::{Ui, view};
 
 fn texts(frame: &groove_gfx::Frame) -> Vec<String> {

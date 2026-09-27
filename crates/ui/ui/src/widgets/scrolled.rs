@@ -2,8 +2,8 @@
 
 use groove_gfx::Rect;
 
-use crate::ctx::Ctx;
-use crate::hit::Scroller;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Scroller;
 
 pub fn scrolled<T>(
     ctx: &mut Ctx,

@@ -109,7 +109,7 @@ fn the_map_holds_a_band_for_every_file_and_a_lens_over_the_rows() {
     let ui = on_diff();
     let (frame, hits) = view_of(&app, &ui);
     let column = hits.rect_of(&Target::Map).expect("the map is drawn");
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let inside = |quad: &groove_gfx::Quad| {
         quad.rect.x >= column.x && quad.rect.right() <= column.right() + 1.0
     };
@@ -146,7 +146,7 @@ fn a_press_on_the_map_holds_the_rows_it_points_at() {
     );
     assert_eq!(
         ui.session.diff,
-        hits.extent(crate::hit::Scroller::Code),
+        hits.extent(crate::base::hit::Scroller::Code),
         "the foot of the map is the end of the change"
     );
     release(&mut ui, &app, &hits);
@@ -160,7 +160,7 @@ fn the_file_view_makes_the_map_the_file_s_own_scrollbar() {
     ui.session.view = DiffView::Editor;
     let (frame, hits) = view_of(&app, &ui);
     let column = hits.rect_of(&Target::Map).expect("the map is drawn");
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let per = column.h / 200.0;
     let quads: Vec<&groove_gfx::Quad> = frame.layers()[0]
         .quads
@@ -301,7 +301,7 @@ fn a_file_read_dims_its_head() {
         .mark(&worktree, "src/a.rs", true);
     let ui = on_diff();
     let (frame, hits) = view_of(&app, &ui);
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let column = hits.rect_of(&Target::Map).expect("the map");
     let dimmed = frame.layers()[0]
         .quads
@@ -319,7 +319,7 @@ fn a_file_read_dims_its_head() {
         .expect("its head");
     assert_eq!(
         faint.style.color,
-        styles.color(crate::style::Role::Faint),
+        styles.color(crate::base::style::Role::Faint),
         "its name reads quiet"
     );
 }
@@ -360,13 +360,16 @@ fn a_file_head_says_it_can_be_clicked() {
     let inside = (head.x + head.w / 2.0, head.y + head.h / 2.0);
     assert_eq!(
         hits.cursor_at(inside.0, inside.1),
-        crate::hit::Cursor::Pointer,
+        crate::base::hit::Cursor::Pointer,
         "not the text cursor the rows carry"
     );
     let rows = hits.rect_of(&Target::Code).expect("the rows");
     let under = (inside.0, head.bottom() + 1.0);
     assert!(rows.contains(under.0, under.1));
-    assert_eq!(hits.cursor_at(under.0, under.1), crate::hit::Cursor::Text);
+    assert_eq!(
+        hits.cursor_at(under.0, under.1),
+        crate::base::hit::Cursor::Text
+    );
 }
 
 #[test]
@@ -408,7 +411,7 @@ fn the_header_names_the_file_that_is_open() {
 fn the_gutters_rule_stops_at_the_rows_that_name_things() {
     let app = both();
     let ui = on_diff();
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let thickness = Tokens::new(1.0).hairline;
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let tokens = Tokens::new(1.0);
@@ -425,7 +428,7 @@ fn the_gutters_rule_stops_at_the_rows_that_name_things() {
 
     for path in FILES.map(|(path, _, _)| path) {
         let head = hits
-            .rect_of(&crate::hit::Target::Head(path.into()))
+            .rect_of(&crate::base::hit::Target::Head(path.into()))
             .unwrap_or_else(|| panic!("{path} has a head row"));
         let across = rules
             .iter()

@@ -18,10 +18,11 @@ use groove_types::FileDiff;
 use super::commit;
 use super::state::{Pane, Scope};
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::Role;
-use crate::widget::{button, elide, row, tabs};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::text::{elide, row};
+use crate::widgets::{button, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.layout.sidebar;

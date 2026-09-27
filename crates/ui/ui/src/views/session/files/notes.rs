@@ -5,11 +5,12 @@ use groove_gfx::Rect;
 use groove_types::Note;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{elide, row, scrolled};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::text::{elide, row};
+use crate::widgets::scrolled;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let notes: Vec<(usize, &Note)> = app
@@ -53,7 +54,7 @@ fn one(ctx: &mut Ctx, line: Rect, note: &Note, at: usize, ui: &Ui) {
         false => Role::Muted,
     };
     let size = ctx.tokens.small;
-    let box_ = crate::widget::box_in(line, line.x + ctx.tokens.md, size);
+    let box_ = crate::shape::box_in(line, line.x + ctx.tokens.md, size);
     ctx.icon(box_, mark(note), 0, ctx.styles.color(role));
     let at = ctx.tokens.md + size + ctx.tokens.sm;
     let place = ctx.styles.small(role);

@@ -2,11 +2,13 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use super::rail_item;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{Row, after_mark, hairline, icon, leading, list, row, scrolled};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::{after_mark, hairline, leading};
+use crate::text::row;
+use crate::widgets::{Row, icon, list, scrolled};
 use crate::{Surface, Ui};
 
 /// What the rail remembers between frames.

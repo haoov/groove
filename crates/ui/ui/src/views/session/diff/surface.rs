@@ -8,11 +8,11 @@ use groove_controllers::AppState;
 use super::notes::{Inline, Slot, lines, said};
 use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::style::Role;
-use crate::tokens::{NOTE_BY, NOTE_SLACK};
-use crate::widget::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::style::Role;
+use crate::base::tokens::{NOTE_BY, NOTE_SLACK};
+use crate::widgets::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 
 /// Who a note left in the app is by.
 pub(crate) const AUTHOR: &str = "you";
@@ -128,7 +128,7 @@ struct Held<'a> {
     /// Which rows of the window a note stands on.
     noted: &'a [bool],
     /// The note button the pointer stands on, and whose note it is.
-    hovered: Option<(groove_types::NoteOrigin, crate::hit::NoteButton)>,
+    hovered: Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
 }
@@ -176,18 +176,18 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
 }
 
 /// The note button under the pointer, and whose note it belongs to.
-fn hovered(ui: &Ui) -> Option<(groove_types::NoteOrigin, crate::hit::NoteButton)> {
+fn hovered(ui: &Ui) -> Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)> {
     match &ui.hover {
-        Some(crate::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
+        Some(crate::base::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
         _ => None,
     }
 }
 
 /// The button of this note the pointer stands on.
 fn on_it(
-    hovered: Option<&(groove_types::NoteOrigin, crate::hit::NoteButton)>,
+    hovered: Option<&(groove_types::NoteOrigin, crate::base::hit::NoteButton)>,
     origin: &groove_types::NoteOrigin,
-) -> Option<crate::hit::NoteButton> {
+) -> Option<crate::base::hit::NoteButton> {
     hovered
         .filter(|(whose, _)| whose == origin)
         .map(|(_, button)| *button)

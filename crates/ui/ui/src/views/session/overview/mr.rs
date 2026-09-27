@@ -4,9 +4,10 @@ use groove_controllers::delivery_service::{Held, Snapshot};
 use groove_gfx::Rect;
 use groove_types::{MrDetails, ReviewState};
 
-use crate::ctx::Ctx;
-use crate::style::Role;
-use crate::widget::{Row, elide, list};
+use crate::base::ctx::Ctx;
+use crate::base::style::Role;
+use crate::text::elide;
+use crate::widgets::{Row, list};
 
 const UNSET: &str = "—";
 

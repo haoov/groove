@@ -2,7 +2,7 @@
 
 use groove_controllers::workspace_service::Document;
 
-use crate::painted::Painted;
+use crate::views::session::diff::painted::Painted;
 
 fn doc() -> Document {
     let text: String = (0..200)

@@ -8,11 +8,11 @@ mod panes;
 mod paths;
 mod search;
 
-use crate::hit::Target;
+use crate::base::hit::Target;
+use crate::base::tokens::Tokens;
 use crate::input::Key;
 use crate::layout::{Layout, Split};
 use crate::tests::{CHORD, WINDOW, click, full_app, press, window};
-use crate::tokens::Tokens;
 use crate::views::session::Tab;
 use crate::views::session::files::listing;
 use crate::{Ui, view};

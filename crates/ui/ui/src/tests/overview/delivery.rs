@@ -245,7 +245,7 @@ fn the_header_offers_to_read_the_mr_again() {
     let window = metrics(1280, 800, 1.0);
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let box_ = hits
-        .rect_of(&crate::hit::Target::Refresh)
+        .rect_of(&crate::base::hit::Target::Refresh)
         .expect("the refresh button");
     let commands = crate::input::handle(
         crate::input::Input::Press {

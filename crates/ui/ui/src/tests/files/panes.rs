@@ -187,7 +187,7 @@ fn a_note_of_the_list_opens_the_line_it_stands_on() {
 #[test]
 fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let (app, ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let tab = hits
         .rect_of(&Target::Pane(Pane::Notes))

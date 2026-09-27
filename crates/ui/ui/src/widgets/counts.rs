@@ -1,9 +1,10 @@
 use groove_gfx::Rect;
 
-use crate::ctx::Ctx;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{box_in, row};
+use crate::base::ctx::Ctx;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::box_in;
+use crate::text::row;
 
 /// The room `counts` needs, for a caller placing it against a right edge.
 pub fn counts_room(ctx: &mut Ctx, items: &[(Mark, u32, Role)]) -> f32 {

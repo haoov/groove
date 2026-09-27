@@ -3,8 +3,8 @@
 use groove_controllers::{AppState, Command, agent};
 
 use super::Delta;
-use crate::ctx::Metrics;
-use crate::hit::{Hits, Scroller, Target};
+use crate::base::ctx::Metrics;
+use crate::base::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
 use crate::views::board::List;
 use crate::views::session::Tab;
@@ -64,7 +64,7 @@ fn agent(
     };
     let tokens = metrics.tokens();
     let pixels = match delta {
-        Delta::Lines { down, .. } => down * tokens.line * crate::tokens::NOTCH,
+        Delta::Lines { down, .. } => down * tokens.line * crate::base::tokens::NOTCH,
         Delta::Pixels { down, .. } => down,
     };
     let carried = pixels + ui.agent.carried;
@@ -86,8 +86,8 @@ fn agent(
 }
 
 /// A gesture over the band: it carries time only while it goes sideways.
-fn carry(delta: Delta, ui: &mut Ui, tokens: crate::tokens::Tokens) {
-    let day = crate::tokens::DAY_PIXELS;
+fn carry(delta: Delta, ui: &mut Ui, tokens: crate::base::tokens::Tokens) {
+    let day = crate::base::tokens::DAY_PIXELS;
     let across = delta.across(day);
     if across.abs() <= delta.down(tokens.row).abs() {
         return;

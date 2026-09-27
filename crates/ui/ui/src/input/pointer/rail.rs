@@ -3,7 +3,7 @@
 use groove_controllers::{Command, agent};
 
 use crate::Ui;
-use crate::hit::Target;
+use crate::base::hit::Target;
 
 /// The rail's own targets; anything else is not its to answer.
 pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {

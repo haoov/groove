@@ -2,8 +2,8 @@
 
 use groove_gfx::{Color, Rect, TextStyle};
 
-use crate::ctx::Ctx;
-use crate::widget::row;
+use crate::base::ctx::Ctx;
+use crate::text::row;
 
 /// A label on `ground` at the row's right end; returns its box.
 pub fn button(

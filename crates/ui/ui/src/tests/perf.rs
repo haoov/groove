@@ -165,7 +165,7 @@ fn time_the_agent_pane() {
         let runs = 100;
         let started = Instant::now();
         for _ in 0..runs {
-            let grid = crate::widget::grid_of(&screen, 0.0, 0.0, 13.0, Color::TRANSPARENT);
+            let grid = crate::widgets::grid_of(&screen, 0.0, 0.0, 13.0, Color::TRANSPARENT);
             assert_eq!(grid.cells.len(), cols * rows);
         }
         println!(
@@ -246,7 +246,7 @@ fn time_a_frame_over_several_files() {
             let typing = started.elapsed() / runs;
             let started = Instant::now();
             for at in 0..runs {
-                ui.session.diff = at as f32 * crate::tokens::Tokens::new(1.0).line;
+                ui.session.diff = at as f32 * crate::base::tokens::Tokens::new(1.0).line;
                 let (frame, _) = view(&app, &ui, window(), renderer.fonts());
                 renderer.render(&frame).expect("rendered");
             }

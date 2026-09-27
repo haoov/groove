@@ -25,7 +25,7 @@ fn a_row_says_what_it_is_with_its_ground_and_no_sign() {
     let app = opened();
     let ui = on_diff();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let ground = |kind| {
         let color = styles.row_ground(kind).expect("a ground");
         frame.layers()[0]
@@ -61,7 +61,7 @@ fn a_gap_reads_as_a_band_across_the_rows() {
         .find(|text| text.contains("lines"))
         .expect("the gap says how much it hides");
     assert!(band.starts_with('\u{2026}'), "{band}");
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let at = frame.layers()[0]
         .texts
         .iter()
@@ -82,7 +82,7 @@ fn a_changed_row_shades_the_word_that_changed_and_not_the_rest() {
     let app = opened();
     let ui = on_diff();
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let shaded = |kind| {
         let color = styles.word(kind, None).expect("a word colour");
         frame.layers()[0]
@@ -106,7 +106,7 @@ fn the_file_view_shades_what_changed_inside_a_changed_line() {
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let color = styles
         .word(groove_types::RowKind::Context, Some(LineMark::Changed))
         .expect("a word colour");

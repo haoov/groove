@@ -5,12 +5,13 @@ use groove_gfx::Rect;
 use groove_types::DiffView;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::{box_in, hairline};
+use crate::text::{elide_start, row};
 use crate::views::session::files;
-use crate::widget::{box_in, elide_start, hairline, row};
 
 /// The file's path, what it changed, and which view it is drawn in.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {

@@ -3,8 +3,8 @@
 use groove_gfx::Rect;
 
 use crate::Surface;
-use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
 use crate::layout::Edge;
 
 /// A grab band over each boundary the surface shows, above whatever drew there.

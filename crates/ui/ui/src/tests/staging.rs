@@ -4,7 +4,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};
 
-use crate::hit::Target;
+use crate::base::hit::Target;
 use crate::input::{Input, handle};
 use crate::tests::{full_app, window};
 use crate::views::session::Tab;
@@ -39,7 +39,7 @@ fn sidebar() -> Ui {
 }
 
 /// The targets the sidebar drew, with the pointer wherever `hover` says.
-fn drawn(app: &AppState, ui: &Ui) -> crate::hit::Hits {
+fn drawn(app: &AppState, ui: &Ui) -> crate::base::hit::Hits {
     view(app, ui, window(), &mut Fonts::embedded()).1
 }
 
@@ -187,8 +187,9 @@ fn keeping_the_change_asks_nothing_of_git() {
 fn a_row_under_the_pointer_and_the_open_one_read_apart() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    let styles = crate::style::Styles::new(app.config.theme(), crate::tokens::Tokens::new(1.0));
-    let row = crate::tokens::Tokens::new(1.0).row;
+    let styles =
+        crate::base::style::Styles::new(app.config.theme(), crate::base::tokens::Tokens::new(1.0));
+    let row = crate::base::tokens::Tokens::new(1.0).row;
     let grounds = |ui: &Ui| {
         let (frame, _) = view(&app, ui, window(), &mut Fonts::embedded());
         let quads = frame.layers()[0].quads.clone();
@@ -215,7 +216,8 @@ fn a_row_under_the_pointer_and_the_open_one_read_apart() {
 fn the_offer_takes_a_ground_only_once_the_pointer_is_on_it() {
     let app = listed(&[file("a.txt", false)]);
     let mut ui = sidebar();
-    let styles = crate::style::Styles::new(app.config.theme(), crate::tokens::Tokens::new(1.0));
+    let styles =
+        crate::base::style::Styles::new(app.config.theme(), crate::base::tokens::Tokens::new(1.0));
     let lit = |ui: &Ui| {
         let (frame, _) = view(&app, ui, window(), &mut Fonts::embedded());
         frame.layers()[0]

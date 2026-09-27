@@ -7,8 +7,8 @@ use groove_types::{DiffView, LineMark, RowKind};
 
 use super::notes::Inline;
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
 
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &Ui) {
     let total = total(app, ui);

@@ -5,11 +5,14 @@ use groove_gfx::Rect;
 use groove_types::{Error, SessionId, TimelineEvent, Timestamp};
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{ago, box_in, elide, hairline, row, scrolled, turn};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::motion::turn;
+use crate::base::style::Role;
+use crate::shape::{box_in, hairline};
+use crate::text::{ago, elide, row};
+use crate::widgets::scrolled;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {

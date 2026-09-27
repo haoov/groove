@@ -3,7 +3,7 @@
 use groove_controllers::Command;
 
 use crate::Ui;
-use crate::hit::{Hits, Target};
+use crate::base::hit::{Hits, Target};
 
 /// The rest of the task's actions, under the caret that opened them.
 pub(super) fn task_menu(

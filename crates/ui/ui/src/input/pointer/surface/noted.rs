@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 use groove_types::{AnnotationId, Note, NoteOrigin};
 
 use crate::Ui;
-use crate::hit::NoteButton;
+use crate::base::hit::NoteButton;
 use crate::views::session::Noting;
 
 /// What a note's own button does: rewrite it in place, or act on it now.

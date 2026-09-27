@@ -12,12 +12,12 @@ mod views;
 use groove_controllers::AppState;
 use groove_gfx::{Fonts, Rect};
 
-use crate::hit::Target;
+use crate::base::hit::Target;
+use crate::base::tokens::Tokens;
 use crate::input::{Delta, Input};
 use crate::tests::{WINDOW, click, full_app, handle, shows, window};
-use crate::tokens::Tokens;
 use crate::views::session::Tab;
-use crate::widget::code_at;
+use crate::widgets::code_at;
 use crate::{Ui, view};
 use groove_types::{DiffView, LineMark};
 
@@ -103,7 +103,7 @@ fn marks(app: &AppState) -> Vec<LineMark> {
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     let (frame, _) = view_of(app, &ui);
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let width = Tokens::new(1.0).hairline * 2.0;
     frame.layers()[0]
         .quads

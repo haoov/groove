@@ -3,8 +3,8 @@
 use groove_gfx::Rect;
 
 use super::Gutters;
-use crate::ctx::Ctx;
-use crate::style::Role;
+use crate::base::ctx::Ctx;
+use crate::base::style::Role;
 
 /// The gutter block, measured once for the surface.
 #[derive(Debug, Clone, Copy)]

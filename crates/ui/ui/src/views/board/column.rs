@@ -6,11 +6,13 @@ use groove_gfx::Rect;
 use super::List;
 use super::row::{self, Line};
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Scroller;
-use crate::style::Role;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Scroller;
+use crate::base::style::Role;
+use crate::shape::hairline;
+use crate::text::row;
 use crate::views::session::worktree_row;
-use crate::widget::{hairline, row, scrolled};
+use crate::widgets::scrolled;
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
     let lines = lines(app, ui, list);

@@ -79,7 +79,7 @@ fn code_lines(text: &str) -> impl Iterator<Item = (usize, &str)> {
 fn every_size_comes_from_the_tokens() {
     let mut offenders = Vec::new();
     for (path, text) in sources() {
-        if path == "tokens.rs" {
+        if path == "base/tokens.rs" {
             continue;
         }
         for (at, line) in code_lines(&text) {
@@ -100,7 +100,7 @@ fn every_size_comes_from_the_tokens() {
 fn every_style_comes_from_one_file() {
     let mut offenders = Vec::new();
     for (path, text) in sources() {
-        if path == "style.rs" {
+        if path == "base/style.rs" {
             continue;
         }
         for (at, line) in code_lines(&text) {
@@ -146,7 +146,7 @@ fn a_view_draws_through_the_context() {
 
 /// Every ground and band a row can take, in each flavour.
 fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Color)> {
-    let styles = crate::style::Styles::new(theme, crate::tokens::Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(theme, crate::base::tokens::Tokens::new(1.0));
     vec![
         ("hover", styles.hover()),
         ("raised", styles.raised()),
@@ -211,8 +211,8 @@ fn code_stays_readable_on_every_ground_it_is_drawn_on() {
         groove_types::ThemeName::Macchiato,
         groove_types::ThemeName::Mocha,
     ] {
-        let styles = crate::style::Styles::new(theme, crate::tokens::Tokens::new(1.0));
-        let text = styles.color(crate::style::Role::Text);
+        let styles = crate::base::style::Styles::new(theme, crate::base::tokens::Tokens::new(1.0));
+        let text = styles.color(crate::base::style::Role::Text);
         for (named, ground) in grounds(theme) {
             if !UNDER_CODE.contains(&named) {
                 continue;

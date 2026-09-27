@@ -2,13 +2,13 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{SessionId, WorktreeId};
 
-use crate::hit::{Cursor, Hits, Picks, Target};
+use crate::base::hit::{Cursor, Hits, Picks, Target};
+use crate::base::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
 use crate::tests::{
     CHORD, WINDOW, click, drag, drag_at, full_app, metrics, press, pressed, release, window,
 };
-use crate::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
 use crate::views::session::Tab;
 use crate::{Ui, view};
 
@@ -330,6 +330,6 @@ fn a_column_narrower_than_its_minimum_opens_at_it() {
     let split = Split::of(panes);
     assert_eq!(split.rail, RAIL_MIN);
     assert_eq!(split.agent, AGENT_MIN);
-    assert_eq!(split.band, crate::tokens::BAND_MIN);
-    assert_eq!(split.feed, crate::tokens::FEED_MIN);
+    assert_eq!(split.band, crate::base::tokens::BAND_MIN);
+    assert_eq!(split.feed, crate::base::tokens::FEED_MIN);
 }

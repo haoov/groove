@@ -6,8 +6,8 @@ mod scroll;
 
 use groove_controllers::{AppState, Command, agent, workspace};
 
-use crate::ctx::Metrics;
-use crate::hit::{Cursor, Hits, Target};
+use crate::base::ctx::Metrics;
+use crate::base::hit::{Cursor, Hits, Target};
 use crate::{Focus, Held, Surface, Ui};
 
 pub use keys::encode;
@@ -104,7 +104,7 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if let Some(palette) = ui.palette_mut() {
         palette
             .query
-            .push_str(&crate::widget::Field::one_line(text));
+            .push_str(&crate::widgets::Field::one_line(text));
         palette.selected = 0;
         return Vec::new();
     }

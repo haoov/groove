@@ -4,14 +4,14 @@ use groove_gfx::Rect;
 use groove_types::SessionKind;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Picks, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{
-    after_mark, box_in, button, delivered, elide, hairline, icon, leading, picker, room_for, row,
-    slot, turn,
-};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Picks, Target};
+use crate::base::mark::Mark;
+use crate::base::motion::turn;
+use crate::base::style::Role;
+use crate::shape::{after_mark, box_in, hairline, leading};
+use crate::text::{elide, row};
+use crate::widgets::{button, delivered, icon, picker, room_for, slot};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

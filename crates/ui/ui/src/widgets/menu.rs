@@ -2,10 +2,10 @@
 
 use groove_gfx::{Color, Rect};
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::Role;
-use crate::widget::row;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::text::row;
 
 /// How much room the rows need, padding at both ends included.
 pub fn size(ctx: &mut Ctx, labels: &[&str]) -> (f32, f32) {

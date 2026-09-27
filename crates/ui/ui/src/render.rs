@@ -3,10 +3,10 @@
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};
 
-use crate::ctx::{Ctx, Metrics};
-use crate::hit::Hits;
+use crate::base::ctx::{Ctx, Metrics};
+use crate::base::hit::Hits;
+use crate::base::style::Styles;
 use crate::layout::Layout;
-use crate::style::Styles;
 use crate::views::{board, session, shared};
 use crate::{Surface, Ui};
 

@@ -3,8 +3,8 @@
 use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::WorktreeId;
 
-use crate::ctx::Metrics;
-use crate::hit::{Hits, Picks, Target};
+use crate::base::ctx::Metrics;
+use crate::base::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::Layout;
 use crate::palette::{Action, Anchor, Flow, Palette};

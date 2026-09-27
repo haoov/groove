@@ -2,10 +2,11 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 use groove_types::AgentStatus;
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::Role;
-use crate::widget::{row, screen};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::text::row;
+use crate::widgets::screen;
 
 /// The agent's terminal, or why there is none.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {

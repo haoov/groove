@@ -7,7 +7,7 @@ use groove_types::{ApprovalId, SessionId};
 
 use super::bar::{ask, asking, session_ui};
 use crate::Ui;
-use crate::hit::Target;
+use crate::base::hit::Target;
 use crate::input::{Key, Modifiers};
 use crate::tests::{click, press, window};
 
@@ -143,7 +143,7 @@ fn the_answers_stand_on_a_line_of_their_own_under_the_ask() {
         .expect("the ask");
     assert!(approve.y > said.y, "the answers are under the ask");
     assert!(
-        (approve.x - said.x).abs() <= crate::tokens::Tokens::new(1.0).sm,
+        (approve.x - said.x).abs() <= crate::base::tokens::Tokens::new(1.0).sm,
         "and start where it starts"
     );
     let height = |app: &groove_controllers::AppState| {

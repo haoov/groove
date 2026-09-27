@@ -2,7 +2,7 @@
 
 use groove_types::SessionId;
 
-use crate::widget::Field;
+use crate::widgets::Field;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct BoardUi {
@@ -41,8 +41,8 @@ impl BoardUi {
     /// The timeline carried by `across` pixels, whole days at a time, within a year.
     pub fn carry(&mut self, across: f32) {
         self.carried += across;
-        let days = (self.carried / crate::tokens::DAY_PIXELS).trunc();
-        self.carried -= days * crate::tokens::DAY_PIXELS;
+        let days = (self.carried / crate::base::tokens::DAY_PIXELS).trunc();
+        self.carried -= days * crate::base::tokens::DAY_PIXELS;
         self.horizon = (self.horizon - days as i64).clamp(-365, 365);
     }
 

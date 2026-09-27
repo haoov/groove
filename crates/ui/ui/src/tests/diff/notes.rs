@@ -146,7 +146,7 @@ fn marks_in_sidebar(app: &AppState) -> usize {
     let ui = on_diff();
     let (frame, _) = view(app, &ui, window(), &mut Fonts::embedded());
     let sidebar = crate::layout::Layout::of(window(), &ui).sidebar;
-    let shape = crate::mark::Mark::Note.shape();
+    let shape = crate::base::mark::Mark::Note.shape();
     frame
         .layers()
         .iter()
@@ -179,7 +179,7 @@ fn gutter_marks(app: &AppState) -> Vec<f32> {
     let ui = on_diff();
     let (frame, hits) = view(app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows");
-    let shape = crate::mark::Mark::Note.shape();
+    let shape = crate::base::mark::Mark::Note.shape();
     frame
         .layers()
         .iter()
@@ -239,7 +239,7 @@ fn the_buttons_start_where_the_words_do() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     let first = hits
-        .rect_of(&Target::Note(id, crate::hit::NoteButton::Edit))
+        .rect_of(&Target::Note(id, crate::base::hit::NoteButton::Edit))
         .expect("the first button");
     assert_eq!(first.x, hits.chars().left, "under the words themselves");
 }
@@ -247,7 +247,7 @@ fn the_buttons_start_where_the_words_do() {
 #[test]
 fn a_line_carrying_a_note_takes_its_own_ground() {
     let grounds = |app: &AppState| {
-        let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+        let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
         let ui = on_diff();
         let (frame, _) = view(app, &ui, window(), &mut Fonts::embedded());
         frame.layers()[0]
@@ -271,9 +271,9 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
     for button in [
-        crate::hit::NoteButton::Edit,
-        crate::hit::NoteButton::Resolve,
-        crate::hit::NoteButton::Delete,
+        crate::base::hit::NoteButton::Edit,
+        crate::base::hit::NoteButton::Resolve,
+        crate::base::hit::NoteButton::Delete,
     ] {
         assert!(
             hits.rect_of(&Target::Note(id.clone(), button)).is_some(),
@@ -281,7 +281,7 @@ fn a_note_of_this_session_offers_what_to_do_with_it() {
         );
     }
     assert!(
-        hits.rect_of(&Target::Note(id, crate::hit::NoteButton::Post))
+        hits.rect_of(&Target::Note(id, crate::base::hit::NoteButton::Post))
             .is_none(),
         "posting waits for the forge"
     );
@@ -294,12 +294,15 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let origin = NoteOrigin::Thread("t1".into());
     assert!(
-        hits.rect_of(&Target::Note(origin.clone(), crate::hit::NoteButton::Reply))
-            .is_some(),
+        hits.rect_of(&Target::Note(
+            origin.clone(),
+            crate::base::hit::NoteButton::Reply
+        ))
+        .is_some(),
         "a thread takes a reply"
     );
     assert!(
-        hits.rect_of(&Target::Note(origin, crate::hit::NoteButton::Delete))
+        hits.rect_of(&Target::Note(origin, crate::base::hit::NoteButton::Delete))
             .is_none(),
         "and none of this session's own writes"
     );
@@ -308,7 +311,7 @@ fn a_thread_offers_what_the_forge_answers_for_it() {
 #[test]
 fn a_button_under_the_pointer_takes_the_acted_ground() {
     let app = noted(vec![own(1, "issue: this leaks")]);
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let grounds = |ui: &Ui| {
         let (frame, _) = view(&app, ui, window(), &mut Fonts::embedded());
         frame
@@ -323,7 +326,7 @@ fn a_button_under_the_pointer_takes_the_acted_ground() {
     let mut on_it = on_diff();
     on_it.hover = Some(Target::Note(
         groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        crate::hit::NoteButton::Edit,
+        crate::base::hit::NoteButton::Edit,
     ));
     assert_eq!(grounds(&on_it), 1, "the one it stands on");
 }

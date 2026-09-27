@@ -7,12 +7,14 @@ use groove_types::FileDiff;
 
 use super::rows::{Reading, entry};
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::box_in;
+use crate::text::{elide, row};
 use crate::views::session::Asked;
-use crate::widget::{box_in, elide, row, scrolled};
+use crate::widgets::scrolled;
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -228,7 +230,7 @@ fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&S
         ctx.quad(line, ctx.styles.hover());
     }
     if open == Some(&held.path) {
-        crate::widget::ruled(ctx, line, ctx.styles.here());
+        crate::shape::ruled(ctx, line, ctx.styles.here());
     }
     ctx.hit(line, target);
     let style = ctx.styles.body(Role::Text);

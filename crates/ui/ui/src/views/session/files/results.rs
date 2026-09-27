@@ -5,11 +5,12 @@ use groove_controllers::workspace_service::Found;
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{elide, row, scrolled};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::text::{elide, row};
+use crate::widgets::scrolled;
 
 enum Item<'a> {
     File(&'a str, usize),

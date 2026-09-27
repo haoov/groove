@@ -3,7 +3,7 @@
 use groove_gfx::Fonts;
 use groove_types::{SessionId, TimelineEvent, TimelineKind, Timestamp};
 
-use crate::hit::Target;
+use crate::base::hit::Target;
 use crate::tests::{app, click, window};
 use crate::{Ui, view};
 
@@ -142,7 +142,7 @@ fn the_feed_keeps_its_own_minimum() {
         &hits,
     );
     crate::tests::release(&mut ui, &app, &hits);
-    assert_eq!(ui.split.feed, crate::tokens::FEED_MIN);
+    assert_eq!(ui.split.feed, crate::base::tokens::FEED_MIN);
 }
 
 #[test]
@@ -187,8 +187,8 @@ fn an_error_is_drawn_in_the_colour_of_a_failure() {
         .find(|run| run.text == "error")
         .expect("the error");
     let tokens = crate::Tokens::new(1.0);
-    let styles = crate::style::Styles::new(groove_types::ThemeName::default(), tokens);
-    assert_eq!(bad.style.color, styles.color(crate::style::Role::Bad));
+    let styles = crate::base::style::Styles::new(groove_types::ThemeName::default(), tokens);
+    assert_eq!(bad.style.color, styles.color(crate::base::style::Role::Bad));
 }
 
 #[test]

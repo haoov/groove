@@ -8,10 +8,11 @@ use groove_gfx::{Color, Rect, TextStyle};
 
 use super::gutter::Block;
 use super::{Line, head_mark};
-use crate::ctx::Ctx;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{row, ruled};
+use crate::base::ctx::Ctx;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::ruled;
+use crate::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if code.band {

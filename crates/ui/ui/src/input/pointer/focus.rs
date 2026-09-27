@@ -1,7 +1,7 @@
 //! Which pane a click lands in.
 
 use crate::Focus;
-use crate::hit::Target;
+use crate::base::hit::Target;
 
 /// The pane a click lands in. What it lands on says which.
 pub(super) fn focused(target: &Option<Target>, focus: Focus) -> Focus {

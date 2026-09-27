@@ -3,12 +3,13 @@
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::hairline;
+use crate::text::row;
 use crate::views::session::{Bar, Term};
-use crate::widget::{hairline, row};
 
 /// A row for each term the search narrows by. Returns what they took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {

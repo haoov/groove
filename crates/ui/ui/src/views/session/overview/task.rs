@@ -4,10 +4,11 @@ use groove_gfx::Rect;
 use groove_types::{Task, TimeSummary};
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::Role;
-use crate::widget::{Row, button, list, row, wrapped};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::text::{row, wrapped};
+use crate::widgets::{Row, button, list};
 
 const UNSET: &str = "—";
 

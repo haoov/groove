@@ -1,8 +1,8 @@
 //! The boundaries a press takes hold of, and how far the pointer has carried one.
 
-use crate::ctx::Metrics;
+use crate::base::ctx::Metrics;
+use crate::base::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::layout::Edge;
-use crate::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::{Click, Drag, Held, Ui};
 
 /// This press against the last: soon and near, it carries the same click on.

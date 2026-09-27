@@ -6,11 +6,12 @@ use groove_gfx::Rect;
 
 use super::row::{Line, aside, named};
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{after_mark, icon, leading};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::{after_mark, leading};
+use crate::widgets::icon;
 
 /// Every session the filter lets through, with its worktrees under it while it is open.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {

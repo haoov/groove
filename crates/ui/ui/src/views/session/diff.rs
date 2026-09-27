@@ -5,6 +5,7 @@ mod header;
 mod map;
 mod notes;
 mod offers;
+pub(crate) mod painted;
 mod pinned;
 mod row;
 mod scroll;
@@ -17,9 +18,10 @@ use groove_gfx::Rect;
 use groove_types::DiffView;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::style::Role;
-use crate::widget::{first, row};
+use crate::base::ctx::Ctx;
+use crate::base::style::Role;
+use crate::text::row;
+use crate::widgets::first;
 
 pub(crate) use map::total as rows_of;
 pub(crate) use row::{line_at, text_at};

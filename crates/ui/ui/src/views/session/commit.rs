@@ -4,11 +4,13 @@ use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Rect;
 use groove_types::FileDiff;
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{Gutters, Line, Rows, box_in, button, code, counts, hairline, row, slot};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::{box_in, hairline};
+use crate::text::row;
+use crate::widgets::{Gutters, Line, Rows, button, code, counts, slot};
 use crate::{Focus, Losing, Ui};
 
 /// The counts and what commits them on one line, the message under it.
@@ -55,7 +57,7 @@ pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
     let start = ctx.tokens.md + width + ctx.tokens.sm;
     let room = (box_.x - line.x - start - ctx.tokens.sm).max(0.0);
     let said = one.message.lines().next().unwrap_or_default();
-    let text = crate::widget::elide(ctx, said, &words, room);
+    let text = crate::text::elide(ctx, said, &words, room);
     row(ctx, line, start, &text, words);
 }
 

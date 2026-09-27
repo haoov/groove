@@ -4,10 +4,10 @@ use groove_controllers::delivery::Say;
 use groove_controllers::{Command, delivery, workspace};
 use groove_types::ReviewVerdict;
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
 use crate::views::session::{Asked, Naming, Noting};
-use crate::widget::{menu, menu_size};
+use crate::widgets::{menu, menu_size};
 use crate::{Corner, Losing, Menu, Of, Ui};
 
 /// The actions of one file.

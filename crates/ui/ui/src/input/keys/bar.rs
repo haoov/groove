@@ -4,10 +4,10 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use super::super::{Key, Modifiers};
-use crate::tokens::ABOVE_MATCH;
+use crate::base::tokens::ABOVE_MATCH;
 use crate::views::session::Term;
 use crate::views::session::find::Finding;
-use crate::widget::Field;
+use crate::widgets::Field;
 use crate::{Focus, Ui};
 
 /// The find bar's keys: it takes what is typed until `Enter`, and the chords step either way.
@@ -70,7 +70,7 @@ fn searched(find: &mut Finding, app: &AppState, view: DiffView) {
 
 /// The surface scrolled to the match it stands on, which it holds as a selection.
 fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let line = crate::tokens::Tokens::new(1.0).line;
+    let line = crate::base::tokens::Tokens::new(1.0).line;
     let Some(find) = ui.session.find.as_ref() else {
         return Vec::new();
     };

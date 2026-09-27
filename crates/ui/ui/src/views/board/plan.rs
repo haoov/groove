@@ -8,9 +8,9 @@ use groove_types::Task;
 
 use super::row::Line;
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::style::Role;
-use crate::widget::row;
+use crate::base::ctx::Ctx;
+use crate::base::style::Role;
+use crate::text::row;
 
 const LATER: &str = "LATER";
 
@@ -30,7 +30,7 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
 }
 
 /// Where every line of Up next starts, and where the last one ends.
-fn edges(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
+fn edges(tokens: &crate::base::tokens::Tokens, app: &AppState, ui: &Ui) -> Vec<f32> {
     let lines = lines(app, ui);
     let mut at = 0.0;
     let mut edges = vec![0.0];
@@ -96,7 +96,7 @@ pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
 
 /// Which insertion point a drag lands on, counted in lines from the column's top.
 pub fn dropped(
-    tokens: &crate::tokens::Tokens,
+    tokens: &crate::base::tokens::Tokens,
     app: &AppState,
     ui: &Ui,
     body: Rect,

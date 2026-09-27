@@ -3,12 +3,13 @@
 use groove_controllers::AppState;
 use groove_gfx::Rect;
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::base::tokens::PALETTE_ROWS;
 use crate::palette::Palette;
-use crate::style::Role;
-use crate::tokens::PALETTE_ROWS;
-use crate::widget::{Row, input, list, modal, panel_at, row};
+use crate::text::row;
+use crate::widgets::{Row, input, list, modal, panel_at};
 
 /// Whether the panel offers a line to type in: the palette always, a picker once needed.
 fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {

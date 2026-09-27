@@ -2,30 +2,27 @@
 
 use groove_controllers::AppState;
 
-mod ctx;
-mod hit;
+mod base;
 pub mod input;
 mod layout;
-mod mark;
 mod offsets;
-mod painted;
 pub mod palette;
 mod render;
-mod style;
-mod tokens;
+mod shape;
+mod text;
 mod views;
-mod widget;
+mod widgets;
 
 #[cfg(test)]
 mod tests;
 
-pub use ctx::Metrics;
-pub use hit::{Cursor, Hits, Target};
+pub use base::ctx::Metrics;
+pub use base::hit::{Cursor, Hits, Target};
+pub use base::mark::Mark;
+pub use base::style::Role;
+pub use base::tokens::Tokens;
 pub use layout::{Edge, Split};
-pub use mark::Mark;
 pub use render::{layout_commands, view};
-pub use style::Role;
-pub use tokens::Tokens;
 pub use views::board::BoardUi;
 pub use views::session::{Asked, Naming, Scope, SessionUi, Tab};
 pub use views::shared::rail::RailUi;
@@ -92,7 +89,7 @@ pub struct Ui {
     pub hover: Option<Target>,
     pub at: (f32, f32),
     /// The colours the last frames read, kept while they still hold.
-    pub painted: painted::Painted,
+    pub painted: views::session::diff::painted::Painted,
 }
 
 /// What stands over the surface, one at a time.

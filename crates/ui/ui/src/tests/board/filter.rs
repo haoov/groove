@@ -4,7 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 
 use super::texts;
-use crate::hit::Target;
+use crate::base::hit::Target;
 use crate::input::{Key, Modifiers};
 use crate::tests::{click, full_app, press, task, window};
 use crate::{Surface, Ui, view};
@@ -139,13 +139,14 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
         ..Ui::default()
     };
     ui.board.focus();
-    let styles = crate::style::Styles::new(app.config.theme(), crate::tokens::Tokens::new(1.0));
+    let styles =
+        crate::base::style::Styles::new(app.config.theme(), crate::base::tokens::Tokens::new(1.0));
     let lit = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
         let rows: Vec<f32> = (0..2)
             .filter_map(|at| hits.rect_of(&Target::Offer(at)).map(|rect| rect.y))
             .collect();
-        let tall = crate::tokens::Tokens::new(1.0).row;
+        let tall = crate::base::tokens::Tokens::new(1.0).row;
         let on = frame.layers()[1]
             .quads
             .iter()
@@ -170,8 +171,9 @@ fn the_header_s_button_is_drawn_with_a_border_around_it() {
     };
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let box_ = hits.rect_of(&Target::AddTask).expect("the button");
-    let styles = crate::style::Styles::new(app.config.theme(), crate::tokens::Tokens::new(1.0));
-    let thin = crate::tokens::Tokens::new(1.0).hairline;
+    let styles =
+        crate::base::style::Styles::new(app.config.theme(), crate::base::tokens::Tokens::new(1.0));
+    let thin = crate::base::tokens::Tokens::new(1.0).hairline;
     let edges = frame.layers()[0]
         .quads
         .iter()

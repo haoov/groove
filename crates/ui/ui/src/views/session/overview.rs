@@ -7,11 +7,12 @@ use groove_gfx::Rect;
 
 use super::worktree_row;
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{Row, list, row};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::text::row;
+use crate::widgets::{Row, list};
 
 /// The overview tab, scrolled: the properties, the repos with their worktrees, the body.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {

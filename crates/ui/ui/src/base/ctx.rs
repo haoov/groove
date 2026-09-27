@@ -4,11 +4,11 @@ use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
 use groove_types::Timestamp;
 
-use crate::hit::{Chars, Hits, Scroller, Target};
+use crate::base::hit::{Chars, Hits, Scroller, Target};
+use crate::base::mark::Mark;
+use crate::base::style::Styles;
+use crate::base::tokens::Tokens;
 use crate::layout::Layout;
-use crate::mark::Mark;
-use crate::style::Styles;
-use crate::tokens::Tokens;
 
 /// What the renderer measured about the window this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]

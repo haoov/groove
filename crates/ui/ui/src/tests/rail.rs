@@ -6,17 +6,17 @@ use groove_types::{AgentStatus, SessionActivity, SessionId, Timestamp};
 use groove_controllers::AppState;
 use groove_controllers::agent_service::Agent;
 
-use crate::hit::Target;
+use crate::base::hit::Target;
 use crate::input::{Delta, Input};
 use crate::tests::{WINDOW, app, full_app, handle, metrics, open, window};
-use crate::widget::ago;
+use crate::text::ago;
 use crate::{Ui, view};
 
 /// Every text the rail drew, with where it drew it.
 fn rail_texts(app: &AppState, ui: &Ui) -> Vec<TextRun> {
     let rail = crate::layout::Layout::new(
         groove_gfx::Size::new(WINDOW.0, WINDOW.1),
-        &crate::tokens::Tokens::new(1.0),
+        &crate::base::tokens::Tokens::new(1.0),
         ui.split,
         false,
     )
@@ -94,7 +94,8 @@ fn a_title_too_long_for_the_rail_is_cut_with_an_ellipsis() {
 fn the_selected_row_and_the_hovered_row_are_raised() {
     let app = full_app();
     let mut ui = Ui::default();
-    let styles = crate::style::Styles::new(app.config.theme(), crate::tokens::Tokens::new(1.0));
+    let styles =
+        crate::base::style::Styles::new(app.config.theme(), crate::base::tokens::Tokens::new(1.0));
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let alpha = hits
         .rect_of(&Target::Session(SessionId::new("a")))

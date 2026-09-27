@@ -1,9 +1,10 @@
 use groove_gfx::{Color, Rect, TextStyle};
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::widget::{after_mark, elide, leading, row};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::shape::{after_mark, leading};
+use crate::text::{elide, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
 pub struct Row<'a> {

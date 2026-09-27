@@ -5,10 +5,11 @@ use groove_gfx::Rect;
 use groove_types::{ApprovalId, Ask};
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::style::Role;
-use crate::widget::{elide, row, slot_at};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::style::Role;
+use crate::text::{elide, row};
+use crate::widgets::slot_at;
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

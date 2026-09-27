@@ -1,8 +1,9 @@
 use groove_gfx::Rect;
 
-use crate::ctx::Ctx;
-use crate::style::Role;
-use crate::widget::{hairline, row};
+use crate::base::ctx::Ctx;
+use crate::base::style::Role;
+use crate::shape::hairline;
+use crate::text::row;
 
 /// A line of typed text with a caret after it, a hairline under it.
 pub fn input(ctx: &mut Ctx, rect: Rect, prefix: &str, text: &str) {

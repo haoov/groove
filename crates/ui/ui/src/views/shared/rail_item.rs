@@ -3,11 +3,14 @@ use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 use groove_types::{AgentStatus, Ask, AttentionClass, SessionId};
 
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{after_mark, ago, box_in, elide, hairline, icon, leading, row, slot_at, turn};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::motion::turn;
+use crate::base::style::Role;
+use crate::shape::{after_mark, box_in, hairline, leading};
+use crate::text::{ago, elide, row};
+use crate::widgets::{icon, slot_at};
 use crate::{Surface, Ui};
 
 /// The row's lines: head, state, and the answers while the session asks.

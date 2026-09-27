@@ -50,9 +50,12 @@ fn a_long_title_is_cut_so_the_pickers_stay_inside_the_header() {
     let ui = Ui::default();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let header = crate::layout::Layout::of(window, &ui).header;
-    for picker in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
+    for picker in [
+        crate::base::hit::Picks::Repo,
+        crate::base::hit::Picks::Branch,
+    ] {
         let box_ = hits
-            .rect_of(&crate::hit::Target::Picker(picker))
+            .rect_of(&crate::base::hit::Target::Picker(picker))
             .expect("the header holds both pickers");
         assert!(
             box_.right() <= header.right(),
@@ -73,7 +76,7 @@ fn the_header_holds_the_title_over_the_pickers() {
     let ui = Ui::default();
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let layout = crate::layout::Layout::of(window, &ui);
-    let tokens = crate::tokens::Tokens::new(1.0);
+    let tokens = crate::base::tokens::Tokens::new(1.0);
     let title = frame.layers()[0]
         .texts
         .iter()
@@ -81,7 +84,9 @@ fn the_header_holds_the_title_over_the_pickers() {
         .expect("the header's title")
         .y;
     let box_ = hits
-        .rect_of(&crate::hit::Target::Picker(crate::hit::Picks::Repo))
+        .rect_of(&crate::base::hit::Target::Picker(
+            crate::base::hit::Picks::Repo,
+        ))
         .expect("the repo picker");
     assert!(title < tokens.header, "the title is on the first line");
     assert!(box_.y >= tokens.header, "the pickers are on the second");
@@ -91,10 +96,13 @@ fn the_header_holds_the_title_over_the_pickers() {
         layout.header.bottom(),
         "the tabs start under both lines"
     );
-    let styles = crate::style::Styles::new(app.config.theme(), tokens);
-    for which in [crate::hit::Picks::Repo, crate::hit::Picks::Branch] {
+    let styles = crate::base::style::Styles::new(app.config.theme(), tokens);
+    for which in [
+        crate::base::hit::Picks::Repo,
+        crate::base::hit::Picks::Branch,
+    ] {
         let box_ = hits
-            .rect_of(&crate::hit::Target::Picker(which))
+            .rect_of(&crate::base::hit::Target::Picker(which))
             .expect("a picker");
         assert!(
             frame.layers()[0]
@@ -117,7 +125,7 @@ fn a_task_session_offers_to_finish_and_an_explorer_does_not() {
     );
     let session = SessionId::new("a");
     assert!(
-        hits.rect_of(&crate::hit::Target::Finish(session.clone()))
+        hits.rect_of(&crate::base::hit::Target::Finish(session.clone()))
             .is_some(),
         "the header offers it"
     );
@@ -129,7 +137,10 @@ fn a_task_session_offers_to_finish_and_an_explorer_does_not() {
         metrics(1280, 800, 1.0),
         &mut groove_gfx::Fonts::embedded(),
     );
-    assert!(hits.rect_of(&crate::hit::Target::Finish(session)).is_none());
+    assert!(
+        hits.rect_of(&crate::base::hit::Target::Finish(session))
+            .is_none()
+    );
 }
 
 #[test]
@@ -155,7 +166,7 @@ fn a_worktree_with_an_open_mr_holds_the_finish_back() {
         &mut groove_gfx::Fonts::embedded(),
     );
     assert!(
-        hits.rect_of(&crate::hit::Target::Finish(SessionId::new("a")))
+        hits.rect_of(&crate::base::hit::Target::Finish(SessionId::new("a")))
             .is_none(),
         "something is still open"
     );
@@ -169,7 +180,7 @@ fn the_task_s_menu_offers_to_delete_the_session_here() {
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let session = SessionId::new("a");
     let caret = hits
-        .rect_of(&crate::hit::Target::TaskActions(session.clone()))
+        .rect_of(&crate::base::hit::Target::TaskActions(session.clone()))
         .expect("the header offers the rest");
     assert!(
         crate::tests::click(caret, &mut ui, &app, &hits).is_empty(),
@@ -179,7 +190,7 @@ fn the_task_s_menu_offers_to_delete_the_session_here() {
 
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
+        .rect_of(&crate::base::hit::Target::MenuRow(0))
         .expect("it holds a row");
     let commands = crate::tests::click(row, &mut ui, &app, &hits);
     assert_eq!(
@@ -212,13 +223,13 @@ fn a_review_is_deleted_here_the_way_a_task_is() {
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let session = SessionId::new("a");
     let caret = hits
-        .rect_of(&crate::hit::Target::TaskActions(session.clone()))
+        .rect_of(&crate::base::hit::Target::TaskActions(session.clone()))
         .expect("a review offers the rest too");
     crate::tests::click(caret, &mut ui, &app, &hits);
 
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let row = hits
-        .rect_of(&crate::hit::Target::MenuRow(0))
+        .rect_of(&crate::base::hit::Target::MenuRow(0))
         .expect("it holds a row");
     assert_eq!(
         crate::tests::click(row, &mut ui, &app, &hits),
@@ -235,7 +246,7 @@ fn an_explorer_offers_no_such_menu() {
     let window = metrics(1280, 800, 1.0);
     let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     assert!(
-        hits.rect_of(&crate::hit::Target::TaskActions(SessionId::new("a")))
+        hits.rect_of(&crate::base::hit::Target::TaskActions(SessionId::new("a")))
             .is_none(),
         "an explorer is thrown away from the palette"
     );

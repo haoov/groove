@@ -1,7 +1,7 @@
 use groove_gfx::{Color, Rect};
 
 use crate::Corner;
-use crate::ctx::Ctx;
+use crate::base::ctx::Ctx;
 
 /// A panel with its named corner at `at`, edged in `border`, inside the window.
 pub fn panel_at(

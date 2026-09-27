@@ -23,7 +23,7 @@ pub(super) fn paned(ui: &mut Ui, pane: Pane) -> Vec<Command> {
 pub(super) fn note_at(
     ui: &mut Ui,
     app: &AppState,
-    metrics: crate::ctx::Metrics,
+    metrics: crate::base::ctx::Metrics,
     at: usize,
 ) -> Vec<Command> {
     let Some(anchor) = app
@@ -37,7 +37,7 @@ pub(super) fn note_at(
     let line = anchor.start_line as usize;
     ui.focus = crate::Focus::Workspace;
     ui.session.view = groove_types::DiffView::Editor;
-    let above = line.saturating_sub(crate::tokens::ABOVE_MATCH);
+    let above = line.saturating_sub(crate::base::tokens::ABOVE_MATCH);
     ui.session.diff = above as f32 * metrics.tokens().line;
     let open = groove_controllers::workspace::Command::OpenFile {
         path: anchor.path,

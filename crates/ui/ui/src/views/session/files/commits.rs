@@ -5,10 +5,12 @@ use groove_gfx::Rect;
 use groove_types::CommitEntry;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::{Scroller, Target};
-use crate::style::Role;
-use crate::widget::{elide, row, ruled, scrolled};
+use crate::base::ctx::Ctx;
+use crate::base::hit::{Scroller, Target};
+use crate::base::style::Role;
+use crate::shape::ruled;
+use crate::text::{elide, row};
+use crate::widgets::scrolled;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let log = &app.workspace.log;

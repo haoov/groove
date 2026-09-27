@@ -54,14 +54,14 @@ fn the_switch_names_the_three_views_and_picks_one() {
 fn the_header_says_when_the_file_owes_the_disk() {
     let app = opened();
     let ui = on_diff();
-    let styles = crate::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let band = crate::layout::Layout::of(window(), &ui).workspace;
     let marks = |app: &AppState| {
         let (frame, _) = view_of(app, &ui);
         frame.layers()[0]
             .icons
             .iter()
-            .filter(|icon| icon.color == styles.color(crate::style::Role::Warn))
+            .filter(|icon| icon.color == styles.color(crate::base::style::Role::Warn))
             .filter(|icon| icon.rect.y < band.y + Tokens::new(1.0).row * 2.0)
             .count()
     };

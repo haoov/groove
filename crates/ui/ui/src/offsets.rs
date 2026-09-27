@@ -1,7 +1,7 @@
 //! Where each scroller keeps its offset.
 
 use crate::Ui;
-use crate::hit::{Hits, Scroller};
+use crate::base::hit::{Hits, Scroller};
 use crate::views::board::List;
 
 impl Ui {

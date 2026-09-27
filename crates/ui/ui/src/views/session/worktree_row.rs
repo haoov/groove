@@ -1,10 +1,12 @@
 use groove_gfx::Rect;
 use groove_types::{Worktree, WorktreeDelivery};
 
-use crate::ctx::Ctx;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{after_mark, counts, counts_room, delivered, elide, room_for, row};
+use crate::base::ctx::Ctx;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::after_mark;
+use crate::text::{elide, row};
+use crate::widgets::{counts, counts_room, delivered, room_for};
 
 /// One worktree: its branch cut short, then git and the forge at the row's right end.
 pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&WorktreeDelivery>) {

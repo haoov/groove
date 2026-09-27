@@ -1,8 +1,15 @@
-use groove_gfx::{Color, Rect, TextStyle};
+//! Text: one line clipped, elided, wrapped, and a short age.
 
-use crate::ctx::Ctx;
+use std::time::Duration;
+
+use groove_gfx::{Rect, TextStyle};
+
+use crate::base::ctx::Ctx;
 
 const ELLIPSIS: char = '\u{2026}';
+const MINUTE: u64 = 60;
+const HOUR: u64 = 60 * MINUTE;
+const DAY: u64 = 24 * HOUR;
 
 /// One line of text in `rect`, `indent` from its left edge, clipped to it.
 pub fn row(ctx: &mut Ctx, rect: Rect, indent: f32, text: &str, style: TextStyle) {
@@ -76,19 +83,17 @@ pub fn wrapped(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> Vec<
     lines
 }
 
-/// A hairline above `rect` and one below it.
-pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
-    let thickness = ctx.tokens.hairline;
-    ctx.quad(Rect::new(rect.x, rect.y, rect.w, thickness), color);
-    let under = rect.bottom() - thickness;
-    ctx.quad(Rect::new(rect.x, under, rect.w, thickness), color);
-}
-
-/// A hairline along the bottom of `rect`.
-pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
-    let thickness = ctx.tokens.hairline;
-    ctx.quad(
-        Rect::new(rect.x, rect.bottom() - thickness, rect.w, thickness),
-        color,
-    );
+/// How long ago, in as few characters as it takes: `now`, `2m`, `6h`, `5d`.
+pub fn ago(age: Duration) -> String {
+    let seconds = age.as_secs();
+    if seconds < MINUTE {
+        return "now".to_string();
+    }
+    if seconds < HOUR {
+        return format!("{}m", seconds / MINUTE);
+    }
+    if seconds < DAY {
+        return format!("{}h", seconds / HOUR);
+    }
+    format!("{}d", seconds / DAY)
 }

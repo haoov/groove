@@ -3,7 +3,7 @@
 use groove_gfx::{Color, Font, Palette, TextStyle, Weight};
 use groove_types::{Capture, LineMark, RowKind, ThemeName};
 
-use crate::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens, WORD_ALPHA};
+use crate::base::tokens::{GROUND_ALPHA, SCRIM_ALPHA, Tokens, WORD_ALPHA};
 
 /// What a text or a mark means. Colour follows the role, never the other way round.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,7 +119,7 @@ impl Styles {
     pub fn held(&self) -> Color {
         self.palette
             .base
-            .mix(self.palette.lavender, crate::tokens::HELD)
+            .mix(self.palette.lavender, crate::base::tokens::HELD)
     }
 
     /// The rules above and below the caret's row, brighter than a panel's hairlines.
@@ -200,7 +200,7 @@ impl Styles {
     pub fn noted(&self) -> Color {
         self.palette
             .base
-            .mix(self.palette.yellow, crate::tokens::NOTED)
+            .mix(self.palette.yellow, crate::base::tokens::NOTED)
     }
 
     /// Under a match a search found, where the caret is not.

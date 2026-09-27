@@ -5,11 +5,13 @@ use groove_gfx::Rect;
 
 use super::complete;
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{button, hairline, row};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::hairline;
+use crate::text::row;
+use crate::widgets::button;
 
 const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";

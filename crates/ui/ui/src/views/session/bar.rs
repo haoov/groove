@@ -5,11 +5,13 @@ use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{box_in, row, slot_at};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::box_in;
+use crate::text::row;
+use crate::widgets::slot_at;
 
 /// What the agent waits on, or what it can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

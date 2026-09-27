@@ -7,18 +7,19 @@ use groove_gfx::Rect;
 use groove_types::{Day, Timestamp};
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{after_mark, leading, row};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::{after_mark, leading};
+use crate::text::row;
 
 /// The days the band shows, and how many stand before today.
 pub(super) const DAYS: i64 = 28;
 const BEFORE: i64 = 7;
 
 /// How tall the band stands: its own bar alone, or as tall as the user left it.
-pub(super) fn height(tokens: &crate::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
+pub(super) fn height(tokens: &crate::base::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
     match shut(app, ui) {
         true => tokens.header,
         false => ui.split.band * tokens.scale,

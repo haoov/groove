@@ -1,7 +1,7 @@
 use groove_gfx::{Cell, CellGrid, CellSize, Color, Rect, WIDE_SPACER};
 use groove_types::{Rgb, Screen, Selected};
 
-use crate::ctx::Ctx;
+use crate::base::ctx::Ctx;
 
 /// A terminal screen as a cell grid at `origin`, clipped to `rect`.
 pub fn screen(ctx: &mut Ctx, rect: Rect, origin: (f32, f32), screen: &Screen) {

@@ -19,11 +19,13 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::ctx::Ctx;
-use crate::hit::Target;
-use crate::mark::Mark;
-use crate::style::Role;
-use crate::widget::{icon, leading, row, tabs};
+use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
+use crate::base::mark::Mark;
+use crate::base::style::Role;
+use crate::shape::leading;
+use crate::text::row;
+use crate::widgets::{icon, tabs};
 
 /// The session: the header, then the agent pane and the workspace.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

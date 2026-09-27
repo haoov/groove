@@ -25,8 +25,8 @@ use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
 use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
-use crate::ctx::Metrics;
-use crate::hit::{Hits, Target};
+use crate::base::ctx::Metrics;
+use crate::base::hit::{Hits, Target};
 use crate::views::session::Tab;
 use crate::{Held, Overlay, Ui};
 
