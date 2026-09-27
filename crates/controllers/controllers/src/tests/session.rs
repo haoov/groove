@@ -122,6 +122,20 @@ fn closing_ends_the_agent_and_moves_the_selection() {
 }
 
 #[test]
+fn an_explorer_has_its_own_directory_before_it_holds_any_repo() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    dispatch(
+        Cmd::Session(Command::OpenExplorer { title: None }),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    let id = state.session.selected.clone().unwrap();
+    let dir = home.path().join("code/worktrees").join(id.as_str());
+    until(&spawner, &services, &mut state, |_| dir.is_dir());
+}
+
+#[test]
 fn the_agent_runs_at_the_worktree_root_never_in_a_session_directory() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     std::fs::create_dir_all(home.path().join("wt")).unwrap();

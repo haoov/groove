@@ -42,6 +42,7 @@ impl Service {
             return Err(e.into());
         }
         emptied(&self.pool.layout().session_dir(explorer.as_str()));
+        self.pool.session_dir(&session.id)?;
         let worktrees = steps.into_iter().map(|one| landed(one, &session)).collect();
         Ok((session, worktrees))
     }

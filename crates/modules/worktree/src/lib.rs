@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 
 pub use error::{Error, Result};
 use groove_db::Db;
+use groove_types::SessionId;
 pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
 
@@ -40,5 +41,15 @@ impl Pool {
 
     pub fn root(&self) -> &PathBuf {
         &self.layout.root
+    }
+
+    /// The session's own directory, made when it is missing.
+    pub fn session_dir(&self, session: &SessionId) -> Result<PathBuf> {
+        let dir = self.layout.session_dir(session.as_str());
+        std::fs::create_dir_all(&dir).map_err(|source| Error::Io {
+            path: dir.clone(),
+            source,
+        })?;
+        Ok(dir)
     }
 }

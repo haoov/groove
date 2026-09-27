@@ -95,7 +95,7 @@ impl Service {
     }
 
     async fn on_rail(&self, id: &SessionId, now: Timestamp) -> Result<(), Error> {
-        self.store.set_opened(id, Some(now)).await?;
+        self.set_opened(id, Some(now)).await?;
         Ok(self.store.set_seen(id, now).await?)
     }
 
@@ -109,7 +109,11 @@ impl Service {
         Ok(self.store.remove(id).await?)
     }
 
+    /// On the rail with its directory made, or off it.
     pub async fn set_opened(&self, id: &SessionId, at: Option<Timestamp>) -> Result<(), Error> {
+        if at.is_some() {
+            self.pool.session_dir(id)?;
+        }
         Ok(self.store.set_opened(id, at).await?)
     }
 
