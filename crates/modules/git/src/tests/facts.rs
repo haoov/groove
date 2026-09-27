@@ -81,3 +81,24 @@ async fn the_base_ref_prefers_the_pin_then_falls_back() {
         groove_types::ErrorKind::Git
     );
 }
+
+#[tokio::test]
+async fn origin_stands_at_the_branch_once_pushed_and_at_its_base_before() {
+    let fx = Fixture::new();
+    let git = fx.git();
+    sh(&fx.work, &["checkout", "-q", "-b", "fix/one"]);
+    assert_eq!(
+        git.pushed_point("fix/one", Some("release/1.0"))
+            .await
+            .unwrap(),
+        "origin/release/1.0",
+        "never pushed: its base"
+    );
+    sh(&fx.work, &["push", "-q", "origin", "fix/one"]);
+    assert_eq!(
+        git.pushed_point("fix/one", Some("release/1.0"))
+            .await
+            .unwrap(),
+        "origin/fix/one"
+    );
+}

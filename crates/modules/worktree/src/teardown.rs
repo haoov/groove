@@ -71,13 +71,11 @@ impl Pool {
     }
 }
 
-/// Commits origin lacks: past the branch on origin, else past its base.
+/// The commits origin lacks.
 async fn unpushed(git: &Git, worktree: &Worktree) -> Option<u32> {
-    if let Some((ahead, _)) = git.ahead_behind(&worktree.branch).await.ok()? {
-        return Some(ahead);
-    }
-    let base = git.base_ref(worktree.base_ref.as_deref()).await.ok()?;
-    git.commits_since(&base).await.ok()
+    let pinned = worktree.base_ref.as_deref();
+    let point = git.pushed_point(&worktree.branch, pinned).await.ok()?;
+    git.commits_since(&point).await.ok()
 }
 
 /// Deletes the tree and the empty parents above it, up to `stop_at`.

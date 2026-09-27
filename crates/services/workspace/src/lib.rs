@@ -15,9 +15,11 @@ use std::ops::Range;
 use groove_types::{CommitEntry, DiffMode, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
+mod buffer;
 mod git;
 mod paths;
 mod read;
+mod rows;
 
 #[cfg(test)]
 mod tests;
@@ -28,6 +30,7 @@ pub use read::{
     COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, at_commit, base_rev, changes, commits, derived, grep,
     opened, opened_at, painted, paths, reopened, summary, summary_against,
 };
+pub use rows::Way;
 
 /// What the workspace holds for the selected worktree.
 #[derive(Debug, Default)]
@@ -106,13 +109,6 @@ impl State {
         }
     }
 
-    /// Whether any of these paths is git's own state rather than a file of it.
-    pub fn moved_git(&self, paths: &[PathBuf]) -> bool {
-        paths
-            .iter()
-            .any(|path| path.components().any(|part| part.as_os_str() == ".git"))
-    }
-
     /// Whether the open file is one of these paths.
     pub fn shows(&self, paths: &[PathBuf]) -> bool {
         let Some(open) = self.opened.as_ref() else {
@@ -165,50 +161,19 @@ pub struct Painted {
 }
 
 impl State {
-    /// The paths whose rows `rows` covers.
-    pub fn over(&self, rows: Range<usize>) -> Vec<String> {
-        let mut paths: Vec<String> = Vec::new();
-        for row in rows {
-            let path = match self.changes.at(row) {
-                Some(At::Head(file) | At::Row(file, _)) => &file.path,
-                None => break,
-            };
-            if paths.last().is_some_and(|last| last == path) {
-                continue;
-            }
-            paths.push(path.clone());
-        }
-        paths
-    }
-
-    /// A gap gives up a run of its old-side lines, from the documents already read.
-    pub fn open_gap(&mut self, path: &str, span: std::ops::Range<u32>) {
-        let sides = match self.opened.as_ref().filter(|open| open.path == path) {
-            Some(open) => (&open.old, open.new.document()),
-            None => match self.coloured.get(path) {
-                Some(painted) => (&painted.old, &painted.new),
-                None => return,
-            },
-        };
-        self.changes.open_gap(path, span, sides.0, sides.1);
-    }
-
-    pub fn sides(&self, path: &str) -> Option<(&Document, &Document)> {
-        if let Some(open) = self.opened.as_ref().filter(|open| open.path == path) {
-            return Some((&open.old, open.new.document()));
-        }
-        let painted = self.coloured.get(path)?;
-        Some((&painted.old, &painted.new))
-    }
-}
-
-impl State {
     /// The search across the worktree gives up, for a new one or for nothing.
     pub fn stop(&mut self) {
         if let Some(search) = self.searching.take() {
             search.stop();
         }
     }
+}
+
+/// Whether any of these paths is git's own state rather than a file of it.
+pub fn moved_git(paths: &[PathBuf]) -> bool {
+    paths
+        .iter()
+        .any(|path| path.components().any(|part| part.as_os_str() == ".git"))
 }
 
 /// Where git keeps the worktree's own state.

@@ -278,8 +278,9 @@ fn reviewed(
     std::fs::write(at.join("a.txt"), &whole).unwrap();
     sh(at, &["add", "-A"]);
     sh(at, &["commit", "-m", "the whole file"]);
-    let base = sh(at, &["rev-parse", "HEAD"]);
-    super::diff::based(state, base.trim());
+    sh(at, &["push", "-q", "origin", "HEAD:refs/heads/review-base"]);
+    sh(at, &["fetch", "-q", "origin"]);
+    super::diff::based(state, "review-base");
     let changed = whole
         .replace("line 0\n", "LINE 0\n")
         .replace("line 59\n", "LINE 59\n");

@@ -6,21 +6,19 @@ use crate::{AppState, Continuation, Services, Spawner};
 
 /// The newest commits of the selected worktree's branch.
 pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
+    let Some(asked) = super::Asked::now(state) else {
         state.workspace.logged = None;
         return state.workspace.log.clear();
     };
-    state.workspace.logged = state.session.selected_worktree().map(|one| one.id.clone());
-    let base = base_of(state);
+    state.workspace.logged = Some(asked.worktree.clone());
     let job = state.begin("reading the commits");
     spawner.spawn(Box::pin(async move {
-        let read = commits(&dir, base.as_deref(), COMMITS_MAX).await;
+        let read = commits(&asked.dir, asked.base.as_deref(), COMMITS_MAX).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
+            if !asked.holds(state) {
+                return;
+            }
             match read {
                 Err(e) => state.failed(e),
                 Ok(log) => state.workspace.log = log,
@@ -29,20 +27,9 @@ pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The branch the work is based on, which the commits above it are the branch's own.
-fn base_of(state: &AppState) -> Option<String> {
-    let open = state.session.selected()?;
-    let worktree = open.selected_worktree()?;
-    Some(worktree.base_ref.clone().unwrap_or("origin/HEAD".into()))
-}
-
 /// One commit shown as the change it made, which nothing may write.
 pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
+    let Some(asked) = super::Asked::now(state) else {
         return;
     };
     let Some(entry) = state
@@ -56,9 +43,12 @@ pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
     };
     let job = state.begin(format!("reading {}", entry.short_sha));
     spawner.spawn(Box::pin(async move {
-        let read = at_commit(&dir, &sha).await;
+        let read = at_commit(&asked.dir, &sha).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
+            if !asked.holds(state) {
+                return;
+            }
             match read {
                 Err(e) => state.failed(e),
                 Ok((files, changes)) => shown(state, entry, files, changes),

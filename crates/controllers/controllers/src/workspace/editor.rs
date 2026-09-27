@@ -3,9 +3,7 @@
 use std::path::Path;
 
 use groove_types::{Edit, Error, ErrorKind, Result, Selection};
-use groove_workspace_service::{
-    Derived, Document, Opened, by_line, derived, from_documents, opened, opened_at, reopened,
-};
+use groove_workspace_service::{Document, Opened, derived, opened, opened_at, reopened};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -42,7 +40,7 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.workspace.deriving = None;
-                took(state, path, read, revision);
+                state.workspace.derived(&path, read, revision);
                 if state
                     .workspace
                     .opened
@@ -54,20 +52,6 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner) {
             },
         ) as Continuation
     }));
-}
-
-/// Installs what the read found, when the buffer is still the one it read.
-pub(super) fn took(state: &mut AppState, path: String, read: Derived, revision: u64) {
-    let Some(open) = state.workspace.opened.as_mut() else {
-        return;
-    };
-    if open.path != path || !open.new.settled(read.settled, revision) {
-        return;
-    }
-    open.rows = read.aligned.rows.clone();
-    open.marks = read.aligned.marks.clone();
-    open.words = by_line(&read.aligned.rows, &read.aligned.words);
-    state.workspace.changes.replace(read.aligned);
 }
 
 /// Writes the buffer out. The watcher's read of our own write finds it clean.
@@ -89,36 +73,41 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             match written {
-                Ok(()) => saved(state, &path),
+                Ok(()) => state.workspace.saved(&path),
                 Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
 }
 
-/// The buffer owes the disk nothing, so a later read may replace it.
-pub(super) fn saved(state: &mut AppState, path: &str) {
-    if let Some(open) = state
+/// What the carets hold, to the clipboard, off the main thread.
+pub(super) fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let held = state
         .workspace
         .opened
-        .as_mut()
-        .filter(|open| open.path == path)
-    {
-        open.new.saved();
-    }
+        .as_ref()
+        .map(|open| open.new.selected())
+        .unwrap_or_default();
+    copied(services, spawner, held);
 }
 
-/// What the carets hold, to the clipboard, off the main thread.
-pub(super) fn copy(state: &mut AppState, services: &Services, spawner: &dyn Spawner, cut: bool) {
-    let Some(open) = state.workspace.opened.as_ref() else {
-        return;
-    };
-    let held = open.new.selected();
+/// The same, and out of the buffer.
+pub(super) fn cut(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+    let held = state
+        .workspace
+        .opened
+        .as_ref()
+        .map(|open| open.new.selected())
+        .unwrap_or_default();
+    if !held.is_empty() {
+        edit_file(state, spawner, Edit::Delete);
+    }
+    copied(services, spawner, held);
+}
+
+fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
     if held.is_empty() {
         return;
-    }
-    if cut {
-        edit_file(state, spawner, Edit::Delete);
     }
     let clipboard = services.clipboard.clone();
     spawner.spawn(Box::pin(async move {
@@ -177,23 +166,10 @@ pub(super) fn reopen(state: &mut AppState, spawner: &dyn Spawner, head: Head) {
 
 /// The file opened from the documents the stream holds, or read in a job when it has none.
 pub fn open_file(state: &mut AppState, spawner: &dyn Spawner, path: String, at: Option<Selection>) {
-    if let Some(file) = in_hand(state, &path) {
-        return arrived(state, file, at);
+    if let Some(file) = state.workspace.in_hand(&path) {
+        return state.workspace.arrived(file, at);
     }
     read(state, spawner, path, None, at);
-}
-
-/// The two sides of a file the stream holds, aligned again for the buffer.
-fn in_hand(state: &AppState, path: &str) -> Option<Opened> {
-    if state.workspace.commit.is_some() {
-        return None;
-    }
-    let painted = state.workspace.coloured.get(path)?;
-    Some(from_documents(
-        path,
-        painted.old.clone(),
-        painted.new.clone(),
-    ))
 }
 
 pub(super) fn read(
@@ -203,84 +179,28 @@ pub(super) fn read(
     old: Option<Document>,
     at: Option<Selection>,
 ) {
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
+    let Some(asked) = super::Asked::now(state) else {
         return;
     };
     let job = state.begin(format!("opening {path}"));
-    let sha = state.workspace.commit.as_ref().map(|one| one.sha.clone());
-    let mode = state.workspace.mode;
-    let base = state
-        .session
-        .selected_worktree()
-        .and_then(|one| one.base_ref.clone());
     spawner.spawn(Box::pin(async move {
-        let rev = super::diff::against(&dir, mode, base.as_deref()).await;
-        let file = match sha {
-            Some(sha) => opened_at(&dir, &sha, &path).await,
-            None => sides(&dir, &path, old, &rev).await,
+        let dir = &asked.dir;
+        let rev = super::diff::against(dir, asked.mode, asked.base.as_deref()).await;
+        let file = match &asked.commit {
+            Some(sha) => opened_at(dir, sha, &path).await,
+            None => sides(dir, &path, old, &rev).await,
         };
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
+            if !asked.holds(state) {
+                return;
+            }
             match file {
-                Ok(file) => arrived(state, file, at),
+                Ok(file) => state.workspace.arrived(file, at),
                 Err(e) => state.failed(e),
             }
         }) as Continuation
     }));
-}
-
-/// The file read, with the caret it had while it was the same file.
-pub(super) fn arrived(state: &mut AppState, file: Opened, at: Option<Selection>) {
-    match reads_the_same(state, &file) {
-        true => refreshed(state, file, at),
-        false => replaced(state, file, at),
-    }
-}
-
-/// Whether the buffer in hand already holds the text this read found.
-fn reads_the_same(state: &AppState, file: &Opened) -> bool {
-    state
-        .workspace
-        .opened
-        .as_ref()
-        .is_some_and(|open| open.path == file.path && open.new.text() == file.new.text())
-}
-
-/// The read brought back the text the buffer holds: the buffer stays, with its history.
-fn refreshed(state: &mut AppState, file: Opened, at: Option<Selection>) {
-    let Some(open) = state.workspace.opened.as_mut() else {
-        return;
-    };
-    open.old = file.old;
-    open.rows = file.rows;
-    open.marks = file.marks;
-    open.words = file.words;
-    open.long = file.long;
-    open.new.saved();
-    if let Some(held) = at {
-        open.new.holding(held);
-    }
-}
-
-/// A different text: the buffer gives way, keeping only where the caret was.
-fn replaced(state: &mut AppState, mut file: Opened, at: Option<Selection>) {
-    let held = at.or_else(|| {
-        state
-            .workspace
-            .opened
-            .as_ref()
-            .filter(|open| open.path == file.path)
-            .map(|open| Selection::at(open.new.caret()))
-    });
-    if let Some(held) = held {
-        file.new.holding(held);
-    }
-    state.workspace.opened = Some(file);
-    state.workspace.moved();
 }
 
 /// The file's two sides, reading the old one only when it is not in hand.

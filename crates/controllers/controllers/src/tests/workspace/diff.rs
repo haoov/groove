@@ -453,3 +453,26 @@ pub(super) fn based(state: &mut crate::AppState, branch: &str) {
         worktree.base_ref = Some(branch.to_string());
     }
 }
+
+#[test]
+fn an_answer_read_for_another_selection_is_dropped() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    std::fs::write(std::path::Path::new(&dir).join("a.txt"), "two\n").unwrap();
+    dispatch(
+        Cmd::Workspace(workspace::Command::Load),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    state.workspace.mode = groove_types::DiffMode::Base;
+    spawner.drain(&mut state, &services);
+    assert!(
+        state.workspace.files.is_empty(),
+        "read in the working mode, landed in the base one"
+    );
+}

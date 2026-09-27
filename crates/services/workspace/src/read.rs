@@ -15,26 +15,29 @@ pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
     groove_diff::summary_against(dir, rev).await
 }
 
-/// Where the branch left the one it is based on, or the clone's own default branch.
+/// Where the branch left the one it is based on on origin, or HEAD when none resolves.
 pub async fn base_rev(dir: &Path, base: Option<&str>) -> String {
-    groove_git::Git::at(dir)
-        .merge_base(base.unwrap_or(ORIGIN_HEAD), HEAD)
+    let git = groove_git::Git::at(dir);
+    let Ok(base) = git.base_ref(base).await else {
+        return HEAD.to_string();
+    };
+    git.merge_base(&base, HEAD)
         .await
         .unwrap_or_else(|_| HEAD.to_string())
 }
 
 /// The rev the working mode reads against.
 pub const HEAD: &str = "HEAD";
-const ORIGIN_HEAD: &str = "origin/HEAD";
 
 /// Every changed file aligned, with no document held.
 pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Changes {
     groove_diff::changes(dir, files, rev).await
 }
 
-/// The newest commits of the branch, the base's own marked as its.
+/// The newest commits of the branch, the ones its base on origin holds marked as the base's.
 pub async fn commits(dir: &Path, base: Option<&str>, limit: usize) -> Result<Vec<CommitEntry>> {
-    groove_diff::commits(dir, base, limit).await
+    let base = groove_git::Git::at(dir).base_ref(base).await.ok();
+    groove_diff::commits(dir, base.as_deref(), limit).await
 }
 
 /// What one commit changed, which nothing may edit.

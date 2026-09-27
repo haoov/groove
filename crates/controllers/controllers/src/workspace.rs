@@ -11,19 +11,13 @@ use crate::asker::Asker;
 use groove_types::{DiffMode, Edit, Selection, WorktreeId};
 
 use self::diff::{mark_read, reread, show};
-use self::editor::{copy, edit_file, open_file, paste, save_file};
+use self::editor::{copy, cut, edit_file, open_file, paste, save_file};
 use self::git::{Act, Remote, discard_all, index};
 use self::search::{grep, list_paths};
 use crate::{AppState, Services, Spawner};
 
 pub use diff::{follow, load};
-/// Which end of a gap gives its lines up.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Way {
-    Up,
-    Down,
-    All,
-}
+pub use groove_workspace_service::Way;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -153,12 +147,12 @@ pub fn dispatch(
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
         Command::Grep { query, under } => grep(state, spawner, query, under),
         Command::Fold { path } => state.workspace.changes.fold(&path),
-        Command::OpenGap { row, way } => diff::open_gap(state, row, way),
+        Command::OpenGap { row, way } => state.workspace.open_gap_at(row, way),
         Command::Show { rows } => show(state, spawner, rows),
         Command::Edit(edit) => edit_file(state, spawner, edit),
         Command::SaveFile => save_file(state, spawner),
-        Command::Copy => copy(state, services, spawner, false),
-        Command::Cut => copy(state, services, spawner, true),
+        Command::Copy => copy(state, services, spawner),
+        Command::Cut => cut(state, services, spawner),
         Command::Paste => paste(state, services, spawner),
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
@@ -173,6 +167,34 @@ pub fn dispatch(
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
+    }
+}
+
+/// What a read of the selected worktree is for; an answer that lands after it moved is dropped.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Asked {
+    pub worktree: groove_types::WorktreeId,
+    pub dir: std::path::PathBuf,
+    pub mode: DiffMode,
+    pub base: Option<String>,
+    pub commit: Option<String>,
+}
+
+impl Asked {
+    pub(crate) fn now(state: &AppState) -> Option<Self> {
+        let one = state.session.selected_worktree()?;
+        Some(Self {
+            worktree: one.id.clone(),
+            dir: one.dir(),
+            mode: state.workspace.mode,
+            base: one.base_ref.clone(),
+            commit: state.workspace.commit.as_ref().map(|at| at.sha.clone()),
+        })
+    }
+
+    /// Whether the selection is still the one this was read for.
+    pub(crate) fn holds(&self, state: &AppState) -> bool {
+        Self::now(state).as_ref() == Some(self)
     }
 }
 

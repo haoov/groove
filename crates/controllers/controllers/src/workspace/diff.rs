@@ -3,102 +3,29 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use groove_types::{DiffMode, RowKind, WorktreeId};
-use groove_workspace_service::{At, HEAD, base_rev, changes, painted, summary, summary_against};
+use groove_types::{DiffMode, WorktreeId};
+use groove_workspace_service::{HEAD, base_rev, changes, painted, summary, summary_against};
 
 use super::editor::{Head, reopen};
 use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
 
-/// How far past the rows on screen a file is read at.
-const AHEAD: usize = 200;
-
-/// The rows on screen and the ones around them: their files take their colours.
+/// The rows on screen: the files near them that are not read yet take their colours.
 pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::Range<usize>) {
-    if state.workspace.showing == rows {
-        return;
-    }
-    state.workspace.showing = rows.clone();
-    let near = rows.start.saturating_sub(AHEAD)..rows.end + AHEAD;
-    let wanted = state.workspace.over(near);
-    state
-        .workspace
-        .coloured
-        .retain(|path, _| wanted.contains(path));
-    let missing: Vec<String> = wanted
-        .into_iter()
-        .filter(|path| !state.workspace.coloured.contains_key(path))
-        .collect();
-    let Some(dir) = state
-        .session
-        .selected_worktree()
-        .map(groove_types::Worktree::dir)
-    else {
+    let missing = state.workspace.show(rows);
+    let Some(asked) = super::Asked::now(state).filter(|_| !missing.is_empty()) else {
         return;
     };
-    if missing.is_empty() {
-        return;
-    }
-    let read_for = read_for_of(state);
-    let (mode, base) = (read_for.1, read_for.2.clone());
     spawner.spawn(Box::pin(async move {
-        let rev = against(&dir, mode, base.as_deref()).await;
-        let read = painted(&dir, missing, &rev).await;
+        let rev = against(&asked.dir, asked.mode, asked.base.as_deref()).await;
+        let read = painted(&asked.dir, missing, &rev).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            if read_for_of(state) == read_for {
+            if asked.holds(state) {
                 state.workspace.coloured.extend(read);
             }
         }) as Continuation
     }));
-}
-
-/// The diff a read is for: its worktree, its mode, the branch it is read against.
-type ReadFor = (Option<WorktreeId>, DiffMode, Option<String>);
-
-fn read_for_of(state: &AppState) -> ReadFor {
-    let worktree = state.workspace.worktree.clone();
-    (
-        worktree,
-        state.workspace.mode,
-        state
-            .session
-            .selected_worktree()
-            .and_then(|one| one.base_ref.clone()),
-    )
-}
-
-/// How many lines one click of a gap gives up.
-const STEP: u32 = 20;
-
-/// The gap on this row gives up its lines, from one end or whole.
-pub(super) fn open_gap(state: &mut AppState, row: usize, way: super::Way) {
-    let Some((path, span)) = gap_at(state, row) else {
-        return;
-    };
-    let wanted = match way {
-        super::Way::All => span,
-        super::Way::Down => span.start..(span.start + STEP).min(span.end),
-        super::Way::Up => span.end.saturating_sub(STEP).max(span.start)..span.end,
-    };
-    state.workspace.open_gap(&path, wanted);
-}
-
-/// The file a gap row belongs to, and the old-side lines it hides.
-fn gap_at(state: &AppState, row: usize) -> Option<(String, std::ops::Range<u32>)> {
-    let At::Row(file, at) = state.workspace.changes.at(row)? else {
-        return None;
-    };
-    let RowKind::Gap(lines) = file.rows[at].kind else {
-        return None;
-    };
-    let start = file.rows[..at]
-        .iter()
-        .rev()
-        .find_map(|row| row.old)
-        .map(|old| old + 1)
-        .unwrap_or_default();
-    Some((file.path.clone(), start..start + lines))
 }
 
 /// One file read or unread: the session says so at once, and the disk follows.
@@ -141,7 +68,7 @@ pub(super) fn refresh(
     spawner: &dyn Spawner,
     paths: &[PathBuf],
 ) {
-    if state.workspace.moved_git(paths) {
+    if groove_workspace_service::moved_git(paths) {
         crate::session::refresh_status(state, services, spawner);
         return reread(state, spawner);
     }
@@ -153,25 +80,26 @@ pub(super) fn refresh(
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
 pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(worktree) = state.session.selected_worktree() else {
+    let Some(asked) = super::Asked::now(state) else {
         return;
     };
-    let (id, dir) = (worktree.id.clone(), PathBuf::from(&worktree.path));
-    let base = worktree.base_ref.clone();
-    let mode = state.workspace.mode;
     let job = state.begin("changed files");
     spawner.spawn(Box::pin(async move {
-        let rev = against(&dir, mode, base.as_deref()).await;
-        let files = files_in(&dir, mode, &rev).await;
+        let (dir, mode) = (&asked.dir, asked.mode);
+        let rev = against(dir, mode, asked.base.as_deref()).await;
+        let files = files_in(dir, mode, &rev).await;
         let read = match &files {
-            Ok(files) => changes(&dir, files, &rev).await,
+            Ok(files) => changes(dir, files, &rev).await,
             Err(_) => Default::default(),
         };
         let gone = !dir.exists();
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
+            if !asked.holds(state) {
+                return;
+            }
             match files {
-                Ok(files) => state.workspace.loaded(id, files, read),
+                Ok(files) => state.workspace.loaded(asked.worktree, files, read),
                 Err(_) if gone => {}
                 Err(e) => state.failed(e),
             }

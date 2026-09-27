@@ -40,6 +40,15 @@ impl Git {
             .await
     }
 
+    /// Where origin's copy of the work stands: the branch there, else its base.
+    pub async fn pushed_point(&self, branch: &str, pinned: Option<&str>) -> Result<String> {
+        let upstream = format!("origin/{branch}");
+        match self.ref_exists(&upstream).await? {
+            true => Ok(upstream),
+            false => self.base_ref(pinned).await,
+        }
+    }
+
     pub async fn merge_base(&self, a: &str, b: &str) -> Result<String> {
         self.line(&["merge-base", a, b]).await
     }
