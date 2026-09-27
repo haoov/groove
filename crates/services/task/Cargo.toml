@@ -11,6 +11,10 @@ groove-ledger = { path = "../../modules/ledger" }
 groove-plan = { path = "../../modules/plan" }
 groove-provider = { path = "../../modules/provider" }
 groove-types = { path = "../../shared/types" }
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true

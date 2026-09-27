@@ -10,6 +10,11 @@ use groove_types::{ExternalId, Timestamp};
 /// The longest run the clock trusts: a gap wider than this was not work.
 pub const IDLE: i64 = 120;
 
+/// Whether the window's task counts as worked: in focus, and the user or its agent busy.
+pub fn working(focused: bool, acted_at: Timestamp, busy: bool, now: Timestamp) -> bool {
+    focused && (busy || now.seconds() - acted_at.seconds() <= IDLE)
+}
+
 /// What the timer stands on and what it has measured since the ledger last took it.
 #[derive(Debug, Default)]
 pub struct Timer {

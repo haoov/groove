@@ -1487,6 +1487,8 @@ dependencies = [
  "groove-plan",
  "groove-provider",
  "groove-types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1537,6 +1539,7 @@ dependencies = [
 name = "groove-tools"
 version = "0.1.0"
 dependencies = [
+ "groove-types",
  "serde",
  "serde_json",
 ]

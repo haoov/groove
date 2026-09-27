@@ -24,7 +24,7 @@ pub(crate) fn finish(
         Ok(key) => key,
         Err(e) => return asker.failed(state, e),
     };
-    let sources = groove_task_service::sources(state.config.config.as_ref());
+    let sources = state.task.sources(state.config.config.as_ref());
     if sources.is_empty() {
         torn_down(state, services, spawner, id);
         return asker.done(|| "no source holds it; its session goes".into());

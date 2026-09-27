@@ -3,11 +3,10 @@
 use std::path::Path;
 
 use groove_agent_service::Call;
-use groove_types::Worktree;
+use groove_agent_service::tools::answers;
 use groove_workspace_service::{COMMITS_MAX, commits};
 
 use crate::workspace::diff::{against, files_in};
-use serde_json::{Value, json};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -23,17 +22,10 @@ pub(super) fn diff(state: &AppState, spawner: &dyn Spawner, call: Call) {
             let dir = Path::new(&one.path);
             let rev = against(dir, mode, one.base_ref.as_deref()).await;
             let files = files_in(dir, mode, &rev).await.unwrap_or_default();
-            out.push(json!({
-                "worktree_id": one.id,
-                "repo": one.repo,
-                "branch": one.branch,
-                "target_branch": one.base_ref,
-                "against": mode.label(),
-                "files": files,
-            }));
+            out.push(answers::changed(&one, mode.label(), &files));
         }
         Box::new(move |_: &mut AppState, _: &Services, _: &dyn Spawner| {
-            reply.json(&json!({ "worktrees": out }));
+            reply.json(&answers::worktrees(out));
         }) as Continuation
     }));
 }
@@ -55,14 +47,10 @@ pub(super) fn log(state: &AppState, spawner: &dyn Spawner, call: Call) {
             let log = commits(dir, one.base_ref.as_deref(), limit)
                 .await
                 .unwrap_or_default();
-            out.push(json!({
-                "worktree_id": one.id,
-                "branch": one.branch,
-                "commits": log,
-            }));
+            out.push(answers::commits(&one, &log));
         }
         Box::new(move |_: &mut AppState, _: &Services, _: &dyn Spawner| {
-            reply.json(&json!({ "worktrees": out }));
+            reply.json(&answers::worktrees(out));
         }) as Continuation
     }));
 }
@@ -77,24 +65,12 @@ pub(super) fn status(state: &AppState, services: &Services, spawner: &dyn Spawne
         let mut out = Vec::new();
         for one in worktrees {
             let told = service.status(&one).await.unwrap_or_default();
-            out.push(told_status(&one, &told));
+            out.push(answers::status(&one, &told));
         }
         Box::new(move |_: &mut AppState, _: &Services, _: &dyn Spawner| {
-            reply.json(&json!({ "worktrees": out }));
+            reply.json(&answers::worktrees(out));
         }) as Continuation
     }));
-}
-
-fn told_status(one: &Worktree, told: &groove_types::WorktreeStatus) -> Value {
-    json!({
-        "worktree_id": one.id,
-        "branch": one.branch,
-        "target_branch": one.base_ref,
-        "modified": told.modified,
-        "staged": told.staged,
-        "ahead": told.ahead,
-        "behind": told.behind,
-    })
 }
 
 /// The merge request one worktree has, as the app last stored it.
@@ -107,7 +83,7 @@ pub(super) fn mr(state: &AppState, services: &Services, spawner: &dyn Spawner, c
         let stored = service.stored(&worktree.id).await;
         Box::new(
             move |_: &mut AppState, _: &Services, _: &dyn Spawner| match stored {
-                Ok(mr) => reply.json(&json!({ "mr": mr })),
+                Ok(mr) => reply.json(&answers::mr(mr.as_ref())),
                 Err(e) => reply.failed(e.message),
             },
         ) as Continuation

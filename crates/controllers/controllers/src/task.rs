@@ -14,7 +14,7 @@ pub mod time;
 
 use crate::asker::Asker;
 use groove_session_service::task_session;
-use groove_task_service::{fetch, list, sources};
+use groove_task_service::{fetch, list};
 use groove_types::{ExternalId, SessionId, SessionKind, StatusIntent, Task, TaskKey, Timestamp};
 
 use crate::{AppState, Continuation, Services, Spawner, session};
@@ -138,7 +138,7 @@ fn stored(services: &Services, spawner: &dyn Spawner) {
                 Err(e) => state.failed(e),
             }
             match time {
-                Ok(time) => state.task.time = time.into_iter().collect(),
+                Ok(time) => state.task.timed(time),
                 Err(e) => state.failed(e),
             }
         }) as Continuation
@@ -151,7 +151,7 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     if state.task.reading {
         return;
     }
-    let sources = sources(state.config.config.as_ref());
+    let sources = state.task.sources(state.config.config.as_ref());
     if sources.is_empty() {
         return;
     }
@@ -177,7 +177,7 @@ fn sync(state: &mut AppState, spawner: &dyn Spawner, key: TaskKey) {
     if !state.task.syncing.insert(id.clone()) {
         return;
     }
-    let sources = sources(state.config.config.as_ref());
+    let sources = state.task.sources(state.config.config.as_ref());
     let job = state.begin(format!("reading {id}"));
     spawner.spawn(Box::pin(async move {
         let read = fetch(&sources, &key).await;

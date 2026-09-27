@@ -1,10 +1,16 @@
 //! The task capability. Its slice of `AppState`, the operations on it, its events.
 
+use std::sync::{Arc, PoisonError};
+
 mod attention;
+mod filing;
 mod order;
 mod referenced;
 mod service;
 mod timer;
+
+#[cfg(test)]
+mod tests;
 
 pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Notion, Source, Token};
@@ -14,10 +20,11 @@ use groove_types::{
 };
 
 pub use attention::folded;
+pub use filing::{Filing, filing};
 pub use order::{Planned, moved, ordered};
 pub use referenced::referenced;
 pub use service::Service;
-pub use timer::{IDLE, Timer};
+pub use timer::{IDLE, Timer, working};
 
 /// The `task` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -36,6 +43,19 @@ pub struct State {
     /// What each task has measured, and the clock that measures it.
     pub time: std::collections::BTreeMap<ExternalId, TimeSummary>,
     pub timer: Timer,
+    built: Built,
+}
+
+/// The sources, built once for the config that turned them on.
+#[derive(Default)]
+struct Built(std::sync::Mutex<Option<(SourceKey, Arc<Vec<Source>>)>>);
+
+type SourceKey = (Option<GithubConfig>, Option<NotionConfig>);
+
+impl std::fmt::Debug for Built {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Built")
+    }
 }
 
 impl State {
@@ -88,6 +108,26 @@ impl State {
         !self.needs(id).is_empty()
     }
 
+    /// The sources the config turns on, the same ones while the config stays the same.
+    pub fn sources(&self, config: Option<&Config>) -> Arc<Vec<Source>> {
+        let key = (
+            config.and_then(|one| one.github.clone()),
+            config.and_then(|one| one.notion.clone()),
+        );
+        let mut held = self.built.0.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some((_, sources)) = held.as_ref().filter(|(at, _)| *at == key) {
+            return sources.clone();
+        }
+        let sources = Arc::new(built(&key));
+        *held = Some((key, sources.clone()));
+        sources
+    }
+
+    /// What every task has measured, as the ledger now holds it.
+    pub fn timed(&mut self, time: Vec<(ExternalId, TimeSummary)>) {
+        self.time = time.into_iter().collect();
+    }
+
     /// What one task has measured, if anything.
     pub fn measured(&self, id: &ExternalId) -> Option<TimeSummary> {
         self.time.get(id).copied()
@@ -122,13 +162,12 @@ pub fn source_ids(config: Option<&Config>) -> Vec<ProviderId> {
         .collect()
 }
 
-pub fn sources(config: Option<&Config>) -> Vec<Source> {
-    let github = config.and_then(|config| config.github.clone());
-    let notion = config.and_then(|config| config.notion.clone());
+fn built((github, notion): &SourceKey) -> Vec<Source> {
     github
+        .clone()
         .into_iter()
         .filter_map(github_source)
-        .chain(notion.into_iter().filter_map(notion_source))
+        .chain(notion.clone().into_iter().filter_map(notion_source))
         .collect()
 }
 

@@ -30,7 +30,7 @@ pub fn adopt(
     if !explorer {
         return asker.refused(NOT_EXPLORER);
     }
-    let sources = groove_task_service::sources(state.config.config.as_ref());
+    let sources = state.task.sources(state.config.config.as_ref());
     let job = state.begin(format!("reading {}", key.external_id()));
     let session = session.clone();
     spawner.spawn(Box::pin(async move {

@@ -23,7 +23,7 @@ pub(super) fn set(
         Ok(key) => key,
         Err(e) => return state.failed(e),
     };
-    let sources = groove_task_service::sources(state.config.config.as_ref());
+    let sources = state.task.sources(state.config.config.as_ref());
     if sources.is_empty() {
         return;
     }

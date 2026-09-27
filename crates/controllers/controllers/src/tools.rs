@@ -1,9 +1,9 @@
 //! What the agent asks Groove for, answered where the state is.
 
-mod about;
 mod files;
-mod filing;
 mod forge;
+mod session;
+mod task;
 mod work;
 mod write;
 
@@ -20,9 +20,9 @@ pub(crate) const NO_TASK: &str = "this session works no task, and none was named
 /// The call answered from the state, or handed to a job that answers later.
 pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
     match call.tool.as_str() {
-        "get_active_task" => about::active(state, call),
-        "list_tasks" => about::tasks(state, call),
-        "list_repos" => about::repos(state, services, call),
+        "get_active_task" => session::active(state, call),
+        "list_tasks" => task::tasks(state, call),
+        "list_repos" => session::repos(state, services, call),
         "get_task_diff" => work::diff(state, spawner, call),
         "get_commit_log" => work::log(state, spawner, call),
         "get_status" => work::status(state, services, spawner, call),
@@ -30,10 +30,10 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "get_mr_threads" => forge::threads(state, services, spawner, call),
         "get_mr_ci" => forge::ci(state, services, spawner, call),
         "get_annotations" => files::notes(state, services, spawner, call),
-        "list_skills" => about::skills(state, call),
-        "read_user_skill" => about::skill(state, call),
-        "get_task_body" => about::body(state, spawner, call),
-        "get_task_template" => about::template(state, spawner, call),
+        "list_skills" => session::skills(state, call),
+        "read_user_skill" => session::skill(state, call),
+        "get_task_body" => task::body(state, spawner, call),
+        "get_task_template" => task::template(state, spawner, call),
         "get_open_file" => files::open_file(state, call),
         "read_file" => files::read(state, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {

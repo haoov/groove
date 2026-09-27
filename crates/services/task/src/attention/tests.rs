@@ -101,3 +101,48 @@ fn a_merged_mr_leaves_the_task_alone() {
     };
     assert!(needs(facts).is_empty());
 }
+
+/// The task in a slice, read again with these sessions' days and MRs.
+fn reread(
+    started: Vec<(ExternalId, groove_types::Day)>,
+    mrs: Vec<(ExternalId, MrFacts)>,
+) -> crate::State {
+    let mut state = crate::State {
+        tasks: vec![task()],
+        ..Default::default()
+    };
+    state.reread(started, mrs, now(), &Thresholds::default());
+    state
+}
+
+#[test]
+fn a_task_the_source_gives_no_start_starts_with_its_first_session() {
+    let days = [5, 3, 9].map(|at| (external(), Timestamp::new(at * DAY).day()));
+    let state = reread(days.to_vec(), Vec::new());
+    assert_eq!(
+        state.tasks[0].dates.start,
+        Some(Timestamp::new(3 * DAY).day())
+    );
+}
+
+#[test]
+fn a_task_s_mrs_count_as_one() {
+    let green = MrFacts {
+        state: Some(MrState::Open),
+        ci: Some(CiState::Success),
+        ..Default::default()
+    };
+    let red = MrFacts {
+        state: Some(MrState::Open),
+        ci: Some(CiState::Failed),
+        ci_finished_at: Some(Timestamp::new(19 * DAY)),
+        ..Default::default()
+    };
+    let state = reread(Vec::new(), vec![(external(), green), (external(), red)]);
+    let since = Some(Timestamp::new(19 * DAY));
+    assert_eq!(
+        state.needs(&external()),
+        [Attention::CiFailed { since }],
+        "the worst run"
+    );
+}

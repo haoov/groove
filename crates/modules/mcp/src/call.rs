@@ -1,5 +1,6 @@
 //! One tool call on its way to the app, and the answer on its way back.
 
+use groove_tools::Arguments;
 use tokio::sync::oneshot;
 
 /// A tool the agent of one session asks for, and where its answer goes.
@@ -14,17 +15,15 @@ pub struct Call {
 impl Call {
     /// One argument, as a string.
     pub fn text(&self, name: &str) -> Option<&str> {
-        self.arguments[name].as_str().filter(|one| !one.is_empty())
+        self.arguments.text(name)
     }
 
-    /// One argument, as a whole number.
     pub fn number(&self, name: &str) -> Option<i64> {
-        self.arguments[name].as_i64()
+        self.arguments.number(name)
     }
 
-    /// One argument, as a flag.
     pub fn flag(&self, name: &str) -> Option<bool> {
-        self.arguments[name].as_bool()
+        self.arguments.flag(name)
     }
 }
 

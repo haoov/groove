@@ -1,5 +1,6 @@
 //! A write the agent asks for: it waits for a human, then it runs.
 
+use groove_agent_service::tools::Arguments;
 use groove_agent_service::{Call, NewAsk, Reply};
 use groove_types::{Approval, ApprovalId, Origin, SessionId, Timestamp};
 
@@ -42,15 +43,15 @@ impl Write {
     }
 
     pub(crate) fn text(&self, name: &str) -> Option<&str> {
-        self.arguments[name].as_str().filter(|one| !one.is_empty())
+        self.arguments.text(name)
     }
 
     pub(crate) fn number(&self, name: &str) -> Option<i64> {
-        self.arguments[name].as_i64()
+        self.arguments.number(name)
     }
 
     pub(crate) fn flag(&self, name: &str) -> Option<bool> {
-        self.arguments[name].as_bool()
+        self.arguments.flag(name)
     }
 }
 

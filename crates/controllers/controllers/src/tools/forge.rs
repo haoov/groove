@@ -1,8 +1,9 @@
 //! What the forge says of a worktree's MR, read live.
 
 use groove_agent_service::Call;
+use groove_agent_service::tools::answers;
 use groove_delivery_service::Delivered;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -13,24 +14,16 @@ pub(super) fn threads(
     spawner: &dyn Spawner,
     call: Call,
 ) {
-    live(
-        state,
-        services,
-        spawner,
-        call,
-        |one| json!({ "mr": one.mr.url, "threads": one.read.threads }),
-    );
+    live(state, services, spawner, call, |one| {
+        answers::threads(&one.mr.url, &one.read.threads)
+    });
 }
 
 /// The run on the MR's head commit, and where to read it.
 pub(super) fn ci(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
-    live(
-        state,
-        services,
-        spawner,
-        call,
-        |one| json!({ "mr": one.mr.url, "ci": one.read.ci }),
-    );
+    live(state, services, spawner, call, |one| {
+        answers::ci(&one.mr.url, one.read.ci.as_ref())
+    });
 }
 
 /// The worktree's MR read from its forge, answered, and taken as the poll takes it.
