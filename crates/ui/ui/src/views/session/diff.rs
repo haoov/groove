@@ -14,13 +14,13 @@ mod wrap;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::At;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::DiffView;
 
 use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::style::Role;
-use crate::text::row;
+use crate::text::Label;
 use crate::widgets::first;
 
 pub(crate) use map::total as rows_of;
@@ -32,17 +32,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     if app.workspace.changes.is_empty() && !as_a_file(app, ui) {
         return hint(ctx, app, area);
     }
-    let head = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
+    let mut body = area;
+    let head = body.take_top(ctx.tokens.row);
     header::draw(ctx, head, app, ui, &standing(ctx, app, ui));
-    let column = ctx.tokens.map;
-    let body = Rect::new(area.x, head.bottom(), area.w - column, area.h - head.h);
-    map::draw(
-        ctx,
-        Rect::new(body.right(), body.y, column, body.h),
-        body,
-        app,
-        ui,
-    );
+    let column = body.take_right(ctx.tokens.map);
+    map::draw(ctx, column, body, app, ui);
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
         Some(false) => said(ctx, body, "Open a file in the sidebar."),
@@ -86,9 +80,9 @@ fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
 }
 
 fn said(ctx: &mut Ctx, area: Rect, text: &str) {
-    let style = ctx.styles.body(Role::Faint);
-    let line = Rect::new(area.x, area.y, area.w, ctx.tokens.row);
-    row(ctx, line, ctx.tokens.md, text, style);
+    let mut room = area.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let line = room.take_top(ctx.tokens.row);
+    Label::new(text, ctx.styles.body(Role::Faint)).draw(ctx, line);
 }
 
 /// What the tab says with nothing to show.

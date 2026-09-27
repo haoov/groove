@@ -46,13 +46,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ctx.quad(area, ctx.styles.ground());
     let bands = bands(&ctx.tokens, app, ui, area);
     let field = header::draw(ctx, bands.header, app, ui);
-    let (body, width) = (
-        bands.columns,
-        (bands.columns.w / List::ALL.len() as f32).floor(),
-    );
-    for (at, list) in List::ALL.into_iter().enumerate() {
-        let x = body.x + width * at as f32;
-        column::draw(ctx, Rect::new(x, body.y, width, body.h), app, ui, list);
+    let mut body = bands.columns;
+    let width = (body.w / List::ALL.len() as f32).floor();
+    for list in List::ALL {
+        column::draw(ctx, body.take_left(width), app, ui, list);
     }
     timeline::draw(ctx, bands.timeline, app, ui);
     header::offers(ctx, field, app, ui);
@@ -67,16 +64,12 @@ pub struct Bands {
 
 /// The board's own three bands, top to bottom.
 pub fn bands(tokens: &crate::base::tokens::Tokens, app: &AppState, ui: &Ui, area: Rect) -> Bands {
-    let header = Rect::new(area.x, area.y, area.w, tokens.header);
+    let mut rest = area;
+    let header = rest.take_top(tokens.header);
     let tall = timeline::height(tokens, app, ui);
-    let columns = Rect::new(
-        area.x,
-        header.bottom(),
-        area.w,
-        (area.h - header.h - tall).max(0.0),
-    );
+    let columns = rest.take_top((rest.h - tall).max(0.0));
     Bands {
-        timeline: Rect::new(area.x, columns.bottom(), area.w, tall),
+        timeline: Rect { h: tall, ..rest },
         header,
         columns,
     }

@@ -1,14 +1,14 @@
 //! The review sheet: one write shown whole over the work half, with its two answers.
 
 use groove_controllers::AppState;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{ApprovalId, Ask};
 
 use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::text::Label;
 use crate::widgets::Word;
 
 /// The write under review, over the workspace and the sidebar.
@@ -20,33 +20,17 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = area(ctx);
     ctx.quad(area, ctx.styles.ground());
     ctx.hit(area, Target::Sheet);
-    let pad = ctx.tokens.md;
     let line = ctx.tokens.line;
-    let mut at = Rect::new(area.x, area.y + pad, area.w, line);
+    let mut body = area.pad(Edges::all(ctx.tokens.md));
     let verb = groove_controllers::agent_service::tools::verb(&ask.op);
-    row(
-        ctx,
-        at,
-        pad,
-        &format!("asks to {verb}"),
-        ctx.styles.strong(Role::Attention),
-    );
-    at.y += line;
-    row(
-        ctx,
-        at,
-        pad,
-        &place(app, &ask),
-        ctx.styles.small(Role::Muted),
-    );
-    at.y += line + ctx.tokens.sm;
-    let foot = area.bottom() - pad - ctx.tokens.row;
-    said(ctx, Rect::new(area.x, at.y, area.w, foot - at.y), &ask.text);
-    answers(
-        ctx,
-        Rect::new(area.x, foot, area.w - pad, ctx.tokens.row),
-        &ask.id,
-    );
+    let asks = format!("asks to {verb}");
+    Label::new(&asks, ctx.styles.strong(Role::Attention)).draw(ctx, body.take_top(line));
+    let place = place(app, &ask);
+    Label::new(&place, ctx.styles.small(Role::Muted)).draw(ctx, body.take_top(line));
+    body.take_top(ctx.tokens.sm);
+    let foot = body.take_bottom(ctx.tokens.row);
+    said(ctx, body, &ask.text);
+    answers(ctx, foot, &ask.id);
 }
 
 /// The workspace and the sidebar together, from the header down.
@@ -84,16 +68,13 @@ fn place(app: &AppState, ask: &Ask) -> String {
 }
 
 /// The text of the write, a line a row, cut where the sheet ends.
-fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
-    let style = ctx.styles.code(Role::Text);
-    let pad = ctx.tokens.md;
-    let line = ctx.tokens.line;
-    let room = (rect.w - pad * 2.0).max(0.0);
-    let fits = (rect.h / line).floor().max(0.0) as usize;
-    for (at, one) in text.lines().take(fits).enumerate() {
-        let shown = elide(ctx, one, &style, room);
-        let at = Rect::new(rect.x, rect.y + at as f32 * line, rect.w, line);
-        row(ctx, at, pad, &shown, style);
+fn said(ctx: &mut Ctx, mut rect: Rect, text: &str) {
+    let (style, line) = (ctx.styles.code(Role::Text), ctx.tokens.line);
+    for one in text.lines() {
+        if rect.h < line {
+            break;
+        }
+        Label::new(one, style).draw(ctx, rect.take_top(line));
     }
 }
 
