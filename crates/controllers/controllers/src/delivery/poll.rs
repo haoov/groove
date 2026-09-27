@@ -113,7 +113,7 @@ pub(crate) fn took(
 ) {
     for line in state.delivery.took(&whose.worktree.id, delivered) {
         let (kind, at) = (line.kind, &whose.worktree.id);
-        crate::tools::logged(services, spawner, &whose.session, kind, &line.subject, at);
+        crate::timeline::log(services, spawner, &whose.session, kind, &line.subject, at);
     }
     moved(state);
 }

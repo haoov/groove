@@ -9,7 +9,7 @@ mod write;
 
 use groove_agent_service::Call;
 use groove_session_service::Open;
-use groove_types::{ExternalId, SessionId, TimelineKind, Worktree, WorktreeId};
+use groove_types::{ExternalId, SessionId, Worktree, WorktreeId};
 
 use crate::{AppState, Services, Spawner};
 
@@ -45,25 +45,6 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
 
 pub use write::{allow, drop_asks, refuse};
 
-/// One line on the session's log, for a write its agent made.
-pub(crate) fn logged(
-    services: &Services,
-    spawner: &dyn Spawner,
-    session: &SessionId,
-    kind: TimelineKind,
-    subject: &str,
-    worktree: &WorktreeId,
-) {
-    crate::timeline::logged(
-        services,
-        spawner,
-        session.clone(),
-        kind,
-        subject,
-        serde_json::json!({ "worktree": worktree.as_str() }),
-    );
-}
-
 /// The session the call was made from.
 pub(crate) fn session(call: &Call) -> SessionId {
     SessionId::new(&call.session)
@@ -79,11 +60,7 @@ pub(crate) fn about<'a>(state: &'a AppState, call: &Call) -> Option<&'a Open> {
         .get(task)
         .map(|one| one.external_id.clone())
         .unwrap_or_else(|| ExternalId::new(task));
-    state
-        .session
-        .open
-        .iter()
-        .find(|open| open.session.kind.works(&external))
+    state.session.working(&external)
 }
 
 /// The task a read is about: the one its `task_id` names, or the session's own.
@@ -107,12 +84,6 @@ pub(crate) fn worktree(state: &AppState, call: &Call) -> Option<Worktree> {
 
 /// The same, by the id itself.
 pub(crate) fn worktree_named(state: &AppState, named: Option<&str>) -> Option<Worktree> {
-    let id = WorktreeId::new(named?);
-    state
-        .session
-        .open
-        .iter()
-        .flat_map(|open| open.worktrees.iter())
-        .find(|one| one.id == id)
-        .cloned()
+    let (_, _, worktree) = state.session.find(&WorktreeId::new(named?))?;
+    Some(worktree.clone())
 }

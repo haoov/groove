@@ -4,7 +4,7 @@ use groove_session_service::review_session;
 use groove_types::{ReviewMr, SessionId, Timestamp, WorktreeSpec};
 
 use crate::asker::Asker;
-use crate::{AppState, Services, Spawner, agent, session};
+use crate::{AppState, Services, Spawner, session};
 
 /// The session that reviews this MR: the one it has, or a new one on the MR's branch.
 pub fn open_review(
@@ -25,19 +25,19 @@ pub fn open_review(
     };
     let now = Timestamp::now();
     let session = review_session(at, now);
-    state.session.open(session.clone(), now);
-    crate::workspace::follow(state, spawner);
-    agent::start(state, spawner, id.clone(), session::FIRST_SIZE);
+    session::begun(state, spawner, session.clone(), now);
     let spec = WorktreeSpec {
         branch: Some(at.source_branch.clone()),
         target: Some(at.target_branch.clone()),
         track_remote: Some(at.source_branch.clone()),
     };
-    let service = services.session.clone();
-    session::listed(spawner, session::NO_PENDING, async move {
-        service.create_review(&session, now).await
+    let (service, pending) = (
+        services.session.clone(),
+        state.begin(format!("checking out {name}")),
+    );
+    session::added(spawner, pending, Asker::Ui, async move {
+        service.open_review(&session, &name, &spec, now).await
     });
-    session::add_repo(state, services, spawner, &id, &name, spec, Asker::Ui);
 }
 
 /// The pool's own name for the MR's repo, or the URL it must be cloned from.

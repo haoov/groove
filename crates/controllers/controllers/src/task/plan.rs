@@ -2,7 +2,7 @@
 
 use groove_types::ExternalId;
 
-use crate::{AppState, Services, Spawner, session};
+use crate::{AppState, Services, Spawner};
 
 /// Where a task lands: above `before`, or at the end of the side it is dropped on.
 #[derive(Debug, Clone, PartialEq)]
@@ -29,7 +29,5 @@ pub(super) fn reorder(
     );
     state.task.plan = order.clone();
     let service = services.task.clone();
-    session::record(spawner, session::NO_PENDING, async move {
-        service.save(order).await
-    });
+    crate::spawn::record(spawner, async move { service.save(order).await });
 }

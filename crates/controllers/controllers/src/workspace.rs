@@ -7,8 +7,6 @@ pub(crate) mod git;
 mod paths;
 mod search;
 
-use std::path::PathBuf;
-
 use crate::asker::Asker;
 use groove_types::{DiffMode, Edit, Selection, WorktreeId};
 
@@ -178,29 +176,16 @@ pub fn dispatch(
     }
 }
 
-/// Where the selected worktree sits on disk.
-pub(super) fn worktree_dir(state: &AppState) -> Option<PathBuf> {
-    let open = state.session.selected()?;
-    Some(PathBuf::from(&open.selected_worktree()?.path))
-}
-
-pub(super) fn directory(state: &AppState, worktree: &WorktreeId) -> Option<PathBuf> {
-    let open = state.session.selected()?;
-    let found = open.worktrees.iter().find(|w| &w.id == worktree)?;
-    Some(PathBuf::from(&found.path))
-}
-
 pub fn stale(state: &AppState) -> bool {
-    match selected(state) {
+    match state.session.selected_worktree().map(|one| one.id.clone()) {
         Some(worktree) => !state.workspace.holds(&worktree),
         None => false,
     }
 }
 
-/// The branch the selected worktree merges into.
 /// The words of the commit box on the selected worktree, from the surface.
 fn commit_here(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(worktree) = worktree_now(state) else {
+    let Some(worktree) = state.session.selected_worktree().cloned() else {
         return;
     };
     let message = state.workspace.message.text();
@@ -209,29 +194,10 @@ fn commit_here(state: &mut AppState, spawner: &dyn Spawner) {
 
 /// A push or a pull of the selected worktree, from the surface.
 fn on_remote(state: &mut AppState, services: &Services, spawner: &dyn Spawner, act: Remote) {
-    let Some(worktree) = worktree_now(state) else {
+    let Some(worktree) = state.session.selected_worktree().cloned() else {
         return;
     };
     git::remote(state, services, spawner, worktree, act, Asker::Ui);
-}
-
-/// The worktree the surface has selected.
-pub(crate) fn worktree_now(state: &AppState) -> Option<groove_types::Worktree> {
-    state.session.selected()?.selected_worktree().cloned()
-}
-
-pub(super) fn selected_base(state: &AppState) -> Option<String> {
-    state
-        .session
-        .selected()?
-        .selected_worktree()?
-        .base_ref
-        .clone()
-}
-
-pub(super) fn selected(state: &AppState) -> Option<WorktreeId> {
-    let open = state.session.selected()?;
-    Some(open.selected_worktree()?.id.clone())
 }
 
 pub fn loaded_for(state: &AppState) -> Option<&WorktreeId> {

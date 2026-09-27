@@ -1,13 +1,16 @@
 //! What the session capability asks of the store and the pool.
 
+mod log;
 mod promote;
+mod repos;
 
 use std::path::Path;
 
 use groove_sessions::Store;
+use groove_timeline::Timeline;
 use groove_types::{
-    Error, PoolEntry, Repo, RepoId, Session, SessionId, SessionState, Task, Timestamp, Worktree,
-    WorktreeId, WorktreeSpec, WorktreeStatus,
+    Error, Repo, Session, SessionId, SessionState, Task, Timestamp, Worktree, WorktreeId,
+    WorktreeSpec, WorktreeStatus,
 };
 use groove_worktree::Pool;
 
@@ -36,11 +39,17 @@ pub struct Added {
 pub struct Service {
     store: Store,
     pool: Pool,
+    timeline: Timeline,
 }
 
 impl Service {
     pub fn new(store: Store, pool: Pool) -> Self {
-        Self { store, pool }
+        let timeline = Timeline::new(store.db().clone());
+        Self {
+            store,
+            pool,
+            timeline,
+        }
     }
 
     /// The session rows, whose database the other stores share.
@@ -63,32 +72,37 @@ impl Service {
         now: Timestamp,
     ) -> Result<(), Error> {
         self.store.create_task(session, task).await?;
-        self.store.set_opened(&session.id, Some(now)).await?;
-        self.store.set_seen(&session.id, now).await?;
-        Ok(())
+        self.on_rail(&session.id, now).await
     }
 
-    /// Inserts the review's session and puts it on the rail.
-    pub async fn create_review(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
+    /// Inserts the review's session, puts it on the rail, then checks out the MR's branch.
+    pub async fn open_review(
+        &self,
+        session: &Session,
+        name: &str,
+        spec: &WorktreeSpec,
+        now: Timestamp,
+    ) -> Result<Added, Error> {
         self.store.create_review(session).await?;
-        self.store.set_opened(&session.id, Some(now)).await?;
-        self.store.set_seen(&session.id, now).await?;
-        Ok(())
+        self.on_rail(&session.id, now).await?;
+        self.add_repo(session, name, spec, None).await
     }
 
     /// Inserts the explorer and puts it on the rail.
     pub async fn create_explorer(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
         self.store.create_explorer(session).await?;
-        self.store.set_opened(&session.id, Some(now)).await?;
-        self.store.set_seen(&session.id, now).await?;
-        Ok(())
+        self.on_rail(&session.id, now).await
+    }
+
+    async fn on_rail(&self, id: &SessionId, now: Timestamp) -> Result<(), Error> {
+        self.store.set_opened(id, Some(now)).await?;
+        Ok(self.store.set_seen(id, now).await?)
     }
 
     pub async fn rename_explorer(&self, id: &SessionId, title: &str) -> Result<(), Error> {
         Ok(self.store.rename_explorer(id, title).await?)
     }
 
-    /// The session's worktrees off disk, then its row and everything under it.
     /// The session gone: its worktrees, its row. Unforced, work not yet landed stops it.
     pub async fn remove(&self, id: &SessionId, force: bool) -> Result<(), Error> {
         self.pool.cleanup_session(id, force).await?;
@@ -115,9 +129,7 @@ impl Service {
         Ok(self.store.set_auto_approve(id, on).await?)
     }
 
-    /// The rail as it was: every session with an `opened_at`, in that order.
-    /// Every session on disk, with its repos and worktrees. The rail's own list is
-    /// `opened`.
+    /// Every session on disk, with its repos and worktrees.
     pub async fn living(&self) -> Result<Vec<Living>, Error> {
         let mut out = Vec::new();
         for (session, _) in self.store.living().await? {
@@ -132,6 +144,7 @@ impl Service {
         Ok(out)
     }
 
+    /// The rail as it was: every session with an `opened_at`, in that order.
     pub async fn opened(&self) -> Result<Vec<(Session, SessionState)>, Error> {
         Ok(self.store.opened().await?)
     }
@@ -164,101 +177,5 @@ impl Service {
             worktrees,
             status,
         })
-    }
-
-    /// Resolve the name in the pool, or clone a URL into it; record and attach the repo;
-    /// cut its first worktree.
-    pub async fn add_repo(
-        &self,
-        session: &Session,
-        name: &str,
-        spec: &WorktreeSpec,
-        tag: Option<&str>,
-    ) -> Result<Added, Error> {
-        let repo = self.find_or_clone(name).await?;
-        self.store
-            .attach_repo(&session.id, &repo.id, Timestamp::now())
-            .await?;
-        let done = self.pool.provision(session, &repo, spec, tag).await?;
-        Ok(Added {
-            repo,
-            worktree: done.worktree,
-            notes: done.notes,
-        })
-    }
-
-    /// A pool clone by name, or a fresh clone when the name is a git URL.
-    async fn find_or_clone(&self, name: &str) -> Result<Repo, Error> {
-        let entries = self.pool.list();
-        match Pool::resolve(name, &entries) {
-            Ok(entry) => Ok(self.pool.register(entry).await?),
-            Err(groove_worktree::Error::UnknownRepo(_))
-                if groove_git::RemoteUrl::parse(name).is_ok() =>
-            {
-                Ok(self.pool.clone(name).await?)
-            }
-            Err(e) => Err(e.into()),
-        }
-    }
-
-    /// Another worktree on a repo the session already holds.
-    pub async fn add_worktree(
-        &self,
-        session: &Session,
-        repo: &RepoId,
-        spec: &WorktreeSpec,
-        tag: Option<&str>,
-    ) -> Result<Added, Error> {
-        let repo = self.pool.repo(repo).await?;
-        let done = self.pool.provision(session, &repo, spec, tag).await?;
-        Ok(Added {
-            repo,
-            worktree: done.worktree,
-            notes: done.notes,
-        })
-    }
-
-    /// Closes the worktree; the repo is detached when it was the last one.
-    pub async fn close_worktree(&self, id: &WorktreeId, force: bool) -> Result<Worktree, Error> {
-        let closed = self.pool.close(id, force).await?;
-        let left = self.pool.worktrees_of(&closed.session).await?;
-        if !left.iter().any(|w| w.repo == closed.repo) {
-            self.store
-                .detach_repo(&closed.session, &closed.repo)
-                .await?;
-        }
-        Ok(closed)
-    }
-
-    /// Closes every worktree of the repo, then detaches it.
-    pub async fn remove_repo(
-        &self,
-        session: &SessionId,
-        repo: &RepoId,
-        force: bool,
-    ) -> Result<(), Error> {
-        for worktree in self.pool.worktrees_of(session).await? {
-            if &worktree.repo == repo {
-                self.pool.close(&worktree.id, force).await?;
-            }
-        }
-        Ok(self.store.detach_repo(session, repo).await?)
-    }
-
-    pub fn list_pool(&self) -> Vec<PoolEntry> {
-        self.pool.list()
-    }
-
-    /// Origin's heads for the pickers.
-    pub async fn list_branches(&self, repo: &RepoId) -> Result<Vec<String>, Error> {
-        let repo = self.pool.repo(repo).await?;
-        Ok(groove_git::Git::at(&repo.local_path)
-            .remote_heads()
-            .await
-            .map_err(groove_worktree::Error::from)?)
-    }
-
-    pub async fn status(&self, worktree: &Worktree) -> Result<WorktreeStatus, Error> {
-        Ok(self.pool.status(worktree).await?)
     }
 }

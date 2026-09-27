@@ -144,17 +144,3 @@ async fn a_session_thrown_away_takes_its_lines_with_it() {
         .expect("the session goes");
     assert!(said(&held, "s1").await.is_empty(), "the rows go with it");
 }
-
-#[tokio::test]
-async fn a_log_forgotten_leaves_the_other_sessions_alone() {
-    let held = timeline().await;
-    held.append(&event("s1", 10, TimelineKind::Commit, "mine"))
-        .await
-        .expect("written");
-    held.append(&event("s2", 10, TimelineKind::Commit, "theirs"))
-        .await
-        .expect("written");
-    held.forget(&SessionId::new("s1")).await.expect("forgotten");
-    assert!(said(&held, "s1").await.is_empty());
-    assert_eq!(said(&held, "s2").await, ["theirs"]);
-}

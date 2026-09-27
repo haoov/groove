@@ -1455,6 +1455,7 @@ dependencies = [
  "groove-timeline",
  "groove-types",
  "groove-worktree",
+ "serde_json",
  "uuid",
 ]
 

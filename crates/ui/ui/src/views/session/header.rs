@@ -134,8 +134,7 @@ fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32
 fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> f32 {
     let out = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .is_some_and(|worktree| app.delivery.poll.is_out(&worktree.id));
     let ground = match ui.hover.as_ref() == Some(&Target::Refresh) {
         true => ctx.styles.hover(),

@@ -3,11 +3,10 @@
 
 use std::path::PathBuf;
 
-use groove_types::{SessionId, TimelineKind, Worktree};
+use groove_types::{TimelineKind, Worktree};
 use groove_workspace_service::{Buffer, summary};
 
 use super::diff::{load, reread};
-use super::worktree_dir;
 use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
@@ -70,7 +69,7 @@ pub(crate) fn commit(
                 let said = subject(&message);
                 if done.is_ok() {
                     let kind = TimelineKind::Commit;
-                    logged(services, spawner, &session, kind, &said, &worktree.id);
+                    crate::timeline::log(services, spawner, &session, kind, &said, &worktree.id);
                     if clears {
                         state.workspace.message = Buffer::default();
                     }
@@ -116,7 +115,7 @@ pub(crate) fn remote(
                 let branch = worktree.branch.clone();
                 if done.is_ok() {
                     let kind = act.kind();
-                    logged(services, spawner, &session, kind, &branch, &worktree.id);
+                    crate::timeline::log(services, spawner, &session, kind, &branch, &worktree.id);
                     if act == Remote::Push {
                         state.delivery.poll.forget(&worktree.id);
                     }
@@ -131,25 +130,6 @@ pub(crate) fn remote(
     }));
 }
 
-/// One line on the session's log, for the action just made.
-fn logged(
-    services: &Services,
-    spawner: &dyn Spawner,
-    session: &SessionId,
-    kind: TimelineKind,
-    subject: &str,
-    worktree: &groove_types::WorktreeId,
-) {
-    crate::timeline::logged(
-        services,
-        spawner,
-        session.clone(),
-        kind,
-        subject,
-        serde_json::json!({ "worktree": worktree.as_str() }),
-    );
-}
-
 /// What a commit is known by: the first line of its message.
 fn subject(message: &str) -> String {
     message
@@ -162,7 +142,11 @@ fn subject(message: &str) -> String {
 
 /// Every change in the worktree, thrown away.
 pub(super) fn discard_all(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let paths: Vec<String> = state
@@ -209,7 +193,11 @@ impl Act {
 
 /// One path into the index, out of it, or thrown away.
 pub(super) fn index(state: &mut AppState, spawner: &dyn Spawner, act: Act, path: String) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let job = state.begin(format!("{} {path}", act.label()));

@@ -2,6 +2,7 @@
 
 mod delete;
 pub(crate) mod feed;
+mod open;
 mod rail;
 mod repos;
 mod review;
@@ -11,10 +12,11 @@ use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 use crate::asker::Asker;
 
 pub use delete::{delete, delete_local, force_delete};
-pub use rail::{
-    close, list, open, open_explorer, refresh_status, rename_explorer, restore, select,
-};
-pub(crate) use rail::{listed, record, set_auto_approve};
+pub(crate) use open::begun;
+pub use open::{close, open, open_explorer, restore, select};
+pub use rail::{list, refresh_status, rename_explorer};
+pub(crate) use rail::{listed, set_auto_approve};
+pub(crate) use repos::added;
 pub use repos::{
     add_repo, add_worktree, close_worktree, list_branches, list_repos, remove_repo, select_worktree,
 };
@@ -44,8 +46,6 @@ fn reviewed(
 /// The grid an agent starts on; the pane resizes it on its first frame.
 pub(crate) const FIRST_SIZE: (u16, u16) = (80, 24);
 
-/// A write nobody waits on.
-pub(crate) const NO_PENDING: u64 = 0;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `session.restore`: the rail as it was when the app last closed, agents started.

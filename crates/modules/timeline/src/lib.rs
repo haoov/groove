@@ -82,16 +82,6 @@ impl Timeline {
         .map_err(failed)?;
         Ok(rows.into_iter().filter_map(Row::event).collect())
     }
-
-    /// Every line of a session gone, for one the user threw away.
-    pub async fn forget(&self, session: &SessionId) -> Result<()> {
-        sqlx::query("DELETE FROM timeline WHERE session_id = ?")
-            .bind(session.as_str())
-            .execute(self.db.pool())
-            .await
-            .map_err(failed)?;
-        Ok(())
-    }
 }
 
 fn failed(source: sqlx::Error) -> Error {

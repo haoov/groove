@@ -2,16 +2,19 @@
 
 use groove_workspace_service::{COMMITS_MAX, at_commit, commits};
 
-use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// The newest commits of the selected worktree's branch.
 pub(super) fn list(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         state.workspace.logged = None;
         return state.workspace.log.clear();
     };
-    state.workspace.logged = super::selected(state);
+    state.workspace.logged = state.session.selected_worktree().map(|one| one.id.clone());
     let base = base_of(state);
     let job = state.begin("reading the commits");
     spawner.spawn(Box::pin(async move {
@@ -35,7 +38,11 @@ fn base_of(state: &AppState) -> Option<String> {
 
 /// One commit shown as the change it made, which nothing may write.
 pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let Some(entry) = state
@@ -67,7 +74,7 @@ fn shown(
     files: Vec<groove_types::FileDiff>,
     changes: groove_workspace_service::Changes,
 ) {
-    let Some(worktree) = super::selected(state) else {
+    let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return;
     };
     state.workspace.opened = None;

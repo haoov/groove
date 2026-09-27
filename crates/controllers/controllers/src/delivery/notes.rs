@@ -138,7 +138,7 @@ pub(crate) fn write(
                 if done.is_ok() {
                     if let Some(subject) = left {
                         let (kind, at) = (TimelineKind::Note, &whose.worktree.id);
-                        crate::tools::logged(services, spawner, &whose.session, kind, &subject, at);
+                        crate::timeline::log(services, spawner, &whose.session, kind, &subject, at);
                     }
                     list(state, services, spawner, &whose.session);
                 }

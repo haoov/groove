@@ -7,7 +7,6 @@ use groove_workspace_service::{
     Derived, Document, Opened, by_line, derived, from_documents, opened, opened_at, reopened,
 };
 
-use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// One keystroke on the buffer; its rows and colours follow in a job.
@@ -76,7 +75,11 @@ pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(open) = state.workspace.opened.as_ref() else {
         return;
     };
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let (path, text) = (open.path.clone(), open.new.text());
@@ -200,13 +203,20 @@ pub(super) fn read(
     old: Option<Document>,
     at: Option<Selection>,
 ) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let job = state.begin(format!("opening {path}"));
     let sha = state.workspace.commit.as_ref().map(|one| one.sha.clone());
     let mode = state.workspace.mode;
-    let base = super::selected_base(state);
+    let base = state
+        .session
+        .selected_worktree()
+        .and_then(|one| one.base_ref.clone());
     spawner.spawn(Box::pin(async move {
         let rev = super::diff::against(&dir, mode, base.as_deref()).await;
         let file = match sha {

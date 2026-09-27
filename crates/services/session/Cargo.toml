@@ -14,5 +14,8 @@ groove-worktree = { path = "../../modules/worktree" }
 groove-git = { path = "../../modules/git" }
 uuid.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true

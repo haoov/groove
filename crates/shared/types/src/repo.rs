@@ -30,6 +30,12 @@ pub struct Worktree {
     pub created_at: Timestamp,
 }
 
+impl Worktree {
+    pub fn dir(&self) -> std::path::PathBuf {
+        std::path::PathBuf::from(&self.path)
+    }
+}
+
 /// Git counts for one worktree.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct WorktreeStatus {

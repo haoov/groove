@@ -7,7 +7,7 @@ use groove_types::{DiffMode, RowKind, WorktreeId};
 use groove_workspace_service::{At, HEAD, base_rev, changes, painted, summary, summary_against};
 
 use super::editor::{Head, reopen};
-use super::{directory, selected, stale, worktree_dir};
+use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
 
@@ -30,7 +30,11 @@ pub(super) fn show(state: &mut AppState, spawner: &dyn Spawner, rows: std::ops::
         .into_iter()
         .filter(|path| !state.workspace.coloured.contains_key(path))
         .collect();
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     if missing.is_empty() {
@@ -54,7 +58,14 @@ type ReadFor = (Option<WorktreeId>, DiffMode, Option<String>);
 
 fn read_for_of(state: &AppState) -> ReadFor {
     let worktree = state.workspace.worktree.clone();
-    (worktree, state.workspace.mode, super::selected_base(state))
+    (
+        worktree,
+        state.workspace.mode,
+        state
+            .session
+            .selected_worktree()
+            .and_then(|one| one.base_ref.clone()),
+    )
 }
 
 /// How many lines one click of a gap gives up.
@@ -97,24 +108,14 @@ pub(super) fn mark_read(
     spawner: &dyn Spawner,
     path: String,
 ) {
-    let Some(id) = state.session.selected.clone() else {
+    let Some(one) = state.session.selected_worktree() else {
         return;
     };
-    let Some(worktree) = state
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .map(|worktree| worktree.id.clone())
-    else {
+    let (id, worktree) = (one.session.clone(), one.id.clone());
+    let Some(open) = state.session.get_mut(&id) else {
         return;
     };
-    let read = !state
-        .session
-        .selected()
-        .is_some_and(|open| open.is_read(&worktree, &path));
-    if let Some(open) = state.session.get_mut(&id) {
-        open.mark(&worktree, &path, read);
-    }
+    let read = open.toggle_read(&worktree, &path);
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let done = service.set_read(&id, &worktree, &path, read).await;
@@ -152,11 +153,7 @@ pub(super) fn refresh(
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
 pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(worktree) = state
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-    else {
+    let Some(worktree) = state.session.selected_worktree() else {
         return;
     };
     let (id, dir) = (worktree.id.clone(), PathBuf::from(&worktree.path));
@@ -213,7 +210,7 @@ pub(crate) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<
 
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(worktree) = selected(state) else {
+    let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return state.workspace.clear();
     };
     if stale(state) {
@@ -235,7 +232,7 @@ fn opens_in(state: &AppState) -> DiffMode {
 }
 
 pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, worktree: WorktreeId) {
-    let Some(dir) = directory(state, &worktree) else {
+    let Some(dir) = state.session.find(&worktree).map(|(_, _, one)| one.dir()) else {
         return;
     };
     spawner.spawn(Box::pin(async move {

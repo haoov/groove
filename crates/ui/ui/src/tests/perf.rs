@@ -16,8 +16,7 @@ fn big(lines: usize) -> AppState {
     let mut app = full_app();
     let worktree = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|w| w.id.clone())
         .expect("worktree");
     let file = groove_types::FileDiff {

@@ -34,8 +34,7 @@ fn with_files() -> AppState {
     let mut app = full_app();
     let worktree = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
     let file = groove_types::FileDiff {

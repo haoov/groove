@@ -17,7 +17,7 @@ use groove_session_service::task_session;
 use groove_task_service::{fetch, list, sources};
 use groove_types::{ExternalId, SessionId, SessionKind, StatusIntent, Task, TaskKey, Timestamp};
 
-use crate::{AppState, Continuation, Services, Spawner, agent, session};
+use crate::{AppState, Continuation, Services, Spawner, session};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -89,14 +89,11 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     }
     let now = Timestamp::now();
     let session = task_session(&task, now);
-    let id = session.id.clone();
-    state.session.open(session.clone(), now);
-    crate::workspace::follow(state, spawner);
+    session::begun(state, spawner, session.clone(), now);
     follow(state, spawner);
     status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
-    agent::start(state, spawner, id, session::FIRST_SIZE);
     let service = services.session.clone();
-    session::listed(spawner, session::NO_PENDING, async move {
+    session::listed(spawner, async move {
         service.create_task(&session, &task, now).await
     });
 }
@@ -125,12 +122,8 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
 
 /// The open session working this task, if one already is.
 pub(super) fn working(state: &AppState, task: &Task) -> Option<SessionId> {
-    state
-        .session
-        .open
-        .iter()
-        .find(|open| open.session.kind.works(&task.external_id))
-        .map(|open| open.session.id.clone())
+    let open = state.session.working(&task.external_id)?;
+    Some(open.session.id.clone())
 }
 
 /// Reads what the database holds of the tasks: the user's order and the hours.

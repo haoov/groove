@@ -24,8 +24,7 @@ fn listed(files: &[FileDiff]) -> AppState {
     let mut app = full_app();
     let worktree = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
     app.workspace
@@ -231,8 +230,7 @@ fn the_box_offers_what_the_worktree_most_wants_doing() {
 
     app.workspace.loaded(
         app.session
-            .selected()
-            .and_then(|open| open.selected_worktree())
+            .selected_worktree()
             .map(|w| w.id.clone())
             .expect("a worktree"),
         Vec::new(),
@@ -330,8 +328,7 @@ fn landed() -> AppState {
     let mut app = listed(&[]);
     let worktree = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|w| w.id.clone())
         .expect("the fixture has a worktree");
     app.delivery.poll.sent(&worktree);

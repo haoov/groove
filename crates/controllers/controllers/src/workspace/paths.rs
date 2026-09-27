@@ -2,12 +2,15 @@
 
 use groove_workspace_service::{PathOp, path_op};
 
-use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// One path operation, then the worktree read again.
 pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     let job = state.begin(label(&op));

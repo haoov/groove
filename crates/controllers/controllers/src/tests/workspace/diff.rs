@@ -174,11 +174,7 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
         workspace::loaded_for(&state).is_none(),
         "and nothing is loaded for a session with no worktree"
     );
-    let selected = state
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .map(|w| &w.id);
+    let selected = state.session.selected_worktree().map(|w| &w.id);
     assert!(
         state.workspace.files_of(selected).is_empty(),
         "so the sidebar has nothing to list"
@@ -319,8 +315,7 @@ fn a_file_marked_read_is_remembered_by_the_session() {
     let id = state.session.selected.clone().expect("a session");
     let picked = state
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|worktree| worktree.id.clone())
         .expect("a worktree");
 

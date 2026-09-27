@@ -60,25 +60,12 @@ pub fn remove_repo(
     force: bool,
 ) {
     let pending = state.begin(format!("removing {repo}"));
-    let (service, id, repo) = (services.session.clone(), id.clone(), repo.clone());
-    spawner.spawn(Box::pin(async move {
-        let result = service.remove_repo(&id, &repo, force).await;
-        Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
-                state.end(pending);
-                match result {
-                    Ok(()) => {
-                        if let Some(open) = state.session.get_mut(&id) {
-                            open.remove_repo(&repo);
-                        }
-                        persist_selection(state, services, spawner, &id);
-                        crate::workspace::follow(state, spawner);
-                    }
-                    Err(e) => state.failed(e),
-                }
-            },
-        ) as Continuation
-    }));
+    let (service, at, gone) = (services.session.clone(), id.clone(), repo.clone());
+    let work = async move { service.remove_repo(&at, &gone, force).await };
+    let repo = repo.clone();
+    taken(spawner, pending, id, work, move |open, ()| {
+        open.remove_repo(&repo)
+    });
 }
 
 pub fn select_worktree(
@@ -108,22 +95,36 @@ pub fn close_worktree(
     force: bool,
 ) {
     let pending = state.begin("closing worktree");
-    let (service, id, worktree) = (services.session.clone(), id.clone(), worktree.clone());
+    let (service, worktree) = (services.session.clone(), worktree.clone());
+    let work = async move { service.close_worktree(&worktree, force).await };
+    taken(spawner, pending, id, work, |open, closed| {
+        open.remove_worktree(&closed.id)
+    });
+}
+
+/// What the disk let go of, off the session's row; the selection and the workspace follow.
+fn taken<T: Send + 'static>(
+    spawner: &dyn Spawner,
+    pending: u64,
+    id: &SessionId,
+    work: impl Future<Output = Result<T, Error>> + Send + 'static,
+    apply: impl FnOnce(&mut groove_session_service::Open, T) + Send + 'static,
+) {
+    let id = id.clone();
     spawner.spawn(Box::pin(async move {
-        let result = service.close_worktree(&worktree, force).await;
+        let result = work.await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);
-                match result {
-                    Ok(closed) => {
-                        if let Some(open) = state.session.get_mut(&id) {
-                            open.remove_worktree(&closed.id);
-                        }
-                        persist_selection(state, services, spawner, &id);
-                        crate::workspace::follow(state, spawner);
-                    }
-                    Err(e) => state.failed(e),
+                let done = match result {
+                    Ok(done) => done,
+                    Err(e) => return state.failed(e),
+                };
+                if let Some(open) = state.session.get_mut(&id) {
+                    apply(open, done);
                 }
+                persist_selection(state, services, spawner, &id);
+                crate::workspace::follow(state, spawner);
             },
         ) as Continuation
     }));
@@ -155,25 +156,8 @@ pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) 
     }));
 }
 
-/// The line a provisioning leaves: the worktree it made, and where it stands.
-fn logged_added(
-    services: &Services,
-    spawner: &dyn Spawner,
-    session: &groove_types::SessionId,
-    added: &Added,
-) {
-    crate::timeline::logged(
-        services,
-        spawner,
-        session.clone(),
-        groove_types::TimelineKind::WorktreeAdded,
-        added.worktree.branch.clone(),
-        serde_json::json!({ "worktree": added.worktree.id.as_str() }),
-    );
-}
-
-/// A provisioning result into the session's row: the repo, the worktree, the notes.
-fn added(
+/// A provisioning result into the session's row, and the board read again.
+pub(crate) fn added(
     spawner: &dyn Spawner,
     pending: u64,
     asker: Asker,
@@ -196,7 +180,11 @@ fn added(
                     added.worktree.path,
                     added.worktree.id.as_str()
                 );
-                logged_added(services, spawner, &id, &added);
+                let (kind, branch) = (
+                    groove_types::TimelineKind::WorktreeAdded,
+                    &added.worktree.branch,
+                );
+                crate::timeline::log(services, spawner, &id, kind, branch, &added.worktree.id);
                 for one in added.notes {
                     state.say(one);
                 }
@@ -205,6 +193,7 @@ fn added(
                 }
                 persist_selection(state, services, spawner, &id);
                 crate::workspace::follow(state, spawner);
+                super::rail::list(services, spawner);
                 asker.done(|| said);
             },
         ) as Continuation

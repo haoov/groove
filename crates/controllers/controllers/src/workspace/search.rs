@@ -2,12 +2,15 @@
 
 use groove_workspace_service::Search;
 
-use super::worktree_dir;
 use crate::{AppState, Continuation, Services, Spawner};
 
 /// Every file of the selected worktree, for the path term to narrow by.
 pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     if state.workspace.walking {
@@ -33,7 +36,11 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
 pub(super) fn grep(state: &mut AppState, spawner: &dyn Spawner, query: String, under: String) {
     state.workspace.stop();
     state.workspace.found.clear();
-    let Some(dir) = worktree_dir(state) else {
+    let Some(dir) = state
+        .session
+        .selected_worktree()
+        .map(groove_types::Worktree::dir)
+    else {
         return;
     };
     if query.is_empty() {

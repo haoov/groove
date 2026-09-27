@@ -36,11 +36,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
 
 /// What the list says instead of rows.
 fn said(app: &AppState) -> &'static str {
-    match app
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-    {
+    match app.session.selected_worktree() {
         Some(_) => "reading the commits…",
         None => "no worktree to read",
     }

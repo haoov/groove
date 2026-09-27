@@ -10,8 +10,6 @@ pub struct Services {
     pub session: groove_session_service::Service,
     pub task: groove_task_service::Service,
     pub delivery: groove_delivery_service::Service,
-    /// What every session did to its own work.
-    pub timeline: groove_session_service::Timeline,
     /// What the open file copies through.
     pub clipboard: Arc<dyn Clipboard>,
 }
@@ -23,7 +21,6 @@ impl Services {
         let session = groove_session_service::Service::in_memory(root).await?;
         Ok(Self {
             delivery: groove_delivery_service::Service::beside(session.store()),
-            timeline: groove_session_service::Timeline::new(session.store().db().clone()),
             session,
             task: groove_task_service::Service::in_memory().await?,
             clipboard: Arc::new(Memory::default()),

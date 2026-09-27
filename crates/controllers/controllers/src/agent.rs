@@ -163,7 +163,7 @@ fn auto_approve(
     if let Some(open) = state.session.get_mut(session) {
         open.state.auto_approve = on;
     }
-    crate::session::set_auto_approve(state, services, spawner, session, on);
+    crate::session::set_auto_approve(services, spawner, session, on);
 }
 
 /// The launch runs as a job; its continuation stores the terminal or the error.

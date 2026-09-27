@@ -130,7 +130,7 @@ pub(crate) fn thread(
                 state.end(job);
                 if done.is_ok() {
                     let (kind, at) = (told.kind(), &whose.worktree.id);
-                    crate::tools::logged(services, spawner, &whose.session, kind, told.said(), at);
+                    crate::timeline::log(services, spawner, &whose.session, kind, told.said(), at);
                     landed(state, services, spawner, &whose);
                 }
                 asker.answer(state, done, || told.said().to_string());
@@ -200,7 +200,7 @@ pub(crate) fn say_as(
                         state.workspace.message = groove_workspace_service::Buffer::default();
                     }
                     let (kind, at) = (TimelineKind::Review, &whose.worktree.id);
-                    crate::tools::logged(services, spawner, &whose.session, kind, say.label(), at);
+                    crate::timeline::log(services, spawner, &whose.session, kind, say.label(), at);
                     landed(state, services, spawner, &whose);
                 }
                 asker.answer(state, done, || say.said().to_string());

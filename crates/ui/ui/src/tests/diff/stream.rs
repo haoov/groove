@@ -265,8 +265,7 @@ fn folding_from_the_pinned_head_lands_on_the_file_it_shut() {
 /// The worktree the fixture's session has selected.
 fn selected(app: &AppState) -> groove_types::WorktreeId {
     app.session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|worktree| worktree.id.clone())
         .expect("the fixture has a worktree")
 }

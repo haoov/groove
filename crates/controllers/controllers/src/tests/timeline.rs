@@ -12,9 +12,9 @@ fn log(
     spawner: &SyncSpawner,
 ) -> Vec<(TimelineKind, String)> {
     let session = state.session.selected.clone().expect("a session");
-    let timeline = services.timeline.clone();
+    let service = services.session.clone();
     spawner
-        .block_on(async move { timeline.list(&session, 50).await })
+        .block_on(async move { service.lines(&session, 50).await })
         .expect("the log")
         .into_iter()
         .map(|one| (one.kind, one.subject))
@@ -113,5 +113,34 @@ fn a_tool_the_agent_ran_on_a_file_leaves_nothing() {
         log(&state, &services, &spawner).len(),
         before,
         "reading and writing a file is status, not history"
+    );
+}
+
+#[test]
+fn the_rail_comes_back_with_its_feed() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.feed.is_empty()
+    });
+    let first = state.session.feed[0].subject.clone();
+
+    let mut again = crate::tests::fixture::state(home.path());
+    dispatch(
+        Cmd::Session(crate::session::Command::Restore),
+        &mut again,
+        &services,
+        &spawner,
+    );
+    until(&spawner, &services, &mut again, |s| {
+        !s.session.feed.is_empty()
+    });
+    assert_eq!(
+        again.session.feed[0].subject, first,
+        "read at start, not on the next line"
     );
 }

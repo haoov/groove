@@ -5,6 +5,8 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
+use groove_types::Error;
+
 use crate::{AppState, Services};
 
 /// A result on its way back to the main thread. It writes into `AppState` there, and
@@ -128,4 +130,19 @@ pub fn coalesced(
             },
         ));
     }
+}
+
+/// A write whose only result is success or an error for the feed.
+pub(crate) fn record(
+    spawner: &dyn Spawner,
+    write: impl Future<Output = Result<(), Error>> + Send + 'static,
+) {
+    spawner.spawn(Box::pin(async move {
+        let result = write.await;
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = result {
+                state.failed(e);
+            }
+        }) as Continuation
+    }));
 }

@@ -144,8 +144,7 @@ pub(crate) fn browsing(ui: &Ui) -> bool {
 pub(crate) fn needs_commits(app: &AppState, ui: &Ui) -> bool {
     let selected = app
         .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
+        .selected_worktree()
         .map(|worktree| worktree.id.clone());
     ui.session.pane == Pane::Commits && selected.is_some() && app.workspace.logged != selected
 }
@@ -167,10 +166,7 @@ pub(crate) fn needs_walk(app: &AppState, ui: &Ui) -> bool {
 
 /// Whether a worktree is selected at all.
 fn holds(app: &AppState) -> bool {
-    app.session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .is_some()
+    app.session.selected_worktree().is_some()
 }
 
 /// What the tree has to say instead of rows.
@@ -246,11 +242,7 @@ pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str, ui: &Ui) {
 
 /// The files of the worktree the session points at, never another's.
 pub(crate) fn changed(app: &AppState) -> &[FileDiff] {
-    let selected = app
-        .session
-        .selected()
-        .and_then(|open| open.selected_worktree())
-        .map(|worktree| &worktree.id);
+    let selected = app.session.selected_worktree().map(|worktree| &worktree.id);
     app.workspace.files_of(selected)
 }
 
