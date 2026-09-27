@@ -1,7 +1,7 @@
 use groove_gfx::Fonts;
 use groove_types::SessionId;
 
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::input::Key;
 use crate::tests::{CHORD, click, full_app, press, window};
 use crate::views::session::Tab;

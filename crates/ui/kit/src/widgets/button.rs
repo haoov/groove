@@ -2,16 +2,15 @@
 
 use groove_gfx::{Align, Color, Rect, TextStyle};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
+use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::{Panel, box_in};
 use crate::text::row;
 
 /// A label on `ground` at the row's right end; returns its box.
-pub fn button(
-    ctx: &mut Ctx,
+pub fn button<A: App>(
+    ctx: &mut Ctx<'_, A>,
     line: Rect,
     label: &str,
     style: TextStyle,
@@ -24,14 +23,20 @@ pub fn button(
 }
 
 /// Room of `content` plus the padding either side, at the row's right end.
-pub fn slot(ctx: &mut Ctx, line: Rect, content: f32, ground: Option<Color>) -> Rect {
+pub fn slot<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, content: f32, ground: Option<Color>) -> Rect {
     let pad = ctx.tokens.sm;
     let at = line.right() - pad - (content + pad * 2.0);
     slot_at(ctx, line, at, content, ground)
 }
 
 /// The same room from `x`, on a bordered `ground`; returns its box.
-pub fn slot_at(ctx: &mut Ctx, line: Rect, x: f32, content: f32, ground: Option<Color>) -> Rect {
+pub fn slot_at<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    line: Rect,
+    x: f32,
+    content: f32,
+    ground: Option<Color>,
+) -> Rect {
     let pad = ctx.tokens.sm;
     let height = (ctx.tokens.row - ctx.tokens.xs).min(line.h - ctx.tokens.xs);
     let box_ = Rect::new(
@@ -48,10 +53,10 @@ pub fn slot_at(ctx: &mut Ctx, line: Rect, x: f32, content: f32, ground: Option<C
 }
 
 /// A mark at the row's right end, on `grounds.1` while the pointer rests on it.
-pub fn mark_button(
-    ctx: &mut Ctx,
+pub fn mark_button<A: App>(
+    ctx: &mut Ctx<'_, A>,
     line: Rect,
-    target: Target,
+    target: A::Target,
     (mark, turn, role): (Mark, u8, Role),
     grounds: (Color, Color),
 ) -> Rect {
@@ -68,18 +73,18 @@ pub fn mark_button(
 }
 
 /// A word on a bordered ground that a click acts on, in `lit` while the pointer rests on it.
-pub struct Word<'a> {
+pub struct Word<'a, T> {
     pub label: &'a str,
-    pub target: Target,
+    pub target: T,
     pub role: Role,
     pub lit: Role,
     pub ground: Color,
     pub caret: bool,
 }
 
-impl<'a> Word<'a> {
+impl<'a, T: Clone + PartialEq> Word<'a, T> {
     /// A muted word lights to text; any other keeps its role.
-    pub fn new(label: &'a str, target: Target, role: Role, ground: Color) -> Self {
+    pub fn new(label: &'a str, target: T, role: Role, ground: Color) -> Self {
         let lit = match role {
             Role::Muted => Role::Text,
             other => other,
@@ -105,14 +110,19 @@ impl<'a> Word<'a> {
     }
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
-    pub fn left(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+    pub fn left<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
         let box_ = self.draw(ctx, *room, room.x);
         room.take_left(box_.w + gap);
         box_
     }
 
     /// Stands at the right of `room`, which gives up its box and `gap`.
-    pub fn right(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+    pub fn right<A: App<Target = T>>(
+        self,
+        ctx: &mut Ctx<'_, A>,
+        room: &mut Rect,
+        gap: f32,
+    ) -> Rect {
         let style = ctx.styles.small(self.role(ctx));
         let width = self.content(ctx, &style) + ctx.tokens.sm * 2.0;
         let box_ = self.draw(ctx, *room, room.right() - width);
@@ -120,14 +130,14 @@ impl<'a> Word<'a> {
         box_
     }
 
-    fn role(&self, ctx: &Ctx) -> Role {
+    fn role<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> Role {
         match ctx.hovered(&self.target) {
             true => self.lit,
             false => self.role,
         }
     }
 
-    fn content(&self, ctx: &mut Ctx, style: &TextStyle) -> f32 {
+    fn content<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, style: &TextStyle) -> f32 {
         let word = ctx.measure(self.label, style);
         match self.caret {
             true => word + ctx.tokens.xs + ctx.tokens.small,
@@ -135,7 +145,7 @@ impl<'a> Word<'a> {
         }
     }
 
-    fn draw(self, ctx: &mut Ctx, line: Rect, x: f32) -> Rect {
+    fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
         let style = ctx.styles.small(self.role(ctx));
         let content = self.content(ctx, &style);
         let box_ = slot_at(ctx, line, x, content, Some(self.ground));

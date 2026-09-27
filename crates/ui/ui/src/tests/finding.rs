@@ -4,11 +4,11 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_gfx::Fonts;
 use groove_types::DiffView;
 
-use crate::base::tokens::{ABOVE_MATCH, Tokens};
 use crate::input::{Key, Modifiers};
 use crate::tests::{changed_files, full_app, press, shows, window};
 use crate::views::session::{Tab, Term};
 use crate::{Focus, Ui, view};
+use groove_ui_kit::base::tokens::{ABOVE_MATCH, Tokens};
 
 const FILES: [(&str, &str, &str); 2] = [
     ("src/a.rs", "let one = 1;\n", "let one = 11;\n"),
@@ -205,7 +205,7 @@ fn the_match_it_stands_on_reads_as_a_selection_even_on_a_line_that_went() {
     );
 
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let held = frame.layers()[0]
         .quads
         .iter()
@@ -227,10 +227,8 @@ fn split_marks_a_match_on_the_side_that_shows_it_and_not_the_other() {
     assert_eq!(find.count(), "1 / 1", "only the line that came holds it");
 
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let rows = hits
-        .rect_of(&crate::base::hit::Target::Code)
-        .expect("the rows");
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let rows = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
     let marks: Vec<f32> = frame.layers()[0]
         .quads
         .iter()
@@ -253,10 +251,8 @@ fn only_the_bar_shows_a_caret_while_it_has_the_keyboard() {
     ui.session.view = DiffView::Editor;
     let carets = |ui: &Ui| {
         let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
-        let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-        let rows = hits
-            .rect_of(&crate::base::hit::Target::Code)
-            .expect("the rows");
+        let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+        let rows = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
         frame.layers()[0]
             .quads
             .iter()
@@ -284,7 +280,7 @@ fn the_bar_pops_over_the_rows_on_a_ground_of_its_own() {
     let mut ui = on_code();
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let above = frame.layers().last().expect("a layer over the rows");
     assert!(
         above.quads.iter().any(|quad| quad.color == styles.action()),
@@ -308,7 +304,7 @@ fn every_match_is_marked_under_the_text() {
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let marked = frame.layers()[0]
         .quads
         .iter()
@@ -398,7 +394,7 @@ fn a_found_line_opens_its_file_where_it_sits() {
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits
-        .rect_of(&crate::base::hit::Target::Found(0))
+        .rect_of(&crate::hit::Target::Found(0))
         .expect("the sidebar lists what was found");
     let commands = crate::tests::click(row, &mut ui, &app, &hits);
     assert_eq!(
@@ -421,8 +417,7 @@ fn the_bar_stands_only_once_a_search_asks_for_it() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     for term in [Term::Path, Term::Text] {
         assert!(
-            hits.rect_of(&crate::base::hit::Target::Term(term))
-                .is_none(),
+            hits.rect_of(&crate::hit::Target::Term(term)).is_none(),
             "{term:?} waits to be asked for"
         );
     }
@@ -436,7 +431,7 @@ fn the_bar_stands_only_once_a_search_asks_for_it() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     for term in [Term::Path, Term::Text] {
         let row = hits
-            .rect_of(&crate::base::hit::Target::Term(term))
+            .rect_of(&crate::hit::Target::Term(term))
             .unwrap_or_else(|| panic!("{term:?} stands in the bar"));
         assert!(crate::tests::click(row, &mut ui, &app, &hits).is_empty());
         assert_eq!(ui.session.bar.typing, Some(term), "the click focuses it");
@@ -456,7 +451,7 @@ fn a_click_on_a_term_keeps_what_it_holds() {
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits
-        .rect_of(&crate::base::hit::Target::Term(Term::Path))
+        .rect_of(&crate::hit::Target::Term(Term::Path))
         .expect("the path term");
     crate::tests::click(row, &mut ui, &app, &hits);
     assert_eq!(
@@ -476,7 +471,7 @@ fn a_click_on_the_find_bar_takes_the_keyboard_back() {
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let bar = hits
-        .rect_of(&crate::base::hit::Target::Finding)
+        .rect_of(&crate::hit::Target::Finding)
         .expect("the bar over the rows");
     crate::tests::click(bar, &mut ui, &app, &hits);
     let find = ui.session.find.as_ref().expect("still there");

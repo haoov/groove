@@ -2,8 +2,7 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{SessionId, WorktreeId};
 
-use crate::base::hit::{Cursor, Hits, Picks, Target};
-use crate::base::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
+use crate::hit::{Cursor, Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
 use crate::tests::{
@@ -11,6 +10,7 @@ use crate::tests::{
 };
 use crate::views::session::Tab;
 use crate::{Ui, view};
+use groove_ui_kit::base::tokens::{AGENT_MIN, RAIL_MIN, Tokens, WORKSPACE_MIN};
 
 /// What the frame drew, and where.
 fn regions(app: &AppState, ui: &Ui) -> Hits {
@@ -330,6 +330,6 @@ fn a_column_narrower_than_its_minimum_opens_at_it() {
     let split = Split::of(panes);
     assert_eq!(split.rail, RAIL_MIN);
     assert_eq!(split.agent, AGENT_MIN);
-    assert_eq!(split.band, crate::base::tokens::BAND_MIN);
-    assert_eq!(split.feed, crate::base::tokens::FEED_MIN);
+    assert_eq!(split.band, groove_ui_kit::base::tokens::BAND_MIN);
+    assert_eq!(split.feed, groove_ui_kit::base::tokens::FEED_MIN);
 }

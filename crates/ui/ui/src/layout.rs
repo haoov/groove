@@ -4,8 +4,8 @@ use groove_gfx::{CellSize, Rect, Size};
 use groove_types::Panes;
 
 use crate::Ui;
-use crate::base::ctx::Metrics;
-use crate::base::tokens::{
+use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::{
     AGENT_MIN, BAND_MIN, COLUMNS_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MESSAGE_LINES, RAIL_MIN,
     SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
 };

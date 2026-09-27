@@ -3,12 +3,12 @@
 use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::WorktreeId;
 
-use crate::base::ctx::Metrics;
-use crate::base::hit::{Hits, Picks, Target};
+use crate::hit::{Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::Layout;
 use crate::palette::{Action, Anchor, Flow, Palette};
 use crate::{Corner, Losing, Menu, Of, Overlay, Ui};
+use groove_ui_kit::base::ctx::Metrics;
 
 /// The right button on a file's row opens its actions; anywhere else closes them.
 pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {

@@ -3,12 +3,13 @@
 use groove_controllers::{AppState, Command, agent};
 use groove_gfx::{Fonts, Frame};
 
-use crate::base::ctx::{Ctx, Metrics};
-use crate::base::hit::Hits;
-use crate::base::style::Styles;
+use crate::ctx::{Ctx, Drawn};
+use crate::hit::Hits;
 use crate::layout::Layout;
 use crate::views::{board, overlays, rail, session, splitter};
 use crate::{Surface, Ui};
+use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::style::Styles;
 
 /// The whole window as a display list, rebuilt every frame from state.
 pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Frame, Hits) {
@@ -17,15 +18,12 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
     let mut frame = Frame::new(metrics.size, styles.ground());
     let mut hits = Hits::default();
     {
-        let mut ctx = Ctx::new(
-            app,
-            metrics,
-            Layout::of(metrics, ui),
-            &mut frame,
-            fonts,
-            &mut hits,
-            ui.hover.clone(),
-        );
+        let drawn = Drawn {
+            layout: Layout::of(metrics, ui),
+            hits: &mut hits,
+        };
+        let theme = app.config.theme();
+        let mut ctx = Ctx::new(theme, metrics, drawn, &mut frame, fonts, ui.hover.clone());
         rail::draw(&mut ctx, app, ui);
         match ui.showing(app) {
             Surface::Session => session::draw(&mut ctx, app, ui),

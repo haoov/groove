@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::ExternalId;
 
 use super::{on_board, texts};
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::tests::{click, drag_at, full_app, pressed, release, task, window};
 use crate::{Surface, Ui, view};
 
@@ -120,7 +120,7 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
         .rect_of(&Target::Place(first.clone()))
         .expect("the row carries its place");
     pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits);
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let body = crate::views::board::bands(&tokens, &app, &ui, board).columns;
     let width = (body.w / 3.0).floor();

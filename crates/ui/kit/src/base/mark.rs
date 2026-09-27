@@ -35,9 +35,9 @@ pub enum Mark {
 
 impl Mark {
     /// The turn that points a mark the other way.
-    pub(crate) const UPWARDS: u8 = Icon::TURNS / 2;
+    pub const UPWARDS: u8 = Icon::TURNS / 2;
     /// The turn that points it to the right.
-    pub(crate) const RIGHTWARDS: u8 = Icon::TURNS * 3 / 4;
+    pub const RIGHTWARDS: u8 = Icon::TURNS * 3 / 4;
 
     /// The mark a session wears for its kind.
     pub fn of_kind(kind: &SessionKind) -> Self {
@@ -48,7 +48,7 @@ impl Mark {
         }
     }
 
-    pub(crate) fn shape(self) -> Icon {
+    pub fn shape(self) -> Icon {
         match self {
             Mark::Task => Icon::Flag,
             Mark::Explorer => Icon::Compass,

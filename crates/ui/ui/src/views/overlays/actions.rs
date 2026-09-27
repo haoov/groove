@@ -4,11 +4,11 @@ use groove_controllers::delivery::Say;
 use groove_controllers::{Command, delivery, workspace};
 use groove_types::ReviewVerdict;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
+use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::views::session::{Asked, Naming, Noting};
-use crate::widgets::{menu, menu_size};
 use crate::{Corner, Losing, Menu, Of};
+use groove_ui_kit::widgets::{menu, menu_size};
 
 /// The actions of one file.
 pub const FILE: [&str; 1] = ["discard changes"];
@@ -62,11 +62,7 @@ pub fn rows(of: &Of) -> Vec<&str> {
 }
 
 pub fn draw(ctx: &mut Ctx, open: &Menu) {
-    let within = ctx.layout.window;
-    let hovered = match ctx.hover() {
-        Some(Target::MenuRow(at)) => Some(*at),
-        _ => None,
-    };
+    let within = ctx.window;
     let rows = rows(&open.of);
     let (wide, tall) = menu_size(ctx, &rows);
     let at = match open.corner {
@@ -76,7 +72,7 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
     };
     ctx.layer();
     let edge = ctx.styles.border();
-    menu(ctx, at, within, &rows, hovered, edge);
+    menu(ctx, at, within, &rows, edge, Target::MenuRow);
 }
 
 /// One skill typed into the agent's own prompt.

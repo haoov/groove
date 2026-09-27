@@ -1,5 +1,5 @@
-//! The crate's own shape. Numbers live in one file, styles in one file, and a view
-//! draws through the context.
+//! The ui's own shape, kit included. Numbers live in one file, styles in one file, and a
+//! view draws through the context.
 
 use std::fs;
 use std::path::Path;
@@ -10,11 +10,13 @@ const ALLOWED: [&str; 3] = ["0.0", "1.0", "2.0"];
 /// What a view may take from the renderer: geometry, nothing that draws or paints.
 const GEOMETRY: [&str; 4] = ["Align", "Edges", "Rect", "Size"];
 
-/// Every source file of the crate but the tests, as `(path from src, text)`.
+/// Every source file of this crate and the kit but the tests, as `(path from src, text)`.
 fn sources() -> Vec<(String, String)> {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut out = Vec::new();
-    walk(&src, &src, &mut out);
+    for src in [crate_dir.join("src"), crate_dir.join("../kit/src")] {
+        walk(&src, &src, &mut out);
+    }
     out.sort();
     assert!(out.len() > 15, "found {} files", out.len());
     out
@@ -146,7 +148,10 @@ fn a_view_draws_through_the_context() {
 
 /// Every ground and band a row can take, in each flavour.
 fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Color)> {
-    let styles = crate::base::style::Styles::new(theme, crate::base::tokens::Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(
+        theme,
+        groove_ui_kit::base::tokens::Tokens::new(1.0),
+    );
     vec![
         ("hover", styles.hover()),
         ("raised", styles.raised()),
@@ -211,8 +216,11 @@ fn code_stays_readable_on_every_ground_it_is_drawn_on() {
         groove_types::ThemeName::Macchiato,
         groove_types::ThemeName::Mocha,
     ] {
-        let styles = crate::base::style::Styles::new(theme, crate::base::tokens::Tokens::new(1.0));
-        let text = styles.color(crate::base::style::Role::Text);
+        let styles = groove_ui_kit::base::style::Styles::new(
+            theme,
+            groove_ui_kit::base::tokens::Tokens::new(1.0),
+        );
+        let text = styles.color(groove_ui_kit::base::style::Role::Text);
         for (named, ground) in grounds(theme) {
             if !UNDER_CODE.contains(&named) {
                 continue;
@@ -224,33 +232,4 @@ fn code_stays_readable_on_every_ground_it_is_drawn_on() {
             );
         }
     }
-}
-
-#[test]
-fn a_widget_never_reaches_up_to_the_app() {
-    const UP: [&str; 7] = [
-        "groove_controllers",
-        "crate::Ui",
-        "crate::views",
-        "crate::components",
-        "crate::palette",
-        "crate::input",
-        "crate::layout",
-    ];
-    let mut offenders = Vec::new();
-    for (path, text) in sources() {
-        let low = path.starts_with("widgets") || path == "shape.rs" || path == "text.rs";
-        if !low {
-            continue;
-        }
-        for (at, line) in code_lines(&text) {
-            if UP.iter().any(|up| line.contains(up)) {
-                offenders.push(format!("{path}:{}: {}", at + 1, line.trim()));
-            }
-        }
-    }
-    assert!(
-        offenders.is_empty(),
-        "widgets, shapes and text take plain data: {offenders:#?}"
-    );
 }

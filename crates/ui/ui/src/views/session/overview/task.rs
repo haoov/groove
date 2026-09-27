@@ -3,11 +3,11 @@
 use groove_gfx::Rect;
 use groove_types::{Task, TimeSummary};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::text::{row, wrapped};
-use crate::widgets::button;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::{row, wrapped};
+use groove_ui_kit::widgets::button;
 
 const UNSET: &str = "—";
 

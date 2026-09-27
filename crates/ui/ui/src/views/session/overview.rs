@@ -6,13 +6,13 @@ use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
 use crate::components::worktree_row;
-use crate::text::Label;
-use crate::widgets::{Row, list};
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Row, list};
 
 /// The overview tab, scrolled: the properties, the repos with their worktrees, the body.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
@@ -33,7 +33,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         body(ctx, app, open, area, &mut column);
     });
     let height = column.y - top + ctx.tokens.md;
-    ctx.scrolls(Scroller::Overview, (height - area.h).max(0.0));
+    ctx.app
+        .hits
+        .scrolls(Scroller::Overview, (height - area.h).max(0.0));
 }
 
 /// The task's six properties, for a session that works one; whether it drew them.
@@ -75,7 +77,7 @@ fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Rec
 fn table(ctx: &mut Ctx, column: &mut Rect, held: &[(&str, &str)]) -> Rect {
     let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
     let (md, at) = (ctx.tokens.md, ctx.tokens.aside_near + ctx.tokens.md);
-    let rows: Vec<Row<'_>> = held
+    let rows: Vec<Row<'_, _>> = held
         .iter()
         .map(|(name, held)| Row::new(md, name, label).aside(at, held, value))
         .collect();

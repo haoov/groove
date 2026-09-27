@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::{Attention, Day, ExternalId, Timestamp};
 
 use super::texts;
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::tests::{full_app, task, window};
 use crate::{Surface, Ui, view};
 

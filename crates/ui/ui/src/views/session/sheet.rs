@@ -5,11 +5,11 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{ApprovalId, Ask};
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::text::Label;
-use crate::widgets::Word;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::Word;
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -35,7 +35,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The workspace and the sidebar together, from the header down.
 fn area(ctx: &Ctx) -> Rect {
-    let layout = &ctx.layout;
+    let layout = &ctx.app.layout;
     let right = layout.workspace.right().max(layout.sidebar.right());
     let bottom = layout.workspace.bottom().max(layout.sidebar.bottom());
     let (x, y) = (layout.header.x, layout.header.y);

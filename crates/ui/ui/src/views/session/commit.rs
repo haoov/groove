@@ -4,15 +4,15 @@ use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
 use crate::components::{Gutters, Line, Rows, code};
-use crate::shape::hairline;
-use crate::text::Label;
-use crate::widgets::{button, counts, mark_button};
+use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::{Focus, Losing, Ui};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::hairline;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{button, counts, mark_button};
 
 /// The counts and what commits them on one line, the message under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {

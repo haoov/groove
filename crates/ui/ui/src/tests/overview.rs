@@ -79,7 +79,7 @@ fn a_body_too_tall_for_the_tab_scrolls_and_never_reaches_past_its_width() {
     let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
     let workspace = crate::layout::Layout::of(window, &ui).workspace;
     assert!(
-        hits.extent(crate::base::hit::Scroller::Overview) > 0.0,
+        hits.extent(crate::hit::Scroller::Overview) > 0.0,
         "the body is taller than the tab"
     );
     let over = frame.layers()[0]
@@ -261,8 +261,8 @@ fn a_rule_stands_between_the_overview_s_sections() {
     let window = metrics(1280, 800, 1.0);
     let ui = Ui::default();
     let (frame, _) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
-    let tokens = crate::base::tokens::Tokens::new(1.0);
-    let styles = crate::base::style::Styles::new(app.config.theme(), tokens);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let workspace = crate::layout::Layout::of(window, &ui).workspace;
     let wide = workspace.w - tokens.md * 2.0;
     let rules = frame.layers()[0]
@@ -297,7 +297,7 @@ fn the_hours_the_clock_measured_are_offered_to_the_source() {
         .collect();
     assert!(texts.iter().any(|t| t == "log 1h"), "{texts:?}");
     let button = hits
-        .rect_of(&crate::base::hit::Target::LogHours(id.clone()))
+        .rect_of(&crate::hit::Target::LogHours(id.clone()))
         .expect("the hours are offered");
     let commands = crate::tests::click(button, &mut ui, &app, &hits);
     assert_eq!(
@@ -318,10 +318,7 @@ fn a_task_with_nothing_measured_offers_no_hours() {
         &mut groove_gfx::Fonts::embedded(),
     );
     let id = ExternalId::new("github.com/haoov/groove#50");
-    assert!(
-        hits.rect_of(&crate::base::hit::Target::LogHours(id))
-            .is_none()
-    );
+    assert!(hits.rect_of(&crate::hit::Target::LogHours(id)).is_none());
 }
 
 #[test]

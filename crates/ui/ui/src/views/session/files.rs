@@ -18,14 +18,14 @@ use groove_types::FileDiff;
 use super::commit;
 use super::state::{Pane, Scope};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::text::Label;
-use crate::widgets::{button, tabs};
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{button, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let rect = ctx.layout.sidebar;
+    let rect = ctx.app.layout.sidebar;
     if rect.is_empty() {
         return;
     }
@@ -106,7 +106,7 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
         true => heading::found(ctx, head, app.workspace.found.len()),
         false => heading::heading(ctx, head, files.len(), app, ui),
     }
-    let under = ctx.layout.commit;
+    let under = ctx.app.layout.commit;
     let body = column.until_y(under.y);
     commit::draw(ctx, app, ui, under);
     if grep {

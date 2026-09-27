@@ -1,6 +1,6 @@
 use groove_gfx::Rect;
 
-use crate::base::ctx::Ctx;
+use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::box_in;
@@ -8,7 +8,14 @@ use crate::text::row;
 use crate::widgets::slot_at;
 
 /// A value the user can change, as a button with a caret; returns what it covers.
-pub fn picker(ctx: &mut Ctx, line: Rect, x: f32, label: &str, role: Role, lit: bool) -> Rect {
+pub fn picker<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    line: Rect,
+    x: f32,
+    label: &str,
+    role: Role,
+    lit: bool,
+) -> Rect {
     let style = ctx.styles.body(role);
     let width = ctx.measure(label, &style);
     let ground = match lit {

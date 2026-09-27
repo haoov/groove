@@ -3,13 +3,13 @@
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::base::tokens::PALETTE_ROWS;
+use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::palette::Palette;
-use crate::text::Label;
-use crate::widgets::{Row, input, list, modal, panel_at};
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::PALETTE_ROWS;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Row, input, list, modal, panel_at};
 
 /// Whether the panel offers a line to type in: the palette always, a picker once needed.
 fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
@@ -132,7 +132,7 @@ fn items(
     let first = palette.selected.saturating_sub(PALETTE_ROWS - 1);
     let (group_style, label_style) = (ctx.styles.small(Role::Faint), ctx.styles.label(Role::Text));
     let at = ctx.tokens.aside_near;
-    let items: Vec<Row<'_>> = rows
+    let items: Vec<Row<'_, _>> = rows
         .iter()
         .skip(first)
         .take(PALETTE_ROWS)

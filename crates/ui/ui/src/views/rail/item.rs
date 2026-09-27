@@ -3,15 +3,15 @@ use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{AgentStatus, Ask, AttentionClass, SessionId};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::motion::turn;
-use crate::base::style::Role;
-use crate::shape::{after_mark, hairline, square};
-use crate::text::{Label, ago};
-use crate::widgets::{Word, icon};
+use crate::ctx::Ctx;
+use crate::hit::Target;
 use crate::{Surface, Ui};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::motion::turn;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{after_mark, hairline, square};
+use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::widgets::{Word, icon};
 
 /// The row's lines: head, state, and the answers while the session asks.
 pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {

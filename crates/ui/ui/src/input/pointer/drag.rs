@@ -1,9 +1,9 @@
 //! The boundaries a press takes hold of, and how far the pointer has carried one.
 
-use crate::base::ctx::Metrics;
-use crate::base::tokens::{CLICK_MS, CLICK_SLOP};
 use crate::layout::Edge;
 use crate::{Click, Drag, Held, Ui};
+use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::{CLICK_MS, CLICK_SLOP};
 
 /// This press against the last: soon and near, it carries the same click on.
 pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> Click {

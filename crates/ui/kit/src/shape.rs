@@ -2,8 +2,7 @@
 
 use groove_gfx::{Align, Color, Rect};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
+use crate::base::ctx::{App, Ctx};
 
 /// A square box of `size`, centred vertically in `row`, at `x`.
 pub fn box_in(row: Rect, x: f32, size: f32) -> Rect {
@@ -16,17 +15,17 @@ pub fn square(slot: Rect, size: f32) -> Rect {
 }
 
 /// A leading icon in `row` at `x`, the icon size.
-pub fn leading(ctx: &Ctx, row: Rect, x: f32) -> Rect {
+pub fn leading<A: App>(ctx: &Ctx<'_, A>, row: Rect, x: f32) -> Rect {
     box_in(row, x, ctx.tokens.icon)
 }
 
 /// Where a row's text starts when a mark leads it at `indent`.
-pub fn after_mark(ctx: &Ctx, indent: f32) -> f32 {
+pub fn after_mark<A: App>(ctx: &Ctx<'_, A>, indent: f32) -> f32 {
     indent + ctx.tokens.icon + ctx.tokens.sm
 }
 
 /// A hairline above `rect` and one below it.
-pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
+pub fn ruled<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
     ctx.quad(Rect::new(rect.x, rect.y, rect.w, thickness), color);
     let under = rect.bottom() - thickness;
@@ -34,7 +33,7 @@ pub fn ruled(ctx: &mut Ctx, rect: Rect, color: Color) {
 }
 
 /// A hairline along the bottom of `rect`.
-pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
+pub fn hairline<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;
     ctx.quad(
         Rect::new(rect.x, rect.bottom() - thickness, rect.w, thickness),
@@ -43,7 +42,7 @@ pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
 }
 
 /// Registers `target` at `rect`, on the hover ground while the pointer rests on it.
-pub fn hoverable(ctx: &mut Ctx, rect: Rect, target: Target) -> bool {
+pub fn hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) -> bool {
     let on = ctx.interact(rect, target);
     if on {
         let hover = ctx.styles.hover();
@@ -70,7 +69,7 @@ impl Panel {
         self
     }
 
-    pub fn draw(self, ctx: &mut Ctx, rect: Rect) {
+    pub fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect) {
         if let Some(ground) = self.ground {
             ctx.quad(rect, ground);
         }

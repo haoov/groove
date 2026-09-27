@@ -6,8 +6,8 @@ use groove_types::DiffView;
 use super::stream::both;
 use super::{on_diff, view_of, with_files};
 use crate::Ui;
-use crate::base::hit::Target;
-use crate::base::tokens::Tokens;
+use crate::hit::Target;
+use groove_ui_kit::base::tokens::Tokens;
 
 /// What the band standing over the rows says, its coloured runs joined.
 fn band(app: &AppState, ui: &Ui) -> String {

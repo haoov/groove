@@ -4,14 +4,15 @@ mod item;
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{hairline, square};
-use crate::text::Label;
-use crate::widgets::{Row, icon, list, scrolled};
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
 use crate::{Surface, Ui};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{hairline, square};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Row, icon, list};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -28,7 +29,7 @@ pub struct RailUi {
 
 /// The opened sessions, in the order opened. The Board row above, the footer below.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let rect = ctx.layout.rail;
+    let rect = ctx.app.layout.rail;
     ctx.quad(rect, ctx.styles.band());
     let mut column = rect;
     let edge = column.take_right(ctx.tokens.hairline);
@@ -37,7 +38,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let board = column.take_top(ctx.tokens.header);
     let foot = column.take_bottom(ctx.tokens.row);
     board_row(ctx, app, ui, board);
-    let band = ctx.layout.feed;
+    let band = ctx.app.layout.feed;
     let rows = Rect {
         h: (band.y - column.y).max(0.0),
         ..column
@@ -85,7 +86,7 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         .map(|open| (open, item::height(ctx, app, &open.session.id)))
         .collect();
     let at = (Scroller::Rail, ui.offset(Scroller::Rail));
-    scrolled(
+    listed(
         ctx,
         area,
         at,

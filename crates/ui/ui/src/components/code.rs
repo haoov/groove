@@ -10,10 +10,10 @@ use groove_types::Highlight;
 
 use self::gutter::{Block, rule};
 use self::row::draw;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Chars;
-use crate::base::style::Role;
-use crate::base::tokens::Tokens;
+use crate::ctx::Ctx;
+use crate::hit::Chars;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::Tokens;
 
 /// What a note row carries: who said it, whether it opens the note, and its state.
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +35,7 @@ pub struct Acting {
     /// It can be posted.
     pub post: bool,
     /// The one of them the pointer stands on.
-    pub hovered: Option<crate::base::hit::NoteButton>,
+    pub hovered: Option<crate::hit::NoteButton>,
 }
 
 /// One row of code: what its gutters say, its text, and the colour over it.

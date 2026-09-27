@@ -8,12 +8,12 @@ use groove_controllers::workspace_service::columns;
 use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
-use crate::base::ctx::Metrics;
-use crate::base::hit::{Chars, Hits, Scroller, Target};
-use crate::base::tokens::ABOVE_MATCH;
 use crate::components::{code_at, first};
+use crate::hit::{Chars, Hits, Scroller, Target};
 use crate::views::session::diff;
 use crate::{Click, Focus, Ui};
+use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::ABOVE_MATCH;
 
 /// Changes the view, keeping the line at the top of the old one in view.
 pub(super) fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {

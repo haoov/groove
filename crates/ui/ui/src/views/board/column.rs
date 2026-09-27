@@ -6,13 +6,13 @@ use groove_gfx::Rect;
 use super::List;
 use super::row::{self, Line};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Scroller;
-use crate::base::style::Role;
 use crate::components::worktree_row;
-use crate::shape::hairline;
-use crate::text::row;
-use crate::widgets::scrolled;
+use crate::ctx::Ctx;
+use crate::hit::Scroller;
+use crate::offsets::listed;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::hairline;
+use groove_ui_kit::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
     let lines = lines(app, ui, list);
@@ -67,7 +67,7 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
     let heights = row::heights(&ctx.tokens, app, lines);
     let rows: Vec<(usize, f32)> = heights.into_iter().enumerate().collect();
     let which = Scroller::Column(list as u8);
-    scrolled(
+    listed(
         ctx,
         body,
         (which, ui.offset(which)),

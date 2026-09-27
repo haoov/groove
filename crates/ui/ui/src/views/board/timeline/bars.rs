@@ -6,11 +6,11 @@ use groove_types::{Day, Span, Task, Timestamp};
 
 use super::{DAYS, first};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::shape::square;
-use crate::text::Label;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::square;
+use groove_ui_kit::text::Label;
 
 /// One bar a task, in the row the whole plan gives it, where the horizon puts it.
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {

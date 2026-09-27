@@ -5,7 +5,7 @@ use groove_gfx::Fonts;
 use groove_types::Timestamp;
 
 use super::texts;
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::tests::{click, full_app, task, window};
 use crate::{Surface, Ui, view};
 
@@ -48,7 +48,7 @@ fn a_board_with_no_dates_in_the_horizon_folds_the_band_away() {
         surface: Surface::Board,
         ..Ui::default()
     };
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     assert_eq!(band.h, tokens.header, "its own bar and nothing more");
@@ -63,7 +63,7 @@ fn a_board_with_no_dates_in_the_horizon_folds_the_band_away() {
 #[test]
 fn the_band_s_bar_folds_it_away_and_gives_the_room_to_the_columns() {
     let (app, mut ui) = running();
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let bands = crate::views::board::bands(&tokens, &app, &ui, board);
     let (open, band) = (bands.columns, bands.timeline);
@@ -82,7 +82,7 @@ fn the_band_s_bar_folds_it_away_and_gives_the_room_to_the_columns() {
 #[test]
 fn a_sideways_turn_over_the_band_carries_it_through_time() {
     let (app, mut ui) = running();
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -116,7 +116,7 @@ fn a_sideways_turn_over_the_band_carries_it_through_time() {
 #[test]
 fn a_turn_straight_down_over_the_band_carries_nothing() {
     let (app, mut ui) = running();
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -171,11 +171,11 @@ fn the_bar_under_the_pointer_names_its_task() {
 #[test]
 fn a_sweep_too_small_for_a_day_is_kept_for_the_next_one() {
     let (app, mut ui) = running();
-    let tokens = crate::base::tokens::Tokens::new(1.0);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let band = crate::views::board::bands(&tokens, &app, &ui, board).timeline;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let sweep = |across: f32, ui: &mut Ui, hits: &crate::base::hit::Hits| {
+    let sweep = |across: f32, ui: &mut Ui, hits: &crate::hit::Hits| {
         crate::input::handle(
             crate::input::Input::Scroll {
                 x: band.x + 10.0,
@@ -188,7 +188,7 @@ fn a_sweep_too_small_for_a_day_is_kept_for_the_next_one() {
             window(),
         );
     };
-    let half = crate::base::tokens::DAY_PIXELS / 2.0 + 1.0;
+    let half = groove_ui_kit::base::tokens::DAY_PIXELS / 2.0 + 1.0;
     sweep(-half, &mut ui, &hits);
     assert_eq!(ui.board.horizon, 0, "not a day yet");
     sweep(-half, &mut ui, &hits);

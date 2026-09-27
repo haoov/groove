@@ -1,7 +1,10 @@
 //! Where each scroller keeps its offset.
 
+use groove_gfx::Rect;
+
 use crate::Ui;
-use crate::base::hit::{Hits, Scroller};
+use crate::ctx::Ctx;
+use crate::hit::{Hits, Scroller};
 use crate::views::board::List;
 
 impl Ui {
@@ -32,4 +35,17 @@ impl Ui {
         let to = (self.offset(which) - pixels).clamp(0.0, hits.extent(which));
         self.set_offset(which, to);
     }
+}
+
+/// A list the wheel scrolls, at the scroller's offset, its extent kept for the next turn.
+pub(crate) fn listed<'c, T>(
+    ctx: &mut Ctx<'c>,
+    body: Rect,
+    (which, offset): (Scroller, f32),
+    items: &[T],
+    height: impl Fn(&T) -> f32,
+    draw: impl FnMut(&mut Ctx<'c>, Rect, &T),
+) {
+    let extent = groove_ui_kit::widgets::scrolled(ctx, body, offset, items, height, draw);
+    ctx.app.hits.scrolls(which, extent);
 }

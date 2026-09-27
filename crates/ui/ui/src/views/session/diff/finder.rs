@@ -3,11 +3,11 @@
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::text::row;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     let Some(find) = ui.session.find.as_ref() else {

@@ -5,13 +5,13 @@ use groove_gfx::{Edges, Rect};
 
 use super::complete;
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{Panel, hairline, square};
-use crate::text::{Label, row};
-use crate::widgets::button;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{Panel, hairline, square};
+use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::widgets::button;
 
 const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";

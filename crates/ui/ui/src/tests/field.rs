@@ -1,6 +1,6 @@
 //! What a one-line field does with a keystroke.
 
-use crate::widgets::Field;
+use groove_ui_kit::widgets::Field;
 
 fn typed(text: &str) -> Field {
     let mut field = Field::default();

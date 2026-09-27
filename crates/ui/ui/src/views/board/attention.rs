@@ -3,9 +3,9 @@
 use groove_gfx::Rect;
 use groove_types::{Attention, Timestamp};
 
-use crate::base::ctx::Ctx;
-use crate::base::style::Role;
-use crate::text::{ago, row};
+use crate::ctx::Ctx;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::{ago, row};
 
 /// How long a fact has stood.
 fn old(since: Timestamp, now: Timestamp) -> String {

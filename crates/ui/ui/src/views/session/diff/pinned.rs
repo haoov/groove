@@ -6,10 +6,10 @@ use groove_gfx::Rect;
 use groove_types::{DiffView, Highlight};
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::tokens::{PINNED_DEEP, PINNED_SHARE};
 use crate::components::{Gutters, Line, Rows, code, first, head_mark};
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::tokens::{PINNED_DEEP, PINNED_SHARE};
 
 /// One line held above the rows.
 struct Pin {

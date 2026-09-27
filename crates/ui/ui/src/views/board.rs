@@ -18,7 +18,7 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
+use crate::ctx::Ctx;
 
 /// Which list a column holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +42,7 @@ impl List {
 
 /// The board: one header line, the three columns, the timeline under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let area = ctx.layout.board;
+    let area = ctx.app.layout.board;
     ctx.quad(area, ctx.styles.ground());
     let bands = bands(&ctx.tokens, app, ui, area);
     let field = header::draw(ctx, bands.header, app, ui);
@@ -63,7 +63,12 @@ pub struct Bands {
 }
 
 /// The board's own three bands, top to bottom.
-pub fn bands(tokens: &crate::base::tokens::Tokens, app: &AppState, ui: &Ui, area: Rect) -> Bands {
+pub fn bands(
+    tokens: &groove_ui_kit::base::tokens::Tokens,
+    app: &AppState,
+    ui: &Ui,
+    area: Rect,
+) -> Bands {
     let mut rest = area;
     let header = rest.take_top(tokens.header);
     let tall = timeline::height(tokens, app, ui);

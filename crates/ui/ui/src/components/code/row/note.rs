@@ -4,12 +4,12 @@ use groove_gfx::{Color, Rect};
 
 use super::super::gutter::Block;
 use super::super::{Acting, Noted};
-use crate::base::ctx::Ctx;
-use crate::base::hit::{NoteButton, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::text::{elide, row};
-use crate::widgets::slot_at;
+use crate::ctx::Ctx;
+use crate::hit::{NoteButton, Target};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::widgets::slot_at;
 
 /// One row of a note: its ground, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutter: Block) {

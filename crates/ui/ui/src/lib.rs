@@ -2,26 +2,25 @@
 
 use groove_controllers::AppState;
 
-mod base;
 mod components;
+mod ctx;
+mod hit;
 pub mod input;
 mod layout;
 mod offsets;
 pub mod palette;
 mod render;
-mod shape;
-mod text;
 mod views;
-mod widgets;
 
 #[cfg(test)]
 mod tests;
 
-pub use base::ctx::Metrics;
-pub use base::hit::{Cursor, Hits, Target};
-pub use base::mark::Mark;
-pub use base::style::Role;
-pub use base::tokens::Tokens;
+pub use groove_ui_kit::base::ctx::Metrics;
+pub use groove_ui_kit::base::mark::Mark;
+pub use groove_ui_kit::base::style::Role;
+pub use groove_ui_kit::base::tokens::Tokens;
+pub use groove_ui_kit::widgets::Corner;
+pub use hit::{Cursor, Hits, Target};
 pub use layout::{Edge, Split};
 pub use render::{layout_commands, view};
 pub use views::board::BoardUi;
@@ -138,14 +137,6 @@ pub struct Menu {
     pub at: (f32, f32),
     pub corner: Corner,
     pub of: Of,
-}
-
-/// Which corner of the panel sits at the point it was opened from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Corner {
-    TopLeft,
-    BottomLeft,
-    BottomRight,
 }
 
 /// What a menu offers.

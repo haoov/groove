@@ -7,14 +7,14 @@ use groove_types::FileDiff;
 
 use super::rows::{Reading, entry};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{box_in, hoverable};
-use crate::text::{elide, row};
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
 use crate::views::session::Asked;
-use crate::widgets::scrolled;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{box_in, hoverable};
+use groove_ui_kit::text::{elide, row};
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -143,7 +143,7 @@ pub(super) fn draw(
 ) {
     let height = ctx.tokens.row;
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    scrolled(
+    listed(
         ctx,
         body,
         at,
@@ -227,7 +227,7 @@ fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&S
         ctx.quad(line, ctx.styles.hover());
     }
     if open == Some(&held.path) {
-        crate::shape::ruled(ctx, line, ctx.styles.here());
+        groove_ui_kit::shape::ruled(ctx, line, ctx.styles.here());
     }
     ctx.hit(line, target);
     let style = ctx.styles.body(Role::Text);

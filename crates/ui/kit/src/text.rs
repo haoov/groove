@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use groove_gfx::{Rect, TextStyle};
 
-use crate::base::ctx::Ctx;
+use crate::base::ctx::{App, Ctx};
 
 const ELLIPSIS: char = '\u{2026}';
 const MINUTE: u64 = 60;
@@ -12,14 +12,14 @@ const HOUR: u64 = 60 * MINUTE;
 const DAY: u64 = 24 * HOUR;
 
 /// One line of text in `rect`, `indent` from its left edge, clipped to it.
-pub fn row(ctx: &mut Ctx, rect: Rect, indent: f32, text: &str, style: TextStyle) {
+pub fn row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, indent: f32, text: &str, style: TextStyle) {
     ctx.clipped(rect, |ctx| {
         ctx.text(text, rect.x + indent, rect.y, rect.h, style);
     });
 }
 
 /// The text as it fits `width`: whole, or cut at a character with an ellipsis.
-pub fn elide(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String {
+pub fn elide<A: App>(ctx: &mut Ctx<'_, A>, text: &str, style: &TextStyle, width: f32) -> String {
     if ctx.measure(text, style) <= width {
         return text.to_string();
     }
@@ -43,7 +43,12 @@ pub fn elide(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String
 }
 
 /// The text as it fits `width`, cut at the front.
-pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> String {
+pub fn elide_start<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    text: &str,
+    style: &TextStyle,
+    width: f32,
+) -> String {
     if ctx.measure(text, style) <= width {
         return text.to_string();
     }
@@ -62,7 +67,12 @@ pub fn elide_start(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> 
 }
 
 /// The text as lines that fit `width`, broken at spaces and at its own newlines.
-pub fn wrapped(ctx: &mut Ctx, text: &str, style: &TextStyle, width: f32) -> Vec<String> {
+pub fn wrapped<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    text: &str,
+    style: &TextStyle,
+    width: f32,
+) -> Vec<String> {
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
         let mut line = String::new();
@@ -120,12 +130,12 @@ impl<'a> Label<'a> {
         self
     }
 
-    pub fn width(&self, ctx: &mut Ctx) -> f32 {
+    pub fn width<A: App>(&self, ctx: &mut Ctx<'_, A>) -> f32 {
         ctx.measure(self.text, &self.style)
     }
 
     /// Draws at the left of `room`, which gives up its width and `gap`.
-    pub fn left(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+    pub fn left<A: App>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
         let width = self.width(ctx).min(room.w);
         let at = room.take_left(width);
         room.take_left(gap);
@@ -133,7 +143,7 @@ impl<'a> Label<'a> {
     }
 
     /// Draws at the right of `room`, which gives up its width and `gap`.
-    pub fn right(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+    pub fn right<A: App>(self, ctx: &mut Ctx<'_, A>, room: &mut Rect, gap: f32) -> Rect {
         let width = self.width(ctx).min(room.w);
         let at = room.take_right(width);
         room.take_right(gap);
@@ -141,7 +151,7 @@ impl<'a> Label<'a> {
     }
 
     /// Draws the text in `rect`; returns the box it took.
-    pub fn draw(self, ctx: &mut Ctx, rect: Rect) -> Rect {
+    pub fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect) -> Rect {
         let text = match self.cut_start {
             true => elide_start(ctx, self.text, &self.style, rect.w),
             false => elide(ctx, self.text, &self.style, rect.w),

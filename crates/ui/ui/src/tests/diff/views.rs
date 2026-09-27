@@ -4,7 +4,7 @@ use super::*;
 use groove_controllers::{Command, workspace};
 use groove_types::{Caret, Edit, Motion};
 
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::input::{Input, handle};
 
 #[test]
@@ -18,7 +18,7 @@ fn the_file_view_marks_a_changed_line_and_grounds_nothing() {
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     let (frame, _) = view_of(&app, &ui);
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let grounds = frame.layers()[0]
         .quads
         .iter()

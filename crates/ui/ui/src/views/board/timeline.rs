@@ -7,19 +7,19 @@ use groove_gfx::{Edges, Rect};
 use groove_types::{Day, Timestamp};
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{Panel, square};
-use crate::text::{Label, row};
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{Panel, square};
+use groove_ui_kit::text::{Label, row};
 
 /// The days the band shows, and how many stand before today.
 pub(super) const DAYS: i64 = 28;
 const BEFORE: i64 = 7;
 
 /// How tall the band stands: its own bar alone, or as tall as the user left it.
-pub(super) fn height(tokens: &crate::base::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
+pub(super) fn height(tokens: &groove_ui_kit::base::tokens::Tokens, app: &AppState, ui: &Ui) -> f32 {
     match shut(app, ui) {
         true => tokens.header,
         false => ui.split.band * tokens.scale,
@@ -61,7 +61,7 @@ fn named_bar(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let (pad, at) = (ctx.tokens.sm, ui.at);
     let width = title.width(ctx) + pad * 2.0;
     let box_ = Rect::new(
-        (at.0 + pad).min(ctx.layout.window.right() - width),
+        (at.0 + pad).min(ctx.window.right() - width),
         at.1 - ctx.tokens.row - pad,
         width,
         ctx.tokens.row,

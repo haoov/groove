@@ -159,9 +159,10 @@ renderer draws it. Neither crate sees the other's types.
 - **Never read the frame back.** The window presents.
 - Rounded rects and borders: one SDF fragment shader. Clipping: a scissor per batch.
 - Chrome is owned and minimal: about eight primitives on `gfx`, plus focus, hit testing
-  and scroll. No general toolkit, no layout engine. The ui crate stacks `base/` (context,
-  hits, tokens, styles, marks, motion), `shape` and `text`, `widgets/` on plain data,
-  `components/` that know Groove's types, then `views/`.
+  and scroll. No general toolkit, no layout engine. `ui-kit` holds `base/` (context,
+  tokens, styles, marks, motion), `shape`, `text` and `widgets/` on plain data; it depends
+  on `gfx` and `types` only. `ui` adds the hits and layout, `components/` that know
+  Groove's state, then `views/`.
 
 Stack: wgpu 30 · glyphon 0.12 · alacritty_terminal 0.26 · ropey · tree-sitter ·
 imara-diff.
@@ -182,8 +183,8 @@ harness is `#[ignore]`d and named `time_*`.
 
 The layer test in `controllers` reads every manifest and refuses a dependency that points
 up or across the services; it also holds the ceilings above. `ui/tests/structure.rs` holds
-that crate's own shape: numbers only in `base/tokens.rs`, styles only in `base/style.rs`, and a view
-draws through the context.
+the shape of `ui` and `ui-kit`: numbers only in the kit's `base/tokens.rs`, styles only in its
+`base/style.rs`, and a view draws through the context.
 
 Golden images run on software Vulkan (`mesa-vulkan-drivers`, lavapipe) in CI. The fonts are
 vendored: IBM Plex Sans and IBM Plex Mono, OFL.

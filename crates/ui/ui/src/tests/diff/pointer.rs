@@ -1,7 +1,7 @@
 //! What a click, the wheel and the keyboard do to the open file.
 
 use super::*;
-use crate::base::hit::Chars;
+use crate::hit::Chars;
 use groove_controllers::{Command, workspace};
 use groove_types::{Caret, Edit, Motion};
 
@@ -158,7 +158,7 @@ fn the_caret_shows_only_where_the_keyboard_is() {
     let app = opened();
     let mut ui = on_diff();
     ui.focus = crate::Focus::Workspace;
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let rules = |ui: &Ui| {
         let (frame, hits) = view_of(&app, ui);
         let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
@@ -178,7 +178,7 @@ fn the_caret_shows_only_where_the_keyboard_is() {
 fn what_is_held_reads_apart_from_the_row_the_caret_is_on() {
     let app = opened();
     let ui = on_diff();
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let tokens = Tokens::new(1.0);
     assert_ne!(
         styles.held(),
@@ -202,7 +202,7 @@ fn the_sidebar_says_which_file_is_open() {
     let row = hits
         .rect_of(&Target::File("src/lib.rs".into()))
         .expect("the file's row");
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let hairline = Tokens::new(1.0).hairline;
     let rules = frame
         .layers()

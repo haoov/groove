@@ -9,11 +9,11 @@ use groove_controllers::workspace::Way;
 
 use super::notes::Slot;
 use super::row::Drawn;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
 use crate::components::{Gutters, head_mark};
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
 
 /// What a head row offers (fold, mark read) and what a gap offers (its lines, from either end).
 pub(super) fn marks(

@@ -4,7 +4,7 @@ use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::Fonts;
 use groove_types::{FileDiff, FileStatus};
 
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::input::{Input, handle};
 use crate::tests::{full_app, window};
 use crate::views::session::Tab;
@@ -39,7 +39,7 @@ fn sidebar() -> Ui {
 }
 
 /// The targets the sidebar drew, with the pointer wherever `hover` says.
-fn drawn(app: &AppState, ui: &Ui) -> crate::base::hit::Hits {
+fn drawn(app: &AppState, ui: &Ui) -> crate::hit::Hits {
     view(app, ui, window(), &mut Fonts::embedded()).1
 }
 
@@ -302,7 +302,7 @@ fn a_click_on_the_second_line_of_the_message_lands_on_it() {
     let mut ui = sidebar();
     let hits = drawn(&app, &ui);
     let box_ = hits.rect_of(&Target::Message).expect("the box");
-    let line = crate::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
     let x = box_.x + window().cell.width * 2.0;
     let commands = handle(
         Input::Press {

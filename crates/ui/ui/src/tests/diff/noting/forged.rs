@@ -37,7 +37,7 @@ fn on(
     app: &AppState,
     ui: &mut Ui,
     origin: groove_types::NoteOrigin,
-    button: crate::base::hit::NoteButton,
+    button: crate::hit::NoteButton,
 ) -> Vec<groove_controllers::Command> {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let rect = hits
@@ -54,7 +54,7 @@ fn local() -> groove_types::NoteOrigin {
 fn a_note_of_a_session_with_an_mr_offers_to_post_it() {
     let app = delivered(vec![own()]);
     let mut ui = on_diff();
-    let commands = on(&app, &mut ui, local(), crate::base::hit::NoteButton::Post);
+    let commands = on(&app, &mut ui, local(), crate::hit::NoteButton::Post);
     assert_eq!(
         one_command(commands),
         delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Post {
@@ -70,7 +70,7 @@ fn a_session_with_no_mr_offers_no_post() {
     let ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert!(
-        hits.rect_of(&Target::Note(local(), crate::base::hit::NoteButton::Post))
+        hits.rect_of(&Target::Note(local(), crate::hit::NoteButton::Post))
             .is_none(),
         "nothing to post it on"
     );
@@ -83,8 +83,8 @@ fn a_thread_offers_a_reply_and_a_resolve_and_nothing_else() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let origin = groove_types::NoteOrigin::Thread("t1".into());
     for button in [
-        crate::base::hit::NoteButton::Reply,
-        crate::base::hit::NoteButton::Resolve,
+        crate::hit::NoteButton::Reply,
+        crate::hit::NoteButton::Resolve,
     ] {
         assert!(
             hits.rect_of(&Target::Note(origin.clone(), button))
@@ -93,9 +93,9 @@ fn a_thread_offers_a_reply_and_a_resolve_and_nothing_else() {
         );
     }
     for button in [
-        crate::base::hit::NoteButton::Edit,
-        crate::base::hit::NoteButton::Delete,
-        crate::base::hit::NoteButton::Post,
+        crate::hit::NoteButton::Edit,
+        crate::hit::NoteButton::Delete,
+        crate::hit::NoteButton::Post,
     ] {
         assert!(
             hits.rect_of(&Target::Note(origin.clone(), button))
@@ -110,7 +110,7 @@ fn resolving_a_thread_asks_the_forge() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
     let origin = groove_types::NoteOrigin::Thread("t1".into());
-    let commands = on(&app, &mut ui, origin, crate::base::hit::NoteButton::Resolve);
+    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
@@ -127,7 +127,7 @@ fn a_resolved_thread_asks_to_be_opened_again() {
     let app = delivered(vec![one]);
     let mut ui = on_diff();
     let origin = groove_types::NoteOrigin::Thread("t1".into());
-    let commands = on(&app, &mut ui, origin, crate::base::hit::NoteButton::Resolve);
+    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Thread(groove_controllers::delivery::ThreadAct::Resolve {
@@ -142,7 +142,7 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
     let origin = groove_types::NoteOrigin::Thread("t1".into());
-    let commands = on(&app, &mut ui, origin, crate::base::hit::NoteButton::Reply);
+    let commands = on(&app, &mut ui, origin, crate::hit::NoteButton::Reply);
     assert!(commands.is_empty(), "nothing is asked of the forge yet");
     let noting = ui.session.noting.as_ref().expect("the row opens");
     assert_eq!(noting.anchor, Anchor::line("src/lib.rs", 1));

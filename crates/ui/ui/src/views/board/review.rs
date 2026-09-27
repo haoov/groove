@@ -6,13 +6,13 @@ use groove_types::ReviewMr;
 
 use super::row::{Line, aside, named};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{hoverable, square};
-use crate::text::{Label, ago};
-use crate::widgets::icon;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::widgets::icon;
 
 /// Every MR the filter lets through, newest first.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {

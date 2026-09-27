@@ -43,7 +43,7 @@ fn press(key: Key, ui: &mut Ui, app: &AppState) -> Vec<groove_controllers::Comma
         },
         ui,
         app,
-        &crate::base::hit::Hits::default(),
+        &crate::hit::Hits::default(),
         window(),
     )
 }
@@ -189,7 +189,7 @@ fn what_is_pasted_goes_into_the_note() {
         Input::Paste("issue: this leaks".into()),
         &mut ui,
         &app,
-        &crate::base::hit::Hits::default(),
+        &crate::hit::Hits::default(),
         window(),
     );
     assert_eq!(
@@ -224,7 +224,7 @@ fn own() -> groove_types::Note {
 fn on_button(
     app: &AppState,
     ui: &mut Ui,
-    button: crate::base::hit::NoteButton,
+    button: crate::hit::NoteButton,
 ) -> Vec<groove_controllers::Command> {
     let (_, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let id = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1"));
@@ -239,7 +239,7 @@ fn resolve_asks_for_the_note_to_be_resolved() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    let commands = on_button(&app, &mut ui, crate::base::hit::NoteButton::Resolve);
+    let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Note(groove_controllers::delivery::NoteAct::Resolve {
@@ -255,7 +255,7 @@ fn a_resolved_note_offers_to_open_again() {
     note.resolved = true;
     app.delivery.shown = vec![note];
     let mut ui = on_diff();
-    let commands = on_button(&app, &mut ui, crate::base::hit::NoteButton::Resolve);
+    let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Resolve);
     assert_eq!(
         one_command(commands),
         delivery::Command::Note(groove_controllers::delivery::NoteAct::Reopen {
@@ -269,7 +269,7 @@ fn delete_asks_for_the_note_to_go() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    let commands = on_button(&app, &mut ui, crate::base::hit::NoteButton::Delete);
+    let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Delete);
     assert_eq!(
         one_command(commands),
         delivery::Command::Note(groove_controllers::delivery::NoteAct::Delete {
@@ -283,7 +283,7 @@ fn edit_opens_the_note_with_its_own_words_in_it() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    let commands = on_button(&app, &mut ui, crate::base::hit::NoteButton::Edit);
+    let commands = on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert!(commands.is_empty(), "nothing is asked of the app yet");
     let noting = ui.session.noting.as_ref().expect("the row opens");
     assert_eq!(noting.said(), "issue: this leaks");
@@ -295,7 +295,7 @@ fn what_is_typed_over_a_note_writes_that_note_again() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    on_button(&app, &mut ui, crate::base::hit::NoteButton::Edit);
+    on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     if let Some(noting) = ui.session.noting.as_mut() {
         noting.field.set("nitpick: name it");
     }
@@ -361,7 +361,7 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     let mut ui = on_diff();
     ui.session.view = DiffView::Editor;
     let with_note = crate::views::session::diff::rows_of(&app, &ui);
-    on_button(&app, &mut ui, crate::base::hit::NoteButton::Edit);
+    on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
         with_note - 1,
@@ -376,11 +376,11 @@ fn hovering_one_notes_button_leaves_the_others_alone() {
     second.origin = groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n2"));
     second.anchor = Some(Anchor::line("src/lib.rs", 2));
     app.delivery.shown = vec![own(), second];
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let mut ui = on_diff();
     ui.hover = Some(Target::Note(
         groove_types::NoteOrigin::Local(groove_types::AnnotationId::new("n1")),
-        crate::base::hit::NoteButton::Edit,
+        crate::hit::NoteButton::Edit,
     ));
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let lit = frame

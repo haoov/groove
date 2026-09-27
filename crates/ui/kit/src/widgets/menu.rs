@@ -2,13 +2,12 @@
 
 use groove_gfx::{Color, Rect};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
+use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::text::row;
 
 /// How much room the rows need, padding at both ends included.
-pub fn size(ctx: &mut Ctx, labels: &[&str]) -> (f32, f32) {
+pub fn size<A: App>(ctx: &mut Ctx<'_, A>, labels: &[&str]) -> (f32, f32) {
     let style = ctx.styles.body(Role::Text);
     let widest = labels
         .iter()
@@ -19,13 +18,13 @@ pub fn size(ctx: &mut Ctx, labels: &[&str]) -> (f32, f32) {
 }
 
 /// The rows with their top-left at `at`, kept inside `within`, a hit each.
-pub fn menu(
-    ctx: &mut Ctx,
+pub fn menu<A: App>(
+    ctx: &mut Ctx<'_, A>,
     at: (f32, f32),
     within: Rect,
     labels: &[&str],
-    hovered: Option<usize>,
     border: Color,
+    target: impl Fn(usize) -> A::Target,
 ) {
     let (width, tall) = size(ctx, labels);
     let x = at.0.min(within.right() - width).max(within.x);
@@ -35,11 +34,11 @@ pub fn menu(
     ctx.border(box_, border);
     for (index, label) in labels.iter().enumerate() {
         let line = Rect::new(x, y + ctx.tokens.row * index as f32, width, ctx.tokens.row);
-        if hovered == Some(index) {
+        if ctx.hovered(&target(index)) {
             ctx.quad(line, ctx.styles.hover());
         }
         let style = ctx.styles.body(Role::Text);
         row(ctx, line, ctx.tokens.md, label, style);
-        ctx.hit(line, Target::MenuRow(index));
+        ctx.hit(line, target(index));
     }
 }

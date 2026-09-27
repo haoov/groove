@@ -31,7 +31,7 @@ fn the_editor_stands_one_row_tall_on_an_empty_file() {
 #[test]
 fn the_caret_shows_on_the_one_line_of_an_empty_file() {
     let (app, ui) = nothing();
-    let styles = crate::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let bar = Tokens::new(1.0).hairline * 2.0;

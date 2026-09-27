@@ -2,18 +2,18 @@ use groove_controllers::AppState;
 use groove_gfx::Rect;
 use groove_types::AgentStatus;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::text::row;
-use crate::widgets::screen;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::screen;
 
 /// The agent's terminal, or why there is none.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let pane = ctx.layout.agent;
+    let pane = ctx.app.layout.agent;
     let (ground, line, hairline) = (ctx.styles.deep(), ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(pane, ground);
     ctx.hit(pane, Target::Agent);
@@ -27,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     };
     match (&agent.terminal, &agent.activity.status) {
         (Some(terminal), _) => {
-            let origin = ctx.layout.agent_origin(&ctx.tokens);
+            let origin = ctx.app.layout.agent_origin(&ctx.tokens);
             let grid = terminal.screen();
             screen(ctx, pane, origin, &grid);
         }
@@ -38,7 +38,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 
 fn note(ctx: &mut Ctx, text: &str) {
     let style = ctx.styles.body(Role::Faint);
-    let (pad, pane) = (ctx.tokens.md, ctx.layout.agent);
+    let (pad, pane) = (ctx.tokens.md, ctx.app.layout.agent);
     let rect = Rect::new(pane.x, pane.y + ctx.tokens.sm, pane.w, ctx.tokens.row);
     row(ctx, rect, pad, text, style);
 }

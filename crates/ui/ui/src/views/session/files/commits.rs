@@ -5,13 +5,14 @@ use groove_gfx::Rect;
 use groove_types::CommitEntry;
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::style::Role;
-use crate::shape::ruled;
-use crate::text::Label;
-use crate::text::row;
-use crate::widgets::scrolled;
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::ruled;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::text::row;
+
 use groove_gfx::Edges;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
@@ -24,7 +25,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let height = ctx.tokens.row;
     let shown = app.workspace.commit.as_ref().map(|one| one.sha.as_str());
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    scrolled(
+    listed(
         ctx,
         body,
         at,

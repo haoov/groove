@@ -1,14 +1,11 @@
 //! What every draw function is given: the tokens, the styles, the regions, and the frame.
 
-use groove_controllers::AppState;
 use groove_gfx::{CellGrid, CellSize, Color, Fonts, Frame, Rect, Size, TextStyle};
-use groove_types::Timestamp;
+use groove_types::{ThemeName, Timestamp};
 
-use crate::base::hit::{Chars, Hits, Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Styles;
 use crate::base::tokens::Tokens;
-use crate::layout::Layout;
 
 /// What the renderer measured about the window this frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -32,85 +29,75 @@ impl Metrics {
     }
 }
 
-pub struct Ctx<'a> {
+/// The app's half of a frame: what a hit names, and where it is kept.
+pub trait App {
+    type Target: Clone + PartialEq;
+
+    fn hit(&mut self, rect: Rect, target: Self::Target);
+}
+
+pub struct Ctx<'a, A: App> {
     pub tokens: Tokens,
     pub styles: Styles,
-    pub layout: Layout,
+    /// The whole window, which a modal centres in.
+    pub window: Rect,
     /// One cell of the code font, which the agent's own grid stands on.
     pub cell: CellSize,
     pub tick: u64,
     pub now: Timestamp,
+    pub app: A,
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
-    hits: &'a mut Hits,
-    hover: Option<Target>,
+    hover: Option<A::Target>,
     clip: Option<Rect>,
 }
 
-impl<'a> Ctx<'a> {
+impl<'a, A: App> Ctx<'a, A> {
     pub fn new(
-        app: &AppState,
+        theme: ThemeName,
         metrics: Metrics,
-        layout: Layout,
+        app: A,
         frame: &'a mut Frame,
         fonts: &'a mut Fonts,
-        hits: &'a mut Hits,
-        hover: Option<Target>,
+        hover: Option<A::Target>,
     ) -> Self {
         let tokens = metrics.tokens();
         Self {
             tokens,
-            styles: Styles::new(app.config.theme(), tokens),
-            layout,
+            styles: Styles::new(theme, tokens),
+            window: metrics.size.rect(),
             cell: metrics.cell,
             tick: metrics.tick,
             now: metrics.now,
+            app,
             frame,
             fonts,
-            hits,
             hover,
             clip: None,
         }
     }
 
-    pub fn hover(&self) -> Option<&Target> {
+    pub fn hover(&self) -> Option<&A::Target> {
         self.hover.as_ref()
     }
 
-    pub fn hovered(&self, target: &Target) -> bool {
+    pub fn hovered(&self, target: &A::Target) -> bool {
         self.hover.as_ref() == Some(target)
     }
 
     /// Registers `target` at `rect`; returns whether the pointer rests on it.
-    pub fn interact(&mut self, rect: Rect, target: Target) -> bool {
+    pub fn interact(&mut self, rect: Rect, target: A::Target) -> bool {
         let on = self.hovered(&target);
         self.hit(rect, target);
         on
     }
 
     /// Registers `target` at `rect`. Only the part the clip leaves visible is reachable.
-    pub fn hit(&mut self, rect: Rect, target: Target) {
+    pub fn hit(&mut self, rect: Rect, target: A::Target) {
         let rect = self.clip.map_or(rect, |clip| clip.intersect(rect));
-        if rect.is_empty() {
-            return;
+        if !rect.is_empty() {
+            self.app.hit(rect, target);
         }
-        self.hits.push(rect, target);
-    }
-
-    pub fn showing(&mut self, rows: std::ops::Range<usize>) {
-        self.hits.showing(rows);
-    }
-
-    pub fn characters(&mut self, chars: Chars) {
-        self.hits.characters(chars);
-    }
-
-    pub fn wraps(&mut self, cols: usize) {
-        self.hits.wraps(cols);
-    }
-
-    pub fn scrolls(&mut self, which: Scroller, extent: f32) {
-        self.hits.scrolls(which, extent);
     }
 
     pub fn quad(&mut self, rect: Rect, color: Color) {

@@ -4,21 +4,21 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::box_in;
-use crate::text::row;
-use crate::widgets::Word;
+use crate::ctx::Ctx;
+use crate::hit::Target;
 use groove_gfx::Edges;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::box_in;
+use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::Word;
 
 /// What the agent waits on, or what it can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let Some(open) = app.session.selected() else {
         return;
     };
-    let line = ctx.layout.agent_bar;
+    let line = ctx.app.layout.agent_bar;
     ctx.quad(line, ctx.styles.band());
     let rule = Rect::new(line.x, line.y, line.w, ctx.tokens.hairline);
     ctx.quad(rule, ctx.styles.line());

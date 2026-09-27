@@ -4,10 +4,10 @@ use groove_controllers::agent_service::Select;
 use groove_controllers::{AppState, Command, agent};
 use groove_types::{ProviderId, SessionId};
 
-use crate::base::ctx::Metrics;
-use crate::base::hit::{Hits, Target};
+use crate::hit::{Hits, Target};
 use crate::layout::Layout;
 use crate::{Corner, Held, Menu, Of, Offer, Ui};
+use groove_ui_kit::base::ctx::Metrics;
 
 /// The agent's own targets; anything else is not its to answer.
 pub(super) fn acted(

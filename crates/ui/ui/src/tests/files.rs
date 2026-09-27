@@ -8,14 +8,14 @@ mod panes;
 mod paths;
 mod search;
 
-use crate::base::hit::Target;
-use crate::base::tokens::Tokens;
+use crate::hit::Target;
 use crate::input::Key;
 use crate::layout::{Layout, Split};
 use crate::tests::{CHORD, WINDOW, click, full_app, press, window};
 use crate::views::session::Tab;
 use crate::views::session::files::listing;
 use crate::{Ui, view};
+use groove_ui_kit::base::tokens::Tokens;
 
 fn changed(path: &str, added: u32, deleted: u32) -> FileDiff {
     FileDiff {

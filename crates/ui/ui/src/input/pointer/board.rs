@@ -4,12 +4,12 @@ use groove_controllers::{AppState, Command, delivery, session, task};
 use groove_gfx::Rect;
 use groove_types::{ExternalId, SessionId};
 
-use crate::base::ctx::Metrics;
-use crate::base::hit::Target;
-use crate::base::tokens::Tokens;
+use crate::hit::Target;
 use crate::layout::Layout;
 use crate::views::board::{List, plan};
 use crate::{Held, Surface, Ui};
+use groove_ui_kit::base::ctx::Metrics;
+use groove_ui_kit::base::tokens::Tokens;
 
 /// What a click on one of the board's own targets does, if it is one.
 pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {

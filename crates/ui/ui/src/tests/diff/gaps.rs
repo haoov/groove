@@ -5,7 +5,7 @@ use groove_controllers::{AppState, Command};
 
 use super::{on_diff, view_of, with_files};
 use crate::Ui;
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::input::{Input, handle};
 use crate::tests::window;
 

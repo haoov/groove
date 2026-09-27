@@ -128,7 +128,7 @@ fn control_a_holds_the_whole_file_and_tab_indents() {
 
 #[test]
 fn a_drag_over_the_file_holds_more_of_it() {
-    use crate::base::hit::Target;
+    use crate::hit::Target;
     use crate::input::{Input, handle};
     use crate::tests::window;
     use crate::view;
@@ -138,7 +138,7 @@ fn a_drag_over_the_file_holds_more_of_it() {
     let mut ui = editing();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = crate::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
     let point = (hits.chars().left + 1.0, code.y + line + 1.0);
     let pressed = handle(
         Input::Press {
@@ -217,7 +217,7 @@ fn the_pointer_leads_nothing_until_it_goes_down_on_something() {
 
 /// Presses at the same point, `apart` milliseconds between them.
 fn clicks(times: usize, apart: u64) -> Vec<Command> {
-    use crate::base::hit::Target;
+    use crate::hit::Target;
     use crate::input::{Input, handle};
     use crate::tests::metrics;
     use groove_gfx::Fonts;
@@ -226,7 +226,7 @@ fn clicks(times: usize, apart: u64) -> Vec<Command> {
     let mut ui = editing();
     let (_, hits) = crate::view(&app, &ui, crate::tests::window(), &mut Fonts::embedded());
     let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
-    let line = crate::base::tokens::Tokens::new(1.0).line;
+    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
     let point = (hits.chars().left + 1.0, code.y + line + 1.0);
     let mut commands = Vec::new();
     for at in 0..times {
@@ -281,7 +281,7 @@ fn two_clicks_hold_the_word_and_three_hold_the_line() {
 
 #[test]
 fn a_press_long_after_another_is_a_click_of_its_own() {
-    let slow = edits(clicks(2, crate::base::tokens::CLICK_MS + 1));
+    let slow = edits(clicks(2, groove_ui_kit::base::tokens::CLICK_MS + 1));
     assert!(
         matches!(slow.as_slice(), [Edit::Move(_)]),
         "too late to carry the first one on: {slow:?}"

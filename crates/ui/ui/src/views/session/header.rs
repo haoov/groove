@@ -3,19 +3,19 @@ use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::SessionKind;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Picks, Target};
-use crate::base::mark::Mark;
-use crate::base::motion::turn;
-use crate::base::style::Role;
 use crate::components::{delivered, room_for};
-use crate::shape::{hairline, square};
-use crate::text::{Label, elide};
-use crate::widgets::{button, icon, mark_button, picker};
+use crate::ctx::Ctx;
+use crate::hit::{Picks, Target};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::motion::turn;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{hairline, square};
+use groove_ui_kit::text::{Label, elide};
+use groove_ui_kit::widgets::{button, icon, mark_button, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
-    let rect = ctx.layout.header;
+    let rect = ctx.app.layout.header;
     ctx.quad(rect, ctx.styles.ground());
     hairline(ctx, rect, ctx.styles.line());
 

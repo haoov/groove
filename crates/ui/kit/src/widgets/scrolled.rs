@@ -2,20 +2,19 @@
 
 use groove_gfx::Rect;
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Scroller;
+use crate::base::ctx::{App, Ctx};
 
-pub fn scrolled<T>(
-    ctx: &mut Ctx,
+/// Draws the rows that show at `offset`; returns how far they could scroll.
+pub fn scrolled<'c, A: App, T>(
+    ctx: &mut Ctx<'c, A>,
     body: Rect,
-    (which, offset): (Scroller, f32),
+    offset: f32,
     items: &[T],
     height: impl Fn(&T) -> f32,
-    mut draw: impl FnMut(&mut Ctx, Rect, &T),
-) {
+    mut draw: impl FnMut(&mut Ctx<'c, A>, Rect, &T),
+) -> f32 {
     let content: f32 = items.iter().map(&height).sum();
     let extent = (content - body.h).max(0.0);
-    ctx.scrolls(which, extent);
     ctx.clipped(body, |ctx| {
         let mut y = body.y - offset.min(extent);
         for item in items {
@@ -26,4 +25,5 @@ pub fn scrolled<T>(
             y += tall;
         }
     });
+    extent
 }

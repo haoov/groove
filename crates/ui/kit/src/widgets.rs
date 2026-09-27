@@ -20,10 +20,9 @@ pub use icon::icon;
 pub use input::input;
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
-pub use modal::{modal, panel_at};
+pub use modal::{Corner, modal, panel_at};
 pub use picker::picker;
 pub use scrolled::scrolled;
 pub use tabs::tabs;
-#[cfg(test)]
-pub(crate) use terminal::grid_of;
+pub use terminal::grid_of;
 pub use terminal::screen;

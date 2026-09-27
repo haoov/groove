@@ -3,7 +3,7 @@
 use groove_types::{Anchor, DiffView};
 
 use super::find::Finding;
-use crate::widgets::Field;
+use groove_ui_kit::widgets::Field;
 
 /// Which tab of the workspace is up.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

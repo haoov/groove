@@ -4,7 +4,7 @@ use groove_controllers::agent_service::Agent;
 use groove_gfx::Fonts;
 use groove_types::{AgentStatus, ApprovalId, Ask, SessionActivity, SessionId, Timestamp};
 
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::tests::{app, click, window};
 use crate::{Surface, Ui};
 
@@ -105,7 +105,7 @@ fn the_skills_menu_holds_what_this_kind_is_offered() {
 
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits
-        .rect_of(&crate::base::hit::Target::MenuRow(0))
+        .rect_of(&crate::hit::Target::MenuRow(0))
         .expect("a row of it");
     let acted = click(row, &mut ui, &app, &hits);
     assert_eq!(
@@ -184,7 +184,7 @@ fn the_skills_menu_stands_above_the_word_that_opens_it() {
 
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let row = hits
-        .rect_of(&crate::base::hit::Target::MenuRow(0))
+        .rect_of(&crate::hit::Target::MenuRow(0))
         .expect("a row of it");
     assert!(
         row.bottom() <= word.y + 1.0,
@@ -312,7 +312,7 @@ fn a_task_files_in_each_source_that_is_set_up() {
     assert!(!drawn.iter().any(|one| one == "create task"), "{drawn:?}");
 
     let row = hits
-        .rect_of(&crate::base::hit::Target::MenuRow(0))
+        .rect_of(&crate::hit::Target::MenuRow(0))
         .expect("a row of it");
     let acted = click(row, &mut ui, &app, &hits);
     assert_eq!(

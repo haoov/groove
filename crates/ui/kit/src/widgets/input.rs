@@ -1,12 +1,12 @@
 use groove_gfx::Rect;
 
-use crate::base::ctx::Ctx;
+use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::shape::hairline;
 use crate::text::row;
 
 /// A line of typed text with a caret after it, a hairline under it.
-pub fn input(ctx: &mut Ctx, rect: Rect, prefix: &str, text: &str) {
+pub fn input<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, prefix: &str, text: &str) {
     let style = ctx.styles.body(Role::Text);
     let typed = format!("{prefix}{text}");
     let pad = ctx.tokens.md;

@@ -1,13 +1,13 @@
 use groove_gfx::{Rect, TextStyle};
 
-use crate::base::ctx::Ctx;
+use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
 use crate::shape::box_in;
 use crate::text::{Label, row};
 
 /// The room `counts` needs, for a caller placing it against a right edge.
-pub fn counts_room(ctx: &mut Ctx, items: &[(Mark, u32, Role)]) -> f32 {
+pub fn counts_room<A: App>(ctx: &mut Ctx<'_, A>, items: &[(Mark, u32, Role)]) -> f32 {
     let mut wide = 0.0;
     for (_, value, role) in items.iter().filter(|(_, value, _)| *value > 0) {
         let style = ctx.styles.small(*role);
@@ -18,7 +18,12 @@ pub fn counts_room(ctx: &mut Ctx, items: &[(Mark, u32, Role)]) -> f32 {
 }
 
 /// Icon and number pairs from `x`, zeros left out; returns the x after the last.
-pub fn counts(ctx: &mut Ctx, line: Rect, x: f32, items: &[(Mark, u32, Role)]) -> f32 {
+pub fn counts<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    line: Rect,
+    x: f32,
+    items: &[(Mark, u32, Role)],
+) -> f32 {
     let gap = ctx.tokens.xs;
     let mut at = x;
     for (mark, value, role) in items.iter().filter(|(_, value, _)| *value > 0) {
@@ -36,11 +41,11 @@ pub fn counts(ctx: &mut Ctx, line: Rect, x: f32, items: &[(Mark, u32, Role)]) ->
 }
 
 /// What a file lost and gained, from the right of `room`.
-pub fn changes(
-    ctx: &mut Ctx,
+pub fn changes<A: App>(
+    ctx: &mut Ctx<'_, A>,
     room: &mut Rect,
     (added, deleted): (u32, u32),
-    styled: impl Fn(&Ctx, Role) -> TextStyle,
+    styled: impl Fn(&Ctx<'_, A>, Role) -> TextStyle,
 ) {
     room.take_right(ctx.tokens.md);
     for (count, role, sign) in [(deleted, Role::Bad, '-'), (added, Role::Ok, '+')] {

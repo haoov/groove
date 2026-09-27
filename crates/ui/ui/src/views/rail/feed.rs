@@ -5,14 +5,14 @@ use groove_gfx::{Align, Edges, Rect};
 use groove_types::{Error, SessionId, TimelineEvent, Timestamp};
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::motion::turn;
-use crate::base::style::Role;
-use crate::shape::{hairline, hoverable, square};
-use crate::text::{Label, ago};
-use crate::widgets::scrolled;
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::motion::turn;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{hairline, hoverable, square};
+use groove_ui_kit::text::{Label, ago};
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -79,7 +79,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     }
     let height = ctx.tokens.feed_row;
     let at = (Scroller::Feed, ui.offset(Scroller::Feed));
-    scrolled(
+    listed(
         ctx,
         body,
         at,

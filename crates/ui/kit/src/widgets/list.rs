@@ -1,13 +1,12 @@
 use groove_gfx::{Color, Rect, TextStyle};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
+use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::shape::{after_mark, hoverable, leading};
 use crate::text::{elide, row};
 
 /// One line of a list: a text at an indent, and a second text at a fixed offset.
-pub struct Row<'a> {
+pub struct Row<'a, T> {
     pub indent: f32,
     pub text: &'a str,
     pub style: TextStyle,
@@ -16,10 +15,10 @@ pub struct Row<'a> {
     /// A mark before the text, in the text's own colour, and its rotation.
     pub mark: Option<(Mark, u8)>,
     /// What a click on the row means.
-    pub target: Option<Target>,
+    pub target: Option<T>,
 }
 
-impl<'a> Row<'a> {
+impl<'a, T> Row<'a, T> {
     pub fn new(indent: f32, text: &'a str, style: TextStyle) -> Self {
         Self {
             indent,
@@ -33,7 +32,7 @@ impl<'a> Row<'a> {
     }
 
     /// What a click on this row acts on.
-    pub fn target(mut self, target: Target) -> Self {
+    pub fn target(mut self, target: T) -> Self {
         self.target = Some(target);
         self
     }
@@ -50,7 +49,12 @@ impl<'a> Row<'a> {
 }
 
 /// Rows from the top of `rect`, the selected one on a ground; returns the y under the last.
-pub fn list(ctx: &mut Ctx, rect: Rect, rows: &[Row<'_>], selected: Option<usize>) -> f32 {
+pub fn list<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    rows: &[Row<'_, A::Target>],
+    selected: Option<usize>,
+) -> f32 {
     let height = ctx.tokens.row;
     let raised = ctx.styles.raised();
     let mut y = rect.y;

@@ -3,7 +3,7 @@
 use groove_gfx::Fonts;
 use groove_types::Ask;
 
-use crate::base::hit::Target;
+use crate::hit::Target;
 use crate::tests::window;
 use crate::{Surface, Ui};
 

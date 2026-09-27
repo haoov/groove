@@ -4,14 +4,15 @@ use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::{Listing, acted, asking, reads_as};
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::{ruled, square};
-use crate::text::{Label, elide, row};
-use crate::widgets::{changes, scrolled};
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
 use crate::{Losing, Ui};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::{ruled, square};
+use groove_ui_kit::text::{Label, elide, row};
+use groove_ui_kit::widgets::changes;
 
 enum Item<'a> {
     Dir(&'a str, Role),
@@ -29,7 +30,7 @@ pub(super) fn draw(
     let height = ctx.tokens.row;
     let items = items(ctx, listing);
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    scrolled(
+    listed(
         ctx,
         body,
         at,

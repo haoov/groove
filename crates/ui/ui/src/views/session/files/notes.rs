@@ -5,15 +5,15 @@ use groove_gfx::Rect;
 use groove_types::Note;
 
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::hoverable;
-use crate::shape::square;
-use crate::text::Label;
-use crate::text::row;
-use crate::widgets::scrolled;
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::hoverable;
+use groove_ui_kit::shape::square;
+use groove_ui_kit::text::Label;
+use groove_ui_kit::text::row;
+
 use groove_gfx::Edges;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
@@ -31,7 +31,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     }
     let height = ctx.tokens.row;
     let at = (Scroller::Files, ui.offset(Scroller::Files));
-    scrolled(
+    crate::offsets::listed(
         ctx,
         body,
         at,

@@ -7,12 +7,12 @@ use groove_types::DiffMode;
 
 use super::super::files::{ROWS_MAX, Scope};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::shape::hairline;
-use crate::text::row;
-use crate::widgets::tabs;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::hairline;
+use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::tabs;
 
 /// How much the search across the worktree has turned up.
 pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {

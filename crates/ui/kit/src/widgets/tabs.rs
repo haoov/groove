@@ -1,12 +1,17 @@
 use groove_gfx::Rect;
 
-use crate::base::ctx::Ctx;
+use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::shape::hairline;
 use crate::text::row;
 
 /// Labels from the left of `rect`, the selected one raised, a hairline under; returns their boxes.
-pub fn tabs(ctx: &mut Ctx, rect: Rect, labels: &[&str], selected: usize) -> Vec<Rect> {
+pub fn tabs<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    rect: Rect,
+    labels: &[&str],
+    selected: usize,
+) -> Vec<Rect> {
     let pad = ctx.tokens.md;
     let mut boxes = Vec::with_capacity(labels.len());
     let mut x = rect.x;

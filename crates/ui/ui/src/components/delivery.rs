@@ -3,12 +3,12 @@
 use groove_gfx::Rect;
 use groove_types::{CiState, MrState, WorktreeDelivery};
 
-use crate::base::ctx::Ctx;
-use crate::base::mark::Mark;
-use crate::base::style::Role;
-use crate::shape::box_in;
-use crate::text::row;
-use crate::widgets::counts;
+use crate::ctx::Ctx;
+use groove_ui_kit::base::mark::Mark;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::box_in;
+use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::counts;
 
 /// The MR, its checks and its open notes from `x`; returns the x after them.
 pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32 {

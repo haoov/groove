@@ -5,11 +5,11 @@ use groove_controllers::session_service::Living;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Task, Worktree, WorktreeDelivery};
 
-use crate::base::ctx::Ctx;
-use crate::base::hit::Target;
-use crate::base::style::Role;
-use crate::shape::hoverable;
-use crate::text::Label;
+use crate::ctx::Ctx;
+use crate::hit::Target;
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::hoverable;
+use groove_ui_kit::text::Label;
 
 /// One line of a column: an item, a worktree under an open one, or the plan's divider.
 pub(super) enum Line<'a> {
@@ -25,7 +25,7 @@ pub(super) enum Line<'a> {
 
 /// How tall a line stands: one row, and one more when it carries a second line.
 pub(super) fn heights(
-    tokens: &crate::base::tokens::Tokens,
+    tokens: &groove_ui_kit::base::tokens::Tokens,
     app: &AppState,
     lines: &[Line<'_>],
 ) -> Vec<f32> {
@@ -47,7 +47,7 @@ fn under(app: &AppState, line: &Line<'_>) -> bool {
 }
 
 /// How tall one plain line of a column is.
-pub(super) fn item(tokens: &crate::base::tokens::Tokens) -> f32 {
+pub(super) fn item(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
 

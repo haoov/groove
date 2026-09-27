@@ -8,11 +8,11 @@ use groove_controllers::AppState;
 use super::notes::{Inline, Slot, lines, said};
 use super::row::{Drawn, Side, count, drawn};
 use crate::Ui;
-use crate::base::ctx::Ctx;
-use crate::base::hit::{Scroller, Target};
-use crate::base::style::Role;
-use crate::base::tokens::{NOTE_BY, NOTE_SLACK};
 use crate::components::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
+use crate::ctx::Ctx;
+use crate::hit::{Scroller, Target};
+use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::{NOTE_BY, NOTE_SLACK};
 
 /// Who a note left in the app is by.
 pub(crate) const AUTHOR: &str = "you";
@@ -55,7 +55,7 @@ fn surface(
     let inline = Inline::of(app, ui, view);
     let total = inline.total(count(app, view));
     let extent = (height(ctx, total) - rect.h).max(0.0);
-    ctx.scrolls(Scroller::Code, extent);
+    ctx.app.hits.scrolls(Scroller::Code, extent);
     let scroll = ui.session.diff.min(extent);
     let window = visible(ctx, rect, total, scroll);
     let slots: Vec<Slot> = window.clone().map(|row| inline.slot(row)).collect();
@@ -102,12 +102,12 @@ fn gutters_of(rows: &[Drawn]) -> Vec<Vec<&str>> {
 
 /// The rows in view, and where a caret can land in them.
 fn asks(ctx: &mut Ctx, rect: Rect, rows: std::ops::Range<usize>, numbers: Gutters, scroll: f32) {
-    ctx.showing(rows);
+    ctx.app.hits.showing(rows);
     ctx.hit(rect, Target::Code);
     let chars = chars_of(ctx, numbers, rect, scroll);
     let cols = note_cols(ctx, rect, chars.left);
-    ctx.characters(chars);
-    ctx.wraps(cols);
+    ctx.app.hits.characters(chars);
+    ctx.app.hits.wraps(cols);
 }
 
 /// How many characters of a note fit between its column and who said it.
@@ -128,7 +128,7 @@ struct Held<'a> {
     /// Which rows of the window a note stands on.
     noted: &'a [bool],
     /// The note button the pointer stands on, and whose note it is.
-    hovered: Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)>,
+    hovered: Option<(groove_types::NoteOrigin, crate::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
 }
@@ -176,18 +176,18 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
 }
 
 /// The note button under the pointer, and whose note it belongs to.
-fn hovered(ctx: &Ctx) -> Option<(groove_types::NoteOrigin, crate::base::hit::NoteButton)> {
+fn hovered(ctx: &Ctx) -> Option<(groove_types::NoteOrigin, crate::hit::NoteButton)> {
     match ctx.hover() {
-        Some(crate::base::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
+        Some(crate::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
         _ => None,
     }
 }
 
 /// The button of this note the pointer stands on.
 fn on_it(
-    hovered: Option<&(groove_types::NoteOrigin, crate::base::hit::NoteButton)>,
+    hovered: Option<&(groove_types::NoteOrigin, crate::hit::NoteButton)>,
     origin: &groove_types::NoteOrigin,
-) -> Option<crate::base::hit::NoteButton> {
+) -> Option<crate::hit::NoteButton> {
     hovered
         .filter(|(whose, _)| whose == origin)
         .map(|(_, button)| *button)

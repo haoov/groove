@@ -10,7 +10,7 @@ use groove_controllers::AppState;
 use groove_gfx::Fonts;
 use groove_types::{ExternalId, SessionKind};
 
-use crate::base::hit::{Hits, Target};
+use crate::hit::{Hits, Target};
 use crate::input::Key;
 use crate::tests::{CHORD, click, full_app, press, task, window};
 use crate::{Surface, Ui, view};
@@ -131,9 +131,9 @@ fn the_rail_holds_no_selection_while_the_board_is_up() {
             ..Ui::default()
         };
         let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-        let styles = crate::base::style::Styles::new(
+        let styles = groove_ui_kit::base::style::Styles::new(
             app.config.theme(),
-            crate::base::tokens::Tokens::new(1.0),
+            groove_ui_kit::base::tokens::Tokens::new(1.0),
         );
         let rail = crate::layout::Layout::of(window(), &ui).rail;
         frame.layers()[0]
@@ -182,8 +182,8 @@ fn every_row_of_a_column_ends_in_a_hairline() {
         ..Ui::default()
     };
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let tokens = crate::base::tokens::Tokens::new(1.0);
-    let styles = crate::base::style::Styles::new(app.config.theme(), tokens);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let width = (board.w / 3.0).floor();
     let rules = frame.layers()[0]
@@ -248,8 +248,8 @@ fn an_unfolded_item_holds_no_rule_between_its_own_rows() {
         .expect("the item has a twisty");
     click(twisty, &mut ui, &app, &hits);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
-    let tokens = crate::base::tokens::Tokens::new(1.0);
-    let styles = crate::base::style::Styles::new(app.config.theme(), tokens);
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
     let board = crate::layout::Layout::of(window(), &ui).board;
     let width = (board.w / 3.0).floor();
     let rules = frame.layers()[0]

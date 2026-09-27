@@ -1567,7 +1567,16 @@ dependencies = [
  "groove-controllers",
  "groove-gfx",
  "groove-types",
+ "groove-ui-kit",
  "serde_json",
+]
+
+[[package]]
+name = "groove-ui-kit"
+version = "0.1.0"
+dependencies = [
+ "groove-gfx",
+ "groove-types",
 ]
 
 [[package]]
