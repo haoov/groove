@@ -7,7 +7,7 @@ use crate::base::ctx::{Ctx, Metrics};
 use crate::base::hit::Hits;
 use crate::base::style::Styles;
 use crate::layout::Layout;
-use crate::views::{board, session, shared};
+use crate::views::{board, overlays, rail, session, splitter};
 use crate::{Surface, Ui};
 
 /// The whole window as a display list, rebuilt every frame from state.
@@ -26,17 +26,17 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             &mut hits,
             ui.hover.clone(),
         );
-        shared::rail::draw(&mut ctx, app, ui);
+        rail::draw(&mut ctx, app, ui);
         match ui.showing(app) {
             Surface::Session => session::draw(&mut ctx, app, ui),
             Surface::Board => board::draw(&mut ctx, app, ui),
         }
-        shared::splitter::draw(&mut ctx, ui.showing(app));
+        splitter::draw(&mut ctx, ui.showing(app));
         if let Some(menu) = ui.menu() {
-            shared::actions::draw(&mut ctx, menu);
+            overlays::actions::draw(&mut ctx, menu);
         }
         if let Some(palette) = ui.palette() {
-            shared::palette::draw(&mut ctx, app, palette);
+            overlays::palette::draw(&mut ctx, app, palette);
         }
     }
     (frame, hits)

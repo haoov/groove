@@ -20,8 +20,8 @@ use groove_types::DiffView;
 use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::style::Role;
+use crate::components::first;
 use crate::text::Label;
-use crate::widgets::first;
 
 pub(crate) use map::total as rows_of;
 pub(crate) use row::{line_at, text_at};

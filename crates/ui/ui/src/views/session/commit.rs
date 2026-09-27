@@ -8,9 +8,10 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
+use crate::components::{Gutters, Line, Rows, code};
 use crate::shape::hairline;
 use crate::text::Label;
-use crate::widgets::{Gutters, Line, Rows, button, code, counts, mark_button};
+use crate::widgets::{button, counts, mark_button};
 use crate::{Focus, Losing, Ui};
 
 /// The counts and what commits them on one line, the message under it.

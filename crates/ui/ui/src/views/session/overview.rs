@@ -5,12 +5,12 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 
-use super::worktree_row;
 use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
+use crate::components::worktree_row;
 use crate::text::Label;
 use crate::widgets::{Row, list};
 

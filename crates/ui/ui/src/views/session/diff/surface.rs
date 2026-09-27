@@ -12,7 +12,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::style::Role;
 use crate::base::tokens::{NOTE_BY, NOTE_SLACK};
-use crate::widgets::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
+use crate::components::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 
 /// Who a note left in the app is by.
 pub(crate) const AUTHOR: &str = "you";

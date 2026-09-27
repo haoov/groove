@@ -11,8 +11,8 @@ use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 use crate::base::ctx::Metrics;
 use crate::base::hit::{Chars, Hits, Scroller, Target};
 use crate::base::tokens::ABOVE_MATCH;
+use crate::components::{code_at, first};
 use crate::views::session::diff;
-use crate::widgets::{code_at, first};
 use crate::{Click, Focus, Ui};
 
 /// Changes the view, keeping the line at the top of the old one in view.

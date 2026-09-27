@@ -1,7 +1,9 @@
+mod feed;
+mod item;
+
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
-use super::rail_item;
 use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
@@ -46,7 +48,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         h: band.h,
         ..column
     };
-    super::feed::draw(ctx, feed, app, ui);
+    feed::draw(ctx, feed, app, ui);
     footer(ctx, foot);
 }
 
@@ -80,7 +82,7 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         .session
         .open
         .iter()
-        .map(|open| (open, rail_item::height(ctx, app, &open.session.id)))
+        .map(|open| (open, item::height(ctx, app, &open.session.id)))
         .collect();
     let at = (Scroller::Rail, ui.offset(Scroller::Rail));
     scrolled(
@@ -89,7 +91,7 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         at,
         &items,
         |(_, tall)| *tall,
-        |ctx, rect, (open, _)| rail_item::draw(ctx, app, ui, rect, open),
+        |ctx, rect, (open, _)| item::draw(ctx, app, ui, rect, open),
     );
 }
 

@@ -14,10 +14,10 @@ use groove_gfx::{Fonts, Rect};
 
 use crate::base::hit::Target;
 use crate::base::tokens::Tokens;
+use crate::components::code_at;
 use crate::input::{Delta, Input};
 use crate::tests::{WINDOW, click, full_app, handle, shows, window};
 use crate::views::session::Tab;
-use crate::widgets::code_at;
 use crate::{Ui, view};
 use groove_types::{DiffView, LineMark};
 

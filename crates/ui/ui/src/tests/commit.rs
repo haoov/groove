@@ -164,7 +164,7 @@ fn the_box_offers_the_worktree_s_own_actions() {
         }
     );
     let hits = drawn(&app, &ui);
-    for at in 0..crate::views::shared::actions::WORKTREE.len() {
+    for at in 0..crate::views::overlays::actions::WORKTREE.len() {
         assert!(
             hits.rect_of(&Target::MenuRow(at)).is_some(),
             "row {at} is drawn"
@@ -378,13 +378,13 @@ fn a_branch_that_already_has_one_offers_nothing_on_the_button() {
 
 #[test]
 fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
-    let plain = crate::views::shared::actions::rows(&crate::Of::Worktree {
+    let plain = crate::views::overlays::actions::rows(&crate::Of::Worktree {
         mr: false,
         review: false,
     });
     assert!(!plain.contains(&"update mr"), "{plain:?}");
 
-    let with_mr = crate::views::shared::actions::rows(&crate::Of::Worktree {
+    let with_mr = crate::views::overlays::actions::rows(&crate::Of::Worktree {
         mr: true,
         review: false,
     });
@@ -394,7 +394,7 @@ fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
         .iter()
         .position(|row| *row == "close mr")
         .expect("the row");
-    let picked = crate::views::shared::actions::picked(
+    let picked = crate::views::overlays::actions::picked(
         &crate::Of::Worktree {
             mr: true,
             review: false,
@@ -411,7 +411,7 @@ fn the_menu_offers_the_mr_writes_only_where_there_is_one_to_write() {
 
 #[test]
 fn a_review_session_offers_a_verdict_and_a_comment() {
-    let rows = crate::views::shared::actions::rows(&crate::Of::Worktree {
+    let rows = crate::views::overlays::actions::rows(&crate::Of::Worktree {
         mr: true,
         review: true,
     });
@@ -426,7 +426,7 @@ fn a_review_session_offers_a_verdict_and_a_comment() {
 
 #[test]
 fn a_session_of_its_own_work_offers_a_comment_and_no_verdict() {
-    let rows = crate::views::shared::actions::rows(&crate::Of::Worktree {
+    let rows = crate::views::overlays::actions::rows(&crate::Of::Worktree {
         mr: true,
         review: false,
     });
@@ -443,9 +443,9 @@ fn picking_a_verdict_asks_for_the_review() {
         mr: true,
         review: true,
     };
-    let rows = crate::views::shared::actions::rows(&of);
+    let rows = crate::views::overlays::actions::rows(&of);
     let at = |label: &str| rows.iter().position(|one| *one == label).expect(label);
-    let picked = |label: &str| crate::views::shared::actions::picked(&of, at(label)).commands;
+    let picked = |label: &str| crate::views::overlays::actions::picked(&of, at(label)).commands;
     assert_eq!(
         picked("approve"),
         [groove_controllers::Command::Delivery(

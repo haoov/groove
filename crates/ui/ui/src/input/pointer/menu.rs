@@ -128,7 +128,7 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
-    let picked = crate::views::shared::actions::picked(&menu.of, at);
+    let picked = crate::views::overlays::actions::picked(&menu.of, at);
     ui.overlay = picked.asking.map(Overlay::Losing);
     ui.session.naming = picked.naming;
     ui.session.noting = picked.noting;

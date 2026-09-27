@@ -160,7 +160,8 @@ renderer draws it. Neither crate sees the other's types.
 - Rounded rects and borders: one SDF fragment shader. Clipping: a scissor per batch.
 - Chrome is owned and minimal: about eight primitives on `gfx`, plus focus, hit testing
   and scroll. No general toolkit, no layout engine. The ui crate stacks `base/` (context,
-  hits, tokens, styles, marks, motion), `shape` and `text`, `widgets/`, then `views/`.
+  hits, tokens, styles, marks, motion), `shape` and `text`, `widgets/` on plain data,
+  `components/` that know Groove's types, then `views/`.
 
 Stack: wgpu 30 · glyphon 0.12 · alacritty_terminal 0.26 · ropey · tree-sitter ·
 imara-diff.

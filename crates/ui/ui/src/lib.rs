@@ -3,6 +3,7 @@
 use groove_controllers::AppState;
 
 mod base;
+mod components;
 pub mod input;
 mod layout;
 mod offsets;
@@ -24,8 +25,8 @@ pub use base::tokens::Tokens;
 pub use layout::{Edge, Split};
 pub use render::{layout_commands, view};
 pub use views::board::BoardUi;
+pub use views::rail::RailUi;
 pub use views::session::{Asked, Naming, Scope, SessionUi, Tab};
-pub use views::shared::rail::RailUi;
 
 /// What the window shows beside the rail.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

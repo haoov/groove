@@ -13,7 +13,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::widgets::{Gutters, head_mark};
+use crate::components::{Gutters, head_mark};
 
 /// What a head row offers (fold, mark read) and what a gap offers (its lines, from either end).
 pub(super) fn marks(

@@ -225,3 +225,32 @@ fn code_stays_readable_on_every_ground_it_is_drawn_on() {
         }
     }
 }
+
+#[test]
+fn a_widget_never_reaches_up_to_the_app() {
+    const UP: [&str; 7] = [
+        "groove_controllers",
+        "crate::Ui",
+        "crate::views",
+        "crate::components",
+        "crate::palette",
+        "crate::input",
+        "crate::layout",
+    ];
+    let mut offenders = Vec::new();
+    for (path, text) in sources() {
+        let low = path.starts_with("widgets") || path == "shape.rs" || path == "text.rs";
+        if !low {
+            continue;
+        }
+        for (at, line) in code_lines(&text) {
+            if UP.iter().any(|up| line.contains(up)) {
+                offenders.push(format!("{path}:{}: {}", at + 1, line.trim()));
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "widgets, shapes and text take plain data: {offenders:#?}"
+    );
+}

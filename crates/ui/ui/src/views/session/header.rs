@@ -8,9 +8,10 @@ use crate::base::hit::{Picks, Target};
 use crate::base::mark::Mark;
 use crate::base::motion::turn;
 use crate::base::style::Role;
+use crate::components::{delivered, room_for};
 use crate::shape::{hairline, square};
 use crate::text::{Label, elide};
-use crate::widgets::{button, delivered, icon, mark_button, picker, room_for};
+use crate::widgets::{button, icon, mark_button, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {

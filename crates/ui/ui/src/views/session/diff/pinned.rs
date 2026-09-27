@@ -9,7 +9,7 @@ use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::tokens::{PINNED_DEEP, PINNED_SHARE};
-use crate::widgets::{Gutters, Line, Rows, code, first, head_mark};
+use crate::components::{Gutters, Line, Rows, code, first, head_mark};
 
 /// One line held above the rows.
 struct Pin {

@@ -31,7 +31,7 @@ fn menu(app: &AppState, ui: &mut Ui, target: &Target) -> Of {
 /// Picks the row named `label` of the open menu.
 fn pick(app: &AppState, ui: &mut Ui, label: &str) -> Vec<Command> {
     let of = ui.menu().expect("a menu").of.clone();
-    let at = crate::views::shared::actions::rows(&of)
+    let at = crate::views::overlays::actions::rows(&of)
         .iter()
         .position(|row| *row == label)
         .unwrap_or_else(|| panic!("{label} is offered"));
@@ -95,7 +95,7 @@ fn a_directory_offers_what_can_be_done_to_a_path() {
             dir: true
         }
     );
-    let rows = crate::views::shared::actions::rows(&of);
+    let rows = crate::views::overlays::actions::rows(&of);
     assert_eq!(
         rows,
         ["new file", "new directory", "rename", "copy", "delete"]

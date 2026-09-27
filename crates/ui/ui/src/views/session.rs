@@ -10,7 +10,6 @@ pub mod header;
 pub mod overview;
 mod sheet;
 mod state;
-pub mod worktree_row;
 
 pub(crate) use files::changed;
 pub use state::{Asked, Bar, Naming, Noting, Pane, Scope, SessionUi, Tab, Term, Writing};
