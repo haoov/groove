@@ -45,7 +45,7 @@ pub(super) fn scroll(
     }
     match ui.session.tab {
         Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
-        Tab::File => ui.wheeled(Scroller::Code, pixels(tokens.line), hits),
+        Tab::Diff | Tab::Files => ui.wheeled(Scroller::Code, pixels(tokens.line), hits),
     }
     Vec::new()
 }

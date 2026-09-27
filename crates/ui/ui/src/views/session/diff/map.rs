@@ -3,12 +3,13 @@
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Aligned;
 use groove_gfx::Rect;
-use groove_types::{DiffView, LineMark, RowKind};
+use groove_types::{LineMark, RowKind};
 
 use super::notes::Inline;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::views::session::Face;
 
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &Ui) {
     let total = total(app, ui);
@@ -17,9 +18,9 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
     }
     ctx.quad(rect, ctx.styles.band());
     let per = rect.h / total as f32;
-    let inline = Inline::of(app, ui, ui.session.view);
-    match ui.session.view {
-        DiffView::Editor => whole(ctx, rect, per, app, &inline),
+    let inline = Inline::of(app, ui, ui.session.face());
+    match ui.session.face() {
+        Face::File => whole(ctx, rect, per, app, &inline),
         _ => change(ctx, rect, per, app, &inline),
     }
     lens(ctx, rect, per, body, ui);
@@ -28,7 +29,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &U
 
 /// What the column stands for: the rows of the view, and the notes in them.
 pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
-    let view = ui.session.view;
+    let view = ui.session.face();
     Inline::of(app, ui, view).total(super::row::count(app, view))
 }
 
@@ -59,7 +60,7 @@ fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
 
 /// The open file alone: what the change did to each of its lines.
 fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
-    let Some(open) = app.workspace.opened.as_ref() else {
+    let Some(open) = app.workspace.active() else {
         return;
     };
     let mut runs: Vec<(usize, usize, LineMark)> = Vec::new();
@@ -130,7 +131,7 @@ fn runs(file: &Aligned) -> Vec<(usize, usize, LineMark)> {
 fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
     let line = ctx.tokens.line;
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
-    let top = rect.y + ui.session.diff / line * per;
+    let top = rect.y + ui.session.scroll() / line * per;
     let held = Rect::new(rect.x, top.min(rect.bottom() - high), rect.w, high);
     ctx.border(held, ctx.styles.lens());
 }

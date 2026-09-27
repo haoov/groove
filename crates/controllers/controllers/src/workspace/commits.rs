@@ -67,7 +67,6 @@ fn shown(
     let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return;
     };
-    state.workspace.opened = None;
     state.workspace.loaded(worktree, files, changes);
     state.workspace.commit = Some(entry);
 }
@@ -77,6 +76,5 @@ pub(super) fn leave(state: &mut AppState, spawner: &dyn Spawner) {
     if state.workspace.commit.take().is_none() {
         return;
     }
-    state.workspace.opened = None;
     super::diff::reread(state, spawner);
 }

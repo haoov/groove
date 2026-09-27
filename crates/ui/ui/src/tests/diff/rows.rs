@@ -104,7 +104,7 @@ fn a_changed_row_shades_the_word_that_changed_and_not_the_rest() {
 fn the_file_view_shades_what_changed_inside_a_changed_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let color = styles

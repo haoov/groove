@@ -227,13 +227,16 @@ fn a_file_with_no_change_offers_nothing_to_stage() {
 fn a_file_with_no_change_shows_its_own_lines() {
     let mut app = with_files(&[]);
     with_paths(&mut app, &["src/two/beta.rs"]);
-    app.workspace.opened = Some(groove_controllers::workspace_service::from_text(
-        "src/two/beta.rs",
-        "one\ntwo\n",
-        "one\ntwo\n",
-    ));
+    crate::tests::open_file(
+        &mut app,
+        groove_controllers::workspace_service::from_text(
+            "src/two/beta.rs",
+            "one\ntwo\n",
+            "one\ntwo\n",
+        ),
+    );
     let mut ui = on_diff();
-    ui.session.view = groove_types::DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let texts: Vec<String> = frame
         .layers()
@@ -277,8 +280,8 @@ fn opening_a_file_the_change_does_not_hold_shows_it_as_a_file() {
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].id(), "workspace.open_file");
     assert_eq!(
-        ui.session.view,
-        groove_types::DiffView::Editor,
-        "an unchanged file has only one view that can show it"
+        ui.session.tab,
+        crate::views::session::Tab::Files,
+        "an unchanged file opens in the Files tab"
     );
 }

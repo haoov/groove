@@ -2,37 +2,10 @@
 
 use groove_types::{Anchor, DiffView};
 
+pub use super::tab::{Face, Tab};
+
 use super::find::Finding;
 use groove_ui_kit::widgets::Field;
-
-/// Which tab of the workspace is up.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum Tab {
-    #[default]
-    Overview,
-    /// The file: its own text, or the change in it.
-    File,
-}
-
-impl Tab {
-    /// Every tab, in the order the strip shows them.
-    pub const ALL: [Tab; 2] = [Tab::Overview, Tab::File];
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Tab::Overview => "overview",
-            Tab::File => "file",
-        }
-    }
-
-    /// Whether the tab brings its own list beside the workspace.
-    pub fn has_sidebar(self) -> bool {
-        match self {
-            Tab::Overview => false,
-            Tab::File => true,
-        }
-    }
-}
 
 /// What the session surface remembers between frames.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -44,11 +17,13 @@ pub struct SessionUi {
     pub files: f32,
     /// The user folded the sidebar away.
     pub folded: bool,
-    /// How far the open file is scrolled, in pixels.
+    /// How far the stream is scrolled, in pixels.
     pub diff: f32,
+    /// How far the active file is scrolled, in pixels.
+    pub file: f32,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
-    /// Which of the three views the open file is drawn in.
+    /// Which of the two views the stream is drawn in.
     pub view: DiffView,
     /// The keyboard is in the commit box.
     pub composing: bool,
@@ -58,8 +33,6 @@ pub struct SessionUi {
     pub shut: std::collections::BTreeSet<String>,
     /// The bar over the rows, while a search of them is live.
     pub find: Option<Finding>,
-    /// Which files the sidebar lists: the ones that changed, or the whole worktree.
-    pub scope: Scope,
     /// Which of the sidebar's lists is up.
     pub pane: Pane,
     /// The explorer's own directories that stand open.
@@ -183,28 +156,9 @@ impl Pane {
 
     pub fn label(self) -> &'static str {
         match self {
-            Pane::Files => "files",
+            Pane::Files => "changed",
             Pane::Commits => "commits",
             Pane::Notes => "notes",
-        }
-    }
-}
-
-/// Which files the sidebar lists.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum Scope {
-    #[default]
-    Changed,
-    All,
-}
-
-impl Scope {
-    pub const ALL: [Scope; 2] = [Scope::Changed, Scope::All];
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Scope::Changed => "changed",
-            Scope::All => "all",
         }
     }
 }
@@ -273,6 +227,28 @@ impl Bar {
 }
 
 impl SessionUi {
+    pub fn face(&self) -> Face {
+        match self.tab {
+            Tab::Files => Face::File,
+            _ => Face::Stream(self.view),
+        }
+    }
+
+    /// How far the surface the tab shows is scrolled.
+    pub fn scroll(&self) -> f32 {
+        match self.face() {
+            Face::File => self.file,
+            Face::Stream(_) => self.diff,
+        }
+    }
+
+    pub fn scroll_mut(&mut self) -> &mut f32 {
+        match self.face() {
+            Face::File => &mut self.file,
+            Face::Stream(_) => &mut self.diff,
+        }
+    }
+
     /// Whether a bar has the keyboard.
     pub fn typing(&self) -> bool {
         self.bar.typing.is_some()
@@ -287,6 +263,6 @@ impl SessionUi {
 
     /// Whether the commit box stands under the sidebar, which only the files list has.
     pub fn commits(&self) -> bool {
-        self.sidebar() && self.pane == Pane::Files
+        self.sidebar() && self.tab == Tab::Diff && self.pane == Pane::Files
     }
 }

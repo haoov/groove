@@ -6,9 +6,10 @@ use std::ops::Range;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{At, Opened, display_at, shown};
-use groove_types::{Caret, DiffView, Highlight, LineMark, RowKind};
+use groove_types::{Caret, Highlight, LineMark, RowKind};
 
 use self::stream::streamed;
+use crate::views::session::Face;
 use crate::{Focus, Ui};
 
 /// Which file a row is read from.
@@ -53,26 +54,26 @@ pub(super) struct Drawn {
 pub(super) fn drawn(
     app: &AppState,
     ui: &Ui,
-    view: DiffView,
+    view: Face,
     side: Side,
     window: Range<usize>,
 ) -> Vec<Drawn> {
     match view {
-        DiffView::Editor => whole(app, ui, window),
-        _ => streamed(app, ui, view, side, window),
+        Face::File => whole(app, ui, window),
+        Face::Stream(view) => streamed(app, ui, view, side, window),
     }
 }
 
 /// How many rows the view stands, all of it.
-pub(super) fn count(app: &AppState, view: DiffView) -> usize {
+pub(super) fn count(app: &AppState, view: Face) -> usize {
     match view {
-        DiffView::Editor => open(app).map_or(0, |file| file.new.lines().max(1)),
+        Face::File => open(app).map_or(0, |file| file.new.lines().max(1)),
         _ => app.workspace.changes.rows(),
     }
 }
 
 pub(super) fn open(app: &AppState) -> Option<&Opened> {
-    app.workspace.opened.as_ref()
+    app.workspace.active()
 }
 
 /// The lines of the open file as it is now, marked where the change touched them.
@@ -81,7 +82,9 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
         return Vec::new();
     };
     let caret = caret(ui, file);
-    let colours = file.new.colours(window.clone());
+    let stamp = (app.workspace.stamp, file.new.revision());
+    let doc = file.new.document();
+    let colours = ui.painted.of(doc, &file.path, false, stamp, window.clone());
     let width = file.new.document().indent().width();
     window
         .map(|at| {
@@ -164,17 +167,12 @@ pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
 }
 
 /// The file and new-side line a row shows; a note's row shows none.
-pub(crate) fn line_at(
-    app: &AppState,
-    ui: &Ui,
-    view: DiffView,
-    row: usize,
-) -> Option<(String, usize)> {
+pub(crate) fn line_at(app: &AppState, ui: &Ui, view: Face, row: usize) -> Option<(String, usize)> {
     let super::notes::Slot::Code(row) = super::notes::Inline::of(app, ui, view).slot(row) else {
         return None;
     };
     match view {
-        DiffView::Editor => {
+        Face::File => {
             let file = open(app)?;
             (row < file.new.lines().max(1)).then(|| (file.path.clone(), row))
         }

@@ -93,7 +93,7 @@ fn a_keystroke_shows_in_the_stream_before_the_rows_are_aligned_again() {
     let mut app = opened();
     let mut ui = on_diff();
     ui.focus = crate::Focus::Workspace;
-    let buffer = &mut app.workspace.opened.as_mut().expect("the open file").new;
+    let buffer = &mut app.workspace.active_mut().expect("the open file").new;
     buffer.edit(&Edit::Move(Motion::To(Caret::new(0, 0))));
     buffer.edit(&Edit::Insert("typed".into()));
     let drawn = texts(&app, &ui);
@@ -157,7 +157,7 @@ fn a_press_on_the_map_holds_the_rows_it_points_at() {
 fn the_file_view_makes_the_map_the_file_s_own_scrollbar() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (frame, hits) = view_of(&app, &ui);
     let column = hits.rect_of(&Target::Map).expect("the map is drawn");
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
@@ -336,16 +336,10 @@ fn a_file_picked_in_the_sidebar_is_shown_again_when_it_was_folded() {
     let commands = click(row, &mut ui, &app, &hits);
     assert_eq!(
         commands,
-        [
-            Command::Workspace(workspace::Command::Fold {
-                path: "src/b.rs".into()
-            }),
-            Command::Workspace(workspace::Command::OpenFile {
-                path: "src/b.rs".into(),
-                at: None
-            }),
-        ],
-        "it opens, and its rows come back"
+        [Command::Workspace(workspace::Command::Fold {
+            path: "src/b.rs".into()
+        })],
+        "its rows come back, and no tab opens for it"
     );
 }
 
@@ -370,33 +364,46 @@ fn a_file_head_says_it_can_be_clicked() {
 }
 
 #[test]
-fn the_header_names_the_file_that_is_open() {
+fn the_header_names_the_top_file_in_the_diff_and_the_active_one_in_files() {
     let mut app = both();
-    let ui = on_diff();
+    let mut ui = on_diff();
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     let row = Tokens::new(1.0).row;
-    let header = |app: &AppState| {
-        let (frame, _) = view_of(app, &ui);
+    let header = |app: &AppState, ui: &Ui| {
+        let strip = match ui.session.tab {
+            crate::views::session::Tab::Files => row + Tokens::new(1.0).sm,
+            _ => 0.0,
+        };
+        let (frame, _) = view_of(app, ui);
         frame.layers()[0]
             .texts
             .iter()
             .filter(|run| run.x >= workspace.x && run.x < workspace.right())
-            .filter(|run| run.y >= workspace.y + row && run.y < workspace.y + row * 2.0)
+            .filter(|run| {
+                let top = workspace.y + row + strip;
+                run.y >= top && run.y < top + row
+            })
             .map(|run| run.text.clone())
             .collect::<Vec<String>>()
     };
     assert!(
-        header(&app).iter().any(|text| text.ends_with("a.rs")),
+        header(&app, &ui).iter().any(|text| text.ends_with("a.rs")),
         "with nothing open it names the file the rows start on: {:?}",
-        header(&app)
+        header(&app, &ui)
     );
 
     crate::tests::shows(&mut app, "src/b.rs", FILES[1].1, FILES[1].2);
     changed_files(&mut app, &FILES);
-    let named = header(&app);
+    let named = header(&app, &ui);
+    assert!(
+        named.iter().any(|text| text.ends_with("a.rs")),
+        "the diff keeps the file its rows start on: {named:?}"
+    );
+    ui.session.tab = crate::views::session::Tab::Files;
+    let named = header(&app, &ui);
     assert!(
         named.iter().any(|text| text.ends_with("b.rs")),
-        "and once a file is open, that one: {named:?}"
+        "the Files tab names the active one: {named:?}"
     );
     assert!(
         !named.iter().any(|text| text.ends_with("a.rs")),

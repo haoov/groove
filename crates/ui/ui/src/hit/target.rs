@@ -35,10 +35,12 @@ pub enum Target {
     LogHours(groove_types::ExternalId),
     /// The timeline's own bar, which folds it away.
     Timeline,
+    /// An open file's tab, which a click makes the active one.
+    OpenTab(String),
+    /// What closes that tab.
+    CloseTab(String),
     /// A directory of the explorer, which a click opens or shuts.
     Dir(String),
-    /// Which files the sidebar lists.
-    Scope(crate::views::session::Scope),
     /// Which of the sidebar's lists is up.
     Pane(crate::views::session::Pane),
     /// One note of the sidebar's list, which a click opens the line of.

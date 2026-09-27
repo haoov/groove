@@ -22,7 +22,7 @@ fn a_file_in_the_sidebar_opens_on_a_click() {
 fn the_wheel_over_the_workspace_scrolls_the_file() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     let wheel = |pixels: f32, ui: &mut Ui| {
@@ -42,15 +42,15 @@ fn the_wheel_over_the_workspace_scrolls_the_file() {
         );
     };
     wheel(-40.0, &mut ui);
-    assert_eq!(ui.session.diff, 40.0);
+    assert_eq!(ui.session.scroll(), 40.0);
     assert_eq!(ui.session.files, 0.0, "the sidebar stayed where it was");
 
     wheel(-40_000.0, &mut ui);
-    let bottom = ui.session.diff;
+    let bottom = ui.session.scroll();
     assert!(bottom > 40.0, "it went down: {bottom}");
     wheel(40.0, &mut ui);
     assert_eq!(
-        ui.session.diff,
+        ui.session.scroll(),
         bottom - 40.0,
         "one notch back up moves at once"
     );
@@ -222,13 +222,15 @@ fn changing_the_view_keeps_the_same_line_in_view() {
     let height = Tokens::new(1.0).line;
     ui.session.diff = height * 6.0;
     let (_, hits) = view_of(&app, &ui);
-    let file = hits.rect_of(&Target::View(DiffView::Editor)).expect("file");
-    assert!(click(file, &mut ui, &app, &hits).is_empty());
-    assert_eq!(
-        ui.session.diff,
-        height * 18.0,
-        "row 6 of the diff is line 19, the file view's row 18"
-    );
+    let top = |ui: &Ui| {
+        let row = crate::components::first(height, ui.session.diff);
+        crate::views::session::diff::line_at(&app, ui, ui.session.face(), row)
+    };
+    let before = top(&ui);
+    let split = hits.rect_of(&Target::View(DiffView::Split)).expect("split");
+    assert!(click(split, &mut ui, &app, &hits).is_empty());
+    assert_eq!(ui.session.view, DiffView::Split);
+    assert_eq!(top(&ui), before, "the same line stands at the top");
 
     let inline = hits.rect_of(&Target::View(DiffView::Inline)).expect("back");
     assert!(click(inline, &mut ui, &app, &hits).is_empty());
@@ -243,7 +245,7 @@ fn changing_the_view_keeps_the_same_line_in_view() {
 fn a_wheel_notch_over_the_file_moves_one_code_line() {
     let app = many(200);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
     handle(
@@ -262,7 +264,8 @@ fn a_wheel_notch_over_the_file_moves_one_code_line() {
     );
     let tokens = Tokens::new(1.0);
     assert_eq!(
-        ui.session.diff, tokens.line,
+        ui.session.scroll(),
+        tokens.line,
         "a code row, not a list row of {}",
         tokens.row
     );
@@ -293,5 +296,26 @@ fn a_click_lands_when_the_scroll_sits_past_what_the_file_has() {
         commands,
         [Command::Workspace(workspace::Command::Edit(wanted))],
         "the click reads the rows the frame drew, not a scroll it clamped away"
+    );
+}
+
+#[test]
+fn the_files_tab_draws_from_where_it_is_scrolled() {
+    let app = many(200);
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.file = Tokens::new(1.0).line * 50.0;
+    let (frame, _) = view_of(&app, &ui);
+    let workspace = crate::layout::Layout::of(window(), &ui).workspace;
+    let numbers: Vec<u32> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.x >= workspace.x && run.x < workspace.right())
+        .filter_map(|run| run.text.parse().ok())
+        .collect();
+    assert!(numbers.contains(&60), "line 60 is on screen: {numbers:?}");
+    assert!(
+        !numbers.contains(&2),
+        "line 2 is scrolled away: {numbers:?}"
     );
 }

@@ -2,17 +2,16 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::FOUND_MAX;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::DiffMode;
 
-use super::super::files::{ROWS_MAX, Scope};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::views::session::Tab;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
-use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::tabs;
+use groove_ui_kit::text::{Label, row};
 
 /// How much the search across the worktree has turned up.
 pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
@@ -26,21 +25,20 @@ pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
     hairline(ctx, rect, ctx.styles.line());
 }
 
-/// The two scopes, the one in use lit and counted, each a tab to click.
-pub(super) fn heading(ctx: &mut Ctx, rect: Rect, count: usize, app: &AppState, ui: &Ui) {
-    let labels: Vec<String> = Scope::ALL
-        .iter()
-        .map(|scope| scoped(*scope, count, ui.session.scope == *scope))
-        .collect();
-    let shown: Vec<&str> = labels.iter().map(String::as_str).collect();
-    let at = Scope::ALL
-        .iter()
-        .position(|scope| *scope == ui.session.scope)
-        .unwrap_or(0);
-    for (scope, line) in Scope::ALL.iter().zip(tabs(ctx, rect, &shown, at)) {
-        ctx.hit(line, Target::Scope(*scope));
+/// In the diff what the change is read against; in Files the directory the tree stands in.
+pub(super) fn heading(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
+    hairline(ctx, rect, ctx.styles.line());
+    if ui.session.tab == Tab::Diff {
+        return modes(ctx, rect, app.workspace.mode);
     }
-    modes(ctx, rect, app.workspace.mode);
+    let dir = app.session.selected_worktree().map(|one| one.dir());
+    let name = dir
+        .as_ref()
+        .and_then(|dir| dir.file_name())
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let room = rect.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    Label::new(&name, ctx.styles.label(Role::Muted)).draw(ctx, room);
 }
 
 /// What the change is read against, the one in use raised, at the row's own end.
@@ -63,14 +61,5 @@ fn modes(ctx: &mut Ctx, line: Rect, current: DiffMode) {
         row(ctx, box_, pad, mode.label(), style);
         ctx.hit(box_, Target::Mode(mode));
         at -= gap;
-    }
-}
-
-/// A scope's own name, with what the list holds under it.
-fn scoped(scope: Scope, count: usize, here: bool) -> String {
-    match (here, count) {
-        (true, n) if n >= ROWS_MAX => format!("{} · {n}+", scope.label()),
-        (true, n) if n > 0 => format!("{} · {n}", scope.label()),
-        _ => scope.label().to_string(),
     }
 }

@@ -121,7 +121,13 @@ fn taken<T: Send + 'static>(
                     Err(e) => return state.failed(e),
                 };
                 if let Some(open) = state.session.get_mut(&id) {
+                    let before: Vec<WorktreeId> =
+                        open.worktrees.iter().map(|w| w.id.clone()).collect();
                     apply(open, done);
+                    let kept: Vec<&WorktreeId> = open.worktrees.iter().map(|w| &w.id).collect();
+                    for gone in before.iter().filter(|one| !kept.contains(one)) {
+                        state.workspace.forget(gone);
+                    }
                 }
                 persist_selection(state, services, spawner, &id);
                 crate::workspace::follow(state, spawner);

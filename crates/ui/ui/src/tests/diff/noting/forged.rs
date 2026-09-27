@@ -163,7 +163,7 @@ fn a_reply_is_typed_under_the_thread_it_answers() {
 fn a_line_someone_else_commented_on_still_takes_a_note() {
     let app = delivered(vec![thread()]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -181,7 +181,7 @@ fn a_line_whose_note_is_resolved_takes_another() {
     one.resolved = true;
     let app = delivered(vec![one]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     assert!(
         ui.menu().is_some(),

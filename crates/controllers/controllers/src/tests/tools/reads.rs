@@ -72,21 +72,6 @@ fn the_pool_says_which_repos_the_session_already_has() {
 }
 
 #[test]
-fn no_open_file_is_said_as_none() {
-    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
-
-    let answer = asked(
-        &mut state,
-        &services,
-        &spawner,
-        "gh-nothing",
-        "get_open_file",
-        json!({}),
-    );
-    assert_eq!(said(&answer)["open_file"], Value::Null);
-}
-
-#[test]
 fn the_diff_says_what_changed_in_every_worktree_of_the_task() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());

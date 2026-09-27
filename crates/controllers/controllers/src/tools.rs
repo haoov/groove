@@ -34,7 +34,6 @@ pub fn answer(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         "read_user_skill" => session::skill(state, call),
         "get_task_body" => task::body(state, spawner, call),
         "get_task_template" => task::template(state, spawner, call),
-        "get_open_file" => files::open_file(state, call),
         "read_file" => files::read(state, spawner, call),
         tool => match groove_agent_service::tools::named(tool) {
             Some(one) if one.writes => write::asked(state, services, spawner, call),

@@ -34,7 +34,7 @@ fn listed(files: &[FileDiff]) -> AppState {
 
 fn sidebar() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     ui
 }
 

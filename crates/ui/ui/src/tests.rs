@@ -92,7 +92,7 @@ fn release(ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
 /// The open file, and the whole change it belongs to.
 fn shows(app: &mut AppState, path: &str, before: &str, after: &str) {
     use groove_controllers::workspace_service::from_text;
-    app.workspace.opened = Some(from_text(path, before, after));
+    open_file(app, from_text(path, before, after));
     changed_files(app, &[(path, before, after)]);
 }
 
@@ -119,7 +119,7 @@ fn changed_files(app: &mut AppState, files: &[(&str, &str, &str)]) {
 /// The sidebar with the keyboard, for the bar's own clicks.
 fn sidebar_ui() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = crate::views::session::Tab::File;
+    ui.session.tab = crate::views::session::Tab::Diff;
     ui.focus = crate::Focus::Sidebar;
     ui
 }
@@ -229,5 +229,31 @@ fn task(short_id: &str, title: &str, external: &str) -> groove_types::Task {
         url: None,
         board: Some("Platform".into()),
         branch_tag: Some("50".into()),
+    }
+}
+
+/// A file open for editing in the worktree the workspace holds, and active.
+fn open_file(app: &mut AppState, file: groove_controllers::workspace_service::Opened) {
+    let worktree = match app.workspace.worktree.clone() {
+        Some(one) => one,
+        None => {
+            let one = WorktreeId::new("w");
+            app.workspace
+                .loaded(one.clone(), Vec::new(), Default::default());
+            one
+        }
+    };
+    app.workspace.arrived(&worktree, file, None, true);
+}
+
+/// The session surface on the tab and view that draw this face.
+fn set_face(ui: &mut Ui, face: crate::views::session::Face) {
+    use crate::views::session::{Face, Tab};
+    match face {
+        Face::File => ui.session.tab = Tab::Files,
+        Face::Stream(view) => {
+            ui.session.tab = Tab::Diff;
+            ui.session.view = view;
+        }
     }
 }

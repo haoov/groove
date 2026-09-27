@@ -25,7 +25,7 @@ fn a_long_path_keeps_its_end() {
 }
 
 #[test]
-fn the_switch_names_the_three_views_and_picks_one() {
+fn the_switch_names_the_two_views_and_picks_one() {
     let app = opened();
     let mut ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -45,8 +45,19 @@ fn the_switch_names_the_three_views_and_picks_one() {
         .iter()
         .map(|one| one.text.clone())
         .collect();
-    for named in ["editor", "inline", "split"] {
+    for named in ["inline", "split"] {
         assert!(texts.iter().any(|one| one == named), "{named}: {texts:?}");
+    }
+}
+
+#[test]
+fn the_files_tab_has_no_view_to_switch() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    for view in DiffView::ALL {
+        assert!(hits.rect_of(&Target::View(view)).is_none(), "{view:?}");
     }
 }
 
@@ -68,7 +79,7 @@ fn the_header_says_when_the_file_owes_the_disk() {
     assert_eq!(marks(&app), 0, "nothing is owed yet");
 
     let mut dirty = opened();
-    if let Some(open) = dirty.workspace.opened.as_mut() {
+    if let Some(open) = dirty.workspace.active_mut() {
         open.new.edit(&groove_types::Edit::Insert("x".into()));
     }
     assert_eq!(marks(&dirty), 1, "and a mark once something is typed");

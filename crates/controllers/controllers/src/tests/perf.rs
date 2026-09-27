@@ -48,7 +48,7 @@ fn time_a_save_reaching_the_state() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
 
     let mut total = Duration::ZERO;
@@ -60,8 +60,7 @@ fn time_a_save_reaching_the_state() {
         std::fs::write(&file, &text).unwrap();
         settle(&spawner, &services, &mut state, |s| {
             s.workspace
-                .opened
-                .as_ref()
+                .active()
                 .is_some_and(|open| open.new.lines() == wanted)
         });
         total += started.elapsed();
@@ -70,4 +69,48 @@ fn time_a_save_reaching_the_state() {
         "a 300-line file saved: {:?} from write to state",
         total / RUNS
     );
+}
+
+#[test]
+#[ignore]
+fn time_a_reload_over_unsaved_files() {
+    for open in [1, 10, 30] {
+        let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+        pooled_clone(home.path());
+        let dir = worktree(&mut state, &services, &spawner);
+        let source: String = (0..300).map(|at| format!("line {at}\n")).collect();
+        for at in 0..open {
+            std::fs::write(Path::new(&dir).join(format!("f{at}.txt")), &source).unwrap();
+        }
+        until(&spawner, &services, &mut state, |s| {
+            s.workspace.files.len() == open
+        });
+        for at in 0..open {
+            let path = format!("f{at}.txt");
+            let command = workspace::Command::OpenFile { at: None, path };
+            dispatch(Cmd::Workspace(command), &mut state, &services, &spawner);
+            until(&spawner, &services, &mut state, |s| {
+                s.workspace.active().is_some()
+            });
+            let edit = workspace::Command::Edit(groove_types::Edit::Insert("x".into()));
+            dispatch(Cmd::Workspace(edit), &mut state, &services, &spawner);
+        }
+        settle(&spawner, &services, &mut state, |s| {
+            s.workspace.deriving.is_empty()
+        });
+        assert_eq!(state.workspace.dirty().len(), open);
+
+        let started = Instant::now();
+        for _ in 0..RUNS {
+            let load = Cmd::Workspace(workspace::Command::Load);
+            dispatch(load, &mut state, &services, &spawner);
+            settle(&spawner, &services, &mut state, |s| {
+                s.pending.is_empty() && s.workspace.deriving.is_empty()
+            });
+        }
+        println!(
+            "{open:>3} unsaved files: {:?} a reload, rows derived again",
+            started.elapsed() / RUNS
+        );
+    }
 }

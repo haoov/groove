@@ -31,7 +31,7 @@ pub(super) fn editing(
         services,
         spawner,
     );
-    until(spawner, services, state, |s| s.workspace.opened.is_some());
+    until(spawner, services, state, |s| s.workspace.active().is_some());
     file
 }
 
@@ -54,8 +54,7 @@ pub(super) fn edit(
 pub(super) fn buffer(state: &crate::AppState) -> String {
     state
         .workspace
-        .opened
-        .as_ref()
+        .active()
         .map(|open| open.new.text())
         .expect("a file is open")
 }

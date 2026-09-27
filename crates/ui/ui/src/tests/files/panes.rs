@@ -45,7 +45,7 @@ fn the_strip_names_the_three_lists_and_counts_them() {
     let (app, ui) = noting(vec![note("src/lib.rs", 11, "issue: this leaks")]);
     let drawn = in_sidebar(&app, &ui);
     assert!(
-        drawn.iter().any(|one| one.starts_with("files")),
+        drawn.iter().any(|one| one.starts_with("changed")),
         "{drawn:?}"
     );
     assert!(drawn.iter().any(|one| one == "commits"), "{drawn:?}");
@@ -168,7 +168,7 @@ fn a_note_of_the_list_opens_the_line_it_stands_on() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let line = hits.rect_of(&Target::NoteAt(0)).expect("the note's row");
     let commands = click(line, &mut ui, &app, &hits);
-    assert_eq!(ui.session.view, groove_types::DiffView::Editor);
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Files);
     let opened = commands.iter().find_map(|one| match one {
         groove_controllers::Command::Workspace(
             groove_controllers::workspace::Command::OpenFile { path, at },

@@ -23,8 +23,10 @@ use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
-use self::sidebar::{finding, narrowing, note_at, paned, scoped, twisty};
-use self::surface::{at, composed, folded, holds, jump, landed, lensed, reached, shown, switch};
+use self::sidebar::{finding, narrowing, note_at, paned, twisty};
+use self::surface::{
+    at, composed, folded, holds, in_files, jump, landed, lensed, reached, switch, unfolded,
+};
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
 use crate::{Held, Overlay, Ui};
@@ -155,7 +157,6 @@ fn acted(
         Some(Target::LogHours(id)) => logging(id),
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
-        Some(Target::Scope(scope)) => scoped(ui, scope),
         Some(Target::Pane(pane)) => paned(ui, pane),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
@@ -163,19 +164,34 @@ fn acted(
         Some(Target::Dir(path)) => twisty(ui, path),
         Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
-        one => staging(one, ui),
+        one => staging(one, ui, app),
     }
 }
 
 /// What the change itself is asked to keep or give up.
-fn staging(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
+fn staging(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     match target {
+        Some(Target::OpenTab(path)) => in_files(ui, app, path),
+        Some(Target::CloseTab(path)) => closing(ui, app, path),
         Some(Target::Stage(path)) => one(workspace::Command::Stage { path }),
         Some(Target::Unstage(path)) => one(workspace::Command::Unstage { path }),
         Some(Target::Discard) => lose(ui),
         Some(Target::Keep) => kept(ui),
         _ => Vec::new(),
     }
+}
+
+/// A tab closed, or the question first when its file owes the disk.
+fn closing(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
+    let owes = app
+        .workspace
+        .buffer(&path)
+        .is_some_and(|one| one.new.dirty());
+    if owes {
+        ui.overlay = Some(crate::Overlay::Losing(crate::Losing::Tab(path)));
+        return Vec::new();
+    }
+    one(workspace::Command::CloseFile { path })
 }
 
 /// The hours the clock measured, handed to the source.
@@ -199,10 +215,12 @@ fn aside(ui: &mut Ui) -> Vec<Command> {
     Vec::new()
 }
 
-/// The file's rows shown, with the stream scrolled to where they start.
+/// In the diff, the stream at the file's rows; anything else, the file in the Files tab.
 fn opened(ui: &mut Ui, app: &AppState, path: String, metrics: Metrics) -> Vec<Command> {
-    jump(ui, app, &path, metrics);
-    shown(app, path)
+    if ui.session.tab == Tab::Diff && jump(ui, app, &path, metrics) {
+        return unfolded(app, path);
+    }
+    in_files(ui, app, path)
 }
 
 fn viewing(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) -> Vec<Command> {

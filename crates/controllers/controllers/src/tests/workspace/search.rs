@@ -120,8 +120,8 @@ fn the_worktrees_own_files_are_listed_and_one_that_never_changed_opens() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
-    let open = state.workspace.opened.as_ref().expect("the file is open");
+    let open = state.workspace.active().expect("the file is open");
     assert_eq!(open.new.text(), "one\n", "its own content, with no change");
 }

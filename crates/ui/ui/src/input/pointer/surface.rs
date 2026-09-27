@@ -10,7 +10,7 @@ use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use crate::components::{code_at, first};
 use crate::hit::{Chars, Hits, Scroller, Target};
-use crate::views::session::diff;
+use crate::views::session::{Face, Tab, diff};
 use crate::{Click, Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::ABOVE_MATCH;
@@ -18,8 +18,8 @@ use groove_ui_kit::base::tokens::ABOVE_MATCH;
 /// Changes the view, keeping the line at the top of the old one in view.
 pub(super) fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {
     let line = metrics.tokens().line;
-    let from = ui.session.view;
-    ui.session.diff = diff::scrolled(app, ui, from, view, ui.session.diff, line);
+    let (from, to) = (Face::Stream(ui.session.view), Face::Stream(view));
+    ui.session.diff = diff::scrolled(app, ui, from, to, ui.session.diff, line);
     ui.session.view = view;
 }
 
@@ -34,6 +34,9 @@ pub(super) fn landed(
     let Some((path, caret)) = at(ui, app, hits, metrics, point) else {
         return Vec::new();
     };
+    if app.workspace.readonly() {
+        return Vec::new();
+    }
     if !holds(app, &path) {
         let open = workspace::Command::OpenFile {
             path,
@@ -58,28 +61,33 @@ pub(super) fn taken(click: Option<Click>) -> Option<Edit> {
     }
 }
 
-/// The file opened, and its rows shown again when it was folded away.
-pub(super) fn shown(app: &AppState, path: String) -> Vec<Command> {
-    let mut commands = Vec::new();
-    if app.workspace.changes.is_folded(&path) {
-        let fold = workspace::Command::Fold { path: path.clone() };
-        commands.push(Command::Workspace(fold));
+/// A changed file's rows shown again when they were folded away.
+pub(super) fn unfolded(app: &AppState, path: String) -> Vec<Command> {
+    match app.workspace.changes.is_folded(&path) {
+        true => vec![Command::Workspace(workspace::Command::Fold { path })],
+        false => Vec::new(),
     }
-    let open = workspace::Command::OpenFile { path, at: None };
-    commands.push(Command::Workspace(open));
-    commands
 }
 
-/// The stream scrolled to where this file starts; one the change lacks becomes a file.
-pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) {
-    if ui.session.view == DiffView::Editor {
-        return;
-    }
+/// The stream scrolled to where this file starts, when the change holds it.
+pub(super) fn jump(ui: &mut Ui, app: &AppState, path: &str, metrics: Metrics) -> bool {
     let Some(head) = app.workspace.changes.head_of(path) else {
-        ui.session.view = DiffView::Editor;
-        return;
+        return false;
     };
     ui.session.diff = head as f32 * metrics.tokens().line;
+    true
+}
+
+/// The file active in the Files tab, from its top when it was not already.
+pub(super) fn in_files(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command> {
+    ui.session.tab = Tab::Files;
+    if app.workspace.active().is_none_or(|one| one.path != path) {
+        ui.session.file = 0.0;
+    }
+    vec![Command::Workspace(workspace::Command::OpenFile {
+        path,
+        at: None,
+    })]
 }
 
 /// The lens dragged to the pointer, holding the rows around where it points.
@@ -94,7 +102,7 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
     let line = metrics.tokens().line;
     let at = ((y - rect.y) / rect.h).clamp(0.0, 1.0) * total as f32 * line;
     let far = hits.extent(Scroller::Code);
-    ui.session.diff = (at - rect.h / 2.0).clamp(0.0, far);
+    *ui.session.scroll_mut() = (at - rect.h / 2.0).clamp(0.0, far);
 }
 
 /// The file of one found line, opened in the file view with that line held.
@@ -103,9 +111,9 @@ pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) 
         return Vec::new();
     };
     ui.focus = Focus::Workspace;
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = Tab::Files;
     let above = one.line.saturating_sub(ABOVE_MATCH);
-    ui.session.diff = above as f32 * metrics.tokens().line;
+    ui.session.file = above as f32 * metrics.tokens().line;
     let held = Selection {
         anchor: Caret::new(one.line, one.at.0),
         head: Caret::new(one.line, one.at.1),
@@ -119,10 +127,7 @@ pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) 
 
 /// Whether the buffer being edited is this file.
 pub(super) fn holds(app: &AppState, path: &str) -> bool {
-    app.workspace
-        .opened
-        .as_ref()
-        .is_some_and(|open| open.path == path)
+    app.workspace.active().is_some_and(|open| open.path == path)
 }
 
 /// A file's rows hidden or shown again, with what stands above them held still.
@@ -157,7 +162,7 @@ pub(super) fn at(
     point: (f32, f32),
 ) -> Option<(String, Caret)> {
     let (row, display) = row_at(hits, metrics, point)?;
-    let (path, line) = diff::line_at(app, ui, ui.session.view, row)?;
+    let (path, line) = diff::line_at(app, ui, ui.session.face(), row)?;
     let (text, width) = diff::text_at(app, &path, line)?;
     Some((path, Caret::new(line, columns(&text, display, width))))
 }

@@ -134,11 +134,6 @@ fn files() -> Vec<Tool> {
             takes(&[], vec![task()]),
         ),
         read(
-            "get_open_file",
-            "The file the user has open, and where their caret stands in it.",
-            nothing(),
-        ),
-        read(
             "get_status",
             "What each worktree of the task has: its branch, what is staged, what is \
              changed, and how far it stands from origin.",

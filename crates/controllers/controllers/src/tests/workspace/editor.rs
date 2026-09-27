@@ -23,19 +23,18 @@ fn the_open_file_follows_a_change_on_disk() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
-    let rows = state.workspace.opened.as_ref().map(|open| open.rows.len());
+    let rows = state.workspace.active().map(|open| open.rows.len());
     assert_eq!(rows, Some(2), "one line out, one line in");
 
     std::fs::write(&file, "two\nthree\nfour\n").unwrap();
     until(&spawner, &services, &mut state, |s| {
         s.workspace
-            .opened
-            .as_ref()
+            .active()
             .is_some_and(|open| open.new.lines() == 3)
     });
-    let open = state.workspace.opened.as_ref().expect("still open");
+    let open = state.workspace.active().expect("still open");
     assert_eq!(open.path, "a.txt", "the same file, read again");
     assert_eq!(open.rows.len(), 4, "one out, three in");
 }
@@ -45,7 +44,7 @@ fn typing_changes_the_buffer_and_the_rows_follow() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     editing(&mut state, &services, &spawner);
-    let rows = state.workspace.opened.as_ref().map(|open| open.rows.len());
+    let rows = state.workspace.active().map(|open| open.rows.len());
 
     edit(
         &mut state,
@@ -58,16 +57,15 @@ fn typing_changes_the_buffer_and_the_rows_follow() {
         ],
     );
     assert_eq!(buffer(&state), "one\ntwo\nthree\n", "the buffer took it");
-    assert!(state.workspace.dirty(), "and owes the disk");
+    assert!(!state.workspace.dirty().is_empty(), "and owes the disk");
 
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.deriving.is_none()
+        s.workspace.deriving.is_empty()
             && s.workspace
-                .opened
-                .as_ref()
+                .active()
                 .is_some_and(|open| Some(open.rows.len()) != rows)
     });
-    let open = state.workspace.opened.as_ref().expect("still open");
+    let open = state.workspace.active().expect("still open");
     assert_eq!(open.new.lines(), 3, "the buffer has the new line");
     assert!(
         open.rows.iter().any(|row| row.new == Some(2)),
@@ -94,7 +92,9 @@ fn saving_writes_the_buffer_and_clears_what_it_owes() {
         &services,
         &spawner,
     );
-    until(&spawner, &services, &mut state, |s| !s.workspace.dirty());
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.dirty().is_empty()
+    });
     assert_eq!(
         std::fs::read_to_string(&file).unwrap(),
         "one!\ntwo\n",
@@ -120,7 +120,7 @@ fn a_write_on_disk_does_not_take_unsaved_edits_away() {
         s.workspace.files.iter().any(|f| f.path == "a.txt")
     });
     assert_eq!(buffer(&state), "one!\ntwo\n", "the buffer is the user's");
-    assert!(state.workspace.dirty());
+    assert!(!state.workspace.dirty().is_empty());
 }
 
 #[test]
@@ -164,8 +164,7 @@ fn what_is_held_is_copied_cut_and_pasted() {
     );
     until(&spawner, &services, &mut state, |s| {
         s.workspace
-            .opened
-            .as_ref()
+            .active()
             .is_some_and(|open| open.new.text() == "one\ntwo\n")
     });
     assert_eq!(buffer(&state), "one\ntwo\n", "and a paste puts it back");
@@ -214,9 +213,9 @@ fn a_file_opened_at_a_match_holds_it() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
-    let open = state.workspace.opened.as_ref().expect("the file");
+    let open = state.workspace.active().expect("the file");
     assert_eq!(open.new.selected(), "two", "the match, held by the caret");
 }
 
@@ -238,7 +237,9 @@ fn an_undo_after_a_save_takes_back_what_was_typed() {
         &spawner,
         workspace::Command::SaveFile,
     );
-    until(&spawner, &services, &mut state, |s| !s.workspace.dirty());
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.dirty().is_empty()
+    });
 
     let stamp = state.workspace.stamp;
     std::fs::write(&file, "one!\ntwo\n").unwrap();
@@ -253,7 +254,10 @@ fn an_undo_after_a_save_takes_back_what_was_typed() {
 
     edit(&mut state, &services, &spawner, &[Edit::Undo]);
     assert_eq!(buffer(&state), "one\ntwo\n", "the buffer kept its history");
-    assert!(state.workspace.dirty(), "and owes the disk again");
+    assert!(
+        !state.workspace.dirty().is_empty(),
+        "and owes the disk again"
+    );
 }
 
 #[test]
@@ -288,7 +292,7 @@ fn a_file_saved_back_to_what_it_was_stays_open() {
         changed(&state)
     );
     assert!(
-        state.workspace.opened.is_some(),
+        state.workspace.active().is_some(),
         "and the file is still the open one"
     );
 }

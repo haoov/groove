@@ -31,7 +31,7 @@ fn noted(notes: Vec<Note>) -> AppState {
 
 fn in_editor(app: &AppState) -> Vec<String> {
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     row_texts(app, &ui)
 }
 
@@ -51,7 +51,7 @@ fn a_note_takes_a_row_of_the_surface() {
     let bare = opened();
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
         crate::views::session::diff::rows_of(&bare, &ui) + 2,
@@ -66,7 +66,7 @@ fn a_thread_takes_a_row_for_every_note_of_it() {
     let bare = opened();
     let app = noted(vec![one]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
         crate::views::session::diff::rows_of(&bare, &ui) + 3,
@@ -102,7 +102,7 @@ fn a_note_on_another_file_draws_nothing_here() {
 fn a_note_beyond_the_file_draws_nothing() {
     let app = noted(vec![note(900, "reviewer", "issue: this leaks")]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
         crate::views::session::diff::rows_of(&opened(), &ui)
@@ -113,7 +113,7 @@ fn a_note_beyond_the_file_draws_nothing() {
 fn a_note_draws_in_the_diff_views_too() {
     let app = noted(vec![note(1, "reviewer", "issue: this leaks")]);
     for view in [DiffView::Inline, DiffView::Split] {
-        let drawn = in_view(&app, view);
+        let drawn = in_view(&app, crate::views::session::Face::Stream(view));
         assert!(
             drawn.iter().any(|one| one.starts_with("issue: this l")),
             "{view:?}: {drawn:?}"
@@ -125,17 +125,32 @@ fn a_note_draws_in_the_diff_views_too() {
 fn a_click_on_a_note_moves_no_caret() {
     let app = noted(vec![note(0, "reviewer", "issue: this leaks")]);
     assert_eq!(
-        crate::views::session::diff::line_at(&app, &on_diff(), DiffView::Editor, 1),
+        crate::views::session::diff::line_at(
+            &app,
+            &on_diff(),
+            crate::views::session::Face::File,
+            1
+        ),
         None,
         "row 1 is the note left on row 0"
     );
     assert_eq!(
-        crate::views::session::diff::line_at(&app, &on_diff(), DiffView::Editor, 2),
+        crate::views::session::diff::line_at(
+            &app,
+            &on_diff(),
+            crate::views::session::Face::File,
+            2
+        ),
         None,
         "row 2 is what the note offers"
     );
     assert_eq!(
-        crate::views::session::diff::line_at(&app, &on_diff(), DiffView::Editor, 3),
+        crate::views::session::diff::line_at(
+            &app,
+            &on_diff(),
+            crate::views::session::Face::File,
+            3
+        ),
         Some(("src/lib.rs".to_string(), 1)),
         "the line after it is the file's second"
     );
@@ -394,7 +409,7 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
                 and nothing ever closes it";
     let app = noted(vec![note(1, "reviewer", body)]);
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     ui.session.note_cols = 24;
     let drawn = row_texts(&app, &ui);
     for word in body.split_whitespace() {

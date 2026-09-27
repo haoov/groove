@@ -79,13 +79,14 @@ path resolved against the worktree root and refused when it escapes, and the cli
 which falls back to one of its own when there is no desktop. **Module `text`**: rope,
 tree-sitter, transactions, the semantic hook.
 
-There is no editor tab: the `file` tab holds all three modes, and `editor` is the one that
-draws the file itself. It opens any file on that surface — from a diff line, the path term
-or the explorer — and stays where it is on save. A save, a create, a rename or a delete
-reaches the diff through `watch`, and drops the walk so the explorer reads the worktree
-again.
+**One buffer per path, per worktree.** The `workspace` service keeps each worktree's open
+files in the order their tabs stand, and the one keystrokes go to; switching worktree
+keeps them. The Diff stream draws a file from its buffer while one is open, and from the
+windowed read otherwise; an edit in the stream opens that file's tab. After the stream is
+read again, every unsaved buffer derives its rows over it. A shown commit is read-only and
+ignores the buffers. Closing a worktree or deleting its session drops its buffers.
 
-**The sidebar lists one of two things**, picked by the heading: the files that changed, or
+**The sidebar follows the tab**: the Diff tab lists the files that changed, the Files tab
 the whole worktree as a tree whose open directories the ui remembers. A path typed in the
 bar flattens either one to its matches. One `workspace.path` command carries all four
 operations; the tree asks for a name in the row the name will stand in, and asks before it

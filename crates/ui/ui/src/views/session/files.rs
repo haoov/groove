@@ -16,7 +16,7 @@ use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::commit;
-use super::state::{Pane, Scope};
+use super::state::{Pane, Tab};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -38,6 +38,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let mut column = rect;
     let bar = bar::draw(ctx, rect, ui);
     column.take_top(bar.h);
+    if ui.session.tab == Tab::Files {
+        return changed_files(ctx, column, app, ui);
+    }
     let strip = column.take_top(ctx.tokens.row + ctx.tokens.sm);
     panes(ctx, strip, app, ui);
     match ui.session.pane {
@@ -104,15 +107,17 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let head = column.take_top(ctx.tokens.header);
     match grep {
         true => heading::found(ctx, head, app.workspace.found.len()),
-        false => heading::heading(ctx, head, files.len(), app, ui),
+        false => heading::heading(ctx, head, app, ui),
     }
     let under = ctx.app.layout.commit;
     let body = column.until_y(under.y);
-    commit::draw(ctx, app, ui, under);
+    if ui.session.commits() {
+        commit::draw(ctx, app, ui, under);
+    }
     if grep {
         return results::draw(ctx, body, app, ui);
     }
-    let open = app.workspace.opened.as_ref().map(|file| &file.path);
+    let open = app.workspace.active().map(|file| &file.path);
     if browsing(ui) {
         let held = explorer::rows(&app.workspace.paths, &files, ui);
         return match held.is_empty() {
@@ -132,7 +137,7 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
 
 /// Whether the list is the whole worktree, which a query flattens back to matches.
 pub(crate) fn browsing(ui: &Ui) -> bool {
-    ui.session.scope == Scope::All && ui.session.bar.path.is_empty()
+    ui.session.tab == Tab::Files && ui.session.bar.path.is_empty()
 }
 
 /// Whether the commits list still needs this worktree's commits read.

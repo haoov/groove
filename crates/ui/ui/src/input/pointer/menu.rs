@@ -56,11 +56,7 @@ fn lines(ui: &Ui, app: &AppState, hits: &Hits, metrics: Metrics, at: (f32, f32))
 
 /// The lines a selection of the open file covers.
 fn selected(app: &AppState, path: &str) -> Option<(u32, u32)> {
-    let open = app
-        .workspace
-        .opened
-        .as_ref()
-        .filter(|one| one.path == path)?;
+    let open = app.workspace.active().filter(|one| one.path == path)?;
     let one = open.new.selections().iter().find(|one| !one.is_empty())?;
     let (from, to) = one.ends();
     Some((from.line as u32, to.line as u32))
@@ -110,6 +106,7 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
     };
     let command = match asked {
         Some(Losing::File(path)) => workspace::Command::Discard { path },
+        Some(Losing::Tab(path)) => workspace::Command::CloseFile { path },
         Some(Losing::Path(path)) => {
             workspace::Command::Path(groove_controllers::workspace_service::PathOp::Delete { path })
         }

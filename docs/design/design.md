@@ -141,19 +141,20 @@ pickers as buttons — the session's selector, which every tab and the manual se
 follow — with the selected worktree's MR and CI and a refresh button at its right. A
 title or a label too long for its line is cut with an ellipsis; the header never wraps.
 
-**Tabs.** `overview · file`.
+**Tabs.** `overview · diff · files`.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the body as text. Close task when every worktree is merged or closed | folded |
-| file | the file on one code surface, in three modes — editor, inline, split — notes inline; the diff modes are the default when the session has changes | a search bar that stands only while a search uses it — path and text, both live; a path alone lists the changed files it names and then any other file of the worktree, so an unchanged file opens from here — then a strip that picks the list: files — under its own heading, the files that changed or the whole worktree as a tree, with stage, unstage, discard and the path operations by right click, and the commit box under them; commits — the branch's own log, a commit opens its change; notes — the session's annotations and threads, a note opens its line |
+| diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
+| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a file opens in its own tab, a found line opens there at the line |
 
-**One code surface.** The diff and the editor are one surface in three modes, which the
-gutter holds together.
+**One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
+which the gutter holds together.
 
 | Mode | Shows | Gutter |
 |---|---|---|
-| editor | the file as it is now | a mark on every line the change touched |
+| files | the file as it is now | a mark on every line the change touched |
 | inline | the change as one column | the old and the new line number |
 | split | the old beside the new | one number per side |
 

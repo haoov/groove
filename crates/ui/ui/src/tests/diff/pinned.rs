@@ -1,7 +1,6 @@
 //! The lines held over the rows: the file they belong to, and the scopes above them.
 
 use groove_controllers::AppState;
-use groove_types::DiffView;
 
 use super::stream::both;
 use super::{on_diff, view_of, with_files};
@@ -42,8 +41,8 @@ fn nested() -> AppState {
 fn the_scopes_above_the_first_row_stand_over_it() {
     let app = nested();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
-    ui.session.diff = Tokens::new(1.0).line * 20.0;
+    ui.session.tab = crate::views::session::Tab::Files;
+    *ui.session.scroll_mut() = Tokens::new(1.0).line * 20.0;
     let band = band(&app, &ui);
     for scope in ["mod one {", "impl Two {", "fn three() {"] {
         assert!(
@@ -57,7 +56,7 @@ fn the_scopes_above_the_first_row_stand_over_it() {
 fn a_scope_already_on_screen_does_not_stand_over_it_as_well() {
     let app = nested();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(band(&app, &ui), "", "the scopes are in the rows themselves");
 }
 
@@ -66,7 +65,7 @@ fn the_stream_pins_the_file_it_stands_in() {
     let app = both();
     let mut ui = on_diff();
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
-    ui.session.diff = (head + 1) as f32 * Tokens::new(1.0).line;
+    *ui.session.scroll_mut() = (head + 1) as f32 * Tokens::new(1.0).line;
     assert!(band(&app, &ui).contains("src/b.rs"), "{}", band(&app, &ui));
 }
 
@@ -77,7 +76,7 @@ fn the_pinned_head_stands_while_the_file_s_own_rows_pass_under_it() {
     let line = Tokens::new(1.0).line;
     let bands: Vec<f32> = (1..6)
         .map(|row| {
-            ui.session.diff = row as f32 * line;
+            *ui.session.scroll_mut() = row as f32 * line;
             let (_, hits) = view_of(&app, &ui);
             hits.rect_of(&Target::Pinned).map(|r| r.h).unwrap_or(0.0)
         })
@@ -92,9 +91,9 @@ fn the_pinned_head_stands_while_the_file_s_own_rows_pass_under_it() {
 fn a_scope_the_band_covers_is_pinned_at_once_and_not_a_scroll_later() {
     let app = nested();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let line = Tokens::new(1.0).line;
-    ui.session.diff = 2.0 * line;
+    *ui.session.scroll_mut() = 2.0 * line;
     let said = band(&app, &ui);
     assert!(
         said.contains("fn three()"),
@@ -117,7 +116,7 @@ fn the_diff_names_the_file_by_its_path_the_whole_way_down() {
     let line = Tokens::new(1.0).line;
     let said: Vec<String> = (0..16)
         .map(|row| {
-            ui.session.diff = row as f32 * line;
+            *ui.session.scroll_mut() = row as f32 * line;
             band(&app, &ui)
         })
         .collect();
@@ -169,7 +168,7 @@ three
     let head = app.workspace.changes.head_of("src/b.rs").expect("the file");
 
     for row in [head - 1, head, head + 1] {
-        ui.session.diff = row as f32 * line;
+        *ui.session.scroll_mut() = row as f32 * line;
         let said = band(&app, &ui);
         let (_, hits) = view_of(&app, &ui);
         let under = hits
@@ -184,4 +183,14 @@ three
             );
         }
     }
+}
+
+#[test]
+fn a_scope_stands_over_the_rows_as_soon_as_its_line_leaves_the_top() {
+    let app = nested();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    *ui.session.scroll_mut() = Tokens::new(1.0).line / 3.0;
+    let said = band(&app, &ui);
+    assert!(said.contains("mod one {"), "not a whole line later: {said}");
 }

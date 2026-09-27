@@ -1,7 +1,7 @@
 //! The keys of the two search bars: the sidebar's terms and the bar over the rows.
 
 use groove_controllers::{AppState, Command, workspace};
-use groove_types::{Caret, DiffView, Edit, Motion, Selection};
+use groove_types::{Caret, Edit, Motion, Selection};
 
 use super::super::{Key, Modifiers};
 use crate::views::session::Term;
@@ -17,7 +17,7 @@ pub(super) fn finding(
     ui: &mut Ui,
     app: &AppState,
 ) -> Option<Vec<Command>> {
-    let view = ui.session.view;
+    let view = ui.session.face();
     if mods.ctrl && matches!(key, Key::Char('f' | 'F')) && ui.focus == Focus::Workspace {
         let find = ui.session.find.get_or_insert_with(|| Finding::open(view));
         find.typing = true;
@@ -62,7 +62,7 @@ fn took(field: &mut Field, act: impl FnOnce(&mut Field)) -> bool {
 }
 
 /// The matches read again for what the bar now holds.
-fn searched(find: &mut Finding, app: &AppState, view: DiffView) {
+fn searched(find: &mut Finding, app: &AppState, view: crate::views::session::Face) {
     find.hits = crate::views::session::find::found(app, view, find.query.text());
     find.view = view;
     find.at = 0;
@@ -78,15 +78,14 @@ fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return Vec::new();
     };
     let above = hit.row.saturating_sub(ABOVE_MATCH);
-    ui.session.diff = above as f32 * line;
+    *ui.session.scroll_mut() = above as f32 * line;
     let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {
         return Vec::new();
     };
     let end = Caret::new(at.line, hit.range.end);
     let holds = app
         .workspace
-        .opened
-        .as_ref()
+        .active()
         .is_some_and(|open| open.path == hit.path);
     if !holds {
         let open = workspace::Command::OpenFile {
@@ -110,7 +109,7 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
         return;
     }
     if !ui.session.tab.has_sidebar() {
-        ui.session.tab = crate::views::session::Tab::File;
+        ui.session.tab = crate::views::session::Tab::Diff;
     }
     ui.session.folded = false;
     ui.session.bar.open(term);
@@ -136,7 +135,7 @@ pub(super) fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> 
                 return Vec::new();
             };
             if app.workspace.changes.head_of(&path).is_none() {
-                ui.session.view = groove_types::DiffView::Editor;
+                ui.session.tab = crate::views::session::Tab::Files;
             }
             return vec![Command::Workspace(workspace::Command::OpenFile {
                 path,

@@ -3,12 +3,14 @@
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::{At, Document, shown};
 use groove_gfx::Rect;
-use groove_types::{DiffView, Highlight};
+use groove_types::Highlight;
 
+use super::notes::Inline;
 use crate::Ui;
 use crate::components::{Gutters, Line, Rows, code, first, head_mark};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::views::session::Face;
 use groove_ui_kit::base::tokens::{PINNED_DEEP, PINNED_SHARE};
 
 /// One line held above the rows.
@@ -70,7 +72,10 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
 
 /// The scopes around the first row the pinned band leaves showing.
 fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
-    let inline = super::notes::Inline::of(app, ui, ui.session.view);
+    let inline = super::notes::Inline::of(app, ui, ui.session.face());
+    if ui.session.face() == Face::File {
+        return scoped(ctx, body, app, ui, &inline);
+    }
     let mut pins = Vec::new();
     for _ in 0..=PINNED_DEEP {
         let next = pins_under(ctx, body, app, ui, &inline, pins.len());
@@ -91,18 +96,13 @@ fn pins_under(
     inline: &super::notes::Inline,
     under: usize,
 ) -> Vec<Pin> {
-    let rows = inline.total(super::row::count(app, ui.session.view));
-    let at = (first(ctx.tokens.line, ui.session.diff) + under).min(rows.saturating_sub(1));
+    let rows = inline.total(super::row::count(app, ui.session.face()));
+    let at = (first(ctx.tokens.line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
     let top = inline.base(at);
-    let Some((path, at)) = standing(app, ui, top) else {
+    let Some((path, _)) = standing(app, top) else {
         return Vec::new();
     };
     let mut pins: Vec<Pin> = Vec::new();
-    if ui.session.view == DiffView::Editor {
-        pins.extend(scopes(app, &path, at));
-        pins.truncate(room(ctx, body));
-        return pins;
-    }
     pins.push(said(&path, Kind::Head));
     pins.truncate(room(ctx, body));
     pins
@@ -118,21 +118,35 @@ fn said(text: &str, kind: Kind) -> Pin {
     }
 }
 
-/// The innermost scopes around the line, as lines of their own.
-fn scopes(app: &AppState, path: &str, at: Option<(usize, bool)>) -> Vec<Pin> {
-    let (Some((line, old)), Some((before, after))) = (at, app.workspace.sides(path)) else {
+/// The open file's scopes whose opening lines have gone above the slot each would stand in.
+fn scoped(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<Pin> {
+    let Some(doc) = app.workspace.active().map(|open| open.new.document()) else {
         return Vec::new();
     };
-    let doc = match old {
-        true => before,
-        false => after,
-    };
-    let scopes = doc.scopes(line);
-    let deep = scopes.len().saturating_sub(PINNED_DEEP);
-    scopes[deep..]
-        .iter()
-        .filter_map(|at| pin(doc, *at))
-        .collect()
+    let (line, scroll) = (ctx.tokens.line, ui.session.scroll());
+    let last = inline.total(doc.lines().max(1)).saturating_sub(1);
+    let mut held: Vec<usize> = Vec::new();
+    for _ in 0..=PINNED_DEEP {
+        let below = ((scroll + held.len() as f32 * line) / line).ceil() as usize;
+        let chain = doc.scopes(inline.base(below.min(last)));
+        let chain = &chain[chain.len().saturating_sub(PINNED_DEEP)..];
+        let gone = |(slot, start): &(usize, &usize)| {
+            (inline.shifted(**start) as f32) * line < scroll + *slot as f32 * line
+        };
+        let next: Vec<usize> = chain
+            .iter()
+            .enumerate()
+            .take_while(gone)
+            .map(|(_, at)| *at)
+            .collect();
+        let next = next[..next.len().min(room(ctx, body))].to_vec();
+        if next.len() <= held.len() {
+            held = next;
+            break;
+        }
+        held = next;
+    }
+    held.into_iter().filter_map(|at| pin(doc, at)).collect()
 }
 
 /// How many lines the surface will give up to what stands above it.
@@ -141,11 +155,7 @@ fn room(ctx: &Ctx, body: Rect) -> usize {
 }
 
 /// The row the top of the surface shows: its file, and the line it stands on.
-fn standing(app: &AppState, ui: &Ui, top: usize) -> Option<(String, Option<(usize, bool)>)> {
-    if ui.session.view == DiffView::Editor {
-        let file = app.workspace.opened.as_ref()?;
-        return Some((file.path.clone(), Some((top, false))));
-    }
+fn standing(app: &AppState, top: usize) -> Option<(String, Option<(usize, bool)>)> {
     match app.workspace.changes.at(top)? {
         At::Row(file, at) => {
             let row = &file.rows[at];

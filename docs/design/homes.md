@@ -19,7 +19,7 @@ and what the forge says about it.
 |---|---|---|
 | `session` | the sessions, their repos and worktrees, each worktree's git status, the rail, the log | `sessions`, `worktree`, `git`, `timeline` |
 | `task` | the tasks and their sources, the plan, the clock and hours, attention, where a new task is filed | `provider`, `plan`, `ledger` |
-| `workspace` | the selected worktree's change: files, rows, colours, the open file and its buffer, search, paths, history, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
+| `workspace` | the selected worktree's change: files, rows, colours, each worktree's open buffers, search, paths, history, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
 | `delivery` | each worktree's MR: state, CI, threads, the session's notes, verdicts, the poll, the review queue | `forge`, `mrs`, `annotations` |
 | `agent` | each session's agent: terminal, activity, asks, launch files, skills | `terminal`, `agent-launch`, `approvals`, `skills`, `hooks`, `mcp`, `tools` |
 | `config` | the config file, preferences, settings | `config` |

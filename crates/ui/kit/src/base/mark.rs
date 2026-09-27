@@ -31,6 +31,8 @@ pub enum Mark {
     Failed,
     /// A note somebody left on the MR.
     Note,
+    /// What takes a thing away.
+    Close,
 }
 
 impl Mark {
@@ -67,6 +69,7 @@ impl Mark {
             Mark::Sidebar => Icon::Sidebar,
             Mark::Failed => Icon::Cross,
             Mark::Note => Icon::Chat,
+            Mark::Close => Icon::Cross,
         }
     }
 }

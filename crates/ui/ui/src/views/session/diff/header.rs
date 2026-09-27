@@ -7,7 +7,7 @@ use groove_types::DiffView;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use crate::views::session::files;
+use crate::views::session::{Tab, files};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hairline, square};
@@ -17,14 +17,15 @@ use groove_ui_kit::widgets::changes;
 /// The file's path, what it changed, and which view it is drawn in.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
     let mut room = band;
-    switch(ctx, &mut room, ui.session.view);
+    if ui.session.tab == Tab::Diff {
+        switch(ctx, &mut room, ui.session.view);
+    }
     if let Some(counts) = counted(app, path) {
         changes(ctx, &mut room, counts, |ctx, role| ctx.styles.code(role));
     }
     let dirty = app
         .workspace
-        .opened
-        .as_ref()
+        .buffer(path)
         .is_some_and(|open| open.new.dirty());
     if dirty {
         let size = ctx.styles.small(Role::Warn).size;

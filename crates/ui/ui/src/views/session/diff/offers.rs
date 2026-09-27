@@ -12,6 +12,7 @@ use super::row::Drawn;
 use crate::components::{Gutters, head_mark};
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::views::session::Face;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 
@@ -22,7 +23,7 @@ pub(super) fn marks(
     slots: &[Slot],
     rows: &[Drawn],
     first: usize,
-    numbers: (Gutters, DiffView, Side),
+    numbers: (Gutters, Face, Side),
 ) {
     for (line, slot) in drawn.iter().zip(slots) {
         let Slot::Code(at) = slot else {
@@ -44,7 +45,7 @@ pub(super) fn marks(
 }
 
 /// The arrows a gap wears: down where the old line stands, up where the new one does.
-fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: DiffView, side: Side) {
+fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Face, side: Side) {
     ctx.hit(line, Target::Gap { row, way: Way::All });
     let colour = ctx.styles.color(Role::Ghost);
     for (at, way) in ways(ctx, line, gutters, view, side) {
@@ -65,18 +66,14 @@ fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Diff
 }
 
 /// Where each arrow stands: one a gutter cell in inline, one a side in split.
-fn ways(
-    ctx: &mut Ctx,
-    line: Rect,
-    gutters: Gutters,
-    view: DiffView,
-    side: Side,
-) -> Vec<(Rect, Way)> {
+fn ways(ctx: &mut Ctx, line: Rect, gutters: Gutters, view: Face, side: Side) -> Vec<(Rect, Way)> {
     let first = cell(ctx, line, gutters, 0);
     match (view, side) {
-        (DiffView::Inline, _) => vec![(first, Way::Down), (cell(ctx, line, gutters, 1), Way::Up)],
-        (DiffView::Split, Side::Old) => vec![(first, Way::Down)],
-        (DiffView::Split, Side::New) => vec![(first, Way::Up)],
+        (Face::Stream(DiffView::Inline), _) => {
+            vec![(first, Way::Down), (cell(ctx, line, gutters, 1), Way::Up)]
+        }
+        (Face::Stream(DiffView::Split), Side::Old) => vec![(first, Way::Down)],
+        (Face::Stream(DiffView::Split), Side::New) => vec![(first, Way::Up)],
         _ => {
             let half = Rect::new(first.x, first.y, first.w / 2.0, first.h);
             let other = Rect::new(half.right(), first.y, first.w / 2.0, first.h);

@@ -57,7 +57,7 @@ fn a_pasted_line_break_never_reaches_a_field() {
 fn the_search_bar_and_the_board_filter_take_it_too() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     ui.session.bar.open(Term::Path);
     paste("src/one", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "src/one");
@@ -75,7 +75,7 @@ fn the_search_bar_and_the_board_filter_take_it_too() {
 fn the_commit_box_keeps_every_line_of_what_is_pasted() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     ui.session.composing = true;
     let asked = paste("feat: one\n\nthe body", &mut ui, &app);
     assert_eq!(
@@ -91,7 +91,7 @@ fn the_commit_box_keeps_every_line_of_what_is_pasted() {
 fn the_commit_box_takes_it_as_an_edit_of_its_own() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     ui.session.composing = true;
     let asked = paste("feat: one", &mut ui, &app);
     assert_eq!(
@@ -109,7 +109,7 @@ fn with_nothing_typing_the_open_file_takes_it() {
         focus: crate::Focus::Workspace,
         ..Ui::default()
     };
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     let asked = paste("one", &mut ui, &app);
     assert_eq!(
         asked,
@@ -130,7 +130,7 @@ fn an_empty_clipboard_asks_nothing() {
 fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
     let app = full_app();
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     let asked = paste("one\ntwo", &mut ui, &app);
     assert_eq!(
         asked,

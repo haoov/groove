@@ -2,14 +2,14 @@
 
 use super::search::with_paths;
 use super::*;
-use crate::views::session::Scope;
+use crate::views::session::Tab;
 
 /// The sidebar on the whole worktree, with these paths walked.
 pub(super) fn browsing(paths: &[&str]) -> (AppState, Ui) {
     let mut app = with_files(&[]);
     with_paths(&mut app, paths);
     let mut ui = on_diff();
-    ui.session.scope = Scope::All;
+    ui.session.tab = crate::views::session::Tab::Files;
     (app, ui)
 }
 
@@ -69,7 +69,7 @@ fn a_file_of_the_tree_that_changed_keeps_its_marks() {
     let mut app = with_files(&["src/one/alpha.rs"]);
     with_paths(&mut app, &["src/one/alpha.rs"]);
     let mut ui = on_diff();
-    ui.session.scope = Scope::All;
+    ui.session.tab = crate::views::session::Tab::Files;
     ui.session.opened.insert("src".into());
     ui.session.opened.insert("src/one".into());
     let drawn = shown(&app, &ui);
@@ -79,13 +79,13 @@ fn a_file_of_the_tree_that_changed_keeps_its_marks() {
 }
 
 #[test]
-fn picking_the_whole_worktree_switches_the_scope_and_the_frame_asks_for_the_walk() {
+fn picking_the_files_tab_shows_the_tree_and_the_frame_asks_for_the_walk() {
     let app = with_files(&[]);
     let mut ui = on_diff();
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let rect = hits
-        .rect_of(&Target::Scope(Scope::All))
-        .expect("the scope is there to pick");
+        .rect_of(&Target::Tab(Tab::Files))
+        .expect("the tab is there to pick");
     let asked = crate::input::handle(
         crate::input::Input::Press {
             x: rect.x + rect.w / 2.0,
@@ -97,7 +97,7 @@ fn picking_the_whole_worktree_switches_the_scope_and_the_frame_asks_for_the_walk
         &hits,
         window(),
     );
-    assert_eq!(ui.session.scope, Scope::All);
+    assert_eq!(ui.session.tab, Tab::Files);
     assert!(asked.is_empty(), "the click itself asks nothing");
     assert!(
         crate::views::session::files::needs_walk(&app, &ui),

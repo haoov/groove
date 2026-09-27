@@ -3,10 +3,11 @@
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_types::{Anchor, DiffView, Note};
+use groove_types::{Anchor, Note};
 
 use super::wrap::{cols_of, wrapped};
 use crate::Ui;
+use crate::views::session::Face;
 
 /// One note's rows, standing after the row its last line sits on.
 struct Block {
@@ -37,7 +38,7 @@ pub(crate) struct Inline {
 
 impl Inline {
     /// The notes of this view, each on the row its file shows it on.
-    pub(crate) fn of(app: &AppState, ui: &Ui, view: DiffView) -> Self {
+    pub(crate) fn of(app: &AppState, ui: &Ui, view: Face) -> Self {
         if app.workspace.commit.is_some() {
             return Self::default();
         }
@@ -149,7 +150,7 @@ fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
 }
 
 /// One note's block, on the rows of the file it is about.
-fn block(app: &AppState, view: DiffView, note: &Note, at: usize, cols: usize) -> Option<Block> {
+fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
     Some(Block {
@@ -167,10 +168,10 @@ fn starts(anchor: &Anchor) -> Anchor {
 }
 
 /// The row an anchor's last line stands on, in the view that draws it.
-fn anchored(app: &AppState, view: DiffView, anchor: &Anchor) -> Option<usize> {
+fn anchored(app: &AppState, view: Face, anchor: &Anchor) -> Option<usize> {
     match view {
-        DiffView::Editor => {
-            let open = app.workspace.opened.as_ref()?;
+        Face::File => {
+            let open = app.workspace.active()?;
             (open.path == anchor.path && (anchor.end_line as usize) < open.new.lines().max(1))
                 .then_some(anchor.end_line as usize)
         }

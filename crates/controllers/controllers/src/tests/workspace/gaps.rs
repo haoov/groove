@@ -146,7 +146,7 @@ fn opening_a_file_the_stream_holds_runs_no_job() {
         "nothing was read again: {:?}",
         state.pending
     );
-    let open = state.workspace.opened.as_ref().expect("the file is open");
+    let open = state.workspace.active().expect("the file is open");
     assert_eq!(open.path, "b.rs", "and it is open at once");
 }
 
@@ -239,9 +239,9 @@ fn a_file_changed_on_disk_is_never_opened_from_what_was_read_before() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
-    let open = state.workspace.opened.as_ref().expect("open");
+    let open = state.workspace.active().expect("open");
     assert!(
         open.new
             .document()
@@ -360,7 +360,7 @@ fn a_committed_change_opened_and_edited_keeps_what_it_changed() {
         &services,
         &spawner,
     );
-    let open = state.workspace.opened.as_ref().expect("opened from memory");
+    let open = state.workspace.active().expect("opened from memory");
     assert_eq!(
         open.old.line(0).as_deref(),
         Some("line 0"),
@@ -374,7 +374,7 @@ fn a_committed_change_opened_and_edited_keeps_what_it_changed() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
-    let open = state.workspace.opened.as_ref().expect("still open");
+    let open = state.workspace.active().expect("still open");
     let changed = open
         .rows
         .iter()

@@ -142,7 +142,7 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     editing(&mut state, &services, &spawner);
-    assert!(state.workspace.opened.is_some(), "a file is open");
+    assert!(state.workspace.active().is_some(), "a file is open");
     assert!(!state.workspace.files.is_empty());
 
     dispatch(
@@ -152,7 +152,7 @@ fn a_new_session_shows_nothing_of_the_one_before_it() {
         &spawner,
     );
     assert!(
-        state.workspace.opened.is_none(),
+        state.workspace.active().is_none(),
         "the file belonged to the worktree that is no longer selected"
     );
     assert!(

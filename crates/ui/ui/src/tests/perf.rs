@@ -60,8 +60,8 @@ fn time_what_tabs_cost() {
         for tabs in [false, true] {
             let app = tabbed(lines, tabs);
             let mut ui = Ui::default();
-            ui.session.tab = Tab::File;
-            ui.session.view = DiffView::Editor;
+            ui.session.tab = Tab::Diff;
+            ui.session.tab = crate::views::session::Tab::Files;
             let _ = view(&app, &ui, window(), &mut fonts);
             let runs = 50;
             let started = Instant::now();
@@ -84,10 +84,13 @@ fn time_the_frame() {
     let mut fonts = Fonts::embedded();
     for lines in [200, 2000, 20000] {
         let app = big(lines);
-        for view_kind in [DiffView::Editor, DiffView::Inline, DiffView::Split] {
+        for view_kind in [
+            crate::views::session::Face::File,
+            crate::views::session::Face::Stream(DiffView::Inline),
+            crate::views::session::Face::Stream(DiffView::Split),
+        ] {
             let mut ui = Ui::default();
-            ui.session.tab = Tab::File;
-            ui.session.view = view_kind;
+            crate::tests::set_face(&mut ui, view_kind);
             let _ = view(&app, &ui, window(), &mut fonts);
             let started = Instant::now();
             let runs = 20;
@@ -109,10 +112,12 @@ fn time_the_draw() {
     let mut renderer = Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter");
     for lines in [300, 3000] {
         let app = big(lines);
-        for view_kind in [DiffView::Editor, DiffView::Inline] {
+        for view_kind in [
+            crate::views::session::Face::File,
+            crate::views::session::Face::Stream(DiffView::Inline),
+        ] {
             let mut ui = Ui::default();
-            ui.session.tab = Tab::File;
-            ui.session.view = view_kind;
+            crate::tests::set_face(&mut ui, view_kind);
             for _ in 0..3 {
                 let (frame, _) = view(&app, &ui, window(), renderer.fonts());
                 renderer.render(&frame).expect("rendered");
@@ -203,7 +208,7 @@ fn several(count: usize) -> AppState {
         );
     }
     let (path, before, after) = &sides[0];
-    app.workspace.opened = Some(from_text(path, before, after));
+    crate::tests::open_file(&mut app, from_text(path, before, after));
     app
 }
 
@@ -217,7 +222,7 @@ fn time_a_frame_over_several_files() {
         for kind in [DiffView::Inline, DiffView::Split] {
             let mut app = several(files);
             let mut ui = Ui::default();
-            ui.session.tab = Tab::File;
+            ui.session.tab = Tab::Diff;
             ui.session.view = kind;
             ui.focus = crate::Focus::Workspace;
             let (frame, _) = view(&app, &ui, window(), renderer.fonts());
@@ -230,13 +235,12 @@ fn time_a_frame_over_several_files() {
             }
             let still = started.elapsed() / runs;
 
-            let buffer = &mut app.workspace.opened.as_mut().unwrap().new;
+            let buffer = &mut app.workspace.active_mut().unwrap().new;
             buffer.edit(&Edit::Move(Motion::To(Caret::new(4, 8))));
             let started = Instant::now();
             for _ in 0..runs {
                 app.workspace
-                    .opened
-                    .as_mut()
+                    .active_mut()
                     .unwrap()
                     .new
                     .edit(&Edit::Insert("x".into()));
@@ -256,4 +260,53 @@ fn time_a_frame_over_several_files() {
             );
         }
     }
+}
+
+#[test]
+#[ignore]
+fn time_a_frame_with_many_files_open() {
+    use groove_types::{Caret, Edit, Motion};
+    let mut fonts = Fonts::embedded();
+    for open in [1, 10, 50] {
+        let mut app = several(open);
+        for (path, before, after) in sides_of(&app) {
+            let file = groove_controllers::workspace_service::from_text(&path, &before, &after);
+            crate::tests::open_file(&mut app, file);
+            let buffer = &mut app.workspace.active_mut().unwrap().new;
+            buffer.edit(&Edit::Move(Motion::To(Caret::new(4, 8))));
+            buffer.edit(&Edit::Insert("x".into()));
+        }
+        for face in [
+            crate::views::session::Face::Stream(DiffView::Inline),
+            crate::views::session::Face::File,
+        ] {
+            let mut ui = Ui::default();
+            crate::tests::set_face(&mut ui, face);
+            ui.focus = crate::Focus::Workspace;
+            let _ = view(&app, &ui, window(), &mut fonts);
+            let runs = 20;
+            let started = Instant::now();
+            for _ in 0..runs {
+                let _ = view(&app, &ui, window(), &mut fonts);
+            }
+            let still = started.elapsed() / runs;
+            let started = Instant::now();
+            for _ in 0..runs {
+                let buffer = &mut app.workspace.active_mut().unwrap().new;
+                buffer.edit(&Edit::Insert("x".into()));
+                let _ = view(&app, &ui, window(), &mut fonts);
+            }
+            let typing = started.elapsed() / runs;
+            println!("{open:>3} open {face:?}: {still:>10?} still, {typing:>10?} typing");
+        }
+    }
+}
+
+/// Each changed file's path and both of its sides, as the fixture wrote them.
+fn sides_of(app: &AppState) -> Vec<(String, String, String)> {
+    app.workspace
+        .coloured
+        .iter()
+        .map(|(path, painted)| (path.clone(), painted.old.text(), painted.new.text()))
+        .collect()
 }

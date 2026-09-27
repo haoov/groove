@@ -5,7 +5,6 @@ use groove_gfx::Fonts;
 use groove_types::{DiffView, FileDiff, FileStatus};
 
 use crate::tests::{full_app, metrics, shows};
-use crate::views::session::Tab;
 use crate::{Metrics, Ui, view};
 
 /// A file of `lines` identical lines with the twentieth changed, so every view has
@@ -37,10 +36,9 @@ fn file(lines: usize) -> AppState {
 }
 
 /// How many text runs a frame of that file draws.
-fn runs(app: &AppState, view_kind: DiffView, window: Metrics) -> usize {
+fn runs(app: &AppState, face: crate::views::session::Face, window: Metrics) -> usize {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
-    ui.session.view = view_kind;
+    crate::tests::set_face(&mut ui, face);
     let (frame, _) = view(app, &ui, window, &mut Fonts::embedded());
     frame.layers().iter().map(|layer| layer.texts.len()).sum()
 }
@@ -52,7 +50,8 @@ fn window() -> Metrics {
 #[test]
 fn a_frame_draws_the_window_not_the_file() {
     let (small, huge) = (file(200), file(20_000));
-    for view_kind in DiffView::ALL {
+    let faces = DiffView::ALL.map(crate::views::session::Face::Stream);
+    for view_kind in [crate::views::session::Face::File].into_iter().chain(faces) {
         assert_eq!(
             runs(&huge, view_kind, window()),
             runs(&small, view_kind, window()),
@@ -64,8 +63,12 @@ fn a_frame_draws_the_window_not_the_file() {
 #[test]
 fn a_taller_window_draws_more_rows() {
     let app = file(20_000);
-    let short = runs(&app, DiffView::Editor, metrics(1280, 400, 1.0));
-    let tall = runs(&app, DiffView::Editor, window());
+    let short = runs(
+        &app,
+        crate::views::session::Face::File,
+        metrics(1280, 400, 1.0),
+    );
+    let tall = runs(&app, crate::views::session::Face::File, window());
     assert!(
         tall > short,
         "800px draws more rows than 400px: {tall} against {short}"

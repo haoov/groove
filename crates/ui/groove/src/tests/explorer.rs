@@ -112,17 +112,17 @@ fn until(
 }
 
 #[test]
-fn picking_the_whole_worktree_fills_the_tree_it_draws() {
+fn picking_the_files_tab_fills_the_tree_it_draws() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
     let (mut state, services) = working(home.path(), &spawner);
     let mut ui = Ui::default();
-    ui.session.tab = groove_ui::Tab::File;
+    ui.session.tab = groove_ui::Tab::Diff;
 
     let (_, hits) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());
     let rect = hits
-        .rect_of(&groove_ui::Target::Scope(groove_ui::Scope::All))
-        .expect("the scope is on screen");
+        .rect_of(&groove_ui::Target::Tab(groove_ui::Tab::Files))
+        .expect("the tab is on screen");
     handle(
         Input::Press {
             x: rect.x + rect.w / 2.0,
@@ -134,7 +134,7 @@ fn picking_the_whole_worktree_fills_the_tree_it_draws() {
         &hits,
         window(),
     );
-    assert_eq!(ui.session.scope, groove_ui::Scope::All);
+    assert_eq!(ui.session.tab, groove_ui::Tab::Files);
 
     let asked = groove_ui::layout_commands(&state, &ui, window());
     assert!(
@@ -186,8 +186,8 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         &spawner,
     );
     let mut ui = Ui::default();
-    ui.session.tab = groove_ui::Tab::File;
-    ui.session.scope = groove_ui::Scope::All;
+    ui.session.tab = groove_ui::Tab::Diff;
+    ui.session.tab = groove_ui::Tab::Files;
 
     assert!(
         !groove_ui::layout_commands(&state, &ui, window())

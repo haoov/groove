@@ -3,14 +3,7 @@
 use groove_controllers::{AppState, Command};
 
 use crate::Ui;
-use crate::views::session::{Pane, Scope, Term};
-
-/// Which files the sidebar lists; the frame asks for the walk a tree needs.
-pub(super) fn scoped(ui: &mut Ui, scope: Scope) -> Vec<Command> {
-    ui.session.scope = scope;
-    ui.session.files = 0.0;
-    Vec::new()
-}
+use crate::views::session::{Pane, Term};
 
 /// One of the sidebar's three lists up; the frame reads what it shows.
 pub(super) fn paned(ui: &mut Ui, pane: Pane) -> Vec<Command> {
@@ -36,9 +29,14 @@ pub(super) fn note_at(
     };
     let line = anchor.start_line as usize;
     ui.focus = crate::Focus::Workspace;
-    ui.session.view = groove_types::DiffView::Editor;
-    let above = line.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH);
-    ui.session.diff = above as f32 * metrics.tokens().line;
+    let height = metrics.tokens().line;
+    let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;
+    if let Some(row) = app.workspace.changes.row_of(&anchor.path, line as u32) {
+        ui.session.diff = above(row) * height;
+        return Vec::new();
+    }
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.file = above(line) * height;
     let open = groove_controllers::workspace::Command::OpenFile {
         path: anchor.path,
         at: Some(groove_types::Selection::at(groove_types::Caret::new(

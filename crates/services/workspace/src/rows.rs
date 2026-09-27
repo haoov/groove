@@ -83,14 +83,19 @@ impl State {
 
     /// A gap gives up a run of its old-side lines, from the documents already read.
     pub fn open_gap(&mut self, path: &str, span: Range<u32>) {
-        if let Some((old, new)) = sides_of(self.opened.as_ref(), &self.coloured, path) {
+        let open = match (&self.worktree, self.commit.is_none()) {
+            (Some(worktree), true) => self.buffers.get(worktree).and_then(|one| one.get(path)),
+            _ => None,
+        };
+        if let Some((old, new)) = sides_of(open, &self.coloured, path) {
             self.changes.open_gap(path, span, old, new);
         }
     }
 
-    /// Both sides of a file: the open buffer's when it is the one, else the ones read.
+    /// Both sides of a file: its buffer's while it is open, else the ones read.
     pub fn sides(&self, path: &str) -> Option<(&Document, &Document)> {
-        sides_of(self.opened.as_ref(), &self.coloured, path)
+        let open = self.buffer(path).filter(|_| self.commit.is_none());
+        sides_of(open, &self.coloured, path)
     }
 }
 
@@ -99,7 +104,7 @@ fn sides_of<'a>(
     coloured: &'a BTreeMap<String, Painted>,
     path: &str,
 ) -> Option<(&'a Document, &'a Document)> {
-    if let Some(open) = opened.filter(|open| open.path == path) {
+    if let Some(open) = opened {
         return Some((&open.old, open.new.document()));
     }
     let painted = coloured.get(path)?;

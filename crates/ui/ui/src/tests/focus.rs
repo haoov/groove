@@ -9,7 +9,7 @@ use crate::{Focus, Ui, view};
 
 fn on_diff(app: &groove_controllers::AppState) -> (Ui, crate::Hits) {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     let (_, hits) = view(app, &ui, window(), &mut Fonts::embedded());
     (ui, hits)
 }

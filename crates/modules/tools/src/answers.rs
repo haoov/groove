@@ -2,7 +2,7 @@
 
 use groove_types::{
     Annotation, CiStatus, CommitEntry, FileDiff, Mr, MrThread, PoolEntry, Repo, Session, Skill,
-    Task, Worktree, WorktreeId, WorktreeStatus,
+    Task, Worktree, WorktreeStatus,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -107,29 +107,6 @@ pub fn skill(one: &Skill) -> Value {
 /// A list, and how many it holds.
 pub fn counted(key: &str, items: Vec<Value>) -> Value {
     json!({ "count": items.len(), key: items })
-}
-
-/// The file the user has open, and where the caret stands, counted from one.
-pub fn open_file(
-    path: &str,
-    worktree: Option<&WorktreeId>,
-    commit: Option<&str>,
-    at: (usize, usize),
-    unsaved: bool,
-) -> Value {
-    json!({ "open_file": {
-        "path": path,
-        "worktree_id": worktree,
-        "commit": commit,
-        "line": at.0 + 1,
-        "column": at.1 + 1,
-        "unsaved": unsaved,
-    }})
-}
-
-/// No file open.
-pub fn no_file() -> Value {
-    json!({ "open_file": null })
 }
 
 pub fn file(path: &str, commit: Option<&str>, text: &str) -> Value {

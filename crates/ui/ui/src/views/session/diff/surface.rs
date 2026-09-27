@@ -11,6 +11,7 @@ use crate::Ui;
 use crate::components::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
+use crate::views::session::Face;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::{NOTE_BY, NOTE_SLACK};
 
@@ -18,8 +19,8 @@ use groove_ui_kit::base::tokens::{NOTE_BY, NOTE_SLACK};
 pub(crate) const AUTHOR: &str = "you";
 
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
-    match ui.session.view {
-        DiffView::Split => beside(ctx, body, app, ui),
+    match ui.session.face() {
+        Face::Stream(DiffView::Split) => beside(ctx, body, app, ui),
         view => surface(ctx, body, app, ui, view, Side::New, true),
     }
 }
@@ -37,7 +38,7 @@ fn beside(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     );
     let rule = ctx.styles.line();
     ctx.quad(Rect::new(left.right(), body.y, thickness, body.h), rule);
-    let view = DiffView::Split;
+    let view = Face::Stream(DiffView::Split);
     surface(ctx, left, app, ui, view, Side::Old, false);
     surface(ctx, right, app, ui, view, Side::New, true);
 }
@@ -48,7 +49,7 @@ fn surface(
     rect: Rect,
     app: &AppState,
     ui: &Ui,
-    view: DiffView,
+    view: Face,
     side: Side,
     clickable: bool,
 ) {
@@ -56,7 +57,7 @@ fn surface(
     let total = inline.total(count(app, view));
     let extent = (height(ctx, total) - rect.h).max(0.0);
     ctx.app.hits.scrolls(Scroller::Code, extent);
-    let scroll = ui.session.diff.min(extent);
+    let scroll = ui.session.scroll().min(extent);
     let window = visible(ctx, rect, total, scroll);
     let slots: Vec<Slot> = window.clone().map(|row| inline.slot(row)).collect();
     let code_rows = inline.code_window(window.clone());
@@ -272,9 +273,9 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
 }
 
 /// How wide the line numbers stand: one column a side in split and file, two in inline.
-pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
+pub(super) fn numbers(app: &AppState, view: Face) -> Gutters {
     let digits = match view {
-        DiffView::Editor => match app.workspace.opened.as_ref() {
+        Face::File => match app.workspace.active() {
             Some(file) => file.new.lines().to_string().len(),
             None => 1,
         },
@@ -282,7 +283,7 @@ pub(super) fn numbers(app: &AppState, view: DiffView) -> Gutters {
     };
     Gutters {
         cells: match view {
-            DiffView::Inline => 2,
+            Face::Stream(DiffView::Inline) => 2,
             _ => 1,
         },
         digits,

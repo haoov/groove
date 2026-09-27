@@ -4,7 +4,8 @@ use std::ops::Range;
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::At;
-use groove_types::DiffView;
+
+use crate::views::session::Face;
 
 /// One match: where it sits on the surface, and the line it belongs to.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -26,11 +27,11 @@ pub struct Finding {
     pub hits: Vec<Hit>,
     pub at: usize,
     /// The view the hits were read from.
-    pub view: DiffView,
+    pub view: Face,
 }
 
 impl Finding {
-    pub fn open(view: DiffView) -> Self {
+    pub fn open(view: Face) -> Self {
         Self {
             typing: true,
             view,
@@ -83,19 +84,19 @@ impl Finding {
 }
 
 /// Every match of `query` in what the view shows, in reading order.
-pub fn found(app: &AppState, view: DiffView, query: &str) -> Vec<Hit> {
+pub fn found(app: &AppState, view: Face, query: &str) -> Vec<Hit> {
     if query.is_empty() {
         return Vec::new();
     }
     match view {
-        DiffView::Editor => in_file(app, query),
+        Face::File => in_file(app, query),
         _ => in_change(app, query),
     }
 }
 
 /// The open file, whose rows are its own lines.
 fn in_file(app: &AppState, query: &str) -> Vec<Hit> {
-    let Some(open) = app.workspace.opened.as_ref() else {
+    let Some(open) = app.workspace.active() else {
         return Vec::new();
     };
     open.new

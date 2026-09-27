@@ -157,7 +157,7 @@ fn leaving_the_commit_brings_the_working_tree_back() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        s.workspace.opened.is_some()
+        s.workspace.active().is_some()
     });
     edit(
         &mut state,
@@ -172,13 +172,22 @@ fn leaving_the_commit_brings_the_working_tree_back() {
 }
 
 #[test]
-fn a_file_of_a_commit_reads_as_that_commit_left_it() {
+fn a_shown_commit_leaves_the_open_files_as_the_disk_holds_them() {
     let home = tempfile::tempdir().unwrap();
     let spawner = SyncSpawner::new().unwrap();
     let (mut state, services, dir) = logged(home.path(), &spawner);
     std::fs::write(dir.join("a.txt"), "second\n").unwrap();
     sh(&dir, &["commit", "-am", "second"]);
     std::fs::write(dir.join("a.txt"), "working\n").unwrap();
+    send(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::OpenFile {
+            path: "a.txt".into(),
+            at: None,
+        },
+    );
     send(
         &mut state,
         &services,
@@ -193,25 +202,14 @@ fn a_file_of_a_commit_reads_as_that_commit_left_it() {
         &spawner,
         workspace::Command::OpenCommit { sha },
     );
-    send(
-        &mut state,
-        &services,
-        &spawner,
-        workspace::Command::OpenFile {
-            path: "a.txt".into(),
-            at: None,
-        },
-    );
-    assert_eq!(
-        buffer(&state),
-        "second\n",
-        "the commit's own side, not what the disk holds now"
-    );
-    let old = state
+    assert_eq!(buffer(&state), "working\n", "the open file is the disk's");
+    let rows = state
         .workspace
-        .opened
-        .as_ref()
-        .map(|open| open.old.text())
-        .expect("the open file");
-    assert_eq!(old, "one\n", "against what its parent had");
+        .changes
+        .get("a.txt")
+        .expect("the commit's change");
+    assert!(
+        rows.lines.iter().any(|line| line == "second"),
+        "the stream is the commit's"
+    );
 }

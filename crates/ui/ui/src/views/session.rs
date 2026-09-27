@@ -7,12 +7,14 @@ pub mod diff;
 pub(crate) mod files;
 pub mod find;
 pub mod header;
+mod open_files;
 pub mod overview;
 mod sheet;
 mod state;
+mod tab;
 
 pub(crate) use files::changed;
-pub use state::{Asked, Bar, Naming, Noting, Pane, Scope, SessionUi, Tab, Term, Writing};
+pub use state::{Asked, Bar, Face, Naming, Noting, Pane, SessionUi, Tab, Term, Writing};
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
@@ -59,7 +61,12 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             body.take_top(ctx.tokens.sm);
             overview::draw(ctx, app, ui, body)
         }
-        Tab::File => diff::draw(ctx, app, ui, body),
+        Tab::Diff => diff::draw(ctx, app, ui, body),
+        Tab::Files => {
+            let strip = body.take_top(ctx.tokens.row + ctx.tokens.sm);
+            open_files::draw(ctx, strip, app, ui);
+            diff::draw(ctx, app, ui, body)
+        }
     }
     if ui.session.sidebar() {
         files::draw(ctx, app, ui);

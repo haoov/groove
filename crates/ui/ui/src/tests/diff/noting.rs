@@ -58,7 +58,7 @@ fn typed(text: &str, ui: &mut Ui, app: &AppState) {
 fn a_right_click_in_the_rows_offers_a_note_on_that_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -72,13 +72,13 @@ fn a_right_click_in_the_rows_offers_a_note_on_that_line() {
 #[test]
 fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
     let mut app = opened();
-    let file = app.workspace.opened.as_mut().expect("the open file");
+    let file = app.workspace.active_mut().expect("the open file");
     file.new.holding(Selection {
         anchor: Caret::new(0, 0),
         head: Caret::new(2, 1),
     });
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -93,7 +93,7 @@ fn a_right_click_inside_a_selection_offers_a_note_on_all_of_it() {
 fn picking_the_note_opens_an_empty_row_to_type_in() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     let commands = pick(&app, &mut ui);
     assert!(commands.is_empty(), "nothing is asked of the app yet");
@@ -108,7 +108,7 @@ fn picking_the_note_opens_an_empty_row_to_type_in() {
 fn the_words_typed_draw_in_the_row_under_the_line() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
     typed("leaks", &mut ui, &app);
     let drawn = row_texts(&app, &ui);
@@ -127,7 +127,7 @@ fn the_words_typed_draw_in_the_row_under_the_line() {
 fn a_note_being_typed_takes_a_row_of_its_own() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let rows = crate::views::session::diff::rows_of(&app, &ui);
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
     assert_eq!(
@@ -141,7 +141,7 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
 fn the_words_leave_a_note_when_the_keyboard_says_so() {
     let app = opened();
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
     typed("issue: this leaks", &mut ui, &app);
     let commands = press(Key::Enter, &mut ui, &app);
@@ -314,7 +314,7 @@ fn a_line_that_already_carries_a_note_takes_no_other() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 1);
     assert!(
         ui.menu().is_none(),
@@ -328,7 +328,7 @@ fn a_line_beside_a_noted_one_still_takes_a_note() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 0);
     assert_eq!(
         ui.menu().map(|menu| &menu.of),
@@ -343,13 +343,13 @@ fn a_line_beside_a_noted_one_still_takes_a_note() {
 fn a_selection_that_runs_into_a_note_takes_no_note() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
-    let file = app.workspace.opened.as_mut().expect("the open file");
+    let file = app.workspace.active_mut().expect("the open file");
     file.new.holding(Selection {
         anchor: Caret::new(0, 0),
         head: Caret::new(1, 1),
     });
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     asked(&app, &mut ui, 0);
     assert!(ui.menu().is_none(), "the note on line 1 is inside it");
 }
@@ -359,7 +359,7 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     let mut app = opened();
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let with_note = crate::views::session::diff::rows_of(&app, &ui);
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
@@ -414,7 +414,7 @@ fn noted_row(app: &AppState, ui: &Ui) -> usize {
     let total = crate::views::session::diff::rows_of(app, ui);
     (0..total)
         .find(|row| {
-            crate::views::session::diff::line_at(app, ui, ui.session.view, *row)
+            crate::views::session::diff::line_at(app, ui, ui.session.face(), *row)
                 == Some(("src/lib.rs".to_string(), 1))
         })
         .expect("the note's line")

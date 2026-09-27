@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use groove_types::{DiffMode, WorktreeId};
 use groove_workspace_service::{HEAD, base_rev, changes, painted, summary, summary_against};
 
-use super::editor::{Head, reopen};
+use super::editor::{Head, derive, held, reopen};
 use super::stale;
 use crate::spawn::coalesced;
 use crate::{AppState, Continuation, Deliver, Services, Spawner};
@@ -57,7 +57,8 @@ pub(super) fn mark_read(
 /// The changed files and the open file, read at once.
 pub(super) fn reread(state: &mut AppState, spawner: &dyn Spawner) {
     load(state, spawner);
-    reopen(state, spawner, Head::Read);
+    let open = held(state);
+    reopen(state, spawner, Head::Read, open);
 }
 
 /// The same, for what a write under the worktree touched.
@@ -72,9 +73,8 @@ pub(super) fn refresh(
         return reread(state, spawner);
     }
     load(state, spawner);
-    if state.workspace.shows(paths) {
-        reopen(state, spawner, Head::Keep);
-    }
+    let touched = state.workspace.shows(paths);
+    reopen(state, spawner, Head::Keep, touched);
 }
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
@@ -92,18 +92,36 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
             Err(_) => Default::default(),
         };
         let gone = !dir.exists();
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.end(job);
-            if !asked.holds(state) {
-                return;
-            }
-            match files {
-                Ok(files) => state.workspace.loaded(asked.worktree, files, read),
-                Err(_) if gone => {}
-                Err(e) => state.failed(e),
-            }
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+                state.end(job);
+                if !asked.holds(state) {
+                    return;
+                }
+                match files {
+                    Ok(files) => loaded(state, spawner, asked.worktree, (files, read)),
+                    Err(_) if gone => {}
+                    Err(e) => state.failed(e),
+                }
+            },
+        ) as Continuation
     }));
+}
+
+/// The stream read from disk, then each unsaved buffer's rows derived again over it.
+fn loaded(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    worktree: WorktreeId,
+    (files, read): (
+        Vec<groove_types::FileDiff>,
+        groove_workspace_service::Changes,
+    ),
+) {
+    state.workspace.loaded(worktree, files, read);
+    for path in state.workspace.dirty() {
+        derive(state, spawner, path);
+    }
 }
 
 /// What the change is read against; the rows and the open file follow it.
@@ -142,7 +160,6 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
     };
     if stale(state) {
         state.workspace.mode = opens_in(state);
-        state.workspace.opened = None;
         load(state, spawner);
     }
     if state.workspace.watching.as_ref() != Some(&worktree) {

@@ -8,7 +8,7 @@ use crate::{Focus, Ui};
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.
 pub(super) fn in_file(key: Key, mods: Modifiers, app: &AppState) -> Vec<Command> {
-    if app.workspace.opened.is_none() {
+    if app.workspace.active().is_none() {
         return Vec::new();
     }
     if mods.ctrl {
@@ -100,7 +100,7 @@ fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let files = crate::views::session::changed(app);
     let at = files
         .iter()
-        .position(|file| Some(&file.path) == app.workspace.opened.as_ref().map(|o| &o.path));
+        .position(|file| Some(&file.path) == app.workspace.active().map(|o| &o.path));
     let next = match (key, at) {
         (Key::Up, Some(at)) => at.saturating_sub(1),
         (Key::Down, Some(at)) => (at + 1).min(files.len().saturating_sub(1)),

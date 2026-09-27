@@ -25,7 +25,7 @@ pub use layout::{Edge, Split};
 pub use render::{layout_commands, view};
 pub use views::board::BoardUi;
 pub use views::rail::RailUi;
-pub use views::session::{Asked, Naming, Scope, SessionUi, Tab};
+pub use views::session::{Asked, Naming, SessionUi, Tab};
 
 /// What the window shows beside the rail.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -171,6 +171,8 @@ pub struct Offer {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Losing {
     File(String),
+    /// One open file's tab, with the edits it owes the disk.
+    Tab(String),
     /// One path of the explorer, with everything under it.
     Path(String),
     Everything,

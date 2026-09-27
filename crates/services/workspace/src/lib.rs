@@ -16,6 +16,7 @@ use groove_types::{CommitEntry, DiffMode, FileDiff, Result, WorktreeId, Worktree
 use groove_watch::{QUIET, Watch};
 
 mod buffer;
+mod buffers;
 mod git;
 mod paths;
 mod read;
@@ -24,6 +25,7 @@ mod rows;
 #[cfg(test)]
 mod tests;
 
+pub use buffers::Buffers;
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
@@ -42,8 +44,8 @@ pub struct State {
     pub files: Vec<FileDiff>,
     /// Every changed file's rows, the whole change as one surface.
     pub changes: Changes,
-    /// The file the diff is showing, with both its sides.
-    pub opened: Option<Opened>,
+    /// Each worktree's open files, kept while another worktree is selected.
+    buffers: BTreeMap<WorktreeId, Buffers>,
     /// Both sides parsed, for the files whose rows are on screen.
     pub coloured: BTreeMap<String, Painted>,
     /// The rows the surface last drew.
@@ -67,8 +69,8 @@ pub struct State {
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
     pub watching: Option<WorktreeId>,
-    /// The buffer revision a read of the colours and the rows is out for.
-    pub deriving: Option<u64>,
+    /// The buffers a read of the colours and the rows is out for.
+    pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     watch: Option<Watch>,
 }
 
@@ -98,23 +100,30 @@ impl State {
         self.commit.is_some()
     }
 
-    /// Shuts the open file when the path that is gone is it, or holds it.
+    /// Shuts every open file the path that is gone is, or holds.
     pub fn shut_if_gone(&mut self, path: &str) {
-        let held = self
-            .opened
-            .as_ref()
-            .is_some_and(|open| open.path == path || open.path.starts_with(&format!("{path}/")));
-        if held {
-            self.opened = None;
+        let under = format!("{path}/");
+        let gone: Vec<String> = self
+            .held_paths()
+            .into_iter()
+            .filter(|one| one == path || one.starts_with(&under))
+            .collect();
+        for one in gone {
+            self.close(&one);
         }
     }
 
-    /// Whether the open file is one of these paths.
-    pub fn shows(&self, paths: &[PathBuf]) -> bool {
-        let Some(open) = self.opened.as_ref() else {
-            return false;
-        };
-        paths.iter().any(|path| path.ends_with(&open.path))
+    /// The open files that are among these paths.
+    pub fn shows(&self, paths: &[PathBuf]) -> Vec<String> {
+        let held = self.held_paths();
+        held.into_iter()
+            .filter(|open| paths.iter().any(|path| path.ends_with(open)))
+            .collect()
+    }
+
+    fn held_paths(&self) -> Vec<String> {
+        let open = self.buffers().map(Buffers::all).unwrap_or_default();
+        open.iter().map(|one| one.path.clone()).collect()
     }
 
     /// The changed files, and nothing at all when they are another worktree's.
@@ -125,9 +134,8 @@ impl State {
         }
     }
 
-    /// What the open file owes the disk.
-    pub fn dirty(&self) -> bool {
-        self.opened.as_ref().is_some_and(|open| open.new.dirty())
+    pub fn dirty(&self) -> Vec<String> {
+        self.buffers().map(Buffers::dirty).unwrap_or_default()
     }
 
     /// Forgets what was loaded and stops watching.
@@ -145,10 +153,9 @@ impl State {
         self.changes = Changes::default();
         self.coloured.clear();
         self.showing = 0..0;
-        self.opened = None;
         self.status = None;
         self.watching = None;
-        self.deriving = None;
+        self.deriving.clear();
         self.watch = None;
     }
 }

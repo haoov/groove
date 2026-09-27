@@ -2,14 +2,15 @@
 
 use groove_controllers::AppState;
 use groove_controllers::workspace_service::Opened;
-use groove_types::DiffView;
+
+use crate::views::session::Face;
 
 /// The scroll that keeps the same line in view once the view changes.
 pub(crate) fn scrolled(
     app: &AppState,
     ui: &crate::Ui,
-    from: DiffView,
-    to: DiffView,
+    from: Face,
+    to: Face,
     scroll: f32,
     line: f32,
 ) -> f32 {
@@ -18,23 +19,17 @@ pub(crate) fn scrolled(
 }
 
 /// The row that holds the same line once the view changes.
-pub(crate) fn moved(
-    app: &AppState,
-    ui: &crate::Ui,
-    from: DiffView,
-    to: DiffView,
-    row: usize,
-) -> usize {
+pub(crate) fn moved(app: &AppState, ui: &crate::Ui, from: Face, to: Face, row: usize) -> usize {
     let there = super::notes::Inline::of(app, ui, to);
     let row = super::notes::Inline::of(app, ui, from).base(row);
-    let Some(file) = app.workspace.opened.as_ref() else {
+    let Some(file) = app.workspace.active() else {
         return there.shifted(row);
     };
     let Some(number) = number(file, from, row) else {
         return there.shifted(row);
     };
     let at = match to {
-        DiffView::Editor => number as usize,
+        Face::File => number as usize,
         _ => file
             .rows
             .iter()
@@ -45,9 +40,9 @@ pub(crate) fn moved(
 }
 
 /// The new-side line the top of the view is on.
-fn number(file: &Opened, view: DiffView, at: usize) -> Option<u32> {
+fn number(file: &Opened, view: Face, at: usize) -> Option<u32> {
     match view {
-        DiffView::Editor => Some(at as u32),
+        Face::File => Some(at as u32),
         _ => file.rows.get(at..)?.iter().find_map(|row| row.new),
     }
 }

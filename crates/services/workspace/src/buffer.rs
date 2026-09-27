@@ -1,27 +1,64 @@
-//! The open file's buffer: what a read, a derive and a save do to it.
+//! The open files' buffers: what a read, a derive and a save do to them.
 
-use groove_types::Selection;
+use groove_types::{Selection, WorktreeId};
 
-use crate::{Derived, Opened, State, by_line, from_documents};
+use crate::{Buffers, Derived, Opened, State, by_line, from_documents};
 
 impl State {
+    pub fn buffers(&self) -> Option<&Buffers> {
+        self.buffers.get(self.worktree.as_ref()?)
+    }
+
+    fn buffers_mut(&mut self) -> Option<&mut Buffers> {
+        let worktree = self.worktree.clone()?;
+        Some(self.buffers.entry(worktree).or_default())
+    }
+
+    /// The file keystrokes go to.
+    pub fn active(&self) -> Option<&Opened> {
+        self.buffers()?.active()
+    }
+
+    pub fn active_mut(&mut self) -> Option<&mut Opened> {
+        self.buffers_mut()?.active_mut()
+    }
+
+    pub fn buffer(&self, path: &str) -> Option<&Opened> {
+        self.buffers()?.get(path)
+    }
+
+    /// A worktree gone, and every file it held open with it.
+    pub fn forget(&mut self, worktree: &WorktreeId) {
+        self.buffers.remove(worktree);
+    }
+
     /// Installs what a derive found, when the buffer is still the one it read.
-    pub fn derived(&mut self, path: &str, read: Derived, revision: u64) {
-        let Some(open) = self.opened.as_mut() else {
+    pub fn derived(&mut self, (worktree, path): (&WorktreeId, &str), read: Derived, revision: u64) {
+        let Some(open) = self
+            .buffers
+            .get_mut(worktree)
+            .and_then(|one| one.get_mut(path))
+        else {
             return;
         };
-        if open.path != path || !open.new.settled(read.settled, revision) {
+        if !open.new.settled(read.settled, revision) {
             return;
         }
         open.rows = read.aligned.rows.clone();
         open.marks = read.aligned.marks.clone();
         open.words = by_line(&read.aligned.rows, &read.aligned.words);
-        self.changes.replace(read.aligned);
+        if self.holds(worktree) && self.commit.is_none() {
+            self.changes.replace(read.aligned);
+        }
     }
 
     /// The buffer marked as what the disk holds.
-    pub fn saved(&mut self, path: &str) {
-        if let Some(open) = self.opened.as_mut().filter(|open| open.path == path) {
+    pub fn saved(&mut self, worktree: &WorktreeId, path: &str) {
+        let held = self
+            .buffers
+            .get_mut(worktree)
+            .and_then(|one| one.get_mut(path));
+        if let Some(open) = held {
             open.new.saved();
         }
     }
@@ -39,49 +76,66 @@ impl State {
         ))
     }
 
-    /// The file read, with the caret it had while it was the same file.
-    pub fn arrived(&mut self, file: Opened, at: Option<Selection>) {
-        match self.reads_the_same(&file) {
-            true => self.refreshed(file, at),
-            false => self.replaced(file, at),
+    /// The file read, with the caret it had while it was the same file; `focus` makes it active.
+    pub fn arrived(
+        &mut self,
+        worktree: &WorktreeId,
+        file: Opened,
+        at: Option<Selection>,
+        focus: bool,
+    ) {
+        let path = file.path.clone();
+        let buffers = self.buffers.entry(worktree.clone()).or_default();
+        match buffers.get_mut(&path) {
+            Some(open) if open.new.text() == file.new.text() => refreshed(open, file, at),
+            held => {
+                let caret = held.map(|open| Selection::at(open.new.caret()));
+                replaced(buffers, file, at.or(caret));
+            }
         }
+        if focus {
+            buffers.activate(&path);
+        }
+        self.moved();
     }
 
-    /// Whether the buffer in hand already holds the text this read found.
-    fn reads_the_same(&self, file: &Opened) -> bool {
-        self.opened
-            .as_ref()
-            .is_some_and(|open| open.path == file.path && open.new.text() == file.new.text())
-    }
-
-    /// The read brought back the text the buffer holds: the buffer stays, with its history.
-    fn refreshed(&mut self, file: Opened, at: Option<Selection>) {
-        let Some(open) = self.opened.as_mut() else {
+    /// An open file made active, its caret where the asking wants it.
+    pub fn focus(&mut self, path: &str, at: Option<Selection>) {
+        let Some(buffers) = self.buffers_mut() else {
             return;
         };
-        open.old = file.old;
-        open.rows = file.rows;
-        open.marks = file.marks;
-        open.words = file.words;
-        open.long = file.long;
-        open.new.saved();
-        if let Some(held) = at {
+        buffers.activate(path);
+        if let (Some(open), Some(held)) = (buffers.get_mut(path), at) {
             open.new.holding(held);
         }
     }
 
-    /// A different text: the buffer gives way, keeping only where the caret was.
-    fn replaced(&mut self, mut file: Opened, at: Option<Selection>) {
-        let held = at.or_else(|| {
-            self.opened
-                .as_ref()
-                .filter(|open| open.path == file.path)
-                .map(|open| Selection::at(open.new.caret()))
-        });
-        if let Some(held) = held {
-            file.new.holding(held);
+    /// Takes a file's tab away, unsaved edits and all; the caller asked first.
+    pub fn close(&mut self, path: &str) {
+        if let Some(buffers) = self.buffers_mut() {
+            buffers.close(path);
         }
-        self.opened = Some(file);
         self.moved();
     }
+}
+
+/// The read brought back the text the buffer holds: the buffer stays, with its history.
+fn refreshed(open: &mut Opened, file: Opened, at: Option<Selection>) {
+    open.old = file.old;
+    open.rows = file.rows;
+    open.marks = file.marks;
+    open.words = file.words;
+    open.long = file.long;
+    open.new.saved();
+    if let Some(held) = at {
+        open.new.holding(held);
+    }
+}
+
+/// A different text: the buffer gives way, keeping only where the caret was.
+fn replaced(buffers: &mut Buffers, mut file: Opened, at: Option<Selection>) {
+    if let Some(held) = at {
+        file.new.holding(held);
+    }
+    buffers.install(file);
 }

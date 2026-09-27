@@ -51,7 +51,7 @@ fn with_files() -> AppState {
 
 fn on_diff() -> Ui {
     let mut ui = Ui::default();
-    ui.session.tab = Tab::File;
+    ui.session.tab = Tab::Diff;
     ui
 }
 
@@ -80,12 +80,17 @@ fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
 }
 
 /// The rows of one view, as the surface drew them, both panes in split.
-fn in_view(app: &AppState, view: DiffView) -> Vec<String> {
+fn in_view(app: &AppState, face: crate::views::session::Face) -> Vec<String> {
     let mut ui = on_diff();
-    ui.session.view = view;
+    crate::tests::set_face(&mut ui, face);
     let (frame, _) = view_of(app, &ui);
     let workspace = crate::layout::Layout::of(window(), &ui).workspace;
-    let body = workspace.y + Tokens::new(1.0).row * 2.0;
+    let tokens = Tokens::new(1.0);
+    let strip = match face {
+        crate::views::session::Face::File => tokens.row + tokens.sm,
+        _ => 0.0,
+    };
+    let body = workspace.y + tokens.row * 2.0 + strip;
     frame.layers()[0]
         .texts
         .iter()
@@ -101,7 +106,7 @@ fn view_of(app: &AppState, ui: &Ui) -> (groove_gfx::Frame, crate::Hits) {
 /// The marks the file view drew, by colour.
 fn marks(app: &AppState) -> Vec<LineMark> {
     let mut ui = on_diff();
-    ui.session.view = DiffView::Editor;
+    ui.session.tab = crate::views::session::Tab::Files;
     let (frame, _) = view_of(app, &ui);
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let width = Tokens::new(1.0).hairline * 2.0;

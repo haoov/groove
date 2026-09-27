@@ -204,7 +204,6 @@ fn gutters(row: &Row, view: DiffView, side: Side) -> Vec<String> {
             Side::Old => vec![number(row.old)],
             Side::New => vec![number(row.new)],
         },
-        (DiffView::Editor, _) => vec![number(row.new)],
         (DiffView::Inline, RowKind::Removed) => vec![number(row.old), String::new()],
         (DiffView::Inline, _) => vec![String::new(), number(row.new)],
     }
