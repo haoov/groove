@@ -7,11 +7,18 @@ use groove_types::SessionKind;
 use super::{Action, Entry};
 
 pub fn entries(app: &AppState) -> Vec<Entry> {
-    let mut out = vec![Entry::command(
-        "Session",
-        "New explorer",
-        Command::Session(session::Command::OpenExplorer { title: None }),
-    )];
+    let mut out = vec![
+        Entry::command(
+            "Session",
+            "New explorer",
+            Command::Session(session::Command::OpenExplorer { title: None }),
+        ),
+        Entry {
+            group: "Config",
+            label: "Settings".into(),
+            run: super::Run::Settings,
+        },
+    ];
     if !app.session.living.is_empty() {
         out.push(Entry::flow(
             "Session",

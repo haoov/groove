@@ -35,6 +35,14 @@ pub enum Target {
     LogHours(groove_types::ExternalId),
     /// The timeline's own bar, which folds it away.
     Timeline,
+    /// The rail's footer row, which opens Settings, and its own bar's back.
+    SettingsOpen,
+    SettingsBack,
+    /// A section of the list, and the search over them.
+    SettingsSection(crate::views::settings::Section),
+    SettingsSearch,
+    /// A control of a Settings row: the preference a click on it sets.
+    SetPreference(groove_controllers::config_service::Preference),
     /// What folds the manual section away, or opens it.
     ShellFold,
     /// What opens a terminal in a tab of its own.

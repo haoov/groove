@@ -164,8 +164,5 @@ pub(super) fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command
     };
     palette.selected = at;
     let outcome = palette.key(Key::Enter, app);
-    if outcome.close {
-        ui.overlay = None;
-    }
-    outcome.commands
+    ui.closed_palette(outcome)
 }

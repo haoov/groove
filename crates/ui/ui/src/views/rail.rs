@@ -104,6 +104,8 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
         rule,
     );
     let style = ctx.styles.small(Role::Faint);
-    let settings = Row::new(ctx.tokens.md, "settings", style).mark(Mark::Settings);
+    let settings = Row::new(ctx.tokens.md, "settings", style)
+        .mark(Mark::Settings)
+        .target(Target::SettingsOpen);
     list(ctx, rect, &[settings], None);
 }

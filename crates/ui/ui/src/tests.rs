@@ -20,6 +20,7 @@ mod palette;
 mod pasting;
 mod perf;
 mod rail;
+mod settings;
 mod staging;
 mod structure;
 

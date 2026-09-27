@@ -7,6 +7,7 @@ mod focus;
 mod header;
 mod menu;
 mod rail;
+mod settings;
 mod shell;
 mod sidebar;
 mod surface;
@@ -286,4 +287,5 @@ fn elsewhere(
         .or_else(|| rail::acted(target, ui))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, ui, app, metrics))
+        .or_else(|| settings::acted(target, ui))
 }

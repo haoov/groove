@@ -64,5 +64,6 @@ button; no restart.
 ## Needs
 
 - [x] The config file's fields: auto-approve default, thresholds, poll interval.
-- [ ] Settings search: an index of every row's label and section, built from the form.
+- [x] Settings search: an index of every row's label and section, built from the form.
+- [x] The Settings surface: Preferences set in place; Setup, Providers and Appearance read only.
 - [ ] The clipboard's home: `ui` through winit, since it is the window's, not a service's.

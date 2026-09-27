@@ -35,10 +35,10 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     }
     if let Some(palette) = ui.palette_mut() {
         let outcome = palette.key(key, app);
-        if outcome.close {
-            ui.overlay = None;
-        }
-        return outcome.commands;
+        return ui.closed_palette(outcome);
+    }
+    if ui.settings.open {
+        return in_settings(key, mods, ui);
     }
     if ui.session.naming.is_some() {
         return in_name(key, mods, ui);
@@ -67,6 +67,20 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         Focus::Sidebar => in_sidebar(key, mods, ui, app),
         Focus::Rail => in_rail(key, app),
     }
+}
+
+/// Settings holds the keyboard: its search while typing, Esc out of it, then Esc back.
+fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui) -> Vec<Command> {
+    let settings = &mut ui.settings;
+    match (key, settings.typing) {
+        (Key::Escape | Key::Enter, true) => settings.typing = false,
+        (Key::Escape, false) => settings.open = false,
+        (key, true) => {
+            typing(key, mods, &mut settings.search);
+        }
+        _ => {}
+    }
+    Vec::new()
 }
 
 /// The board, or the session it was opened from.

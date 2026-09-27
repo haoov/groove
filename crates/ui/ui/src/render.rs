@@ -6,7 +6,7 @@ use groove_gfx::{Fonts, Frame};
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
-use crate::views::{board, overlays, rail, session, splitter};
+use crate::views::{board, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::style::Styles;
@@ -24,12 +24,16 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         };
         let theme = app.config.theme();
         let mut ctx = Ctx::new(theme, metrics, drawn, &mut frame, fonts, ui.hover.clone());
-        rail::draw(&mut ctx, app, ui);
-        match ui.showing(app) {
-            Surface::Session => session::draw(&mut ctx, app, ui),
-            Surface::Board => board::draw(&mut ctx, app, ui),
+        if ui.settings.open {
+            settings::draw(&mut ctx, app, ui);
+        } else {
+            rail::draw(&mut ctx, app, ui);
+            match ui.showing(app) {
+                Surface::Session => session::draw(&mut ctx, app, ui),
+                Surface::Board => board::draw(&mut ctx, app, ui),
+            }
+            splitter::draw(&mut ctx, ui.showing(app));
         }
-        splitter::draw(&mut ctx, ui.showing(app));
         if let Some(menu) = ui.menu() {
             overlays::actions::draw(&mut ctx, menu);
         }

@@ -20,12 +20,13 @@ fn labels(app: &AppState) -> Vec<String> {
 
 #[test]
 fn entries_follow_what_the_session_holds() {
-    assert_eq!(labels(&AppState::default()), ["New explorer"]);
+    assert_eq!(labels(&AppState::default()), ["New explorer", "Settings"]);
     let bare = labels(&app());
     assert_eq!(
         bare,
         [
             "New explorer",
+            "Settings",
             "Add repo",
             "Rename explorer",
             "Delete session",

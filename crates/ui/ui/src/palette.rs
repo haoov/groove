@@ -16,6 +16,8 @@ use crate::input::Key;
 pub enum Run {
     Command(Command),
     Flow(Action),
+    /// The Settings surface, which is the window's own and asks no command.
+    Settings,
 }
 
 /// One row of the palette. A command row's id is the command's own.
@@ -31,6 +33,7 @@ impl Entry {
         match &self.run {
             Run::Command(c) => c.id(),
             Run::Flow(a) => a.id(),
+            Run::Settings => "settings.open",
         }
     }
 
@@ -51,11 +54,12 @@ impl Entry {
     }
 }
 
-/// What a key did: commands to dispatch now, and whether the palette closes.
+/// What a key did: commands to dispatch now, whether the palette closes, and whether Settings opens.
 #[derive(Debug, Default, PartialEq)]
 pub struct Outcome {
     pub commands: Vec<Command>,
     pub close: bool,
+    pub settings: bool,
 }
 
 /// The palette's own state while it is open.
@@ -166,6 +170,12 @@ impl Palette {
             Run::Command(command) => Outcome {
                 commands: vec![command],
                 close: true,
+                ..Outcome::default()
+            },
+            Run::Settings => Outcome {
+                close: true,
+                settings: true,
+                ..Outcome::default()
             },
             Run::Flow(action) => {
                 let session = match (app.session.selected.clone(), action) {
@@ -179,7 +189,7 @@ impl Palette {
                 self.reset();
                 Outcome {
                     commands: refresh.into_iter().collect(),
-                    close: false,
+                    ..Outcome::default()
                 }
             }
         }
@@ -218,7 +228,7 @@ impl Palette {
         if flow.prompt(app).is_some() {
             return Outcome {
                 commands: flow.refresh(app).into_iter().collect(),
-                close: false,
+                ..Outcome::default()
             };
         }
         let command = flow.command();
@@ -226,6 +236,7 @@ impl Palette {
         Outcome {
             commands: command.into_iter().collect(),
             close: true,
+            ..Outcome::default()
         }
     }
 
@@ -243,8 +254,8 @@ impl Palette {
                 Outcome::default()
             }
             None => Outcome {
-                commands: Vec::new(),
                 close: true,
+                ..Outcome::default()
             },
         }
     }

@@ -4,4 +4,5 @@ pub mod board;
 pub mod overlays;
 pub mod rail;
 pub mod session;
+pub mod settings;
 pub mod splitter;

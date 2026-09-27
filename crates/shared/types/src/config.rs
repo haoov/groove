@@ -51,8 +51,6 @@ pub struct UiConfig {
     pub font_family: String,
     #[serde(default)]
     pub agent_font_family: String,
-    #[serde(default = "default_true")]
-    pub suggest_actions: bool,
 }
 
 impl Default for UiConfig {
@@ -63,7 +61,6 @@ impl Default for UiConfig {
             theme: ThemeName::default(),
             font_family: String::new(),
             agent_font_family: String::new(),
-            suggest_actions: true,
         }
     }
 }
@@ -125,10 +122,6 @@ fn default_font_size() -> f32 {
 
 fn default_code_font_size() -> f32 {
     12.5
-}
-
-fn default_true() -> bool {
-    true
 }
 
 fn default_poll_interval() -> u64 {

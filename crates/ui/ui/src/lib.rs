@@ -1,6 +1,6 @@
 //! The surfaces: `view` draws the state into a `Frame`, `input` turns keys and clicks into commands.
 
-use groove_controllers::AppState;
+use groove_controllers::{AppState, Command};
 
 mod components;
 mod ctx;
@@ -85,6 +85,7 @@ pub struct Ui {
     pub session: SessionUi,
     pub rail: RailUi,
     pub board: BoardUi,
+    pub settings: views::settings::SettingsUi,
     pub agent: AgentUi,
     pub split: Split,
     /// What the pointer's button holds while it is down.
@@ -239,6 +240,17 @@ impl Ui {
             Some(Overlay::Examining(one)) => Some(one),
             _ => None,
         }
+    }
+
+    /// What a palette key did, applied: the palette down, Settings up; its commands returned.
+    pub(crate) fn closed_palette(&mut self, outcome: palette::Outcome) -> Vec<Command> {
+        if outcome.close {
+            self.overlay = None;
+        }
+        if outcome.settings {
+            self.settings.open = true;
+        }
+        outcome.commands
     }
 
     /// The overlay taken down when `which` says it is the one standing.

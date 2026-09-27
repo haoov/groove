@@ -11,7 +11,7 @@ const FILE: &str = r#"{
     "filters": { "exclude_statuses": ["Done"] }
   },
   "git": { "worktree_root": "/home/me/worktrees" },
-  "ui": { "font_size": 15, "theme": "latte", "font_family": "", "agent_font_family": "", "suggest_actions": true }
+  "ui": { "font_size": 15, "theme": "latte", "font_family": "", "agent_font_family": "" }
 }"#;
 
 #[test]

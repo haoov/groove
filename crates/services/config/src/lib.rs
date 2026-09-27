@@ -45,7 +45,7 @@ pub fn save(config_dir: &Path, config: &Config) -> Result<(), Error> {
 }
 
 impl State {
-    fn preferences(&self) -> Preferences {
+    pub fn preferences(&self) -> Preferences {
         let held = self.config.as_ref().map(|c| c.preferences.clone());
         held.unwrap_or_default()
     }
