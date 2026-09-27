@@ -9,8 +9,10 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::style::Role;
 use crate::shape::ruled;
-use crate::text::{elide, row};
+use crate::text::Label;
+use crate::text::row;
 use crate::widgets::scrolled;
+use groove_gfx::Edges;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let log = &app.workspace.log;
@@ -28,7 +30,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         log,
         |_| height,
-        |ctx, line, one| entry(ctx, line, one, shown == Some(one.sha.as_str()), ui),
+        |ctx, line, one| entry(ctx, line, one, shown == Some(one.sha.as_str())),
     );
 }
 
@@ -41,50 +43,24 @@ fn said(app: &AppState) -> &'static str {
 }
 
 /// One commit: its short name, what it says, and who made it.
-fn entry(ctx: &mut Ctx, line: Rect, one: &CommitEntry, shown: bool, ui: &Ui) {
+fn entry(ctx: &mut Ctx, line: Rect, one: &CommitEntry, shown: bool) {
     let target = Target::Commit(one.sha.clone());
-    if ui.hover.as_ref() == Some(&target) {
+    if ctx.hovered(&target) {
         ctx.quad(line, ctx.styles.hover());
     }
     if shown {
         ruled(ctx, line, ctx.styles.here());
     }
     ctx.hit(line, target);
-    let role = match one.is_base {
-        true => Role::Ghost,
-        false => Role::Muted,
+    let (name, words) = match one.is_base {
+        true => (ctx.styles.code(Role::Ghost), ctx.styles.body(Role::Faint)),
+        false => (ctx.styles.code(Role::Muted), ctx.styles.body(Role::Text)),
     };
-    let name = ctx.styles.code(role);
-    let width = ctx.measure(&one.short_sha, &name);
-    let at = ctx.tokens.md;
-    row(ctx, line, at, &one.short_sha, name);
-    let words = match one.is_base {
-        true => ctx.styles.body(Role::Faint),
-        false => ctx.styles.body(Role::Text),
-    };
-    let by = author(ctx, line, one);
-    let start = at + width + ctx.tokens.sm;
-    let room = (by - line.x - start - ctx.tokens.sm).max(0.0);
-    let text = elide(
-        ctx,
-        one.message.lines().next().unwrap_or_default(),
-        &words,
-        room,
-    );
-    row(ctx, line, start, &text, words);
-}
-
-/// Who made it, at the row's own end. Returns where it starts.
-fn author(ctx: &mut Ctx, line: Rect, one: &CommitEntry) -> f32 {
-    let style = ctx.styles.small(Role::Ghost);
-    let width = ctx.measure(&one.author, &style);
-    let at = line.right() - ctx.tokens.md - width;
-    row(
-        ctx,
-        Rect::new(at, line.y, width, line.h),
-        0.0,
-        &one.author,
-        style,
-    );
-    at
+    let sm = ctx.tokens.sm;
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let by = ctx.styles.small(Role::Ghost);
+    Label::new(&one.author, by).right(ctx, &mut room, sm);
+    Label::new(&one.short_sha, name).left(ctx, &mut room, sm);
+    let said = one.message.lines().next().unwrap_or_default();
+    Label::new(said, words).draw(ctx, room);
 }

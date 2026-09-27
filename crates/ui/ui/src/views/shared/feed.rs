@@ -10,7 +10,7 @@ use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::motion::turn;
 use crate::base::style::Role;
-use crate::shape::{box_in, hairline};
+use crate::shape::{box_in, hairline, hoverable};
 use crate::text::{ago, elide, row};
 use crate::widgets::scrolled;
 
@@ -33,10 +33,7 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
         ctx.styles.line(),
     );
     grab(ctx, line);
-    if ui.hover.as_ref() == Some(&Target::Feed) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, Target::Feed);
+    hoverable(ctx, line, Target::Feed);
     let size = ctx.tokens.small;
     let box_ = box_in(line, line.x + ctx.tokens.md, size);
     let turn = match ui.rail.folded {
@@ -94,7 +91,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         &shown,
         |_| height,
-        |ctx, line, one| one_line(ctx, line, one, ui),
+        |ctx, line, one| one_line(ctx, line, one),
     );
 }
 
@@ -142,7 +139,7 @@ struct Said<'a> {
     role: Role,
 }
 
-fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>, ui: &Ui) {
+fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>) {
     match one {
         Line::Job(label) => running(ctx, line, label),
         Line::Bad(bad) => over(
@@ -166,7 +163,7 @@ fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>, ui: &Ui) {
             },
         ),
         Line::Event(event) => {
-            reachable(ctx, line, &event.session, ui);
+            reachable(ctx, line, &event.session);
             over(
                 ctx,
                 line,
@@ -182,12 +179,9 @@ fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>, ui: &Ui) {
 }
 
 /// The line takes the pointer to the session it belongs to.
-fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId, ui: &Ui) {
+fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId) {
     let target = Target::FeedLine(session.clone());
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
+    hoverable(ctx, line, target);
 }
 
 /// A job the user waits on, with the mark that keeps turning.

@@ -29,12 +29,12 @@ use crate::widgets::{icon, tabs};
 
 /// The session: the header, then the agent pane and the workspace.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    header::draw(ctx, app, ui);
+    header::draw(ctx, app);
     if app.session.selected().is_none() {
         return empty(ctx);
     }
     agent_pane::draw(ctx, app);
-    bar::draw(ctx, app, ui);
+    bar::draw(ctx, app);
     workspace(ctx, app, ui);
     sheet::draw(ctx, app, ui);
 }

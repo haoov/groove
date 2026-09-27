@@ -40,6 +40,53 @@ impl Rect {
         Rect::new(self.x + d, self.y + d, self.w - 2.0 * d, self.h - 2.0 * d)
     }
 
+    pub fn pad(self, edges: Edges) -> Rect {
+        let w = (self.w - edges.left - edges.right).max(0.0);
+        let h = (self.h - edges.top - edges.bottom).max(0.0);
+        Rect::new(self.x + edges.left, self.y + edges.top, w, h)
+    }
+
+    /// The first `w` of the width; `self` keeps the rest.
+    pub fn take_left(&mut self, w: f32) -> Rect {
+        let w = w.clamp(0.0, self.w);
+        let taken = Rect::new(self.x, self.y, w, self.h);
+        self.x += w;
+        self.w -= w;
+        taken
+    }
+
+    /// The last `w` of the width; `self` keeps the rest.
+    pub fn take_right(&mut self, w: f32) -> Rect {
+        let w = w.clamp(0.0, self.w);
+        self.w -= w;
+        Rect::new(self.right(), self.y, w, self.h)
+    }
+
+    /// The first `h` of the height; `self` keeps the rest.
+    pub fn take_top(&mut self, h: f32) -> Rect {
+        let h = h.clamp(0.0, self.h);
+        let taken = Rect::new(self.x, self.y, self.w, h);
+        self.y += h;
+        self.h -= h;
+        taken
+    }
+
+    /// The last `h` of the height; `self` keeps the rest.
+    pub fn take_bottom(&mut self, h: f32) -> Rect {
+        let h = h.clamp(0.0, self.h);
+        self.h -= h;
+        Rect::new(self.x, self.bottom(), self.w, h)
+    }
+
+    pub fn align(self, (w, h): (f32, f32), across: Align, down: Align) -> Rect {
+        Rect::new(
+            across.at(self.x, self.w, w),
+            down.at(self.y, self.h, h),
+            w,
+            h,
+        )
+    }
+
     /// The whole-pixel scissor box this covers inside `size`.
     pub(crate) fn scissor(self, size: Size) -> Option<(u32, u32, u32, u32)> {
         let r = self.intersect(size.rect());
@@ -51,6 +98,56 @@ impl Rect {
         let x1 = (r.right().ceil() as u32).min(size.width);
         let y1 = (r.bottom().ceil() as u32).min(size.height);
         (x1 > x0 && y1 > y0).then_some((x0, y0, x1 - x0, y1 - y0))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Edges {
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub left: f32,
+}
+
+impl Edges {
+    pub const fn all(d: f32) -> Self {
+        Self::xy(d, d)
+    }
+
+    pub const fn xy(x: f32, y: f32) -> Self {
+        Self {
+            top: y,
+            right: x,
+            bottom: y,
+            left: x,
+        }
+    }
+
+    pub const fn across(left: f32, right: f32) -> Self {
+        Self {
+            top: 0.0,
+            right,
+            bottom: 0.0,
+            left,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Align {
+    #[default]
+    Start,
+    Center,
+    End,
+}
+
+impl Align {
+    fn at(self, from: f32, room: f32, size: f32) -> f32 {
+        match self {
+            Align::Start => from,
+            Align::Center => from + (room - size) / 2.0,
+            Align::End => from + room - size,
+        }
     }
 }
 

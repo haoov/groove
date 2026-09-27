@@ -10,7 +10,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, leading};
+use crate::shape::{after_mark, hoverable, leading};
 use crate::widgets::icon;
 
 /// Every session the filter lets through, with its worktrees under it while it is open.
@@ -48,10 +48,7 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
 pub(super) fn session(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, living: &Living) {
     let id = &living.session.id;
     let target = Target::Session(id.clone());
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
+    hoverable(ctx, line, target);
     let kind = twisty(ctx, line, ui, living);
     let box_ = leading(ctx, line, line.x + kind);
     let role = match app.session.get(id).is_some() {

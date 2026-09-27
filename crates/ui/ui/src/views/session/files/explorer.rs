@@ -11,7 +11,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::box_in;
+use crate::shape::{box_in, hoverable};
 use crate::text::{elide, row};
 use crate::views::session::Asked;
 use crate::widgets::scrolled;
@@ -166,7 +166,7 @@ fn one_row(
         return naming(ctx, line, indent, ui);
     }
     if ui.losing() == Some(&crate::Losing::Path(held.path.clone())) {
-        return super::asking(ctx, line, "delete it?", ui);
+        return super::asking(ctx, line, "delete it?");
     }
     match (held.dir, held.file) {
         (true, _) => directory(ctx, line, held, indent, ui),
@@ -177,7 +177,7 @@ fn one_row(
             };
             entry(ctx, line, file, indent, reading, ui)
         }
-        (false, None) => plain(ctx, line, held, indent, open, ui),
+        (false, None) => plain(ctx, line, held, indent, open),
     }
 }
 
@@ -205,10 +205,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
 /// A directory: a twisty, then its own name.
 fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
     let target = Target::Dir(held.path.clone());
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
+    hoverable(ctx, line, target);
     let size = ctx.tokens.small;
     let box_ = box_in(line, line.x + indent, size);
     let turn = match ui.session.opened.contains(&held.path) {
@@ -224,9 +221,9 @@ fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
 }
 
 /// A file the diff says nothing about: its name, and nothing else.
-fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&String>, ui: &Ui) {
+fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&String>) {
     let target = Target::File(held.path.clone());
-    if ui.hover.as_ref() == Some(&target) {
+    if ctx.hovered(&target) {
         ctx.quad(line, ctx.styles.hover());
     }
     if open == Some(&held.path) {

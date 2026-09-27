@@ -1,12 +1,18 @@
 //! Placement and rules: where a box sits in a row, and the lines drawn around one.
 
-use groove_gfx::{Color, Rect};
+use groove_gfx::{Align, Color, Rect};
 
 use crate::base::ctx::Ctx;
+use crate::base::hit::Target;
 
 /// A square box of `size`, centred vertically in `row`, at `x`.
 pub fn box_in(row: Rect, x: f32, size: f32) -> Rect {
     Rect::new(x, row.y + (row.h - size) / 2.0, size, size)
+}
+
+/// A square of `size` centred down `slot`, at its start.
+pub fn square(slot: Rect, size: f32) -> Rect {
+    slot.align((size, size), Align::Start, Align::Center)
 }
 
 /// A leading icon in `row` at `x`, the icon size.
@@ -34,4 +40,42 @@ pub fn hairline(ctx: &mut Ctx, rect: Rect, color: Color) {
         Rect::new(rect.x, rect.bottom() - thickness, rect.w, thickness),
         color,
     );
+}
+
+/// Registers `target` at `rect`, on the hover ground while the pointer rests on it.
+pub fn hoverable(ctx: &mut Ctx, rect: Rect, target: Target) -> bool {
+    let on = ctx.interact(rect, target);
+    if on {
+        let hover = ctx.styles.hover();
+        ctx.quad(rect, hover);
+    }
+    on
+}
+
+/// A box: a ground and a one-pixel border.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Panel {
+    pub ground: Option<Color>,
+    pub border: Option<Color>,
+}
+
+impl Panel {
+    pub fn ground(mut self, color: Color) -> Self {
+        self.ground = Some(color);
+        self
+    }
+
+    pub fn border(mut self, color: Color) -> Self {
+        self.border = Some(color);
+        self
+    }
+
+    pub fn draw(self, ctx: &mut Ctx, rect: Rect) {
+        if let Some(ground) = self.ground {
+            ctx.quad(rect, ground);
+        }
+        if let Some(border) = self.border {
+            ctx.border(rect, border);
+        }
+    }
 }

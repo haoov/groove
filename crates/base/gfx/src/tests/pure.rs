@@ -1,4 +1,7 @@
-use crate::{Cell, CellGrid, Color, Font, Frame, Palette, Rect, Size, TextStyle, Weight, boxdraw};
+use crate::{
+    Align, Cell, CellGrid, Color, Edges, Font, Frame, Palette, Rect, Size, TextStyle, Weight,
+    boxdraw,
+};
 
 #[test]
 fn a_colour_keeps_the_channels_its_hex_names() {
@@ -21,6 +24,24 @@ fn two_rects_meet_in_what_they_share_and_nothing_when_they_do_not() {
     let b = Rect::new(5.0, 5.0, 10.0, 10.0);
     assert_eq!(a.intersect(b), Rect::new(5.0, 5.0, 5.0, 5.0));
     assert!(a.intersect(Rect::new(20.0, 20.0, 1.0, 1.0)).is_empty());
+}
+
+#[test]
+fn a_row_hands_out_its_ends_and_keeps_the_middle() {
+    let mut row = Rect::new(0.0, 0.0, 100.0, 20.0);
+    assert_eq!(row.take_left(10.0), Rect::new(0.0, 0.0, 10.0, 20.0));
+    assert_eq!(row.take_right(30.0), Rect::new(70.0, 0.0, 30.0, 20.0));
+    assert_eq!(row, Rect::new(10.0, 0.0, 60.0, 20.0));
+    assert_eq!(row.take_left(500.0).w, 60.0);
+    assert!(row.is_empty());
+}
+
+#[test]
+fn a_box_sits_where_it_is_aligned_inside_the_padding() {
+    let room = Rect::new(0.0, 0.0, 100.0, 40.0).pad(Edges::all(10.0));
+    assert_eq!(room, Rect::new(10.0, 10.0, 80.0, 20.0));
+    let centred = room.align((20.0, 10.0), Align::End, Align::Center);
+    assert_eq!(centred, Rect::new(70.0, 15.0, 20.0, 10.0));
 }
 
 #[test]

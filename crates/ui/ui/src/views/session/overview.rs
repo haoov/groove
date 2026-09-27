@@ -22,7 +22,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let top = area.y - ui.session.overview;
     let mut bottom = top;
     ctx.clipped(area, |ctx| {
-        let mut y = properties(ctx, app, open, area, top, ui);
+        let mut y = properties(ctx, app, open, area, top);
         y = section(ctx, area, y, "Repos and worktrees", y > top);
         y = repos(ctx, app, open, area, y);
         y = merge_request(ctx, app, area, y);
@@ -33,13 +33,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 }
 
 /// The task's six properties, for a session that works one.
-fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32, ui: &Ui) -> f32 {
+fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, top: f32) -> f32 {
     let Some(one) = app.task.worked(&open.session) else {
         return top;
     };
     let y = section(ctx, area, top, "Properties", false);
     let time = app.task.measured(&one.external_id);
-    task::properties(ctx, area, y, one, time, ui) + ctx.tokens.sm
+    task::properties(ctx, area, y, one, time) + ctx.tokens.sm
 }
 
 /// The selected worktree's MR, when its forge has answered for it.

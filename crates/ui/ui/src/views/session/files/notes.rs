@@ -9,8 +9,12 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::shape::hoverable;
+use crate::shape::square;
+use crate::text::Label;
+use crate::text::row;
 use crate::widgets::scrolled;
+use groove_gfx::Edges;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let notes: Vec<(usize, &Note)> = app
@@ -33,7 +37,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         &notes,
         |_| height,
-        |ctx, line, (at, note)| one(ctx, line, note, *at, ui),
+        |ctx, line, (at, note)| one(ctx, line, note, *at),
     );
 }
 
@@ -43,32 +47,20 @@ pub(super) fn listed(note: &Note) -> bool {
 }
 
 /// One note: where it stands, then what it says.
-fn one(ctx: &mut Ctx, line: Rect, note: &Note, at: usize, ui: &Ui) {
-    let target = Target::NoteAt(at);
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
-    let role = match note.resolved {
-        true => Role::Faint,
-        false => Role::Muted,
+fn one(ctx: &mut Ctx, line: Rect, note: &Note, at: usize) {
+    hoverable(ctx, line, Target::NoteAt(at));
+    let (role, said) = match note.resolved {
+        true => (Role::Faint, ctx.styles.body(Role::Faint)),
+        false => (Role::Muted, ctx.styles.body(Role::Text)),
     };
-    let size = ctx.tokens.small;
-    let box_ = crate::shape::box_in(line, line.x + ctx.tokens.md, size);
+    let (sm, size) = (ctx.tokens.sm, ctx.tokens.small);
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let box_ = square(room.take_left(size), size);
+    room.take_left(sm);
     ctx.icon(box_, mark(note), 0, ctx.styles.color(role));
-    let at = ctx.tokens.md + size + ctx.tokens.sm;
-    let place = ctx.styles.small(role);
-    let text = where_of(note);
-    let width = ctx.measure(&text, &place);
-    row(ctx, line, at, &text, place);
-    let said = match note.resolved {
-        true => ctx.styles.body(Role::Faint),
-        false => ctx.styles.body(Role::Text),
-    };
-    let start = at + width + ctx.tokens.sm;
-    let room = (line.w - start - ctx.tokens.md).max(0.0);
-    let words = elide(ctx, &body_of(note), &said, room);
-    row(ctx, line, start, &words, said);
+    let place = where_of(note);
+    Label::new(&place, ctx.styles.small(role)).left(ctx, &mut room, sm);
+    Label::new(&body_of(note), said).draw(ctx, room);
 }
 
 /// The mark a note carries: its own, or the forge's for a thread.

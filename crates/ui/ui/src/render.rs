@@ -24,6 +24,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             &mut frame,
             fonts,
             &mut hits,
+            ui.hover.clone(),
         );
         shared::rail::draw(&mut ctx, app, ui);
         match ui.showing(app) {

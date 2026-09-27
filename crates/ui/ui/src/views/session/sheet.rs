@@ -44,7 +44,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     said(ctx, Rect::new(area.x, at.y, area.w, foot - at.y), &ask.text);
     answers(
         ctx,
-        ui,
         Rect::new(area.x, foot, area.w - pad, ctx.tokens.row),
         &ask.id,
     );
@@ -99,13 +98,13 @@ fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
 }
 
 /// Approve in peach, and refuse, from the sheet's end.
-fn answers(ctx: &mut Ctx, ui: &Ui, line: Rect, id: &ApprovalId) {
+fn answers(ctx: &mut Ctx, line: Rect, id: &ApprovalId) {
     let mut left = line.right();
     for (label, target, role) in [
         ("Refuse", Target::Refuse(id.clone()), Role::Muted),
         ("Approve", Target::Approve(id.clone()), Role::Attention),
     ] {
-        let hovered = ui.hover.as_ref() == Some(&target);
+        let hovered = ctx.hovered(&target);
         let style = ctx.styles.small(match (hovered, role) {
             (true, Role::Muted) => Role::Text,
             _ => role,

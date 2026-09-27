@@ -3,7 +3,6 @@ use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 use groove_types::SessionKind;
 
-use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::{Picks, Target};
 use crate::base::mark::Mark;
@@ -14,7 +13,7 @@ use crate::text::{elide, row};
 use crate::widgets::{button, delivered, icon, picker, room_for, slot};
 
 /// The workspace's two first lines: what the session is, then what it points at.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
+pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let rect = ctx.layout.header;
     ctx.quad(rect, ctx.styles.ground());
     hairline(ctx, rect, ctx.styles.line());
@@ -25,22 +24,22 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         let style = ctx.styles.title(Role::Text);
         return row(ctx, top, ctx.tokens.md, "Groove", style);
     };
-    let until = actions(ctx, top, app, open, ui);
+    let until = actions(ctx, top, app, open);
     titled(ctx, top, open, until);
-    pickers(ctx, under, app, open, ui);
+    pickers(ctx, under, app, open);
 }
 
 /// The session's own actions. Returns where they start, which the title stops at.
-fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32 {
+fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
     if matches!(open.session.kind, SessionKind::Explorer) {
         return line.right();
     }
-    let more = menu_caret(ctx, line, open, ui);
+    let more = menu_caret(ctx, line, open);
     if !finishable(app, open) {
         return more;
     }
     let target = Target::Finish(open.session.id.clone());
-    let ground = match ui.hover.as_ref() == Some(&target) {
+    let ground = match ctx.hovered(&target) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };
@@ -57,9 +56,9 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f
 }
 
 /// What opens the rest of them, at the line's right end.
-fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open, ui: &Ui) -> f32 {
+fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> f32 {
     let target = Target::TaskActions(open.session.id.clone());
-    let ground = match ui.hover.as_ref() == Some(&target) {
+    let ground = match ctx.hovered(&target) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };
@@ -93,33 +92,33 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open, until: f32) {
 }
 
 /// The pickers every tab follows, each label cut to the room the line has.
-fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) {
+fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let worktree = open.selected_worktree();
     let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
     let (repo, branch) = named(open);
     let style = ctx.styles.body(Role::Muted);
     let x = line.x + ctx.tokens.md;
-    let until = forge(ctx, line, app, open, ui);
+    let until = forge(ctx, line, app, open);
     let room = (until - ctx.tokens.md - x - around(ctx)).max(0.0);
     let repo_room = ctx.measure(repo, &style).min(room / 2.0);
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
 
     let role = role_of(held.is_some());
-    let box_ = picker(ctx, line, x, &repo_text, role, lit(ui, Picks::Repo));
+    let box_ = picker(ctx, line, x, &repo_text, role, lit(ctx, Picks::Repo));
     ctx.hit(box_, Target::Picker(Picks::Repo));
     let x = box_.right() + ctx.tokens.sm;
     let role = role_of(worktree.is_some());
-    let box_ = picker(ctx, line, x, &branch_text, role, lit(ui, Picks::Branch));
+    let box_ = picker(ctx, line, x, &branch_text, role, lit(ctx, Picks::Branch));
     ctx.hit(box_, Target::Picker(Picks::Branch));
 }
 
 /// What the selected worktree's forge says, at the right end; the pickers stop there.
-fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32 {
+fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
     let Some(worktree) = open.selected_worktree() else {
         return line.right();
     };
-    let until = refresh(ctx, line, app, ui);
+    let until = refresh(ctx, line, app);
     let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
     let wide = room_for(ctx, &delivery);
     if wide <= 0.0 {
@@ -131,12 +130,12 @@ fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, ui: &Ui) -> f32
 }
 
 /// What reads the MR again, turning while a read is out.
-fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> f32 {
+fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
     let out = app
         .session
         .selected_worktree()
         .is_some_and(|worktree| app.delivery.poll.is_out(&worktree.id));
-    let ground = match ui.hover.as_ref() == Some(&Target::Refresh) {
+    let ground = match ctx.hovered(&Target::Refresh) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };
@@ -173,8 +172,8 @@ fn named(open: &Open) -> (&str, &str) {
     (repo.unwrap_or("no repo"), branch.unwrap_or("no worktree"))
 }
 
-fn lit(ui: &Ui, which: Picks) -> bool {
-    ui.hover.as_ref() == Some(&Target::Picker(which))
+fn lit(ctx: &Ctx, which: Picks) -> bool {
+    ctx.hovered(&Target::Picker(which))
 }
 
 fn role_of(held: bool) -> Role {

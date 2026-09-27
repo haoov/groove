@@ -3,7 +3,6 @@
 use groove_gfx::Rect;
 use groove_types::{Task, TimeSummary};
 
-use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
@@ -19,7 +18,6 @@ pub(super) fn properties(
     top: f32,
     task: &Task,
     time: Option<TimeSummary>,
-    ui: &Ui,
 ) -> f32 {
     let (label, value) = (ctx.styles.body(Role::Faint), ctx.styles.body(Role::Text));
     let at = ctx.tokens.aside_near + ctx.tokens.md;
@@ -42,18 +40,18 @@ pub(super) fn properties(
         None,
     );
     let hours = Rect::new(area.x, bottom - ctx.tokens.row, area.w, ctx.tokens.row);
-    logging(ctx, hours, task, time, ui);
+    logging(ctx, hours, task, time);
     bottom
 }
 
 /// What hands the source the hours the clock measured, at the end of their own line.
-fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>, ui: &Ui) {
+fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
     let left = time.map(TimeSummary::unlogged_hours).unwrap_or_default();
     if left <= 0.0 {
         return;
     }
     let target = Target::LogHours(task.external_id.clone());
-    let ground = match ui.hover.as_ref() == Some(&target) {
+    let ground = match ctx.hovered(&target) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };

@@ -37,11 +37,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     match ui.session.pane {
         Pane::Files => changed_files(ctx, rect, strip, app, ui),
         Pane::Commits => {
-            let body = showing(ctx, under(rect, strip), app, ui);
+            let body = showing(ctx, under(rect, strip), app);
             commits::draw(ctx, body, app, ui);
         }
         Pane::Notes => {
-            let body = showing(ctx, under(rect, strip), app, ui);
+            let body = showing(ctx, under(rect, strip), app);
             notes::draw(ctx, body, app, ui);
         }
     }
@@ -58,11 +58,11 @@ fn under(rect: Rect, strip: Rect) -> Rect {
 }
 
 /// The commit the surface shows, over the list. Returns the room the list keeps.
-fn showing(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> Rect {
+fn showing(ctx: &mut Ctx, body: Rect, app: &AppState) -> Rect {
     if app.workspace.commit.is_none() {
         return body;
     }
-    commit::showing(ctx, body, app, ui);
+    commit::showing(ctx, body, app);
     let taken = ctx.tokens.row;
     Rect::new(body.x, body.y + taken, body.w, (body.h - taken).max(0.0))
 }
@@ -218,9 +218,9 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
 }
 
 /// One word at the end of a row, with a ground of its own under the pointer.
-pub(crate) fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target, ui: &Ui) -> f32 {
+pub(crate) fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target) -> f32 {
     let style = ctx.styles.small(Role::Muted);
-    let on_it = ui.hover.as_ref() == Some(&target);
+    let on_it = ctx.hovered(&target);
     let ground = on_it.then(|| ctx.styles.action());
     let box_ = button(ctx, line, label, style, ground);
     ctx.hit(box_, target);
@@ -228,11 +228,11 @@ pub(crate) fn acted(ctx: &mut Ctx, line: Rect, label: &str, target: Target, ui: 
 }
 
 /// A question in the row's own place, with its two answers at its end.
-pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str, ui: &Ui) {
+pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str) {
     ctx.quad(line, ctx.styles.raised());
-    let keep = acted(ctx, line, "keep", Target::Keep, ui);
+    let keep = acted(ctx, line, "keep", Target::Keep);
     let gone = Rect::new(line.x, line.y, keep - line.x, line.h);
-    let discard = acted(ctx, gone, "discard", Target::Discard, ui);
+    let discard = acted(ctx, gone, "discard", Target::Discard);
     let style = ctx.styles.small(Role::Bad);
     let asked = Rect::new(line.x, line.y, discard - line.x, line.h);
     let room = (asked.w - ctx.tokens.md * 2.0).max(0.0);

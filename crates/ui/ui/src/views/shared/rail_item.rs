@@ -36,7 +36,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
 
     let under = Rect::new(rect.x, head.bottom() + ctx.tokens.xs, rect.w, head.h);
     match asked(app, id) {
-        Some((ask, waiting)) => asking(ctx, ui, under, &ask, waiting),
+        Some((ask, waiting)) => asking(ctx, under, &ask, waiting),
         None => state(ctx, app, under, open),
     }
 
@@ -51,7 +51,7 @@ fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
 }
 
 /// The write in peach where the state stands, and its two answers on the line under it.
-fn asking(ctx: &mut Ctx, ui: &Ui, line: Rect, ask: &Ask, waiting: usize) {
+fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     let style = ctx.styles.small(Role::Attention);
     let indent = after_mark(ctx, ctx.tokens.md);
     let verb = groove_controllers::agent_service::tools::verb(&ask.op);
@@ -63,17 +63,17 @@ fn asking(ctx: &mut Ctx, ui: &Ui, line: Rect, ask: &Ask, waiting: usize) {
     let label = elide(ctx, &label, &style, room);
     row(ctx, line, indent, &label, style);
     let under = Rect::new(line.x, line.bottom(), line.w, ctx.tokens.row);
-    answers(ctx, ui, under, ask, line.x + indent);
+    answers(ctx, under, ask, line.x + indent);
 }
 
 /// Approve, then review, from where the text starts.
-fn answers(ctx: &mut Ctx, ui: &Ui, line: Rect, ask: &Ask, from: f32) {
+fn answers(ctx: &mut Ctx, line: Rect, ask: &Ask, from: f32) {
     let mut at = from;
     for (label, target, role) in [
         ("Approve", Target::Approve(ask.id.clone()), Role::Attention),
         ("Review", Target::Examine(ask.id.clone()), Role::Muted),
     ] {
-        let hovered = ui.hover.as_ref() == Some(&target);
+        let hovered = ctx.hovered(&target);
         let style = ctx.styles.small(match (hovered, role) {
             (true, Role::Muted) => Role::Text,
             _ => role,
@@ -88,7 +88,7 @@ fn answers(ctx: &mut Ctx, ui: &Ui, line: Rect, ask: &Ask, from: f32) {
 
 /// A hovered row is raised, and a selected one while the session surface is up.
 fn ground(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, id: &SessionId) {
-    let hovered = ui.hover.as_ref() == Some(&Target::Session(id.clone()));
+    let hovered = ctx.hovered(&Target::Session(id.clone()));
     let selected = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
     if selected || hovered {
         let raised = ctx.styles.raised();

@@ -90,7 +90,7 @@ pub(super) fn entry(
     ui: &Ui,
 ) {
     if ui.losing() == Some(&Losing::File(file.path.clone())) {
-        return asking(ctx, line, "discard changes?", ui);
+        return asking(ctx, line, "discard changes?");
     }
     let on_row = pointed(ui, &file.path);
     if on_row {
@@ -107,7 +107,7 @@ pub(super) fn entry(
 
     ctx.hit(line, Target::File(file.path.clone()));
     let at = match on_row {
-        true => offer(ctx, line, file, ui),
+        true => offer(ctx, line, file),
         false => counts(ctx, line, file),
     };
     let at = match reading.noted {
@@ -165,7 +165,7 @@ fn pointed(ui: &Ui, path: &str) -> bool {
 }
 
 /// What the row offers the pointer, or its counts when it has no change to stage.
-fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff, ui: &Ui) -> f32 {
+fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff) -> f32 {
     let Some(staged) = file.staged else {
         return counts(ctx, line, file);
     };
@@ -173,7 +173,7 @@ fn offer(ctx: &mut Ctx, line: Rect, file: &FileDiff, ui: &Ui) -> f32 {
         true => ("unstage", Target::Unstage(file.path.clone())),
         false => ("stage", Target::Stage(file.path.clone())),
     };
-    acted(ctx, line, label, target, ui)
+    acted(ctx, line, label, target)
 }
 
 /// Returns where the counts start.

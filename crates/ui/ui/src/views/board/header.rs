@@ -20,7 +20,7 @@ const NEW: &str = "+ explorer";
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> Rect {
     ctx.quad(line, ctx.styles.ground());
     hairline(ctx, line, ctx.styles.line());
-    let until = new_task(ctx, line, ui);
+    let until = new_task(ctx, line);
     let until = reading(ctx, line, app, until);
     let field = Rect::new(line.x, line.y, until - line.x, line.h);
     filter(ctx, field, ui);
@@ -95,9 +95,9 @@ fn hovered(ui: &Ui) -> Option<usize> {
 }
 
 /// The button that opens an explorer, at the right end. Returns where it starts.
-fn new_task(ctx: &mut Ctx, line: Rect, ui: &Ui) -> f32 {
+fn new_task(ctx: &mut Ctx, line: Rect) -> f32 {
     let style = ctx.styles.label(Role::Working);
-    let ground = match ui.hover.as_ref() == Some(&Target::AddTask) {
+    let ground = match ctx.hovered(&Target::AddTask) {
         true => ctx.styles.hover(),
         false => ctx.styles.band(),
     };

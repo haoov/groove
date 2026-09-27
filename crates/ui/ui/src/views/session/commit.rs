@@ -22,12 +22,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     );
     let top = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
     if app.workspace.commit.is_some() {
-        return showing(ctx, rect, app, ui);
+        return showing(ctx, rect, app);
     }
     if ui.losing() == Some(&Losing::Everything) {
-        super::files::asking(ctx, top, "discard every change?", ui);
+        super::files::asking(ctx, top, "discard every change?");
     } else {
-        let acts = acts(ctx, app, ui, top);
+        let acts = acts(ctx, app, top);
         state_of(ctx, app, ui, Rect::new(top.x, top.y, acts - top.x, top.h));
     }
     let message = Rect::new(rect.x, top.bottom(), rect.w, rect.bottom() - top.bottom());
@@ -35,14 +35,14 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
 }
 
 /// The commit the surface shows, and what puts the working tree back.
-pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
+pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState) {
     let Some(one) = app.workspace.commit.as_ref() else {
         return;
     };
     let line = Rect::new(rect.x, rect.y, rect.w, ctx.tokens.row);
     ctx.quad(line, ctx.styles.band());
     let target = Target::Working;
-    let on_it = ui.hover.as_ref() == Some(&target);
+    let on_it = ctx.hovered(&target);
     let style = ctx.styles.small(Role::Muted);
     let ground = match on_it {
         true => ctx.styles.action(),
@@ -177,7 +177,7 @@ fn label(act: &Command) -> &'static str {
 }
 
 /// One button for what to do now, a caret for the rest; returns where it starts.
-fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
+fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
     let act = primary(app);
     let can = act.as_ref().is_some_and(|act| ready(app, act));
     let role = match can {
@@ -188,11 +188,11 @@ fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
     let word = act.as_ref().map(label).unwrap_or("commit");
     let caret = ctx.tokens.small;
     let (action, raised) = (ctx.styles.action(), ctx.styles.raised());
-    let lit = |target: Target| match ui.hover.as_ref() == Some(&target) {
+    let lit = |on: bool| match on {
         true => action,
         false => raised,
     };
-    let arrow = slot(ctx, line, caret, Some(lit(Target::Actions)));
+    let arrow = slot(ctx, line, caret, Some(lit(ctx.hovered(&Target::Actions))));
     let middle = arrow.x + (arrow.w - caret) / 2.0;
     let box_ = box_in(arrow, middle, caret);
     let color = ctx.styles.color(Role::Muted);
@@ -200,7 +200,7 @@ fn acts(ctx: &mut Ctx, app: &AppState, ui: &Ui, line: Rect) -> f32 {
     ctx.hit(arrow, Target::Actions);
 
     let left = Rect::new(line.x, line.y, arrow.x - line.x + ctx.tokens.sm, line.h);
-    let word = button(ctx, left, word, style, Some(lit(Target::Do)));
+    let word = button(ctx, left, word, style, Some(lit(ctx.hovered(&Target::Do))));
     if can {
         ctx.hit(word, Target::Do);
     }

@@ -8,7 +8,7 @@ use std::path::Path;
 const ALLOWED: [&str; 3] = ["0.0", "1.0", "2.0"];
 
 /// What a view may take from the renderer: geometry, nothing that draws or paints.
-const GEOMETRY: [&str; 2] = ["Rect", "Size"];
+const GEOMETRY: [&str; 4] = ["Align", "Edges", "Rect", "Size"];
 
 /// Every source file of the crate but the tests, as `(path from src, text)`.
 fn sources() -> Vec<(String, String)> {

@@ -10,7 +10,7 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{after_mark, leading};
+use crate::shape::{after_mark, hoverable, leading};
 use crate::text::{ago, elide, row};
 use crate::widgets::icon;
 
@@ -33,12 +33,9 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
 }
 
 /// One MR: its project and number, its title, its author, and when it last moved.
-pub(super) fn item(ctx: &mut Ctx, line: Rect, ui: &Ui, mr: &ReviewMr) {
+pub(super) fn item(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
     let target = Target::Review(mr.project.clone(), mr.iid);
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
+    hoverable(ctx, line, target);
     let box_ = leading(ctx, line, line.x + ctx.tokens.md);
     icon(ctx, box_, Mark::Review, role(mr));
     let until = aside(ctx, line, &ago(mr.updated_at.age_at(ctx.now)));

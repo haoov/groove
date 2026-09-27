@@ -5,10 +5,10 @@ use groove_controllers::session_service::Living;
 use groove_gfx::Rect;
 use groove_types::{Task, Worktree, WorktreeDelivery};
 
-use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::style::Role;
+use crate::shape::hoverable;
 use crate::text::{elide, row};
 
 /// One line of a column: an item, a worktree under an open one, or the plan's divider.
@@ -52,12 +52,9 @@ pub(super) fn item(tokens: &crate::base::tokens::Tokens) -> f32 {
 }
 
 /// One task waiting: its place, its title, its worth, and why it needs the user.
-pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, at: usize, task: &Task) {
+pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, at: usize, task: &Task) {
     let target = Target::Task(task.short_id.clone());
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(rect, ctx.styles.hover());
-    }
-    ctx.hit(rect, target);
+    hoverable(ctx, rect, target);
     let line = Rect::new(rect.x, rect.y, rect.w, item(&ctx.tokens));
     let start = place(ctx, line, at, task);
     let until = aside(ctx, line, &worth(task));

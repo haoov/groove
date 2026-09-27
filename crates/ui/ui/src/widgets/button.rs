@@ -3,6 +3,7 @@
 use groove_gfx::{Color, Rect, TextStyle};
 
 use crate::base::ctx::Ctx;
+use crate::shape::Panel;
 use crate::text::row;
 
 /// A label on `ground` at the row's right end; returns its box.
@@ -37,8 +38,8 @@ pub fn slot_at(ctx: &mut Ctx, line: Rect, x: f32, content: f32, ground: Option<C
         height,
     );
     if let Some(ground) = ground {
-        ctx.quad(box_, ground);
-        ctx.border(box_, ctx.styles.line());
+        let line = ctx.styles.line();
+        Panel::default().ground(ground).border(line).draw(ctx, box_);
     }
     box_
 }

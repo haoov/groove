@@ -43,6 +43,7 @@ pub struct Ctx<'a> {
     frame: &'a mut Frame,
     fonts: &'a mut Fonts,
     hits: &'a mut Hits,
+    hover: Option<Target>,
     clip: Option<Rect>,
 }
 
@@ -54,6 +55,7 @@ impl<'a> Ctx<'a> {
         frame: &'a mut Frame,
         fonts: &'a mut Fonts,
         hits: &'a mut Hits,
+        hover: Option<Target>,
     ) -> Self {
         let tokens = metrics.tokens();
         Self {
@@ -66,8 +68,20 @@ impl<'a> Ctx<'a> {
             frame,
             fonts,
             hits,
+            hover,
             clip: None,
         }
+    }
+
+    pub fn hovered(&self, target: &Target) -> bool {
+        self.hover.as_ref() == Some(target)
+    }
+
+    /// Registers `target` at `rect`; returns whether the pointer rests on it.
+    pub fn interact(&mut self, rect: Rect, target: Target) -> bool {
+        let on = self.hovered(&target);
+        self.hit(rect, target);
+        on
     }
 
     /// Registers `target` at `rect`. Only the part the clip leaves visible is reachable.

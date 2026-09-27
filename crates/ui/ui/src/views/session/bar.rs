@@ -4,7 +4,6 @@ use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::Rect;
 
-use crate::Ui;
 use crate::base::ctx::Ctx;
 use crate::base::hit::Target;
 use crate::base::mark::Mark;
@@ -14,7 +13,7 @@ use crate::text::row;
 use crate::widgets::slot_at;
 
 /// What the agent waits on, or what it can be sent.
-pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
+pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let Some(open) = app.session.selected() else {
         return;
     };
@@ -22,11 +21,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ctx.quad(line, ctx.styles.band());
     let rule = Rect::new(line.x, line.y, line.w, ctx.tokens.hairline);
     ctx.quad(rule, ctx.styles.line());
-    offered(ctx, line, app, ui, open);
+    offered(ctx, line, app, open);
 }
 
 /// The reload, the skills menu and the auto-approve switch, from the row's own end.
-fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, open: &Open) {
+fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let id = open.session.id.clone();
     let stale = app.agent.stale(&id);
     let auto = app.agent.activity(&id).is_some_and(|one| one.auto_approve);
@@ -46,7 +45,7 @@ fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, open: &Open) {
             false,
         ),
     ] {
-        let hovered = ui.hover.as_ref() == Some(&target);
+        let hovered = ctx.hovered(&target);
         let style = ctx.styles.small(match hovered {
             true => Role::Text,
             false => role,

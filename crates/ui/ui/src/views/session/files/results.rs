@@ -9,8 +9,11 @@ use crate::base::ctx::Ctx;
 use crate::base::hit::{Scroller, Target};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::text::{elide, row};
+use crate::shape::hoverable;
+use crate::shape::square;
+use crate::text::Label;
 use crate::widgets::scrolled;
+use groove_gfx::Edges;
 
 enum Item<'a> {
     File(&'a str, usize),
@@ -29,7 +32,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         |_| height,
         |ctx, line, item| match item {
             Item::File(path, count) => file_found(ctx, line, path, *count, ui),
-            Item::Match(at, one) => hit(ctx, line, one, *at, ui),
+            Item::Match(at, one) => hit(ctx, line, one, *at),
         },
     );
 }
@@ -53,62 +56,28 @@ fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
 
 /// The file a run of matches belongs to, how many, and a caret that hides them.
 fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
-    let target = Target::FoundIn(path.to_string());
     ctx.quad(line, ctx.styles.raised());
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
+    hoverable(ctx, line, Target::FoundIn(path.to_string()));
+    let (xs, sm, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.icon);
     let style = ctx.styles.small(Role::Text);
-    let label = format!("{count}");
-    let width = ctx.measure(&label, &style);
-    let at = line.right() - ctx.tokens.md - width;
-    row(
-        ctx,
-        Rect::new(at, line.y, width, line.h),
-        0.0,
-        &label,
-        style,
-    );
-    let size = ctx.tokens.icon;
-    let caret = Rect::new(
-        line.x + ctx.tokens.xs,
-        line.y + (line.h - size) / 2.0,
-        size,
-        size,
-    );
+    let mut room = line.pad(Edges::across(xs, ctx.tokens.md));
+    Label::new(&count.to_string(), style).right(ctx, &mut room, sm);
+    let caret = square(room.take_left(size), size);
+    room.take_left(xs);
     let turn = match ui.session.shut.contains(path) {
         true => Mark::RIGHTWARDS,
         false => 0,
     };
     ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
-    let start = caret.right() - line.x + ctx.tokens.xs;
-    let room = (at - line.x - start - ctx.tokens.sm).max(0.0);
-    let text = elide(ctx, path, &style, room);
-    row(ctx, line, start, &text, style);
+    Label::new(path, style).draw(ctx, room);
 }
 
 /// One line a search matched: where it sits, and what it says.
-fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize, ui: &Ui) {
-    let target = Target::Found(at);
-    if ui.hover.as_ref() == Some(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
-    ctx.hit(line, target);
-    let numbers = ctx.styles.code(Role::Ghost);
-    let number = format!("{}", one.line + 1);
-    let width = ctx.measure(&number, &numbers);
-    let start = ctx.tokens.md + ctx.tokens.sm;
-    row(
-        ctx,
-        Rect::new(line.x + start, line.y, width, line.h),
-        0.0,
-        &number,
-        numbers,
-    );
-    let style = ctx.styles.code(Role::Text);
-    let at = start + width + ctx.tokens.sm;
-    let room = (line.w - at - ctx.tokens.md).max(0.0);
-    let text = elide(ctx, one.text.trim_start(), &style, room);
-    row(ctx, line, at, &text, style);
+fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize) {
+    hoverable(ctx, line, Target::Found(at));
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
+    let mut room = line.pad(Edges::across(md + sm, md));
+    let number = (one.line + 1).to_string();
+    Label::new(&number, ctx.styles.code(Role::Ghost)).left(ctx, &mut room, sm);
+    Label::new(one.text.trim_start(), ctx.styles.code(Role::Text)).draw(ctx, room);
 }

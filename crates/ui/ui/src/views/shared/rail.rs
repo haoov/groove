@@ -57,7 +57,7 @@ fn edge(ctx: &mut Ctx, rect: Rect) {
 
 /// The board. It carries the attention count when it is not zero.
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    if ui.showing(app) == Surface::Board || ui.hover.as_ref() == Some(&Target::Board) {
+    if ui.showing(app) == Surface::Board || ctx.hovered(&Target::Board) {
         ctx.quad(rect, ctx.styles.raised());
     }
     ctx.hit(rect, Target::Board);

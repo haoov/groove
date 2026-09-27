@@ -23,7 +23,7 @@ pub use color::Color;
 pub use error::{Error, Result};
 pub use fonts::{CellSize, Fonts};
 pub use frame::{Font, Frame, Quad, TextRun, TextStyle, Weight};
-pub use geom::{Rect, Size};
+pub use geom::{Align, Edges, Rect, Size};
 pub use icons::Icon;
 pub use renderer::Renderer;
 pub use theme::Palette;

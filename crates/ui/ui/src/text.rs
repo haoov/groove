@@ -97,3 +97,44 @@ pub fn ago(age: Duration) -> String {
     }
     format!("{}d", seconds / DAY)
 }
+
+/// One line of text, elided to the room it is drawn in.
+#[derive(Debug, Clone, Copy)]
+pub struct Label<'a> {
+    pub text: &'a str,
+    pub style: TextStyle,
+}
+
+impl<'a> Label<'a> {
+    pub fn new(text: &'a str, style: TextStyle) -> Self {
+        Self { text, style }
+    }
+
+    pub fn width(&self, ctx: &mut Ctx) -> f32 {
+        ctx.measure(self.text, &self.style)
+    }
+
+    /// Draws at the left of `room`, which gives up its width and `gap`.
+    pub fn left(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+        let width = self.width(ctx).min(room.w);
+        let at = room.take_left(width);
+        room.take_left(gap);
+        self.draw(ctx, at)
+    }
+
+    /// Draws at the right of `room`, which gives up its width and `gap`.
+    pub fn right(self, ctx: &mut Ctx, room: &mut Rect, gap: f32) -> Rect {
+        let width = self.width(ctx).min(room.w);
+        let at = room.take_right(width);
+        room.take_right(gap);
+        self.draw(ctx, at)
+    }
+
+    /// Draws the text in `rect`; returns the box it took.
+    pub fn draw(self, ctx: &mut Ctx, rect: Rect) -> Rect {
+        let text = elide(ctx, self.text, &self.style, rect.w);
+        let width = ctx.measure(&text, &self.style).min(rect.w);
+        row(ctx, rect, 0.0, &text, self.style);
+        Rect::new(rect.x, rect.y, width, rect.h)
+    }
+}
