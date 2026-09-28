@@ -223,3 +223,19 @@ fn pulling_a_branch_that_never_moved_says_nothing_went_wrong() {
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 }
+
+#[test]
+fn a_comment_with_nothing_to_post_says_so_in_the_feed() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    let comment = crate::delivery::Say::Review(groove_types::ReviewVerdict::Comment);
+    dispatch(
+        Cmd::Delivery(crate::delivery::Command::Say(comment)),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert_eq!(state.errors.len(), 1, "the click is not lost");
+    assert!(state.pending.is_empty(), "and nothing is sent");
+}

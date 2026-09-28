@@ -461,7 +461,7 @@ fn picking_a_verdict_asks_for_the_review() {
     assert_eq!(
         picked("comment"),
         [groove_controllers::Command::Delivery(
-            delivery::Command::Say(Say::Comment)
+            delivery::Command::Say(Say::Review(groove_types::ReviewVerdict::Comment))
         )]
     );
 }

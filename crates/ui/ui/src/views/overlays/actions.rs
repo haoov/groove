@@ -193,7 +193,7 @@ pub fn picked(of: &Of, at: usize) -> Picked {
         (Of::Worktree { .. }, Some(&"update mr")) => Picked::delivers(delivery::Command::UpdateMr),
         (Of::Worktree { .. }, Some(&"close mr")) => Picked::delivers(delivery::Command::CloseMr),
         (Of::Worktree { .. }, Some(&"comment")) => {
-            Picked::delivers(delivery::Command::Say(Say::Comment))
+            Picked::delivers(delivery::Command::Say(Say::Review(ReviewVerdict::Comment)))
         }
         (Of::Worktree { .. }, Some(&"approve")) => {
             Picked::delivers(delivery::Command::Say(Say::Review(ReviewVerdict::Approve)))

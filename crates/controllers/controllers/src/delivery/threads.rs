@@ -176,6 +176,11 @@ pub(crate) fn say_as(
         return asker.refused("a comment needs a body");
     }
     let notes = state.delivery.unposted(&whose.session, &whose.repo.id);
+    let commenting = say == Say::Review(ReviewVerdict::Comment);
+    if commenting && body.is_empty() && notes.is_empty() {
+        let why = "a review needs words in the box or a note to post";
+        return asker.failed(state, groove_types::Error::invalid(why));
+    }
     let (service, job) = (services.delivery.clone(), state.begin(say.label()));
     let clears = asker.carries_a_box();
     spawner.spawn(Box::pin(async move {
