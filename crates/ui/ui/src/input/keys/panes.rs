@@ -4,15 +4,16 @@ use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
+use crate::keymap::{Action, Keymap};
 use crate::{Focus, Ui};
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.
-pub(super) fn in_file(key: Key, mods: Modifiers, app: &AppState) -> Vec<Command> {
+pub(super) fn in_file(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec<Command> {
     if app.workspace.active().is_none() {
         return Vec::new();
     }
-    if mods.ctrl {
-        return with_ctrl(key).into_iter().collect();
+    if mods.ctrl || mods.alt {
+        return bound(keymap, key, mods).into_iter().collect();
     }
     let edit = match key {
         Key::Char(c) if !mods.alt => Edit::Insert(c.to_string()),
@@ -43,23 +44,30 @@ fn moved(key: Key, mods: Modifiers) -> Option<Command> {
     Some(Command::Workspace(workspace::Command::Edit(edit)))
 }
 
-/// What the control key asks of the buffer.
-fn with_ctrl(key: Key) -> Option<Command> {
-    let edit = match key {
-        Key::Char('s' | 'S') => return Some(Command::Workspace(workspace::Command::SaveFile)),
-        Key::Char('z' | 'Z') => Edit::Undo,
-        Key::Char('y' | 'Y') => Edit::Redo,
-        Key::Char('a' | 'A') => Edit::SelectAll,
-        Key::Char('c' | 'C') => return Some(Command::Workspace(workspace::Command::Copy)),
-        Key::Char('x' | 'X') => return Some(Command::Workspace(workspace::Command::Cut)),
-        Key::Char('v' | 'V') => return Some(Command::Workspace(workspace::Command::Paste)),
+/// What a bound chord asks of the buffer.
+fn bound(keymap: &Keymap, key: Key, mods: Modifiers) -> Option<Command> {
+    let is = |action| keymap.is(action, key, mods);
+    let command = match () {
+        _ if is(Action::Save) => workspace::Command::SaveFile,
+        _ if is(Action::Undo) => workspace::Command::Edit(Edit::Undo),
+        _ if is(Action::Redo) => workspace::Command::Edit(Edit::Redo),
+        _ if is(Action::SelectAll) => workspace::Command::Edit(Edit::SelectAll),
+        _ if is(Action::Copy) => workspace::Command::Copy,
+        _ if is(Action::Cut) => workspace::Command::Cut,
+        _ if is(Action::Paste) => workspace::Command::Paste,
         _ => return None,
     };
-    Some(Command::Workspace(workspace::Command::Edit(edit)))
+    Some(Command::Workspace(command))
 }
 
 /// The list, or the commit message once the box has been clicked.
-pub(super) fn in_sidebar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(super) fn in_sidebar(
+    key: Key,
+    mods: Modifiers,
+    ui: &mut Ui,
+    app: &AppState,
+    keymap: &Keymap,
+) -> Vec<Command> {
     if !ui.session.composing {
         return in_list(key, ui, app);
     }
@@ -67,7 +75,7 @@ pub(super) fn in_sidebar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState)
         ui.session.composing = false;
         return Vec::new();
     }
-    if mods.ctrl && key == Key::Enter {
+    if keymap.is(Action::Commit, key, mods) {
         ui.session.composing = false;
         return vec![Command::Workspace(workspace::Command::Commit)];
     }

@@ -11,6 +11,8 @@ pub struct Row<'a, T> {
     pub text: &'a str,
     pub style: TextStyle,
     pub aside: Option<(f32, &'a str, TextStyle)>,
+    /// A text against the right edge, a shortcut beside its action.
+    pub end: Option<(&'a str, TextStyle)>,
     pub background: Option<Color>,
     /// A mark before the text, in the text's own colour, and its rotation.
     pub mark: Option<(Mark, u8)>,
@@ -25,6 +27,7 @@ impl<'a, T> Row<'a, T> {
             text,
             style,
             aside: None,
+            end: None,
             background: None,
             mark: None,
             target: None,
@@ -44,6 +47,11 @@ impl<'a, T> Row<'a, T> {
 
     pub fn aside(mut self, at: f32, text: &'a str, style: TextStyle) -> Self {
         self.aside = Some((at, text, style));
+        self
+    }
+
+    pub fn end(mut self, text: &'a str, style: TextStyle) -> Self {
+        self.end = Some((text, style));
         self
     }
 }
@@ -72,15 +80,16 @@ pub fn list<A: App>(
             ctx.icon(box_, mark, turn, item.style.color);
             indent = after_mark(ctx, indent);
         }
+        let right = ended(ctx, line, item.end);
         let start = line.x + indent;
         let ends = match item.aside {
             Some((at, _, _)) => rect.x + at - ctx.tokens.sm,
-            None => line.right() - ctx.tokens.md,
+            None => right,
         };
         let text = elide(ctx, item.text, &item.style, (ends - start).max(0.0));
         row(ctx, line, indent, &text, item.style);
         if let Some((at, text, style)) = item.aside {
-            let room = (rect.right() - ctx.tokens.md - (rect.x + at)).max(0.0);
+            let room = (right - (rect.x + at)).max(0.0);
             let aside = Rect::new(rect.x + at, y, room, height);
             let text = elide(ctx, text, &style, room);
             row(ctx, aside, 0.0, &text, style);
@@ -88,4 +97,16 @@ pub fn list<A: App>(
         y += height;
     }
     y
+}
+
+/// The row's end text against its right edge; returns where the rest must stop.
+fn ended<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, end: Option<(&str, TextStyle)>) -> f32 {
+    let edge = line.right() - ctx.tokens.md;
+    let Some((text, style)) = end else {
+        return edge;
+    };
+    let wide = ctx.measure(text, &style);
+    let at = Rect::new(edge - wide, line.y, wide, line.h);
+    row(ctx, at, 0.0, text, style);
+    edge - wide - ctx.tokens.md
 }

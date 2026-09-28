@@ -280,6 +280,7 @@ pub(super) fn sourced(
         },
         ui: Default::default(),
         preferences: Default::default(),
+        keymap: Default::default(),
     });
     app
 }
@@ -426,7 +427,7 @@ fn a_press_on_the_screen_begins_a_selection() {
 fn the_chord_copies_what_the_screen_holds() {
     let app = offering(Vec::new());
     let mut ui = session_ui();
-    let chord = crate::tests::CHORD;
+    let chord = crate::tests::CTRL_SHIFT;
     let acted = crate::tests::press(crate::input::Key::Char('c'), chord, &mut ui, &app);
     let said: Vec<&str> = acted.iter().map(|one| one.id()).collect();
     assert_eq!(said, ["agent.copy"]);

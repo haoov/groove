@@ -3,6 +3,7 @@
 use groove_ui::input::{Input, Key, Modifiers};
 use winit::event::{ElementState, KeyEvent};
 use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
+use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 
 /// The modifiers as the ui reads them.
 pub fn mods_of(mods: ModifiersState) -> Modifiers {
@@ -13,11 +14,17 @@ pub fn mods_of(mods: ModifiersState) -> Modifiers {
     }
 }
 
+/// With ctrl or alt held, the key as it reads without any modifier.
 pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
     if event.state != ElementState::Pressed {
         return None;
     }
-    let key = match &event.logical_key {
+    let bare = event.key_without_modifiers();
+    let logical = match mods.control_key() || mods.alt_key() {
+        true => &bare,
+        false => &event.logical_key,
+    };
+    let key = match logical {
         WinitKey::Named(NamedKey::Escape) => Key::Escape,
         WinitKey::Named(NamedKey::Enter) => Key::Enter,
         WinitKey::Named(NamedKey::Tab) => Key::Tab,

@@ -6,6 +6,7 @@ mod components;
 mod ctx;
 mod hit;
 pub mod input;
+pub mod keymap;
 mod layout;
 mod offsets;
 pub mod palette;

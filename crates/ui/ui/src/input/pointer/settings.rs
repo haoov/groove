@@ -3,6 +3,7 @@
 use groove_controllers::{AppState, Command, config};
 
 use crate::hit::{Hits, Target};
+use crate::keymap;
 use crate::views::settings::Draft;
 use crate::views::settings::rows::choices;
 use crate::{Corner, Menu, Of, Overlay, Ui};
@@ -22,6 +23,13 @@ pub(super) fn acted(
                 of: Of::Mapping(choices(app, *source, *slot)),
             }));
             return Some(Vec::new());
+        }
+        Target::SettingsBind(action) => {
+            ui.settings.binding = Some(*action);
+            return Some(Vec::new());
+        }
+        Target::SettingsUnbind(action) => {
+            config::Command::Rebind(keymap::reset(app.config.config.as_ref(), *action))
         }
         Target::SettingsOpen => return Some(ui.open_settings()),
         Target::SettingsBack => return Some(ui.close_settings()),

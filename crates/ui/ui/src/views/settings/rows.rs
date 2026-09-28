@@ -1,13 +1,14 @@
 //! Every row Settings shows: its section, its label, the words a search finds it by, its value.
 
 mod appearance;
+mod keymap;
 mod mapping;
 mod preferences;
-
-pub use mapping::{Choices, Slot, choices};
 mod providers;
 mod setup;
 mod switch;
+
+pub use mapping::{Choices, Slot, choices};
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::Preference;
@@ -23,14 +24,16 @@ pub enum Section {
     Appearance,
     #[default]
     Preferences,
+    Keymap,
 }
 
 impl Section {
-    pub const ALL: [Section; 4] = [
+    pub const ALL: [Section; 5] = [
         Section::Setup,
         Section::Providers,
         Section::Appearance,
         Section::Preferences,
+        Section::Keymap,
     ];
 
     pub fn label(self) -> &'static str {
@@ -39,6 +42,7 @@ impl Section {
             Section::Providers => "Providers",
             Section::Appearance => "Appearance",
             Section::Preferences => "Preferences",
+            Section::Keymap => "Keymap",
         }
     }
 }
@@ -69,11 +73,12 @@ pub enum Value {
         role: Role,
         act: Option<(&'static str, Target)>,
     },
-    /// A value as the button that opens its menu.
+    /// A value as the button that changes it, and what a click beside it does.
     Picker {
         shown: String,
         role: Role,
         target: Target,
+        act: Option<(&'static str, Target)>,
     },
     /// A field being typed into, which a click gives the keys.
     Input {
@@ -115,6 +120,7 @@ pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     out.extend(providers::providers(app, settings));
     out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
+    out.extend(keymap::keymap(app, settings));
     out
 }
 

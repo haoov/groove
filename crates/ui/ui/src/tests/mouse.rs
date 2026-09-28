@@ -6,7 +6,7 @@ use crate::hit::{Cursor, Hits, Picks, Target};
 use crate::input::Key;
 use crate::layout::{Edge, Layout, Split};
 use crate::tests::{
-    CHORD, WINDOW, click, drag, drag_at, full_app, metrics, press, pressed, release, window,
+    ALT, WINDOW, click, drag, drag_at, full_app, metrics, press, pressed, release, window,
 };
 use crate::views::session::Tab;
 use crate::{Ui, view};
@@ -72,7 +72,7 @@ fn a_click_on_a_tab_shows_it() {
 fn a_click_on_a_palette_row_runs_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('p'), CHORD, &mut ui, &app);
+    press(Key::Char('k'), ALT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let rect = hits
         .rect_of(&Target::PaletteRow(0))
@@ -86,7 +86,7 @@ fn a_click_on_a_palette_row_runs_it() {
 fn a_click_outside_the_palette_closes_it() {
     let app = full_app();
     let mut ui = Ui::default();
-    press(Key::Char('p'), CHORD, &mut ui, &app);
+    press(Key::Char('k'), ALT, &mut ui, &app);
     let hits = regions(&app, &ui);
     let rect = hits
         .rect_of(&Target::Worktree(WorktreeId::new("wt-1")))

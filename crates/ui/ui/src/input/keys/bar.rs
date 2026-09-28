@@ -4,6 +4,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, Edit, Motion, Selection};
 
 use super::super::{Key, Modifiers};
+use crate::keymap::{Action, Keymap};
 use crate::views::session::Term;
 use crate::views::session::find::Finding;
 use crate::{Focus, Ui};
@@ -16,9 +17,10 @@ pub(super) fn finding(
     mods: Modifiers,
     ui: &mut Ui,
     app: &AppState,
+    keymap: &Keymap,
 ) -> Option<Vec<Command>> {
     let view = ui.session.face();
-    if mods.ctrl && matches!(key, Key::Char('f' | 'F')) && ui.focus == Focus::Workspace {
+    if keymap.is(Action::Find, key, mods) && ui.focus == Focus::Workspace {
         let find = ui.session.find.get_or_insert_with(|| Finding::open(view));
         find.typing = true;
         return Some(Vec::new());
@@ -29,8 +31,8 @@ pub(super) fn finding(
             ui.session.find = None;
             return Some(Vec::new());
         }
-        Key::Char('n' | 'N') if mods.ctrl => find.step(true),
-        Key::Char('p' | 'P') if mods.ctrl => find.step(false),
+        key if keymap.is(Action::FindNext, key, mods) => find.step(true),
+        key if keymap.is(Action::FindPrevious, key, mods) => find.step(false),
         Key::Enter if find.typing => find.typing = false,
         key if find.typing => match typing(key, mods, &mut find.query) {
             true => searched(find, app, view),
@@ -117,14 +119,21 @@ pub(super) fn opened(ui: &mut Ui, app: &AppState, term: Term) {
 }
 
 /// What a keystroke asks of the bar: a term narrowed, the search run again, or a file opened.
-pub(super) fn in_bar(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(super) fn in_bar(
+    key: Key,
+    mods: Modifiers,
+    ui: &mut Ui,
+    app: &AppState,
+    keymap: &Keymap,
+) -> Vec<Command> {
     let Some(term) = ui.session.bar.typing else {
         return Vec::new();
     };
     match key {
         Key::Escape => ui.session.bar.shut(),
         Key::Tab => ui.session.bar.open(other(term)),
-        Key::Char('p' | 'P') if mods.ctrl => ui.session.bar.open(Term::Path),
+        key if keymap.is(Action::OpenPath, key, mods) => ui.session.bar.open(Term::Path),
+        key if keymap.is(Action::SearchFiles, key, mods) => ui.session.bar.open(Term::Text),
         Key::Enter if ui.session.bar.greps() => ui.session.bar.typing = None,
         Key::Enter => {
             let first = crate::views::session::files::narrowed(app, ui)

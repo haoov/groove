@@ -189,12 +189,7 @@ fn add_worktree_takes_a_typed_branch_and_a_picked_base_and_escape_backs_out() {
 fn the_palette_draws_a_prompt_and_closes_on_a_plain_command() {
     let app = full_app();
     let mut ui = Ui::default();
-    let chord = Modifiers {
-        ctrl: true,
-        shift: true,
-        alt: false,
-    };
-    press(Key::Char('p'), chord, &mut ui, &app);
+    press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
     let metrics = metrics(1280, 800, 1.0);
     let (frame, _) = view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let texts: Vec<String> = frame.layers()[1]

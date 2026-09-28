@@ -5,6 +5,7 @@ use groove_gfx::{Edges, Rect};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::keymap::Keymap;
 use crate::palette::Palette;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
@@ -59,10 +60,25 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         false => rect,
     };
     let body = inset(ctx, under, shown);
+    let chords = shortcuts(app, palette, &prompt);
     match rows.is_empty() {
         true => nothing(ctx, body, &prompt),
-        false => items(ctx, body, palette, &prompt, &rows),
+        false => items(ctx, body, (palette, &prompt), &rows, &chords),
     }
+}
+
+/// Each entry's chord, as the keymap binds it; a prompt's options have none.
+fn shortcuts(
+    app: &AppState,
+    palette: &Palette,
+    prompt: &Option<crate::palette::Prompt>,
+) -> Vec<Option<String>> {
+    if prompt.is_some() {
+        return Vec::new();
+    }
+    let keymap = Keymap::of(app.config.config.as_ref());
+    let rows = palette.rows(app).into_iter();
+    rows.map(|entry| keymap.label_of(entry.id())).collect()
 }
 
 /// What the panel lists: a prompt's options, or every entry the query leaves.
@@ -124,9 +140,9 @@ fn nothing(ctx: &mut Ctx, body: Rect, prompt: &Option<crate::palette::Prompt>) {
 fn items(
     ctx: &mut Ctx,
     body: Rect,
-    palette: &Palette,
-    prompt: &Option<crate::palette::Prompt>,
+    (palette, prompt): (&Palette, &Option<crate::palette::Prompt>),
     rows: &[(String, String)],
+    chords: &[Option<String>],
 ) {
     let pad = ctx.tokens.md;
     let first = palette.selected.saturating_sub(PALETTE_ROWS - 1);
@@ -134,15 +150,19 @@ fn items(
     let at = ctx.tokens.aside_near;
     let items: Vec<Row<'_, _>> = rows
         .iter()
+        .enumerate()
         .skip(first)
         .take(PALETTE_ROWS)
-        .enumerate()
         .map(|(i, (group, label))| {
             let row = match prompt {
                 Some(_) => Row::new(pad, group, label_style),
                 None => Row::new(pad, group, group_style).aside(at, label, label_style),
             };
-            row.target(Target::PaletteRow(first + i))
+            let row = match chords.get(i).and_then(Option::as_deref) {
+                Some(chord) => row.end(chord, group_style),
+                None => row,
+            };
+            row.target(Target::PaletteRow(i))
         })
         .collect();
     list(ctx, body, &items, Some(palette.selected - first));

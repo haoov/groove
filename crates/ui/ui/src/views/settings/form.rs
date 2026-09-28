@@ -145,10 +145,15 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             shown,
             role,
             target,
+            act,
         } => {
             let lit = ctx.hovered(target);
             let button = picker(ctx, room, room.x, shown, *role, lit);
             ctx.hit(button, target.clone());
+            room.take_left(button.w + sm);
+            if let Some((word, at)) = act {
+                Word::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+            }
         }
         Value::Choice(options) => {
             let each = options

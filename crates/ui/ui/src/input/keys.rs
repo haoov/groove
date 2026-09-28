@@ -1,19 +1,20 @@
 //! What a key does, by the pane that holds the keyboard.
 
 mod agent;
+mod app;
 mod bar;
 mod filter;
 mod naming;
 mod noting;
 mod panes;
 
-use groove_controllers::{AppState, Command, session, workspace};
+use groove_controllers::{AppState, Command};
 
 use super::{Key, Modifiers};
-use crate::palette::Palette;
+use crate::keymap::{Action, Keymap};
 use crate::views::session::Term;
 use crate::views::settings::Draft;
-use crate::{Focus, Overlay, Surface, Ui};
+use crate::{Focus, Surface, Ui};
 
 pub use agent::encode;
 use agent::{to_agent, to_shell};
@@ -24,15 +25,16 @@ use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
 
 pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    if mods.ctrl && mods.shift {
-        return match key {
-            Key::Char('k' | 'K') => board(ui),
-            key => chord(key, ui, app).into_iter().collect(),
-        };
+    let keymap = Keymap::of(app.config.config.as_ref());
+    if let Some(action) = ui.settings.binding {
+        return bound(action, key, mods, ui, app);
     }
     if (ui.examining().is_some() || ui.menu().is_some()) && key == Key::Escape {
         ui.overlay = None;
         return Vec::new();
+    }
+    if let Some(action) = keymap.app(key, mods) {
+        return app::run(action, ui, app);
     }
     if let Some(palette) = ui.palette_mut() {
         let outcome = palette.key(key, app);
@@ -48,15 +50,35 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         return in_note(key, mods, ui);
     }
     if ui.session.bar.typing.is_some() {
-        return in_bar(key, mods, ui, app);
+        return in_bar(key, mods, ui, app, &keymap);
     }
-    if let Some(commands) = finding(key, mods, ui, app) {
+    if let Some(commands) = finding(key, mods, ui, app, &keymap) {
         return commands;
     }
+    in_pane(key, mods, ui, app, &keymap)
+}
+
+/// No bar holds the keyboard: the pane that has it takes the key, after the chords it binds.
+fn in_pane(
+    key: Key,
+    mods: Modifiers,
+    ui: &mut Ui,
+    app: &AppState,
+    keymap: &Keymap,
+) -> Vec<Command> {
     let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
-    if mods.ctrl && matches!(key, Key::Char('p' | 'P')) && !raw {
-        opened(ui, app, Term::Path);
-        return Vec::new();
+    if raw && keymap.is(Action::TerminalCopy, key, mods) {
+        return app::copied(app);
+    }
+    let bars = [
+        (Action::OpenPath, Term::Path, !raw),
+        (Action::SearchFiles, Term::Text, true),
+    ];
+    for (action, term, heard) in bars {
+        if heard && keymap.is(action, key, mods) {
+            opened(ui, app, term);
+            return Vec::new();
+        }
     }
     if ui.showing(app) == Surface::Board {
         return on_board(key, mods, ui, app);
@@ -64,10 +86,27 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
-        Focus::Workspace => in_file(key, mods, app),
-        Focus::Sidebar => in_sidebar(key, mods, ui, app),
+        Focus::Workspace => in_file(key, mods, app, keymap),
+        Focus::Sidebar => in_sidebar(key, mods, ui, app, keymap),
         Focus::Rail => in_rail(key, app),
     }
+}
+
+/// The key pressed as the action's new chord; Esc gives up, and a chord needs ctrl or alt.
+fn bound(action: Action, key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if key == Key::Escape && !mods.ctrl && !mods.alt {
+        ui.settings.binding = None;
+        return Vec::new();
+    }
+    if !mods.ctrl && !mods.alt {
+        return Vec::new();
+    }
+    ui.settings.binding = None;
+    let chord = crate::keymap::chord_of(key, mods);
+    let keymap = crate::keymap::rebound(app.config.config.as_ref(), action, chord);
+    vec![Command::Config(
+        groove_controllers::config::Command::Rebind(keymap),
+    )]
 }
 
 /// Settings holds the keyboard: the search, a source's field, a running sign-in, else Esc back.
@@ -111,55 +150,4 @@ fn in_draft(key: Key, mods: Modifiers, draft: &mut Draft) -> Vec<Command> {
         }
     }
     Vec::new()
-}
-
-/// The board, or the session it was opened from.
-fn board(ui: &mut Ui) -> Vec<Command> {
-    ui.surface = match ui.surface {
-        Surface::Board => Surface::Session,
-        Surface::Session => Surface::Board,
-    };
-    match ui.surface {
-        Surface::Board => crate::input::pointer::board_reads(),
-        Surface::Session => Vec::new(),
-    }
-}
-
-/// Groove's own shortcuts.
-fn chord(key: Key, ui: &mut Ui, app: &AppState) -> Option<Command> {
-    match key {
-        Key::Char('p' | 'P') => {
-            if ui.close(|one| matches!(one, Overlay::Palette(_))).is_some() {
-                return None;
-            }
-            ui.overlay = Some(Overlay::Palette(Palette::default()));
-            Some(Command::Session(session::Command::ListRepos))
-        }
-        Key::Char('n' | 'N') => Some(Command::Session(session::Command::OpenExplorer {
-            title: None,
-        })),
-        Key::Char('b' | 'B') => {
-            ui.session.folded = !ui.session.folded;
-            None
-        }
-        Key::Char('r' | 'R') => Some(Command::Workspace(workspace::Command::Load)),
-        Key::Char('f' | 'F') => {
-            opened(ui, app, Term::Text);
-            None
-        }
-        Key::Left | Key::Right => {
-            ui.focus = ui.focus.beside(key == Key::Right);
-            None
-        }
-        Key::Char('w' | 'W') => {
-            let session = app.session.selected.clone()?;
-            Some(Command::Session(session::Command::Close { session }))
-        }
-        Key::Char('c' | 'C') => {
-            let session = app.session.selected.clone()?;
-            let copy = groove_controllers::agent::Command::Copy { session };
-            Some(Command::Agent(copy))
-        }
-        _ => None,
-    }
 }

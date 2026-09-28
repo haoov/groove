@@ -3,7 +3,7 @@ use groove_types::SessionId;
 
 use crate::hit::Target;
 use crate::input::Key;
-use crate::tests::{CHORD, click, full_app, press, window};
+use crate::tests::{ALT_SHIFT, click, full_app, press, window};
 use crate::views::session::Tab;
 use crate::{Focus, Ui, view};
 
@@ -44,11 +44,11 @@ fn the_chord_walks_the_panes_left_to_right() {
         Focus::Sidebar,
         Focus::Sidebar,
     ] {
-        press(Key::Right, CHORD, &mut ui, &app);
+        press(Key::Right, ALT_SHIFT, &mut ui, &app);
         assert_eq!(ui.focus, expected, "right stops at the last pane");
     }
     for expected in [Focus::Workspace, Focus::Agent, Focus::Rail, Focus::Rail] {
-        press(Key::Left, CHORD, &mut ui, &app);
+        press(Key::Left, ALT_SHIFT, &mut ui, &app);
         assert_eq!(ui.focus, expected, "and left at the first");
     }
 }

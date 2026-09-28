@@ -84,6 +84,23 @@ editor's. The next frame lays out at the new size and the terminals resize to it
 reader sees it at once, and the file is written on the spot, as `panes.json` is. No save
 button; no restart.
 
+## Keymap
+
+One table in `ui` holds every action with its group, its ring and its default chords; the
+palette and Settings read their labels from it. Three rings, heard in this order:
+
+| Ring | Modifier | Heard |
+|---|---|---|
+| app | `alt`, `alt+shift` | from any pane; in a terminal only these chords are taken, every other alt key passes through |
+| code | `ctrl`, `ctrl+shift` | by the focused pane's content: the editor, the diff, find, the commit box |
+| terminal | `ctrl+shift+c`, `ctrl+shift+v` | in the agent and the shells, which take every other key |
+
+A chord matches the key as it reads without a modifier, so it stays on its key whatever the
+layout, AltGr or Option make of it. The defaults stay clear of the Alt keys Claude Code
+binds (p, o, t, v, up, down) and of readline's (b, f, d, the digits, the arrows). The file's
+`keymap` block holds only what is rebound: an action's id to its chords. In Settings a chord
+is rebound by pressing it; it needs ctrl or alt, and it comes off whatever action held it.
+
 ## Needs
 
 - [x] The config file's fields: auto-approve default, thresholds, poll interval.

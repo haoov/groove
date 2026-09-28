@@ -4,6 +4,7 @@ mod activity;
 mod annotation;
 mod approval;
 mod attention;
+mod chord;
 mod config;
 mod delivery;
 mod diff;
@@ -33,6 +34,7 @@ pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, 
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention};
+pub use chord::{Chord, Stroke};
 pub use config::{
     Config, ConfigView, FilterConfig, GitConfig, GithubConfig, GithubView, NotionConfig,
     NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, StatusMap, ThemeName, UiConfig,

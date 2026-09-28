@@ -115,16 +115,17 @@ impl ApplicationHandler<Message> for App {
 }
 
 impl App {
-    /// The chord that pastes, with what the clipboard holds in it.
+    /// A chord the keymap binds to a paste, with what the clipboard holds in it.
     fn pasting(&self, event: &winit::event::KeyEvent) -> Option<Input> {
-        let chord = self.modifiers.control_key()
-            && matches!(
-                event.logical_key.to_text(),
-                Some("v") | Some("V") | Some("\u{16}")
-            );
+        let bound = match input_of(event, self.modifiers) {
+            Some(Input::Key { key, mods }) => {
+                groove_ui::keymap::pastes(self.state.config.config.as_ref(), key, mods)
+            }
+            _ => false,
+        };
         let inserted = self.modifiers.shift_key()
             && event.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Insert);
-        if event.state != ElementState::Pressed || !(chord || inserted) {
+        if event.state != ElementState::Pressed || !(bound || inserted) {
             return None;
         }
         Some(Input::Paste(self.services.clipboard.read()?))

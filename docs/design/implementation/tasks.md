@@ -50,7 +50,7 @@ the shown order: the placed tasks first, then the ones no order names, then ever
 under the divider.
 
 **Board**, in `ui`, as [../design.md](../design.md): a surface of its own beside the
-rail, reached from the rail's Board row or `ctrl+shift+K`, left by the same chord or by
+rail, reached from the rail's Board row or `alt+h`, left by the same chord or by
 picking a session. It is a surface, not an overlay: while it is up the rail holds no
 selection, and with no session open it is the window — closing the last one lands
 there, and its Live column says how to start. Three columns, each scrolling on its own:

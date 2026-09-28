@@ -33,6 +33,8 @@ pub struct SettingsUi {
     /// A source being turned on, and one asked to be turned off, not yet confirmed.
     pub draft: Option<Draft>,
     pub leaving: Option<groove_types::ProviderId>,
+    /// The action whose new chord the next key is.
+    pub binding: Option<crate::keymap::Action>,
 }
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

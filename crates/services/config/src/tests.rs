@@ -15,6 +15,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
             ..UiConfig::default()
         },
         preferences: groove_types::Preferences::default(),
+        keymap: Default::default(),
     };
     State {
         config: Some(config),

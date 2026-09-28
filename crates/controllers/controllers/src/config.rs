@@ -4,6 +4,8 @@ mod environment;
 mod mapping;
 mod sources;
 
+use std::collections::BTreeMap;
+
 use groove_config_service::Preference;
 use groove_types::{Mapping, ProviderId, Secret};
 
@@ -52,6 +54,8 @@ pub enum Command {
         source: ProviderId,
         change: Mapping,
     },
+    /// `config.rebind`: the chords that replace the keymap's defaults, whole.
+    Rebind(BTreeMap<String, Vec<String>>),
 }
 
 impl Command {
@@ -69,6 +73,7 @@ impl Command {
             }
             Command::ReadSchema(_) => "config.read_schema",
             Command::Map { .. } => "config.map",
+            Command::Rebind(_) => "config.rebind",
         }
     }
 }
@@ -96,6 +101,18 @@ pub fn dispatch(
         Command::TurnOff(id) => sources::off(state, services, spawner, id),
         Command::ReadSchema(source) => mapping::read(state, spawner, source),
         Command::Map { source, change } => mapping::map(state, services, spawner, (source, change)),
+        Command::Rebind(keymap) => rebind(state, keymap),
+    }
+}
+
+/// The next key reads the new chords; the file follows.
+fn rebind(state: &mut AppState, keymap: BTreeMap<String, Vec<String>>) {
+    let Some(config) = state.config.rebind(keymap).cloned() else {
+        let e = groove_types::Error::invalid("there is no config to change before the first run");
+        return state.failed(e);
+    };
+    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
+        state.failed(e);
     }
 }
 

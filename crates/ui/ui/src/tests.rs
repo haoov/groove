@@ -12,6 +12,7 @@ mod files;
 mod finding;
 mod focus;
 mod frame;
+mod keymap;
 mod manual;
 mod mapping;
 mod mouse;
@@ -40,8 +41,18 @@ use crate::{Metrics, Ui};
 /// The window every mouse test works in.
 const WINDOW: (u32, u32) = (1280, 800);
 
-/// Groove's own modifier pair.
-const CHORD: Modifiers = Modifiers {
+/// Groove's own ring, and its shifted half.
+const ALT: Modifiers = Modifiers {
+    ctrl: false,
+    shift: false,
+    alt: true,
+};
+const ALT_SHIFT: Modifiers = Modifiers {
+    ctrl: false,
+    shift: true,
+    alt: true,
+};
+const CTRL_SHIFT: Modifiers = Modifiers {
     ctrl: true,
     shift: true,
     alt: false,

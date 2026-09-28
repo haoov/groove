@@ -11,7 +11,7 @@ mod search;
 use crate::hit::Target;
 use crate::input::Key;
 use crate::layout::{Layout, Split};
-use crate::tests::{CHORD, WINDOW, click, full_app, press, window};
+use crate::tests::{ALT_SHIFT, WINDOW, click, full_app, press, window};
 use crate::views::session::Tab;
 use crate::views::session::files::listing;
 use crate::{Ui, view};
@@ -223,7 +223,7 @@ fn folding_the_sidebar_gives_its_room_to_the_workspace_and_no_one_else() {
     assert_eq!(folded.agent, open.agent, "the agent pane never moves");
     assert_eq!(folded.workspace.w, open.workspace.w + open.sidebar.w);
 
-    press(Key::Char('b'), CHORD, &mut ui, &app);
+    press(Key::Char('b'), ALT_SHIFT, &mut ui, &app);
     assert!(!ui.session.folded, "the chord brings it back");
     assert_eq!(Layout::of(window(), &ui).sidebar.w, open.sidebar.w);
 }
@@ -262,14 +262,14 @@ fn folding_the_sidebar_asks_nothing_of_the_worktree() {
     let fold = hits.rect_of(&Target::Fold).expect("the fold");
     assert!(click(fold, &mut ui, &app, &hits).is_empty());
     assert!(click(fold, &mut ui, &app, &hits).is_empty());
-    assert!(press(Key::Char('b'), CHORD, &mut ui, &app).is_empty());
+    assert!(press(Key::Char('b'), ALT_SHIFT, &mut ui, &app).is_empty());
 }
 
 #[test]
 fn a_chord_reads_the_worktree_whenever_the_user_asks() {
     let app = with_files(&["crates/ui/ui/src/tokens.rs"]);
     let mut ui = on_diff();
-    let asked = press(Key::Char('r'), CHORD, &mut ui, &app);
+    let asked = press(Key::Char('r'), ALT_SHIFT, &mut ui, &app);
     assert_eq!(asked.len(), 1);
     assert_eq!(asked[0].id(), "workspace.load");
 }

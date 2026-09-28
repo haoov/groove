@@ -5,6 +5,8 @@ pub use sources::{
     REDACTED, StatusMap,
 };
 
+use std::collections::BTreeMap;
+
 use crate::Thresholds;
 
 /// The config file. `Config` is the on-disk shape; `ConfigView` is what the ui sees.
@@ -19,6 +21,9 @@ pub struct Config {
     pub ui: UiConfig,
     #[serde(default)]
     pub preferences: Preferences,
+    /// The chords rebound: an action's id to what replaces its defaults.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub keymap: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]

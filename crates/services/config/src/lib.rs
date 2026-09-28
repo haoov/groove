@@ -4,6 +4,7 @@ mod sources;
 #[cfg(test)]
 mod tests;
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use sources::Source;
@@ -99,6 +100,13 @@ impl State {
     /// Whether a new session's writes run without asking.
     pub fn auto_approve_default(&self) -> bool {
         self.preferences().auto_approve_default
+    }
+
+    /// The chords rebound, whole; the config to write, or `None` before first run.
+    pub fn rebind(&mut self, keymap: BTreeMap<String, Vec<String>>) -> Option<&Config> {
+        let config = self.config.as_mut()?;
+        config.keymap = keymap;
+        Some(config)
     }
 
     /// One preference changed; the config to write, or `None` before first run.

@@ -148,6 +148,7 @@ fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
             shown,
             role,
             target: Target::SettingsPick(held.id(), slot),
+            act: None,
         },
     }
 }

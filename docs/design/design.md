@@ -130,7 +130,7 @@ Four columns, left to right. The left half is the agents; the right half is the 
 The rail, the agent pane and the sidebar each have a width the user drags, kept between
 runs. The workspace takes what is left, so it is the only column a resize, a fold or a drag
 elsewhere changes. A boundary moves the two columns it stands between and nothing else. The
-sidebar folds from the far end of the tab strip or with `ctrl+shift+B`.
+sidebar folds from the far end of the tab strip or with `alt+shift+b`.
 
 ### Workspace
 

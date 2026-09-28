@@ -148,12 +148,7 @@ fn keys_encode_as_a_terminal_sends_them() {
 fn chords_are_grooves_and_the_rest_is_the_agents() {
     let app = AppState::default();
     let mut ui = Ui::default();
-    let chord = Modifiers {
-        ctrl: true,
-        shift: true,
-        alt: false,
-    };
-    let opened = press(Key::Char('P'), chord, &mut ui, &app);
+    let opened = press(Key::Char('k'), crate::tests::ALT, &mut ui, &app);
     assert_eq!(opened.len(), 1, "opening refreshes the pool");
     assert_eq!(opened[0].id(), "session.list_repos");
     assert!(ui.palette().is_some());
@@ -171,10 +166,10 @@ fn chords_are_grooves_and_the_rest_is_the_agents() {
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(ui.palette().is_none());
 
-    let open = press(Key::Char('n'), chord, &mut ui, &app);
+    let open = press(Key::Char('n'), crate::tests::ALT_SHIFT, &mut ui, &app);
     assert_eq!(open[0].id(), "session.open_explorer");
     assert!(
-        press(Key::Char('w'), chord, &mut ui, &app).is_empty(),
+        press(Key::Char('w'), crate::tests::ALT_SHIFT, &mut ui, &app).is_empty(),
         "nothing selected, nothing to close"
     );
     assert!(

@@ -317,7 +317,7 @@ fn every_match_is_marked_under_the_text() {
 fn the_chord_opens_the_bar_on_the_worktree_and_typing_searches_it() {
     let app = app();
     let mut ui = on_code();
-    press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
+    press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert_eq!(
         ui.session.bar.typing,
         Some(Term::Text),
@@ -337,7 +337,7 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
     typed("ui", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "ui");
 
-    press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
+    press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert_eq!(
         ui.session.bar.path.text(),
         "ui",
@@ -389,7 +389,7 @@ fn a_found_line_opens_its_file_where_it_sits() {
         at: (4, 7),
     }];
     let mut ui = on_code();
-    press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
+    press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     press(Key::Char('o'), Modifiers::default(), &mut ui, &app);
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
@@ -422,7 +422,7 @@ fn the_bar_stands_only_once_a_search_asks_for_it() {
         );
     }
 
-    press(Key::Char('f'), crate::tests::CHORD, &mut ui, &app);
+    press(Key::Char('f'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert_eq!(
         ui.session.bar.typing,
         Some(Term::Text),
