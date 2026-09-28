@@ -7,11 +7,10 @@ use super::complete;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{Panel, hairline, square};
-use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{Button, Text};
+use groove_ui_kit::shape::{Panel, hairline};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Button, Search, Text};
 
 const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";
@@ -32,25 +31,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> Rect {
 
 /// What the filter holds, after the mark it carries.
 fn filter(ctx: &mut Ctx, field: Rect, ui: &Ui) {
-    ctx.hit(field, Target::Filter);
-    let size = ctx.tokens.icon;
-    let mut room = field.pad(Edges::across(ctx.tokens.md, 0.0));
-    let mark = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    let role = match ui.board.typing {
-        true => Role::Text,
-        false => Role::Ghost,
-    };
-    ctx.icon(mark, Mark::Search, 0, ctx.styles.color(role));
-    let (text, style) = match (ui.board.typing, ui.board.filter.is_empty()) {
-        (true, _) => (ui.board.filter.shown(), ctx.styles.body(Role::Text)),
-        (false, true) => (PLACEHOLDER.to_string(), ctx.styles.body(Role::Ghost)),
-        (false, false) => (
-            ui.board.filter.text().to_string(),
-            ctx.styles.body(Role::Text),
-        ),
-    };
-    row(ctx, room, 0.0, &text, style);
+    let search = Search::new(&ui.board.filter, Target::Filter, ui.board.typing);
+    search.hint(PLACEHOLDER).draw(ctx, field);
 }
 
 /// The rows the field offers, over the columns, while the keyboard is in it.

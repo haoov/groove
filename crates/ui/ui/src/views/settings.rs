@@ -13,12 +13,11 @@ pub use rows::Section;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
-use groove_ui_kit::shape::{hairline, hoverable, square};
-use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{Button, Field};
+use groove_ui_kit::shape::{hairline, hoverable};
+use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Button, Field, Search};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -73,28 +72,10 @@ fn sections(ctx: &mut Ctx, mut list: Rect, settings: &SettingsUi) {
     }
 }
 
-/// The search: its glass, and what is typed or what it offers.
 fn searched(ctx: &mut Ctx, line: Rect, settings: &SettingsUi) {
-    ctx.hit(line, Target::SettingsSearch);
     hairline(ctx, line, ctx.styles.line());
-    let size = ctx.tokens.icon;
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let glass = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    let role = match settings.typing {
-        true => Role::Text,
-        false => Role::Ghost,
-    };
-    ctx.icon(glass, Mark::Search, 0, ctx.styles.color(role));
-    let (text, style) = match (settings.typing, settings.search.is_empty()) {
-        (true, _) => (settings.search.shown(), ctx.styles.body(Role::Text)),
-        (false, true) => ("search a setting".to_string(), ctx.styles.body(Role::Ghost)),
-        (false, false) => (
-            settings.search.text().to_string(),
-            ctx.styles.body(Role::Text),
-        ),
-    };
-    row(ctx, room, 0.0, &text, style);
+    let search = Search::new(&settings.search, Target::SettingsSearch, settings.typing);
+    search.hint("search a setting").draw(ctx, line);
 }
 
 /// Where the sign-in's terminal stands: the lower half of the form.

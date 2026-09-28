@@ -5,9 +5,9 @@ use groove_gfx::Rect;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::Search;
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     let Some(find) = ui.session.find.as_ref() else {
@@ -17,25 +17,8 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     ctx.layer();
     ctx.quad(bar, ctx.styles.action());
     ctx.border(bar, ctx.styles.here());
-    ctx.hit(bar, Target::Finding);
-    let role = match find.typing {
-        true => Role::Text,
-        false => Role::Faint,
-    };
-    let size = ctx.tokens.icon;
-    let glass = Rect::new(
-        bar.x + ctx.tokens.md,
-        bar.y + (bar.h - size) / 2.0,
-        size,
-        size,
-    );
-    ctx.icon(glass, Mark::Search, 0, ctx.styles.color(role));
-    let typed = match find.typing {
-        true => find.query.shown(),
-        false => find.query.text().to_string(),
-    };
-    let at = glass.right() - bar.x + ctx.tokens.sm;
-    row(ctx, bar, at, &typed, ctx.styles.code(role));
+    let search = Search::new(&find.query, Target::Finding, find.typing);
+    search.code().faint(Role::Faint).draw(ctx, bar);
     count(ctx, bar, &find.count());
 }
 

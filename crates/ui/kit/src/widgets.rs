@@ -9,6 +9,7 @@ mod list;
 mod menu;
 mod modal;
 mod scrolled;
+mod search;
 mod tabs;
 mod terminal;
 
@@ -21,6 +22,7 @@ pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{Corner, modal, panel_at};
 pub use scrolled::scrolled;
+pub use search::Search;
 pub use tabs::{Tab, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;

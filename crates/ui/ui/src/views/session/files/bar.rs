@@ -1,15 +1,14 @@
 //! The rows the search types into: one per term, under the one mark they share.
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::{Bar, Term};
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, square};
-use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::shape::hairline;
+use groove_ui_kit::widgets::Search;
 
 /// A row for each term the search narrows by. Returns what they took.
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
@@ -28,33 +27,21 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     for (at, term) in shown.iter().copied().enumerate() {
         let line = rows.take_top(ctx.tokens.row);
         narrowing(ctx, line, bar, term, at == 0);
-        ctx.hit(line, Target::Term(term));
     }
     whole
 }
 
 /// One term of the bar: what it narrows by, and what is typed into it.
 fn narrowing(ctx: &mut Ctx, line: Rect, bar: &Bar, term: Term, first: bool) {
-    let held = bar.typing == Some(term);
-    let role = match held {
-        true => Role::Text,
-        false => Role::Faint,
-    };
     let field = match term {
         Term::Path => &bar.path,
         Term::Text => &bar.text,
     };
-    let (sm, size) = (ctx.tokens.sm, ctx.tokens.icon);
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
-    let glass = square(room.take_left(size), size);
-    room.take_left(sm);
-    if first {
-        ctx.icon(glass, Mark::Search, 0, ctx.styles.color(role));
-    }
-    Label::new(term.label(), ctx.styles.code(Role::Ghost)).left(ctx, &mut room, sm);
-    let text = match held {
-        true => field.shown(),
-        false => field.text().to_string(),
-    };
-    row(ctx, room, 0.0, &text, ctx.styles.code(role));
+    let search = Search::new(field, Target::Term(term), bar.typing == Some(term));
+    let search = search
+        .prefix(term.label())
+        .code()
+        .glass(first)
+        .faint(Role::Faint);
+    search.draw(ctx, line);
 }
