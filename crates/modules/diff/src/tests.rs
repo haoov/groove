@@ -1,6 +1,9 @@
 mod alignment;
 mod changes;
+mod hunked;
+mod moved;
 mod opened;
 mod perf;
+mod reference;
 mod summary;
 mod words;

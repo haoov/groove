@@ -121,8 +121,11 @@ fn in_change(app: &AppState, query: &str) -> Vec<Hit> {
             _ => None,
         })
         .flat_map(|(row, file, at)| {
-            let text = file.lines[at].clone();
-            let line = file.rows[at].new.map(|line| line as usize);
+            let text = file.text(at);
+            let line = file
+                .row(at)
+                .and_then(|one| one.new)
+                .map(|line| line as usize);
             let path = file.path.clone();
             matches(&text, query)
                 .into_iter()

@@ -1,8 +1,8 @@
 //! The open files' buffers: what a read, a derive and a save do to them.
 
-use groove_types::{Selection, WorktreeId};
+use groove_types::{Edit, Selection, WorktreeId};
 
-use crate::{Buffers, Derived, Opened, State, by_line, from_documents};
+use crate::{Buffers, Derived, Opened, State, from_documents};
 
 impl State {
     pub fn buffers(&self) -> Option<&Buffers> {
@@ -32,7 +32,27 @@ impl State {
         self.buffers.remove(worktree);
     }
 
-    /// Installs what a derive found, when the buffer is still the one it read.
+    /// One edit of the active file, its hunks moved along it at once. Returns the file when its text changed.
+    pub fn edit(&mut self, edit: &Edit) -> Option<String> {
+        let stream = self.commit.is_none();
+        let open = self.active_mut()?;
+        let touched = open.new.edit(edit);
+        if touched.is_empty() {
+            return None;
+        }
+        for one in &touched {
+            open.edited(*one);
+        }
+        let (path, new) = (open.path.clone(), open.new.document().clone());
+        if stream {
+            for one in touched {
+                self.changes.edited(&path, one, &new);
+            }
+        }
+        Some(path)
+    }
+
+    /// Installs what a derive of `revision` found: its tree always, its rows while nothing was typed since.
     pub fn derived(&mut self, (worktree, path): (&WorktreeId, &str), read: Derived, revision: u64) {
         let Some(open) = self
             .buffers
@@ -41,12 +61,10 @@ impl State {
         else {
             return;
         };
-        if !open.new.settled(read.settled, revision) {
+        if !open.new.settled(read.settled) || open.new.revision() != revision {
             return;
         }
-        open.rows = read.aligned.rows.clone();
-        open.marks = read.aligned.marks.clone();
-        open.words = by_line(&read.aligned.rows, &read.aligned.words);
+        open.take(&read.aligned);
         if self.holds(worktree) && self.commit.is_none() {
             self.changes.replace(read.aligned);
         }
@@ -122,9 +140,7 @@ impl State {
 /// The read brought back the text the buffer holds: the buffer stays, with its history.
 fn refreshed(open: &mut Opened, file: Opened, at: Option<Selection>) {
     open.old = file.old;
-    open.rows = file.rows;
-    open.marks = file.marks;
-    open.words = file.words;
+    open.hunked = file.hunked;
     open.long = file.long;
     open.new.saved();
     if let Some(held) = at {

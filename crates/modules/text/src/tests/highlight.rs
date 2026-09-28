@@ -137,3 +137,33 @@ fn a_yaml_key_path_and_a_markdown_heading_are_scopes() {
     let md = Document::new("README.md", "# One\n\n## Two\n\ntext\n");
     assert_eq!(md.scopes(4), [0, 2], "the headings above it");
 }
+
+#[test]
+fn a_parse_read_before_later_edits_lands_moved_along_them() {
+    let source = "fn one() -> usize {\n    1\n}\n";
+    let mut doc = Document::new("src/lib.rs", source);
+    doc.insert(0, "// head\n");
+    let read = doc.clone();
+    doc.insert(0, "\n\n\n");
+    doc.insert(doc.char_of(Caret::new(5, 4)), "let two = \"2\"; ");
+    assert!(
+        doc.install(read.settled()),
+        "a parse of this document lands"
+    );
+    let fresh = Document::new("src/lib.rs", &doc.text());
+    let (now, want) = (whole(&doc), whole(&fresh));
+    assert_eq!(
+        now[3..5],
+        want[3..5],
+        "what it read, coloured where it now stands"
+    );
+    doc.reparse();
+    assert_eq!(whole(&doc), want, "and the next parse takes the rest");
+}
+
+#[test]
+fn a_parse_of_another_document_does_not_land() {
+    let mut doc = Document::new("src/lib.rs", "fn one() {}\n");
+    let other = Document::new("src/lib.rs", "fn one() {}\n");
+    assert!(!doc.install(other.settled()));
+}

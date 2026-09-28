@@ -25,7 +25,7 @@ pub(super) fn streamed(
         .map(|row| match changes.at(row) {
             Some(At::Head(file)) => head(app, file, changes.is_folded(&file.path)),
             Some(At::Row(file, at)) => {
-                let side = source(&file.rows[at], view, side);
+                let side = file.row(at).map_or(side, |one| source(&one, view, side));
                 one(
                     app,
                     ui,
@@ -53,27 +53,30 @@ fn coloured<'a>(
         let Some(At::Row(file, at)) = changes.at(row) else {
             continue;
         };
+        let Some(one) = file.row(at) else {
+            continue;
+        };
         let (old, new) = bounds.entry(file.path.as_str()).or_default();
-        stretch(old, file.rows[at].old);
-        stretch(new, file.rows[at].new);
+        stretch(old, one.old);
+        stretch(new, one.new);
     }
     bounds
         .into_iter()
         .filter_map(|(path, (old, new))| {
             let (before, after) = app.workspace.sides(path)?;
-            let stamp = (app.workspace.stamp, revision(app, path));
-            let before = ui.painted.of(before, path, true, (stamp.0, 0), old);
+            let stamp = (app.workspace.stamp, painted(app, path));
+            let before = ui.painted.of(before, path, true, (stamp.0, (0, 0)), old);
             let after = ui.painted.of(after, path, false, stamp, new);
             Some((path, (before, after)))
         })
         .collect()
 }
 
-/// How many times the buffer of this file has changed, when it is the open one.
-fn revision(app: &AppState, path: &str) -> u64 {
+/// What the buffer of this file has been painted from, when it is the open one.
+fn painted(app: &AppState, path: &str) -> (u64, u64) {
     open(app)
         .filter(|open| open.path == path)
-        .map_or(0, |open| open.new.revision())
+        .map_or((0, 0), |open| open.new.painted())
 }
 
 /// The range grown to hold one more line.
@@ -109,7 +112,9 @@ fn one(
     side: Side,
     colours: Option<&(Rc<Colours>, Rc<Colours>)>,
 ) -> Drawn {
-    let row = &file.rows[at];
+    let Some(row) = &file.row(at) else {
+        return Drawn::default();
+    };
     let line = match side {
         Side::Old => row.old,
         Side::New => row.new,
@@ -117,12 +122,12 @@ fn one(
     let here = open(app).filter(|open| open.path == file.path);
     let text = match blank(row, view, side) {
         true => String::new(),
-        false => live(here, side, line).unwrap_or_else(|| file.lines[at].clone()),
+        false => live(here, side, line).unwrap_or_else(|| file.text(at)),
     };
     let spans = spans_of(colours, side, line);
     let (drawn, spans) = shown(&text, &spans, file.indent);
     Drawn {
-        words: columns_in(file.words.get(&at), &text, file.indent),
+        words: columns_in(file.words(at), &text, file.indent),
         found: matched(ui, on, &text, file.indent),
         standing: standing(ui, on, &text, file.indent),
         text: drawn,

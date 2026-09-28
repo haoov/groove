@@ -158,7 +158,7 @@ fn room(ctx: &Ctx, body: Rect) -> usize {
 fn standing(app: &AppState, top: usize) -> Option<(String, Option<(usize, bool)>)> {
     match app.workspace.changes.at(top)? {
         At::Row(file, at) => {
-            let row = &file.rows[at];
+            let row = file.row(at)?;
             let line = match (row.new, row.old) {
                 (Some(line), _) => Some((line as usize, false)),
                 (None, Some(line)) => Some((line as usize, true)),

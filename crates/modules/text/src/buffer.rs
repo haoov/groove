@@ -8,6 +8,14 @@ use crate::{Colours, Document, Settled};
 mod edits;
 mod motion;
 
+/// Lines `line..line + gone` of the text became `line..line + came`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Touched {
+    pub line: u32,
+    pub gone: u32,
+    pub came: u32,
+}
+
 pub struct Buffer {
     doc: Document,
     /// One per caret. Several carets edit at once; today there is one.
@@ -16,6 +24,10 @@ pub struct Buffer {
     dirty: bool,
     /// Bumped by every change.
     revision: u64,
+    /// Bumped by every tree a parse gives it.
+    parsed: u64,
+    /// The lines each change of the edit under way replaced.
+    touched: Vec<Touched>,
 }
 
 impl std::fmt::Debug for Buffer {
@@ -43,6 +55,8 @@ impl Buffer {
             history: History::default(),
             dirty: false,
             revision: 0,
+            parsed: 0,
+            touched: Vec::new(),
         }
     }
 
@@ -95,6 +109,11 @@ impl Buffer {
         self.revision
     }
 
+    /// What its colours are read from: the text and the tree over it.
+    pub fn painted(&self) -> (u64, u64) {
+        (self.revision, self.parsed)
+    }
+
     /// Puts the caret back where it was in another read of the same file.
     pub fn follow(&mut self, caret: Caret) {
         self.carets = vec![Selection::at(self.clamped(caret))];
@@ -118,19 +137,20 @@ impl Buffer {
     pub fn reparse(&mut self, revision: u64) {
         if revision == self.revision {
             self.doc.reparse();
+            self.parsed += 1;
         }
     }
 
-    /// What a job settled for `revision`, if the buffer has not moved on.
-    pub fn settled(&mut self, settled: Settled, revision: u64) -> bool {
-        if revision != self.revision {
-            return false;
-        }
-        self.doc.install(settled);
-        true
+    /// What a job settled for an earlier text, brought up to this one; false when it read another.
+    pub fn settled(&mut self, settled: Settled) -> bool {
+        let landed = self.doc.install(settled);
+        self.parsed += u64::from(landed);
+        landed
     }
 
-    pub fn edit(&mut self, edit: &Edit) {
+    /// Applies one edit. Returns the lines each of its changes replaced, in the order they came.
+    pub fn edit(&mut self, edit: &Edit) -> Vec<Touched> {
+        self.touched.clear();
         match edit {
             Edit::Insert(text) => self.write(text),
             Edit::Newline => self.broke(),
@@ -145,5 +165,6 @@ impl Buffer {
             Edit::Undo => self.step(History::undo),
             Edit::Redo => self.step(History::redo),
         }
+        std::mem::take(&mut self.touched)
     }
 }

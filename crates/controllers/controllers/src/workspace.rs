@@ -161,7 +161,9 @@ pub fn dispatch(
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Discard { path } => index(state, spawner, Act::Discard, path),
-        Command::Message(edit) => state.workspace.message.edit(&edit),
+        Command::Message(edit) => {
+            state.workspace.message.edit(&edit);
+        }
         Command::Commit => commit_here(state, spawner),
         Command::Push => on_remote(state, services, spawner, Remote::Push),
         Command::Pull => on_remote(state, services, spawner, Remote::Pull),

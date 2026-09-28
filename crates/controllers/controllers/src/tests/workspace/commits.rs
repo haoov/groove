@@ -209,7 +209,7 @@ fn a_shown_commit_leaves_the_open_files_as_the_disk_holds_them() {
         .get("a.txt")
         .expect("the commit's change");
     assert!(
-        rows.lines.iter().any(|line| line == "second"),
+        rows.texts().any(|line| line == "second"),
         "the stream is the commit's"
     );
 }

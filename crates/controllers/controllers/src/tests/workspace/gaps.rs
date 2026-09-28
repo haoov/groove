@@ -77,7 +77,7 @@ fn gap_row(state: &crate::AppState) -> Option<usize> {
         matches!(
             state.workspace.changes.at(*row),
             Some(groove_workspace_service::At::Row(file, at))
-                if matches!(file.rows[at].kind, groove_types::RowKind::Gap(_))
+                if file.row(at).is_some_and(|one| matches!(one.kind, groove_types::RowKind::Gap(_)))
         )
     })
 }
@@ -227,7 +227,7 @@ fn a_file_changed_on_disk_is_never_opened_from_what_was_read_before() {
         s.workspace
             .changes
             .get("b.rs")
-            .is_some_and(|f| f.lines.iter().any(|line| line.contains("edited")))
+            .is_some_and(|f| f.texts().any(|line| line.contains("edited")))
     });
     dispatch(
         Cmd::Workspace(workspace::Command::OpenFile {
@@ -300,8 +300,7 @@ fn a_gap_in_a_committed_change_keeps_the_change_it_stands_in() {
     });
     let changed = |state: &crate::AppState| {
         state.workspace.changes.get("a.txt").map(|f| {
-            f.rows
-                .iter()
+            f.rows()
                 .filter(|row| {
                     !matches!(
                         row.kind,
@@ -376,8 +375,9 @@ fn a_committed_change_opened_and_edited_keeps_what_it_changed() {
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     let open = state.workspace.active().expect("still open");
     let changed = open
-        .rows
-        .iter()
+        .hunked
+        .layout
+        .all()
         .filter(|row| {
             !matches!(
                 row.kind,

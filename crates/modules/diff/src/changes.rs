@@ -5,47 +5,17 @@ use std::ops::Range;
 use std::path::Path;
 
 use groove_git::Git;
-use groove_text::Document;
-use groove_types::{FileDiff, LineMark, Row};
+use groove_text::{Document, Touched};
+use groove_types::FileDiff;
 
+mod aligned;
 mod build;
 
+pub use aligned::Aligned;
 pub(crate) use build::text_of;
 pub use build::{aligned, from_sides};
 
 use build::merge;
-
-use crate::alignment::Words;
-
-/// One changed file: how its sides line up, and what each row shows.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Aligned {
-    pub path: String,
-    pub rows: Vec<Row>,
-    /// One per row, in the row's own order.
-    pub lines: Vec<String>,
-    pub marks: BTreeMap<u32, LineMark>,
-    /// The columns a row draws that the row it pairs with does not.
-    pub words: Words,
-    /// How wide a tab reads in this file.
-    pub indent: usize,
-    /// Too long to align; the surface says so instead of drawing it.
-    pub long: bool,
-}
-
-impl Aligned {
-    /// The directory the file sits in, from the worktree root.
-    pub fn dir(&self) -> &str {
-        match self.path.rsplit_once('/') {
-            Some((dir, _)) => dir,
-            None => "",
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        self.path.rsplit('/').next().unwrap_or(&self.path)
-    }
-}
 
 /// Where a row of the whole surface belongs.
 #[derive(Debug, PartialEq, Eq)]
@@ -79,7 +49,7 @@ impl Changes {
             starts.push(rows);
             let shown = match shut.contains(&file.path) {
                 true => 0,
-                false => file.rows.len(),
+                false => file.len(),
             };
             rows += shown + 1;
         }
@@ -145,7 +115,7 @@ impl Changes {
     pub fn shown(&self, file: &Aligned) -> usize {
         match self.is_folded(&file.path) {
             true => 0,
-            false => file.rows.len(),
+            false => file.len(),
         }
     }
 
@@ -190,10 +160,7 @@ impl Changes {
             return None;
         }
         let head = self.starts[at];
-        let row = self.files[at]
-            .rows
-            .iter()
-            .position(|row| row.new == Some(line))?;
+        let row = self.files[at].hunked.layout.position(line)?;
         Some(head + 1 + row)
     }
 
@@ -216,6 +183,18 @@ impl Changes {
         self.files.iter().find(|file| file.path == path)
     }
 
+    /// One edit of a file's new side, moved into its hunks with nothing diffed again.
+    pub fn edited(&mut self, path: &str, edit: Touched, new: &Document) {
+        let Some(at) = self.files.iter().position(|one| one.path == path) else {
+            return;
+        };
+        let opened = std::mem::take(&mut self.opened);
+        self.files[at].edited(edit, new, opened.get(path).map_or(&[], Vec::as_slice));
+        let shut = std::mem::take(&mut self.shut);
+        *self = Self::indexed(std::mem::take(&mut self.files), shut);
+        self.opened = opened;
+    }
+
     /// One file aligned again, for a buffer that has moved under it.
     pub fn replace(&mut self, file: Aligned) {
         let Some(at) = self.files.iter().position(|one| one.path == file.path) else {
@@ -229,13 +208,7 @@ impl Changes {
 
 /// The digits the highest line number of a file takes.
 fn widest(file: &Aligned) -> usize {
-    let highest = file
-        .rows
-        .iter()
-        .filter_map(|row| row.old.max(row.new))
-        .max()
-        .unwrap_or(0);
-    (highest + 1).to_string().len()
+    (file.hunked.layout.highest() + 1).to_string().len()
 }
 
 /// Every changed file aligned, the HEAD sides read in one git process.

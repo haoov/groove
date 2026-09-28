@@ -31,8 +31,9 @@ pub(crate) fn moved(app: &AppState, ui: &crate::Ui, from: Face, to: Face, row: u
     let at = match to {
         Face::File => number as usize,
         _ => file
-            .rows
-            .iter()
+            .hunked
+            .layout
+            .all()
             .position(|at| at.new.is_some_and(|line| line >= number))
             .unwrap_or(row),
     };
@@ -43,6 +44,10 @@ pub(crate) fn moved(app: &AppState, ui: &crate::Ui, from: Face, to: Face, row: u
 fn number(file: &Opened, view: Face, at: usize) -> Option<u32> {
     match view {
         Face::File => Some(at as u32),
-        _ => file.rows.get(at..)?.iter().find_map(|row| row.new),
+        _ => file
+            .hunked
+            .layout
+            .rows(at..file.hunked.layout.len())
+            .find_map(|row| row.new),
     }
 }

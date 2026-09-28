@@ -6,7 +6,8 @@ use groove_text::Document;
 use groove_types::{Row, RowKind};
 
 use super::Aligned;
-use crate::alignment::{CONTEXT, align, marks, words};
+use crate::hunked::Hunked;
+use crate::layout::Layout;
 use crate::opened::MAX_SHOWN_BYTES;
 
 /// One file's rows, from its two sides.
@@ -21,26 +22,22 @@ pub fn from_sides(path: &str, old: &Document, new: &Document, opened: &[Range<u3
     if old.bytes().max(new.bytes()) > MAX_SHOWN_BYTES {
         return Aligned {
             path: path.to_string(),
-            rows: vec![Row {
-                old: None,
-                new: None,
-                kind: RowKind::Gap(0),
-            }],
-            lines: vec![String::new()],
+            hunked: Hunked {
+                layout: Layout::long(),
+                ..Hunked::default()
+            },
             indent,
             long: true,
             ..Aligned::default()
         };
     }
-    let rows = align(old, new, CONTEXT, opened);
     Aligned {
-        lines: rows.iter().map(|row| text_of(old, new, row)).collect(),
-        marks: marks(&rows),
-        words: words(&rows, old, new),
         path: path.to_string(),
-        rows,
+        hunked: Hunked::of(old, new, opened),
         indent,
         long: false,
+        old: old.clone(),
+        new: new.clone(),
     }
 }
 

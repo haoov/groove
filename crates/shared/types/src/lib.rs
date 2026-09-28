@@ -41,8 +41,8 @@ pub use config::{
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
-    BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, LineMark, RepoDiff, Row,
-    RowKind, word_diff_pairs,
+    BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
+    Row, RowKind, word_diff_pairs,
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};

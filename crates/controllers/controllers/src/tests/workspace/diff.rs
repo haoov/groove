@@ -179,16 +179,9 @@ fn the_change_is_one_surface_and_the_rows_on_screen_take_their_colours() {
     let changes = &state.workspace.changes;
     assert_eq!(
         changes.rows(),
-        changes
-            .files()
-            .iter()
-            .map(|f| f.rows.len() + 1)
-            .sum::<usize>()
+        changes.files().iter().map(|f| f.len() + 1).sum::<usize>()
     );
-    assert_eq!(
-        changes.head_of("b.rs"),
-        Some(changes.files()[0].rows.len() + 1)
-    );
+    assert_eq!(changes.head_of("b.rs"), Some(changes.files()[0].len() + 1));
     assert!(
         state.workspace.coloured.is_empty(),
         "nothing is on screen yet"
@@ -272,7 +265,7 @@ fn a_keystroke_reaches_the_rows_the_whole_change_shows() {
         s.workspace
             .changes
             .get("a.txt")
-            .is_some_and(|file| file.lines.iter().any(|line| line.starts_with('X')))
+            .is_some_and(|file| file.texts().any(|line| line.starts_with('X')))
     });
 }
 

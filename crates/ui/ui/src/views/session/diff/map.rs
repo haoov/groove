@@ -64,7 +64,7 @@ fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
         return;
     };
     let mut runs: Vec<(usize, usize, LineMark)> = Vec::new();
-    for (line, mark) in &open.marks {
+    for (line, mark) in &open.hunked.marks {
         let at = *line as usize;
         match runs.last_mut() {
             Some(last) if last.0 + last.1 == at && last.2 == *mark => last.1 += 1,
@@ -113,15 +113,15 @@ fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: Line
 /// Every run of rows the change touched: where it starts, how long, and what it did.
 fn runs(file: &Aligned) -> Vec<(usize, usize, LineMark)> {
     let mut runs: Vec<(usize, usize, LineMark)> = Vec::new();
-    for (at, row) in file.rows.iter().enumerate() {
-        let mark = match row.kind {
+    for (at, rows, kind) in file.hunked.layout.spans() {
+        let mark = match kind {
             RowKind::Added => LineMark::Added,
             RowKind::Removed => LineMark::Removed,
             _ => continue,
         };
         match runs.last_mut() {
-            Some(last) if last.0 + last.1 == at && last.2 == mark => last.1 += 1,
-            _ => runs.push((at, 1, mark)),
+            Some(last) if last.0 + last.1 == at && last.2 == mark => last.1 += rows,
+            _ => runs.push((at, rows, mark)),
         }
     }
     runs

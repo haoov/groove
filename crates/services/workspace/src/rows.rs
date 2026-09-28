@@ -69,13 +69,12 @@ impl State {
         let At::Row(file, at) = self.changes.at(row)? else {
             return None;
         };
-        let RowKind::Gap(lines) = file.rows[at].kind else {
+        let RowKind::Gap(lines) = file.row(at)?.kind else {
             return None;
         };
-        let start = file.rows[..at]
-            .iter()
+        let start = (0..at)
             .rev()
-            .find_map(|row| row.old)
+            .find_map(|one| file.row(one)?.old)
             .map(|old| old + 1)
             .unwrap_or_default();
         Some((file.path.clone(), start..start + lines))

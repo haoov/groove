@@ -25,7 +25,10 @@ fn the_open_file_follows_a_change_on_disk() {
     until(&spawner, &services, &mut state, |s| {
         s.workspace.active().is_some()
     });
-    let rows = state.workspace.active().map(|open| open.rows.len());
+    let rows = state
+        .workspace
+        .active()
+        .map(|open| open.hunked.layout.len());
     assert_eq!(rows, Some(2), "one line out, one line in");
 
     std::fs::write(&file, "two\nthree\nfour\n").unwrap();
@@ -36,7 +39,7 @@ fn the_open_file_follows_a_change_on_disk() {
     });
     let open = state.workspace.active().expect("still open");
     assert_eq!(open.path, "a.txt", "the same file, read again");
-    assert_eq!(open.rows.len(), 4, "one out, three in");
+    assert_eq!(open.hunked.layout.len(), 4, "one out, three in");
 }
 
 #[test]
@@ -62,7 +65,10 @@ fn typing_changes_the_buffer_and_the_rows_follow() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     editing(&mut state, &services, &spawner);
-    let rows = state.workspace.active().map(|open| open.rows.len());
+    let rows = state
+        .workspace
+        .active()
+        .map(|open| open.hunked.layout.len());
 
     edit(
         &mut state,
@@ -81,14 +87,14 @@ fn typing_changes_the_buffer_and_the_rows_follow() {
         s.workspace.deriving.is_empty()
             && s.workspace
                 .active()
-                .is_some_and(|open| Some(open.rows.len()) != rows)
+                .is_some_and(|open| Some(open.hunked.layout.len()) != rows)
     });
     let open = state.workspace.active().expect("still open");
     assert_eq!(open.new.lines(), 3, "the buffer has the new line");
     assert!(
-        open.rows.iter().any(|row| row.new == Some(2)),
+        open.hunked.layout.all().any(|row| row.new == Some(2)),
         "and the alignment found it: {:?}",
-        open.rows
+        open.hunked.hunks
     );
 }
 
@@ -324,4 +330,86 @@ fn send(
 ) {
     dispatch(Cmd::Workspace(command), state, services, spawner);
     until(spawner, services, state, |s| s.pending.is_empty());
+}
+
+fn keyed(state: &mut crate::AppState, services: &Services, spawner: &SyncSpawner, edit: Edit) {
+    let command = Cmd::Workspace(workspace::Command::Edit(edit));
+    dispatch(command, state, services, spawner);
+}
+
+#[test]
+fn a_newline_stands_as_a_row_before_the_diff_runs_again() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    editing(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.deriving.is_empty()
+    });
+    let (stream, rows) = (
+        state.workspace.changes.rows(),
+        state
+            .workspace
+            .active()
+            .map(|open| open.hunked.layout.len()),
+    );
+
+    let end = Edit::Move(Motion::To(Caret::new(1, 3)));
+    keyed(&mut state, &services, &spawner, end);
+    keyed(&mut state, &services, &spawner, Edit::Newline);
+    let open = state.workspace.active().expect("still open");
+    assert_eq!(
+        state.workspace.changes.rows(),
+        stream + 1,
+        "the stream has its row"
+    );
+    assert_eq!(Some(open.hunked.layout.len()), rows.map(|one| one + 1));
+    assert!(open.hunked.marks.contains_key(&2), "and marks the new line");
+}
+
+#[test]
+fn an_edit_undone_leaves_the_hunks_as_they_stood() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    editing(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.deriving.is_empty()
+    });
+    let hunks = |s: &crate::AppState| s.workspace.active().map(|open| open.hunked.hunks.clone());
+    let before = hunks(&state);
+
+    let start = Edit::Move(Motion::To(Caret::new(0, 0)));
+    keyed(&mut state, &services, &spawner, start);
+    keyed(&mut state, &services, &spawner, Edit::Insert("x".into()));
+    assert_ne!(hunks(&state), before, "the typed line is a change");
+    keyed(&mut state, &services, &spawner, Edit::Undo);
+    assert_eq!(hunks(&state), before, "and is none once taken back");
+}
+
+#[test]
+fn a_newline_after_a_line_leaves_that_line_unchanged() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    editing(&mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace.deriving.is_empty()
+    });
+
+    let end = Edit::Move(Motion::To(Caret::new(0, 3)));
+    keyed(&mut state, &services, &spawner, end);
+    keyed(&mut state, &services, &spawner, Edit::Newline);
+    let open = state.workspace.active().expect("still open");
+    let gone = open
+        .hunked
+        .layout
+        .all()
+        .any(|row| row.kind == groove_types::RowKind::Removed);
+    assert!(!gone, "nothing reads as taken out: {:?}", open.hunked.hunks);
+    assert!(
+        !open.hunked.marks.contains_key(&0),
+        "the line it ended stays as it was"
+    );
+    assert!(
+        open.hunked.marks.contains_key(&1),
+        "the line it made is new"
+    );
 }

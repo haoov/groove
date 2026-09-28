@@ -14,13 +14,13 @@ fn all(dir: &std::path::Path) -> Changes {
 #[test]
 fn a_file_gives_every_row_its_text() {
     let file = aligned("src/lib.rs", "one\ntwo\n", "one\nTWO\n");
-    let kinds: Vec<RowKind> = file.rows.iter().map(|row| row.kind).collect();
+    let kinds: Vec<RowKind> = file.rows().map(|row| row.kind).collect();
     assert_eq!(
         kinds,
         [RowKind::Context, RowKind::Removed, RowKind::Added],
         "{file:?}"
     );
-    assert_eq!(file.lines, ["one", "two", "TWO"]);
+    assert_eq!(file.texts().collect::<Vec<_>>(), ["one", "two", "TWO"]);
     assert_eq!(file.indent, 4, "rust indents four");
 }
 
@@ -30,11 +30,10 @@ fn a_gap_says_how_many_lines_it_hides() {
     let after = before.replace("line 0\n", "first\n");
     let file = aligned("src/lib.rs", &before, &after);
     let gap = file
-        .rows
-        .iter()
+        .rows()
         .position(|row| matches!(row.kind, RowKind::Gap(_)))
         .expect("a gap");
-    assert_eq!(file.lines[gap], "\u{2026} 36 lines");
+    assert_eq!(file.text(gap), "\u{2026} 36 lines");
 }
 
 #[test]
@@ -51,7 +50,7 @@ fn every_row_of_the_change_belongs_to_a_file() {
     assert!(matches!(changes.at(1), Some(At::Row(_, 0))));
 
     let second = changes.head_of("src/lib.rs").expect("where it starts");
-    assert_eq!(second, changes.files()[0].rows.len() + 1);
+    assert_eq!(second, changes.files()[0].len() + 1);
     assert_eq!(changes.at(second), Some(At::Head(&changes.files()[1])));
     assert_eq!(changes.at(changes.rows()), None, "past the end");
 }
@@ -62,9 +61,9 @@ fn a_file_with_no_head_side_is_all_additions() {
     write(dir.path(), "src/new.rs", "fn new() {}\n");
     let changes = all(dir.path());
     let new = changes.get("src/new.rs").expect("the untracked file");
-    assert_eq!(new.rows.len(), 1);
-    assert_eq!(new.rows[0].kind, RowKind::Added);
-    assert_eq!(new.lines, ["fn new() {}"]);
+    assert_eq!(new.len(), 1);
+    assert_eq!(new.row(0).unwrap().kind, RowKind::Added);
+    assert_eq!(new.texts().collect::<Vec<_>>(), ["fn new() {}"]);
 }
 
 #[test]
@@ -102,14 +101,10 @@ fn a_folded_file_keeps_its_head_and_hides_its_rows() {
     assert!(changes.is_folded("src/a.rs"));
     let file = changes.get("src/a.rs").expect("still there");
     assert_eq!(changes.shown(file), 0, "its rows are hidden");
-    assert_eq!(
-        changes.rows(),
-        whole - file.rows.len(),
-        "the surface is shorter"
-    );
+    assert_eq!(changes.rows(), whole - file.len(), "the surface is shorter");
     assert_eq!(
         changes.head_of("src/b.rs"),
-        Some(second - file.rows.len()),
+        Some(second - file.len()),
         "what follows moves up"
     );
     assert!(matches!(changes.at(0), Some(At::Head(_))), "the head stays");
@@ -155,7 +150,7 @@ fn a_line_says_which_row_of_the_change_it_stands_on() {
         panic!("the row of a line is a row");
     };
     assert_eq!(file.path, "src/lib.rs");
-    assert_eq!(file.rows[at].new, Some(1));
+    assert_eq!(file.row(at).unwrap().new, Some(1));
 }
 
 #[test]
@@ -187,8 +182,7 @@ fn a_gap_gives_up_the_lines_the_reader_opens() {
     let (before, after) = far_apart();
     let shut = crate::changes::aligned("src/lib.rs", &before, &after);
     let gaps: Vec<u32> = shut
-        .rows
-        .iter()
+        .rows()
         .filter_map(|row| match row.kind {
             RowKind::Gap(lines) => Some(lines),
             _ => None,
@@ -202,8 +196,7 @@ fn a_gap_gives_up_the_lines_the_reader_opens() {
     );
     let open = crate::changes::from_sides("src/lib.rs", &sides.0, &sides.1, &[4..14]);
     let gaps: Vec<u32> = open
-        .rows
-        .iter()
+        .rows()
         .filter_map(|row| match row.kind {
             RowKind::Gap(lines) => Some(lines),
             _ => None,
@@ -211,16 +204,16 @@ fn a_gap_gives_up_the_lines_the_reader_opens() {
         .collect();
     assert_eq!(gaps, [22], "the rest of it stays hidden");
     assert!(
-        open.lines.iter().any(|line| line == "line 4"),
+        open.texts().any(|line| line == "line 4"),
         "the first line it gave up: {:?}",
-        open.lines
+        open.texts().collect::<Vec<_>>()
     );
     assert!(
-        open.lines.iter().any(|line| line == "line 13"),
+        open.texts().any(|line| line == "line 13"),
         "and the last one"
     );
     assert!(
-        !open.lines.iter().any(|line| line == "line 14"),
+        !open.texts().any(|line| line == "line 14"),
         "and no more than that"
     );
 }

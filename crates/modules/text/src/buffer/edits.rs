@@ -107,6 +107,12 @@ impl Buffer {
 
     /// Puts a change into the document.
     pub(super) fn change(&mut self, change: &Change) {
+        let breaks = |text: &str| text.matches('\n').count() as u32;
+        self.touched.push(super::Touched {
+            line: self.doc.caret_of(change.at).line as u32,
+            gone: 1 + breaks(&change.removed),
+            came: 1 + breaks(&change.inserted),
+        });
         let end = change.at + change.removed.chars().count();
         if !change.removed.is_empty() {
             self.doc.remove(change.at..end);

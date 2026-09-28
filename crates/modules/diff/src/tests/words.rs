@@ -52,13 +52,12 @@ fn a_line_too_long_to_read_is_marked_whole() {
 #[test]
 fn a_changed_line_pairs_with_the_one_it_replaced() {
     let file = aligned("a.rs", "let one = 1;\nkept\n", "let two = 1;\nkept\n");
-    let removed = file.rows.iter().position(|row| row.old == Some(0)).unwrap();
-    let added = file.rows.iter().position(|row| row.new == Some(0)).unwrap();
-    assert_eq!(file.words.get(&removed).map(Vec::len), Some(1));
-    assert_eq!(file.words.get(&added).map(Vec::len), Some(1));
-    assert_eq!(
-        file.words.len(),
-        2,
-        "the line neither touched is left alone"
-    );
+    let removed = file.rows().position(|row| row.old == Some(0)).unwrap();
+    let added = file.rows().position(|row| row.new == Some(0)).unwrap();
+    assert_eq!(file.words(removed).map(Vec::len), Some(1));
+    assert_eq!(file.words(added).map(Vec::len), Some(1));
+    let marked = (0..file.len())
+        .filter(|at| file.words(*at).is_some())
+        .count();
+    assert_eq!(marked, 2, "the line neither touched is left alone");
 }

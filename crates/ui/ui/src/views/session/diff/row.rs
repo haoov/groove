@@ -82,7 +82,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
         return Vec::new();
     };
     let caret = caret(ui, file);
-    let stamp = (app.workspace.stamp, file.new.revision());
+    let stamp = (app.workspace.stamp, file.new.painted());
     let doc = file.new.document();
     let colours = ui.painted.of(doc, &file.path, false, stamp, window.clone());
     let width = file.new.document().indent().width();
@@ -99,8 +99,8 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                     .filter(|on| on.line == at)
                     .map(|on| display_at(&text, on.column, width)),
                 held: held(file, ui, at),
-                mark: file.marks.get(&(at as u32)).copied(),
-                words: columns_in(file.words.get(&(at as u32)), &text, width),
+                mark: file.hunked.marks.get(&(at as u32)).copied(),
+                words: columns_in(file.hunked.words.new.get(&(at as u32)), &text, width),
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
                 ..Drawn::default()
@@ -179,7 +179,7 @@ pub(crate) fn line_at(app: &AppState, ui: &Ui, view: Face, row: usize) -> Option
         _ => match app.workspace.changes.at(row)? {
             At::Head(_) => None,
             At::Row(file, at) => {
-                let line = file.rows[at].new?;
+                let line = file.row(at)?.new?;
                 Some((file.path.clone(), line as usize))
             }
         },
@@ -193,11 +193,8 @@ pub(crate) fn text_at(app: &AppState, path: &str, line: usize) -> Option<(String
         return Some((text_of(file, line), width));
     }
     let file = app.workspace.changes.get(path)?;
-    let at = file
-        .rows
-        .iter()
-        .position(|row| row.new == Some(line as u32))?;
-    Some((file.lines[at].clone(), file.indent))
+    let at = file.hunked.layout.position(line as u32)?;
+    Some((file.text(at), file.indent))
 }
 
 /// What a caret holds on `line`, in the columns the row draws.

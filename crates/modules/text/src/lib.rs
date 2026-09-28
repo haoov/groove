@@ -4,6 +4,7 @@ mod buffer;
 mod highlight;
 mod history;
 mod language;
+mod replay;
 mod search;
 mod tabs;
 mod words;
@@ -18,7 +19,7 @@ use crate::language::Language;
 use groove_types::{Caret, Highlight, Indent};
 use ropey::Rope;
 
-pub use buffer::Buffer;
+pub use buffer::{Buffer, Touched};
 pub use search::Found;
 pub use tabs::{column_of, display_of, expand, spans_of};
 pub use words::{Class, class};
@@ -41,11 +42,13 @@ pub struct Document {
     language: Option<Language>,
     /// The grammar's own tree. An edit moves its nodes; a parse makes it right.
     syntax: Option<highlight::Syntax>,
+    edits: replay::Replay,
 }
 
 /// A tree parsed again for the text it belongs to.
 pub struct Settled {
     syntax: Option<highlight::Syntax>,
+    seen: replay::Seen,
 }
 
 /// The colours over a range of lines, each at offsets from its own line's start.
@@ -76,6 +79,7 @@ impl Document {
             text: rope,
             language,
             syntax,
+            edits: replay::Replay::default(),
         }
     }
 
@@ -85,6 +89,7 @@ impl Document {
             text: Rope::from_str(text),
             language: Language::of(path),
             syntax: None,
+            edits: replay::Replay::default(),
         }
     }
 
@@ -216,6 +221,7 @@ impl Document {
     fn shift(&mut self, edit: tree_sitter::InputEdit) {
         if let Some(syntax) = self.syntax.as_mut() {
             syntax.shift(edit);
+            self.edits.record(edit);
         }
     }
 
@@ -234,15 +240,27 @@ impl Document {
         self.text.to_string()
     }
 
-    pub fn install(&mut self, settled: Settled) {
-        self.syntax = settled.syntax;
+    /// A job's tree, moved along the edits made since it read the text; false when it read another.
+    pub fn install(&mut self, settled: Settled) -> bool {
+        let Some(later) = self.edits.since(settled.seen) else {
+            return false;
+        };
+        let mut syntax = settled.syntax;
+        if let Some(tree) = syntax.as_mut() {
+            later.iter().for_each(|edit| tree.shift(*edit));
+        }
+        self.syntax = syntax;
+        self.edits.trim(settled.seen);
+        true
     }
 
     /// The tree parsed again for the text it now holds, for a job to hand back.
     pub fn settled(mut self) -> Settled {
+        let seen = self.edits.seen();
         self.reparse();
         Settled {
             syntax: self.syntax,
+            seen,
         }
     }
 

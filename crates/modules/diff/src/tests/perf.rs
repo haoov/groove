@@ -70,10 +70,10 @@ fn time_aligning_a_file_changed_line_by_line() {
             crate::Document::plain("src/big.rs", &before),
             crate::Document::plain("src/big.rs", &after),
         );
-        let rows = crate::align(&old, &new, crate::alignment::CONTEXT, &[]);
+        let found = crate::hunks(&old, &new);
         let started = Instant::now();
         for _ in 0..RUNS {
-            crate::alignment::words(&rows, &old, &new);
+            crate::hunked::words_of(&found, &old, &new);
         }
         println!(
             "{lines:>5} lines: align {whole:?}, of it words {:?}",

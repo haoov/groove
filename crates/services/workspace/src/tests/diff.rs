@@ -96,3 +96,21 @@ fn a_file_under_a_deleted_directory_is_shut() {
     state.shut_if_gone("src/deep");
     assert!(state.active().is_none());
 }
+
+#[test]
+fn a_diff_of_an_older_text_leaves_the_rows_the_edits_moved() {
+    let mut state = showing("a.rs");
+    let open = state.active().expect("the open file");
+    let (old, new, revision) = (
+        open.old.clone(),
+        open.new.document().clone(),
+        open.new.revision(),
+    );
+    let late = crate::derived("a.rs", &old, new);
+    state.edit(&groove_types::Edit::Newline);
+    let moved = state.active().map(|open| open.hunked.clone());
+
+    state.derived((&WorktreeId::new("w1"), "a.rs"), late, revision);
+    let now = state.active().map(|open| open.hunked.clone());
+    assert_eq!(now, moved, "the rows still hold the newline");
+}

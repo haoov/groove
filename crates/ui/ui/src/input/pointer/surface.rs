@@ -138,7 +138,7 @@ pub(super) fn folded(ui: &mut Ui, app: &AppState, metrics: Metrics, path: String
     if let (Some(head), Some(file)) = (changes.head_of(&path), changes.get(&path))
         && head < top
     {
-        let rows = file.rows.len();
+        let rows = file.len();
         ui.session.diff = match changes.is_folded(&path) {
             true => ui.session.diff + rows as f32 * line,
             false => top.saturating_sub(rows).max(head) as f32 * line,

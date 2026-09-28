@@ -3,6 +3,9 @@
 mod alignment;
 mod changes;
 mod commit;
+mod hunked;
+mod layout;
+mod moved;
 mod opened;
 mod summary;
 mod words;
@@ -10,10 +13,11 @@ mod words;
 #[cfg(test)]
 mod tests;
 
-pub use alignment::{Words, align, by_line, marks};
+pub use alignment::{align, hunks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use commit::{at_commit, commits, opened_at};
 pub use groove_text::{Buffer, Document};
+pub use layout::Layout;
 
 /// A line as the surface draws it, and its colours over it.
 pub fn shown(

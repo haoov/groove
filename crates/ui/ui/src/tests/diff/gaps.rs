@@ -26,7 +26,7 @@ fn gap_row(app: &AppState) -> usize {
             matches!(
                 app.workspace.changes.at(*row),
                 Some(groove_controllers::workspace_service::At::Row(file, at))
-                    if matches!(file.rows[at].kind, groove_types::RowKind::Gap(_))
+                    if file.row(at).is_some_and(|one| matches!(one.kind, groove_types::RowKind::Gap(_)))
             )
         })
         .expect("a gap stands")

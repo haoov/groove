@@ -7,15 +7,9 @@ use groove_workspace_service::{Document, Opened, derived, opened, reopened};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// One keystroke on the active buffer; its rows and colours follow in a job.
+/// One keystroke on the active buffer; its rows move at once, the diff and the colours in a job.
 pub(super) fn edit_file(state: &mut AppState, spawner: &dyn Spawner, edit: Edit) {
-    let Some(open) = state.workspace.active_mut() else {
-        return;
-    };
-    let before = open.new.revision();
-    open.new.edit(&edit);
-    if open.new.revision() != before {
-        let path = open.path.clone();
+    if let Some(path) = state.workspace.edit(&edit) {
         derive(state, spawner, path);
     }
 }

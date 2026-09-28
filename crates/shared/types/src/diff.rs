@@ -90,6 +90,13 @@ pub enum LineMark {
     Changed,
 }
 
+/// One run where the two sides differ: the old lines it took out, the new lines it put in.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Hunk {
+    pub before: std::ops::Range<u32>,
+    pub after: std::ops::Range<u32>,
+}
+
 /// One row of a diff: the line it is in each file, and what it is.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Row {
