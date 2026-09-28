@@ -2,9 +2,13 @@
 
 mod appearance;
 mod preferences;
+mod setup;
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::Preference;
+use groove_ui_kit::base::style::Role;
+
+use crate::hit::Target;
 
 /// The sections, in the order the list stands.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +58,12 @@ pub enum Value {
     },
     /// One of a few, each with the preference that picks it; `true` is the one held.
     Choice(Vec<(&'static str, bool, Preference)>),
+    /// A state in its colour, with what a click beside it does.
+    State {
+        shown: String,
+        role: Role,
+        act: Option<(&'static str, Target)>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -75,7 +85,7 @@ impl Row {
 }
 
 pub fn rows(app: &AppState) -> Vec<Row> {
-    let mut out = setup(app);
+    let mut out = setup::setup(app);
     out.extend(providers(app));
     out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
@@ -90,38 +100,6 @@ fn text(section: Section, label: &'static str, words: &'static str, text: String
         words,
         value,
     }
-}
-
-fn path(label: &'static str, words: &'static str, text: String) -> Row {
-    let value = Value::Text { text, mono: true };
-    Row {
-        section: Section::Setup,
-        label,
-        words,
-        value,
-    }
-}
-
-fn setup(app: &AppState) -> Vec<Row> {
-    let env = &app.env;
-    let root = app.config.worktree_root(&env.home);
-    vec![
-        path(
-            "config",
-            "file path json",
-            shown(&env.config_dir.join("config.json"), &env.home),
-        ),
-        path(
-            "state",
-            "database sqlite path",
-            shown(&env.data_dir.join("app.db"), &env.home),
-        ),
-        path(
-            "worktree root",
-            "path pool clones git",
-            shown(&root, &env.home),
-        ),
-    ]
 }
 
 fn providers(app: &AppState) -> Vec<Row> {
@@ -140,12 +118,4 @@ fn providers(app: &AppState) -> Vec<Row> {
         "provider notion github tasks",
         shown,
     )]
-}
-
-/// A path under home as `~/…`.
-fn shown(path: &std::path::Path, home: &std::path::Path) -> String {
-    match path.strip_prefix(home) {
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => path.display().to_string(),
-    }
 }

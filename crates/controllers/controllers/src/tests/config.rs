@@ -8,6 +8,30 @@ use crate::session::Command as SessionCommand;
 use crate::{Command as Cmd, dispatch};
 
 #[test]
+fn the_environment_check_lists_every_program_and_one_runs_at_a_time() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    dispatch(
+        Cmd::Config(Command::CheckEnvironment),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    assert!(state.config.checking);
+    dispatch(
+        Cmd::Config(Command::CheckEnvironment),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert!(!state.config.checking);
+    let tools = state.config.tools.as_ref().expect("the check ended");
+    let names: Vec<_> = tools.iter().map(|one| one.name).collect();
+    assert_eq!(names, ["git", "claude", "curl", "glab", "gh"]);
+    assert!(tools[0].found.is_some(), "git runs where the tests run");
+}
+
+#[test]
 fn a_preference_set_is_read_at_once_and_written_to_the_file() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let set = Command::SetPreference(Preference::PollIntervalSecs(120));

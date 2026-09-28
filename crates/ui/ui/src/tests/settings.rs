@@ -3,7 +3,7 @@
 use groove_controllers::config_service::{Font, Preference};
 use groove_controllers::{AppState, Command, config};
 use groove_gfx::Fonts;
-use groove_types::ThemeName;
+use groove_types::{Found, ThemeName, Tool};
 
 use super::*;
 use crate::hit::Target;
@@ -103,6 +103,54 @@ fn each_font_has_its_own_size_and_a_step_up_asks_for_one_point_more() {
         asked,
         [Command::Config(config::Command::SetPreference(more))]
     );
+}
+
+#[test]
+fn opening_settings_checks_the_environment_again() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let (_, hits) = drawn(&app, &ui);
+    let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
+    let asked = click(footer, &mut ui, &app, &hits);
+    assert_eq!(asked, [Command::Config(config::Command::CheckEnvironment)]);
+}
+
+#[test]
+fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
+    let (mut app, mut ui) = opened();
+    ui.settings.section = crate::views::settings::Section::Setup;
+    let found = |version: &str, signed_in| {
+        Some(Found {
+            version: version.into(),
+            signed_in,
+        })
+    };
+    let tool = |name, required, found| Tool {
+        name,
+        purpose: "what it does",
+        required,
+        found,
+    };
+    app.config.tools = Some(vec![
+        tool("git", true, found("2.43.0", None)),
+        tool("claude", true, found("2.1.3", Some(false))),
+        tool("glab", false, None),
+    ]);
+    let (texts, hits) = drawn(&app, &ui);
+    for shown in [
+        "2 not ready",
+        "2.43.0",
+        "2.1.3 · not signed in",
+        "not found · what it does",
+    ] {
+        assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
+    }
+    let sign_in = hits
+        .rect_of(&Target::SettingsLogin)
+        .expect("claude's sign in");
+    let asked = click(sign_in, &mut ui, &app, &hits);
+    let login = config::Command::Login { cols: 80, rows: 24 };
+    assert_eq!(asked, [Command::Config(login)]);
 }
 
 #[test]

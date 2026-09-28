@@ -73,8 +73,20 @@ impl Launch {
     }
 }
 
+/// `claude auth login` in `home`, for a terminal the user signs in on.
+pub fn login(home: &Path, cols: u16, rows: u16) -> PtySpec {
+    PtySpec {
+        program: claude_bin(home),
+        args: vec!["auth".into(), "login".into()],
+        cwd: home.to_path_buf(),
+        env: env(),
+        rows,
+        cols,
+    }
+}
+
 /// `~/.local/bin/claude`, then the system paths, then whatever `PATH` finds.
-fn claude_bin(home: &Path) -> String {
+pub fn claude_bin(home: &Path) -> String {
     let local = home.join(".local/bin/claude");
     if local.is_file() {
         return local.to_string_lossy().into_owned();

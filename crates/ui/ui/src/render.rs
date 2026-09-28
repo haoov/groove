@@ -51,7 +51,18 @@ pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command
     out.extend(log(app, ui));
     out.extend(fitted(app, ui, metrics));
     out.extend(shells_fitted(app, ui, metrics));
+    out.extend(login_fitted(app, ui, metrics));
     out
+}
+
+/// The sign-in's grid to Setup's pane, while Settings shows it.
+fn login_fitted(app: &AppState, ui: &Ui, metrics: Metrics) -> Option<Command> {
+    let terminal = app.agent.login.as_ref().filter(|_| ui.settings.open)?;
+    let tokens = metrics.tokens();
+    let pane = settings::login_pane(metrics.size.rect(), &tokens);
+    let (cols, rows) = crate::layout::grid_in(pane, &tokens, metrics.cell);
+    let resize = groove_controllers::config::Command::ResizeLogin { cols, rows };
+    (terminal.size() != (cols, rows)).then_some(Command::Config(resize))
 }
 
 /// The commits the sidebar's list needs before it can show them.

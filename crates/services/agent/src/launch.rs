@@ -45,6 +45,23 @@ pub fn launch(
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
 }
 
+/// `claude auth login` on a terminal of `cols` by `rows`.
+pub fn login(
+    home: &Path,
+    (cols, rows): (u16, u16),
+    palette: AnsiPalette,
+    hooks: Hooks,
+) -> Result<Terminal, Error> {
+    let spec = groove_agent_launch::login(home, cols, rows);
+    Terminal::spawn(spec, palette, hooks)
+        .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
+}
+
+/// The `claude` a launch runs.
+pub fn claude_bin(home: &Path) -> String {
+    groove_agent_launch::claude_bin(home)
+}
+
 /// Every session posts its hooks to its own url, and asks its tools on its own stream.
 pub(crate) fn loopback(paths: &LaunchPaths, session: &Session) -> Option<Loopback> {
     let hooks = paths.hooks.as_ref()?;

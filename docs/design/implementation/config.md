@@ -16,11 +16,15 @@ the parsed config and the last check. The state database is
 |---|---|
 | `config.get` | read: the config as the ui sees it, token excluded |
 | `config.write_initial` | first run: worktree root and sources; detects the Notion property names |
-| `config.check_environment` | git, gh, glab, claude: version, auth status, a mark |
-| `config.login` | open the CLI sign-in in a terminal |
-| `config.set_worktree_root` | the one path the user changes |
+| `config.set_worktree_root` | moves the pool and every worktree; the root stays read only until then |
 
-The Setup section of Settings is the check, the login and the three paths.
+The Setup section of Settings is the three paths, then the check, then the login.
+`config.check_environment` runs each time Settings opens: git, claude, curl, glab and gh,
+each with its version and, for claude, glab and gh, its sign-in. `config.login` runs
+`claude auth login` on a terminal the `agent` service owns, in the lower half of Setup.
+It takes the keys and the clipboard while it runs, and the check runs again when it exits.
+
+The agent needs no MCP setup: each launch passes the app's loopback through `--mcp-config`.
 
 ## Providers
 

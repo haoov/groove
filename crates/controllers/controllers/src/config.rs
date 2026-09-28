@@ -1,5 +1,7 @@
 //! The `config` controller: one function per user action on the `config` service.
 
+mod environment;
+
 use groove_config_service::Preference;
 
 use crate::{AppState, Services, Spawner};
@@ -8,12 +10,38 @@ use crate::{AppState, Services, Spawner};
 pub enum Command {
     /// `config.set_preference`: one preference changed and the file written.
     SetPreference(Preference),
+    /// `config.check_environment`: each program's version and sign-in, read again.
+    CheckEnvironment,
+    /// `config.login`: `claude auth login` on a terminal of Setup's own.
+    Login {
+        cols: u16,
+        rows: u16,
+    },
+    /// What goes to the sign-in's terminal while it runs.
+    SendLogin {
+        bytes: Vec<u8>,
+    },
+    PasteLogin {
+        text: String,
+    },
+    ResizeLogin {
+        cols: u16,
+        rows: u16,
+    },
+    /// The sign-in ended before it was done.
+    EndLogin,
 }
 
 impl Command {
     pub fn id(&self) -> &'static str {
         match self {
             Command::SetPreference(_) => "config.set_preference",
+            Command::CheckEnvironment => "config.check_environment",
+            Command::Login { .. } => "config.login",
+            Command::SendLogin { .. } => "config.send_login",
+            Command::PasteLogin { .. } => "config.paste_login",
+            Command::ResizeLogin { .. } => "config.resize_login",
+            Command::EndLogin => "config.end_login",
         }
     }
 }
@@ -22,10 +50,16 @@ pub fn dispatch(
     command: Command,
     state: &mut AppState,
     _services: &Services,
-    _spawner: &dyn Spawner,
+    spawner: &dyn Spawner,
 ) {
     match command {
         Command::SetPreference(one) => set_preference(state, one),
+        Command::CheckEnvironment => environment::check(state, spawner),
+        Command::Login { cols, rows } => environment::login(state, spawner, (cols, rows)),
+        Command::SendLogin { bytes } => environment::send(state, &bytes),
+        Command::PasteLogin { text } => environment::paste(state, &text),
+        Command::ResizeLogin { cols, rows } => environment::resize(state, (cols, rows)),
+        Command::EndLogin => environment::end(state),
     }
 }
 

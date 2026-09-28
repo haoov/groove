@@ -18,7 +18,7 @@ pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
 pub use groove_types::Screen;
-pub use launch::{LaunchPaths, launch, palette};
+pub use launch::{LaunchPaths, claude_bin, launch, login, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.
 #[derive(Debug)]
@@ -37,6 +37,8 @@ pub struct State {
     pub skills: Vec<groove_types::Skill>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
+    /// The sign-in Setup runs, while it runs.
+    pub login: Option<Terminal>,
 }
 
 impl State {
@@ -72,7 +74,9 @@ impl State {
     /// Every running agent in these colours.
     pub fn recolor(&self, palette: groove_types::AnsiPalette) {
         let running = self.agents.iter().filter_map(|(_, a)| a.terminal.as_ref());
-        running.for_each(|one| one.recolor(palette));
+        running
+            .chain(&self.login)
+            .for_each(|one| one.recolor(palette));
     }
 
     pub fn activity(&self, session: &SessionId) -> Option<&SessionActivity> {

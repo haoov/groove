@@ -42,7 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env.hooks = Some(hooks(runtime.handle(), event_loop.create_proxy())?);
     env.tools = Some(tools(runtime.handle(), event_loop.create_proxy())?);
     let config = groove_controllers::config_service::load(&env.config_dir)?;
-    let config_state = groove_controllers::config_service::State { config };
+    let config_state = groove_controllers::config_service::State {
+        config,
+        ..Default::default()
+    };
     let root = config_state.worktree_root(&env.home);
     let services = runtime.block_on(services(&env, &root))?;
     let config = config_state.config;

@@ -108,6 +108,9 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         palette.selected = 0;
         return Vec::new();
     }
+    if ui.settings.open {
+        return pasted_in_settings(text, ui, app);
+    }
     if let Some(noting) = ui.session.noting.as_mut() {
         noting.field.paste(text);
         return Vec::new();
@@ -136,6 +139,21 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return typed_at_shell(text, app);
     }
     vec![Command::Workspace(workspace::Command::Paste)]
+}
+
+/// The clipboard in the search while typing, else at a running sign-in.
+fn pasted_in_settings(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if ui.settings.typing {
+        ui.settings.search.paste(text);
+        return Vec::new();
+    }
+    if app.agent.login.is_none() {
+        return Vec::new();
+    }
+    let paste = groove_controllers::config::Command::PasteLogin {
+        text: text.to_string(),
+    };
+    vec![Command::Config(paste)]
 }
 
 /// The clipboard at the open session's selected terminal.

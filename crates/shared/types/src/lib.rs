@@ -8,6 +8,7 @@ mod config;
 mod delivery;
 mod diff;
 mod editing;
+mod environment;
 mod error;
 mod ids;
 mod mr;
@@ -40,6 +41,7 @@ pub use diff::{
     RowKind, word_diff_pairs,
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
+pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use mr::{

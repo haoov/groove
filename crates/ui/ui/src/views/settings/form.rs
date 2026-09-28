@@ -3,14 +3,16 @@
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
+use groove_controllers::agent_service::Terminal;
+
 use super::SettingsUi;
-use super::rows::{Row, Value, rows};
+use super::rows::{Row, Section, Value, rows};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Word;
+use groove_ui_kit::widgets::{Word, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &SettingsUi) {
     super::back(ctx, area.take_top(ctx.tokens.header));
@@ -30,10 +32,24 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
     };
     let head = body.take_top(ctx.tokens.header);
     Label::new(&heading, ctx.styles.title(Role::Text)).draw(ctx, head);
+    let login = app.agent.login.as_ref();
+    if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
+        let pane = super::login_pane(ctx.window, &ctx.tokens);
+        body = body.until_y(pane.y);
+        signing_in(ctx, pane, terminal);
+    }
     for one in &shown {
         let line = body.take_top(ctx.tokens.row + ctx.tokens.sm);
         setting(ctx, line, one, searching);
     }
+}
+
+/// The sign-in's terminal, which has the keys while it runs.
+fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
+    ctx.quad(pane, ctx.styles.deep());
+    ctx.hit(pane, Target::Login);
+    let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
+    screen(ctx, pane, origin, (&terminal.screen(), true));
 }
 
 /// One row: its label, its section when a search mixes them, its value at the right.
@@ -75,6 +91,12 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             Label::new(shown, ctx.styles.code(Role::Text)).left(ctx, &mut room, sm);
             Word::new("+", Target::SetPreference(*more), Role::Muted, ground)
                 .left(ctx, &mut room, sm);
+        }
+        Value::State { shown, role, act } => {
+            Label::new(shown, ctx.styles.body(*role)).left(ctx, &mut room, sm);
+            if let Some((word, target)) = act {
+                Word::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+            }
         }
         Value::Choice(options) => {
             for (label, held, pick) in options {

@@ -13,6 +13,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::shape::{hairline, hoverable, square};
 use groove_ui_kit::text::{Label, row};
 use groove_ui_kit::widgets::{Field, Word};
@@ -85,6 +86,15 @@ fn searched(ctx: &mut Ctx, line: Rect, settings: &SettingsUi) {
         ),
     };
     row(ctx, room, 0.0, &text, style);
+}
+
+/// Where the sign-in's terminal stands: the lower half of the form.
+pub(crate) fn login_pane(window: Rect, tokens: &Tokens) -> Rect {
+    let mut form = window;
+    form.take_left(tokens.sidebar);
+    form.take_top(tokens.header);
+    let mut body = form.pad(Edges::all(tokens.md));
+    body.take_bottom(body.h / 2.0)
 }
 
 /// The bar over the form, with what takes the window back.

@@ -5,7 +5,7 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-use groove_types::{Config, Error, Preferences, ThemeName, UiConfig};
+use groove_types::{Config, Error, Preferences, ThemeName, Tool, UiConfig};
 
 /// What a font size may be, whatever the file says.
 pub const MIN_FONT: f32 = 8.0;
@@ -44,6 +44,14 @@ pub enum Font {
 #[derive(Debug, Default)]
 pub struct State {
     pub config: Option<Config>,
+    /// What the last environment check found; `None` before the first one ends.
+    pub tools: Option<Vec<Tool>>,
+    pub checking: bool,
+}
+
+/// Every program the app runs, checked; `claude` is the path the agent launches.
+pub async fn check(claude: &str) -> Vec<Tool> {
+    groove_config::check(claude).await
 }
 
 /// The file under the app's config dir, read once at start.
@@ -162,8 +170,15 @@ fn expand_tilde(path: &str, home: &Path) -> PathBuf {
 
 /// What the outside world tells this capability.
 #[derive(Debug)]
-pub enum Event {}
+pub enum Event {
+    Checked(Vec<Tool>),
+}
 
-pub fn apply(_state: &mut State, event: Event) {
-    match event {}
+pub fn apply(state: &mut State, event: Event) {
+    match event {
+        Event::Checked(tools) => {
+            state.tools = Some(tools);
+            state.checking = false;
+        }
+    }
 }

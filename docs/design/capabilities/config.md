@@ -2,7 +2,7 @@
 
 ## Setup
 
-- environment check: git, gh, glab, claude
+- environment check: git, claude, curl, glab, gh
 - login: claude
 - initial config
 

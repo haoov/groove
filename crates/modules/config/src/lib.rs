@@ -1,5 +1,6 @@
 //! The config file. `Config` in `types` is its shape; this is its place on disk.
 
+mod check;
 mod error;
 pub mod panes;
 
@@ -8,6 +9,7 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
+pub use check::check;
 pub use error::{Error, Result};
 use groove_types::Config;
 

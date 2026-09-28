@@ -18,6 +18,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
     };
     State {
         config: Some(config),
+        ..State::default()
     }
 }
 

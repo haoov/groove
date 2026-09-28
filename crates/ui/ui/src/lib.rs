@@ -247,10 +247,29 @@ impl Ui {
         if outcome.close {
             self.overlay = None;
         }
+        let mut commands = outcome.commands;
         if outcome.settings {
-            self.settings.open = true;
+            commands.extend(self.open_settings());
         }
-        outcome.commands
+        commands
+    }
+
+    /// Settings over the whole window, the environment checked again.
+    pub(crate) fn open_settings(&mut self) -> Vec<Command> {
+        self.settings.open = true;
+        self.overlay = None;
+        vec![Command::Config(
+            groove_controllers::config::Command::CheckEnvironment,
+        )]
+    }
+
+    /// Back to the window; a sign-in still running ends with it.
+    pub(crate) fn close_settings(&mut self) -> Vec<Command> {
+        self.settings.open = false;
+        self.settings.typing = false;
+        vec![Command::Config(
+            groove_controllers::config::Command::EndLogin,
+        )]
     }
 
     /// The overlay taken down when `which` says it is the one standing.

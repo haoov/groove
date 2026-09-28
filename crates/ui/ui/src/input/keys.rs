@@ -38,7 +38,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
         return ui.closed_palette(outcome);
     }
     if ui.settings.open {
-        return in_settings(key, mods, ui);
+        return in_settings(key, mods, ui, app);
     }
     if ui.session.naming.is_some() {
         return in_name(key, mods, ui);
@@ -69,15 +69,23 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     }
 }
 
-/// Settings holds the keyboard: its search while typing, Esc out of it, then Esc back.
-fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui) -> Vec<Command> {
+/// Settings holds the keyboard: its search while typing, else a running sign-in, else Esc back.
+fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let settings = &mut ui.settings;
+    let signing_in = app.agent.login.is_some();
     match (key, settings.typing) {
         (Key::Escape | Key::Enter, true) => settings.typing = false,
-        (Key::Escape, false) => settings.open = false,
         (key, true) => {
             typing(key, mods, &mut settings.search);
         }
+        (key, false) if signing_in => {
+            let Some(bytes) = encode(key, mods) else {
+                return Vec::new();
+            };
+            let send = groove_controllers::config::Command::SendLogin { bytes };
+            return vec![Command::Config(send)];
+        }
+        (Key::Escape, false) => return ui.close_settings(),
         _ => {}
     }
     Vec::new()

@@ -41,6 +41,12 @@ pub enum Target {
     /// A section of the list, and the search over them.
     SettingsSection(crate::views::settings::Section),
     SettingsSearch,
+    /// Setup's environment check run again, the `claude` sign-in opened, and ended.
+    SettingsCheck,
+    SettingsLogin,
+    SettingsLoginEnd,
+    /// The sign-in's terminal, which takes the keys while it runs.
+    Login,
     /// A control of a Settings row: the preference a click on it sets.
     SetPreference(groove_controllers::config_service::Preference),
     /// What folds the manual section away, or opens it.
