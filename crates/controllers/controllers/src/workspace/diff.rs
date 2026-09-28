@@ -83,6 +83,8 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
         return;
     };
     let job = state.begin("changed files");
+    state.workspace.reads += 1;
+    let nth = state.workspace.reads;
     spawner.spawn(Box::pin(async move {
         let (dir, mode) = (&asked.dir, asked.mode);
         let rev = against(dir, mode, asked.base.as_deref()).await;
@@ -95,7 +97,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                if !asked.holds(state) {
+                if !asked.holds(state) || state.workspace.reads != nth {
                     return;
                 }
                 match files {
@@ -108,7 +110,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     }));
 }
 
-/// The stream read from disk, then each unsaved buffer's rows derived again over it.
+/// The stream read from disk; a worktree come back to rereads its clean buffers.
 fn loaded(
     state: &mut AppState,
     spawner: &dyn Spawner,
@@ -118,7 +120,12 @@ fn loaded(
         groove_workspace_service::Changes,
     ),
 ) {
+    let back = !state.workspace.holds(&worktree);
     state.workspace.loaded(worktree, files, read);
+    if back {
+        let open = held(state);
+        reopen(state, spawner, Head::Read, open);
+    }
     for path in state.workspace.dirty() {
         derive(state, spawner, path);
     }

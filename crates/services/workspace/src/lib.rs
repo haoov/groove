@@ -44,6 +44,8 @@ pub struct State {
     pub files: Vec<FileDiff>,
     /// Every changed file's rows, the whole change as one surface.
     pub changes: Changes,
+    /// How many summary reads were asked for; only the last one lands.
+    pub reads: u64,
     /// Each worktree's open files, kept while another worktree is selected.
     buffers: BTreeMap<WorktreeId, Buffers>,
     /// Both sides parsed, for the files whose rows are on screen.
@@ -86,6 +88,9 @@ impl State {
 
     pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>, changes: Changes) {
         self.moved();
+        if !self.holds(&worktree) {
+            self.paths.clear();
+        }
         self.worktree = Some(worktree);
         self.files = files;
         let shut = self.changes.folds();

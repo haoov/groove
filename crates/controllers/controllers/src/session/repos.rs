@@ -83,7 +83,7 @@ pub fn select_worktree(
     }
     open.state.selected_worktree = Some(worktree.clone());
     persist_selection(state, services, spawner, id);
-    crate::workspace::load(state, spawner);
+    crate::workspace::follow(state, spawner);
 }
 
 pub fn close_worktree(

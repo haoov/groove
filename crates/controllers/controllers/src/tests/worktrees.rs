@@ -211,6 +211,51 @@ fn second_worktree(
         .clone()
 }
 
+#[test]
+fn the_selected_worktree_owns_the_file_list_and_the_watch() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+    let second = second_worktree(&mut state, &services, &spawner, &id, &RepoId::new(REPO));
+    let first = state.session.get(&id).unwrap().worktrees[0].clone();
+    std::fs::write(std::path::Path::new(&first.path).join("only.txt"), "x\n").unwrap();
+
+    select(&mut state, &services, &spawner, &id, &first.id);
+    assert!(walked(&mut state, &services, &spawner).contains(&"only.txt".to_string()));
+
+    select(&mut state, &services, &spawner, &id, &second.id);
+    assert_eq!(state.workspace.watching.as_ref(), Some(&second.id));
+    let listed = walked(&mut state, &services, &spawner);
+    assert!(!listed.contains(&"only.txt".to_string()), "{listed:?}");
+}
+
+fn select(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &SyncSpawner,
+    id: &SessionId,
+    worktree: &WorktreeId,
+) {
+    let command = Command::SelectWorktree {
+        session: id.clone(),
+        worktree: worktree.clone(),
+    };
+    dispatch(session_cmd(command), state, services, spawner);
+    until(spawner, services, state, |s| {
+        s.workspace.holds(worktree) && s.workspace.watching.as_ref() == Some(worktree)
+    });
+}
+
+fn walked(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> Vec<String> {
+    let list = Cmd::Workspace(crate::workspace::Command::ListPaths);
+    dispatch(list, state, services, spawner);
+    until(spawner, services, state, |s| {
+        !s.workspace.walking && !s.workspace.paths.is_empty()
+    });
+    let paths = state.workspace.paths.iter();
+    paths.map(|file| file.path.clone()).collect()
+}
+
 /// A state of its own, restored from the same disk.
 fn restarted(
     home: &std::path::Path,

@@ -40,6 +40,24 @@ fn the_open_file_follows_a_change_on_disk() {
 }
 
 #[test]
+fn an_open_file_changed_while_away_is_read_again_on_return() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let file = editing(&mut state, &services, &spawner);
+
+    state.workspace.clear();
+    std::fs::write(&file, "one\ntwo\nthree\n").unwrap();
+    workspace::follow(&mut state, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.workspace
+            .active()
+            .is_some_and(|open| open.new.lines() == 3)
+    });
+    let (_, new) = state.workspace.sides("a.txt").expect("both sides");
+    assert_eq!(new.text(), "one\ntwo\nthree\n", "the diff reads the disk");
+}
+
+#[test]
 fn typing_changes_the_buffer_and_the_rows_follow() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
