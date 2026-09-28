@@ -1,6 +1,6 @@
 //! What a worktree row shows of its delivery: the MR, the CI, the counts.
 
-use crate::{CiState, Forge, MrState, WorktreeStatus};
+use crate::{CiState, Forge, MrState, ReviewState, WorktreeStatus};
 
 /// The MR part of a worktree row.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
@@ -10,8 +10,7 @@ pub struct MrDelivery {
     pub number: String,
     pub state: MrState,
     pub url: String,
-    pub approved: bool,
-    pub changes_requested: bool,
+    pub review: Option<ReviewState>,
 }
 
 impl MrDelivery {

@@ -1,7 +1,7 @@
 //! What delivery knows of one worktree's MR: the row, the forge's last answer, its age.
 
 use groove_forge::Snapshot;
-use groove_types::{CiState, Mr, MrDelivery, MrFacts, MrState, MrThread};
+use groove_types::{CiState, Mr, MrDelivery, MrDetails, MrFacts, MrState, MrThread};
 
 #[derive(Debug, Default)]
 pub struct Held {
@@ -31,10 +31,7 @@ impl Held {
             number: mr.remote_id.clone(),
             state: mr.state,
             url: mr.url.clone(),
-            approved: details
-                .and_then(|one| one.approval.as_ref())
-                .is_some_and(|one| one.approved),
-            changes_requested: details.is_some_and(|one| one.changes_requested()),
+            review: details.and_then(MrDetails::review),
         })
     }
 

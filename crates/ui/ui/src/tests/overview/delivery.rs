@@ -10,6 +10,8 @@ use groove_types::{
 
 use crate::tests::{full_app, metrics};
 use crate::{Ui, view};
+use groove_ui_kit::base::style::{Role, Styles};
+use groove_ui_kit::base::tokens::Tokens;
 
 /// The MR row the database holds, in this state.
 fn mr(worktree: &WorktreeId, state: MrState) -> Mr {
@@ -95,16 +97,34 @@ fn an_open_mr_shows_its_number_and_its_notes() {
     assert!(texts.iter().any(|t| t == "2"), "two notes: {texts:?}");
 }
 
+/// The colour `word` is drawn in, where it is drawn.
+fn colour_of(app: &AppState, word: &str) -> Option<groove_gfx::Color> {
+    let (frame, _) = view(
+        app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let texts = &frame.layers()[0].texts;
+    texts.iter().find(|t| t.text == word).map(|t| t.style.color)
+}
+
+fn role(app: &AppState, role: Role) -> Option<groove_gfx::Color> {
+    let styles = Styles::new(app.config.theme(), Tokens::new(1.0));
+    Some(styles.color(role))
+}
+
 #[test]
-fn checks_that_failed_show_a_cross_and_ones_that_passed_a_check() {
-    let (_, icons) = drawn(&open_with(Some(CiState::Failed)));
-    assert!(icons.contains(&Icon::Cross), "the run failed");
-
-    let (_, icons) = drawn(&open_with(Some(CiState::Success)));
-    assert!(icons.contains(&Icon::Check), "the run passed");
-
-    let (_, icons) = drawn(&open_with(Some(CiState::Running)));
-    assert!(icons.contains(&Icon::Notch), "the run is going");
+fn ci_is_a_word_in_the_colour_of_its_run() {
+    for (ci, wanted) in [
+        (CiState::Failed, Role::Bad),
+        (CiState::Success, Role::Ok),
+        (CiState::Running, Role::Attention),
+        (CiState::Canceled, Role::Ghost),
+    ] {
+        let app = open_with(Some(ci));
+        assert_eq!(colour_of(&app, "CI"), role(&app, wanted), "{ci:?}");
+    }
 }
 
 #[test]
@@ -114,25 +134,40 @@ fn a_worktree_with_no_mr_draws_nothing_of_one() {
     assert!(!icons.contains(&Icon::Chat));
 }
 
-#[test]
-fn what_the_reviewers_said_shows_beside_the_number() {
-    let mut asked = snapshot(MrState::Open, None);
-    asked.details.reviewers = vec![Reviewer {
+/// The fixture's MR with one reviewer standing at `state`, approved when it says so.
+fn reviewed(state: ReviewState, approved: bool) -> AppState {
+    let mut read = snapshot(MrState::Open, None);
+    read.details.reviewers = vec![Reviewer {
         name: "reviewer".into(),
-        state: ReviewState::ChangesRequested,
+        state,
         at: None,
     }];
-    let (_, icons) = drawn(&showing(MrState::Open, asked));
-    assert!(icons.contains(&Icon::Cross), "changes were requested");
-
-    let mut approved = snapshot(MrState::Open, None);
-    approved.details.approval = Some(MrApproval {
-        approved: true,
+    read.details.approval = Some(MrApproval {
+        approved,
         approved_by_me: false,
-        approved_by: vec!["reviewer".into()],
+        approved_by: Vec::new(),
     });
-    let (_, icons) = drawn(&showing(MrState::Open, approved));
-    assert!(icons.contains(&Icon::Check), "it is approved");
+    showing(MrState::Open, read)
+}
+
+#[test]
+fn what_the_reviewers_said_is_a_word_beside_the_number() {
+    for (state, approved, word, wanted) in [
+        (ReviewState::Approved, true, "approved", Role::Ok),
+        (ReviewState::Commented, false, "comments", Role::Attention),
+        (ReviewState::ChangesRequested, false, "changes", Role::Bad),
+        (ReviewState::Requested, false, "review", Role::Attention),
+    ] {
+        let app = reviewed(state, approved);
+        assert_eq!(colour_of(&app, word), role(&app, wanted), "{state:?}");
+    }
+}
+
+#[test]
+fn comments_left_outweigh_an_approval() {
+    let app = reviewed(ReviewState::Commented, true);
+    assert!(colour_of(&app, "comments").is_some());
+    assert!(colour_of(&app, "approved").is_none());
 }
 
 /// A read of the MR, as the poll leaves it in the slice.

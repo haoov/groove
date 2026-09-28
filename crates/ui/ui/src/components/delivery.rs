@@ -1,13 +1,12 @@
 //! What a worktree's MR looks like in one line: its number, its checks, its notes.
 
 use groove_gfx::Rect;
-use groove_types::{CiState, MrState, WorktreeDelivery};
+use groove_types::{CiState, MrState, ReviewState, WorktreeDelivery};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::counts;
 
@@ -33,7 +32,7 @@ pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery)
         ctx.quad(rule, style.color);
     }
     ctx.hit(link, target);
-    let mut at = x + width + ctx.tokens.xs;
+    let mut at = x + width + ctx.tokens.sm;
     at = verdict(ctx, line, at, delivery);
     at = checks(ctx, line, at, delivery);
     counts(ctx, line, at, &[(Mark::Note, delivery.notes, Role::Faint)])
@@ -45,12 +44,13 @@ pub fn room_for(ctx: &mut Ctx, delivery: &WorktreeDelivery) -> f32 {
         return 0.0;
     };
     let style = ctx.styles.small(Role::Muted);
-    let mut wide = ctx.measure(&mr.named(), &style) + ctx.tokens.xs;
-    if mr.approved || mr.changes_requested {
-        wide += style.size + ctx.tokens.xs;
-    }
-    if delivery.ci.is_some() {
-        wide += style.size + ctx.tokens.xs;
+    let mut wide = ctx.measure(&mr.named(), &style) + ctx.tokens.sm;
+    let words = [
+        mr.review.map(said).map(|(word, _)| word),
+        delivery.ci.map(|_| CI),
+    ];
+    for word in words.into_iter().flatten() {
+        wide += ctx.measure(word, &style) + ctx.tokens.sm;
     }
     if delivery.notes > 0 {
         wide += style.size + ctx.tokens.xs + ctx.measure(&delivery.notes.to_string(), &style);
@@ -59,39 +59,46 @@ pub fn room_for(ctx: &mut Ctx, delivery: &WorktreeDelivery) -> f32 {
     wide
 }
 
-/// What the reviewers said, when one of them has said anything.
+const CI: &str = "CI";
+
+/// Where the reviewers stand, as a word in its colour.
 fn verdict(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32 {
-    let Some(mr) = delivery.mr.as_ref() else {
+    let Some(review) = delivery.mr.as_ref().and_then(|mr| mr.review) else {
         return x;
     };
-    let (mark, role) = match (mr.changes_requested, mr.approved) {
-        (true, _) => (Mark::Failed, Role::Attention),
-        (false, true) => (Mark::Read, Role::Ok),
-        (false, false) => return x,
-    };
-    mark_at(ctx, line, x, mark, role)
+    let (word, role) = said(review);
+    word_at(ctx, line, x, word, role)
 }
 
-/// The state of the run on the branch's head, when it reported one.
+fn said(review: ReviewState) -> (&'static str, Role) {
+    match review {
+        ReviewState::Approved => ("approved", Role::Ok),
+        ReviewState::Commented => ("comments", Role::Attention),
+        ReviewState::ChangesRequested => ("changes", Role::Bad),
+        ReviewState::Requested => ("review", Role::Attention),
+    }
+}
+
+/// The run on the branch's head, as `CI` in its state's colour.
 fn checks(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32 {
     let Some(ci) = delivery.ci else {
         return x;
     };
-    let (mark, role) = match ci {
-        CiState::Success => (Mark::Read, Role::Ok),
-        CiState::Failed => (Mark::Failed, Role::Bad),
-        CiState::Running | CiState::Pending => (Mark::Busy, Role::Working),
-        CiState::Canceled | CiState::Skipped | CiState::Unknown => (Mark::Busy, Role::Ghost),
+    let role = match ci {
+        CiState::Success => Role::Ok,
+        CiState::Failed => Role::Bad,
+        CiState::Running | CiState::Pending => Role::Attention,
+        CiState::Canceled | CiState::Skipped | CiState::Unknown => Role::Ghost,
     };
-    mark_at(ctx, line, x, mark, role)
+    word_at(ctx, line, x, CI, role)
 }
 
-/// One mark in the row's middle. Returns the x after it.
-fn mark_at(ctx: &mut Ctx, line: Rect, x: f32, mark: Mark, role: Role) -> f32 {
-    let size = ctx.styles.small(role).size;
-    let box_ = box_in(line, x, size);
-    ctx.icon(box_, mark, 0, ctx.styles.color(role));
-    x + size + ctx.tokens.xs
+/// One word in the row's middle. Returns the x after it.
+fn word_at(ctx: &mut Ctx, line: Rect, x: f32, word: &str, role: Role) -> f32 {
+    let style = ctx.styles.small(role);
+    let wide = ctx.measure(word, &style);
+    row(ctx, Rect::new(x, line.y, wide, line.h), 0.0, word, style);
+    x + wide + ctx.tokens.sm
 }
 
 /// The colour an MR's own state carries.

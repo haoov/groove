@@ -125,6 +125,18 @@ impl MrDetails {
             .any(|r| r.state == ReviewState::ChangesRequested)
     }
 
+    /// The most pressing verdict given, then approval, then a review still awaited.
+    pub fn review(&self) -> Option<ReviewState> {
+        let has = |state| self.reviewers.iter().any(|one| one.state == state);
+        let approved = self.approval.as_ref().is_some_and(|one| one.approved);
+        match () {
+            () if has(ReviewState::ChangesRequested) => Some(ReviewState::ChangesRequested),
+            () if has(ReviewState::Commented) => Some(ReviewState::Commented),
+            () if approved => Some(ReviewState::Approved),
+            () => has(ReviewState::Requested).then_some(ReviewState::Requested),
+        }
+    }
+
     pub fn review_requested_at(&self) -> Option<Timestamp> {
         self.at_of(ReviewState::Requested).min()
     }
