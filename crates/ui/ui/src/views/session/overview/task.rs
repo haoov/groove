@@ -1,13 +1,13 @@
 //! What the overview shows of the task a session works: its properties, then its body.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Task, TimeSummary};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::{row, wrapped};
-use groove_ui_kit::widgets::button;
+use groove_ui_kit::widgets::Button;
 
 const UNSET: &str = "—";
 
@@ -36,19 +36,11 @@ fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
         return;
     }
     let target = Target::LogHours(task.external_id.clone());
-    let ground = match ctx.hovered(&target) {
-        true => ctx.styles.hover(),
-        false => ctx.styles.band(),
-    };
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
     let label = format!("log {}", hours(left));
-    let box_ = button(
-        ctx,
-        line,
-        &label,
-        ctx.styles.small(Role::Working),
-        Some(ground),
-    );
-    ctx.hit(box_, target);
+    let log = Button::new(&label, target, Role::Working, band).hover(hover);
+    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+    log.right(ctx, &mut room, 0.0);
 }
 
 /// The body as text, wrapped to the area's width.

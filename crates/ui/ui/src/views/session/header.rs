@@ -11,7 +11,7 @@ use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hairline, square};
 use groove_ui_kit::text::{Label, elide};
-use groove_ui_kit::widgets::{button, icon, mark_button, picker};
+use groove_ui_kit::widgets::{Button, Text, icon, mark_button, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -42,19 +42,12 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
         return more;
     }
     let target = Target::Finish(open.session.id.clone());
-    let ground = match ctx.hovered(&target) {
-        true => ctx.styles.hover(),
-        false => ctx.styles.band(),
-    };
-    let box_ = button(
-        ctx,
-        line.until(more),
-        "finish",
-        ctx.styles.label(Role::Ok),
-        Some(ground),
-    );
-    ctx.hit(box_, target);
-    box_.x
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let finish = Button::new("finish", target, Role::Ok, band)
+        .text(Text::Label)
+        .hover(hover);
+    let mut room = line.until(more).pad(Edges::across(0.0, ctx.tokens.sm));
+    finish.right(ctx, &mut room, 0.0).x
 }
 
 /// What opens the rest of them, at the line's right end.
@@ -96,13 +89,25 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
 
-    let role = role_of(held.is_some());
-    let box_ = picker(ctx, line, x, &repo_text, role, lit(ctx, Picks::Repo));
-    ctx.hit(box_, Target::Picker(Picks::Repo));
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let repo = picker(
+        &repo_text,
+        Target::Picker(Picks::Repo),
+        role_of(held.is_some()),
+        band,
+        hover,
+    );
+    let box_ = repo.at(ctx, line, x);
     let x = box_.right() + ctx.tokens.sm;
     let role = role_of(worktree.is_some());
-    let box_ = picker(ctx, line, x, &branch_text, role, lit(ctx, Picks::Branch));
-    ctx.hit(box_, Target::Picker(Picks::Branch));
+    let branch = picker(
+        &branch_text,
+        Target::Picker(Picks::Branch),
+        role,
+        band,
+        hover,
+    );
+    branch.at(ctx, line, x);
 }
 
 /// What the selected worktree's forge says, at the right end; the pickers stop there.
@@ -157,10 +162,6 @@ fn named(open: &Open) -> (&str, &str) {
         .map(|r| r.project.as_str());
     let branch = worktree.map(|w| w.branch.as_str());
     (repo.unwrap_or("no repo"), branch.unwrap_or("no worktree"))
-}
-
-fn lit(ctx: &Ctx, which: Picks) -> bool {
-    ctx.hovered(&Target::Picker(which))
 }
 
 fn role_of(held: bool) -> Role {

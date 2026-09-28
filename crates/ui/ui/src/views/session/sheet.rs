@@ -9,7 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Word;
+use groove_ui_kit::widgets::Button;
 
 /// The write under review, over the workspace and the sidebar.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
@@ -81,9 +81,9 @@ fn said(ctx: &mut Ctx, mut rect: Rect, text: &str) {
 /// Approve in peach, and refuse, from the sheet's end.
 fn answers(ctx: &mut Ctx, line: Rect, id: &ApprovalId) {
     let (mut room, raised) = (line, ctx.styles.raised());
-    let refuse = Word::new("Refuse", Target::Refuse(id.clone()), Role::Muted, raised);
+    let refuse = Button::new("Refuse", Target::Refuse(id.clone()), Role::Muted, raised);
     refuse.right(ctx, &mut room, ctx.tokens.xs);
-    let approve = Word::new(
+    let approve = Button::new(
         "Approve",
         Target::Approve(id.clone()),
         Role::Attention,

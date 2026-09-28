@@ -11,7 +11,7 @@ use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, square};
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Word, icon};
+use groove_ui_kit::widgets::{Button, icon};
 
 /// The row's lines: head, state, and the answers while the session asks.
 pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
@@ -65,14 +65,14 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     };
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
     let mut under = Rect::new(room.x, line.bottom(), line.right() - room.x, ctx.tokens.row);
-    let approve = Word::new(
+    let approve = Button::new(
         "Approve",
         Target::Approve(ask.id.clone()),
         Role::Attention,
         ground,
     );
     approve.left(ctx, &mut under, ctx.tokens.xs);
-    let review = Word::new(
+    let review = Button::new(
         "Review",
         Target::Examine(ask.id.clone()),
         Role::Muted,

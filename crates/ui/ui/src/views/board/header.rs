@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{Panel, hairline, square};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::button;
+use groove_ui_kit::widgets::{Button, Text};
 
 const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";
@@ -98,12 +98,10 @@ fn hovered(ctx: &Ctx) -> Option<usize> {
 
 /// The button that opens an explorer, at the right end. Returns where it starts.
 fn new_task(ctx: &mut Ctx, line: Rect) -> f32 {
-    let style = ctx.styles.label(Role::Working);
-    let ground = match ctx.hovered(&Target::AddTask) {
-        true => ctx.styles.hover(),
-        false => ctx.styles.band(),
-    };
-    let box_ = button(ctx, line, NEW, style, Some(ground));
-    ctx.hit(box_, Target::AddTask);
-    box_.x
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let new = Button::new(NEW, Target::AddTask, Role::Working, band)
+        .text(Text::Label)
+        .hover(hover);
+    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+    new.right(ctx, &mut room, 0.0).x
 }

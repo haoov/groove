@@ -12,7 +12,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Word, screen};
+use groove_ui_kit::widgets::{Button, screen};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -52,9 +52,9 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
     let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(0.0, sm));
     let ground = ctx.styles.ground();
-    let splits = Word::new("split", Target::ShellSplit, Role::Muted, ground);
+    let splits = Button::new("split", Target::ShellSplit, Role::Muted, ground);
     splits.right(ctx, &mut room, ctx.tokens.xs);
-    Word::new("+", Target::ShellNew, Role::Muted, ground).right(ctx, &mut room, sm);
+    Button::new("+", Target::ShellNew, Role::Muted, ground).right(ctx, &mut room, sm);
     let fold = room.take_left(line.h);
     hoverable(ctx, fold, Target::ShellFold);
     let turn = match ui.session.manual {

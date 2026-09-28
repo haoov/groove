@@ -14,7 +14,7 @@ use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Word, picker, screen};
+use groove_ui_kit::widgets::{Button, picker, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &SettingsUi) {
     super::back(ctx, area.take_top(ctx.tokens.header));
@@ -133,7 +133,7 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         Value::State { shown, role, act } => {
             Label::new(shown, ctx.styles.body(*role)).left(ctx, &mut room, sm);
             if let Some((word, target)) = act {
-                Word::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+                Button::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
             }
         }
         Value::Input {
@@ -147,12 +147,10 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             target,
             act,
         } => {
-            let lit = ctx.hovered(target);
-            let button = picker(ctx, room, room.x, shown, *role, lit);
-            ctx.hit(button, target.clone());
-            room.take_left(button.w + sm);
+            let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+            picker(shown, target.clone(), *role, band, hover).left(ctx, &mut room, sm);
             if let Some((word, at)) = act {
-                Word::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+                Button::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
             }
         }
         Value::Choice(options) => {
@@ -173,10 +171,10 @@ fn stepped(
 ) {
     let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
     if let Some(less) = less {
-        Word::new("−", Target::SetPreference(less), Role::Muted, ground).left(ctx, &mut room, sm);
+        Button::new("−", Target::SetPreference(less), Role::Muted, ground).left(ctx, &mut room, sm);
     }
     Label::new(shown, ctx.styles.code(Role::Text)).left(ctx, &mut room, sm);
-    Word::new("+", Target::SetPreference(more), Role::Muted, ground).left(ctx, &mut room, sm);
+    Button::new("+", Target::SetPreference(more), Role::Muted, ground).left(ctx, &mut room, sm);
 }
 
 /// A row of words, the ones held in the text's colour, the rest in `quiet`.
@@ -189,7 +187,7 @@ fn held_words(
     let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
     for (word, held, target) in words {
         let role = if held { Role::Text } else { quiet };
-        Word::new(word, target, role, ground).left(ctx, &mut room, sm);
+        Button::new(word, target, role, ground).left(ctx, &mut room, sm);
     }
 }
 

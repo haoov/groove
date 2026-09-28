@@ -8,20 +8,6 @@ use crate::base::style::Role;
 use crate::shape::{Panel, box_in};
 use crate::text::row;
 
-/// A label on `ground` at the row's right end; returns its box.
-pub fn button<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    line: Rect,
-    label: &str,
-    style: TextStyle,
-    ground: Option<Color>,
-) -> Rect {
-    let word = ctx.measure(label, &style);
-    let box_ = slot(ctx, line, word, ground);
-    row(ctx, box_, ctx.tokens.sm, label, style);
-    box_
-}
-
 /// Room of `content` plus the padding either side, at the row's right end.
 pub fn slot<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, content: f32, ground: Option<Color>) -> Rect {
     let pad = ctx.tokens.sm;
@@ -72,17 +58,33 @@ pub fn mark_button<A: App>(
     box_
 }
 
+/// The size a button's text is drawn at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Text {
+    Small,
+    Label,
+    Body,
+}
+
 /// A word on a bordered ground that a click acts on, in `lit` while the pointer rests on it.
-pub struct Word<'a, T> {
+pub struct Button<'a, T> {
     pub label: &'a str,
     pub target: T,
     pub role: Role,
     pub lit: Role,
-    pub ground: Color,
-    pub caret: bool,
+    pub text: Text,
+    /// The ground at rest, none for a flat button, and the one under the pointer.
+    pub ground: Option<Color>,
+    pub hover: Option<Color>,
+    /// Drawn as under the pointer, while what it opens stands open.
+    pub open: bool,
+    /// A caret after the word, at this turn, for a button that opens a choice.
+    pub caret: Option<u8>,
+    /// Drawn, but not a target: an action that cannot run now.
+    pub inert: bool,
 }
 
-impl<'a, T: Clone + PartialEq> Word<'a, T> {
+impl<'a, T: Clone + PartialEq> Button<'a, T> {
     /// A muted word lights to text; any other keeps its role.
     pub fn new(label: &'a str, target: T, role: Role, ground: Color) -> Self {
         let lit = match role {
@@ -94,8 +96,12 @@ impl<'a, T: Clone + PartialEq> Word<'a, T> {
             target,
             role,
             lit,
-            ground,
-            caret: false,
+            text: Text::Small,
+            ground: Some(ground),
+            hover: None,
+            open: false,
+            caret: None,
+            inert: false,
         }
     }
 
@@ -104,9 +110,40 @@ impl<'a, T: Clone + PartialEq> Word<'a, T> {
         self
     }
 
-    pub fn caret(mut self) -> Self {
-        self.caret = true;
+    pub fn text(mut self, text: Text) -> Self {
+        self.text = text;
         self
+    }
+
+    pub fn hover(mut self, ground: Color) -> Self {
+        self.hover = Some(ground);
+        self
+    }
+
+    /// No ground at rest; `hover` still shows under the pointer.
+    pub fn flat(mut self) -> Self {
+        self.ground = None;
+        self
+    }
+
+    pub fn open(mut self, open: bool) -> Self {
+        self.open = open;
+        self
+    }
+
+    pub fn caret(mut self, turn: u8) -> Self {
+        self.caret = Some(turn);
+        self
+    }
+
+    pub fn inert(mut self, inert: bool) -> Self {
+        self.inert = inert;
+        self
+    }
+
+    /// Stands at `x` in `line`; returns its box.
+    pub fn at<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
+        self.draw(ctx, line, x)
     }
 
     /// Stands at the left of `room`, which gives up its box and `gap`.
@@ -123,39 +160,68 @@ impl<'a, T: Clone + PartialEq> Word<'a, T> {
         room: &mut Rect,
         gap: f32,
     ) -> Rect {
-        let style = ctx.styles.small(self.role(ctx));
+        let style = self.style(ctx);
         let width = self.content(ctx, &style) + ctx.tokens.sm * 2.0;
         let box_ = self.draw(ctx, *room, room.right() - width);
         room.take_right(box_.w + gap);
         box_
     }
 
-    fn role<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> Role {
-        match ctx.hovered(&self.target) {
-            true => self.lit,
-            false => self.role,
+    fn lit_now<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> bool {
+        self.open || (!self.inert && ctx.hovered(&self.target))
+    }
+
+    fn style<A: App<Target = T>>(&self, ctx: &Ctx<'_, A>) -> TextStyle {
+        let role = if self.lit_now(ctx) {
+            self.lit
+        } else {
+            self.role
+        };
+        match self.text {
+            Text::Small => ctx.styles.small(role),
+            Text::Label => ctx.styles.label(role),
+            Text::Body => ctx.styles.body(role),
         }
     }
 
     fn content<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, style: &TextStyle) -> f32 {
         let word = ctx.measure(self.label, style);
         match self.caret {
-            true => word + ctx.tokens.xs + ctx.tokens.small,
-            false => word,
+            Some(_) => word + ctx.tokens.xs + style.size,
+            None => word,
         }
     }
 
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
-        let style = ctx.styles.small(self.role(ctx));
+        let style = self.style(ctx);
         let content = self.content(ctx, &style);
-        let box_ = slot_at(ctx, line, x, content, Some(self.ground));
+        let ground = match self.lit_now(ctx) {
+            true => self.hover.or(self.ground),
+            false => self.ground,
+        };
+        let box_ = slot_at(ctx, line, x, content, ground);
         row(ctx, box_, ctx.tokens.sm, self.label, style);
-        if self.caret {
-            let size = ctx.tokens.small;
-            let mark = box_in(box_, box_.right() - ctx.tokens.sm - size, size);
-            ctx.icon(mark, Mark::Down, Mark::UPWARDS, style.color);
+        if let Some(turn) = self.caret {
+            let mark = box_in(box_, box_.right() - ctx.tokens.sm - style.size, style.size);
+            ctx.icon(mark, Mark::Down, turn, ctx.styles.color(Role::Faint));
         }
-        ctx.hit(box_, self.target);
+        if !self.inert {
+            ctx.hit(box_, self.target);
+        }
         box_
     }
+}
+
+/// A value the user can change: a body-text button with a caret, lit while its choice is open.
+pub fn picker<'a, T: Clone + PartialEq>(
+    label: &'a str,
+    target: T,
+    role: Role,
+    band: Color,
+    hover: Color,
+) -> Button<'a, T> {
+    Button::new(label, target, role, band)
+        .text(Text::Body)
+        .hover(hover)
+        .caret(0)
 }

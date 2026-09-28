@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::Word;
+use groove_ui_kit::widgets::Button;
 
 /// What the agent waits on, or what it can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -33,14 +33,14 @@ fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
     let mut room = line.pad(Edges::across(0.0, xs));
     let words = [
-        Word::new(
+        Button::new(
             "reload",
             Target::Reload(id.clone()),
             reload_role(stale),
             ground,
         ),
-        Word::new("skills", Target::Skills(id.clone()), Role::Muted, ground).caret(),
-        Word::new(
+        Button::new("skills", Target::Skills(id.clone()), Role::Muted, ground).caret(Mark::UPWARDS),
+        Button::new(
             switched(auto),
             Target::AutoApprove(id.clone()),
             auto_role(auto),

@@ -12,7 +12,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{button, counts, mark_button};
+use groove_ui_kit::widgets::{Button, counts, mark_button};
 
 /// The counts and what commits them on one line, the message under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
@@ -45,15 +45,10 @@ pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState) {
         ..rect
     };
     ctx.quad(line, ctx.styles.band());
-    let ground = match ctx.hovered(&Target::Working) {
-        true => ctx.styles.action(),
-        false => ctx.styles.raised(),
-    };
-    let style = ctx.styles.small(Role::Muted);
-    let box_ = button(ctx, line, "working tree", style, Some(ground));
-    ctx.hit(box_, Target::Working);
-    let sm = ctx.tokens.sm;
-    let mut room = line.until(box_.x).pad(Edges::across(ctx.tokens.md, sm));
+    let (raised, action, sm) = (ctx.styles.raised(), ctx.styles.action(), ctx.tokens.sm);
+    let working = Button::new("working tree", Target::Working, Role::Muted, raised).hover(action);
+    let mut room = line.pad(Edges::across(ctx.tokens.md, sm));
+    working.right(ctx, &mut room, sm);
     Label::new(&one.short_sha, ctx.styles.code(Role::Muted)).left(ctx, &mut room, sm);
     let said = one.message.lines().next().unwrap_or_default();
     Label::new(said, ctx.styles.body(Role::Text)).draw(ctx, room);
@@ -172,21 +167,15 @@ fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
         true => Role::Text,
         false => Role::Faint,
     };
-    let style = ctx.styles.small(role);
     let word = act.as_ref().map(label).unwrap_or("commit");
     let (action, raised) = (ctx.styles.action(), ctx.styles.raised());
     let caret = (Mark::Down, Mark::UPWARDS, Role::Muted);
     let arrow = mark_button(ctx, line, Target::Actions, caret, (raised, action));
-    let ground = match ctx.hovered(&Target::Do) {
-        true => action,
-        false => raised,
-    };
-    let left = line.until(arrow.x + ctx.tokens.sm);
-    let word = button(ctx, left, word, style, Some(ground));
-    if can {
-        ctx.hit(word, Target::Do);
-    }
-    word.x
+    let run = Button::new(word, Target::Do, role, raised)
+        .lit(role)
+        .hover(action);
+    let mut left = line.until(arrow.x);
+    run.inert(!can).right(ctx, &mut left, 0.0).x
 }
 
 /// What git says about the selected worktree.

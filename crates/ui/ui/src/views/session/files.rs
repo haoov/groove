@@ -22,7 +22,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{button, tabs};
+use groove_ui_kit::widgets::{Button, tabs};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
@@ -217,11 +217,11 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
 
 /// One word at the right of `room`, with a ground of its own under the pointer.
 pub(crate) fn acted(ctx: &mut Ctx, room: &mut Rect, label: &str, target: Target) {
-    let style = ctx.styles.small(Role::Muted);
-    let ground = ctx.hovered(&target).then(|| ctx.styles.action());
-    let box_ = button(ctx, *room, label, style, ground);
-    ctx.hit(box_, target);
-    *room = room.until(box_.x);
+    let (ground, action) = (ctx.styles.ground(), ctx.styles.action());
+    let word = Button::new(label, target, Role::Muted, ground)
+        .flat()
+        .hover(action);
+    word.right(ctx, room, ctx.tokens.sm);
 }
 
 /// A question in the row's own place, with its two answers at its end.

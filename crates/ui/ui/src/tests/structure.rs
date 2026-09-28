@@ -106,7 +106,7 @@ fn every_style_comes_from_one_file() {
             continue;
         }
         for (at, line) in code_lines(&text) {
-            if line.contains("TextStyle {") {
+            if line.contains("TextStyle {") && !line.contains("-> TextStyle {") {
                 offenders.push(format!("{path}:{}", at + 1));
             }
         }

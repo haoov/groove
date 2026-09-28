@@ -18,7 +18,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::shape::{hairline, hoverable, square};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{Field, Word};
+use groove_ui_kit::widgets::{Button, Field};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -110,7 +110,7 @@ pub(crate) fn login_pane(window: Rect, tokens: &Tokens) -> Rect {
 fn back(ctx: &mut Ctx, line: Rect) {
     hairline(ctx, line, ctx.styles.line());
     let mut room = line.pad(Edges::across(ctx.tokens.sm, ctx.tokens.sm));
-    let word = Word::new(
+    let word = Button::new(
         "back · esc",
         Target::SettingsBack,
         Role::Muted,
