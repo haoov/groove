@@ -3,7 +3,8 @@
 
 use groove_controllers::AppState;
 use groove_types::{
-    GithubConfig, Mapped, Mapping, NotionConfig, Priority, Property, ProviderId, StatusIntent,
+    EstimateUnit, GithubConfig, Mapped, Mapping, NotionConfig, Priority, Property, ProviderId,
+    StatusIntent,
 };
 use groove_ui_kit::base::style::Role;
 
@@ -16,6 +17,8 @@ pub enum Slot {
     Name(Mapped),
     Status(StatusIntent),
     Priority(Priority),
+    /// What the estimate counts in.
+    Unit,
 }
 
 const STATUSES: [(StatusIntent, &str); 3] = [
@@ -47,15 +50,16 @@ impl Held<'_> {
 
     /// What a slot holds now, or `None` while it is a gap.
     fn held(&self, slot: Slot) -> Option<&str> {
-        let (status, priority) = match self {
-            Held::Notion(one) => (&one.status_map, &one.priority_map),
-            Held::Github(one) => (&one.status_map, &one.priority_map),
+        let (status, priority, names) = match self {
+            Held::Notion(one) => (&one.status_map, &one.priority_map, &one.properties),
+            Held::Github(one) => (&one.status_map, &one.priority_map, &one.properties),
         };
         match (self, slot) {
             (Held::Notion(one), Slot::Name(which)) => one.name(which),
             (Held::Github(one), Slot::Name(which)) => one.name(which),
             (_, Slot::Status(intent)) => status.label(intent),
             (_, Slot::Priority(level)) => priority.value(level),
+            (_, Slot::Unit) => Some(names.estimate_unit.label()),
         }
     }
 }
@@ -77,6 +81,7 @@ impl Choices {
             Slot::Name(which) => Mapping::Name(which, name),
             Slot::Status(intent) => Mapping::Status(intent, name),
             Slot::Priority(level) => Mapping::Priority(level, name),
+            Slot::Unit => Mapping::Unit(EstimateUnit::parse(&name)?),
         })
     }
 }
@@ -91,6 +96,7 @@ pub fn choices(app: &AppState, source: ProviderId, slot: Slot) -> Choices {
     let schema = app.config.schema(source);
     let options = match (&held, schema) {
         (Some(held), Some(schema)) => offered(held, slot, schema),
+        (Some(held), None) if slot == Slot::Unit => offered(held, slot, &[]),
         _ => Vec::new(),
     };
     let empty = match (schema, app.config.reading.contains(&source)) {
@@ -115,6 +121,7 @@ pub(super) fn mapping(held: &Held) -> Vec<Row> {
             (Mapped::Priority, Some(_)) => {
                 &Priority::ALL.map(|one| (Slot::Priority(one), one.label()))
             }
+            (Mapped::Estimate, Some(_)) => &[(Slot::Unit, "counted in")],
             _ => &[],
         };
         slots.extend(values.iter().copied());
@@ -138,6 +145,7 @@ fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
         Slot::Name(_) => "property field name",
         Slot::Status(_) => "status value",
         Slot::Priority(_) => "priority value",
+        Slot::Unit => "estimate unit hours days",
     };
     Row {
         section: Section::Providers,
@@ -167,5 +175,6 @@ fn offered(held: &Held, slot: Slot, schema: &[Property]) -> Vec<String> {
         }
         Slot::Status(_) => values_of(Mapped::Status),
         Slot::Priority(_) => values_of(Mapped::Priority),
+        Slot::Unit => EstimateUnit::ALL.map(|one| one.label().to_string()).into(),
     }
 }

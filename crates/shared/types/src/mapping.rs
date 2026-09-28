@@ -1,7 +1,8 @@
 //! What a source holds, and how Groove's names and values are mapped onto it.
 
 use crate::{
-    GithubConfig, NotionConfig, Priority, PriorityMap, PropertyNames, StatusIntent, StatusMap,
+    EstimateUnit, GithubConfig, NotionConfig, Priority, PriorityMap, PropertyNames, StatusIntent,
+    StatusMap,
 };
 
 /// A property's type, as far as the mapping tells them apart.
@@ -104,6 +105,8 @@ pub enum Mapping {
     /// The source's value for one of Groove's statuses, or priorities.
     Status(StatusIntent, String),
     Priority(Priority, String),
+    /// What the estimate counts in.
+    Unit(EstimateUnit),
 }
 
 impl PriorityMap {
@@ -184,6 +187,7 @@ fn mapped(
             };
             *list = vec![value.clone()];
         }
+        Mapping::Unit(unit) => names.estimate_unit = *unit,
     }
 }
 

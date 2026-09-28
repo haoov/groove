@@ -37,8 +37,9 @@ pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention};
 pub use chord::{Chord, Stroke};
 pub use config::{
-    Config, ConfigView, FilterConfig, GitConfig, GithubConfig, GithubView, NotionConfig,
-    NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, StatusMap, ThemeName, UiConfig,
+    Config, ConfigView, EstimateUnit, FilterConfig, GitConfig, GithubConfig, GithubView,
+    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, StatusMap,
+    ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{

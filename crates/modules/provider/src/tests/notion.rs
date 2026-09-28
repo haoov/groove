@@ -21,6 +21,7 @@ fn config() -> NotionConfig {
             start: Some("Start".into()),
             due: Some("Due".into()),
             estimate: Some("Estimate".into()),
+            estimate_unit: groove_types::EstimateUnit::Hours,
             logged: Some("Spent".into()),
         },
         status_map: StatusMap {
@@ -74,6 +75,10 @@ fn blocks() -> serde_json::Value {
 
 /// A server that answers every call with `reply`, and the source on it.
 async fn source(reply: serde_json::Value) -> (MockServer, Notion) {
+    source_with(reply, config()).await
+}
+
+async fn source_with(reply: serde_json::Value, config: NotionConfig) -> (MockServer, Notion) {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(reply.clone()))
@@ -88,7 +93,7 @@ async fn source(reply: serde_json::Value) -> (MockServer, Notion) {
         .mount(&server)
         .await;
     let host = format!("http://{}", server.address());
-    let notion = Notion::at(&host, config()).expect("a client");
+    let notion = Notion::at(&host, config).expect("a client");
     (server, notion)
 }
 
@@ -352,4 +357,18 @@ async fn a_template_page_is_read_as_the_markdown_a_task_starts_from() {
         .expect("a template");
     assert!(held.starts_with("The runbook."), "{held}");
     assert!(held.contains("- [x] take a backup"), "{held}");
+}
+
+#[tokio::test]
+async fn an_estimate_the_source_counts_in_days_reads_as_hours() {
+    let mut config = config();
+    config.properties.estimate_unit = groove_types::EstimateUnit::Days;
+    let reply = serde_json::json!({ "object": "list", "results": [page()] });
+    let (_server, notion) = source_with(reply, config).await;
+    let tasks = notion.list().await.expect("the query answers");
+    assert_eq!(
+        tasks[0].estimate,
+        Some(52.0),
+        "six days and a half, at eight hours a day"
+    );
 }

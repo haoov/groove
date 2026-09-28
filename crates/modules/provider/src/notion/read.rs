@@ -63,7 +63,8 @@ pub(super) fn task(page: &serde_json::Value, config: &NotionConfig) -> Option<Ta
         estimate: names
             .estimate
             .as_deref()
-            .and_then(|name| number(page, name)),
+            .and_then(|name| number(page, name))
+            .map(|value| names.estimate_unit.hours(value)),
         logged: names.logged.as_deref().and_then(|name| number(page, name)),
         synced_at: Timestamp::now(),
         provider: ProviderId::Notion,

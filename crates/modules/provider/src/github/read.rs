@@ -72,7 +72,8 @@ pub(super) fn task(issue: &serde_json::Value, host: &str, config: &GithubConfig)
             due: day(field(item, names.due.as_deref())),
             duration_days: None,
         },
-        estimate: hours(field(item, names.estimate.as_deref())),
+        estimate: hours(field(item, names.estimate.as_deref()))
+            .map(|value| names.estimate_unit.hours(value)),
         logged: hours(field(item, names.logged.as_deref())),
         synced_at: Timestamp::now(),
         provider: groove_types::ProviderId::Github,

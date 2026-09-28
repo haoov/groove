@@ -128,3 +128,23 @@ fn esc_closes_the_menu_and_leaves_settings_open() {
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
     assert!(ui.menu().is_none() && ui.settings.open);
 }
+
+#[test]
+fn a_mapped_estimate_says_what_it_counts_in() {
+    let (mut app, mut ui) = mapped();
+    let (_, hits) = drawn(&app, &ui);
+    let unit = Target::SettingsPick(ProviderId::Notion, Slot::Unit);
+    assert!(hits.rect_of(&unit).is_none(), "no unit before an estimate");
+
+    if let Some(notion) = app.config.config.as_mut().and_then(|c| c.notion.as_mut()) {
+        notion.properties.estimate = Some("Hours spent".into());
+    }
+    let (texts, _) = drawn(&app, &ui);
+    assert!(
+        texts.iter().any(|one| one == "hours"),
+        "hours until told: {texts:?}"
+    );
+    assert_eq!(opened(&app, &mut ui, Slot::Unit), ["hours", "days"]);
+    let asked = picked(&app, &mut ui, 1);
+    assert_eq!(asked, map(Mapping::Unit(groove_types::EstimateUnit::Days)));
+}

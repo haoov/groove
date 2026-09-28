@@ -14,6 +14,7 @@ fn config(host: &str) -> GithubConfig {
             start: Some("Start".into()),
             due: Some("Due".into()),
             estimate: Some("Estimate".into()),
+            estimate_unit: groove_types::EstimateUnit::Hours,
             logged: Some("Spent".into()),
         },
         status_map: StatusMap {

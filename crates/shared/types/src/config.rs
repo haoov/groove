@@ -1,8 +1,8 @@
 mod sources;
 
 pub use sources::{
-    FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap, PropertyNames,
-    REDACTED, StatusMap,
+    EstimateUnit, FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap,
+    PropertyNames, REDACTED, StatusMap,
 };
 
 use std::collections::BTreeMap;

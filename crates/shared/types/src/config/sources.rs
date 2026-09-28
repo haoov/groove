@@ -189,9 +189,46 @@ pub struct PropertyNames {
     pub due: Option<String>,
     #[serde(default)]
     pub estimate: Option<String>,
+    #[serde(default)]
+    pub estimate_unit: EstimateUnit,
     /// Where `task.log_hours` adds what Groove measured.
     #[serde(default)]
     pub logged: Option<String>,
+}
+
+/// What the source's estimate counts in; Groove holds it in hours.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EstimateUnit {
+    #[default]
+    Hours,
+    Days,
+}
+
+/// The hours a day of estimate stands for.
+const DAY_HOURS: f32 = 8.0;
+
+impl EstimateUnit {
+    pub const ALL: [EstimateUnit; 2] = [EstimateUnit::Hours, EstimateUnit::Days];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            EstimateUnit::Hours => "hours",
+            EstimateUnit::Days => "days",
+        }
+    }
+
+    pub fn parse(label: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|one| one.label() == label)
+    }
+
+    /// A value the source holds, in hours.
+    pub fn hours(self, value: f32) -> f32 {
+        match self {
+            EstimateUnit::Hours => value,
+            EstimateUnit::Days => value * DAY_HOURS,
+        }
+    }
 }
 
 /// Which status values mean what; the first of each is the one Groove writes.
