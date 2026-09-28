@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_controllers::shell_service::{Shell, Shells};
-use groove_gfx::{Align, Edges, Rect};
+use groove_gfx::{Edges, Rect};
 use groove_types::SessionId;
 
 use crate::Ui;
@@ -12,7 +12,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Tab, screen};
+use groove_ui_kit::widgets::{Button, Tab, fold, screen};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -49,20 +49,16 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
 
 /// The fold, the section's name, a tab each, then what opens a tab and splits the one up.
 fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
-    let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
+    let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
     let mut room = line.pad(Edges::across(0.0, sm));
     let ground = ctx.styles.ground();
     let splits = Button::new("split", Target::ShellSplit, Role::Muted, ground);
     splits.right(ctx, &mut room, ctx.tokens.xs);
     Button::new("+", Target::ShellNew, Role::Muted, ground).right(ctx, &mut room, sm);
-    let fold = room.take_left(line.h);
-    hoverable(ctx, fold, Target::ShellFold);
-    let turn = match ui.session.manual {
-        true => 0,
-        false => Mark::RIGHTWARDS,
-    };
-    let mark = fold.align((size, size), Align::Center, Align::Center);
-    ctx.icon(mark, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    let mut folds = room.take_left(line.h);
+    hoverable(ctx, folds, Target::ShellFold);
+    folds.take_left((line.h - ctx.tokens.small) / 2.0);
+    fold(ctx, &mut folds, ui.session.manual, Role::Faint);
     let named = Label::new("terminals", ctx.styles.label(Role::Muted));
     named.left(ctx, &mut room, md);
     let Some(shells) = shells else {

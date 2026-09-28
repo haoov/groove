@@ -1,4 +1,4 @@
-//! Keys and clicks to commands; the agent pane takes every key but Groove's `ctrl+shift` chords.
+//! Keys and clicks to commands; the agent pane takes every key but the keymap's app ring.
 
 mod keys;
 mod pointer;

@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::rows::{Reading, entry};
@@ -11,10 +11,10 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::views::session::Asked;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{box_in, hoverable};
+use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{elide, row};
+use groove_ui_kit::widgets::fold;
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -206,15 +206,15 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
 fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
     let target = Target::Dir(held.path.clone());
     hoverable(ctx, line, target);
-    let size = ctx.tokens.small;
-    let box_ = box_in(line, line.x + indent, size);
-    let turn = match ui.session.opened.contains(&held.path) {
-        true => 0,
-        false => Mark::RIGHTWARDS,
-    };
-    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    let mut room = line.pad(Edges::across(indent, 0.0));
+    fold(
+        ctx,
+        &mut room,
+        ui.session.opened.contains(&held.path),
+        Role::Faint,
+    );
     let style = ctx.styles.body(Role::Muted);
-    let at = indent + size + ctx.tokens.xs;
+    let at = indent + ctx.tokens.small + ctx.tokens.xs;
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &held.name, &style, room);
     row(ctx, line, at, &text, style);

@@ -9,10 +9,10 @@ use groove_types::{Day, Timestamp};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{Panel, square};
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::widgets::fold;
 
 /// The days the band shows, and how many stand before today.
 pub(super) const DAYS: i64 = 28;
@@ -90,15 +90,9 @@ fn rule(ctx: &mut Ctx, band: Rect) {
 
 /// What names the band and folds it away.
 fn bar(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
+    let md = ctx.tokens.md;
     let mut room = line.pad(Edges::across(md, 0.0));
-    let caret = square(room.take_left(size), size);
-    room.take_left(sm);
-    let turn = match shut(app, ui) {
-        true => Mark::RIGHTWARDS,
-        false => 0,
-    };
-    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Ghost));
+    fold(ctx, &mut room, !shut(app, ui), Role::Ghost);
     ctx.hit(line, Target::Timeline);
     Label::new("TIMELINE", ctx.styles.heading(Role::Faint)).left(ctx, &mut room, md);
     let horizon = format!("4 weeks · {} – {}", named(first(ui)), named(last(ui)));

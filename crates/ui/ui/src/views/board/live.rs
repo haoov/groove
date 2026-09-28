@@ -11,7 +11,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
-use groove_ui_kit::widgets::icon;
+use groove_ui_kit::widgets::{fold, icon};
 
 /// Every session the filter lets through, with its worktrees under it while it is open.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
@@ -24,7 +24,7 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         .collect();
     if living.is_empty() {
         return vec![Line::Nothing(match query.is_empty() {
-            true => "nothing here. Ctrl+Shift+N starts an explorer",
+            true => "nothing here. + explorer starts one",
             false => "nothing the filter lets through",
         })];
     }
@@ -76,14 +76,9 @@ fn held(living: &Living) -> String {
 
 /// What opens a session's worktrees under it, from the left of `room`.
 fn twisty(ctx: &mut Ctx, room: &mut Rect, ui: &Ui, living: &Living) {
-    let (sm, size) = (ctx.tokens.sm, ctx.tokens.icon);
-    room.take_left(sm);
-    let box_ = square(room.take_left(size), size);
-    room.take_left(sm);
-    let turn = match ui.board.is_open(&living.session.id) {
-        true => 0,
-        false => Mark::RIGHTWARDS,
-    };
-    ctx.icon(box_, Mark::Down, turn, ctx.styles.color(Role::Ghost));
+    room.take_left(ctx.tokens.sm);
+    let open = ui.board.is_open(&living.session.id);
+    let box_ = fold(ctx, room, open, Role::Ghost);
+    room.take_left(ctx.tokens.xs);
     ctx.hit(box_, Target::Unfold(living.session.id.clone()));
 }

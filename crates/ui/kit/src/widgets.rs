@@ -3,6 +3,7 @@
 mod button;
 mod counts;
 mod field;
+mod fold;
 mod icon;
 mod input;
 mod list;
@@ -16,6 +17,7 @@ mod terminal;
 pub use button::{Button, Text, picker, slot_at};
 pub use counts::{changes, counts, counts_room};
 pub use field::Field;
+pub use fold::fold;
 pub use icon::icon;
 pub use input::input;
 pub use list::{Row, list};

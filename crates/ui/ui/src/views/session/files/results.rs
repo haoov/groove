@@ -8,11 +8,10 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
-use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::shape::square;
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::fold;
 
 use groove_gfx::Edges;
 
@@ -59,17 +58,11 @@ fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
 fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
     ctx.quad(line, ctx.styles.raised());
     hoverable(ctx, line, Target::FoundIn(path.to_string()));
-    let (xs, sm, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.icon);
+    let (xs, sm) = (ctx.tokens.xs, ctx.tokens.sm);
     let style = ctx.styles.small(Role::Text);
     let mut room = line.pad(Edges::across(xs, ctx.tokens.md));
     Label::new(&count.to_string(), style).right(ctx, &mut room, sm);
-    let caret = square(room.take_left(size), size);
-    room.take_left(xs);
-    let turn = match ui.session.shut.contains(path) {
-        true => Mark::RIGHTWARDS,
-        false => 0,
-    };
-    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    fold(ctx, &mut room, !ui.session.shut.contains(path), Role::Faint);
     Label::new(path, style).draw(ctx, room);
 }
 

@@ -11,8 +11,9 @@ use crate::offsets::listed;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, hoverable, square};
+use groove_ui_kit::shape::{hairline, hoverable};
 use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::widgets::fold;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -33,16 +34,10 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
     );
     grab(ctx, line);
     hoverable(ctx, line, Target::Feed);
-    let (md, size) = (ctx.tokens.md, ctx.tokens.small);
+    let md = ctx.tokens.md;
     let mut room = line.pad(Edges::across(md, md));
     narrowed(ctx, &mut room, app, ui);
-    let caret = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.xs);
-    let turn = match ui.rail.folded {
-        true => Mark::RIGHTWARDS,
-        false => 0,
-    };
-    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    fold(ctx, &mut room, !ui.rail.folded, Role::Faint);
     Label::new("FEED", ctx.styles.heading(Role::Faint)).draw(ctx, room);
 }
 

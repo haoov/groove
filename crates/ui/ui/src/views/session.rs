@@ -23,17 +23,17 @@ use groove_gfx::{Edges, Rect};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use crate::keymap::{Action, Keymap};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::square;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{icon, tabs};
+use groove_ui_kit::widgets::{Button, tabs};
 
 /// The session: the header, then the agent pane and the workspace.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     header::draw(ctx, app);
     if app.session.selected().is_none() {
-        return empty(ctx);
+        return empty(ctx, app);
     }
     agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     bar::draw(ctx, app);
@@ -84,18 +84,20 @@ fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) {
         true => Role::Ghost,
         false => Role::Muted,
     };
-    let size = ctx.tokens.icon;
-    let mut room = strip.pad(Edges::across(0.0, ctx.tokens.md));
-    let box_ = square(room.take_right(size), size);
-    icon(ctx, box_, Mark::Sidebar, role);
-    ctx.hit(box_, Target::Fold);
+    let mut room = strip.pad(Edges::across(0.0, ctx.tokens.sm));
+    let fold = Button::icon(Mark::Sidebar, 0, Target::Fold, role);
+    fold.right(ctx, &mut room, 0.0);
 }
 
 /// Nothing open: how to start.
-fn empty(ctx: &mut Ctx) {
+fn empty(ctx: &mut Ctx, app: &AppState) {
     let (md, mut body) = (ctx.tokens.md, ctx.app.layout.workspace);
     body.take_top(ctx.tokens.sm);
     let line = body.take_top(ctx.tokens.row).pad(Edges::across(md, md));
-    let said = "No session open. Ctrl+Shift+N starts an explorer.";
-    Label::new(said, ctx.styles.body(Role::Faint)).draw(ctx, line);
+    let keymap = Keymap::of(app.config.config.as_ref());
+    let said = match keymap.label(Action::NewExplorer) {
+        Some(chord) => format!("No session open. {chord} starts an explorer."),
+        None => "No session open. The palette starts an explorer.".to_string(),
+    };
+    Label::new(&said, ctx.styles.body(Role::Faint)).draw(ctx, line);
 }
