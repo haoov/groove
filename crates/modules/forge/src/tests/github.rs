@@ -5,7 +5,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Github;
 
-fn repo() -> Repo {
+pub(super) fn repo() -> Repo {
     Repo {
         id: RepoId::new("r1"),
         host: "github.com".into(),
@@ -16,7 +16,7 @@ fn repo() -> Repo {
 }
 
 /// One pull request as GitHub answers for it.
-fn pr() -> serde_json::Value {
+pub(super) fn pr() -> serde_json::Value {
     serde_json::json!({
         "number": 7,
         "title": "fix(forge): read the checks",
@@ -69,7 +69,7 @@ fn pr() -> serde_json::Value {
 }
 
 /// A server answering every call with `reply`, and a client on it.
-async fn github(reply: serde_json::Value) -> (MockServer, Github) {
+pub(super) async fn github(reply: serde_json::Value) -> (MockServer, Github) {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/api/graphql"))
@@ -304,7 +304,7 @@ fn by_number(one: serde_json::Value) -> serde_json::Value {
     }})
 }
 
-async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
+pub(super) async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
     server
         .received_requests()
         .await
@@ -315,7 +315,7 @@ async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
 }
 
 /// The variables of the call that carried `mutation`.
-fn variables(sent: &[serde_json::Value], mutation: &str) -> serde_json::Value {
+pub(super) fn variables(sent: &[serde_json::Value], mutation: &str) -> serde_json::Value {
     sent.iter()
         .find(|one| one["query"].as_str().is_some_and(|q| q.contains(mutation)))
         .map(|one| one["variables"].clone())

@@ -14,16 +14,32 @@ fn text() -> Text {
     }
 }
 
-/// A host that answers the repository query, and one mutation.
+/// A host that answers the repository, the viewer, the assignment, and one mutation.
 async fn host(mutation: &str, answered: serde_json::Value) -> MockServer {
     let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .and(body_string_contains("defaultBranchRef"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "data": { "repository": { "id": "REPO_1", "defaultBranchRef": { "name": "main" } } }
-        })))
-        .mount(&server)
-        .await;
+    let fixed = [
+        (
+            "defaultBranchRef",
+            serde_json::json!({ "repository": { "id": "REPO_1", "defaultBranchRef": { "name": "main" } } }),
+        ),
+        (
+            "viewer { id login }",
+            serde_json::json!({ "viewer": { "id": "U_1", "login": "haoov" } }),
+        ),
+        (
+            "addAssigneesToAssignable",
+            serde_json::json!({ "addAssigneesToAssignable": { "clientMutationId": null } }),
+        ),
+    ];
+    for (asked, data) in fixed {
+        Mock::given(method("POST"))
+            .and(body_string_contains(asked))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": data })),
+            )
+            .mount(&server)
+            .await;
+    }
     Mock::given(method("POST"))
         .and(body_string_contains(mutation))
         .respond_with(ResponseTemplate::new(200).set_body_json(answered))
@@ -32,12 +48,9 @@ async fn host(mutation: &str, answered: serde_json::Value) -> MockServer {
     server
 }
 
-/// What a mutation answers with: the viewer, and the MR under its own key.
+/// What a mutation answers with: the MR under its own key.
 fn wrote(key: &str, pr: serde_json::Value) -> serde_json::Value {
-    serde_json::json!({ "data": {
-        "viewer": { "login": "haoov" },
-        key: { "pullRequest": pr }
-    }})
+    serde_json::json!({ "data": { key: { "pullRequest": pr } } })
 }
 
 #[tokio::test]
@@ -68,21 +81,7 @@ async fn a_worktree_with_no_mr_cannot_have_one_written_or_closed() {
 
 #[tokio::test]
 async fn closing_leaves_the_row_saying_so() {
-    let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .and(body_string_contains("defaultBranchRef"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "data": { "repository": { "id": "REPO_1", "defaultBranchRef": { "name": "main" } } }
-        })))
-        .mount(&server)
-        .await;
-    Mock::given(method("POST"))
-        .and(body_string_contains("createPullRequest"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(wrote("createPullRequest", pr("OPEN"))),
-        )
-        .mount(&server)
-        .await;
+    let server = host("createPullRequest", wrote("createPullRequest", pr("OPEN"))).await;
     Mock::given(method("POST"))
         .and(body_string_contains("pullRequest(number"))
         .respond_with(ResponseTemplate::new(200).set_body_json(answer("pullRequest", pr("OPEN"))))

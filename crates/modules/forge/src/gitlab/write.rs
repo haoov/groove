@@ -20,7 +20,26 @@ impl Gitlab {
             "body": mr.body,
         });
         let reply = self.api.ask(&query::open(), at).await?;
-        self.written(&reply, "mergeRequestCreate")
+        let opened = self.written(&reply, "mergeRequestCreate").await?;
+        self.assign(repo, &opened).await?;
+        Ok(opened)
+    }
+
+    /// The viewer made an assignee of the MR it opened.
+    async fn assign(&self, repo: &Repo, opened: &Snapshot) -> Result<()> {
+        let at = serde_json::json!({
+            "path": path(repo),
+            "iid": opened.number,
+            "who": [opened.details.author],
+        });
+        let reply = self.api.ask(&query::assign(), at).await?;
+        match refused(&reply["data"]["mergeRequestSetAssignees"]) {
+            Some(message) => Err(Error::Refused {
+                host: self.host.clone(),
+                message,
+            }),
+            None => Ok(()),
+        }
     }
 
     pub async fn edit_mr(
@@ -37,14 +56,14 @@ impl Gitlab {
             "body": body,
         });
         let reply = self.api.ask(&query::edit(), at).await?;
-        self.written(&reply, "mergeRequestUpdate")
+        self.written(&reply, "mergeRequestUpdate").await
     }
 
     /// The MR closed, with nothing merged.
     pub async fn shut_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         let at = serde_json::json!({ "path": path(repo), "iid": number });
         let reply = self.api.ask(&query::shut(), at).await?;
-        self.written(&reply, "mergeRequestUpdate")
+        self.written(&reply, "mergeRequestUpdate").await
     }
 
     /// One note on a line of the latest diff, which the MR's own head names.
@@ -135,8 +154,8 @@ impl Gitlab {
         }
     }
 
-    /// The MR a mutation answered with. Its own errors are the write's failure.
-    fn written(&self, reply: &serde_json::Value, mutation: &str) -> Result<Snapshot> {
+    /// The MR a mutation answered with, read as the viewer, whom a query of its own names.
+    async fn written(&self, reply: &serde_json::Value, mutation: &str) -> Result<Snapshot> {
         let payload = &reply["data"][mutation];
         if let Some(refused) = refused(payload) {
             return Err(Error::Refused {
@@ -144,7 +163,11 @@ impl Gitlab {
                 message: refused,
             });
         }
-        let me = self.viewer(reply);
+        let who = self
+            .api
+            .ask(&query::viewer(), serde_json::json!({}))
+            .await?;
+        let me = self.viewer(&who);
         read::snapshot(&payload["mergeRequest"], &me, &self.host).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} answered {mutation} with no merge request",

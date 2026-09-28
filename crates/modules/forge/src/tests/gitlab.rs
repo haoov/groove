@@ -7,7 +7,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Gitlab;
 
-fn repo() -> Repo {
+pub(super) fn repo() -> Repo {
     Repo {
         id: RepoId::new("r1"),
         host: "gitlab.example.com".into(),
@@ -18,7 +18,7 @@ fn repo() -> Repo {
 }
 
 /// One merge request as GitLab answers for it.
-fn mr(state: &str) -> serde_json::Value {
+pub(super) fn mr(state: &str) -> serde_json::Value {
     serde_json::json!({
         "id": "gid://gitlab/MergeRequest/99",
         "iid": "7",
@@ -65,7 +65,7 @@ fn mr(state: &str) -> serde_json::Value {
 }
 
 /// A server answering every call with `reply`, and a client on it.
-async fn gitlab(reply: serde_json::Value) -> (MockServer, Gitlab) {
+pub(super) async fn gitlab(reply: serde_json::Value) -> (MockServer, Gitlab) {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(ResponseTemplate::new(200).set_body_json(reply))
@@ -208,7 +208,7 @@ async fn an_mr_opened_answers_with_the_mr_itself() {
         "currentUser": { "username": "rsabbah" },
         "mergeRequestCreate": { "errors": [], "mergeRequest": mr("opened") }
     }});
-    let (_server, gitlab) = gitlab(reply).await;
+    let (server, gitlab) = gitlab(reply).await;
     let opened = gitlab
         .open_new(
             &repo(),
@@ -223,6 +223,24 @@ async fn an_mr_opened_answers_with_the_mr_itself() {
         .expect("it is opened");
     assert_eq!(opened.number, "7");
     assert_eq!(opened.details.state, MrState::Open);
+    let queries: Vec<String> = sent(&server)
+        .await
+        .iter()
+        .filter_map(|one| one["query"].as_str().map(str::to_string))
+        .collect();
+    let mutation = queries
+        .iter()
+        .find(|one| one.contains("mergeRequestCreate"));
+    let mutation = mutation.expect("the write was sent");
+    assert!(
+        !mutation.contains("currentUser"),
+        "GitLab refuses it there: {mutation}"
+    );
+    assert!(
+        queries
+            .iter()
+            .any(|one| one.starts_with("query") && one.contains("currentUser"))
+    );
 }
 
 #[tokio::test]
@@ -277,7 +295,7 @@ fn by_iid(one: serde_json::Value) -> serde_json::Value {
 }
 
 /// Every body the server was sent.
-async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
+pub(super) async fn sent(server: &MockServer) -> Vec<serde_json::Value> {
     server
         .received_requests()
         .await

@@ -24,7 +24,11 @@ impl Github {
             "body": mr.body,
         });
         let reply = self.api.ask(&query::open(), at).await?;
-        self.written(&reply, "createPullRequest")
+        let (id, me) = self.me().await?;
+        let opened = self.written(&reply, "createPullRequest", &me)?;
+        let who = serde_json::json!({ "mr": opened.node, "who": [id] });
+        self.api.ask(&query::assign(), who).await?;
+        Ok(opened)
     }
 
     /// The title and the body of an MR written again.
@@ -38,7 +42,8 @@ impl Github {
         let node = self.node_of(repo, number).await?;
         let at = serde_json::json!({ "mr": node, "title": title, "body": body });
         let reply = self.api.ask(&query::edit(), at).await?;
-        self.written(&reply, "updatePullRequest")
+        let (_, me) = self.me().await?;
+        self.written(&reply, "updatePullRequest", &me)
     }
 
     /// The MR closed, with nothing merged.
@@ -46,7 +51,8 @@ impl Github {
         let node = self.node_of(repo, number).await?;
         let at = serde_json::json!({ "mr": node });
         let reply = self.api.ask(&query::shut(), at).await?;
-        self.written(&reply, "closePullRequest")
+        let (_, me) = self.me().await?;
+        self.written(&reply, "closePullRequest", &me)
     }
 
     /// The repository's own id, and the branch it merges into by default.
@@ -70,11 +76,20 @@ impl Github {
         Ok(self.read_mr(repo, number).await?.node)
     }
 
-    /// The MR the mutation answered with.
-    fn written(&self, reply: &serde_json::Value, mutation: &str) -> Result<Snapshot> {
-        let me = read::text(&reply["data"]["viewer"]["login"]);
+    /// The token's own node id and login.
+    async fn me(&self) -> Result<(String, String)> {
+        let reply = self
+            .api
+            .ask(&query::viewer(), serde_json::json!({}))
+            .await?;
+        let viewer = &reply["data"]["viewer"];
+        Ok((read::text(&viewer["id"]), read::text(&viewer["login"])))
+    }
+
+    /// The MR the mutation answered with, read as `me`.
+    fn written(&self, reply: &serde_json::Value, mutation: &str, me: &str) -> Result<Snapshot> {
         let pr = &reply["data"][mutation]["pullRequest"];
-        read::snapshot(pr, &me).ok_or_else(|| {
+        read::snapshot(pr, me).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} answered {mutation} with no merge request",
                 self.host

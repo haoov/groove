@@ -47,6 +47,11 @@ pub fn by_iid() -> String {
     )
 }
 
+/// Who the token is; GitLab answers `currentUser` in a query, never beside a mutation.
+pub fn viewer() -> String {
+    "query { currentUser { username } }".to_string()
+}
+
 /// The branch a project merges into by default.
 pub fn root_ref() -> String {
     r"query($path: ID!) {
@@ -59,7 +64,6 @@ pub fn root_ref() -> String {
 pub fn open() -> String {
     format!(
         r"mutation($path: ID!, $head: String!, $base: String!, $title: String!, $body: String!) {{
-  currentUser {{ username }}
   mergeRequestCreate(input: {{
     projectPath: $path, sourceBranch: $head, targetBranch: $base,
     title: $title, description: $body
@@ -68,11 +72,20 @@ pub fn open() -> String {
     )
 }
 
+/// The viewer added to the MR's assignees.
+pub fn assign() -> String {
+    r"mutation($path: ID!, $iid: String!, $who: [String!]!) {
+  mergeRequestSetAssignees(input: {
+    projectPath: $path, iid: $iid, assigneeUsernames: $who, operationMode: APPEND
+  }) { errors }
+}"
+    .to_string()
+}
+
 /// Its title and its body written again.
 pub fn edit() -> String {
     format!(
         r"mutation($path: ID!, $iid: String!, $title: String!, $body: String!) {{
-  currentUser {{ username }}
   mergeRequestUpdate(input: {{
     projectPath: $path, iid: $iid, title: $title, description: $body
   }}) {{ errors mergeRequest {{ {FIELDS} }} }}
@@ -84,7 +97,6 @@ pub fn edit() -> String {
 pub fn shut() -> String {
     format!(
         r"mutation($path: ID!, $iid: String!) {{
-  currentUser {{ username }}
   mergeRequestUpdate(input: {{ projectPath: $path, iid: $iid, state: CLOSED }})
     {{ errors mergeRequest {{ {FIELDS} }} }}
 }}"

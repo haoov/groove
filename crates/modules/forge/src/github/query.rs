@@ -78,7 +78,6 @@ pub fn repository() -> String {
 pub fn open() -> String {
     format!(
         r"mutation($repo: ID!, $base: String!, $head: String!, $title: String!, $body: String!) {{
-  viewer {{ login }}
   createPullRequest(input: {{
     repositoryId: $repo, baseRefName: $base, headRefName: $head, title: $title, body: $body
   }}) {{ pullRequest {{ {FIELDS} }} }}
@@ -90,7 +89,6 @@ pub fn open() -> String {
 pub fn edit() -> String {
     format!(
         r"mutation($mr: ID!, $title: String!, $body: String!) {{
-  viewer {{ login }}
   updatePullRequest(input: {{ pullRequestId: $mr, title: $title, body: $body }})
     {{ pullRequest {{ {FIELDS} }} }}
 }}"
@@ -101,10 +99,22 @@ pub fn edit() -> String {
 pub fn shut() -> String {
     format!(
         r"mutation($mr: ID!) {{
-  viewer {{ login }}
   closePullRequest(input: {{ pullRequestId: $mr }}) {{ pullRequest {{ {FIELDS} }} }}
 }}"
     )
+}
+
+/// Who the token is; GitHub answers `viewer` in a query, never beside a mutation.
+pub fn viewer() -> String {
+    "query { viewer { id login } }".to_string()
+}
+
+/// The viewer added to the MR's assignees.
+pub fn assign() -> String {
+    r"mutation($mr: ID!, $who: [ID!]!) {
+  addAssigneesToAssignable(input: { assignableId: $mr, assigneeIds: $who }) { clientMutationId }
+}"
+    .to_string()
 }
 
 /// Every open merge request the viewer is asked to review.
