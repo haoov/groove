@@ -24,7 +24,13 @@ use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
 
-pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(super) fn key_input(
+    key: Key,
+    mods: Modifiers,
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
+) -> Vec<Command> {
     let keymap = Keymap::of(app.config.config.as_ref());
     if let Some(action) = ui.settings.binding {
         return bound(action, key, mods, ui, app);
@@ -52,7 +58,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     if ui.session.bar.typing.is_some() {
         return in_bar(key, mods, ui, app, &keymap);
     }
-    if let Some(commands) = finding(key, mods, ui, app, &keymap) {
+    if let Some(commands) = finding((key, mods), ui, app, &keymap, seen) {
         return commands;
     }
     in_pane(key, mods, ui, app, &keymap)

@@ -59,11 +59,11 @@ fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     for (from, to) in code.found {
         marked(ctx, rect, code.text, (*from, *to), false);
     }
-    if let Some(at) = code.standing {
-        marked(ctx, rect, code.text, at, true);
-    }
     if let Some(held) = code.held {
         holding(ctx, rect, code.text, held);
+    }
+    if let Some(at) = code.standing {
+        marked(ctx, rect, code.text, at, true);
     }
     text(ctx, rect, code);
     if let Some(column) = code.caret {
@@ -106,10 +106,10 @@ fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
     );
 }
 
-/// What a search found, under the text; the one it stands on reads as a selection.
+/// What a search found, under the text; the one it stands on in peach.
 fn marked(ctx: &mut Ctx, rect: Rect, text: &str, at: (usize, usize), standing: bool) {
     let color = match standing {
-        true => ctx.styles.held(),
+        true => ctx.styles.standing(),
         false => ctx.styles.found(),
     };
     shade(ctx, rect, text, at, color);

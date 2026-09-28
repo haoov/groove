@@ -196,7 +196,7 @@ pub fn handle(
     metrics: Metrics,
 ) -> Vec<Command> {
     match input {
-        Input::Key { key, mods } => keys::key_input(key, mods, ui, app),
+        Input::Key { key, mods } => keys::key_input(key, mods, ui, app, (hits, metrics)),
         Input::Press { x, y, mods } => pointer::press(x, y, mods, ui, app, hits, metrics),
         Input::Menu { x, y } => {
             pointer::asked(x, y, ui, app, hits, metrics);

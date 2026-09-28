@@ -8,7 +8,7 @@ use crate::input::{Key, Modifiers};
 use crate::tests::{changed_files, full_app, press, shows, window};
 use crate::views::session::{Tab, Term};
 use crate::{Focus, Ui, view};
-use groove_ui_kit::base::tokens::{ABOVE_MATCH, Tokens};
+use groove_ui_kit::base::tokens::Tokens;
 
 const FILES: [(&str, &str, &str); 2] = [
     ("src/a.rs", "let one = 1;\n", "let one = 11;\n"),
@@ -170,22 +170,33 @@ fn the_file_view_searches_only_the_file_it_shows() {
 }
 
 #[test]
-fn the_surface_stands_on_the_match_with_rows_above_it() {
+fn the_match_stands_in_the_middle_of_the_rows_at_the_window_s_scale() {
     let mut app = full_app();
-    let before: String = (0..60)
+    let before: String = (0..120)
         .map(|at| format!("let value_{at} = {at};\n"))
         .collect();
-    let after = before.replace("value_40 = 40", "value_40 = 41");
+    let after = before.replace("value_60 = 60", "value_60 = 61");
     shows(&mut app, "src/lib.rs", &before, &after);
     let mut ui = on_code();
     ui.session.tab = crate::views::session::Tab::Files;
-    press(Key::Char('f'), ctrl(), &mut ui, &app);
-    typed("value_40", &mut ui, &app);
-    let line = Tokens::new(1.0).line;
-    assert_eq!(
-        ui.session.scroll(),
-        (40 - ABOVE_MATCH) as f32 * line,
-        "the match is a few rows down, not at the very top"
+    let window = crate::tests::metrics(2560, 1600, 2.0);
+    let (_, hits) = view(&app, &ui, window, &mut Fonts::embedded());
+    let keys = std::iter::once((Key::Char('f'), ctrl())).chain(
+        "value_60"
+            .chars()
+            .map(|c| (Key::Char(c), Modifiers::default())),
+    );
+    for (key, mods) in keys {
+        let input = crate::input::Input::Key { key, mods };
+        crate::input::handle(input, &mut ui, &app, &hits, window);
+    }
+    let line = window.tokens().line;
+    let rows = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
+    let middle = 60.5 * line - ui.session.scroll();
+    assert!(
+        (middle - rows.h / 2.0).abs() < line,
+        "the match sits at {middle} of rows {} tall",
+        rows.h
     );
 }
 
@@ -305,12 +316,18 @@ fn every_match_is_marked_under_the_text() {
     typed("one", &mut ui, &app);
     let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
-    let marked = frame.layers()[0]
-        .quads
-        .iter()
-        .filter(|quad| quad.color == styles.found())
-        .count();
-    assert_eq!(marked, 3, "one under every match the change holds");
+    let quads = &frame.layers()[0].quads;
+    let count = |color| quads.iter().filter(|quad| quad.color == color).count();
+    assert_eq!(
+        count(styles.found()),
+        3,
+        "one under every match the change holds"
+    );
+    assert_eq!(
+        count(styles.standing()),
+        1,
+        "and peach over the one it stands on"
+    );
 }
 
 #[test]

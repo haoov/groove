@@ -4,20 +4,22 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, Edit, Motion, Selection};
 
 use super::super::{Key, Modifiers};
+use crate::hit::{Hits, Scroller, Target};
 use crate::keymap::{Action, Keymap};
-use crate::views::session::Term;
+use crate::views::session::diff::Inline;
 use crate::views::session::find::Finding;
+use crate::views::session::{Face, Term};
 use crate::{Focus, Ui};
-use groove_ui_kit::base::tokens::ABOVE_MATCH;
+use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::widgets::Field;
 
 /// The find bar's keys: it takes what is typed until `Enter`, and the chords step either way.
 pub(super) fn finding(
-    key: Key,
-    mods: Modifiers,
+    (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
     keymap: &Keymap,
+    seen: (&Hits, Metrics),
 ) -> Option<Vec<Command>> {
     let view = ui.session.face();
     if keymap.is(Action::Find, key, mods) && ui.focus == Focus::Workspace {
@@ -40,7 +42,7 @@ pub(super) fn finding(
         },
         _ => return None,
     }
-    Some(reached(ui, app))
+    Some(reached(ui, app, seen))
 }
 
 /// One keystroke in a field. True when what it holds changed, which a motion does not.
@@ -70,25 +72,25 @@ fn searched(find: &mut Finding, app: &AppState, view: crate::views::session::Fac
     find.at = 0;
 }
 
-/// The surface scrolled to the match it stands on, which it holds as a selection.
-fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
-    let line = groove_ui_kit::base::tokens::Tokens::new(1.0).line;
+/// The surface scrolled to centre the match it stands on, which it holds as a selection.
+fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Vec<Command> {
     let Some(find) = ui.session.find.as_ref() else {
         return Vec::new();
     };
     let Some(hit) = find.here().cloned() else {
         return Vec::new();
     };
-    let above = hit.row.saturating_sub(ABOVE_MATCH);
-    *ui.session.scroll_mut() = above as f32 * line;
-    let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {
-        return Vec::new();
-    };
-    let end = Caret::new(at.line, hit.range.end);
     let holds = app
         .workspace
         .active()
         .is_some_and(|open| open.path == hit.path);
+    let row = Inline::of(app, ui, find.view).shifted(hit.row);
+    let same = holds || find.view != Face::File;
+    *ui.session.scroll_mut() = centred(row, metrics.tokens().line, hits, same);
+    let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {
+        return Vec::new();
+    };
+    let end = Caret::new(at.line, hit.range.end);
     if !holds {
         let open = workspace::Command::OpenFile {
             path: hit.path,
@@ -103,6 +105,16 @@ fn reached(ui: &mut Ui, app: &AppState) -> Vec<Command> {
         .into_iter()
         .map(|edit| Command::Workspace(workspace::Command::Edit(edit)))
         .collect()
+}
+
+/// The scroll that puts `row` in the middle of the rows drawn, within them when they are the same.
+fn centred(row: usize, line: f32, hits: &Hits, same: bool) -> f32 {
+    let tall = hits.rect_of(&Target::Code).map_or(0.0, |rows| rows.h);
+    let top = row as f32 * line - (tall - line) / 2.0;
+    match same {
+        true => top.clamp(0.0, hits.extent(Scroller::Code).max(0.0)),
+        false => top.max(0.0),
+    }
 }
 
 /// The bar open on one term, on the tab that shows it; the board has none.

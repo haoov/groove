@@ -203,9 +203,16 @@ impl Styles {
             .mix(self.palette.yellow, crate::base::tokens::NOTED)
     }
 
-    /// Under a match a search found, where the caret is not.
+    /// Under a match a search found, as a selection is.
     pub fn found(&self) -> Color {
-        self.palette.yellow.with_alpha(GROUND_ALPHA)
+        self.held()
+    }
+
+    /// Under the match the search stands on.
+    pub fn standing(&self) -> Color {
+        self.palette
+            .base
+            .mix(self.palette.peach, crate::base::tokens::HELD)
     }
 
     pub fn line(&self) -> Color {
