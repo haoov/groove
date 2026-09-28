@@ -2,6 +2,7 @@
 
 mod query;
 mod read;
+pub(crate) mod schema;
 
 use groove_http::Graphql;
 use groove_token::{Cli, Token};

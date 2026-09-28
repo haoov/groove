@@ -1,10 +1,11 @@
 //! The `config` controller: one function per user action on the `config` service.
 
 mod environment;
+mod mapping;
 mod sources;
 
 use groove_config_service::Preference;
-use groove_types::{ProviderId, Secret};
+use groove_types::{Mapping, ProviderId, Secret};
 
 use crate::{AppState, Services, Spawner};
 
@@ -44,6 +45,13 @@ pub enum Command {
     },
     /// A source off, its block gone; the last one stays.
     TurnOff(ProviderId),
+    /// `config.read_schema`: the properties a source holds, for the mapping.
+    ReadSchema(ProviderId),
+    /// `config.map`: one name or value of a source mapped.
+    Map {
+        source: ProviderId,
+        change: Mapping,
+    },
 }
 
 impl Command {
@@ -59,6 +67,8 @@ impl Command {
             Command::ConnectNotion { .. } | Command::ConnectGithub { .. } | Command::TurnOff(_) => {
                 "config.set_task_source"
             }
+            Command::ReadSchema(_) => "config.read_schema",
+            Command::Map { .. } => "config.map",
         }
     }
 }
@@ -84,6 +94,8 @@ pub fn dispatch(
         } => sources::notion(state, spawner, (token, database_id, user_id)),
         Command::ConnectGithub { host } => sources::github(state, spawner, host),
         Command::TurnOff(id) => sources::off(state, services, spawner, id),
+        Command::ReadSchema(source) => mapping::read(state, spawner, source),
+        Command::Map { source, change } => mapping::map(state, services, spawner, (source, change)),
     }
 }
 

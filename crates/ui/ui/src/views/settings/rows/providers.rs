@@ -1,10 +1,11 @@
 //! The Providers section's rows: each task source under its heading, then the forge tokens.
 
 use groove_controllers::AppState;
-use groove_types::{PropertyNames, ProviderId};
+use groove_types::ProviderId;
 use groove_ui_kit::base::style::Role;
 
 use super::super::SettingsUi;
+use super::mapping::{Held, mapping};
 use super::switch::switch;
 use super::{Row, Section, Value, grouped};
 
@@ -25,19 +26,9 @@ fn notion(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         field("database", "database id", &notion.database_id),
         field("user", "user id assignee", &notion.user_id),
         state("token", "token secret", "held".into(), Role::Ok),
-        required("assignee", "people property yours", notion.assignee()),
-        required("sprint", "relation running current", notion.sprint()),
     ]);
-    out.extend(mapped(&notion.properties));
+    out.extend(mapping(&Held::Notion(notion)));
     out
-}
-
-/// A name the source reads no task without.
-fn required(label: &'static str, words: &'static str, name: Option<&str>) -> Row {
-    match name {
-        Some(name) => state(label, words, name.to_string(), Role::Text),
-        None => state(label, words, "gap · no task is listed".into(), Role::Bad),
-    }
 }
 
 fn github(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
@@ -54,41 +45,8 @@ fn github(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         field("host", "host issues", &github.host),
         state("token", "token secret", token.into(), Role::Ok),
     ]);
-    out.extend(mapped(&github.properties));
+    out.extend(mapping(&Held::Github(github)));
     out
-}
-
-/// The six properties Groove reads, each with the source's own name or what its gap costs.
-fn mapped(names: &PropertyNames) -> Vec<Row> {
-    let status = Some(names.status.clone()).filter(|name| !name.is_empty());
-    let six = [
-        ("status", status, "a task cannot move"),
-        (
-            "priority",
-            names.priority.clone(),
-            "no priority on the board",
-        ),
-        ("start", names.start.clone(), "no start date on the plan"),
-        ("due", names.due.clone(), "no due date, no due-soon warning"),
-        (
-            "estimate",
-            names.estimate.clone(),
-            "no estimate beside the time",
-        ),
-        (
-            "logged",
-            names.logged.clone(),
-            "the hours measured are not logged",
-        ),
-    ];
-    let row = |(label, name, cost): (&'static str, Option<String>, &str)| {
-        let (shown, role) = match name {
-            Some(name) => (name, Role::Text),
-            None => (format!("gap · {cost}"), Role::Warn),
-        };
-        state(label, "property field name", shown, role)
-    };
-    six.into_iter().map(row).collect()
 }
 
 /// The forges' own tokens, as the environment check found their sign-in.

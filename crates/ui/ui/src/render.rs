@@ -52,7 +52,23 @@ pub fn layout_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command
     out.extend(fitted(app, ui, metrics));
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
+    out.extend(schemas(app, ui));
     out
+}
+
+/// Each source's properties, read once while Providers shows its mapping.
+fn schemas(app: &AppState, ui: &Ui) -> Vec<Command> {
+    let shown =
+        ui.settings.section == settings::Section::Providers || !ui.settings.search.is_empty();
+    if !ui.settings.open || !shown {
+        return Vec::new();
+    }
+    let on = groove_controllers::task_service::source_ids(app.config.config.as_ref());
+    let unread = |one: &groove_types::ProviderId| {
+        app.config.schema(*one).is_none() && !app.config.reading.contains(one)
+    };
+    let read = |one| Command::Config(groove_controllers::config::Command::ReadSchema(one));
+    on.into_iter().filter(unread).map(read).collect()
 }
 
 /// The sign-in's grid to Setup's pane, while Settings shows it.

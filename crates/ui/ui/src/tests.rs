@@ -13,6 +13,7 @@ mod finding;
 mod focus;
 mod frame;
 mod manual;
+mod mapping;
 mod mouse;
 mod overview;
 mod painted;

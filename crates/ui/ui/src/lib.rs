@@ -159,6 +159,8 @@ pub enum Of {
     Worktree { mr: bool, review: bool },
     /// The session, from the header's own actions.
     Session(groove_types::SessionId),
+    /// What one slot of a source's mapping can take, from its Settings row.
+    Mapping(views::settings::rows::Choices),
     /// The skills this session can be sent, from the agent's own bar.
     Skills {
         session: groove_types::SessionId,

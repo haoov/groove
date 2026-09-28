@@ -1,7 +1,10 @@
 //! Every row Settings shows: its section, its label, the words a search finds it by, its value.
 
 mod appearance;
+mod mapping;
 mod preferences;
+
+pub use mapping::{Choices, Slot, choices};
 mod providers;
 mod setup;
 mod switch;
@@ -65,6 +68,12 @@ pub enum Value {
         shown: String,
         role: Role,
         act: Option<(&'static str, Target)>,
+    },
+    /// A value as the button that opens its menu.
+    Picker {
+        shown: String,
+        role: Role,
+        target: Target,
     },
     /// A field being typed into, which a click gives the keys.
     Input {

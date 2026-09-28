@@ -3,6 +3,7 @@
 mod body;
 mod connect;
 mod read;
+pub(crate) mod schema;
 mod sprint;
 
 use groove_http::{Client, Method};

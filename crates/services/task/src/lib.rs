@@ -226,6 +226,17 @@ pub async fn connect_notion(
     Ok(Notion::connect(token, database_id, user_id).await?)
 }
 
+/// The properties one source holds, for its names to be mapped onto.
+pub async fn schema(sources: &[Source], which: ProviderId) -> Result<Vec<groove_types::Property>> {
+    let Some(source) = sources.iter().find(|one| one.id() == which) else {
+        return Err(groove_types::Error::invalid(format!(
+            "{} is not on",
+            which.label()
+        )));
+    };
+    Ok(source.schema().await?)
+}
+
 /// A GitHub source, once the host answers the token `gh` holds for it.
 pub async fn connect_github(host: &str) -> Result<groove_types::GithubConfig> {
     Ok(Github::connect(host).await?)

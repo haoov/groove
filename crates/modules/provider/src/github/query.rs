@@ -14,7 +14,7 @@ const FIELDS: &str = r"
         id title
         fields(first: 50) {
           nodes {
-            ... on ProjectV2FieldCommon { id name }
+            ... on ProjectV2FieldCommon { id name dataType }
             ... on ProjectV2SingleSelectField { options { id name } }
           }
         }

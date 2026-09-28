@@ -55,6 +55,8 @@ pub enum Target {
     /// A source asked off, then the answer that confirms it.
     SettingsTurnOff(groove_types::ProviderId),
     SettingsTurnOffSure(groove_types::ProviderId),
+    /// What opens the menu of one slot of a source's mapping.
+    SettingsPick(groove_types::ProviderId, crate::views::settings::rows::Slot),
     /// A control of a Settings row: the preference a click on it sets.
     SetPreference(groove_controllers::config_service::Preference),
     /// What folds the manual section away, or opens it.

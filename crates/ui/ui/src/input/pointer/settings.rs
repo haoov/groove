@@ -1,13 +1,28 @@
 //! What a click on Settings does, from opening it to signing in.
 
-use groove_controllers::{Command, config};
+use groove_controllers::{AppState, Command, config};
 
-use crate::Ui;
-use crate::hit::Target;
+use crate::hit::{Hits, Target};
 use crate::views::settings::Draft;
+use crate::views::settings::rows::choices;
+use crate::{Corner, Menu, Of, Overlay, Ui};
 
-pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
+pub(super) fn acted(
+    target: &Target,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+) -> Option<Vec<Command>> {
     let asked = match target {
+        Target::SettingsPick(source, slot) => {
+            let under = hits.rect_of(target)?;
+            ui.overlay = Some(Overlay::Menu(Menu {
+                at: (under.x, under.bottom()),
+                corner: Corner::TopLeft,
+                of: Of::Mapping(choices(app, *source, *slot)),
+            }));
+            return Some(Vec::new());
+        }
         Target::SettingsOpen => return Some(ui.open_settings()),
         Target::SettingsBack => return Some(ui.close_settings()),
         Target::SettingsCheck => config::Command::CheckEnvironment,

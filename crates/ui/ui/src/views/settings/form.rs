@@ -4,6 +4,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
 use groove_controllers::agent_service::Terminal;
+use groove_controllers::config_service::Preference;
 
 use super::SettingsUi;
 use super::rows::{Row, Section, Value, rows};
@@ -13,7 +14,7 @@ use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Word, screen};
+use groove_ui_kit::widgets::{Word, picker, screen};
 
 pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &SettingsUi) {
     super::back(ctx, area.take_top(ctx.tokens.header));
@@ -124,22 +125,11 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             Label::new(text, style).draw(ctx, room);
         }
         Value::Toggle { on, flip } => {
-            let (word, role) = match on {
-                true => ("on", Role::Text),
-                false => ("off", Role::Muted),
-            };
-            let target = Target::SetPreference(*flip);
-            Word::new(word, target, role, ground).left(ctx, &mut room, sm);
+            let word = if *on { "on" } else { "off" };
+            let each = std::iter::once((word, *on, Target::SetPreference(*flip)));
+            held_words(ctx, room, each, Role::Muted);
         }
-        Value::Count { shown, less, more } => {
-            if let Some(less) = less {
-                Word::new("−", Target::SetPreference(*less), Role::Muted, ground)
-                    .left(ctx, &mut room, sm);
-            }
-            Label::new(shown, ctx.styles.code(Role::Text)).left(ctx, &mut room, sm);
-            Word::new("+", Target::SetPreference(*more), Role::Muted, ground)
-                .left(ctx, &mut room, sm);
-        }
+        Value::Count { shown, less, more } => stepped(ctx, room, shown, (*less, *more)),
         Value::State { shown, role, act } => {
             Label::new(shown, ctx.styles.body(*role)).left(ctx, &mut room, sm);
             if let Some((word, target)) = act {
@@ -151,16 +141,50 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             focused,
             target,
         } => input(ctx, room, (shown, *focused), target),
-        Value::Choice(options) => {
-            for (label, held, pick) in options {
-                let role = match held {
-                    true => Role::Text,
-                    false => Role::Muted,
-                };
-                Word::new(label, Target::SetPreference(*pick), role, ground)
-                    .left(ctx, &mut room, sm);
-            }
+        Value::Picker {
+            shown,
+            role,
+            target,
+        } => {
+            let lit = ctx.hovered(target);
+            let button = picker(ctx, room, room.x, shown, *role, lit);
+            ctx.hit(button, target.clone());
         }
+        Value::Choice(options) => {
+            let each = options
+                .iter()
+                .map(|(word, held, pick)| (*word, *held, Target::SetPreference(*pick)));
+            held_words(ctx, room, each, Role::Muted);
+        }
+    }
+}
+
+/// A count between the step down, when it has one, and the step up.
+fn stepped(
+    ctx: &mut Ctx,
+    mut room: Rect,
+    shown: &str,
+    (less, more): (Option<Preference>, Preference),
+) {
+    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    if let Some(less) = less {
+        Word::new("−", Target::SetPreference(less), Role::Muted, ground).left(ctx, &mut room, sm);
+    }
+    Label::new(shown, ctx.styles.code(Role::Text)).left(ctx, &mut room, sm);
+    Word::new("+", Target::SetPreference(more), Role::Muted, ground).left(ctx, &mut room, sm);
+}
+
+/// A row of words, the ones held in the text's colour, the rest in `quiet`.
+fn held_words(
+    ctx: &mut Ctx,
+    mut room: Rect,
+    words: impl Iterator<Item = (&'static str, bool, Target)>,
+    quiet: Role,
+) {
+    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    for (word, held, target) in words {
+        let role = if held { Role::Text } else { quiet };
+        Word::new(word, target, role, ground).left(ctx, &mut room, sm);
     }
 }
 

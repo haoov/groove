@@ -30,7 +30,7 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
             key => chord(key, ui, app).into_iter().collect(),
         };
     }
-    if ui.examining().is_some() && key == Key::Escape {
+    if (ui.examining().is_some() || ui.menu().is_some()) && key == Key::Escape {
         ui.overlay = None;
         return Vec::new();
     }

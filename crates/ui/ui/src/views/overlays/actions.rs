@@ -57,6 +57,8 @@ pub fn rows(of: &Of) -> Vec<&str> {
         Of::Skills { offered, .. } => {
             return offered.iter().map(|one| one.label.as_str()).collect();
         }
+        Of::Mapping(choices) if choices.options.is_empty() => return vec![choices.empty],
+        Of::Mapping(choices) => return choices.options.iter().map(String::as_str).collect(),
     };
     held.to_vec()
 }
@@ -73,6 +75,25 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
     ctx.layer();
     let edge = ctx.styles.border();
     menu(ctx, at, within, &rows, edge, Target::MenuRow);
+}
+
+/// A menu whose rows come with it: a skill sent, or a mapping slot given a value.
+fn offered(of: &Of, at: usize) -> Option<Picked> {
+    match of {
+        Of::Skills { session, offered } => Some(sent(session, offered.get(at))),
+        Of::Mapping(choices) => {
+            let map = |change| groove_controllers::config::Command::Map {
+                source: choices.source,
+                change,
+            };
+            let commands = choices.change(at).map(map).map(Command::Config);
+            Some(Picked {
+                commands: commands.into_iter().collect(),
+                ..Picked::default()
+            })
+        }
+        _ => None,
+    }
 }
 
 /// One skill typed into the agent's own prompt.
@@ -156,8 +177,8 @@ impl Picked {
 
 /// What picking row `at` of this menu does: a command, a question, or words to type.
 pub fn picked(of: &Of, at: usize) -> Picked {
-    if let Of::Skills { session, offered } = of {
-        return sent(session, offered.get(at));
+    if let Some(picked) = offered(of, at) {
+        return picked;
     }
     match (of, rows(of).get(at)) {
         (Of::File(path), Some(&"discard changes")) => Picked::asks(Losing::File(path.clone())),

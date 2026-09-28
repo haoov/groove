@@ -53,6 +53,9 @@ pub struct State {
     /// The source a connect is reading, and why the last one was refused.
     pub connecting: Option<groove_types::ProviderId>,
     pub refused: Option<String>,
+    /// What each source was last read to hold, and the sources being read.
+    pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
+    pub reading: Vec<groove_types::ProviderId>,
 }
 
 /// Every program the app runs, checked; `claude` is the path the agent launches.

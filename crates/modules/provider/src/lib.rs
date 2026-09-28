@@ -72,4 +72,12 @@ impl Source {
             Source::Notion(notion) => notion.log_hours(key, hours).await,
         }
     }
+
+    /// The properties the source holds, for its names to be mapped onto.
+    pub async fn schema(&self) -> Result<Vec<groove_types::Property>> {
+        match self {
+            Source::Github(github) => github.schema().await,
+            Source::Notion(notion) => notion.schema().await,
+        }
+    }
 }

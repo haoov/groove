@@ -11,6 +11,7 @@ mod editing;
 mod environment;
 mod error;
 mod ids;
+mod mapping;
 mod mr;
 mod naming;
 mod narrowing;
@@ -45,6 +46,7 @@ pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
+pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
     CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
     ReviewMr, ReviewState, ReviewVerdict, Reviewer,

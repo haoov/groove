@@ -41,9 +41,14 @@ source starts with every name a gap; the mapping is its own step. Notion's assig
 sprint are required: until both are named, it lists no task and files none. Turning a source off
 asks once more, removes its block, and reads the tasks again; the last source stays on.
 
-| Still to build | Does |
-|---|---|
-| `config.set_source_field` | one mapped name of a source, and its status and priority values |
+`config.read_schema` reads what a source holds, once, while Providers shows it: Notion's
+database properties, GitHub's fields on the boards your issues stand on. `config.map`
+changes one thing and reads the tasks again. A name is picked from the properties of its
+type: a date for start and due, a number for estimate and logged, people for the
+assignee, a relation for the sprint. The mapping runs from what Groove uses: under the
+status, ready, in progress and done each take one value of the source's status; under the
+priority, high, medium and low each take one value. A name pointed elsewhere forgets its
+values. The statuses left out of the list stay in the file, `filters.exclude_statuses`.
 
 The token stays out of every view and log.
 

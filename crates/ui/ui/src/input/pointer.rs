@@ -287,5 +287,5 @@ fn elsewhere(
         .or_else(|| rail::acted(target, ui))
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, ui, app, metrics))
-        .or_else(|| settings::acted(target, ui))
+        .or_else(|| settings::acted(target, ui, app, hits))
 }
