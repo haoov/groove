@@ -22,6 +22,7 @@ fn chosen(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     match target {
         Target::SettingsSection(section) => {
             settings.section = *section;
+            settings.scroll = 0.0;
             settings.search.clear();
             settings.typing = false;
         }

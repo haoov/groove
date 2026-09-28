@@ -246,7 +246,7 @@ fn everywhere(frame: &groove_gfx::Frame) -> Vec<String> {
 }
 
 /// The config of a machine whose task sources are set up.
-fn sourced(
+pub(super) fn sourced(
     mut app: groove_controllers::AppState,
     github: bool,
     notion: bool,

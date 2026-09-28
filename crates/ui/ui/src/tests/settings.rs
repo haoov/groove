@@ -45,17 +45,17 @@ fn the_rail_s_footer_opens_settings_over_the_whole_window_and_esc_comes_back() {
 }
 
 #[test]
-fn a_search_finds_rows_of_every_section_and_names_each() {
+fn a_search_finds_rows_of_every_section_and_names_the_group_of_each() {
     let (app, mut ui) = opened();
-    ui.settings.search.set("path");
+    let app = crate::tests::bar::sourced(app, true, true);
+    ui.settings.search.set("token");
     let (texts, _) = drawn(&app, &ui);
-    for row in ["config", "state", "worktree root"] {
-        assert!(texts.iter().any(|one| one == row), "{row}: {texts:?}");
+    for shown in ["Notion", "GitHub", "Forge tokens", "gh", "glab"] {
+        assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
-    assert!(
-        texts.iter().any(|one| one == "Setup"),
-        "the section beside each"
-    );
+    ui.settings.search.set("github status");
+    let (texts, _) = drawn(&app, &ui);
+    assert!(texts.iter().any(|one| one == "1 found"), "{texts:?}");
 }
 
 #[test]
@@ -151,6 +151,71 @@ fn setup_shows_each_program_in_its_state_and_offers_the_claude_sign_in() {
     let asked = click(sign_in, &mut ui, &app, &hits);
     let login = config::Command::Login { cols: 80, rows: 24 };
     assert_eq!(asked, [Command::Config(login)]);
+}
+
+#[test]
+fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
+    let (app, mut ui) = opened();
+    let mut app = crate::tests::bar::sourced(app, true, true);
+    if let Some(notion) = app.config.config.as_mut().and_then(|c| c.notion.as_mut()) {
+        notion.properties.status = "Status".into();
+        notion.properties.due = Some("Due date".into());
+    }
+    ui.settings.section = crate::views::settings::Section::Providers;
+    let (texts, _) = drawn(&app, &ui);
+    for shown in [
+        "Notion",
+        "GitHub",
+        "d",
+        "github.com",
+        "Status",
+        "Due date",
+        "from gh",
+    ] {
+        assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
+    }
+    let gap = "gap · the hours measured are not logged";
+    assert_eq!(
+        texts.iter().filter(|t| *t == gap).count(),
+        2,
+        "one per source"
+    );
+    assert!(!texts.iter().any(|t| t == "t"), "the token is never shown");
+}
+
+#[test]
+fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
+    let (app, mut ui) = opened();
+    let app = crate::tests::bar::sourced(app, true, true);
+    ui.settings.section = crate::views::settings::Section::Providers;
+    let short = metrics(1280, 400, 1.0);
+    let texts = |ui: &Ui| {
+        let (frame, hits) = view(&app, ui, short, &mut Fonts::embedded());
+        let texts: Vec<String> = frame.layers()[0]
+            .texts
+            .iter()
+            .map(|t| t.text.clone())
+            .collect();
+        (texts, hits)
+    };
+    let (before, hits) = texts(&ui);
+    assert!(
+        !before.iter().any(|t| t == "Forge tokens"),
+        "below the fold"
+    );
+    let down = crate::input::Delta::Pixels {
+        across: 0.0,
+        down: -2000.0,
+    };
+    let wheel = crate::input::Input::Scroll {
+        x: 900.0,
+        y: 200.0,
+        delta: down,
+    };
+    crate::input::handle(wheel, &mut ui, &app, &hits, short);
+    assert!(ui.settings.scroll > 0.0);
+    let (after, _) = texts(&ui);
+    assert!(after.iter().any(|t| t == "Forge tokens"), "{after:?}");
 }
 
 #[test]

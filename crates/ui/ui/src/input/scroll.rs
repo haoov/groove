@@ -23,6 +23,10 @@ pub(super) fn scroll(
     let layout = Layout::of(metrics, ui);
     let tokens = metrics.tokens();
     let pixels = |height: f32| delta.down(height);
+    if ui.settings.open {
+        ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
+        return Vec::new();
+    }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();

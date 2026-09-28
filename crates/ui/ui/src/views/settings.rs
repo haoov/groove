@@ -19,13 +19,15 @@ use groove_ui_kit::text::{Label, row};
 use groove_ui_kit::widgets::{Field, Word};
 
 /// What Settings remembers while it stands open.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct SettingsUi {
     pub open: bool,
     pub section: Section,
     pub search: Field,
     /// The keyboard is in the search.
     pub typing: bool,
+    /// How far the form is scrolled down.
+    pub scroll: f32,
 }
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

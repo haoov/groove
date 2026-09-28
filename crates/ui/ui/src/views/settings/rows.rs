@@ -2,6 +2,7 @@
 
 mod appearance;
 mod preferences;
+mod providers;
 mod setup;
 
 use groove_controllers::AppState;
@@ -69,24 +70,33 @@ pub enum Value {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Row {
     pub section: Section,
+    /// The heading it stands under within its section.
+    pub group: &'static str,
     pub label: &'static str,
     pub words: &'static str,
     pub value: Value,
 }
 
 impl Row {
-    /// Whether every word of the query is in its section, label or words.
+    /// Whether every word of the query is in its section, group, label or words.
     pub fn matches(&self, query: &str) -> bool {
-        let held = format!("{} {} {}", self.section.label(), self.label, self.words).to_lowercase();
+        let (section, group) = (self.section.label(), self.group);
+        let held = format!("{section} {group} {} {}", self.label, self.words).to_lowercase();
         query
             .split_whitespace()
             .all(|word| held.contains(&word.to_lowercase()))
     }
 }
 
+/// Every row of `rows` under one heading.
+fn grouped(group: &'static str, rows: Vec<Row>) -> Vec<Row> {
+    let under = |row| Row { group, ..row };
+    rows.into_iter().map(under).collect()
+}
+
 pub fn rows(app: &AppState) -> Vec<Row> {
     let mut out = setup::setup(app);
-    out.extend(providers(app));
+    out.extend(providers::providers(app));
     out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
     out
@@ -96,26 +106,9 @@ fn text(section: Section, label: &'static str, words: &'static str, text: String
     let value = Value::Text { text, mono: false };
     Row {
         section,
+        group: "",
         label,
         words,
         value,
     }
-}
-
-fn providers(app: &AppState) -> Vec<Row> {
-    let sources = groove_controllers::task_service::source_ids(app.config.config.as_ref());
-    let shown = match sources.is_empty() {
-        true => "none yet".to_string(),
-        false => sources
-            .iter()
-            .map(|one| one.label())
-            .collect::<Vec<_>>()
-            .join(" · "),
-    };
-    vec![text(
-        Section::Providers,
-        "task sources",
-        "provider notion github tasks",
-        shown,
-    )]
 }

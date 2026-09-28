@@ -6,13 +6,13 @@ use groove_controllers::AppState;
 use groove_types::Tool;
 use groove_ui_kit::base::style::Role;
 
-use super::{Row, Section, Value};
+use super::{Row, Section, Value, grouped};
 use crate::hit::Target;
 
 pub(super) fn setup(app: &AppState) -> Vec<Row> {
     let env = &app.env;
     let root = app.config.worktree_root(&env.home);
-    let mut out = vec![
+    let paths = vec![
         path(
             "config",
             "file path json",
@@ -28,10 +28,12 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
             "path pool clones git",
             shown(&root, &env.home),
         ),
-        checked(app),
     ];
     let tools = app.config.tools.iter().flatten();
-    out.extend(tools.map(|one| tool(one, app.agent.login.is_some())));
+    let signing_in = app.agent.login.is_some();
+    let checks = std::iter::once(checked(app)).chain(tools.map(|one| tool(one, signing_in)));
+    let mut out = grouped("Paths", paths);
+    out.extend(grouped("Environment", checks.collect()));
     out
 }
 
@@ -39,6 +41,7 @@ fn path(label: &'static str, words: &'static str, text: String) -> Row {
     let value = Value::Text { text, mono: true };
     Row {
         section: Section::Setup,
+        group: "",
         label,
         words,
         value,
@@ -57,8 +60,9 @@ fn checked(app: &AppState) -> Row {
     let act = (!app.config.checking).then_some(("check again", Target::SettingsCheck));
     Row {
         section: Section::Setup,
-        label: "environment",
-        words: "check tools programs",
+        group: "",
+        label: "check",
+        words: "environment tools programs",
         value: Value::State { shown, role, act },
     }
 }
@@ -81,6 +85,7 @@ fn tool(one: &Tool, signing_in: bool) -> Row {
     };
     Row {
         section: Section::Setup,
+        group: "",
         label: one.name,
         words: one.purpose,
         value: Value::State { shown, role, act },

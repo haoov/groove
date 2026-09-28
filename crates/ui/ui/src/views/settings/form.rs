@@ -8,7 +8,8 @@ use groove_controllers::agent_service::Terminal;
 use super::SettingsUi;
 use super::rows::{Row, Section, Value, rows};
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{Scroller, Target};
+use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
@@ -38,10 +39,53 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
         body = body.until_y(pane.y);
         signing_in(ctx, pane, terminal);
     }
-    for one in &shown {
-        let line = body.take_top(ctx.tokens.row + ctx.tokens.sm);
-        setting(ctx, line, one, searching);
+    let lines = lines(&shown, searching);
+    let (row, heading) = (
+        ctx.tokens.row + ctx.tokens.sm,
+        ctx.tokens.row + ctx.tokens.md,
+    );
+    let height = |line: &Line| match line {
+        Line::Group(_) => heading,
+        Line::Setting(_) => row,
+    };
+    let scroller = (Scroller::Settings, settings.scroll);
+    listed(
+        ctx,
+        body,
+        scroller,
+        &lines,
+        height,
+        |ctx, rect, line| match line {
+            Line::Group(name) => group(ctx, rect, name),
+            Line::Setting(one) => setting(ctx, rect, one, searching),
+        },
+    );
+}
+
+/// One line of the form: a group's heading, or a row.
+enum Line<'a> {
+    Group(&'static str),
+    Setting(&'a Row),
+}
+
+/// The rows, a heading wherever the group changes; none while a search mixes them.
+fn lines(shown: &[Row], searching: bool) -> Vec<Line<'_>> {
+    let mut out = Vec::new();
+    let mut under = "";
+    for one in shown {
+        if !searching && one.group != under {
+            under = one.group;
+            out.push(Line::Group(under));
+        }
+        out.push(Line::Setting(one));
     }
+    out
+}
+
+/// A group's heading, at the foot of its gap.
+fn group(ctx: &mut Ctx, mut rect: Rect, name: &str) {
+    let line = rect.take_bottom(ctx.tokens.row);
+    Label::new(name, ctx.styles.label(Role::Faint)).draw(ctx, line);
 }
 
 /// The sign-in's terminal, which has the keys while it runs.
@@ -52,7 +96,7 @@ fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
     screen(ctx, pane, origin, (&terminal.screen(), true));
 }
 
-/// One row: its label, its section when a search mixes them, its value at the right.
+/// One row: its label, its group when a search mixes them, its value at the right.
 fn setting(ctx: &mut Ctx, line: Rect, one: &Row, searching: bool) {
     hairline(ctx, line, ctx.styles.line());
     let mut room = line;
@@ -60,7 +104,11 @@ fn setting(ctx: &mut Ctx, line: Rect, one: &Row, searching: bool) {
     let mut label_room = label;
     Label::new(one.label, ctx.styles.body(Role::Muted)).left(ctx, &mut label_room, ctx.tokens.sm);
     if searching {
-        Label::new(one.section.label(), ctx.styles.small(Role::Ghost)).draw(ctx, label_room);
+        let from = match one.group.is_empty() {
+            true => one.section.label(),
+            false => one.group,
+        };
+        Label::new(from, ctx.styles.small(Role::Ghost)).draw(ctx, label_room);
     }
     value(ctx, room, &one.value);
 }

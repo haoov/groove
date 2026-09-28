@@ -5,7 +5,7 @@ use groove_controllers::config_service::{Font, MIN_FONT, Preference};
 use groove_types::ThemeName;
 
 use super::preferences::count;
-use super::{Row, Section, Value, text};
+use super::{Row, Section, Value, grouped, text};
 
 pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     let ui = app
@@ -20,13 +20,14 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     };
     let section = Section::Appearance;
     let themes = ThemeName::ALL.map(|one| (one.label(), one == ui.theme, Preference::Theme(one)));
-    let mut out = vec![
-        Row {
-            section,
-            label: "theme",
-            words: "latte frappe macchiato mocha colour dark light",
-            value: Value::Choice(themes.to_vec()),
-        },
+    let theme = Row {
+        section,
+        group: "",
+        label: "theme",
+        words: "latte frappe macchiato mocha colour dark light",
+        value: Value::Choice(themes.to_vec()),
+    };
+    let mut fonts = vec![
         text(section, "ui font", "family type", family(&ui.font_family)),
         text(
             section,
@@ -35,7 +36,9 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
             family(&ui.agent_font_family),
         ),
     ];
-    out.extend(sizes(app));
+    fonts.extend(sizes(app));
+    let mut out = grouped("Theme", vec![theme]);
+    out.extend(grouped("Fonts", fonts));
     out
 }
 

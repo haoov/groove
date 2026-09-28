@@ -31,7 +31,9 @@ The agent needs no MCP setup: each launch passes the app's loopback through `--m
 **Module `config`** holds the source's fields; **`forge`** keeps the token reads. The
 Providers section: the task source with its fields under it, then the six properties it
 maps — status, priority, start, due, estimate, logged — each with the source's own name
-or a gap, and what the gap costs. Forge tokens show present or missing.
+or a gap, and what the gap costs. Forge tokens show present or missing, as the environment
+check found the `gh` and `glab` sign-in. That view is built, read only. Turning a source
+off removes its block and prunes its cached tasks; the last source stays on.
 
 | Still to build | Does |
 |---|---|

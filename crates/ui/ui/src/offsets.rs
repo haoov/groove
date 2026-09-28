@@ -15,6 +15,7 @@ impl Ui {
             Scroller::Files => self.session.files,
             Scroller::Code => self.session.scroll(),
             Scroller::Overview => self.session.overview,
+            Scroller::Settings => self.settings.scroll,
             Scroller::Column(at) => self.board.scroll(List::ALL[at as usize]),
         }
     }
@@ -26,6 +27,7 @@ impl Ui {
             Scroller::Files => self.session.files = to,
             Scroller::Code => *self.session.scroll_mut() = to,
             Scroller::Overview => self.session.overview = to,
+            Scroller::Settings => self.settings.scroll = to,
             Scroller::Column(at) => self.board.scrolled(List::ALL[at as usize], to),
         }
     }
