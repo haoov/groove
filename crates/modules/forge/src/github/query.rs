@@ -125,6 +125,8 @@ pub fn review_queue() -> String {
       ... on PullRequest {
         number title url isDraft updatedAt reviewDecision
         author { login }
+        latestReviews(first: 20) { nodes { state submittedAt author { login } } }
+        reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } }
         headRefName baseRefName
         repository { nameWithOwner }
       }

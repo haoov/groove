@@ -268,6 +268,9 @@ async fn the_review_queue_reads_the_mrs_asked_of_this_user() {
             "targetBranch": "main",
             "approved": false,
             "author": { "username": "someone" },
+            "reviewers": { "nodes": [{
+                "username": "rsabbah", "mergeRequestInteraction": { "reviewState": "REVIEWED" }
+            }]},
             "project": { "fullPath": "g/p" }
         }]}
     }}});
@@ -280,6 +283,7 @@ async fn the_review_queue_reads_the_mrs_asked_of_this_user() {
     assert_eq!(one.forge, groove_types::Forge::Gitlab);
     assert!(one.draft);
     assert!(!one.approved);
+    assert_eq!(one.review, Some(groove_types::ReviewState::Commented));
 }
 
 /// One MR as a read by its number answers, and the mutations after it.

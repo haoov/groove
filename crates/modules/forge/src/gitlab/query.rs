@@ -111,6 +111,7 @@ pub fn review_queue() -> String {
       nodes {
         iid title webUrl draft updatedAt sourceBranch targetBranch approved
         author { username }
+        reviewers { nodes { username mergeRequestInteraction { reviewState } } }
         project { fullPath }
       }
     }

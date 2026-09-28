@@ -18,6 +18,7 @@ fn asked(project: &str, iid: u64, title: &str, author: &str, ago: i64) -> Review
         updated_at: Timestamp::new(-ago),
         local_path: None,
         approved: false,
+        review: None,
     }
 }
 
@@ -138,4 +139,56 @@ fn clicking_an_mr_opens_the_session_that_reviews_it() {
             }
         )]
     );
+}
+
+#[test]
+fn a_review_row_says_where_its_reviewers_stand() {
+    let mut app = waiting();
+    app.delivery.reviews[0].review = Some(groove_types::ReviewState::Commented);
+    let (ui, _) = on_board(&app);
+    let drawn = texts(&app, &ui);
+    assert!(drawn.iter().any(|t| t == "comments"), "{drawn:?}");
+}
+
+#[test]
+fn a_review_row_s_title_stands_in_its_first_line() {
+    let app = waiting();
+    let (ui, hits) = on_board(&app);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let row = hits
+        .rect_of(&Target::Review("acme/groove".into(), 7))
+        .expect("the row");
+    let texts = &frame.layers()[0].texts;
+    let at = |text: &str| texts.iter().find(|t| t.text == text).map(|t| t.y);
+    let title = at("fix(forge): read the checks").expect("the title");
+    let under = at("acme/groove#7 · someone").expect("the line under it");
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let first = tokens.row + tokens.sm;
+    assert!(
+        title >= row.y && title < row.y + first,
+        "{title} in {row:?}"
+    );
+    assert!(
+        under >= row.y + first,
+        "{under} under the first line of {row:?}"
+    );
+}
+
+#[test]
+fn review_rows_stand_apart_with_a_rule_under_each() {
+    let app = waiting();
+    let (ui, hits) = on_board(&app);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(
+        app.config.theme(),
+        groove_ui_kit::base::tokens::Tokens::new(1.0),
+    );
+    let row = hits
+        .rect_of(&Target::Review("acme/groove".into(), 7))
+        .expect("the row");
+    let ruled = frame.layers()[0]
+        .quads
+        .iter()
+        .any(|quad| quad.color == styles.line() && (quad.rect.bottom() - row.bottom()).abs() < 1.0);
+    assert!(ruled, "a rule along the row's foot");
 }

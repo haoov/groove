@@ -20,6 +20,7 @@ fn asked() -> ReviewMr {
         updated_at: Timestamp::new(0),
         local_path: None,
         approved: false,
+        review: None,
     }
 }
 

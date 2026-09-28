@@ -94,6 +94,7 @@ fn asked(project: &str, iid: u64, web_url: &str) -> crate::ReviewMr {
         updated_at: Timestamp::new(0),
         local_path: None,
         approved: false,
+        review: None,
     }
 }
 

@@ -63,9 +63,14 @@ const CI: &str = "CI";
 
 /// Where the reviewers stand, as a word in its colour.
 fn verdict(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32 {
-    let Some(review) = delivery.mr.as_ref().and_then(|mr| mr.review) else {
-        return x;
-    };
+    match delivery.mr.as_ref().and_then(|mr| mr.review) {
+        Some(review) => review_word(ctx, line, x, review),
+        None => x,
+    }
+}
+
+/// Where the reviewers stand, from `x`. Returns the x after it.
+pub fn review_word(ctx: &mut Ctx, line: Rect, x: f32, review: ReviewState) -> f32 {
     let (word, role) = said(review);
     word_at(ctx, line, x, word, role)
 }

@@ -1,4 +1,4 @@
-use crate::{Error, MrId, Result, Timestamp, WorktreeId};
+use crate::{Error, MrId, Result, Timestamp, WorktreeId, review_of};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -125,16 +125,9 @@ impl MrDetails {
             .any(|r| r.state == ReviewState::ChangesRequested)
     }
 
-    /// The most pressing verdict given, then approval, then a review still awaited.
     pub fn review(&self) -> Option<ReviewState> {
-        let has = |state| self.reviewers.iter().any(|one| one.state == state);
         let approved = self.approval.as_ref().is_some_and(|one| one.approved);
-        match () {
-            () if has(ReviewState::ChangesRequested) => Some(ReviewState::ChangesRequested),
-            () if has(ReviewState::Commented) => Some(ReviewState::Commented),
-            () if approved => Some(ReviewState::Approved),
-            () => has(ReviewState::Requested).then_some(ReviewState::Requested),
-        }
+        review_of(&self.reviewers, approved)
     }
 
     pub fn review_requested_at(&self) -> Option<Timestamp> {
@@ -246,48 +239,6 @@ pub struct NotePosition {
     pub old_path: Option<String>,
     pub old_line: Option<u32>,
     pub end_new_line: Option<u32>,
-}
-
-/// An open MR where the user is a requested reviewer.
-#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
-pub struct ReviewMr {
-    pub forge: Forge,
-    pub project: String,
-    pub iid: u64,
-    pub title: String,
-    pub author: String,
-    pub source_branch: String,
-    pub target_branch: String,
-    pub draft: bool,
-    pub web_url: String,
-    pub updated_at: Timestamp,
-    pub local_path: Option<String>,
-    pub approved: bool,
-}
-
-impl ReviewMr {
-    /// The session that reviews it, the same one every time it is opened.
-    pub fn session_id(&self) -> String {
-        let project = self
-            .project
-            .chars()
-            .map(|c| match c.is_ascii_alphanumeric() {
-                true => c.to_ascii_lowercase(),
-                false => '-',
-            })
-            .collect::<String>();
-        format!("review-{project}-{}", self.iid)
-    }
-
-    /// Where its repo is cloned from, read off the page the MR stands on.
-    pub fn clone_url(&self) -> Option<String> {
-        let at = self
-            .web_url
-            .find("/-/merge_requests/")
-            .or_else(|| self.web_url.find("/pull/"))?;
-        let repo = self.web_url.get(..at)?;
-        Some(format!("{repo}.git"))
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]

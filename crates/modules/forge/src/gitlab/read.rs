@@ -2,7 +2,7 @@
 
 use groove_types::{
     CiState, CiStatus, Forge, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
-    ReviewMr, ReviewState, Reviewer, Timestamp,
+    ReviewMr, ReviewState, Reviewer, Timestamp, review_of,
 };
 
 use crate::Snapshot;
@@ -154,6 +154,7 @@ pub(super) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
     if project.is_empty() {
         return None;
     }
+    let approved = mr["approved"].as_bool().unwrap_or_default();
     Some(ReviewMr {
         forge: Forge::Gitlab,
         project,
@@ -166,7 +167,8 @@ pub(super) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
         web_url: text(&mr["webUrl"]),
         updated_at: at(&mr["updatedAt"]).unwrap_or_default(),
         local_path: None,
-        approved: mr["approved"].as_bool().unwrap_or_default(),
+        approved,
+        review: review_of(&reviewers(mr), approved),
     })
 }
 

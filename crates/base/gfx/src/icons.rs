@@ -24,13 +24,14 @@ pub enum Icon {
     Glass,
     Cross,
     Chat,
+    PullRequest,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 17] = [
+    pub(crate) const ALL: [Icon; 18] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -48,6 +49,7 @@ impl Icon {
         Icon::Glass,
         Icon::Cross,
         Icon::Chat,
+        Icon::PullRequest,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -69,6 +71,7 @@ impl Icon {
             Icon::Glass => include_bytes!("../../../../assets/icons/glass.svg"),
             Icon::Cross => include_bytes!("../../../../assets/icons/x.svg"),
             Icon::Chat => include_bytes!("../../../../assets/icons/chat.svg"),
+            Icon::PullRequest => include_bytes!("../../../../assets/icons/git-pull-request.svg"),
         }
     }
 

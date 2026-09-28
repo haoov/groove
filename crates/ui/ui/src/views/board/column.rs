@@ -92,7 +92,7 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, clos
             worktree_row::draw(ctx, rect, worktree, delivery.as_ref())
         }
         Line::Task(at, task) => row::up_next(ctx, rect, app, *at, task),
-        Line::Review(mr) => return super::review::item(ctx, rect, mr),
+        Line::Review(mr) => super::review::item(ctx, rect, mr),
         Line::Divider => return super::plan::divider(ctx, rect),
         Line::Nothing(text) => {
             let style = ctx.styles.small(Role::Faint);

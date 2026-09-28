@@ -25,6 +25,7 @@ fn mr(project: &str) -> groove_types::ReviewMr {
         updated_at: groove_types::Timestamp::new(0),
         local_path: None,
         approved: false,
+        review: None,
     }
 }
 

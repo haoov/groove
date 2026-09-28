@@ -1,6 +1,6 @@
 //! The review queue: the merge requests the viewer is asked to look at.
 
-use groove_types::{Forge, ReviewMr};
+use groove_types::{Forge, ReviewMr, review_of};
 
 use super::reviews::nodes;
 use super::{at, text};
@@ -9,6 +9,7 @@ use super::{at, text};
 pub(crate) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
     let iid = mr["number"].as_u64()?;
     let project = text(&mr["repository"]["nameWithOwner"]);
+    let approved = mr["reviewDecision"].as_str() == Some("APPROVED");
     if project.is_empty() {
         return None;
     }
@@ -24,7 +25,8 @@ pub(crate) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
         web_url: text(&mr["url"]),
         updated_at: at(&mr["updatedAt"]).unwrap_or_default(),
         local_path: None,
-        approved: mr["reviewDecision"].as_str() == Some("APPROVED"),
+        approved,
+        review: review_of(&super::reviews::all(mr), approved),
     })
 }
 

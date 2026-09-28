@@ -54,7 +54,7 @@ impl Mark {
         match self {
             Mark::Task => Icon::Flag,
             Mark::Explorer => Icon::Compass,
-            Mark::Review => Icon::Eye,
+            Mark::Review => Icon::PullRequest,
             Mark::Board => Icon::Kanban,
             Mark::Settings => Icon::Gear,
             Mark::Busy => Icon::Notch,

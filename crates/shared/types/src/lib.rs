@@ -19,6 +19,7 @@ mod narrowing;
 mod note;
 mod panes;
 mod repo;
+mod review;
 mod secret;
 mod session;
 mod syntax;
@@ -51,13 +52,14 @@ pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, Wor
 pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
     CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
-    ReviewMr, ReviewState, ReviewVerdict, Reviewer,
+    ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::names_session;
 pub use narrowing::{narrows, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
+pub use review::{ReviewMr, review_of};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};

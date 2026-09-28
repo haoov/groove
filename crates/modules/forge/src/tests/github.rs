@@ -266,8 +266,12 @@ fn asked(number: u64, updated: &str, decision: serde_json::Value) -> serde_json:
 
 #[tokio::test]
 async fn the_review_queue_answers_newest_first_and_skips_what_is_not_an_mr() {
+    let mut seven = asked(7, "2026-09-18T08:00:00Z", serde_json::Value::Null);
+    seven["latestReviews"] = serde_json::json!({ "nodes": [
+        { "state": "COMMENTED", "author": { "login": "passer-by" } }
+    ]});
     let reply = serde_json::json!({ "data": { "search": { "nodes": [
-        asked(7, "2026-09-18T08:00:00Z", serde_json::Value::Null),
+        seven,
         serde_json::json!({}),
         asked(9, "2026-09-20T08:00:00Z", serde_json::json!("APPROVED")),
     ]}}});
@@ -288,6 +292,8 @@ async fn the_review_queue_answers_newest_first_and_skips_what_is_not_an_mr() {
         "the pool answers that, not the forge"
     );
     assert!(!queue[1].approved);
+    assert_eq!(first.review, Some(groove_types::ReviewState::Approved));
+    assert_eq!(queue[1].review, Some(groove_types::ReviewState::Commented));
 }
 
 /// One PR as a read by its number answers, and the mutations after it.

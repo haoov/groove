@@ -11,7 +11,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::text::ago;
 use groove_ui_kit::widgets::icon;
 
 /// Every MR the filter lets through, newest first.
@@ -32,32 +32,38 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     asked.into_iter().map(Line::Review).collect()
 }
 
-/// One MR: its project and number, its title, its author, and when it last moved.
+/// One MR: its title and when it last moved, then its project, number, author and review.
 pub(super) fn item(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
     hoverable(ctx, line, Target::Review(mr.project.clone(), mr.iid));
+    let mut rest = line;
+    let first = rest.take_top(super::row::item(&ctx.tokens));
     let size = ctx.tokens.icon;
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    let mut room = first.pad(Edges::across(ctx.tokens.md, 0.0));
     let mark = square(room.take_left(size), size);
     room.take_left(ctx.tokens.sm);
     icon(ctx, mark, Mark::Review, role(mr));
+    let start = room.x;
     aside(ctx, &mut room, &ago(mr.updated_at.age_at(ctx.now)));
-    under(ctx, room, mr);
     named(ctx, room, &mr.title);
+    let second = rest.take_top(ctx.tokens.line);
+    under(ctx, second.pad(Edges::across(start - second.x, 0.0)), mr);
 }
 
-/// The project, the number and the author, under the title.
-fn under(ctx: &mut Ctx, room: Rect, mr: &ReviewMr) {
+/// The project, the number and the author, then where its reviewers stand.
+fn under(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
     let named = format!("{}{}{}", mr.project, mr.forge.sigil(), mr.iid);
     let text = match mr.author.is_empty() {
         true => named,
         false => format!("{named} · {}", mr.author),
     };
-    let second = Rect {
-        y: room.y + ctx.tokens.row,
-        h: ctx.tokens.row,
-        ..room
-    };
-    Label::new(&text, ctx.styles.small(Role::Faint)).draw(ctx, second);
+    let style = ctx.styles.small(Role::Faint);
+    let room = line.w - ctx.tokens.md;
+    let text = groove_ui_kit::text::elide(ctx, &text, &style, room);
+    let end = line.x + ctx.measure(&text, &style);
+    groove_ui_kit::text::row(ctx, line, 0.0, &text, style);
+    if let Some(review) = mr.review {
+        crate::components::review_word(ctx, line, end + ctx.tokens.sm, review);
+    }
 }
 
 fn role(mr: &ReviewMr) -> Role {
