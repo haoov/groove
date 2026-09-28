@@ -34,6 +34,8 @@ pub struct App {
     failure: Option<groove_gfx::Error>,
     explore: bool,
     started: Instant,
+    /// When the paced redraw is next due.
+    tick: Option<Instant>,
 }
 
 impl App {
@@ -66,6 +68,7 @@ impl App {
             failure: None,
             explore,
             started: Instant::now(),
+            tick: None,
         }
     }
 

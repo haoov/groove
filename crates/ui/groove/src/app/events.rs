@@ -52,14 +52,23 @@ impl ApplicationHandler<Message> for App {
         }
     }
 
-    /// Nothing moving, nothing to draw: the loop sleeps until an event.
+    /// Nothing moving, nothing to draw: the loop sleeps until an event or the next tick.
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.clock();
         let Some(after) = self.pace() else {
+            self.tick = None;
             return event_loop.set_control_flow(ControlFlow::Wait);
         };
-        self.redraw();
-        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + after));
+        let now = Instant::now();
+        let due = match self.tick {
+            Some(at) if at > now => at,
+            _ => {
+                self.redraw();
+                now + after
+            }
+        };
+        self.tick = Some(due);
+        event_loop.set_control_flow(ControlFlow::WaitUntil(due));
     }
 
     fn user_event(&mut self, _: &ActiveEventLoop, message: Message) {
