@@ -2,7 +2,7 @@ mod sources;
 
 pub use sources::{
     FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap, PropertyNames,
-    StatusMap,
+    REDACTED, StatusMap,
 };
 
 use crate::Thresholds;

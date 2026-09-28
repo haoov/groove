@@ -1,46 +1,59 @@
 //! The Providers section's rows: each task source under its heading, then the forge tokens.
 
 use groove_controllers::AppState;
-use groove_types::{Config, PropertyNames};
+use groove_types::{PropertyNames, ProviderId};
 use groove_ui_kit::base::style::Role;
 
+use super::super::SettingsUi;
+use super::switch::switch;
 use super::{Row, Section, Value, grouped};
 
-pub(super) fn providers(app: &AppState) -> Vec<Row> {
-    let config = app.config.config.as_ref();
-    let mut out = grouped("Notion", notion(config));
-    out.extend(grouped("GitHub", github(config)));
+pub(super) fn providers(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
+    let mut out = grouped("Notion", notion(app, settings));
+    out.extend(grouped("GitHub", github(app, settings)));
     out.extend(grouped("Forge tokens", forges(app)));
     out
 }
 
-fn notion(config: Option<&Config>) -> Vec<Row> {
-    let Some(notion) = config.and_then(|c| c.notion.as_ref()) else {
-        return vec![source(false)];
+fn notion(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
+    let held = app.config.config.as_ref().and_then(|c| c.notion.as_ref());
+    let mut out = switch(app, settings, ProviderId::Notion, held.is_some());
+    let Some(notion) = held else {
+        return out;
     };
-    let mut out = vec![
-        source(true),
+    out.extend([
         field("database", "database id", &notion.database_id),
         field("user", "user id assignee", &notion.user_id),
         state("token", "token secret", "held".into(), Role::Ok),
-    ];
+        required("assignee", "people property yours", notion.assignee()),
+        required("sprint", "relation running current", notion.sprint()),
+    ]);
     out.extend(mapped(&notion.properties));
     out
 }
 
-fn github(config: Option<&Config>) -> Vec<Row> {
-    let Some(github) = config.and_then(|c| c.github.as_ref()) else {
-        return vec![source(false)];
+/// A name the source reads no task without.
+fn required(label: &'static str, words: &'static str, name: Option<&str>) -> Row {
+    match name {
+        Some(name) => state(label, words, name.to_string(), Role::Text),
+        None => state(label, words, "gap · no task is listed".into(), Role::Bad),
+    }
+}
+
+fn github(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
+    let held = app.config.config.as_ref().and_then(|c| c.github.as_ref());
+    let mut out = switch(app, settings, ProviderId::Github, held.is_some());
+    let Some(github) = held else {
+        return out;
     };
     let token = match github.token {
         Some(_) => "held",
         None => "from gh",
     };
-    let mut out = vec![
-        source(true),
+    out.extend([
         field("host", "host issues", &github.host),
         state("token", "token secret", token.into(), Role::Ok),
-    ];
+    ]);
     out.extend(mapped(&github.properties));
     out
 }
@@ -97,14 +110,6 @@ fn forges(app: &AppState) -> Vec<Row> {
         state(label, "token cli", shown.into(), role)
     };
     vec![row("gh"), row("glab")]
-}
-
-fn source(on: bool) -> Row {
-    let (shown, role) = match on {
-        true => ("on", Role::Ok),
-        false => ("off", Role::Muted),
-    };
-    state("source", "tasks provider", shown.into(), role)
 }
 
 fn field(label: &'static str, words: &'static str, text: &str) -> Row {

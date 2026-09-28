@@ -1,5 +1,8 @@
 //! The GraphQL Groove sends: the two reads, and the one write it makes itself.
 
+/// Who the token is: an answer proves the host and the token.
+pub const VIEWER: &str = "query { viewer { login } }";
+
 /// What both queries read from an issue. The ids are what a write needs.
 const FIELDS: &str = r"
   number title url body

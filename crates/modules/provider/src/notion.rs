@@ -1,6 +1,7 @@
 //! Notion pages as tasks: the rows of one database that are yours and still open.
 
 mod body;
+mod connect;
 mod read;
 mod sprint;
 
@@ -11,6 +12,7 @@ use crate::{Error, Result};
 
 /// The API version this client speaks.
 const VERSION: &str = "2022-06-28";
+const HOST: &str = "https://api.notion.com";
 
 pub struct Notion {
     config: NotionConfig,
@@ -21,7 +23,7 @@ pub struct Notion {
 
 impl Notion {
     pub fn new(config: NotionConfig) -> Result<Self> {
-        Self::at("https://api.notion.com", config)
+        Self::at(HOST, config)
     }
 
     /// The same, against another host, which the tests answer on.
@@ -34,17 +36,16 @@ impl Notion {
         })
     }
 
-    /// Every page of the database the filters leave.
+    /// Every page of the database the filters leave; none until the required names are given.
     pub async fn list(&self) -> Result<Vec<Task>> {
+        let (Some(assignee), Some(sprint)) = (self.config.assignee(), self.config.sprint()) else {
+            let missing = self.config.unmapped().join(" and ");
+            return Err(Error::Invalid(format!("name the Notion {missing} first")));
+        };
         let url = self.query(&self.config.database_id);
-        let sprints = self.running().await;
-        let reply = self
-            .ask(
-                Method::POST,
-                url,
-                Some(read::filter(&self.config, &sprints)),
-            )
-            .await?;
+        let sprints = self.running(sprint).await;
+        let filter = read::filter(&self.config, (assignee, sprint), &sprints);
+        let reply = self.ask(Method::POST, url, Some(filter)).await?;
         let pages = reply["results"].as_array().cloned().unwrap_or_default();
         Ok(pages
             .iter()
@@ -75,16 +76,13 @@ impl Notion {
         Ok(Some(body::text(&reply)))
     }
 
-    /// The pages of the running sprint, or none when the database has no sprint property.
-    async fn running(&self) -> Vec<String> {
-        let Some(name) = self.config.sprint.clone() else {
-            return Vec::new();
-        };
+    /// The pages of the running sprint behind the `name` relation.
+    async fn running(&self, name: &str) -> Vec<String> {
         let now = groove_types::Timestamp::now();
         if let Some(held) = self.sprints.read(now) {
             return held;
         }
-        let ids = self.current(&name).await.unwrap_or_default();
+        let ids = self.current(name).await.unwrap_or_default();
         self.sprints.keep(now, ids.clone());
         ids
     }

@@ -4,6 +4,7 @@ mod appearance;
 mod preferences;
 mod providers;
 mod setup;
+mod switch;
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::Preference;
@@ -65,6 +66,12 @@ pub enum Value {
         role: Role,
         act: Option<(&'static str, Target)>,
     },
+    /// A field being typed into, which a click gives the keys.
+    Input {
+        shown: String,
+        focused: bool,
+        target: Target,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -94,9 +101,9 @@ fn grouped(group: &'static str, rows: Vec<Row>) -> Vec<Row> {
     rows.into_iter().map(under).collect()
 }
 
-pub fn rows(app: &AppState) -> Vec<Row> {
+pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     let mut out = setup::setup(app);
-    out.extend(providers::providers(app));
+    out.extend(providers::providers(app, settings));
     out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
     out

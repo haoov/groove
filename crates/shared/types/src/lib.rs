@@ -17,6 +17,7 @@ mod narrowing;
 mod note;
 mod panes;
 mod repo;
+mod secret;
 mod session;
 mod syntax;
 mod task;
@@ -33,7 +34,7 @@ pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention};
 pub use config::{
     Config, ConfigView, FilterConfig, GitConfig, GithubConfig, GithubView, NotionConfig,
-    NotionView, Preferences, PriorityMap, PropertyNames, StatusMap, ThemeName, UiConfig,
+    NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
@@ -53,6 +54,7 @@ pub use narrowing::{narrows, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
+pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};
 pub use task::{

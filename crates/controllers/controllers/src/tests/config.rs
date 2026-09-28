@@ -1,7 +1,7 @@
 //! Preferences: a change reaches its readers and the file at once, and new sessions start from it.
 
 use groove_config_service::Preference;
-use groove_types::ThemeName;
+use groove_types::{ProviderId, Secret, ThemeName};
 
 use crate::config::Command;
 use crate::session::Command as SessionCommand;
@@ -29,6 +29,30 @@ fn the_environment_check_lists_every_program_and_one_runs_at_a_time() {
     let names: Vec<_> = tools.iter().map(|one| one.name).collect();
     assert_eq!(names, ["git", "claude", "curl", "glab", "gh"]);
     assert!(tools[0].found.is_some(), "git runs where the tests run");
+}
+
+#[test]
+fn a_source_asked_without_what_it_needs_or_the_last_one_turned_off_is_refused() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let connect = Command::ConnectNotion {
+        token: Secret::new("ntn_secret"),
+        database_id: "DB".into(),
+        user_id: " ".into(),
+    };
+    dispatch(Cmd::Config(connect), &mut state, &services, &spawner);
+    assert!(state.config.connecting.is_none(), "nothing was read");
+    let why = state
+        .config
+        .refused
+        .clone()
+        .expect("the refusal is kept for Setup");
+    assert!(
+        why.contains("user id"),
+        "only your tasks, so the user is needed: {why}"
+    );
+    let off = Command::TurnOff(ProviderId::Github);
+    dispatch(Cmd::Config(off), &mut state, &services, &spawner);
+    assert!(state.config.refused.is_some());
 }
 
 #[test]

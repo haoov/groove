@@ -1,8 +1,10 @@
 //! The `config` controller: one function per user action on the `config` service.
 
 mod environment;
+mod sources;
 
 use groove_config_service::Preference;
+use groove_types::{ProviderId, Secret};
 
 use crate::{AppState, Services, Spawner};
 
@@ -30,6 +32,18 @@ pub enum Command {
     },
     /// The sign-in ended before it was done.
     EndLogin,
+    /// `config.set_task_source`: Notion on, once the token reads the database.
+    ConnectNotion {
+        token: Secret,
+        database_id: String,
+        user_id: String,
+    },
+    /// GitHub on, once the host answers the token `gh` holds for it.
+    ConnectGithub {
+        host: String,
+    },
+    /// A source off, its block gone; the last one stays.
+    TurnOff(ProviderId),
 }
 
 impl Command {
@@ -42,6 +56,9 @@ impl Command {
             Command::PasteLogin { .. } => "config.paste_login",
             Command::ResizeLogin { .. } => "config.resize_login",
             Command::EndLogin => "config.end_login",
+            Command::ConnectNotion { .. } | Command::ConnectGithub { .. } | Command::TurnOff(_) => {
+                "config.set_task_source"
+            }
         }
     }
 }
@@ -49,7 +66,7 @@ impl Command {
 pub fn dispatch(
     command: Command,
     state: &mut AppState,
-    _services: &Services,
+    services: &Services,
     spawner: &dyn Spawner,
 ) {
     match command {
@@ -60,6 +77,13 @@ pub fn dispatch(
         Command::PasteLogin { text } => environment::paste(state, &text),
         Command::ResizeLogin { cols, rows } => environment::resize(state, (cols, rows)),
         Command::EndLogin => environment::end(state),
+        Command::ConnectNotion {
+            token,
+            database_id,
+            user_id,
+        } => sources::notion(state, spawner, (token, database_id, user_id)),
+        Command::ConnectGithub { host } => sources::github(state, spawner, host),
+        Command::TurnOff(id) => sources::off(state, services, spawner, id),
     }
 }
 

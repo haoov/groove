@@ -1,11 +1,13 @@
 //! Settings: the whole window, a section list with its search on the left, the form on the right.
 
+pub mod draft;
 mod form;
 pub mod rows;
 
 use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 
+pub use draft::Draft;
 pub use rows::Section;
 
 use crate::Ui;
@@ -28,6 +30,9 @@ pub struct SettingsUi {
     pub typing: bool,
     /// How far the form is scrolled down.
     pub scroll: f32,
+    /// A source being turned on, and one asked to be turned off, not yet confirmed.
+    pub draft: Option<Draft>,
+    pub leaving: Option<groove_types::ProviderId>,
 }
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {

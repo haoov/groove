@@ -1,9 +1,12 @@
 //! The config capability. Its slice of `AppState`, the operations on it, its events.
 
+mod sources;
 #[cfg(test)]
 mod tests;
 
 use std::path::{Path, PathBuf};
+
+pub use sources::Source;
 
 use groove_types::{Config, Error, Preferences, ThemeName, Tool, UiConfig};
 
@@ -47,6 +50,9 @@ pub struct State {
     /// What the last environment check found; `None` before the first one ends.
     pub tools: Option<Vec<Tool>>,
     pub checking: bool,
+    /// The source a connect is reading, and why the last one was refused.
+    pub connecting: Option<groove_types::ProviderId>,
+    pub refused: Option<String>,
 }
 
 /// Every program the app runs, checked; `claude` is the path the agent launches.

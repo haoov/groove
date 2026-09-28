@@ -147,6 +147,10 @@ fn pasted_in_settings(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         ui.settings.search.paste(text);
         return Vec::new();
     }
+    if let Some(field) = ui.settings.draft.as_mut().and_then(|one| one.focused()) {
+        field.paste(text.trim());
+        return Vec::new();
+    }
     if app.agent.login.is_none() {
         return Vec::new();
     }

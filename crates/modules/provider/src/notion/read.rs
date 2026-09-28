@@ -3,25 +3,23 @@
 use groove_types::{Day, NotionConfig, ProviderId, Task, TaskDates, TaskKey, Timestamp};
 
 /// The query the config describes: yours, not excluded, in a running sprint.
-pub(super) fn filter(config: &NotionConfig, sprints: &[String]) -> serde_json::Value {
-    let mut and: Vec<serde_json::Value> = Vec::new();
-    if config.filters.filter_by_assignee {
-        and.push(serde_json::json!({
-            "property": config.assignee(),
-            "people": { "contains": config.user_id }
-        }));
-    }
+pub(super) fn filter(
+    config: &NotionConfig,
+    (assignee, sprint): (&str, &str),
+    sprints: &[String],
+) -> serde_json::Value {
+    let mut and = vec![serde_json::json!({
+        "property": assignee,
+        "people": { "contains": config.user_id }
+    })];
     for status in &config.filters.exclude_statuses {
         and.push(serde_json::json!({
             "property": config.properties.status,
             "status": { "does_not_equal": status }
         }));
     }
-    if let Some(name) = &config.sprint {
-        and.extend(in_sprint(name, sprints));
-    }
+    and.extend(in_sprint(sprint, sprints));
     match and.len() {
-        0 => serde_json::json!({}),
         1 => serde_json::json!({ "filter": and.remove(0) }),
         _ => serde_json::json!({ "filter": { "and": and } }),
     }

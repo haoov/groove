@@ -10,12 +10,12 @@ pub struct NotionConfig {
     pub token: String,
     pub database_id: String,
     pub user_id: String,
-    /// The people property the assignee filter reads.
+    /// Required: the people property that says a page is yours, the relation to its sprint.
     #[serde(default)]
     pub assignee: Option<String>,
-    /// The relation naming a task's sprint, and the status of the running sprint.
     #[serde(default)]
     pub sprint: Option<String>,
+    /// The status of the running sprint.
     #[serde(default)]
     pub sprint_status: Option<String>,
     pub properties: PropertyNames,
@@ -30,9 +30,19 @@ pub struct NotionConfig {
 }
 
 impl NotionConfig {
-    /// The people property that says a page is yours.
-    pub fn assignee(&self) -> &str {
-        self.assignee.as_deref().unwrap_or("Assignee")
+    pub fn assignee(&self) -> Option<&str> {
+        named(&self.assignee)
+    }
+
+    pub fn sprint(&self) -> Option<&str> {
+        named(&self.sprint)
+    }
+
+    /// The required names not given yet; the source reads no task without them.
+    pub fn unmapped(&self) -> Vec<&'static str> {
+        let required = [("assignee", self.assignee()), ("sprint", self.sprint())];
+        let missing = required.into_iter().filter(|(_, name)| name.is_none());
+        missing.map(|(label, _)| label).collect()
     }
 
     /// The status a sprint carries while it is the one running.
@@ -55,6 +65,28 @@ impl fmt::Debug for NotionConfig {
             .field("task_template_page_id", &self.task_template_page_id)
             .field("default_project_id", &self.default_project_id)
             .finish()
+    }
+}
+
+impl NotionConfig {
+    /// One user's tasks of one database, every name a gap.
+    pub fn bare(token: &str, database_id: &str, user_id: &str) -> Self {
+        Self {
+            token: token.trim().to_string(),
+            database_id: database_id.trim().to_string(),
+            user_id: user_id.trim().to_string(),
+            assignee: None,
+            sprint: None,
+            sprint_status: None,
+            properties: PropertyNames::default(),
+            status_map: StatusMap::default(),
+            priority_map: PriorityMap::default(),
+            filters: FilterConfig {
+                exclude_statuses: Vec::new(),
+            },
+            task_template_page_id: None,
+            default_project_id: None,
+        }
     }
 }
 
@@ -98,6 +130,19 @@ pub struct GithubConfig {
     pub status_map: StatusMap,
     #[serde(default)]
     pub priority_map: PriorityMap,
+}
+
+impl GithubConfig {
+    /// A source on `host`, the token read from `gh`, every name a gap.
+    pub fn bare(host: &str) -> Self {
+        Self {
+            host: host.trim().to_string(),
+            token: None,
+            properties: PropertyNames::default(),
+            status_map: StatusMap::default(),
+            priority_map: PriorityMap::default(),
+        }
+    }
 }
 
 /// The provider's own name for each property Groove reads; an empty name is a gap.
@@ -203,10 +248,11 @@ impl PriorityMap {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FilterConfig {
     pub exclude_statuses: Vec<String>,
-    #[serde(default = "default_true")]
-    pub filter_by_assignee: bool,
 }
 
-fn default_true() -> bool {
-    true
+/// A name the file gives, blank being none.
+fn named(one: &Option<String>) -> Option<&str> {
+    one.as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
 }

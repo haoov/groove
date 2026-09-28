@@ -32,13 +32,18 @@ The agent needs no MCP setup: each launch passes the app's loopback through `--m
 Providers section: the task source with its fields under it, then the six properties it
 maps — status, priority, start, due, estimate, logged — each with the source's own name
 or a gap, and what the gap costs. Forge tokens show present or missing, as the environment
-check found the `gh` and `glab` sign-in. That view is built, read only. Turning a source
-off removes its block and prunes its cached tasks; the last source stays on.
+check found the `gh` and `glab` sign-in.
+
+`config.set_task_source` turns a source on or off. Turning it on only proves Groove can
+reach it: Notion's token must read the database, GitHub's host must answer the `gh` token.
+Notion needs a token, a database id and your user id: Groove lists only your tasks. The
+source starts with every name a gap; the mapping is its own step. Notion's assignee and
+sprint are required: until both are named, it lists no task and files none. Turning a source off
+asks once more, removes its block, and reads the tasks again; the last source stays on.
 
 | Still to build | Does |
 |---|---|
-| `config.set_task_source` | turn a source on or off; detect its property names — database, user, GitHub preview as its steps |
-| `config.set_source_field` | one field of the active source |
+| `config.set_source_field` | one mapped name of a source, and its status and priority values |
 
 The token stays out of every view and log.
 

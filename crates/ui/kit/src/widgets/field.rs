@@ -82,6 +82,12 @@ impl Field {
         format!("{}\u{2502}{}", &self.text[..at], &self.text[at..])
     }
 
+    /// The same, a bullet for each character.
+    pub fn masked(&self) -> String {
+        let (before, after) = (self.at, self.chars() - self.at);
+        format!("{}\u{2502}{}", "•".repeat(before), "•".repeat(after))
+    }
+
     fn chars(&self) -> usize {
         self.text.chars().count()
     }

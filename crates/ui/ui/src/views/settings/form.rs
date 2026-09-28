@@ -20,7 +20,7 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
     let mut body = area.pad(Edges::all(ctx.tokens.md));
     let query = settings.search.text();
     let searching = !query.is_empty();
-    let shown: Vec<Row> = rows(app)
+    let shown: Vec<Row> = rows(app, settings)
         .into_iter()
         .filter(|row| match searching {
             true => row.matches(query),
@@ -146,6 +146,11 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
                 Word::new(word, target.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
             }
         }
+        Value::Input {
+            shown,
+            focused,
+            target,
+        } => input(ctx, room, (shown, *focused), target),
         Value::Choice(options) => {
             for (label, held, pick) in options {
                 let role = match held {
@@ -157,4 +162,18 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             }
         }
     }
+}
+
+/// A field on its own ground, raised while it has the keys.
+fn input(ctx: &mut Ctx, room: Rect, (shown, focused): (&str, bool), target: &Target) {
+    let sm = ctx.tokens.sm;
+    let field = room.pad(Edges::across(0.0, sm));
+    let (ground, role) = match focused {
+        true => (ctx.styles.raised(), Role::Text),
+        false => (ctx.styles.band(), Role::Muted),
+    };
+    ctx.quad(field, ground);
+    ctx.hit(field, target.clone());
+    let text = field.pad(Edges::across(sm, sm));
+    Label::new(shown, ctx.styles.code(role)).draw(ctx, text);
 }

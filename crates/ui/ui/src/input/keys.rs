@@ -12,6 +12,7 @@ use groove_controllers::{AppState, Command, session, workspace};
 use super::{Key, Modifiers};
 use crate::palette::Palette;
 use crate::views::session::Term;
+use crate::views::settings::Draft;
 use crate::{Focus, Overlay, Surface, Ui};
 
 pub use agent::encode;
@@ -69,10 +70,13 @@ pub(super) fn key_input(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) 
     }
 }
 
-/// Settings holds the keyboard: its search while typing, else a running sign-in, else Esc back.
+/// Settings holds the keyboard: the search, a source's field, a running sign-in, else Esc back.
 fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let settings = &mut ui.settings;
     let signing_in = app.agent.login.is_some();
+    if let Some(draft) = settings.draft.as_mut().filter(|one| one.at.is_some()) {
+        return in_draft(key, mods, draft);
+    }
     match (key, settings.typing) {
         (Key::Escape | Key::Enter, true) => settings.typing = false,
         (key, true) => {
@@ -87,6 +91,24 @@ fn in_settings(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Co
         }
         (Key::Escape, false) => return ui.close_settings(),
         _ => {}
+    }
+    Vec::new()
+}
+
+/// A source's fields: Tab to the next, Enter to connect, Esc to let go of them.
+fn in_draft(key: Key, mods: Modifiers, draft: &mut Draft) -> Vec<Command> {
+    match key {
+        Key::Escape => draft.at = None,
+        Key::Tab => draft.next(),
+        Key::Enter => {
+            draft.at = None;
+            return vec![draft.command()];
+        }
+        key => {
+            if let Some(field) = draft.focused() {
+                typing(key, mods, field);
+            }
+        }
     }
     Vec::new()
 }

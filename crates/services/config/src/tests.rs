@@ -1,6 +1,6 @@
 use groove_types::{Config, GitConfig, UiConfig};
 
-use crate::{Font, Preference, State};
+use crate::{Font, Preference, Source, State};
 
 fn with(font_size: f32, code_font_size: f32) -> State {
     let config = Config {
@@ -71,6 +71,19 @@ fn a_preference_changed_is_what_its_readers_answer_after() {
     assert_eq!(state.poll_interval(), 120);
     assert!(state.auto_approve_default());
     assert_eq!(state.thresholds().due_soon_days, 5);
+}
+
+#[test]
+fn a_source_turns_on_and_off_but_the_last_one_stays() {
+    let mut state = with(13.0, 12.5);
+    let github = groove_types::GithubConfig::bare("github.com");
+    assert!(state.set_source(Source::Github(Some(github))).is_ok());
+    let refused = state.set_source(Source::Github(None));
+    assert!(refused.is_err(), "nothing left to read tasks from");
+    assert!(
+        state.config.as_ref().is_some_and(|c| c.github.is_some()),
+        "a refused change leaves the config as it was"
+    );
 }
 
 #[test]

@@ -217,6 +217,20 @@ fn pick(sources: &[Source], which: Option<ProviderId>) -> Option<&Source> {
     }
 }
 
+/// A Notion source, once its token reads the database.
+pub async fn connect_notion(
+    token: &str,
+    database_id: &str,
+    user_id: &str,
+) -> Result<groove_types::NotionConfig> {
+    Ok(Notion::connect(token, database_id, user_id).await?)
+}
+
+/// A GitHub source, once the host answers the token `gh` holds for it.
+pub async fn connect_github(host: &str) -> Result<groove_types::GithubConfig> {
+    Ok(Github::connect(host).await?)
+}
+
 /// One task and its body, read again from the source that owns it.
 pub async fn fetch(sources: &[Source], key: &TaskKey) -> Result<Fetched> {
     Ok(source_of(sources, key)?.fetch(key).await?)

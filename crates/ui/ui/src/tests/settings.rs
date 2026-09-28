@@ -3,7 +3,7 @@
 use groove_controllers::config_service::{Font, Preference};
 use groove_controllers::{AppState, Command, config};
 use groove_gfx::Fonts;
-use groove_types::{Found, ThemeName, Tool};
+use groove_types::{Found, ProviderId, Secret, ThemeName, Tool};
 
 use super::*;
 use crate::hit::Target;
@@ -160,9 +160,16 @@ fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
     if let Some(notion) = app.config.config.as_mut().and_then(|c| c.notion.as_mut()) {
         notion.properties.status = "Status".into();
         notion.properties.due = Some("Due date".into());
+        notion.sprint = None;
     }
     ui.settings.section = crate::views::settings::Section::Providers;
-    let (texts, _) = drawn(&app, &ui);
+    let tall = metrics(1280, 1600, 1.0);
+    let (frame, _) = view(&app, &ui, tall, &mut Fonts::embedded());
+    let texts: Vec<String> = frame.layers()[0]
+        .texts
+        .iter()
+        .map(|t| t.text.clone())
+        .collect();
     for shown in [
         "Notion",
         "GitHub",
@@ -171,6 +178,8 @@ fn providers_show_each_source_its_fields_and_what_each_gap_costs() {
         "Status",
         "Due date",
         "from gh",
+        "Assignee",
+        "gap · no task is listed",
     ] {
         assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
     }
@@ -216,6 +225,67 @@ fn a_form_taller_than_the_window_scrolls_to_its_last_group() {
     assert!(ui.settings.scroll > 0.0);
     let (after, _) = texts(&ui);
     assert!(after.iter().any(|t| t == "Forge tokens"), "{after:?}");
+}
+
+fn typed(text: &str, ui: &mut Ui, app: &AppState) {
+    for c in text.chars() {
+        press(Key::Char(c), Modifiers::default(), ui, app);
+    }
+}
+
+#[test]
+fn a_source_turns_on_through_its_fields_and_the_token_never_shows() {
+    let (app, mut ui) = opened();
+    let app = crate::tests::bar::sourced(app, true, false);
+    ui.settings.section = crate::views::settings::Section::Providers;
+    let (_, hits) = drawn(&app, &ui);
+    let on = Target::SettingsTurnOn(ProviderId::Notion);
+    click(
+        hits.rect_of(&on).expect("Notion's turn on"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    typed("ntn_secret", &mut ui, &app);
+    press(Key::Tab, Modifiers::default(), &mut ui, &app);
+    typed("DB", &mut ui, &app);
+    press(Key::Tab, Modifiers::default(), &mut ui, &app);
+    typed("ME", &mut ui, &app);
+    let (texts, _) = drawn(&app, &ui);
+    assert!(!texts.iter().any(|t| t.contains("ntn_secret")), "{texts:?}");
+    let asked = press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    let connect = config::Command::ConnectNotion {
+        token: Secret::new("ntn_secret"),
+        database_id: "DB".into(),
+        user_id: "ME".into(),
+    };
+    assert_eq!(asked, [Command::Config(connect)]);
+}
+
+#[test]
+fn a_source_turns_off_only_once_confirmed() {
+    let (app, mut ui) = opened();
+    let app = crate::tests::bar::sourced(app, true, true);
+    ui.settings.section = crate::views::settings::Section::Providers;
+    let (_, hits) = drawn(&app, &ui);
+    let off = Target::SettingsTurnOff(ProviderId::Github);
+    let asked = click(
+        hits.rect_of(&off).expect("GitHub's turn off"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    assert!(asked.is_empty(), "the first click only asks");
+    let (_, hits) = drawn(&app, &ui);
+    let sure = Target::SettingsTurnOffSure(ProviderId::Github);
+    let asked = click(
+        hits.rect_of(&sure).expect("the confirm"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    let turn_off = config::Command::TurnOff(ProviderId::Github);
+    assert_eq!(asked, [Command::Config(turn_off)]);
 }
 
 #[test]

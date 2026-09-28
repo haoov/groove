@@ -47,6 +47,14 @@ pub enum Target {
     SettingsLoginEnd,
     /// The sign-in's terminal, which takes the keys while it runs.
     Login,
+    /// A task source: its fields opened to turn it on, one of them given the keys, sent.
+    SettingsTurnOn(groove_types::ProviderId),
+    SettingsDraftField(usize),
+    SettingsConnect,
+    SettingsDraftCancel,
+    /// A source asked off, then the answer that confirms it.
+    SettingsTurnOff(groove_types::ProviderId),
+    SettingsTurnOffSure(groove_types::ProviderId),
     /// A control of a Settings row: the preference a click on it sets.
     SetPreference(groove_controllers::config_service::Preference),
     /// What folds the manual section away, or opens it.

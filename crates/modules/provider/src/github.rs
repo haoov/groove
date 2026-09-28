@@ -31,6 +31,14 @@ impl Github {
         })
     }
 
+    /// The source on `host`, once the token `gh` holds for it is answered.
+    pub async fn connect(host: &str) -> Result<GithubConfig> {
+        let config = GithubConfig::bare(host);
+        let github = Self::new(config.clone())?;
+        github.ask(query::VIEWER, serde_json::json!({})).await?;
+        Ok(config)
+    }
+
     pub async fn list(&self) -> Result<Vec<Task>> {
         let reply = self
             .ask(&query::assigned(), serde_json::json!({ "after": null }))

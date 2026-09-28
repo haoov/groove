@@ -13,7 +13,7 @@ fn config() -> NotionConfig {
         database_id: "DB".into(),
         user_id: "USER".into(),
         assignee: Some("Owner".into()),
-        sprint: None,
+        sprint: Some("Sprint".into()),
         sprint_status: None,
         properties: PropertyNames {
             status: "State".into(),
@@ -35,7 +35,6 @@ fn config() -> NotionConfig {
         },
         filters: FilterConfig {
             exclude_statuses: vec!["Done".into()],
-            filter_by_assignee: true,
         },
         task_template_page_id: None,
         default_project_id: None,
@@ -125,9 +124,10 @@ async fn the_query_asks_for_yours_and_leaves_the_excluded_statuses_out() {
     let sent: serde_json::Value = server
         .received_requests()
         .await
-        .expect("the call")
-        .first()
-        .expect("one call")
+        .expect("the calls")
+        .iter()
+        .find(|call| call.url.path() == "/v1/databases/DB/query")
+        .expect("the tasks are asked")
         .body_json()
         .expect("json");
     let and = sent["filter"]["and"].as_array().expect("both terms");
@@ -237,6 +237,18 @@ async fn a_sprint_property_the_database_lacks_leaves_the_query_alone() {
             .is_some_and(|and| and.len() == 2),
         "no sprint term at all: {tasks}"
     );
+}
+
+#[tokio::test]
+async fn nothing_is_listed_until_the_assignee_and_the_sprint_are_named() {
+    let unnamed = NotionConfig {
+        assignee: None,
+        sprint: Some(" ".into()),
+        ..config()
+    };
+    let notion = Notion::at("http://127.0.0.1:9", unnamed).expect("a client");
+    let refused = notion.list().await.expect_err("refused").to_string();
+    assert!(refused.contains("assignee and sprint"), "{refused}");
 }
 
 #[tokio::test]

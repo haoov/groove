@@ -34,6 +34,7 @@ pub fn filing(config: Option<&Config>, which: Option<ProviderId>) -> Option<Fili
     match which.or_else(|| only(config))? {
         ProviderId::Notion => {
             let notion = config.notion.as_ref()?;
+            let assignee = notion.assignee()?;
             Some(Filing::Notion {
                 database_id: notion.database_id.clone(),
                 status: Property {
@@ -41,7 +42,7 @@ pub fn filing(config: Option<&Config>, which: Option<ProviderId>) -> Option<Fili
                     value: notion.status_map.ready.first().cloned(),
                 },
                 assignee: Assignee {
-                    property: notion.assignee().to_string(),
+                    property: assignee.to_string(),
                     user_id: notion.user_id.clone(),
                 },
             })
