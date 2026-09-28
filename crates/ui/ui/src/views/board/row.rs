@@ -3,20 +3,21 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Task, Worktree, WorktreeDelivery};
+use groove_types::{Priority, Task, Worktree, WorktreeDelivery};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
+use groove_ui_kit::shape::{hoverable, square};
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::icon;
 
 /// One line of a column: an item, a worktree under an open one, or the plan's divider.
 pub(super) enum Line<'a> {
     Session(&'a Living),
     Worktree(&'a Worktree, Option<WorktreeDelivery>),
-    /// Its place in the plan, counted from one.
-    Task(usize, &'a Task),
+    Task(&'a Task),
     /// One MR the forge asks this user to review.
     Review(&'a groove_types::ReviewMr),
     Divider,
@@ -51,15 +52,15 @@ pub(super) fn item(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
 
-/// One task waiting: its place, its title, its worth, and why it needs the user.
-pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, at: usize, task: &Task) {
+/// One task waiting: its source, its title, its worth, and why it needs the user.
+pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     hoverable(ctx, rect, Target::Task(task.short_id.clone()));
     let mut rest = rect;
     let line = rest.take_top(item(&ctx.tokens));
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
-    place(ctx, &mut room, at, task);
+    handle(ctx, &mut room, task);
     let start = room.x;
-    aside(ctx, &mut room, &worth(task));
+    worth(ctx, &mut room, task);
     named(ctx, room, &task.title);
     let reasons = app.task.needs(&task.external_id);
     if !reasons.is_empty() {
@@ -69,33 +70,37 @@ pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, at: usize, task
     }
 }
 
-/// Where a task sits in the plan, and what a drag takes hold of.
-fn place(ctx: &mut Ctx, room: &mut Rect, at: usize, task: &Task) {
-    let style = ctx.styles.code(Role::Ghost);
-    let wide = ctx.measure("00", &style);
-    let held = room.take_left(wide);
+/// The mark of the task's source, which a drag takes hold of to move it in the plan.
+fn handle(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
+    let size = ctx.tokens.icon;
+    let mark = square(room.take_left(size), size);
     room.take_left(ctx.tokens.sm);
-    let mut cell = held;
-    Label::new(&at.to_string(), style).right(ctx, &mut cell, 0.0);
-    ctx.hit(held, Target::Place(task.external_id.clone()));
+    icon(ctx, mark, Mark::of_source(task.provider), Role::Faint);
+    ctx.hit(mark, Target::Place(task.external_id.clone()));
 }
 
-/// The priority and the estimate, as the row's right-hand text.
-fn worth(task: &Task) -> String {
-    let priority = task.priority.map(|one| one.label().to_string());
-    let estimate = task.estimate.map(|hours| format!("{hours}h"));
-    [priority, estimate]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<String>>()
-        .join(" · ")
+/// The priority, as the row's right-hand text in its level's colour.
+fn worth(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
+    let Some(level) = task.priority else {
+        return aside(ctx, room, "");
+    };
+    let role = match level {
+        Priority::High => Role::Bad,
+        Priority::Medium => Role::Warn,
+        Priority::Low => Role::Ok,
+    };
+    aside_in(ctx, room, level.label(), role);
 }
 
 /// A row's right-hand text, at the right of `room`.
 pub(super) fn aside(ctx: &mut Ctx, room: &mut Rect, text: &str) {
+    aside_in(ctx, room, text, Role::Faint);
+}
+
+fn aside_in(ctx: &mut Ctx, room: &mut Rect, text: &str, role: Role) {
     room.take_right(ctx.tokens.md);
     if !text.is_empty() {
-        Label::new(text, ctx.styles.small(Role::Faint)).right(ctx, room, 0.0);
+        Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0);
     }
 }
 
@@ -108,7 +113,7 @@ pub(super) fn named(ctx: &mut Ctx, mut room: Rect, title: &str) {
 /// Why this line needs the user.
 fn reasons<'a>(app: &'a AppState, line: &Line<'_>) -> &'a [groove_types::Attention] {
     match line {
-        Line::Task(_, task) => app.task.needs(&task.external_id),
+        Line::Task(task) => app.task.needs(&task.external_id),
         _ => &[],
     }
 }

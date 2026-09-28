@@ -26,16 +26,20 @@ fn a_task_picked_up_next_opens_its_session() {
 }
 
 #[test]
-fn a_task_up_next_shows_where_it_sits_in_the_plan() {
+fn a_task_up_next_is_moved_by_the_mark_of_its_source() {
     let mut app = full_app();
-    app.task.tasks = vec![
-        task("gh-a-b-1", "waiting one", "github.com/a/b#1"),
-        task("gh-a-b-2", "waiting two", "github.com/a/b#2"),
-    ];
-    let (ui, _) = on_board(&app);
-    let drawn = texts(&app, &ui);
-    assert!(drawn.iter().any(|t| t == "1"), "{drawn:?}");
-    assert!(drawn.iter().any(|t| t == "2"), "{drawn:?}");
+    app.task.tasks = vec![task("gh-a-b-1", "waiting one", "github.com/a/b#1")];
+    let (ui, hits) = on_board(&app);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let handle = hits
+        .rect_of(&Target::Place(ExternalId::new("github.com/a/b#1")))
+        .expect("the drag handle");
+    let mark = frame.layers()[0]
+        .icons
+        .iter()
+        .find(|one| one.icon == groove_gfx::Icon::Github)
+        .expect("the source's mark");
+    assert_eq!(mark.rect, handle, "the mark is the handle");
 }
 
 /// The board with three tasks up next, nothing running.
@@ -143,4 +147,49 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
         )],
         "the end of the later side"
     );
+}
+
+#[test]
+fn a_task_up_next_shows_no_time() {
+    let mut app = full_app();
+    app.task.tasks = vec![task("gh-a-b-1", "waiting one", "github.com/a/b#1")];
+    let (ui, _) = on_board(&app);
+    let drawn = texts(&app, &ui);
+    assert!(!drawn.iter().any(|t| t.contains("4h")), "{drawn:?}");
+}
+
+#[test]
+fn a_task_s_priority_takes_its_level_s_colour() {
+    let mut app = full_app();
+    let mut high = task("gh-a-b-1", "urgent one", "github.com/a/b#1");
+    high.priority = Some(groove_types::Priority::High);
+    let mut low = task("gh-a-b-2", "calm one", "github.com/a/b#2");
+    low.priority = Some(groove_types::Priority::Low);
+    app.task.tasks = vec![high, low];
+    let (ui, _) = on_board(&app);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(
+        app.config.theme(),
+        groove_ui_kit::base::tokens::Tokens::new(1.0),
+    );
+    let colour = |word: &str| {
+        let texts = &frame.layers()[0].texts;
+        texts.iter().find(|t| t.text == word).map(|t| t.style.color)
+    };
+    use groove_ui_kit::base::style::Role;
+    assert_eq!(colour("high"), Some(styles.color(Role::Bad)));
+    assert_eq!(colour("low"), Some(styles.color(Role::Ok)));
+}
+
+#[test]
+fn a_task_up_next_wears_the_mark_of_its_source() {
+    let mut app = full_app();
+    let mut notion = task("TASKS2-1", "from notion", "notion-page");
+    notion.provider = groove_types::ProviderId::Notion;
+    app.task.tasks = vec![task("gh-a-b-1", "from github", "github.com/a/b#1"), notion];
+    let (ui, _) = on_board(&app);
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let icons: Vec<groove_gfx::Icon> = frame.layers()[0].icons.iter().map(|i| i.icon).collect();
+    assert!(icons.contains(&groove_gfx::Icon::Github), "{icons:?}");
+    assert!(icons.contains(&groove_gfx::Icon::Notion), "{icons:?}");
 }

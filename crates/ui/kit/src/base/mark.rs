@@ -1,7 +1,7 @@
 //! What a mark means. The shape it becomes is the renderer's.
 
 use groove_gfx::Icon;
-use groove_types::SessionKind;
+use groove_types::{ProviderId, SessionKind};
 
 /// An icon by meaning. A view never names a shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,6 +33,9 @@ pub enum Mark {
     Note,
     /// What takes a thing away.
     Close,
+    /// Where a task comes from.
+    Github,
+    Notion,
 }
 
 impl Mark {
@@ -47,6 +50,14 @@ impl Mark {
             SessionKind::Task { .. } => Mark::Task,
             SessionKind::Explorer => Mark::Explorer,
             SessionKind::Review { .. } => Mark::Review,
+        }
+    }
+
+    /// The mark of the source a task is read from.
+    pub fn of_source(source: ProviderId) -> Self {
+        match source {
+            ProviderId::Github => Mark::Github,
+            ProviderId::Notion => Mark::Notion,
         }
     }
 
@@ -70,6 +81,8 @@ impl Mark {
             Mark::Failed => Icon::Cross,
             Mark::Note => Icon::Chat,
             Mark::Close => Icon::Cross,
+            Mark::Github => Icon::Github,
+            Mark::Notion => Icon::Notion,
         }
     }
 }

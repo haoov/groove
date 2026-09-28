@@ -36,7 +36,7 @@ fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
 fn counted(lines: &[Line<'_>]) -> usize {
     lines
         .iter()
-        .filter(|line| matches!(line, Line::Session(_) | Line::Task(_, _) | Line::Review(_)))
+        .filter(|line| matches!(line, Line::Session(_) | Line::Task(_) | Line::Review(_)))
         .count()
 }
 
@@ -91,7 +91,7 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, clos
         Line::Worktree(worktree, delivery) => {
             worktree_row::draw(ctx, rect, worktree, delivery.as_ref())
         }
-        Line::Task(at, task) => row::up_next(ctx, rect, app, *at, task),
+        Line::Task(task) => row::up_next(ctx, rect, app, task),
         Line::Review(mr) => super::review::item(ctx, rect, mr),
         Line::Divider => return super::plan::divider(ctx, rect),
         Line::Nothing(text) => {

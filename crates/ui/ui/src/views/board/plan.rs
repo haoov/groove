@@ -17,11 +17,11 @@ const LATER: &str = "LATER";
 /// What Up next holds: the tasks over the divider, the divider, the ones under it.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     let mut lines = Vec::new();
-    for (at, planned) in upcoming(app, ui).into_iter().enumerate() {
+    for planned in upcoming(app, ui) {
         if planned.later && !lines.iter().any(is_divider) {
             lines.push(Line::Divider);
         }
-        lines.push(Line::Task(at + 1, planned.task));
+        lines.push(Line::Task(planned.task));
     }
     if !lines.iter().any(is_divider) {
         lines.push(Line::Divider);
@@ -123,7 +123,7 @@ pub fn landing(app: &AppState, ui: &Ui) -> Option<Landing> {
         .unwrap_or_default()
         .iter()
         .find_map(|line| match line {
-            Line::Task(_, task) => Some(task.external_id.clone()),
+            Line::Task(task) => Some(task.external_id.clone()),
             _ => None,
         });
     match before.as_ref() == Some(&external_id) {
