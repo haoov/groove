@@ -19,6 +19,8 @@ pub use threads::{Say, ThreadAct};
 pub enum Command {
     /// `delivery.refresh_mr`: the selected worktree's MR, read again now.
     RefreshMr,
+    /// `delivery.browse_mr`: an MR's page, in the browser.
+    BrowseMr { url: String },
     /// `delivery.review_queue`: the MRs the forges ask this user to review.
     ReviewQueue,
     /// `delivery.create_mr`: the worktree's branch offered to its base.
@@ -41,6 +43,7 @@ impl Command {
     pub fn id(&self) -> &'static str {
         match self {
             Command::RefreshMr => "delivery.refresh_mr",
+            Command::BrowseMr { .. } => "delivery.browse_mr",
             Command::ReviewQueue => "delivery.review_queue",
             Command::CreateMr => "delivery.create_mr",
             Command::UpdateMr => "delivery.update_mr",
@@ -69,6 +72,9 @@ pub fn dispatch(
     }
     match command {
         Command::RefreshMr => poll::refresh_selected(state, services, spawner),
+        Command::BrowseMr { url } => crate::spawn::record(spawner, async move {
+            Ok(groove_delivery_service::browse(&url).await?)
+        }),
         Command::ReviewQueue => queue::read(state, services, spawner),
         Command::CreateMr => mr::here(state, services, spawner, MrAct::Open),
         Command::UpdateMr => mr::here(state, services, spawner, MrAct::Edit),

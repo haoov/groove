@@ -4,6 +4,7 @@ use groove_gfx::Rect;
 use groove_types::{CiState, MrState, WorktreeDelivery};
 
 use crate::ctx::Ctx;
+use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
@@ -19,10 +20,19 @@ pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery)
         true => Role::Ghost,
         false => of_state(mr.state),
     };
-    let style = ctx.styles.small(role);
+    let target = Target::MrPage(mr.url.clone());
+    let hovered = ctx.hovered(&target);
+    let style = ctx.styles.small(if hovered { Role::Text } else { role });
     let name = mr.named();
     let width = ctx.measure(&name, &style);
-    row(ctx, Rect::new(x, line.y, width, line.h), 0.0, &name, style);
+    let link = Rect::new(x, line.y, width, line.h);
+    row(ctx, link, 0.0, &name, style);
+    if hovered {
+        let under = link.y + (link.h + style.size) / 2.0;
+        let rule = Rect::new(x, under, width, ctx.tokens.hairline);
+        ctx.quad(rule, style.color);
+    }
+    ctx.hit(link, target);
     let mut at = x + width + ctx.tokens.xs;
     at = verdict(ctx, line, at, delivery);
     at = checks(ctx, line, at, delivery);

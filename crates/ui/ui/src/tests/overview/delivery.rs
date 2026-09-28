@@ -8,7 +8,7 @@ use groove_types::{
     ReviewState, Reviewer, SessionId, Timestamp, WorktreeId,
 };
 
-use crate::tests::{app as bare, full_app, metrics};
+use crate::tests::{full_app, metrics};
 use crate::{Ui, view};
 
 /// The MR row the database holds, in this state.
@@ -183,29 +183,44 @@ fn read() -> Snapshot {
 }
 
 #[test]
-fn the_overview_names_the_mr_and_what_it_stands_at() {
-    let mut app = showing(MrState::Open, read());
-    app.workspace.worktree = Some(app.session.open[0].worktrees[0].id.clone());
-    let (texts, _) = drawn(&app);
-    assert!(texts.iter().any(|t| t == "MERGE REQUEST"), "{texts:?}");
-    assert!(texts.iter().any(|t| t == "open"), "the state: {texts:?}");
-    assert!(texts.iter().any(|t| t == "main"), "the target: {texts:?}");
-    assert!(texts.iter().any(|t| t == "failed"), "the checks: {texts:?}");
-    assert!(
-        texts.iter().any(|t| t == "approved by reviewer"),
-        "the review: {texts:?}"
-    );
-    assert!(
-        texts.iter().any(|t| t == "1 of 1 open"),
-        "the notes: {texts:?}"
-    );
+fn a_comment_nobody_can_resolve_is_not_an_open_note() {
+    let mut read = snapshot(MrState::Open, None);
+    read.threads[1].notes[0].resolvable = false;
+    let (texts, _) = drawn(&showing(MrState::Open, read));
+    assert!(texts.iter().any(|t| t == "1"), "one open note: {texts:?}");
+    assert!(!texts.iter().any(|t| t == "2"), "{texts:?}");
 }
 
 #[test]
-fn a_session_with_no_mr_read_has_no_merge_request_section() {
-    let app = bare();
-    let (texts, _) = drawn(&app);
-    assert!(!texts.iter().any(|t| t == "MERGE REQUEST"), "{texts:?}");
+fn the_mr_stands_after_the_branch_picker_and_opens_its_page() {
+    let app = open_with(None);
+    let mut ui = Ui::default();
+    let window = metrics(1280, 800, 1.0);
+    let (_, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let picker = crate::hit::Target::Picker(crate::hit::Picks::Branch);
+    let branch = hits.rect_of(&picker).expect("the branch picker");
+    let url = "https://github.com/acme/groove/pull/7".to_string();
+    let link = hits
+        .rect_of(&crate::hit::Target::MrPage(url.clone()))
+        .expect("the MR's number");
+    assert!(link.x - branch.right() < 16.0, "{link:?} after {branch:?}");
+
+    let commands = crate::input::handle(
+        crate::input::Input::Press {
+            x: link.x + link.w / 2.0,
+            y: link.y + link.h / 2.0,
+            mods: Default::default(),
+        },
+        &mut ui,
+        &app,
+        &hits,
+        window,
+    );
+    let browse = groove_controllers::delivery::Command::BrowseMr { url };
+    assert_eq!(
+        commands,
+        vec![groove_controllers::Command::Delivery(browse)]
+    );
 }
 
 #[test]

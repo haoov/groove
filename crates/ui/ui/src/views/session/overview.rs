@@ -1,4 +1,3 @@
-mod mr;
 mod task;
 
 use groove_controllers::AppState;
@@ -11,6 +10,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::after_mark;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, list};
 
@@ -29,7 +29,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         let placed = properties(ctx, app, open, &mut column);
         section(ctx, &mut column, "Repos and worktrees", placed);
         repos(ctx, app, open, area, &mut column);
-        merge_request(ctx, app, &mut column);
         body(ctx, app, open, area, &mut column);
     });
     let height = column.y - top + ctx.tokens.md;
@@ -48,18 +47,6 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, column: &mut Rect) -> 
     task::properties(ctx, column, one, time);
     column.take_top(ctx.tokens.sm);
     true
-}
-
-/// The selected worktree's MR, when its forge has answered for it.
-fn merge_request(ctx: &mut Ctx, app: &AppState, column: &mut Rect) {
-    let held = app
-        .session
-        .selected_worktree()
-        .and_then(|worktree| app.delivery.held(&worktree.id));
-    if let Some(held) = held.filter(|one| one.read.is_some()) {
-        section(ctx, column, "Merge request", true);
-        mr::rows(ctx, column, held);
-    }
 }
 
 /// The task's body, under everything the session holds.
@@ -118,8 +105,9 @@ fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Re
         return;
     }
     let (name, slug) = (ctx.styles.label(Role::Text), ctx.styles.small(Role::Faint));
-    let at_slug = ctx.tokens.aside_mid;
     for repo in &open.repos {
+        let named = after_mark(ctx, pad) + ctx.measure(&repo.project, &name) + ctx.tokens.md;
+        let at_slug = named.max(ctx.tokens.aside_mid);
         let head = Row::new(pad, &repo.project, name).mark(Mark::Repo).aside(
             at_slug,
             repo.id.as_str(),
@@ -128,11 +116,11 @@ fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Re
         list(ctx, column.take_top(ctx.tokens.row), &[head], None);
         for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
             let line = column.take_top(ctx.tokens.row);
-            let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
-            worktree_row::draw(ctx, line, worktree, Some(&delivery));
             if seen(area, line) {
                 ctx.hit(line, Target::Worktree(worktree.id.clone()));
             }
+            let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
+            worktree_row::draw(ctx, line, worktree, Some(&delivery));
         }
         column.take_top(ctx.tokens.sm);
     }

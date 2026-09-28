@@ -322,7 +322,7 @@ fn a_task_with_nothing_measured_offers_no_hours() {
 }
 
 #[test]
-fn a_long_repo_name_stops_before_its_path() {
+fn a_long_repo_name_is_whole_and_stops_before_its_path() {
     let mut app = full_app();
     let long = "a-service-with-a-very-long-name-indeed-for-one-repository";
     if let Some(repo) = app
@@ -356,9 +356,5 @@ fn a_long_repo_name_stops_before_its_path() {
         "the name ends before the path starts: {ends} against {}",
         path.x
     );
-    assert!(
-        name.text.ends_with('\u{2026}'),
-        "and says it is cut: {}",
-        name.text
-    );
+    assert_eq!(name.text, long, "and is never cut for it");
 }

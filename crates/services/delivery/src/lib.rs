@@ -11,7 +11,7 @@ mod state;
 mod tests;
 
 pub use groove_annotations::New as NewNote;
-pub use groove_forge::{Remote, Snapshot};
+pub use groove_forge::{Remote, Snapshot, browse};
 pub use held::Held;
 pub use notes::merged;
 pub use poll::Polling;

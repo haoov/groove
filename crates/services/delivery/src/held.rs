@@ -50,12 +50,15 @@ impl Held {
             .unwrap_or_default()
     }
 
-    /// The threads nobody has resolved.
+    /// The resolvable threads nobody has resolved.
     pub fn open_threads(&self) -> u32 {
         let open = self
             .threads()
             .iter()
-            .filter(|thread| thread.notes.iter().any(|note| !note.resolved))
+            .filter(|thread| {
+                let mut notes = thread.notes.iter();
+                notes.any(|note| note.resolvable && !note.resolved)
+            })
             .count();
         u32::try_from(open).unwrap_or(u32::MAX)
     }

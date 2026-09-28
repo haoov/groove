@@ -106,10 +106,12 @@ fn counted(app: &AppState, pane: Pane) -> usize {
 fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    let head = column.take_top(ctx.tokens.header);
-    match grep {
-        true => heading::found(ctx, head, app.workspace.found.len()),
-        false => heading::heading(ctx, head, app, ui),
+    if grep || ui.session.tab == Tab::Diff {
+        let head = column.take_top(ctx.tokens.header);
+        match grep {
+            true => heading::found(ctx, head, app.workspace.found.len()),
+            false => heading::modes(ctx, head, app.workspace.mode),
+        }
     }
     let under = ctx.app.layout.commit;
     let body = column.until_y(under.y);

@@ -165,5 +165,7 @@ fn items(
             row.target(Target::PaletteRow(i))
         })
         .collect();
-    list(ctx, body, &items, Some(palette.selected - first));
+    let shown = palette.anchor.is_none() || palette.keyed;
+    let selected = shown.then(|| palette.selected - first);
+    list(ctx, body, &items, selected);
 }

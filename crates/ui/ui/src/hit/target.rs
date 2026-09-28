@@ -112,6 +112,8 @@ pub enum Target {
     Finish(groove_types::SessionId),
     /// What reads the selected worktree's MR again.
     Refresh,
+    /// An MR's number, a link to its page.
+    MrPage(String),
     TaskActions(groove_types::SessionId),
     /// One task's bar on the timeline, which names it under the pointer.
     Bar(String),

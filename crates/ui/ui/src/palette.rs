@@ -70,6 +70,8 @@ pub struct Palette {
     pub flow: Option<Flow>,
     /// Where it is drawn: on what opened it, or in the middle of the window.
     pub anchor: Option<Anchor>,
+    /// A key has moved or narrowed the rows since it opened.
+    pub keyed: bool,
 }
 
 /// The corner of the panel, and where that corner sits.
@@ -139,6 +141,9 @@ impl Palette {
     }
 
     pub fn key(&mut self, key: Key, app: &AppState) -> Outcome {
+        if matches!(key, Key::Char(_) | Key::Backspace | Key::Down | Key::Up) {
+            self.keyed = true;
+        }
         match key {
             Key::Char(c) => {
                 self.query.push(c);
@@ -263,5 +268,6 @@ impl Palette {
     fn reset(&mut self) {
         self.query.clear();
         self.selected = 0;
+        self.keyed = false;
     }
 }

@@ -1,5 +1,6 @@
 //! The forge a repo lives on: the one MR a branch has, its CI and its threads.
 
+mod browse;
 mod error;
 mod github;
 mod gitlab;
@@ -7,6 +8,7 @@ mod gitlab;
 #[cfg(test)]
 mod tests;
 
+pub use browse::browse;
 pub use error::{Error, Result};
 pub use github::Github;
 pub use gitlab::Gitlab;

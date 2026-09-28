@@ -109,7 +109,7 @@ pub struct Tokens {
 
 /// The type scale and the bands that hold it, against the size they follow.
 const SMALL: f32 = 11.5 / 13.0;
-const TITLE: f32 = 14.0 / 13.0;
+const TITLE: f32 = 16.0 / 13.0;
 const HEADING: f32 = 12.0 / 13.0;
 const ICON: f32 = 16.0 / 13.0;
 const ROW: f32 = 26.0 / 13.0;
@@ -142,7 +142,7 @@ const LOGICAL: Tokens = Tokens {
     map: 14.0,
     text: 13.0,
     small: 11.5,
-    title: 14.0,
+    title: 16.0,
     heading: 12.0,
     code: 12.5,
     icon: 16.0,

@@ -46,7 +46,7 @@ fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
     for view in DiffView::ALL.into_iter().rev() {
         let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
         let tab = tab.text(Text::Small).quiet(Role::Faint).tight();
-        tab.right(ctx, room, ctx.tokens.xs);
+        tab.right(ctx, room, 0.0);
     }
 }
 

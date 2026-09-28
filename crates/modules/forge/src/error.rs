@@ -4,6 +4,8 @@ use groove_types::ErrorKind;
 pub enum Error {
     #[error("{0}")]
     Http(#[from] groove_http::Error),
+    #[error("{0}")]
+    Exec(#[from] groove_exec::Error),
     #[error("{host} refused the query: {message}")]
     Refused { host: String, message: String },
     #[error("{0}")]
@@ -14,6 +16,7 @@ impl From<Error> for groove_types::Error {
     fn from(e: Error) -> Self {
         let kind = match e {
             Error::Http(_) | Error::Refused { .. } => ErrorKind::Forge,
+            Error::Exec(_) => ErrorKind::Io,
             Error::Invalid(_) => ErrorKind::Invalid,
         };
         groove_types::Error::new(kind, e.to_string())

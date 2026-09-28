@@ -1329,6 +1329,7 @@ dependencies = [
 name = "groove-forge"
 version = "0.1.0"
 dependencies = [
+ "groove-exec",
  "groove-http",
  "groove-token",
  "groove-types",

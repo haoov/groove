@@ -80,15 +80,20 @@ fn titled(ctx: &mut Ctx, line: Rect, open: &Open) {
     Label::new(&open.session.title, ctx.styles.title(Role::Text)).draw(ctx, room);
 }
 
-/// The pickers every tab follows, each label cut to the room the line has.
+/// The pickers every tab follows, each label cut to the room the line has, the MR after them.
 fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let worktree = open.selected_worktree();
     let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
     let (repo, branch) = named(open);
-    let style = ctx.styles.body(Role::Muted);
+    let style = ctx.styles.body(Role::Text);
     let x = line.x + ctx.tokens.md;
-    let until = forge(ctx, line, app, open);
-    let room = (until - ctx.tokens.md - x - around(ctx)).max(0.0);
+    let delivery = worktree.map(|w| app.delivery.row(&w.id, open.status_of(&w.id)));
+    let until = match delivery {
+        Some(_) => refresh(ctx, line, app),
+        None => line.right(),
+    };
+    let mr = delivery.as_ref().map_or(0.0, |one| room_for(ctx, one));
+    let room = (until - ctx.tokens.md - x - around(ctx) - mr).max(0.0);
     let repo_room = ctx.measure(repo, &style).min(room / 2.0);
     let repo_text = elide(ctx, repo, &style, repo_room);
     let branch_text = elide(ctx, branch, &style, room - repo_room);
@@ -111,23 +116,10 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
         band,
         hover,
     );
-    branch.at(ctx, line, x);
-}
-
-/// What the selected worktree's forge says, at the right end; the pickers stop there.
-fn forge(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
-    let Some(worktree) = open.selected_worktree() else {
-        return line.right();
-    };
-    let until = refresh(ctx, line, app);
-    let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
-    let wide = room_for(ctx, &delivery);
-    if wide <= 0.0 {
-        return until;
+    let box_ = branch.at(ctx, line, x);
+    if let Some(delivery) = delivery {
+        delivered(ctx, line, box_.right() + ctx.tokens.sm, &delivery);
     }
-    let x = until - ctx.tokens.sm - wide;
-    delivered(ctx, line, x, &delivery);
-    x
 }
 
 /// What reads the MR again, turning while a read is out.
@@ -151,11 +143,11 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
         .x
 }
 
-/// What the two buttons add around their labels: a caret and the padding each side.
+/// What the two buttons add around their labels, and the gaps after each.
 fn around(ctx: &mut Ctx) -> f32 {
-    let style = ctx.styles.body(Role::Muted);
+    let style = ctx.styles.body(Role::Text);
     let box_ = ctx.tokens.sm * 2.0 + ctx.tokens.xs + style.size;
-    box_ * 2.0 + ctx.tokens.sm
+    (box_ + ctx.tokens.sm) * 2.0
 }
 
 /// The repo and the branch the pickers name, each as it stands or as what it lacks.
@@ -170,7 +162,7 @@ fn named(open: &Open) -> (&str, &str) {
 
 fn role_of(held: bool) -> Role {
     match held {
-        true => Role::Muted,
+        true => Role::Text,
         false => Role::Ghost,
     }
 }

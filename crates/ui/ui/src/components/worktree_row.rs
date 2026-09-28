@@ -9,7 +9,7 @@ use groove_ui_kit::shape::after_mark;
 use groove_ui_kit::text::{elide, row};
 use groove_ui_kit::widgets::{counts, counts_room};
 
-/// One worktree: its branch cut short, then git and the forge at the row's right end.
+/// One worktree: its branch cut short and its MR beside it, then git at the row's right end.
 pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&WorktreeDelivery>) {
     let style = ctx.styles.body(Role::Muted);
     let indent = after_mark(ctx, ctx.tokens.md);
@@ -23,13 +23,16 @@ pub fn draw(ctx: &mut Ctx, line: Rect, worktree: &Worktree, delivery: Option<&Wo
         return row(ctx, line, indent, &text, style);
     };
     let git = told(delivery);
-    let needed = counts_room(ctx, &git) + room_for(ctx, delivery);
     let right = line.right() - ctx.tokens.md;
-    let room = (right - needed - line.x - indent - ctx.tokens.md).max(0.0);
+    let counted = right - counts_room(ctx, &git);
+    counts(ctx, line, counted, &git);
+    let mr = room_for(ctx, delivery);
+    let gap = if mr > 0.0 { ctx.tokens.sm } else { 0.0 };
+    let room = (counted - mr - gap - line.x - indent - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &worktree.branch, &style, room);
     row(ctx, line, indent, &text, style);
-    let at = counts(ctx, line, right - needed, &git);
-    delivered(ctx, line, at, delivery);
+    let after = line.x + indent + ctx.measure(&text, &style) + gap;
+    delivered(ctx, line, after, delivery);
 }
 
 /// What git says about the worktree, as the counts it draws.

@@ -1,6 +1,6 @@
 //! What the overview shows of the task a session works: its properties, then its body.
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 use groove_types::{Task, TimeSummary};
 
 use crate::ctx::Ctx;
@@ -25,12 +25,13 @@ pub(super) fn properties(ctx: &mut Ctx, column: &mut Rect, task: &Task, time: Op
         .iter()
         .map(|(name, one)| (*name, one.as_str()))
         .collect();
+    let logged = held.last().map_or("", |(_, one)| *one);
     let mut taken = super::table(ctx, column, &held);
-    logging(ctx, taken.take_bottom(ctx.tokens.row), task, time);
+    logging(ctx, taken.take_bottom(ctx.tokens.row), (task, logged), time);
 }
 
-/// What hands the source the hours the clock measured, at the end of their own line.
-fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
+/// What hands the source the hours the clock measured, right after the hours logged.
+fn logging(ctx: &mut Ctx, line: Rect, (task, logged): (&Task, &str), time: Option<TimeSummary>) {
     let left = time.map(TimeSummary::unlogged_hours).unwrap_or_default();
     if left <= 0.0 {
         return;
@@ -39,8 +40,9 @@ fn logging(ctx: &mut Ctx, line: Rect, task: &Task, time: Option<TimeSummary>) {
     let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
     let label = format!("log {}", hours(left));
     let log = Button::new(&label, target, Role::Working, band).hover(hover);
-    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
-    log.right(ctx, &mut room, 0.0);
+    let value = ctx.measure(logged, &ctx.styles.body(Role::Text));
+    let x = line.x + ctx.tokens.aside_near + ctx.tokens.md + value + ctx.tokens.sm;
+    log.at(ctx, line, x);
 }
 
 /// The body as text, wrapped to the area's width.
