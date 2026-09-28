@@ -10,9 +10,9 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, screen};
+use groove_ui_kit::widgets::{Button, Tab, screen};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     let rect = ctx.app.layout.manual;
@@ -86,23 +86,9 @@ fn bar(ctx: &mut Ctx, line: Rect, ui: &Ui, shells: Option<&Shells>) {
 
 /// One tab: the numbers of its terminals, raised while up, and the cross that ends them all.
 fn tab(ctx: &mut Ctx, room: &mut Rect, (name, id): (&str, u64), selected: bool) {
-    let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.small);
-    let role = match selected {
-        true => Role::Text,
-        false => Role::Muted,
-    };
-    let label = Label::new(name, ctx.styles.label(role));
-    let box_ = room.take_left(label.width(ctx) + md * 2.0 + sm + size);
-    if selected {
-        ctx.quad(box_, ctx.styles.raised());
-    }
-    hoverable(ctx, box_, Target::ShellTab(id));
-    let mut inside = box_.pad(Edges::across(md, md));
-    let cross = square(inside.take_right(size), size);
-    inside.take_right(sm);
-    label.draw(ctx, inside);
-    ctx.icon(cross, Mark::Close, 0, ctx.styles.color(Role::Faint));
-    ctx.hit(cross, Target::ShellCloseTab(id));
+    let tab = Tab::new(name, Target::ShellTab(id), selected);
+    tab.close(Mark::Close, Target::ShellCloseTab(id))
+        .left(ctx, room, 0.0);
 }
 
 /// One terminal's grid, or what stands in its place; a pane of several can close alone.
@@ -123,14 +109,12 @@ fn grid(ctx: &mut Ctx, pane: Rect, shell: &Shell, (focused, closable): (bool, bo
         Label::new(&words, ctx.styles.small(Role::Faint)).draw(ctx, room);
     }
     if closable {
-        let size = ctx.tokens.small;
-        let mut corner = pane.pad(Edges::all(ctx.tokens.xs));
-        let cross = corner
-            .take_right(size)
-            .align((size, size), Align::Start, Align::Start);
+        let mut corner = pane;
+        let top = corner.take_top(ctx.tokens.row);
+        let mut room = top.pad(Edges::across(0.0, ctx.tokens.xs));
         ctx.layer();
-        ctx.icon(cross, Mark::Close, 0, ctx.styles.color(Role::Faint));
-        ctx.hit(cross, Target::ShellClose(shell.id));
+        let close = Button::icon(Mark::Close, 0, Target::ShellClose(shell.id), Role::Faint);
+        close.right(ctx, &mut room, 0.0);
     }
 }
 

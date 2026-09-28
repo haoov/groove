@@ -12,7 +12,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hairline, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::changes;
+use groove_ui_kit::widgets::{self, Text, changes};
 
 /// The file's path, what it changed, and which view it is drawn in.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
@@ -43,20 +43,10 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
 
 /// The three views from the right of `room`, the current one raised.
 fn switch(ctx: &mut Ctx, room: &mut Rect, current: DiffView) {
-    let (pad, gap) = (ctx.tokens.sm, ctx.tokens.xs);
     for view in DiffView::ALL.into_iter().rev() {
-        let role = match view == current {
-            true => Role::Text,
-            false => Role::Faint,
-        };
-        let label = Label::new(view.label(), ctx.styles.small(role));
-        let box_ = room.take_right(label.width(ctx) + pad * 2.0);
-        room.take_right(gap);
-        if view == current {
-            ctx.quad(box_, ctx.styles.raised());
-        }
-        label.draw(ctx, box_.pad(Edges::across(pad, pad)));
-        ctx.hit(box_, Target::View(view));
+        let tab = widgets::Tab::new(view.label(), Target::View(view), view == current);
+        let tab = tab.text(Text::Small).quiet(Role::Faint).tight();
+        tab.right(ctx, room, ctx.tokens.xs);
     }
 }
 

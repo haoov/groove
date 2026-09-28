@@ -1,4 +1,4 @@
-//! A word a click acts on, at the end of a row.
+//! A button: a word or a mark a click acts on, on a ground of its own.
 
 use groove_gfx::{Align, Color, Rect, TextStyle};
 
@@ -8,14 +8,7 @@ use crate::base::style::Role;
 use crate::shape::{Panel, box_in};
 use crate::text::row;
 
-/// Room of `content` plus the padding either side, at the row's right end.
-pub fn slot<A: App>(ctx: &mut Ctx<'_, A>, line: Rect, content: f32, ground: Option<Color>) -> Rect {
-    let pad = ctx.tokens.sm;
-    let at = line.right() - pad - (content + pad * 2.0);
-    slot_at(ctx, line, at, content, ground)
-}
-
-/// The same room from `x`, on a bordered `ground`; returns its box.
+/// Room of `content` plus the padding either side, from `x`, on a bordered `ground`.
 pub fn slot_at<A: App>(
     ctx: &mut Ctx<'_, A>,
     line: Rect,
@@ -38,26 +31,6 @@ pub fn slot_at<A: App>(
     box_
 }
 
-/// A mark at the row's right end, on `grounds.1` while the pointer rests on it.
-pub fn mark_button<A: App>(
-    ctx: &mut Ctx<'_, A>,
-    line: Rect,
-    target: A::Target,
-    (mark, turn, role): (Mark, u8, Role),
-    grounds: (Color, Color),
-) -> Rect {
-    let ground = match ctx.hovered(&target) {
-        true => grounds.1,
-        false => grounds.0,
-    };
-    let size = ctx.tokens.small;
-    let box_ = slot(ctx, line, size, Some(ground));
-    let at = box_.align((size, size), Align::Center, Align::Center);
-    ctx.icon(at, mark, turn, ctx.styles.color(role));
-    ctx.hit(box_, target);
-    box_
-}
-
 /// The size a button's text is drawn at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Text {
@@ -66,9 +39,11 @@ pub enum Text {
     Body,
 }
 
-/// A word on a bordered ground that a click acts on, in `lit` while the pointer rests on it.
+/// A word or a mark on a bordered ground that a click acts on, in `lit` under the pointer.
 pub struct Button<'a, T> {
     pub label: &'a str,
+    /// A mark in the word's place, at this turn.
+    pub mark: Option<(Mark, u8)>,
     pub target: T,
     pub role: Role,
     pub lit: Role,
@@ -88,11 +63,12 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
     /// A muted word lights to text; any other keeps its role.
     pub fn new(label: &'a str, target: T, role: Role, ground: Color) -> Self {
         let lit = match role {
-            Role::Muted => Role::Text,
+            Role::Muted | Role::Faint => Role::Text,
             other => other,
         };
         Self {
             label,
+            mark: None,
             target,
             role,
             lit,
@@ -105,6 +81,15 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         }
     }
 
+    /// A mark alone, flat until `ground` gives it one.
+    pub fn icon(mark: Mark, turn: u8, target: T, role: Role) -> Self {
+        Self {
+            mark: Some((mark, turn)),
+            ground: None,
+            ..Self::new("", target, role, Color::TRANSPARENT)
+        }
+    }
+
     pub fn lit(mut self, role: Role) -> Self {
         self.lit = role;
         self
@@ -112,6 +97,11 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
 
     pub fn text(mut self, text: Text) -> Self {
         self.text = text;
+        self
+    }
+
+    pub fn ground(mut self, ground: Color) -> Self {
+        self.ground = Some(ground);
         self
     }
 
@@ -185,6 +175,9 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
     }
 
     fn content<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, style: &TextStyle) -> f32 {
+        if self.mark.is_some() {
+            return style.size;
+        }
         let word = ctx.measure(self.label, style);
         match self.caret {
             Some(_) => word + ctx.tokens.xs + style.size,
@@ -200,7 +193,14 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
             false => self.ground,
         };
         let box_ = slot_at(ctx, line, x, content, ground);
-        row(ctx, box_, ctx.tokens.sm, self.label, style);
+        match self.mark {
+            Some((mark, turn)) => {
+                let size = style.size;
+                let at = box_.align((size, size), Align::Center, Align::Center);
+                ctx.icon(at, mark, turn, style.color);
+            }
+            None => row(ctx, box_, ctx.tokens.sm, self.label, style),
+        }
         if let Some(turn) = self.caret {
             let mark = box_in(box_, box_.right() - ctx.tokens.sm - style.size, style.size);
             ctx.icon(mark, Mark::Down, turn, ctx.styles.color(Role::Faint));

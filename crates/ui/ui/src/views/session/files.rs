@@ -68,14 +68,16 @@ fn showing(ctx: &mut Ctx, mut body: Rect, app: &AppState) -> Rect {
 /// The three lists the sidebar offers, the one up lit and counted.
 fn panes(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui) {
     let labels: Vec<String> = Pane::ALL.iter().map(|pane| labelled(app, *pane)).collect();
-    let shown: Vec<&str> = labels.iter().map(String::as_str).collect();
+    let shown: Vec<(&str, Target)> = labels
+        .iter()
+        .zip(Pane::ALL)
+        .map(|(label, pane)| (label.as_str(), Target::Pane(pane)))
+        .collect();
     let at = Pane::ALL
         .iter()
         .position(|pane| *pane == ui.session.pane)
         .unwrap_or(0);
-    for (pane, line) in Pane::ALL.iter().zip(tabs(ctx, rect, &shown, at)) {
-        ctx.hit(line, Target::Pane(*pane));
-    }
+    tabs(ctx, rect, &shown, at);
 }
 
 /// A list's own name, with what it holds when it holds anything.

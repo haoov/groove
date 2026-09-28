@@ -48,14 +48,15 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let mut body = ctx.app.layout.workspace;
     let strip = body.take_top(ctx.tokens.row + ctx.tokens.sm);
-    let labels: Vec<&str> = Tab::ALL.iter().map(|tab| tab.label()).collect();
+    let shown: Vec<(&str, Target)> = Tab::ALL
+        .iter()
+        .map(|tab| (tab.label(), Target::Tab(*tab)))
+        .collect();
     let at = Tab::ALL
         .iter()
         .position(|tab| *tab == ui.session.tab)
         .unwrap_or(0);
-    for (tab, rect) in Tab::ALL.iter().zip(tabs(ctx, strip, &labels, at)) {
-        ctx.hit(rect, Target::Tab(*tab));
-    }
+    tabs(ctx, strip, &shown, at);
     if ui.session.tab.has_sidebar() {
         fold(ctx, strip, ui);
     }

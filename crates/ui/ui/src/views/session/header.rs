@@ -11,7 +11,7 @@ use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hairline, square};
 use groove_ui_kit::text::{Label, elide};
-use groove_ui_kit::widgets::{Button, Text, icon, mark_button, picker};
+use groove_ui_kit::widgets::{Button, Text, icon, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -53,8 +53,12 @@ fn actions(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) -> f32 {
 /// What opens the rest of them, at the line's right end.
 fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> f32 {
     let target = Target::TaskActions(open.session.id.clone());
-    let grounds = (ctx.styles.band(), ctx.styles.hover());
-    mark_button(ctx, line, target, (Mark::Down, 0, Role::Muted), grounds).x
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let more = Button::icon(Mark::Down, 0, target, Role::Muted)
+        .ground(band)
+        .hover(hover);
+    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+    more.right(ctx, &mut room, 0.0).x
 }
 
 /// Whether the session works a task with no worktree still carrying an open MR.
@@ -136,15 +140,15 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
         true => (turn(ctx.tick), Role::Working),
         false => (0, Role::Faint),
     };
-    let grounds = (ctx.styles.band(), ctx.styles.hover());
-    mark_button(
-        ctx,
-        line,
-        Target::Refresh,
-        (Mark::Busy, turning, role),
-        grounds,
-    )
-    .x
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let refresh = Button::icon(Mark::Busy, turning, Target::Refresh, role);
+    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+    refresh
+        .lit(role)
+        .ground(band)
+        .hover(hover)
+        .right(ctx, &mut room, 0.0)
+        .x
 }
 
 /// What the two buttons add around their labels: a caret and the padding each side.

@@ -9,8 +9,9 @@ use crate::hit::Target;
 use crate::{Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, hoverable, square};
+use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
+use groove_ui_kit::widgets::{Tab, Text};
 
 pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
     ctx.quad(strip, ctx.styles.band());
@@ -39,31 +40,19 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
 
 /// One file's tab from the left of `room`.
 fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, active: bool) {
-    let (sm, md, size) = (ctx.tokens.sm, ctx.tokens.md, ctx.tokens.small);
-    let role = match active {
-        true => Role::Text,
-        false => Role::Muted,
-    };
-    let label = Label::new(name(&open.path), ctx.styles.small(role));
-    let width = label.width(ctx) + md * 2.0 + sm + size;
-    let box_ = room.take_left(width);
-    let rule = room.take_left(ctx.tokens.hairline);
-    ctx.quad(rule, ctx.styles.line());
-    if active {
-        ctx.quad(box_, ctx.styles.ground());
-    }
-    hoverable(ctx, box_, Target::OpenTab(open.path.clone()));
-    let mut inside = box_.pad(Edges::across(md, md));
-    let cross = square(inside.take_right(size), size);
-    inside.take_right(sm);
-    label.draw(ctx, inside);
     let close = Target::CloseTab(open.path.clone());
     let mark = match open.new.dirty() && !ctx.hovered(&close) {
         true => Mark::Modified,
         false => Mark::Close,
     };
-    ctx.icon(cross, mark, 0, ctx.styles.color(Role::Faint));
-    ctx.hit(cross, close);
+    let tab = Tab::new(name(&open.path), Target::OpenTab(open.path.clone()), active);
+    let ground = ctx.styles.ground();
+    tab.text(Text::Small)
+        .ground(ground)
+        .close(mark, close)
+        .left(ctx, room, 0.0);
+    let rule = room.take_left(ctx.tokens.hairline);
+    ctx.quad(rule, ctx.styles.line());
 }
 
 /// The open file whose closing waits on an answer.

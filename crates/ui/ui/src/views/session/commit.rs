@@ -12,7 +12,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, counts, mark_button};
+use groove_ui_kit::widgets::{Button, counts};
 
 /// The counts and what commits them on one line, the message under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
@@ -169,13 +169,13 @@ fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
     };
     let word = act.as_ref().map(label).unwrap_or("commit");
     let (action, raised) = (ctx.styles.action(), ctx.styles.raised());
-    let caret = (Mark::Down, Mark::UPWARDS, Role::Muted);
-    let arrow = mark_button(ctx, line, Target::Actions, caret, (raised, action));
+    let rest = Button::icon(Mark::Down, Mark::UPWARDS, Target::Actions, Role::Muted);
+    let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));
+    rest.ground(raised).hover(action).right(ctx, &mut room, 0.0);
     let run = Button::new(word, Target::Do, role, raised)
         .lit(role)
         .hover(action);
-    let mut left = line.until(arrow.x);
-    run.inert(!can).right(ctx, &mut left, 0.0).x
+    run.inert(!can).right(ctx, &mut room, 0.0).x
 }
 
 /// What git says about the selected worktree.
