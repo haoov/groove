@@ -10,7 +10,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{Panel, hairline};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Search, Text};
+use groove_ui_kit::widgets::{Button, Row, Search, Text, list};
 
 const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";
@@ -45,12 +45,11 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
     if shown.is_empty() {
         return;
     }
-    let height = ctx.tokens.row;
-    let mut whole = Rect::new(
+    let whole = Rect::new(
         field.x + ctx.tokens.md,
         field.bottom(),
         ctx.tokens.modal / 2.0,
-        height * shown.len() as f32,
+        ctx.tokens.row * shown.len() as f32,
     );
     ctx.layer();
     let (raised, deep) = (ctx.styles.raised(), ctx.styles.deep());
@@ -59,15 +58,19 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
         .border(deep)
         .draw(ctx, whole);
     let lit = hovered(ctx).unwrap_or(ui.board.offer);
-    for (at, offer) in shown.iter().enumerate() {
-        let line = whole.take_top(height);
-        if at == lit {
-            ctx.quad(line, ctx.styles.hover());
-        }
-        let text = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-        Label::new(offer, ctx.styles.body(Role::Text)).draw(ctx, text);
-        ctx.hit(line, Target::Offer(at));
-    }
+    let (style, hover) = (ctx.styles.body(Role::Text), ctx.styles.hover());
+    let rows: Vec<Row<'_, Target>> = shown
+        .iter()
+        .enumerate()
+        .map(|(at, offer)| {
+            let row = Row::new(ctx.tokens.md, offer, style).target(Target::Offer(at));
+            Row {
+                background: (at == lit).then_some(hover),
+                ..row
+            }
+        })
+        .collect();
+    list(ctx, whole, &rows, None);
 }
 
 /// Which row the pointer stands on, which takes the light from the keyboard's.

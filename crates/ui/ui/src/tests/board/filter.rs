@@ -149,12 +149,13 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
             .filter_map(|at| hits.rect_of(&Target::Offer(at)).map(|rect| rect.y))
             .collect();
         let tall = groove_ui_kit::base::tokens::Tokens::new(1.0).row;
-        let on = frame.layers()[1]
+        let mut on = frame.layers()[1]
             .quads
             .iter()
             .filter(|quad| quad.color == styles.hover() && quad.rect.h == tall)
             .map(|quad| quad.rect.y)
             .collect::<Vec<f32>>();
+        on.dedup();
         (rows, on)
     };
     let (rows, on) = lit(&ui);

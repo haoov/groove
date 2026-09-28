@@ -15,9 +15,8 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
-use groove_ui_kit::shape::{hairline, hoverable};
-use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Field, Search};
+use groove_ui_kit::shape::hairline;
+use groove_ui_kit::widgets::{Button, Field, Row, Search};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -55,21 +54,23 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 fn sections(ctx: &mut Ctx, mut list: Rect, settings: &SettingsUi) {
     let search = list.take_top(ctx.tokens.header);
     searched(ctx, search, settings);
-    let searching = !settings.search.is_empty();
-    for section in Section::ALL {
-        let line = list.take_top(ctx.tokens.row);
-        let up = !searching && settings.section == section;
-        if up {
-            ctx.quad(line, ctx.styles.raised());
-        }
-        hoverable(ctx, line, Target::SettingsSection(section));
-        let role = match up {
-            true => Role::Text,
-            false => Role::Muted,
-        };
-        let room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-        Label::new(section.label(), ctx.styles.label(role)).draw(ctx, room);
-    }
+    let up = Section::ALL.iter().position(|one| *one == settings.section);
+    let up = up.filter(|_| settings.search.is_empty());
+    let rows: Vec<Row<'_, Target>> = Section::ALL
+        .iter()
+        .enumerate()
+        .map(|(at, section)| {
+            let role = if up == Some(at) {
+                Role::Text
+            } else {
+                Role::Muted
+            };
+            let style = ctx.styles.label(role);
+            Row::new(ctx.tokens.md, section.label(), style)
+                .target(Target::SettingsSection(*section))
+        })
+        .collect();
+    groove_ui_kit::widgets::list(ctx, list, &rows, up);
 }
 
 fn searched(ctx: &mut Ctx, line: Rect, settings: &SettingsUi) {
