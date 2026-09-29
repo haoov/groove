@@ -316,3 +316,24 @@ fn the_header_offers_to_read_the_mr_again() {
         )]
     );
 }
+
+#[test]
+fn a_review_s_overview_reads_the_mr_s_description() {
+    let mut read = snapshot(MrState::Open, None);
+    read.details.description = "Reads the checks off the head commit.".into();
+    let mut app = showing(MrState::Open, read);
+    if let Some(open) = app.session.get_mut(&SessionId::new("a")) {
+        open.session.kind = groove_types::SessionKind::Review {
+            project: "acme/groove".into(),
+            iid: 7,
+        };
+    }
+    let (texts, _) = drawn(&app);
+    assert!(texts.iter().any(|t| t == "DESCRIPTION"), "{texts:?}");
+    assert!(
+        texts
+            .iter()
+            .any(|t| t == "Reads the checks off the head commit."),
+        "{texts:?}"
+    );
+}

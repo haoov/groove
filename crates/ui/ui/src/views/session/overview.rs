@@ -3,6 +3,7 @@ mod task;
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
+use groove_types::SessionKind;
 
 use crate::Ui;
 use crate::components::worktree_row;
@@ -49,15 +50,27 @@ fn properties(ctx: &mut Ctx, app: &AppState, open: &Open, column: &mut Rect) -> 
     true
 }
 
-/// The task's body, under everything the session holds.
+/// The task's body, or the MR's description in a review, under everything the session holds.
 fn body(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Rect) {
-    let Some(one) = app.task.worked(&open.session) else {
-        return;
+    let (title, text) = match &open.session.kind {
+        SessionKind::Review { .. } => ("Description", described(app, open)),
+        _ => {
+            let worked = app.task.worked(&open.session);
+            ("Body", worked.and_then(|one| app.task.body(&one.short_id)))
+        }
     };
-    if let Some(text) = app.task.body(&one.short_id).filter(|text| !text.is_empty()) {
-        section(ctx, column, "Body", true);
+    if let Some(text) = text.filter(|text| !text.trim().is_empty()) {
+        section(ctx, column, title, true);
         task::body(ctx, area, column, text);
     }
+}
+
+/// The description of the MR the session's worktrees hold, once its forge has answered.
+fn described<'a>(app: &'a AppState, open: &Open) -> Option<&'a str> {
+    open.worktrees.iter().find_map(|worktree| {
+        let read = app.delivery.held(&worktree.id)?.read.as_ref()?;
+        Some(read.details.description.as_str())
+    })
 }
 
 /// Names down the left and what each holds at the aside column, a row each.
