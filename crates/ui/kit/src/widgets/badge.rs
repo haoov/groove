@@ -5,7 +5,7 @@ use groove_gfx::Rect;
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::base::tokens::{BADGE_EDGE, BADGE_GROUND};
+use crate::base::tokens::BADGE_EDGE;
 use crate::shape::box_in;
 use crate::text::row;
 
@@ -46,7 +46,7 @@ impl<'a> Badge<'a> {
         let top = line.y + (line.h - tall) / 2.0;
         let box_ = Rect::new(x.round(), top.round(), wide.round(), tall.round());
         let corner = ctx.tokens.corner;
-        ctx.rounded(box_, colour.with_alpha(BADGE_GROUND), corner);
+        ctx.rounded(box_, ctx.styles.tint(self.role), corner);
         let edge = ctx.tokens.edge;
         ctx.ring(box_, colour.with_alpha(BADGE_EDGE), corner, edge);
         let mut at = box_.x + ctx.tokens.xs;

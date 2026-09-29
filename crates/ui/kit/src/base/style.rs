@@ -154,6 +154,12 @@ impl Styles {
             .mix(self.palette.lavender, crate::base::tokens::HELD)
     }
 
+    /// A role's colour dimmed to a ground, as a badge stands on.
+    pub fn tint(&self, role: Role) -> Color {
+        self.color(role)
+            .with_alpha(crate::base::tokens::BADGE_GROUND)
+    }
+
     /// The rules above and below a list's selected row.
     pub fn chosen(&self) -> Color {
         self.palette.lavender

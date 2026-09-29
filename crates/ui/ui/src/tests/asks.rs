@@ -48,6 +48,32 @@ fn a_write_waiting_stands_on_its_row_with_approve_and_review() {
 }
 
 #[test]
+fn a_row_that_asks_stands_on_the_attention_tint_its_answers_in_text() {
+    use groove_ui_kit::base::style::{Role, Styles};
+    let app = committing();
+    let ui = session_ui();
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
+    let styles = Styles::new(
+        app.config.theme(),
+        groove_ui_kit::base::tokens::Tokens::new(1.0),
+    );
+    let row = hits
+        .rect_of(&Target::Session(SessionId::new("a")))
+        .expect("the row that asks");
+    let quads = &frame.layers()[0].quads;
+    let tinted = quads
+        .iter()
+        .any(|quad| quad.rect == row && quad.color == styles.tint(Role::Attention));
+    assert!(tinted, "the row stands on the attention tint");
+    let approve = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| run.text == "Approve")
+        .expect("approve");
+    assert_eq!(approve.style.color, styles.color(Role::Text));
+}
+
+#[test]
 fn approving_from_the_row_asks_the_controller_to_run_it() {
     let app = committing();
     let mut ui = session_ui();

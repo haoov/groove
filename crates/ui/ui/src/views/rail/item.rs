@@ -28,6 +28,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     if ctx.hovered(&Target::Session(id.clone())) {
         ctx.quad(rect, ctx.styles.hover());
     }
+    if asked(app, id).is_some() {
+        ctx.quad(rect, ctx.styles.tint(Role::Attention));
+    }
     ctx.hit(rect, Target::Session(id.clone()));
     let (xs, sm, md, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
@@ -61,7 +64,7 @@ fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
 
 /// The write in peach where the state stands, and its two answers on the line under it.
 fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
-    let (md, ground) = (ctx.tokens.md, ctx.styles.ground());
+    let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());
     let room = line.pad(Edges::across(after_mark(ctx, md), md));
     let verb = groove_controllers::agent_service::tools::verb(&ask.op);
     let label = match waiting {
@@ -70,20 +73,13 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     };
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
     let mut under = Rect::new(room.x, line.bottom(), line.right() - room.x, ctx.tokens.row);
-    let approve = Button::new(
-        "Approve",
-        Target::Approve(ask.id.clone()),
-        Role::Attention,
-        ground,
-    );
-    approve.left(ctx, &mut under, ctx.tokens.xs);
-    let review = Button::new(
-        "Review",
-        Target::Examine(ask.id.clone()),
-        Role::Muted,
-        ground,
-    );
-    review.left(ctx, &mut under, ctx.tokens.xs);
+    for (label, target) in [
+        ("Approve", Target::Approve(ask.id.clone())),
+        ("Review", Target::Examine(ask.id.clone())),
+    ] {
+        let button = Button::new(label, target, Role::Text, ground).hover(hover);
+        button.left(ctx, &mut under, ctx.tokens.xs);
+    }
 }
 
 /// How long the agent has waited, at the right of `room`.
