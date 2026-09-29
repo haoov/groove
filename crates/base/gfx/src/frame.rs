@@ -29,6 +29,14 @@ pub struct Quad {
     pub rect: Rect,
     pub color: Color,
     pub clip: Rect,
+    pub shape: Shape,
+}
+
+/// How a quad is cut: its corners' radius, and the width of its edge when only that is drawn.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Shape {
+    pub radius: f32,
+    pub stroke: f32,
 }
 
 /// One icon, drawn in its own box.
@@ -110,11 +118,37 @@ impl Frame {
     }
 
     pub fn quad(&mut self, rect: Rect, color: Color) {
+        self.shaped(rect, color, Shape::default());
+    }
+
+    /// A quad with its corners rounded by `radius`.
+    pub fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
+        self.shaped(
+            rect,
+            color,
+            Shape {
+                radius,
+                stroke: 0.0,
+            },
+        );
+    }
+
+    /// An edge `stroke` wide just inside `rect`, its corners rounded by `radius`.
+    pub fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
+        self.shaped(rect, color, Shape { radius, stroke });
+    }
+
+    fn shaped(&mut self, rect: Rect, color: Color, shape: Shape) {
         if rect.is_empty() || color.is_transparent() {
             return;
         }
         let clip = self.clip();
-        self.top().quads.push(Quad { rect, color, clip });
+        self.top().quads.push(Quad {
+            rect,
+            color,
+            clip,
+            shape,
+        });
     }
 
     /// A one-pixel frame just inside `rect`.

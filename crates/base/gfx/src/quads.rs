@@ -2,13 +2,18 @@
 
 use std::ops::Range;
 
-use crate::{Color, Rect, Size};
+use crate::{Color, Rect, Shape, Size};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     pos: [f32; 2],
     color: [f32; 4],
+    /// Where the vertex stands from the whole rect's centre, in pixels.
+    local: [f32; 2],
+    half: [f32; 2],
+    /// The corners' radius, and the width of the edge alone drawn; none fills it.
+    shape: [f32; 2],
 }
 
 /// Consecutive quads under one scissor.
@@ -50,12 +55,28 @@ impl QuadPass {
         clip: Rect,
         size: Size,
     ) {
-        let rect = rect.intersect(clip);
+        let plain = Shape::default();
+        self.push_shaped(layer, (rect, plain), color, alpha, clip, size);
+    }
+
+    /// A quad cut to `shape`: its corners rounded, or only its edge drawn.
+    pub fn push_shaped(
+        &mut self,
+        layer: usize,
+        (whole, shape): (Rect, Shape),
+        color: Color,
+        alpha: f32,
+        clip: Rect,
+        size: Size,
+    ) {
+        let rect = whole.intersect(clip);
         if rect.is_empty() || color.is_transparent() {
             return;
         }
         let start = self.verts.len() as u32;
-        push_vertices(&mut self.verts, rect, color, alpha, size);
+        let mut color = color.linear();
+        color[3] *= alpha;
+        push_vertices(&mut self.verts, (rect, whole), color, shape, size);
         let end = self.verts.len() as u32;
         let batches = &mut self.layers[layer];
         match batches.last_mut() {
@@ -92,26 +113,31 @@ impl QuadPass {
     }
 }
 
-/// One rectangle in pixels as two triangles in clip space.
-fn push_vertices(verts: &mut Vec<Vertex>, r: Rect, color: Color, alpha: f32, size: Size) {
+/// The part `r` of rectangle `whole`, in pixels, as two triangles in clip space.
+fn push_vertices(
+    verts: &mut Vec<Vertex>,
+    (r, whole): (Rect, Rect),
+    color: [f32; 4],
+    shape: Shape,
+    size: Size,
+) {
     let ndc = |x: f32, y: f32| {
         [
             x / size.width as f32 * 2.0 - 1.0,
             1.0 - y / size.height as f32 * 2.0,
         ]
     };
-    let mut color = color.linear();
-    color[3] *= alpha;
+    let half = [whole.w / 2.0, whole.h / 2.0];
+    let centre = (whole.x + half[0], whole.y + half[1]);
     let (x0, y0, x1, y1) = (r.x, r.y, r.right(), r.bottom());
-    for pos in [
-        ndc(x0, y0),
-        ndc(x1, y0),
-        ndc(x0, y1),
-        ndc(x1, y0),
-        ndc(x1, y1),
-        ndc(x0, y1),
-    ] {
-        verts.push(Vertex { pos, color });
+    for (x, y) in [(x0, y0), (x1, y0), (x0, y1), (x1, y0), (x1, y1), (x0, y1)] {
+        verts.push(Vertex {
+            pos: ndc(x, y),
+            color,
+            local: [x - centre.0, y - centre.1],
+            half,
+            shape: [shape.radius, shape.stroke],
+        });
     }
 }
 
@@ -143,7 +169,9 @@ fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderP
             buffers: &[Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<Vertex>() as u64,
                 step_mode: wgpu::VertexStepMode::Vertex,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4],
+                attributes: &wgpu::vertex_attr_array![
+                    0 => Float32x2, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2, 4 => Float32x2
+                ],
             })],
             compilation_options: Default::default(),
         },

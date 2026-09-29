@@ -147,7 +147,9 @@ impl Renderer {
         self.text.begin(layers, device, queue, self.size);
         for (i, layer) in frame.layers.iter().enumerate() {
             for q in &layer.quads {
-                self.quads.push(i, q.rect, q.color, 1.0, q.clip, self.size);
+                let shaped = (q.rect, q.shape);
+                self.quads
+                    .push_shaped(i, shaped, q.color, 1.0, q.clip, self.size);
             }
             for run in &layer.texts {
                 self.text.push_run(i, &mut self.fonts, run);

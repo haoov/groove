@@ -22,7 +22,7 @@ pub use cell::{Cell, CellGrid, WIDE_SPACER};
 pub use color::Color;
 pub use error::{Error, Result};
 pub use fonts::{CellSize, Fonts};
-pub use frame::{Font, Frame, Quad, TextRun, TextStyle, Weight};
+pub use frame::{Font, Frame, Quad, Shape, TextRun, TextStyle, Weight};
 pub use geom::{Align, Edges, Rect, Size};
 pub use icons::Icon;
 pub use renderer::Renderer;
