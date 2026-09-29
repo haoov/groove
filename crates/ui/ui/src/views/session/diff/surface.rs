@@ -151,6 +151,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     lines: &held.words[on].lines,
                     opens: *row == 0,
                     resolved: app.delivery.shown.get(*at).is_some_and(|one| one.resolved),
+                    prose: held.words[on].prose.as_ref(),
                 },
             ),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
@@ -170,6 +171,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                     lines: &held.words[on].lines,
                     opens: true,
                     resolved: false,
+                    prose: None,
                 },
             ),
         })
@@ -214,6 +216,7 @@ struct Words {
     author: String,
     lines: String,
     body: String,
+    prose: Option<groove_ui_kit::markdown::Row>,
 }
 
 /// Who said what on a note row; a row of code says nothing.
@@ -221,7 +224,7 @@ fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
     match slot {
         Slot::Note { at, row } => match app.delivery.shown.get(at) {
             Some(note) => {
-                let (author, body) = said(note, row, super::wrap::cols_of(ui));
+                let (author, prose) = said(note, row, super::wrap::cols_of(ui));
                 let shown = match row {
                     0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
                     _ => String::new(),
@@ -229,7 +232,8 @@ fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
                 Words {
                     author,
                     lines: shown,
-                    body,
+                    body: String::new(),
+                    prose: Some(prose),
                 }
             }
             None => Words::default(),
@@ -239,6 +243,7 @@ fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
                 author: AUTHOR.to_string(),
                 lines: lines(&noting.anchor),
                 body: noting.field.shown(),
+                prose: None,
             },
             None => Words::default(),
         },

@@ -38,6 +38,9 @@ pub enum Mark {
     Notion,
     /// What opens a thing where it lives, outside Groove.
     Outward,
+    /// A task list's item, open and done.
+    Unticked,
+    Ticked,
 }
 
 impl Mark {
@@ -86,6 +89,8 @@ impl Mark {
             Mark::Github => Icon::Github,
             Mark::Notion => Icon::Notion,
             Mark::Outward => Icon::Outward,
+            Mark::Unticked => Icon::Box,
+            Mark::Ticked => Icon::Ticked,
         }
     }
 }

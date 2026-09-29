@@ -91,6 +91,35 @@ impl Styles {
         self.sans(self.tokens.small, Weight::Bold, role)
     }
 
+    /// Markdown prose: a paragraph at level 0, a heading at 1 to 3.
+    pub fn prose(&self, level: u8, role: Role) -> TextStyle {
+        match level {
+            0 => self.body(role),
+            1 => self.sans(self.tokens.h1, Weight::SemiBold, role),
+            2 => self.sans(self.tokens.h2, Weight::SemiBold, role),
+            _ => self.sans(self.tokens.h3, Weight::SemiBold, role),
+        }
+    }
+
+    /// Code in prose, as large as the text around it.
+    pub fn prose_code(&self, role: Role) -> TextStyle {
+        TextStyle {
+            font: Font::Mono,
+            weight: Weight::Regular,
+            size: self.tokens.text,
+            color: self.color(role),
+        }
+    }
+
+    /// `base` with a span's emphasis.
+    pub fn emphasised(&self, base: TextStyle, strong: bool, em: bool) -> TextStyle {
+        TextStyle {
+            font: if em { Font::Italic } else { base.font },
+            weight: if strong { Weight::Bold } else { base.weight },
+            ..base
+        }
+    }
+
     /// Code: the agent, the terminal, the diff and the editor, and nowhere else.
     pub fn code(&self, role: Role) -> TextStyle {
         TextStyle {

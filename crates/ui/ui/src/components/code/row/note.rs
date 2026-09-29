@@ -25,6 +25,10 @@ pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutte
     let at = gutter.content(ctx, line);
     let words = ctx.styles.body(role);
     let rect = Rect::new(at, line.y, (by - at - ctx.tokens.sm).max(0.0), line.h);
+    if let Some(prose) = said.prose {
+        let link = |url: &str| Target::Link(url.to_string());
+        return groove_ui_kit::markdown::row(ctx, rect, prose, role, &link);
+    }
     let text = elide(ctx, text, &words, rect.w);
     row(ctx, rect, 0.0, &text, words);
 }

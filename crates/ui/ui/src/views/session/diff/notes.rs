@@ -180,7 +180,7 @@ fn anchored(app: &AppState, view: Face, anchor: &Anchor) -> Option<usize> {
 }
 
 /// What one row of a note says: who said it, and the words on that row.
-pub(crate) fn said(note: &Note, row: usize, cols: usize) -> (String, String) {
+pub(crate) fn said(note: &Note, row: usize, cols: usize) -> (String, groove_ui_kit::markdown::Row) {
     wrapped(note, cols).into_iter().nth(row).unwrap_or_default()
 }
 

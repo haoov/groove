@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 groove-gfx = { path = "../../base/gfx" }
 groove-types = { path = "../../shared/types" }
+pulldown-cmark.workspace = true
 
 [lints]
 workspace = true

@@ -2,6 +2,7 @@
 
 mod delivery;
 mod header;
+mod markdown;
 
 use groove_types::{Day, ExternalId, SessionId, SessionKind};
 

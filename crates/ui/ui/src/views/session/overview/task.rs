@@ -6,7 +6,7 @@ use groove_types::{Task, TimeSummary};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::text::{row, wrapped};
+use groove_ui_kit::markdown::prose;
 use groove_ui_kit::widgets::Button;
 
 const UNSET: &str = "—";
@@ -45,17 +45,13 @@ fn logging(ctx: &mut Ctx, line: Rect, (task, logged): (&Task, &str), time: Optio
     log.at(ctx, line, x);
 }
 
-/// The body as text, wrapped to the area's width.
+/// The body as Markdown, to the area's width.
 pub(super) fn body(ctx: &mut Ctx, area: Rect, column: &mut Rect, text: &str) {
-    let style = ctx.styles.body(Role::Muted);
     let pad = ctx.tokens.md;
-    let lines = wrapped(ctx, text.trim(), &style, column.w - pad * 2.0);
-    for line in &lines {
-        let at = column.take_top(ctx.tokens.line);
-        if at.bottom() >= area.y && at.y <= area.bottom() {
-            row(ctx, at, pad, line, style);
-        }
-    }
+    let at = Rect::new(column.x + pad, column.y, column.w - pad * 2.0, 0.0);
+    let link = |url: &str| Target::Link(url.to_string());
+    let tall = prose(ctx, (at, area), text, Role::Muted, link);
+    column.take_top(tall);
 }
 
 fn hours(value: f32) -> String {

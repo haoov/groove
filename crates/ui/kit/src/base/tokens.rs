@@ -15,6 +15,9 @@ pub const WORD_ALPHA: u8 = 96;
 pub const BADGE_GROUND: u8 = 25;
 pub const BADGE_EDGE: u8 = 90;
 
+/// A line of prose against its type size.
+pub const LEADING: f32 = 1.5;
+
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;
 
@@ -99,6 +102,10 @@ pub struct Tokens {
     pub small: f32,
     pub title: f32,
     pub heading: f32,
+    /// A Markdown heading's size, by level.
+    pub h1: f32,
+    pub h2: f32,
+    pub h3: f32,
     pub code: f32,
     /// One icon's box.
     pub icon: f32,
@@ -117,6 +124,9 @@ pub struct Tokens {
 const SMALL: f32 = 11.5 / 13.0;
 const TITLE: f32 = 16.0 / 13.0;
 const HEADING: f32 = 12.0 / 13.0;
+const H1: f32 = 20.0 / 13.0;
+const H2: f32 = 17.0 / 13.0;
+const H3: f32 = 14.5 / 13.0;
 const ICON: f32 = 16.0 / 13.0;
 const ROW: f32 = 26.0 / 13.0;
 const HEADER: f32 = 36.0 / 13.0;
@@ -152,6 +162,9 @@ const LOGICAL: Tokens = Tokens {
     small: 11.5,
     title: 16.0,
     heading: 12.0,
+    h1: 20.0,
+    h2: 17.0,
+    h3: 14.5,
     code: 12.5,
     icon: 16.0,
     aside_near: 90.0,
@@ -199,6 +212,9 @@ impl Tokens {
             small: of_text(SMALL),
             title: of_text(TITLE),
             heading: of_text(HEADING),
+            h1: of_text(H1),
+            h2: of_text(H2),
+            h3: of_text(H3),
             code: s(code),
             icon: of_text(ICON),
             aside_near: s(LOGICAL.aside_near),

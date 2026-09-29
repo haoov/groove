@@ -160,7 +160,9 @@ fn acted(
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
-        Some(Target::TaskPage(url)) => vec![Command::Task(task::Command::Browse { url })],
+        Some(Target::TaskPage(url) | Target::Link(url)) => {
+            vec![Command::Task(task::Command::Browse { url })]
+        }
         Some(Target::Pane(pane)) => paned(ui, pane),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),

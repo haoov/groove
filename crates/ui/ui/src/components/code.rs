@@ -23,6 +23,8 @@ pub struct Noted<'a> {
     pub lines: &'a str,
     pub opens: bool,
     pub resolved: bool,
+    /// The words as Markdown; the plain text is drawn when there is none.
+    pub prose: Option<&'a groove_ui_kit::markdown::Row>,
 }
 
 /// The buttons a note's last row carries, and the note they act on.

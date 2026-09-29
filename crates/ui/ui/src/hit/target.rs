@@ -117,6 +117,8 @@ pub enum Target {
     /// What opens the task's own page at its source.
     TaskPage(String),
     TaskActions(groove_types::SessionId),
+    /// A link in prose.
+    Link(String),
     /// One task's bar on the timeline, which names it under the pointer.
     Bar(String),
     /// The board's filter, and one row it offers.

@@ -85,7 +85,8 @@ fn body_of(note: &Note) -> String {
     let Some(said) = note.opening() else {
         return String::new();
     };
-    let first = said.body.lines().next().unwrap_or_default().trim();
+    let plain = groove_ui_kit::markdown::plain(&said.body);
+    let first = plain.lines().next().unwrap_or_default();
     match note.replies() {
         0 => first.to_string(),
         n => format!("{first} +{n}"),

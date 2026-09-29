@@ -5,6 +5,7 @@ mod notes;
 mod noting;
 mod pinned;
 mod pointer;
+mod prose;
 mod rows;
 mod stream;
 mod views;
