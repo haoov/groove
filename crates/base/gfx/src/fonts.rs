@@ -4,18 +4,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use glyphon::fontdb::{Database, Source};
-use glyphon::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, SwashCache};
+use glyphon::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Style, SwashCache};
 
 use crate::{Font, Weight};
 
 const SANS: &str = "IBM Plex Sans";
 const MONO: &str = "IBM Plex Mono";
 
-const FACES: [&[u8]; 6] = [
+const FACES: [&[u8]; 7] = [
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Medium.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-SemiBold.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/IBMPlexSans-Italic.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Bold.ttf"),
 ];
@@ -85,12 +86,14 @@ impl Fonts {
     }
 
     pub(crate) fn attrs(font: Font, weight: Weight) -> Attrs<'static> {
-        let family = match font {
-            Font::Sans => SANS,
-            Font::Mono => MONO,
+        let (family, style) = match font {
+            Font::Sans => (SANS, Style::Normal),
+            Font::Italic => (SANS, Style::Italic),
+            Font::Mono => (MONO, Style::Normal),
         };
         Attrs::new()
             .family(Family::Name(family))
+            .style(style)
             .weight(weight.into())
     }
 

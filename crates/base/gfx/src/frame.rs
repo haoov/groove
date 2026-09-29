@@ -5,6 +5,8 @@ use crate::{CellGrid, Color, Icon, Rect, Size};
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Font {
     Sans,
+    /// The sans face, slanted.
+    Italic,
     Mono,
 }
 

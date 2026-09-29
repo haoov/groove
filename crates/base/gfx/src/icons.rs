@@ -28,13 +28,15 @@ pub enum Icon {
     Github,
     Notion,
     Outward,
+    Box,
+    Ticked,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 21] = [
+    pub(crate) const ALL: [Icon; 23] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -56,6 +58,8 @@ impl Icon {
         Icon::Github,
         Icon::Notion,
         Icon::Outward,
+        Icon::Box,
+        Icon::Ticked,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -81,6 +85,8 @@ impl Icon {
             Icon::Github => include_bytes!("../../../../assets/icons/github-logo.svg"),
             Icon::Notion => include_bytes!("../../../../assets/icons/notion-logo.svg"),
             Icon::Outward => include_bytes!("../../../../assets/icons/arrow-square-out.svg"),
+            Icon::Box => include_bytes!("../../../../assets/icons/square.svg"),
+            Icon::Ticked => include_bytes!("../../../../assets/icons/check-square.svg"),
         }
     }
 
