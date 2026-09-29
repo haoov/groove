@@ -13,6 +13,14 @@ impl<'a, T: TokenSource> Rest<'a, T> {
         Self { client, token }
     }
 
+    /// A call whose JSON answer the caller reads.
+    pub async fn get(&self, url: &str) -> Result<serde_json::Value> {
+        self.client
+            .request(Method::GET, url)
+            .send_authed_json(self.token)
+            .await
+    }
+
     /// A call whose answer nothing reads: it either happened or it is an error.
     pub async fn post(&self, url: &str) -> Result<()> {
         self.client

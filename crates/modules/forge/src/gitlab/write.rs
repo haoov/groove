@@ -2,7 +2,7 @@
 
 use groove_types::{Repo, ReviewVerdict};
 
-use super::{Gitlab, path, query, read, urlencoding};
+use super::{Gitlab, path, query, read};
 use crate::{Error, Posted, Proposed, Result, Snapshot, Verdict};
 
 impl Gitlab {
@@ -186,10 +186,5 @@ fn refused(payload: &serde_json::Value) -> Option<String> {
 
 /// What approves an MR, which GitLab keeps out of GraphQL.
 fn approve_url(host: &str, repo: &Repo, number: &str) -> String {
-    let project = urlencoding(&path(repo));
-    let root = match host.starts_with("http") {
-        true => host.to_string(),
-        false => format!("https://{host}"),
-    };
-    format!("{root}/api/v4/projects/{project}/merge_requests/{number}/approve")
+    format!("{}/approve", super::mr_url(host, repo, number))
 }

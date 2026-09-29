@@ -1,6 +1,7 @@
 //! GitLab merge requests: what a branch has, and what a write leaves behind.
 
 mod query;
+mod ranges;
 mod read;
 mod write;
 
@@ -40,7 +41,10 @@ impl Gitlab {
         let Some(mr) = nodes.first() else {
             return Ok(None);
         };
-        Ok(read::snapshot(mr, &self.viewer(&reply), &self.host))
+        match read::snapshot(mr, &self.viewer(&reply), &self.host) {
+            Some(read) => Ok(Some(self.spanned(repo, read).await)),
+            None => Ok(None),
+        }
     }
 
     /// One MR by number, with its pipeline and its discussions.
@@ -48,13 +52,26 @@ impl Gitlab {
         let at = serde_json::json!({ "path": path(repo), "iid": number });
         let reply = self.api.ask(&query::by_iid(), at).await?;
         let mr = &reply["data"]["project"]["mergeRequest"];
-        read::snapshot(mr, &self.viewer(&reply), &self.host).ok_or_else(|| {
+        let read = read::snapshot(mr, &self.viewer(&reply), &self.host).ok_or_else(|| {
             Error::Invalid(format!(
                 "{} has no merge request {number} on {}",
                 self.host,
                 repo.slug()
             ))
-        })
+        })?;
+        Ok(self.spanned(repo, read).await)
+    }
+
+    /// The read with each diff note's range; left as it is when the call fails.
+    async fn spanned(&self, repo: &Repo, mut read: Snapshot) -> Snapshot {
+        if !ranges::wanted(&read.threads) {
+            return read;
+        }
+        let url = ranges::url(&self.host, repo, &read.number);
+        if let Ok(discussions) = self.api.beside().get(&url).await {
+            ranges::spanned(&mut read.threads, &discussions);
+        }
+        read
     }
 
     pub async fn review_queue(&self) -> Result<Vec<ReviewMr>> {
@@ -70,6 +87,16 @@ impl Gitlab {
 }
 
 /// A path as one segment of a url: only the slash needs saying.
+/// One merge request's REST address.
+fn mr_url(host: &str, repo: &Repo, number: &str) -> String {
+    let project = urlencoding(&path(repo));
+    let root = match host.starts_with("http") {
+        true => host.to_string(),
+        false => format!("https://{host}"),
+    };
+    format!("{root}/api/v4/projects/{project}/merge_requests/{number}")
+}
+
 fn urlencoding(path: &str) -> String {
     path.replace('/', "%2F")
 }

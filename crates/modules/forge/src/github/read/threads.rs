@@ -24,6 +24,10 @@ fn anchored(thread: &serde_json::Value) -> MrThread {
     let resolved = thread["isResolved"].as_bool().unwrap_or_default();
     let path = text(&thread["path"]);
     let on_new_side = thread["diffSide"].as_str().unwrap_or("RIGHT") == "RIGHT";
+    let start = thread["startLine"]
+        .as_u64()
+        .or_else(|| thread["originalStartLine"].as_u64())
+        .and_then(|one| u32::try_from(one).ok());
     MrThread {
         id: text(&thread["id"]),
         notes: nodes(&thread["comments"])
@@ -39,7 +43,8 @@ fn anchored(thread: &serde_json::Value) -> MrThread {
                     .flatten()
                     .map(|line| NotePosition {
                         new_path: Some(path.clone()),
-                        new_line: Some(line),
+                        new_line: Some(start.unwrap_or(line).min(line)),
+                        end_new_line: start.map(|_| line),
                         ..NotePosition::default()
                     }),
             })

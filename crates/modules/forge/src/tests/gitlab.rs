@@ -76,7 +76,7 @@ pub(super) async fn gitlab(reply: serde_json::Value) -> (MockServer, Gitlab) {
     (server, gitlab)
 }
 
-fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
+pub(super) fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
     serde_json::json!({ "data": {
         "currentUser": { "username": "rsabbah" },
         "project": { "mergeRequests": { "nodes": nodes } }

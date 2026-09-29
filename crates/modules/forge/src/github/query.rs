@@ -32,7 +32,7 @@ const FIELDS: &str = r"
   }
   reviewThreads(first: 50) {
     nodes {
-      id isResolved path line diffSide
+      id isResolved path line startLine originalStartLine diffSide
       comments(first: 50) {
         nodes { body createdAt line originalLine author { login } }
       }

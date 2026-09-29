@@ -82,7 +82,7 @@ pub(super) async fn github(reply: serde_json::Value) -> (MockServer, Github) {
 }
 
 /// The shape a branch query answers with.
-fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
+pub(super) fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
     serde_json::json!({ "data": {
         "viewer": { "login": "haoov" },
         "repository": { "pullRequests": { "nodes": nodes } }
