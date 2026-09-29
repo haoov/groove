@@ -240,3 +240,30 @@ fn an_explorer_offers_no_such_menu() {
         "an explorer is thrown away from the palette"
     );
 }
+
+#[test]
+fn a_task_s_title_is_followed_by_what_opens_its_page() {
+    let mut app = working_a_task();
+    let url = "https://github.com/haoov/groove/issues/50".to_string();
+    app.task.tasks[0].url = Some(url.clone());
+    let mut ui = Ui::default();
+    let window = metrics(1280, 800, 1.0);
+    let (frame, hits) = view(&app, &ui, window, &mut groove_gfx::Fonts::embedded());
+    let page = crate::hit::Target::TaskPage(url.clone());
+    let button = hits.rect_of(&page).expect("the button");
+    let title = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|t| t.text == "Alpha")
+        .expect("the title");
+    assert!(button.x > title.x, "after the title");
+
+    let press = crate::input::Input::Press {
+        x: button.x + button.w / 2.0,
+        y: button.y + button.h / 2.0,
+        mods: Default::default(),
+    };
+    let commands = crate::input::handle(press, &mut ui, &app, &hits, window);
+    let browse = groove_controllers::task::Command::Browse { url };
+    assert_eq!(commands, [groove_controllers::Command::Task(browse)]);
+}

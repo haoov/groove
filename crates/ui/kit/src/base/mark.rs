@@ -36,6 +36,8 @@ pub enum Mark {
     /// Where a task comes from.
     Github,
     Notion,
+    /// What opens a thing where it lives, outside Groove.
+    Outward,
 }
 
 impl Mark {
@@ -83,6 +85,7 @@ impl Mark {
             Mark::Close => Icon::Cross,
             Mark::Github => Icon::Github,
             Mark::Notion => Icon::Notion,
+            Mark::Outward => Icon::Outward,
         }
     }
 }

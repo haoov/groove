@@ -10,7 +10,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hairline, square};
-use groove_ui_kit::text::{Label, elide};
+use groove_ui_kit::text::{Label, elide, row};
 use groove_ui_kit::widgets::{Button, Text, icon, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
@@ -28,7 +28,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         return;
     };
     let until = actions(ctx, top, app, open);
-    titled(ctx, top.until(until), open);
+    let page = app
+        .task
+        .worked(&open.session)
+        .and_then(|one| one.url.as_deref());
+    titled(ctx, top.until(until), open, page);
     pickers(ctx, under, app, open);
 }
 
@@ -70,14 +74,26 @@ fn finishable(app: &AppState, open: &Open) -> bool {
             .all(|worktree| !app.delivery.is_open(&worktree.id))
 }
 
-/// The session's kind and its title, cut where the actions begin.
-fn titled(ctx: &mut Ctx, line: Rect, open: &Open) {
+/// The session's kind and its title, cut where the actions begin, then what opens its page.
+fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(md, md));
     let mark = square(room.take_left(size), size);
     room.take_left(ctx.tokens.sm);
     icon(ctx, mark, Mark::of_kind(&open.session.kind), Role::Faint);
-    Label::new(&open.session.title, ctx.styles.title(Role::Text)).draw(ctx, room);
+    let style = ctx.styles.title(Role::Text);
+    let wide = match page {
+        Some(_) => size + ctx.tokens.sm * 2.0 + ctx.tokens.sm,
+        None => 0.0,
+    };
+    let title = elide(ctx, &open.session.title, &style, (room.w - wide).max(0.0));
+    let end = room.x + ctx.measure(&title, &style);
+    row(ctx, room, 0.0, &title, style);
+    if let Some(url) = page {
+        let target = Target::TaskPage(url.to_string());
+        let outward = Button::icon(Mark::Outward, 0, target, Role::Faint).hover(ctx.styles.hover());
+        outward.at(ctx, line, end + ctx.tokens.sm);
+    }
 }
 
 /// The pickers every tab follows, each label cut to the room the line has, the MR after them.

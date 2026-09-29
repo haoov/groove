@@ -73,7 +73,7 @@ pub fn dispatch(
     match command {
         Command::RefreshMr => poll::refresh_selected(state, services, spawner),
         Command::BrowseMr { url } => crate::spawn::record(spawner, async move {
-            Ok(groove_delivery_service::browse(&url).await?)
+            groove_delivery_service::browse(&url).await
         }),
         Command::ReviewQueue => queue::read(state, services, spawner),
         Command::CreateMr => mr::here(state, services, spawner, MrAct::Open),

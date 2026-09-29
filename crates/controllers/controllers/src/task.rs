@@ -38,6 +38,8 @@ pub enum Command {
     },
     /// `task.plan`: one task moved above another, or to the end of its own side.
     Plan(Landing),
+    /// `task.browse`: the task's page at its source, in the browser.
+    Browse { url: String },
 }
 
 impl Command {
@@ -50,6 +52,7 @@ impl Command {
             Command::Finish { .. } => "task.finish",
             Command::SetStatus { .. } => "task.set_status",
             Command::Plan { .. } => "task.plan",
+            Command::Browse { .. } => "task.browse",
         }
     }
 }
@@ -75,6 +78,12 @@ pub fn dispatch(
             intent,
         } => status::set(state, spawner, &external_id, intent),
         Command::Plan(landing) => plan::reorder(state, services, spawner, &landing),
+        Command::Browse { url } => {
+            crate::spawn::record(
+                spawner,
+                async move { groove_task_service::browse(&url).await },
+            )
+        }
     }
 }
 

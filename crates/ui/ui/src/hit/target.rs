@@ -114,6 +114,8 @@ pub enum Target {
     Refresh,
     /// An MR's number, a link to its page.
     MrPage(String),
+    /// What opens the task's own page at its source.
+    TaskPage(String),
     TaskActions(groove_types::SessionId),
     /// One task's bar on the timeline, which names it under the pointer.
     Bar(String),

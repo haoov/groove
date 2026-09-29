@@ -27,13 +27,14 @@ pub enum Icon {
     PullRequest,
     Github,
     Notion,
+    Outward,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 20] = [
+    pub(crate) const ALL: [Icon; 21] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -54,6 +55,7 @@ impl Icon {
         Icon::PullRequest,
         Icon::Github,
         Icon::Notion,
+        Icon::Outward,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -78,6 +80,7 @@ impl Icon {
             Icon::PullRequest => include_bytes!("../../../../assets/icons/git-pull-request.svg"),
             Icon::Github => include_bytes!("../../../../assets/icons/github-logo.svg"),
             Icon::Notion => include_bytes!("../../../../assets/icons/notion-logo.svg"),
+            Icon::Outward => include_bytes!("../../../../assets/icons/arrow-square-out.svg"),
         }
     }
 

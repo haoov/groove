@@ -12,6 +12,7 @@ mod timer;
 #[cfg(test)]
 mod tests;
 
+pub use groove_browser::browse;
 pub use groove_plan::Placed;
 pub use groove_provider::{Fetched, Github, Notion, Source, Token};
 use groove_types::{
