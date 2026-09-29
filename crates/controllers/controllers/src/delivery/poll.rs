@@ -77,25 +77,21 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, worktr
     let service = services.delivery.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.read(&whose.repo, &whose.worktree).await;
-        Box::new(
-            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
-                state.delivery.poll.answered(&whose.worktree.id);
-                answered(state, services, spawner, &whose, read);
-            },
-        ) as Continuation
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.delivery.poll.answered(&whose.worktree.id);
+            answered(state, &whose, read);
+        }) as Continuation
     }));
 }
 
-/// What a read brought back, onto the service's state.
-fn answered(
-    state: &mut AppState,
-    services: &Services,
-    spawner: &dyn Spawner,
-    whose: &Whose,
-    read: Result<Option<Delivered>>,
-) {
+/// What a read brought back, onto the service's state; the feed hears nothing of it.
+fn answered(state: &mut AppState, whose: &Whose, read: Result<Option<Delivered>>) {
     match read {
-        Ok(Some(delivered)) => return took(state, services, spawner, whose, delivered),
+        Ok(Some(delivered)) => {
+            state
+                .delivery
+                .took(&whose.worktree.id, delivered, Timestamp::now());
+        }
         Ok(None) => state.delivery.gone(&whose.worktree.id),
         Err(e) => {
             state.delivery.aged(&whose.worktree.id);
@@ -105,7 +101,7 @@ fn answered(
     moved(state);
 }
 
-/// One MR in hand, from a read or a write: onto the state, its lines onto its session's log.
+/// One MR in hand from a write: onto the state, its lines onto its session's log.
 pub(crate) fn took(
     state: &mut AppState,
     services: &Services,

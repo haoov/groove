@@ -14,7 +14,6 @@ pub enum TimelineKind {
     MrUpdated,
     MrMerged,
     MrClosed,
-    Ci,
     Review,
     Note,
     RepoAdded,
@@ -24,7 +23,7 @@ pub enum TimelineKind {
 
 impl TimelineKind {
     /// Every kind, for a reader that walks them all.
-    pub const ALL: [TimelineKind; 16] = [
+    pub const ALL: [TimelineKind; 15] = [
         TimelineKind::TurnStart,
         TimelineKind::TurnEnd,
         TimelineKind::Commit,
@@ -35,7 +34,6 @@ impl TimelineKind {
         TimelineKind::MrUpdated,
         TimelineKind::MrMerged,
         TimelineKind::MrClosed,
-        TimelineKind::Ci,
         TimelineKind::Review,
         TimelineKind::Note,
         TimelineKind::RepoAdded,
@@ -55,7 +53,6 @@ impl TimelineKind {
             TimelineKind::MrUpdated => "MR updated",
             TimelineKind::MrMerged => "MR merged",
             TimelineKind::MrClosed => "MR closed",
-            TimelineKind::Ci => "CI",
             TimelineKind::Review => "review",
             TimelineKind::Note => "note",
             TimelineKind::RepoAdded => "repo added",
@@ -77,7 +74,6 @@ impl TimelineKind {
             TimelineKind::MrUpdated => "mr_updated",
             TimelineKind::MrMerged => "mr_merged",
             TimelineKind::MrClosed => "mr_closed",
-            TimelineKind::Ci => "ci",
             TimelineKind::Review => "review",
             TimelineKind::Note => "note",
             TimelineKind::RepoAdded => "repo_added",

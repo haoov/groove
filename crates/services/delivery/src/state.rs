@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use groove_types::{
-    Annotation, AnnotationId, AnnotationStatus, CiState, Mr, MrState, Note, RepoId, ReviewMr,
-    SessionId, TimelineKind, Timestamp, WorktreeDelivery, WorktreeId, WorktreeStatus,
+    Annotation, AnnotationId, AnnotationStatus, Mr, MrState, Note, RepoId, ReviewMr, SessionId,
+    TimelineKind, Timestamp, WorktreeDelivery, WorktreeId, WorktreeStatus,
 };
 
 use crate::{Delivered, Held, Polling, merged};
@@ -68,10 +68,10 @@ impl State {
         delivered: Delivered,
         now: Timestamp,
     ) -> Vec<Line> {
-        let before = self.held(worktree).map(|one| (one.state(), one.ci()));
+        let before = self.held(worktree).and_then(Held::state);
         let mut held = Held::from(delivered);
         held.read_at = Some(now);
-        let lines = lines(before.unwrap_or_default(), &held);
+        let lines = lines(before, &held);
         self.held.insert(worktree.clone(), held);
         lines
     }
@@ -198,30 +198,14 @@ impl State {
 }
 
 /// What a change of state or of run is worth on the log.
-fn lines(before: (Option<MrState>, Option<CiState>), held: &Held) -> Vec<Line> {
+fn lines(before: Option<MrState>, held: &Held) -> Vec<Line> {
     let named = held.shown().map(|mr| mr.named()).unwrap_or_default();
-    let mut out = Vec::new();
-    if let Some(state) = held.state().filter(|now| Some(*now) != before.0) {
-        out.push(Line {
-            kind: became(state),
-            subject: named.clone(),
-        });
-    }
-    if let Some(ci) = held
-        .ci()
-        .filter(|now| Some(*now) != before.1 && finished(*now))
-    {
-        out.push(Line {
-            kind: TimelineKind::Ci,
-            subject: format!("{named} {}", ci.label()),
-        });
-    }
-    out
-}
-
-/// Whether a run is over.
-fn finished(ci: CiState) -> bool {
-    !matches!(ci, CiState::Pending | CiState::Running | CiState::Unknown)
+    let state = held.state().filter(|now| Some(*now) != before);
+    let line = |state| Line {
+        kind: became(state),
+        subject: named.clone(),
+    };
+    state.map(line).into_iter().collect()
 }
 
 fn became(state: MrState) -> TimelineKind {
