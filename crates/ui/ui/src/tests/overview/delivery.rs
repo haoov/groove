@@ -154,6 +154,16 @@ fn ci_stands_on_a_rounded_ground_and_edge_of_its_colour() {
 }
 
 #[test]
+fn a_merged_mr_says_merged_in_purple_in_place_of_its_review_and_its_run() {
+    let app = showing(
+        MrState::Merged,
+        snapshot(MrState::Merged, Some(CiState::Success)),
+    );
+    assert_eq!(colour_of(&app, "merged"), role(&app, Role::Merged));
+    assert!(colour_of(&app, "CI").is_none());
+}
+
+#[test]
 fn a_worktree_with_no_mr_draws_nothing_of_one() {
     let (texts, icons) = drawn(&full_app());
     assert!(!texts.iter().any(|t| t.starts_with('#')), "{texts:?}");

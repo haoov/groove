@@ -160,8 +160,11 @@ impl Service {
         &self,
         remote: &Remote,
         worktree: &Worktree,
-        read: Snapshot,
+        mut read: Snapshot,
     ) -> Result<Delivered> {
+        if read.details.state == MrState::Merged {
+            read.ci = None;
+        }
         let answered = Answered {
             forge: remote.kind(),
             number: read.number.clone(),

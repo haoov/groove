@@ -23,6 +23,8 @@ pub enum Role {
     /// Changed, not yet staged.
     Warn,
     Bad,
+    /// An MR that landed.
+    Merged,
     Accent,
     /// On an accent ground.
     Inverse,
@@ -55,6 +57,7 @@ impl Styles {
             Role::Ok => p.green,
             Role::Warn => p.yellow,
             Role::Bad => p.red,
+            Role::Merged => p.mauve,
             Role::Accent => p.lavender,
             Role::Inverse => p.crust,
         }
