@@ -37,7 +37,7 @@ fn holding(state: MrState) -> State {
 }
 
 fn wanted(state: &State, focused: bool, at: Timestamp) -> Vec<WorktreeId> {
-    state.wanted(focused, Some(&id()), &[id()], (at, EVERY))
+    state.wanted(focused, &[id()], &[id()], (at, EVERY))
 }
 
 #[test]
@@ -98,7 +98,18 @@ fn a_worktree_wanted_twice_is_read_once() {
 #[test]
 fn a_worktree_off_the_rail_is_not_polled() {
     let state = holding(MrState::Open);
-    assert!(state.wanted(true, None, &[], (later(), EVERY)).is_empty());
+    assert!(state.wanted(true, &[], &[], (later(), EVERY)).is_empty());
     assert!(!state.polls(true, &[]));
     assert!(state.polls(true, &[id()]));
+}
+
+#[test]
+fn every_worktree_of_the_open_session_is_asked_about_once() {
+    let (one, two) = (WorktreeId::new("w1"), WorktreeId::new("w2"));
+    let shown = [one.clone(), two.clone()];
+    let mut state = State::default();
+    assert_eq!(state.wanted(true, &shown, &shown, (now(), EVERY)), shown);
+    state.poll.sent(&one);
+    state.poll.answered(&one);
+    assert_eq!(state.wanted(true, &shown, &shown, (now(), EVERY)), [two]);
 }

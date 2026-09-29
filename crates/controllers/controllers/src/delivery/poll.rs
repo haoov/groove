@@ -8,13 +8,17 @@ use crate::{AppState, Continuation, Services, Spawner};
 
 /// One tick: every worktree the service wants read, one call each.
 pub fn poll(state: &mut AppState, services: &Services, spawner: &dyn Spawner, now: Timestamp) {
-    let selected = state.session.selected_worktree().map(|one| one.id.clone());
+    let shown: Vec<WorktreeId> = state
+        .session
+        .selected()
+        .map(|open| open.worktrees.iter().map(|one| one.id.clone()).collect())
+        .unwrap_or_default();
     let living = state.session.worktrees();
     let every = state.config.poll_interval();
     state.delivery.aged_out(now, state.config.stale_after());
     let wanted = state
         .delivery
-        .wanted(state.focused, selected.as_ref(), &living, (now, every));
+        .wanted(state.focused, &shown, &living, (now, every));
     if wanted.is_empty() {
         return;
     }

@@ -108,19 +108,22 @@ impl State {
         }
     }
 
-    /// What this tick reads: the selected worktree once, then `living`'s open MRs every `every` seconds.
+    /// What this tick reads: the `shown` worktrees once, then `living`'s open MRs every `every` seconds.
     pub fn wanted(
         &self,
         focused: bool,
-        selected: Option<&WorktreeId>,
+        shown: &[WorktreeId],
         living: &[WorktreeId],
         (now, every): (Timestamp, i64),
     ) -> Vec<WorktreeId> {
         if !focused {
             return Vec::new();
         }
-        let first = selected.filter(|id| self.poll.asks(id)).cloned();
-        let mut out: Vec<WorktreeId> = first.into_iter().collect();
+        let mut out: Vec<WorktreeId> = shown
+            .iter()
+            .filter(|id| self.poll.asks(id))
+            .cloned()
+            .collect();
         if self.poll.due(now, every) {
             let open = living.iter().filter(|id| self.is_open(id));
             out.extend(open.filter(|id| !self.poll.is_out(id)).cloned());
