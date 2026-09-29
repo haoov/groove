@@ -55,6 +55,20 @@ fn a_hook_without_a_tool_is_still_a_hook() {
 }
 
 #[test]
+fn a_notification_counts_only_when_it_waits_on_the_user() {
+    let asked = br#"{"hook_event_name": "Notification", "notification_type": "permission_prompt"}"#;
+    let idle = br#"{"hook_event_name": "Notification", "notification_type": "idle_prompt"}"#;
+    assert_eq!(
+        post("s", asked).map(|one| one.kind),
+        Some(HookKind::Notification)
+    );
+    assert!(
+        post("s", idle).is_none(),
+        "a reminder after the turn changes nothing"
+    );
+}
+
+#[test]
 fn what_is_not_a_hook_is_refused() {
     assert!(post("s", b"not json").is_none());
     assert!(post("s", br#"{"hook_event_name": "Whatever"}"#).is_none());

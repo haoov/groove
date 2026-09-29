@@ -118,6 +118,7 @@ fn state_of(app: &AppState, open: &Open) -> (String, Role) {
     let label = match &activity.status {
         _ if !activity.asks.is_empty() => asks(activity.asks.len()),
         AgentStatus::Working => "working".into(),
+        AgentStatus::Asking => "asks you".into(),
         AgentStatus::Done { .. } => "done".into(),
         AgentStatus::Idle => "idle".into(),
         AgentStatus::Exited { code } => format!("exited {code}"),

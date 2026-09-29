@@ -37,9 +37,17 @@ pub struct ToolCall {
 pub enum AgentStatus {
     Idle,
     Working,
-    Done { seen: bool },
-    Exited { code: i32 },
-    Error { message: String },
+    /// Waiting on the user: a question, or a permission the terminal asks for.
+    Asking,
+    Done {
+        seen: bool,
+    },
+    Exited {
+        code: i32,
+    },
+    Error {
+        message: String,
+    },
 }
 
 /// A write waiting on the user, shown on the session's row.
@@ -82,7 +90,9 @@ impl SessionActivity {
             return AttentionClass::NeedsYou;
         }
         match self.status {
-            AgentStatus::Exited { .. } | AgentStatus::Error { .. } => AttentionClass::NeedsYou,
+            AgentStatus::Exited { .. } | AgentStatus::Error { .. } | AgentStatus::Asking => {
+                AttentionClass::NeedsYou
+            }
             AgentStatus::Done { seen: false } => AttentionClass::ActWhenYouLook,
             AgentStatus::Working => AttentionClass::Moving,
             AgentStatus::Idle | AgentStatus::Done { seen: true } => AttentionClass::Quiet,

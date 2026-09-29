@@ -17,11 +17,21 @@ pub struct Post {
 pub(crate) fn post(session: &str, body: &[u8]) -> Option<Post> {
     let value: serde_json::Value = serde_json::from_slice(body).ok()?;
     let name = value.get("hook_event_name")?.as_str()?;
+    let kind = HookKind::parse(name)?;
+    if kind == HookKind::Notification && !waits(&value) {
+        return None;
+    }
     Some(Post {
         session: SessionId::new(session),
-        kind: HookKind::parse(name)?,
+        kind,
         tool: tool(&value),
     })
+}
+
+/// Whether a notification is a prompt the user must answer, not an idle reminder.
+fn waits(value: &serde_json::Value) -> bool {
+    let kind = value.get("notification_type").and_then(|one| one.as_str());
+    matches!(kind, Some("permission_prompt" | "elicitation_dialog"))
 }
 
 /// The tool's name, and the one field of its input worth a line.

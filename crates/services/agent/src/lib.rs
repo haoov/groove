@@ -18,6 +18,9 @@ pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
 pub use groove_types::Screen;
+
+/// The tool Claude calls to put a question to the user.
+const ASKS_THE_USER: &str = "AskUserQuestion";
 pub use launch::{LaunchPaths, claude_bin, launch, login, palette};
 
 /// One session's agent. `terminal` is `None` when the launch failed.
@@ -202,15 +205,17 @@ pub fn apply(state: &mut State, event: Event) {
     }
 }
 
-/// What a hook says the agent is doing. `Notification` moves nothing here.
+/// What a hook says the agent is doing; a question or a prompt waits on the user.
 fn hook(activity: &mut SessionActivity, kind: HookKind, tool: Option<ToolCall>, at: Timestamp) {
+    let asks = tool.as_ref().is_some_and(|one| one.name == ASKS_THE_USER);
     let status = match kind {
         HookKind::SessionStart => AgentStatus::Idle,
+        HookKind::PreToolUse if asks => AgentStatus::Asking,
         HookKind::UserPromptSubmit | HookKind::PreToolUse | HookKind::PostToolUse => {
             AgentStatus::Working
         }
         HookKind::Stop => AgentStatus::Done { seen: false },
-        HookKind::Notification => return,
+        HookKind::Notification => AgentStatus::Asking,
     };
     activity.tool = match kind {
         HookKind::PreToolUse => tool,

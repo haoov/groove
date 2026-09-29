@@ -73,13 +73,34 @@ fn a_run_of_tool_hooks_leaves_the_time_where_the_turn_started() {
 }
 
 #[test]
-fn a_notification_is_the_approval_queue_s_and_moves_nothing() {
+fn a_question_waits_on_the_user_until_it_is_answered() {
+    let mut state = state();
+    let question = Some(ToolCall {
+        name: "AskUserQuestion".into(),
+        detail: None,
+    });
+    post(&mut state, HookKind::UserPromptSubmit, None, 200);
+    post(&mut state, HookKind::PreToolUse, question.clone(), 250);
+    let status = |state: &State| {
+        state
+            .activity(&SessionId::new("s"))
+            .expect("an agent")
+            .status
+            .clone()
+    };
+    assert_eq!(status(&state), AgentStatus::Asking);
+    post(&mut state, HookKind::PostToolUse, question, 280);
+    assert_eq!(status(&state), AgentStatus::Working, "answered");
+}
+
+#[test]
+fn a_prompt_the_terminal_shows_waits_on_the_user_too() {
     let mut state = state();
     post(&mut state, HookKind::UserPromptSubmit, None, 200);
     post(&mut state, HookKind::Notification, None, 250);
     let activity = state.activity(&SessionId::new("s")).expect("an agent");
-    assert_eq!(activity.status, AgentStatus::Working);
-    assert_eq!(activity.changed_at, Timestamp::new(200));
+    assert_eq!(activity.status, AgentStatus::Asking);
+    assert_eq!(activity.changed_at, Timestamp::new(250));
 }
 
 #[test]
