@@ -162,6 +162,7 @@ pub(crate) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<
 
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
+    crate::delivery::notes::show(state);
     let Some(worktree) = state.session.selected_worktree().map(|one| one.id.clone()) else {
         return state.workspace.clear();
     };

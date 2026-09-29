@@ -268,3 +268,18 @@ fn a_row_left_after_the_others_are_left_out_opens_its_own_note() {
     });
     assert_eq!(at.map(|held| held.head.line), Some(11), "the note it names");
 }
+
+#[test]
+fn a_session_s_notes_are_read_whichever_list_is_up() {
+    let app = with_files(&["src/lib.rs"]);
+    let ui = sidebar_ui();
+    assert_ne!(ui.session.pane, Pane::Notes);
+    let asked = crate::render::layout_commands(&app, &ui, window());
+    assert!(
+        asked.iter().any(|one| matches!(
+            one,
+            groove_controllers::Command::Delivery(groove_controllers::delivery::Command::GetNotes)
+        )),
+        "the surface draws them too: {asked:?}"
+    );
+}

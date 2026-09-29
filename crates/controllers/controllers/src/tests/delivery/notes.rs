@@ -228,3 +228,20 @@ fn details() -> groove_types::MrDetails {
         reviewers: vec![],
     }
 }
+
+#[test]
+fn the_surface_shows_the_notes_of_the_session_selected_now() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let (mut state, services) = ready(home.path(), &spawner);
+    leave(&mut state, &services, &spawner, 4, "issue: this leaks");
+    let noted = state.session.selected.take();
+    crate::workspace::follow(&mut state, &spawner);
+    assert!(
+        said(&state).is_empty(),
+        "another session's notes are not shown"
+    );
+    state.session.selected = noted;
+    crate::workspace::follow(&mut state, &spawner);
+    assert_eq!(said(&state), ["issue: this leaks"]);
+}

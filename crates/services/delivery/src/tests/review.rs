@@ -184,3 +184,25 @@ async fn a_note_of_another_repo_is_refused() {
     assert!(format!("{refused}").contains("not of r1"), "{refused}");
     assert_eq!(MrState::Open, MrState::Open, "nothing about the mr changed");
 }
+
+#[tokio::test]
+async fn posting_one_note_keeps_the_others() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(mr()))
+        .mount(&server)
+        .await;
+    let service = service().await;
+    held(&service).await;
+    let note = two_notes(&service).await.remove(0);
+    let (repo, service) = gitlab(&server, service);
+    service
+        .post_note(&repo, &worktree().id, &note)
+        .await
+        .expect("the note is posted");
+    assert_eq!(open_notes(&service).await, ["issue: line 20"]);
+}

@@ -154,13 +154,9 @@ pub(crate) fn needs_commits(app: &AppState, ui: &Ui) -> bool {
 }
 
 /// Whether the notes list still needs this session's notes read.
-pub(crate) fn needs_notes(app: &AppState, ui: &Ui) -> bool {
-    ui.session.pane == Pane::Notes
-        && app
-            .session
-            .selected
-            .as_ref()
-            .is_some_and(|session| app.delivery.notes_of(session).is_none())
+pub(crate) fn needs_notes(app: &AppState, _: &Ui) -> bool {
+    let selected = app.session.selected.as_ref();
+    selected.is_some_and(|session| app.delivery.notes_of(session).is_none())
 }
 
 /// Whether the explorer still needs the worktree walked before it can draw a tree.
