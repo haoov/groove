@@ -6,7 +6,6 @@ use groove_gfx::Rect;
 use super::List;
 use super::row::{self, Line};
 use crate::Ui;
-use crate::components::worktree_row;
 use crate::ctx::Ctx;
 use crate::hit::Scroller;
 use crate::offsets::listed;
@@ -73,24 +72,16 @@ fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, list: List, lines: &
         (which, ui.offset(which)),
         &rows,
         |(_, tall)| *tall,
-        |ctx, rect, (at, _)| one(ctx, rect, app, ui, &lines[*at], closes(lines, *at)),
+        |ctx, rect, (at, _)| one(ctx, rect, app, &lines[*at]),
     );
     if list == List::Next && ui.carried().is_some() {
         ctx.clipped(body, |ctx| super::plan::dragging(ctx, body, app, ui));
     }
 }
 
-/// Whether this line ends its item: the next one starts another, or there is none.
-fn closes(lines: &[Line<'_>], at: usize) -> bool {
-    !matches!(lines.get(at + 1), Some(Line::Worktree(_, _)))
-}
-
-fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, closes: bool) {
+fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, line: &Line<'_>) {
     match line {
-        Line::Session(living) => super::live::session(ctx, rect, app, ui, living),
-        Line::Worktree(worktree, delivery) => {
-            worktree_row::draw(ctx, rect, worktree, delivery.as_ref())
-        }
+        Line::Session(living) => super::live::session(ctx, rect, app, living),
         Line::Task(task) => row::up_next(ctx, rect, app, task),
         Line::Review(mr) => super::review::item(ctx, rect, mr),
         Line::Divider => return super::plan::divider(ctx, rect),
@@ -99,7 +90,5 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, line: &Line<'_>, clos
             return row(ctx, rect, ctx.tokens.md, text, style);
         }
     }
-    if closes {
-        hairline(ctx, rect, ctx.styles.line());
-    }
+    hairline(ctx, rect, ctx.styles.line());
 }

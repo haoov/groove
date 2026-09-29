@@ -124,8 +124,6 @@ pub enum Target {
     Offer(usize),
     /// What starts a task, at the right of the board's header.
     AddTask,
-    /// A live item's twisty, which shows its worktrees.
-    Unfold(SessionId),
     /// A boundary between two columns.
     Split(Edge),
     /// What folds the sidebar away.

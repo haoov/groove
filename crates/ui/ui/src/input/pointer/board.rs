@@ -19,7 +19,6 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Filter => filtering(ui),
         Target::Offer(at) => offered(ui, app, *at),
         Target::AddTask => explorer(ui),
-        Target::Unfold(session) => unfolded(ui, session),
         Target::Timeline => timeline(ui),
         Target::Place(_) => Vec::new(),
         _ => return None,
@@ -69,12 +68,6 @@ pub(super) fn explorer(ui: &mut Ui) -> Vec<Command> {
     vec![Command::Session(session::Command::OpenExplorer {
         title: None,
     })]
-}
-
-/// A live item's worktrees shown under it, or hidden again.
-pub(super) fn unfolded(ui: &mut Ui, session: &groove_types::SessionId) -> Vec<Command> {
-    ui.board.fold(session);
-    Vec::new()
 }
 
 /// A session picked, wherever it was picked from, with the window back on it.

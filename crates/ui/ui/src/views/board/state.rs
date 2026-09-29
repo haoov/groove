@@ -1,7 +1,5 @@
 //! What the board remembers between frames.
 
-use groove_types::SessionId;
-
 use groove_ui_kit::widgets::Field;
 
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -10,8 +8,6 @@ pub struct BoardUi {
     pub live: f32,
     pub next: f32,
     pub review: f32,
-    /// The Live items opened to show their worktrees.
-    pub open: std::collections::BTreeSet<SessionId>,
     /// What the header's filter holds, and whether it takes what is typed.
     pub filter: Field,
     pub typing: bool,
@@ -27,17 +23,6 @@ pub struct BoardUi {
 }
 
 impl BoardUi {
-    /// Shows a Live item's worktrees, or hides them again.
-    pub fn fold(&mut self, id: &SessionId) {
-        if !self.open.remove(id) {
-            self.open.insert(id.clone());
-        }
-    }
-
-    pub fn is_open(&self, id: &SessionId) -> bool {
-        self.open.contains(id)
-    }
-
     /// The timeline carried by `across` pixels, whole days at a time, within a year.
     pub fn carry(&mut self, across: f32) {
         self.carried += across;

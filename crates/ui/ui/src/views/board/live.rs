@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 
 use super::row::{Line, aside, named};
 use crate::Ui;
@@ -11,9 +11,9 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
-use groove_ui_kit::widgets::{fold, icon};
+use groove_ui_kit::widgets::icon;
 
-/// Every session the filter lets through, with its worktrees under it while it is open.
+/// Every session the filter lets through.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
     let query = ui.board.query();
     let living: Vec<&Living> = app
@@ -28,29 +28,15 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
             false => "nothing the filter lets through",
         })];
     }
-    let mut lines = Vec::new();
-    for living in living {
-        lines.push(Line::Session(living));
-        if !ui.board.is_open(&living.session.id) {
-            continue;
-        }
-        let open = app.session.get(&living.session.id);
-        for worktree in &living.worktrees {
-            let delivery =
-                open.map(|open| app.delivery.row(&worktree.id, open.status_of(&worktree.id)));
-            lines.push(Line::Worktree(worktree, delivery));
-        }
-    }
-    lines
+    living.into_iter().map(Line::Session).collect()
 }
 
-/// One session: a twisty for its worktrees, its kind, its title, what it holds.
-pub(super) fn session(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui, living: &Living) {
+/// One session: its kind, its title, what it holds.
+pub(super) fn session(ctx: &mut Ctx, line: Rect, app: &AppState, living: &Living) {
     let id = &living.session.id;
     hoverable(ctx, line, Target::Session(id.clone()));
     let (sm, size) = (ctx.tokens.sm, ctx.tokens.icon);
-    let mut room = line;
-    twisty(ctx, &mut room, ui, living);
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     let kind = square(room.take_left(size), size);
     room.take_left(sm);
     let role = match app.session.get(id).is_some() {
@@ -72,13 +58,4 @@ fn held(living: &Living) -> String {
         1 => repos,
         n => format!("{repos} · {n} worktrees"),
     }
-}
-
-/// What opens a session's worktrees under it, from the left of `room`.
-fn twisty(ctx: &mut Ctx, room: &mut Rect, ui: &Ui, living: &Living) {
-    room.take_left(ctx.tokens.sm);
-    let open = ui.board.is_open(&living.session.id);
-    let box_ = fold(ctx, room, open, Role::Ghost);
-    room.take_left(ctx.tokens.xs);
-    ctx.hit(box_, Target::Unfold(living.session.id.clone()));
 }

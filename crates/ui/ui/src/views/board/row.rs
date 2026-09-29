@@ -3,7 +3,7 @@
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
 use groove_gfx::{Edges, Rect};
-use groove_types::{Priority, Task, Worktree, WorktreeDelivery};
+use groove_types::{Priority, Task};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -13,10 +13,9 @@ use groove_ui_kit::shape::{hoverable, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::icon;
 
-/// One line of a column: an item, a worktree under an open one, or the plan's divider.
+/// One line of a column: an item, the plan's divider, or what stands in for none.
 pub(super) enum Line<'a> {
     Session(&'a Living),
-    Worktree(&'a Worktree, Option<WorktreeDelivery>),
     Task(&'a Task),
     /// One MR the forge asks this user to review.
     Review(&'a groove_types::ReviewMr),
