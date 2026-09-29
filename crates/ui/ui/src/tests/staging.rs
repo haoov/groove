@@ -201,12 +201,12 @@ fn a_row_under_the_pointer_and_the_open_one_read_apart() {
                 .filter(|quad| quad.color == color && quad.rect.h == row)
                 .count()
         };
-        (of(styles.hover()), of(styles.here()))
+        (of(styles.hover()), of(styles.chosen()))
     };
     assert_eq!(grounds(&ui), (0, 0), "a row at rest carries neither");
     ui.hover = Some(Target::File("a.txt".into()));
     assert_eq!(grounds(&ui).0, 1, "the pointer grounds the row");
-    assert_ne!(styles.hover(), styles.here(), "and the two never match");
+    assert_ne!(styles.hover(), styles.chosen(), "and the two never match");
     assert_ne!(
         styles.hover(),
         styles.action(),

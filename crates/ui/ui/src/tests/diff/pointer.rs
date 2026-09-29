@@ -208,10 +208,13 @@ fn the_sidebar_says_which_file_is_open() {
         .layers()
         .iter()
         .flat_map(|layer| layer.quads.iter())
-        .filter(|quad| quad.color == styles.here() && quad.rect.h == hairline)
+        .filter(|quad| quad.color == styles.chosen() && quad.rect.h == hairline)
         .filter(|quad| quad.rect.x == row.x && quad.rect.w == row.w)
         .count();
-    assert_eq!(rules, 2, "the open file's row is ruled above and below");
+    assert_eq!(
+        rules, 2,
+        "the open file's row is ruled above and below in the accent"
+    );
 }
 
 #[test]

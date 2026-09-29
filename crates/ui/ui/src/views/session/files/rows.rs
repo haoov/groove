@@ -100,8 +100,7 @@ pub(super) fn entry(
         ctx.quad(line, hover);
     }
     if reading.open {
-        let here = ctx.styles.here();
-        ruled(ctx, line, here);
+        ruled(ctx, line, ctx.styles.chosen());
     }
     let letter = file.status.letter().to_string();
     let at = line.pad(Edges::across(indent, 0.0));

@@ -50,7 +50,7 @@ fn entry(ctx: &mut Ctx, line: Rect, one: &CommitEntry, shown: bool) {
         ctx.quad(line, ctx.styles.hover());
     }
     if shown {
-        ruled(ctx, line, ctx.styles.here());
+        ruled(ctx, line, ctx.styles.chosen());
     }
     ctx.hit(line, target);
     let (name, words) = match one.is_base {

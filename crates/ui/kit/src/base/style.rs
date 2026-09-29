@@ -154,6 +154,11 @@ impl Styles {
             .mix(self.palette.lavender, crate::base::tokens::HELD)
     }
 
+    /// The rules above and below a list's selected row.
+    pub fn chosen(&self) -> Color {
+        self.palette.lavender
+    }
+
     /// The rules above and below the caret's row, brighter than a panel's hairlines.
     pub fn here(&self) -> Color {
         self.palette.overlay0

@@ -227,7 +227,7 @@ fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&S
         ctx.quad(line, ctx.styles.hover());
     }
     if open == Some(&held.path) {
-        groove_ui_kit::shape::ruled(ctx, line, ctx.styles.here());
+        groove_ui_kit::shape::ruled(ctx, line, ctx.styles.chosen());
     }
     ctx.hit(line, target);
     let style = ctx.styles.body(Role::Text);
