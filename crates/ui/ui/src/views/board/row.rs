@@ -32,7 +32,7 @@ pub(super) fn heights(
     lines
         .iter()
         .map(|line| match under(app, line) {
-            true => item(tokens) + tokens.line,
+            true => item(tokens) + tokens.line + tokens.xs,
             false => item(tokens),
         })
         .collect()
@@ -42,6 +42,7 @@ pub(super) fn heights(
 fn under(app: &AppState, line: &Line<'_>) -> bool {
     match line {
         Line::Review(_) => true,
+        Line::Task(task) if task.priority.is_some() || task.project.is_some() => true,
         _ => !reasons(app, line).is_empty(),
     }
 }
@@ -51,7 +52,7 @@ pub(super) fn item(tokens: &groove_ui_kit::base::tokens::Tokens) -> f32 {
     tokens.row + tokens.sm
 }
 
-/// One task waiting: its source, its title, its worth, and why it needs the user.
+/// One task waiting: its source and title, then its worth and why it needs the user.
 pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     hoverable(ctx, rect, Target::Task(task.short_id.clone()));
     let mut rest = rect;
@@ -59,13 +60,18 @@ pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     handle(ctx, &mut room, task);
     let start = room.x;
-    worth(ctx, &mut room, task);
+    aside(ctx, &mut room, "");
     named(ctx, room, &task.title);
     let reasons = app.task.needs(&task.external_id);
+    if !under(app, &Line::Task(task)) {
+        return;
+    }
+    let under = rest.take_top(ctx.tokens.line);
+    let x = placed(ctx, under, start, task);
+    let x = worth(ctx, under, x, task);
     if !reasons.is_empty() {
-        let under = rest.take_top(ctx.tokens.line);
         let said = super::attention::line(reasons, groove_types::Timestamp::now());
-        super::attention::draw(ctx, under.pad(Edges::across(start - under.x, 0.0)), &said);
+        super::attention::draw(ctx, under.pad(Edges::across(x - under.x, 0.0)), &said);
     }
 }
 
@@ -78,18 +84,37 @@ fn handle(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
     ctx.hit(mark, Target::Place(task.external_id.clone()));
 }
 
-/// The priority, as the row's right-hand text in its level's colour.
-fn worth(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
-    let Some(level) = task.priority else {
-        return aside(ctx, room, "");
+/// The project from `x`, short of the badge after it; returns the x after it.
+fn placed(ctx: &mut Ctx, line: Rect, x: f32, task: &Task) -> f32 {
+    let Some(project) = &task.project else {
+        return x;
     };
+    let badge = badge(task).map_or(0.0, |one| one.width(ctx) + ctx.tokens.sm);
+    let style = ctx.styles.small(Role::Faint);
+    let room = line.right() - x - ctx.tokens.md - badge;
+    let project = groove_ui_kit::text::elide(ctx, project, &style, room);
+    let wide = ctx.measure(&project, &style);
+    Label::new(&project, style).draw(ctx, Rect::new(x, line.y, wide, line.h));
+    x + wide + ctx.tokens.sm
+}
+
+/// The priority as a badge from `x`; returns the x after it.
+fn worth(ctx: &mut Ctx, line: Rect, x: f32, task: &Task) -> f32 {
+    match badge(task) {
+        Some(badge) => badge.at(ctx, line, x).right() + ctx.tokens.sm,
+        None => x,
+    }
+}
+
+/// The priority as a badge in its level's colour.
+fn badge(task: &Task) -> Option<Badge<'static>> {
+    let level = task.priority?;
     let role = match level {
         Priority::High => Role::Bad,
         Priority::Medium => Role::Warn,
         Priority::Low => Role::Ok,
     };
-    room.take_right(ctx.tokens.md);
-    Badge::new(level.label(), role).right(ctx, room, 0.0);
+    Some(Badge::new(level.label(), role))
 }
 
 /// A row's right-hand text, at the right of `room`.

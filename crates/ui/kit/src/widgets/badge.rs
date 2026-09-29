@@ -43,12 +43,13 @@ impl<'a> Badge<'a> {
             self.width(ctx),
             (style.size + ctx.tokens.xs * 2.0).min(line.h),
         );
-        let box_ = Rect::new(x, line.y + (line.h - tall) / 2.0, wide, tall);
+        let top = line.y + (line.h - tall) / 2.0;
+        let box_ = Rect::new(x.round(), top.round(), wide.round(), tall.round());
         let corner = ctx.tokens.corner;
         ctx.rounded(box_, colour.with_alpha(BADGE_GROUND), corner);
         let edge = ctx.tokens.edge;
         ctx.ring(box_, colour.with_alpha(BADGE_EDGE), corner, edge);
-        let mut at = x + ctx.tokens.xs;
+        let mut at = box_.x + ctx.tokens.xs;
         if let Some(mark) = self.mark {
             ctx.icon(box_in(box_, at, style.size), mark, 0, colour);
             at += style.size + ctx.tokens.xs;

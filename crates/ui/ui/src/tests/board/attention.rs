@@ -9,7 +9,7 @@ use crate::hit::Target;
 use crate::tests::{full_app, task, window};
 use crate::{Surface, Ui, view};
 
-/// The board with two tasks up next, the second of them overdue.
+/// The board with two tasks up next, the second of them overdue, neither ranked.
 fn overdue() -> (AppState, Ui) {
     let mut app = full_app();
     app.session.open.clear();
@@ -18,6 +18,10 @@ fn overdue() -> (AppState, Ui) {
     let mut late = task("gh-a-b-2", "waiting two", "github.com/a/b#2");
     late.dates.due = Some(Timestamp::now().day().plus_days(-3));
     app.task.tasks = vec![task("gh-a-b-1", "waiting one", "github.com/a/b#1"), late];
+    for task in &mut app.task.tasks {
+        task.priority = None;
+        task.project = None;
+    }
     app.task.attention.insert(
         ExternalId::new("github.com/a/b#2"),
         vec![Attention::Overdue { by_days: 3 }],
@@ -58,6 +62,32 @@ fn a_row_that_says_why_stands_taller_than_one_that_does_not() {
             .h
     };
     assert!(tall("gh-a-b-2") > tall("gh-a-b-1"), "one line more");
+}
+
+#[test]
+fn a_ranked_row_carries_its_priority_on_a_second_line() {
+    let (mut app, ui) = overdue();
+    app.task.tasks[0].priority = Some(groove_types::Priority::Low);
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let row = hits
+        .rect_of(&Target::Task("gh-a-b-1".into()))
+        .expect("the task has a row");
+    let texts = &frame.layers()[0].texts;
+    let at = |word: &str| texts.iter().find(|t| t.text == word).expect(word).y;
+    assert!(at("low") > at("waiting one"), "under the title");
+    assert!(at("low") < row.bottom(), "inside its row");
+}
+
+#[test]
+fn a_row_names_its_project_before_its_priority() {
+    let (mut app, ui) = overdue();
+    app.task.tasks[0].priority = Some(groove_types::Priority::Low);
+    app.task.tasks[0].project = Some("Platform".into());
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let texts = &frame.layers()[0].texts;
+    let at = |word: &str| texts.iter().find(|t| t.text == word).expect(word);
+    assert_eq!(at("Platform").y, at("low").y, "on the second line");
+    assert!(at("Platform").x < at("low").x, "before the badge");
 }
 
 #[test]
