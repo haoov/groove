@@ -127,7 +127,7 @@ fn state_of(app: &AppState, open: &Open) -> (String, Role) {
     let role = match activity.class() {
         AttentionClass::NeedsYou => Role::Attention,
         AttentionClass::Moving => Role::Working,
-        AttentionClass::ActWhenYouLook => Role::Text,
+        AttentionClass::ActWhenYouLook => Role::Ok,
         AttentionClass::Quiet => Role::Ghost,
     };
     (label, role)

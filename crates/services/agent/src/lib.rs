@@ -138,6 +138,17 @@ impl State {
         }
     }
 
+    /// The user looked at the session: a finished turn is no longer news.
+    pub fn saw(&mut self, session: &SessionId, now: Timestamp) {
+        let Some(activity) = self.activity_mut(session) else {
+            return;
+        };
+        if activity.status == (AgentStatus::Done { seen: false }) {
+            activity.status = AgentStatus::Done { seen: true };
+        }
+        activity.seen_at = Some(now);
+    }
+
     /// The row says what the queue holds.
     fn told(&mut self, session: &SessionId) {
         let asks = self.asks.asks(session, ask_of);

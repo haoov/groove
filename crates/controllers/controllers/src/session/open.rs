@@ -131,6 +131,7 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id
 pub fn select(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &SessionId) {
     let now = Timestamp::now();
     state.session.select(id, now);
+    state.agent.saw(id, now);
     crate::workspace::follow(state, spawner);
     crate::task::follow(state, spawner);
     let (service, id) = (services.session.clone(), id.clone());

@@ -24,14 +24,25 @@ pub fn apply(event: Event, state: &mut AppState) {
         Event::Task(e) => groove_task_service::apply(&mut state.task, e),
         Event::Session(e) => groove_session_service::apply(&mut state.session, e),
         Event::Workspace(e) => groove_workspace_service::apply(&mut state.workspace, e),
-        Event::Agent(e) => groove_agent_service::apply(&mut state.agent, e),
+        Event::Agent(e) => {
+            groove_agent_service::apply(&mut state.agent, e);
+            looked(state);
+        }
         Event::Shell(e) => groove_shell_service::apply(&mut state.shell, e),
         Event::Config(e) => groove_config_service::apply(&mut state.config, e),
         Event::Window(Window::Focus(focused)) => {
             state.focused = focused;
             if focused {
                 state.delivery.poll.woke();
+                looked(state);
             }
         }
+    }
+}
+
+/// The session on screen, in a focused window, is seen as soon as it finishes.
+fn looked(state: &mut AppState) {
+    if let (true, Some(id)) = (state.focused, state.session.selected.clone()) {
+        state.agent.saw(&id, groove_types::Timestamp::now());
     }
 }

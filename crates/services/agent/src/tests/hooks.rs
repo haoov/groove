@@ -104,6 +104,24 @@ fn a_prompt_the_terminal_shows_waits_on_the_user_too() {
 }
 
 #[test]
+fn a_finished_turn_once_looked_at_is_seen() {
+    let mut state = state();
+    let session = SessionId::new("s");
+    post(&mut state, HookKind::Stop, None, 200);
+    state.saw(&session, Timestamp::new(260));
+    let activity = state.activity(&session).expect("an agent");
+    assert_eq!(activity.status, AgentStatus::Done { seen: true });
+    post(&mut state, HookKind::UserPromptSubmit, None, 300);
+    state.saw(&session, Timestamp::new(310));
+    let activity = state.activity(&session).expect("an agent");
+    assert_eq!(
+        activity.status,
+        AgentStatus::Working,
+        "a look moves nothing else"
+    );
+}
+
+#[test]
 fn a_hook_for_an_agent_that_is_gone_is_dropped() {
     let mut state = State::default();
     post(&mut state, HookKind::UserPromptSubmit, None, 200);
