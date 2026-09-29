@@ -9,7 +9,7 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{after_mark, hairline, square};
+use groove_ui_kit::shape::{after_mark, hairline, ruled, square};
 use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::{Button, icon};
 
@@ -25,7 +25,9 @@ pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
 /// Type icon, title and how long it has waited, then the agent's state under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
-    ground(ctx, rect, app, ui, id);
+    if ctx.hovered(&Target::Session(id.clone())) {
+        ctx.quad(rect, ctx.styles.hover());
+    }
     ctx.hit(rect, Target::Session(id.clone()));
     let (xs, sm, md, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
@@ -46,6 +48,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
         None => state(ctx, app, under, open),
     }
     hairline(ctx, rect, ctx.styles.line());
+    if ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id) {
+        ruled(ctx, rect, ctx.styles.chosen());
+    }
 }
 
 /// The first write the session waits on, and how many wait in all.
@@ -79,16 +84,6 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
         ground,
     );
     review.left(ctx, &mut under, ctx.tokens.xs);
-}
-
-/// A hovered row is raised, and a selected one while the session surface is up.
-fn ground(ctx: &mut Ctx, rect: Rect, app: &AppState, ui: &Ui, id: &SessionId) {
-    let hovered = ctx.hovered(&Target::Session(id.clone()));
-    let selected = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
-    if selected || hovered {
-        let raised = ctx.styles.raised();
-        ctx.quad(rect, raised);
-    }
 }
 
 /// How long the agent has waited, at the right of `room`.

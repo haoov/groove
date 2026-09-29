@@ -91,7 +91,7 @@ fn a_title_too_long_for_the_rail_is_cut_with_an_ellipsis() {
 }
 
 #[test]
-fn the_selected_row_and_the_hovered_row_are_raised() {
+fn the_selected_row_is_ruled_in_the_accent_and_the_hovered_row_lit_as_in_any_list() {
     let app = full_app();
     let mut ui = Ui::default();
     let styles = groove_ui_kit::base::style::Styles::new(
@@ -109,9 +109,23 @@ fn the_selected_row_and_the_hovered_row_are_raised() {
         frame.layers()[0]
             .quads
             .iter()
-            .any(|quad| quad.rect == rect && quad.color == styles.raised())
+            .any(|quad| quad.rect == rect && quad.color == styles.hover())
     };
-    assert!(raised(&frame, alpha), "the selected session stands out");
+    let ruled = |frame: &groove_gfx::Frame, rect: groove_gfx::Rect| {
+        let rules = frame.layers()[0].quads.iter().filter(|quad| {
+            quad.color == styles.chosen() && quad.rect.x == rect.x && quad.rect.w == rect.w
+        });
+        rules
+            .filter(|quad| quad.rect.y == rect.y || quad.rect.bottom() == rect.bottom())
+            .count()
+    };
+    assert_eq!(
+        ruled(&frame, alpha),
+        2,
+        "the selected session is ruled above and below"
+    );
+    assert!(!raised(&frame, alpha), "and carries no background");
+    assert_eq!(ruled(&frame, beta), 0);
     assert!(!raised(&frame, beta), "an idle row has no background");
     ui.hover = Some(Target::Session(SessionId::new("b")));
     let (hovered, _) = view(&app, &ui, window(), &mut Fonts::embedded());

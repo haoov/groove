@@ -10,7 +10,7 @@ use crate::offsets::listed;
 use crate::{Surface, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, square};
+use groove_ui_kit::shape::{hairline, ruled, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, icon, list};
 
@@ -55,8 +55,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The board. It carries the attention count when it is not zero.
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    if ui.showing(app) == Surface::Board || ctx.hovered(&Target::Board) {
-        ctx.quad(rect, ctx.styles.raised());
+    if ctx.hovered(&Target::Board) {
+        ctx.quad(rect, ctx.styles.hover());
     }
     ctx.hit(rect, Target::Board);
     let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
@@ -67,6 +67,9 @@ fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     icon(ctx, mark, Mark::Board, Role::Faint);
     Label::new("Board", ctx.styles.label(Role::Text)).draw(ctx, room);
     hairline(ctx, rect, ctx.styles.line());
+    if ui.showing(app) == Surface::Board {
+        ruled(ctx, rect, ctx.styles.chosen());
+    }
 }
 
 /// How many items need the user, at the right of `room`.
