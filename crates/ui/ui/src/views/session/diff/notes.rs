@@ -27,7 +27,7 @@ pub(crate) enum Slot {
     Code(usize),
     Note { at: usize, row: usize },
     Acts { at: usize },
-    Typed,
+    Typed { row: usize },
 }
 
 /// Where the notes stand among the rows of one view.
@@ -57,7 +57,7 @@ impl Inline {
             blocks.push(Block {
                 after,
                 from: anchored(app, view, &starts(&noting.anchor)).unwrap_or(after),
-                rows: 1,
+                rows: noting.field.text().split('\n').count(),
                 at: None,
                 acts: false,
             });
@@ -135,7 +135,7 @@ impl Block {
     /// What one row of the block holds, counted from its first.
     fn slot(&self, row: usize) -> Slot {
         let Some(at) = self.at else {
-            return Slot::Typed;
+            return Slot::Typed { row };
         };
         match self.acts && row + 1 == self.rows {
             true => Slot::Acts { at },

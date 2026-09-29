@@ -419,3 +419,35 @@ fn noted_row(app: &AppState, ui: &Ui) -> usize {
         })
         .expect("the note's line")
 }
+
+#[test]
+fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
+    let app = opened();
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
+    typed("issue: this leaks", &mut ui, &app);
+    let before = crate::views::session::diff::rows_of(&app, &ui);
+    let shift = Modifiers {
+        shift: true,
+        ..Modifiers::default()
+    };
+    let input = Input::Key {
+        key: Key::Enter,
+        mods: shift,
+    };
+    handle(input, &mut ui, &app, &crate::hit::Hits::default(), window());
+    typed("drop it", &mut ui, &app);
+    assert_eq!(
+        crate::views::session::diff::rows_of(&app, &ui),
+        before + 1,
+        "a row per line"
+    );
+    let delivery::Command::Note(act) = one_command(press(Key::Enter, &mut ui, &app)) else {
+        panic!("a note is asked for");
+    };
+    let groove_controllers::delivery::NoteAct::Create { content, .. } = act else {
+        panic!("a new note");
+    };
+    assert_eq!(content, "issue: this leaks\ndrop it");
+}

@@ -46,7 +46,11 @@ fn emphasis_and_code_take_their_own_faces() {
     assert_eq!(run(&runs, "ship").style.font, Font::Mono);
     assert_eq!(run(&runs, "let one = 1;").style.font, Font::Mono);
     let text = run(&runs, "Close").style.size;
-    assert_eq!(run(&runs, "ship").style.size, text, "code as large as its text");
+    assert_eq!(
+        run(&runs, "ship").style.size,
+        text,
+        "code as large as its text"
+    );
     assert_eq!(run(&runs, "let one = 1;").style.size, text);
     assert!(
         !runs

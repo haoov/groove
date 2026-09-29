@@ -49,3 +49,19 @@ fn a_note_draws_its_emphasis_code_and_links_without_their_marks() {
     let link = Target::Link("https://example.com/a".into());
     assert!(hits.rect_of(&link).is_some(), "the link is clickable");
 }
+
+#[test]
+fn a_split_view_draws_a_note_once_on_its_new_side() {
+    let app = noted("issue: said once");
+    let mut ui = on_diff();
+    ui.session.view = groove_types::DiffView::Split;
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let runs: Vec<_> = frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|one| one.text == "issue: said once")
+        .collect();
+    assert_eq!(runs.len(), 1, "one side draws it");
+    let code = hits.rect_of(&Target::Code).expect("the new side's rows");
+    assert!(code.contains(runs[0].x, runs[0].y), "on the new side");
+}

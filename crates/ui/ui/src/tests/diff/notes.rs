@@ -60,7 +60,7 @@ fn a_note_takes_a_row_of_the_surface() {
 }
 
 #[test]
-fn a_thread_takes_a_row_for_every_note_of_it() {
+fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
     let mut one = note(1, "reviewer", "issue: this leaks");
     one.said.push(said("haoov", "fixed"));
     let bare = opened();
@@ -69,8 +69,8 @@ fn a_thread_takes_a_row_for_every_note_of_it() {
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
         crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&bare, &ui) + 3,
-        "a row for each note of it, and the buttons under them"
+        crate::views::session::diff::rows_of(&bare, &ui) + 4,
+        "a row for each note of it, a blank above the reply, and the buttons under them"
     );
     let drawn = in_editor(&app);
     assert!(drawn.iter().any(|one| one == "fixed"), "{drawn:?}");

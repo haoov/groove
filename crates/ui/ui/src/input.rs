@@ -112,7 +112,7 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return pasted_in_settings(text, ui, app);
     }
     if let Some(noting) = ui.session.noting.as_mut() {
-        noting.field.paste(text);
+        noting.field.paste_lines(text);
         return Vec::new();
     }
     if let Some(term) = ui.session.bar.typing {

@@ -5,8 +5,9 @@ use groove_types::{DiffView, RowKind};
 
 use groove_controllers::AppState;
 
-use super::notes::{Inline, Slot, lines, said};
+use super::notes::{Inline, Slot};
 use super::row::{Drawn, Side, count, drawn};
+use super::words::{Words, words_of};
 use crate::Ui;
 use crate::components::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
 use crate::ctx::Ctx;
@@ -76,6 +77,7 @@ fn surface(
         noted: &noted,
         hovered: hovered(ctx),
         first: code_rows.start,
+        notes: side != Side::Old,
     };
     let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, view);
@@ -132,6 +134,8 @@ struct Held<'a> {
     hovered: Option<(groove_types::NoteOrigin, crate::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
+    /// Whether this side draws the notes; the old side of a split keeps their rows blank.
+    notes: bool,
 }
 
 /// Every row of the window as the code widget takes it.
@@ -140,6 +144,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .iter()
         .enumerate()
         .map(|(on, slot)| match slot {
+            Slot::Note { .. } | Slot::Acts { .. } | Slot::Typed { .. } if !held.notes => {
+                Line::new("")
+            }
             Slot::Code(at) => match held.rows.get(at - held.first) {
                 Some(row) => lined(ctx, row, &held.gutters[at - held.first]).noted(held.noted[on]),
                 None => Line::new(""),
@@ -164,12 +171,12 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 }
                 None => Line::new(""),
             },
-            Slot::Typed => Line::note(
+            Slot::Typed { row } => Line::note(
                 &held.words[on].body,
                 Noted {
                     author: &held.words[on].author,
                     lines: &held.words[on].lines,
-                    opens: true,
+                    opens: *row == 0,
                     resolved: false,
                     prose: None,
                 },
@@ -207,47 +214,6 @@ fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
             .selected_worktree()
             .is_some_and(|worktree| app.delivery.has_mr(&worktree.id)),
         hovered: None,
-    }
-}
-
-/// What a note row says: the words, who said them, and the lines they are about.
-#[derive(Default)]
-struct Words {
-    author: String,
-    lines: String,
-    body: String,
-    prose: Option<groove_ui_kit::markdown::Row>,
-}
-
-/// Who said what on a note row; a row of code says nothing.
-fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
-    match slot {
-        Slot::Note { at, row } => match app.delivery.shown.get(at) {
-            Some(note) => {
-                let (author, prose) = said(note, row, super::wrap::cols_of(ui));
-                let shown = match row {
-                    0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
-                    _ => String::new(),
-                };
-                Words {
-                    author,
-                    lines: shown,
-                    body: String::new(),
-                    prose: Some(prose),
-                }
-            }
-            None => Words::default(),
-        },
-        Slot::Typed => match ui.session.noting.as_ref() {
-            Some(noting) => Words {
-                author: AUTHOR.to_string(),
-                lines: lines(&noting.anchor),
-                body: noting.field.shown(),
-                prose: None,
-            },
-            None => Words::default(),
-        },
-        Slot::Acts { .. } | Slot::Code(_) => Words::default(),
     }
 }
 

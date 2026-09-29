@@ -16,6 +16,7 @@ pub(super) fn in_note(key: Key, mods: Modifiers, ui: &mut Ui) -> Vec<Command> {
     };
     match key {
         Key::Escape => ui.session.noting = None,
+        Key::Enter if mods.shift => noting.field.insert('\n'),
         Key::Enter => {
             let act = left(noting);
             ui.session.noting = None;

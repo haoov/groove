@@ -10,6 +10,7 @@ mod pinned;
 mod row;
 mod scroll;
 mod surface;
+mod words;
 mod wrap;
 
 use groove_controllers::AppState;
