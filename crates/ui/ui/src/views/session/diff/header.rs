@@ -16,6 +16,7 @@ use groove_ui_kit::widgets::{self, Text, changes};
 
 /// The file's path, what it changed, and which view it is drawn in.
 pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &str) {
+    hairline(ctx, band, ctx.styles.line());
     let mut room = band;
     if ui.session.tab == Tab::Diff {
         switch(ctx, &mut room, ui.session.view);
@@ -38,7 +39,6 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
     Label::new(path, style)
         .cut_start()
         .draw(ctx, room.pad(Edges::across(md, md)));
-    hairline(ctx, band, ctx.styles.line());
 }
 
 /// The three views from the right of `room`, the current one raised.

@@ -7,7 +7,7 @@ use crate::shape::{hairline, hoverable};
 use crate::text::row;
 use crate::widgets::{Button, Text};
 
-/// One tab: its label, raised while selected, and the mark that closes it.
+/// One tab: its label, underlined in the accent while selected, and the mark that closes it.
 pub struct Tab<'a, T> {
     pub label: &'a str,
     pub target: T,
@@ -15,7 +15,7 @@ pub struct Tab<'a, T> {
     pub text: Text,
     /// The label's role while another tab is up.
     pub quiet: Role,
-    /// The selected tab's ground, raised unless said otherwise.
+    /// The selected tab's ground in place of the accent underline.
     pub ground: Option<Color>,
     pub tight: bool,
     pub close: Option<(Mark, T)>,
@@ -28,7 +28,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             target,
             selected,
             text: Text::Label,
-            quiet: Role::Muted,
+            quiet: Role::Faint,
             ground: None,
             tight: false,
             close: None,
@@ -114,11 +114,16 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
 
     /// The label is drawn whole: the tab is as wide as it.
     fn draw<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, box_: Rect) {
-        if self.selected {
-            let ground = self.ground.unwrap_or(ctx.styles.raised());
-            ctx.quad(box_, ground);
-        }
         hoverable(ctx, box_, self.target.clone());
+        match (self.selected, self.ground) {
+            (true, Some(ground)) => ctx.quad(box_, ground),
+            (true, None) => {
+                let thick = ctx.tokens.hairline * 2.0;
+                let under = Rect::new(box_.x, box_.bottom() - thick, box_.w, thick);
+                ctx.quad(under, ctx.styles.chosen());
+            }
+            (false, _) => {}
+        }
         let style = self.style(ctx);
         let pad = self.pad(ctx);
         if let Some((mark, target)) = self.close {
@@ -129,22 +134,20 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
     }
 }
 
-/// Tabs from the left of `rect`, the selected one raised, a hairline under; returns their boxes.
+/// Tabs from the left of `rect`, the selected one underlined, a hairline under; returns their boxes.
 pub fn tabs<A: App>(
     ctx: &mut Ctx<'_, A>,
     rect: Rect,
     tabs: &[(&str, A::Target)],
     selected: usize,
 ) -> Vec<Rect> {
+    let line = ctx.styles.line();
+    hairline(ctx, rect, line);
     let mut room = rect;
-    let boxes = tabs
-        .iter()
+    tabs.iter()
         .enumerate()
         .map(|(i, (label, target))| {
             Tab::new(label, target.clone(), i == selected).left(ctx, &mut room, 0.0)
         })
-        .collect();
-    let line = ctx.styles.line();
-    hairline(ctx, rect, line);
-    boxes
+        .collect()
 }

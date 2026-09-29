@@ -192,12 +192,30 @@ fn the_strip_is_the_same_widget_the_workspace_tabs_are() {
     let tab = hits
         .rect_of(&Target::Pane(Pane::Notes))
         .expect("the list up");
-    let lit = frame
+    let underlined = frame
         .layers()
         .iter()
         .flat_map(|layer| layer.quads.iter())
-        .any(|quad| quad.color == styles.raised() && quad.rect == tab);
-    assert!(lit, "the one up stands on its own ground");
+        .any(|quad| {
+            quad.color == styles.chosen()
+                && quad.rect.x == tab.x
+                && quad.rect.w == tab.w
+                && quad.rect.bottom() == tab.bottom()
+        });
+    assert!(underlined, "the one up is underlined in the accent");
+    let other = hits
+        .rect_of(&Target::Pane(Pane::Files))
+        .expect("another list");
+    let quiet = frame.layers()[0]
+        .texts
+        .iter()
+        .find(|run| other.contains(run.x, run.y + run.height / 2.0))
+        .map(|run| run.style.color);
+    assert_eq!(
+        quiet,
+        Some(styles.color(groove_ui_kit::base::style::Role::Faint)),
+        "the others are dim"
+    );
 }
 
 #[test]

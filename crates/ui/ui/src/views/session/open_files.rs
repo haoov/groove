@@ -48,6 +48,7 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, active: bool) {
     let tab = Tab::new(name(&open.path), Target::OpenTab(open.path.clone()), active);
     let ground = ctx.styles.ground();
     tab.text(Text::Small)
+        .quiet(Role::Muted)
         .ground(ground)
         .close(mark, close)
         .left(ctx, room, 0.0);
