@@ -205,9 +205,26 @@ pub async fn log_hours(sources: &[Source], key: &TaskKey, hours: f32) -> Result<
 /// The template one source holds, or nothing when it holds none.
 pub async fn template(sources: &[Source], which: Option<ProviderId>) -> Result<Option<String>> {
     let Some(source) = pick(sources, which) else {
-        return Err(groove_types::Error::invalid("no source is set up"));
+        return Err(unpicked(sources, which));
     };
     Ok(source.template().await?)
+}
+
+/// Why no source answers to `which`.
+pub(crate) fn unpicked(sources: &[Source], which: Option<ProviderId>) -> groove_types::Error {
+    let named: Vec<&str> = sources.iter().map(|one| one.id().as_str()).collect();
+    groove_types::Error::invalid(match (which, named.len()) {
+        (_, 0) => "no source is set up".to_string(),
+        (Some(id), _) => format!(
+            "{} is not set up; set up: {}",
+            id.as_str(),
+            named.join(", ")
+        ),
+        (None, _) => format!(
+            "several sources are set up; name the provider: {}",
+            named.join(", ")
+        ),
+    })
 }
 
 /// The source named, or the only one there is.

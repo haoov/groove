@@ -32,3 +32,25 @@ fn the_same_config_keeps_the_same_sources_and_a_new_one_builds_them_again() {
     );
     assert!(state.sources(None).is_empty());
 }
+
+#[test]
+fn a_template_asked_of_no_source_in_particular_names_the_ones_to_pick_from() {
+    let mut both = config("https://github.example");
+    both.notion = serde_json::from_value(serde_json::json!({
+        "token": "t", "database_id": "DB", "user_id": "U",
+        "properties": { "status": "Status" },
+        "status_map": { "ready": [], "in_progress": [], "done": [] },
+        "priority_map": { "high": [], "medium": [], "low": [] },
+        "filters": { "exclude_statuses": [] }
+    }))
+    .map(Some)
+    .expect("a notion config");
+    let sources = State::default().sources(Some(&both));
+    let said = crate::unpicked(&sources, None);
+    assert!(
+        said.to_string().contains("notion, github") || said.to_string().contains("github, notion"),
+        "{said}"
+    );
+    let none = crate::unpicked(&[], None);
+    assert!(none.to_string().contains("no source is set up"), "{none}");
+}

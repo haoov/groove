@@ -9,8 +9,10 @@ groove-hint: File a new task at its source.
 
 An argument, when given, is the source to file at — `notion`, `github`.
 
-1. `get_task_template` — the headings to mirror, and `file_at`: the source, and on
-   Notion the database and the status and assignee a new page is given.
+1. `get_task_template`, with `provider` set to the argument when one is given. It
+   returns the headings to mirror, and `file_at`: the source, and on Notion the
+   database and the status and assignee a new page is given. When it says several
+   sources are set up and no argument names one, ask the user which.
 2. Read the source's schema: on Notion, the database `file_at.database_id` through
    the Notion MCP; on GitHub, the fields of the project board the repo's issues are on.
 3. File the task yourself, at that source, with every property you can fill. On Notion, the sprint
