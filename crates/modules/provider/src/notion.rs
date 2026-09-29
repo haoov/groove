@@ -1,6 +1,6 @@
 //! Notion pages as tasks: the rows of one database that are yours and still open.
 
-mod body;
+pub(crate) mod body;
 mod connect;
 mod project;
 mod read;
@@ -88,12 +88,9 @@ impl Notion {
         let task = read::task(&page, &self.config)
             .ok_or_else(|| Error::Invalid(format!("{} has no id of its own", self.id(key))))?;
         let task = self.placed(task, &page).await;
-        let blocks = self
-            .ask(Method::GET, self.children(key), None)
-            .await
-            .map(|reply| body::text(&reply))
-            .unwrap_or_default();
-        Ok(crate::Fetched { task, body: blocks })
+        let blocks = self.tree(&self.id(key), 0).await;
+        let body = blocks.map(|one| body::text(&one)).unwrap_or_default();
+        Ok(crate::Fetched { task, body })
     }
 
     /// The page the config names as the template for a new task.
@@ -101,9 +98,24 @@ impl Notion {
         let Some(page) = self.config.task_template_page_id.clone() else {
             return Ok(None);
         };
-        let url = format!("{}/v1/blocks/{page}/children?page_size=100", self.host);
+        Ok(Some(body::text(&self.tree(&page, 0).await?)))
+    }
+
+    /// A block's children, and theirs down to `body::DEEP`; a child that fails to read has none.
+    async fn tree(&self, id: &str, depth: usize) -> Result<Vec<body::Node>> {
+        let url = format!("{}/v1/blocks/{id}/children?page_size=100", self.host);
         let reply = self.ask(Method::GET, url, None).await?;
-        Ok(Some(body::text(&reply)))
+        let blocks = reply["results"].as_array().cloned().unwrap_or_default();
+        let mut out = Vec::with_capacity(blocks.len());
+        for block in blocks {
+            let children = match (body::opens(&block, depth), block["id"].as_str()) {
+                (true, Some(child)) => Box::pin(self.tree(child, depth + 1)).await,
+                _ => Ok(Vec::new()),
+            };
+            let children = children.unwrap_or_default();
+            out.push(body::Node { block, children });
+        }
+        Ok(out)
     }
 
     /// The pages of the running sprint behind the `name` relation.
@@ -186,14 +198,6 @@ impl Notion {
 
     fn url(&self, key: &TaskKey) -> String {
         format!("{}/v1/pages/{}", self.host, self.id(key))
-    }
-
-    fn children(&self, key: &TaskKey) -> String {
-        format!(
-            "{}/v1/blocks/{}/children?page_size=100",
-            self.host,
-            self.id(key)
-        )
     }
 
     fn id(&self, key: &TaskKey) -> String {

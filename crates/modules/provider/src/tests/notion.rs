@@ -7,7 +7,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Notion;
 
-fn config() -> NotionConfig {
+pub(super) fn config() -> NotionConfig {
     NotionConfig {
         token: "secret".into(),
         database_id: "DB".into(),
@@ -285,7 +285,7 @@ async fn a_read_brings_the_page_and_its_blocks_as_text() {
     assert_eq!(read.task.short_id, "TASKS2-4244");
     assert_eq!(
         read.body,
-        "The runbook.\n- stop the writes\n- [x] take a backup"
+        "The runbook.\n\n- stop the writes\n- [x] take a backup"
     );
 }
 
