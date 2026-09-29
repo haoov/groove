@@ -8,7 +8,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::counts;
+use groove_ui_kit::widgets::{Badge, counts};
 
 /// The MR, its checks and its open notes from `x`; returns the x after them.
 pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32 {
@@ -50,7 +50,7 @@ pub fn room_for(ctx: &mut Ctx, delivery: &WorktreeDelivery) -> f32 {
         delivery.ci.map(|_| CI),
     ];
     for word in words.into_iter().flatten() {
-        wide += ctx.measure(word, &style) + ctx.tokens.sm;
+        wide += Badge::new(word, Role::Muted).width(ctx) + ctx.tokens.sm;
     }
     if delivery.notes > 0 {
         wide += style.size + ctx.tokens.xs + ctx.measure(&delivery.notes.to_string(), &style);
@@ -98,12 +98,9 @@ fn checks(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f32
     word_at(ctx, line, x, CI, role)
 }
 
-/// One word in the row's middle. Returns the x after it.
+/// Returns the x after the badge.
 fn word_at(ctx: &mut Ctx, line: Rect, x: f32, word: &str, role: Role) -> f32 {
-    let style = ctx.styles.small(role);
-    let wide = ctx.measure(word, &style);
-    row(ctx, Rect::new(x, line.y, wide, line.h), 0.0, word, style);
-    x + wide + ctx.tokens.sm
+    Badge::new(word, role).at(ctx, line, x).right() + ctx.tokens.sm
 }
 
 /// The colour an MR's own state carries.

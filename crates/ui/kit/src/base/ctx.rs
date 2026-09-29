@@ -115,6 +115,14 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.border(rect, color);
     }
 
+    pub fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
+        self.frame.rounded(rect, color, radius);
+    }
+
+    pub fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
+        self.frame.ring(rect, color, radius, stroke);
+    }
+
     pub fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
         self.frame.text(text, x, y, height, style);
     }

@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, square};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::icon;
+use groove_ui_kit::widgets::{Badge, icon};
 
 /// One line of a column: an item, the plan's divider, or what stands in for none.
 pub(super) enum Line<'a> {
@@ -88,18 +88,15 @@ fn worth(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
         Priority::Medium => Role::Warn,
         Priority::Low => Role::Ok,
     };
-    aside_in(ctx, room, level.label(), role);
+    room.take_right(ctx.tokens.md);
+    Badge::new(level.label(), role).right(ctx, room, 0.0);
 }
 
 /// A row's right-hand text, at the right of `room`.
 pub(super) fn aside(ctx: &mut Ctx, room: &mut Rect, text: &str) {
-    aside_in(ctx, room, text, Role::Faint);
-}
-
-fn aside_in(ctx: &mut Ctx, room: &mut Rect, text: &str, role: Role) {
     room.take_right(ctx.tokens.md);
     if !text.is_empty() {
-        Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0);
+        Label::new(text, ctx.styles.small(Role::Faint)).right(ctx, room, 0.0);
     }
 }
 

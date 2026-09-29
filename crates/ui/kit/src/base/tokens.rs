@@ -11,6 +11,9 @@ pub const GROUND_ALPHA: u8 = 38;
 pub const NOTED: f32 = 0.18;
 /// The words of a row its pair does not have, over that ground.
 pub const WORD_ALPHA: u8 = 96;
+/// A badge's ground and edge, both of its word's own colour.
+pub const BADGE_GROUND: u8 = 25;
+pub const BADGE_EDGE: u8 = 90;
 
 /// How many lines of a commit message the box shows.
 pub const MESSAGE_LINES: usize = 10;
@@ -84,6 +87,9 @@ pub struct Tokens {
     /// The agent's own row, under its screen.
     pub bar: f32,
     pub hairline: f32,
+    /// How far a small rounded box's corners give way.
+    pub corner: f32,
+    pub edge: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
     /// The column that holds the whole change.
@@ -138,6 +144,8 @@ const LOGICAL: Tokens = Tokens {
     feed_age: 30.0,
     bar: 36.0,
     hairline: 1.0,
+    corner: 4.0,
+    edge: 0.5,
     grab: 8.0,
     map: 14.0,
     text: 13.0,
@@ -183,6 +191,8 @@ impl Tokens {
             bar: row(BAR, text),
             feed_age: of_text(FEED_AGE),
             hairline: s(LOGICAL.hairline),
+            corner: s(LOGICAL.corner),
+            edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),
             text: s(text),

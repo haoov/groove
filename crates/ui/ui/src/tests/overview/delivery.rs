@@ -128,6 +128,32 @@ fn ci_is_a_word_in_the_colour_of_its_run() {
 }
 
 #[test]
+fn ci_stands_on_a_rounded_ground_and_edge_of_its_colour() {
+    use groove_ui_kit::base::tokens::{BADGE_EDGE, BADGE_GROUND};
+    let app = open_with(Some(CiState::Failed));
+    let bad = role(&app, Role::Bad).expect("a colour");
+    let (frame, _) = view(
+        &app,
+        &Ui::default(),
+        metrics(1280, 800, 1.0),
+        &mut groove_gfx::Fonts::embedded(),
+    );
+    let layer = &frame.layers()[0];
+    let word = layer.texts.iter().find(|t| t.text == "CI").expect("CI");
+    let under = |alpha: u8, stroked: bool| {
+        layer.quads.iter().any(|q| {
+            q.color == bad.with_alpha(alpha)
+                && q.shape.radius > 0.0
+                && (q.shape.stroke > 0.0) == stroked
+                && q.rect.x <= word.x
+                && word.x <= q.rect.right()
+        })
+    };
+    assert!(under(BADGE_GROUND, false), "the ground");
+    assert!(under(BADGE_EDGE, true), "the edge");
+}
+
+#[test]
 fn a_worktree_with_no_mr_draws_nothing_of_one() {
     let (texts, icons) = drawn(&full_app());
     assert!(!texts.iter().any(|t| t.starts_with('#')), "{texts:?}");

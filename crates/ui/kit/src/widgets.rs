@@ -1,5 +1,6 @@
 //! The primitives every view is made of; a widget never knows `AppState`.
 
+mod badge;
 mod button;
 mod counts;
 mod field;
@@ -14,6 +15,7 @@ mod search;
 mod tabs;
 mod terminal;
 
+pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use counts::{changes, counts, counts_room};
 pub use field::Field;
