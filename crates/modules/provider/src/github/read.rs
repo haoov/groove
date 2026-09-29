@@ -78,7 +78,7 @@ pub(super) fn task(issue: &serde_json::Value, host: &str, config: &GithubConfig)
         synced_at: Timestamp::now(),
         provider: groove_types::ProviderId::Github,
         url: Some(text(&issue["url"])),
-        board: Some(text(&item["project"]["title"])),
+        project: Some(text(&item["project"]["title"])),
         branch_tag: Some(number.to_string()),
     })
 }

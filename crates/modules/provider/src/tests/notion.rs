@@ -23,6 +23,7 @@ fn config() -> NotionConfig {
             estimate: Some("Estimate".into()),
             estimate_unit: groove_types::EstimateUnit::Hours,
             logged: Some("Spent".into()),
+            project: None,
         },
         status_map: StatusMap {
             ready: vec!["Todo".into()],
@@ -371,4 +372,59 @@ async fn an_estimate_the_source_counts_in_days_reads_as_hours() {
         Some(52.0),
         "six days and a half, at eight hours a day"
     );
+}
+
+/// A page whose `Project` relation names these pages.
+fn in_projects(id: &str, projects: &[&str]) -> serde_json::Value {
+    let mut page = page();
+    page["id"] = id.into();
+    page["properties"]["Project"] = serde_json::json!({
+        "type": "relation",
+        "relation": projects.iter().map(|one| serde_json::json!({ "id": one })).collect::<Vec<_>>()
+    });
+    page
+}
+
+#[tokio::test]
+async fn a_project_relation_reads_as_the_title_of_its_first_page_asked_once() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "object": "list",
+            "results": [in_projects("a", &["P1", "P2"]), in_projects("b", &["P1"])]
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(wiremock::matchers::path("/v1/pages/P1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "object": "page",
+            "properties": { "Name": { "type": "title", "title": [{ "plain_text": "Platform" }] } }
+        })))
+        .mount(&server)
+        .await;
+    let mut config = config();
+    config.properties.project = Some("Project".into());
+    let notion = Notion::at(&format!("http://{}", server.address()), config).expect("a client");
+    let tasks = notion.list().await.expect("the query answers");
+    let projects: Vec<_> = tasks.iter().map(|task| task.project.as_deref()).collect();
+    assert_eq!(projects, [Some("Platform"), Some("Platform")]);
+    let calls = server.received_requests().await.expect("the calls");
+    let asked = calls
+        .iter()
+        .filter(|call| call.url.path() == "/v1/pages/P1");
+    assert_eq!(asked.count(), 1, "one read per project page");
+}
+
+#[tokio::test]
+async fn a_project_select_reads_as_its_name() {
+    let mut page = page();
+    page["properties"]["Project"] =
+        serde_json::json!({ "type": "select", "select": { "name": "Platform" } });
+    let mut config = config();
+    config.properties.project = Some("Project".into());
+    let reply = serde_json::json!({ "object": "list", "results": [page] });
+    let (_server, notion) = source_with(reply, config).await;
+    let tasks = notion.list().await.expect("the query answers");
+    assert_eq!(tasks[0].project.as_deref(), Some("Platform"));
 }

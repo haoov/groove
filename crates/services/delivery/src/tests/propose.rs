@@ -18,7 +18,7 @@ fn task(url: Option<&str>) -> Task {
         synced_at: Timestamp::new(0),
         provider: ProviderId::Github,
         url: url.map(str::to_string),
-        board: None,
+        project: None,
         branch_tag: None,
     }
 }

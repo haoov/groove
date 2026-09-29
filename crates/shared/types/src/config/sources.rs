@@ -194,6 +194,8 @@ pub struct PropertyNames {
     /// Where `task.log_hours` adds what Groove measured.
     #[serde(default)]
     pub logged: Option<String>,
+    #[serde(default)]
+    pub project: Option<String>,
 }
 
 /// What the source's estimate counts in; Groove holds it in hours.

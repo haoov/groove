@@ -2,6 +2,7 @@
 
 mod body;
 mod connect;
+mod project;
 mod read;
 pub(crate) mod schema;
 mod sprint;
@@ -20,6 +21,7 @@ pub struct Notion {
     client: Client,
     host: String,
     sprints: sprint::Sprints,
+    titles: project::Titles,
 }
 
 impl Notion {
@@ -34,6 +36,7 @@ impl Notion {
             client: Client::new()?,
             host: host.to_string(),
             sprints: sprint::Sprints::default(),
+            titles: project::Titles::default(),
         })
     }
 
@@ -48,10 +51,35 @@ impl Notion {
         let filter = read::filter(&self.config, (assignee, sprint), &sprints);
         let reply = self.ask(Method::POST, url, Some(filter)).await?;
         let pages = reply["results"].as_array().cloned().unwrap_or_default();
-        Ok(pages
-            .iter()
-            .filter_map(|page| read::task(page, &self.config))
-            .collect())
+        let mut tasks = Vec::with_capacity(pages.len());
+        for page in &pages {
+            if let Some(task) = read::task(page, &self.config) {
+                tasks.push(self.placed(task, page).await);
+            }
+        }
+        Ok(tasks)
+    }
+
+    /// The task with the project its page names.
+    async fn placed(&self, mut task: Task, page: &serde_json::Value) -> Task {
+        task.project = match project::held(page, self.config.properties.project.as_deref()) {
+            Some(project::Held::Named(name)) => Some(name),
+            Some(project::Held::Page(id)) => self.titled(&id).await,
+            None => None,
+        };
+        task
+    }
+
+    /// A project page's title, read once.
+    async fn titled(&self, id: &str) -> Option<String> {
+        if let Some(title) = self.titles.get(id) {
+            return Some(title);
+        }
+        let url = format!("{}/v1/pages/{id}", self.host);
+        let page = self.ask(Method::GET, url, None).await.ok()?;
+        let title = read::title(&page)?;
+        self.titles.keep(id, &title);
+        Some(title)
     }
 
     /// One page as a task, with its blocks as the body.
@@ -59,6 +87,7 @@ impl Notion {
         let page = self.page(key).await?;
         let task = read::task(&page, &self.config)
             .ok_or_else(|| Error::Invalid(format!("{} has no id of its own", self.id(key))))?;
+        let task = self.placed(task, &page).await;
         let blocks = self
             .ask(Method::GET, self.children(key), None)
             .await

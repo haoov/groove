@@ -8,7 +8,7 @@ use groove_types::Task;
 pub enum Name {
     Status,
     Priority,
-    Board,
+    Project,
     Provider,
     Kind,
     Repo,
@@ -18,7 +18,7 @@ impl Name {
     pub const ALL: [Name; 6] = [
         Name::Status,
         Name::Priority,
-        Name::Board,
+        Name::Project,
         Name::Provider,
         Name::Kind,
         Name::Repo,
@@ -28,7 +28,7 @@ impl Name {
         match self {
             Name::Status => "status",
             Name::Priority => "priority",
-            Name::Board => "board",
+            Name::Project => "project",
             Name::Provider => "provider",
             Name::Kind => "kind",
             Name::Repo => "repo",
@@ -102,7 +102,7 @@ fn of_task(name: Name, value: &str, task: &Task) -> bool {
     match name {
         Name::Status => like(&task.status, value),
         Name::Priority => task.priority.is_some_and(|one| like(one.label(), value)),
-        Name::Board => task.board.as_ref().is_some_and(|one| like(one, value)),
+        Name::Project => task.project.as_ref().is_some_and(|one| like(one, value)),
         Name::Provider => like(task.provider.as_str(), value),
         Name::Kind | Name::Repo => false,
     }

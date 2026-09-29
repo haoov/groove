@@ -126,7 +126,7 @@ impl Store {
         .bind(task.synced_at.seconds())
         .bind(task.provider.as_str())
         .bind(&task.url)
-        .bind(&task.board)
+        .bind(&task.project)
         .bind(&task.branch_tag)
         .bind(task.intent.map(intent_of))
         .bind(task.dates.start.map(|day| day.to_string()))

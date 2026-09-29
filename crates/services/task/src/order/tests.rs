@@ -17,7 +17,7 @@ fn task(id: &str) -> Task {
         synced_at: Timestamp::new(0),
         provider: ProviderId::Github,
         url: None,
-        board: None,
+        project: None,
         branch_tag: None,
     }
 }

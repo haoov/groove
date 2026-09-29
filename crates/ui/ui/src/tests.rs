@@ -243,7 +243,7 @@ fn task(short_id: &str, title: &str, external: &str) -> groove_types::Task {
         synced_at: Timestamp::now(),
         provider: groove_types::ProviderId::Github,
         url: None,
-        board: Some("Platform".into()),
+        project: Some("Platform".into()),
         branch_tag: Some("50".into()),
     }
 }

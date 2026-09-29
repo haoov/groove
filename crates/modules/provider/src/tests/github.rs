@@ -16,6 +16,7 @@ fn config(host: &str) -> GithubConfig {
             estimate: Some("Estimate".into()),
             estimate_unit: groove_types::EstimateUnit::Hours,
             logged: Some("Spent".into()),
+            project: None,
         },
         status_map: StatusMap {
             ready: vec!["Todo".into()],
@@ -112,7 +113,7 @@ async fn an_issue_on_a_board_reads_as_a_task_through_the_mapping() {
     assert_eq!(task.estimate, Some(6.5));
     assert_eq!(task.logged, Some(1.5));
     assert_eq!(task.branch_tag.as_deref(), Some("50"));
-    assert_eq!(task.board.as_deref(), Some("Platform"));
+    assert_eq!(task.project.as_deref(), Some("Platform"));
 }
 
 #[tokio::test]

@@ -60,11 +60,11 @@ fn values(app: &AppState, name: Name, typed: &str) -> Vec<String> {
             .iter()
             .map(|one| one.label().to_string())
             .collect(),
-        Name::Board => app
+        Name::Project => app
             .task
             .tasks
             .iter()
-            .filter_map(|t| t.board.clone())
+            .filter_map(|t| t.project.clone())
             .collect(),
         Name::Provider => groove_types::ProviderId::ALL
             .iter()

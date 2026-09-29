@@ -132,7 +132,7 @@ fn task() -> groove_types::Task {
         synced_at: Timestamp::new(0),
         provider: groove_types::ProviderId::Github,
         url: None,
-        board: None,
+        project: None,
         branch_tag: None,
     }
 }

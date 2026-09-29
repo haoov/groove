@@ -69,7 +69,7 @@ pub(super) fn task(page: &serde_json::Value, config: &NotionConfig) -> Option<Ta
         synced_at: Timestamp::now(),
         provider: ProviderId::Notion,
         url: page["url"].as_str().map(str::to_string),
-        board: None,
+        project: None,
         branch_tag: None,
     })
 }
@@ -87,7 +87,7 @@ fn unique(page: &serde_json::Value) -> Option<String> {
     })
 }
 
-fn title(page: &serde_json::Value) -> Option<String> {
+pub(super) fn title(page: &serde_json::Value) -> Option<String> {
     let value = held(page).find_map(|(_, value)| match value["type"].as_str() {
         Some("title") => Some(&value["title"]),
         _ => None,

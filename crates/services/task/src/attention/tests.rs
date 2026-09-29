@@ -29,7 +29,7 @@ fn task() -> Task {
         synced_at: Timestamp::now(),
         provider: ProviderId::Github,
         url: None,
-        board: None,
+        project: None,
         branch_tag: None,
     }
 }

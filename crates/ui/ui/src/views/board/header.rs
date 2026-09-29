@@ -12,7 +12,7 @@ use groove_ui_kit::shape::{Panel, hairline};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Row, Search, Text, list};
 
-const PLACEHOLDER: &str = "filter — status:, priority:, board:, provider:, kind:, repo:";
+const PLACEHOLDER: &str = "filter — status:, priority:, project:, provider:, kind:, repo:";
 const NEW: &str = "+ explorer";
 
 /// The header line. Returns where the filter was drawn.

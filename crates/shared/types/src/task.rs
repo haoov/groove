@@ -131,7 +131,7 @@ pub struct Task {
     pub synced_at: Timestamp,
     pub provider: ProviderId,
     pub url: Option<String>,
-    pub board: Option<String>,
+    pub project: Option<String>,
     pub branch_tag: Option<String>,
 }
 

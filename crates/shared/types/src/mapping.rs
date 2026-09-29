@@ -36,10 +36,11 @@ pub enum Mapped {
     Logged,
     Assignee,
     Sprint,
+    Project,
 }
 
 impl Mapped {
-    pub const NOTION: [Mapped; 8] = [
+    pub const NOTION: [Mapped; 9] = [
         Mapped::Assignee,
         Mapped::Sprint,
         Mapped::Status,
@@ -48,6 +49,7 @@ impl Mapped {
         Mapped::Due,
         Mapped::Estimate,
         Mapped::Logged,
+        Mapped::Project,
     ];
     pub const GITHUB: [Mapped; 6] = [
         Mapped::Status,
@@ -68,6 +70,7 @@ impl Mapped {
             Mapped::Logged => "logged",
             Mapped::Assignee => "assignee",
             Mapped::Sprint => "sprint",
+            Mapped::Project => "project",
         }
     }
 
@@ -80,6 +83,7 @@ impl Mapped {
             Mapped::Due => "no due date, no due-soon warning",
             Mapped::Estimate => "no estimate beside the time",
             Mapped::Logged => "the hours measured are not logged",
+            Mapped::Project => "no project on the board",
             Mapped::Assignee | Mapped::Sprint => "no task is listed",
         }
     }
@@ -92,6 +96,7 @@ impl Mapped {
             Mapped::Estimate | Mapped::Logged => &[Kind::Number],
             Mapped::Assignee => &[Kind::People],
             Mapped::Sprint => &[Kind::Relation],
+            Mapped::Project => &[Kind::Relation, Kind::Select],
         };
         kinds.contains(&kind)
     }
@@ -212,6 +217,7 @@ fn renamed(
         Mapped::Due => names.due = named,
         Mapped::Estimate => names.estimate = named,
         Mapped::Logged => names.logged = named,
+        Mapped::Project => names.project = named,
         Mapped::Assignee | Mapped::Sprint => {}
     }
 }
@@ -224,6 +230,7 @@ fn named(names: &PropertyNames, which: Mapped) -> Option<&str> {
         Mapped::Due => names.due.as_deref(),
         Mapped::Estimate => names.estimate.as_deref(),
         Mapped::Logged => names.logged.as_deref(),
+        Mapped::Project => names.project.as_deref(),
         Mapped::Assignee | Mapped::Sprint => None,
     };
     name.filter(|one| !one.trim().is_empty())
