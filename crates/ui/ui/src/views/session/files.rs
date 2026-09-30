@@ -35,7 +35,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         ..rect
     };
     ctx.quad(edge, ctx.styles.line());
-    let mut column = rect;
+    let under = ctx.app.layout.commit;
+    if ui.session.commits() {
+        commit::draw(ctx, app, ui, under);
+    }
+    let mut column = rect.until_y(under.y);
     let bar = bar::draw(ctx, rect, ui);
     column.take_top(bar.h);
     if ui.session.tab == Tab::Files {
@@ -113,11 +117,7 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
             false => heading::modes(ctx, head, app.workspace.mode),
         }
     }
-    let under = ctx.app.layout.commit;
-    let body = column.until_y(under.y);
-    if ui.session.commits() {
-        commit::draw(ctx, app, ui, under);
-    }
+    let body = column;
     if grep {
         return results::draw(ctx, body, app, ui);
     }

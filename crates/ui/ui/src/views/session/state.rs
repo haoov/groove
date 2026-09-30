@@ -263,8 +263,8 @@ impl SessionUi {
         self.tab.has_sidebar() && !self.folded
     }
 
-    /// Whether the commit box stands under the sidebar, which only the files list has.
+    /// Whether the commit box stands under the sidebar: whenever the sidebar does.
     pub fn commits(&self) -> bool {
-        self.sidebar() && self.tab == Tab::Diff && self.pane == Pane::Files
+        self.sidebar()
     }
 }
