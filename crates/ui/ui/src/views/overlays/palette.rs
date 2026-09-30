@@ -43,16 +43,13 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
         true => rows_high + ctx.tokens.sm,
         false => rows_high,
     };
+    let edge = ctx.styles.border();
     let rect = match palette.anchor {
         Some(anchor) => {
             let width = wide(ctx, &rows, prompt.is_some());
-            let edge = ctx.styles.deep();
             panel_at(ctx, anchor.point(), anchor.corner, (width, height), edge)
         }
-        None => {
-            let edge = ctx.styles.deep();
-            modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top, edge)
-        }
+        None => modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top, edge),
     };
     ctx.hit(rect, Target::Palette);
     let under = match asks {
