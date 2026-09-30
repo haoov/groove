@@ -43,6 +43,10 @@ pub(super) fn mark_read(
         return;
     };
     let read = open.toggle_read(&worktree, &path);
+    let changes = &mut state.workspace.changes;
+    if changes.is_folded(&path) != read {
+        changes.fold(&path);
+    }
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let done = service.set_read(&id, &worktree, &path, read).await;
