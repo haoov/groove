@@ -146,9 +146,12 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
     Vec::new()
 }
 
-/// One row a skill offers, one per source it files in.
+/// One row a skill offers, one per source it files in; `create-task` runs from the chat alone.
 fn rows_of(skill: &groove_types::Skill, sources: &[ProviderId]) -> Vec<Offer> {
-    let files = matches!(skill.name.as_str(), "create-task" | "convert-explorer");
+    if skill.name == "create-task" {
+        return Vec::new();
+    }
+    let files = skill.name == "convert-explorer";
     if !files || sources.len() < 2 {
         return vec![Offer {
             id: skill.id.clone(),

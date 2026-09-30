@@ -91,7 +91,7 @@ fn the_bar_counts_the_skills_and_offers_them() {
 fn the_skills_menu_holds_what_this_kind_is_offered() {
     let app = offering(vec![
         skill("save-task", "save task", &["task"]),
-        skill("create-task", "create task", &["explorer"]),
+        skill("convert-explorer", "convert to task", &["explorer"]),
     ]);
     let mut ui = session_ui();
     let (_, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
@@ -113,7 +113,7 @@ fn the_skills_menu_holds_what_this_kind_is_offered() {
         vec![groove_controllers::Command::Agent(
             groove_controllers::agent::Command::SendSkill {
                 session: SessionId::new("a"),
-                id: "groove:create-task".into(),
+                id: "groove:convert-explorer".into(),
                 args: None,
             }
         )],
@@ -286,9 +286,9 @@ pub(super) fn sourced(
 }
 
 #[test]
-fn a_task_files_in_each_source_that_is_set_up() {
+fn a_conversion_files_in_each_source_that_is_set_up() {
     let app = sourced(
-        offering(vec![skill("create-task", "create task", &[])]),
+        offering(vec![skill("convert-explorer", "convert to task", &[])]),
         true,
         true,
     );
@@ -302,14 +302,17 @@ fn a_task_files_in_each_source_that_is_set_up() {
     let (frame, hits) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = everywhere(&frame);
     assert!(
-        drawn.iter().any(|one| one == "create task in GitHub"),
+        drawn.iter().any(|one| one == "convert to task in GitHub"),
         "{drawn:?}"
     );
     assert!(
-        drawn.iter().any(|one| one == "create task in Notion"),
+        drawn.iter().any(|one| one == "convert to task in Notion"),
         "{drawn:?}"
     );
-    assert!(!drawn.iter().any(|one| one == "create task"), "{drawn:?}");
+    assert!(
+        !drawn.iter().any(|one| one == "convert to task"),
+        "{drawn:?}"
+    );
 
     let row = hits
         .rect_of(&crate::hit::Target::MenuRow(0))
@@ -320,7 +323,7 @@ fn a_task_files_in_each_source_that_is_set_up() {
         vec![groove_controllers::Command::Agent(
             groove_controllers::agent::Command::SendSkill {
                 session: SessionId::new("a"),
-                id: "groove:create-task".into(),
+                id: "groove:convert-explorer".into(),
                 args: Some("github".into()),
             }
         )]
@@ -328,7 +331,7 @@ fn a_task_files_in_each_source_that_is_set_up() {
 }
 
 #[test]
-fn filing_and_converting_each_name_their_own_rows() {
+fn filing_a_task_stays_off_the_menu_and_converting_names_each_source() {
     let app = sourced(
         offering(vec![
             skill("create-task", "create task", &[]),
@@ -350,7 +353,15 @@ fn filing_and_converting_each_name_their_own_rows() {
     let mut once = rows.clone();
     once.sort();
     once.dedup();
-    assert_eq!(rows.len(), 4, "two sources, two skills: {rows:?}");
+    assert_eq!(
+        rows.len(),
+        2,
+        "two sources, one skill on the menu: {rows:?}"
+    );
+    assert!(
+        !drawn.iter().any(|one| one.starts_with("create task")),
+        "{drawn:?}"
+    );
     assert_eq!(
         once.len(),
         rows.len(),
@@ -361,7 +372,7 @@ fn filing_and_converting_each_name_their_own_rows() {
 #[test]
 fn one_source_files_without_naming_it() {
     let app = sourced(
-        offering(vec![skill("create-task", "create task", &[])]),
+        offering(vec![skill("convert-explorer", "convert to task", &[])]),
         false,
         true,
     );
@@ -373,7 +384,10 @@ fn one_source_files_without_naming_it() {
     click(word, &mut ui, &app, &hits);
     let (frame, _) = crate::view(&app, &ui, window(), &mut Fonts::embedded());
     let drawn = everywhere(&frame);
-    assert!(drawn.iter().any(|one| one == "create task"), "{drawn:?}");
+    assert!(
+        drawn.iter().any(|one| one == "convert to task"),
+        "{drawn:?}"
+    );
 }
 
 /// Where the pointer lands in the middle of the agent's own screen.
