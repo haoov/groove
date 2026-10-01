@@ -24,30 +24,30 @@ pub(crate) struct Parts {
     pub(crate) on_change: Box<dyn Fn(Vec<PathBuf>) + Send>,
 }
 
-/// Batches events until the burst goes quiet, then follows what appeared.
+/// Batches changes until they go quiet, whatever reads go on, then follows what appeared.
 pub(crate) fn report(mut parts: Parts) {
     let mut paths: Vec<PathBuf> = Vec::new();
-    let mut opened: Option<Instant> = None;
+    let (mut opened, mut last): (Option<Instant>, Option<Instant>) = (None, None);
     loop {
         if matches!(parts.stopped.try_recv(), Err(TryRecvError::Disconnected)) {
             return;
         }
-        let held = match parts.events.recv_timeout(parts.quiet) {
-            Ok(Ok(event)) if !is_change(&event.kind) => false,
-            Ok(Ok(event)) => {
+        match parts.events.recv_timeout(parts.quiet) {
+            Ok(Ok(event)) if is_change(&event.kind) => {
                 paths.extend(event.paths);
-                opened.get_or_insert_with(Instant::now);
-                let long = opened.is_some_and(|at| at.elapsed() >= parts.quiet * HOLD);
-                long || paths.len() >= PATHS
+                let now = Instant::now();
+                opened.get_or_insert(now);
+                last = Some(now);
             }
-            Ok(Err(_)) => false,
-            Err(RecvTimeoutError::Timeout) => true,
+            Ok(_) | Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
-        };
-        if !held || paths.is_empty() {
+        }
+        let quiet = last.is_some_and(|at| at.elapsed() >= parts.quiet);
+        let long = opened.is_some_and(|at| at.elapsed() >= parts.quiet * HOLD);
+        if paths.is_empty() || !(quiet || long || paths.len() >= PATHS) {
             continue;
         }
-        opened = None;
+        (opened, last) = (None, None);
         let batch = batch(&mut paths);
         if batch.iter().any(|path| path.is_dir() || !path.exists()) {
             parts.tree.reconcile(&mut parts.watcher);

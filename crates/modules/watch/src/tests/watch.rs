@@ -151,6 +151,25 @@ fn reading_a_file_is_not_a_change() {
 }
 
 #[test]
+fn a_write_is_reported_while_reads_go_on_around_it() {
+    let dir = worktree();
+    let (_watch, batches) = watching(&dir);
+    write(&dir, "src/lib.rs", "fn two() {}\n");
+    let reading = std::time::Instant::now();
+    let mut seen = None;
+    while reading.elapsed() < WAIT && seen.is_none() {
+        let _ = std::fs::read_to_string(dir.path().join("src/lib.rs"));
+        std::thread::sleep(QUIET / 10);
+        seen = batches.try_recv().ok();
+    }
+    let batch = seen.expect("a build reading the tree does not hold the write back");
+    assert!(
+        batch.iter().any(|path| path.ends_with("src/lib.rs")),
+        "{batch:?}"
+    );
+}
+
+#[test]
 fn an_ignored_directory_that_appears_later_stays_unwatched() {
     let dir = worktree();
     std::fs::remove_dir_all(dir.path().join("target")).expect("no build output yet");
