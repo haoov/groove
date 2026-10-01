@@ -1538,6 +1538,7 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-bash",
  "tree-sitter-go",
+ "tree-sitter-go-template",
  "tree-sitter-md",
  "tree-sitter-python",
  "tree-sitter-rust",
@@ -4552,6 +4553,15 @@ name = "tree-sitter-go"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8560a4d2f835cc0d4d2c2e03cbd0dde2f6114b43bc491164238d333e28b16ea"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-go-template"
+version = "0.20.0"
+source = "git+https://github.com/haoov/tree-sitter-go-template?rev=aa629ca5557919c068a722f0217dea7595266aaa#aa629ca5557919c068a722f0217dea7595266aaa"
 dependencies = [
  "cc",
  "tree-sitter-language",

@@ -54,11 +54,55 @@ fn every_language_we_ship_colours_something() {
         ("a.md", "# Title\n\ntext\n"),
         ("a.py", "def one():\n    return 1\n"),
         ("a.go", "func one() int { return 1 }\n"),
+        ("helmfile.yaml.gotmpl", "name: {{ .Values.name }}\n"),
     ];
     for (path, text) in samples {
         let doc = Document::new(path, text);
         assert!(doc.is_highlighted(), "{path} has no spans");
     }
+}
+
+#[test]
+fn a_helm_template_colours_its_yaml_and_its_actions_both() {
+    let text = "{{- if .Values.enabled }}\nkind: Deployment\nreplicas: {{ .Values.replicas }}\nname: \"{{ include \\\"chart.name\\\" . }}\"\n{{- end }}\n";
+    let doc = Document::new("charts/app/templates/deploy.yaml", text);
+    assert_eq!(
+        doc.language(),
+        Some(crate::Language::Template),
+        "yaml with actions"
+    );
+    let opening = spans(&doc, 0);
+    assert!(
+        opening.contains(&(Capture::Keyword, "if".into())),
+        "{opening:?}"
+    );
+    let kind = spans(&doc, 1);
+    assert!(
+        kind.contains(&(Capture::Attribute, "kind".into())),
+        "the yaml layer: {kind:?}"
+    );
+    let replicas = spans(&doc, 2);
+    assert!(
+        replicas.contains(&(Capture::Attribute, "replicas".into())),
+        "a key before an action stays a key: {replicas:?}"
+    );
+    assert!(spans(&doc, 4).contains(&(Capture::Keyword, "end".into())));
+}
+
+#[test]
+fn an_edited_template_colours_like_a_fresh_one() {
+    let source = "kind: Deployment\nreplicas: {{ .Values.replicas }}\n";
+    let mut doc = Document::new("deploy.yaml", source);
+    doc.insert(doc.char_of(Caret::new(1, 0)), "name: {{ .Release.Name }}\n");
+    doc.reparse();
+    let fresh = Document::new("deploy.yaml", &doc.text());
+    assert_eq!(whole(&doc), whole(&fresh));
+}
+
+#[test]
+fn yaml_with_no_actions_stays_yaml() {
+    let doc = Document::new("values.yaml", "name: groove\n");
+    assert_eq!(doc.language(), Some(crate::Language::Yaml));
 }
 
 #[test]

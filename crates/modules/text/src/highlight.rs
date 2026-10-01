@@ -10,11 +10,12 @@ use tree_sitter::{
 
 use crate::language::Language;
 
-/// A parsed document: the grammar's own tree over the text.
+/// A parsed document: the grammar's own tree over the text, and a template's YAML under it.
 #[derive(Clone)]
 pub(crate) struct Syntax {
     language: Language,
     tree: Tree,
+    yaml: Option<Tree>,
 }
 
 impl Syntax {
@@ -22,15 +23,23 @@ impl Syntax {
     pub(crate) fn new(text: &Rope, language: Language) -> Option<Self> {
         let mut parser = parser(language)?;
         let tree = parse(&mut parser, text, None)?;
-        Some(Self { language, tree })
+        let yaml = layered(language, text, &tree, None);
+        Some(Self {
+            language,
+            tree,
+            yaml,
+        })
     }
 
-    /// Moves the tree's nodes along an edit, without parsing again.
+    /// Moves the trees' nodes along an edit, without parsing again.
     pub(crate) fn shift(&mut self, edit: InputEdit) {
         self.tree.edit(&edit);
+        if let Some(yaml) = self.yaml.as_mut() {
+            yaml.edit(&edit);
+        }
     }
 
-    /// Parses `text` again, from the tree it already has.
+    /// Parses `text` again, each tree from the one it already has.
     pub(crate) fn reparsed(&mut self, text: &Rope) {
         let Some(mut parser) = parser(self.language) else {
             return;
@@ -38,11 +47,13 @@ impl Syntax {
         if let Some(tree) = parse(&mut parser, text, Some(&self.tree)) {
             self.tree = tree;
         }
+        self.yaml = layered(self.language, text, &self.tree, self.yaml.as_ref());
     }
 
     /// The lines the scopes holding `byte` begin on, outermost first.
     pub(crate) fn scopes(&self, byte: usize) -> Vec<usize> {
-        let mut node = self.tree.root_node().descendant_for_byte_range(byte, byte);
+        let tree = self.yaml.as_ref().unwrap_or(&self.tree);
+        let mut node = tree.root_node().descendant_for_byte_range(byte, byte);
         let mut lines = Vec::new();
         while let Some(here) = node {
             if self.language.is_scope(here.kind()) {
@@ -55,26 +66,47 @@ impl Syntax {
         lines
     }
 
-    /// What every node the query names means, over `range` of the text.
+    /// What every node the queries name means, over `range` of the text.
     pub(crate) fn spans(&self, text: &Rope, range: Range<usize>) -> Vec<Highlight> {
-        let Some((_, query)) = self.language.syntax() else {
-            return Vec::new();
-        };
-        let mut cursor = QueryCursor::new();
-        cursor.set_byte_range(range);
-        let mut found: Vec<(usize, usize, Capture)> = Vec::new();
-        let mut matches = cursor.matches(query, self.tree.root_node(), Chunks(text));
-        while let Some(one) = matches.next() {
-            for capture in one.captures() {
-                let name = &query.capture_names()[capture.index as usize];
-                let Some(meaning) = crate::language::capture(name) else {
-                    continue;
-                };
+        let mut found = Vec::new();
+        captured(self.language, &self.tree, text, range.clone(), &mut found);
+        if let Some(yaml) = &self.yaml {
+            captured(Language::Yaml, yaml, text, range, &mut found);
+        }
+        flatten(found)
+    }
+}
+
+/// A template's YAML layer; other languages have one tree.
+fn layered(language: Language, text: &Rope, tree: &Tree, old: Option<&Tree>) -> Option<Tree> {
+    match language {
+        Language::Template => crate::template::yaml(text, tree, old),
+        _ => None,
+    }
+}
+
+/// What `language`'s query says of `tree` over `range`, onto `found`.
+fn captured(
+    language: Language,
+    tree: &Tree,
+    text: &Rope,
+    range: Range<usize>,
+    found: &mut Vec<(usize, usize, Capture)>,
+) {
+    let Some((_, query)) = language.syntax() else {
+        return;
+    };
+    let mut cursor = QueryCursor::new();
+    cursor.set_byte_range(range);
+    let mut matches = cursor.matches(query, tree.root_node(), Chunks(text));
+    while let Some(one) = matches.next() {
+        for capture in one.captures() {
+            let name = &query.capture_names()[capture.index as usize];
+            if let Some(meaning) = crate::language::capture(name) {
                 let node = capture.node.byte_range();
                 found.push((node.start, node.end, meaning));
             }
         }
-        flatten(found)
     }
 }
 
@@ -117,7 +149,7 @@ fn parser(language: Language) -> Option<Parser> {
 }
 
 /// Parses from the rope's chunks.
-fn parse(parser: &mut Parser, text: &Rope, old: Option<&Tree>) -> Option<Tree> {
+pub(crate) fn parse(parser: &mut Parser, text: &Rope, old: Option<&Tree>) -> Option<Tree> {
     parser.parse_with_options(
         &mut |byte, _| match byte < text.len_bytes() {
             true => {

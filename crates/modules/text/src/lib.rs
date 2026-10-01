@@ -7,6 +7,7 @@ mod language;
 mod replay;
 mod search;
 mod tabs;
+mod template;
 mod words;
 
 #[cfg(test)]
@@ -68,7 +69,7 @@ impl Colours {
 
 impl Document {
     pub fn new(path: &str, text: &str) -> Self {
-        let language = Language::of(path);
+        let language = Language::sniffed(path, text);
         let long = text.len() > MAX_HIGHLIGHT_BYTES;
         let rope = Rope::from_str(text);
         let syntax = match language {
@@ -87,7 +88,7 @@ impl Document {
     pub fn plain(path: &str, text: &str) -> Self {
         Self {
             text: Rope::from_str(text),
-            language: Language::of(path),
+            language: Language::sniffed(path, text),
             syntax: None,
             edits: replay::Replay::default(),
         }

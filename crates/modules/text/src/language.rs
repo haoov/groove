@@ -14,6 +14,8 @@ pub enum Language {
     Markdown,
     Python,
     Go,
+    /// Go template actions over YAML, as Helm and helmfile write them.
+    Template,
 }
 
 /// The capture names Groove reads, several spellings to a meaning.
@@ -40,30 +42,42 @@ const RECOGNIZED: [(&str, Capture); 20] = [
     ("markup.link", Capture::Link),
 ];
 
-/// What a capture means to us, by the name the grammar gave it.
+/// What a capture means to us, by the name the grammar gave it, else by its first part.
 pub(crate) fn capture(name: &str) -> Option<Capture> {
-    RECOGNIZED
-        .iter()
-        .find(|(known, _)| *known == name)
-        .map(|(_, capture)| *capture)
+    let known = |wanted: &str| {
+        RECOGNIZED
+            .iter()
+            .find(|(known, _)| *known == wanted)
+            .map(|(_, capture)| *capture)
+    };
+    known(name).or_else(|| known(name.split('.').next()?))
 }
 
 impl Language {
-    pub const ALL: [Language; 6] = [
+    pub const ALL: [Language; 7] = [
         Language::Rust,
         Language::Yaml,
         Language::Bash,
         Language::Markdown,
         Language::Python,
         Language::Go,
+        Language::Template,
     ];
 
     /// One indent step in this language, as its own formatter writes it.
     pub fn indent(self) -> Indent {
         match self {
             Language::Go => Indent::Tab(4),
-            Language::Yaml | Language::Markdown => Indent::Spaces(2),
+            Language::Yaml | Language::Markdown | Language::Template => Indent::Spaces(2),
             Language::Rust | Language::Bash | Language::Python => Indent::Spaces(4),
+        }
+    }
+
+    /// The language of a file, reading YAML that holds template actions as a template.
+    pub fn sniffed(path: &str, text: &str) -> Option<Language> {
+        match Self::of(path) {
+            Some(Language::Yaml) if text.contains("{{") => Some(Language::Template),
+            other => other,
         }
     }
 
@@ -78,6 +92,7 @@ impl Language {
             "md" | "markdown" => Some(Language::Markdown),
             "py" | "pyi" => Some(Language::Python),
             "go" => Some(Language::Go),
+            "tpl" | "gotmpl" => Some(Language::Template),
             _ => None,
         };
         by_extension.or(match name {
@@ -105,7 +120,7 @@ impl Language {
             Language::Python => &["class_definition", "function_definition"],
             Language::Bash => &["function_definition"],
             Language::Markdown => &["section"],
-            Language::Yaml => &["block_mapping_pair"],
+            Language::Yaml | Language::Template => &["block_mapping_pair"],
         }
     }
 
@@ -121,6 +136,7 @@ impl Language {
             Language::Markdown => tree_sitter_md::LANGUAGE,
             Language::Python => tree_sitter_python::LANGUAGE,
             Language::Go => tree_sitter_go::LANGUAGE,
+            Language::Template => tree_sitter_gotmpl::LANGUAGE,
         };
         Grammar::new(language)
     }
@@ -134,6 +150,7 @@ impl Language {
             Language::Markdown => tree_sitter_md::HIGHLIGHT_QUERY_BLOCK,
             Language::Python => tree_sitter_python::HIGHLIGHTS_QUERY,
             Language::Go => tree_sitter_go::HIGHLIGHTS_QUERY,
+            Language::Template => tree_sitter_gotmpl::HIGHLIGHTS_QUERY,
         }
     }
 

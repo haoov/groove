@@ -96,3 +96,45 @@ fn time_settling_after_a_keystroke() {
         }
     }
 }
+
+/// A chart template `lines` long: YAML with an action on every third line.
+fn chart(lines: usize, actions: bool) -> String {
+    (0..lines)
+        .map(|at| match (actions, at % 3) {
+            (true, 0) => format!("  name_{at}: {{{{ .Values.name_{at} | quote }}}}\n"),
+            (true, 1) => format!("  {{{{- if .Values.flag_{at} }}}}\n"),
+            (true, _) => format!("  key_{at}: value {at}\n"),
+            (false, _) => format!("  key_{at}: value {at}\n"),
+        })
+        .collect()
+}
+
+#[test]
+#[ignore]
+fn time_a_template_against_plain_yaml() {
+    warm();
+    for lines in [300, 3000] {
+        for (path, actions) in [("plain.yaml", false), ("chart.yaml", true)] {
+            let text = chart(lines, actions);
+            let started = Instant::now();
+            let doc = Document::new(path, &text);
+            let opened = started.elapsed();
+            let started = Instant::now();
+            for top in (0..lines).step_by(40) {
+                let _ = doc.colours(top..top + 40);
+            }
+            let painted = started.elapsed();
+            let mut doc = doc;
+            let at = doc.char_of(Caret::new(lines / 2, 2));
+            let started = Instant::now();
+            for _ in 0..20 {
+                doc.insert(at, "x");
+                doc.reparse();
+            }
+            let reparsed = started.elapsed() / 20;
+            println!(
+                "{lines:>5} lines {path:<10}: {opened:>10?} open, {painted:>10?} all colours, {reparsed:>10?} keystroke+reparse"
+            );
+        }
+    }
+}

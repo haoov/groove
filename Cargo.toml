@@ -42,6 +42,7 @@ pulldown-cmark = { version = "0.13", default-features = false }
 tree-sitter-python = "0.25"
 tree-sitter-rust = "0.24"
 tree-sitter-yaml = "0.7"
+tree-sitter-gotmpl = { git = "https://github.com/haoov/tree-sitter-go-template", rev = "aa629ca5557919c068a722f0217dea7595266aaa", package = "tree-sitter-go-template" }
 uuid = { version = "1", features = ["v4", "v5"] }
 hyper = { version = "1", default-features = false }
 hyper-util = { version = "0.1", default-features = false }

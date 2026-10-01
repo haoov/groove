@@ -16,6 +16,7 @@ tree-sitter-md.workspace = true
 tree-sitter-python.workspace = true
 tree-sitter-rust.workspace = true
 tree-sitter-yaml.workspace = true
+tree-sitter-gotmpl.workspace = true
 
 [lints]
 workspace = true
