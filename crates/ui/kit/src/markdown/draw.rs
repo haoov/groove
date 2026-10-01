@@ -37,7 +37,7 @@ pub fn draw<A: App>(
 fn ground<A: App>(ctx: &mut Ctx<'_, A>, row: Rect, line: &Line) {
     let hairline = ctx.tokens.hairline;
     match line.ground {
-        Ground::Code => ctx.quad(row, ctx.styles.band()),
+        Ground::Code => ctx.quad(row, ctx.styles.prose_code_ground()),
         Ground::Rule => {
             let middle = row.y + (row.h - hairline) / 2.0;
             ctx.quad(Rect::new(row.x, middle, row.w, hairline), ctx.styles.line());
@@ -76,7 +76,7 @@ fn one<A: App>(
         let tall = piece.style.size + pad * 2.0;
         let wide = ctx.measure(piece.text.trim_end(), &piece.style) + pad * 2.0;
         let behind = Rect::new(x - pad, row.y + (row.h - tall) / 2.0, wide, tall);
-        ctx.rounded(behind, ctx.styles.band(), ctx.tokens.corner);
+        ctx.quad(behind, ctx.styles.prose_code_ground());
     }
     ctx.text(&piece.text, x, row.y, row.h, piece.style);
     if let Some(url) = &piece.link {

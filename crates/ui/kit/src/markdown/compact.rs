@@ -122,7 +122,7 @@ pub fn row<A: App>(
     if one.code {
         ctx.quad(
             Rect::new(x, rect.y, rect.right() - x, rect.h),
-            ctx.styles.band(),
+            ctx.styles.prose_code_ground(),
         );
         x += ctx.tokens.sm;
     }

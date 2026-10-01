@@ -111,6 +111,11 @@ impl Styles {
         }
     }
 
+    /// The ground under code in prose, inline or a block.
+    pub fn prose_code_ground(&self) -> Color {
+        self.palette.surface0
+    }
+
     /// `base` with a span's emphasis.
     pub fn emphasised(&self, base: TextStyle, strong: bool, em: bool) -> TextStyle {
         TextStyle {
