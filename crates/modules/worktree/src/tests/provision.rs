@@ -13,12 +13,12 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
         .await
         .unwrap();
     let wt = &done.worktree;
-    assert_eq!(wt.branch, "explorer/try-sqlite-vacuum");
+    assert_eq!(wt.branch, "explorer/ab12cd34");
     assert_eq!(
         wt.path,
         fx.root
             .path()
-            .join("worktrees/explorer-ab12cd34/mayo/explorer/try-sqlite-vacuum")
+            .join("worktrees/explorer-ab12cd34/mayo/explorer/ab12cd34")
             .to_string_lossy()
     );
     assert!(wt.base_ref.is_none());
@@ -29,7 +29,7 @@ async fn a_default_explorer_worktree_is_cut_from_the_default_branch() {
             std::path::Path::new(&wt.path),
             &["rev-parse", "--abbrev-ref", "HEAD"]
         ),
-        "explorer/try-sqlite-vacuum"
+        "explorer/ab12cd34"
     );
     assert_eq!(
         sh(std::path::Path::new(&wt.path), &["rev-parse", "HEAD"]),
@@ -91,10 +91,7 @@ async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
 async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopted() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
-    sh(
-        &fx.clone,
-        &["branch", "explorer/try-sqlite-vacuum", "origin/main"],
-    );
+    sh(&fx.clone, &["branch", "explorer/ab12cd34", "origin/main"]);
     let err = fx
         .pool
         .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
@@ -103,7 +100,7 @@ async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopte
     assert!(matches!(err, Error::ForeignBranch { .. }), "{err}");
 
     let named = WorktreeSpec {
-        branch: Some("explorer/try-sqlite-vacuum".into()),
+        branch: Some("explorer/ab12cd34".into()),
         ..Default::default()
     };
     let done = fx

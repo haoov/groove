@@ -35,13 +35,9 @@ async fn close_refuses_lost_work_then_removes_dir_row_branch_and_empty_parents()
             .unwrap()
             .is_empty()
     );
-    assert!(!sh(&fx.clone, &["worktree", "list"]).contains("try-sqlite-vacuum"));
+    assert!(!sh(&fx.clone, &["worktree", "list"]).contains("ab12cd34"));
     assert!(
-        !sh(
-            &fx.clone,
-            &["branch", "--list", "explorer/try-sqlite-vacuum"]
-        )
-        .contains("try-sqlite-vacuum"),
+        !sh(&fx.clone, &["branch", "--list", "explorer/ab12cd34"]).contains("ab12cd34"),
         "the local branch goes too"
     );
 }

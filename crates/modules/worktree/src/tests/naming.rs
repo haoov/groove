@@ -50,15 +50,11 @@ fn task_branches_follow_type_slug_id() {
 }
 
 #[test]
-fn explorer_branches_use_the_title_or_the_id() {
-    let s = session(
-        SessionKind::Explorer,
-        "explorer-ab12cd34",
-        "Try sqlite vacuum",
-    );
-    assert_eq!(default_branch(&s, None), "explorer/try-sqlite-vacuum");
-    let unnamed = session(SessionKind::Explorer, "explorer-ab12cd34", "!!!");
-    assert_eq!(default_branch(&unnamed, None), "explorer/ab12cd34");
+fn explorer_branches_are_named_after_the_explorer_whatever_its_title() {
+    for title in ["Try sqlite vacuum", "Explorer", "!!!"] {
+        let s = session(SessionKind::Explorer, "explorer-ab12cd34", title);
+        assert_eq!(default_branch(&s, None), "explorer/ab12cd34", "{title}");
+    }
 }
 
 #[test]

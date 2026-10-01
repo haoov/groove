@@ -7,17 +7,14 @@ use crate::{Error, Result};
 const SLUG_MAX_CHARS: usize = 32;
 const FORBIDDEN_CHARS: [char; 8] = [' ', '~', '^', ':', '?', '*', '[', '\\'];
 
-/// `<type>/<slug>-<id>` for a task, `explorer/<slug>` for an explorer; `tag` replaces the id.
+/// `<type>/<slug>-<id>` for a task, `explorer/<id>` for an explorer; `tag` replaces the id.
 pub fn default_branch(session: &Session, tag: Option<&str>) -> String {
     let slug = slug(&session.title);
     match session.kind {
-        SessionKind::Explorer if slug.is_empty() => {
-            format!(
-                "explorer/{}",
-                session.id.as_str().trim_start_matches("explorer-")
-            )
-        }
-        SessionKind::Explorer => format!("explorer/{slug}"),
+        SessionKind::Explorer => format!(
+            "explorer/{}",
+            session.id.as_str().trim_start_matches("explorer-")
+        ),
         _ => {
             let id = tag
                 .filter(|t| !t.is_empty())

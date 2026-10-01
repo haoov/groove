@@ -66,7 +66,11 @@ fn add_repo_cuts_the_first_worktree_and_lists_the_pool() {
     assert_eq!(open.repos.len(), 1);
     assert_eq!(open.repos[0].id, RepoId::new(REPO));
     let wt = &open.worktrees[0];
-    assert_eq!(wt.branch, "explorer/try-mayo");
+    assert_eq!(
+        wt.branch,
+        explored(&id),
+        "named after the explorer, not its title"
+    );
     assert!(std::path::Path::new(&wt.path).join("a.txt").is_file());
     assert_eq!(open.state.selected_worktree.as_ref(), Some(&wt.id));
     assert!(state.errors.is_empty(), "{:?}", state.errors);
@@ -82,6 +86,11 @@ fn add_repo_cuts_the_first_worktree_and_lists_the_pool() {
     );
     spawner.drain(&mut state, &services);
     assert_eq!(state.session.branches[0].1, ["main", "release/1.0"]);
+}
+
+/// The branch an explorer's first worktree is cut on.
+fn explored(id: &groove_types::SessionId) -> String {
+    format!("explorer/{}", id.as_str().trim_start_matches("explorer-"))
 }
 
 #[test]
@@ -115,7 +124,7 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
     let first = open
         .worktrees
         .iter()
-        .find(|w| w.branch == "explorer/try-mayo")
+        .find(|w| w.branch == explored(&id))
         .unwrap()
         .clone();
 
