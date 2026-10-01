@@ -10,9 +10,9 @@ use crate::offsets::listed;
 use crate::{Surface, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, ruled, square};
-use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Row, icon, list};
+use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled, square};
+use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::widgets::icon;
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -36,7 +36,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ctx.quad(edge, ctx.styles.line());
 
     let board = column.take_top(ctx.tokens.header);
-    let foot = column.take_bottom(ctx.tokens.row);
+    let foot = column.take_bottom(ctx.tokens.bar);
     board_row(ctx, app, ui, board);
     let band = ctx.app.layout.feed;
     let rows = Rect {
@@ -106,9 +106,10 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
         Rect::new(rect.x, rect.y - rect.h, rect.w, rect.h),
         rule,
     );
+    hoverable(ctx, rect, Target::SettingsOpen);
     let style = ctx.styles.small(Role::Faint);
-    let settings = Row::new(ctx.tokens.md, "settings", style)
-        .mark(Mark::Settings)
-        .target(Target::SettingsOpen);
-    list(ctx, rect, &[settings], None);
+    let md = ctx.tokens.md;
+    let mark = leading(ctx, rect, rect.x + md);
+    ctx.icon(mark, Mark::Settings, 0, style.color);
+    row(ctx, rect, after_mark(ctx, md), "settings", style);
 }

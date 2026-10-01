@@ -20,8 +20,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     };
     let line = ctx.app.layout.agent_bar;
     ctx.quad(line, ctx.styles.band());
-    let rule = Rect::new(line.x, line.y, line.w, ctx.tokens.hairline);
-    ctx.quad(rule, ctx.styles.line());
+    let (thick, rule) = (ctx.tokens.hairline, ctx.styles.line());
+    ctx.quad(Rect::new(line.x, line.y, line.w, thick), rule);
+    ctx.quad(Rect::new(line.right() - thick, line.y, thick, line.h), rule);
     offered(ctx, line, app, open);
 }
 

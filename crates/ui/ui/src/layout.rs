@@ -197,7 +197,7 @@ impl Layout {
         let work_x = rail + agent;
         let work_width = (window.w - work_x - aside).max(0.0);
         let box_ = scale(split.commit).min(window.h);
-        let foot = tokens.row;
+        let foot = tokens.bar;
         let band = (scale(split.feed).min(window.h) - foot).max(tokens.row);
         let head = tokens.header + tokens.row + tokens.sm;
         Self {
