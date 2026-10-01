@@ -82,10 +82,17 @@ pub(super) fn refresh(
 }
 
 /// Reads the summary in a job; the continuation stores it against its worktree.
+/// One read is out per worktree and mode; what asks meanwhile gets one more read after it.
 pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(asked) = super::Asked::now(state) else {
         return;
     };
+    let key = (asked.worktree.clone(), asked.mode);
+    if state.workspace.loading.as_ref() == Some(&key) {
+        state.workspace.again = true;
+        return;
+    }
+    (state.workspace.loading, state.workspace.again) = (Some(key.clone()), false);
     let job = state.begin("changed files");
     state.workspace.reads += 1;
     let nth = state.workspace.reads;
@@ -101,13 +108,20 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
         Box::new(
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                if !asked.holds(state) || state.workspace.reads != nth {
-                    return;
+                let ours = state.workspace.loading.as_ref() == Some(&key);
+                if ours {
+                    state.workspace.loading = None;
                 }
-                match files {
-                    Ok(files) => loaded(state, spawner, asked.worktree, (files, read)),
-                    Err(_) if gone => {}
-                    Err(e) => state.failed(e),
+                let again = ours && std::mem::take(&mut state.workspace.again);
+                if asked.holds(state) && state.workspace.reads == nth {
+                    match files {
+                        Ok(files) => loaded(state, spawner, asked.worktree, (files, read)),
+                        Err(_) if gone => {}
+                        Err(e) => state.failed(e),
+                    }
+                }
+                if again {
+                    load(state, spawner);
                 }
             },
         ) as Continuation

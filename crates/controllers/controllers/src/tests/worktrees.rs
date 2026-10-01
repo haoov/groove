@@ -420,6 +420,29 @@ fn closing_the_last_worktree_stops_watching_it() {
 }
 
 #[test]
+fn reads_asked_while_one_is_out_wait_for_it_and_make_one_more() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+    first_worktree(&mut state, &services, &spawner, &id);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+
+    for _ in 0..4 {
+        crate::workspace::load(&mut state, &spawner);
+    }
+    let reading = |s: &crate::AppState| {
+        s.pending
+            .iter()
+            .filter(|job| job.label == "changed files")
+            .count()
+    };
+    assert_eq!(reading(&state), 1, "one read out, whatever asked");
+    assert!(state.workspace.again, "the rest owe it one more");
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(state.workspace.loading.is_none() && !state.workspace.again);
+}
+
+#[test]
 fn a_worktree_that_is_gone_is_read_without_an_error() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
@@ -428,7 +451,6 @@ fn a_worktree_that_is_gone_is_read_without_an_error() {
 
     std::fs::remove_dir_all(&only.path).unwrap();
     crate::workspace::load(&mut state, &spawner);
-    spawner.drain(&mut state, &services);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     assert!(state.errors.is_empty(), "{:?}", state.errors);
-    assert!(state.pending.is_empty(), "the job ended");
 }

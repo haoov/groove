@@ -46,6 +46,9 @@ pub struct State {
     pub changes: Changes,
     /// How many summary reads were asked for; only the last one lands.
     pub reads: u64,
+    /// The worktree and mode a summary read is out for, and whether another is owed after it.
+    pub loading: Option<(WorktreeId, DiffMode)>,
+    pub again: bool,
     /// Each worktree's open files, kept while another worktree is selected.
     buffers: BTreeMap<WorktreeId, Buffers>,
     /// Both sides parsed, for the files whose rows are on screen.
