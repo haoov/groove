@@ -100,10 +100,16 @@ impl Run {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
         let mut child = command.spawn()?;
-        if let Some(mut stdin) = child.stdin.take() {
-            tokio::io::AsyncWriteExt::write_all(&mut stdin, input).await?;
-        }
-        child.wait_with_output().await
+        let stdin = child.stdin.take();
+        let fed = async move {
+            if let Some(mut stdin) = stdin {
+                tokio::io::AsyncWriteExt::write_all(&mut stdin, input).await?;
+            }
+            Ok::<(), std::io::Error>(())
+        };
+        let (fed, output) = tokio::join!(fed, child.wait_with_output());
+        fed?;
+        output
     }
 
     fn command(&self) -> tokio::process::Command {

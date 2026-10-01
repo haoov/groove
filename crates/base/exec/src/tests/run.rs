@@ -66,3 +66,14 @@ async fn input_reaches_the_child() {
     let out = Run::new("cat").input("what it reads").text().await;
     assert_eq!(out.expect("cat ran"), "what it reads");
 }
+
+#[tokio::test]
+async fn an_input_larger_than_the_pipes_is_read_back_whole() {
+    let big = "a line the child answers as it reads\n".repeat(110_000);
+    let out = Run::new("cat")
+        .input(big.clone())
+        .timeout(std::time::Duration::from_secs(10))
+        .text()
+        .await;
+    assert_eq!(out.expect("cat ran to its end").len(), big.len());
+}
