@@ -11,7 +11,7 @@ use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::fold;
+use groove_ui_kit::widgets::folder;
 
 use groove_gfx::Edges;
 
@@ -54,24 +54,23 @@ fn items<'a>(found: &'a [Found], ui: &Ui) -> Vec<Item<'a>> {
     items
 }
 
-/// The file a run of matches belongs to, how many, and a caret that hides them.
+/// The file a run of matches belongs to, as the changed list draws a directory, and its count.
 fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
-    ctx.quad(line, ctx.styles.raised());
     hoverable(ctx, line, Target::FoundIn(path.to_string()));
-    let (xs, sm) = (ctx.tokens.xs, ctx.tokens.sm);
-    let style = ctx.styles.small(Role::Text);
-    let mut room = line.pad(Edges::across(xs, ctx.tokens.md));
-    Label::new(&count.to_string(), style).right(ctx, &mut room, sm);
-    fold(ctx, &mut room, !ui.session.shut.contains(path), Role::Faint);
-    Label::new(path, style).draw(ctx, room);
+    let md = ctx.tokens.md;
+    let mut room = line.pad(Edges::across(md, md));
+    let counted = ctx.styles.small(Role::Faint);
+    Label::new(&count.to_string(), counted).right(ctx, &mut room, ctx.tokens.sm);
+    folder(ctx, &mut room, !ui.session.shut.contains(path), Role::Faint);
+    Label::new(path, ctx.styles.body(Role::Faint)).draw(ctx, room);
 }
 
-/// One line a search matched: where it sits, and what it says.
+/// One line a search matched: its number, then what it says, in the column a name stands in.
 fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize) {
     hoverable(ctx, line, Target::Found(at));
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = line.pad(Edges::across(md + sm, md));
+    let mut room = line.pad(Edges::across(md + ctx.tokens.icon + ctx.tokens.xs, md));
     let number = (one.line + 1).to_string();
-    Label::new(&number, ctx.styles.code(Role::Ghost)).left(ctx, &mut room, sm);
-    Label::new(one.text.trim_start(), ctx.styles.code(Role::Text)).draw(ctx, room);
+    Label::new(&number, ctx.styles.prose_code(Role::Ghost)).left(ctx, &mut room, sm);
+    Label::new(one.text.trim_start(), ctx.styles.prose_code(Role::Text)).draw(ctx, room);
 }
