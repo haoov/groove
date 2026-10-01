@@ -310,3 +310,99 @@ fn sides_of(app: &AppState) -> Vec<(String, String, String)> {
         .map(|(path, painted)| (path.clone(), painted.old.text(), painted.new.text()))
         .collect()
 }
+
+/// `count` changed files over a hundred-odd directories, in a worktree of `tree` files.
+fn spread(count: usize, tree: usize) -> AppState {
+    let mut app = full_app();
+    app.workspace.worktree = app.session.selected_worktree().map(|one| one.id.clone());
+    let sides: Vec<(String, String, String)> = (0..count)
+        .map(|at| {
+            let before: String = (0..40).map(|n| format!("key_{n}: value {at}\n")).collect();
+            let after = before.replace("key_3: ", "key_3: changed ");
+            (
+                format!("charts/c{}/templates/t{at}.yaml", at % 200),
+                before,
+                after,
+            )
+        })
+        .collect();
+    let named: Vec<(&str, &str, &str)> = sides
+        .iter()
+        .map(|(path, before, after)| (path.as_str(), before.as_str(), after.as_str()))
+        .collect();
+    crate::tests::changed_files(&mut app, &named);
+    let paths = (0..tree)
+        .map(|at| groove_types::FileDiff {
+            path: format!("charts/c{}/files/f{at}.txt", at % 300),
+            added: 0,
+            deleted: 0,
+            status: groove_types::FileStatus::Unchanged,
+            staged: None,
+        })
+        .collect();
+    app.workspace.set_paths(paths);
+    let (path, before, after) = &sides[0];
+    let file = groove_controllers::workspace_service::from_text(path, before, after);
+    crate::tests::open_file(&mut app, file);
+    app
+}
+
+#[test]
+#[ignore]
+fn time_a_frame_over_many_changed_files() {
+    let mut fonts = Fonts::embedded();
+    let app = spread(1354, 12_000);
+    for (tab, browse) in [
+        (Tab::Files, false),
+        (Tab::Files, true),
+        (Tab::Diff, false),
+        (Tab::Diff, true),
+    ] {
+        let mut ui = Ui::default();
+        ui.session.tab = tab;
+        if browse {
+            ui.session.bar.path.clear();
+        } else {
+            ui.session.bar.path.set("t");
+        }
+        let _ = view(&app, &ui, window(), &mut fonts);
+        let runs = 20;
+        let started = Instant::now();
+        for _ in 0..runs {
+            let _ = view(&app, &ui, window(), &mut fonts);
+        }
+        println!(
+            "{tab:?} browse={browse}: {:?} a frame",
+            started.elapsed() / runs
+        );
+    }
+}
+
+#[test]
+#[ignore]
+fn time_the_file_lists_parts() {
+    use crate::views::session::files::{explorer, listing, narrowed};
+    let app = spread(1354, 12_000);
+    let mut ui = Ui::default();
+    ui.session.tab = Tab::Files;
+    let runs = 20;
+    let time = |label: &str, f: &dyn Fn()| {
+        let started = Instant::now();
+        for _ in 0..runs {
+            f();
+        }
+        println!("{label}: {:?}", started.elapsed() / runs);
+    };
+    time("narrowed", &|| drop(narrowed(&app, &ui)));
+    let files = narrowed(&app, &ui);
+    time("listing", &|| drop(listing(&files)));
+    time("explorer rows", &|| {
+        drop(explorer::rows(
+            (app.workspace.paths(), app.workspace.paths_stamp()),
+            &files,
+            &ui,
+        ))
+    });
+    ui.session.bar.path.set("t1");
+    time("narrowed by a query", &|| drop(narrowed(&app, &ui)));
+}

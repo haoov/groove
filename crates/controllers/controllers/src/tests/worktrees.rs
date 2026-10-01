@@ -259,9 +259,9 @@ fn walked(state: &mut AppState, services: &Services, spawner: &SyncSpawner) -> V
     let list = Cmd::Workspace(crate::workspace::Command::ListPaths);
     dispatch(list, state, services, spawner);
     until(spawner, services, state, |s| {
-        !s.workspace.walking && !s.workspace.paths.is_empty()
+        !s.workspace.walking && !s.workspace.paths().is_empty()
     });
-    let paths = state.workspace.paths.iter();
+    let paths = state.workspace.paths().iter();
     paths.map(|file| file.path.clone()).collect()
 }
 

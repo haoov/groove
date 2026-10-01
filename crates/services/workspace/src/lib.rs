@@ -57,8 +57,9 @@ pub struct State {
     pub showing: Range<usize>,
     /// What the last search across the worktree has found so far.
     pub found: Vec<Found>,
-    /// Every file of the worktree, for the path term to narrow by.
-    pub paths: Vec<FileDiff>,
+    /// Every file of the worktree, for the path term to narrow by, and a count that moves with it.
+    paths: Vec<FileDiff>,
+    paths_stamp: u64,
     /// A walk of the worktree is out.
     pub walking: bool,
     /// That search, while it still runs.
@@ -89,10 +90,27 @@ impl State {
         self.stamp = self.stamp.wrapping_add(1);
     }
 
+    pub fn paths(&self) -> &[FileDiff] {
+        &self.paths
+    }
+
+    pub fn paths_stamp(&self) -> u64 {
+        self.paths_stamp
+    }
+
+    pub fn set_paths(&mut self, paths: Vec<FileDiff>) {
+        self.paths = paths;
+        self.paths_stamp = self.paths_stamp.wrapping_add(1);
+    }
+
+    pub fn clear_paths(&mut self) {
+        self.set_paths(Vec::new());
+    }
+
     pub fn loaded(&mut self, worktree: WorktreeId, files: Vec<FileDiff>, changes: Changes) {
         self.moved();
         if !self.holds(&worktree) {
-            self.paths.clear();
+            self.clear_paths();
         }
         self.worktree = Some(worktree);
         self.files = files;
@@ -151,7 +169,7 @@ impl State {
         self.moved();
         self.stop();
         self.found.clear();
-        self.paths.clear();
+        self.clear_paths();
         self.walking = false;
         self.log.clear();
         self.logged = None;

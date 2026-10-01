@@ -38,7 +38,7 @@ fn a_file_made_in_the_worktree_shows_up_as_a_change() {
             .any(|file| file.path == "src/two.rs")
     });
     assert!(
-        state.workspace.paths.is_empty(),
+        state.workspace.paths().is_empty(),
         "the walk is dropped, so the tree reads the worktree again"
     );
 }

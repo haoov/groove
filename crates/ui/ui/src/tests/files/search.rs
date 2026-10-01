@@ -122,16 +122,18 @@ fn the_board_holds_no_file_list_so_the_chord_takes_nothing() {
 
 /// The worktree's own files, as the walk leaves them in the slice.
 pub(super) fn with_paths(app: &mut AppState, paths: &[&str]) {
-    app.workspace.paths = paths
-        .iter()
-        .map(|path| FileDiff {
-            path: (*path).into(),
-            added: 0,
-            deleted: 0,
-            status: FileStatus::Unchanged,
-            staged: None,
-        })
-        .collect();
+    app.workspace.set_paths(
+        paths
+            .iter()
+            .map(|path| FileDiff {
+                path: (*path).into(),
+                added: 0,
+                deleted: 0,
+                status: FileStatus::Unchanged,
+                staged: None,
+            })
+            .collect(),
+    );
 }
 
 #[test]

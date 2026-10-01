@@ -1,11 +1,12 @@
 //! The worktree as a tree: the directories standing open, and the files under them.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 
 use groove_gfx::{Edges, Rect};
 use groove_types::FileDiff;
 
 use super::rows::{Reading, entry};
+use super::walked::Tree;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
@@ -26,18 +27,19 @@ pub(crate) struct Row<'a> {
     pub file: Option<&'a FileDiff>,
 }
 
-/// What every directory holds, by its own path from the worktree root.
-#[derive(Default)]
-struct Node {
-    dirs: BTreeSet<String>,
-    files: BTreeSet<String>,
-}
-
 /// The rows the open directories leave, and the row a new path is being named in.
-pub(crate) fn rows<'a>(paths: &[FileDiff], changed: &[&'a FileDiff], ui: &Ui) -> Vec<Row<'a>> {
-    let tree = tree(paths);
+pub(crate) fn rows<'a>(
+    (paths, stamp): (&[FileDiff], u64),
+    changed: &[&'a FileDiff],
+    ui: &Ui,
+) -> Vec<Row<'a>> {
+    let tree = ui.walked.of(paths, stamp);
+    let changed: HashMap<&str, &'a FileDiff> = changed
+        .iter()
+        .map(|one| (one.path.as_str(), *one))
+        .collect();
     let mut out = Vec::new();
-    walk(&tree, "", 0, &ui.session.opened, changed, &mut out);
+    walk(&tree, "", 0, &ui.session.opened, &changed, &mut out);
     if let Some(naming) = ui
         .session
         .naming
@@ -70,36 +72,13 @@ fn under(rows: &[Row<'_>], dir: &str) -> (usize, usize) {
     }
 }
 
-/// Every directory of the worktree, with what stands directly in it.
-fn tree(paths: &[FileDiff]) -> BTreeMap<String, Node> {
-    let mut tree: BTreeMap<String, Node> = BTreeMap::new();
-    for file in paths {
-        let mut parent = String::new();
-        let parts: Vec<&str> = file.path.split('/').collect();
-        for (at, part) in parts.iter().enumerate() {
-            let last = at + 1 == parts.len();
-            let here = match parent.is_empty() {
-                true => (*part).to_string(),
-                false => format!("{parent}/{part}"),
-            };
-            let node = tree.entry(parent.clone()).or_default();
-            match last {
-                true => node.files.insert(here.clone()),
-                false => node.dirs.insert(here.clone()),
-            };
-            parent = here;
-        }
-    }
-    tree
-}
-
 /// One directory's own rows, then the rows of every directory open inside it.
 fn walk<'a>(
-    tree: &BTreeMap<String, Node>,
+    tree: &Tree,
     dir: &str,
     depth: usize,
     opened: &BTreeSet<String>,
-    changed: &[&'a FileDiff],
+    changed: &HashMap<&str, &'a FileDiff>,
     out: &mut Vec<Row<'a>>,
 ) {
     let Some(node) = tree.get(dir) else {
@@ -123,7 +102,7 @@ fn walk<'a>(
             path: path.clone(),
             name: name_of(path).to_string(),
             dir: false,
-            file: changed.iter().copied().find(|one| &one.path == path),
+            file: changed.get(path.as_str()).copied(),
         });
     }
 }

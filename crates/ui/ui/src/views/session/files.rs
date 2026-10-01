@@ -8,6 +8,7 @@ mod notes;
 mod results;
 mod rows;
 mod tree;
+pub(crate) mod walked;
 
 pub(crate) use tree::{Listing, listing, reads_as};
 
@@ -123,7 +124,11 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     }
     let open = app.workspace.active().map(|file| &file.path);
     if browsing(ui) {
-        let held = explorer::rows(&app.workspace.paths, &files, ui);
+        let held = explorer::rows(
+            (app.workspace.paths(), app.workspace.paths_stamp()),
+            &files,
+            ui,
+        );
         return match held.is_empty() {
             true => says(ctx, body, empty(app)),
             false => explorer::draw(ctx, body, app, &held, open, ui),
@@ -161,7 +166,7 @@ pub(crate) fn needs_notes(app: &AppState, _: &Ui) -> bool {
 
 /// Whether the explorer still needs the worktree walked before it can draw a tree.
 pub(crate) fn needs_walk(app: &AppState, ui: &Ui) -> bool {
-    browsing(ui) && holds(app) && app.workspace.paths.is_empty() && !app.workspace.walking
+    browsing(ui) && holds(app) && app.workspace.paths().is_empty() && !app.workspace.walking
 }
 
 /// Whether a worktree is selected at all.
@@ -202,7 +207,7 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
         left.iter().map(|file| file.path.as_str()).collect();
     let rest: Vec<&FileDiff> = app
         .workspace
-        .paths
+        .paths()
         .iter()
         .filter(|file| !shown.contains(file.path.as_str()))
         .collect();

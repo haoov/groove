@@ -21,14 +21,18 @@ fn name_of(path: &str) -> &str {
 pub(crate) fn listing<'a>(files: &[&'a FileDiff]) -> Listing<'a> {
     let root = common(files);
     let mut groups: Vec<Group<'a>> = Vec::new();
+    let mut at: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for file in files {
         let dir = under(&root, &file.path);
-        match groups.iter_mut().find(|group| group.dir == dir) {
-            Some(group) => group.files.push(file),
-            None => groups.push(Group {
-                dir,
-                files: vec![file],
-            }),
+        match at.get(&dir) {
+            Some(index) => groups[*index].files.push(file),
+            None => {
+                at.insert(dir.clone(), groups.len());
+                groups.push(Group {
+                    dir,
+                    files: vec![file],
+                });
+            }
         }
     }
     groups.sort_by(|a, b| a.dir.cmp(&b.dir));

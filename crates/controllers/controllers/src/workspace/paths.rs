@@ -26,7 +26,7 @@ pub(super) fn act(state: &mut AppState, spawner: &dyn Spawner, op: PathOp) {
                 if let Err(e) = done {
                     return state.failed(e);
                 }
-                state.workspace.paths.clear();
+                state.workspace.clear_paths();
                 if let Some(path) = gone.as_ref() {
                     state.workspace.shut_if_gone(path);
                 }

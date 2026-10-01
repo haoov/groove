@@ -133,7 +133,11 @@ fn the_name_is_typed_where_it_will_stand() {
     menu(&app, &mut ui, &Target::Dir("src".into()));
     pick(&app, &mut ui, "new file");
     typed("two", &mut ui, &app);
-    let rows = crate::views::session::files::explorer::rows(&app.workspace.paths, &[], &ui);
+    let rows = crate::views::session::files::explorer::rows(
+        (app.workspace.paths(), app.workspace.paths_stamp()),
+        &[],
+        &ui,
+    );
     let at = rows
         .iter()
         .position(|row| row.path.is_empty())

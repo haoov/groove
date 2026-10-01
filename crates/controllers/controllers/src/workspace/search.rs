@@ -21,7 +21,7 @@ pub(super) fn list_paths(state: &mut AppState, spawner: &dyn Spawner) {
             let selected = state.session.selected_worktree().map(|one| &one.id);
             match read {
                 Ok(_) if selected != Some(&id) => {}
-                Ok(paths) => state.workspace.paths = paths,
+                Ok(paths) => state.workspace.set_paths(paths),
                 Err(e) => state.failed(groove_types::Error::internal(format!(
                     "the walk failed: {e}"
                 ))),

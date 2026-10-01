@@ -149,7 +149,7 @@ fn picking_the_files_tab_fills_the_tree_it_draws() {
         dispatch(command, &mut state, &services, &spawner);
     }
     until(&spawner, &services, &mut state, |s| {
-        !s.workspace.paths.is_empty()
+        !s.workspace.paths().is_empty()
     });
 
     let (frame, _) = view(&state, &ui, window(), &mut groove_gfx::Fonts::embedded());

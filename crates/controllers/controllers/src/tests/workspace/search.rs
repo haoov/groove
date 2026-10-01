@@ -96,11 +96,11 @@ fn the_worktrees_own_files_are_listed_and_one_that_never_changed_opens() {
         &spawner,
     );
     until(&spawner, &services, &mut state, |s| {
-        !s.workspace.paths.is_empty()
+        !s.workspace.paths().is_empty()
     });
     let paths: Vec<&str> = state
         .workspace
-        .paths
+        .paths()
         .iter()
         .map(|file| file.path.as_str())
         .collect();
