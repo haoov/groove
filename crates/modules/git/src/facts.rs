@@ -42,11 +42,27 @@ impl Git {
 
     /// Where origin's copy of the work stands: the branch there, else its base.
     pub async fn pushed_point(&self, branch: &str, pinned: Option<&str>) -> Result<String> {
-        let upstream = format!("origin/{branch}");
-        match self.ref_exists(&upstream).await? {
-            true => Ok(upstream),
-            false => self.base_ref(pinned).await,
+        match self.remote_of(branch).await? {
+            Some(remote) => Ok(remote),
+            None => self.base_ref(pinned).await,
         }
+    }
+
+    /// `origin/<branch>`, when it exists and the branch tracks nothing else.
+    pub async fn remote_of(&self, branch: &str) -> Result<Option<String>> {
+        let named = format!("origin/{branch}");
+        if !self.ref_exists(&named).await? {
+            return Ok(None);
+        }
+        let tracked = format!("{branch}@{{upstream}}");
+        let upstream = self
+            .line(&["rev-parse", "--abbrev-ref", &tracked])
+            .await
+            .ok();
+        Ok(match upstream {
+            Some(other) if other != named => None,
+            _ => Some(named),
+        })
     }
 
     pub async fn merge_base(&self, a: &str, b: &str) -> Result<String> {

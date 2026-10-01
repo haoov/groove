@@ -83,6 +83,27 @@ async fn the_base_ref_prefers_the_pin_then_falls_back() {
 }
 
 #[tokio::test]
+async fn a_remote_branch_of_the_same_name_the_branch_does_not_track_is_not_its_own() {
+    let fx = Fixture::new();
+    let git = fx.git();
+    sh(
+        &fx.work,
+        &["push", "-q", "origin", "HEAD~1:refs/heads/shared"],
+    );
+    sh(&fx.work, &["fetch", "-q", "origin"]);
+    sh(
+        &fx.work,
+        &["checkout", "-q", "-b", "shared", "--track", "origin/main"],
+    );
+    assert_eq!(
+        git.pushed_point("shared", None).await.unwrap(),
+        "origin/HEAD",
+        "it tracks main: its base, as git status says"
+    );
+    assert_eq!(git.ahead_behind("shared").await.unwrap(), None);
+}
+
+#[tokio::test]
 async fn origin_stands_at_the_branch_once_pushed_and_at_its_base_before() {
     let fx = Fixture::new();
     let git = fx.git();

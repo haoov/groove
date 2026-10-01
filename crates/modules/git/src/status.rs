@@ -21,10 +21,9 @@ impl Git {
 
     /// Commits ahead of and behind the branch on origin; `None` when it was never pushed.
     pub async fn ahead_behind(&self, branch: &str) -> Result<Option<(u32, u32)>> {
-        let upstream = format!("origin/{branch}");
-        if !self.ref_exists(&upstream).await? {
+        let Some(upstream) = self.remote_of(branch).await? else {
             return Ok(None);
-        }
+        };
         let range = format!("HEAD...{upstream}");
         let args = ["rev-list", "--left-right", "--count", &range];
         let out = self.line(&args).await?;
