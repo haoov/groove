@@ -41,6 +41,9 @@ pub enum Mark {
     /// A task list's item, open and done.
     Unticked,
     Ticked,
+    /// A directory of a file list, shut and open.
+    Folder,
+    FolderOpen,
 }
 
 impl Mark {
@@ -91,6 +94,8 @@ impl Mark {
             Mark::Outward => Icon::Outward,
             Mark::Unticked => Icon::Box,
             Mark::Ticked => Icon::Ticked,
+            Mark::Folder => Icon::Folder,
+            Mark::FolderOpen => Icon::FolderOpen,
         }
     }
 }

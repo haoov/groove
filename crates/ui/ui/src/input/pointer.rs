@@ -167,7 +167,7 @@ fn acted(
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
         Some(Target::Working) => one(workspace::Command::LeaveCommit),
-        Some(Target::Dir(path)) => twisty(ui, path),
+        Some(target @ (Target::Dir(_) | Target::Group(_))) => twisty(ui, target),
         Some(Target::Review(project, iid)) => review(project, iid),
         Some(Target::TaskActions(session)) => task_menu(ui, hits, session),
         one => staging(one, ui, app),

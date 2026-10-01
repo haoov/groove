@@ -80,6 +80,8 @@ pub enum Target {
     CloseTab(String),
     /// A directory of the explorer, which a click opens or shuts.
     Dir(String),
+    /// A directory of the changed list, which a click folds over its files or opens.
+    Group(String),
     /// Which of the sidebar's lists is up.
     Pane(crate::views::session::Pane),
     /// One note of the sidebar's list, which a click opens the line of.

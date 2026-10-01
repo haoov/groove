@@ -19,7 +19,7 @@ pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
 pub use counts::{changes, counts, counts_room};
 pub use field::Field;
-pub use fold::fold;
+pub use fold::{fold, folder};
 pub use icon::icon;
 pub use input::input;
 pub use list::{Row, list};

@@ -46,10 +46,15 @@ pub(super) fn note_at(
     vec![Command::Workspace(open)]
 }
 
-/// One directory of the explorer opened, or shut again.
-pub(super) fn twisty(ui: &mut Ui, path: String) -> Vec<Command> {
-    if !ui.session.opened.remove(&path) {
-        ui.session.opened.insert(path);
+/// A directory's twisty: the explorer's opens or shuts, the changed list's folds or opens.
+pub(super) fn twisty(ui: &mut Ui, target: crate::hit::Target) -> Vec<Command> {
+    let (held, path) = match target {
+        crate::hit::Target::Dir(path) => (&mut ui.session.opened, path),
+        crate::hit::Target::Group(dir) => (&mut ui.session.closed, dir),
+        _ => return Vec::new(),
+    };
+    if !held.remove(&path) {
+        held.insert(path);
     }
     Vec::new()
 }

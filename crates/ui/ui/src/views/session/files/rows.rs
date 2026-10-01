@@ -1,7 +1,7 @@
 //! One row per changed file: what it is, what it offers, what it counts.
 
 use groove_gfx::{Edges, Rect};
-use groove_types::FileDiff;
+use groove_types::{FileDiff, FileStatus};
 
 use super::{Listing, acted, asking, reads_as};
 use crate::ctx::Ctx;
@@ -10,12 +10,14 @@ use crate::offsets::listed;
 use crate::{Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{ruled, square};
+use groove_ui_kit::shape::{hoverable, ruled, square};
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::changes;
+use groove_ui_kit::widgets::{changes, folder};
 
 enum Item<'a> {
-    Dir(&'a str, Role),
+    Root(&'a str),
+    /// A group's directory, and whether its files stand under it.
+    Dir(&'a str, bool),
     File(&'a FileDiff, f32),
 }
 
@@ -28,7 +30,7 @@ pub(super) fn draw(
     ui: &Ui,
 ) {
     let height = ctx.tokens.row;
-    let items = items(ctx, listing);
+    let items = items(ctx, listing, ui);
     let at = (Scroller::Files, ui.offset(Scroller::Files));
     listed(
         ctx,
@@ -37,7 +39,8 @@ pub(super) fn draw(
         &items,
         |_| height,
         |ctx, line, item| match item {
-            Item::Dir(text, role) => path(ctx, line, text, *role),
+            Item::Root(text) => path(ctx, line, text, Role::Ghost),
+            Item::Dir(text, open) => group(ctx, line, text, *open),
             Item::File(file, indent) => {
                 let reading = Reading {
                     open: open == Some(&file.path),
@@ -49,17 +52,21 @@ pub(super) fn draw(
     );
 }
 
-/// The root, then each directory over its files.
-fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>) -> Vec<Item<'a>> {
+/// The root, then each directory over its files; a folded directory hides them.
+fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>, ui: &Ui) -> Vec<Item<'a>> {
     let mut items = Vec::new();
     if !listing.root.is_empty() {
-        items.push(Item::Dir(&listing.root, Role::Ghost));
+        items.push(Item::Root(&listing.root));
     }
     for group in &listing.groups {
         let indent = match group.dir.is_empty() {
             true => ctx.tokens.md,
             false => {
-                items.push(Item::Dir(&group.dir, Role::Faint));
+                let open = !ui.session.closed.contains(&group.dir);
+                items.push(Item::Dir(&group.dir, open));
+                if !open {
+                    continue;
+                }
                 ctx.tokens.md + ctx.tokens.md
             }
         };
@@ -68,9 +75,19 @@ fn items<'a>(ctx: &Ctx, listing: &'a Listing<'_>) -> Vec<Item<'a>> {
     items
 }
 
+/// A directory of the list: a folder that folds its files away, then its path.
+fn group(ctx: &mut Ctx, line: Rect, dir: &str, open: bool) {
+    hoverable(ctx, line, Target::Group(dir.to_string()));
+    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    folder(ctx, &mut room, open, Role::Faint);
+    let style = ctx.styles.body(Role::Faint);
+    let text = elide(ctx, dir, &style, room.w);
+    row(ctx, room, 0.0, &text, style);
+}
+
 /// A row naming a directory, elided to the room it has.
 fn path(ctx: &mut Ctx, line: Rect, text: &str, role: Role) {
-    let style = ctx.styles.small(role);
+    let style = ctx.styles.body(role);
     let room = line.w - ctx.tokens.md * 2.0;
     let text = elide(ctx, text, &style, room);
     row(ctx, line, ctx.tokens.md, &text, style);
@@ -104,11 +121,11 @@ pub(super) fn entry(
     }
     let letter = file.status.letter().to_string();
     let at = line.pad(Edges::across(indent, 0.0));
-    Label::new(&letter, ctx.styles.small(Role::Ghost)).draw(ctx, at);
+    Label::new(&letter, ctx.styles.small(status_role(file.status))).draw(ctx, at);
     ctx.hit(line, Target::File(file.path.clone()));
 
     let sm = ctx.tokens.sm;
-    let mut room = line.pad(Edges::across(indent + ctx.tokens.md, 0.0));
+    let mut room = line.pad(Edges::across(indent + ctx.tokens.icon + ctx.tokens.xs, 0.0));
     match on_row {
         true => offer(ctx, &mut room, file),
         false => counts(ctx, &mut room, file),
@@ -123,13 +140,20 @@ pub(super) fn entry(
     named(ctx, room, file);
 }
 
-/// The file's name, then what is left of its path behind it, dimmed.
-fn named(ctx: &mut Ctx, mut room: Rect, file: &FileDiff) {
-    let (name, behind) = reads_as(&file.path);
-    let strong = ctx.styles.body(Role::Text);
-    Label::new(&name, strong).left(ctx, &mut room, ctx.tokens.sm);
-    if !behind.is_empty() && room.w > 0.0 {
-        Label::new(&behind, ctx.styles.small(Role::Ghost)).draw(ctx, room);
+/// The file's name; its directory is the row above it.
+fn named(ctx: &mut Ctx, room: Rect, file: &FileDiff) {
+    let (name, _) = reads_as(&file.path);
+    Label::new(&name, ctx.styles.body(Role::Text)).draw(ctx, room);
+}
+
+/// The colour of a file's status letter.
+fn status_role(status: FileStatus) -> Role {
+    match status {
+        FileStatus::Added | FileStatus::Untracked => Role::Ok,
+        FileStatus::Modified => Role::Warn,
+        FileStatus::Deleted => Role::Bad,
+        FileStatus::Renamed => Role::Accent,
+        FileStatus::Unchanged => Role::Ghost,
     }
 }
 

@@ -192,6 +192,79 @@ fn the_diff_sidebar_names_the_changed_files_with_what_they_changed() {
     );
 }
 
+/// Every text the sidebar drew.
+fn sidebar_texts(frame: &groove_gfx::Frame, ui: &Ui) -> Vec<(String, groove_gfx::Color)> {
+    let sidebar = Layout::of(window(), ui).sidebar;
+    frame.layers()[0]
+        .texts
+        .iter()
+        .filter(|run| run.x >= sidebar.x)
+        .map(|run| (run.text.clone(), run.style.color))
+        .collect()
+}
+
+#[test]
+fn a_row_names_its_file_alone_its_letter_in_its_status_colour() {
+    let app = with_files(&[
+        "crates/ui/ui/src/views/session/session.rs",
+        "crates/ui/ui/src/tokens.rs",
+    ]);
+    let ui = on_diff();
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let texts = sidebar_texts(&frame, &ui);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let warn = styles.color(groove_ui_kit::base::style::Role::Warn);
+    assert!(
+        texts
+            .iter()
+            .any(|(text, color)| text == "M" && *color == warn),
+        "{texts:?}"
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|(text, _)| text == "crates/ui/ui/src/views/session"),
+        "the directory row says the path, the file row does not: {texts:?}"
+    );
+}
+
+#[test]
+fn a_directory_row_folds_its_files_away_and_back() {
+    let app = with_files(&[
+        "crates/ui/ui/src/views/session/session.rs",
+        "crates/ui/ui/src/tokens.rs",
+    ]);
+    let mut ui = on_diff();
+    let names = |ui: &Ui| {
+        let (frame, hits) = view(&app, ui, window(), &mut Fonts::embedded());
+        let texts = sidebar_texts(&frame, ui)
+            .into_iter()
+            .map(|(text, _)| text)
+            .collect::<Vec<_>>();
+        (texts, hits)
+    };
+    let (texts, hits) = names(&ui);
+    assert!(texts.iter().any(|one| one == "session.rs"));
+    let group = hits
+        .rect_of(&Target::Group("views/session".into()))
+        .expect("the directory row");
+    click(group, &mut ui, &app, &hits);
+    let (texts, hits) = names(&ui);
+    assert!(
+        !texts.iter().any(|one| one == "session.rs"),
+        "folded: {texts:?}"
+    );
+    assert!(
+        texts.iter().any(|one| one == "tokens.rs"),
+        "the other group stays"
+    );
+    click(group, &mut ui, &app, &hits);
+    assert!(
+        names(&ui).0.iter().any(|one| one == "session.rs"),
+        "open again"
+    );
+}
+
 #[test]
 fn a_clean_worktree_says_so_in_both_places() {
     let app = full_app();

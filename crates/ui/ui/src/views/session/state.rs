@@ -39,6 +39,8 @@ pub struct SessionUi {
     pub pane: Pane,
     /// The explorer's own directories that stand open.
     pub opened: std::collections::BTreeSet<String>,
+    /// The changed list's directories folded over their files.
+    pub closed: std::collections::BTreeSet<String>,
     /// A path being named, where the tree asked for it.
     pub naming: Option<Naming>,
     /// A note being typed, on the lines it will stand on.

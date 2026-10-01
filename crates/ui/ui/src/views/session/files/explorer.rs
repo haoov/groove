@@ -14,7 +14,7 @@ use crate::views::session::Asked;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{elide, row};
-use groove_ui_kit::widgets::fold;
+use groove_ui_kit::widgets::folder;
 
 /// One row of the tree: a directory to open, or a file to read.
 pub(crate) struct Row<'a> {
@@ -195,26 +195,22 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     };
     ctx.quad(line, ctx.styles.raised());
     let style = ctx.styles.code(Role::Text);
-    let at = indent + ctx.tokens.small + ctx.tokens.xs;
+    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let held = Rect::new(line.x, line.y, room + at, line.h);
     let text = naming.field.shown();
     row(ctx, held, at, &text, style);
 }
 
-/// A directory: a twisty, then its own name.
+/// A directory: its folder, then its own name.
 fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
     let target = Target::Dir(held.path.clone());
     hoverable(ctx, line, target);
     let mut room = line.pad(Edges::across(indent, 0.0));
-    fold(
-        ctx,
-        &mut room,
-        ui.session.opened.contains(&held.path),
-        Role::Faint,
-    );
+    let open = ui.session.opened.contains(&held.path);
+    folder(ctx, &mut room, open, Role::Faint);
     let style = ctx.styles.body(Role::Muted);
-    let at = indent + ctx.tokens.small + ctx.tokens.xs;
+    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &held.name, &style, room);
     row(ctx, line, at, &text, style);
@@ -231,7 +227,7 @@ fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&S
     }
     ctx.hit(line, target);
     let style = ctx.styles.body(Role::Text);
-    let at = indent + ctx.tokens.small + ctx.tokens.xs;
+    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &held.name, &style, room);
     row(ctx, line, at, &text, style);
