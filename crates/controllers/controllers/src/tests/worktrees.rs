@@ -454,3 +454,29 @@ fn a_worktree_that_is_gone_is_read_without_an_error() {
     until(&spawner, &services, &mut state, |s| s.pending.is_empty());
     assert!(state.errors.is_empty(), "{:?}", state.errors);
 }
+
+#[test]
+fn a_repo_added_by_its_url_takes_the_clone_the_pool_holds() {
+    let home = tempfile::tempdir().unwrap();
+    pooled_clone(home.path());
+    let spawner = SyncSpawner::new().unwrap();
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let id = explorer(&mut state, &services, &spawner);
+    let add = Command::AddRepo {
+        session: id.clone(),
+        name: "git@gitlab.example.com:g/mayo.git".into(),
+        spec: WorktreeSpec::default(),
+    };
+    dispatch(session_cmd(add), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.session.get(&id).is_some_and(|o| !o.worktrees.is_empty()) || !s.errors.is_empty()
+    });
+    assert!(
+        state.errors.is_empty(),
+        "no second clone: {:?}",
+        state.errors
+    );
+    let open = state.session.get(&id).unwrap();
+    assert_eq!(open.repos[0].id, RepoId::new(REPO));
+}

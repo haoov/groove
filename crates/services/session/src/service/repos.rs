@@ -42,11 +42,11 @@ impl Service {
     /// A pool clone by name, or a fresh clone when the name is a git URL.
     async fn find_or_clone(&self, name: &str) -> Result<Repo, Error> {
         let entries = self.pool.list();
-        match Pool::resolve(name, &entries) {
+        let slug = groove_git::RemoteUrl::parse(name).map(|remote| remote.slug());
+        let wanted = slug.as_deref().unwrap_or(name);
+        match Pool::resolve(wanted, &entries) {
             Ok(entry) => Ok(self.pool.register(entry).await?),
-            Err(groove_worktree::Error::UnknownRepo(_))
-                if groove_git::RemoteUrl::parse(name).is_ok() =>
-            {
+            Err(groove_worktree::Error::UnknownRepo(_)) if slug.is_ok() => {
                 Ok(self.pool.clone(name).await?)
             }
             Err(e) => Err(e.into()),
