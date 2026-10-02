@@ -88,32 +88,55 @@ useful, opens the facts that look relevant, and checks one before it relies on i
 
 ## Routines
 
-**A routine is a trigger and a skill.** When the event fires, Groove sends the skill to the
-agent of the session the event is about, with what the event says as its arguments:
+**A routine is a trigger, a skill and a scope.** It is one file: in the shared repo's
+`routines/` for the team's, in the user's config for their own. Two kinds:
 
-- CI failed on a worktree → `fix-ci`;
-- a review is asked of the user → `co-review` in its review session;
-- changes requested on an MR → `fix-notes`.
+- **Bound to a session:** the trigger is an event about one session, and the skill goes to
+  that session's own agent, with what the event says as its arguments — CI failed on a
+  worktree → `groove:fix-ci`; changes requested on an MR → `groove:fix-notes`; a review asked
+  of the user → `groove:co-review` in its review session.
+- **Standalone:** the work belongs to no session — check that every task has its properties
+  set, say. The routine has a session of its own to run in.
 
-The triggers are events Groove already sees: CI failed, changes requested, a review asked of
-the user, an agent that finished, a task moved to a status. A button can also start a routine.
+**A standalone routine runs in a routine session.** A session of the kind `routine`, one per
+standalone routine, made when the routine is switched on. It stands on the rail under its own
+folded Routines group and never on the board. It holds no repo, worktree, diff or MR: only its
+agent pane, which the user talks to as to any agent. Each run starts its agent afresh; the
+runs before stay in its history, and the user can step in while one runs.
+
+**What starts a routine:**
+
+- its button, on the routine's row, always;
+- the first time the app opens each day;
+- an app event: CI failed, changes requested, a review asked of the user, an agent that
+  finished, the tasks read again, a task moved to a status.
+
+The file declares the triggers it answers to. Settings › Agent lists each routine with them,
+and the user turns the daily one and each event on or off there.
 
 **A routine acts without asking.** The approval moves from the run to the routine: a routine
-declares its scope — the tools it may call and the writes it may make — and enabling it is the
-user's approval of that scope. A run inside its scope waits on nobody.
+declares its scope — the tools it may call and the writes it may make — and switching it on is
+the user's approval of that scope. A run inside its scope waits on nobody.
 
 **A call outside the scope fails; it does not wait.** The run ends there, and the feed says
 which call it tried and why it was refused. Nothing is queued for the user.
 
+**The scope holds for every tool the agent calls.** Groove's own tools go through its approval
+queue, which lets a call in the scope pass and refuses the rest. The tools of another server —
+Notion, say — never reach that queue, so the same scope is written as the agent's own
+permissions when Groove launches it: Claude Code refuses what it does not allow.
+
 **Some writes are never in a scope:** a merge, a force push, a delete, closing an MR or a task,
 any write to a cluster. Those stay the user's, whatever the routine declares.
 
-**The widest scope a routine can declare:** editing files in the session's worktrees,
+**The widest scope a bound routine can declare:** editing files in the session's worktrees,
 committing, pushing to the session's own branch, and commenting on the forge. Opening or
-updating an MR only when the routine names it.
+updating an MR only when the routine names it. A standalone routine names each tool it may
+call, of Groove or of another server.
 
-**One run at a time.** A routine does not start again on a session where its last run still
-runs: an event that fires three times in an hour starts one agent, not three.
+**One run a routine and a session at a time.** A routine does not start again on a session
+where its last run still runs, and runs on several sessions at once. Settings caps how many
+agents run routines at the same time, five by default; a run past the cap waits its turn.
 
 **Every run leaves a trail.** The feed shows each run: the trigger, the skill, what it did and
 the commits it made. A user who was away reads what happened there.
@@ -125,10 +148,10 @@ credentials of the user who enables them, so each user enables each one, after r
 scope.
 
 **Routines run while the app runs.** Groove is a desktop app: an event that happens while it
-is closed starts nothing.
+is closed starts nothing, and the daily trigger fires at the first open of the day.
 
 ## Not in it
 
-- No schedule: a routine starts on an event or a button, never on a clock.
+- No clock: a routine starts on an event, its button or the first open of the day.
 - No chain: one trigger, one skill. Conditions, retries and steps are what CI does.
 - No shared memory as a whole: only facts promoted one by one.
