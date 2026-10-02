@@ -7,7 +7,7 @@ use glyphon::{
 mod areas;
 
 use self::areas::{area, mark, rasterize, shape_glyph};
-use crate::fonts::{CellSize, Face};
+use crate::fonts::{CellSize, Face, one_paragraph};
 use crate::frame::IconDraw;
 use crate::icons::Icons;
 use crate::{Color, Fonts, Rect, Result, Size, TextRun};
@@ -168,7 +168,7 @@ impl TextPass {
         let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(style.size, run.height));
         buffer.set_size(None, Some(run.height));
         let attrs = Fonts::attrs(style.font, style.weight);
-        buffer.set_text(&run.text, &attrs, Shaping::Advanced, None);
+        buffer.set_text(&one_paragraph(&run.text), &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut fonts.system, false);
         self.shaped += 1;
         self.lines.push(buffer);

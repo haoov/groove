@@ -161,3 +161,13 @@ fn every_icon_rasterizes_to_ink() {
         );
     }
 }
+
+#[test]
+fn text_with_a_paragraph_break_and_right_to_left_words_is_measured_as_one_line() {
+    let mut fonts = crate::Fonts::embedded();
+    for cut in ['\u{1c}', '\u{1d}', '\u{1e}', '\u{85}', '\u{2029}'] {
+        let text = format!("fix{cut}שלום");
+        let width = fonts.measure(&text, Font::Mono, Weight::Regular, 13.0);
+        assert!(width > 0.0, "{cut:?}");
+    }
+}

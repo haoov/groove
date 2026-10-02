@@ -8,6 +8,17 @@ use glyphon::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Style, SwashC
 
 use crate::{Font, Weight};
 
+/// The paragraph breaks the shaper does not split lines on.
+const BREAKS: [char; 5] = ['\u{1c}', '\u{1d}', '\u{1e}', '\u{85}', '\u{2029}'];
+
+/// `text` with those breaks as spaces; the shaper panics on paragraphs of mixed direction.
+pub(crate) fn one_paragraph(text: &str) -> std::borrow::Cow<'_, str> {
+    match text.contains(BREAKS) {
+        true => text.replace(BREAKS, " ").into(),
+        false => text.into(),
+    }
+}
+
 const SANS: &str = "IBM Plex Sans";
 const MONO: &str = "IBM Plex Mono";
 
@@ -117,7 +128,8 @@ impl Fonts {
 
     fn shaped(&mut self, text: &str, font: Font, weight: Weight, size: f32) -> f32 {
         let mut buf = Buffer::new(&mut self.system, Metrics::new(size, size));
-        buf.set_text(text, &Fonts::attrs(font, weight), Shaping::Advanced, None);
+        let text = one_paragraph(text);
+        buf.set_text(&text, &Fonts::attrs(font, weight), Shaping::Advanced, None);
         buf.shape_until_scroll(&mut self.system, false);
         buf.layout_runs().map(|run| run.line_w).fold(0.0, f32::max)
     }
