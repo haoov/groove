@@ -68,9 +68,8 @@ linked from the copy.
 **A namespace never overrides another.** A team skill and a user skill can have the same name;
 each is reached by its own namespace.
 
-**A user skill can be published.** Its menu offers "share with the team": Groove opens a task
-on the shared repo with the skill copied into `skills/`, and the user lands it as an MR. Once
-it is merged, Groove offers to delete the user's own copy.
+**A skill is shared through the repo, not from Settings.** A user who wants one of theirs shared
+adds the repo to a session and lands the skill as an MR, like any other change.
 
 ## Knowledge
 
