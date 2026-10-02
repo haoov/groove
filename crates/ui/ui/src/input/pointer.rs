@@ -27,7 +27,8 @@ use self::header::{finishing, task_menu};
 use self::menu::{chosen, lose, palette_row, select_worktree, selector, worktree_menu};
 use self::sidebar::{finding, narrowing, note_at, paned, twisty};
 use self::surface::{
-    at, closing, composed, folded, holds, in_files, jump, landed, lensed, reached, switch, unfolded,
+    at, blamed, closing, composed, folded, holds, in_files, jump, landed, lensed, reached, switch,
+    unfolded,
 };
 use crate::hit::{Hits, Target};
 use crate::views::session::Tab;
@@ -160,12 +161,11 @@ fn acted(
         Some(Target::Finish(session)) => finishing(session),
         Some(Target::Refresh) => vec![Command::Delivery(delivery::Command::RefreshMr)],
         Some(Target::MrPage(url)) => vec![Command::Delivery(delivery::Command::BrowseMr { url })],
-        Some(Target::TaskPage(url) | Target::Link(url)) => {
-            vec![Command::Task(task::Command::Browse { url })]
-        }
+        Some(Target::TaskPage(url) | Target::Link(url)) => one_task(task::Command::Browse { url }),
         Some(Target::Pane(pane)) => paned(ui, pane),
         Some(Target::NoteAt(at)) => note_at(ui, app, metrics, at),
         Some(Target::Commit(sha)) => one(workspace::Command::OpenCommit { sha }),
+        Some(Target::Blamed(sha)) => blamed(ui, sha),
         Some(Target::Working) => one(workspace::Command::LeaveCommit),
         Some(target @ (Target::Dir(_) | Target::Group(_))) => twisty(ui, target),
         Some(Target::Review(project, iid)) => review(project, iid),
@@ -197,6 +197,9 @@ fn one(command: workspace::Command) -> Vec<Command> {
     vec![Command::Workspace(command)]
 }
 
+fn one_task(command: task::Command) -> Vec<Command> {
+    vec![Command::Task(command)]
+}
 fn tabbed(ui: &mut Ui, tab: Tab) -> Vec<Command> {
     ui.session.tab = tab;
     Vec::new()

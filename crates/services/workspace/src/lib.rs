@@ -15,6 +15,7 @@ use std::ops::Range;
 use groove_types::{CommitEntry, DiffMode, FileDiff, Result, WorktreeId, WorktreeStatus};
 use groove_watch::{QUIET, Watch};
 
+mod blame;
 mod buffer;
 mod buffers;
 mod git;
@@ -25,6 +26,7 @@ mod rows;
 #[cfg(test)]
 mod tests;
 
+pub use blame::{Blames, Read, blame};
 pub use buffers::Buffers;
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
@@ -77,6 +79,7 @@ pub struct State {
     pub watching: Option<WorktreeId>,
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
+    pub blames: Blames,
     watch: Option<Watch>,
 }
 
@@ -182,7 +185,14 @@ impl State {
         self.status = None;
         self.watching = None;
         self.deriving.clear();
+        self.blames = Blames::default();
         self.watch = None;
+    }
+
+    /// Which read of `path` a blame of it would be taken from.
+    pub fn read_of(&self, path: &str) -> Read {
+        let revision = self.buffer(path).map_or(0, |open| open.new.revision());
+        (self.stamp, revision)
     }
 }
 

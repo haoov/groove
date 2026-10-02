@@ -115,6 +115,14 @@ impl Inline {
             .any(|block| block.at.is_some() && (block.from..=block.after).contains(&code))
     }
 
+    /// Which of `slots` a note stands on.
+    pub(crate) fn noted(&self, slots: &[Slot]) -> Vec<bool> {
+        slots
+            .iter()
+            .map(|slot| matches!(slot, Slot::Code(at) if self.notes(*at)))
+            .collect()
+    }
+
     /// The rows of the view that `window` covers, as the builders ask for them.
     pub(crate) fn code_window(&self, window: Range<usize>) -> Range<usize> {
         let mut bounds: Option<Range<usize>> = None;

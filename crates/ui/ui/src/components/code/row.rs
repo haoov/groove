@@ -75,9 +75,43 @@ fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32)
         if let Some(column) = code.caret {
             caret(ctx, rect, code.text, column);
         }
+        if let Some(said) = code.blame {
+            blamed(ctx, (rect, room), code.text, said);
+        }
     });
     if code.caret.is_some() {
         here(ctx, line);
+    }
+}
+
+/// Who last changed the line, faint after its end; a click on it opens the commit.
+fn blamed(
+    ctx: &mut Ctx,
+    (rect, room): (Rect, Rect),
+    text: &str,
+    (said, sha): (&str, Option<&str>),
+) {
+    let mut style = ctx.styles.code(Role::Text);
+    let end = ctx.measure(text, &style);
+    style.color = ctx.styles.syntax(groove_types::Capture::Comment);
+    let x = rect.x + end + ctx.tokens.lg;
+    let width = ctx.measure(said, &style);
+    let at = Rect::new(x, rect.y, width, rect.h);
+    row(ctx, at, 0.0, said, style);
+    let Some(sha) = sha else {
+        return;
+    };
+    // The short sha is the last word of what the blame says.
+    let before = said.rfind(' ').map_or(0, |space| space + 1);
+    let from = (x + ctx.measure(&said[..before], &style)).max(room.x);
+    let shown = Rect::new(
+        from,
+        rect.y,
+        (at.right().min(room.right()) - from).max(0.0),
+        rect.h,
+    );
+    if shown.w > 0.0 {
+        ctx.hit(shown, crate::hit::Target::Blamed(sha.to_string()));
     }
 }
 

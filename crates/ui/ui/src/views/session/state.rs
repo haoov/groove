@@ -28,6 +28,8 @@ pub struct SessionUi {
     pub file_across: f32,
     /// The caret the file view last scrolled to.
     pub followed: Option<groove_types::Caret>,
+    /// The line the caret rests on, and the frame tick it came to rest at.
+    pub rest: Option<(crate::views::session::diff::Spot, u64)>,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
     /// Which of the two views the stream is drawn in.

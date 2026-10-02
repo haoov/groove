@@ -134,7 +134,7 @@ pub struct CommitEntry {
     pub is_base: bool,
 }
 
-/// One line's blame; `uncommitted` marks git's all-zero sha.
+/// One line's blame, `line` counted from 0; `uncommitted` marks git's all-zero sha.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct BlameLine {
     pub line: u32,

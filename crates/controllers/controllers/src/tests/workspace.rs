@@ -1,5 +1,6 @@
 //! The workspace controller, one file per feature, on the helpers they share.
 
+mod blame;
 mod commits;
 mod diff;
 mod editor;

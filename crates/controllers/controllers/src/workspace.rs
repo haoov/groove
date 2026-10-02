@@ -1,5 +1,6 @@
 //! The `workspace` controller: one function per user action on the `workspace` service.
 
+mod blame;
 mod commits;
 pub(crate) mod diff;
 mod editor;
@@ -79,6 +80,8 @@ pub enum Command {
     OpenCommit { sha: String },
     /// `workspace.leave_commit`: the working tree shown again.
     LeaveCommit,
+    /// `workspace.blame`: who last changed each line of one file, uncommitted lines marked.
+    Blame { path: String },
 }
 
 impl Command {
@@ -111,6 +114,7 @@ impl Command {
             Command::GetCommits => "workspace.get_commits",
             Command::OpenCommit { .. } => "workspace.open_commit",
             Command::LeaveCommit => "workspace.leave_commit",
+            Command::Blame { .. } => "workspace.blame",
         }
     }
 }
@@ -173,6 +177,7 @@ pub fn dispatch(
         Command::GetCommits => commits::list(state, spawner),
         Command::OpenCommit { sha } => commits::open(state, spawner, sha),
         Command::LeaveCommit => commits::leave(state, spawner),
+        Command::Blame { path } => blame::blame(state, spawner, path),
     }
 }
 

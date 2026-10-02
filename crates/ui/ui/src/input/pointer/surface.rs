@@ -133,6 +133,12 @@ pub(super) fn reached(
     vec![Command::Workspace(open)]
 }
 
+/// The commit a blame names, shown as the change it made.
+pub(super) fn blamed(ui: &mut Ui, sha: String) -> Vec<Command> {
+    ui.session.tab = Tab::Diff;
+    vec![Command::Workspace(workspace::Command::OpenCommit { sha })]
+}
+
 /// Whether the buffer being edited is this file.
 pub(super) fn holds(app: &AppState, path: &str) -> bool {
     app.workspace.active().is_some_and(|open| open.path == path)

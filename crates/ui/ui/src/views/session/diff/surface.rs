@@ -65,19 +65,17 @@ fn surface(
     let rows = drawn(app, ui, view, side, code_rows.clone());
     let gutters = gutters_of(&rows);
     let words: Vec<Words> = slots.iter().map(|slot| words_of(app, ui, *slot)).collect();
-    let noted: Vec<bool> = slots
-        .iter()
-        .map(|slot| matches!(slot, Slot::Code(at) if inline.notes(*at)))
-        .collect();
+    let said = super::blame::shown(ctx, app, ui, side != Side::Old);
     let held = Held {
         slots: &slots,
         rows: &rows,
         gutters: &gutters,
         words: &words,
-        noted: &noted,
+        noted: &inline.noted(&slots),
         hovered: hovered(ctx),
         first: code_rows.start,
         notes: side != Side::Old,
+        said: said.as_ref(),
     };
     let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, view);
@@ -158,6 +156,8 @@ struct Held<'a> {
     first: usize,
     /// Whether this side draws the notes; the old side of a split keeps their rows blank.
     notes: bool,
+    /// The blame of the line the caret rests on.
+    said: Option<&'a super::blame::Said>,
 }
 
 /// Every row of the window as the code widget takes it.
@@ -170,7 +170,9 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 Line::new("")
             }
             Slot::Code(at) => match held.rows.get(at - held.first) {
-                Some(row) => lined(ctx, row, &held.gutters[at - held.first]).noted(held.noted[on]),
+                Some(row) => lined(ctx, row, &held.gutters[at - held.first])
+                    .noted(held.noted[on])
+                    .blame(super::blame::on(row, held.said)),
                 None => Line::new(""),
             },
             Slot::Note { at, row } => Line::note(

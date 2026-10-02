@@ -101,6 +101,9 @@ impl App {
         self.showing();
         self.wrapping();
         self.point();
+        if let Some(blame) = groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick) {
+            dispatch(blame, &mut self.state, &self.services, &self.spawner);
+        }
     }
 
     /// The width a note row holds, for the next frame to wrap notes to.
@@ -133,6 +136,10 @@ impl App {
                 .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving);
         if moving {
             return Some(Duration::from_millis(FRAME_MS));
+        }
+        let tick = self.started.elapsed().as_millis() as u64;
+        if let Some(left) = groove_ui::input::resting(&self.ui, tick) {
+            return Some(Duration::from_millis(left));
         }
         let waiting =
             !self.state.agent.agents.is_empty() || groove_controllers::delivery::polls(&self.state);

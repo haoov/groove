@@ -88,6 +88,8 @@ pub enum Target {
     NoteAt(usize),
     /// One commit of the sidebar's list, which a click shows the change of.
     Commit(String),
+    /// The blame after a line, which a click shows the commit of.
+    Blamed(String),
     /// What leaves the commit and shows the working tree again.
     Working,
     /// The feed's own heading, which folds it away.

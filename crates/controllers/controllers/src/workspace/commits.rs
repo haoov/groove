@@ -32,13 +32,13 @@ pub(super) fn open(state: &mut AppState, spawner: &dyn Spawner, sha: String) {
     let Some(asked) = super::Asked::now(state) else {
         return;
     };
-    let Some(entry) = state
+    let listed = state
         .workspace
         .log
         .iter()
         .find(|one| one.sha == sha)
-        .cloned()
-    else {
+        .cloned();
+    let Some(entry) = listed.or_else(|| state.workspace.blames.entry(&sha)) else {
         return;
     };
     let job = state.begin(format!("reading {}", entry.short_sha));

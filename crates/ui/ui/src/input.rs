@@ -3,6 +3,7 @@
 pub(crate) mod follow;
 mod keys;
 mod pointer;
+mod rest;
 mod scroll;
 
 use groove_controllers::{AppState, Command, agent, workspace};
@@ -13,6 +14,7 @@ use groove_ui_kit::base::ctx::Metrics;
 
 pub use follow::follow;
 pub use keys::encode;
+pub use rest::{rest, resting};
 
 /// A key as the ui reads it, free of the window library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

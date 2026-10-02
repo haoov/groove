@@ -73,6 +73,8 @@ pub struct Line<'a> {
     pub acting: Option<Acting>,
     /// A row of code a note stands on.
     pub noted: bool,
+    /// Who last changed the line, after its end, and the commit a click opens.
+    pub blame: Option<(&'a str, Option<&'a str>)>,
 }
 
 impl<'a> Line<'a> {
@@ -102,6 +104,7 @@ impl<'a> Line<'a> {
             said: None,
             acting: None,
             noted: false,
+            blame: None,
         }
     }
 
@@ -199,6 +202,11 @@ impl<'a> Line<'a> {
     pub fn words(mut self, words: &'a [(usize, usize)], word: Option<Color>) -> Self {
         self.words = words;
         self.word = word;
+        self
+    }
+
+    pub fn blame(mut self, blame: Option<(&'a str, Option<&'a str>)>) -> Self {
+        self.blame = blame;
         self
     }
 

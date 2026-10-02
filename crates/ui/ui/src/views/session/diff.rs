@@ -1,5 +1,6 @@
 //! The diff tab: the open file as rows, its two gutters and its colours.
 
+mod blame;
 mod finder;
 mod header;
 mod map;
@@ -24,6 +25,8 @@ use crate::views::session::Face;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
 
+pub use blame::Spot;
+pub(crate) use blame::{rested, spot};
 pub(crate) use map::total as rows_of;
 pub(crate) use notes::Inline;
 pub(crate) use row::{line_at, text_at};

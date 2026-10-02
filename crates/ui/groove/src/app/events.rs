@@ -61,7 +61,7 @@ impl ApplicationHandler<Message> for App {
         };
         let now = Instant::now();
         let due = match self.tick {
-            Some(at) if at > now => at,
+            Some(at) if at > now => at.min(now + after),
             _ => {
                 self.redraw();
                 now + after

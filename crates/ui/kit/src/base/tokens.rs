@@ -32,6 +32,9 @@ pub const ABOVE_MATCH: usize = 4;
 pub const CLICK_MS: u64 = 400;
 pub const CLICK_SLOP: f32 = 4.0;
 
+/// How long the caret rests on a line before its blame shows, in milliseconds.
+pub const REST_MS: u64 = 250;
+
 /// The smallest a dragged column may be, in logical pixels.
 pub const RAIL_MIN: f32 = 160.0;
 /// How many lines one notch of a wheel carries the agent's screen.
