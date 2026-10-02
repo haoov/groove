@@ -24,6 +24,8 @@ pub struct Paths<'a> {
     pub launch_dir: &'a Path,
     /// The agent's working directory.
     pub cwd: &'a Path,
+    /// The team's shared facts, when the shared repo holds them.
+    pub knowledge: Option<&'a Path>,
 }
 
 /// The command line, ready to spawn.
@@ -48,7 +50,7 @@ impl Launch {
             args.extend(loopback.args(&files)?);
         }
         args.push("--append-system-prompt-file".into());
-        args.push(files.write("prompt.md", &core_prompt(session))?);
+        args.push(files.write("prompt.md", &core_prompt(session, paths.knowledge))?);
         for dir in plugin_dirs {
             args.push("--plugin-dir".into());
             args.push(dir.to_string_lossy().into_owned());

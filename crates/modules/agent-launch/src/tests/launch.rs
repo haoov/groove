@@ -22,6 +22,7 @@ pub(crate) fn paths<'a>(root: &'a Path) -> Paths<'a> {
         home: root,
         launch_dir: root,
         cwd: root,
+        knowledge: None,
     }
 }
 
@@ -184,9 +185,22 @@ fn the_token_reaches_the_files_and_never_the_command_line() {
 
 #[test]
 fn the_core_prompt_keeps_its_rules() {
-    let text = core_prompt(&explorer());
+    let text = core_prompt(&explorer(), None);
     assert!(text.contains("A write waits for a human"));
     assert!(text.contains("Never write in a clone"));
+    assert!(!text.contains("{{"));
+    assert!(
+        !text.contains("What the team knows"),
+        "no shared facts, no word of them"
+    );
+}
+
+#[test]
+fn the_core_prompt_names_where_the_team_s_facts_stand() {
+    let dir = Path::new("/data/shared/knowledge");
+    let text = core_prompt(&explorer(), Some(dir));
+    assert!(text.contains("What the team knows"));
+    assert!(text.contains("`/data/shared/knowledge`"), "{text}");
     assert!(!text.contains("{{"));
 }
 

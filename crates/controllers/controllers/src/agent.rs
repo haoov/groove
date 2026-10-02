@@ -185,6 +185,7 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
         home: state.env.home.clone(),
         launch_dir: launch_dir(state),
         plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
+        knowledge: knowledge(state),
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     };
@@ -216,6 +217,12 @@ pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (
 
 pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {
     state.env.data_dir.join("agent-launch")
+}
+
+/// The shared repo's `knowledge/`, when its copy holds one.
+fn knowledge(state: &AppState) -> Option<std::path::PathBuf> {
+    let dir = state.agent.shared.as_ref()?.path.join("knowledge");
+    dir.is_dir().then_some(dir)
 }
 
 pub(crate) fn forget(state: &mut AppState, session: &SessionId) {

@@ -14,6 +14,8 @@ pub struct LaunchPaths {
     pub home: PathBuf,
     pub launch_dir: PathBuf,
     pub plugin_dirs: Vec<PathBuf>,
+    /// The team's shared facts, when the shared repo holds them.
+    pub knowledge: Option<PathBuf>,
     /// The loopback the agent's hooks post to, when one is listening.
     pub hooks: Option<Receiver>,
     /// The loopback the agent asks its tools of, when one is listening.
@@ -36,6 +38,7 @@ pub fn launch(
             home: &paths.home,
             launch_dir: &paths.launch_dir,
             cwd,
+            knowledge: paths.knowledge.as_deref(),
         },
         &paths.plugin_dirs,
         loopback(paths, session).as_ref(),
