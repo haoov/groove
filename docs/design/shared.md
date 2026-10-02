@@ -9,7 +9,7 @@ feature.
 ## What it answers
 
 - A skill one person writes reaches the whole team, reviewed like code.
-- What one agent learns about the platform reaches the others, without the user's own
+- What one agent learns about the work reaches the others, without the user's own
   preferences.
 - An event Groove sees can start an agent without the user, inside limits the user set once.
 
@@ -74,16 +74,17 @@ adds the repo to a session and lands the skill as an MR, like any other change.
 ## Knowledge
 
 **A fact worth sharing is promoted, not copied whole.** The agent's own memory stays the
-user's: what it knows of the user and how they work is never shared. A fact about the platform
-— where a version is pinned, which environment still runs which ingress, which token a service
-shares — can be promoted to `knowledge/`, through the same task and MR as a skill.
+user's: what it knows of the user and how they work is never shared. A fact about the work — a
+system, a repo, a tool, a trap — can be promoted to `knowledge/`, through the same task and MR
+as a skill. The `promote-fact` skill does it, checking the fact against its source first.
 
 **Every fact says where it comes from and when.** A fact carries the date it was written and
 the commit, file or ticket it was read from, so a reader can check it before acting on it. A
 fact nobody can check is not promoted.
 
 **The agent reads the facts like its memory.** The core prompt names `knowledge/` and its
-index; the agent reads a fact when it looks relevant, and checks it before it relies on it.
+index when the copy holds one; the agent reads it when the user asks or when it judges it
+useful, opens the facts that look relevant, and checks one before it relies on it.
 
 ## Routines
 
