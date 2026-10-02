@@ -49,6 +49,11 @@ fn given(pr: &serde_json::Value) -> Vec<Reviewer> {
         .collect()
 }
 
+/// Whether a review is still asked of `me`, whatever they said before.
+pub(super) fn asks(pr: &serde_json::Value, me: &str) -> bool {
+    requested(pr).iter().any(|(name, _)| name == me)
+}
+
 /// Everyone a review is still asked of, and when they were last asked.
 fn requested(pr: &serde_json::Value) -> Vec<(String, Option<Timestamp>)> {
     let asked = asked_at(pr);

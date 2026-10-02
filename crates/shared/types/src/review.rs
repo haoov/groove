@@ -45,6 +45,14 @@ impl ReviewMr {
     }
 }
 
+/// The review as the viewer sees it: still asked of them, else the review of every reviewer.
+pub fn review_for(reviewers: &[Reviewer], approved: bool, asks_me: bool) -> Option<ReviewState> {
+    match asks_me {
+        true => Some(ReviewState::Requested),
+        false => review_of(reviewers, approved),
+    }
+}
+
 /// The most pressing verdict given, then approval, then a review still awaited.
 pub fn review_of(reviewers: &[Reviewer], approved: bool) -> Option<ReviewState> {
     let has = |state| reviewers.iter().any(|one| one.state == state);

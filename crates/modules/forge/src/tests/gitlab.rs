@@ -7,6 +7,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::Gitlab;
 
+mod queue;
+
 pub(super) fn repo() -> Repo {
     Repo {
         id: RepoId::new("r1"),
@@ -254,38 +256,6 @@ async fn closing_answers_with_the_mr_closed() {
     assert_eq!(shut.details.state, MrState::Closed);
 }
 
-#[tokio::test]
-async fn the_review_queue_reads_the_mrs_asked_of_this_user() {
-    let reply = serde_json::json!({ "data": { "currentUser": {
-        "username": "rsabbah",
-        "reviewRequestedMergeRequests": { "nodes": [{
-            "iid": "12",
-            "title": "feat: a thing",
-            "webUrl": "https://gitlab.example.com/g/p/-/merge_requests/12",
-            "draft": true,
-            "updatedAt": "2026-09-20T08:00:00Z",
-            "sourceBranch": "feat/thing",
-            "targetBranch": "main",
-            "approved": false,
-            "author": { "username": "someone" },
-            "reviewers": { "nodes": [{
-                "username": "rsabbah", "mergeRequestInteraction": { "reviewState": "REVIEWED" }
-            }]},
-            "project": { "fullPath": "g/p" }
-        }]}
-    }}});
-    let (_server, gitlab) = gitlab(reply).await;
-    let queue = gitlab.review_queue().await.expect("the queue answers");
-    assert_eq!(queue.len(), 1);
-    let one = &queue[0];
-    assert_eq!(one.iid, 12);
-    assert_eq!(one.project, "g/p");
-    assert_eq!(one.forge, groove_types::Forge::Gitlab);
-    assert!(one.draft);
-    assert!(!one.approved);
-    assert_eq!(one.review, Some(groove_types::ReviewState::Commented));
-}
-
 /// One MR as a read by its number answers, and the mutations after it.
 fn by_iid(one: serde_json::Value) -> serde_json::Value {
     serde_json::json!({ "data": {
@@ -447,6 +417,28 @@ async fn an_approval_is_the_one_call_gitlab_keeps_out_of_graphql() {
             == "/api/v4/projects/wiremind%2Fdevops%2Foverwhelm/merge_requests/7/approve"),
         "{paths:?}"
     );
+}
+
+#[tokio::test]
+async fn a_review_that_only_comments_marks_the_viewer_as_having_reviewed() {
+    let (server, gitlab) = gitlab(by_iid(mr("opened"))).await;
+    let said = crate::Verdict {
+        said: groove_types::ReviewVerdict::Comment,
+        body: "looks fine",
+        notes: &[],
+    };
+    gitlab.review(&repo(), "7", said).await.expect("reviewed");
+    let asked = server.received_requests().await.unwrap_or_default();
+    let publish = asked
+        .iter()
+        .find(|one| {
+            one.url
+                .path()
+                .ends_with("/merge_requests/7/draft_notes/bulk_publish")
+        })
+        .expect("the review is published");
+    assert_eq!(publish.method.as_str(), "POST");
+    assert_eq!(publish.url.query(), Some("reviewer_state=reviewed"));
 }
 
 #[tokio::test]

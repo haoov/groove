@@ -120,6 +120,7 @@ pub fn assign() -> String {
 /// Every open merge request the viewer is asked to review.
 pub fn review_queue() -> String {
     r#"query($first: Int!) {
+  viewer { login }
   search(query: "is:open is:pr review-requested:@me archived:false", type: ISSUE, first: $first) {
     nodes {
       ... on PullRequest {

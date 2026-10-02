@@ -77,8 +77,10 @@ impl Gitlab {
     pub async fn review_queue(&self) -> Result<Vec<ReviewMr>> {
         let at = serde_json::json!({ "first": QUEUE_MAX });
         let reply = self.api.ask(&query::review_queue(), at).await?;
+        let me = self.viewer(&reply);
         let asked = &reply["data"]["currentUser"]["reviewRequestedMergeRequests"];
-        Ok(read::nodes(asked).iter().filter_map(read::asked).collect())
+        let mrs = read::nodes(asked).into_iter();
+        Ok(mrs.filter_map(|mr| read::asked(&mr, &me)).collect())
     }
 
     fn viewer(&self, reply: &serde_json::Value) -> String {

@@ -2,7 +2,7 @@
 
 use groove_types::{
     CiState, CiStatus, Forge, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
-    ReviewMr, ReviewState, Reviewer, Timestamp, review_of,
+    ReviewMr, ReviewState, Reviewer, Timestamp, review_for,
 };
 
 use crate::Snapshot;
@@ -147,14 +147,17 @@ fn position(at: &serde_json::Value) -> Option<NotePosition> {
     })
 }
 
-/// One row of the review queue.
-pub(super) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
+/// One row of the review queue, as the viewer `me` sees it.
+pub(super) fn asked(mr: &serde_json::Value, me: &str) -> Option<ReviewMr> {
     let iid: u64 = mr["iid"].as_str()?.parse().ok()?;
     let project = text(&mr["project"]["fullPath"]);
     if project.is_empty() {
         return None;
     }
     let approved = mr["approved"].as_bool().unwrap_or_default();
+    let everyone = reviewers(mr);
+    let mine = |one: &Reviewer| one.name == me && one.state == ReviewState::Requested;
+    let asks_me = everyone.iter().any(mine);
     Some(ReviewMr {
         forge: Forge::Gitlab,
         project,
@@ -168,7 +171,7 @@ pub(super) fn asked(mr: &serde_json::Value) -> Option<ReviewMr> {
         updated_at: at(&mr["updatedAt"]).unwrap_or_default(),
         local_path: None,
         approved,
-        review: review_of(&reviewers(mr), approved),
+        review: review_for(&everyone, approved, asks_me),
     })
 }
 

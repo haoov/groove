@@ -124,10 +124,13 @@ impl Gitlab {
         self.verdict(repo, number, said.said).await
     }
 
-    /// What the verdict takes: a mutation for changes, and a REST call to approve.
+    /// What the verdict takes: a mutation for changes, and a REST call to approve or comment.
     async fn verdict(&self, repo: &Repo, number: &str, said: ReviewVerdict) -> Result<()> {
         match said {
-            ReviewVerdict::Comment => Ok(()),
+            ReviewVerdict::Comment => {
+                let url = reviewed_url(&self.host, repo, number);
+                Ok(self.api.beside().post(&url).await?)
+            }
             ReviewVerdict::RequestChanges => {
                 let sent = serde_json::json!({ "path": path(repo), "iid": number });
                 self.api.ask(&query::request_changes(), sent).await?;
@@ -187,4 +190,10 @@ fn refused(payload: &serde_json::Value) -> Option<String> {
 /// What approves an MR, which GitLab keeps out of GraphQL.
 fn approve_url(host: &str, repo: &Repo, number: &str) -> String {
     format!("{}/approve", super::mr_url(host, repo, number))
+}
+
+/// What marks the viewer's review given: a publish of no drafts, its state set.
+fn reviewed_url(host: &str, repo: &Repo, number: &str) -> String {
+    let publish = super::mr_url(host, repo, number);
+    format!("{publish}/draft_notes/bulk_publish?reviewer_state=reviewed")
 }

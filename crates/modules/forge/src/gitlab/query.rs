@@ -107,6 +107,7 @@ pub fn shut() -> String {
 pub fn review_queue() -> String {
     r"query($first: Int!) {
   currentUser {
+    username
     reviewRequestedMergeRequests(state: opened, first: $first, sort: UPDATED_DESC) {
       nodes {
         iid title webUrl draft updatedAt sourceBranch targetBranch approved
