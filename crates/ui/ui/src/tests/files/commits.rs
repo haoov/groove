@@ -109,12 +109,26 @@ fn a_click_on_a_commit_asks_for_its_change() {
 }
 
 #[test]
-fn a_shown_commit_stands_over_the_list_with_the_way_back() {
+fn a_shown_commit_heads_every_list_with_the_way_back() {
     let one = commit("abc1234", "feat: one", false);
     let (mut app, mut ui) = logged(vec![one.clone()]);
     app.workspace.commit = Some(one);
-    let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|text| text == "working tree"), "{drawn:?}");
+    for pane in Pane::ALL {
+        ui.session.pane = pane;
+        let drawn = in_sidebar(&app, &ui);
+        let head = ["showing commit", "abc1234", "working tree"];
+        assert!(
+            head.iter()
+                .all(|said| drawn.iter().any(|text| text == said)),
+            "{pane:?}: {drawn:?}"
+        );
+        assert!(
+            !drawn
+                .iter()
+                .any(|text| text == "feat: one" && pane != Pane::Commits),
+            "{drawn:?}"
+        );
+    }
 
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let back = hits.rect_of(&Target::Working).expect("the way back");
@@ -128,15 +142,21 @@ fn a_shown_commit_stands_over_the_list_with_the_way_back() {
 }
 
 #[test]
-fn the_commit_box_says_which_commit_is_shown_instead_of_committing() {
+fn no_commit_box_and_no_mode_stand_while_a_commit_is_shown() {
     let one = commit("abc1234", "feat: one", false);
     let mut app = with_files(&["src/lib.rs"]);
     app.workspace.commit = Some(one);
     let ui = sidebar_ui();
-    let drawn = in_sidebar(&app, &ui);
-    assert!(drawn.iter().any(|text| text == "working tree"), "{drawn:?}");
+    let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    for gone in [
+        Target::Message,
+        Target::Do,
+        Target::Mode(groove_types::DiffMode::Working),
+    ] {
+        assert!(hits.rect_of(&gone).is_none(), "{gone:?} is not offered");
+    }
     assert!(
-        !drawn.iter().any(|text| text == "commit"),
-        "nothing offers to commit: {drawn:?}"
+        hits.rect_of(&Target::File("src/lib.rs".into())).is_some(),
+        "the files it changed"
     );
 }

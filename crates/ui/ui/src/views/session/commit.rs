@@ -21,9 +21,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
         Rect::new(rect.x, rect.y - ctx.tokens.hairline, rect.w, 0.0),
         ctx.styles.line(),
     );
-    if app.workspace.commit.is_some() {
-        return showing(ctx, rect, app);
-    }
     let mut message = rect;
     let top = message.take_top(ctx.tokens.row);
     if ui.losing() == Some(&Losing::Everything) {
@@ -33,25 +30,6 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
         state_of(ctx, app, top.until(acts));
     }
     typed(ctx, app, ui, message);
-}
-
-/// The commit the surface shows, and what puts the working tree back.
-pub(super) fn showing(ctx: &mut Ctx, rect: Rect, app: &AppState) {
-    let Some(one) = app.workspace.commit.as_ref() else {
-        return;
-    };
-    let line = Rect {
-        h: ctx.tokens.row,
-        ..rect
-    };
-    ctx.quad(line, ctx.styles.band());
-    let (raised, action, sm) = (ctx.styles.raised(), ctx.styles.action(), ctx.tokens.sm);
-    let working = Button::new("working tree", Target::Working, Role::Muted, raised).hover(action);
-    let mut room = line.pad(Edges::across(ctx.tokens.md, sm));
-    working.right(ctx, &mut room, sm);
-    Label::new(&one.short_sha, ctx.styles.code(Role::Muted)).left(ctx, &mut room, sm);
-    let said = one.message.lines().next().unwrap_or_default();
-    Label::new(said, ctx.styles.body(Role::Text)).draw(ctx, room);
 }
 
 /// What the branch is ahead by, what the index holds, and what is still waiting.

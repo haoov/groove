@@ -19,7 +19,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
     let mut hits = Hits::default();
     {
         let drawn = Drawn {
-            layout: Layout::of(metrics, ui),
+            layout: Layout::of(metrics, ui).committing(app.workspace.commit.is_none()),
             hits: &mut hits,
         };
         let theme = app.config.theme();

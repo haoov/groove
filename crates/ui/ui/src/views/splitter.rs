@@ -34,7 +34,7 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
         Edge::Rail => Some(upright(ctx.app.layout.rail.right())),
         Edge::Agent => Some(upright(ctx.app.layout.agent.right())),
         Edge::Sidebar => (!aside.is_empty()).then(|| upright(aside.x)),
-        Edge::Commit => (!aside.is_empty()).then(|| {
+        Edge::Commit => (!aside.is_empty() && !ctx.app.layout.commit.is_empty()).then(|| {
             let top = ctx.app.layout.commit.y;
             Rect::new(aside.x, top - grab / 2.0, aside.w, grab)
         }),

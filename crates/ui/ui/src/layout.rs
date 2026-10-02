@@ -222,15 +222,21 @@ impl Layout {
             let row = tokens.row;
             held.feed = Rect::new(0.0, held.feed.bottom() - row, held.feed.w, row);
         }
-        if !ui.session.commits() {
-            held.commit = Rect::new(held.commit.x, held.window.h, held.commit.w, 0.0);
-        }
+        held = held.committing(ui.session.commits());
         let tall = match ui.session.manual {
             true => (ui.split.manual * tokens.scale).floor(),
             false => tokens.bar,
         };
         held.manual = held.workspace.take_bottom(tall.min(held.workspace.h));
         held
+    }
+
+    /// The same, with no commit box under the sidebar unless `shown`.
+    pub fn committing(mut self, shown: bool) -> Self {
+        if !shown {
+            self.commit = Rect::new(self.commit.x, self.window.h, self.commit.w, 0.0);
+        }
+        self
     }
 
     /// Where the agent's grid starts inside its pane, under the bar.

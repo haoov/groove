@@ -37,12 +37,15 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     };
     ctx.quad(edge, ctx.styles.line());
     let under = ctx.app.layout.commit;
-    if ui.session.commits() {
+    if ui.session.commits() && !under.is_empty() {
         commit::draw(ctx, app, ui, under);
     }
     let mut column = rect.until_y(under.y);
     let bar = bar::draw(ctx, rect, ui);
     column.take_top(bar.h);
+    if let Some(one) = app.workspace.commit.as_ref() {
+        heading::showing(ctx, column.take_top(ctx.tokens.header), one);
+    }
     if ui.session.tab == Tab::Files {
         return changed_files(ctx, column, app, ui);
     }
@@ -50,24 +53,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     panes(ctx, strip, app, ui);
     match ui.session.pane {
         Pane::Files => changed_files(ctx, column, app, ui),
-        Pane::Commits => {
-            let body = showing(ctx, column, app);
-            commits::draw(ctx, body, app, ui);
-        }
-        Pane::Notes => {
-            let body = showing(ctx, column, app);
-            notes::draw(ctx, body, app, ui);
-        }
+        Pane::Commits => commits::draw(ctx, column, app, ui),
+        Pane::Notes => notes::draw(ctx, column, app, ui),
     }
-}
-
-/// The commit the surface shows, over the list. Returns the room the list keeps.
-fn showing(ctx: &mut Ctx, mut body: Rect, app: &AppState) -> Rect {
-    if app.workspace.commit.is_some() {
-        commit::showing(ctx, body, app);
-        body.take_top(ctx.tokens.row);
-    }
-    body
 }
 
 /// The three lists the sidebar offers, the one up lit and counted.
@@ -111,7 +99,8 @@ fn counted(app: &AppState, pane: Pane) -> usize {
 fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let files = narrowed(app, ui);
     let grep = ui.session.bar.greps();
-    if grep || ui.session.tab == Tab::Diff {
+    let moded = ui.session.tab == Tab::Diff && app.workspace.commit.is_none();
+    if grep || moded {
         let head = column.take_top(ctx.tokens.header);
         match grep {
             true => heading::found(ctx, head, app.workspace.found.len()),
