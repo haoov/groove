@@ -27,7 +27,7 @@ pub(super) fn keymap(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
         Row {
             section: Section::Keymap,
             group: spec.group,
-            label: spec.label,
+            label: spec.label.into(),
             words: spec.id,
             value: Value::Picker {
                 shown,

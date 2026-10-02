@@ -103,7 +103,7 @@ fn setting(ctx: &mut Ctx, line: Rect, one: &Row, searching: bool) {
     let mut room = line;
     let label = room.take_left(ctx.tokens.aside_mid);
     let mut label_room = label;
-    Label::new(one.label, ctx.styles.body(Role::Muted)).left(ctx, &mut label_room, ctx.tokens.sm);
+    Label::new(&one.label, ctx.styles.body(Role::Muted)).left(ctx, &mut label_room, ctx.tokens.sm);
     if searching {
         let from = match one.group.is_empty() {
             true => one.section.label(),
@@ -146,20 +146,77 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             role,
             target,
             act,
-        } => {
-            let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
-            picker(shown, target.clone(), *role, band, hover).left(ctx, &mut room, sm);
-            if let Some((word, at)) = act {
-                Button::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
-            }
-        }
+        } => picked(ctx, room, (shown, *role, target), act.as_ref()),
         Value::Choice(options) => {
             let each = options
                 .iter()
                 .map(|(word, held, pick)| (*word, *held, Target::SetPreference(*pick)));
             held_words(ctx, room, each, Role::Muted);
         }
+        Value::Skill {
+            id,
+            on,
+            said,
+            deletes,
+            asking,
+        } => skill(ctx, room, (id, *on, said), (*deletes, *asking)),
     }
+}
+
+/// A value as the picker that changes it, and the action beside it.
+fn picked(
+    ctx: &mut Ctx,
+    mut room: Rect,
+    (shown, role, target): (&str, Role, &Target),
+    act: Option<&(&'static str, Target)>,
+) {
+    let (band, hover, ground, sm) = (
+        ctx.styles.band(),
+        ctx.styles.hover(),
+        ctx.styles.ground(),
+        ctx.tokens.sm,
+    );
+    picker(shown, target.clone(), role, band, hover).left(ctx, &mut room, sm);
+    if let Some((word, at)) = act {
+        Button::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
+    }
+}
+
+/// A skill's switch, its delete, then what it does; or the question its delete asks.
+fn skill(
+    ctx: &mut Ctx,
+    mut room: Rect,
+    (id, on, said): (&str, Option<bool>, &str),
+    (deletes, asking): (bool, bool),
+) {
+    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
+    if asking {
+        let question = Label::new("delete it? its file goes", ctx.styles.body(Role::Warn));
+        question.left(ctx, &mut room, sm);
+        let sure = Target::SkillDeleteSure(id.to_string());
+        Button::new("yes, delete", sure, Role::Muted, ground).left(ctx, &mut room, sm);
+        Button::new("keep", Target::SkillDeleteKeep, Role::Muted, ground).left(ctx, &mut room, sm);
+        return;
+    }
+    match on {
+        Some(on) => {
+            let (word, role) = if on {
+                ("on", Role::Text)
+            } else {
+                ("off", Role::Muted)
+            };
+            let flip = Target::SkillSwitch(id.to_string(), !on);
+            Button::new(word, flip, role, ground).left(ctx, &mut room, sm);
+        }
+        None => {
+            Label::new("always", ctx.styles.body(Role::Faint)).left(ctx, &mut room, sm);
+        }
+    }
+    if deletes {
+        let delete = Target::SkillDelete(id.to_string());
+        Button::new("delete", delete, Role::Muted, ground).left(ctx, &mut room, sm);
+    }
+    Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }
 
 /// A count between the step down, when it has one, and the step up.

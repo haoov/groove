@@ -1,6 +1,6 @@
 //! What a click on Settings does, from opening it to signing in.
 
-use groove_controllers::{AppState, Command, config};
+use groove_controllers::{AppState, Command, agent, config};
 
 use crate::hit::{Hits, Target};
 use crate::keymap;
@@ -36,7 +36,10 @@ pub(super) fn acted(
         Target::SettingsCheck => config::Command::CheckEnvironment,
         Target::SettingsLogin => config::Command::Login { cols: 80, rows: 24 },
         Target::SettingsLoginEnd => config::Command::EndLogin,
-        _ => return sourced(target, ui).or_else(|| chosen(target, ui)),
+        _ => {
+            let picked = sourced(target, ui).or_else(|| skilled(target, ui));
+            return picked.or_else(|| chosen(target, ui));
+        }
     };
     Some(vec![Command::Config(asked)])
 }
@@ -104,4 +107,30 @@ fn chosen(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         _ => return None,
     }
     Some(Vec::new())
+}
+
+/// A skill switched, or one of the user's own deleted once confirmed.
+fn skilled(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
+    let settings = &mut ui.settings;
+    let asked = match target {
+        Target::SkillSwitch(id, on) => agent::Command::SwitchSkill {
+            id: id.clone(),
+            on: *on,
+        },
+        Target::SkillDelete(id) => {
+            settings.deleting = Some(id.clone());
+            return Some(Vec::new());
+        }
+        Target::SkillDeleteKeep => {
+            settings.deleting = None;
+            return Some(Vec::new());
+        }
+        Target::SkillDeleteSure(id) => {
+            settings.deleting = None;
+            let name = id.strip_prefix("user:")?.to_string();
+            agent::Command::DeleteSkill { name }
+        }
+        _ => return None,
+    };
+    Some(vec![Command::Agent(asked)])
 }

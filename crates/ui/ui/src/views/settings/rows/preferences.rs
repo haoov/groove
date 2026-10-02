@@ -32,7 +32,7 @@ where
     Row {
         section: Section::Preferences,
         group: "",
-        label,
+        label: label.into(),
         words,
         value: Value::Count {
             shown: format!("{at} {unit}"),

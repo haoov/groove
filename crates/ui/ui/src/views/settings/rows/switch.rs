@@ -96,7 +96,7 @@ fn row(
     Row {
         section: Section::Providers,
         group: "",
-        label,
+        label: label.into(),
         words,
         value: Value::State { shown, role, act },
     }

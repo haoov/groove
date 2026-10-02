@@ -42,7 +42,7 @@ fn path(label: &'static str, words: &'static str, text: String) -> Row {
     Row {
         section: Section::Setup,
         group: "",
-        label,
+        label: label.into(),
         words,
         value,
     }
@@ -61,7 +61,7 @@ fn checked(app: &AppState) -> Row {
     Row {
         section: Section::Setup,
         group: "",
-        label: "check",
+        label: "check".into(),
         words: "environment tools programs",
         value: Value::State { shown, role, act },
     }
@@ -86,7 +86,7 @@ fn tool(one: &Tool, signing_in: bool) -> Row {
     Row {
         section: Section::Setup,
         group: "",
-        label: one.name,
+        label: one.name.into(),
         words: one.purpose,
         value: Value::State { shown, role, act },
     }

@@ -377,3 +377,106 @@ fn the_auto_approve_default_stands_in_the_agent_section() {
     ui.settings.section = crate::views::settings::Section::Preferences;
     assert!(!shown(&ui), "Preferences no longer holds it");
 }
+
+fn skill(id: &str, enabled: bool) -> groove_types::Skill {
+    let (plugin, name) = id.split_once(':').expect("an id");
+    groove_types::Skill {
+        id: id.into(),
+        plugin: plugin.into(),
+        name: name.into(),
+        description: format!("{name} things"),
+        hint: String::new(),
+        label: name.into(),
+        kinds: Vec::new(),
+        editable: plugin == "user",
+        enabled,
+        changed_at: groove_types::Timestamp::new(0),
+    }
+}
+
+/// Settings › Agent over a core skill, one of the user's own, and a shared one switched off.
+fn skilled() -> (AppState, Ui) {
+    let (app, mut ui) = opened();
+    let mut app = crate::tests::bar::sourced(app, false, false);
+    app.agent.skills = vec![
+        skill("groove:save-task", true),
+        skill("platform:follow-ups", false),
+        skill("user:ship-it", true),
+    ];
+    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+        path: "/data/shared".into(),
+        marketplace: groove_controllers::agent_service::skills::Marketplace {
+            name: "groove-agent".into(),
+            plugins: Vec::new(),
+        },
+    });
+    ui.settings.section = crate::views::settings::Section::Agent;
+    (app, ui)
+}
+
+#[test]
+fn every_skill_stands_in_its_group_the_core_ones_always_on() {
+    let (app, ui) = skilled();
+    let (texts, hits) = drawn(&app, &ui);
+    for shown in [
+        "Core skills",
+        "Your skills",
+        "Shared skills",
+        "groove:save-task",
+        "always",
+    ] {
+        assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
+    }
+    let switch = |id: &str, on| Target::SkillSwitch(id.into(), on);
+    assert!(
+        hits.rect_of(&switch("groove:save-task", false)).is_none(),
+        "no switch on a core one"
+    );
+    assert!(
+        hits.rect_of(&switch("platform:follow-ups", true)).is_some(),
+        "off, so on is offered"
+    );
+    assert!(
+        hits.rect_of(&Target::SkillDelete("platform:follow-ups".into()))
+            .is_none()
+    );
+}
+
+#[test]
+fn a_skill_of_the_users_is_switched_and_deleted_once_confirmed() {
+    let (app, mut ui) = skilled();
+    let (_, hits) = drawn(&app, &ui);
+    let off = Target::SkillSwitch("user:ship-it".into(), false);
+    let asked = click(
+        hits.rect_of(&off).expect("its switch"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    let switch = groove_controllers::agent::Command::SwitchSkill {
+        id: "user:ship-it".into(),
+        on: false,
+    };
+    assert_eq!(asked, [Command::Agent(switch)]);
+
+    let delete = Target::SkillDelete("user:ship-it".into());
+    let asked = click(
+        hits.rect_of(&delete).expect("its delete"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    assert!(asked.is_empty(), "the first click only asks");
+    let (_, hits) = drawn(&app, &ui);
+    let sure = Target::SkillDeleteSure("user:ship-it".into());
+    let asked = click(
+        hits.rect_of(&sure).expect("the confirm"),
+        &mut ui,
+        &app,
+        &hits,
+    );
+    let gone = groove_controllers::agent::Command::DeleteSkill {
+        name: "ship-it".into(),
+    };
+    assert_eq!(asked, [Command::Agent(gone)]);
+}

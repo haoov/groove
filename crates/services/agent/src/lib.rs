@@ -41,6 +41,8 @@ pub struct State {
     pub skills: Vec<groove_types::Skill>,
     /// The copy of the team's shared repo, once it reads as a marketplace.
     pub shared: Option<shared::Shared>,
+    /// When a skill was last switched on or off.
+    pub switched: Timestamp,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.
@@ -61,9 +63,8 @@ impl State {
         let Some(agent) = self.agent(session) else {
             return false;
         };
-        self.skills
-            .iter()
-            .any(|one| one.enabled && one.changed_at > agent.started_at)
+        let changed = |one: &groove_types::Skill| one.enabled && one.changed_at > agent.started_at;
+        self.switched > agent.started_at || self.skills.iter().any(changed)
     }
 
     pub fn agent(&self, session: &SessionId) -> Option<&Agent> {

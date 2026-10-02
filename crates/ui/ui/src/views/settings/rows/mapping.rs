@@ -150,7 +150,7 @@ fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
     Row {
         section: Section::Providers,
         group: "",
-        label,
+        label: label.into(),
         words,
         value: Value::Picker {
             shown,

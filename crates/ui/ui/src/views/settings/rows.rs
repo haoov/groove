@@ -8,6 +8,7 @@ mod preferences;
 mod providers;
 mod setup;
 mod shared;
+mod skills;
 mod switch;
 
 pub use mapping::{Choices, Slot, choices};
@@ -91,6 +92,14 @@ pub enum Value {
         focused: bool,
         target: Target,
     },
+    /// A skill: on, off, or `None` for always on; what it does; its delete, and that delete's question.
+    Skill {
+        id: String,
+        on: Option<bool>,
+        said: String,
+        deletes: bool,
+        asking: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,7 +107,7 @@ pub struct Row {
     pub section: Section,
     /// The heading it stands under within its section.
     pub group: &'static str,
-    pub label: &'static str,
+    pub label: std::borrow::Cow<'static, str>,
     pub words: &'static str,
     pub value: Value,
 }
@@ -135,7 +144,7 @@ fn text(section: Section, label: &'static str, words: &'static str, text: String
     Row {
         section,
         group: "",
-        label,
+        label: label.into(),
         words,
         value,
     }

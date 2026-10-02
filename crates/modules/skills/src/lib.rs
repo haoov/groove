@@ -40,10 +40,14 @@ pub struct Dirs {
     pub built: PathBuf,
     /// The shared skills given to sessions, by id.
     pub enabled: Vec<String>,
+    /// Where the user's plugin is built with the skills they did not switch off.
+    pub mine: PathBuf,
+    /// The user's own skills switched off, by id.
+    pub off: Vec<String>,
 }
 
 impl Dirs {
-    /// `<data>/plugins/groove`, `<config>/user-skills`, and `<data>/plugins/shared`.
+    /// `<data>/plugins/groove`, `<config>/user-skills`, and the built ones under `<data>/plugins`.
     pub fn new(data: &Path, config: &Path) -> Self {
         Self {
             core: data.join("plugins").join(CORE),
@@ -51,6 +55,8 @@ impl Dirs {
             shared: Vec::new(),
             built: data.join("plugins").join("shared"),
             enabled: Vec::new(),
+            mine: data.join("plugins").join(USER),
+            off: Vec::new(),
         }
     }
 
@@ -61,6 +67,11 @@ impl Dirs {
             enabled,
             ..self
         }
+    }
+
+    /// The same, with these skills of the user's own switched off.
+    pub fn switched(self, off: Vec<String>) -> Self {
+        Self { off, ..self }
     }
 
     fn of(&self, plugin: &str) -> Option<&Path> {
@@ -125,7 +136,7 @@ pub fn plugin_dirs(dirs: &Dirs) -> Vec<PathBuf> {
     let shared = dirs.shared.iter().map(|one| dirs.built.join(&one.name));
     std::iter::once(dirs.core.clone())
         .chain(shared)
-        .chain(std::iter::once(dirs.user.clone()))
+        .chain(std::iter::once(dirs.mine.clone()))
         .filter(|dir| !names(dir).is_empty())
         .collect()
 }
@@ -134,7 +145,14 @@ pub fn plugin_dirs(dirs: &Dirs) -> Vec<PathBuf> {
 pub fn list(dirs: &Dirs) -> Vec<Skill> {
     let mut out = read_plugin(&dirs.core, CORE, false);
     out.extend(shared::listed(dirs));
-    out.extend(read_plugin(&dirs.user, USER, true));
+    out.extend(
+        read_plugin(&dirs.user, USER, true)
+            .into_iter()
+            .map(|mut one| {
+                one.enabled = !dirs.off.contains(&one.id);
+                one
+            }),
+    );
     out
 }
 
@@ -171,6 +189,7 @@ pub fn save(dirs: &Dirs, name: &str, body: &str, instead_of: Option<&str>) -> Re
     if let Some(gone) = instead_of.filter(|one| *one != name && is_name(one)) {
         std::fs::remove_dir_all(root.join(gone)).map_err(io)?;
     }
+    shared::build(dirs).map_err(io)?;
     Ok(parse::skill(USER, name, body, true, changed_at(&dir)))
 }
 
@@ -180,7 +199,8 @@ pub fn delete(dirs: &Dirs, name: &str) -> Result<()> {
         return Err(Error::invalid(format!("{NAMED}: `{name}`")));
     }
     let dir = dirs.user.join("skills").join(name);
-    std::fs::remove_dir_all(&dir).map_err(io)
+    std::fs::remove_dir_all(&dir).map_err(io)?;
+    shared::build(dirs).map_err(io)
 }
 
 const NAMED: &str = "a name is lower case letters, digits and dashes";

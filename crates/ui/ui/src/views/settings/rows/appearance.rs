@@ -23,7 +23,7 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     let theme = Row {
         section,
         group: "",
-        label: "theme",
+        label: "theme".into(),
         words: "latte frappe macchiato mocha colour dark light",
         value: Value::Choice(themes.to_vec()),
     };

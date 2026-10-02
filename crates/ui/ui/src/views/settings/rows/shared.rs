@@ -122,7 +122,7 @@ fn state(
     Row {
         section: Section::Agent,
         group: "",
-        label,
+        label: label.into(),
         words: "shared team repo skills plugin",
         value: Value::State { shown, role, act },
     }

@@ -162,3 +162,54 @@ fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
         "{dirs:?}"
     );
 }
+
+fn switch(id: &str, on: bool, state: &mut AppState, services: &Services, spawner: &SyncSpawner) {
+    let id = id.to_string();
+    dispatch(
+        Cmd::Agent(crate::agent::Command::SwitchSkill { id, on }),
+        state,
+        services,
+        spawner,
+    );
+    for _ in 0..4 {
+        spawner.drain(state, services);
+    }
+}
+
+#[test]
+fn a_skill_of_the_users_switched_off_is_written_listed_off_and_marks_agents_stale() {
+    let (home, spawner, services, mut state) = fresh();
+    let dirs = crate::agent::skills::dirs(&state);
+    groove_agent_service::skills::sync(&dirs).unwrap();
+    groove_agent_service::skills::save(&dirs, "ship-it", "---\n---\nGo.\n", None).unwrap();
+    let before = groove_types::Timestamp::now();
+    switch("user:ship-it", false, &mut state, &services, &spawner);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert_eq!(state.config.skills_off(), ["user:ship-it"]);
+    let written = groove_config_service::load(&home.path().join("config")).unwrap();
+    assert_eq!(
+        written.map(|one| one.skills_off),
+        Some(vec!["user:ship-it".into()])
+    );
+    let held = state
+        .agent
+        .skills
+        .iter()
+        .find(|one| one.id == "user:ship-it");
+    assert_eq!(held.map(|one| one.enabled), Some(false));
+    assert!(
+        state.agent.switched >= before,
+        "a running agent reads as stale"
+    );
+
+    switch("user:ship-it", true, &mut state, &services, &spawner);
+    assert!(state.config.skills_off().is_empty(), "on again");
+}
+
+#[test]
+fn a_core_skill_cannot_be_switched_off() {
+    let (_home, spawner, services, mut state) = fresh();
+    switch("groove:save-task", false, &mut state, &services, &spawner);
+    assert_eq!(state.errors.len(), 1, "refused");
+    assert!(state.config.skills_off().is_empty());
+}

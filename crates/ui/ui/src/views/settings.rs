@@ -33,6 +33,8 @@ pub struct SettingsUi {
     pub leaving: Option<groove_types::ProviderId>,
     /// The shared repo asked to be let go, not yet confirmed.
     pub unsharing: bool,
+    /// The id of the skill of the user's own asked deleted, not yet confirmed.
+    pub deleting: Option<String>,
     /// The action whose new chord the next key is.
     pub binding: Option<crate::keymap::Action>,
 }

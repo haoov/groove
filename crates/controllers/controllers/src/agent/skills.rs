@@ -8,7 +8,8 @@ use crate::{AppState, Continuation, Services, Spawner};
 
 /// Where the plugins live, under the app's own directories, the shared ones as last read.
 pub(crate) fn dirs(state: &AppState) -> Dirs {
-    let plain = Dirs::new(&state.env.data_dir, &state.env.config_dir);
+    let off = state.config.skills_off().to_vec();
+    let plain = Dirs::new(&state.env.data_dir, &state.env.config_dir).switched(off);
     let plugins = state
         .agent
         .shared
@@ -117,6 +118,32 @@ pub fn delete(state: &mut AppState, spawner: &dyn Spawner, name: String) {
             if let Err(e) = done {
                 state.failed(e);
             }
+        }) as Continuation
+    }));
+}
+
+/// One skill switched on or off, the plugins built again, and running agents marked stale.
+pub fn switch(state: &mut AppState, spawner: &dyn Spawner, id: String, on: bool) {
+    if id.starts_with("groove:") {
+        return state.failed(groove_types::Error::invalid("a core skill is always on"));
+    }
+    let Some(config) = state.config.switch_skill(&id, on).cloned() else {
+        let why = format!("`{id}` is no skill Groove can switch: no shared repo holds it");
+        return state.failed(groove_types::Error::invalid(why));
+    };
+    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
+        return state.failed(e);
+    }
+    state.agent.switched = groove_types::Timestamp::now();
+    let dirs = dirs(state);
+    spawner.spawn(Box::pin(async move {
+        let made = skills::sync(&dirs);
+        let read = skills::list(&dirs);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = made {
+                state.failed(e);
+            }
+            state.agent.skills = read;
         }) as Continuation
     }));
 }

@@ -26,6 +26,9 @@ pub struct Config {
     pub keymap: BTreeMap<String, Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shared: Option<SharedConfig>,
+    /// The user's own skills not given to sessions, by id; any other is on.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills_off: Vec<String>,
 }
 
 /// The repo a team shares its skills through, and the branch Groove follows in it.

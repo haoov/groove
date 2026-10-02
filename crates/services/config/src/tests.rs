@@ -17,6 +17,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         preferences: groove_types::Preferences::default(),
         keymap: Default::default(),
         shared: None,
+        skills_off: Vec::new(),
     };
     State {
         config: Some(config),

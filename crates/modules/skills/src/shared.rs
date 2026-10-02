@@ -88,26 +88,48 @@ pub(crate) fn listed(dirs: &Dirs) -> Vec<Skill> {
     .collect()
 }
 
-/// Each shared plugin built again with its enabled skills alone, each one linked from the copy.
+/// The plugins a launch is given, built again with the skills switched on alone.
 pub(crate) fn build(dirs: &Dirs) -> std::io::Result<()> {
-    if dirs.built.exists() {
-        std::fs::remove_dir_all(&dirs.built)?;
+    for out in [&dirs.built, &dirs.mine] {
+        if out.exists() {
+            std::fs::remove_dir_all(out)?;
+        }
     }
     for plugin in &dirs.shared {
-        let on: Vec<String> = names(&plugin.dir)
-            .into_iter()
-            .filter(|name| dirs.enabled.contains(&format!("{}:{name}", plugin.name)))
-            .collect();
-        if on.is_empty() {
-            continue;
-        }
+        let on = |name: &str| dirs.enabled.contains(&format!("{}:{name}", plugin.name));
         let out = dirs.built.join(&plugin.name);
-        manifest(&out, &plugin.name, "Shared through Groove")?;
-        std::fs::create_dir_all(out.join("skills"))?;
-        for name in on {
-            let from = plugin.dir.join("skills").join(&name);
-            std::os::unix::fs::symlink(from, out.join("skills").join(&name))?;
-        }
+        linked(
+            &plugin.dir,
+            &out,
+            (&plugin.name, "Shared through Groove"),
+            on,
+        )?;
+    }
+    let on = |name: &str| !dirs.off.contains(&format!("{USER}:{name}"));
+    linked(
+        &dirs.user,
+        &dirs.mine,
+        (USER, "Your own Groove actions"),
+        on,
+    )
+}
+
+/// A plugin at `out` named `name`, holding links to the skills of `from` that `on` keeps.
+fn linked(
+    from: &Path,
+    out: &Path,
+    (name, description): (&str, &str),
+    on: impl Fn(&str) -> bool,
+) -> std::io::Result<()> {
+    let kept: Vec<String> = names(from).into_iter().filter(|one| on(one)).collect();
+    if kept.is_empty() {
+        return Ok(());
+    }
+    manifest(out, name, description)?;
+    std::fs::create_dir_all(out.join("skills"))?;
+    for one in kept {
+        let skill = from.join("skills").join(&one);
+        std::os::unix::fs::symlink(skill, out.join("skills").join(&one))?;
     }
     Ok(())
 }

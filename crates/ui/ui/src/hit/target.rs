@@ -57,6 +57,11 @@ pub enum Target {
     SettingsShare,
     SettingsUnshare,
     SettingsUnshareSure,
+    /// A skill switched to `on`; one of the user's own asked deleted, then the answer.
+    SkillSwitch(String, bool),
+    SkillDelete(String),
+    SkillDeleteSure(String),
+    SkillDeleteKeep,
     /// An action's chord waited for, or put back on its defaults.
     SettingsBind(crate::keymap::Action),
     SettingsUnbind(crate::keymap::Action),

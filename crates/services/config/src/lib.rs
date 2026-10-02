@@ -116,6 +116,26 @@ impl State {
         self.config.as_ref()?.shared.as_ref()
     }
 
+    pub fn skills_off(&self) -> &[String] {
+        self.config
+            .as_ref()
+            .map_or(&[], |one| one.skills_off.as_slice())
+    }
+
+    /// One skill switched on or off: a user's skill in `skills_off`, a shared one in `enabled`.
+    pub fn switch_skill(&mut self, id: &str, on: bool) -> Option<&Config> {
+        let config = self.config.as_mut()?;
+        let (held, wanted) = match id.starts_with("user:") {
+            true => (&mut config.skills_off, !on),
+            false => (&mut config.shared.as_mut()?.enabled, on),
+        };
+        held.retain(|one| one != id);
+        if wanted {
+            held.push(id.to_string());
+        }
+        Some(config)
+    }
+
     /// The chords rebound, whole; the config to write, or `None` before first run.
     pub fn rebind(&mut self, keymap: BTreeMap<String, Vec<String>>) -> Option<&Config> {
         let config = self.config.as_mut()?;

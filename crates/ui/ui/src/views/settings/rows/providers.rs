@@ -78,7 +78,7 @@ fn field(label: &'static str, words: &'static str, text: &str) -> Row {
     Row {
         section: Section::Providers,
         group: "",
-        label,
+        label: label.into(),
         words,
         value,
     }
@@ -89,7 +89,7 @@ fn state(label: &'static str, words: &'static str, shown: String, role: Role) ->
     Row {
         section: Section::Providers,
         group: "",
-        label,
+        label: label.into(),
         words,
         value: Value::State { shown, role, act },
     }

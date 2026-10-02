@@ -12,7 +12,7 @@ pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     let approve = Row {
         section: Section::Agent,
         group: "",
-        label: "auto-approve default",
+        label: "auto-approve default".into(),
         words: "writes ask new sessions",
         value: Value::Toggle {
             on: held.auto_approve_default,
@@ -21,5 +21,6 @@ pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     };
     let mut out = grouped("Approvals", vec![approve]);
     out.extend(shared(app, settings));
+    out.extend(super::skills::skills(app, settings));
     out
 }

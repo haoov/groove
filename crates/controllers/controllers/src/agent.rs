@@ -81,6 +81,8 @@ pub enum Command {
     },
     /// `agent.delete_skill`: one skill of the user's own.
     DeleteSkill { name: String },
+    /// `agent.switch_skill`: one skill given to sessions, or no longer; a core one stays on.
+    SwitchSkill { id: String, on: bool },
 }
 
 impl Command {
@@ -103,6 +105,7 @@ impl Command {
             Command::ListSkills => "agent.list_skills",
             Command::SendSkill { .. } => "agent.send_skill",
             Command::DeleteSkill { .. } => "agent.delete_skill",
+            Command::SwitchSkill { .. } => "agent.switch_skill",
         }
     }
 }
@@ -141,6 +144,7 @@ pub fn dispatch(
             skills::send(state, spawner, &session, &id, args.as_deref())
         }
         Command::DeleteSkill { name } => skills::delete(state, spawner, name),
+        Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
         pointing => pointer::acted(state, services, pointing),
     }
 }

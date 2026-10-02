@@ -135,7 +135,30 @@ fn a_plugin_with_no_skill_is_not_handed_to_the_launch() {
     save(&dirs, "ship-it", "---\n---\n\nGo.\n", None).expect("one of their own");
     assert_eq!(
         plugin_dirs(&dirs),
-        vec![dirs.core.clone(), dirs.user.clone()]
+        vec![dirs.core.clone(), dirs.mine.clone()]
+    );
+}
+
+#[test]
+fn a_skill_of_the_users_switched_off_is_listed_off_and_not_given() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = dirs(home.path()).switched(vec!["user:quiet".into()]);
+    sync(&dirs).unwrap();
+    save(&dirs, "quiet", "---\n---\n\nShh.\n", None).unwrap();
+    save(&dirs, "loud", "---\n---\n\nHey.\n", None).unwrap();
+    let mine: Vec<(String, bool)> = list(&dirs)
+        .into_iter()
+        .filter(|one| one.plugin == "user")
+        .map(|one| (one.id, one.enabled))
+        .collect();
+    assert_eq!(
+        mine,
+        [("user:loud".into(), true), ("user:quiet".into(), false)]
+    );
+    assert!(dirs.mine.join("skills/loud").exists());
+    assert!(
+        !dirs.mine.join("skills/quiet").exists(),
+        "not given to a launch"
     );
 }
 
