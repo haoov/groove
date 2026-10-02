@@ -123,6 +123,18 @@ async fn a_page_reads_as_a_task_through_the_mapping() {
 }
 
 #[tokio::test]
+async fn a_due_range_is_due_on_its_last_day() {
+    let mut ranged = page();
+    ranged["properties"]["Due"]["date"] =
+        serde_json::json!({ "start": "2026-09-25", "end": "2026-10-03" });
+    let reply = serde_json::json!({ "object": "list", "results": [ranged] });
+    let (_server, notion) = source(reply).await;
+    let tasks = notion.list().await.expect("the query answers");
+    let due = tasks.first().and_then(|task| task.dates.due);
+    assert_eq!(due.map(|day| (day.month, day.day)), Some((10, 3)));
+}
+
+#[tokio::test]
 async fn the_query_asks_for_yours_and_leaves_the_excluded_statuses_out() {
     let reply = serde_json::json!({ "object": "list", "results": [] });
     let (server, notion) = source(reply).await;

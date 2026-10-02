@@ -56,8 +56,9 @@ pub(super) fn task(page: &serde_json::Value, config: &NotionConfig) -> Option<Ta
         priority: select(page, names.priority.as_deref())
             .and_then(|value| config.priority_map.level(&value)),
         dates: TaskDates {
-            start: day(page, names.start.as_deref()),
-            due: day(page, names.due.as_deref()),
+            start: day(page, names.start.as_deref(), "start"),
+            due: day(page, names.due.as_deref(), "end")
+                .or_else(|| day(page, names.due.as_deref(), "start")),
             duration_days: None,
         },
         estimate: names
@@ -114,9 +115,10 @@ pub(super) fn number(page: &serde_json::Value, name: &str) -> Option<f32> {
         .map(|one| one as f32)
 }
 
-fn day(page: &serde_json::Value, name: Option<&str>) -> Option<Day> {
+/// One end of a date property: `start`, or `end` when it holds a range.
+fn day(page: &serde_json::Value, name: Option<&str>, end: &str) -> Option<Day> {
     let value = property(page, name?)?;
-    let date = value["date"]["start"].as_str()?;
+    let date = value["date"][end].as_str()?;
     Day::parse(date.get(..10).unwrap_or(date)).ok()
 }
 
