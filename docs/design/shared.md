@@ -88,10 +88,13 @@ useful, opens the facts that look relevant, and checks one before it relies on i
 
 ## Routines
 
-**A routine is a trigger, a skill and a scope.** It is one file: in the shared repo's
-`routines/` for the team's, in the user's config for their own. Two kinds:
+**A routine is triggers, skills, words and a scope.** It is one file: in the shared repo's
+`routines/` for the team's, in the user's config for their own. Its `skills` are the skills
+its agent may use, and the words under its header say what to do; the agent picks the order
+and adapts. A routine with one skill and no words sends that skill alone; one with several
+skills says what to do with them, in plain words. Two kinds:
 
-- **Bound to a session:** the trigger is an event about one session, and the skill goes to
+- **Bound to a session:** the trigger is an event about one session, and the routine goes to
   that session's own agent, with what the event says as its arguments — CI failed on a
   worktree → `groove:fix-ci`; changes requested on an MR → `groove:fix-notes`; a review asked
   of the user → `groove:co-review` in its review session.
@@ -134,11 +137,19 @@ committing, pushing to the session's own branch, and commenting on the forge. Op
 updating an MR only when the routine names it. A standalone routine names each tool it may
 call, of Groove or of another server.
 
-**One run a routine and a session at a time.** A routine does not start again on a session
-where its last run still runs, and runs on several sessions at once. Settings caps how many
-agents run routines at the same time, five by default; a run past the cap waits its turn.
+**Never on the session the user is on.** An event about the session the user has selected
+starts nothing: Groove does not act there while they work.
 
-**Every run leaves a trail.** The feed shows each run: the trigger, the skill, what it did and
+**Once a session, until the user looks.** A routine runs at most once on a session. When the
+user selects that session, every routine's count on it goes back to zero, and the next event
+may run them again. A routine that would loop — a fix that turns CI red again — therefore
+stops after one run and waits for the user. Its button always runs it.
+
+**Several sessions at once.** A routine runs on every session its event is about, at the same
+time. Settings caps how many agents run routines together, five by default; a run past the
+cap waits its turn.
+
+**Every run leaves a trail.** The feed shows each run: the trigger, the routine, what it did and
 the commits it made. A user who was away reads what happened there.
 
 **One switch stops them.** Each routine can be paused, and Settings pauses them all at once.
@@ -153,5 +164,6 @@ is closed starts nothing, and the daily trigger fires at the first open of the d
 ## Not in it
 
 - No clock: a routine starts on an event, its button or the first open of the day.
-- No chain: one trigger, one skill. Conditions, retries and steps are what CI does.
+- No chain and no retry: a routine's words say what to do, and its agent does it once.
+  Conditions, retries and steps are what CI does.
 - No shared memory as a whole: only facts promoted one by one.
