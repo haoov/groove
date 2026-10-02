@@ -8,7 +8,7 @@ mod scroll;
 
 use groove_controllers::{AppState, Command, agent, workspace};
 
-use crate::hit::{Cursor, Hits, Target};
+use crate::hit::{Cursor, Hits};
 use crate::{Focus, Held, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -224,8 +224,7 @@ pub fn handle(
 /// The row under the pointer. True when it changed, and the window must redraw.
 pub fn hover(ui: &mut Ui, hits: &Hits, x: f32, y: f32) -> bool {
     let at = hits.at(x, y);
-    let moved = matches!(at, Some(Target::Bar(_)));
-    let changed = at != ui.hover || (moved && (x, y) != ui.at);
+    let changed = at != ui.hover;
     ui.hover = at;
     ui.at = (x, y);
     changed

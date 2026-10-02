@@ -40,18 +40,11 @@ pub const RAIL_MIN: f32 = 160.0;
 /// How many lines one notch of a wheel carries the agent's screen.
 pub const NOTCH: f32 = 3.0;
 
-/// How far a gesture carries the timeline one day.
-pub const DAY_PIXELS: f32 = 24.0;
-
-/// The smallest the timeline's band may be, and the room it leaves the columns.
-pub const BAND_MIN: f32 = 120.0;
-
 /// The feed and the footer under it, at their shortest.
 pub const FEED_MIN: f32 = 96.0;
 
 /// What the rail's own rows keep whatever the feed takes.
 pub const SESSIONS_MIN: f32 = 120.0;
-pub const COLUMNS_MIN: f32 = 200.0;
 
 /// The smallest the commit box and the list above it may be.
 pub const COMMIT_MIN: f32 = 72.0;
@@ -84,8 +77,6 @@ pub struct Tokens {
     pub rail: f32,
     pub agent: f32,
     pub sidebar: f32,
-    /// The timeline's band, when it stands open.
-    pub band: f32,
     /// One line of text, with its leading.
     pub line: f32,
     /// One line of the feed, which holds two texts, and its own age column.
@@ -152,7 +143,6 @@ const LOGICAL: Tokens = Tokens {
     rail: 220.0,
     agent: 380.0,
     sidebar: 260.0,
-    band: 260.0,
     line: 18.0,
     feed_row: 34.0,
     feed_age: 30.0,
@@ -202,7 +192,6 @@ impl Tokens {
             rail: s(LOGICAL.rail),
             agent: s(LOGICAL.agent),
             sidebar: s(LOGICAL.sidebar),
-            band: s(LOGICAL.band),
             line: row(LINE, code),
             feed_row: row(FEED_ROW, text),
             bar: row(BAR, text),

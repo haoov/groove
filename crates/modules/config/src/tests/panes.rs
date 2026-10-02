@@ -7,7 +7,6 @@ const LEFT: Panes = Panes {
     agent: 600.0,
     sidebar: 380.0,
     commit: 120.0,
-    band: 300.0,
     feed: 200.0,
     manual: 220.0,
 };
@@ -27,15 +26,16 @@ fn what_one_run_saves_the_next_one_reads() {
 }
 
 #[test]
-fn a_file_from_before_the_timeline_opens_the_band_at_its_own_height() {
+fn an_older_file_opens_what_it_never_held_at_its_own_height() {
     let dir = tempfile::tempdir().unwrap();
     let file = path(dir.path());
     std::fs::create_dir_all(file.parent().expect("a parent")).unwrap();
-    let older = r#"{"rail":240.0,"agent":600.0,"sidebar":380.0,"commit":120.0}"#;
+    let older = r#"{"rail":240.0,"agent":600.0,"sidebar":380.0,"commit":120.0,"band":300.0}"#;
     std::fs::write(&file, older).unwrap();
-    let read = load(&file).unwrap().expect("the older file");
-    assert_eq!(read.rail, 240.0);
-    assert_eq!(read.band, 260.0, "the band's own default");
+    let read = load(&file)
+        .unwrap()
+        .expect("the older file, the band it held let go");
+    assert_eq!((read.rail, read.feed, read.manual), (240.0, 200.0, 220.0));
 }
 
 #[test]

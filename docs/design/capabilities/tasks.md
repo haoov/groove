@@ -17,4 +17,3 @@
 - time: timer, log hours
 - planning: local order, later divider
 - attention: reason and age
-- timeline: start, due

@@ -1,7 +1,7 @@
 use crate::{
-    AgentStatus, ApprovalId, Ask, Attention, AttentionClass, CiState, Day, ExternalId, MrFacts,
-    MrState, Row, RowKind, Session, SessionActivity, SessionId, SessionKind, Span, TaskDates,
-    Thresholds, Timestamp, attention, names_session, word_diff_pairs,
+    AgentStatus, ApprovalId, Ask, Attention, AttentionClass, CiState, ExternalId, MrFacts, MrState,
+    Row, RowKind, Session, SessionActivity, SessionId, SessionKind, TaskDates, Thresholds,
+    Timestamp, attention, names_session, word_diff_pairs,
 };
 
 fn task(id: &str) -> Session {
@@ -49,47 +49,6 @@ fn word_diff_pairs_only_one_for_one_runs() {
     assert_eq!(word_diff_pairs(&lines), vec![(1, 3), (2, 4), (11, 12)]);
     assert!(word_diff_pairs(&[line(Add), line(Add)]).is_empty());
     assert!(word_diff_pairs(&[]).is_empty());
-}
-
-#[test]
-fn dates_draw_a_bar_a_point_or_an_open_bar() {
-    let d = |s: &str| Day::parse(s).unwrap();
-    let from = d("2026-09-01");
-    let with_duration = TaskDates {
-        start: Some(from),
-        due: Some(d("2026-09-20")),
-        duration_days: Some(5),
-    };
-    assert_eq!(
-        with_duration.span(),
-        Some(Span::Bar {
-            from,
-            to: d("2026-09-06")
-        })
-    );
-    let with_due = TaskDates {
-        start: Some(from),
-        due: Some(d("2026-09-20")),
-        duration_days: None,
-    };
-    assert_eq!(
-        with_due.span(),
-        Some(Span::Bar {
-            from,
-            to: d("2026-09-20")
-        })
-    );
-    let only_start = TaskDates {
-        start: Some(from),
-        ..Default::default()
-    };
-    assert_eq!(only_start.span(), Some(Span::Open { from }));
-    let only_due = TaskDates {
-        due: Some(from),
-        ..Default::default()
-    };
-    assert_eq!(only_due.span(), Some(Span::Point(from)));
-    assert_eq!(TaskDates::default().span(), None);
 }
 
 const DAY: i64 = 86_400;

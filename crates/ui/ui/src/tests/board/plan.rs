@@ -126,7 +126,7 @@ fn a_task_dropped_under_the_divider_is_asked_for_later() {
     pressed(handle.x + 1.0, handle.y + 1.0, &mut ui, &app, &hits);
     let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
     let board = crate::layout::Layout::of(window(), &ui).board;
-    let body = crate::views::board::bands(&tokens, &app, &ui, board).columns;
+    let body = crate::views::board::columns(&tokens, board);
     let width = (body.w / 3.0).floor();
     drag_at(
         body.x + width + 10.0,

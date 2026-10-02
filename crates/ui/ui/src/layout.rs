@@ -6,8 +6,8 @@ use groove_types::Panes;
 use crate::Ui;
 use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::{
-    AGENT_MIN, BAND_MIN, CODE_MIN, COLUMNS_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MANUAL_MIN,
-    MANUAL_TALL, MESSAGE_LINES, RAIL_MIN, SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
+    AGENT_MIN, CODE_MIN, COMMIT_MIN, FEED_MIN, FILES_MIN, MANUAL_MIN, MANUAL_TALL, MESSAGE_LINES,
+    RAIL_MIN, SESSIONS_MIN, SIDEBAR_MIN, Tokens, WORKSPACE_MIN,
 };
 
 /// A boundary the user drags.
@@ -21,8 +21,6 @@ pub enum Edge {
     Sidebar,
     /// Between the changed files and the commit box under them.
     Commit,
-    /// Between the board's columns and the timeline under them.
-    Band,
     /// Between the rail's own rows and the feed under them.
     Feed,
     /// Between the workspace's tab and the manual section under it.
@@ -41,7 +39,7 @@ impl Edge {
 
     /// Whether the boundary is a vertical line, which the pointer moves sideways.
     pub fn upright(self) -> bool {
-        !matches!(self, Edge::Commit | Edge::Band | Edge::Feed | Edge::Manual)
+        !matches!(self, Edge::Commit | Edge::Feed | Edge::Manual)
     }
 }
 
@@ -53,8 +51,6 @@ pub struct Split {
     pub sidebar: f32,
     /// How tall the commit box stands at the sidebar's foot.
     pub commit: f32,
-    /// How tall the board's timeline stands under its columns.
-    pub band: f32,
     /// How tall the rail's feed stands, the footer under it included.
     pub feed: f32,
     /// How tall the manual section stands open.
@@ -69,7 +65,6 @@ impl Default for Split {
             agent: tokens.agent,
             sidebar: tokens.sidebar,
             commit: tokens.row + tokens.line * MESSAGE_LINES as f32,
-            band: tokens.band,
             feed: FEED_MIN * 2.0,
             manual: MANUAL_TALL,
         }
@@ -84,7 +79,6 @@ impl Split {
             agent: panes.agent.max(AGENT_MIN),
             sidebar: panes.sidebar.max(SIDEBAR_MIN),
             commit: panes.commit.max(COMMIT_MIN),
-            band: panes.band.max(BAND_MIN),
             feed: panes.feed.max(FEED_MIN),
             manual: panes.manual.max(MANUAL_MIN),
         }
@@ -96,7 +90,6 @@ impl Split {
             agent: self.agent,
             sidebar: self.sidebar,
             commit: self.commit,
-            band: self.band,
             feed: self.feed,
             manual: self.manual,
         }
@@ -124,10 +117,6 @@ impl Split {
                 let most = (height - FILES_MIN).max(COMMIT_MIN);
                 self.commit = (height - at).clamp(COMMIT_MIN, most);
             }
-            Edge::Band => {
-                let most = (height - COLUMNS_MIN).max(BAND_MIN);
-                self.band = (height - at).clamp(BAND_MIN, most);
-            }
             Edge::Feed => {
                 let most = (height - SESSIONS_MIN).max(FEED_MIN);
                 self.feed = (height - at).clamp(FEED_MIN, most);
@@ -146,7 +135,6 @@ impl Split {
             Edge::Agent => self.rail + self.agent,
             Edge::Sidebar => width - self.aside(sidebar),
             Edge::Commit => height - self.commit,
-            Edge::Band => height - self.band,
             Edge::Feed => height - self.feed,
             Edge::Manual => height - self.manual,
         }

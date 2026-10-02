@@ -71,16 +71,6 @@ takes hold, the rule follows the pointer, and the drop asks `task.plan` to put t
 above the row it landed on. Below the **later** divider a task keeps its place but
 leaves the plan.
 
-**The timeline** is the band under the columns: four weeks, today a quarter in, days as
-hairlines with the weeks stronger and the weekends dimmed, and today's own line in
-peach. One bar a task, packed into the first row it does not overlap: a bar between its
-dates, a bar to today when it has only a start, a dot when it has only a due date. An
-item that needs the user wears its edge in peach. The filter narrows the band, and the
-band orders nothing. Its own bar folds it away, its top edge drags its height, which is
-kept between runs, and a sideways turn of the wheel over it carries the horizon through
-time, a day a turn. It folds itself when no date falls in today's horizon and the user has not moved
-it. A bar names its task under the pointer.
-
 **Attention** is folded in the service from `forge` facts and dates against the
 thresholds in Config › Preferences: a review waiting, changes requested, CI failed,
 approved and unmerged, due soon, overdue. Each yields a reason and an age. An item that

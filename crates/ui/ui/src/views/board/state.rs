@@ -15,22 +15,9 @@ pub struct BoardUi {
     pub offer: usize,
     /// The line a carried task would land on.
     pub drop: Option<usize>,
-    /// The user folded the timeline away.
-    pub shut: bool,
-    /// How many days the timeline is carried from today, and the pixels not yet a day.
-    pub horizon: i64,
-    pub carried: f32,
 }
 
 impl BoardUi {
-    /// The timeline carried by `across` pixels, whole days at a time, within a year.
-    pub fn carry(&mut self, across: f32) {
-        self.carried += across;
-        let days = (self.carried / groove_ui_kit::base::tokens::DAY_PIXELS).trunc();
-        self.carried -= days * groove_ui_kit::base::tokens::DAY_PIXELS;
-        self.horizon = (self.horizon - days as i64).clamp(-365, 365);
-    }
-
     /// What the three columns are narrowed by.
     pub fn query(&self) -> super::filter::Query {
         super::filter::Query::of(self.filter.text())

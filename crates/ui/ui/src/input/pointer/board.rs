@@ -19,7 +19,6 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Filter => filtering(ui),
         Target::Offer(at) => offered(ui, app, *at),
         Target::AddTask => explorer(ui),
-        Target::Timeline => timeline(ui),
         Target::Place(_) => Vec::new(),
         _ => return None,
     })
@@ -76,12 +75,6 @@ pub(super) fn opened_session(ui: &mut Ui, session: SessionId) -> Vec<Command> {
     vec![Command::Session(session::Command::Open { session })]
 }
 
-/// The timeline folded away, or back.
-pub(super) fn timeline(ui: &mut Ui) -> Vec<Command> {
-    ui.board.shut = !ui.board.shut;
-    Vec::new()
-}
-
 /// A press on a task's place takes hold of it.
 pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
     ui.held = Some(Held::Task(id));
@@ -93,7 +86,7 @@ pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
 pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metrics) {
     let ctx = Tokens::new(metrics.scale);
     let layout = Layout::of(metrics, ui);
-    let body = next_column(&ctx, app, ui, layout);
+    let body = next_column(&ctx, layout);
     if !body.contains(x, y) {
         ui.board.drop = None;
         return;
@@ -112,8 +105,8 @@ pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 }
 
 /// Up next's own room, which a drag is measured against.
-fn next_column(tokens: &Tokens, app: &AppState, ui: &Ui, layout: Layout) -> Rect {
-    let body = crate::views::board::bands(tokens, app, ui, layout.board).columns;
+fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
+    let body = crate::views::board::columns(tokens, layout.board);
     let width = (body.w / List::ALL.len() as f32).floor();
     let top = body.y + tokens.header;
     Rect::new(body.x + width, top, width, body.bottom() - top)

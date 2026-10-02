@@ -64,9 +64,7 @@ pub use review::{ReviewMr, review_of};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};
-pub use task::{
-    Priority, ProviderId, Span, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours,
-};
+pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, TimeSummary, hours};
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};

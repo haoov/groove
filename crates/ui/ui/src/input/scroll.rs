@@ -38,12 +38,7 @@ pub(super) fn scroll(
         return shelled(ui, app, delta, point, hits, metrics);
     }
     if ui.showing(app) == Surface::Board {
-        let band = crate::views::board::bands(&tokens, app, ui, layout.board).timeline;
-        if band.contains(x, y) {
-            carry(delta, ui, tokens);
-        } else {
-            column(x, pixels(tokens.row), ui, hits, layout);
-        }
+        column(x, pixels(tokens.row), ui, hits, layout);
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
@@ -138,16 +133,6 @@ fn turned(ui: &mut Ui, delta: Delta, line: f32) -> i32 {
     let lines = (carried / line) as i32;
     ui.agent.carried = carried - lines as f32 * line;
     lines
-}
-
-/// A gesture over the band: it carries time only while it goes sideways.
-fn carry(delta: Delta, ui: &mut Ui, tokens: groove_ui_kit::base::tokens::Tokens) {
-    let day = groove_ui_kit::base::tokens::DAY_PIXELS;
-    let across = delta.across(day);
-    if across.abs() <= delta.down(tokens.row).abs() {
-        return;
-    }
-    ui.board.carry(across);
 }
 
 /// The rail's rows, or the feed under them.

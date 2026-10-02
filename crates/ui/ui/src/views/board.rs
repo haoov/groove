@@ -10,7 +10,6 @@ pub mod plan;
 mod review;
 mod row;
 mod state;
-mod timeline;
 
 pub use state::BoardUi;
 
@@ -40,42 +39,22 @@ impl List {
     }
 }
 
-/// The board: one header line, the three columns, the timeline under them.
+/// The board: one header line, the three columns under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
     ctx.quad(area, ctx.styles.ground());
-    let bands = bands(&ctx.tokens, app, ui, area);
-    let field = header::draw(ctx, bands.header, app, ui);
-    let mut body = bands.columns;
+    let mut body = area;
+    let field = header::draw(ctx, body.take_top(ctx.tokens.header), app, ui);
     let width = (body.w / List::ALL.len() as f32).floor();
     for list in List::ALL {
         column::draw(ctx, body.take_left(width), app, ui, list);
     }
-    timeline::draw(ctx, bands.timeline, app, ui);
     header::offers(ctx, field, app, ui);
 }
 
-/// What the board is made of.
-pub struct Bands {
-    pub header: Rect,
-    pub columns: Rect,
-    pub timeline: Rect,
-}
-
-/// The board's own three bands, top to bottom.
-pub fn bands(
-    tokens: &groove_ui_kit::base::tokens::Tokens,
-    app: &AppState,
-    ui: &Ui,
-    area: Rect,
-) -> Bands {
+/// The room the three columns share under the header.
+pub fn columns(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect) -> Rect {
     let mut rest = area;
-    let header = rest.take_top(tokens.header);
-    let tall = timeline::height(tokens, app, ui);
-    let columns = rest.take_top((rest.h - tall).max(0.0));
-    Bands {
-        timeline: Rect { h: tall, ..rest },
-        header,
-        columns,
-    }
+    rest.take_top(tokens.header);
+    rest
 }

@@ -7,9 +7,6 @@ pub struct Panes {
     pub agent: f32,
     pub sidebar: f32,
     pub commit: f32,
-    /// How tall the board's timeline stands.
-    #[serde(default = "band")]
-    pub band: f32,
     /// How tall the rail's feed stands, its footer included.
     #[serde(default = "feed")]
     pub feed: f32,
@@ -24,8 +21,4 @@ fn manual() -> f32 {
 
 fn feed() -> f32 {
     200.0
-}
-
-fn band() -> f32 {
-    260.0
 }

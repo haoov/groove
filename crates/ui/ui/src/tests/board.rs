@@ -4,7 +4,6 @@ mod attention;
 mod filter;
 mod plan;
 mod review;
-mod timeline;
 
 use groove_controllers::AppState;
 use groove_gfx::Fonts;

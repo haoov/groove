@@ -177,26 +177,3 @@ pub struct TaskDates {
     pub due: Option<Day>,
     pub duration_days: Option<u32>,
 }
-
-/// How a task draws on the timeline band.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Span {
-    Bar { from: Day, to: Day },
-    Point(Day),
-    Open { from: Day },
-}
-
-impl TaskDates {
-    pub fn span(&self) -> Option<Span> {
-        match (self.start, self.due, self.duration_days) {
-            (Some(from), _, Some(days)) => Some(Span::Bar {
-                from,
-                to: from.plus_days(i64::from(days)),
-            }),
-            (Some(from), Some(to), None) => Some(Span::Bar { from, to }),
-            (Some(from), None, None) => Some(Span::Open { from }),
-            (None, Some(due), _) => Some(Span::Point(due)),
-            (None, None, _) => None,
-        }
-    }
-}

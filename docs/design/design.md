@@ -66,15 +66,7 @@ longer than the threshold; changes requested; a run that failed and stayed faile
 minutes; approved and green but not merged for a day; due soon and overdue. The rail's
 Board row carries the count of items with attention, in peach, and nothing else.
 
-**Timeline.** A band under the three columns, full width, collapsible; collapsed by itself
-when nothing falls in the horizon. Four weeks, today about a quarter in, days as hairlines,
-week boundaries stronger, weekends dimmed. One bar per task: from its start date to start
-plus duration, or to its due date when it has one; a point when it has only a due date; an
-open bar to today when it has only a start. Bars stack when they overlap. The filter
-applies to the band; the band never reorders Up next. The dates come from the provider,
-read-only.
-
-No activity heatmap. No *blocked by*.
+No timeline, no activity heatmap, no *blocked by*: the task tools draw those better.
 
 ## Rail — mid scope
 

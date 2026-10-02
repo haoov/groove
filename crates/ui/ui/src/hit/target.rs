@@ -33,8 +33,6 @@ pub enum Target {
     Place(groove_types::ExternalId),
     /// What hands the source the hours the clock measured.
     LogHours(groove_types::ExternalId),
-    /// The timeline's own bar, which folds it away.
-    Timeline,
     /// The rail's footer row, which opens Settings, and its own bar's back.
     SettingsOpen,
     SettingsBack,
@@ -123,8 +121,6 @@ pub enum Target {
     TaskActions(groove_types::SessionId),
     /// A link in prose.
     Link(String),
-    /// One task's bar on the timeline, which names it under the pointer.
-    Bar(String),
     /// The board's filter, and one row it offers.
     Filter,
     Offer(usize),
@@ -187,11 +183,7 @@ impl Target {
             Target::Term(_) | Target::Finding | Target::Filter | Target::Message | Target::Code => {
                 Cursor::Text
             }
-            Target::Agent
-            | Target::Shell(_)
-            | Target::Pinned
-            | Target::Bar(_)
-            | Target::Palette => Cursor::Default,
+            Target::Agent | Target::Shell(_) | Target::Pinned | Target::Palette => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
