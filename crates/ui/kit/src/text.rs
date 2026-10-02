@@ -10,6 +10,9 @@ const ELLIPSIS: char = '\u{2026}';
 const MINUTE: u64 = 60;
 const HOUR: u64 = 60 * MINUTE;
 const DAY: u64 = 24 * HOUR;
+const WEEK: u64 = 7 * DAY;
+const MONTH: u64 = 30 * DAY;
+const YEAR: u64 = 365 * DAY;
 
 /// One line of text in `rect`, `indent` from its left edge, clipped to it.
 pub fn row<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, indent: f32, text: &str, style: TextStyle) {
@@ -93,19 +96,25 @@ pub fn wrapped<A: App>(
     lines
 }
 
-/// How long ago, in as few characters as it takes: `now`, `2m`, `6h`, `5d`.
+/// How long ago, in as few characters as it takes: `now`, `2m`, `6h`, `5d`, `3w`, `4mo`, `2y`.
 pub fn ago(age: Duration) -> String {
     let seconds = age.as_secs();
     if seconds < MINUTE {
         return "now".to_string();
     }
-    if seconds < HOUR {
-        return format!("{}m", seconds / MINUTE);
+    let units = [
+        (HOUR, MINUTE, "m"),
+        (DAY, HOUR, "h"),
+        (WEEK, DAY, "d"),
+        (MONTH, WEEK, "w"),
+        (YEAR, MONTH, "mo"),
+    ];
+    for (below, each, unit) in units {
+        if seconds < below {
+            return format!("{}{unit}", seconds / each);
+        }
     }
-    if seconds < DAY {
-        return format!("{}h", seconds / HOUR);
-    }
-    format!("{}d", seconds / DAY)
+    format!("{}y", seconds / YEAR)
 }
 
 /// One line of text, elided to the room it is drawn in.

@@ -57,6 +57,11 @@ fn how_long_ago_takes_as_few_characters_as_it_can() {
     assert_eq!(ago(Duration::from_secs(86_399)), "23h");
     assert_eq!(ago(Duration::from_secs(86_400)), "1d");
     assert_eq!(ago(Duration::from_secs(5 * 86_400)), "5d");
+    assert_eq!(ago(Duration::from_secs(7 * 86_400)), "1w");
+    assert_eq!(ago(Duration::from_secs(29 * 86_400)), "4w");
+    assert_eq!(ago(Duration::from_secs(30 * 86_400)), "1mo");
+    assert_eq!(ago(Duration::from_secs(364 * 86_400)), "12mo");
+    assert_eq!(ago(Duration::from_secs(2411 * 86_400)), "6y");
 }
 
 #[test]
