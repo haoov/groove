@@ -15,40 +15,55 @@ feature.
 
 ## The shared repo
 
-**One git repo holds what the team shares.** Settings names it, by its URL and the branch it
-follows. Groove clones it into the repo pool like any other repo and pulls it when the app
-starts and when the board is read again. No repo named, nothing is shared.
+**One git repo holds what the team shares.** Settings › Agent names it, by its URL and the
+branch it follows. Groove keeps a copy of that branch of its own, under its data directory, apart from
+the repo pool: nobody edits it, and the clone the user works in is never touched. The copy
+moves to the branch's head when the app starts and when the board is read again; a copy that
+cannot move keeps what it held and the feed says why, once. No repo named, nothing is shared.
 
-**The repo is a Claude Code plugin.** Its root holds `.claude-plugin/plugin.json`, then three
-directories:
+**A private repo is named by its SSH URL.** Groove runs git with no prompt, so a URL that asks
+for a password cannot be read; the refusal says to give the SSH one.
 
-- `skills/` — one directory a skill, each with its `SKILL.md`, as the core and user plugins
-  hold them;
+**The repo is a Claude Code plugin marketplace.** Its root holds
+`.claude-plugin/marketplace.json`, which lists its plugins, then:
+
+- `plugins/<name>/` — one plugin: its own `.claude-plugin/plugin.json`, named as its entry, and
+  `skills/`, one directory a skill with its `SKILL.md`;
 - `knowledge/` — one Markdown file a fact;
 - `routines/` — one file a routine.
 
-The same repo works outside Groove: Claude Code reads it as a plugin by itself.
+Groove reads only plugins that stand in the repo itself: an entry whose source is another repo,
+or a path outside this one, is refused. The same repo works outside Groove: Claude Code adds it
+as a marketplace by itself.
 
-**The app never writes in the clone.** A change to the repo is a task on it: a worktree, a
-branch, a commit, an MR, a review. The clone only fast-forwards. The MR is the trust model: a
+**A change to the repo is a task on it.** The repo is added to a session like any other: a
+worktree, a branch, a commit, an MR, a review. The MR is the trust model: a
 shared skill is text every teammate's agent obeys, so it is reviewed before it lands.
 
 ## Shared skills
 
-**A third namespace beside `groove` and `user`, named by the repo.** Its `plugin.json` names
-the plugin, and that name is the namespace: `wiremind:fix-ci`. A repo named `groove` or `user`
-is refused. The skills menu lists the team's enabled skills between the core ones and the
-user's own.
+**One namespace a plugin, beside `groove` and `user`.** A plugin's name is the namespace of its
+skills: `platform:fix-ci`, `review:triage`. A plugin named `groove` or `user` is refused. A
+skill keeps its name once it is shared, since skills and routines call it by that name: a new
+domain is a new plugin, never a rename. The skills menu lists the team's enabled skills, under
+their plugin, between the core ones and the user's own.
 
 **Each team skill is enabled one by one.** Every enabled skill costs each session the words
-that describe it, and fills the skills menu. Settings lists the team's skills, each with a
-toggle; a skill the user has not enabled is not offered to the agent and not shown in the
-menu. A new skill in the repo starts off, and Settings says how many arrived since the user
-last looked.
+that describe it, and fills the skills menu. A skill the user has not enabled is not offered to
+the agent and not shown in the menu. A new skill in the repo starts off.
+
+**Settings › Agent lists every skill, in three groups:**
+
+- core (`groove`): each skill and what it does, always on — the app's own buttons send them;
+- the user's own (`user`): each with a toggle, on when written, and a delete that asks first;
+- shared, under each plugin: each with a toggle, off when it arrives.
+
+Settings shows and switches; the agent writes a skill, as it does today.
 
 **Groove passes only what is enabled.** A plugin directory offers every skill it holds, so the
-agent is not given the clone: Groove builds a plugin of its own beside the core one, with the
-repo's name and only the enabled skills, linked from the clone.
+agent is not given the copy: for each shared plugin with an enabled skill, Groove builds a
+plugin of its own beside the core one, with that plugin's name and only its enabled skills,
+linked from the copy.
 
 **A namespace never overrides another.** A team skill and a user skill can have the same name;
 each is reached by its own namespace.
