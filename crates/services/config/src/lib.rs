@@ -31,6 +31,8 @@ pub enum Preference {
     CiFailedMinutes(u32),
     PollIntervalSecs(u64),
     StaleAfterSecs(u64),
+    RoutineCap(u32),
+    RoutinesPaused(bool),
 }
 
 /// A size is never NaN: it comes from the file's number or a step of it.
@@ -116,6 +118,43 @@ impl State {
         self.config.as_ref()?.shared.as_ref()
     }
 
+    pub fn routines(&self) -> groove_types::RoutinesConfig {
+        self.config
+            .as_ref()
+            .map(|one| one.routines.clone())
+            .unwrap_or_default()
+    }
+
+    /// One routine switched on or off; switched off, the triggers it had turned off are forgotten.
+    pub fn switch_routine(&mut self, id: &str, on: bool) -> Option<&Config> {
+        let held = &mut self.config.as_mut()?.routines;
+        held.on.retain(|one| one != id);
+        match on {
+            true => held.on.push(id.to_string()),
+            false => drop(held.quiet.remove(id)),
+        }
+        self.config.as_ref()
+    }
+
+    /// One trigger of a routine turned on or off.
+    pub fn switch_trigger(
+        &mut self,
+        id: &str,
+        trigger: groove_types::Trigger,
+        on: bool,
+    ) -> Option<&Config> {
+        let held = &mut self.config.as_mut()?.routines;
+        let quiet = held.quiet.entry(id.to_string()).or_default();
+        quiet.retain(|one| *one != trigger);
+        if !on {
+            quiet.push(trigger);
+        }
+        if quiet.is_empty() {
+            held.quiet.remove(id);
+        }
+        self.config.as_ref()
+    }
+
     pub fn skills_off(&self) -> &[String] {
         self.config
             .as_ref()
@@ -164,6 +203,8 @@ impl State {
             Preference::CiFailedMinutes(minutes) => held.thresholds.ci_failed_minutes = minutes,
             Preference::PollIntervalSecs(secs) => held.poll_interval_secs = secs.max(POLL_MIN),
             Preference::StaleAfterSecs(secs) => held.stale_after_secs = secs,
+            Preference::RoutineCap(agents) => held.routine_cap = agents.max(1),
+            Preference::RoutinesPaused(paused) => held.routines_paused = paused,
         }
         Some(config)
     }

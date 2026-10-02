@@ -1,0 +1,16 @@
+[package]
+name = "groove-routines"
+description = "The routines on disk: the team's in the shared copy, the user's own"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+groove-types = { path = "../../shared/types" }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -6,6 +6,7 @@ mod keymap;
 mod mapping;
 mod preferences;
 mod providers;
+mod routines;
 mod setup;
 mod shared;
 mod skills;
@@ -99,6 +100,18 @@ pub enum Value {
         said: String,
         deletes: bool,
         asking: bool,
+    },
+    /// A routine: on or off and what it does; switching it on asks the scope `allowing` names.
+    Routine {
+        id: String,
+        on: bool,
+        said: String,
+        allowing: Option<String>,
+    },
+    /// A word on or off, and what a click on it sets.
+    Switch {
+        on: bool,
+        target: Target,
     },
 }
 

@@ -18,6 +18,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         keymap: Default::default(),
         shared: None,
         skills_off: Vec::new(),
+        routines: Default::default(),
     };
     State {
         config: Some(config),

@@ -1,5 +1,6 @@
 //! The skills an agent is sent: listed, written, deleted, and typed into its prompt.
 
+use groove_agent_service::routines;
 use groove_agent_service::skills::{self, Dirs};
 use groove_types::{SessionId, Skill};
 
@@ -27,10 +28,12 @@ fn sharing(
     dirs.sharing(plugins.unwrap_or_default(), enabled)
 }
 
-/// The shared copy followed and every plugin written, then every skill they offer onto the slice.
+/// The shared copy followed and every plugin written, then every skill and routine onto the slice.
 pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
     let dirs = dirs(state);
     let (data, shared) = (state.env.data_dir.clone(), state.config.shared().cloned());
+    let config = state.env.config_dir.clone();
+    let held = state.agent.shared.as_ref().map(|one| one.path.clone());
     spawner.spawn(Box::pin(async move {
         let followed = match &shared {
             Some(shared) => Some(groove_agent_service::shared::follow(&data, shared).await),
@@ -46,12 +49,19 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
         };
         let made = skills::sync(&dirs);
         let read = skills::list(&dirs);
+        let copy = match (&followed, &held) {
+            (Some(Ok(one)), _) => Some(one.path.as_path()),
+            (Some(Err(_)), held) => held.as_deref(),
+            (None, _) => None,
+        };
+        let routines = routines::list(&routines::Dirs::new(&config, copy));
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             crate::config::shared::followed(state, followed);
             if let Err(e) = made {
                 state.failed(e);
             }
             state.agent.skills = read;
+            state.agent.routines = routines;
         }) as Continuation
     }));
 }

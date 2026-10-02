@@ -20,6 +20,7 @@ mod note;
 mod panes;
 mod repo;
 mod review;
+mod routine;
 mod secret;
 mod session;
 mod syntax;
@@ -38,8 +39,8 @@ pub use attention::{Attention, MrFacts, Thresholds, attention};
 pub use chord::{Chord, Stroke};
 pub use config::{
     Config, ConfigView, EstimateUnit, FilterConfig, GitConfig, GithubConfig, GithubView,
-    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, SharedConfig,
-    StatusMap, ThemeName, UiConfig,
+    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig,
+    SharedConfig, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{
@@ -61,6 +62,7 @@ pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
+pub use routine::{Routine, RoutineKind, Trigger};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};

@@ -7,6 +7,7 @@ mod layers;
 mod loop_;
 mod perf;
 mod reviews;
+mod routines;
 mod session;
 mod shared;
 mod shell;

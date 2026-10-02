@@ -29,6 +29,23 @@ pub struct Config {
     /// The user's own skills not given to sessions, by id; any other is on.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skills_off: Vec<String>,
+    #[serde(default, skip_serializing_if = "RoutinesConfig::is_empty")]
+    pub routines: RoutinesConfig,
+}
+
+/// The routines switched on, and the triggers the user turned off on each.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RoutinesConfig {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub on: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub quiet: BTreeMap<String, Vec<crate::Trigger>>,
+}
+
+impl RoutinesConfig {
+    pub fn is_empty(&self) -> bool {
+        self.on.is_empty() && self.quiet.is_empty()
+    }
 }
 
 /// The repo a team shares its skills through, and the branch Groove follows in it.
@@ -121,6 +138,12 @@ pub struct Preferences {
     pub poll_interval_secs: u64,
     #[serde(default = "default_stale_after")]
     pub stale_after_secs: u64,
+    /// How many agents run routines at once; a run past it waits its turn.
+    #[serde(default = "default_routine_cap")]
+    pub routine_cap: u32,
+    /// Every routine paused, whatever each one is switched to.
+    #[serde(default)]
+    pub routines_paused: bool,
 }
 
 impl Default for Preferences {
@@ -130,8 +153,14 @@ impl Default for Preferences {
             thresholds: Thresholds::default(),
             poll_interval_secs: default_poll_interval(),
             stale_after_secs: default_stale_after(),
+            routine_cap: default_routine_cap(),
+            routines_paused: false,
         }
     }
+}
+
+fn default_routine_cap() -> u32 {
+    5
 }
 
 /// The config as the ui sees it: everything except the Notion token.

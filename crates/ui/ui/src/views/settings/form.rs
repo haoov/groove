@@ -6,6 +6,9 @@ use groove_gfx::{Edges, Rect};
 use groove_controllers::agent_service::Terminal;
 use groove_controllers::config_service::Preference;
 
+mod agent;
+
+use self::agent::{routine, skill};
 use super::SettingsUi;
 use super::rows::{Row, Section, Value, rows};
 use crate::ctx::Ctx;
@@ -160,6 +163,7 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             deletes,
             asking,
         } => skill(ctx, room, (id, *on, said), (*deletes, *asking)),
+        Value::Routine { .. } | Value::Switch { .. } => routine(ctx, room, value),
     }
 }
 
@@ -180,43 +184,6 @@ fn picked(
     if let Some((word, at)) = act {
         Button::new(word, at.clone(), Role::Muted, ground).left(ctx, &mut room, sm);
     }
-}
-
-/// A skill's switch, its delete, then what it does; or the question its delete asks.
-fn skill(
-    ctx: &mut Ctx,
-    mut room: Rect,
-    (id, on, said): (&str, Option<bool>, &str),
-    (deletes, asking): (bool, bool),
-) {
-    let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
-    if asking {
-        let question = Label::new("delete it? its file goes", ctx.styles.body(Role::Warn));
-        question.left(ctx, &mut room, sm);
-        let sure = Target::SkillDeleteSure(id.to_string());
-        Button::new("yes, delete", sure, Role::Muted, ground).left(ctx, &mut room, sm);
-        Button::new("keep", Target::SkillDeleteKeep, Role::Muted, ground).left(ctx, &mut room, sm);
-        return;
-    }
-    match on {
-        Some(on) => {
-            let (word, role) = if on {
-                ("on", Role::Text)
-            } else {
-                ("off", Role::Muted)
-            };
-            let flip = Target::SkillSwitch(id.to_string(), !on);
-            Button::new(word, flip, role, ground).left(ctx, &mut room, sm);
-        }
-        None => {
-            Label::new("always", ctx.styles.body(Role::Faint)).left(ctx, &mut room, sm);
-        }
-    }
-    if deletes {
-        let delete = Target::SkillDelete(id.to_string());
-        Button::new("delete", delete, Role::Muted, ground).left(ctx, &mut room, sm);
-    }
-    Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
 }
 
 /// A count between the step down, when it has one, and the step up.

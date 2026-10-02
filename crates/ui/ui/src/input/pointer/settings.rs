@@ -38,6 +38,7 @@ pub(super) fn acted(
         Target::SettingsLoginEnd => config::Command::EndLogin,
         _ => {
             let picked = sourced(target, ui).or_else(|| skilled(target, ui));
+            let picked = picked.or_else(|| routined(target, ui));
             return picked.or_else(|| chosen(target, ui));
         }
     };
@@ -133,4 +134,37 @@ fn skilled(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         _ => return None,
     };
     Some(vec![Command::Agent(asked)])
+}
+
+/// A routine switched on once its scope is allowed, or off; one of its triggers switched.
+fn routined(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
+    let settings = &mut ui.settings;
+    let asked = match target {
+        Target::RoutineOn(id) => {
+            settings.allowing = Some(id.clone());
+            return Some(Vec::new());
+        }
+        Target::RoutineKeep => {
+            settings.allowing = None;
+            return Some(Vec::new());
+        }
+        Target::RoutineAllow(id) => {
+            settings.allowing = None;
+            config::Command::SwitchRoutine {
+                id: id.clone(),
+                on: true,
+            }
+        }
+        Target::RoutineOff(id) => config::Command::SwitchRoutine {
+            id: id.clone(),
+            on: false,
+        },
+        Target::TriggerSwitch(id, trigger, on) => config::Command::SwitchTrigger {
+            id: id.clone(),
+            trigger: *trigger,
+            on: *on,
+        },
+        _ => return None,
+    };
+    Some(vec![Command::Config(asked)])
 }

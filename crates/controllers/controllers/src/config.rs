@@ -2,6 +2,7 @@
 
 mod environment;
 mod mapping;
+mod routines;
 pub(crate) mod shared;
 mod sources;
 
@@ -64,6 +65,17 @@ pub enum Command {
     },
     /// `config.set_shared`: no shared repo any more.
     LeaveShared,
+    /// `config.switch_routine`: one routine on, its scope approved, or off.
+    SwitchRoutine {
+        id: String,
+        on: bool,
+    },
+    /// `config.switch_trigger`: one trigger of a routine on or off.
+    SwitchTrigger {
+        id: String,
+        trigger: groove_types::Trigger,
+        on: bool,
+    },
 }
 
 impl Command {
@@ -83,6 +95,8 @@ impl Command {
             Command::Map { .. } => "config.map",
             Command::Rebind(_) => "config.rebind",
             Command::JoinShared { .. } | Command::LeaveShared => "config.set_shared",
+            Command::SwitchRoutine { .. } => "config.switch_routine",
+            Command::SwitchTrigger { .. } => "config.switch_trigger",
         }
     }
 }
@@ -113,6 +127,8 @@ pub fn dispatch(
         Command::Rebind(keymap) => rebind(state, keymap),
         Command::JoinShared { url, branch } => shared::join(state, spawner, (url, branch)),
         Command::LeaveShared => shared::leave(state, spawner),
+        Command::SwitchRoutine { id, on } => routines::switch(state, &id, on),
+        Command::SwitchTrigger { id, trigger, on } => routines::trigger(state, &id, trigger, on),
     }
 }
 

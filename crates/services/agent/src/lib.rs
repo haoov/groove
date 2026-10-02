@@ -15,6 +15,7 @@ pub use groove_agent_launch::{forget, hand_over};
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
+pub use groove_routines as routines;
 pub use groove_skills as skills;
 pub use groove_terminal::{Hooks, PtySpec, Select, Terminal};
 pub use groove_tools as tools;
@@ -43,6 +44,8 @@ pub struct State {
     pub shared: Option<shared::Shared>,
     /// When a skill was last switched on or off.
     pub switched: Timestamp,
+    /// Every routine file, the team's and the user's, as the last read found them.
+    pub routines: Vec<groove_routines::Listed>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.

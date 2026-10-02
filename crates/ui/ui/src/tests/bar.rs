@@ -295,6 +295,7 @@ pub(super) fn sourced(
         keymap: Default::default(),
         shared: None,
         skills_off: Vec::new(),
+        routines: Default::default(),
     });
     app
 }

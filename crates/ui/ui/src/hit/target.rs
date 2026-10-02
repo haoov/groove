@@ -62,6 +62,12 @@ pub enum Target {
     SkillDelete(String),
     SkillDeleteSure(String),
     SkillDeleteKeep,
+    /// A routine asked on, its scope allowed or kept off, switched off; one trigger of it.
+    RoutineOn(String),
+    RoutineAllow(String),
+    RoutineKeep,
+    RoutineOff(String),
+    TriggerSwitch(String, groove_types::Trigger, bool),
     /// An action's chord waited for, or put back on its defaults.
     SettingsBind(crate::keymap::Action),
     SettingsUnbind(crate::keymap::Action),
