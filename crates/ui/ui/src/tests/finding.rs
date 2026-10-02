@@ -220,7 +220,7 @@ fn the_match_it_stands_on_reads_as_a_selection_even_on_a_line_that_went() {
     let held = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.held())
+        .filter(|quad| quad.color == styles.found())
         .count();
     assert_eq!(held, 1, "the one it stands on, though no caret can hold it");
 }

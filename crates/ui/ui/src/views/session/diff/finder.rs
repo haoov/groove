@@ -16,7 +16,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     let bar = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
     ctx.layer();
     ctx.quad(bar, ctx.styles.action());
-    ctx.border(bar, ctx.styles.here());
+    ctx.border(bar, ctx.styles.border());
     let search = Search::new(&find.query, Target::Finding, find.typing);
     search.code().faint(Role::Faint).draw(ctx, bar);
     count(ctx, bar, &find.count());

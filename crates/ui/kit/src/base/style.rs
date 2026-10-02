@@ -170,9 +170,9 @@ impl Styles {
         self.palette.lavender
     }
 
-    /// The rules above and below the caret's row, brighter than a panel's hairlines.
+    /// The rules above and below the caret's row, as a chosen list row has.
     pub fn here(&self) -> Color {
-        self.palette.overlay0
+        self.chosen()
     }
 
     /// The bar where the caret sits.
@@ -253,14 +253,16 @@ impl Styles {
 
     /// Under a match a search found, as a selection is.
     pub fn found(&self) -> Color {
-        self.held()
+        self.palette
+            .base
+            .mix(self.palette.lavender, crate::base::tokens::FOUND)
     }
 
     /// Under the match the search stands on.
     pub fn standing(&self) -> Color {
         self.palette
             .base
-            .mix(self.palette.peach, crate::base::tokens::HELD)
+            .mix(self.palette.peach, crate::base::tokens::FOUND)
     }
 
     pub fn line(&self) -> Color {

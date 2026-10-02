@@ -5,7 +5,7 @@ pub const PALETTE_ROWS: usize = 8;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
-pub const GROUND_ALPHA: u8 = 38;
+pub const GROUND_ALPHA: u8 = 20;
 
 /// How much of the note's own colour a line carrying one takes.
 pub const NOTED: f32 = 0.18;
@@ -64,8 +64,9 @@ pub const AGENT_MIN: f32 = 280.0;
 pub const WORKSPACE_MIN: f32 = 320.0;
 pub const SIDEBAR_MIN: f32 = 180.0;
 
-/// How much of the accent stands in the band under a selection.
-pub const HELD: f32 = 0.25;
+/// How much of the accent stands in the band under a selection, and under a search match.
+pub const HELD: f32 = 0.15;
+pub const FOUND: f32 = 0.25;
 
 /// Sizes in pixels, scaled to the window.
 #[derive(Debug, Clone, Copy, PartialEq)]
