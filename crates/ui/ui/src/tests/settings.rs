@@ -329,6 +329,7 @@ fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
     let shared = groove_types::SharedConfig {
         url: "git@github.com:team/skills.git".into(),
         branch: "main".into(),
+        enabled: Vec::new(),
     };
     app.config.config.as_mut().expect("a config").shared = Some(shared);
     let plugin = |name: &str| groove_controllers::agent_service::skills::Plugin {

@@ -73,6 +73,7 @@ fn skill(name: &str, label: &str, kinds: &[&str]) -> groove_types::Skill {
         label: label.into(),
         kinds: kinds.iter().map(|one| one.to_string()).collect(),
         editable: false,
+        enabled: true,
         changed_at: Timestamp::new(0),
     }
 }
@@ -84,6 +85,17 @@ fn the_bar_counts_the_skills_and_offers_them() {
     let drawn = drawn(&app, &ui);
     assert!(drawn.iter().any(|one| one == "skills"), "{drawn:?}");
     assert!(drawn.iter().any(|one| one == "reload"), "{drawn:?}");
+    assert!(drawn.iter().any(|one| one == "1 skill"), "{drawn:?}");
+}
+
+#[test]
+fn a_skill_switched_off_is_neither_counted_nor_offered() {
+    let off = groove_types::Skill {
+        enabled: false,
+        ..skill("rollout", "rollout", &[])
+    };
+    let app = offering(vec![skill("co-review", "co review", &[]), off]);
+    let drawn = drawn(&app, &session_ui());
     assert!(drawn.iter().any(|one| one == "1 skill"), "{drawn:?}");
 }
 

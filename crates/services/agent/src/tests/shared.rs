@@ -40,7 +40,15 @@ fn origin(root: &Path, name: &str) -> (SharedConfig, std::path::PathBuf) {
     sh(&work, &["push", "origin", "main"]);
     let url = format!("file://{}", bare.display());
     let branch = "main".to_string();
-    (SharedConfig { url, branch }, work)
+    let enabled = Vec::new();
+    (
+        SharedConfig {
+            url,
+            branch,
+            enabled,
+        },
+        work,
+    )
 }
 
 /// The marketplace listing one plugin, `name`, committed.
@@ -103,6 +111,7 @@ async fn an_http_url_that_cannot_be_read_says_to_give_the_ssh_one() {
     let shared = SharedConfig {
         url: "http://127.0.0.1:9/none.git".into(),
         branch: "main".into(),
+        enabled: Vec::new(),
     };
     let refused = join(root.path(), &shared)
         .await

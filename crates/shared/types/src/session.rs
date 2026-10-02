@@ -65,6 +65,8 @@ pub struct Skill {
     pub kinds: Vec<String>,
     /// A skill of the user's own, which they may write again or delete.
     pub editable: bool,
+    /// Given to sessions and offered in the menu; a shared skill is off until the user enables it.
+    pub enabled: bool,
     /// When its file was last written.
     pub changed_at: Timestamp,
 }

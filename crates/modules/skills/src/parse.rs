@@ -20,6 +20,7 @@ pub(crate) fn skill(
         label: field(front, "groove-label").unwrap_or_else(|| name.replace('-', " ")),
         kinds: kinds(field(front, "groove-kinds").as_deref()),
         editable,
+        enabled: true,
         changed_at,
     }
 }

@@ -6,19 +6,42 @@ use groove_types::{SessionId, Skill};
 use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// Where both plugins live, under the app's own directories.
+/// Where the plugins live, under the app's own directories, the shared ones as last read.
 pub(crate) fn dirs(state: &AppState) -> Dirs {
-    Dirs::new(&state.env.data_dir, &state.env.config_dir)
+    let plain = Dirs::new(&state.env.data_dir, &state.env.config_dir);
+    let plugins = state
+        .agent
+        .shared
+        .as_ref()
+        .map(|one| one.marketplace.plugins.clone());
+    sharing(plain, plugins, state.config.shared())
 }
 
-/// The shared copy followed and both plugins written, then every skill they offer onto the slice.
+fn sharing(
+    dirs: Dirs,
+    plugins: Option<Vec<skills::Plugin>>,
+    shared: Option<&groove_types::SharedConfig>,
+) -> Dirs {
+    let enabled = shared.map(|one| one.enabled.clone()).unwrap_or_default();
+    dirs.sharing(plugins.unwrap_or_default(), enabled)
+}
+
+/// The shared copy followed and every plugin written, then every skill they offer onto the slice.
 pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
     let dirs = dirs(state);
     let (data, shared) = (state.env.data_dir.clone(), state.config.shared().cloned());
     spawner.spawn(Box::pin(async move {
-        let followed = match shared {
-            Some(shared) => Some(groove_agent_service::shared::follow(&data, &shared).await),
+        let followed = match &shared {
+            Some(shared) => Some(groove_agent_service::shared::follow(&data, shared).await),
             None => None,
+        };
+        let dirs = match &followed {
+            Some(Ok(copy)) => sharing(
+                dirs,
+                Some(copy.marketplace.plugins.clone()),
+                shared.as_ref(),
+            ),
+            _ => dirs,
         };
         let made = skills::sync(&dirs);
         let read = skills::list(&dirs);

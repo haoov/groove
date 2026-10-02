@@ -21,7 +21,13 @@ pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (
         "" => BRANCH.to_string(),
         named => named.to_string(),
     };
-    let wanted = SharedConfig { url, branch };
+    let same = state.config.shared().filter(|held| held.url == url);
+    let enabled = same.map(|held| held.enabled.clone()).unwrap_or_default();
+    let wanted = SharedConfig {
+        url,
+        branch,
+        enabled,
+    };
     state.config.joining = true;
     state.config.unshared = None;
     let data = state.env.data_dir.clone();

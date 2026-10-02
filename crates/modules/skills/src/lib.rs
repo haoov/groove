@@ -29,19 +29,37 @@ const BUILT_IN: &[(&str, &str)] = &[
     ("start-task", include_str!("core/start-task.md")),
 ];
 
-/// Where the two plugins live.
+/// Where the plugins live: the core one, the user's, and the shared ones with their built copies.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dirs {
     pub core: PathBuf,
     pub user: PathBuf,
+    /// The shared repo's plugins, as its copy holds them.
+    pub shared: Vec<Plugin>,
+    /// Where each shared plugin is built with its enabled skills alone.
+    pub built: PathBuf,
+    /// The shared skills given to sessions, by id.
+    pub enabled: Vec<String>,
 }
 
 impl Dirs {
-    /// `<data>/plugins/groove` and `<config>/user-skills`.
+    /// `<data>/plugins/groove`, `<config>/user-skills`, and `<data>/plugins/shared`.
     pub fn new(data: &Path, config: &Path) -> Self {
         Self {
             core: data.join("plugins").join(CORE),
             user: config.join("user-skills"),
+            shared: Vec::new(),
+            built: data.join("plugins").join("shared"),
+            enabled: Vec::new(),
+        }
+    }
+
+    /// The same, with the shared repo's plugins and the skills of them enabled.
+    pub fn sharing(self, shared: Vec<Plugin>, enabled: Vec<String>) -> Self {
+        Self {
+            shared,
+            enabled,
+            ..self
         }
     }
 
@@ -49,15 +67,20 @@ impl Dirs {
         match plugin {
             CORE => Some(&self.core),
             USER => Some(&self.user),
-            _ => None,
+            _ => self
+                .shared
+                .iter()
+                .find(|one| one.name == plugin)
+                .map(|one| one.dir.as_path()),
         }
     }
 }
 
-/// Both plugins on disk: the core one written again, the user's one only made.
+/// Every plugin on disk: the core one written again, the user's made, the shared ones built.
 pub fn sync(dirs: &Dirs) -> Result<()> {
     wrote_core(&dirs.core).map_err(io)?;
     made_user(&dirs.user).map_err(io)?;
+    shared::build(dirs).map_err(io)?;
     Ok(())
 }
 
@@ -83,7 +106,7 @@ fn made_user(dir: &Path) -> std::io::Result<()> {
     manifest(dir, USER, "Your own Groove actions")
 }
 
-fn manifest(dir: &Path, name: &str, description: &str) -> std::io::Result<()> {
+pub(crate) fn manifest(dir: &Path, name: &str, description: &str) -> std::io::Result<()> {
     let meta = dir.join(".claude-plugin");
     std::fs::create_dir_all(&meta)?;
     let body = serde_json::json!({
@@ -99,16 +122,18 @@ const FILE: &str = "SKILL.md";
 
 /// The `--plugin-dir` arguments for one launch. A plugin with no skill is left out.
 pub fn plugin_dirs(dirs: &Dirs) -> Vec<PathBuf> {
-    [&dirs.core, &dirs.user]
-        .into_iter()
+    let shared = dirs.shared.iter().map(|one| dirs.built.join(&one.name));
+    std::iter::once(dirs.core.clone())
+        .chain(shared)
+        .chain(std::iter::once(dirs.user.clone()))
         .filter(|dir| !names(dir).is_empty())
-        .cloned()
         .collect()
 }
 
-/// Every skill both plugins offer, the core ones first.
+/// Every skill the plugins offer: the core ones, the shared ones, then the user's own.
 pub fn list(dirs: &Dirs) -> Vec<Skill> {
     let mut out = read_plugin(&dirs.core, CORE, false);
+    out.extend(shared::listed(dirs));
     out.extend(read_plugin(&dirs.user, USER, true));
     out
 }
@@ -185,7 +210,7 @@ fn path_of(dirs: &Dirs, id: &str) -> Result<PathBuf> {
 }
 
 /// The skill directories of one plugin, sorted by name.
-fn names(dir: &Path) -> Vec<String> {
+pub(crate) fn names(dir: &Path) -> Vec<String> {
     let mut out: Vec<String> = std::fs::read_dir(dir.join("skills"))
         .into_iter()
         .flatten()
@@ -197,7 +222,7 @@ fn names(dir: &Path) -> Vec<String> {
     out
 }
 
-fn read_plugin(dir: &Path, plugin: &str, editable: bool) -> Vec<Skill> {
+pub(crate) fn read_plugin(dir: &Path, plugin: &str, editable: bool) -> Vec<Skill> {
     names(dir)
         .into_iter()
         .filter_map(|name| {

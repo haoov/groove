@@ -26,6 +26,17 @@ fn origin(home: &Path, name: &str) -> String {
         listed.to_string(),
     )
     .unwrap();
+    let skill = work
+        .join("plugins")
+        .join(name)
+        .join("skills")
+        .join("rollout");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\ndescription: roll out\n---\nRoll out.\n",
+    )
+    .unwrap();
     std::fs::write(
         plugin.join("plugin.json"),
         format!(r#"{{ "name": "{name}" }}"#),
@@ -53,7 +64,7 @@ fn join(url: &str) -> Command {
 }
 
 #[test]
-fn a_repo_that_reads_as_a_plugin_is_named_and_written() {
+fn a_repo_that_reads_as_a_marketplace_is_named_and_written() {
     let (home, spawner, services, mut state) = fresh();
     let url = origin(home.path(), "wiremind");
     send(join(&url), &mut state, &services, &spawner);
@@ -61,6 +72,7 @@ fn a_repo_that_reads_as_a_plugin_is_named_and_written() {
     let wanted = SharedConfig {
         url: url.clone(),
         branch: "main".into(),
+        enabled: Vec::new(),
     };
     assert_eq!(
         state.config.shared(),
@@ -112,4 +124,41 @@ fn a_follow_that_keeps_failing_is_said_once() {
     crate::config::shared::followed(&mut state, failed());
     crate::config::shared::followed(&mut state, failed());
     assert_eq!(state.errors.len(), 1, "the same failure is not said again");
+}
+
+#[test]
+fn an_enabled_shared_skill_is_listed_on_and_given_to_a_launch() {
+    let (home, spawner, services, mut state) = fresh();
+    let url = origin(home.path(), "platform");
+    send(join(&url), &mut state, &services, &spawner);
+    let skill = |state: &AppState| {
+        let found = state
+            .agent
+            .skills
+            .iter()
+            .find(|one| one.id == "platform:rollout");
+        found.map(|one| one.enabled)
+    };
+    assert_eq!(skill(&state), Some(false), "listed, and off until enabled");
+
+    if let Some(shared) = state
+        .config
+        .config
+        .as_mut()
+        .and_then(|one| one.shared.as_mut())
+    {
+        shared.enabled = vec!["platform:rollout".into()];
+    }
+    let list = crate::agent::Command::ListSkills;
+    dispatch(Cmd::Agent(list), &mut state, &services, &spawner);
+    for _ in 0..4 {
+        spawner.drain(&mut state, &services);
+    }
+    assert_eq!(skill(&state), Some(true));
+    let dirs = groove_agent_service::skills::plugin_dirs(&crate::agent::skills::dirs(&state));
+    assert!(
+        dirs.iter()
+            .any(|one| one.ends_with("plugins/shared/platform")),
+        "{dirs:?}"
+    );
 }

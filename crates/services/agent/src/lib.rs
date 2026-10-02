@@ -52,7 +52,7 @@ impl State {
     pub fn skills_for(&self, kind: &groove_types::SessionKind) -> Vec<&groove_types::Skill> {
         self.skills
             .iter()
-            .filter(|one| one.offered_to(kind))
+            .filter(|one| one.enabled && one.offered_to(kind))
             .collect()
     }
 
@@ -63,7 +63,7 @@ impl State {
         };
         self.skills
             .iter()
-            .any(|one| one.changed_at > agent.started_at)
+            .any(|one| one.enabled && one.changed_at > agent.started_at)
     }
 
     pub fn agent(&self, session: &SessionId) -> Option<&Agent> {

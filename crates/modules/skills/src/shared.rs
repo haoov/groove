@@ -2,9 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use groove_types::{Error, Result};
+use groove_types::{Error, Result, Skill};
 
-use crate::{CORE, NAMED, USER, is_name};
+use crate::{CORE, Dirs, NAMED, USER, is_name, manifest, names, read_plugin};
 
 /// A shared repo read as a marketplace: its own name, and the plugins it holds.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,4 +73,41 @@ fn json(path: &Path) -> std::result::Result<serde_json::Value, String> {
 fn file(path: &Path) -> String {
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     format!(".claude-plugin/{name}")
+}
+
+/// Every skill of every shared plugin, read from the copy; only the ones enabled are on.
+pub(crate) fn listed(dirs: &Dirs) -> Vec<Skill> {
+    let read = dirs
+        .shared
+        .iter()
+        .flat_map(|plugin| read_plugin(&plugin.dir, &plugin.name, false));
+    read.map(|mut one| {
+        one.enabled = dirs.enabled.contains(&one.id);
+        one
+    })
+    .collect()
+}
+
+/// Each shared plugin built again with its enabled skills alone, each one linked from the copy.
+pub(crate) fn build(dirs: &Dirs) -> std::io::Result<()> {
+    if dirs.built.exists() {
+        std::fs::remove_dir_all(&dirs.built)?;
+    }
+    for plugin in &dirs.shared {
+        let on: Vec<String> = names(&plugin.dir)
+            .into_iter()
+            .filter(|name| dirs.enabled.contains(&format!("{}:{name}", plugin.name)))
+            .collect();
+        if on.is_empty() {
+            continue;
+        }
+        let out = dirs.built.join(&plugin.name);
+        manifest(&out, &plugin.name, "Shared through Groove")?;
+        std::fs::create_dir_all(out.join("skills"))?;
+        for name in on {
+            let from = plugin.dir.join("skills").join(&name);
+            std::os::unix::fs::symlink(from, out.join("skills").join(&name))?;
+        }
+    }
+    Ok(())
 }

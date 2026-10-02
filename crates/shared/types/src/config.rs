@@ -33,6 +33,9 @@ pub struct Config {
 pub struct SharedConfig {
     pub url: String,
     pub branch: String,
+    /// The shared skills given to sessions, by id; any other is off.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub enabled: Vec<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]

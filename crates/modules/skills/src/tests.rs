@@ -230,3 +230,90 @@ fn a_plugin_groove_cannot_read_or_name_is_refused() {
         "no marketplace at all"
     );
 }
+
+/// A shared plugin `platform` holding `skills`, read into the dirs with `enabled` on.
+fn sharing(home: &std::path::Path, skills: &[&str], enabled: &[&str]) -> Dirs {
+    let repo = listing(home, &[("platform", "./plugins/platform", "platform")]);
+    for name in skills {
+        let at = repo.join("plugins/platform/skills").join(name);
+        std::fs::create_dir_all(&at).unwrap();
+        let body = format!("---\ndescription: {name} things\n---\nDo {name}.\n");
+        std::fs::write(at.join("SKILL.md"), body).unwrap();
+    }
+    let plugins = crate::marketplace(&repo).unwrap().plugins;
+    let enabled = enabled.iter().map(|one| one.to_string()).collect();
+    dirs(home).sharing(plugins, enabled)
+}
+
+#[test]
+fn shared_skills_stand_between_the_core_ones_and_the_users_and_start_off() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = sharing(home.path(), &["rollout", "triage"], &["platform:triage"]);
+    sync(&dirs).unwrap();
+    save(&dirs, "mine", "---\ndescription: mine\n---\nMine.\n", None).unwrap();
+    let skills = list(&dirs);
+    let shared: Vec<(&str, bool)> = skills
+        .iter()
+        .filter(|one| one.plugin == "platform")
+        .map(|one| (one.id.as_str(), one.enabled))
+        .collect();
+    assert_eq!(
+        shared,
+        [("platform:rollout", false), ("platform:triage", true)]
+    );
+    let plugins: Vec<&str> = skills.iter().map(|one| one.plugin.as_str()).collect();
+    let (core, user) = (
+        plugins.iter().rposition(|one| *one == "groove"),
+        plugins.iter().position(|one| *one == "user"),
+    );
+    let first = plugins.iter().position(|one| *one == "platform");
+    assert!(core < first && first < user, "{plugins:?}");
+}
+
+#[test]
+fn a_launch_is_given_the_enabled_shared_skills_alone() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = sharing(home.path(), &["rollout", "triage"], &["platform:triage"]);
+    sync(&dirs).unwrap();
+    let built = dirs.built.join("platform");
+    assert!(plugin_dirs(&dirs).contains(&built));
+    let names: Vec<String> = std::fs::read_dir(built.join("skills"))
+        .unwrap()
+        .map(|one| one.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["triage"], "only the enabled one");
+    let manifest = std::fs::read_to_string(built.join(".claude-plugin/plugin.json")).unwrap();
+    assert!(
+        manifest.contains("\"platform\""),
+        "named as the shared plugin: {manifest}"
+    );
+}
+
+#[test]
+fn a_shared_plugin_with_nothing_enabled_is_not_given_at_all() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = sharing(home.path(), &["rollout"], &["platform:triage"]);
+    sync(&dirs).unwrap();
+    assert!(
+        !plugin_dirs(&dirs)
+            .iter()
+            .any(|one| one.starts_with(&dirs.built))
+    );
+    let off = dirs.clone().sharing(dirs.shared.clone(), Vec::new());
+    sync(&off).unwrap();
+    assert!(
+        !dirs.built.join("platform").exists(),
+        "a skill switched off goes at the next build"
+    );
+}
+
+#[test]
+fn a_shared_skill_is_read_from_the_copy() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = sharing(home.path(), &["rollout"], &[]);
+    assert!(
+        read(&dirs, "platform:rollout")
+            .unwrap()
+            .contains("Do rollout.")
+    );
+}
