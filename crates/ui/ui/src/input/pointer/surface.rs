@@ -86,10 +86,14 @@ pub(super) fn in_files(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command
         ui.session.file = 0.0;
         ui.session.file_across = 0.0;
     }
-    vec![Command::Workspace(workspace::Command::OpenFile {
-        path,
-        at: None,
-    })]
+    let twice = ui.clicked.is_some_and(|click| click.count >= 2);
+    let keep = twice.then(|| workspace::Command::KeepFile { path: path.clone() });
+    let open = workspace::Command::OpenFile { path, at: None };
+    [Some(open), keep]
+        .into_iter()
+        .flatten()
+        .map(Command::Workspace)
+        .collect()
 }
 
 /// The lens dragged to the pointer, holding the rows around where it points.
@@ -207,6 +211,14 @@ pub(super) fn composed(
     vec![Command::Workspace(workspace::Command::Message(Edit::Move(
         Motion::To(caret),
     )))]
+}
+
+/// The middle button on a file's tab closes it, as its cross does.
+pub(crate) fn middle(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits) -> Vec<Command> {
+    match hits.at(x, y) {
+        Some(Target::OpenTab(path) | Target::CloseTab(path)) => closing(ui, app, path),
+        _ => Vec::new(),
+    }
 }
 
 /// A tab closed, or the question first when its file owes the disk.

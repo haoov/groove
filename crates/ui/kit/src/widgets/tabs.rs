@@ -19,6 +19,7 @@ pub struct Tab<'a, T> {
     pub ground: Option<Color>,
     pub tight: bool,
     pub close: Option<(Mark, T)>,
+    pub italic: bool,
 }
 
 impl<'a, T: Clone + PartialEq> Tab<'a, T> {
@@ -32,7 +33,13 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
             ground: None,
             tight: false,
             close: None,
+            italic: false,
         }
+    }
+
+    pub fn italic(mut self, italic: bool) -> Self {
+        self.italic = italic;
+        self
     }
 
     pub fn text(mut self, text: Text) -> Self {
@@ -96,11 +103,12 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         } else {
             self.quiet
         };
-        match self.text {
+        let style = match self.text {
             Text::Small => ctx.styles.small(role),
             Text::Label => ctx.styles.label(role),
             Text::Body => ctx.styles.body(role),
-        }
+        };
+        ctx.styles.emphasised(style, false, self.italic)
     }
 
     fn width<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>) -> f32 {

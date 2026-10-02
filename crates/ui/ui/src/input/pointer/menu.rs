@@ -28,6 +28,11 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
             corner: Corner::TopLeft,
             of: Of::File(path),
         }),
+        Some(Target::OpenTab(path) | Target::CloseTab(path)) => Some(Menu {
+            at: (x, y),
+            corner: Corner::TopLeft,
+            of: tab_of(app, path),
+        }),
         Some(Target::Actions) => Some(worktree_menu(ui, app, hits, metrics)),
         Some(Target::Code) => lines(ui, app, hits, metrics, (x, y)).map(|of| Menu {
             at: (x, y),
@@ -37,6 +42,22 @@ pub(crate) fn asked(x: f32, y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, me
         _ => None,
     };
     ui.overlay = menu.map(Overlay::Menu);
+}
+
+/// What a tab's menu acts on: the tab, and the others it may close without losing edits.
+fn tab_of(app: &AppState, path: String) -> Of {
+    let open = app
+        .workspace
+        .buffers()
+        .map(|one| one.all())
+        .unwrap_or_default();
+    let owes = open.iter().any(|one| one.path == path && one.new.dirty());
+    let others = open
+        .iter()
+        .filter(|one| one.path != path && !one.new.dirty())
+        .map(|one| one.path.clone())
+        .collect();
+    Of::Tab { path, owes, others }
 }
 
 /// The lines a note would stand on: the selection under the click, else its line.

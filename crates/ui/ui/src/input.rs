@@ -67,6 +67,11 @@ pub enum Input {
         x: f32,
         y: f32,
     },
+    /// The middle button went down here.
+    Middle {
+        x: f32,
+        y: f32,
+    },
     /// The wheel or the trackpad, over this point.
     Scroll {
         x: f32,
@@ -206,6 +211,7 @@ pub fn handle(
             pointer::asked(x, y, ui, app, hits, metrics);
             Vec::new()
         }
+        Input::Middle { x, y } => pointer::middle(x, y, ui, app, hits),
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
         Input::Paste(text) => pasted(&text, ui, app),
         Input::Release => {

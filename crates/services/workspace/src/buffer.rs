@@ -44,6 +44,7 @@ impl State {
             open.edited(*one);
         }
         let (path, new) = (open.path.clone(), open.new.document().clone());
+        self.keep(&path);
         if stream {
             for one in touched {
                 self.changes.edited(&path, one, &new);
@@ -125,6 +126,13 @@ impl State {
         buffers.activate(path);
         if let (Some(open), Some(held)) = (buffers.get_mut(path), at) {
             open.new.holding(held);
+        }
+    }
+
+    /// The file stays in its tab instead of being the preview.
+    pub fn keep(&mut self, path: &str) {
+        if let Some(buffers) = self.buffers_mut() {
+            buffers.keep(path);
         }
     }
 

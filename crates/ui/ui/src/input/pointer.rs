@@ -13,6 +13,7 @@ mod sidebar;
 mod surface;
 
 pub(super) use menu::asked;
+pub(super) use surface::middle;
 
 use groove_controllers::{AppState, Command, delivery, task, workspace};
 use groove_types::{DiffView, Edit, Motion};

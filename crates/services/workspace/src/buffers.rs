@@ -6,6 +6,10 @@ use crate::Opened;
 pub struct Buffers {
     open: Vec<Opened>,
     active: Option<String>,
+    /// The one tab the next file opened takes the place of, until it is kept.
+    preview: Option<String>,
+    /// A file kept before its read came back.
+    kept: Option<String>,
 }
 
 impl Buffers {
@@ -37,17 +41,51 @@ impl Buffers {
         }
     }
 
-    /// Puts the file in its own tab, or in place of the one it replaces.
+    /// Puts the file in its tab; a new one is the preview, in the old preview's place.
     pub fn install(&mut self, file: Opened) {
-        match self.open.iter().position(|one| one.path == file.path) {
-            Some(at) => self.open[at] = file,
-            None => self.open.push(file),
+        if let Some(at) = self.open.iter().position(|one| one.path == file.path) {
+            self.open[at] = file;
+            return;
         }
+        let path = file.path.clone();
+        match self.preview.take().and_then(|old| self.position(&old)) {
+            Some(at) if !self.open[at].new.dirty() => {
+                if self.active.as_deref() == Some(self.open[at].path.as_str()) {
+                    self.active = Some(path.clone());
+                }
+                self.open[at] = file;
+            }
+            _ => self.open.push(file),
+        }
+        if self.kept.take_if(|kept| *kept == path).is_none() {
+            self.preview = Some(path);
+        }
+    }
+
+    /// The file stays in its tab: it is no longer the preview, or will not be once it is read.
+    pub fn keep(&mut self, path: &str) {
+        match self.get(path) {
+            Some(_) if self.preview.as_deref() == Some(path) => self.preview = None,
+            Some(_) => {}
+            None => self.kept = Some(path.to_string()),
+        }
+    }
+
+    /// Whether the next file opened takes this one's tab.
+    pub fn previews(&self, path: &str) -> bool {
+        self.preview.as_deref() == Some(path)
+    }
+
+    fn position(&self, path: &str) -> Option<usize> {
+        self.open.iter().position(|one| one.path == path)
     }
 
     /// Takes the file out; the tab beside it becomes the active one.
     pub fn close(&mut self, path: &str) -> Option<Opened> {
-        let at = self.open.iter().position(|one| one.path == path)?;
+        let at = self.position(path)?;
+        if self.preview.as_deref() == Some(path) {
+            self.preview = None;
+        }
         let gone = self.open.remove(at);
         if self.active.as_deref() == Some(path) {
             let next = self.open.get(at).or_else(|| self.open.last());

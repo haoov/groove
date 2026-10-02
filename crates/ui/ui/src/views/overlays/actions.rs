@@ -13,6 +13,9 @@ use groove_ui_kit::widgets::{menu, menu_size};
 /// The actions of one file.
 pub const FILE: [&str; 1] = ["discard changes"];
 
+/// The actions of one open file's tab.
+pub const TAB: [&str; 3] = ["close", "close others", "close all"];
+
 /// What the lines under a click offer.
 pub const LINE: [&str; 1] = ["note"];
 
@@ -48,6 +51,7 @@ pub const SESSION: [&str; 1] = ["delete locally"];
 pub fn rows(of: &Of) -> Vec<&str> {
     let held: &'static [&'static str] = match of {
         Of::File(_) => &FILE,
+        Of::Tab { .. } => &TAB,
         Of::Line { .. } => &LINE,
         Of::Path { .. } => &PATH,
         Of::Worktree { review: true, .. } => &WORKTREE_REVIEW,
@@ -92,7 +96,31 @@ fn offered(of: &Of, at: usize) -> Option<Picked> {
                 ..Picked::default()
             })
         }
+        Of::Tab { path, owes, others } => Some(closed(path, *owes, others, at)),
         _ => None,
+    }
+}
+
+/// The tabs one row of a tab's menu closes; the one clicked asks first when it owes the disk.
+fn closed(path: &str, owes: bool, others: &[String], at: usize) -> Picked {
+    let this = (!owes).then_some(path);
+    let paths: Vec<&str> = match TAB.get(at) {
+        Some(&"close") if owes => return Picked::asks(Losing::Tab(path.to_string())),
+        Some(&"close") => vec![path],
+        Some(&"close others") => others.iter().map(String::as_str).collect(),
+        Some(&"close all") => others.iter().map(String::as_str).chain(this).collect(),
+        _ => Vec::new(),
+    };
+    let close = |path: &str| workspace::Command::CloseFile {
+        path: path.to_string(),
+    };
+    Picked {
+        commands: paths
+            .into_iter()
+            .map(close)
+            .map(Command::Workspace)
+            .collect(),
+        ..Picked::default()
     }
 }
 

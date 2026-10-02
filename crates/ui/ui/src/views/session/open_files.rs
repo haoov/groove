@@ -32,14 +32,21 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
         return;
     }
     let active = app.workspace.active().map(|one| one.path.as_str());
+    let buffers = app.workspace.buffers();
     let mut room = strip;
     for one in open {
-        tab(ctx, &mut room, one, active == Some(one.path.as_str()));
+        let preview = buffers.is_some_and(|all| all.previews(&one.path));
+        tab(
+            ctx,
+            &mut room,
+            one,
+            (active == Some(one.path.as_str()), preview),
+        );
     }
 }
 
-/// One file's tab from the left of `room`.
-fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, active: bool) {
+/// One file's tab from the left of `room`, its name in italic while it is the preview.
+fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, bool)) {
     let close = Target::CloseTab(open.path.clone());
     let mark = match open.new.dirty() && !ctx.hovered(&close) {
         true => Mark::Modified,
@@ -48,6 +55,7 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, active: bool) {
     let tab = Tab::new(name(&open.path), Target::OpenTab(open.path.clone()), active);
     let ground = ctx.styles.ground();
     tab.text(Text::Small)
+        .italic(preview)
         .quiet(Role::Muted)
         .ground(ground)
         .close(mark, close)

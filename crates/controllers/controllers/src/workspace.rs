@@ -32,6 +32,8 @@ pub enum Command {
         /// What the caret should hold once it is open, when the asking knows.
         at: Option<Selection>,
     },
+    /// `workspace.keep_file`: one file's tab kept, no longer the preview the next file takes.
+    KeepFile { path: String },
     /// `workspace.close_file`: one open file's tab taken away, unsaved edits and all.
     CloseFile { path: String },
     /// `workspace.mark_read`: one file read, or the mark taken off it.
@@ -90,6 +92,7 @@ impl Command {
             Command::Load => "workspace.load",
             Command::SetMode { .. } => "workspace.set_mode",
             Command::OpenFile { .. } => "workspace.open_file",
+            Command::KeepFile { .. } => "workspace.keep_file",
             Command::CloseFile { .. } => "workspace.close_file",
             Command::MarkRead { .. } => "workspace.mark_read",
             Command::Grep { .. } => "workspace.grep",
@@ -151,6 +154,7 @@ pub fn dispatch(
         Command::Load => reread(state, spawner),
         Command::SetMode { mode } => diff::set_mode(state, spawner, mode),
         Command::OpenFile { path, at } => open_file(state, spawner, path, at),
+        Command::KeepFile { path } => state.workspace.keep(&path),
         Command::CloseFile { path } => close_file(state, &path),
         Command::MarkRead { path } => mark_read(state, services, spawner, path),
         Command::Grep { query, under } => grep(state, spawner, query, under),

@@ -7,6 +7,7 @@ mod explorer;
 mod panes;
 mod paths;
 mod search;
+mod tabs;
 
 use crate::hit::Target;
 use crate::input::Key;

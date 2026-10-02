@@ -162,6 +162,7 @@ impl App {
                 self.input(Input::Press { x, y, mods })
             }
             (ElementState::Pressed, MouseButton::Right) => self.input(Input::Menu { x, y }),
+            (ElementState::Pressed, MouseButton::Middle) => self.input(Input::Middle { x, y }),
             (ElementState::Released, MouseButton::Left) => {
                 let dragged = self.ui.dragging();
                 self.input(Input::Release);
