@@ -19,6 +19,8 @@ pub struct SessionUi {
     pub folded: bool,
     /// The manual section stands open under the tab.
     pub manual: bool,
+    /// The session is a routine's: its agent pane alone, the window wide.
+    pub alone: bool,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.
@@ -284,7 +286,7 @@ impl SessionUi {
 
     /// Whether the sidebar stands beside the workspace right now.
     pub fn sidebar(&self) -> bool {
-        self.tab.has_sidebar() && !self.folded
+        self.tab.has_sidebar() && !self.folded && !self.alone
     }
 
     /// Whether the commit box stands under the sidebar: whenever the sidebar does.

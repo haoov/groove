@@ -91,6 +91,7 @@ impl App {
         let Some(metrics) = self.metrics() else {
             return;
         };
+        self.ui.settle(&self.state);
         self.fit_agents(metrics);
         let Some(renderer) = &mut self.renderer else {
             return;
@@ -178,6 +179,7 @@ impl App {
         };
         self.state.acted_at = groove_types::Timestamp::now();
         let typed = matches!(input, Input::Key { .. } | Input::Paste(_));
+        self.ui.settle(&self.state);
         let commands =
             groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits, metrics);
         for command in commands {

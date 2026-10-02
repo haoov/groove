@@ -94,6 +94,12 @@ impl Service {
         self.on_rail(&session.id, now).await
     }
 
+    /// The session a standalone routine runs in, written and put on the rail.
+    pub async fn create_routine(&self, session: &Session, now: Timestamp) -> Result<(), Error> {
+        self.store.create_routine(session).await?;
+        self.on_rail(&session.id, now).await
+    }
+
     async fn on_rail(&self, id: &SessionId, now: Timestamp) -> Result<(), Error> {
         self.set_opened(id, Some(now)).await?;
         Ok(self.store.set_seen(id, now).await?)

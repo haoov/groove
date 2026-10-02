@@ -107,6 +107,8 @@ pub enum Target {
     Working,
     /// The feed's own heading, which folds it away.
     Feed,
+    /// The rail's Routines heading, which folds their sessions away.
+    Routines,
     /// A line of the feed, and the session it belongs to.
     FeedLine(SessionId),
     /// The write the agent asked for, taken or refused.

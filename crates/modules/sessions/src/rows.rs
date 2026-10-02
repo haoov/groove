@@ -12,6 +12,8 @@ pub(crate) struct SessionRow {
     pub review_project: Option<String>,
     pub review_iid: Option<i64>,
     pub created_at: i64,
+    /// The routine it runs, from `routine_sessions`.
+    pub routine: Option<String>,
 }
 
 impl From<SessionRow> for Session {
@@ -29,7 +31,10 @@ impl From<SessionRow> for Session {
                 project,
                 iid: iid.max(0) as u64,
             },
-            _ => SessionKind::Explorer,
+            _ => match row.routine {
+                Some(routine) => SessionKind::Routine { routine },
+                None => SessionKind::Explorer,
+            },
         };
         Session {
             id: SessionId::new(row.id),

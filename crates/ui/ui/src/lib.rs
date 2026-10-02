@@ -170,6 +170,12 @@ impl Ui {
         }
     }
 
+    /// What the layout reads from the state: whether a routine's session is selected.
+    pub fn settle(&mut self, app: &AppState) {
+        let selected = app.session.selected().map(|open| &open.session.kind);
+        self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
+    }
+
     pub fn dragging(&self) -> bool {
         matches!(self.held, Some(Held::Edge(_)))
     }

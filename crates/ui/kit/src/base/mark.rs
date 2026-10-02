@@ -44,6 +44,7 @@ pub enum Mark {
     /// A directory of a file list, shut and open.
     Folder,
     FolderOpen,
+    Routine,
 }
 
 impl Mark {
@@ -58,6 +59,7 @@ impl Mark {
             SessionKind::Task { .. } => Mark::Task,
             SessionKind::Explorer => Mark::Explorer,
             SessionKind::Review { .. } => Mark::Review,
+            SessionKind::Routine { .. } => Mark::Routine,
         }
     }
 
@@ -96,6 +98,7 @@ impl Mark {
             Mark::Ticked => Icon::Ticked,
             Mark::Folder => Icon::Folder,
             Mark::FolderOpen => Icon::FolderOpen,
+            Mark::Routine => Icon::Repeat,
         }
     }
 }

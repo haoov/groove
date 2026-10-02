@@ -4,9 +4,18 @@ use crate::{ExternalId, SessionId, Timestamp, WorktreeId};
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum SessionKind {
-    Task { external_id: ExternalId },
+    Task {
+        external_id: ExternalId,
+    },
     Explorer,
-    Review { project: String, iid: u64 },
+    Review {
+        project: String,
+        iid: u64,
+    },
+    /// Where one standalone routine runs, by the routine's id.
+    Routine {
+        routine: String,
+    },
 }
 
 impl SessionKind {
@@ -28,6 +37,15 @@ impl SessionKind {
             SessionKind::Task { .. } => "task",
             SessionKind::Explorer => "explorer",
             SessionKind::Review { .. } => "review",
+            SessionKind::Routine { .. } => "routine",
+        }
+    }
+
+    /// The routine this session runs, if it is a routine session.
+    pub fn routine(&self) -> Option<&str> {
+        match self {
+            SessionKind::Routine { routine } => Some(routine),
+            _ => None,
         }
     }
 }

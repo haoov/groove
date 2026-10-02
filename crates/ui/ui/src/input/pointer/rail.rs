@@ -10,6 +10,10 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     match target {
         Target::Feed => Some(folded_feed(ui)),
         Target::FeedScope => Some(narrowed_feed(ui)),
+        Target::Routines => {
+            ui.rail.routines = !ui.rail.routines;
+            Some(Vec::new())
+        }
         Target::Session(session) | Target::FeedLine(session) => {
             Some(super::opened_session(ui, session.clone()))
         }

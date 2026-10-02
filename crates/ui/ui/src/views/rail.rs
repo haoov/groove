@@ -2,6 +2,7 @@ mod feed;
 mod item;
 
 use groove_controllers::AppState;
+use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 
 use crate::ctx::Ctx;
@@ -12,7 +13,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled, square};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::icon;
+use groove_ui_kit::widgets::{fold, icon};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -25,6 +26,15 @@ pub struct RailUi {
     pub folded: bool,
     /// The feed shows the selected session alone.
     pub mine: bool,
+    /// The routines' sessions stand open under their heading.
+    pub routines: bool,
+}
+
+/// One row of the rail's list.
+enum Entry<'a> {
+    Session(&'a Open),
+    /// The routines heading and its count.
+    Routines(usize),
 }
 
 /// The opened sessions, in the order opened. The Board row above, the footer below.
@@ -80,13 +90,26 @@ fn asking(ctx: &mut Ctx, room: &mut Rect, count: usize) {
     }
 }
 
-/// One item per open session, scrolled and clipped to `area`.
+/// One item per open session, the routines' under their own heading, scrolled and clipped to `area`.
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let items: Vec<_> = app
-        .session
-        .open
-        .iter()
-        .map(|open| (open, item::height(ctx, app, &open.session.id)))
+    let routine = |open: &&Open| open.session.kind.routine().is_some();
+    let (routines, sessions): (Vec<_>, Vec<_>) = app.session.open.iter().partition(routine);
+    let mut entries: Vec<Entry> = sessions.into_iter().map(Entry::Session).collect();
+    if !routines.is_empty() {
+        entries.push(Entry::Routines(routines.len()));
+    }
+    if ui.rail.routines {
+        entries.extend(routines.into_iter().map(Entry::Session));
+    }
+    let items: Vec<_> = entries
+        .into_iter()
+        .map(|entry| {
+            let tall = match &entry {
+                Entry::Session(open) => item::height(ctx, app, &open.session.id),
+                Entry::Routines(_) => ctx.tokens.row,
+            };
+            (entry, tall)
+        })
         .collect();
     let at = (Scroller::Rail, ui.offset(Scroller::Rail));
     listed(
@@ -95,8 +118,21 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         at,
         &items,
         |(_, tall)| *tall,
-        |ctx, rect, (open, _)| item::draw(ctx, app, ui, rect, open),
+        |ctx, rect, (entry, _)| match entry {
+            Entry::Session(open) => item::draw(ctx, app, ui, rect, open),
+            Entry::Routines(count) => heading(ctx, rect, *count, ui.rail.routines),
+        },
     );
+}
+
+/// The heading that folds the routines' sessions, with how many there are.
+fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
+    hoverable(ctx, rect, Target::Routines);
+    let md = ctx.tokens.md;
+    let mut room = rect.pad(Edges::across(md, md));
+    fold(ctx, &mut room, open, Role::Faint);
+    let said = format!("ROUTINES · {count}");
+    Label::new(&said, ctx.styles.heading(Role::Faint)).draw(ctx, room);
 }
 
 fn footer(ctx: &mut Ctx, rect: Rect) {

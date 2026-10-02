@@ -184,3 +184,24 @@ async fn only_an_explorer_is_promoted_and_a_refusal_leaves_nothing_behind() {
         "no row was left"
     );
 }
+
+#[tokio::test]
+async fn a_routine_session_reads_back_as_its_routine_and_goes_with_its_row() {
+    let store = Store::in_memory().await.unwrap();
+    let session = Session {
+        id: SessionId::new("routine-tidy"),
+        title: "tidy".into(),
+        kind: SessionKind::Routine {
+            routine: "user:tidy".into(),
+        },
+        created_at: Timestamp::new(5),
+    };
+    store.create_routine(&session).await.unwrap();
+    assert_eq!(store.get(&session.id).await.unwrap(), Some(session.clone()));
+    store.remove(&session.id).await.unwrap();
+    assert!(store.get(&session.id).await.unwrap().is_none());
+    store
+        .create_routine(&session)
+        .await
+        .expect("its routine row went with it");
+}

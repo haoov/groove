@@ -1,22 +1,59 @@
 //! A routine switched on or off, and one trigger of it; the file written on the spot.
 
-use groove_types::{Error, Trigger};
+use groove_types::{Error, Routine, RoutineKind, SessionId, Timestamp, Trigger};
 
-use crate::AppState;
+use crate::{AppState, Services, Spawner};
 
-/// One routine on or off; a routine no file names, or one that does not read, is not switched on.
-pub(super) fn switch(state: &mut AppState, id: &str, on: bool) {
-    let readable = state
-        .agent
-        .routines
-        .iter()
-        .any(|one| one.id == id && one.read.is_ok());
-    if on && !readable {
+/// One routine on or off, a standalone one's session made or deleted; an unreadable one stays off.
+pub(super) fn switch(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    (id, on): (&str, bool),
+) {
+    let read = state.agent.routines.iter().find(|one| one.id == id);
+    let routine = read.and_then(|one| one.read.as_ref().ok()).cloned();
+    if on && routine.is_none() {
         let why = format!("`{id}` is no routine Groove can run: its file is gone or does not read");
         return state.failed(Error::invalid(why));
     }
     let config = state.config.switch_routine(id, on).cloned();
     written(state, config);
+    match (on, routine) {
+        (true, Some(one)) if one.kind == RoutineKind::Standalone => {
+            made(state, services, spawner, &one)
+        }
+        (false, _) => {
+            if let Some(session) = session_of(state, id) {
+                crate::session::delete(state, services, spawner, &session, true);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The routine's session, written and on the rail with its agent, unless it has one already.
+fn made(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routine: &Routine) {
+    if session_of(state, &routine.id).is_some() {
+        return;
+    }
+    let now = Timestamp::now();
+    let session = groove_session_service::routine_session(routine, now);
+    crate::session::begun(state, spawner, session.clone(), now);
+    let service = services.session.clone();
+    crate::session::listed(spawner, async move {
+        service.create_routine(&session, now).await
+    });
+}
+
+/// The session a routine runs in, among every session on disk and on the rail.
+pub(crate) fn session_of(state: &AppState, routine: &str) -> Option<SessionId> {
+    let on_rail = state.session.open.iter().map(|one| &one.session);
+    let on_disk = state.session.living.iter().map(|one| &one.session);
+    on_rail
+        .chain(on_disk)
+        .find(|one| one.kind.routine() == Some(routine))
+        .map(|one| one.id.clone())
 }
 
 /// One trigger of a routine on or off.

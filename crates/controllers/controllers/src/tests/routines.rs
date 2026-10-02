@@ -82,3 +82,34 @@ fn a_routine_whose_file_does_not_read_is_not_switched_on() {
     assert_eq!(state.errors.len(), 2);
     assert!(state.config.routines().on.is_empty());
 }
+
+const DIGEST: &str =
+    "---\nskills: platform:follow-ups\nkind: standalone\non: daily\n---\nList them.\n";
+
+#[test]
+fn a_standalone_routine_switched_on_has_its_session_on_the_rail_and_off_loses_it() {
+    let (_home, spawner, services, mut state) = fresh();
+    let id = "user:digest";
+    state.agent.routines = vec![Listed {
+        id: id.into(),
+        read: parse(id, "digest", DIGEST),
+    }];
+    send(switch(id, true), &mut state, &services, &spawner);
+    send(switch(id, true), &mut state, &services, &spawner);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    let routines: Vec<_> = state
+        .session
+        .open
+        .iter()
+        .filter(|one| one.session.kind.routine() == Some(id))
+        .collect();
+    assert_eq!(routines.len(), 1, "switched on twice, one session");
+    let opened = spawner.block_on(services.session.opened()).unwrap();
+    assert!(opened.iter().any(|(one, _)| one.kind.routine() == Some(id)));
+
+    send(switch(id, false), &mut state, &services, &spawner);
+    assert!(state.errors.is_empty(), "{:?}", state.errors);
+    assert!(state.session.open.is_empty());
+    let living = spawner.block_on(services.session.living()).unwrap();
+    assert!(living.is_empty(), "{living:?}");
+}

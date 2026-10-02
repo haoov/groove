@@ -70,8 +70,10 @@ impl Store {
     /// The sessions on the rail, in the order they were opened.
     pub async fn opened(&self) -> Result<Vec<(Session, SessionState)>> {
         let rows: Vec<SessionRow> = sqlx::query_as(
-            "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid, s.created_at
+            "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
+                    s.created_at, r.routine
              FROM sessions s JOIN session_state st ON st.session_id = s.id
+             LEFT JOIN routine_sessions r ON r.session_id = s.id
              WHERE st.opened_at IS NOT NULL ORDER BY st.opened_at, s.id",
         )
         .fetch_all(self.db.pool())
@@ -89,9 +91,10 @@ impl Store {
     pub async fn living(&self) -> Result<Vec<(Session, SessionState)>> {
         let rows: Vec<SessionRow> = sqlx::query_as(
             "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
-                    s.created_at
+                    s.created_at, r.routine
              FROM sessions s
              LEFT JOIN session_state st ON st.session_id = s.id
+             LEFT JOIN routine_sessions r ON r.session_id = s.id
              ORDER BY COALESCE(st.opened_at, s.created_at) DESC, s.id",
         )
         .fetch_all(self.db.pool())

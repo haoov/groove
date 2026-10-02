@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 use groove_types::{
     Repo, RepoId, Session, SessionId, SessionState, Timestamp, Worktree, WorktreeId,
 };
-pub use made::{explorer, review_session, task_session};
+pub use made::{explorer, review_session, routine_session, task_session};
 pub use open::Open;
 pub use service::{Added, Service};
 

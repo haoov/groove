@@ -22,6 +22,7 @@ mod palette;
 mod pasting;
 mod perf;
 mod rail;
+mod routine_session;
 mod routines;
 mod settings;
 mod staging;

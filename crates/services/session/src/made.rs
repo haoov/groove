@@ -42,3 +42,20 @@ pub fn explorer(title: Option<&str>, now: Timestamp) -> Session {
         created_at: now,
     }
 }
+
+/// The session one standalone routine runs in: the same id every time, the routine's name.
+pub fn routine_session(routine: &groove_types::Routine, now: Timestamp) -> Session {
+    let slug: String = routine
+        .id
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    Session {
+        id: SessionId::new(format!("routine-{slug}")),
+        title: routine.name.clone(),
+        kind: SessionKind::Routine {
+            routine: routine.id.clone(),
+        },
+        created_at: now,
+    }
+}

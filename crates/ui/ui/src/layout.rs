@@ -216,7 +216,21 @@ impl Layout {
             false => tokens.bar,
         };
         held.manual = held.workspace.take_bottom(tall.min(held.workspace.h));
-        held
+        match ui.session.alone {
+            true => held.alone(),
+            false => held,
+        }
+    }
+
+    /// The agent pane over everything right of the rail; the workspace's parts empty.
+    pub fn alone(mut self) -> Self {
+        let (rail, window) = (self.rail.w, self.window);
+        self.agent = Rect::new(rail, 0.0, (window.w - rail).max(0.0), window.h);
+        self.agent_bar = Rect::new(rail, self.agent_bar.y, self.agent.w, self.agent_bar.h);
+        let none = Rect::new(window.w, window.h, 0.0, 0.0);
+        (self.header, self.workspace, self.sidebar) = (none, none, none);
+        (self.commit, self.manual) = (none, none);
+        self
     }
 
     /// The same, with no commit box under the sidebar unless `shown`.

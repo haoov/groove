@@ -127,7 +127,7 @@ pub fn dispatch(
         Command::Rebind(keymap) => rebind(state, keymap),
         Command::JoinShared { url, branch } => shared::join(state, spawner, (url, branch)),
         Command::LeaveShared => shared::leave(state, spawner),
-        Command::SwitchRoutine { id, on } => routines::switch(state, &id, on),
+        Command::SwitchRoutine { id, on } => routines::switch(state, services, spawner, (&id, on)),
         Command::SwitchTrigger { id, trigger, on } => routines::trigger(state, &id, trigger, on),
     }
 }

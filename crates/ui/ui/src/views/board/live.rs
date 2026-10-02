@@ -20,6 +20,7 @@ pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
         .session
         .living
         .iter()
+        .filter(|living| living.session.kind.routine().is_none())
         .filter(|living| query.lets_session(living, app.task.worked(&living.session)))
         .collect();
     if living.is_empty() {
