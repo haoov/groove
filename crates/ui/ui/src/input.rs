@@ -1,5 +1,6 @@
 //! Keys and clicks to commands; the agent pane takes every key but the keymap's app ring.
 
+pub(crate) mod follow;
 mod keys;
 mod pointer;
 mod scroll;
@@ -10,6 +11,7 @@ use crate::hit::{Cursor, Hits, Target};
 use crate::{Focus, Held, Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
+pub use follow::follow;
 pub use keys::encode;
 
 /// A key as the ui reads it, free of the window library's types.

@@ -9,7 +9,9 @@ use super::notes::{Inline, Slot};
 use super::row::{Drawn, Side, count, drawn};
 use super::words::{Words, words_of};
 use crate::Ui;
-use crate::components::{Acting, Gutters, Line, Noted, Rows, chars_of, code, height, visible};
+use crate::components::{
+    Acting, Gutters, Line, Noted, Rows, across_extent, chars_of, code, height, visible,
+};
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::views::session::Face;
@@ -56,9 +58,7 @@ fn surface(
 ) {
     let inline = Inline::of(app, ui, view);
     let total = inline.total(count(app, view));
-    let extent = (height(ctx, total) - rect.h).max(0.0);
-    ctx.app.hits.scrolls(Scroller::Code, extent);
-    let scroll = ui.session.scroll().min(extent);
+    let scroll = scroll_of(ctx, ui, rect, total);
     let window = visible(ctx, rect, total, scroll);
     let slots: Vec<Slot> = window.clone().map(|row| inline.slot(row)).collect();
     let code_rows = inline.code_window(window.clone());
@@ -81,19 +81,35 @@ fn surface(
     };
     let lines = lines_of(ctx, app, held);
     let numbers = numbers(app, view);
+    let across = across_of(ctx, ui, numbers, rect, &rows);
     if clickable {
-        asks(ctx, rect, code_rows.clone(), numbers, scroll);
+        asks(ctx, rect, code_rows.clone(), numbers, (scroll, across));
     }
     let shown = Rows {
         lines: &lines,
         first: window.start,
         gutters: numbers,
+        across,
     };
     let drawn = code(ctx, rect, shown, scroll);
     if clickable {
         let at = (numbers, view, side);
         super::offers::marks(ctx, &drawn, &slots, &rows, code_rows.start, at);
     }
+}
+
+/// How far the surface is scrolled down, inside what its `total` rows allow.
+fn scroll_of(ctx: &mut Ctx, ui: &Ui, rect: Rect, total: usize) -> f32 {
+    let extent = (height(ctx, total) - rect.h).max(0.0);
+    ctx.app.hits.scrolls(Scroller::Code, extent);
+    ui.session.scroll().min(extent)
+}
+
+/// How far the rows in view are scrolled sideways, inside what their widest allows.
+fn across_of(ctx: &mut Ctx, ui: &Ui, numbers: Gutters, rect: Rect, rows: &[Drawn]) -> f32 {
+    let reach = across_extent(ctx, numbers, rect, rows.iter().map(|row| row.text.as_str()));
+    ctx.app.hits.scrolls(Scroller::Across, reach);
+    ui.session.across().min(reach)
 }
 
 /// What every row of the view says in its number columns.
@@ -104,11 +120,17 @@ fn gutters_of(rows: &[Drawn]) -> Vec<Vec<&str>> {
 }
 
 /// The rows in view, and where a caret can land in them.
-fn asks(ctx: &mut Ctx, rect: Rect, rows: std::ops::Range<usize>, numbers: Gutters, scroll: f32) {
+fn asks(
+    ctx: &mut Ctx,
+    rect: Rect,
+    rows: std::ops::Range<usize>,
+    numbers: Gutters,
+    (scroll, across): (f32, f32),
+) {
     ctx.app.hits.showing(rows);
     ctx.hit(rect, Target::Code);
-    let chars = chars_of(ctx, numbers, rect, scroll);
-    let cols = note_cols(ctx, rect, chars.left);
+    let chars = chars_of(ctx, numbers, rect, (scroll, across));
+    let cols = note_cols(ctx, rect, chars.left + across);
     ctx.app.hits.characters(chars);
     ctx.app.hits.wraps(cols);
 }

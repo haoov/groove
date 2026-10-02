@@ -100,6 +100,7 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
                 cells: 0,
                 digits: 0,
             },
+            across: 0.0,
         };
         code(ctx, box_, rows, 0.0);
     });

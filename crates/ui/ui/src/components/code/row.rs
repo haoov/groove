@@ -14,7 +14,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{ruled, square};
 use groove_ui_kit::text::{Label, row};
 
-pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.band {
         return band(ctx, line, code.text);
     }
@@ -30,11 +30,11 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     if let Some(acting) = code.acting.as_ref() {
         return acts(ctx, line, acting, gutter);
     }
-    coded(ctx, line, code, gutter);
+    coded(ctx, line, code, gutter, across);
 }
 
-/// A line of code: its grounds, its marks, its numbers and its text.
-fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
+/// A line of code: its grounds, its marks, its numbers and its text, `across` to the left.
+fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
     if code.noted {
         ctx.quad(line, ctx.styles.noted());
     }
@@ -50,24 +50,33 @@ fn coded(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block) {
     }
     numbers(ctx, line, code, gutter);
     let at = gutter.content(ctx, line);
-    let rect = line.pad(Edges::across(at - line.x, 0.0));
-    if let Some(color) = code.word {
-        for (from, to) in code.words {
-            shade(ctx, rect, code.text, (*from, *to), color);
+    let room = line.pad(Edges::across(at - line.x, 0.0));
+    let rect = Rect {
+        x: room.x - across,
+        w: room.w + across,
+        ..room
+    };
+    ctx.clipped(room, |ctx| {
+        if let Some(color) = code.word {
+            for (from, to) in code.words {
+                shade(ctx, rect, code.text, (*from, *to), color);
+            }
         }
-    }
-    for (from, to) in code.found {
-        marked(ctx, rect, code.text, (*from, *to), false);
-    }
-    if let Some(held) = code.held {
-        holding(ctx, rect, code.text, held);
-    }
-    if let Some(at) = code.standing {
-        marked(ctx, rect, code.text, at, true);
-    }
-    text(ctx, rect, code);
-    if let Some(column) = code.caret {
-        caret(ctx, rect, code.text, column);
+        for (from, to) in code.found {
+            marked(ctx, rect, code.text, (*from, *to), false);
+        }
+        if let Some(held) = code.held {
+            holding(ctx, rect, code.text, held);
+        }
+        if let Some(at) = code.standing {
+            marked(ctx, rect, code.text, at, true);
+        }
+        text(ctx, rect, code);
+        if let Some(column) = code.caret {
+            caret(ctx, rect, code.text, column);
+        }
+    });
+    if code.caret.is_some() {
         here(ctx, line);
     }
 }

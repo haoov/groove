@@ -5,6 +5,7 @@ use groove_types::{Caret, Edit, Motion, Selection};
 
 use super::super::{Key, Modifiers};
 use crate::hit::{Hits, Scroller, Target};
+use crate::input::follow::across_at;
 use crate::keymap::{Action, Keymap};
 use crate::views::session::diff::Inline;
 use crate::views::session::find::Finding;
@@ -91,6 +92,7 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
         return Vec::new();
     };
     let end = Caret::new(at.line, hit.range.end);
+    *ui.session.across_mut() = across_at(ui, app, (&hit.path, end), (hits, metrics));
     if !holds {
         let open = workspace::Command::OpenFile {
             path: hit.path,

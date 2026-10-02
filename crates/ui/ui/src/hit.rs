@@ -47,6 +47,8 @@ pub enum Scroller {
     Rail,
     Files,
     Code,
+    /// The code surface's text, sideways.
+    Across,
     Overview,
     /// The rail's own log.
     Feed,
@@ -65,7 +67,8 @@ impl Scroller {
             Scroller::Overview => 3,
             Scroller::Feed => 4,
             Scroller::Settings => 5,
-            Scroller::Column(which) => 6 + which as usize,
+            Scroller::Across => 6,
+            Scroller::Column(which) => 7 + which as usize,
         }
     }
 }
@@ -78,7 +81,7 @@ pub struct Hits {
     shown: std::ops::Range<usize>,
     wrap: usize,
     /// How far each column can scroll, one per `Scroller`.
-    extents: [f32; 9],
+    extents: [f32; 10],
     chars: Chars,
 }
 

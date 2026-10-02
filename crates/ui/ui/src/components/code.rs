@@ -1,19 +1,17 @@
 //! The code surface: a row's parts, and the gutters every row shares.
 
 mod gutter;
+mod place;
 mod row;
-
-use std::ops::Range;
 
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
+pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
+
 use self::gutter::{Block, rule};
 use self::row::draw;
 use crate::ctx::Ctx;
-use crate::hit::Chars;
-use groove_ui_kit::base::style::Role;
-use groove_ui_kit::base::tokens::Tokens;
 
 /// What a note row carries: who said it, whether it opens the note, and its state.
 #[derive(Debug, Clone, Copy)]
@@ -216,6 +214,8 @@ pub struct Rows<'a> {
     /// Where the first line sits among all the rows.
     pub first: usize,
     pub gutters: Gutters,
+    /// How far the text is scrolled sideways, its gutters left in place.
+    pub across: f32,
 }
 
 /// The gutter a surface asks for: how many number columns, and their longest number.
@@ -223,29 +223,6 @@ pub struct Rows<'a> {
 pub struct Gutters {
     pub cells: usize,
     pub digits: usize,
-}
-
-/// The row at the top of a surface scrolled this far.
-pub fn first(line: f32, scroll: f32) -> usize {
-    (scroll / line).floor().max(0.0) as usize
-}
-
-/// Where a surface with these gutters puts its characters in `rect`.
-pub fn chars_of(ctx: &mut Ctx, gutters: Gutters, rect: Rect, scroll: f32) -> Chars {
-    let style = ctx.styles.code(Role::Text);
-    Chars {
-        left: Block::of(ctx, gutters).content(ctx, rect),
-        advance: ctx.measure("M", &style),
-        scroll,
-    }
-}
-
-/// The rows `rect` has room for at `scroll`, among `total`.
-pub fn visible(ctx: &Ctx, rect: Rect, total: usize, scroll: f32) -> Range<usize> {
-    let height = ctx.tokens.line;
-    let first = first(height, scroll).min(total);
-    let shown = (rect.h / height).ceil() as usize + 1;
-    first..(first + shown).min(total)
 }
 
 /// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
@@ -257,7 +234,7 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
         let mut y = rect.y - scroll + rows.first as f32 * height;
         for line in rows.lines {
             let at = Rect::new(rect.x, y, rect.w, height);
-            draw(ctx, at, line, block);
+            draw(ctx, at, line, block, rows.across);
             if line.numbered() {
                 rule(ctx, at, block);
             }
@@ -273,28 +250,4 @@ pub fn head_mark(ctx: &Ctx, line: Rect) -> Rect {
     let size = ctx.tokens.icon;
     let x = line.right() - ctx.tokens.md - size;
     Rect::new(x, line.y + (line.h - size) / 2.0, size, size)
-}
-
-/// How tall the rows stand together.
-pub fn height(ctx: &Ctx, lines: usize) -> f32 {
-    ctx.tokens.line * lines as f32
-}
-
-/// The row and the column a point lands on, counted from the first row.
-pub fn code_at(
-    tokens: &Tokens,
-    chars: Chars,
-    rect: Rect,
-    point: (f32, f32),
-) -> Option<(usize, usize)> {
-    if !rect.contains(point.0, point.1) {
-        return None;
-    }
-    let row = ((point.1 - rect.y + chars.scroll) / tokens.line)
-        .floor()
-        .max(0.0);
-    let column = ((point.0 - chars.left) / chars.advance.max(1.0))
-        .round()
-        .max(0.0);
-    Some((row as usize, column as usize))
 }

@@ -58,6 +58,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
             lines: &lines,
             first: 0,
             gutters,
+            across: ui.session.across(),
         },
         0.0,
     );

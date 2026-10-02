@@ -114,7 +114,7 @@ impl ApplicationHandler<Message> for App {
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 let (x, y) = self.cursor;
-                let delta = delta_of(delta);
+                let delta = delta_of(delta, self.modifiers.shift_key());
                 self.input(Input::Scroll { x, y, delta });
             }
             WindowEvent::MouseInput { state, button, .. } => self.button(state, button),
@@ -175,8 +175,13 @@ impl App {
 }
 
 /// A wheel notch is lines; a trackpad is pixels, and up is away from the user.
-fn delta_of(delta: MouseScrollDelta) -> Delta {
+/// With shift held, a wheel that only goes down goes across.
+fn delta_of(delta: MouseScrollDelta, shift: bool) -> Delta {
     match delta {
+        MouseScrollDelta::LineDelta(0.0, down) if shift => Delta::Lines {
+            across: down,
+            down: 0.0,
+        },
         MouseScrollDelta::LineDelta(across, down) => Delta::Lines { across, down },
         MouseScrollDelta::PixelDelta(at) => Delta::Pixels {
             across: at.x as f32,

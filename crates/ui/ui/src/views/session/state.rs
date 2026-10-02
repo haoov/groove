@@ -23,6 +23,11 @@ pub struct SessionUi {
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.
     pub file: f32,
+    /// How far the stream's text and the file's are scrolled sideways, in pixels.
+    pub diff_across: f32,
+    pub file_across: f32,
+    /// The caret the file view last scrolled to.
+    pub followed: Option<groove_types::Caret>,
     /// How far the overview is scrolled, in pixels.
     pub overview: f32,
     /// Which of the two views the stream is drawn in.
@@ -250,6 +255,21 @@ impl SessionUi {
         match self.face() {
             Face::File => &mut self.file,
             Face::Stream(_) => &mut self.diff,
+        }
+    }
+
+    /// How far the surface the tab shows is scrolled sideways.
+    pub fn across(&self) -> f32 {
+        match self.face() {
+            Face::File => self.file_across,
+            Face::Stream(_) => self.diff_across,
+        }
+    }
+
+    pub fn across_mut(&mut self) -> &mut f32 {
+        match self.face() {
+            Face::File => &mut self.file_across,
+            Face::Stream(_) => &mut self.diff_across,
         }
     }
 

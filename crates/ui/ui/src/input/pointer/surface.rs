@@ -10,6 +10,7 @@ use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use crate::components::{code_at, first};
 use crate::hit::{Chars, Hits, Scroller, Target};
+use crate::input::follow::reaching;
 use crate::views::session::{Face, Tab, diff};
 use crate::{Click, Focus, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -83,6 +84,7 @@ pub(super) fn in_files(ui: &mut Ui, app: &AppState, path: String) -> Vec<Command
     ui.session.tab = Tab::Files;
     if app.workspace.active().is_none_or(|one| one.path != path) {
         ui.session.file = 0.0;
+        ui.session.file_across = 0.0;
     }
     vec![Command::Workspace(workspace::Command::OpenFile {
         path,
@@ -106,7 +108,12 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
 }
 
 /// The file of one found line, opened in the file view with that line held.
-pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) -> Vec<Command> {
+pub(super) fn reached(
+    ui: &mut Ui,
+    app: &AppState,
+    (hits, metrics): (&Hits, Metrics),
+    at: usize,
+) -> Vec<Command> {
     let Some(one) = app.workspace.found.get(at) else {
         return Vec::new();
     };
@@ -114,6 +121,7 @@ pub(super) fn reached(ui: &mut Ui, app: &AppState, metrics: Metrics, at: usize) 
     ui.session.tab = Tab::Files;
     let above = one.line.saturating_sub(ABOVE_MATCH);
     ui.session.file = above as f32 * metrics.tokens().line;
+    ui.session.file_across = reaching(&one.text, &one.path, one.at.1, hits, metrics);
     let held = Selection {
         anchor: Caret::new(one.line, one.at.0),
         head: Caret::new(one.line, one.at.1),

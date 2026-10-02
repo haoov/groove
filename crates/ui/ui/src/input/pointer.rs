@@ -149,7 +149,7 @@ fn acted(
         Some(Target::Gap { row, way }) => one(workspace::Command::OpenGap { row, way }),
         Some(Target::Term(term)) => narrowing(ui, term),
         Some(Target::Finding) => finding(ui),
-        Some(Target::Found(at)) => reached(ui, app, metrics, at),
+        Some(Target::Found(at)) => reached(ui, app, (hits, metrics), at),
         Some(Target::FoundIn(path)) => shut(ui, path),
         Some(Target::Map) => mapping(point.1, ui, app, hits, metrics),
         Some(Target::Actions) => actions(ui, app, hits, metrics),

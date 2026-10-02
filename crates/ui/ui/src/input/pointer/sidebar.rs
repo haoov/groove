@@ -33,10 +33,12 @@ pub(super) fn note_at(
     let above = |row: usize| row.saturating_sub(groove_ui_kit::base::tokens::ABOVE_MATCH) as f32;
     if let Some(row) = app.workspace.changes.row_of(&anchor.path, line as u32) {
         ui.session.diff = above(row) * height;
+        ui.session.diff_across = 0.0;
         return Vec::new();
     }
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.file = above(line) * height;
+    ui.session.file_across = 0.0;
     let open = groove_controllers::workspace::Command::OpenFile {
         path: anchor.path,
         at: Some(groove_types::Selection::at(groove_types::Caret::new(

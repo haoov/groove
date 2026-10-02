@@ -170,10 +170,14 @@ impl App {
             return;
         };
         self.state.acted_at = groove_types::Timestamp::now();
+        let typed = matches!(input, Input::Key { .. } | Input::Paste(_));
         let commands =
             groove_ui::input::handle(input, &mut self.ui, &self.state, &self.hits, metrics);
         for command in commands {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
+        }
+        if typed {
+            groove_ui::input::follow(&mut self.ui, &self.state, &self.hits, metrics);
         }
         self.clock();
         self.redraw();
