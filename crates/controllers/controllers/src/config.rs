@@ -2,6 +2,7 @@
 
 mod environment;
 mod mapping;
+pub(crate) mod shared;
 mod sources;
 
 use std::collections::BTreeMap;
@@ -56,6 +57,13 @@ pub enum Command {
     },
     /// `config.rebind`: the chords that replace the keymap's defaults, whole.
     Rebind(BTreeMap<String, Vec<String>>),
+    /// `config.set_shared`: the team's repo named, once its branch reads as a plugin.
+    JoinShared {
+        url: String,
+        branch: String,
+    },
+    /// `config.set_shared`: no shared repo any more.
+    LeaveShared,
 }
 
 impl Command {
@@ -74,6 +82,7 @@ impl Command {
             Command::ReadSchema(_) => "config.read_schema",
             Command::Map { .. } => "config.map",
             Command::Rebind(_) => "config.rebind",
+            Command::JoinShared { .. } | Command::LeaveShared => "config.set_shared",
         }
     }
 }
@@ -102,6 +111,8 @@ pub fn dispatch(
         Command::ReadSchema(source) => mapping::read(state, spawner, source),
         Command::Map { source, change } => mapping::map(state, services, spawner, (source, change)),
         Command::Rebind(keymap) => rebind(state, keymap),
+        Command::JoinShared { url, branch } => shared::join(state, spawner, (url, branch)),
+        Command::LeaveShared => shared::leave(state, spawner),
     }
 }
 

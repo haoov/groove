@@ -5,7 +5,7 @@ use groove_types::ProviderId;
 use groove_ui_kit::base::style::Role;
 
 use super::super::SettingsUi;
-use super::super::draft::asks;
+use super::super::draft::{Drafted, asks};
 use super::{Row, Section, Value};
 use crate::hit::Target;
 
@@ -18,7 +18,8 @@ pub(super) fn switch(
     if on {
         return vec![turned_on(settings, source)];
     }
-    let Some(draft) = settings.draft.as_ref().filter(|one| one.source == source) else {
+    let drafted = Drafted::Source(source);
+    let Some(draft) = settings.draft.as_ref().filter(|one| one.source == drafted) else {
         let act = Some(("turn on", Target::SettingsTurnOn(source)));
         return vec![row("source", "on off", "off".into(), Role::Muted, act)];
     };
@@ -30,7 +31,7 @@ pub(super) fn switch(
         Role::Working,
         cancel,
     )];
-    let fields = asks(source).iter().zip(&draft.fields).enumerate();
+    let fields = asks(drafted).iter().zip(&draft.fields).enumerate();
     out.extend(fields.map(|(at, (ask, field))| {
         let focused = draft.at == Some(at);
         let shown = match (focused, ask.secret, field.is_empty()) {

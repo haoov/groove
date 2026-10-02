@@ -35,9 +35,29 @@ const GITHUB: [Ask; 1] = [Ask {
     secret: false,
 }];
 
+const SHARED: [Ask; 2] = [
+    Ask {
+        label: "url",
+        hint: "git@github.com:team/skills.git",
+        secret: false,
+    },
+    Ask {
+        label: "branch",
+        hint: "main",
+        secret: false,
+    },
+];
+
+/// What a draft is filling in: a task source, or the team's shared repo.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Drafted {
+    Source(ProviderId),
+    Shared,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Draft {
-    pub source: ProviderId,
+    pub source: Drafted,
     pub fields: Vec<Field>,
     /// The field the keys go to.
     pub at: Option<usize>,
@@ -46,13 +66,22 @@ pub struct Draft {
 impl Draft {
     /// The source's fields, empty but for GitHub's usual host; the first takes the keys.
     pub fn of(source: ProviderId) -> Self {
-        let mut fields: Vec<Field> = asks(source).iter().map(|_| Field::default()).collect();
+        let mut draft = Self::empty(Drafted::Source(source));
         if source == ProviderId::Github {
-            fields[0].set("github.com");
+            draft.fields[0].set("github.com");
         }
+        draft
+    }
+
+    /// The shared repo's URL and branch, both empty.
+    pub fn shared() -> Self {
+        Self::empty(Drafted::Shared)
+    }
+
+    fn empty(source: Drafted) -> Self {
         Self {
             source,
-            fields,
+            fields: asks(source).iter().map(|_| Field::default()).collect(),
             at: Some(0),
         }
     }
@@ -71,20 +100,25 @@ impl Draft {
     pub fn command(&self) -> Command {
         let text = |at: usize| self.fields[at].text().trim().to_string();
         let asked = match self.source {
-            ProviderId::Notion => config::Command::ConnectNotion {
+            Drafted::Source(ProviderId::Notion) => config::Command::ConnectNotion {
                 token: Secret::new(text(0)),
                 database_id: text(1),
                 user_id: text(2),
             },
-            ProviderId::Github => config::Command::ConnectGithub { host: text(0) },
+            Drafted::Source(ProviderId::Github) => config::Command::ConnectGithub { host: text(0) },
+            Drafted::Shared => config::Command::JoinShared {
+                url: text(0),
+                branch: text(1),
+            },
         };
         Command::Config(asked)
     }
 }
 
-pub fn asks(source: ProviderId) -> &'static [Ask] {
+pub fn asks(source: Drafted) -> &'static [Ask] {
     match source {
-        ProviderId::Notion => &NOTION,
-        ProviderId::Github => &GITHUB,
+        Drafted::Source(ProviderId::Notion) => &NOTION,
+        Drafted::Source(ProviderId::Github) => &GITHUB,
+        Drafted::Shared => &SHARED,
     }
 }

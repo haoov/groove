@@ -16,6 +16,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         },
         preferences: groove_types::Preferences::default(),
         keymap: Default::default(),
+        shared: None,
     };
     State {
         config: Some(config),

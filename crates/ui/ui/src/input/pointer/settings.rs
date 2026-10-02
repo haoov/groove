@@ -66,6 +66,16 @@ fn sourced(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
             settings.leaving = None;
             return Some(vec![Command::Config(config::Command::TurnOff(*source))]);
         }
+        Target::SettingsShare => {
+            settings.draft = Some(Draft::shared());
+            settings.typing = false;
+        }
+        Target::SettingsUnshare => settings.unsharing = true,
+        Target::SettingsUnshareSure => {
+            settings.unsharing = false;
+            settings.draft = None;
+            return Some(vec![Command::Config(config::Command::LeaveShared)]);
+        }
         _ => return None,
     }
     Some(Vec::new())

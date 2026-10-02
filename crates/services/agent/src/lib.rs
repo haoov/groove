@@ -1,6 +1,7 @@
 //! The agent capability. One agent per open session: its terminal and its activity.
 
 pub(crate) mod launch;
+pub mod shared;
 
 #[cfg(test)]
 mod tests;
@@ -38,6 +39,8 @@ pub struct State {
     pub agents: Vec<(SessionId, Agent)>,
     /// Every skill both plugins offer, as the last read found them.
     pub skills: Vec<groove_types::Skill>,
+    /// The copy of the team's shared repo, once it reads as a marketplace.
+    pub shared: Option<shared::Shared>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.

@@ -31,6 +31,8 @@ pub struct SettingsUi {
     /// A source being turned on, and one asked to be turned off, not yet confirmed.
     pub draft: Option<Draft>,
     pub leaving: Option<groove_types::ProviderId>,
+    /// The shared repo asked to be let go, not yet confirmed.
+    pub unsharing: bool,
     /// The action whose new chord the next key is.
     pub binding: Option<crate::keymap::Action>,
 }

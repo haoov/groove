@@ -1,11 +1,13 @@
 //! Every row Settings shows: its section, its label, the words a search finds it by, its value.
 
+mod agent;
 mod appearance;
 mod keymap;
 mod mapping;
 mod preferences;
 mod providers;
 mod setup;
+mod shared;
 mod switch;
 
 pub use mapping::{Choices, Slot, choices};
@@ -21,6 +23,7 @@ use crate::hit::Target;
 pub enum Section {
     Setup,
     Providers,
+    Agent,
     Appearance,
     #[default]
     Preferences,
@@ -28,9 +31,10 @@ pub enum Section {
 }
 
 impl Section {
-    pub const ALL: [Section; 5] = [
+    pub const ALL: [Section; 6] = [
         Section::Setup,
         Section::Providers,
+        Section::Agent,
         Section::Appearance,
         Section::Preferences,
         Section::Keymap,
@@ -40,6 +44,7 @@ impl Section {
         match self {
             Section::Setup => "Setup",
             Section::Providers => "Providers",
+            Section::Agent => "Agent",
             Section::Appearance => "Appearance",
             Section::Preferences => "Preferences",
             Section::Keymap => "Keymap",
@@ -118,6 +123,7 @@ fn grouped(group: &'static str, rows: Vec<Row>) -> Vec<Row> {
 pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     let mut out = setup::setup(app);
     out.extend(providers::providers(app, settings));
+    out.extend(agent::agent(app, settings));
     out.extend(appearance::appearance(app));
     out.extend(preferences::preferences(app));
     out.extend(keymap::keymap(app, settings));

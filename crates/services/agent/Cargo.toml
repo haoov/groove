@@ -9,12 +9,18 @@ publish.workspace = true
 [dependencies]
 groove-approvals = { path = "../../modules/approvals" }
 groove-mcp = { path = "../../modules/mcp" }
+groove-git = { path = "../../modules/git" }
 groove-skills = { path = "../../modules/skills" }
 groove-tools = { path = "../../modules/tools" }
 groove-types = { path = "../../shared/types" }
 groove-terminal = { path = "../../modules/terminal" }
 groove-agent-launch = { path = "../../modules/agent-launch" }
 groove-hooks = { path = "../../modules/hooks" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

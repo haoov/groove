@@ -1,0 +1,25 @@
+//! The Agent section's rows: how new sessions approve, then the skills they are given.
+
+use groove_controllers::AppState;
+use groove_controllers::config_service::Preference;
+
+use super::super::SettingsUi;
+use super::shared::shared;
+use super::{Row, Section, Value, grouped};
+
+pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
+    let held = app.config.preferences();
+    let approve = Row {
+        section: Section::Agent,
+        group: "",
+        label: "auto-approve default",
+        words: "writes ask new sessions",
+        value: Value::Toggle {
+            on: held.auto_approve_default,
+            flip: Preference::AutoApproveDefault(!held.auto_approve_default),
+        },
+    };
+    let mut out = grouped("Approvals", vec![approve]);
+    out.extend(shared(app, settings));
+    out
+}

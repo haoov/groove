@@ -158,3 +158,75 @@ fn filing_a_task_is_offered_everywhere_and_converting_only_to_an_explorer() {
     assert!(convert.offered_to(&SessionKind::Explorer));
     assert!(!convert.offered_to(&task), "a task is one already");
 }
+
+/// A marketplace listing `entries`, each plugin's own manifest naming it `own`.
+fn listing(home: &std::path::Path, entries: &[(&str, &str, &str)]) -> std::path::PathBuf {
+    let repo = home.join("shared");
+    std::fs::create_dir_all(repo.join(".claude-plugin")).unwrap();
+    let mut listed = Vec::new();
+    for (name, source, own) in entries {
+        let dir = repo
+            .join(source.trim_start_matches("./"))
+            .join(".claude-plugin");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("plugin.json"), format!(r#"{{ "name": "{own}" }}"#)).unwrap();
+        listed.push(serde_json::json!({ "name": name, "source": source }));
+    }
+    let manifest = serde_json::json!({ "name": "groove-agent", "owner": {}, "plugins": listed });
+    std::fs::write(
+        repo.join(".claude-plugin").join("marketplace.json"),
+        manifest.to_string(),
+    )
+    .unwrap();
+    repo
+}
+
+#[test]
+fn a_shared_repo_reads_as_the_plugins_its_marketplace_lists() {
+    let home = tempfile::tempdir().unwrap();
+    let repo = listing(
+        home.path(),
+        &[
+            ("platform", "./plugins/platform", "platform"),
+            ("review", "./plugins/review", "review"),
+        ],
+    );
+    let read = crate::marketplace(&repo).unwrap();
+    assert_eq!(read.name, "groove-agent");
+    let names: Vec<&str> = read.plugins.iter().map(|one| one.name.as_str()).collect();
+    assert_eq!(names, ["platform", "review"]);
+    assert_eq!(read.plugins[0].dir, repo.join("plugins/platform"));
+}
+
+#[test]
+fn a_plugin_groove_cannot_read_or_name_is_refused() {
+    let refused = |entry: (&str, &str, &str)| {
+        let home = tempfile::tempdir().unwrap();
+        crate::marketplace(&listing(home.path(), &[entry])).is_err()
+    };
+    assert!(
+        refused(("groove", "./plugins/groove", "groove")),
+        "a name Groove keeps"
+    );
+    assert!(
+        refused(("user", "./plugins/user", "user")),
+        "a name Groove keeps"
+    );
+    assert!(
+        refused(("platform", "./plugins/platform", "other")),
+        "named otherwise inside"
+    );
+    assert!(
+        refused(("platform", "./../platform", "platform")),
+        "outside the repo"
+    );
+    assert!(
+        refused(("Team X", "./plugins/x", "Team X")),
+        "no name of the kind"
+    );
+    let home = tempfile::tempdir().unwrap();
+    assert!(
+        crate::marketplace(home.path()).is_err(),
+        "no marketplace at all"
+    );
+}

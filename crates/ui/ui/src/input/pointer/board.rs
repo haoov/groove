@@ -36,6 +36,7 @@ pub(crate) fn reads() -> Vec<Command> {
         Command::Session(session::Command::List),
         Command::Task(task::Command::Load),
         Command::Delivery(delivery::Command::ReviewQueue),
+        Command::Agent(groove_controllers::agent::Command::ListSkills),
     ]
 }
 

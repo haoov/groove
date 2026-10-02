@@ -1,6 +1,7 @@
 //! The skills an agent can be sent: the core plugin written at start, and the user's own.
 
 mod parse;
+mod shared;
 
 #[cfg(test)]
 mod tests;
@@ -12,6 +13,8 @@ use groove_types::{Error, ErrorKind, Result, Skill};
 /// The plugin names, which are also the agent's own namespaces.
 pub const CORE: &str = "groove";
 pub const USER: &str = "user";
+
+pub use shared::{Marketplace, Plugin, marketplace};
 
 /// The core skills, compiled in and written out over whatever was there.
 const BUILT_IN: &[(&str, &str)] = &[

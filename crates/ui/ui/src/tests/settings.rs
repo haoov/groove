@@ -300,3 +300,79 @@ fn the_palette_opens_settings_too() {
     assert!(ui.settings.open);
     assert!(ui.palette().is_none());
 }
+
+#[test]
+fn the_shared_repo_is_named_through_its_url_and_branch() {
+    let (app, mut ui) = opened();
+    ui.settings.section = crate::views::settings::Section::Agent;
+    let (texts, hits) = drawn(&app, &ui);
+    assert!(texts.iter().any(|t| t == "Shared repo"), "{texts:?}");
+    let set = hits
+        .rect_of(&Target::SettingsShare)
+        .expect("the repo's set");
+    click(set, &mut ui, &app, &hits);
+    typed("git@github.com:team/skills.git", &mut ui, &app);
+    press(Key::Tab, Modifiers::default(), &mut ui, &app);
+    typed("prod", &mut ui, &app);
+    let asked = press(Key::Enter, Modifiers::default(), &mut ui, &app);
+    let join = config::Command::JoinShared {
+        url: "git@github.com:team/skills.git".into(),
+        branch: "prod".into(),
+    };
+    assert_eq!(asked, [Command::Config(join)]);
+}
+
+#[test]
+fn a_named_repo_says_its_plugins_and_goes_only_once_confirmed() {
+    let (app, mut ui) = opened();
+    let mut app = crate::tests::bar::sourced(app, false, false);
+    let shared = groove_types::SharedConfig {
+        url: "git@github.com:team/skills.git".into(),
+        branch: "main".into(),
+    };
+    app.config.config.as_mut().expect("a config").shared = Some(shared);
+    let plugin = |name: &str| groove_controllers::agent_service::skills::Plugin {
+        name: name.into(),
+        dir: format!("/data/shared/plugins/{name}").into(),
+    };
+    app.agent.shared = Some(groove_controllers::agent_service::shared::Shared {
+        path: "/data/shared".into(),
+        marketplace: groove_controllers::agent_service::skills::Marketplace {
+            name: "groove-agent".into(),
+            plugins: vec![plugin("platform"), plugin("review")],
+        },
+    });
+    ui.settings.section = crate::views::settings::Section::Agent;
+    let (texts, hits) = drawn(&app, &ui);
+    let named = "groove-agent · platform, review";
+    for shown in [named, "git@github.com:team/skills.git", "main"] {
+        assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
+    }
+    let stop = hits.rect_of(&Target::SettingsUnshare).expect("the stop");
+    assert!(
+        click(stop, &mut ui, &app, &hits).is_empty(),
+        "the first click only asks"
+    );
+    let (_, hits) = drawn(&app, &ui);
+    let sure = hits
+        .rect_of(&Target::SettingsUnshareSure)
+        .expect("the confirm");
+    let asked = click(sure, &mut ui, &app, &hits);
+    assert_eq!(asked, [Command::Config(config::Command::LeaveShared)]);
+}
+
+#[test]
+fn the_auto_approve_default_stands_in_the_agent_section() {
+    let (app, mut ui) = opened();
+    let app = crate::tests::bar::sourced(app, false, false);
+    let shown = |ui: &Ui| {
+        drawn(&app, ui)
+            .0
+            .iter()
+            .any(|t| t == "auto-approve default")
+    };
+    ui.settings.section = crate::views::settings::Section::Agent;
+    assert!(shown(&ui));
+    ui.settings.section = crate::views::settings::Section::Preferences;
+    assert!(!shown(&ui), "Preferences no longer holds it");
+}

@@ -61,3 +61,39 @@ async fn a_missing_origin_is_an_error_not_an_empty_list() {
         Err(Error::Failed { .. })
     ));
 }
+
+#[tokio::test]
+async fn a_followed_copy_holds_the_branch_head_whatever_was_done_to_it() {
+    let fx = Fixture::new();
+    fx.git().push("main").await.unwrap();
+    let copy = fx.root.path().join("copy");
+    let url = format!("file://{}", fx.origin.display());
+    let git = crate::Git::clone_head(&url, &copy, "main").await.unwrap();
+    assert_eq!(
+        std::fs::read_to_string(copy.join("a.txt")).unwrap(),
+        "two\n"
+    );
+
+    std::fs::write(fx.work.join("a.txt"), "three\n").unwrap();
+    sh(&fx.work, &["commit", "-am", "third"]);
+    fx.git().push("main").await.unwrap();
+    std::fs::write(copy.join("a.txt"), "edited here\n").unwrap();
+    std::fs::write(copy.join("stray.txt"), "left\n").unwrap();
+    git.follow("main").await.unwrap();
+    assert_eq!(
+        std::fs::read_to_string(copy.join("a.txt")).unwrap(),
+        "three\n"
+    );
+    assert!(
+        !copy.join("stray.txt").exists(),
+        "nothing of its own is kept"
+    );
+}
+
+#[tokio::test]
+async fn a_branch_origin_does_not_hold_is_an_error() {
+    let fx = Fixture::new();
+    let url = format!("file://{}", fx.origin.display());
+    let copy = fx.root.path().join("copy");
+    assert!(crate::Git::clone_head(&url, &copy, "nope").await.is_err());
+}

@@ -1202,12 +1202,16 @@ version = "0.1.0"
 dependencies = [
  "groove-agent-launch",
  "groove-approvals",
+ "groove-git",
  "groove-hooks",
  "groove-mcp",
  "groove-skills",
  "groove-terminal",
  "groove-tools",
  "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

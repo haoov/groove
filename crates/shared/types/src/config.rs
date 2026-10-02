@@ -24,6 +24,15 @@ pub struct Config {
     /// The chords rebound: an action's id to what replaces its defaults.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub keymap: BTreeMap<String, Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shared: Option<SharedConfig>,
+}
+
+/// The repo a team shares its skills through, and the branch Groove follows in it.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SharedConfig {
+    pub url: String,
+    pub branch: String,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]

@@ -54,6 +54,9 @@ pub struct State {
     /// The source a connect is reading, and why the last one was refused.
     pub connecting: Option<groove_types::ProviderId>,
     pub refused: Option<String>,
+    /// A shared repo is being copied, and why the last one was refused.
+    pub joining: bool,
+    pub unshared: Option<String>,
     /// What each source was last read to hold, and the sources being read.
     pub schemas: Vec<(groove_types::ProviderId, Vec<groove_types::Property>)>,
     pub reading: Vec<groove_types::ProviderId>,
@@ -100,6 +103,17 @@ impl State {
     /// Whether a new session's writes run without asking.
     pub fn auto_approve_default(&self) -> bool {
         self.preferences().auto_approve_default
+    }
+
+    /// The shared repo named, or none; the config to write, or `None` before first run.
+    pub fn set_shared(&mut self, shared: Option<groove_types::SharedConfig>) -> Option<&Config> {
+        let config = self.config.as_mut()?;
+        config.shared = shared;
+        Some(config)
+    }
+
+    pub fn shared(&self) -> Option<&groove_types::SharedConfig> {
+        self.config.as_ref()?.shared.as_ref()
     }
 
     /// The chords rebound, whole; the config to write, or `None` before first run.

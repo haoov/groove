@@ -38,8 +38,8 @@ pub use attention::{Attention, MrFacts, Thresholds, attention};
 pub use chord::{Chord, Stroke};
 pub use config::{
     Config, ConfigView, EstimateUnit, FilterConfig, GitConfig, GithubConfig, GithubView,
-    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, StatusMap,
-    ThemeName, UiConfig,
+    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, SharedConfig,
+    StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, WorktreeDelivery};
 pub use diff::{

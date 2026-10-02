@@ -281,6 +281,7 @@ pub(super) fn sourced(
         ui: Default::default(),
         preferences: Default::default(),
         keymap: Default::default(),
+        shared: None,
     });
     app
 }

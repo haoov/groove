@@ -1,4 +1,4 @@
-//! The Preferences section's rows: the agent's switch, then counts that step up and down.
+//! The Preferences section's rows: counts that step up and down.
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::Preference;
@@ -8,26 +8,9 @@ use super::{Row, Section, Value, grouped};
 
 pub(super) fn preferences(app: &AppState) -> Vec<Row> {
     let held = app.config.preferences();
-    let agent = toggle(
-        "auto-approve default",
-        "writes ask new sessions",
-        held.auto_approve_default,
-        Preference::AutoApproveDefault(!held.auto_approve_default),
-    );
-    let mut out = grouped("Agent", vec![agent]);
-    out.extend(grouped("Attention thresholds", thresholds(&held)));
+    let mut out = grouped("Attention thresholds", thresholds(&held));
     out.extend(grouped("Forge poll", poll(&held)));
     out
-}
-
-fn toggle(label: &'static str, words: &'static str, on: bool, flip: Preference) -> Row {
-    Row {
-        section: Section::Preferences,
-        group: "",
-        label,
-        words,
-        value: Value::Toggle { on, flip },
-    }
 }
 
 /// A count stepped by `step`, never under `least`; `set` makes the preference of a value.

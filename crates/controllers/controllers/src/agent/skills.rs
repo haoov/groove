@@ -11,13 +11,19 @@ pub(crate) fn dirs(state: &AppState) -> Dirs {
     Dirs::new(&state.env.data_dir, &state.env.config_dir)
 }
 
-/// Both plugins written, then every skill they offer onto the slice.
+/// The shared copy followed and both plugins written, then every skill they offer onto the slice.
 pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
     let dirs = dirs(state);
+    let (data, shared) = (state.env.data_dir.clone(), state.config.shared().cloned());
     spawner.spawn(Box::pin(async move {
+        let followed = match shared {
+            Some(shared) => Some(groove_agent_service::shared::follow(&data, &shared).await),
+            None => None,
+        };
         let made = skills::sync(&dirs);
         let read = skills::list(&dirs);
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            crate::config::shared::followed(state, followed);
             if let Err(e) = made {
                 state.failed(e);
             }

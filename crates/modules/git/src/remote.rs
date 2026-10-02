@@ -52,4 +52,30 @@ impl Git {
         Git::at(parent).text(&["clone", url, &dest_str]).await?;
         Ok(Git::at(dest))
     }
+
+    /// Only the head of `branch` of `url`, at `dest`, for a copy nobody edits.
+    pub async fn clone_head(url: &str, dest: &Path, branch: &str) -> Result<Git> {
+        let parent = dest.parent().unwrap_or(Path::new("."));
+        let dest_str = dest.to_string_lossy();
+        let args = [
+            "clone",
+            "--depth",
+            "1",
+            "--single-branch",
+            "--branch",
+            branch,
+            url,
+            &dest_str,
+        ];
+        Git::at(parent).text(&args).await?;
+        Ok(Git::at(dest))
+    }
+
+    /// The copy moved to the head of `branch` on origin, whatever it held.
+    pub async fn follow(&self, branch: &str) -> Result<()> {
+        self.text(&["fetch", "--depth", "1", "origin", branch])
+            .await?;
+        self.text(&["reset", "--hard", "FETCH_HEAD"]).await?;
+        self.text(&["clean", "-fdx"]).await.map(drop)
+    }
 }

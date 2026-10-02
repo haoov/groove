@@ -53,6 +53,10 @@ pub enum Target {
     /// A source asked off, then the answer that confirms it.
     SettingsTurnOff(groove_types::ProviderId),
     SettingsTurnOffSure(groove_types::ProviderId),
+    /// The shared repo: its fields opened, then asked gone, then the answer that confirms it.
+    SettingsShare,
+    SettingsUnshare,
+    SettingsUnshareSure,
     /// An action's chord waited for, or put back on its defaults.
     SettingsBind(crate::keymap::Action),
     SettingsUnbind(crate::keymap::Action),
