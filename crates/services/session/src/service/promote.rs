@@ -63,7 +63,7 @@ impl Service {
             .iter()
             .map(|one| {
                 let project = project_of(&old, one);
-                let branch = match one.branch.starts_with("explorer/") {
+                let branch = match groove_types::is_explorer_branch(&one.branch) {
                     true => free(&mut taken, one.repo.as_str(), &wanted),
                     false => one.branch.clone(),
                 };

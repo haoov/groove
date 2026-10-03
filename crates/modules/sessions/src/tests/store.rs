@@ -198,6 +198,11 @@ async fn a_routine_session_reads_back_as_its_routine_and_goes_with_its_row() {
     };
     store.create_routine(&session).await.unwrap();
     assert_eq!(store.get(&session.id).await.unwrap(), Some(session.clone()));
+    let renamed = store.rename_explorer(&session.id, "other").await;
+    assert!(
+        renamed.is_err(),
+        "a routine's session is no explorer to rename"
+    );
     store.remove(&session.id).await.unwrap();
     assert!(store.get(&session.id).await.unwrap().is_none());
     store

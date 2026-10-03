@@ -164,11 +164,14 @@ impl Store {
     }
 
     pub async fn rename_explorer(&self, id: &SessionId, title: &str) -> Result<()> {
-        let done = sqlx::query("UPDATE sessions SET title = ? WHERE id = ? AND kind = 'explorer'")
-            .bind(title)
-            .bind(id.as_str())
-            .execute(self.db.pool())
-            .await?;
+        let done = sqlx::query(
+            "UPDATE sessions SET title = ? WHERE id = ? AND kind = 'explorer'
+             AND id NOT IN (SELECT session_id FROM routine_sessions)",
+        )
+        .bind(title)
+        .bind(id.as_str())
+        .execute(self.db.pool())
+        .await?;
         found(done.rows_affected(), "explorer", id)
     }
 

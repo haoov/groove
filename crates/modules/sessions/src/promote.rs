@@ -75,10 +75,13 @@ impl Store {
 
 /// Refuses a session that is not an explorer, or not there at all.
 async fn is_explorer(conn: &mut sqlx::SqliteConnection, id: &SessionId) -> Result<()> {
-    let kind: Option<String> = sqlx::query_scalar("SELECT kind FROM sessions WHERE id = ?")
-        .bind(id.as_str())
-        .fetch_optional(conn)
-        .await?;
+    let kind: Option<String> = sqlx::query_scalar(
+        "SELECT kind FROM sessions
+         WHERE id = ? AND id NOT IN (SELECT session_id FROM routine_sessions)",
+    )
+    .bind(id.as_str())
+    .fetch_optional(conn)
+    .await?;
     match kind.as_deref() {
         Some("explorer") => Ok(()),
         _ => Err(Error::NotExplorer(id.clone())),

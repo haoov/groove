@@ -56,7 +56,7 @@ pub use mr::{
     CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
     ReviewState, ReviewVerdict, Reviewer,
 };
-pub use naming::names_session;
+pub use naming::{explorer_branch, is_explorer_branch, names_session};
 pub use narrowing::{narrows, occurrences, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;

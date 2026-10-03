@@ -30,12 +30,7 @@ impl Git {
         let Some(base) = base else {
             return Ok(usize::MAX);
         };
-        let range = format!("{base}..HEAD");
-        let out = self
-            .text(&["rev-list", "--count", &range])
-            .await
-            .unwrap_or_default();
-        Ok(out.trim().parse().unwrap_or(0))
+        Ok(self.commits_since(base).await? as usize)
     }
 
     /// Lines added and deleted per path in one commit, against its first parent.

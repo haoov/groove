@@ -10,8 +10,17 @@ impl Git {
 
     /// Commits on HEAD that `base` lacks.
     pub async fn commits_since(&self, base: &str) -> Result<u32> {
-        let range = format!("{base}..HEAD");
-        let args = ["rev-list", "--count", &range];
+        self.count(&format!("{base}..HEAD")).await
+    }
+
+    /// Commits on `branch` that origin lacks: past its copy there, else past its base.
+    pub async fn unpushed(&self, branch: &str, pinned: Option<&str>) -> Result<u32> {
+        let point = self.pushed_point(branch, pinned).await?;
+        self.count(&format!("{point}..refs/heads/{branch}")).await
+    }
+
+    async fn count(&self, range: &str) -> Result<u32> {
+        let args = ["rev-list", "--count", range];
         let out = self.line(&args).await?;
         out.parse().map_err(|_| Error::Unexpected {
             command: crate::command::describe(&args),

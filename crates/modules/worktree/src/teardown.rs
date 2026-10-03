@@ -38,17 +38,29 @@ impl Pool {
 
     /// Refuses a worktree holding work origin lacks, or one git cannot answer for.
     async fn refuse_loss(&self, worktree: &Worktree) -> Result<()> {
-        if !Path::new(&worktree.path).is_dir() {
-            return Ok(());
-        }
-        let git = Git::at(&worktree.path);
         let unknown = || Error::Unknown {
             branch: worktree.branch.clone(),
         };
-        if !git.status().await.map_err(|_| unknown())?.is_empty() {
-            return Err(Error::Dirty);
+        let git = match Path::new(&worktree.path).is_dir() {
+            true => {
+                let git = Git::at(&worktree.path);
+                if !git.status().await.map_err(|_| unknown())?.is_empty() {
+                    return Err(Error::Dirty);
+                }
+                git
+            }
+            false => match self.repo(&worktree.repo).await {
+                Ok(repo) => Git::at(&repo.local_path),
+                Err(_) => return Ok(()),
+            },
+        };
+        let branch = format!("refs/heads/{}", worktree.branch);
+        if !git.ref_exists(&branch).await.map_err(|_| unknown())? {
+            return Ok(());
         }
-        match unpushed(&git, worktree).await.ok_or_else(unknown)? {
+        let pinned = worktree.base_ref.as_deref();
+        let ahead = git.unpushed(&worktree.branch, pinned).await;
+        match ahead.map_err(|_| unknown())? {
             0 => Ok(()),
             ahead => Err(Error::Unpushed {
                 branch: worktree.branch.clone(),
@@ -67,13 +79,6 @@ impl Pool {
         }
         Ok(())
     }
-}
-
-/// The commits origin lacks.
-async fn unpushed(git: &Git, worktree: &Worktree) -> Option<u32> {
-    let pinned = worktree.base_ref.as_deref();
-    let point = git.pushed_point(&worktree.branch, pinned).await.ok()?;
-    git.commits_since(&point).await.ok()
 }
 
 /// Deletes the tree and the empty parents above it, up to `stop_at`.

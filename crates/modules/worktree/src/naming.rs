@@ -11,10 +11,7 @@ const FORBIDDEN_CHARS: [char; 8] = [' ', '~', '^', ':', '?', '*', '[', '\\'];
 pub fn default_branch(session: &Session, tag: Option<&str>) -> String {
     let slug = slug(&session.title);
     match session.kind {
-        SessionKind::Explorer => format!(
-            "explorer/{}",
-            session.id.as_str().trim_start_matches("explorer-")
-        ),
+        SessionKind::Explorer => groove_types::explorer_branch(&session.id),
         _ => {
             let id = tag
                 .filter(|t| !t.is_empty())

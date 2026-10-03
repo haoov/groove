@@ -236,8 +236,6 @@ async fn align(worktree: &Git, branch: &str) -> Result<()> {
     if worktree.current_branch().await? == branch {
         return Ok(());
     }
-    if worktree.switch(branch, false).await.is_ok() {
-        return Ok(());
-    }
-    Ok(worktree.switch(branch, true).await?)
+    let made = worktree.ref_exists(&format!("refs/heads/{branch}")).await?;
+    Ok(worktree.switch(branch, !made).await?)
 }

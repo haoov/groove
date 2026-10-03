@@ -88,27 +88,16 @@ async fn a_target_pins_the_base_and_an_unknown_target_lists_what_exists() {
 }
 
 #[tokio::test]
-async fn a_foreign_local_branch_is_refused_unless_named_and_an_own_one_is_adopted() {
+async fn an_existing_branch_of_the_session_s_own_is_adopted() {
     let fx = Fixture::new().await;
     let repo = fx.repo().await;
     sh(&fx.clone, &["branch", "explorer/ab12cd34", "origin/main"]);
-    let err = fx
+    let done = fx
         .pool
         .provision(&fx.session, &repo, &WorktreeSpec::default(), None)
         .await
-        .unwrap_err();
-    assert!(matches!(err, Error::ForeignBranch { .. }), "{err}");
-
-    let named = WorktreeSpec {
-        branch: Some("explorer/ab12cd34".into()),
-        ..Default::default()
-    };
-    let done = fx
-        .pool
-        .provision(&fx.session, &repo, &named, None)
-        .await
         .unwrap();
-    assert!(done.adopted);
+    assert!(done.adopted, "the explorer's own branch is its own");
     assert!(done.notes[0].contains("continuing on the existing branch"));
 
     let task = Session {
