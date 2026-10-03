@@ -23,6 +23,14 @@ reach the rail.
   action. The mouse is a shortcut.
 - **Selection is a background**, one step above its ground — never an underline or a bar.
 
+## Limits
+
+- **No accessibility layer.** Groove draws its own pixels and gives screen readers
+  nothing. AccessKit (`accesskit_winit`) is the way in when it is needed. Every view
+  draws through the kit, so the kit is the one place that would emit the nodes.
+- **No layout engine.** Content shaped like a document opens in the browser or stays
+  plain text. Groove never lays out flowing pages.
+
 ## Board — large scope
 
 The board replaces the agent pane, the workspace and the sidebar; the rail stays. Three
@@ -40,17 +48,18 @@ the task at the provider is the agent's own write.
 
 Each column header carries its count.
 
-**Live item.** Folded: kind icon, title, repo count, twisty. Expanded: one row per
-worktree — branch, then git counts, the MR's number, its checks and its notes, zero and
-absent omitted — and a link to the forge. The title opens the session, which joins the
-rail. Right click: open in provider, finish, delete, delete locally.
+**Live item.** One line: the kind icon, blue while the session is open, the title, then
+the repo count and the worktree count when it is not one. A click opens the session,
+which joins the rail. Right click: delete locally.
 
 **Up next item.** A position number, title, priority and size as text. Drag to reorder. One
 divider, **later**, that items can be dragged under. The order is Groove's and is never
 written to the provider. A ticket that gets a session leaves the plan for Live.
 
-**Review item.** Project and MR number, title, author, updated. Open creates a review
-session, which joins the rail.
+**Review item.** Title and updated, then under them the project and MR number, the
+author and where the reviewers stand. Open creates a review session, which joins the
+rail. The column heading sorts by title or by updated; a second click turns the order
+round. Up and down select an item, Enter opens it, Esc lets it go.
 
 **Attention.** An item that needs the user gets one line under its title — the reason and
 the age, in peach — and floats to the top of its column whatever the sort:
