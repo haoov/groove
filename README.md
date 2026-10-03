@@ -2,6 +2,16 @@
 
 A desktop workspace for a platform engineer who works through agents.
 
-The application is being rewritten in Rust on the GPU; the design references are in
-[`docs/design/`](docs/design/README.md). The current Tauri application lives under
-[`legacy/`](legacy/README.md) and keeps working while the rewrite is built.
+Groove is a Rust application drawn on the GPU. The design references are in
+[`docs/design/`](docs/design/README.md).
+
+## Install
+
+Linux only. Download the `.deb` from the
+[latest release](https://github.com/haoov/groove/releases) and install it:
+
+```sh
+sudo apt install ./groove_*.deb
+```
+
+It needs glibc 2.39 or later and `git`, and recommends `gh` and `glab`.
