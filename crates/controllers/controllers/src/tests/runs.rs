@@ -1,4 +1,4 @@
-//! Routines at work: an event runs them on the session it is about, once, never the selected one.
+//! Routines at work: on the session an event is about, once, not selected, with auto-approve on.
 
 use groove_agent_service::routines::{Listed, parse};
 use groove_types::{AgentStatus, SessionId};
@@ -44,6 +44,10 @@ fn explorer(
     id
 }
 
+fn auto(state: &mut AppState, id: &SessionId, on: bool) {
+    state.session.get_mut(id).expect("open").state.auto_approve = on;
+}
+
 fn status(state: &mut AppState, id: &SessionId, to: AgentStatus) {
     let agent = state.agent.agents.iter_mut().find(|(one, _)| one == id);
     agent.expect("its agent").1.activity.status = to;
@@ -83,6 +87,9 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     until(&spawner, &services, &mut state, |s| {
         screen(s, &away, 0).starts_with("ready")
     });
+    for id in [&away, &here] {
+        auto(&mut state, id, true);
+    }
     routine::watch(&mut state, &services, &spawner);
     for id in [&away, &here] {
         status(&mut state, id, AgentStatus::Working);
@@ -142,6 +149,7 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
     until(&spawner, &services, &mut state, |s| {
         s.agent.terminal(&id).is_some()
     });
+    auto(&mut state, &id, true);
 
     state.task.tasks = vec![task("T-1", "In progress")];
     state.task.reading = true;
@@ -169,19 +177,48 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
 }
 
 #[test]
-fn a_routine_s_button_runs_it_on_the_selected_session_whatever_the_rules() {
+fn a_standalone_routine_s_button_runs_it_whatever_the_rules_but_a_bound_one_has_none() {
+    let (_home, spawner, services, mut state) = fresh();
+    listed(&mut state, "user:digest", DIGEST);
+    listed(&mut state, "user:notes", NOTES);
+    on("user:digest", &mut state, &services, &spawner);
+    let id = crate::config::session_of(&state, "user:digest").expect("its session");
+    until(&spawner, &services, &mut state, |s| {
+        s.agent.terminal(&id).is_some()
+    });
+    let run = |id: &str| Command::Agent(agent::Command::RunRoutine { id: id.into() });
+    dispatch(run("user:digest"), &mut state, &services, &spawner);
+    let first = "ready Routine `digest`, started by its button.";
+    until(&spawner, &services, &mut state, |s| {
+        s.agent
+            .terminal(&id)
+            .is_some_and(|t| t.screen().line(0) == first)
+    });
+
+    explorer("here", &mut state, &services, &spawner);
+    dispatch(run("user:notes"), &mut state, &services, &spawner);
+    assert_eq!(state.agent.runs.running.len(), 1, "only the digest runs");
+    assert!(
+        state
+            .errors
+            .iter()
+            .any(|one| one.what.message.contains("bound"))
+    );
+}
+
+#[test]
+fn an_event_on_a_session_with_auto_approve_off_starts_nothing() {
     let (_home, spawner, services, mut state) = fresh();
     listed(&mut state, "user:notes", NOTES);
-    let here = explorer("here", &mut state, &services, &spawner);
-    until(&spawner, &services, &mut state, |s| {
-        screen(s, &here, 0).starts_with("ready")
-    });
-    let run = agent::Command::RunRoutine {
-        id: "user:notes".into(),
-    };
-    dispatch(Command::Agent(run), &mut state, &services, &spawner);
-    assert_eq!(state.agent.runs.running.len(), 1);
-    until(&spawner, &services, &mut state, |s| {
-        screen(s, &here, 2) == "got /groove:fix-notes"
-    });
+    on("user:notes", &mut state, &services, &spawner);
+    let away = explorer("away", &mut state, &services, &spawner);
+    explorer("here", &mut state, &services, &spawner);
+    auto(&mut state, &away, false);
+    routine::watch(&mut state, &services, &spawner);
+    status(&mut state, &away, AgentStatus::Working);
+    routine::watch(&mut state, &services, &spawner);
+    status(&mut state, &away, AgentStatus::Done { seen: false });
+    routine::watch(&mut state, &services, &spawner);
+    assert!(state.agent.runs.running.is_empty() && state.agent.runs.waiting.is_empty());
+    assert!(!state.agent.runs.ran("user:notes", &away));
 }

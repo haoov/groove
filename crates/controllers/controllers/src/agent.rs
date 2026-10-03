@@ -151,7 +151,7 @@ pub fn dispatch(
         }
         Command::DeleteSkill { name } => skills::delete(state, spawner, name),
         Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
-        Command::RunRoutine { id } => crate::routine::button(state, spawner, &id),
+        Command::RunRoutine { id } => crate::routine::button(state, services, spawner, &id),
         pointing => pointer::acted(state, services, pointing),
     }
 }

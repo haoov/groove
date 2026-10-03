@@ -75,6 +75,17 @@ pub(crate) fn begun(
     session: Session,
     now: Timestamp,
 ) -> bool {
+    begun_asking(state, spawner, session, now, None)
+}
+
+/// The same, its agent launched with `prompt` as its first message.
+pub(crate) fn begun_asking(
+    state: &mut AppState,
+    spawner: &dyn Spawner,
+    session: Session,
+    now: Timestamp,
+    prompt: Option<String>,
+) -> bool {
     let id = session.id.clone();
     let auto = state.config.auto_approve_default();
     state.session.open(session, now);
@@ -82,7 +93,7 @@ pub(crate) fn begun(
         open.state.auto_approve = auto;
     }
     crate::workspace::follow(state, spawner);
-    agent::start(state, spawner, id, FIRST_SIZE);
+    agent::asking(state, spawner, id, FIRST_SIZE, prompt);
     auto
 }
 

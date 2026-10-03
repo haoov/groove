@@ -22,6 +22,6 @@ pub(super) fn agent(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     let mut out = grouped("Approvals", vec![approve]);
     out.extend(shared(app, settings));
     out.extend(super::skills::skills(app, settings));
-    out.extend(super::routines::routines(app, settings));
+    out.extend(super::routines::routines(app));
     out
 }

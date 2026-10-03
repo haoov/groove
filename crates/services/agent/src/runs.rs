@@ -33,6 +33,7 @@ pub struct Seen {
     pub selected: Option<SessionId>,
     pub ci: BTreeMap<WorktreeId, CiState>,
     pub changes: BTreeMap<WorktreeId, bool>,
+    pub commented: BTreeMap<WorktreeId, bool>,
     /// The review sessions the queue asks of the user, once it is read.
     pub asked: Option<BTreeSet<String>>,
     pub working: BTreeSet<SessionId>,

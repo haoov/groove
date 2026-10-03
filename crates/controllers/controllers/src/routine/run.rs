@@ -64,6 +64,7 @@ pub(super) fn start(state: &mut AppState, spawner: &dyn Spawner, mut run: Run) {
             agent::asking(state, spawner, id, FIRST_SIZE, Some(words));
         }
         (RoutineKind::Bound, false) => agent::asking(state, spawner, id, FIRST_SIZE, Some(words)),
+        (RoutineKind::Action, _) => return,
     }
     run.sent_at = Some(Timestamp::now());
     state.agent.runs.running.push(run);

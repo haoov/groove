@@ -1,4 +1,4 @@
-//! Routines switched on with their scope, off, and one trigger at a time; the file written each time.
+//! Routines switched on, off, and one trigger at a time; the file written each time.
 
 use groove_agent_service::routines::{Listed, parse};
 use groove_types::Trigger;
@@ -7,8 +7,8 @@ use crate::config::Command;
 use crate::tests::fixture::fresh;
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
-const FIX_CI: &str = "---\nskills: groove:fix-ci\nkind: bound\non: ci-failed, changes-requested\n\
-                      scope: edit, commit, push\n---\n";
+const FIX_CI: &str =
+    "---\nskills: groove:fix-ci\nkind: bound\non: ci-failed, changes-requested\n---\n";
 
 fn listed(state: &mut AppState) {
     let id = "user:fix-red-ci";

@@ -1,3 +1,4 @@
+mod actions;
 mod agent;
 mod config;
 mod deleting;

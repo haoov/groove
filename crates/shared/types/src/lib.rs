@@ -62,7 +62,7 @@ pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
-pub use routine::{Routine, RoutineKind, Trigger};
+pub use routine::{Action, Routine, RoutineKind, Trigger};
 pub use secret::Secret;
 pub use session::{Session, SessionKind, SessionState, Skill};
 pub use syntax::{Capture, Highlight};

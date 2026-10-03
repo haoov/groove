@@ -12,7 +12,7 @@ use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 use crate::asker::Asker;
 
 pub use delete::{delete, delete_local, force_delete};
-pub(crate) use open::begun;
+pub(crate) use open::{begun, begun_asking};
 pub use open::{close, open, open_explorer, restore, select};
 pub use rail::{list, refresh_status, rename_explorer};
 pub(crate) use rail::{listed, set_auto_approve};

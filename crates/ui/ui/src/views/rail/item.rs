@@ -50,6 +50,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
         Some((ask, waiting)) => asking(ctx, under, &ask, waiting),
         None => state(ctx, app, under, open),
     }
+    if let Some(routine) = open.session.kind.routine() {
+        run(ctx, app, under, id, routine);
+    }
     hairline(ctx, rect, ctx.styles.line());
     if ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id) {
         ruled(ctx, rect, ctx.styles.chosen());
@@ -80,6 +83,18 @@ fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
         let button = Button::new(label, target, Role::Text, ground).hover(hover);
         button.left(ctx, &mut under, ctx.tokens.xs);
     }
+}
+
+/// A routine session's button that runs its routine now, while no run is on it.
+fn run(ctx: &mut Ctx, app: &AppState, line: Rect, id: &SessionId, routine: &str) {
+    if app.agent.runs.busy(id) {
+        return;
+    }
+    let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());
+    let mut room = line.pad(Edges::across(0.0, md));
+    let target = Target::RoutineRun(routine.to_string());
+    let button = Button::new("Run", target, Role::Text, ground).hover(hover);
+    button.right(ctx, &mut room, 0.0);
 }
 
 /// How long the agent has waited, at the right of `room`.

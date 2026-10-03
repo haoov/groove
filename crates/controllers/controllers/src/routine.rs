@@ -1,5 +1,6 @@
 //! The routines at work: each look at the state turns what changed into runs, and runs them.
 
+mod action;
 mod rules;
 mod run;
 mod seen;
@@ -10,7 +11,7 @@ use groove_types::{Error, RoutineKind, Timestamp, Trigger};
 use crate::{AppState, Services, Spawner};
 
 /// What changed since the last look, as runs: queued by the rules, started within the cap.
-pub fn watch(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
+pub fn watch(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let before = state.agent.runs.seen.take();
     let now = seen::look(state, before.as_ref());
     if let Some(selected) = &now.selected {
@@ -25,10 +26,14 @@ pub fn watch(state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
         .into_iter()
         .filter(|one| !ran_itself(state, one))
         .collect();
+    let mut actions = Vec::new();
     for one in &fired {
-        rules::queue(state, one);
+        actions.extend(rules::queue(state, one));
     }
-    dawn(state);
+    actions.extend(dawn(state));
+    for one in actions {
+        action::act(state, services, spawner, one);
+    }
     run::finished(state, Timestamp::now());
     run::pump(state, spawner);
 }
@@ -44,16 +49,16 @@ fn ran_itself(state: &AppState, fired: &Fired) -> bool {
 }
 
 /// The day's first look, once the rail and the routines are back, fires the daily trigger.
-fn dawn(state: &mut AppState) {
+fn dawn(state: &mut AppState) -> Vec<groove_types::Action> {
     let back = state.session.restored && state.agent.listed;
     if state.agent.runs.dawned || !back {
-        return;
+        return Vec::new();
     }
     state.agent.runs.dawned = true;
     let path = state.env.data_dir.join("routines").join("day");
     let today = Timestamp::now().day().to_string();
     if std::fs::read_to_string(&path).is_ok_and(|day| day.trim() == today) {
-        return;
+        return Vec::new();
     }
     let written = std::fs::create_dir_all(state.env.data_dir.join("routines"))
         .and_then(|()| std::fs::write(&path, &today));
@@ -65,22 +70,30 @@ fn dawn(state: &mut AppState) {
         session: None,
         about: String::new(),
     };
-    rules::queue(state, &daily);
+    rules::queue(state, &daily)
 }
 
-/// The routine's button: it runs now, on its own session or the selected one, whatever the rules.
-pub fn button(state: &mut AppState, spawner: &dyn Spawner, id: &str) {
+/// A standalone routine's button runs it now in its session, an action's does it; whatever the rules.
+pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, id: &str) {
     let listed = state.agent.routines.iter().find(|one| one.id == id);
     let Some(routine) = listed.and_then(|one| one.read.as_ref().ok()).cloned() else {
         return state.failed(Error::invalid(format!(
             "`{id}` is no routine Groove can run"
         )));
     };
+    if let Some(one) = routine.action {
+        return action::act(state, services, spawner, one);
+    }
+    if routine.kind == RoutineKind::Bound {
+        let why = format!("`{id}` is bound: its events run it");
+        return state.failed(Error::invalid(why));
+    }
     let selected = state.session.selected.clone();
     let Some(session) = rules::target(state, &routine, selected.as_ref()) else {
         let why = match routine.kind {
-            RoutineKind::Bound => "select the session it should run on first",
+            RoutineKind::Bound => "its events run it",
             RoutineKind::Standalone => "switch it on first: its session holds its agent",
+            RoutineKind::Action => "it does nothing Groove knows",
         };
         return state.failed(Error::invalid(format!("`{id}` cannot run: {why}")));
     };

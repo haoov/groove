@@ -1,12 +1,12 @@
-//! Which routines an event starts, and on which session: never the selected one, once a session.
+//! Which routines an event starts, and where: once a session, not the selected one, auto-approve on.
 
 use groove_agent_service::runs::{Fired, Run};
-use groove_types::{Routine, RoutineKind, SessionId};
+use groove_types::{Action, Routine, RoutineKind, SessionId};
 
 use crate::AppState;
 
-/// Every switched-on routine that answers to the event, queued on the session it runs on.
-pub(super) fn queue(state: &mut AppState, fired: &Fired) {
+/// Every switched-on routine that answers to the event, queued on its session; the actions to do.
+pub(super) fn queue(state: &mut AppState, fired: &Fired) -> Vec<Action> {
     let held = state.config.routines();
     let paused = state
         .config
@@ -14,7 +14,7 @@ pub(super) fn queue(state: &mut AppState, fired: &Fired) {
         .as_ref()
         .is_some_and(|one| one.preferences.routines_paused);
     if paused {
-        return;
+        return Vec::new();
     }
     let answering: Vec<Routine> = state
         .agent
@@ -30,13 +30,18 @@ pub(super) fn queue(state: &mut AppState, fired: &Fired) {
         })
         .cloned()
         .collect();
+    let mut actions = Vec::new();
     for routine in answering {
+        if let Some(action) = routine.action {
+            actions.push(action);
+            continue;
+        }
         let Some(session) = target(state, &routine, fired.session.as_ref()) else {
             continue;
         };
         let runs = &state.agent.runs;
         let ran = runs.ran(&routine.id, &session) || runs.holds(&routine.id, &session);
-        if ran || state.session.selected.as_ref() == Some(&session) {
+        if ran || !acts(state, &session) {
             continue;
         }
         state.agent.runs.queue(Run {
@@ -48,6 +53,17 @@ pub(super) fn queue(state: &mut AppState, fired: &Fired) {
             went: false,
         });
     }
+    actions
+}
+
+/// Whether an event may act on the session: not the selected one, only where auto-approve is on.
+fn acts(state: &AppState, session: &SessionId) -> bool {
+    let selected = state.session.selected.as_ref() == Some(session);
+    let auto = state
+        .session
+        .get(session)
+        .is_some_and(|one| one.state.auto_approve);
+    auto && !selected
 }
 
 /// A bound routine runs on the open session the event is about; a standalone one in its own.
@@ -67,5 +83,6 @@ pub(super) fn target(
                 .is_none()
                 .then(|| open.session.id.clone())
         }
+        RoutineKind::Action => None,
     }
 }

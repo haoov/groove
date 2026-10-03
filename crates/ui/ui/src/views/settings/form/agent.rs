@@ -1,4 +1,4 @@
-//! The Agent section's own values: a skill's switch and delete, a routine's switch and scope.
+//! The Agent section's own values: a skill's switch and delete, a routine's switch and run.
 
 use groove_gfx::Rect;
 
@@ -9,7 +9,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Button;
 
-/// A routine's switch and what it does, or the scope switching it on asks; or one trigger's.
+/// A routine's switch, its run and what it does; or one trigger's switch.
 pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
     let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
     let switch = |on: bool, target: Target| {
@@ -24,25 +24,13 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
         Value::Switch { on, target } => {
             switch(*on, target.clone()).left(ctx, &mut room, sm);
         }
-        Value::Routine {
-            id,
-            allowing: Some(scope),
-            ..
-        } => {
-            let asked = format!("allow without asking: {scope}?");
-            Label::new(&asked, ctx.styles.body(Role::Warn)).left(ctx, &mut room, sm);
-            let allow = Target::RoutineAllow(id.clone());
-            Button::new("yes, switch on", allow, Role::Muted, ground).left(ctx, &mut room, sm);
-            Button::new("keep off", Target::RoutineKeep, Role::Muted, ground)
-                .left(ctx, &mut room, sm);
-        }
-        Value::Routine { id, on, said, .. } => {
+        Value::Routine { id, on, said, runs } => {
             let flip = match on {
                 true => Target::RoutineOff(id.clone()),
                 false => Target::RoutineOn(id.clone()),
             };
             switch(*on, flip).left(ctx, &mut room, sm);
-            if *on {
+            if *runs {
                 let run = Target::RoutineRun(id.clone());
                 Button::new("run", run, Role::Muted, ground).left(ctx, &mut room, sm);
             }

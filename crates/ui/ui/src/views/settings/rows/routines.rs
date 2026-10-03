@@ -6,12 +6,11 @@ use groove_controllers::config_service::Preference;
 use groove_types::{Routine, RoutinesConfig};
 use groove_ui_kit::base::style::Role;
 
-use super::super::SettingsUi;
 use super::preferences::count;
 use super::{Row, Section, Value, grouped};
 use crate::hit::Target;
 
-pub(super) fn routines(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
+pub(super) fn routines(app: &AppState) -> Vec<Row> {
     let held = app.config.preferences();
     let paused = Value::Toggle {
         on: held.routines_paused,
@@ -32,13 +31,13 @@ pub(super) fn routines(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     ];
     let config = app.config.routines();
     for one in &app.agent.routines {
-        out.extend(listed(one, &config, settings));
+        out.extend(listed(one, &config));
     }
     grouped("Routines", out)
 }
 
 /// One routine, then its triggers while it is on; or why its file is no routine.
-fn listed(one: &Listed, config: &RoutinesConfig, settings: &SettingsUi) -> Vec<Row> {
+fn listed(one: &Listed, config: &RoutinesConfig) -> Vec<Row> {
     let routine = match &one.read {
         Ok(routine) => routine,
         Err(why) => {
@@ -51,12 +50,11 @@ fn listed(one: &Listed, config: &RoutinesConfig, settings: &SettingsUi) -> Vec<R
         }
     };
     let on = config.on.contains(&one.id);
-    let allowing = settings.allowing.as_deref() == Some(one.id.as_str());
     let value = Value::Routine {
         id: one.id.clone(),
         on,
         said: said(routine),
-        allowing: allowing.then(|| scope(routine)),
+        runs: on && routine.kind == groove_types::RoutineKind::Action,
     };
     let mut out = vec![row(one.id.clone().into(), value)];
     if on {
@@ -73,21 +71,16 @@ fn listed(one: &Listed, config: &RoutinesConfig, settings: &SettingsUi) -> Vec<R
     out
 }
 
-/// `the skills it uses · what it does`.
+/// `the skills it uses, or its action · what it does`.
 fn said(routine: &Routine) -> String {
-    let skills = routine.skills.join(", ");
+    let skills = match routine.action {
+        Some(action) => format!("does {}", action.name()),
+        None => routine.skills.join(", "),
+    };
     match (skills.is_empty(), routine.description.is_empty()) {
         (_, true) => skills,
         (true, false) => routine.description.clone(),
         (false, false) => format!("{skills} · {}", routine.description),
-    }
-}
-
-/// What a routine may do without asking, as the question that switches it on says it.
-fn scope(routine: &Routine) -> String {
-    match routine.scope.is_empty() {
-        true => "nothing but read".into(),
-        false => routine.scope.join(", "),
     }
 }
 
@@ -96,7 +89,7 @@ fn row(label: std::borrow::Cow<'static, str>, value: Value) -> Row {
         section: Section::Agent,
         group: "",
         label,
-        words: "routine routines trigger scope",
+        words: "routine routines trigger run",
         value,
     }
 }

@@ -35,8 +35,6 @@ pub struct SettingsUi {
     pub unsharing: bool,
     /// The id of the skill of the user's own asked deleted, not yet confirmed.
     pub deleting: Option<String>,
-    /// The routine whose scope waits on the user before it is switched on.
-    pub allowing: Option<String>,
     /// The action whose new chord the next key is.
     pub binding: Option<crate::keymap::Action>,
 }

@@ -10,6 +10,10 @@ pub(super) fn acted(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     match target {
         Target::Feed => Some(folded_feed(ui)),
         Target::FeedScope => Some(narrowed_feed(ui)),
+        Target::RoutineRun(id) => {
+            let run = agent::Command::RunRoutine { id: id.clone() };
+            Some(vec![Command::Agent(run)])
+        }
         Target::Routines => {
             ui.rail.routines = !ui.rail.routines;
             Some(Vec::new())

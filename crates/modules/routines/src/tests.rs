@@ -8,29 +8,25 @@ description: When CI goes red on a worktree, fix it.
 skills: groove:fix-ci
 kind: bound
 on: ci-failed
-scope: edit, commit, push
 ---
 Keep the fix to what the log blames.
 ";
 
 #[test]
-fn a_routine_says_its_skill_its_triggers_its_scope_and_its_words() {
+fn a_routine_says_its_skill_its_triggers_and_its_words() {
     let read = parse("user:fix-red-ci", "fix-red-ci", FIX_CI).unwrap();
     assert_eq!(read.skills, ["groove:fix-ci"]);
     assert_eq!(read.kind, RoutineKind::Bound);
     assert_eq!(read.on, [Trigger::CiFailed]);
-    assert_eq!(read.scope, ["edit", "commit", "push"]);
     assert_eq!(read.words, "Keep the fix to what the log blames.");
     assert_eq!(read.description, "When CI goes red on a worktree, fix it.");
 }
 
 #[test]
-fn a_standalone_routine_answers_to_the_app_and_names_its_tools() {
-    let text = "---\nskills: platform:check-tasks\nkind: standalone\non: daily, tasks-read\n\
-                scope: mcp__groove__list_tasks, mcp__notion__notion-update-page\n---\n";
+fn a_standalone_routine_answers_to_the_app() {
+    let text = "---\nskills: platform:check-tasks\nkind: standalone\non: daily, tasks-read\n---\n";
     let read = parse("shared:tasks", "tasks", text).unwrap();
     assert_eq!(read.on, [Trigger::Daily, Trigger::TasksRead]);
-    assert_eq!(read.scope.len(), 2);
 }
 
 #[test]
@@ -41,10 +37,6 @@ fn a_file_that_mixes_the_kinds_says_why_it_is_no_routine() {
     assert!(refused(&format!("{head}kind: bound\n---\n")).contains("at least one"));
     let session = refused(&format!("{head}kind: standalone\non: ci-failed\n---\n"));
     assert!(session.contains("make it bound"), "{session}");
-    let scope = refused(&format!(
-        "{head}kind: bound\non: ci-failed\nscope: merge\n---\n"
-    ));
-    assert!(scope.contains("merge"), "{scope}");
     assert!(refused(&format!("{head}kind: bound\non: soon\n---\n")).contains("soon"));
     assert!(refused("no front matter").contains("front matter"));
     assert!(refused("---\nkind: bound\non: ci-failed\n---\n").contains("asks nothing"));
@@ -79,4 +71,18 @@ fn the_team_s_routines_stand_before_the_user_s_and_a_broken_file_is_listed_with_
     assert_eq!(ids, ["shared:fix-red-ci", "user:broken"]);
     assert!(listed[0].read.is_ok());
     assert!(listed[1].read.is_err());
+}
+
+#[test]
+fn an_action_routine_names_what_groove_does_and_needs_no_skill() {
+    let text = "---\nkind: action\ndo: start-due\non: tasks-read\n---\n";
+    let read = parse("user:start-due", "start-due", text).unwrap();
+    assert_eq!(read.kind, RoutineKind::Action);
+    assert_eq!(read.action, Some(groove_types::Action::StartDue));
+    let refused = |text: &str| parse("user:x", "x", text).unwrap_err();
+    assert!(refused("---\nkind: action\non: daily\n---\n").contains("`do`"));
+    assert!(refused("---\nkind: action\ndo: dance\n---\n").contains("start-due"));
+    let bound = "---\nskills: groove:fix-ci\nkind: bound\ndo: start-due\non: ci-failed\n---\n";
+    assert!(refused(bound).contains("only an action"));
+    assert!(refused("---\nkind: action\ndo: start-due\non: ci-failed\n---\n").contains("bound"));
 }

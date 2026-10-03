@@ -101,12 +101,12 @@ pub enum Value {
         deletes: bool,
         asking: bool,
     },
-    /// A routine: on or off and what it does; switching it on asks the scope `allowing` names.
+    /// A routine: on or off and what it does; an action routine's run button while on.
     Routine {
         id: String,
         on: bool,
         said: String,
-        allowing: Option<String>,
+        runs: bool,
     },
     /// A word on or off, and what a click on it sets.
     Switch {

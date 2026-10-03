@@ -38,7 +38,7 @@ pub(super) fn acted(
         Target::SettingsLoginEnd => config::Command::EndLogin,
         _ => {
             let picked = sourced(target, ui).or_else(|| skilled(target, ui));
-            let picked = picked.or_else(|| routined(target, ui));
+            let picked = picked.or_else(|| routined(target));
             return picked.or_else(|| chosen(target, ui));
         }
     };
@@ -136,28 +136,16 @@ fn skilled(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
     Some(vec![Command::Agent(asked)])
 }
 
-/// A routine switched on once its scope is allowed, or off; one of its triggers switched.
-fn routined(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
-    let settings = &mut ui.settings;
+/// A routine switched on or off, or run; one of its triggers switched.
+fn routined(target: &Target) -> Option<Vec<Command>> {
     let asked = match target {
-        Target::RoutineOn(id) => {
-            settings.allowing = Some(id.clone());
-            return Some(Vec::new());
-        }
-        Target::RoutineKeep => {
-            settings.allowing = None;
-            return Some(Vec::new());
-        }
+        Target::RoutineOn(id) => config::Command::SwitchRoutine {
+            id: id.clone(),
+            on: true,
+        },
         Target::RoutineRun(id) => {
             let run = groove_controllers::agent::Command::RunRoutine { id: id.clone() };
             return Some(vec![Command::Agent(run)]);
-        }
-        Target::RoutineAllow(id) => {
-            settings.allowing = None;
-            config::Command::SwitchRoutine {
-                id: id.clone(),
-                on: true,
-            }
         }
         Target::RoutineOff(id) => config::Command::SwitchRoutine {
             id: id.clone(),

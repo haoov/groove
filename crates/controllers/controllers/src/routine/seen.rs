@@ -24,6 +24,9 @@ pub(super) fn look(state: &AppState, before: Option<&Seen>) -> Seen {
         if let Some(read) = &held.read {
             let asked = read.details.changes_requested();
             seen.changes.insert(worktree.id.clone(), asked);
+            let mut commented = read.details.reviewers.iter();
+            let commented = commented.any(|one| one.state == ReviewState::Commented);
+            seen.commented.insert(worktree.id.clone(), commented);
         }
     }
     seen.asked = state.delivery.reviews_read.then(|| {
@@ -78,11 +81,30 @@ fn delivered(state: &AppState, before: &Seen, now: &Seen) -> Vec<Fired> {
             out.push(event(Trigger::CiFailed, Some(session), &said));
         }
     }
-    for (worktree, asked) in &now.changes {
-        let new = *asked && before.changes.get(worktree) == Some(&false);
-        if new && let Some((session, branch)) = owner(state, worktree) {
-            let said = format!("changes requested on {branch}");
-            out.push(event(Trigger::ChangesRequested, Some(session), &said));
+    let reviewed = [
+        (
+            &now.changes,
+            &before.changes,
+            Trigger::ChangesRequested,
+            "changes requested",
+        ),
+        (
+            &now.commented,
+            &before.commented,
+            Trigger::ReviewCommented,
+            "a review commented",
+        ),
+    ];
+    for (is, was, trigger, what) in reviewed {
+        for (worktree, asked) in is {
+            let new = *asked && was.get(worktree) == Some(&false);
+            if new && let Some((session, branch)) = owner(state, worktree) {
+                out.push(event(
+                    trigger,
+                    Some(session),
+                    &format!("{what} on {branch}"),
+                ));
+            }
         }
     }
     if let (Some(was), Some(is)) = (&before.asked, &now.asked) {

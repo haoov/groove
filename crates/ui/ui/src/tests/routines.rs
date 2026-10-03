@@ -1,4 +1,4 @@
-//! Settings › Agent's routines: each one switched on only once its scope is allowed, then its triggers.
+//! Settings › Agent's routines: each one's switch and run, then its triggers.
 
 use groove_controllers::agent_service::routines::{Listed, parse};
 use groove_controllers::{AppState, Command, config};
@@ -10,7 +10,7 @@ use crate::hit::Target;
 use crate::view;
 
 const FIX_CI: &str = "---\ndescription: fix it\nskills: groove:fix-ci\nkind: bound\n\
-                      on: ci-failed\nscope: edit, commit, push\n---\n";
+                      on: ci-failed\n---\n";
 
 /// Settings › Agent over one routine that reads and one that does not.
 fn routed(on: bool) -> (AppState, Ui) {
@@ -60,7 +60,7 @@ fn clicked(app: &AppState, ui: &mut Ui, target: Target) -> Vec<Command> {
 }
 
 #[test]
-fn a_routine_is_switched_on_only_once_its_scope_is_allowed() {
+fn a_routine_is_listed_with_its_switch_and_one_that_does_not_read_says_why() {
     let (app, mut ui) = routed(false);
     let (texts, _) = drawn(&app, &ui);
     for shown in [
@@ -73,15 +73,6 @@ fn a_routine_is_switched_on_only_once_its_scope_is_allowed() {
         assert!(texts.iter().any(|t| t == shown), "{shown}: {texts:?}");
     }
     let asked = clicked(&app, &mut ui, Target::RoutineOn("user:fix-red-ci".into()));
-    assert!(asked.is_empty(), "the first click asks");
-    let (texts, _) = drawn(&app, &ui);
-    let question = "allow without asking: edit, commit, push?";
-    assert!(texts.iter().any(|t| t == question), "{texts:?}");
-    let asked = clicked(
-        &app,
-        &mut ui,
-        Target::RoutineAllow("user:fix-red-ci".into()),
-    );
     let on = config::Command::SwitchRoutine {
         id: "user:fix-red-ci".into(),
         on: true,
@@ -106,15 +97,9 @@ fn a_routine_switched_on_shows_its_triggers_each_with_its_switch() {
 }
 
 #[test]
-fn a_routine_switched_on_has_a_button_that_runs_it_now() {
-    let (app, mut ui) = routed(true);
-    let asked = clicked(&app, &mut ui, Target::RoutineRun("user:fix-red-ci".into()));
-    let run = groove_controllers::agent::Command::RunRoutine {
-        id: "user:fix-red-ci".into(),
-    };
-    assert_eq!(asked, [Command::Agent(run)]);
-    let (app, ui) = routed(false);
+fn a_bound_routine_has_no_run_button_in_settings() {
+    let (app, ui) = routed(true);
     let (_, hits) = drawn(&app, &ui);
-    let off = Target::RoutineRun("user:fix-red-ci".into());
-    assert!(hits.rect_of(&off).is_none(), "off, it has no button");
+    let run = Target::RoutineRun("user:fix-red-ci".into());
+    assert!(hits.rect_of(&run).is_none());
 }

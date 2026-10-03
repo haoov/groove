@@ -88,11 +88,11 @@ useful, opens the facts that look relevant, and checks one before it relies on i
 
 ## Routines
 
-**A routine is triggers, skills, words and a scope.** It is one file: in the shared repo's
+**A routine is triggers, skills and words.** It is one file: in the shared repo's
 `routines/` for the team's, in the user's config for their own. Its `skills` are the skills
 its agent may use, and the words under its header say what to do; the agent picks the order
 and adapts. A routine with one skill and no words sends that skill alone; one with several
-skills says what to do with them, in plain words. Two kinds:
+skills says what to do with them, in plain words. Three kinds:
 
 - **Bound to a session:** the trigger is an event about one session, and the routine goes to
   that session's own agent, with what the event says as its arguments — CI failed on a
@@ -100,6 +100,11 @@ skills says what to do with them, in plain words. Two kinds:
   of the user → `groove:co-review` in its review session.
 - **Standalone:** the work belongs to no session — check that every task has its properties
   set, say. The routine has a session of its own to run in.
+- **Action:** no agent of its own. Its `do` names an action built into Groove, which runs it
+  itself. `start-due` opens each task of Up Next that must start today — its Start date has
+  come, or today plus its estimate, at eight hours a day, reaches its Due date — and starts
+  `groove:start-task` in the new session's agent. It opens as many as the cap at most, and
+  the user's selection stays where it was.
 
 **A standalone routine runs in a routine session.** A session of the kind `routine`, one per
 standalone routine, made when the routine is switched on. It stands on the rail under its own
@@ -109,33 +114,20 @@ runs before stay in its history, and the user can step in while one runs.
 
 **What starts a routine:**
 
-- its button, on the routine's row, always;
+- its button, always: Run on a standalone routine's rail item, run on an action routine's row
+  in Settings; a bound routine has none, its events run it;
 - the first time the app opens each day;
-- an app event: CI failed, changes requested, a review asked of the user, an agent that
+- an app event: CI failed, changes requested, a review commented, a review asked of the user, an agent that
   finished, the tasks read again, a task moved to a status.
 
 The file declares the triggers it answers to. Settings › Agent lists each routine with them,
 and the user turns the daily one and each event on or off there.
 
-**A routine acts without asking.** The approval moves from the run to the routine: a routine
-declares its scope — the tools it may call and the writes it may make — and switching it on is
-the user's approval of that scope. A run inside its scope waits on nobody.
-
-**A call outside the scope fails; it does not wait.** The run ends there, and the feed says
-which call it tried and why it was refused. Nothing is queued for the user.
-
-**The scope holds for every tool the agent calls.** Groove's own tools go through its approval
-queue, which lets a call in the scope pass and refuses the rest. The tools of another server —
-Notion, say — never reach that queue, so the same scope is written as the agent's own
-permissions when Groove launches it: Claude Code refuses what it does not allow.
-
-**Some writes are never in a scope:** a merge, a force push, a delete, closing an MR or a task,
-any write to a cluster. Those stay the user's, whatever the routine declares.
-
-**The widest scope a bound routine can declare:** editing files in the session's worktrees,
-committing, pushing to the session's own branch, and commenting on the forge. Opening or
-updating an MR only when the routine names it. A standalone routine names each tool it may
-call, of Groove or of another server.
+**A routine acts only where auto-approve is on.** An event about a session whose writes wait
+for the user starts nothing there: auto-approve off means no automatic action on that session,
+a routine's included. A standalone routine's session follows the same switch. The button runs a
+routine whatever the switch, and its writes then wait like any other. The tools of another server follow
+the agent's own Claude Code permissions, as in any session.
 
 **Never on the session the user is on.** An event about the session the user has selected
 starts nothing: Groove does not act there while they work.
@@ -143,7 +135,7 @@ starts nothing: Groove does not act there while they work.
 **Once a session, until the user looks.** A routine runs at most once on a session. When the
 user selects that session, every routine's count on it goes back to zero, and the next event
 may run them again. A routine that would loop — a fix that turns CI red again — therefore
-stops after one run and waits for the user. Its button always runs it.
+stops after one run and waits for the user.
 
 **Several sessions at once.** A routine runs on every session its event is about, at the same
 time. Settings caps how many agents run routines together, five by default; a run past the
@@ -155,8 +147,7 @@ the commits it made. A user who was away reads what happened there.
 **One switch stops them.** Each routine can be paused, and Settings pauses them all at once.
 
 **A team routine is never on by default.** Routines in the shared repo run with the
-credentials of the user who enables them, so each user enables each one, after reading its
-scope.
+credentials of the user who enables them, so each user enables each one, after reading it.
 
 **Routines run while the app runs.** Groove is a desktop app: an event that happens while it
 is closed starts nothing, and the daily trigger fires at the first open of the day.

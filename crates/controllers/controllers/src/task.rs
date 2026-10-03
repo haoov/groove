@@ -89,6 +89,17 @@ pub fn dispatch(
 
 /// The session that works this task: the one it has, or a new one with its agent started.
 pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, short_id: &str) {
+    open_asking(state, services, spawner, short_id, None);
+}
+
+/// The same, a new session's agent launched with `prompt` as its first message.
+pub(crate) fn open_asking(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    short_id: &str,
+    prompt: Option<String>,
+) {
     let Some(task) = state.task.get(short_id).cloned() else {
         return;
     };
@@ -97,7 +108,7 @@ pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, sh
     }
     let now = Timestamp::now();
     let session = task_session(&task, now);
-    let auto = session::begun(state, spawner, session.clone(), now);
+    let auto = session::begun_asking(state, spawner, session.clone(), now, prompt);
     follow(state, spawner);
     status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
     let service = services.session.clone();

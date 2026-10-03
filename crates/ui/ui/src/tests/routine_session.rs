@@ -87,3 +87,37 @@ fn a_routine_session_is_its_agent_pane_alone_and_off_the_board() {
     assert!(texts.iter().any(|t| t == "Alpha"), "{texts:?}");
     assert!(!texts.iter().any(|t| t == "digest"), "{texts:?}");
 }
+
+#[test]
+fn a_routine_session_s_rail_item_runs_its_routine_unless_a_run_is_on() {
+    let mut app = routed();
+    let mut ui = Ui::default();
+    ui.rail.routines = true;
+    let run = Target::RoutineRun("user:digest".into());
+    let (_, hits) = drawn(&app, &ui);
+    let button = hits.rect_of(&run).expect("its run button");
+    let press = crate::input::Input::Press {
+        x: button.x + button.w / 2.0,
+        y: button.y + button.h / 2.0,
+        mods: Default::default(),
+    };
+    let asked = handle(press, &mut ui, &app, &hits, window());
+    let wanted = groove_controllers::agent::Command::RunRoutine {
+        id: "user:digest".into(),
+    };
+    assert_eq!(asked, [groove_controllers::Command::Agent(wanted)]);
+
+    app.agent
+        .runs
+        .running
+        .push(groove_controllers::agent_service::runs::Run {
+            routine: "user:digest".into(),
+            session: SessionId::new("routine-user-digest"),
+            trigger: None,
+            about: String::new(),
+            sent_at: None,
+            went: false,
+        });
+    let (_, hits) = drawn(&app, &ui);
+    assert!(hits.rect_of(&run).is_none(), "running, it has no button");
+}
