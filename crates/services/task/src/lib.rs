@@ -1,4 +1,4 @@
-//! The task capability. Its slice of `AppState`, the operations on it, its events.
+//! The task capability: the tasks and their sources, the plan, the clock and hours, attention.
 
 use std::sync::{Arc, PoisonError};
 

@@ -1,4 +1,4 @@
-//! The session capability. Its slice of `AppState`, the operations on it, its events.
+//! The session capability: the sessions, their repos and worktrees, each worktree's git status, the log.
 
 mod made;
 mod open;

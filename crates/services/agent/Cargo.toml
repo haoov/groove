@@ -1,6 +1,6 @@
 [package]
 name = "groove-agent-service"
-description = "The agent capability: one activity per open session, its asks and auto-approve flag"
+description = "The agent capability: each session's agent and asks, the skills, the shared repo, the routines"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

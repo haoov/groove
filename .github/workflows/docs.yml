@@ -1,0 +1,31 @@
+name: docs
+
+# ci.yml skips docs-only changes; this holds them to the code.
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "**.md"]
+  pull_request:
+    paths: ["docs/**", "**.md"]
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  drift:
+    name: docs against the code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: debug
+      - run: cargo test -p groove-controllers --locked --lib -- tests::docs

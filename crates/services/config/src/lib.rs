@@ -1,4 +1,4 @@
-//! The config capability. Its slice of `AppState`, the operations on it, its events.
+//! The config capability: the parsed config file, the preferences and the last environment check.
 
 mod sources;
 #[cfg(test)]
