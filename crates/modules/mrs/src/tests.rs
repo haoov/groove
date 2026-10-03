@@ -1,3 +1,4 @@
+use crate::Stored as _;
 use groove_types::{Forge, MrState, WorktreeId};
 
 use crate::{Answered, Store};

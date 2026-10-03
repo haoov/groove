@@ -15,7 +15,6 @@ pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
         status: AgentStatus::Idle,
         tool: None,
         asks,
-        auto_approve: false,
         changed_at: Timestamp::new(0),
         seen_at: None,
     };

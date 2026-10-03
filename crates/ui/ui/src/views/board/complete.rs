@@ -70,7 +70,7 @@ fn values(app: &AppState, name: Name, typed: &str) -> Vec<String> {
             .iter()
             .map(|one| one.as_str().to_string())
             .collect(),
-        Name::Kind => ["task", "explorer", "review"]
+        Name::Kind => groove_types::SessionKind::NAMES
             .iter()
             .map(|one| (*one).to_string())
             .collect(),

@@ -1,7 +1,7 @@
 //! The file view keeps the caret in sight once a key has moved it.
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Document, display_at};
+use groove_controllers::workspace_service::{Document, display_of};
 use groove_types::Caret;
 
 use crate::hit::{Hits, Target};
@@ -40,7 +40,7 @@ pub(crate) fn across_at(
     let across = ui.session.across();
     match text_at(app, path, at.line) {
         Some((text, width)) => {
-            across_to(across, display_at(&text, at.column, width), hits, metrics)
+            across_to(across, display_of(&text, at.column, width), hits, metrics)
         }
         None => across,
     }
@@ -49,7 +49,7 @@ pub(crate) fn across_at(
 /// The sideways offset that shows column `at` of `text`, from a file view at its left edge.
 pub(crate) fn reaching(text: &str, path: &str, at: usize, hits: &Hits, metrics: Metrics) -> f32 {
     let width = Document::plain(path, text).indent().width();
-    across_to(0.0, display_at(text, at, width), hits, metrics)
+    across_to(0.0, display_of(text, at, width), hits, metrics)
 }
 
 /// The least change to `across` that shows display column `column`.

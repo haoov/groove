@@ -141,7 +141,7 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
     state.session.selected = Some(here);
     routine::watch(&mut state, &services, &spawner);
     assert!(
-        !state.agent.runs.ran("user:notes", &away),
+        !state.agent.runs.queued_since_seen("user:notes", &away),
         "looked at, its count is back to zero"
     );
 }
@@ -151,7 +151,10 @@ fn a_task_that_moves_starts_a_standalone_routine_afresh_with_its_words() {
     let (home, spawner, services, mut state) = fresh();
     listed(&mut state, "user:digest", DIGEST);
     on("user:digest", &mut state, &services, &spawner);
-    let id = crate::config::session_of(&state, "user:digest").expect("its session");
+    let id = state
+        .session
+        .routine_session("user:digest")
+        .expect("its session");
     assert_ne!(
         state.session.selected.as_ref(),
         Some(&id),
@@ -193,7 +196,10 @@ fn a_standalone_routine_s_button_runs_it_whatever_the_rules_but_a_bound_one_has_
     listed(&mut state, "user:digest", DIGEST);
     listed(&mut state, "user:notes", NOTES);
     on("user:digest", &mut state, &services, &spawner);
-    let id = crate::config::session_of(&state, "user:digest").expect("its session");
+    let id = state
+        .session
+        .routine_session("user:digest")
+        .expect("its session");
     until(&spawner, &services, &mut state, |s| {
         s.agent.terminal(&id).is_some()
     });
@@ -231,5 +237,5 @@ fn an_event_on_a_session_with_auto_approve_off_starts_nothing() {
     status(&mut state, &away, AgentStatus::Done { seen: false });
     routine::watch(&mut state, &services, &spawner);
     assert!(state.agent.runs.running.is_empty() && state.agent.runs.waiting.is_empty());
-    assert!(!state.agent.runs.ran("user:notes", &away));
+    assert!(!state.agent.runs.queued_since_seen("user:notes", &away));
 }

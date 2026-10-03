@@ -35,7 +35,6 @@ fn working(app: &mut AppState, id: &str, changed_at: i64) {
         status: AgentStatus::Working,
         tool: None,
         asks: Vec::new(),
-        auto_approve: false,
         changed_at: Timestamp::new(changed_at),
         seen_at: None,
     };

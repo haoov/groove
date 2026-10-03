@@ -47,7 +47,7 @@ impl Renderer {
     }
 
     pub fn headless(size: Size, fonts: Fonts) -> Result<Self> {
-        let gpu = Gpu::new(None)?;
+        let gpu = Gpu::new()?;
         let texture = offscreen(&gpu.device, size);
         let target = Target::Offscreen { texture };
         Ok(Self::build(gpu, target, OFFSCREEN_FORMAT, size, fonts))

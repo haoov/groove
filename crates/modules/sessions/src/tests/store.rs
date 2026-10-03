@@ -1,3 +1,4 @@
+use crate::Stored as _;
 use groove_types::{RepoId, Session, SessionId, SessionKind, Timestamp};
 
 use crate::{Error, Store};

@@ -31,7 +31,6 @@ pub(crate) use map::total as rows_of;
 pub(crate) use notes::Inline;
 pub(crate) use row::{line_at, text_at};
 pub(crate) use scroll::scrolled;
-pub(crate) use surface::AUTHOR;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     if app.workspace.changes.is_empty() && ui.session.face() != Face::File {

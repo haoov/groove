@@ -81,8 +81,8 @@ fn set(state: &mut AppState, services: &Services, spawner: &dyn Spawner, source:
         Err(e) => return refused(state, e),
     };
     state.config.refused = None;
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        return state.failed(e);
+    if !super::written(state, Some(config)) {
+        return;
     }
     crate::task::load(state, services, spawner);
 }

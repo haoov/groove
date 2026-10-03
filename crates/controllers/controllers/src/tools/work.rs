@@ -6,7 +6,7 @@ use groove_agent_service::Call;
 use groove_agent_service::tools::answers;
 use groove_workspace_service::{COMMITS_MAX, commits};
 
-use crate::workspace::diff::{against, files_in};
+use groove_workspace_service::{against, files_in};
 
 use crate::{AppState, Continuation, Services, Spawner};
 

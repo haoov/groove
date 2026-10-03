@@ -6,7 +6,7 @@ mod repos;
 
 use std::path::Path;
 
-use groove_sessions::Store;
+use groove_sessions::{Store, Stored as _};
 use groove_timeline::Timeline;
 use groove_types::{
     Error, Repo, Session, SessionId, SessionState, Task, Timestamp, Worktree, WorktreeId,
@@ -59,7 +59,9 @@ impl Service {
 
     /// On a private in-memory database, the pool under `root`, for tests up the stack.
     pub async fn in_memory(root: &Path) -> Result<Self, Error> {
-        let store = Store::in_memory().await?;
+        let store = Store::in_memory()
+            .await
+            .map_err(|e| Error::store("in-memory database", e))?;
         let pool = Pool::new(store.db().clone(), root);
         Ok(Self::new(store, pool))
     }

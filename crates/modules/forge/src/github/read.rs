@@ -5,7 +5,7 @@ pub(super) mod queue;
 mod reviews;
 mod threads;
 
-use groove_types::{MrDetails, MrState, Timestamp};
+use groove_types::{MrDetails, MrState};
 
 use crate::Snapshot;
 
@@ -48,10 +48,4 @@ fn state(value: &serde_json::Value) -> MrState {
     }
 }
 
-pub(super) fn text(value: &serde_json::Value) -> String {
-    value.as_str().unwrap_or_default().to_string()
-}
-
-fn at(value: &serde_json::Value) -> Option<Timestamp> {
-    Timestamp::parse(value.as_str()?).ok()
-}
+pub(super) use groove_types::json::{at, text};

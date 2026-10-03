@@ -75,6 +75,26 @@ impl State {
         })
     }
 
+    /// The session a standalone routine runs in, on the rail or on disk.
+    pub fn routine_session(&self, routine: &str) -> Option<SessionId> {
+        let on_rail = self.open.iter().map(|one| &one.session);
+        let on_disk = self.living.iter().map(|one| &one.session);
+        let mut all = on_rail.chain(on_disk);
+        all.find(|one| one.kind.routine() == Some(routine))
+            .map(|one| one.id.clone())
+    }
+
+    /// The session each worktree of the rail belongs to, and its branch.
+    pub fn owners(&self) -> std::collections::BTreeMap<WorktreeId, (SessionId, String)> {
+        let each = self.open.iter().flat_map(|open| {
+            let id = &open.session.id;
+            open.worktrees
+                .iter()
+                .map(move |one| (one.id.clone(), (id.clone(), one.branch.clone())))
+        });
+        each.collect()
+    }
+
     /// The session on the rail that works this task.
     pub fn working(&self, task: &groove_types::ExternalId) -> Option<&Open> {
         self.open.iter().find(|open| open.session.kind.works(task))
@@ -93,12 +113,50 @@ impl State {
     /// Adds a row and selects it.
     pub fn open(&mut self, session: Session, now: Timestamp) {
         let id = session.id.clone();
+        self.open_beside(session, now);
+        self.selected = Some(id);
+    }
+
+    /// The repos, worktrees and marks the store recorded, into the row; its first worktree selected.
+    pub fn filled(&mut self, id: &SessionId, contents: service::Contents) {
+        let Some(open) = self.get_mut(id) else {
+            return;
+        };
+        open.repos = contents.repos;
+        open.worktrees = contents.worktrees;
+        open.status = contents.status;
+        for (worktree, path) in contents.read {
+            open.mark(&worktree, &path, true);
+        }
+        if open.selected_worktree().is_none() {
+            open.state.selected_worktree = open.worktrees.first().map(|w| w.id.clone());
+        }
+    }
+
+    /// The explorer's row become the task's session: its lines, its worktrees and the selection follow.
+    pub fn promoted(&mut self, explorer: &SessionId, session: Session, worktrees: Vec<Worktree>) {
+        let id = session.id.clone();
+        let lines = self
+            .feed
+            .iter_mut()
+            .filter(|line| &line.session == explorer);
+        lines.for_each(|line| line.session = id.clone());
+        if let Some(open) = self.get_mut(explorer) {
+            open.session = session;
+            open.worktrees = worktrees;
+        }
+        if self.selected.as_ref() == Some(explorer) {
+            self.selected = Some(id);
+        }
+    }
+
+    /// On the rail, the selection left where it was.
+    pub fn open_beside(&mut self, session: Session, now: Timestamp) {
         let state = SessionState {
             opened_at: Some(now),
             ..SessionState::default()
         };
         self.restore(session, state);
-        self.selected = Some(id);
     }
 
     pub fn select(&mut self, id: &SessionId, now: Timestamp) {

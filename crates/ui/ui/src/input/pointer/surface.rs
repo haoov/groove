@@ -4,7 +4,7 @@ mod noted;
 
 pub(super) use noted::noted;
 
-use groove_controllers::workspace_service::columns;
+use groove_controllers::workspace_service::column_of;
 use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
@@ -182,7 +182,7 @@ pub(super) fn at(
     let (row, display) = row_at(hits, metrics, point)?;
     let (path, line) = diff::line_at(app, ui, ui.session.face(), row)?;
     let (text, width) = diff::text_at(app, &path, line)?;
-    Some((path, Caret::new(line, columns(&text, display, width))))
+    Some((path, Caret::new(line, column_of(&text, display, width))))
 }
 
 /// Where a click in the commit box puts its caret.
@@ -207,7 +207,7 @@ pub(super) fn composed(
     let line = row.min(message.lines().saturating_sub(1));
     let text = message.line(line).unwrap_or_default();
     let width = message.document().indent().width();
-    let caret = Caret::new(line, columns(&text, display, width));
+    let caret = Caret::new(line, column_of(&text, display, width));
     vec![Command::Workspace(workspace::Command::Message(Edit::Move(
         Motion::To(caret),
     )))]

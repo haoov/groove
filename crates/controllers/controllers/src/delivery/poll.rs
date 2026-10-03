@@ -14,17 +14,12 @@ pub fn poll(state: &mut AppState, services: &Services, spawner: &dyn Spawner, no
         .map(|open| open.worktrees.iter().map(|one| one.id.clone()).collect())
         .unwrap_or_default();
     let living = state.session.worktrees();
-    let every = state.config.poll_interval();
-    state.delivery.aged_out(now, state.config.stale_after());
-    let wanted = state
-        .delivery
-        .wanted(state.focused, &shown, &living, (now, every));
-    if wanted.is_empty() {
-        return;
-    }
-    if state.delivery.poll.due(now, every) {
-        state.delivery.poll.ran(now);
-    }
+    let clock = groove_delivery_service::Clock {
+        now,
+        every: state.config.poll_interval(),
+        stale_after: state.config.stale_after(),
+    };
+    let wanted = state.delivery.tick(state.focused, (&shown, &living), clock);
     for worktree in wanted {
         read(state, services, spawner, &worktree);
     }

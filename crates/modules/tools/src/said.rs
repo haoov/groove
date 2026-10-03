@@ -4,24 +4,7 @@ use serde_json::Value;
 
 /// The verb the rail puts after "asks to".
 pub fn verb(tool: &str) -> &'static str {
-    match tool {
-        "git_commit" => "commit",
-        "git_push" => "push",
-        "git_pull" => "pull",
-        "create_mr" => "open an MR",
-        "update_mr" => "update the MR",
-        "close_mr" => "close the MR",
-        "comment_mr" => "comment on the MR",
-        "reply_thread" => "reply",
-        "resolve_thread" => "resolve a thread",
-        "finish_task" => "finish the task",
-        "log_task_hours" => "log hours",
-        "add_task_repo" => "add a repo",
-        "add_task_worktree" => "add a worktree",
-        "save_user_skill" => "save a skill",
-        "adopt_task" => "become a task",
-        _ => "write",
-    }
+    crate::named(tool).map_or("write", |one| one.verb)
 }
 
 /// Everything the write carries that a human reads before deciding on it.

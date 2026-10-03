@@ -32,7 +32,7 @@ impl Db {
         Self::migrated(pool).await
     }
 
-    /// A private in-memory database with the full schema, on one connection, for tests.
+    /// A private in-memory database with the full schema, on one connection.
     pub async fn in_memory() -> Result<Self> {
         let options = SqliteConnectOptions::new()
             .filename(":memory:")
@@ -51,6 +51,18 @@ impl Db {
     async fn migrated(pool: SqlitePool) -> Result<Self> {
         sqlx::migrate!().run(&pool).await?;
         Ok(Self { pool })
+    }
+}
+
+/// A store over the database: made on a handle, and holding it for the stores that share it.
+pub trait Store: Sized + Send {
+    fn new(db: Db) -> Self;
+
+    fn db(&self) -> &Db;
+
+    /// The store on a private in-memory database with the full schema, for tests.
+    fn in_memory() -> impl Future<Output = Result<Self>> + Send {
+        async { Ok(Self::new(Db::in_memory().await?)) }
     }
 }
 

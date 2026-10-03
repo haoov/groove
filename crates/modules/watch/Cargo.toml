@@ -7,6 +7,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [dependencies]
+groove-grep = { path = "../grep" }
 groove-types = { path = "../../shared/types" }
 ignore.workspace = true
 notify.workspace = true

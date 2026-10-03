@@ -5,7 +5,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{Aligned, At, Colours, Opened, display_at, shown};
+use groove_controllers::workspace_service::{Aligned, At, Colours, Opened, display_of, shown};
 use groove_types::{Caret, DiffView, Highlight, Row, RowKind};
 
 use super::{Drawn, Side, caret, columns_in, held, is_read, matched, open, standing, text_of};
@@ -179,7 +179,7 @@ fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Optio
     let caret = caret?;
     let shows = row.new == Some(caret.line as u32) && row.kind != RowKind::Removed;
     let text = text_of(file, caret.line);
-    shows.then(|| display_at(&text, caret.column, width))
+    shows.then(|| display_of(&text, caret.column, width))
 }
 
 /// The file a row's line is read from: a pane's own side in split, else the row's side.

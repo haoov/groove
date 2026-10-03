@@ -39,6 +39,14 @@ impl Service {
         })
     }
 
+    /// What adding `name` does: a git URL is cloned, any other name is taken from the pool.
+    pub fn adding(name: &str) -> &'static str {
+        match groove_git::RemoteUrl::parse(name) {
+            Ok(_) => "cloning",
+            Err(_) => "adding",
+        }
+    }
+
     /// A pool clone by name, or a fresh clone when the name is a git URL.
     async fn find_or_clone(&self, name: &str) -> Result<Repo, Error> {
         let entries = self.pool.list();

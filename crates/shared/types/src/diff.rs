@@ -55,6 +55,25 @@ pub enum FileStatus {
     Unchanged,
 }
 
+/// What a commit is known by: the first line of its message.
+pub fn subject_of(message: &str) -> &str {
+    message.lines().next().unwrap_or_default().trim()
+}
+
+/// Above this many bytes a file is listed and searched past, never read as text.
+pub const TEXT_MAX_BYTES: u64 = 1 << 20;
+
+impl FileStatus {
+    /// What a change did to a path, from whether it stood before and stands after.
+    pub fn of(before: bool, after: bool) -> Self {
+        match (before, after) {
+            (false, _) => FileStatus::Added,
+            (true, false) => FileStatus::Deleted,
+            (true, true) => FileStatus::Modified,
+        }
+    }
+}
+
 impl FileStatus {
     /// The one-letter mark the file list shows.
     pub fn letter(self) -> char {
@@ -144,26 +163,4 @@ pub struct BlameLine {
     pub at: Timestamp,
     pub summary: String,
     pub uncommitted: bool,
-}
-
-/// The `(removed, added)` row pairs of equal runs, which get a word diff.
-pub fn word_diff_pairs(rows: &[Row]) -> Vec<(usize, usize)> {
-    let mut pairs = Vec::new();
-    let mut at = 0;
-    while at < rows.len() {
-        let gone = run(rows, at, RowKind::Removed);
-        let came = run(rows, at + gone, RowKind::Added);
-        if gone > 0 && gone == came {
-            pairs.extend((0..gone).map(|k| (at + k, at + gone + k)));
-        }
-        at += (gone + came).max(1);
-    }
-    pairs
-}
-
-fn run(rows: &[Row], from: usize, kind: RowKind) -> usize {
-    rows[from.min(rows.len())..]
-        .iter()
-        .take_while(|row| row.kind == kind)
-        .count()
 }

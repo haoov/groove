@@ -6,8 +6,6 @@ mod routines;
 pub(crate) mod shared;
 mod sources;
 
-pub(crate) use routines::session_of;
-
 use std::collections::BTreeMap;
 
 use groove_config_service::Preference;
@@ -134,29 +132,27 @@ pub fn dispatch(
     }
 }
 
+/// The config as changed, written to its file; whether it was.
+pub(crate) fn written(state: &mut AppState, changed: Option<groove_types::Config>) -> bool {
+    let kept = groove_config_service::keep(&state.env.config_dir, changed.as_ref());
+    kept.map_err(|e| state.failed(e)).is_ok()
+}
+
 /// The next key reads the new chords; the file follows.
 fn rebind(state: &mut AppState, keymap: BTreeMap<String, Vec<String>>) {
-    let Some(config) = state.config.rebind(keymap).cloned() else {
-        let e = groove_types::Error::invalid("there is no config to change before the first run");
-        return state.failed(e);
-    };
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        state.failed(e);
-    }
+    let changed = state.config.rebind(keymap).cloned();
+    written(state, changed);
 }
 
 /// The change reaches every reader at once; the file follows, written on the spot.
 fn set_preference(state: &mut AppState, one: Preference) {
-    let Some(config) = state.config.set(one).cloned() else {
-        let e = groove_types::Error::invalid("there is no config to change before the first run");
-        return state.failed(e);
-    };
+    let changed = state.config.set(one).cloned();
+    if !written(state, changed) {
+        return;
+    }
     if let Preference::Theme(theme) = one {
         let palette = groove_agent_service::palette(theme);
         state.agent.recolor(palette);
         state.shell.recolor(palette);
-    }
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        state.failed(e);
     }
 }

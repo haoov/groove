@@ -72,7 +72,10 @@ fn promoted(at: &mut Exploring) -> Answer {
     let task = SessionId::new(TASK);
     crate::tests::fixture::until(&at.spawner, &at.services, &mut at.state, |s| {
         s.session.get(&task).is_some()
-            && s.agent.activity(&task).is_some_and(|one| one.auto_approve)
+            && s.agent.activity(&task).is_some()
+            && s.session
+                .get(&task)
+                .is_some_and(|one| one.state.auto_approve)
     });
     answer
 }

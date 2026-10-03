@@ -5,23 +5,16 @@ mod parse;
 #[cfg(test)]
 mod tests;
 
-use std::convert::Infallible;
-use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
+use groove_loopback::{body, reply};
 use groove_types::{Error, ErrorKind, Result};
-use http_body_util::{BodyExt, Full, Limited};
+use http_body_util::Full;
 use hyper::body::{Bytes, Incoming};
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
-use hyper_util::rt::TokioIo;
-use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 
 pub use parse::Post;
-
-const BODY_MAX: usize = 1 << 20;
 
 /// Where the agent posts its hooks, and the token it must carry.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,58 +34,30 @@ type Sink = Arc<dyn Fn(Post) + Send + Sync>;
 
 /// Takes a free loopback port and serves it until the process ends.
 pub fn serve(handle: &Handle, on_post: impl Fn(Post) + Send + Sync + 'static) -> Result<Receiver> {
-    let listener = handle.block_on(bind())?;
-    let port = listener.local_addr().map_err(failed)?.port();
-    let token = uuid::Uuid::new_v4().simple().to_string();
     let sink: Sink = Arc::new(on_post);
-    handle.spawn(accept(listener, token.clone(), sink));
-    Ok(Receiver { port, token })
-}
-
-async fn bind() -> Result<TcpListener> {
-    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, 0));
-    TcpListener::bind(address).await.map_err(failed)
-}
-
-fn failed(e: std::io::Error) -> Error {
-    Error::new(ErrorKind::Agent, format!("no loopback port: {e}"))
-}
-
-/// One connection at a time off the socket, each served on its own task.
-async fn accept(listener: TcpListener, token: String, sink: Sink) {
-    loop {
-        let Ok((stream, _)) = listener.accept().await else {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            continue;
-        };
-        let (token, sink) = (token.clone(), sink.clone());
-        tokio::spawn(async move {
-            let service = service_fn(move |request| {
-                let (token, sink) = (token.clone(), sink.clone());
-                async move { Ok::<_, Infallible>(route(request, &token, &sink).await) }
-            });
-            let _ = http1::Builder::new()
-                .serve_connection(TokioIo::new(stream), service)
-                .await;
-        });
-    }
+    let bound = groove_loopback::serve(handle, move |request| {
+        let sink = sink.clone();
+        async move { route(request, &sink).await }
+    })
+    .map_err(|e| Error::new(ErrorKind::Agent, format!("no loopback port: {e}")))?;
+    Ok(Receiver {
+        port: bound.port,
+        token: bound.token,
+    })
 }
 
 /// The only route there is.
-async fn route(request: Request<Incoming>, token: &str, sink: &Sink) -> Response<Full<Bytes>> {
-    if !bearer(&request, token) {
-        return reply(StatusCode::UNAUTHORIZED);
-    }
+async fn route(request: Request<Incoming>, sink: &Sink) -> Response<Full<Bytes>> {
     if request.method() != Method::POST {
         return reply(StatusCode::METHOD_NOT_ALLOWED);
     }
     let Some(session) = session_of(request.uri().path()) else {
         return reply(StatusCode::NOT_FOUND);
     };
-    let Ok(body) = Limited::new(request.into_body(), BODY_MAX).collect().await else {
+    let Some(body) = body(request).await else {
         return reply(StatusCode::PAYLOAD_TOO_LARGE);
     };
-    match parse::post(&session, &body.to_bytes()) {
+    match parse::post(&session, &body) {
         Some(post) => {
             sink(post);
             reply(StatusCode::NO_CONTENT)
@@ -101,25 +66,9 @@ async fn route(request: Request<Incoming>, token: &str, sink: &Sink) -> Response
     }
 }
 
-fn bearer(request: &Request<Incoming>, token: &str) -> bool {
-    request
-        .headers()
-        .get(hyper::header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-        .is_some_and(|value| value == token)
-}
-
 /// `/hook/<session>`, and nothing shorter or longer.
 fn session_of(path: &str) -> Option<String> {
     let rest = path.strip_prefix("/hook/")?;
     let session = rest.trim_end_matches('/');
     (!session.is_empty() && !session.contains('/')).then(|| session.to_string())
-}
-
-fn reply(status: StatusCode) -> Response<Full<Bytes>> {
-    Response::builder()
-        .status(status)
-        .body(Full::new(Bytes::new()))
-        .unwrap_or_default()
 }

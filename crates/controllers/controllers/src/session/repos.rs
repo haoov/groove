@@ -19,11 +19,7 @@ pub fn add_repo(
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
         return asker.refused(crate::tools::NO_SESSION);
     };
-    let verb = if name.contains("://") || name.contains('@') {
-        "cloning"
-    } else {
-        "adding"
-    };
+    let verb = groove_session_service::Service::adding(name);
     let pending = state.begin(format!("{verb} {name}"));
     let (service, name) = (services.session.clone(), name.to_string());
     added(spawner, pending, asker, async move {

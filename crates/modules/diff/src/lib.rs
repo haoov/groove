@@ -16,7 +16,7 @@ mod tests;
 pub use alignment::{align, hunks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use commit::{at_commit, commits, opened_at};
-pub use groove_text::{Buffer, Document};
+pub use groove_text::{Buffer, Document, column_of, display_of};
 pub use layout::Layout;
 
 /// A line as the surface draws it, and its colours over it.
@@ -31,14 +31,5 @@ pub fn shown(
     )
 }
 
-/// The column a character of the line is drawn at.
-pub fn display_at(line: &str, column: usize, width: usize) -> usize {
-    groove_text::display_of(line, column, width)
-}
-
-/// The character a drawn column belongs to.
-pub fn columns(line: &str, display: usize, width: usize) -> usize {
-    groove_text::column_of(line, display, width)
-}
 pub use opened::{Derived, Opened, derived, from_documents, from_text, opened, reopened};
-pub use summary::{MAX_BYTES, summary, summary_against};
+pub use summary::{summary, summary_against};

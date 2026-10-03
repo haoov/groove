@@ -74,6 +74,17 @@ pub fn load(config_dir: &Path) -> Result<Option<Config>, Error> {
     Ok(groove_config::load(&groove_config::path(config_dir))?)
 }
 
+/// `<config dir>/config.json`.
+pub fn path(config_dir: &Path) -> std::path::PathBuf {
+    groove_config::path(config_dir)
+}
+
+/// A change made to the config, written to its file; there is none to change before the first run.
+pub fn keep(config_dir: &Path, changed: Option<&Config>) -> Result<(), Error> {
+    let none = || Error::invalid("there is no config to change before the first run");
+    save(config_dir, changed.ok_or_else(none)?)
+}
+
 pub fn save(config_dir: &Path, config: &Config) -> Result<(), Error> {
     Ok(groove_config::save(
         &groove_config::path(config_dir),

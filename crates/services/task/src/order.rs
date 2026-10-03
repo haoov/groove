@@ -75,3 +75,31 @@ fn ends(order: &[Placed], later: bool) -> usize {
             .unwrap_or(order.len()),
     }
 }
+
+impl crate::State {
+    /// Each task's short id and status, by its id at the source.
+    pub fn statuses(
+        &self,
+    ) -> std::collections::BTreeMap<groove_types::ExternalId, (String, String)> {
+        let each = self.tasks.iter().map(|one| {
+            (
+                one.external_id.clone(),
+                (one.short_id.clone(), one.status.clone()),
+            )
+        });
+        each.collect()
+    }
+
+    /// Up Next's tasks no session works that must start today, in the user's order, `cap` at most.
+    pub fn due_today(
+        &self,
+        worked: &[groove_types::ExternalId],
+        today: groove_types::Day,
+        cap: usize,
+    ) -> Vec<String> {
+        let waiting = self.waiting(worked);
+        let planned = self.planned(&waiting).into_iter();
+        let due = planned.filter(|one| !one.later && groove_types::starts_today(one.task, today));
+        due.map(|one| one.task.short_id.clone()).take(cap).collect()
+    }
+}

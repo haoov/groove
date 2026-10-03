@@ -42,6 +42,11 @@ impl Error {
         Self::new(ErrorKind::Db, message)
     }
 
+    /// The database refused a store holding `holds`.
+    pub fn store(holds: &str, why: impl fmt::Display) -> Self {
+        Self::db(format!("the {holds} could not be read or written: {why}"))
+    }
+
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ErrorKind::Internal, message)
     }

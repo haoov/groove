@@ -166,3 +166,10 @@ pub fn until(
         std::thread::sleep(Duration::from_millis(10));
     }
 }
+
+/// The session's writes run without asking.
+pub fn auto_approve(state: &mut AppState, session: &groove_types::SessionId) {
+    if let Some(open) = state.session.get_mut(session) {
+        open.state.auto_approve = true;
+    }
+}

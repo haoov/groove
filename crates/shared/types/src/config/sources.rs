@@ -31,11 +31,11 @@ pub struct NotionConfig {
 
 impl NotionConfig {
     pub fn assignee(&self) -> Option<&str> {
-        named(&self.assignee)
+        crate::mapping::given(self.assignee.as_deref())
     }
 
     pub fn sprint(&self) -> Option<&str> {
-        named(&self.sprint)
+        crate::mapping::given(self.sprint.as_deref())
     }
 
     /// The required names not given yet; the source reads no task without them.
@@ -287,11 +287,4 @@ impl PriorityMap {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FilterConfig {
     pub exclude_statuses: Vec<String>,
-}
-
-/// A name the file gives, blank being none.
-fn named(one: &Option<String>) -> Option<&str> {
-    one.as_deref()
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
 }

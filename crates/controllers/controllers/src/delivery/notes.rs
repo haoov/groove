@@ -10,24 +10,11 @@ use crate::{AppState, Continuation, Services, Spawner};
 /// One write on a note of the session.
 #[derive(Debug, Clone, PartialEq)]
 pub enum NoteAct {
-    Create {
-        anchor: Anchor,
-        content: String,
-        author: String,
-    },
-    Update {
-        id: AnnotationId,
-        content: String,
-    },
-    Resolve {
-        id: AnnotationId,
-    },
-    Reopen {
-        id: AnnotationId,
-    },
-    Delete {
-        id: AnnotationId,
-    },
+    Create { anchor: Anchor, content: String },
+    Update { id: AnnotationId, content: String },
+    Resolve { id: AnnotationId },
+    Reopen { id: AnnotationId },
+    Delete { id: AnnotationId },
 }
 
 impl NoteAct {
@@ -129,9 +116,13 @@ pub(crate) fn write(
     }
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));
     let (said, left) = (act.said(), left_by(&act));
+    let author = match asker {
+        Asker::Ui => groove_delivery_service::BY_USER,
+        _ => groove_delivery_service::BY_AGENT,
+    };
     let (session, repo) = (whose.session.clone(), whose.repo.id.clone());
     spawner.spawn(Box::pin(async move {
-        let done = apply(&service, act, session, repo).await;
+        let done = apply(&service, act, (session, repo), author).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
@@ -151,15 +142,11 @@ pub(crate) fn write(
 async fn apply(
     service: &groove_delivery_service::Service,
     act: NoteAct,
-    session: SessionId,
-    repo: groove_types::RepoId,
+    (session, repo): (SessionId, groove_types::RepoId),
+    author: &str,
 ) -> groove_types::Result<()> {
     match act {
-        NoteAct::Create {
-            anchor,
-            content,
-            author,
-        } => {
+        NoteAct::Create { anchor, content } => {
             let new = NewNote {
                 session,
                 repo,
@@ -167,7 +154,7 @@ async fn apply(
                 start_line: anchor.start_line,
                 end_line: anchor.end_line,
                 content,
-                author,
+                author: author.to_string(),
             };
             service.create_note(new, Timestamp::now()).await.map(drop)
         }

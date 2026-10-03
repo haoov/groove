@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use groove_controllers::agent_service::Event as AgentEvent;
 use groove_controllers::{Continuation, Deliver, Env, Event, Services, TokioSpawner};
+use groove_db::Store as _;
 use groove_hooks::{Post, Receiver};
 use groove_types::Timestamp;
 use winit::event_loop::{EventLoop, EventLoopProxy};
@@ -64,7 +65,7 @@ async fn services(
     root: &std::path::Path,
 ) -> Result<Services, Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&env.data_dir)?;
-    let db = groove_db::Db::open(&env.data_dir.join("app.db")).await?;
+    let db = groove_db::Db::open(&env.database()).await?;
     let store = groove_sessions::Store::new(db.clone());
     let plan = groove_plan::Plan::new(db.clone());
     let ledger = groove_ledger::Ledger::new(db.clone());

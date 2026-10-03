@@ -38,8 +38,11 @@ pub(super) fn push_asked(state: &mut AppState, spawner: &dyn Spawner, mut write:
 
 /// `abc1234 the first line of its message`.
 fn subject(one: &groove_types::CommitEntry) -> String {
-    let first = one.message.lines().next().unwrap_or_default();
-    format!("{} {first}", one.short_sha)
+    format!(
+        "{} {}",
+        one.short_sha,
+        groove_types::subject_of(&one.message)
+    )
 }
 
 /// The index of one worktree committed.

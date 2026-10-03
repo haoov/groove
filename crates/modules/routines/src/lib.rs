@@ -1,6 +1,7 @@
 //! Routines on disk: the team's in the shared copy, the user's own under the config.
 
 mod parse;
+mod run;
 
 #[cfg(test)]
 mod tests;
@@ -10,6 +11,7 @@ use std::path::{Path, PathBuf};
 use groove_types::Routine;
 
 pub use parse::parse;
+pub use run::{new_day, prompt, started_by};
 
 /// Where a routine comes from, which names it: `shared:<name>`, `user:<name>`.
 pub const SHARED: &str = "shared";

@@ -1,4 +1,5 @@
 use groove_forge::{Github, Remote, Token};
+use groove_mrs::Stored as _;
 use groove_types::{MrState, Repo, RepoId, SessionId, Timestamp, Worktree, WorktreeId};
 use wiremock::matchers::{body_string_contains, method};
 use wiremock::{Mock, MockServer, ResponseTemplate};

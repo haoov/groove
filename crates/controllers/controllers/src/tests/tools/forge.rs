@@ -52,7 +52,7 @@ impl OnForge {
             )?))
         });
         let session = state.session.selected.clone().expect("a session");
-        state.agent.auto_approve(&session, true);
+        crate::tests::fixture::auto_approve(&mut state, &session);
         let session = session.to_string();
         Self {
             _runtime: runtime,

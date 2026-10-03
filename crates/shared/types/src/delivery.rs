@@ -37,3 +37,41 @@ impl WorktreeDelivery {
         self.mr.as_ref().is_some_and(|mr| mr.state == MrState::Open)
     }
 }
+
+/// What a worktree most wants doing next.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Step {
+    /// `ready` once something is staged and a message is written.
+    Commit {
+        ready: bool,
+    },
+    Push,
+    Pull,
+    OpenMr,
+}
+
+/// The facts the next step is read from.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Standing {
+    pub changed: bool,
+    pub staged: u32,
+    pub worded: bool,
+    pub ahead: u32,
+    pub behind: u32,
+    /// The branch has no merge request of its own yet, and the forge has said so.
+    pub wants_mr: bool,
+}
+
+impl Standing {
+    /// Commit what changed, then push, then pull, then open an MR; nothing once all is done.
+    pub fn next(self) -> Option<Step> {
+        let ready = self.staged > 0 && self.worded;
+        match self {
+            Standing { changed: true, .. } => Some(Step::Commit { ready }),
+            Standing { ahead, .. } if ahead > 0 => Some(Step::Push),
+            Standing { behind, .. } if behind > 0 => Some(Step::Pull),
+            Standing { wants_mr: true, .. } => Some(Step::OpenMr),
+            _ => None,
+        }
+    }
+}

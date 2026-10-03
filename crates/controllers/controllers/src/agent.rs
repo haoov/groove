@@ -83,7 +83,7 @@ pub enum Command {
         args: Option<String>,
     },
     /// `agent.delete_skill`: one skill of the user's own.
-    DeleteSkill { name: String },
+    DeleteSkill { id: String },
     /// `agent.switch_skill`: one skill given to sessions, or no longer; a core one stays on.
     SwitchSkill { id: String, on: bool },
     /// `agent.run_routine`: one routine run now, by its button.
@@ -149,7 +149,7 @@ pub fn dispatch(
         Command::SendSkill { session, id, args } => {
             skills::send(state, spawner, &session, &id, args.as_deref())
         }
-        Command::DeleteSkill { name } => skills::delete(state, spawner, name),
+        Command::DeleteSkill { id } => skills::delete(state, spawner, &id),
         Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
         Command::RunRoutine { id } => crate::routine::button(state, services, spawner, &id),
         pointing => pointer::acted(state, services, pointing),
@@ -170,7 +170,6 @@ fn auto_approve(
     session: &SessionId,
     on: bool,
 ) {
-    state.agent.auto_approve(session, on);
     if let Some(open) = state.session.get_mut(session) {
         open.state.auto_approve = on;
     }
@@ -179,10 +178,7 @@ fn auto_approve(
 
 pub(crate) fn forget(state: &mut AppState, session: &SessionId) {
     if let Err(e) = groove_agent_service::forget(&launch_dir(state), session.as_str()) {
-        state.failed(groove_types::Error::new(
-            groove_types::ErrorKind::Io,
-            e.to_string(),
-        ));
+        state.failed(e);
     }
 }
 

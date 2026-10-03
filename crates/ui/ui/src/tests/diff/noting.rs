@@ -154,7 +154,6 @@ fn the_words_leave_a_note_when_the_keyboard_says_so() {
         groove_controllers::delivery::NoteAct::Create {
             anchor: Anchor::line("src/lib.rs", 1),
             content: "issue: this leaks".into(),
-            author: crate::views::session::diff::AUTHOR.into(),
         }
     );
 }

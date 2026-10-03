@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 use groove_text::Document;
-use groove_types::{LineMark, Row, RowKind, word_diff_pairs};
+use groove_types::{LineMark, Row, RowKind};
 
 use crate::words::between;
 
@@ -84,4 +84,48 @@ fn run_of(rows: &[Row], from: usize, kind: RowKind) -> usize {
         .iter()
         .take_while(|row| row.kind == kind)
         .count()
+}
+
+/// The `(removed, added)` row pairs of equal runs, which get a word diff.
+fn word_diff_pairs(rows: &[Row]) -> Vec<(usize, usize)> {
+    let mut pairs = Vec::new();
+    let mut at = 0;
+    while at < rows.len() {
+        let gone = run(rows, at, RowKind::Removed);
+        let came = run(rows, at + gone, RowKind::Added);
+        if gone > 0 && gone == came {
+            pairs.extend((0..gone).map(|k| (at + k, at + gone + k)));
+        }
+        at += (gone + came).max(1);
+    }
+    pairs
+}
+
+fn run(rows: &[Row], from: usize, kind: RowKind) -> usize {
+    rows[from.min(rows.len())..]
+        .iter()
+        .take_while(|row| row.kind == kind)
+        .count()
+}
+
+#[test]
+fn word_diff_pairs_only_one_for_one_runs() {
+    use RowKind::{Added as Add, Context as Ctx, Removed as Del};
+    let lines: Vec<Row> = [
+        Ctx, Del, Del, Add, Add, Ctx, Del, Add, Add, Ctx, Add, Del, Add,
+    ]
+    .into_iter()
+    .map(row)
+    .collect();
+    assert_eq!(word_diff_pairs(&lines), vec![(1, 3), (2, 4), (11, 12)]);
+    assert!(word_diff_pairs(&[row(Add), row(Add)]).is_empty());
+    assert!(word_diff_pairs(&[]).is_empty());
+}
+
+fn row(kind: RowKind) -> Row {
+    Row {
+        old: None,
+        new: None,
+        kind,
+    }
 }

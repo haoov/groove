@@ -45,20 +45,7 @@ fn load_contents(services: &Services, spawner: &dyn Spawner, id: &SessionId) {
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 match result {
-                    Ok(contents) => {
-                        if let Some(open) = state.session.get_mut(&id) {
-                            open.repos = contents.repos;
-                            open.worktrees = contents.worktrees;
-                            open.status = contents.status;
-                            for (worktree, path) in contents.read {
-                                open.mark(&worktree, &path, true);
-                            }
-                            if open.selected_worktree().is_none() {
-                                open.state.selected_worktree =
-                                    open.worktrees.first().map(|w| w.id.clone());
-                            }
-                        }
-                    }
+                    Ok(contents) => state.session.filled(&id, contents),
                     Err(e) => state.failed(e),
                 }
                 crate::workspace::follow(state, spawner);
@@ -75,25 +62,37 @@ pub(crate) fn begun(
     session: Session,
     now: Timestamp,
 ) -> bool {
-    begun_asking(state, spawner, session, now, None)
+    begun_with(state, spawner, session, now, Start::default())
 }
 
-/// The same, its agent launched with `prompt` as its first message.
-pub(crate) fn begun_asking(
+/// How a new session starts: its agent's first message, and whether the selection stays put.
+#[derive(Debug, Default)]
+pub(crate) struct Start {
+    pub prompt: Option<String>,
+    pub beside: bool,
+}
+
+/// The same, as `start` says.
+pub(crate) fn begun_with(
     state: &mut AppState,
     spawner: &dyn Spawner,
     session: Session,
     now: Timestamp,
-    prompt: Option<String>,
+    start: Start,
 ) -> bool {
     let id = session.id.clone();
     let auto = state.config.auto_approve_default();
-    state.session.open(session, now);
+    match start.beside {
+        true => state.session.open_beside(session, now),
+        false => state.session.open(session, now),
+    }
     if let Some(open) = state.session.get_mut(&id) {
         open.state.auto_approve = auto;
     }
-    crate::workspace::follow(state, spawner);
-    agent::asking(state, spawner, id, FIRST_SIZE, prompt);
+    if !start.beside {
+        crate::workspace::follow(state, spawner);
+    }
+    agent::asking(state, spawner, id, FIRST_SIZE, start.prompt);
     auto
 }
 

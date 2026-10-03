@@ -65,7 +65,7 @@ pub(crate) fn commit(
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
-                let said = subject(&message);
+                let said = groove_types::subject_of(&message).to_string();
                 if done.is_ok() {
                     let kind = TimelineKind::Commit;
                     crate::timeline::log(services, spawner, &session, kind, &said, &worktree.id);
@@ -127,16 +127,6 @@ pub(crate) fn remote(
             },
         ) as Continuation
     }));
-}
-
-/// What a commit is known by: the first line of its message.
-fn subject(message: &str) -> String {
-    message
-        .lines()
-        .next()
-        .unwrap_or_default()
-        .trim()
-        .to_string()
 }
 
 /// Every change in the worktree, thrown away.

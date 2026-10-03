@@ -41,14 +41,8 @@ pub(crate) fn asking(
             prompt.as_deref(),
         );
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let on = state
-                .session
-                .get(&session.id)
-                .is_some_and(|open| open.state.auto_approve);
-            state
-                .agent
-                .started((session.id.clone(), launched), result, Timestamp::now());
-            state.agent.auto_approve(&session.id, on);
+            let now = Timestamp::now();
+            state.agent.started((session.id, launched), result, now);
         }) as Continuation
     }));
 }
@@ -58,7 +52,7 @@ fn paths(state: &AppState) -> LaunchPaths {
         home: state.env.home.clone(),
         launch_dir: launch_dir(state),
         plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
-        knowledge: knowledge(state),
+        knowledge: groove_agent_service::listing::knowledge(state.agent.shared.as_ref()),
         hooks: state.env.hooks.clone(),
         tools: state.env.tools.clone(),
     }
@@ -66,12 +60,6 @@ fn paths(state: &AppState) -> LaunchPaths {
 
 pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {
     state.env.data_dir.join("agent-launch")
-}
-
-/// The shared repo's `knowledge/`, when its copy holds one.
-fn knowledge(state: &AppState) -> Option<std::path::PathBuf> {
-    let dir = state.agent.shared.as_ref()?.path.join("knowledge");
-    dir.is_dir().then_some(dir)
 }
 
 /// One `Damaged` in flight at most, however fast the child writes.

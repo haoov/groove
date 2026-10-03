@@ -10,6 +10,7 @@ mod tests;
 
 pub use error::{Error, Result};
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{
     RepoId, Session, SessionId, SessionKind, StatusIntent, Task, Timestamp, WorktreeId,
 };
@@ -23,21 +24,17 @@ pub struct Store {
     db: Db,
 }
 
-impl Store {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Store {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// A private in-memory database with the schema, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        Ok(Self::new(Db::in_memory().await?))
-    }
-
-    /// The pool this store writes to, for the modules that share it.
-    pub fn db(&self) -> &Db {
+    fn db(&self) -> &Db {
         &self.db
     }
+}
 
+impl Store {
     pub async fn get(&self, id: &SessionId) -> Result<Option<Session>> {
         let row: Option<SessionRow> = sqlx::query_as(
             "SELECT s.id, s.kind, s.title, s.external_id, s.review_project, s.review_iid,
@@ -153,7 +150,7 @@ impl Store {
         .bind(&task.url)
         .bind(&task.project)
         .bind(&task.branch_tag)
-        .bind(task.intent.map(intent_of))
+        .bind(task.intent.map(StatusIntent::as_str))
         .bind(task.dates.start.map(|day| day.to_string()))
         .bind(task.dates.due.map(|day| day.to_string()))
         .bind(task.estimate)
@@ -265,13 +262,4 @@ fn found(rows: u64, what: &'static str, id: &SessionId) -> Result<()> {
         });
     }
     Ok(())
-}
-
-/// The one word a status intent is stored as.
-fn intent_of(intent: StatusIntent) -> &'static str {
-    match intent {
-        StatusIntent::Ready => "ready",
-        StatusIntent::InProgress => "in_progress",
-        StatusIntent::Done => "done",
-    }
 }

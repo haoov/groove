@@ -7,7 +7,6 @@ use super::super::{Key, Modifiers};
 use super::typing;
 use crate::Ui;
 use crate::views::session::Writing;
-use crate::views::session::diff::AUTHOR;
 
 /// One keystroke while a note is being typed.
 pub(super) fn in_note(key: Key, mods: Modifiers, ui: &mut Ui) -> Vec<Command> {
@@ -49,7 +48,6 @@ fn left(noting: &crate::views::session::Noting) -> Option<delivery::Command> {
         Writing::New => Some(delivery::Command::Note(NoteAct::Create {
             anchor: noting.anchor.clone(),
             content: said.to_string(),
-            author: AUTHOR.to_string(),
         })),
     }
 }

@@ -1,6 +1,7 @@
 //! What a verdict carries, and what a call that fails halfway leaves behind.
 
 use groove_annotations::New;
+use groove_mrs::Stored as _;
 use groove_types::{Annotation, MrState, RepoId, ReviewVerdict, SessionId};
 use wiremock::matchers::{body_string_contains, method};
 use wiremock::{Mock, MockServer, ResponseTemplate};

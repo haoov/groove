@@ -106,9 +106,7 @@ fn a_session_that_auto_approves_never_asks() {
     fixture::pooled_clone(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
     stage(&dir);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
 
     let answer = asked(
         &mut state,
@@ -128,9 +126,7 @@ fn a_commit_with_nothing_staged_is_an_error_not_a_commit() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
 
     let answer = asked(
         &mut state,
@@ -172,6 +168,13 @@ fn a_session_that_ends_leaves_no_agent_waiting() {
 fn every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_refuses() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
     let nothing = groove_types::SessionId::new("gh-nothing");
+    let session = groove_types::Session {
+        id: nothing.clone(),
+        title: "nothing".into(),
+        kind: groove_types::SessionKind::Explorer,
+        created_at: groove_types::Timestamp::now(),
+    };
+    state.session.open(session, groove_types::Timestamp::now());
     let launch = state.agent.launch();
     let none = Err(groove_types::Error::invalid("no terminal in this test"));
     state.agent.started(
@@ -179,7 +182,7 @@ fn every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_
         none,
         groove_types::Timestamp::now(),
     );
-    state.agent.auto_approve(&nothing, true);
+    crate::tests::fixture::auto_approve(&mut state, &nothing);
 
     let (mut unanswered, mut took_nothing) = (Vec::new(), Vec::new());
     for tool in groove_agent_service::tools::all() {
@@ -211,9 +214,7 @@ fn a_note_the_agent_leaves_stands_on_its_own_line() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
 
     let answer = asked(
         &mut state,
@@ -257,9 +258,7 @@ fn a_note_is_written_again_and_resolved_by_its_id() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
     asked(
         &mut state,
         &services,
@@ -324,9 +323,7 @@ fn the_agent_cuts_a_second_worktree_and_gets_its_id() {
     let dir = fixture::worktree(&mut state, &services, &spawner);
     assert!(!dir.is_empty());
     let id = state.session.selected.clone().expect("a session");
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(id.as_str()), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(id.as_str()));
 
     let answer = asked(
         &mut state,
@@ -348,9 +345,7 @@ fn the_agent_and_the_surface_commit_through_the_same_function() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, dir) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
     stage(&dir);
 
     let answer = asked(
@@ -382,9 +377,7 @@ fn a_write_the_forge_refuses_is_answered_and_not_left_to_the_feed() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
 
     let answer = asked(
         &mut state,

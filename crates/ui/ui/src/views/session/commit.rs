@@ -2,7 +2,7 @@
 
 use groove_controllers::{AppState, Command, delivery, workspace};
 use groove_gfx::{Edges, Rect};
-use groove_types::FileDiff;
+use groove_types::{FileDiff, Standing, Step};
 
 use crate::components::{Gutters, Line, Rows, code};
 use crate::ctx::Ctx;
@@ -92,22 +92,29 @@ fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     }
 }
 
-/// What the worktree most wants doing: commit, then push, then open an MR.
-pub(crate) fn primary(app: &AppState) -> Option<Command> {
+/// What the worktree most wants doing next, from what it holds and what the forge said.
+fn step(app: &AppState) -> Option<Step> {
     let files = super::files::changed(app);
-    let ready = !app.workspace.message.text().trim().is_empty();
-    let staged = count(files, true);
     let status = status(app);
-    match (files.is_empty(), status.ahead, status.behind) {
-        (false, _, _) if staged > 0 && ready => {
-            Some(Command::Workspace(workspace::Command::Commit))
-        }
-        (false, _, _) => Some(Command::Workspace(workspace::Command::Commit)),
-        (true, ahead, _) if ahead > 0 => Some(Command::Workspace(workspace::Command::Push)),
-        (true, _, behind) if behind > 0 => Some(Command::Workspace(workspace::Command::Pull)),
-        (true, _, _) if wants_mr(app) => Some(Command::Delivery(delivery::Command::CreateMr)),
-        _ => None,
-    }
+    let standing = Standing {
+        changed: !files.is_empty(),
+        staged: count(files, true),
+        worded: !app.workspace.message.text().trim().is_empty(),
+        ahead: status.ahead,
+        behind: status.behind,
+        wants_mr: wants_mr(app),
+    };
+    standing.next()
+}
+
+/// The command the box's button runs now.
+pub(crate) fn primary(app: &AppState) -> Option<Command> {
+    Some(match step(app)? {
+        Step::Commit { .. } => Command::Workspace(workspace::Command::Commit),
+        Step::Push => Command::Workspace(workspace::Command::Push),
+        Step::Pull => Command::Workspace(workspace::Command::Pull),
+        Step::OpenMr => Command::Delivery(delivery::Command::CreateMr),
+    })
 }
 
 /// Whether the branch is landed and has no merge request of its own yet.
@@ -118,35 +125,24 @@ fn wants_mr(app: &AppState) -> bool {
     app.delivery.poll.knows(&worktree.id) && !app.delivery.has_mr(&worktree.id)
 }
 
-/// Whether the action can be taken now, or is only what the box would do next.
-fn ready(app: &AppState, act: &Command) -> bool {
-    match act {
-        Command::Workspace(workspace::Command::Commit) => {
-            let staged = count(super::files::changed(app), true);
-            staged > 0 && !app.workspace.message.text().trim().is_empty()
-        }
-        _ => true,
-    }
-}
-
-fn label(act: &Command) -> &'static str {
-    match act {
-        Command::Workspace(workspace::Command::Push) => "push",
-        Command::Workspace(workspace::Command::Pull) => "pull",
-        Command::Delivery(delivery::Command::CreateMr) => "open mr",
-        _ => "commit",
+fn label(step: Step) -> &'static str {
+    match step {
+        Step::Push => "push",
+        Step::Pull => "pull",
+        Step::OpenMr => "open mr",
+        Step::Commit { .. } => "commit",
     }
 }
 
 /// One button for what to do now, a caret for the rest; returns where it starts.
 fn acts(ctx: &mut Ctx, app: &AppState, line: Rect) -> f32 {
-    let act = primary(app);
-    let can = act.as_ref().is_some_and(|act| ready(app, act));
+    let act = step(app);
+    let can = act.is_some_and(|one| one != Step::Commit { ready: false });
     let role = match can {
         true => Role::Text,
         false => Role::Faint,
     };
-    let word = act.as_ref().map(label).unwrap_or("commit");
+    let word = act.map_or("commit", label);
     let (action, raised) = (ctx.styles.action(), ctx.styles.raised());
     let rest = Button::icon(Mark::Down, Mark::UPWARDS, Target::Actions, Role::Muted);
     let mut room = line.pad(Edges::across(0.0, ctx.tokens.sm));

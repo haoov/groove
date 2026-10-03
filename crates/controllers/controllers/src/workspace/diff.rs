@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use groove_types::{DiffMode, WorktreeId};
-use groove_workspace_service::{HEAD, base_rev, changes, painted, summary, summary_against};
+use groove_workspace_service::{against, changes, files_in, opens_in, painted};
 
 use super::editor::{Head, derive, held, reopen};
 use super::stale;
@@ -157,26 +157,6 @@ pub(super) fn set_mode(state: &mut AppState, spawner: &dyn Spawner, mode: DiffMo
     reread(state, spawner);
 }
 
-/// What changed in a worktree, read the way the mode asks for it.
-pub(crate) async fn files_in(
-    dir: &std::path::Path,
-    mode: DiffMode,
-    rev: &str,
-) -> groove_types::Result<Vec<groove_types::FileDiff>> {
-    match mode {
-        DiffMode::Working => summary(dir).await,
-        _ => summary_against(dir, rev).await,
-    }
-}
-
-/// The rev the change is read against, for the mode in hand.
-pub(crate) async fn against(dir: &std::path::Path, mode: DiffMode, base: Option<&str>) -> String {
-    match mode {
-        DiffMode::Working => HEAD.to_string(),
-        _ => base_rev(dir, base).await,
-    }
-}
-
 /// The selected worktree read and watched, or nothing when none is selected.
 pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
     crate::delivery::notes::show(state);
@@ -184,19 +164,12 @@ pub fn follow(state: &mut AppState, spawner: &dyn Spawner) {
         return state.workspace.clear();
     };
     if stale(state) {
-        state.workspace.mode = opens_in(state);
+        let kind = state.session.selected().map(|open| &open.session.kind);
+        state.workspace.mode = opens_in(kind);
         load(state, spawner);
     }
     if state.workspace.watching.as_ref() != Some(&worktree) {
         watch(state, spawner, worktree);
-    }
-}
-
-/// A review opens on the whole change; every other session on what is not committed.
-fn opens_in(state: &AppState) -> DiffMode {
-    match state.session.selected().map(|open| &open.session.kind) {
-        Some(groove_types::SessionKind::Review { .. }) => DiffMode::Base,
-        _ => DiffMode::Working,
     }
 }
 

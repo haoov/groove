@@ -75,12 +75,7 @@ impl Github {
     /// Sets the board's status field to the label the config maps this intent to.
     pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
         let name = self.config.properties.status.clone();
-        let label = self
-            .config
-            .status_map
-            .label(intent)
-            .ok_or_else(|| Error::Invalid(format!("{} maps nothing to {intent:?}", self.host)))?
-            .to_string();
+        let label = crate::mapped(&self.config.status_map, intent, &self.host)?;
         let issue = self.issue(key).await?;
         let item = read::item(&issue).ok_or_else(|| self.off_board(key))?;
         let ids = read::ids(item, &name).ok_or_else(|| self.no_field(&name))?;
@@ -98,12 +93,7 @@ impl Github {
 
     /// Adds `hours` to what the board's own field holds against the issue.
     pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
-        let name = self
-            .config
-            .properties
-            .logged
-            .clone()
-            .ok_or_else(|| Error::Invalid(format!("{} names no hours field", self.host)))?;
+        let name = crate::hours_named(&self.config.properties, &self.host)?;
         let issue = self.issue(key).await?;
         let item = read::item(&issue).ok_or_else(|| self.off_board(key))?;
         let ids = read::ids(item, &name).ok_or_else(|| self.no_field(&name))?;

@@ -1,8 +1,8 @@
 //! What the task capability asks of the plan on disk.
 
-use groove_ledger::Ledger;
+use groove_ledger::{Ledger, Stored as _};
 use groove_plan::{Placed, Plan};
-use groove_types::{Day, ExternalId, Result, TimeSummary};
+use groove_types::{Day, Error, ExternalId, Result, TimeSummary};
 
 /// The service, cheap to clone: a handle on the plan and on the ledger.
 #[derive(Clone)]
@@ -18,10 +18,10 @@ impl Service {
 
     /// A service on a private in-memory database, for tests.
     pub async fn in_memory() -> Result<Self> {
-        Ok(Self::new(
-            Plan::in_memory().await?,
-            Ledger::in_memory().await?,
-        ))
+        let plan = Plan::in_memory().await;
+        let ledger = Ledger::in_memory().await;
+        let store = |e| Error::store("in-memory database", e);
+        Ok(Self::new(plan.map_err(store)?, ledger.map_err(store)?))
     }
 
     /// What every task has measured, and how much of it the source has been told.

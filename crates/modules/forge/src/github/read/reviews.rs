@@ -102,6 +102,4 @@ fn login(who: &serde_json::Value) -> Option<String> {
     (!name.is_empty()).then_some(name)
 }
 
-pub(super) fn nodes(list: &serde_json::Value) -> Vec<serde_json::Value> {
-    list["nodes"].as_array().cloned().unwrap_or_default()
-}
+pub(super) use groove_types::json::nodes;

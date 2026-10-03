@@ -22,6 +22,10 @@ pub struct Tool {
     pub schema: serde_json::Value,
     /// It changes something, and a human decides first.
     pub writes: bool,
+    /// What the rail says it asks to do, after "asks to".
+    pub verb: &'static str,
+    /// The arguments that name what it acts on, the first one given wins.
+    pub subject: &'static [&'static str],
 }
 
 impl Tool {
@@ -93,23 +97,13 @@ pub(crate) fn task() -> (&'static str, serde_json::Value) {
 
 /// What a write acts on, as a human reads it on the row that asks.
 pub fn subject(tool: &str, arguments: &serde_json::Value) -> String {
-    named_by(tool)
+    let named: &[&str] = named(tool).map_or(&[], |one| one.subject);
+    let fallback = ["thread", "id", "worktree_id", "task_id"];
+    let said = named
         .iter()
-        .find_map(|name| arguments[*name].as_str())
-        .and_then(|said| said.lines().next())
+        .chain(fallback.iter())
+        .find_map(|name| arguments[*name].as_str());
+    said.and_then(|one| one.lines().next())
         .unwrap_or_default()
         .to_string()
-}
-
-/// The argument that names what a write acts on, per tool.
-fn named_by(tool: &str) -> &'static [&'static str] {
-    match tool {
-        "git_commit" => &["message"],
-        "create_mr" | "update_mr" => &["title"],
-        "comment_mr" | "reply_thread" => &["body"],
-        "create_annotation" => &["path"],
-        "add_task_repo" => &["repo"],
-        "add_task_worktree" | "git_push" => &["branch"],
-        _ => &["thread", "id", "worktree_id", "task_id"],
-    }
 }

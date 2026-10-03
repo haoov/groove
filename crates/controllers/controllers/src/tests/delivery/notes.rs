@@ -39,7 +39,6 @@ fn leave(
         delivery::Command::Note(Act::Create {
             anchor: Anchor::line("a.txt", line),
             content: content.to_string(),
-            author: "rsabbah".into(),
         }),
     );
 }

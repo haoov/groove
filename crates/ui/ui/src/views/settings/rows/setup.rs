@@ -16,12 +16,12 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
         path(
             "config",
             "file path json",
-            shown(&env.config_dir.join("config.json"), &env.home),
+            shown(&env.config_file(), &env.home),
         ),
         path(
             "state",
             "database sqlite path",
-            shown(&env.data_dir.join("app.db"), &env.home),
+            shown(&env.database(), &env.home),
         ),
         path(
             "worktree root",

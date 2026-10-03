@@ -170,12 +170,7 @@ impl Notion {
     /// Sets the page's status property to the label the config maps this intent to.
     pub async fn set_status(&self, key: &TaskKey, intent: StatusIntent) -> Result<String> {
         let name = self.config.properties.status.clone();
-        let label = self
-            .config
-            .status_map
-            .label(intent)
-            .ok_or_else(|| Error::Invalid(format!("notion maps nothing to {intent:?}")))?
-            .to_string();
+        let label = crate::mapped(&self.config.status_map, intent, "notion")?;
         let value = serde_json::json!({ "status": { "name": label } });
         self.write(key, &name, value).await?;
         Ok(label)
@@ -183,12 +178,7 @@ impl Notion {
 
     /// Adds `hours` to what the page's own number property holds.
     pub async fn log_hours(&self, key: &TaskKey, hours: f32) -> Result<f32> {
-        let name = self
-            .config
-            .properties
-            .logged
-            .clone()
-            .ok_or_else(|| Error::Invalid("notion names no hours property".to_string()))?;
+        let name = crate::hours_named(&self.config.properties, "notion")?;
         let page = self.page(key).await?;
         let whole = read::number(&page, &name).unwrap_or_default() + hours;
         let value = serde_json::json!({ "number": whole });

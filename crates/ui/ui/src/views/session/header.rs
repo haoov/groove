@@ -68,10 +68,7 @@ fn menu_caret(ctx: &mut Ctx, line: Rect, open: &Open) -> f32 {
 /// Whether the session works a task with no worktree still carrying an open MR.
 fn finishable(app: &AppState, open: &Open) -> bool {
     matches!(open.session.kind, SessionKind::Task { .. })
-        && open
-            .worktrees
-            .iter()
-            .all(|worktree| !app.delivery.is_open(&worktree.id))
+        && app.delivery.all_landed(&open.worktrees)
 }
 
 /// The session's kind and its title, cut where the actions begin, then what opens its page.

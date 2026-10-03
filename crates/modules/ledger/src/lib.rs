@@ -4,6 +4,7 @@
 mod tests;
 
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{Day, Error, ExternalId, Result, TimeSummary, Timestamp};
 
 /// One row of the ledger, as the table holds it.
@@ -22,19 +23,17 @@ pub struct Ledger {
     db: Db,
 }
 
-impl Ledger {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Ledger {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// A ledger on a private in-memory database, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        let db = Db::in_memory()
-            .await
-            .map_err(|e| Error::db(format!("no database: {e}")))?;
-        Ok(Self::new(db))
+    fn db(&self) -> &Db {
+        &self.db
     }
+}
 
+impl Ledger {
     /// What every task the ledger holds has measured, today's share as of `today`.
     pub async fn summaries(&self, today: Day) -> Result<Vec<(ExternalId, TimeSummary)>> {
         let rows: Vec<Row> = sqlx::query_as(
@@ -105,5 +104,5 @@ fn summary(row: Row, today: &str) -> (ExternalId, TimeSummary) {
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::db(format!("the ledger could not be read or written: {source}"))
+    Error::store("ledger", source)
 }

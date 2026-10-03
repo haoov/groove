@@ -19,6 +19,8 @@ use groove_types::{ExternalId, SessionId, SessionKind, StatusIntent, Task, TaskK
 
 use crate::{AppState, Continuation, Services, Spawner, session};
 
+/// What an action on a task says from a session that works none.
+pub(crate) const NOT_A_TASK: &str = "this session works no task";
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
     /// `task.load`: every task the configured sources hold.
@@ -89,16 +91,22 @@ pub fn dispatch(
 
 /// The session that works this task: the one it has, or a new one with its agent started.
 pub fn open(state: &mut AppState, services: &Services, spawner: &dyn Spawner, short_id: &str) {
-    open_asking(state, services, spawner, short_id, None);
+    open_with(
+        state,
+        services,
+        spawner,
+        short_id,
+        session::Start::default(),
+    );
 }
 
-/// The same, a new session's agent launched with `prompt` as its first message.
-pub(crate) fn open_asking(
+/// The same, a new session started as `start` says.
+pub(crate) fn open_with(
     state: &mut AppState,
     services: &Services,
     spawner: &dyn Spawner,
     short_id: &str,
-    prompt: Option<String>,
+    start: session::Start,
 ) {
     let Some(task) = state.task.get(short_id).cloned() else {
         return;
@@ -108,8 +116,11 @@ pub(crate) fn open_asking(
     }
     let now = Timestamp::now();
     let session = task_session(&task, now);
-    let auto = session::begun_asking(state, spawner, session.clone(), now, prompt);
-    follow(state, spawner);
+    let beside = start.beside;
+    let auto = session::begun_with(state, spawner, session.clone(), now, start);
+    if !beside {
+        follow(state, spawner);
+    }
     status::set(state, spawner, &task.external_id, StatusIntent::InProgress);
     let service = services.session.clone();
     session::listed(spawner, async move {

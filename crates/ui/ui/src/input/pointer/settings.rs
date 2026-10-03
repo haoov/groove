@@ -128,8 +128,7 @@ fn skilled(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
         }
         Target::SkillDeleteSure(id) => {
             settings.deleting = None;
-            let name = id.strip_prefix("user:")?.to_string();
-            agent::Command::DeleteSkill { name }
+            agent::Command::DeleteSkill { id: id.clone() }
         }
         _ => return None,
     };

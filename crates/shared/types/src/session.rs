@@ -32,6 +32,9 @@ impl SessionKind {
         self.task() == Some(task)
     }
 
+    /// Every kind's name, in the order the board offers them.
+    pub const NAMES: [&'static str; 4] = ["task", "explorer", "review", "routine"];
+
     pub fn name(&self) -> &'static str {
         match self {
             SessionKind::Task { .. } => "task",

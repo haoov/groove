@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use groove_types::{CommitEntry, FileDiff, FileStatus, Result};
+use groove_types::{CommitEntry, DiffMode, FileDiff, FileStatus, Result, SessionKind};
 
 use crate::{Changes, Derived, Document, Found, Opened, Painted, Search};
 
@@ -28,6 +28,30 @@ pub async fn base_rev(dir: &Path, base: Option<&str>) -> String {
 
 /// The rev the working mode reads against.
 pub const HEAD: &str = "HEAD";
+
+/// What changed in a worktree, read the way the mode asks for it.
+pub async fn files_in(dir: &Path, mode: DiffMode, rev: &str) -> Result<Vec<FileDiff>> {
+    match mode {
+        DiffMode::Working => summary(dir).await,
+        _ => summary_against(dir, rev).await,
+    }
+}
+
+/// The rev the change is read against, for the mode in hand.
+pub async fn against(dir: &Path, mode: DiffMode, base: Option<&str>) -> String {
+    match mode {
+        DiffMode::Working => HEAD.to_string(),
+        _ => base_rev(dir, base).await,
+    }
+}
+
+/// A review opens on the whole change; every other session on what is not committed.
+pub fn opens_in(kind: Option<&SessionKind>) -> DiffMode {
+    match kind {
+        Some(SessionKind::Review { .. }) => DiffMode::Base,
+        _ => DiffMode::Working,
+    }
+}
 
 /// Every changed file aligned, with no document held.
 pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Result<Changes> {

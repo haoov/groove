@@ -17,7 +17,7 @@ pub(crate) fn finish(
         return asker.refused(crate::tools::NO_SESSION);
     };
     let SessionKind::Task { external_id } = &open.session.kind else {
-        return asker.refused("this session works no task");
+        return asker.refused(super::NOT_A_TASK);
     };
     let key = match TaskKey::parse(external_id) {
         Ok(key) => key,

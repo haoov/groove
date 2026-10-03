@@ -18,6 +18,17 @@ pub struct Env {
     pub shell: String,
 }
 
+impl Env {
+    pub fn config_file(&self) -> PathBuf {
+        groove_config_service::path(&self.config_dir)
+    }
+
+    /// The one database every store shares.
+    pub fn database(&self) -> PathBuf {
+        self.data_dir.join("app.db")
+    }
+}
+
 /// The sum of the services' slices, owned on the main thread.
 #[derive(Debug, Default)]
 pub struct AppState {

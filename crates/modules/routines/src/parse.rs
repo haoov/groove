@@ -1,12 +1,13 @@
 //! What a routine file says: its front matter, one `key: value` line a field, then the words.
 
+use groove_types::front_matter::{field, listed, split};
 use groove_types::{Action, Routine, RoutineKind, Trigger};
 
 /// One routine from its file, or why the file is no routine.
 pub fn parse(id: &str, name: &str, text: &str) -> Result<Routine, String> {
     let (front, words) = split(text).ok_or("it opens with no `---` front matter")?;
     let field = |key: &str| field(front, key);
-    let skills: Vec<String> = listed(field("skills")).collect();
+    let skills: Vec<String> = listed(field("skills").as_deref());
     let words = words.trim().to_string();
     let kind = match field("kind").as_deref() {
         Some("bound") => RoutineKind::Bound,
@@ -18,7 +19,8 @@ pub fn parse(id: &str, name: &str, text: &str) -> Result<Routine, String> {
     if kind != RoutineKind::Action {
         asked(&skills, &words)?;
     }
-    let on = listed(field("on"))
+    let on = listed(field("on").as_deref())
+        .into_iter()
         .map(|word| Trigger::named(&word).ok_or(format!("`{word}` is no trigger")))
         .collect::<Result<Vec<_>, _>>()?;
     checked(kind, &on)?;
@@ -80,35 +82,4 @@ fn checked(kind: RoutineKind, on: &[Trigger]) -> Result<(), String> {
         }
     }
     Ok(())
-}
-
-/// The front matter and what follows it.
-fn split(text: &str) -> Option<(&str, &str)> {
-    let rest = text
-        .strip_prefix("---\n")
-        .or_else(|| text.strip_prefix("---\r\n"))?;
-    let end = rest.find("\n---")?;
-    let after = &rest[end + 4..];
-    Some((
-        &rest[..end],
-        after.split_once('\n').map_or("", |(_, words)| words),
-    ))
-}
-
-fn field(front: &str, key: &str) -> Option<String> {
-    front.lines().find_map(|line| {
-        let (named, value) = line.split_once(':')?;
-        let value = value.trim().trim_matches(['"', '\'']).trim();
-        (named.trim() == key && !value.is_empty()).then(|| value.to_string())
-    })
-}
-
-fn listed(said: Option<String>) -> impl Iterator<Item = String> {
-    let words: Vec<String> = said
-        .iter()
-        .flat_map(|one| one.split(','))
-        .map(|one| one.trim().to_string())
-        .filter(|one| !one.is_empty())
-        .collect();
-    words.into_iter()
 }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use groove_annotations::Store as Notes;
 use groove_forge::{Proposed, Remote, Snapshot};
-use groove_mrs::{Answered, Store};
+use groove_mrs::{Answered, Store, Stored as _};
 use groove_types::{Error, Mr, MrState, Repo, Result, Worktree, WorktreeId};
 
 pub use notes::Said;
@@ -66,13 +66,16 @@ impl Service {
 
     /// On a private in-memory database, for tests of the service itself.
     pub async fn in_memory() -> Result<Self> {
-        let mrs = Store::in_memory().await?;
+        let mrs = Store::in_memory()
+            .await
+            .map_err(|e| Error::store("in-memory database", e))?;
         let notes = Notes::new(mrs.db().clone());
         Ok(Self::new(mrs, notes))
     }
 
     /// On the database the sessions live in, where the worktrees an MR hangs off are.
     pub fn beside(sessions: &groove_sessions::Store) -> Self {
+        use groove_sessions::Stored as _;
         let db = sessions.db().clone();
         Self::new(Store::new(db.clone()), Notes::new(db))
     }

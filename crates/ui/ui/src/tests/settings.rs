@@ -476,7 +476,7 @@ fn a_skill_of_the_users_is_switched_and_deleted_once_confirmed() {
         &hits,
     );
     let gone = groove_controllers::agent::Command::DeleteSkill {
-        name: "ship-it".into(),
+        id: "user:ship-it".into(),
     };
     assert_eq!(asked, [Command::Agent(gone)]);
 }

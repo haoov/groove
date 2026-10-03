@@ -132,7 +132,7 @@ impl NotionConfig {
         match which {
             Mapped::Assignee => self.assignee(),
             Mapped::Sprint => self.sprint(),
-            other => named(&self.properties, other),
+            other => property(&self.properties, other),
         }
     }
 
@@ -154,7 +154,7 @@ impl NotionConfig {
 
 impl GithubConfig {
     pub fn name(&self, which: Mapped) -> Option<&str> {
-        named(&self.properties, which)
+        property(&self.properties, which)
     }
 
     pub fn map(&mut self, change: &Mapping) {
@@ -222,7 +222,7 @@ fn renamed(
     }
 }
 
-fn named(names: &PropertyNames, which: Mapped) -> Option<&str> {
+fn property(names: &PropertyNames, which: Mapped) -> Option<&str> {
     let name = match which {
         Mapped::Status => Some(names.status.as_str()),
         Mapped::Priority => names.priority.as_deref(),
@@ -233,5 +233,10 @@ fn named(names: &PropertyNames, which: Mapped) -> Option<&str> {
         Mapped::Project => names.project.as_deref(),
         Mapped::Assignee | Mapped::Sprint => None,
     };
-    name.filter(|one| !one.trim().is_empty())
+    given(name)
+}
+
+/// A name the file gives, trimmed, blank being none.
+pub(crate) fn given(name: Option<&str>) -> Option<&str> {
+    name.map(str::trim).filter(|one| !one.is_empty())
 }

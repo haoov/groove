@@ -3,8 +3,8 @@
 use groove_controllers::AppState;
 
 use super::notes::{Slot, lines, said};
-use super::surface::AUTHOR;
 use crate::Ui;
+use groove_controllers::delivery_service::BY_USER;
 
 #[derive(Default)]
 pub(super) struct Words {
@@ -36,7 +36,7 @@ pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
         Slot::Typed { row } => match ui.session.noting.as_ref() {
             Some(noting) => Words {
                 author: if row == 0 {
-                    AUTHOR.to_string()
+                    BY_USER.to_string()
                 } else {
                     String::new()
                 },

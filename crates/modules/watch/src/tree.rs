@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use ignore::WalkBuilder;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher as _};
 
 /// The watched directories, one watch each, each reporting only its own entries.
@@ -64,9 +63,7 @@ fn git_state(path: &Path) -> bool {
 
 /// `root` and the directories under it, minus what git is told to ignore and `.git`.
 fn directories(root: &Path) -> Vec<PathBuf> {
-    WalkBuilder::new(root)
-        .hidden(false)
-        .filter_entry(|entry| entry.file_name() != ".git")
+    groove_grep::walker(root)
         .build()
         .filter_map(Result::ok)
         .filter(|entry| entry.file_type().is_some_and(|kind| kind.is_dir()))

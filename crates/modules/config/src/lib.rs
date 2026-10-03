@@ -22,6 +22,16 @@ pub fn path(config_dir: &Path) -> PathBuf {
 
 /// The file's content, or `None` before first run.
 pub fn load(path: &Path) -> Result<Option<Config>> {
+    load_json(path)
+}
+
+/// The whole file written again, pretty, its directory made when missing.
+pub fn save(path: &Path, config: &Config) -> Result<()> {
+    save_json(path, config)
+}
+
+/// A JSON file read back, or `None` when there is none yet.
+pub(crate) fn load_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<Option<T>> {
     let text = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -40,9 +50,9 @@ pub fn load(path: &Path) -> Result<Option<Config>> {
         })
 }
 
-/// The whole file written again, pretty, its directory made when missing.
-pub fn save(path: &Path, config: &Config) -> Result<()> {
-    let text = serde_json::to_string_pretty(config).map_err(|source| Error::Parse {
+/// A JSON file written whole, pretty, its directory made when missing.
+pub(crate) fn save_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+    let text = serde_json::to_string_pretty(value).map_err(|source| Error::Parse {
         path: path.to_path_buf(),
         source,
     })?;

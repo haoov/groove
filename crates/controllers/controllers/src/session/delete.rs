@@ -43,7 +43,6 @@ pub fn delete(
 fn gone(state: &mut AppState, spawner: &dyn Spawner, id: &SessionId) {
     agent::forget(state, id);
     state.agent.runs.drop_session(id);
-    state.session.feed.retain(|line| &line.session != id);
     if let Some(closed) = state.session.close(id) {
         for worktree in &closed.worktrees {
             state.workspace.forget(&worktree.id);

@@ -129,28 +129,11 @@ fn became(
     if let Err(e) =
         groove_agent_service::hand_over(&launch_dir, explorer.as_str(), session.id.as_str())
     {
-        state.failed(groove_types::Error::new(
-            groove_types::ErrorKind::Io,
-            e.to_string(),
-        ));
+        state.failed(e);
     }
     crate::agent::forget(state, explorer);
     let id = session.id.clone();
-    for line in state
-        .session
-        .feed
-        .iter_mut()
-        .filter(|line| &line.session == explorer)
-    {
-        line.session = id.clone();
-    }
-    if let Some(open) = state.session.get_mut(explorer) {
-        open.session = session;
-        open.worktrees = worktrees;
-    }
-    if state.session.selected.as_ref() == Some(explorer) {
-        state.session.selected = Some(id.clone());
-    }
+    state.session.promoted(explorer, session, worktrees);
     let external_id = read.task.external_id.clone();
     state.task.synced(read);
     super::status::set(state, spawner, &external_id, StatusIntent::InProgress);

@@ -1,0 +1,17 @@
+[package]
+name = "groove-loopback"
+description = "A local HTTP server on 127.0.0.1, behind a bearer token"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+http-body-util.workspace = true
+hyper = { workspace = true, features = ["server", "http1"] }
+hyper-util = { workspace = true, features = ["tokio"] }
+tokio = { workspace = true, features = ["net"] }
+uuid.workspace = true
+
+[lints]
+workspace = true

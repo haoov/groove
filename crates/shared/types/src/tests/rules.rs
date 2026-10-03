@@ -1,7 +1,7 @@
 use crate::{
     AgentStatus, ApprovalId, Ask, Attention, AttentionClass, CiState, ExternalId, MrFacts, MrState,
-    Row, RowKind, Session, SessionActivity, SessionId, SessionKind, TaskDates, Thresholds,
-    Timestamp, attention, names_session, word_diff_pairs,
+    Session, SessionActivity, SessionId, SessionKind, TaskDates, Thresholds, Timestamp, attention,
+    names_session,
 };
 
 fn task(id: &str) -> Session {
@@ -37,28 +37,6 @@ fn an_explorer_s_branch_is_its_own_name() {
     assert_eq!(crate::explorer_branch(&s.id), "explorer/ab12cd34");
     assert!(names_session("explorer/ab12cd34", &s, None));
     assert!(!names_session("explorer/ff00ff00", &s, None));
-}
-
-fn line(kind: RowKind) -> Row {
-    Row {
-        old: None,
-        new: None,
-        kind,
-    }
-}
-
-#[test]
-fn word_diff_pairs_only_one_for_one_runs() {
-    use RowKind::{Added as Add, Context as Ctx, Removed as Del};
-    let lines: Vec<Row> = [
-        Ctx, Del, Del, Add, Add, Ctx, Del, Add, Add, Ctx, Add, Del, Add,
-    ]
-    .into_iter()
-    .map(line)
-    .collect();
-    assert_eq!(word_diff_pairs(&lines), vec![(1, 3), (2, 4), (11, 12)]);
-    assert!(word_diff_pairs(&[line(Add), line(Add)]).is_empty());
-    assert!(word_diff_pairs(&[]).is_empty());
 }
 
 const DAY: i64 = 86_400;
@@ -138,7 +116,6 @@ fn activity(status: AgentStatus) -> SessionActivity {
         status,
         tool: None,
         asks: Vec::new(),
-        auto_approve: false,
         changed_at: Timestamp::new(0),
         seen_at: None,
     }

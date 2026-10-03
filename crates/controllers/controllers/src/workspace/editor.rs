@@ -186,7 +186,7 @@ pub(super) fn read(
     let job = state.begin(format!("opening {path}"));
     spawner.spawn(Box::pin(async move {
         let dir = &asked.dir;
-        let rev = super::diff::against(dir, asked.mode, asked.base.as_deref()).await;
+        let rev = groove_workspace_service::against(dir, asked.mode, asked.base.as_deref()).await;
         let file = sides(dir, &path, old, &rev).await;
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);

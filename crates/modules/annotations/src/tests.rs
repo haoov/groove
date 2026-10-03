@@ -1,3 +1,4 @@
+use crate::Stored as _;
 use groove_types::{AnnotationId, AnnotationStatus, RepoId, SessionId, Timestamp};
 
 use crate::{New, Store};

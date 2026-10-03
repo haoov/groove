@@ -1,17 +1,15 @@
 //! What a run leaves on the feed: when it started and why, how it ended and the commits it made.
 
-use groove_agent_service::runs::Run;
+use groove_agent_service::runs::{Ending, Run};
 use groove_types::{Action, TimelineKind};
 
-use super::run::{Ending, routine};
 use crate::{AppState, Services, Spawner, Told};
 
 /// `fix-mr · CI failed on main`, on the session it runs on.
 pub(super) fn ran(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
     let by = match (run.about.is_empty(), run.trigger) {
         (false, _) => run.about.clone(),
-        (true, Some(trigger)) => trigger.name().to_string(),
-        (true, None) => "its button".to_string(),
+        (true, by) => groove_agent_service::routines::started_by(by).to_string(),
     };
     let subject = format!("{} · {by}", name(state, run));
     crate::timeline::said(
@@ -71,5 +69,6 @@ fn commits(state: &AppState, run: &Run) -> usize {
 }
 
 fn name(state: &AppState, run: &Run) -> String {
-    routine(state, &run.routine).map_or_else(|| run.routine.clone(), |one| one.name.clone())
+    let routine = state.agent.routine(&run.routine);
+    routine.map_or_else(|| run.routine.clone(), |one| one.name.clone())
 }

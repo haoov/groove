@@ -7,25 +7,19 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
-use std::convert::Infallible;
-use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
+use groove_loopback::{body, reply};
 use groove_types::{Error, ErrorKind, Result};
-use http_body_util::{BodyExt, Limited};
 use hyper::body::Incoming;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
-use hyper_util::rt::TokioIo;
-use tokio::net::TcpListener;
 use tokio::runtime::Handle;
 
-use stream::{Body, Connections, param, reply};
+use stream::{Body, Connections, param};
 
 pub use call::{Answer, Call, Reply};
-
-const BODY_MAX: usize = 1 << 20;
+#[cfg(test)]
+use groove_loopback::BODY_MAX;
 
 /// Where an agent reaches its tools, and the token it must carry.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,53 +39,20 @@ type Sink = Arc<dyn Fn(Call) + Send + Sync>;
 
 /// Takes a free loopback port and serves it until the process ends.
 pub fn serve(handle: &Handle, on_call: impl Fn(Call) + Send + Sync + 'static) -> Result<Server> {
-    let listener = handle.block_on(bind())?;
-    let port = listener.local_addr().map_err(failed)?.port();
-    let token = uuid::Uuid::new_v4().simple().to_string();
-    handle.spawn(accept(listener, token.clone(), Arc::new(on_call)));
-    Ok(Server { port, token })
-}
-
-async fn bind() -> Result<TcpListener> {
-    let address = SocketAddr::from((Ipv4Addr::LOCALHOST, 0));
-    TcpListener::bind(address).await.map_err(failed)
-}
-
-fn failed(e: std::io::Error) -> Error {
-    Error::new(ErrorKind::Agent, format!("no loopback port: {e}"))
-}
-
-/// One connection at a time off the socket, each served on its own task.
-async fn accept(listener: TcpListener, token: String, sink: Sink) {
-    let live = Connections::default();
-    loop {
-        let Ok((stream, _)) = listener.accept().await else {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            continue;
-        };
-        let (token, live, sink) = (token.clone(), live.clone(), sink.clone());
-        tokio::spawn(async move {
-            let service = service_fn(move |request| {
-                let (token, live, sink) = (token.clone(), live.clone(), sink.clone());
-                async move { Ok::<_, Infallible>(route(request, &token, &live, &sink).await) }
-            });
-            let _ = http1::Builder::new()
-                .serve_connection(TokioIo::new(stream), service)
-                .await;
-        });
-    }
+    let (live, sink): (Connections, Sink) = (Connections::default(), Arc::new(on_call));
+    let bound = groove_loopback::serve(handle, move |request| {
+        let (live, sink) = (live.clone(), sink.clone());
+        async move { route(request, &live, &sink).await }
+    })
+    .map_err(|e| Error::new(ErrorKind::Agent, format!("no loopback port: {e}")))?;
+    Ok(Server {
+        port: bound.port,
+        token: bound.token,
+    })
 }
 
 /// The two routes: the stream that answers, and the calls that ask.
-async fn route(
-    request: Request<Incoming>,
-    token: &str,
-    live: &Connections,
-    sink: &Sink,
-) -> Response<Body> {
-    if !bearer(&request, token) {
-        return reply(StatusCode::UNAUTHORIZED);
-    }
+async fn route(request: Request<Incoming>, live: &Connections, sink: &Sink) -> Response<Body> {
     match (request.method(), request.uri().path()) {
         (&Method::GET, "/sse") => stream::open(live, request.uri().query()),
         (&Method::POST, "/message") => message(request, live, sink).await,
@@ -107,10 +68,10 @@ async fn message(request: Request<Incoming>, live: &Connections, sink: &Sink) ->
     let Some(open) = live.open(&id) else {
         return reply(StatusCode::NOT_FOUND);
     };
-    let Ok(body) = Limited::new(request.into_body(), BODY_MAX).collect().await else {
+    let Some(body) = body(request).await else {
         return reply(StatusCode::PAYLOAD_TOO_LARGE);
     };
-    let Ok(call) = serde_json::from_slice::<serde_json::Value>(&body.to_bytes()) else {
+    let Ok(call) = serde_json::from_slice::<serde_json::Value>(&body) else {
         return reply(StatusCode::BAD_REQUEST);
     };
     if call.get("id").is_none_or(serde_json::Value::is_null) {
@@ -122,13 +83,4 @@ async fn message(request: Request<Incoming>, live: &Connections, sink: &Sink) ->
             .await
     });
     reply(StatusCode::ACCEPTED)
-}
-
-fn bearer(request: &Request<Incoming>, token: &str) -> bool {
-    request
-        .headers()
-        .get(hyper::header::AUTHORIZATION)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.strip_prefix("Bearer "))
-        .is_some_and(|value| value == token)
 }

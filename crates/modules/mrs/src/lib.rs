@@ -4,6 +4,7 @@
 mod tests;
 
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{Error, Forge, Mr, MrId, MrState, Result, WorktreeId};
 
 /// What a forge answered of an MR, as the row keeps it.
@@ -25,16 +26,21 @@ struct Row {
     state: String,
 }
 
-impl From<Row> for Mr {
-    fn from(row: Row) -> Self {
-        Mr {
+impl TryFrom<Row> for Mr {
+    type Error = Error;
+
+    /// A row whose forge or state no version wrote is an error.
+    fn try_from(row: Row) -> Result<Self> {
+        let state = MrState::parse(&row.state)
+            .ok_or_else(|| Error::db(format!("an MR row holds an unknown state {}", row.state)))?;
+        Ok(Mr {
             id: MrId::new(row.id),
             worktree: WorktreeId::new(row.worktree_id),
-            forge: Forge::parse(&row.platform).unwrap_or(Forge::Github),
+            forge: Forge::parse(&row.platform)?,
             remote_id: row.remote_id,
             url: row.url,
-            state: state_of(&row.state),
-        }
+            state,
+        })
     }
 }
 
@@ -44,24 +50,17 @@ pub struct Store {
     db: Db,
 }
 
-impl Store {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Store {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// A store on a private in-memory database, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        let db = Db::in_memory()
-            .await
-            .map_err(|e| Error::db(format!("no database: {e}")))?;
-        Ok(Self::new(db))
-    }
-
-    /// The pool this store writes to, for the modules that share it.
-    pub fn db(&self) -> &Db {
+    fn db(&self) -> &Db {
         &self.db
     }
+}
 
+impl Store {
     /// The MR this worktree has, if it has one.
     pub async fn get(&self, worktree: &WorktreeId) -> Result<Option<Mr>> {
         let row: Option<Row> = sqlx::query_as(
@@ -72,7 +71,7 @@ impl Store {
         .fetch_optional(self.db.pool())
         .await
         .map_err(failed)?;
-        Ok(row.map(Mr::from))
+        row.map(Mr::try_from).transpose()
     }
 
     /// Every open MR, whatever worktree it belongs to.
@@ -84,7 +83,7 @@ impl Store {
         .fetch_all(self.db.pool())
         .await
         .map_err(failed)?;
-        Ok(rows.into_iter().map(Mr::from).collect())
+        rows.into_iter().map(Mr::try_from).collect()
     }
 
     /// What the forge answered, written down as the worktree's one MR.
@@ -107,7 +106,7 @@ impl Store {
         .bind(answered.forge.as_str())
         .bind(&answered.number)
         .bind(&answered.url)
-        .bind(word_of(answered.state))
+        .bind(answered.state.as_str())
         .execute(&mut *tx)
         .await
         .map_err(failed)?;
@@ -128,25 +127,6 @@ impl Store {
     }
 }
 
-/// The one word a state is stored as.
-fn word_of(state: MrState) -> &'static str {
-    match state {
-        MrState::Open => "open",
-        MrState::Merged => "merged",
-        MrState::Closed => "closed",
-    }
-}
-
-fn state_of(word: &str) -> MrState {
-    match word {
-        "merged" => MrState::Merged,
-        "closed" => MrState::Closed,
-        _ => MrState::Open,
-    }
-}
-
 fn failed(source: sqlx::Error) -> Error {
-    Error::db(format!(
-        "the MR rows could not be read or written: {source}"
-    ))
+    Error::store("MR rows", source)
 }

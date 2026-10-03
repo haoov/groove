@@ -1,9 +1,10 @@
+use crate::Stored as _;
 use groove_types::ExternalId;
 
 use crate::{Placed, Plan};
 
 async fn plan() -> Plan {
-    Plan::new(groove_db::Db::in_memory().await.expect("a database"))
+    Plan::in_memory().await.expect("a plan")
 }
 
 fn placed(id: &str, later: bool) -> Placed {

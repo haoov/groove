@@ -92,10 +92,7 @@ impl Gitlab {
 /// One merge request's REST address.
 fn mr_url(host: &str, repo: &Repo, number: &str) -> String {
     let project = urlencoding(&path(repo));
-    let root = match host.starts_with("http") {
-        true => host.to_string(),
-        false => format!("https://{host}"),
-    };
+    let root = groove_types::Forge::root(host);
     format!("{root}/api/v4/projects/{project}/merge_requests/{number}")
 }
 

@@ -86,3 +86,36 @@ fn an_action_routine_names_what_groove_does_and_needs_no_skill() {
     assert!(refused(bound).contains("only an action"));
     assert!(refused("---\nkind: action\ndo: start-due\non: ci-failed\n---\n").contains("bound"));
 }
+
+#[test]
+fn the_day_s_first_look_is_new_once_and_the_next_day_is_new_again() {
+    let dir = tempfile::tempdir().unwrap();
+    let at = dir.path().join("routines");
+    assert!(crate::new_day(&at, "2026-10-03").unwrap());
+    assert!(
+        !crate::new_day(&at, "2026-10-03").unwrap(),
+        "a restart the same day"
+    );
+    assert!(crate::new_day(&at, "2026-10-04").unwrap());
+}
+
+#[test]
+fn a_run_asks_its_one_skill_alone_or_its_words_with_what_started_it() {
+    let alone = parse("user:fix", "fix", FIX_CI).unwrap();
+    let mut alone = alone;
+    alone.words.clear();
+    assert_eq!(
+        crate::prompt(&alone, Some(Trigger::CiFailed), "CI failed on x"),
+        "/groove:fix-ci CI failed on x"
+    );
+    let worded = parse("user:fix", "fix", FIX_CI).unwrap();
+    let said = crate::prompt(&worded, None, "");
+    assert!(
+        said.starts_with("Routine `fix`, started by its button."),
+        "{said}"
+    );
+    assert!(
+        said.ends_with("Keep the fix to what the log blames."),
+        "{said}"
+    );
+}

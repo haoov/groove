@@ -35,38 +35,10 @@ fn op_of(naming: &Naming) -> Option<PathOp> {
     if name.is_empty() {
         return None;
     }
-    match naming.asked {
-        Asked::File => Some(PathOp::Create {
-            path: joined(&naming.at, name),
-            folder: false,
-        }),
-        Asked::Folder => Some(PathOp::Create {
-            path: joined(&naming.at, name),
-            folder: true,
-        }),
-        Asked::Rename => Some(PathOp::Rename {
-            from: naming.at.clone(),
-            to: beside(&naming.at, name),
-        }),
-        Asked::Copy => Some(PathOp::Copy {
-            from: naming.at.clone(),
-            to: beside(&naming.at, name),
-        }),
-    }
-}
-
-/// A name inside a directory, which may be the worktree root itself.
-fn joined(dir: &str, name: &str) -> String {
-    match dir.is_empty() {
-        true => name.to_string(),
-        false => format!("{dir}/{name}"),
-    }
-}
-
-/// A name in the same directory as the path it is given to.
-fn beside(path: &str, name: &str) -> String {
-    match path.rsplit_once('/') {
-        Some((dir, _)) => format!("{dir}/{name}"),
-        None => name.to_string(),
-    }
+    Some(match naming.asked {
+        Asked::File => PathOp::made(&naming.at, name, false),
+        Asked::Folder => PathOp::made(&naming.at, name, true),
+        Asked::Rename => PathOp::renamed(&naming.at, name),
+        Asked::Copy => PathOp::copied(&naming.at, name),
+    })
 }

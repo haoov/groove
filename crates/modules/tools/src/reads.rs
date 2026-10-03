@@ -9,6 +9,8 @@ fn read(name: &'static str, description: &str, schema: serde_json::Value) -> Too
         description: description.to_string(),
         schema,
         writes: false,
+        verb: "read",
+        subject: &[],
     }
 }
 

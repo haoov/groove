@@ -4,6 +4,7 @@
 mod tests;
 
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{
     Annotation, AnnotationId, AnnotationStatus, Error, RepoId, Result, SessionId, Timestamp,
 };
@@ -23,9 +24,13 @@ struct Row {
     created_at: i64,
 }
 
-impl From<Row> for Annotation {
-    fn from(row: Row) -> Self {
-        Annotation {
+impl TryFrom<Row> for Annotation {
+    type Error = Error;
+
+    fn try_from(row: Row) -> Result<Self> {
+        let status = AnnotationStatus::parse(&row.status)
+            .ok_or_else(|| Error::db(format!("a note holds an unknown status {}", row.status)))?;
+        Ok(Annotation {
             id: AnnotationId::new(row.id),
             session: SessionId::new(row.session_id),
             repo: RepoId::new(row.repo_id),
@@ -34,9 +39,9 @@ impl From<Row> for Annotation {
             end_line: line_of(row.end_line),
             content: row.content,
             author: row.author,
-            status: status_of(&row.status),
+            status,
             created_at: Timestamp::new(row.created_at),
-        }
+        })
     }
 }
 
@@ -58,24 +63,17 @@ pub struct Store {
     db: Db,
 }
 
-impl Store {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Store {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// A store on a private in-memory database, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        let db = Db::in_memory()
-            .await
-            .map_err(|e| Error::db(format!("no database: {e}")))?;
-        Ok(Self::new(db))
-    }
-
-    /// The pool this store writes to, for the modules that share it.
-    pub fn db(&self) -> &Db {
+    fn db(&self) -> &Db {
         &self.db
     }
+}
 
+impl Store {
     /// Every note of a session, in the order a file reads.
     pub async fn list(&self, session: &SessionId) -> Result<Vec<Annotation>> {
         let rows: Vec<Row> = sqlx::query_as(
@@ -88,7 +86,7 @@ impl Store {
         .fetch_all(self.db.pool())
         .await
         .map_err(failed)?;
-        Ok(rows.into_iter().map(Annotation::from).collect())
+        rows.into_iter().map(Annotation::try_from).collect()
     }
 
     pub async fn get(&self, id: &AnnotationId) -> Result<Option<Annotation>> {
@@ -101,7 +99,7 @@ impl Store {
         .fetch_optional(self.db.pool())
         .await
         .map_err(failed)?;
-        Ok(row.map(Annotation::from))
+        row.map(Annotation::try_from).transpose()
     }
 
     /// Writes a note, with the range the right way round.
@@ -141,11 +139,11 @@ impl Store {
     }
 
     pub async fn resolve(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.status(id, "resolved").await
+        self.status(id, AnnotationStatus::Resolved).await
     }
 
     pub async fn reopen(&self, id: &AnnotationId) -> Result<Annotation> {
-        self.status(id, "open").await
+        self.status(id, AnnotationStatus::Open).await
     }
 
     pub async fn delete(&self, id: &AnnotationId) -> Result<()> {
@@ -157,9 +155,9 @@ impl Store {
         Ok(())
     }
 
-    async fn status(&self, id: &AnnotationId, word: &str) -> Result<Annotation> {
+    async fn status(&self, id: &AnnotationId, status: AnnotationStatus) -> Result<Annotation> {
         let done = sqlx::query("UPDATE annotations SET status = ? WHERE id = ?")
-            .bind(word)
+            .bind(status.as_str())
             .bind(id.as_str())
             .execute(self.db.pool())
             .await
@@ -189,17 +187,10 @@ fn line_of(stored: i64) -> u32 {
     u32::try_from(stored).unwrap_or_default()
 }
 
-fn status_of(word: &str) -> AnnotationStatus {
-    match word {
-        "resolved" => AnnotationStatus::Resolved,
-        _ => AnnotationStatus::Open,
-    }
-}
-
 fn gone(id: &AnnotationId) -> Error {
     Error::not_found(format!("no note {id}"))
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::db(format!("the notes could not be read or written: {source}"))
+    Error::store("notes", source)
 }

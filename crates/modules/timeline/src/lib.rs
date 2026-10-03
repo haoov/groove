@@ -4,6 +4,7 @@
 mod tests;
 
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{Error, Result, SessionId, TimelineEvent, TimelineKind, Timestamp};
 
 /// One line as the table holds it.
@@ -35,23 +36,17 @@ pub struct Timeline {
     db: Db,
 }
 
-impl Timeline {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Timeline {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// On a private in-memory database, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        let db = Db::in_memory()
-            .await
-            .map_err(|e| Error::db(format!("no database: {e}")))?;
-        Ok(Self::new(db))
-    }
-
-    pub fn db(&self) -> &Db {
+    fn db(&self) -> &Db {
         &self.db
     }
+}
 
+impl Timeline {
     /// One line written down, whatever else the session has.
     pub async fn append(&self, event: &TimelineEvent) -> Result<()> {
         sqlx::query(
@@ -85,7 +80,5 @@ impl Timeline {
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::db(format!(
-        "the timeline could not be read or written: {source}"
-    ))
+    Error::store("log lines", source)
 }

@@ -35,8 +35,8 @@ pub(super) fn map(
         Ok(config) => config.clone(),
         Err(e) => return state.failed(e),
     };
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        return state.failed(e);
+    if !super::written(state, Some(config)) {
+        return;
     }
     crate::task::load(state, services, spawner);
 }

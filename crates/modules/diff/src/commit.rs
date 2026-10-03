@@ -63,9 +63,5 @@ fn status_of(
     before: &HashMap<String, String>,
     after: &HashMap<String, String>,
 ) -> FileStatus {
-    match (before.contains_key(path), after.contains_key(path)) {
-        (false, true) => FileStatus::Added,
-        (true, false) => FileStatus::Deleted,
-        _ => FileStatus::Modified,
-    }
+    FileStatus::of(before.contains_key(path), after.contains_key(path))
 }

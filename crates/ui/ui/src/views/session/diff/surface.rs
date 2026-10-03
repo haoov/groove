@@ -18,9 +18,6 @@ use crate::views::session::Face;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::{NOTE_BY, NOTE_SLACK};
 
-/// Who a note left in the app is by.
-pub(crate) const AUTHOR: &str = "you";
-
 pub(super) fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     match ui.session.face() {
         Face::Stream(DiffView::Split) => beside(ctx, body, app, ui),

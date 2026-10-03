@@ -1,8 +1,16 @@
 //! The routines' runs: what runs, what waits its turn, what ran on each session, what was last seen.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+mod rules;
+mod seen;
+mod turn;
 
-use groove_types::{CiState, ExternalId, SessionId, Timestamp, Trigger, WorktreeId};
+use std::collections::{BTreeSet, VecDeque};
+
+use groove_types::{SessionId, Timestamp, Trigger};
+
+pub use rules::{Place, Sessions, target};
+pub use seen::Seen;
+pub use turn::Ending;
 
 /// One run of a routine on one session.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,6 +27,20 @@ pub struct Run {
     pub went: bool,
 }
 
+impl Run {
+    /// Not yet sent to its agent.
+    pub fn new(routine: &str, session: SessionId, trigger: Option<Trigger>, about: &str) -> Self {
+        Self {
+            routine: routine.to_string(),
+            session,
+            trigger,
+            about: about.to_string(),
+            sent_at: None,
+            went: false,
+        }
+    }
+}
+
 /// One event a look found, about a session or about none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fired {
@@ -27,38 +49,23 @@ pub struct Fired {
     pub about: String,
 }
 
-/// What the last look saw, for the next one to tell what changed.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Seen {
-    pub selected: Option<SessionId>,
-    pub ci: BTreeMap<WorktreeId, CiState>,
-    pub changes: BTreeMap<WorktreeId, bool>,
-    pub commented: BTreeMap<WorktreeId, bool>,
-    /// The review sessions the queue asks of the user, once it is read.
-    pub asked: Option<BTreeSet<String>>,
-    pub working: BTreeSet<SessionId>,
-    /// Each task's short id and status.
-    pub tasks: BTreeMap<ExternalId, (String, String)>,
-    pub reading: bool,
-    /// A read of the tasks has come back since the app started.
-    pub tasks_read: bool,
-}
-
 /// The `runs` part of the agent slice.
 #[derive(Debug, Default)]
 pub struct Runs {
     pub running: Vec<Run>,
     pub waiting: VecDeque<Run>,
     pub seen: Option<Seen>,
-    /// Each routine that ran on a session since the user last selected it.
-    ran: BTreeSet<(String, SessionId)>,
+    /// Each routine queued on a session since the user last selected it.
+    queued: BTreeSet<(String, SessionId)>,
     /// The daily trigger was weighed this run of the app.
     pub dawned: bool,
 }
 
 impl Runs {
-    pub fn ran(&self, routine: &str, session: &SessionId) -> bool {
-        self.ran.contains(&(routine.to_string(), session.clone()))
+    /// Whether this routine was queued on this session since the user last selected it.
+    pub fn queued_since_seen(&self, routine: &str, session: &SessionId) -> bool {
+        self.queued
+            .contains(&(routine.to_string(), session.clone()))
     }
 
     /// Whether this routine runs or waits on this session already.
@@ -67,15 +74,16 @@ impl Runs {
         self.running.iter().any(one) || self.waiting.iter().any(one)
     }
 
-    /// Queued, and counted as run on its session.
+    /// Queued, and counted as queued on its session.
     pub fn queue(&mut self, run: Run) {
-        self.ran.insert((run.routine.clone(), run.session.clone()));
+        self.queued
+            .insert((run.routine.clone(), run.session.clone()));
         self.waiting.push_back(run);
     }
 
-    /// Every routine's count on this session back to zero.
-    pub fn looked(&mut self, session: &SessionId) {
-        self.ran.retain(|(_, on)| on != session);
+    /// The user selected the session: every routine may be queued on it again.
+    pub fn seen_session(&mut self, session: &SessionId) {
+        self.queued.retain(|(_, on)| on != session);
     }
 
     /// Whether a run is on this session's agent now.
@@ -87,6 +95,6 @@ impl Runs {
     pub fn drop_session(&mut self, session: &SessionId) {
         self.running.retain(|run| &run.session != session);
         self.waiting.retain(|run| &run.session != session);
-        self.looked(session);
+        self.seen_session(session);
     }
 }

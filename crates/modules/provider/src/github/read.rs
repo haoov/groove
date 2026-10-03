@@ -117,6 +117,4 @@ fn hours(value: Option<String>) -> Option<f32> {
     value?.parse().ok()
 }
 
-fn text(value: &serde_json::Value) -> String {
-    value.as_str().unwrap_or_default().to_string()
-}
+use groove_types::json::text;

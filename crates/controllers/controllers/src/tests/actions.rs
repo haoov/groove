@@ -87,3 +87,28 @@ fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the
             .is_some_and(|t| t.screen().line(0) == "ready /groove:start-task")
     });
 }
+
+#[test]
+fn start_due_opens_no_more_tasks_than_the_cap() {
+    let (_home, spawner, services, mut state) = fresh();
+    state.agent.routines = vec![Listed {
+        id: "user:start-due".into(),
+        read: parse("user:start-due", "start-due", START_DUE),
+    }];
+    if let Some(config) = state.config.config.as_mut() {
+        config.preferences.routine_cap = 2;
+    }
+    state.task.tasks = ["A", "B", "C"]
+        .map(|one| task(one, Some(-1), 0.0, None))
+        .into();
+    let run = agent::Command::RunRoutine {
+        id: "user:start-due".into(),
+    };
+    dispatch(Command::Agent(run), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let opened = ["A", "B", "C"]
+        .iter()
+        .filter(|one| opened(&state, one))
+        .count();
+    assert_eq!(opened, 2);
+}

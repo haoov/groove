@@ -2,7 +2,7 @@
 
 use groove_controllers::agent_service::Select;
 use groove_controllers::{AppState, Command, agent};
-use groove_types::{ProviderId, SessionId};
+use groove_types::SessionId;
 
 use crate::hit::{Hits, Target};
 use crate::layout::Layout;
@@ -127,9 +127,13 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
     let sources = groove_controllers::task_service::source_ids(app.config.config.as_ref());
     let offered: Vec<Offer> = app
         .agent
-        .skills_for(&open.session.kind)
-        .iter()
-        .flat_map(|one| rows_of(one, &sources))
+        .offers(&open.session.kind, &sources)
+        .into_iter()
+        .map(|one| Offer {
+            id: one.id,
+            args: one.args,
+            label: one.label,
+        })
         .collect();
     if offered.is_empty() {
         return Vec::new();
@@ -146,35 +150,12 @@ fn menu(ui: &mut Ui, app: &AppState, hits: &Hits, session: SessionId) -> Vec<Com
     Vec::new()
 }
 
-/// One row a skill offers, one per source it files in; `create-task` runs from the chat alone.
-fn rows_of(skill: &groove_types::Skill, sources: &[ProviderId]) -> Vec<Offer> {
-    if skill.name == "create-task" {
-        return Vec::new();
-    }
-    let files = skill.name == "convert-explorer";
-    if !files || sources.len() < 2 {
-        return vec![Offer {
-            id: skill.id.clone(),
-            args: None,
-            label: skill.label.clone(),
-        }];
-    }
-    sources
-        .iter()
-        .map(|one| Offer {
-            id: skill.id.clone(),
-            args: Some(one.as_str().to_string()),
-            label: format!("{} in {}", skill.label, one.label()),
-        })
-        .collect()
-}
-
 /// Every write of the session let through without asking, or asking again.
 fn switched(app: &AppState, session: SessionId) -> Vec<Command> {
     let on = !app
-        .agent
-        .activity(&session)
-        .is_some_and(|one| one.auto_approve);
+        .session
+        .get(&session)
+        .is_some_and(|one| one.state.auto_approve);
     vec![Command::Agent(agent::Command::AutoApprove { session, on })]
 }
 

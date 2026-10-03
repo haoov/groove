@@ -3,8 +3,6 @@ use groove_types::{ErrorKind, SessionId};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Db(#[from] groove_db::Error),
-    #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
     #[error("no {what} {id}")]
     NotFound { what: &'static str, id: String },

@@ -59,9 +59,9 @@ impl Write {
 pub(super) fn asked(state: &mut AppState, services: &Services, spawner: &dyn Spawner, call: Call) {
     let session = super::session(&call);
     let auto = state
-        .agent
-        .activity(&session)
-        .is_some_and(|activity| activity.auto_approve);
+        .session
+        .get(&session)
+        .is_some_and(|open| open.state.auto_approve);
     if auto {
         return run(state, services, spawner, Write::of(call));
     }

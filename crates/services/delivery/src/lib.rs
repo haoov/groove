@@ -1,5 +1,11 @@
 //! The delivery capability: what the forge says of each worktree, and the session's notes.
 
+mod facts;
+pub use facts::Clock;
+
+/// Who a note says left it: the user, or the agent.
+pub const BY_USER: &str = "you";
+pub const BY_AGENT: &str = "agent";
 mod held;
 mod notes;
 mod poll;

@@ -30,7 +30,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
 fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let id = open.session.id.clone();
     let stale = app.agent.stale(&id);
-    let auto = app.agent.activity(&id).is_some_and(|one| one.auto_approve);
+    let auto = open.state.auto_approve;
     let (ground, xs) = (ctx.styles.ground(), ctx.tokens.xs);
     let mut room = line.pad(Edges::across(0.0, xs));
     let words = [

@@ -2,7 +2,7 @@
 
 use groove_types::{
     CiState, CiStatus, Forge, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,
-    ReviewMr, ReviewState, Reviewer, Timestamp, review_for,
+    ReviewMr, ReviewState, Reviewer, review_for,
 };
 
 use crate::Snapshot;
@@ -177,15 +177,10 @@ pub(super) fn asked(mr: &serde_json::Value, me: &str) -> Option<ReviewMr> {
 
 /// A page of the host, from the path GitLab gives.
 fn page(host: &str, path: &str) -> String {
-    match (path.is_empty(), host.starts_with("http")) {
-        (true, _) => String::new(),
-        (false, true) => format!("{host}{path}"),
-        (false, false) => format!("https://{host}{path}"),
+    match path.is_empty() {
+        true => String::new(),
+        false => format!("{}{path}", groove_types::Forge::root(host)),
     }
-}
-
-pub(super) fn text(value: &serde_json::Value) -> String {
-    value.as_str().unwrap_or_default().to_string()
 }
 
 fn some(value: &serde_json::Value) -> Option<String> {
@@ -197,14 +192,6 @@ fn line(value: &serde_json::Value) -> Option<u32> {
     u32::try_from(line).ok()
 }
 
-fn at(value: &serde_json::Value) -> Option<Timestamp> {
-    Timestamp::parse(value.as_str()?).ok()
-}
-
-pub(super) fn nodes(list: &serde_json::Value) -> Vec<serde_json::Value> {
-    list["nodes"].as_array().cloned().unwrap_or_default()
-}
-
 fn logins(list: &serde_json::Value) -> Vec<String> {
     nodes(list)
         .iter()
@@ -212,3 +199,5 @@ fn logins(list: &serde_json::Value) -> Vec<String> {
         .filter(|name| !name.is_empty())
         .collect()
 }
+
+pub(super) use groove_types::json::{at, nodes, text};

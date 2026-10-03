@@ -243,7 +243,7 @@ fn the_agent_writes_a_skill_of_the_users_own_and_reads_it_back() {
     let dir = worktree(&mut state, &services, &spawner);
     assert!(!dir.is_empty());
     let id = state.session.selected.clone().expect("a session");
-    state.agent.auto_approve(&id, true);
+    crate::tests::fixture::auto_approve(&mut state, &id);
     crate::agent::skills::list(&mut state, &spawner);
     spawner.drain(&mut state, &services);
 
@@ -376,9 +376,7 @@ fn the_notes_left_on_the_session_are_read_back_with_their_ids() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     fixture::pooled_clone(home.path());
     let (id, worktree, _) = changed(&mut state, &services, &spawner);
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new(&id), true);
+    crate::tests::fixture::auto_approve(&mut state, &groove_types::SessionId::new(&id));
     let note =
         json!({ "worktree_id": worktree, "path": "a.txt", "line": 1, "content": "issue: one" });
     asked(

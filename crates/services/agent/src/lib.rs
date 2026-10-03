@@ -1,6 +1,8 @@
 //! The agent capability. One agent per open session: its terminal and its activity.
 
 pub(crate) mod launch;
+mod listed;
+pub mod listing;
 pub mod runs;
 pub mod shared;
 
@@ -25,6 +27,7 @@ pub use groove_types::Screen;
 /// The tool Claude calls to put a question to the user.
 const ASKS_THE_USER: &str = "AskUserQuestion";
 pub use launch::{LaunchPaths, claude_bin, launch, login, palette};
+pub use listed::SkillOffer;
 
 /// One session's agent. `terminal` is `None` when the launch failed.
 #[derive(Debug)]
@@ -158,13 +161,6 @@ impl State {
         dropped
     }
 
-    /// Whether this session's writes run without asking.
-    pub fn auto_approve(&mut self, session: &SessionId, on: bool) {
-        if let Some(activity) = self.activity_mut(session) {
-            activity.auto_approve = on;
-        }
-    }
-
     /// The user looked at the session: a finished turn is no longer news.
     pub fn saw(&mut self, session: &SessionId, now: Timestamp) {
         let Some(activity) = self.activity_mut(session) else {
@@ -197,7 +193,6 @@ pub(crate) fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
         status,
         tool: None,
         asks: Vec::new(),
-        auto_approve: false,
         changed_at: now,
         seen_at: None,
     }

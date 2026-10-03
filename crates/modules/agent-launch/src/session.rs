@@ -24,17 +24,20 @@ pub fn thread_of(launch_dir: &Path, session_id: &str) -> String {
 }
 
 /// Hands `from`'s conversation to `to`, for `to`'s next launch to resume.
-pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> std::io::Result<()> {
-    std::fs::create_dir_all(launch_dir)?;
-    let uuid = thread_of(launch_dir, from);
-    std::fs::write(launch_dir.join(format!("{to}.thread")), uuid)
+pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> groove_types::Result<()> {
+    threaded(launch_dir, to, &thread_of(launch_dir, from))
 }
 
 /// A new conversation for the session's next launch, in place of the one it carried.
-pub fn fresh(launch_dir: &Path, session_id: &str) -> std::io::Result<()> {
-    std::fs::create_dir_all(launch_dir)?;
-    let uuid = uuid::Uuid::new_v4().to_string();
-    std::fs::write(launch_dir.join(format!("{session_id}.thread")), uuid)
+pub fn fresh(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
+    threaded(launch_dir, session_id, &uuid::Uuid::new_v4().to_string())
+}
+
+/// The conversation `uuid` written as the one the session's next launch carries on.
+fn threaded(launch_dir: &Path, session_id: &str, uuid: &str) -> groove_types::Result<()> {
+    let at = launch_dir.join(format!("{session_id}.thread"));
+    let written = std::fs::create_dir_all(launch_dir).and_then(|()| std::fs::write(at, uuid));
+    written.map_err(|e| groove_types::Error::new(groove_types::ErrorKind::Io, e.to_string()))
 }
 
 const NAMES: [&str; 5] = [
@@ -46,10 +49,15 @@ const NAMES: [&str; 5] = [
 ];
 
 /// The session's launch files taken away; one already gone is no error.
-pub fn forget(launch_dir: &Path, session_id: &str) -> std::io::Result<()> {
+pub fn forget(launch_dir: &Path, session_id: &str) -> groove_types::Result<()> {
     for name in NAMES {
         match std::fs::remove_file(launch_dir.join(format!("{session_id}.{name}"))) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                return Err(groove_types::Error::new(
+                    groove_types::ErrorKind::Io,
+                    e.to_string(),
+                ));
+            }
             _ => {}
         }
     }

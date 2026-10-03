@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use groove_loopback::reply;
 use http_body_util::combinators::BoxBody;
 use hyper::body::{Bytes, Frame};
 use hyper::{Response, StatusCode};
@@ -130,11 +131,4 @@ pub fn param(query: Option<&str>, name: &str) -> Option<String> {
         .filter_map(|one| one.split_once('='))
         .find(|(key, value)| *key == name && !value.is_empty())
         .map(|(_, value)| value.to_string())
-}
-
-pub fn reply(status: StatusCode) -> Response<Body> {
-    Response::builder()
-        .status(status)
-        .body(BoxBody::new(http_body_util::Empty::new()))
-        .unwrap_or_default()
 }

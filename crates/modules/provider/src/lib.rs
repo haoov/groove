@@ -13,6 +13,18 @@ pub use groove_token::Token;
 use groove_types::{StatusIntent, Task, TaskKey};
 pub use notion::Notion;
 
+/// The label the source's map gives this intent, or why it gives none.
+fn mapped(map: &groove_types::StatusMap, intent: StatusIntent, source: &str) -> Result<String> {
+    let label = map.label(intent).map(str::to_string);
+    label.ok_or_else(|| Error::Invalid(format!("{source} maps nothing to {intent:?}")))
+}
+
+/// The property the source logs hours in, or why it names none.
+fn hours_named(properties: &groove_types::PropertyNames, source: &str) -> Result<String> {
+    let named = properties.logged.clone();
+    named.ok_or_else(|| Error::Invalid(format!("{source} names no hours property")))
+}
+
 /// The most pages one list reads before it stops.
 const PAGES_MAX: usize = 20;
 

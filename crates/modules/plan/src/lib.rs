@@ -4,6 +4,7 @@
 mod tests;
 
 use groove_db::Db;
+pub use groove_db::Store as Stored;
 use groove_types::{Error, ExternalId, Result};
 
 /// One task's place: where it stands, and whether it stands under the divider.
@@ -28,19 +29,17 @@ pub struct Plan {
     db: Db,
 }
 
-impl Plan {
-    pub fn new(db: Db) -> Self {
+impl groove_db::Store for Plan {
+    fn new(db: Db) -> Self {
         Self { db }
     }
 
-    /// A plan on a private in-memory database, for tests up the stack.
-    pub async fn in_memory() -> Result<Self> {
-        let db = Db::in_memory()
-            .await
-            .map_err(|e| Error::db(format!("no database: {e}")))?;
-        Ok(Self::new(db))
+    fn db(&self) -> &Db {
+        &self.db
     }
+}
 
+impl Plan {
     /// Every placed task, in the order the user gave it.
     pub async fn order(&self) -> Result<Vec<Placed>> {
         let rows: Vec<(String, i64)> =
@@ -78,5 +77,5 @@ impl Plan {
 }
 
 fn failed(source: sqlx::Error) -> Error {
-    Error::db(format!("the plan could not be read or written: {source}"))
+    Error::store("plan", source)
 }

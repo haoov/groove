@@ -1249,6 +1249,7 @@ version = "0.1.0"
 dependencies = [
  "groove-exec",
  "groove-types",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
@@ -1390,14 +1391,13 @@ dependencies = [
 name = "groove-hooks"
 version = "0.1.0"
 dependencies = [
+ "groove-loopback",
  "groove-types",
  "http-body-util",
  "hyper",
- "hyper-util",
  "reqwest",
  "serde_json",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1423,14 +1423,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "groove-loopback"
+version = "0.1.0"
+dependencies = [
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "groove-mcp"
 version = "0.1.0"
 dependencies = [
+ "groove-loopback",
  "groove-tools",
  "groove-types",
  "http-body-util",
  "hyper",
- "hyper-util",
  "reqwest",
  "serde_json",
  "tokio",
@@ -1619,6 +1630,7 @@ dependencies = [
 name = "groove-watch"
 version = "0.1.0"
 dependencies = [
+ "groove-grep",
  "groove-types",
  "ignore",
  "notify",

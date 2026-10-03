@@ -6,8 +6,6 @@ use super::Write;
 use crate::asker::Asker;
 use crate::{AppState, Services, Spawner};
 
-const NO_TASK: &str = "this session works no task";
-
 /// The hours the clock measured and the source has not heard about.
 pub(super) fn log_hours(
     state: &mut AppState,
@@ -16,7 +14,7 @@ pub(super) fn log_hours(
     write: Write,
 ) {
     let Some(id) = worked(state, &write) else {
-        return write.reply.failed(NO_TASK);
+        return write.reply.failed(crate::task::NOT_A_TASK);
     };
     let asker = Asker::Agent(write.reply);
     crate::task::log_hours(state, services, spawner, &id, asker);

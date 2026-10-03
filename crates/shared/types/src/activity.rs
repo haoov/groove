@@ -12,16 +12,29 @@ pub enum HookKind {
 }
 
 impl HookKind {
+    pub const ALL: [HookKind; 6] = [
+        HookKind::SessionStart,
+        HookKind::UserPromptSubmit,
+        HookKind::PreToolUse,
+        HookKind::PostToolUse,
+        HookKind::Notification,
+        HookKind::Stop,
+    ];
+
+    /// The event's name, as Claude Code's settings and its posts spell it.
+    pub fn name(self) -> &'static str {
+        match self {
+            HookKind::SessionStart => "SessionStart",
+            HookKind::UserPromptSubmit => "UserPromptSubmit",
+            HookKind::PreToolUse => "PreToolUse",
+            HookKind::PostToolUse => "PostToolUse",
+            HookKind::Notification => "Notification",
+            HookKind::Stop => "Stop",
+        }
+    }
+
     pub fn parse(name: &str) -> Option<Self> {
-        Some(match name {
-            "SessionStart" => HookKind::SessionStart,
-            "UserPromptSubmit" => HookKind::UserPromptSubmit,
-            "PreToolUse" => HookKind::PreToolUse,
-            "PostToolUse" => HookKind::PostToolUse,
-            "Notification" => HookKind::Notification,
-            "Stop" => HookKind::Stop,
-            _ => return None,
-        })
+        Self::ALL.into_iter().find(|one| one.name() == name)
     }
 }
 
@@ -70,7 +83,6 @@ pub struct SessionActivity {
     pub status: AgentStatus,
     pub tool: Option<ToolCall>,
     pub asks: Vec<Ask>,
-    pub auto_approve: bool,
     pub changed_at: Timestamp,
     pub seen_at: Option<Timestamp>,
 }

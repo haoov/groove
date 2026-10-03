@@ -5,7 +5,7 @@ mod stream;
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{At, Opened, display_at, shown};
+use groove_controllers::workspace_service::{At, Opened, display_of, shown};
 use groove_types::{Caret, Highlight, LineMark, RowKind};
 
 use self::stream::streamed;
@@ -97,7 +97,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                 kind: RowKind::Context,
                 caret: caret
                     .filter(|on| on.line == at)
-                    .map(|on| display_at(&text, on.column, width)),
+                    .map(|on| display_of(&text, on.column, width)),
                 held: held(file, ui, at),
                 mark: file.hunked.marks.get(&(at as u32)).copied(),
                 words: columns_in(file.hunked.words.new.get(&(at as u32)), &text, width),
@@ -144,8 +144,8 @@ pub(super) fn columns_in(
 
 fn columns_of(at: Range<usize>, text: &str, width: usize) -> (usize, usize) {
     (
-        display_at(text, at.start, width),
-        display_at(text, at.end, width),
+        display_of(text, at.start, width),
+        display_of(text, at.end, width),
     )
 }
 
@@ -211,8 +211,8 @@ pub(super) fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize,
         .find_map(|one| one.on(line, chars))?;
     let width = file.new.document().indent().width();
     Some((
-        display_at(&text, from, width),
-        display_at(&text, to, width),
+        display_of(&text, from, width),
+        display_of(&text, to, width),
         through,
     ))
 }

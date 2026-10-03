@@ -55,8 +55,8 @@ fn joined(state: &mut AppState, spawner: &dyn Spawner, wanted: SharedConfig, cop
         );
     };
     state.agent.shared = Some(copy);
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        return state.failed(e);
+    if !super::written(state, Some(config)) {
+        return;
     }
     crate::agent::skills::list(state, spawner);
 }
@@ -68,8 +68,8 @@ pub(super) fn leave(state: &mut AppState, spawner: &dyn Spawner) {
     };
     state.agent.shared = None;
     state.config.unshared = None;
-    if let Err(e) = groove_config_service::save(&state.env.config_dir, &config) {
-        return state.failed(e);
+    if !super::written(state, Some(config)) {
+        return;
     }
     let copy = shared::copy_of(&state.env.data_dir);
     if copy.exists()

@@ -1,3 +1,4 @@
+use crate::Stored as _;
 use groove_types::{Day, ExternalId};
 
 use crate::Ledger;

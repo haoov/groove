@@ -17,15 +17,6 @@ pub struct Tools {
     pub token: String,
 }
 
-const HOOK_EVENTS: [&str; 6] = [
-    "SessionStart",
-    "UserPromptSubmit",
-    "PreToolUse",
-    "PostToolUse",
-    "Notification",
-    "Stop",
-];
-
 impl Loopback {
     /// `--mcp-config` and `--settings`, both through files: they carry the token.
     pub(crate) fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
@@ -52,9 +43,9 @@ impl Loopback {
             self.hook_url
         );
         let post = serde_json::json!([{ "hooks": [{ "type": "command", "command": command }] }]);
-        let hooks: serde_json::Map<String, serde_json::Value> = HOOK_EVENTS
+        let hooks: serde_json::Map<String, serde_json::Value> = groove_types::HookKind::ALL
             .iter()
-            .map(|e| (e.to_string(), post.clone()))
+            .map(|e| (e.name().to_string(), post.clone()))
             .collect();
         serde_json::json!({ "hooks": hooks }).to_string()
     }

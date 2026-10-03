@@ -40,7 +40,6 @@ fn printing(state: &mut AppState, said: &str) {
                 status: groove_types::AgentStatus::Idle,
                 tool: None,
                 asks: Vec::new(),
-                auto_approve: false,
                 changed_at: groove_types::Timestamp::now(),
                 seen_at: None,
             },

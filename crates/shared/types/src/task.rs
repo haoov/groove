@@ -151,6 +151,27 @@ pub enum StatusIntent {
     Done,
 }
 
+impl StatusIntent {
+    pub const ALL: [StatusIntent; 3] = [
+        StatusIntent::Ready,
+        StatusIntent::InProgress,
+        StatusIntent::Done,
+    ];
+
+    /// The one word it is stored as.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StatusIntent::Ready => "ready",
+            StatusIntent::InProgress => "in_progress",
+            StatusIntent::Done => "done",
+        }
+    }
+
+    pub fn parse(word: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|one| one.as_str() == word)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct TimeSummary {
     pub tracked_seconds: i64,

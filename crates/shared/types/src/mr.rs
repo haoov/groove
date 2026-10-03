@@ -31,12 +31,19 @@ impl Forge {
         }
     }
 
-    /// The GraphQL endpoint of a host. One carrying its own scheme stands as it is.
+    /// The GraphQL endpoint of a host.
     pub fn graphql(host: &str) -> String {
         match host {
             "github.com" => "https://api.github.com/graphql".to_string(),
-            host if host.starts_with("http") => format!("{host}/api/graphql"),
-            host => format!("https://{host}/api/graphql"),
+            host => format!("{}/api/graphql", Self::root(host)),
+        }
+    }
+
+    /// A host's address: one carrying its own scheme stands as it is, the rest is https.
+    pub fn root(host: &str) -> String {
+        match host.starts_with("http") {
+            true => host.to_string(),
+            false => format!("https://{host}"),
         }
     }
 
@@ -58,12 +65,19 @@ pub enum MrState {
 }
 
 impl MrState {
-    pub fn label(self) -> &'static str {
+    pub const ALL: [MrState; 3] = [MrState::Open, MrState::Merged, MrState::Closed];
+
+    /// The one word it is shown and stored as.
+    pub fn as_str(self) -> &'static str {
         match self {
             MrState::Open => "open",
             MrState::Merged => "merged",
             MrState::Closed => "closed",
         }
+    }
+
+    pub fn parse(word: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|one| one.as_str() == word)
     }
 }
 

@@ -11,7 +11,9 @@ mod diff;
 mod editing;
 mod environment;
 mod error;
+pub mod front_matter;
 mod ids;
+pub mod json;
 mod mapping;
 mod mr;
 mod naming;
@@ -35,17 +37,17 @@ mod tests;
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
-pub use attention::{Attention, MrFacts, Thresholds, attention};
+pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use chord::{Chord, Stroke};
 pub use config::{
     Config, ConfigView, EstimateUnit, FilterConfig, GitConfig, GithubConfig, GithubView,
     NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig,
     SharedConfig, StatusMap, ThemeName, UiConfig,
 };
-pub use delivery::{MrDelivery, WorktreeDelivery};
+pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
-    Row, RowKind, word_diff_pairs,
+    Row, RowKind, TEXT_MAX_BYTES, subject_of,
 };
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};

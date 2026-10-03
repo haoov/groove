@@ -143,3 +143,21 @@ fn due(dates: &TaskDates, today: Day, t: &Thresholds) -> Option<Attention> {
         None
     }
 }
+
+/// The working hours a day of estimate stands for.
+const HOURS_A_DAY: f32 = 8.0;
+
+/// Whether a task must start today: its Start date has come, or today plus its estimate reaches its Due.
+pub fn starts_today(task: &crate::Task, today: Day) -> bool {
+    let started = task
+        .dates
+        .start
+        .is_some_and(|start| start.days() <= today.days());
+    let hours = task.estimate.unwrap_or_default().max(0.0);
+    let needed = (hours / HOURS_A_DAY).ceil() as i64;
+    let pressed = task
+        .dates
+        .due
+        .is_some_and(|due| today.days() + needed >= due.days());
+    started || pressed
+}

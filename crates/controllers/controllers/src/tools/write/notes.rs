@@ -8,9 +8,6 @@ use crate::delivery::{NoteAct, ThreadAct, Whose, notes, threads};
 use crate::tools::NO_WORKTREE;
 use crate::{AppState, Services, Spawner};
 
-/// The agent's own name on the notes it leaves.
-const AUTHOR: &str = "agent";
-
 /// A note on a line, or on a range of them.
 pub(super) fn create(
     state: &mut AppState,
@@ -34,12 +31,7 @@ pub(super) fn create(
         start_line,
         end_line,
     };
-    let author = AUTHOR.to_string();
-    let act = NoteAct::Create {
-        anchor,
-        content,
-        author,
-    };
+    let act = NoteAct::Create { anchor, content };
     noted(state, services, spawner, write, act);
 }
 

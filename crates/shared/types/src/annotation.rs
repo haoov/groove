@@ -8,6 +8,22 @@ pub enum AnnotationStatus {
     Resolved,
 }
 
+impl AnnotationStatus {
+    pub const ALL: [AnnotationStatus; 2] = [AnnotationStatus::Open, AnnotationStatus::Resolved];
+
+    /// The one word it is stored as.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AnnotationStatus::Open => "open",
+            AnnotationStatus::Resolved => "resolved",
+        }
+    }
+
+    pub fn parse(word: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|one| one.as_str() == word)
+    }
+}
+
 /// A note on a range of the new side of a file; one line has `start == end`.
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Annotation {

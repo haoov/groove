@@ -9,8 +9,6 @@ use ignore::{WalkBuilder, WalkState};
 #[cfg(test)]
 mod tests;
 
-/// Above this a file is walked past.
-const MAX_BYTES: u64 = 1 << 20;
 /// How many matches gather before they are reported.
 const BATCH: usize = 64;
 
@@ -47,14 +45,19 @@ impl Search {
     }
 }
 
+/// A walk of the worktree at `dir` that keeps hidden files, skips `.git` and keeps to the ignore rules.
+pub fn walker(dir: &Path) -> WalkBuilder {
+    let mut walk = WalkBuilder::new(dir);
+    walk.hidden(false)
+        .require_git(false)
+        .filter_entry(|entry| entry.file_name() != ".git");
+    walk
+}
+
 /// Every file under `dir` the ignore rules leave, at most `cap`, from the root.
 pub fn paths(dir: &Path, cap: usize) -> Vec<String> {
     let mut out = Vec::new();
-    let walk = WalkBuilder::new(dir)
-        .hidden(false)
-        .require_git(false)
-        .filter_entry(|entry| entry.file_name() != ".git")
-        .build();
+    let walk = walker(dir).build();
     for entry in walk.flatten() {
         if out.len() >= cap {
             break;
@@ -103,50 +106,45 @@ fn read(
     send: std::sync::mpsc::Sender<Vec<Found>>,
 ) {
     let needle = query.to_lowercase();
-    WalkBuilder::new(dir)
-        .hidden(false)
-        .require_git(false)
-        .filter_entry(|entry| entry.file_name() != ".git")
-        .build_parallel()
-        .run(|| {
-            let (dir, needle) = (dir.to_path_buf(), needle.clone());
-            let under = under.to_string();
-            let (search, send) = (search.clone(), send.clone());
-            Box::new(move |entry| {
-                if search.is_stopped() {
-                    return WalkState::Quit;
+    walker(dir).build_parallel().run(|| {
+        let (dir, needle) = (dir.to_path_buf(), needle.clone());
+        let under = under.to_string();
+        let (search, send) = (search.clone(), send.clone());
+        Box::new(move |entry| {
+            if search.is_stopped() {
+                return WalkState::Quit;
+            }
+            let Ok(entry) = entry else {
+                return WalkState::Continue;
+            };
+            let Some(found) = matches(&dir, &entry, &needle, &under) else {
+                return WalkState::Continue;
+            };
+            if found.is_empty() {
+                return WalkState::Continue;
+            }
+            let count = search.took(found.len());
+            let over = count.saturating_sub(cap);
+            let mut found = found;
+            found.truncate(found.len().saturating_sub(over));
+            if !found.is_empty() {
+                let _ = send.send(found);
+            }
+            match count >= cap {
+                true => {
+                    search.stop();
+                    WalkState::Quit
                 }
-                let Ok(entry) = entry else {
-                    return WalkState::Continue;
-                };
-                let Some(found) = matches(&dir, &entry, &needle, &under) else {
-                    return WalkState::Continue;
-                };
-                if found.is_empty() {
-                    return WalkState::Continue;
-                }
-                let count = search.took(found.len());
-                let over = count.saturating_sub(cap);
-                let mut found = found;
-                found.truncate(found.len().saturating_sub(over));
-                if !found.is_empty() {
-                    let _ = send.send(found);
-                }
-                match count >= cap {
-                    true => {
-                        search.stop();
-                        WalkState::Quit
-                    }
-                    false => WalkState::Continue,
-                }
-            })
-        });
+                false => WalkState::Continue,
+            }
+        })
+    });
 }
 
 /// What one file holds, or nothing when it is not a file worth reading.
 fn matches(dir: &Path, entry: &ignore::DirEntry, needle: &str, under: &str) -> Option<Vec<Found>> {
     let meta = entry.metadata().ok()?;
-    if !meta.is_file() || meta.len() > MAX_BYTES {
+    if !meta.is_file() || meta.len() > groove_types::TEXT_MAX_BYTES {
         return None;
     }
     let path = entry.path().strip_prefix(dir).ok()?.to_string_lossy();

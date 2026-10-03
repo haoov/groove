@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 
 pub use groove_diff::{
-    Aligned, At, Changes, Derived, Document, Opened, aligned, columns, display_at, from_documents,
-    from_text, shown,
+    Aligned, At, Changes, Derived, Document, Opened, aligned, column_of, display_of,
+    from_documents, from_text, shown,
 };
 pub use groove_editor::{Clipboard, Memory, clipboard};
 pub use groove_grep::{Found, Search};
@@ -31,8 +31,9 @@ pub use buffers::Buffers;
 pub use git::{UNPUSHED_MAX, commit, discard, pull, push, stage, unpushed, unstage};
 pub use paths::{PathOp, path_op};
 pub use read::{
-    COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, at_commit, base_rev, changes, commits, derived, grep,
-    opened, opened_at, painted, paths, reopened, summary, summary_against,
+    COMMITS_MAX, FOUND_MAX, HEAD, PATHS_MAX, against, at_commit, base_rev, changes, commits,
+    derived, files_in, grep, opened, opened_at, opens_in, painted, paths, reopened, summary,
+    summary_against,
 };
 pub use rows::Way;
 
