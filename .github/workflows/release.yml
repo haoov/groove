@@ -1,0 +1,60 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - name: tag matches the version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name == "groove") | .version')
+          test "v$version" = "$GITHUB_REF_NAME"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - run: cargo install cargo-deb --locked
+      - run: cargo deb --locked -p groove
+      - name: checksums
+        run: |
+          cd target/debian
+          mv groove_*.deb "groove_${GITHUB_REF_NAME#v}_amd64.deb"
+          sha256sum *.deb > SHA256SUMS
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: target/debian/*.deb
+      - name: notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: notes.md
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $prerelease \
+            --title "Groove ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md \
+            --verify-tag \
+            target/debian/*.deb target/debian/SHA256SUMS
