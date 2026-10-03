@@ -66,7 +66,15 @@ fn showing(state: MrState, read: Snapshot) -> AppState {
         .clone();
     let mr = mr(&worktree, state);
     let now = groove_types::Timestamp::now();
-    app.delivery.took(&worktree, Delivered { mr, read }, now);
+    app.delivery.took(
+        &worktree,
+        Delivered {
+            mr,
+            read,
+            unassigned: None,
+        },
+        now,
+    );
     app
 }
 

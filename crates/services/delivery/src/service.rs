@@ -17,6 +17,8 @@ pub use notes::Said;
 pub struct Delivered {
     pub mr: Mr,
     pub read: Snapshot,
+    /// Why the user was not made the assignee of an MR just opened.
+    pub unassigned: Option<Error>,
 }
 
 impl From<Delivered> for crate::Held {
@@ -123,7 +125,10 @@ impl Service {
             body: &text.body,
         };
         let read = remote.open_mr_for(repo, proposed).await?;
-        self.kept(&remote, worktree, read).await
+        let assigned = remote.assign(repo, &read).await;
+        let mut delivered = self.kept(&remote, worktree, read).await?;
+        delivered.unassigned = assigned.err().map(Error::from);
+        Ok(delivered)
     }
 
     /// The MR's title and body written again.
@@ -172,7 +177,11 @@ impl Service {
             state: read.details.state,
         };
         let mr = self.mrs.save(&worktree.id, &answered).await?;
-        Ok(Delivered { mr, read })
+        Ok(Delivered {
+            mr,
+            read,
+            unassigned: None,
+        })
     }
 
     /// The rows themselves, for a test to seed.

@@ -83,11 +83,12 @@ impl Request {
             builder = builder.json(body);
         }
         let reply = builder.send().await?;
+        let status = reply.status();
         Ok(Response {
             method: self.method.to_string(),
             url: redact_url(&self.url),
-            status: reply.status(),
-            body: reply.text().await.unwrap_or_default(),
+            status,
+            body: reply.text().await?,
         })
     }
 

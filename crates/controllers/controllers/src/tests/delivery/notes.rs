@@ -173,7 +173,11 @@ fn a_thread_the_forge_answered_joins_the_list_without_a_read() {
     let read = snapshot();
     state.delivery.took(
         &worktree,
-        groove_delivery_service::Delivered { mr, read },
+        groove_delivery_service::Delivered {
+            mr,
+            read,
+            unassigned: None,
+        },
         groove_types::Timestamp::now(),
     );
     crate::delivery::notes::show(&mut state);

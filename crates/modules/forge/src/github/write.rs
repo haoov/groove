@@ -24,11 +24,16 @@ impl Github {
             "body": mr.body,
         });
         let reply = self.api.ask(&query::open(), at).await?;
-        let (id, me) = self.me().await?;
-        let opened = self.written(&reply, "createPullRequest", &me)?;
+        let (_, me) = self.me().await?;
+        self.written(&reply, "createPullRequest", &me)
+    }
+
+    /// The viewer made an assignee of an MR.
+    pub async fn assign(&self, opened: &Snapshot) -> Result<()> {
+        let (id, _) = self.me().await?;
         let who = serde_json::json!({ "mr": opened.node, "who": [id] });
         self.api.ask(&query::assign(), who).await?;
-        Ok(opened)
+        Ok(())
     }
 
     /// The title and the body of an MR written again.

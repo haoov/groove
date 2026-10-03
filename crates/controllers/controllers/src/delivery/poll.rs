@@ -81,16 +81,26 @@ fn read(state: &mut AppState, services: &Services, spawner: &dyn Spawner, worktr
     let service = services.delivery.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.read(&whose.repo, &whose.worktree).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.delivery.poll.answered(&whose.worktree.id);
-            answered(state, &whose, read);
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
+                state.delivery.poll.answered(&whose.worktree.id);
+                answered(state, (services, spawner), &whose, read);
+            },
+        ) as Continuation
     }));
 }
 
-/// What a read brought back, onto the service's state; the feed hears nothing of it.
-fn answered(state: &mut AppState, whose: &Whose, read: Result<Option<Delivered>>) {
+/// What a read brought back, onto the service's state; the log hears how a known MR moved.
+fn answered(
+    state: &mut AppState,
+    (services, spawner): (&Services, &dyn Spawner),
+    whose: &Whose,
+    read: Result<Option<Delivered>>,
+) {
     match read {
+        Ok(Some(delivered)) if state.delivery.held(&whose.worktree.id).is_some() => {
+            return took(state, services, spawner, whose, delivered);
+        }
         Ok(Some(delivered)) => {
             state
                 .delivery

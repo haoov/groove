@@ -9,7 +9,7 @@ use super::{at, text};
 pub(crate) fn asked(mr: &serde_json::Value, me: &str) -> Option<ReviewMr> {
     let iid = mr["number"].as_u64()?;
     let project = text(&mr["repository"]["nameWithOwner"]);
-    let approved = mr["reviewDecision"].as_str() == Some("APPROVED");
+    let approved = super::reviews::approved(mr);
     if project.is_empty() {
         return None;
     }

@@ -29,9 +29,19 @@ pub(super) fn approval(pr: &serde_json::Value, me: &str) -> MrApproval {
         .map(|one| one.name)
         .collect();
     MrApproval {
-        approved: pr["reviewDecision"].as_str() == Some("APPROVED") || !approved_by.is_empty(),
+        approved: approved(pr),
         approved_by_me: approved_by.iter().any(|name| name == me),
         approved_by,
+    }
+}
+
+/// Approved as the repo's rules decide; where it requires no review, once anyone approved.
+pub(super) fn approved(pr: &serde_json::Value) -> bool {
+    match pr["reviewDecision"].as_str() {
+        Some(decision) => decision == "APPROVED",
+        None => given(pr)
+            .iter()
+            .any(|one| one.state == ReviewState::Approved),
     }
 }
 

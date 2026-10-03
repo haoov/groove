@@ -94,6 +94,14 @@ impl Remote {
         }
     }
 
+    /// The viewer made an assignee of an MR it opened.
+    pub async fn assign(&self, repo: &Repo, opened: &Snapshot) -> Result<()> {
+        match self {
+            Remote::Github(github) => github.assign(opened).await,
+            Remote::Gitlab(gitlab) => gitlab.assign(repo, opened).await,
+        }
+    }
+
     /// Its title and its body written again.
     pub async fn edit_mr(
         &self,

@@ -62,7 +62,10 @@ pub(crate) fn write(
                 state.end(job);
                 state.delivery.poll.answered(&whose.worktree.id);
                 match wrote {
-                    Ok(delivered) => {
+                    Ok(mut delivered) => {
+                        if let Some(e) = delivered.unassigned.take() {
+                            state.failed(e);
+                        }
                         let url = delivered.mr.url.clone();
                         super::poll::took(state, services, spawner, &whose, delivered);
                         asker.done(|| url);

@@ -20,10 +20,14 @@ async fn a_gitlab_mr_opened_is_assigned_to_its_author() {
         "mergeRequestSetAssignees": { "errors": [] }
     }});
     let (server, gitlab) = lab::gitlab(reply).await;
-    gitlab
+    let opened = gitlab
         .open_new(&lab::repo(), proposed())
         .await
         .expect("it is opened");
+    gitlab
+        .assign(&lab::repo(), &opened)
+        .await
+        .expect("it is assigned");
     let sent = lab::sent(&server).await;
     let assigned = sent
         .iter()
@@ -46,10 +50,11 @@ async fn a_github_pr_opened_is_assigned_to_the_viewer() {
         "addAssigneesToAssignable": { "clientMutationId": null }
     }});
     let (server, github) = hub::github(reply).await;
-    github
+    let opened = github
         .open_new(&hub::repo(), proposed())
         .await
         .expect("it is opened");
+    github.assign(&opened).await.expect("it is assigned");
     let sent = hub::sent(&server).await;
     let assigned = hub::variables(&sent, "addAssigneesToAssignable");
     assert_eq!(assigned["mr"], "PR_node");

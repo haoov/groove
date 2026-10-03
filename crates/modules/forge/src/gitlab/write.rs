@@ -20,20 +20,24 @@ impl Gitlab {
             "body": mr.body,
         });
         let reply = self.api.ask(&query::open(), at).await?;
-        let opened = self.written(&reply, "mergeRequestCreate").await?;
-        self.assign(repo, &opened).await?;
-        Ok(opened)
+        self.written(&reply, "mergeRequestCreate").await
     }
 
     /// The viewer made an assignee of the MR it opened.
-    async fn assign(&self, repo: &Repo, opened: &Snapshot) -> Result<()> {
+    pub async fn assign(&self, repo: &Repo, opened: &Snapshot) -> Result<()> {
         let at = serde_json::json!({
             "path": path(repo),
             "iid": opened.number,
             "who": [opened.details.author],
         });
-        let reply = self.api.ask(&query::assign(), at).await?;
-        match refused(&reply["data"]["mergeRequestSetAssignees"]) {
+        self.sent(&query::assign(), at, "mergeRequestSetAssignees")
+            .await
+    }
+
+    /// One mutation sent, refused when its answer names errors.
+    async fn sent(&self, query: &str, at: serde_json::Value, mutation: &str) -> Result<()> {
+        let reply = self.api.ask(query, at).await?;
+        match refused(&reply["data"][mutation]) {
             Some(message) => Err(Error::Refused {
                 host: self.host.clone(),
                 message,
@@ -80,8 +84,8 @@ impl Gitlab {
         if range {
             sent["to"] = at.to.into();
         }
-        self.api.ask(&query::note_on_line(range), sent).await?;
-        Ok(())
+        self.sent(&query::note_on_line(range), sent, "createLatestDiffNote")
+            .await
     }
 
     /// Words under a discussion that stands.
@@ -94,23 +98,21 @@ impl Gitlab {
     ) -> Result<()> {
         let mr = self.read_mr(repo, number).await?;
         let sent = serde_json::json!({ "mr": mr.node, "thread": thread, "body": body });
-        self.api.ask(&query::reply(), sent).await?;
-        Ok(())
+        self.sent(&query::reply(), sent, "createNote").await
     }
 
     /// A discussion resolved, or opened again.
     pub async fn resolve(&self, thread: &str, resolve: bool) -> Result<()> {
         let sent = serde_json::json!({ "thread": thread, "resolve": resolve });
-        self.api.ask(&query::resolve(), sent).await?;
-        Ok(())
+        self.sent(&query::resolve(), sent, "discussionToggleResolve")
+            .await
     }
 
     /// A comment on the merge request itself, under no discussion.
     pub async fn comment(&self, repo: &Repo, number: &str, body: &str) -> Result<()> {
         let mr = self.read_mr(repo, number).await?;
         let sent = serde_json::json!({ "mr": mr.node, "body": body });
-        self.api.ask(&query::comment(), sent).await?;
-        Ok(())
+        self.sent(&query::comment(), sent, "createNote").await
     }
 
     /// One review: every note it carries, its words, then the verdict itself.
@@ -133,8 +135,12 @@ impl Gitlab {
             }
             ReviewVerdict::RequestChanges => {
                 let sent = serde_json::json!({ "path": path(repo), "iid": number });
-                self.api.ask(&query::request_changes(), sent).await?;
-                Ok(())
+                self.sent(
+                    &query::request_changes(),
+                    sent,
+                    "mergeRequestRequestChanges",
+                )
+                .await
             }
             ReviewVerdict::Approve => {
                 let url = approve_url(&self.host, repo, number);
