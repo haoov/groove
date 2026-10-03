@@ -3,6 +3,7 @@
 mod agent;
 mod app;
 mod bar;
+mod board;
 mod filter;
 mod naming;
 mod noting;
@@ -64,16 +65,16 @@ pub(super) fn key_input(
     if let Some(commands) = finding((key, mods), ui, app, &keymap, seen) {
         return commands;
     }
-    in_pane(key, mods, ui, app, &keymap)
+    in_pane((key, mods), ui, app, &keymap, seen)
 }
 
 /// No bar holds the keyboard: the pane that has it takes the key, after the chords it binds.
 fn in_pane(
-    key: Key,
-    mods: Modifiers,
+    (key, mods): (Key, Modifiers),
     ui: &mut Ui,
     app: &AppState,
     keymap: &Keymap,
+    seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
 ) -> Vec<Command> {
     let raw = matches!(ui.focus, Focus::Agent | Focus::Terminal);
     if raw && keymap.is(Action::TerminalCopy, key, mods) {
@@ -90,7 +91,7 @@ fn in_pane(
         }
     }
     if ui.showing(app) == Surface::Board {
-        return on_board(key, mods, ui, app);
+        return on_board(key, mods, ui, app, seen);
     }
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),

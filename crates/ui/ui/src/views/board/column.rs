@@ -15,11 +15,16 @@ use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
-    let lines = lines(app, ui, list);
     let head = Rect::new(area.x, area.y, area.w, ctx.tokens.header);
-    heading(ctx, head, list, counted(&lines));
     edge(ctx, area);
     let body = Rect::new(area.x, head.bottom(), area.w, area.h - head.h);
+    if list == List::Review {
+        let asked = super::review::sorted(app, ui);
+        heading(ctx, head, list, asked.len());
+        return super::review::draw(ctx, body, ui, &asked);
+    }
+    let lines = lines(app, ui, list);
+    heading(ctx, head, list, counted(&lines));
     rows(ctx, body, app, ui, list, &lines);
 }
 
@@ -28,7 +33,7 @@ fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
     match list {
         List::Live => super::live::lines(app, ui),
         List::Next => super::plan::lines(app, ui),
-        List::Review => super::review::lines(app, ui),
+        List::Review => Vec::new(),
     }
 }
 
@@ -36,7 +41,7 @@ fn lines<'a>(app: &'a AppState, ui: &Ui, list: List) -> Vec<Line<'a>> {
 fn counted(lines: &[Line<'_>]) -> usize {
     lines
         .iter()
-        .filter(|line| matches!(line, Line::Session(_) | Line::Task(_) | Line::Review(_)))
+        .filter(|line| matches!(line, Line::Session(_) | Line::Task(_)))
         .count()
 }
 
@@ -83,7 +88,6 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, line: &Line<'_>) {
     match line {
         Line::Session(living) => super::live::session(ctx, rect, app, living),
         Line::Task(task) => row::up_next(ctx, rect, app, task),
-        Line::Review(mr) => super::review::item(ctx, rect, mr),
         Line::Divider => return super::plan::divider(ctx, rect),
         Line::Nothing(text) => {
             let style = ctx.styles.small(Role::Faint);

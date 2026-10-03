@@ -15,6 +15,9 @@ pub struct BoardUi {
     pub offer: usize,
     /// The line a carried task would land on.
     pub drop: Option<usize>,
+    pub reviews: super::review::Order,
+    /// The review the keyboard stands on, by its project and number.
+    pub chosen: Option<(String, u64)>,
 }
 
 impl BoardUi {

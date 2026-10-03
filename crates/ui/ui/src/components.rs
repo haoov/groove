@@ -8,4 +8,4 @@ pub use code::{
     Acting, Block, Gutters, Line, Noted, Rows, across_extent, chars_of, code, code_at, first,
     head_mark, height, visible,
 };
-pub use delivery::{delivered, review_word, room_for};
+pub use delivery::{delivered, review_said, room_for};

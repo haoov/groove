@@ -17,8 +17,6 @@ use groove_ui_kit::widgets::{Badge, lead};
 pub(super) enum Line<'a> {
     Session(&'a Living),
     Task(&'a Task),
-    /// One MR the forge asks this user to review.
-    Review(&'a groove_types::ReviewMr),
     Divider,
     Nothing(&'static str),
 }
@@ -41,7 +39,6 @@ pub(super) fn heights(
 /// Whether this line carries a second line under its title.
 fn under(app: &AppState, line: &Line<'_>) -> bool {
     match line {
-        Line::Review(_) => true,
         Line::Task(task) if task.priority.is_some() || task.project.is_some() => true,
         _ => !reasons(app, line).is_empty(),
     }

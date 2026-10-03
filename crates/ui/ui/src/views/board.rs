@@ -7,7 +7,7 @@ pub mod filter;
 mod header;
 mod live;
 pub mod plan;
-mod review;
+pub mod review;
 mod row;
 mod state;
 

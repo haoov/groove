@@ -52,7 +52,7 @@ pub fn room_for(ctx: &mut Ctx, delivery: &WorktreeDelivery) -> f32 {
     let words = match ended(mr.state) {
         Some((word, _)) => [Some(word), None],
         None => [
-            mr.review.map(said).map(|(word, _)| word),
+            mr.review.map(review_said).map(|(word, _)| word),
             delivery.ci.map(|_| CI),
         ],
     };
@@ -77,12 +77,12 @@ fn verdict(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery) -> f3
 }
 
 /// Where the reviewers stand, from `x`. Returns the x after it.
-pub fn review_word(ctx: &mut Ctx, line: Rect, x: f32, review: ReviewState) -> f32 {
-    let (word, role) = said(review);
+fn review_word(ctx: &mut Ctx, line: Rect, x: f32, review: ReviewState) -> f32 {
+    let (word, role) = review_said(review);
     word_at(ctx, line, x, word, role)
 }
 
-fn said(review: ReviewState) -> (&'static str, Role) {
+pub fn review_said(review: ReviewState) -> (&'static str, Role) {
     match review {
         ReviewState::Approved => ("approved", Role::Ok),
         ReviewState::Commented => ("comments", Role::Attention),

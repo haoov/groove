@@ -126,6 +126,8 @@ pub enum Target {
     FeedScope,
     /// One MR of the review column, by its project and its number.
     Review(String, u64),
+    /// A column heading of the review table, which orders it.
+    SortReview(crate::views::board::review::By),
     /// What finishes the task a session works, and what opens its other actions.
     Finish(groove_types::SessionId),
     /// What reads the selected worktree's MR again.

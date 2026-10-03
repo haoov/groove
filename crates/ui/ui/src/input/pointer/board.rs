@@ -20,6 +20,10 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         Target::Offer(at) => offered(ui, app, *at),
         Target::AddTask => explorer(ui),
         Target::Place(_) => Vec::new(),
+        Target::SortReview(by) => {
+            ui.board.reviews = ui.board.reviews.clicked(*by);
+            Vec::new()
+        }
         _ => return None,
     })
 }
