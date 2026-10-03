@@ -169,13 +169,19 @@ fn a_session_that_ends_leaves_no_agent_waiting() {
 }
 
 #[test]
-fn every_tool_groove_lists_is_one_it_answers() {
+fn every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_refuses() {
     let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
-    state
-        .agent
-        .auto_approve(&groove_types::SessionId::new("gh-nothing"), true);
+    let nothing = groove_types::SessionId::new("gh-nothing");
+    let launch = state.agent.launch();
+    let none = Err(groove_types::Error::invalid("no terminal in this test"));
+    state.agent.started(
+        (nothing.clone(), launch),
+        none,
+        groove_types::Timestamp::now(),
+    );
+    state.agent.auto_approve(&nothing, true);
 
-    let mut unanswered = Vec::new();
+    let (mut unanswered, mut took_nothing) = (Vec::new(), Vec::new());
     for tool in groove_agent_service::tools::all() {
         let answer = waited(
             &mut state,
@@ -185,11 +191,18 @@ fn every_tool_groove_lists_is_one_it_answers() {
             tool.name,
             json!({}),
         );
-        let said = answer.map(|one| one.text).unwrap_or_default();
-        if said.contains("answers no") || said.contains("runs no") {
+        let answer = answer.unwrap_or_else(|| panic!("{} answered", tool.name));
+        if answer.text.contains("answers no") || answer.text.contains("runs no") {
             unanswered.push(tool.name);
         }
+        if tool.writes && !answer.failed {
+            took_nothing.push(tool.name);
+        }
     }
+    assert!(
+        took_nothing.is_empty(),
+        "wrote with no argument: {took_nothing:?}"
+    );
     assert!(unanswered.is_empty(), "{unanswered:?}");
 }
 

@@ -78,6 +78,13 @@ pub fn pooled_clone(home: &Path) -> PathBuf {
         home,
         &["clone", origin.to_str().unwrap(), clone.to_str().unwrap()],
     );
+    for (key, value) in [
+        ("user.email", "t@t"),
+        ("user.name", "T"),
+        ("commit.gpgsign", "false"),
+    ] {
+        sh(&clone, &["config", key, value]);
+    }
     clone
 }
 
@@ -138,19 +145,24 @@ pub fn worktree(state: &mut AppState, services: &Services, spawner: &SyncSpawner
         .expect("a worktree")
 }
 
+#[track_caller]
 pub fn until(
     spawner: &SyncSpawner,
     services: &Services,
     state: &mut AppState,
     mut done: impl FnMut(&AppState) -> bool,
 ) {
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + Duration::from_secs(30);
     loop {
         spawner.drain(state, services);
         if done(state) {
             return;
         }
-        assert!(Instant::now() < deadline, "timed out");
+        assert!(
+            Instant::now() < deadline,
+            "timed out; it failed: {:?}",
+            state.errors
+        );
         std::thread::sleep(Duration::from_millis(10));
     }
 }

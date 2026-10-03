@@ -325,3 +325,43 @@ fn a_task_past_its_due_date_asks_for_the_user() {
         "two days past it"
     );
 }
+
+#[test]
+fn a_source_that_fails_to_finish_the_task_keeps_its_session_and_says_why() {
+    let (runtime, server) = answering();
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let host = format!("http://{}", server.address());
+    state.config.config.as_mut().expect("a config").github =
+        Some(serde_json::from_value(source(&host)).expect("the source"));
+    let load = Cmd::Task(task::Command::Load);
+    dispatch(load, &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.task.tasks.is_empty()
+    });
+    let open = task::Command::Open {
+        short_id: "gh-haoov-groove-50".into(),
+    };
+    dispatch(Cmd::Task(open), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        !s.session.open.is_empty()
+    });
+    let session = state.session.open[0].session.id.clone();
+    state.errors.clear();
+
+    runtime.block_on(async {
+        server.reset().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(500))
+            .mount(&server)
+            .await;
+    });
+    let finish = task::Command::Finish {
+        session: session.clone(),
+    };
+    dispatch(Cmd::Task(finish), &mut state, &services, &spawner);
+    until(&spawner, &services, &mut state, |s| {
+        s.pending.is_empty() && !s.errors.is_empty()
+    });
+    spawner.drain(&mut state, &services);
+    assert!(state.session.get(&session).is_some(), "the session stays");
+}

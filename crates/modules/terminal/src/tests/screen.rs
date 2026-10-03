@@ -27,6 +27,24 @@ fn run(script: &str, cols: u16, rows: u16) -> (Terminal, mpsc::Receiver<u32>) {
     (Terminal::spawn(spec, P, hooks).unwrap(), rx)
 }
 
+/// Until the screen shows `text`, which the child prints once it is ready.
+#[track_caller]
+fn shown(term: &Terminal, text: &str) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let screen = term.screen();
+        let all: String = (0..screen.rows).map(|at| screen.line(at)).collect();
+        if all.contains(text) {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "`{text}` never showed"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 fn wait(rx: &mpsc::Receiver<u32>) -> u32 {
     rx.recv_timeout(Duration::from_secs(10))
         .expect("the child exits")
@@ -123,9 +141,9 @@ fn terminate_ends_a_waiting_child() {
 
 #[test]
 fn the_wheel_reaches_a_program_that_reads_the_mouse() {
-    let read = "printf '\\033[?1000h\\033[?1006h'; read -r one; printf 'got %s' \"${one#?}\"";
+    let read = "printf '\\033[?1000h\\033[?1006hready'; read -r one; printf 'got %s' \"${one#?}\"";
     let (term, rx) = run(read, 40, 4);
-    std::thread::sleep(Duration::from_millis(300));
+    shown(&term, "ready");
     term.wheel(1, (3, 2)).unwrap();
     term.write(b"\n").unwrap();
     wait(&rx);
@@ -140,7 +158,7 @@ fn the_wheel_reaches_a_program_that_reads_the_mouse() {
 fn the_wheel_moves_a_plain_screen_and_types_nothing() {
     let lines = "for i in 1 2 3 4 5 6 7 8; do echo line$i; done; read -r one";
     let (term, rx) = run(lines, 20, 4);
-    std::thread::sleep(Duration::from_millis(300));
+    shown(&term, "line8");
     let before = term.screen().line(0);
     term.wheel(2, (0, 0)).unwrap();
     let after = term.screen().line(0);
@@ -190,11 +208,12 @@ fn a_word_and_a_line_are_taken_whole() {
 #[test]
 fn what_the_program_repaints_does_not_take_the_selection_away() {
     let paint = "printf '\\033[2J\\033[Hhello world\\n'";
-    let (term, rx) = run(&format!("{paint}; read -r a; {paint}; read -r b"), 20, 3);
-    std::thread::sleep(Duration::from_millis(200));
+    let script = format!("{paint}; read -r a; {paint}; printf again; read -r b");
+    let (term, rx) = run(&script, 20, 3);
+    shown(&term, "hello world");
     term.select_from((0, 0), crate::Select::Cells);
     term.write(b"\n").unwrap();
-    std::thread::sleep(Duration::from_millis(200));
+    shown(&term, "again");
     term.select_to((4, 0));
     assert_eq!(
         term.selected().as_deref(),
@@ -203,7 +222,6 @@ fn what_the_program_repaints_does_not_take_the_selection_away() {
     );
     term.write(b"\n").unwrap();
     wait(&rx);
-    std::thread::sleep(Duration::from_millis(100));
     assert_eq!(
         term.selected().as_deref(),
         Some("hello"),
@@ -213,13 +231,13 @@ fn what_the_program_repaints_does_not_take_the_selection_away() {
 
 #[test]
 fn a_program_that_asks_for_motion_is_sent_the_drag() {
-    let ask = "printf '\\033[?1003h\\033[?1006h'";
+    let ask = "printf '\\033[?1003h\\033[?1006hready'";
     let (term, rx) = run(&format!("{ask}; read -r one"), 20, 4);
-    std::thread::sleep(Duration::from_millis(200));
+    shown(&term, "ready");
     term.click((3, 2), true).unwrap();
     term.drag((6, 2)).unwrap();
     term.click((6, 2), false).unwrap();
-    std::thread::sleep(Duration::from_millis(200));
+    shown(&term, "[<32;7;3M");
     let screen = term.screen();
     let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
     assert!(
@@ -232,8 +250,8 @@ fn a_program_that_asks_for_motion_is_sent_the_drag() {
 
 #[test]
 fn a_paste_is_bracketed_only_for_a_program_that_asked() {
-    let (plain, rx) = run("read -r one; printf 'got %s' \"$one\"", 40, 4);
-    std::thread::sleep(Duration::from_millis(200));
+    let (plain, rx) = run("printf ready; read -r one; printf 'got %s' \"$one\"", 40, 4);
+    shown(&plain, "ready");
     plain.paste("hello\n").unwrap();
     wait(&rx);
     assert!(
@@ -242,10 +260,10 @@ fn a_paste_is_bracketed_only_for_a_program_that_asked() {
         plain.screen().line(1)
     );
 
-    let (asked, rx) = run("printf '\\033[?2004h'; read -r one", 40, 4);
-    std::thread::sleep(Duration::from_millis(200));
+    let (asked, rx) = run("printf '\\033[?2004hready'; read -r one", 40, 4);
+    shown(&asked, "ready");
     asked.paste("hello\n").unwrap();
-    std::thread::sleep(Duration::from_millis(200));
+    shown(&asked, "[200~hello");
     let screen = asked.screen();
     let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
     assert!(

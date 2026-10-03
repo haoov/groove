@@ -239,3 +239,51 @@ fn a_comment_with_nothing_to_post_says_so_in_the_feed() {
     assert_eq!(state.errors.len(), 1, "the click is not lost");
     assert!(state.pending.is_empty(), "and nothing is sent");
 }
+
+#[test]
+fn a_push_origin_refuses_says_why_and_leaves_the_branch_as_it_was() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    let dir = worktree(&mut state, &services, &spawner);
+    let at = std::path::Path::new(&dir);
+    let branch = sh(at, &["rev-parse", "--abbrev-ref", "HEAD"]);
+    let seed = home.path().join("seed");
+    std::fs::write(seed.join("b.txt"), "theirs\n").unwrap();
+    sh(&seed, &["add", "b.txt"]);
+    sh(&seed, &["commit", "-m", "theirs"]);
+    sh(
+        &seed,
+        &["push", "origin", &format!("HEAD:refs/heads/{branch}")],
+    );
+    std::fs::write(at.join("a.txt"), "ours\n").unwrap();
+    sh(at, &["commit", "-am", "ours"]);
+    let ours = sh(at, &["rev-parse", "HEAD"]);
+
+    act(&mut state, &services, &spawner, workspace::Command::Push);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    let said: Vec<&str> = state
+        .errors
+        .iter()
+        .map(|one| one.what.message.as_str())
+        .collect();
+    assert!(!said.is_empty(), "the refusal is heard");
+    assert_eq!(
+        sh(at, &["rev-parse", "HEAD"]),
+        ours,
+        "the branch keeps its commit"
+    );
+}
+
+#[test]
+fn a_pull_from_an_origin_that_is_gone_says_so() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    pooled_clone(home.path());
+    worktree(&mut state, &services, &spawner);
+    std::fs::remove_dir_all(home.path().join("origin.git")).unwrap();
+    act(&mut state, &services, &spawner, workspace::Command::Pull);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(
+        !state.errors.is_empty(),
+        "the pull failed and the feed says so"
+    );
+}

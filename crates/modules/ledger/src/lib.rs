@@ -35,8 +35,8 @@ impl Ledger {
         Ok(Self::new(db))
     }
 
-    /// What every task the ledger holds has measured.
-    pub async fn summaries(&self) -> Result<Vec<(ExternalId, TimeSummary)>> {
+    /// What every task the ledger holds has measured, today's share as of `today`.
+    pub async fn summaries(&self, today: Day) -> Result<Vec<(ExternalId, TimeSummary)>> {
         let rows: Vec<Row> = sqlx::query_as(
             "SELECT external_id, tracked_seconds, logged_seconds, today_day, today_seconds
              FROM ledger",
@@ -44,7 +44,7 @@ impl Ledger {
         .fetch_all(self.db.pool())
         .await
         .map_err(failed)?;
-        let today = Timestamp::now().day().to_string();
+        let today = today.to_string();
         Ok(rows.into_iter().map(|row| summary(row, &today)).collect())
     }
 

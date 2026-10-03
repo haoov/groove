@@ -22,12 +22,14 @@ fn printing(state: &mut AppState, said: &str) {
     };
     let terminal =
         Terminal::spawn(spec, groove_types::AnsiPalette::MOCHA, hooks).expect("a terminal");
-    for _ in 0..200 {
-        if terminal.screen().cells.iter().any(|one| one.ch == 'h') {
+    let shown = || terminal.screen().cells.iter().any(|one| one.ch == 'h');
+    for _ in 0..1000 {
+        if shown() {
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
+    assert!(shown(), "the program printed what it was asked to");
     let session = state.session.selected.clone().expect("a session");
     state.agent.agents.retain(|(id, _)| id != &session);
     state.agent.agents.push((

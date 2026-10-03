@@ -48,6 +48,11 @@ fn a_call_from_no_open_session_is_refused() {
         json!({}),
     );
     assert!(answer.failed, "{}", answer.text);
+    assert!(
+        answer.text.contains(crate::tools::NO_SESSION),
+        "{}",
+        answer.text
+    );
 }
 
 #[test]
@@ -128,7 +133,17 @@ fn the_log_holds_the_commits_the_branch_stands_on() {
         json!({ "limit": 5 }),
     );
     let said = said(&answer);
-    assert!(said["worktrees"][0]["commits"].is_array(), "{said}");
+    let commits = said["worktrees"][0]["commits"]
+        .as_array()
+        .expect("its commits");
+    let subjects: Vec<&str> = commits
+        .iter()
+        .filter_map(|one| one["message"].as_str())
+        .collect();
+    assert!(
+        subjects.iter().any(|one| one.starts_with("first")),
+        "{said}"
+    );
 }
 
 #[test]
@@ -163,6 +178,11 @@ fn a_worktree_no_session_holds_is_refused() {
         json!({ "worktree_id": "w-nothing", "path": "a.txt" }),
     );
     assert!(answer.failed, "{}", answer.text);
+    assert!(
+        answer.text.contains(crate::tools::NO_WORKTREE),
+        "{}",
+        answer.text
+    );
 }
 
 #[test]

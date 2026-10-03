@@ -1,6 +1,7 @@
 //! What the agent's tools answer, from a session the fixture opened.
 
 mod adopt;
+mod forge;
 mod reads;
 mod writes;
 
@@ -43,9 +44,17 @@ pub(super) fn waited(
             reply,
         },
     );
-    spawner.drain(state, services);
-    answered.try_recv().ok()
+    for _ in 0..DRAINS {
+        spawner.drain(state, services);
+        if let Ok(answer) = answered.try_recv() {
+            return Some(answer);
+        }
+    }
+    None
 }
+
+/// How many rounds of jobs a tool may take to answer: a job's continuation can start another.
+const DRAINS: usize = 20;
 
 /// The answer, once the jobs behind it have landed.
 pub(super) fn settled(

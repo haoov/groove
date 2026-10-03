@@ -280,3 +280,45 @@ fn an_app_that_never_answers_fails_the_call() {
         assert_eq!(answer["error"]["code"], -32603);
     });
 }
+
+#[test]
+fn a_call_without_the_token_is_refused_and_never_reaches_the_app() {
+    let reached = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let seen = reached.clone();
+    let (runtime, server) = answering(move |_| {
+        seen.store(true, std::sync::atomic::Ordering::SeqCst);
+    });
+    runtime.block_on(async {
+        let (_stream, post) = connected(&server).await;
+        let url = format!("http://127.0.0.1:{}{post}", server.port);
+        let body = call(1, "tools/list", json!({}));
+        let bare = reqwest::Client::new().post(&url).json(&body);
+        let wrong = reqwest::Client::new()
+            .post(&url)
+            .bearer_auth("not-the-token")
+            .json(&body);
+        for asked in [bare, wrong] {
+            assert_eq!(asked.send().await.expect("an answer").status(), 401);
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    });
+    assert!(!reached.load(std::sync::atomic::Ordering::SeqCst));
+}
+
+#[test]
+fn a_call_with_no_session_a_body_that_is_no_json_or_too_large_is_refused() {
+    let (runtime, server) = started();
+    runtime.block_on(async {
+        let (_stream, post) = connected(&server).await;
+        let posted = |path: String, body: Vec<u8>| {
+            let url = format!("http://127.0.0.1:{}{path}", server.port);
+            let asked = reqwest::Client::new().post(url).bearer_auth(&server.token);
+            async move { asked.body(body).send().await.expect("an answer").status() }
+        };
+        let fine = serde_json::to_vec(&call(1, "tools/list", json!({}))).unwrap();
+        assert_eq!(posted("/message".into(), fine).await, 400, "no session");
+        assert_eq!(posted(post.clone(), b"not json".to_vec()).await, 400);
+        let huge = vec![b' '; crate::BODY_MAX + 1];
+        assert_eq!(posted(post, huge).await, 413);
+    });
+}

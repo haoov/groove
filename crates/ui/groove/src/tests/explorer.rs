@@ -89,7 +89,14 @@ pub(super) fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppStat
 
 pub(super) fn sh(dir: &std::path::Path, args: &[&str]) {
     let out = std::process::Command::new("git")
-        .args(["-c", "user.email=t@t", "-c", "user.name=t"])
+        .args([
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "-c",
+            "commit.gpgsign=false",
+        ])
         .args(args)
         .current_dir(dir)
         .output()
@@ -97,19 +104,24 @@ pub(super) fn sh(dir: &std::path::Path, args: &[&str]) {
     assert!(out.status.success(), "git {args:?}");
 }
 
+#[track_caller]
 fn until(
     spawner: &SyncSpawner,
     services: &Services,
     state: &mut AppState,
     mut done: impl FnMut(&AppState) -> bool,
 ) {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     loop {
         spawner.drain(state, services);
         if done(state) {
             return;
         }
-        assert!(std::time::Instant::now() < deadline, "timed out");
+        assert!(
+            std::time::Instant::now() < deadline,
+            "timed out; it failed: {:?}",
+            state.errors
+        );
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }

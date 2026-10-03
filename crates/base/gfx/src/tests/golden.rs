@@ -14,7 +14,9 @@ const MAX_CHANNEL_DIFF: u8 = 3;
 const MAX_DIFFERENT_PIXELS: f64 = 0.002;
 
 fn renderer(size: Size) -> Renderer {
-    Renderer::headless(size, Fonts::embedded()).expect("a GPU adapter")
+    Renderer::headless(size, Fonts::embedded()).expect(
+        "a GPU adapter: without a GPU, install a software Vulkan driver (mesa-vulkan-drivers)",
+    )
 }
 
 fn style(size: f32, weight: Weight, color: Color) -> TextStyle {
