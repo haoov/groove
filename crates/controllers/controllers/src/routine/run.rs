@@ -9,22 +9,34 @@ use crate::{AppState, Spawner, agent};
 /// How long a run's agent may take to start working before the run is given up.
 const STARTS_WITHIN: i64 = 120;
 
-/// The runs waiting their turn started, as many as the cap leaves room for and their agents allow.
-pub(super) fn pump(state: &mut AppState, spawner: &dyn Spawner) {
+/// How a run came to an end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Ending {
+    /// Its agent worked, then stopped.
+    Done,
+    /// Its agent exited or failed.
+    Gone,
+    /// Its agent never started working.
+    Stalled,
+}
+
+/// The runs waiting their turn started, as many as the cap leaves room for; those it started.
+pub(super) fn pump(state: &mut AppState, spawner: &dyn Spawner) -> Vec<Run> {
     let cap = state
         .config
         .config
         .as_ref()
         .map_or(5, |one| one.preferences.routine_cap) as usize;
-    let mut kept = std::collections::VecDeque::new();
+    let (mut kept, mut started) = (std::collections::VecDeque::new(), Vec::new());
     while let Some(run) = state.agent.runs.waiting.pop_front() {
         let room = state.agent.runs.running.len() < cap;
         match room && ready(state, &run) {
-            true => start(state, spawner, run),
+            true => started.extend(start(state, spawner, run)),
             false => kept.push_back(run),
         }
     }
     state.agent.runs.waiting = kept;
+    started
 }
 
 /// A standalone run takes its agent afresh; a bound one needs its agent free of other work.
@@ -39,10 +51,8 @@ fn ready(state: &AppState, run: &Run) -> bool {
 }
 
 /// The run on its agent now: a fresh agent asked it, or the words typed into the one waiting.
-pub(super) fn start(state: &mut AppState, spawner: &dyn Spawner, mut run: Run) {
-    let Some(routine) = routine(state, &run.routine).cloned() else {
-        return;
-    };
+pub(super) fn start(state: &mut AppState, spawner: &dyn Spawner, mut run: Run) -> Option<Run> {
+    let routine = routine(state, &run.routine).cloned()?;
     let words = prompt(&routine, &run);
     let id = run.session.clone();
     let alive = state.agent.terminal(&id).is_some_and(|_| {
@@ -64,14 +74,15 @@ pub(super) fn start(state: &mut AppState, spawner: &dyn Spawner, mut run: Run) {
             agent::asking(state, spawner, id, FIRST_SIZE, Some(words));
         }
         (RoutineKind::Bound, false) => agent::asking(state, spawner, id, FIRST_SIZE, Some(words)),
-        (RoutineKind::Action, _) => return,
+        (RoutineKind::Action, _) => return None,
     }
     run.sent_at = Some(Timestamp::now());
-    state.agent.runs.running.push(run);
+    state.agent.runs.running.push(run.clone());
+    Some(run)
 }
 
-/// The runs whose agent worked and stopped, or never started, or went, taken off.
-pub(super) fn finished(state: &mut AppState, now: Timestamp) {
+/// The runs whose agent worked and stopped, or never started, or went, taken off; how each ended.
+pub(super) fn finished(state: &mut AppState, now: Timestamp) -> Vec<(Run, Ending)> {
     let mut running = std::mem::take(&mut state.agent.runs.running);
     for run in &mut running {
         let status = state
@@ -82,21 +93,30 @@ pub(super) fn finished(state: &mut AppState, now: Timestamp) {
             run.went = true;
         }
     }
+    let mut ended = Vec::new();
     running.retain(|run| {
         let status = state.agent.activity(&run.session).map(|one| &one.status);
         let sent = run.sent_at.unwrap_or(now);
-        let stalled = !run.went && now.seconds() - sent.seconds() > STARTS_WITHIN;
-        let stopped = match status {
-            Some(AgentStatus::Exited { .. } | AgentStatus::Error { .. }) => true,
-            None | Some(AgentStatus::Done { .. } | AgentStatus::Idle) => run.went,
-            Some(_) => false,
+        let ending = match status {
+            Some(AgentStatus::Exited { .. } | AgentStatus::Error { .. }) => Some(Ending::Gone),
+            None | Some(AgentStatus::Done { .. } | AgentStatus::Idle) if run.went => {
+                Some(Ending::Done)
+            }
+            _ if !run.went && now.seconds() - sent.seconds() > STARTS_WITHIN => {
+                Some(Ending::Stalled)
+            }
+            _ => None,
         };
-        !(stopped || stalled)
+        if let Some(ending) = ending {
+            ended.push((run.clone(), ending));
+        }
+        ending.is_none()
     });
     state.agent.runs.running = running;
+    ended
 }
 
-fn routine<'a>(state: &'a AppState, id: &str) -> Option<&'a Routine> {
+pub(super) fn routine<'a>(state: &'a AppState, id: &str) -> Option<&'a Routine> {
     let listed = state.agent.routines.iter().find(|one| one.id == id)?;
     listed.read.as_ref().ok()
 }

@@ -114,11 +114,22 @@ fn an_agent_that_finishes_runs_a_bound_routine_once_but_never_on_the_selected_se
 
     let run = &mut state.agent.runs.running[0];
     run.went = true;
+    status(&mut state, &away, AgentStatus::Done { seen: false });
     routine::watch(&mut state, &services, &spawner);
     assert!(
         state.agent.runs.running.is_empty(),
         "its agent stopped, the run is over"
     );
+    spawner.drain(&mut state, &services);
+    let fed: Vec<_> = state
+        .session
+        .feed
+        .iter()
+        .filter(|one| one.session == away)
+        .collect();
+    let said: Vec<&str> = fed.iter().map(|one| one.subject.as_str()).collect();
+    assert!(said.contains(&"notes · agent-finished"), "{said:?}");
+    assert!(said.contains(&"notes · done"), "{said:?}");
     status(&mut state, &away, AgentStatus::Working);
     routine::watch(&mut state, &services, &spawner);
     status(&mut state, &away, AgentStatus::Done { seen: false });

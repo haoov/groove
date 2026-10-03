@@ -13,12 +13,35 @@ pub(crate) fn log(
     subject: impl Into<String>,
     worktree: &WorktreeId,
 ) {
+    let payload = serde_json::json!({ "worktree": worktree.as_str() });
+    wrote(services, spawner, session, (kind, subject.into()), payload);
+}
+
+/// One line on a session's log about the session as a whole.
+pub(crate) fn said(
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    kind: TimelineKind,
+    subject: impl Into<String>,
+) {
+    let payload = serde_json::json!({});
+    wrote(services, spawner, session, (kind, subject.into()), payload);
+}
+
+fn wrote(
+    services: &Services,
+    spawner: &dyn Spawner,
+    session: &SessionId,
+    (kind, subject): (TimelineKind, String),
+    payload: serde_json::Value,
+) {
     let line = TimelineEvent {
         session: session.clone(),
         at: Timestamp::now(),
         kind,
-        subject: subject.into(),
-        payload: serde_json::json!({ "worktree": worktree.as_str() }),
+        subject,
+        payload,
     };
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {

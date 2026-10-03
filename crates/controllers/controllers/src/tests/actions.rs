@@ -74,6 +74,11 @@ fn start_due_opens_the_tasks_that_must_start_today_with_start_task_and_keeps_the
         Some(here),
         "the user stays where they were"
     );
+    let notes: Vec<&str> = state.notes.iter().map(|one| one.what.as_str()).collect();
+    assert!(
+        notes.contains(&"start-due opened PRESSED, LATE, STARTED"),
+        "{notes:?}"
+    );
     let pressed = groove_types::ExternalId::new("notion:PRESSED");
     let id = state.session.working(&pressed).unwrap().session.id.clone();
     until(&spawner, &services, &mut state, |s| {

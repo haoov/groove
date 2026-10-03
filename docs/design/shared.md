@@ -141,8 +141,9 @@ stops after one run and waits for the user.
 time. Settings caps how many agents run routines together, five by default; a run past the
 cap waits its turn.
 
-**Every run leaves a trail.** The feed shows each run: the trigger, the routine, what it did and
-the commits it made. A user who was away reads what happened there.
+**Every run leaves a trail.** The feed shows each run on its session: the routine and what
+started it, then how it ended and the commits it made. An action routine leaves a note naming
+what it did. A user who was away reads what happened there.
 
 **One switch stops them.** Each routine can be paused, and Settings pauses them all at once.
 

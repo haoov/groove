@@ -13,13 +13,14 @@ pub(super) fn act(
     spawner: &dyn Spawner,
     action: Action,
 ) {
-    match action {
+    let opened = match action {
         Action::StartDue => start_due(state, services, spawner),
-    }
+    };
+    super::trail::acted(state, action, &opened);
 }
 
 /// Up Next's tasks that must start today, opened with `groove:start-task`, the cap's worth at most.
-fn start_due(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
+fn start_due(state: &mut AppState, services: &Services, spawner: &dyn Spawner) -> Vec<String> {
     let today = Timestamp::now().day();
     let cap = state.config.preferences().routine_cap as usize;
     let worked = state.session.worked();
@@ -33,15 +34,16 @@ fn start_due(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
         .take(cap)
         .collect();
     let selected = state.session.selected.clone();
-    for short_id in due {
+    for short_id in &due {
         let prompt = Some("/groove:start-task".to_string());
-        crate::task::open_asking(state, services, spawner, &short_id, prompt);
+        crate::task::open_asking(state, services, spawner, short_id, prompt);
     }
     if let Some(id) = selected {
         state.session.selected = Some(id);
         crate::task::follow(state, spawner);
         crate::workspace::follow(state, spawner);
     }
+    due
 }
 
 /// Its Start date has come, or today plus its estimate reaches its Due date.

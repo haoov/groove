@@ -4,6 +4,7 @@ mod action;
 mod rules;
 mod run;
 mod seen;
+mod trail;
 
 use groove_agent_service::runs::{Fired, Run};
 use groove_types::{Error, RoutineKind, Timestamp, Trigger};
@@ -34,8 +35,12 @@ pub fn watch(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     for one in actions {
         action::act(state, services, spawner, one);
     }
-    run::finished(state, Timestamp::now());
-    run::pump(state, spawner);
+    for ended in run::finished(state, Timestamp::now()) {
+        trail::ended(state, services, spawner, &ended);
+    }
+    for started in run::pump(state, spawner) {
+        trail::ran(state, services, spawner, &started);
+    }
 }
 
 /// An agent that finished a run does not start another routine by finishing.
@@ -108,5 +113,7 @@ pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         sent_at: None,
         went: false,
     };
-    run::start(state, spawner, run);
+    if let Some(started) = run::start(state, spawner, run) {
+        trail::ran(state, services, spawner, &started);
+    }
 }

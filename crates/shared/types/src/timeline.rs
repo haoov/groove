@@ -19,11 +19,13 @@ pub enum TimelineKind {
     RepoAdded,
     WorktreeAdded,
     WorktreeRemoved,
+    RoutineRan,
+    RoutineEnded,
 }
 
 impl TimelineKind {
     /// Every kind, for a reader that walks them all.
-    pub const ALL: [TimelineKind; 15] = [
+    pub const ALL: [TimelineKind; 17] = [
         TimelineKind::TurnStart,
         TimelineKind::TurnEnd,
         TimelineKind::Commit,
@@ -39,6 +41,8 @@ impl TimelineKind {
         TimelineKind::RepoAdded,
         TimelineKind::WorktreeAdded,
         TimelineKind::WorktreeRemoved,
+        TimelineKind::RoutineRan,
+        TimelineKind::RoutineEnded,
     ];
 
     pub fn label(self) -> &'static str {
@@ -58,6 +62,8 @@ impl TimelineKind {
             TimelineKind::RepoAdded => "repo added",
             TimelineKind::WorktreeAdded => "worktree added",
             TimelineKind::WorktreeRemoved => "worktree removed",
+            TimelineKind::RoutineRan => "routine ran",
+            TimelineKind::RoutineEnded => "routine ended",
         }
     }
 
@@ -79,6 +85,8 @@ impl TimelineKind {
             TimelineKind::RepoAdded => "repo_added",
             TimelineKind::WorktreeAdded => "worktree_added",
             TimelineKind::WorktreeRemoved => "worktree_removed",
+            TimelineKind::RoutineRan => "routine_ran",
+            TimelineKind::RoutineEnded => "routine_ended",
         }
     }
 
