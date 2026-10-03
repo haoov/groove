@@ -188,6 +188,7 @@ impl App {
         if typed {
             groove_ui::input::follow(&mut self.ui, &self.state, &self.hits, metrics);
         }
+        self.watch();
         self.clock();
         self.redraw();
     }
@@ -248,8 +249,20 @@ impl App {
     }
 
     fn apply(&mut self, event: Event) {
+        let damage = matches!(
+            event,
+            Event::Agent(groove_controllers::agent_service::Event::Damaged { .. })
+        );
         apply(event, &mut self.state);
+        if !damage {
+            self.watch();
+        }
         self.redraw();
+    }
+
+    /// The routines told of what changed.
+    pub(super) fn watch(&mut self) {
+        groove_controllers::routine::watch(&mut self.state, &self.services, &self.spawner);
     }
 }
 

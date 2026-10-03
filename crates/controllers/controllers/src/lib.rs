@@ -4,6 +4,7 @@ pub mod agent;
 pub mod asker;
 pub mod config;
 pub mod delivery;
+pub mod routine;
 pub mod session;
 pub mod shell;
 pub mod task;

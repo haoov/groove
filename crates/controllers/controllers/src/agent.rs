@@ -2,12 +2,15 @@
 
 mod pointer;
 pub mod skills;
+mod start;
 
-use groove_agent_service::{Event as AgentEvent, LaunchPaths, Select, launch, palette};
-use groove_types::{ApprovalId, Session, SessionId, Timestamp};
+use groove_agent_service::Select;
+use groove_types::{ApprovalId, SessionId};
 
-use crate::spawn::coalesced;
-use crate::{AppState, Continuation, Event, Services, Spawner, apply};
+use crate::{AppState, Services, Spawner};
+
+pub use start::start;
+pub(crate) use start::{asking, launch_dir};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -83,6 +86,8 @@ pub enum Command {
     DeleteSkill { name: String },
     /// `agent.switch_skill`: one skill given to sessions, or no longer; a core one stays on.
     SwitchSkill { id: String, on: bool },
+    /// `agent.run_routine`: one routine run now, by its button.
+    RunRoutine { id: String },
 }
 
 impl Command {
@@ -106,6 +111,7 @@ impl Command {
             Command::SendSkill { .. } => "agent.send_skill",
             Command::DeleteSkill { .. } => "agent.delete_skill",
             Command::SwitchSkill { .. } => "agent.switch_skill",
+            Command::RunRoutine { .. } => "agent.run_routine",
         }
     }
 }
@@ -145,6 +151,7 @@ pub fn dispatch(
         }
         Command::DeleteSkill { name } => skills::delete(state, spawner, name),
         Command::SwitchSkill { id, on } => skills::switch(state, spawner, id, on),
+        Command::RunRoutine { id } => crate::routine::button(state, spawner, &id),
         pointing => pointer::acted(state, services, pointing),
     }
 }
@@ -168,61 +175,6 @@ fn auto_approve(
         open.state.auto_approve = on;
     }
     crate::session::set_auto_approve(services, spawner, session, on);
-}
-
-/// The agent launched in a job at the worktree root; the continuation stores it or the error.
-pub fn start(state: &mut AppState, spawner: &dyn Spawner, id: SessionId, size: (u16, u16)) {
-    let Some(session) = state
-        .session
-        .open
-        .iter()
-        .find(|o| o.session.id == id)
-        .map(|o| o.session.clone())
-    else {
-        return;
-    };
-    let paths = LaunchPaths {
-        home: state.env.home.clone(),
-        launch_dir: launch_dir(state),
-        plugin_dirs: groove_agent_service::skills::plugin_dirs(&skills::dirs(state)),
-        knowledge: knowledge(state),
-        hooks: state.env.hooks.clone(),
-        tools: state.env.tools.clone(),
-    };
-    let cwd = state.config.worktree_root(&state.env.home);
-    let palette = palette(state.config.theme());
-    let sink = spawner.sink();
-    spawner.spawn(Box::pin(async move {
-        let result = launch(
-            &session,
-            &paths,
-            &cwd,
-            size,
-            palette,
-            on_damage(&sink, &session),
-            on_exit(&sink, &session),
-        );
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let on = state
-                .session
-                .get(&session.id)
-                .is_some_and(|open| open.state.auto_approve);
-            state
-                .agent
-                .started(session.id.clone(), result, Timestamp::now());
-            state.agent.auto_approve(&session.id, on);
-        }) as Continuation
-    }));
-}
-
-pub(crate) fn launch_dir(state: &AppState) -> std::path::PathBuf {
-    state.env.data_dir.join("agent-launch")
-}
-
-/// The shared repo's `knowledge/`, when its copy holds one.
-fn knowledge(state: &AppState) -> Option<std::path::PathBuf> {
-    let dir = state.agent.shared.as_ref()?.path.join("knowledge");
-    dir.is_dir().then_some(dir)
 }
 
 pub(crate) fn forget(state: &mut AppState, session: &SessionId) {
@@ -251,38 +203,4 @@ pub fn resize(state: &mut AppState, session: &SessionId, cols: u16, rows: u16) {
     if let Some(terminal) = state.agent.terminal(session) {
         let _ = terminal.resize(cols, rows);
     }
-}
-
-/// One `Damaged` in flight at most, however fast the child writes.
-fn on_damage(
-    sink: &std::sync::Arc<dyn crate::Deliver>,
-    session: &Session,
-) -> Box<dyn Fn() + Send + Sync> {
-    let id = session.id.clone();
-    Box::new(coalesced(sink.clone(), move || {
-        let id = id.clone();
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            apply(Event::Agent(AgentEvent::Damaged { session: id }), state)
-        })
-    }))
-}
-
-fn on_exit(
-    sink: &std::sync::Arc<dyn crate::Deliver>,
-    session: &Session,
-) -> Box<dyn FnOnce(u32) + Send> {
-    let sink = sink.clone();
-    let id = session.id.clone();
-    Box::new(move |code| {
-        sink.deliver(Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                let event = AgentEvent::Exited {
-                    session: id,
-                    code,
-                    at: Timestamp::now(),
-                };
-                apply(Event::Agent(event), state);
-            },
-        ));
-    })
 }

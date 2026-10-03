@@ -42,6 +42,10 @@ pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
                 false => Target::RoutineOn(id.clone()),
             };
             switch(*on, flip).left(ctx, &mut room, sm);
+            if *on {
+                let run = Target::RoutineRun(id.clone());
+                Button::new("run", run, Role::Muted, ground).left(ctx, &mut room, sm);
+            }
             Label::new(said, ctx.styles.small(Role::Faint)).draw(ctx, room);
         }
         _ => {}

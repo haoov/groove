@@ -1,6 +1,7 @@
 //! The agent capability. One agent per open session: its terminal and its activity.
 
 pub(crate) mod launch;
+pub mod runs;
 pub mod shared;
 
 #[cfg(test)]
@@ -11,7 +12,7 @@ use groove_types::{
     ToolCall,
 };
 
-pub use groove_agent_launch::{forget, hand_over};
+pub use groove_agent_launch::{forget, fresh, hand_over};
 pub use groove_approvals::{New as NewAsk, Queue};
 pub use groove_hooks::{Post, Receiver};
 pub use groove_mcp::{Answer, Call, Reply, Server};
@@ -46,6 +47,9 @@ pub struct State {
     pub switched: Timestamp,
     /// Every routine file, the team's and the user's, as the last read found them.
     pub routines: Vec<groove_routines::Listed>,
+    /// The skills and routines have been read once.
+    pub listed: bool,
+    pub runs: runs::Runs,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.

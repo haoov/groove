@@ -18,6 +18,8 @@ pub struct State {
     pub shown: Vec<Note>,
     /// What the forges ask this user to review.
     pub reviews: Vec<ReviewMr>,
+    /// The review queue has been read once.
+    pub reviews_read: bool,
 }
 
 /// What an MR write does.

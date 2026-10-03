@@ -148,6 +148,10 @@ fn routined(target: &Target, ui: &mut Ui) -> Option<Vec<Command>> {
             settings.allowing = None;
             return Some(Vec::new());
         }
+        Target::RoutineRun(id) => {
+            let run = groove_controllers::agent::Command::RunRoutine { id: id.clone() };
+            return Some(vec![Command::Agent(run)]);
+        }
         Target::RoutineAllow(id) => {
             settings.allowing = None;
             config::Command::SwitchRoutine {

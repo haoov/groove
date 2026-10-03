@@ -75,6 +75,7 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
+                self.watch();
                 self.redraw();
             }
             Message::Event(event) => self.apply(event),

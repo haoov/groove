@@ -22,15 +22,15 @@ pub struct LaunchPaths {
     pub tools: Option<Server>,
 }
 
-/// Plans the command line and spawns it on a terminal of `cols` by `rows`.
+/// Plans the command line and spawns it on a terminal of `cols` by `rows`, `prompt` its first message.
 pub fn launch(
     session: &Session,
     paths: &LaunchPaths,
     cwd: &Path,
     (cols, rows): (u16, u16),
     palette: AnsiPalette,
-    on_damage: Box<dyn Fn() + Send + Sync>,
-    on_exit: Box<dyn FnOnce(u32) + Send>,
+    hooks: Hooks,
+    prompt: Option<&str>,
 ) -> Result<Terminal, Error> {
     let launch = Launch::plan(
         session,
@@ -43,7 +43,10 @@ pub fn launch(
         &paths.plugin_dirs,
         loopback(paths, session).as_ref(),
     )?;
-    let hooks = Hooks { on_damage, on_exit };
+    let launch = match prompt {
+        Some(prompt) => launch.asking(prompt),
+        None => launch,
+    };
     Terminal::spawn(launch.spec(cols, rows), palette, hooks)
         .map_err(|e| Error::new(groove_types::ErrorKind::Agent, e.to_string()))
 }

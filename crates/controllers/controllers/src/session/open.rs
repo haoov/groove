@@ -29,6 +29,7 @@ pub fn restore(services: &Services, spawner: &dyn Spawner) {
                     agent::start(state, spawner, id, FIRST_SIZE);
                 }
                 state.session.selected = last_seen;
+                state.session.restored = true;
                 super::feed::read(state, services, spawner);
                 crate::task::follow(state, spawner);
             },

@@ -11,6 +11,7 @@ pub(super) fn read(state: &mut AppState, services: &Services, spawner: &dyn Spaw
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             state.end(job);
             state.delivery.reviews = found;
+            state.delivery.reviews_read = true;
             for one in failed {
                 state.failed(one);
             }

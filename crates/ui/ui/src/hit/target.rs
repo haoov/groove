@@ -62,8 +62,9 @@ pub enum Target {
     SkillDelete(String),
     SkillDeleteSure(String),
     SkillDeleteKeep,
-    /// A routine asked on, its scope allowed or kept off, switched off; one trigger of it.
+    /// A routine asked on, its scope allowed or kept off, switched off, run; one trigger of it.
     RoutineOn(String),
+    RoutineRun(String),
     RoutineAllow(String),
     RoutineKeep,
     RoutineOff(String),

@@ -32,14 +32,17 @@ pub(super) fn switch(
     }
 }
 
-/// The routine's session, written and on the rail with its agent, unless it has one already.
+/// The routine's session, written and on the rail with its agent, the selection kept.
 fn made(state: &mut AppState, services: &Services, spawner: &dyn Spawner, routine: &Routine) {
     if session_of(state, &routine.id).is_some() {
         return;
     }
     let now = Timestamp::now();
     let session = groove_session_service::routine_session(routine, now);
+    let selected = state.session.selected.clone();
     crate::session::begun(state, spawner, session.clone(), now);
+    state.session.selected = selected;
+    crate::workspace::follow(state, spawner);
     let service = services.session.clone();
     crate::session::listed(spawner, async move {
         service.create_routine(&session, now).await

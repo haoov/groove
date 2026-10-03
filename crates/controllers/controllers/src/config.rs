@@ -6,6 +6,8 @@ mod routines;
 pub(crate) mod shared;
 mod sources;
 
+pub(crate) use routines::session_of;
+
 use std::collections::BTreeMap;
 
 use groove_config_service::Preference;

@@ -29,6 +29,8 @@ pub struct State {
     pub branches: Vec<(RepoId, Vec<String>)>,
     /// What the opened sessions have done, newest first.
     pub feed: Vec<groove_types::TimelineEvent>,
+    /// The rail is back as the last run left it.
+    pub restored: bool,
 }
 
 /// How many lines the feed holds, over every session it reads.

@@ -104,3 +104,17 @@ fn a_routine_switched_on_shows_its_triggers_each_with_its_switch() {
     };
     assert_eq!(asked, [Command::Config(switched)]);
 }
+
+#[test]
+fn a_routine_switched_on_has_a_button_that_runs_it_now() {
+    let (app, mut ui) = routed(true);
+    let asked = clicked(&app, &mut ui, Target::RoutineRun("user:fix-red-ci".into()));
+    let run = groove_controllers::agent::Command::RunRoutine {
+        id: "user:fix-red-ci".into(),
+    };
+    assert_eq!(asked, [Command::Agent(run)]);
+    let (app, ui) = routed(false);
+    let (_, hits) = drawn(&app, &ui);
+    let off = Target::RoutineRun("user:fix-red-ci".into());
+    assert!(hits.rect_of(&off).is_none(), "off, it has no button");
+}

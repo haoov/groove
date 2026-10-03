@@ -30,6 +30,13 @@ pub fn hand_over(launch_dir: &Path, from: &str, to: &str) -> std::io::Result<()>
     std::fs::write(launch_dir.join(format!("{to}.thread")), uuid)
 }
 
+/// A new conversation for the session's next launch, in place of the one it carried.
+pub fn fresh(launch_dir: &Path, session_id: &str) -> std::io::Result<()> {
+    std::fs::create_dir_all(launch_dir)?;
+    let uuid = uuid::Uuid::new_v4().to_string();
+    std::fs::write(launch_dir.join(format!("{session_id}.thread")), uuid)
+}
+
 const NAMES: [&str; 5] = [
     "prompt.md",
     "settings.json",

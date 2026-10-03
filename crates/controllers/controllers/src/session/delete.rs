@@ -42,6 +42,7 @@ pub fn delete(
 /// The session off the rail, with its launch files and its lines.
 fn gone(state: &mut AppState, spawner: &dyn Spawner, id: &SessionId) {
     agent::forget(state, id);
+    state.agent.runs.drop_session(id);
     state.session.feed.retain(|line| &line.session != id);
     if let Some(closed) = state.session.close(id) {
         for worktree in &closed.worktrees {

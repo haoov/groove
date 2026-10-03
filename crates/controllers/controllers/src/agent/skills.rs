@@ -62,6 +62,7 @@ pub fn list(state: &mut AppState, spawner: &dyn Spawner) {
             }
             state.agent.skills = read;
             state.agent.routines = routines;
+            state.agent.listed = true;
         }) as Continuation
     }));
 }
@@ -76,6 +77,18 @@ pub fn send(
 ) {
     let said = format!("/{id} {}", args.unwrap_or_default());
     super::send(state, session, said.as_bytes());
+    entered(spawner, session);
+}
+
+/// Words pasted into the agent's prompt, then the return that submits them.
+pub(crate) fn typed(state: &mut AppState, spawner: &dyn Spawner, session: &SessionId, words: &str) {
+    if let Some(terminal) = state.agent.terminal(session) {
+        let _ = terminal.paste(words);
+    }
+    entered(spawner, session);
+}
+
+fn entered(spawner: &dyn Spawner, session: &SessionId) {
     let session = session.clone();
     spawner.spawn(Box::pin(async move {
         tokio::time::sleep(SETTLES).await;

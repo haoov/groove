@@ -14,7 +14,7 @@ use crate::prompt::core_prompt;
 use groove_exec::pty::PtySpec;
 use groove_types::{Result, Session};
 pub use loopback::{Loopback, Tools};
-pub use session::{forget, hand_over};
+pub use session::{forget, fresh, hand_over};
 
 /// Where a launch reads and writes.
 pub struct Paths<'a> {
@@ -61,6 +61,12 @@ impl Launch {
             env: env(),
             cwd: paths.cwd.to_path_buf(),
         })
+    }
+
+    /// The same, with `prompt` submitted as the agent's first message, ahead of every option.
+    pub fn asking(mut self, prompt: &str) -> Self {
+        self.args.insert(0, prompt.to_string());
+        self
     }
 
     pub fn spec(self, cols: u16, rows: u16) -> PtySpec {
