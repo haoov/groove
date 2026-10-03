@@ -1,4 +1,4 @@
-# Shared skills, knowledge and routines — design
+# Shared skills, knowledge and routines
 
 What a team shares through Groove: the skills its agents follow, the facts they should know,
 and the routines that act on their own. It touches three capabilities —

@@ -3,6 +3,7 @@ mod agent;
 mod config;
 mod deleting;
 mod delivery;
+mod docs;
 mod fixture;
 mod layers;
 mod loop_;

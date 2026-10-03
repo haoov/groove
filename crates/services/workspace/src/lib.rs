@@ -1,4 +1,4 @@
-//! The workspace capability. Its slice of `AppState`, the operations on it, its events.
+//! The workspace capability: the selected worktree's change, its open buffers, search, paths, blame and git.
 
 use std::path::{Path, PathBuf};
 

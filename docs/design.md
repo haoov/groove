@@ -169,9 +169,6 @@ move, shift holds, `ctrl+c/x/v` carry, `ctrl+z` undoes, `ctrl+s` writes. Enter o
 next line at the indent of the one it left. Tab writes what the language's own formatter
 writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
-A **modal layer comes after settings**, as a grammar over the selections the buffer already
-keeps. It will not emulate vim, and the modeless keys stay.
-
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
 surface, `ctrl+f` opens a bar over the file's own header, with the count at its end; enter
 hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+shift+n` step, esc ends
@@ -201,7 +198,7 @@ its bar alone when collapsed.
 list shows: git status, message, commit, and an actions menu — push, pull, discard all.
 Commit commits the index. The message is typed on the same kind of buffer a file is, so a
 caret, a selection and an undo work there too; Enter is a line of the message and
-`ctrl+Enter` commits. A rebase waits for conflict resolution, which is its own feature.
+`ctrl+Enter` commits.
 
 **Three grounds, brightest first.** The work is the brightest the theme has: the
 workspace, its header, the board's own header, the commit box, the agent pane's frame.
