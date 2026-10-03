@@ -32,4 +32,4 @@ hold the decisions and the rules; the code holds how they are carried out.
 | [design.md](design.md) | the surfaces — board, rail, session, review sheet, settings — and the rules they follow |
 | [maquette.html](maquette.html) | the surfaces as a working page; open it in a browser |
 | [clusters.md](clusters.md) | the clusters a session works on: designed, not built |
-| [shared.md](shared.md) | the skills, knowledge and routines a team shares: designed, not built |
+| [shared.md](shared.md) | the skills, knowledge and routines a team shares |

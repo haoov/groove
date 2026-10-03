@@ -7,11 +7,11 @@ layer above it. Nothing calls up. This file holds the rules; the code holds the 
 
 | Layer | Crates | Role |
 |---|---|---|
-| ui | `groove` (bin) · `ui` · `mcp-server` | present, translate input |
+| ui | `groove` (bin) · `ui` · `ui-kit` | present, translate input |
 | controllers | `controllers` | one module per service; one function per action |
-| services | `task` · `session` · `workspace` · `agent` · `config` | one per capability |
-| modules | `provider` · `sessions` · `worktree` · `git` · `diff` · `grep` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `token` · `forge` · `tools` · `hooks` · `activity` · `approvals` · `timeline` · `skills` · `config` · `watch` | one concern each |
-| base | `db` · `http` · `exec` · `gfx` | one way out of the process each |
+| services | `task` · `session` · `workspace` · `delivery` · `agent` · `shell` · `config` | one part of the app each |
+| modules | `provider` · `plan` · `ledger` · `sessions` · `worktree` · `git` · `diff` · `grep` · `annotations` · `editor` · `text` · `terminal` · `agent-launch` · `token` · `forge` · `mrs` · `browser` · `tools` · `mcp` · `hooks` · `approvals` · `timeline` · `skills` · `routines` · `config` · `watch` | one concern each |
+| base | `db` · `http` · `exec` · `gfx` · `loopback` | one way out of the process each |
 | shared | `types` | the vocabulary: data and pure rules, used from modules up; depends on nothing; the base never touches it |
 
 ## Who does what
@@ -31,12 +31,13 @@ Rules that follow:
   base and `types`, never on a module above it.
 - A controller function is the only place two capabilities meet, and the only place that
   knows what to undo when a later step fails.
-- Controllers mirror the services: `task`, `session`, `workspace`, `agent`, `config`. One
+- Controllers mirror the services: `task`, `session`, `workspace`, `delivery`, `agent`,
+  `shell`, `config`; `tools` answers the agent's calls and `routine` runs the routines. One
   function is one action, whether it calls one service or four.
 - A read is a controller function too, and mutates nothing. One enum, one `dispatch`.
 - The command id is `capability.action`: `task.open`, `workspace.push`. That one string is
-  the palette entry, the MCP tool name, the keybinding target and the timeline label. The
-  namespace stays flat however the code is split.
+  the palette entry, the keybinding target and the timeline label. The namespace stays flat
+  however the code is split.
 - The controllers **are** the API. A function nobody can reach, and a palette entry or
   tool that is not a function, are both defects.
 - `AppState` is the sum of the services' slices, owned on the main thread. A controller
@@ -65,10 +66,11 @@ The capabilities are five and do not move. Growth is answered inside them.
 
 | Service | Modules | Base |
 |---|---|---|
-| task | provider (github issues, notion) · timeline | http, exec, db |
-| session | worktree → git · agent-launch → terminal · terminal · approvals | exec, db |
-| workspace | git · diff → git, text · grep · watch · annotations · editor → text · text · forge | exec, db, http |
-| agent | tools → approvals · hooks → activity → timeline · skills · approvals | db |
+| task | provider (github issues, notion) → token · plan · ledger · browser | http, exec, db |
+| session | sessions · worktree → git · git · timeline | exec, db |
+| workspace | git · diff → git, text · text · grep · watch · editor | exec |
+| delivery | forge → token · mrs · annotations · sessions · browser | http, exec, db |
+| agent | terminal · agent-launch · approvals · tools · mcp → tools · hooks · skills · routines · git | exec |
 | shell | terminal | exec |
 | config | config · environment check | exec |
 
@@ -82,8 +84,11 @@ One directory per layer under `crates/`. What each holds:
 | `http` | one client: auth header, timeout, retry, redaction; a GraphQL endpoint |
 | `exec` | a process: run to completion with capture, timeout, kill on drop, redaction; a pty with streaming and resize |
 | `gfx` | wgpu device, glyph atlas, cell grid, box quads, theme |
+| `loopback` | a local HTTP server: a free port on 127.0.0.1, a bearer token, the body limit |
 | `types` | the vocabulary and the pure rules over it |
 | `provider` | github issues, notion, and the enum that registers them |
+| `plan` | the order the user gave the waiting tasks, and the later divider |
+| `ledger` | the time measured on a task, and how much the source has been told |
 | `sessions` | the session rows |
 | `worktree` | clone pool, provisioning, naming, teardown |
 | `git` | environment conventions, the parsers, the actions |
@@ -96,16 +101,19 @@ One directory per layer under `crates/`. What each holds:
 | `agent-launch` | flags, session uuid, core prompt, the agent's terminal |
 | `token` | a host's bearer token, asked of `gh` or `glab`, held for the run |
 | `forge` | gitlab, github PRs, review queue |
+| `mrs` | the one MR a worktree has, as the database holds it |
+| `browser` | a web page opened in the user's browser |
 | `tools` | MCP tool definitions, arguments, the tier table |
+| `mcp` | the agent's tool server, MCP over HTTP and SSE |
 | `hooks` | the loopback receiver for the agent's hooks |
-| `activity` | agent status per session |
 | `approvals` | queue, record, resolve |
 | `timeline` | one log per session |
-| `skills` | core and user skills, plugin dirs |
+| `skills` | core, user and shared skills, plugin dirs |
+| `routines` | the routine files, the team's and the user's |
 | `config` | the files the app keeps beside the database |
 | `watch` | filesystem watcher on the selected worktree, debounced |
-| `ui` | layout, input, styles, tokens, widgets, the views |
-| `mcp-server` | axum; each tool calls one controller |
+| `ui-kit` | context, tokens, styles, shapes, text and widgets on plain data |
+| `ui` | layout, input, hits, components and the views |
 | `groove` | the binary: winit, the event loop, the wiring |
 
 `ui` never calls `gfx` directly; it emits a `Frame`.
@@ -126,7 +134,8 @@ Commands go down as data. Results come back as continuations. Events are the out
 world. One thread applies all three.
 
 - **Command.** An enum grouped by controller, one variant per function, produced by ui
-  input, the palette, a keybinding or an MCP tool, never by a direct call.
+  input, the palette or a keybinding, never by a direct call. An MCP tool call is answered
+  by `controllers::tools`.
 - **Controller function.** The sync part mutates `AppState` now. The async part is spawned
   through the `Spawner` with the session's cancellation token and carries its continuation.
 - **Continuation.** Run on the main thread. It writes the result into the owning service's
@@ -183,7 +192,7 @@ Never "the bug stays fixed", never where a thing sits or how it is spaced. A mea
 harness is `#[ignore]`d and named `time_*`.
 
 The layer test in `controllers` reads every manifest and refuses a dependency that points
-up or across the services; it also holds the ceilings above. `ui/tests/structure.rs` holds
+up or across the services; it also holds the ceilings above. `ui/src/tests/structure.rs` holds
 the shape of `ui` and `ui-kit`: numbers only in the kit's `base/tokens.rs`, styles only in its
 `base/style.rs`, and a view draws through the context.
 
@@ -211,7 +220,7 @@ lands with its first consumer and only as wide as that consumer needs.
       and its sessions
    5b. files and the editor — the `file` tab with its three modes, the explorer tree,
       the path operations
-   6. asks — `tools`, `mcp-server`, `hooks`, `activity`, `approvals`, `timeline`
+   6. asks — `tools`, `mcp`, `hooks`, `approvals`, `timeline`
    7. settings — `config`, `skills`, `watch`; the keymap gets its pass here
    8. modal editing — a normal mode over the selections the editor already keeps
 

@@ -1,6 +1,6 @@
 # Sessions
 
-Kinds: task, explorer, review.
+Kinds: task, explorer, review, routine.
 
 ## Repos management
 

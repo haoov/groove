@@ -1,7 +1,7 @@
 # Shared skills, knowledge and routines — design
 
 What a team shares through Groove: the skills its agents follow, the facts they should know,
-and the routines that act on their own. Designed, not built. It touches three capabilities —
+and the routines that act on their own. It touches three capabilities —
 Config holds the shared repo, Agent offers its skills and runs the routines, Sessions edits it
 like any other repo — and it follows [architecture.md](architecture.md) like every other
 feature.
@@ -76,7 +76,8 @@ adds the repo to a session and lands the skill as an MR, like any other change.
 **A fact worth sharing is promoted, not copied whole.** The agent's own memory stays the
 user's: what it knows of the user and how they work is never shared. A fact about the work — a
 system, a repo, a tool, a trap — can be promoted to `knowledge/`, through the same task and MR
-as a skill. The `promote-fact` skill does it, checking the fact against its source first.
+as a skill. Groove ships no skill for it; a shared repo can carry one of its own, which
+checks the fact against its source first.
 
 **Every fact says where it comes from and when.** A fact carries the date it was written and
 the commit, file or ticket it was read from, so a reader can check it before acting on it. A
@@ -101,10 +102,10 @@ skills says what to do with them, in plain words. Three kinds:
 - **Standalone:** the work belongs to no session — check that every task has its properties
   set, say. The routine has a session of its own to run in.
 - **Action:** no agent of its own. Its `do` names an action built into Groove, which runs it
-  itself. `start-due` opens each task of Up Next that must start today — its Start date has
-  come, or today plus its estimate, at eight hours a day, reaches its Due date — and starts
-  `groove:start-task` in the new session's agent. It opens as many as the cap at most, and
-  the user's selection stays where it was.
+  itself. `start-due` opens each task of Up Next above the later divider that must start
+  today — its Start date has come, or today plus its estimate, at eight hours a day, reaches
+  its Due date — and starts `groove:start-task` in the new session's agent. It opens as many
+  as the cap at most, and the user's selection stays where it was.
 
 **A standalone routine runs in a routine session.** A session of the kind `routine`, one per
 standalone routine, made when the routine is switched on. It stands on the rail under its own
@@ -145,7 +146,8 @@ cap waits its turn.
 started it, then how it ended and the commits it made. An action routine leaves a note naming
 what it did. A user who was away reads what happened there.
 
-**One switch stops them.** Each routine can be paused, and Settings pauses them all at once.
+**One switch stops them.** Each routine switches off on its own, and Settings pauses them all
+at once.
 
 **A team routine is never on by default.** Routines in the shared repo run with the
 credentials of the user who enables them, so each user enables each one, after reading it.

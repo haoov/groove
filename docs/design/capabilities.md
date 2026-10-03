@@ -29,7 +29,10 @@ Manage a multi-agent system, with activity and actions approvals.
 - Activity
 - Core prompt
 - Skills
-  
+- Shared skills
+- Knowledge
+- Routines
+
 ## Sessions
 
 Centralized work for a task, with Agent session repos/worktrees management and workspace.
@@ -56,5 +59,7 @@ Set Groove up and keep its preferences.
 
 - Setup
 - Providers
+- Agent
 - Appearance
 - Preferences
+- Keymap

@@ -50,10 +50,14 @@ than the disk. A shown commit is read-only: `dispatch` drops every command whose
 says so, and `leave_commit` puts the working tree back. The sidebar's commits list shows
 them; a bar in the commit box's place names the one that stands.
 
+**Blame.** `workspace.blame` reads who last changed each line, once per read of the file.
+When the caret rests on a line for a quarter second, the line ends with
+`Author, 5d ago · sha`; a line not committed yet says so. A click on the sha shows that
+commit.
+
 | Still to build | Does |
 |---|---|
 | `workspace.refresh` | reload status, summary, MR, CI and threads at once |
-| `workspace.blame` | blame for the file, uncommitted lines marked |
 
 ## Annotations
 
@@ -85,6 +89,11 @@ keeps them. The Diff stream draws a file from its buffer while one is open, and 
 windowed read otherwise; an edit in the stream opens that file's tab. After the stream is
 read again, every unsaved buffer derives its rows over it. A shown commit is read-only and
 ignores the buffers. Closing a worktree or deleting its session drops its buffers.
+
+**One preview tab.** A single click opens a file as the preview, its name in italic, and the
+next single click replaces it. A double click, `workspace.keep_file`, or the first edit keeps
+it. A tab's right-click menu offers close, close others and close all; the last two leave
+an unsaved file open. A middle click closes a tab, and a tab that owes the disk asks first.
 
 **The sidebar follows the tab**: the Diff tab lists the files that changed, the Files tab
 the whole worktree as a tree whose open directories the ui remembers. A path typed in the
@@ -159,8 +168,8 @@ turns the errors a forge answers 200 with into an error. GitHub addresses a writ
 node id a read carries; GitLab addresses one by project path and iid, and answers a refused
 write in the mutation's own `errors`, which the client reads as the failure.
 
-**Service `workspace`** holds the selected worktree's MR, CI and threads; the `session`
-slice sums them into `WorktreeDelivery` per worktree.
+**Service `delivery`** builds `WorktreeDelivery` per worktree: the MR, CI and threads it
+holds, joined to the git status the `session` service holds.
 
 **Polling**, on the window's own clock: only while the window is focused, and only the
 selected worktree until its forge has been asked once, then every worktree whose row says
@@ -176,8 +185,8 @@ earliest wait, the worst run, and an approval only where all of them have it.
 The writes go through the commit box: `create_mr` is what the one button offers once the
 branch is pushed and has no MR, and `update_mr` and `close_mr` hang off its caret while it
 has one. The message titles the MR and its remaining lines are the body; an empty box takes
-the task's own title, and a footer names the task by url. From the agent they will go
-through `approvals`, which slice 6 builds.
+the task's own title, and a footer names the task by url. From the agent, the
+`create_mr`, `update_mr` and `close_mr` tools go through `approvals`.
 
 **The verdict** is `approve` or `request changes` from the worktree's own menu, in a review
 session only, and the commit box's words go up as the comment beside it. GitLab keeps
@@ -199,11 +208,11 @@ header for the selected worktree.
 - [x] `DiffView` is `File`, `Inline`, `Split`, switched from the file header.
 - [x] The word-diff rule in `types`: one-for-one pairs only.
 - [x] A file is marked read by the user, never by scrolling past it.
-- [ ] Request reviewers and a review with a verdict, both forges; reviewer state in
-      `MrDetails`.
+- [x] A review with a verdict, both forges; reviewer state in `MrDetails`.
+- [ ] Request reviewers, both forges.
 - [x] The poll reads `poll_interval_secs` and `stale_after_secs` from the config.
 - [x] GitLab behind the same `Remote` enum: its own queries, the `glab` token, the `!`
       sigil.
 - [ ] A GitLab verdict has no time of its own in the schema, so the MR's own `updatedAt`
       stands for it; the four MR rules age from that on GitLab.
-- [ ] The watcher's debounce window.
+- [x] The watcher's debounce window: 25 ms of quiet, `watch::QUIET`.

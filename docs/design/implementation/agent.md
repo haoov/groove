@@ -14,8 +14,9 @@ seen mark.
 
 | Status | From | Until |
 |---|---|---|
-| working | `PreToolUse`, `UserPromptSubmit` | `Stop` |
-| done, unseen | `Stop`, `Notification` | the session is selected in the rail |
+| working | `PreToolUse`, `PostToolUse`, `UserPromptSubmit` | `Stop` |
+| asking | `Notification`; `PreToolUse` of `AskUserQuestion` | the next prompt or tool use |
+| done, unseen | `Stop` | the session is selected in the rail |
 | idle | at start; done and seen | next prompt |
 | exited | `pty_exit` non-zero | reopen |
 | error | a failed controller on the session | the next successful one |
@@ -25,10 +26,9 @@ The done row's text comes from `git` since the last seen mark: commits and files
 **Asks.** With auto-approve off, every write the agent sends through `tools` becomes
 an ask on the row: the op and its subject, Approve and Review. With it on, `approvals`
 approves on arrival and records the write; the timeline gets the entry. The flag is
-per session, held in the slice; a new session takes the default from Config ›
-Preferences.
+per session, held in the slice; a new session takes the default from Settings › Agent.
 
-**Attention class**, computed in the service: needs you — ask, exited, error; act
+**Attention class**, computed in the service: needs you — ask, asking, exited, error; act
 when you look — done unseen; moving — working; quiet — idle. Colour and
 motion follow [../design.md](../design.md).
 
@@ -42,12 +42,13 @@ notifications as surfaces, the frontend `autoApprove` short-circuit.
 
 ## MCP tools
 
-**Module `tools`**: the definitions, the argument types, the harness descriptions.
-Each tool names the controller function it calls; a test asserts the map is total.
+**Module `tools`**: the definitions, the argument types, the harness descriptions, and
+whether a tool writes.
 
-**`mcp-server`**, ui layer: a tool call becomes a `Command` and goes through `dispatch`
-like a click. The response is the controller's result. Writes pass
-`approvals` inside the controller, so the blocking-until-resolved contract stays.
+**Module `mcp`**: the loopback server. The binary hands each call to the loop as a
+continuation, and `controllers::tools::answer` answers it from the state: a read by its
+name, a write through `approvals`, so the blocking-until-resolved contract stays. A test
+asserts that every listed tool is one Groove answers.
 
 **Scoped to the session**: the SSE URL carries the session id, the token comes from the
 launch, and every controller called through the server takes that session as its
@@ -83,13 +84,21 @@ may wait for a human". Passed per launch, never persisted into the conversation.
 
 ## Skills
 
-**Module `skills`**: the two directories, the list with hints, read, save, delete,
-the stale flag. Controllers `agent.list_skills`, `agent.read_skill`, `agent.save_skill`,
-`agent.delete_skill`, `agent.send_skill`. `agent.save_skill` from the agent asks like
+**Module `skills`**: the core, user and shared skills, the list with hints, read, save,
+delete, the stale flag. Controllers `agent.list_skills`, `agent.switch_skill`,
+`agent.delete_skill`, `agent.send_skill`. The agent reads and writes
+its own skills through the `read_user_skill` and `save_user_skill` tools; a save asks like
 any write.
 
 **Buttons.** A worktree row's delivery state names its skill; the button sends
 `agent.send_skill` with it. The agent pane keeps one menu for the rest.
+
+## Shared skills, knowledge, routines
+
+As [../shared.md](../shared.md) describes them. **Service `agent`** keeps the shared repo's
+copy (`shared.rs`) and the routine runs (`runs.rs`); **module `routines`** reads the routine
+files. The `routine` controller turns what changed into runs at each look, within the cap;
+`agent.run_routine` is the Run button.
 
 ## Needs
 

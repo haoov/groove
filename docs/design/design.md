@@ -9,7 +9,7 @@ reach the rail.
 | Board | large | every task, live or not, with its repos and MRs | Tasks |
 | Rail | mid | the sessions actually open, and what their agents do | Agent › Multi-agent |
 | Session | small | one session, in full | Sessions, Workspace |
-| Settings | whole window | setup, providers, appearance, preferences | Config |
+| Settings | whole window | setup, providers, agent, appearance, preferences, keymap | Config |
 
 ## Rules
 
@@ -75,10 +75,10 @@ them carries the board's attention count when it is not zero.
 
 Each row:
 
-1. **Type icon** — task, review, explorer.
+1. **Type icon** — task, review, explorer, routine.
 2. **Title.**
-3. **Agent status** — `working`, `committed 2 · 5 files`, `idle`, `exited`, `error`. One
-   line, truncated, never wrapped.
+3. **Agent status** — `working`, `asks you`, `committed 2 · 5 files`, `idle`, `exited`,
+   `error`. One line, truncated, never wrapped.
 4. **Agent action, with buttons when it needs one** — `asks to commit` **Approve**
    **Review**.
 5. **Relative time, right-aligned** — how long the agent has waited, or since it finished.
@@ -104,6 +104,11 @@ session, nothing asks. A working status is blue and its glyph moves.
 Opening a session starts its agent. Closing a row ends the agent and removes the row; the
 session stays as it is on disk.
 
+**Routines.** A standalone routine's session stands under its own heading, `Routines · N`,
+folded by default, above the other sessions. Its row offers **Run**, which runs the routine
+now, while no run is on it. Selected, it shows its agent pane alone, full width. It never
+appears on the board.
+
 **Feed.** Below the rows, the event log of the opened sessions, newest first, filterable to
 the selected session: agent turns, commits, pushes, MR events, CI results, notes.
 Monochrome, no motion, collapsible. Asks are never in the feed; they live on the row.
@@ -115,7 +120,7 @@ Four columns, left to right. The left half is the agents; the right half is the 
 | Column | Holds |
 |---|---|
 | **Rail** | opened sessions, the feed |
-| **Agent pane** | the agent's pty · action bar: skills menu, reload, the ask with Approve and Review |
+| **Agent pane** | the agent's pty · action bar: reload, skills menu, auto-approve switch |
 | **Workspace** | header · tabs · the selected tab · the manual section |
 | **Sidebar** | contextual list for the selected tab; folds away |
 
@@ -137,9 +142,9 @@ title or a label too long for its line is cut with an ellipsis; the header never
 
 | Tab | Shows | Sidebar |
 |---|---|---|
-| overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the body as text. Close task when every worktree is merged or closed | folded |
+| overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the body as text | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
-| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a file opens in its own tab, a found line opens there at the line |
+| files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
 which the gutter holds together.
@@ -169,7 +174,8 @@ keeps. It will not emulate vim, and the modeless keys stay.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
 surface, `ctrl+f` opens a bar over the file's own header, with the count at its end; enter
-hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc ends it.
+hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+shift+n` step, esc ends
+it. `ctrl+p` opens a file by its path.
 
 **Finding your way in a big change.** Four answers, and none of them is a bigger tree:
 
@@ -247,16 +253,18 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
 the user was. Reached from the rail's footer and the palette. A section list on the left —
-Setup, Providers, Appearance, Preferences — with a search bar at its top: typing filters
-every section to the matching rows, each shown with its section. The selected section's
-form on the right: labels left, controls right, one row per setting, hairlines between
-groups, paths and ids in mono.
+Setup, Providers, Agent, Appearance, Preferences, Keymap — with a search bar at its top:
+typing filters every section to the matching rows, each shown with its section. The
+selected section's form on the right: labels left, controls right, one row per setting,
+hairlines between groups, paths and ids in mono.
 
 | Section | Rows |
 |---|---|
-| Setup | environment check — git, gh, glab, claude — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
+| Setup | environment check — git, gh, glab, claude, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
-| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font · agent font · font size |
-| Preferences | auto-approve default · attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold · git: clone pool path |
+| Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
+| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font · agent font · three sizes: interface, editor, terminal |
+| Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |
+| Keymap | every action with its chords; a chord is rebound by pressing it |
 
 Every change saves to the config file on the spot. No save button.

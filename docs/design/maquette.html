@@ -103,26 +103,6 @@ button.primary:hover{background:var(--ask)}
 .rail .board{cursor:default}
 .rail .board:hover{background:var(--base)}
 
-/* board timeline */
-.tl{flex:none;border-top:1px solid var(--s0);display:flex;flex-direction:column;height:260px}
-.tl.collapsed{height:32px}
-.tl.collapsed .tlb{display:none}
-.tl .bar .horizon{font-family:var(--mono);font-size:11.5px;color:var(--ov0)}
-.tlb{flex:1;min-height:0;position:relative;overflow:hidden;font-family:var(--mono);font-size:11.5px}
-.tlb .day{position:absolute;top:0;bottom:0;width:1px;background:var(--s0)}
-.tlb .day.week{background:var(--s1)}
-.tlb .wend{position:absolute;top:0;bottom:0;background:var(--mantle)}
-.tlb .today{position:absolute;top:0;bottom:0;width:2px;background:var(--peach)}
-.tlb .dl{position:absolute;top:4px;color:var(--ov0);padding-left:4px}
-.tlb .dl.today{background:none;width:auto;color:var(--peach);bottom:auto}
-.tlb .tb{position:absolute;height:20px;line-height:20px;padding:0 8px;background:var(--s0);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
-.tlb .tb.open{background:none;border:1px dashed var(--s1);color:var(--sub0)}
-.tlb .tb.late{background:var(--ask);border:1px solid var(--peach);color:var(--peach)}
-.tlb .tb.soon{border:1px solid var(--peach);background:none;color:var(--peach)}
-.tlb .pt{position:absolute;height:20px;line-height:20px;white-space:nowrap;color:var(--sub1)}
-.tlb .pt::before{content:"";display:inline-block;width:8px;height:8px;background:var(--sub1);margin-right:8px;vertical-align:middle}
-.tlb .pt.soon{color:var(--peach)} .tlb .pt.soon::before{background:var(--peach)}
-
 /* review sheet */
 .cols{position:relative}
 .sheet{display:none;position:absolute;top:0;bottom:0;left:380px;right:0;background:var(--base);border-left:1px solid var(--s0);flex-direction:column;z-index:5}
@@ -436,10 +416,6 @@ table.diff tr.noterow td{padding:0;white-space:normal}
         </div>
       </div>
     </div>
-    <section class="tl" id="tl">
-      <div class="bar"><button class="quiet" id="tlToggle" aria-label="Collapse timeline">▾</button><span class="caps">timeline</span><span class="horizon">4 weeks · 5 Sep – 3 Oct</span><span class="grow"></span></div>
-      <div class="tlb" id="tlb"></div>
-    </section>
   </section>
   <div class="cols">
   <!-- agent pane -->
@@ -740,40 +716,5 @@ grid 80x30  bytes 19270  alt-screen true  mouse-reporting true
   function filterSettings(q){ q=q.trim().toLowerCase(); const body=$('#setBody'); body.classList.toggle('searching',!!q); $$('.srow').forEach(r=>{ const hit=!q || (r.dataset.k+' '+r.textContent).toLowerCase().includes(q); r.classList.toggle('hidden',!!q && !hit); }); }
   $('#setSearch').addEventListener('input',e=>filterSettings(e.target.value));
   $$('.toggle').forEach(t=>t.addEventListener('click',()=>{ t.classList.toggle('on'); t.setAttribute('aria-checked',String(t.classList.contains('on'))); }));
-  // timeline: 28 days, today at day 7
-  (function(){
-    const b=$('#tlb'); if(!b) return;
-    const days=28, today=7, w=()=>b.clientWidth, px=d=>d/days*w();
-    const labels={0:'5 Sep',7:'12 Sep · today',14:'19 Sep',21:'26 Sep'};
-    const items=[
-      {t:'Harden Groove: CI gates, security fixes',s:2,e:5,k:'late',l:'overdue 2d'},
-      {t:'Rust rewrite',s:4,e:7,k:'open'},
-      {t:'paxone-staging-gite CNPG migration',s:7,e:15},
-      {t:'external-dns shared Cloudflare token 429s',p:19,k:'soon',l:'due in 12d'},
-      {t:'Kubernetes access v2 · epics',s:21,e:31},
-      {t:'1clickreview security pass',s:9,e:12},
-    ];
-    function draw(){
-      b.innerHTML='';
-      for(let d=0; d<days; d++){
-        const dow=(d+5)%7; // 5 Sep 2026 is a Saturday
-        if(dow===5||dow===6){const we=document.createElement('div');we.className='wend';we.style.left=px(d)+'px';we.style.width=px(1)+'px';b.appendChild(we);}
-      }
-      for(let d=0; d<=days; d++){
-        const l=document.createElement('div'); l.className='day'+(d%7===0?' week':''); l.style.left=px(d)+'px'; b.appendChild(l);
-        if(labels[d]!==undefined){const t=document.createElement('div'); t.className='dl'+(d===today?' today':''); t.style.left=px(d)+'px'; t.textContent=labels[d]; b.appendChild(t);}
-      }
-      const tl=document.createElement('div'); tl.className='today'; tl.style.left=px(today)+'px'; b.appendChild(tl);
-      let row=0;
-      items.forEach(it=>{
-        const el=document.createElement('div'); const top=26+row*26; row++;
-        if(it.p!==undefined){ el.className='pt'+(it.k?' '+it.k:''); el.style.left=(px(it.p)-4)+'px'; el.style.top=top+'px'; el.textContent=it.t+(it.l?' · '+it.l:''); }
-        else { el.className='tb'+(it.k?' '+it.k:''); el.style.left=px(it.s)+'px'; el.style.width=Math.max(px(Math.min(it.e,days)-it.s)-2,24)+'px'; el.style.top=top+'px'; el.textContent=it.t+(it.l?' · '+it.l:''); el.title=it.t; }
-        b.appendChild(el);
-      });
-    }
-    draw(); new ResizeObserver(draw).observe(b);
-    $('#tlToggle').addEventListener('click',e=>{const t=$('#tl');t.classList.toggle('collapsed');e.currentTarget.textContent=t.classList.contains('collapsed')?'▸':'▾';});
-  })();
 })();
 </script>

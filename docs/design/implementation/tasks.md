@@ -30,7 +30,8 @@ config when a host has one of its own.
 **Notion** reads one database's rows: the ones the assignee property gives you, less
 the statuses the config excludes, and in the sprint that is running. The six come from
 the page's own properties, the short id from its `unique_id`, and the body from the
-page's blocks as plain lines. Its token is the config's.
+page's blocks as plain lines. A due date that is a range takes the range's end. Its token
+is the config's.
 
 **The sprint** is a relation the config names. Groove reads the task database to find
 what the relation points at, reads that database to find its own status property, and
@@ -60,7 +61,7 @@ each; an Up next item carries its place in the plan and opens its session when p
 
 **The filter** is the header, with **+ explorer** beside it, which starts one. It
 holds bare words, matched against the title, and `field:value` tokens — status,
-priority, board, provider, kind, repo — matched with case and word breaks ignored.
+priority, project, provider, kind, repo — matched with case and word breaks ignored.
 Every term must answer, in all three columns at once; a token naming a field an item
 has no value for takes that item out. A Live item answers for the task its session
 works, so the task's own properties narrow it as they narrow Up next. `/` opens the filter, Escape clears it then leaves it, and the
@@ -77,7 +78,7 @@ approved and unmerged, due soon, overdue. Each yields a reason and an age. An it
 carries one stands one line taller, says why under its title in peach, and floats over
 the ones that carry none; the rail's Board row sums them. The fold is read again when
 the tasks are, and every time the ledger takes the clock, so a date rule turns with the
-day. The forge facts are empty until `forge` lands, so only the dates speak today.
+day.
 
 | Still to build | Does |
 |---|---|
@@ -104,9 +105,9 @@ line, and the number GitHub answers with next is what the line shows.
 away: its agent, its worktrees, its row. Work that is not committed or pushed stops the
 teardown and the status stands, so nothing is lost by finishing early. The header offers
 it while no worktree of the session still carries an open MR, and a caret beside it
-opens the rest. **`task.delete_local`** is the same teardown with nothing said at the
-source, from that menu. `session.delete` is the explorer's way out, and that one
-forces.
+opens the rest. **`session.delete_local`** is the same teardown with nothing said at the
+source, from that menu; `session.force_delete` takes the uncommitted and unpushed work with
+it. `session.delete` is the explorer's way out.
 
 **`task.set_status`** is the lifecycle's alone: opening a task's first session sets it
 in progress, and finishing sets it done. It writes the option the `status_map`'s

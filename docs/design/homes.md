@@ -19,9 +19,9 @@ and what the forge says about it.
 |---|---|---|
 | `session` | the sessions, their repos and worktrees, each worktree's git status, the rail, the log | `sessions`, `worktree`, `git`, `timeline` |
 | `task` | the tasks and their sources, the plan, the clock and hours, attention, where a new task is filed | `provider`, `plan`, `ledger` |
-| `workspace` | the selected worktree's change: files, rows, colours, each worktree's open buffers, search, paths, history, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
+| `workspace` | the selected worktree's change: files, rows, colours, each worktree's open buffers and its preview tab, search, paths, history, blame, the index, commit, push, pull | `diff`, `text`, `editor`, `grep`, `git`, `watch` |
 | `delivery` | each worktree's MR: state, CI, threads, the session's notes, verdicts, the poll, the review queue | `forge`, `mrs`, `annotations` |
-| `agent` | each session's agent: terminal, activity, asks, launch files, skills | `terminal`, `agent-launch`, `approvals`, `skills`, `hooks`, `mcp`, `tools` |
+| `agent` | each session's agent: terminal, activity, asks, launch files, skills; the shared repo's copy; the routines and their runs | `terminal`, `agent-launch`, `approvals`, `skills`, `hooks`, `mcp`, `tools`, `routines`, `git` |
 | `shell` | each session's own terminals: its tabs, the terminals side by side in each, the one taking the keys | `terminal` |
 | `config` | the config file, preferences, settings | `config` |
 
@@ -57,9 +57,20 @@ and what the forge says about it.
 | The terminal of a session | `terminal` | `agent` state | 8 copies of the lookup |
 | What a tool answers, and an ask's text | `tools` | — | JSON built in `controllers/tools`, push text in a controller |
 | A database failure, and a store on memory | `db` | — | four copies filed as `Invalid` |
-| A list that scrolls: its extent, clip and culling | — | `ui` widget `scrolled` | eight copies in the views |
+| A list that scrolls: its extent, clip and culling | — | `ui-kit` widget `scrolled` | eight copies in the views |
 | Where a scroller keeps its offset | — | `Ui::offset`, `Ui::wheeled` | five `moved` calls in the wheel input |
 | A module's failure | the module | — | `agent-launch` enum of one variant |
+| The routine files | `routines` | `agent` | — |
+| A routine's runs: the events between two looks, the rules, the cap, how a run ended | — | `agent` `runs/` | the routine controller |
+| What a run asks its agent, and the day's first look | `routines` | — | the routine controller |
+| A file's front matter | `types` `front_matter` | — | `skills` and `routines` parsers |
+| A task that must start today | `types` `starts_today` | `task` `due_today` | the routine controller |
+| A worktree's next step: commit, push, pull, open an MR | `types` `Standing` | — | the commit box view |
+| A walk of the worktree past `.git` and the ignore rules | `grep` `walker` | — | `grep` twice, `watch` |
+| The loopback server, its token and body limit | `loopback` | — | `hooks` and `mcp` |
+| The shared repo's copy, moved to its branch's head | `git` | `agent` `shared.rs` | — |
+| Who last changed each line of a file, per read of it | `git` | `workspace` `blame.rs` | — |
+| The preview tab, which the next single click replaces | — | `workspace` `buffers.rs` | — |
 
 ## Errors
 
@@ -77,5 +88,8 @@ calls the next controller. Nothing else.
 | `task` | load, open, finish, adopt, log hours, status | attention and the worked rule → `task` |
 | `workspace` | one function per command, calling `workspace` | the prefetch window, gaps, buffer rules → `workspace`; MR, notes, queue → `delivery` |
 | `delivery` (new) | poll tick, MR writes, notes, verdicts | — |
-| `agent` | start, end, send, pointer, skills | the terminal lookup → `agent` state |
+| `agent` | start, end, send, pointer, skills, `switch_skill`, `run_routine` | the terminal lookup → `agent` state |
+| `shell` | open, split, close, the tabs, keys and resize: calls to `shell` | — |
+| `config` | preferences, the environment check, the login, the source and its mapping, the keymap, the shared repo, routine switches | — |
+| `routine` | each look turns what changed into runs; the Run button | the runs → `agent` |
 | `tools` | one function per tool: call the controller or service, reply | JSON shapes → `tools`; filing → `task` |

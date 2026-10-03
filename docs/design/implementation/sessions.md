@@ -4,8 +4,10 @@ How the tool sets in [../capabilities/sessions.md](../capabilities/sessions.md) 
 in the words of [../architecture.md](../architecture.md). Each table lists the actions
 still to build; for the rest the `Command` enum is the truth.
 
-Kinds: task, explorer, review. `sessions.kind` is the discriminator; one provisioning
-path serves all three.
+Kinds: task, explorer, review, routine. `sessions.kind` is the discriminator; one
+provisioning path serves all four. A routine session is a standalone routine's own: no repo,
+no worktree, its agent pane alone, full width, under the rail's Routines heading and never on
+the board.
 
 ## Repos management
 
@@ -18,15 +20,15 @@ cut from it.
 ## Worktrees management
 
 **Module `worktree`**: naming, validation, provisioning, teardown. **Service `session`**
-keeps per session the worktrees, the selected one, and each worktree's `WorktreeDelivery`
-from `forge` and `git`.
+keeps per session the worktrees, the selected one, and each worktree's git status. The
+`delivery` service builds each worktree's `WorktreeDelivery` from that status and the MR.
 
 The pickers for source and target list `origin`'s heads from `worktree`.
 
 ## Overview
 
-One overview for the three kinds, drawn from the `session` slice, in the order of
-[../design.md](../design.md): properties, repos with their worktree rows, body. A task
+One overview for task, explorer and review sessions, drawn from the `session` slice, in the
+order of [../design.md](../design.md): properties, repos with their worktree rows, body. A task
 session takes its properties and its body from the `task` slice, which the selected
 session reads once; an explorer draws neither.
 
@@ -48,8 +50,8 @@ the overview only renders them. Finish is offered when every worktree is merged 
 ## Agent session
 
 **The pane** draws the agent's `terminal` grid; keys go to the pty as bytes. Escape
-reaches the TUI like any key. The action bar: the skills menu, reload, and the ask
-with Approve and Review.
+reaches the TUI like any key. The action bar: reload, the skills menu, and the
+auto-approve switch. An ask stands on the rail item alone.
 
 **Scoped skills**: `--plugin-dir` per launch, so the pane's menu lists exactly what
 this agent has; stale after a save until reload.

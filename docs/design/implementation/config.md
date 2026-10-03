@@ -70,15 +70,20 @@ editor's. The next frame lays out at the new size and the terminals resize to it
 | `config.list_fonts` | read: the system's font families |
 | `config.set_ui_font` · `config.set_agent_font` | persist, republish, redraw |
 
+## Agent
+
+The Agent section holds the auto-approve default, which a new session takes as it goes on
+the rail; then the shared repo, the skills with their toggles, and the routines — pause all,
+how many run at once, each routine and its triggers — as [../shared.md](../shared.md)
+describes them.
+
 ## Preferences
 
 | Setting | Read by |
 |---|---|
-| auto-approve default | a new session, as it goes on the rail |
 | attention thresholds — review waiting, due soon, approved unmerged, in days | the `task` service's attention fold |
 | poll interval, no shorter than ten seconds | the `delivery` poll |
 | stale threshold: an MR read longer ago reads as old, as a failed read does | the `delivery` poll |
-| git: clone pool path | `worktree`, set from Setup |
 
 `config.set_preference` carries one named preference. The config service applies it, every
 reader sees it at once, and the file is written on the spot, as `panes.json` is. No save
@@ -106,4 +111,4 @@ is rebound by pressing it; it needs ctrl or alt, and it comes off whatever actio
 - [x] The config file's fields: auto-approve default, thresholds, poll interval.
 - [x] Settings search: an index of every row's label and section, built from the form.
 - [x] The Settings surface: Preferences, the theme and the font sizes set in place; the rest read only.
-- [ ] The clipboard's home: `ui` through winit, since it is the window's, not a service's.
+- [x] The clipboard's home: module `editor`, through `arboard`.
