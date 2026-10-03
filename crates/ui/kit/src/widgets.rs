@@ -2,6 +2,7 @@
 
 mod badge;
 mod button;
+pub mod code;
 mod counts;
 mod field;
 mod fold;
@@ -21,7 +22,7 @@ pub use button::{Button, Text, picker, slot_at};
 pub use counts::{changes, counts, counts_room};
 pub use field::Field;
 pub use fold::{caret, fold, folder};
-pub use icon::{icon, lead};
+pub use icon::{busy, icon, lead, turned};
 pub use input::input;
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};

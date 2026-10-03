@@ -11,6 +11,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::{Surface, Ui};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled};
@@ -42,10 +43,10 @@ enum Entry<'a> {
 /// The opened sessions, in the order opened. The Board row above, the footer below.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.rail;
-    ctx.quad(rect, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
     let mut column = rect;
     let edge = column.take_right(ctx.tokens.hairline);
-    ctx.quad(edge, ctx.styles.line());
+    groove_ui_kit::shape::side_rule(ctx, edge, edge.x, ctx.styles.line());
 
     let board = column.take_top(ctx.tokens.header);
     let foot = column.take_bottom(ctx.tokens.bar);
@@ -152,6 +153,6 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;
     let mark = leading(ctx, rect, rect.x + md);
-    ctx.icon(mark, Mark::Settings, 0, style.color);
+    groove_ui_kit::widgets::icon(ctx, mark, Mark::Settings, Role::Faint);
     row(ctx, rect, after_mark(ctx, md), "settings", style);
 }

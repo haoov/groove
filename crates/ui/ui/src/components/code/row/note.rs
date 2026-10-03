@@ -1,26 +1,27 @@
 //! A note's own rows: what it says, and what it offers.
 
-use groove_gfx::{Color, Rect};
+use groove_gfx::Rect;
 
-use super::super::gutter::Block;
 use super::super::{Acting, Noted};
 use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::{elide, row};
 use groove_ui_kit::widgets::Button;
+use groove_ui_kit::widgets::code::Block;
 
 /// One row of a note: its ground, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutter: Block) {
-    ctx.quad(line, ctx.styles.deep());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
     let role = match said.resolved {
         true => Role::Faint,
         false => Role::Text,
     };
     if said.opens {
-        gutter_mark(ctx, line, gutter, ctx.styles.color(Role::Muted));
+        gutter_mark(ctx, line, gutter, Role::Muted);
     }
     let by = by(ctx, line, said);
     let at = gutter.content(ctx, line);
@@ -51,15 +52,15 @@ fn by(ctx: &mut Ctx, line: Rect, said: Noted<'_>) -> f32 {
 }
 
 /// The note's mark, right-aligned where the line's own number would stand.
-fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, color: Color) {
+fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, role: Role) {
     let size = ctx.tokens.small;
     let at = gutter.numbers_end(ctx, line) - size;
-    ctx.icon(box_in(line, at, size), Mark::Note, 0, color);
+    groove_ui_kit::widgets::icon(ctx, box_in(line, at, size), Mark::Note, role);
 }
 
 /// What a note offers, as buttons from the column its words start on.
 pub(super) fn acts(ctx: &mut Ctx, line: Rect, acting: &Acting, gutter: Block) {
-    ctx.quad(line, ctx.styles.deep());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Deep);
     let offered = offered(acting);
     let mut at = gutter.content(ctx, line);
     for button in offered {

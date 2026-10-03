@@ -8,8 +8,6 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
-use groove_ui_kit::base::mark::Mark;
-use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{Label, ago};
@@ -176,8 +174,7 @@ fn running(ctx: &mut Ctx, line: Rect, label: &str) {
     let age = top.take_left(column(ctx));
     top.take_left(ctx.tokens.sm);
     let box_ = age.align((size, size), Align::End, Align::Center);
-    let color = ctx.styles.color(Role::Working);
-    ctx.icon(box_, Mark::Busy, turn(ctx.tick), color);
+    groove_ui_kit::widgets::busy(ctx, box_, Role::Working);
     Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
 }
 

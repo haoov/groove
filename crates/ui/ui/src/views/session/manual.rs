@@ -8,6 +8,7 @@ use groove_types::SessionId;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
@@ -19,7 +20,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     if rect.is_empty() {
         return;
     }
-    ctx.quad(rect, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
     groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line());
     let shells = app.shell.shells(session);
     let mut body = rect;
@@ -85,7 +86,7 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, (name, id): (&str, u64), selected: bool) 
 
 /// One terminal's grid, or what stands in its place; a pane of several can close alone.
 fn grid(ctx: &mut Ctx, pane: Rect, shell: &Shell, (focused, closable): (bool, bool)) {
-    ctx.quad(pane, ctx.styles.deep());
+    groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
     ctx.hit(pane, Target::Shell(shell.id));
     let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
     match (&shell.terminal, &shell.failed) {

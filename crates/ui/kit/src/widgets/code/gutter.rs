@@ -2,19 +2,25 @@
 
 use groove_gfx::Rect;
 
-use super::Gutters;
-use crate::ctx::Ctx;
-use groove_ui_kit::base::style::Role;
+use crate::base::ctx::{App, Ctx};
+use crate::base::style::Role;
+
+/// The gutter a surface asks for: how many number columns, and their longest number.
+#[derive(Debug, Clone, Copy)]
+pub struct Gutters {
+    pub cells: usize,
+    pub digits: usize,
+}
 
 /// The gutter block, measured once for the surface.
 #[derive(Debug, Clone, Copy)]
 pub struct Block {
     cells: usize,
-    pub(super) width: f32,
+    pub width: f32,
 }
 
 impl Block {
-    pub fn of(ctx: &mut Ctx, gutters: Gutters) -> Self {
+    pub fn of<A: App>(ctx: &mut Ctx<'_, A>, gutters: Gutters) -> Self {
         let numbers = ctx.styles.code(Role::Ghost);
         let widest = "0".repeat(gutters.digits);
         Self {
@@ -24,14 +30,14 @@ impl Block {
     }
 
     /// The rect number cell `at` of a row in `line` stands in.
-    pub fn cell(&self, ctx: &Ctx, line: Rect, at: usize) -> Rect {
+    pub fn cell<A: App>(&self, ctx: &Ctx<'_, A>, line: Rect, at: usize) -> Rect {
         let small = ctx.tokens.sm;
         let x = line.x + small + at as f32 * (self.width + small);
         Rect::new(x, line.y, self.width, line.h)
     }
 
     /// Where the last number cell ends, which every number is right-aligned to.
-    pub(super) fn numbers_end(&self, ctx: &Ctx, rect: Rect) -> f32 {
+    pub fn numbers_end<A: App>(&self, ctx: &Ctx<'_, A>, rect: Rect) -> f32 {
         if self.cells == 0 {
             return rect.x;
         }
@@ -41,7 +47,7 @@ impl Block {
     }
 
     /// Where a line's text starts, past every gutter and the hairline.
-    pub(super) fn content(&self, ctx: &Ctx, rect: Rect) -> f32 {
+    pub fn content<A: App>(&self, ctx: &Ctx<'_, A>, rect: Rect) -> f32 {
         if self.cells == 0 {
             return rect.x;
         }
@@ -52,7 +58,7 @@ impl Block {
 }
 
 /// The hairline the gutters end at, down the whole surface.
-pub(super) fn rule(ctx: &mut Ctx, rect: Rect, gutter: Block) {
+pub fn rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, gutter: Block) {
     if gutter.cells == 0 {
         return;
     }

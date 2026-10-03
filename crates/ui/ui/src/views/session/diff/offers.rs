@@ -47,7 +47,6 @@ pub(super) fn marks(
 /// The arrows a gap wears: down where the old line stands, up where the new one does.
 fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Face, side: Side) {
     ctx.hit(line, Target::Gap { row, way: Way::All });
-    let colour = ctx.styles.color(Role::Ghost);
     for (at, way) in ways(ctx, line, gutters, view, side) {
         let size = ctx.tokens.icon;
         let turn = match way {
@@ -60,7 +59,7 @@ fn gap_marks(ctx: &mut Ctx, line: Rect, row: usize, gutters: Gutters, view: Face
             size,
             size,
         );
-        ctx.icon(mark, Mark::Down, turn, colour);
+        groove_ui_kit::widgets::turned(ctx, mark, Mark::Down, turn, Role::Ghost);
         ctx.hit(at, Target::Gap { row, way });
     }
 }

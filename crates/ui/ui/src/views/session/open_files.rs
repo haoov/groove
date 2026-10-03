@@ -7,6 +7,7 @@ use groove_gfx::{Edges, Rect};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::{Losing, Ui};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
@@ -14,7 +15,7 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Tab, Text};
 
 pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
-    ctx.quad(strip, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, strip, Ground::Band);
     hairline(ctx, strip, ctx.styles.line());
     let open = app
         .workspace
@@ -65,7 +66,7 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, 
         .close(mark, close)
         .left(ctx, room, 0.0);
     let rule = room.take_left(ctx.tokens.hairline);
-    ctx.quad(rule, ctx.styles.line());
+    groove_ui_kit::shape::side_rule(ctx, rule, rule.x, ctx.styles.line());
 }
 
 /// The open file whose closing waits on an answer.

@@ -29,7 +29,7 @@ pub fn delivered(ctx: &mut Ctx, line: Rect, x: f32, delivery: &WorktreeDelivery)
     if hovered {
         let under = link.y + (link.h + style.size) / 2.0;
         let rule = Rect::new(x, under, width, ctx.tokens.hairline);
-        ctx.quad(rule, style.color);
+        groove_ui_kit::shape::top_rule(ctx, rule, style.color);
     }
     ctx.hit(link, target);
     let mut at = x + width + ctx.tokens.sm;

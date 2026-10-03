@@ -6,6 +6,7 @@ use groove_types::SessionKind;
 use crate::components::{delivered, room_for};
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
@@ -16,7 +17,7 @@ use groove_ui_kit::widgets::{Button, Text, lead, picker};
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let rect = ctx.app.layout.header;
-    ctx.quad(rect, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, rect, Ground::Work);
     hairline(ctx, rect, ctx.styles.line());
 
     let mut body = rect;

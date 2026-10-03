@@ -6,6 +6,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::row;
 use groove_ui_kit::widgets::Search;
 
@@ -15,8 +16,8 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui) {
     };
     let bar = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
     ctx.layer();
-    ctx.quad(bar, ctx.styles.action());
-    ctx.border(bar, ctx.styles.border());
+    let panel = Panel::default().ground(ctx.styles.action());
+    panel.border(ctx.styles.border()).draw(ctx, bar);
     let search = Search::new(&find.query, Target::Finding, find.typing);
     search.code().faint(Role::Faint).draw(ctx, bar);
     count(ctx, bar, &find.count());

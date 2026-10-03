@@ -32,7 +32,7 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
         let size = ctx.styles.small(Role::Warn).size;
         room.take_right(ctx.tokens.sm);
         let dot = square(room.take_right(size), size);
-        ctx.icon(dot, Mark::Modified, 0, ctx.styles.color(Role::Warn));
+        groove_ui_kit::widgets::icon(ctx, dot, Mark::Modified, Role::Warn);
     }
     let md = ctx.tokens.md;
     let style = ctx.styles.code(Role::Muted);

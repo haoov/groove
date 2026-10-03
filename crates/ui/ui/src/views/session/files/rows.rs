@@ -8,6 +8,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::{Losing, Ui};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{hoverable, ruled, square};
@@ -113,8 +114,7 @@ pub(super) fn entry(
     }
     let on_row = pointed(ctx, &file.path);
     if on_row {
-        let hover = ctx.styles.hover();
-        ctx.quad(line, hover);
+        groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
     }
     if reading.open {
         ruled(ctx, line, ctx.styles.chosen());
@@ -134,7 +134,7 @@ pub(super) fn entry(
         room.take_right(sm);
         let size = ctx.tokens.small;
         let mark = square(room.take_right(size), size);
-        ctx.icon(mark, Mark::Note, 0, ctx.styles.color(Role::Faint));
+        groove_ui_kit::widgets::icon(ctx, mark, Mark::Note, Role::Faint);
     }
     room.take_right(sm);
     named(ctx, room, file);

@@ -57,7 +57,7 @@ fn one(ctx: &mut Ctx, line: Rect, note: &Note, at: usize) {
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let box_ = square(room.take_left(size), size);
     room.take_left(sm);
-    ctx.icon(box_, mark(note), 0, ctx.styles.color(role));
+    groove_ui_kit::widgets::icon(ctx, box_, mark(note), role);
     let place = where_of(note);
     Label::new(&place, ctx.styles.small(role)).left(ctx, &mut room, sm);
     Label::new(&body_of(note), said).draw(ctx, room);

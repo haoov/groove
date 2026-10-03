@@ -21,6 +21,7 @@ use super::state::{Pane, Tab};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, tabs};
@@ -30,12 +31,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if rect.is_empty() {
         return;
     }
-    ctx.quad(rect, ctx.styles.band());
-    let edge = Rect {
-        w: ctx.tokens.hairline,
-        ..rect
-    };
-    ctx.quad(edge, ctx.styles.line());
+    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
+    groove_ui_kit::shape::side_rule(ctx, rect, rect.x, ctx.styles.line());
     let under = ctx.app.layout.commit;
     if ui.session.commits() && !under.is_empty() {
         commit::draw(ctx, app, ui, under);
@@ -220,7 +217,7 @@ pub(crate) fn acted(ctx: &mut Ctx, room: &mut Rect, label: &str, target: Target)
 
 /// A question in the row's own place, with its two answers at its end.
 pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str) {
-    ctx.quad(line, ctx.styles.raised());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     let mut room = line;
     acted(ctx, &mut room, "keep", Target::Keep);
     acted(ctx, &mut room, "discard", Target::Discard);

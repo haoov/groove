@@ -9,6 +9,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Scroller;
 use crate::offsets::listed;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::row;
@@ -40,7 +41,7 @@ fn counted(lines: &[Line<'_>]) -> usize {
 }
 
 fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
-    ctx.quad(line, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Band);
     hairline(ctx, line, ctx.styles.line());
     let label = match count {
         0 => list.name().to_string(),
