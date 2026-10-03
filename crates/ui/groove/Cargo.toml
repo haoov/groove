@@ -5,11 +5,14 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 
 [package.metadata.deb]
 name = "groove"
-maintainer = "haoov"
+maintainer = "Raphael Sabbah <102874641+haoov@users.noreply.github.com>"
+license-file = ["../../../LICENSE", "0"]
 extended-description = "A desktop workspace for task-driven development: one window holds the task, its repos, its diff, its merge request and an agent that acts on them."
 section = "devel"
 depends = "$auto, git"
