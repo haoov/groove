@@ -1167,6 +1167,7 @@ dependencies = [
  "groove-config",
  "groove-controllers",
  "groove-db",
+ "groove-exec",
  "groove-gfx",
  "groove-hooks",
  "groove-ledger",

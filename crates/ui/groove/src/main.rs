@@ -32,6 +32,7 @@ impl Deliver for Proxy {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    login_path()?;
     let runtime = tokio::runtime::Runtime::new()?;
     let event_loop = EventLoop::<Message>::with_user_event().build()?;
     let spawner = TokioSpawner::new(
@@ -57,6 +58,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = app.into_result();
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));
     result
+}
+
+/// Every child gets the login shell's `PATH`, which a desktop launch lacks.
+fn login_path() -> std::io::Result<()> {
+    let Ok(shell) = std::env::var("SHELL") else {
+        return Ok(());
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    if let Some(path) = runtime.block_on(groove_exec::login::path(&shell)) {
+        groove_exec::login::adopt(path);
+    }
+    Ok(())
 }
 
 /// Every module on the one database, handed to its service.

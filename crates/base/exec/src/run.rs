@@ -114,6 +114,9 @@ impl Run {
 
     fn command(&self) -> tokio::process::Command {
         let mut command = tokio::process::Command::new(&self.program);
+        if let Some(path) = crate::login::adopted() {
+            command.env("PATH", path);
+        }
         command
             .args(&self.args)
             .envs(self.env.iter().cloned())
