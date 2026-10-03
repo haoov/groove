@@ -44,12 +44,17 @@ pub struct State {
     /// What each task has measured, and the clock that measures it.
     pub time: std::collections::BTreeMap<ExternalId, TimeSummary>,
     pub timer: Timer,
+    /// The day the attention rules last read the tasks for.
+    pub attended: Option<groove_types::Day>,
     built: Built,
 }
 
 /// The sources, built once for the config that turned them on.
 #[derive(Default)]
-struct Built(std::sync::Mutex<Option<(SourceKey, Arc<Vec<Source>>)>>);
+struct Built(std::sync::Mutex<Option<Building>>);
+
+/// The config it was built for, the sources, and why any of them could not be.
+type Building = (SourceKey, Arc<Vec<Source>>, Vec<groove_types::Error>);
 
 type SourceKey = (Option<GithubConfig>, Option<NotionConfig>);
 
@@ -116,12 +121,21 @@ impl State {
             config.and_then(|one| one.notion.clone()),
         );
         let mut held = self.built.0.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some((_, sources)) = held.as_ref().filter(|(at, _)| *at == key) {
+        if let Some((_, sources, _)) = held.as_ref().filter(|(at, ..)| *at == key) {
             return sources.clone();
         }
-        let sources = Arc::new(built(&key));
-        *held = Some((key, sources.clone()));
+        let (sources, broken) = built(&key);
+        let sources = Arc::new(sources);
+        *held = Some((key, sources.clone(), broken));
         sources
+    }
+
+    /// Why a source the config turns on could not be built, as the last build found it.
+    pub fn broken(&self) -> Vec<groove_types::Error> {
+        let held = self.built.0.lock().unwrap_or_else(PoisonError::into_inner);
+        held.as_ref()
+            .map(|(.., broken)| broken.clone())
+            .unwrap_or_default()
     }
 
     /// What every task has measured, as the ledger now holds it.
@@ -162,21 +176,23 @@ pub fn source_ids(config: Option<&Config>) -> Vec<ProviderId> {
         .collect()
 }
 
-fn built((github, notion): &SourceKey) -> Vec<Source> {
-    github
+fn built((github, notion): &SourceKey) -> (Vec<Source>, Vec<groove_types::Error>) {
+    let made = github
         .clone()
-        .into_iter()
-        .filter_map(github_source)
-        .chain(notion.clone().into_iter().filter_map(notion_source))
-        .collect()
-}
-
-fn github_source(config: GithubConfig) -> Option<Source> {
-    Github::new(config).ok().map(Source::Github)
-}
-
-fn notion_source(config: NotionConfig) -> Option<Source> {
-    Notion::new(config).ok().map(Source::Notion)
+        .map(|one| Github::new(one).map(Source::Github));
+    let made = made.into_iter().chain(
+        notion
+            .clone()
+            .map(|one| Notion::new(one).map(Source::Notion)),
+    );
+    let (mut sources, mut broken) = (Vec::new(), Vec::new());
+    for one in made {
+        match one {
+            Ok(source) => sources.push(source),
+            Err(e) => broken.push(e.into()),
+        }
+    }
+    (sources, broken)
 }
 
 /// Every task the sources hold, in the order they answer.

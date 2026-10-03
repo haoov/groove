@@ -415,6 +415,13 @@ async fn a_project_relation_reads_as_the_title_of_its_first_page_asked_once() {
         })))
         .mount(&server)
         .await;
+    Mock::given(method("GET"))
+        .and(wiremock::matchers::path("/v1/databases/DB"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "properties": {} })),
+        )
+        .mount(&server)
+        .await;
     let mut config = config();
     config.properties.project = Some("Project".into());
     let notion = Notion::at(&format!("http://{}", server.address()), config).expect("a client");
@@ -439,4 +446,45 @@ async fn a_project_select_reads_as_its_name() {
     let (_server, notion) = source_with(reply, config).await;
     let tasks = notion.list().await.expect("the query answers");
     assert_eq!(tasks[0].project.as_deref(), Some("Platform"));
+}
+
+#[tokio::test]
+async fn a_sprint_that_cannot_be_read_fails_the_list_instead_of_widening_it() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "object": "list",
+            "results": [page()]
+        })))
+        .mount(&server)
+        .await;
+    let notion = Notion::at(&format!("http://{}", server.address()), config()).expect("a client");
+    assert!(notion.list().await.is_err(), "no task of another sprint");
+}
+
+#[tokio::test]
+async fn a_list_reads_every_page_of_the_query() {
+    let (server, notion) = source(serde_json::json!({ "properties": {} })).await;
+    let second =
+        |id: &str| serde_json::json!({ "results": [in_projects(id, &[])], "has_more": false });
+    Mock::given(method("POST"))
+        .and(wiremock::matchers::body_partial_json(
+            serde_json::json!({ "start_cursor": "c2" }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(second("b")))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    let first = serde_json::json!({ "results": [page()], "has_more": true, "next_cursor": "c2" });
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(first))
+        .with_priority(2)
+        .mount(&server)
+        .await;
+    let tasks = notion.list().await.expect("both pages");
+    assert_eq!(tasks.len(), 2);
 }

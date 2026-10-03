@@ -172,6 +172,9 @@ pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
         return;
     }
     let sources = state.task.sources(state.config.config.as_ref());
+    for e in state.task.broken() {
+        state.failed(e);
+    }
     if sources.is_empty() {
         return;
     }

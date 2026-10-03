@@ -40,18 +40,25 @@ impl Github {
         Ok(config)
     }
 
+    /// Every issue assigned to the viewer, page after page.
     pub async fn list(&self) -> Result<Vec<Task>> {
-        let reply = self
-            .ask(&query::assigned(), serde_json::json!({ "after": null }))
-            .await?;
-        let nodes = reply["data"]["search"]["nodes"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
-        Ok(nodes
-            .iter()
-            .filter_map(|issue| read::task(issue, &self.host, &self.config))
-            .collect())
+        let (mut tasks, mut after) = (Vec::new(), serde_json::Value::Null);
+        for _ in 0..crate::PAGES_MAX {
+            let reply = self
+                .ask(&query::assigned(), serde_json::json!({ "after": after }))
+                .await?;
+            let search = &reply["data"]["search"];
+            let nodes = search["nodes"].as_array().cloned().unwrap_or_default();
+            let read = nodes
+                .iter()
+                .filter_map(|issue| read::task(issue, &self.host, &self.config));
+            tasks.extend(read);
+            if search["pageInfo"]["hasNextPage"].as_bool() != Some(true) {
+                break;
+            }
+            after = search["pageInfo"]["endCursor"].clone();
+        }
+        Ok(tasks)
     }
 
     pub async fn fetch(&self, key: &TaskKey) -> Result<crate::Fetched> {

@@ -12,6 +12,10 @@ const WRITE: i64 = 60;
 /// The clock on the task being worked; the ledger takes what it measured every `WRITE` seconds.
 pub fn tick(state: &mut AppState, services: &Services, spawner: &dyn Spawner, now: Timestamp) {
     state.task.timer.on(worked(state, now), now);
+    if state.task.attended != Some(now.day()) {
+        state.task.attended = Some(now.day());
+        super::attention::reread(state, now);
+    }
     if !state.task.timer.due(now, WRITE) {
         return;
     }

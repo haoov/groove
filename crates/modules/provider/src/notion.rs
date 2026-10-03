@@ -47,15 +47,22 @@ impl Notion {
             return Err(Error::Invalid(format!("name the Notion {missing} first")));
         };
         let url = self.query(&self.config.database_id);
-        let sprints = self.running(sprint).await;
-        let filter = read::filter(&self.config, (assignee, sprint), &sprints);
-        let reply = self.ask(Method::POST, url, Some(filter)).await?;
-        let pages = reply["results"].as_array().cloned().unwrap_or_default();
-        let mut tasks = Vec::with_capacity(pages.len());
-        for page in &pages {
-            if let Some(task) = read::task(page, &self.config) {
-                tasks.push(self.placed(task, page).await);
+        let sprints = self.running(sprint).await?;
+        let mut filter = read::filter(&self.config, (assignee, sprint), &sprints);
+        let mut tasks = Vec::new();
+        for _ in 0..crate::PAGES_MAX {
+            let reply = self
+                .ask(Method::POST, url.clone(), Some(filter.clone()))
+                .await?;
+            for page in reply["results"].as_array().into_iter().flatten() {
+                if let Some(task) = read::task(page, &self.config) {
+                    tasks.push(self.placed(task, page).await);
+                }
             }
+            if reply["has_more"].as_bool() != Some(true) {
+                break;
+            }
+            filter["start_cursor"] = reply["next_cursor"].clone();
         }
         Ok(tasks)
     }
@@ -118,22 +125,27 @@ impl Notion {
         Ok(out)
     }
 
-    /// The pages of the running sprint behind the `name` relation.
-    async fn running(&self, name: &str) -> Vec<String> {
+    /// The pages of the running sprint behind the `name` relation; a failed read is not kept.
+    async fn running(&self, name: &str) -> Result<Vec<String>> {
         let now = groove_types::Timestamp::now();
         if let Some(held) = self.sprints.read(now) {
-            return held;
+            return Ok(held);
         }
-        let ids = self.current(name).await.unwrap_or_default();
+        let ids = self.current(name).await?;
         self.sprints.keep(now, ids.clone());
-        ids
+        Ok(ids)
     }
 
-    /// The sprint database behind the relation, asked which of its rows is current.
-    async fn current(&self, name: &str) -> Option<Vec<String>> {
-        let database = self.database(&self.config.database_id).await.ok()?;
-        let sprints = sprint::target(&database, name)?;
-        let status = sprint::status_property(&self.database(&sprints).await.ok()?)?;
+    /// The sprint database behind the relation, asked which of its rows is current; none without one.
+    async fn current(&self, name: &str) -> Result<Vec<String>> {
+        let database = self.database(&self.config.database_id).await?;
+        let Some(sprints) = sprint::target(&database, name) else {
+            return Ok(Vec::new());
+        };
+        let held = self.database(&sprints).await?;
+        let Some(status) = sprint::status_property(&held) else {
+            return Ok(Vec::new());
+        };
         let filter = serde_json::json!({
             "filter": {
                 "property": status,
@@ -142,9 +154,8 @@ impl Notion {
         });
         let reply = self
             .ask(Method::POST, self.query(&sprints), Some(filter))
-            .await
-            .ok()?;
-        Some(sprint::ids(&reply))
+            .await?;
+        Ok(sprint::ids(&reply))
     }
 
     async fn database(&self, id: &str) -> Result<serde_json::Value> {

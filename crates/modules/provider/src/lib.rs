@@ -13,6 +13,9 @@ pub use groove_token::Token;
 use groove_types::{StatusIntent, Task, TaskKey};
 pub use notion::Notion;
 
+/// The most pages one list reads before it stops.
+const PAGES_MAX: usize = 20;
+
 /// Every source Groove reads.
 pub enum Source {
     Github(Github),
