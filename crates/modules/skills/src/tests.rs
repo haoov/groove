@@ -340,3 +340,27 @@ fn a_shared_skill_is_read_from_the_copy() {
             .contains("Do rollout.")
     );
 }
+
+#[test]
+fn a_core_skill_that_did_not_change_keeps_the_time_it_was_written() {
+    let home = tempfile::tempdir().unwrap();
+    let dirs = dirs(home.path());
+    sync(&dirs).unwrap();
+    let file = home
+        .path()
+        .join("data/plugins/groove/skills/save-task/SKILL.md");
+    let past = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_000);
+    std::fs::File::options()
+        .write(true)
+        .open(&file)
+        .unwrap()
+        .set_modified(past)
+        .unwrap();
+    sync(&dirs).unwrap();
+    let skills = list(&dirs);
+    let one = skills
+        .iter()
+        .find(|one| one.id == "groove:save-task")
+        .unwrap();
+    assert_eq!(one.changed_at.seconds(), 1_000);
+}

@@ -107,9 +107,17 @@ fn wrote_core(dir: &Path) -> std::io::Result<()> {
     for (name, body) in BUILT_IN {
         let skill = skills.join(name);
         std::fs::create_dir_all(&skill)?;
-        std::fs::write(skill.join(FILE), body)?;
+        kept(&skill.join(FILE), body)?;
     }
     Ok(())
+}
+
+/// `body` written at `path` unless it holds it already.
+fn kept(path: &Path, body: &str) -> std::io::Result<()> {
+    match std::fs::read_to_string(path) {
+        Ok(held) if held == body => Ok(()),
+        _ => std::fs::write(path, body),
+    }
 }
 
 fn made_user(dir: &Path) -> std::io::Result<()> {
