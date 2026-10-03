@@ -1,0 +1,40 @@
+# What `cargo deny check` holds every dependency to.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+    { id = "RUSTSEC-2017-0008", reason = "serial is unmaintained; portable-pty pulls it, no maintained pty crate replaces it yet" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; the font stack (cosmic-text) pulls it" },
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = ["https://github.com/haoov/tree-sitter-go-template"]

@@ -1,10 +1,24 @@
 [package]
 name = "groove"
-description = "The binary: the window, the event loop, the wiring"
+description = "A desktop workspace for task-driven development"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+
+
+[package.metadata.deb]
+name = "groove"
+maintainer = "haoov"
+extended-description = "A desktop workspace for task-driven development: one window holds the task, its repos, its diff, its merge request and an agent that acts on them."
+section = "devel"
+depends = "$auto, git"
+recommends = "gh, glab"
+assets = [
+    ["target/release/groove", "usr/bin/", "755"],
+    ["../../../packaging/groove.desktop", "usr/share/applications/", "644"],
+    ["../../../assets/groove-icon.png", "usr/share/icons/hicolor/1024x1024/apps/groove.png", "644"],
+]
 
 [dependencies]
 groove-controllers = { path = "../../controllers/controllers" }

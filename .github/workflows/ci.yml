@@ -9,22 +9,83 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  rust:
+  title:
+    name: pr title
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    env:
-      CARGO_TERM_COLOR: always
+    permissions:
+      pull-requests: read
+    steps:
+      # The title becomes the squashed commit, and the changelog reads it.
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Kept in step with rust-toolchain.toml.
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: debug
+      - run: cargo lint
+
+  test:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       # lavapipe: the renderer tests ask wgpu for a Vulkan adapter, and a runner has no GPU.
       - run: |
           sudo apt-get update
           sudo apt-get install -y libvulkan1 mesa-vulkan-drivers
-      # Kept in step with rust-toolchain.toml.
       - uses: dtolnay/rust-toolchain@1.98.1
-        with:
-          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all --check
-      - run: cargo lint
-      - run: cargo test --workspace
+        with:
+          shared-key: debug
+      - run: cargo test --workspace --locked
+
+  deny:
+    name: licenses and advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+  package:
+    name: release build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+      - run: cargo install cargo-deb --locked
+      - run: cargo deb --locked -p groove
+      - uses: actions/upload-artifact@v4
+        with:
+          name: groove-deb
+          path: target/debian/*.deb
+          retention-days: 7

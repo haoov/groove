@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Groove
+Comment=A workspace for task-driven development: the task, its repos, its diff, its MR and an agent
+Exec=groove
+Icon=groove
+Terminal=false
+Categories=Development;
+StartupWMClass=groove
