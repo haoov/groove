@@ -7,29 +7,21 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::Button;
+use groove_ui_kit::widgets::{Button, Toggle};
 
 /// A routine's switch, its run and what it does; or one trigger's switch.
 pub(super) fn routine(ctx: &mut Ctx, mut room: Rect, value: &Value) {
     let (ground, sm) = (ctx.styles.ground(), ctx.tokens.sm);
-    let switch = |on: bool, target: Target| {
-        let (word, role) = if on {
-            ("on", Role::Text)
-        } else {
-            ("off", Role::Muted)
-        };
-        Button::new(word, target, role, ground)
-    };
     match value {
         Value::Switch { on, target } => {
-            switch(*on, target.clone()).left(ctx, &mut room, sm);
+            Toggle::new(*on, target.clone()).left(ctx, &mut room, sm);
         }
         Value::Routine { id, on, said, runs } => {
             let flip = match on {
                 true => Target::RoutineOff(id.clone()),
                 false => Target::RoutineOn(id.clone()),
             };
-            switch(*on, flip).left(ctx, &mut room, sm);
+            Toggle::new(*on, flip).left(ctx, &mut room, sm);
             if *runs {
                 let run = Target::RoutineRun(id.clone());
                 Button::new("run", run, Role::Muted, ground).left(ctx, &mut room, sm);
@@ -58,13 +50,8 @@ pub(super) fn skill(
     }
     match on {
         Some(on) => {
-            let (word, role) = if on {
-                ("on", Role::Text)
-            } else {
-                ("off", Role::Muted)
-            };
             let flip = Target::SkillSwitch(id.to_string(), !on);
-            Button::new(word, flip, role, ground).left(ctx, &mut room, sm);
+            Toggle::new(on, flip).left(ctx, &mut room, sm);
         }
         None => {
             Label::new("always", ctx.styles.body(Role::Faint)).left(ctx, &mut room, sm);

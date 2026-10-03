@@ -50,7 +50,7 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
     );
     let height = |line: &Line| match line {
         Line::Group(_) => heading,
-        Line::Setting(_) => row,
+        Line::Setting(..) => row,
     };
     let scroller = (Scroller::Settings, settings.scroll);
     listed(
@@ -61,7 +61,7 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
         height,
         |ctx, rect, line| match line {
             Line::Group(name) => group(ctx, rect, name),
-            Line::Setting(one) => setting(ctx, rect, one, searching),
+            Line::Setting(one, ruled) => setting(ctx, rect, one, (searching, *ruled)),
         },
     );
 }
@@ -69,19 +69,21 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
 /// One line of the form: a group's heading, or a row.
 enum Line<'a> {
     Group(&'static str),
-    Setting(&'a Row),
+    /// A row, and whether a rule closes it: none while its block goes on under it.
+    Setting(&'a Row, bool),
 }
 
 /// The rows, a heading wherever the group changes; none while a search mixes them.
 fn lines(shown: &[Row], searching: bool) -> Vec<Line<'_>> {
     let mut out = Vec::new();
     let mut under = "";
-    for one in shown {
+    for (at, one) in shown.iter().enumerate() {
         if !searching && one.group != under {
             under = one.group;
             out.push(Line::Group(under));
         }
-        out.push(Line::Setting(one));
+        let ruled = !shown.get(at + 1).is_some_and(Row::sub);
+        out.push(Line::Setting(one, ruled));
     }
     out
 }
@@ -101,8 +103,10 @@ fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
 }
 
 /// One row: its label, its group when a search mixes them, its value at the right.
-fn setting(ctx: &mut Ctx, line: Rect, one: &Row, searching: bool) {
-    hairline(ctx, line, ctx.styles.line());
+fn setting(ctx: &mut Ctx, line: Rect, one: &Row, (searching, ruled): (bool, bool)) {
+    if ruled {
+        hairline(ctx, line, ctx.styles.line());
+    }
     let mut room = line;
     let label = room.take_left(ctx.tokens.aside_mid);
     let mut label_room = label;
@@ -128,9 +132,8 @@ fn value(ctx: &mut Ctx, mut room: Rect, value: &Value) {
             Label::new(text, style).draw(ctx, room);
         }
         Value::Toggle { on, flip } => {
-            let word = if *on { "on" } else { "off" };
-            let each = std::iter::once((word, *on, Target::SetPreference(*flip)));
-            held_words(ctx, room, each, Role::Muted);
+            let toggle = groove_ui_kit::widgets::Toggle::new(*on, Target::SetPreference(*flip));
+            toggle.left(ctx, &mut room, sm);
         }
         Value::Count { shown, less, more } => stepped(ctx, room, shown, (*less, *more)),
         Value::State { shown, role, act } => {

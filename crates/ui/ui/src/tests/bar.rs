@@ -147,14 +147,19 @@ fn reload_ends_the_agent_and_starts_it_again() {
 }
 
 #[test]
-fn a_skill_newer_than_the_agent_says_so_on_the_row() {
+fn a_skill_newer_than_the_agent_lights_the_reload() {
+    let reload = |app: &groove_controllers::AppState| {
+        let (frame, _) = crate::view(app, &session_ui(), window(), &mut Fonts::embedded());
+        let mut texts = frame.layers()[0].texts.iter();
+        texts.find(|one| one.text == "reload").unwrap().style.color
+    };
     let mut app = offering(vec![skill("save-task", "save task", &[])]);
+    let theme = app.config.theme();
+    let styles = groove_ui_kit::base::style::Styles::new(theme, crate::Tokens::new(1.0));
+    let attention = styles.color(groove_ui_kit::base::style::Role::Attention);
+    assert_ne!(reload(&app), attention, "no skill is newer");
     app.agent.skills[0].changed_at = Timestamp::new(50);
-    let drawn = drawn(&app, &session_ui());
-    assert!(
-        drawn.iter().any(|one| one.contains("newer than the agent")),
-        "{drawn:?}"
-    );
+    assert_eq!(reload(&app), attention);
 }
 
 #[test]

@@ -11,7 +11,7 @@ use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::row;
-use groove_ui_kit::widgets::Button;
+use groove_ui_kit::widgets::{Button, Toggle};
 
 /// What the agent waits on, or what it can be sent.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -41,37 +41,21 @@ fn offered(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
             ground,
         ),
         Button::new("skills", Target::Skills(id.clone()), Role::Muted, ground).caret(Mark::UPWARDS),
-        Button::new(
-            switched(auto),
-            Target::AutoApprove(id.clone()),
-            auto_role(auto),
-            ground,
-        ),
     ];
     for word in words {
         word.lit(Role::Text).right(ctx, &mut room, xs * 2.0);
     }
-    said(ctx, line, app, open, stale);
+    let auto_approve = Toggle::new(auto, Target::AutoApprove(id.clone())).label("auto-approve");
+    auto_approve
+        .role(Role::Attention)
+        .right(ctx, &mut room, xs * 2.0);
+    said(ctx, line, app, open);
 }
 
 fn counted(skills: usize) -> String {
     match skills {
         1 => "1 skill".to_string(),
         n => format!("{n} skills"),
-    }
-}
-
-fn switched(on: bool) -> &'static str {
-    match on {
-        true => "auto-approve on",
-        false => "auto-approve off",
-    }
-}
-
-fn auto_role(on: bool) -> Role {
-    match on {
-        true => Role::Attention,
-        false => Role::Muted,
     }
 }
 
@@ -83,16 +67,12 @@ fn reload_role(stale: bool) -> Role {
 }
 
 /// What the row says when nothing waits: the agent's own name for itself.
-fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, stale: bool) {
+fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let size = ctx.tokens.small;
     let box_ = box_in(line, line.x + ctx.tokens.md, size);
     ctx.icon(box_, Mark::Busy, 0, ctx.styles.color(Role::Faint));
     let style = ctx.styles.small(Role::Faint);
     let at = ctx.tokens.md + size + ctx.tokens.xs;
     let count = counted(app.agent.skills_for(&open.session.kind).len());
-    let text = match stale {
-        true => format!("{count} · one is newer than the agent"),
-        false => count,
-    };
-    row(ctx, line, at, &text, style);
+    row(ctx, line, at, &count, style);
 }

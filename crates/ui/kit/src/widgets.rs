@@ -14,6 +14,7 @@ mod scrolled;
 mod search;
 mod tabs;
 mod terminal;
+mod toggle;
 
 pub use badge::Badge;
 pub use button::{Button, Text, picker, slot_at};
@@ -30,3 +31,4 @@ pub use search::Search;
 pub use tabs::{Tab, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;
+pub use toggle::Toggle;

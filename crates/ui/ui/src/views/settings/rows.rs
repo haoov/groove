@@ -134,6 +134,11 @@ impl Row {
             .split_whitespace()
             .all(|word| held.contains(&word.to_lowercase()))
     }
+
+    /// A row under the one before it, in its block: a routine's trigger.
+    pub fn sub(&self) -> bool {
+        matches!(self.value, Value::Switch { .. })
+    }
 }
 
 /// Every row of `rows` under one heading.
