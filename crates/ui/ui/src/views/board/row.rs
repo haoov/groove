@@ -9,9 +9,9 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Badge, icon};
+use groove_ui_kit::widgets::{Badge, lead};
 
 /// One line of a column: an item, the plan's divider, or what stands in for none.
 pub(super) enum Line<'a> {
@@ -70,17 +70,14 @@ pub(super) fn up_next(ctx: &mut Ctx, rect: Rect, app: &AppState, task: &Task) {
     let x = placed(ctx, under, start, task);
     let x = worth(ctx, under, x, task);
     if !reasons.is_empty() {
-        let said = super::attention::line(reasons, groove_types::Timestamp::now());
+        let said = super::attention::line(reasons, ctx.now);
         super::attention::draw(ctx, under.pad(Edges::across(x - under.x, 0.0)), &said);
     }
 }
 
 /// The mark of the task's source, which a drag takes hold of to move it in the plan.
 fn handle(ctx: &mut Ctx, room: &mut Rect, task: &Task) {
-    let size = ctx.tokens.icon;
-    let mark = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    icon(ctx, mark, Mark::of_source(task.provider), Role::Faint);
+    let mark = lead(ctx, room, Mark::of_source(task.provider), Role::Faint);
     ctx.hit(mark, Target::Place(task.external_id.clone()));
 }
 

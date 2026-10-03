@@ -5,20 +5,13 @@ use groove_ui_kit::markdown::{Row, compact};
 
 use crate::Ui;
 
-/// How many characters a note row holds before the frame has said.
-const COLS: usize = 80;
-
-/// How many characters a reply stands in by.
-const REPLY_STEP: usize = 2;
-
-/// The fewest columns a row is given.
-const FEWEST: usize = 20;
+use groove_ui_kit::base::tokens::{NOTE_COLS, NOTE_COLS_FEWEST, REPLY_STEP};
 
 /// How many characters a note row holds, as the last frame measured it.
 pub(crate) fn cols_of(ui: &Ui) -> usize {
     match ui.session.note_cols {
-        0 => COLS,
-        cols => cols.max(FEWEST),
+        0 => NOTE_COLS,
+        cols => cols.max(NOTE_COLS_FEWEST),
     }
 }
 

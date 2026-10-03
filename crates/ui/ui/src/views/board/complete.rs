@@ -4,9 +4,6 @@ use groove_controllers::AppState;
 
 use super::filter::Name;
 
-/// How many suggestions the field shows at once.
-pub const ROWS: usize = 6;
-
 /// The whole filter text, with its last token replaced by `pick`.
 pub fn taken(text: &str, pick: &str) -> String {
     let kept = text
@@ -26,7 +23,7 @@ pub fn offers(app: &AppState, text: &str) -> Vec<String> {
         return fields("");
     }
     let offers = match token.split_once(':') {
-        Some((name, typed)) => match Name::ALL.into_iter().find(|one| one.as_str() == name) {
+        Some((name, typed)) => match Name::of(name) {
             Some(name) => values(app, name, typed),
             None => Vec::new(),
         },
@@ -48,7 +45,7 @@ fn fields(typed: &str) -> Vec<String> {
     Name::ALL
         .into_iter()
         .map(|name| format!("{}:", name.as_str()))
-        .filter(|one| one.starts_with(typed))
+        .filter(|one| one.starts_with(&typed.to_lowercase()))
         .collect()
 }
 

@@ -100,7 +100,7 @@ fn pins_under(
     let rows = inline.total(super::row::count(app, ui.session.face()));
     let at = (first(ctx.tokens.line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
     let top = inline.base(at);
-    let Some((path, _)) = standing(app, top) else {
+    let Some(path) = standing(app, top) else {
         return Vec::new();
     };
     let mut pins: Vec<Pin> = Vec::new();
@@ -155,27 +155,19 @@ fn room(ctx: &Ctx, body: Rect) -> usize {
     ((body.h / PINNED_SHARE / ctx.tokens.line) as usize).max(1)
 }
 
-/// The row the top of the surface shows: its file, and the line it stands on.
-fn standing(app: &AppState, top: usize) -> Option<(String, Option<(usize, bool)>)> {
+/// The file of the row the top of the surface shows.
+fn standing(app: &AppState, top: usize) -> Option<String> {
     match app.workspace.changes.at(top)? {
-        At::Row(file, at) => {
-            let row = file.row(at)?;
-            let line = match (row.new, row.old) {
-                (Some(line), _) => Some((line as usize, false)),
-                (None, Some(line)) => Some((line as usize, true)),
-                (None, None) => None,
-            };
-            Some((file.path.clone(), line))
-        }
+        At::Row(file, _) => Some(file.path.clone()),
         At::Head(_) => above(app, top),
     }
 }
 
 /// The file the row above a head row belongs to.
-fn above(app: &AppState, top: usize) -> Option<(String, Option<(usize, bool)>)> {
+fn above(app: &AppState, top: usize) -> Option<String> {
     let before = app.workspace.changes.at(top.checked_sub(1)?)?;
     let (At::Row(file, _) | At::Head(file)) = before;
-    Some((file.path.clone(), None))
+    Some(file.path.clone())
 }
 
 fn pin(doc: &Document, at: usize) -> Option<Pin> {

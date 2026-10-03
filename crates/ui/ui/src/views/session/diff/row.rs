@@ -34,8 +34,6 @@ pub(super) struct Drawn {
     pub(super) mark: Option<LineMark>,
     /// The row a file starts on, which names it instead of showing a line.
     pub(super) head: bool,
-    /// The row a directory starts on.
-    pub(super) band: bool,
     /// A head row whose file hides its rows.
     pub(super) folded: bool,
     /// A head row whose file has been read.

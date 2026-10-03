@@ -69,7 +69,7 @@ fn file_found(ctx: &mut Ctx, line: Rect, path: &str, count: usize, ui: &Ui) {
 fn hit(ctx: &mut Ctx, line: Rect, one: &Found, at: usize) {
     hoverable(ctx, line, Target::Found(at));
     let (sm, md) = (ctx.tokens.sm, ctx.tokens.md);
-    let mut room = line.pad(Edges::across(md + ctx.tokens.icon + ctx.tokens.xs, md));
+    let mut room = line.pad(Edges::across(super::text_at(ctx, md), md));
     let number = (one.line + 1).to_string();
     Label::new(&number, ctx.styles.prose_code(Role::Ghost)).left(ctx, &mut room, sm);
     Label::new(one.text.trim_start(), ctx.styles.prose_code(Role::Text)).draw(ctx, room);

@@ -11,7 +11,7 @@ use crate::offsets::listed;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, hoverable};
+use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::fold;
 
@@ -27,11 +27,7 @@ pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
 
 /// The word that folds the feed, and the one that narrows it to the session in hand.
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
-    hairline(
-        ctx,
-        Rect::new(line.x, line.y - ctx.tokens.hairline, line.w, 0.0),
-        ctx.styles.line(),
-    );
+    groove_ui_kit::shape::rule_above(ctx, line, ctx.styles.line());
     hoverable(ctx, line, Target::Feed);
     grab(ctx, line);
     let md = ctx.tokens.md;

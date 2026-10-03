@@ -125,7 +125,7 @@ pub(super) fn entry(
     ctx.hit(line, Target::File(file.path.clone()));
 
     let sm = ctx.tokens.sm;
-    let mut room = line.pad(Edges::across(indent + ctx.tokens.icon + ctx.tokens.xs, 0.0));
+    let mut room = line.pad(Edges::across(super::text_at(ctx, indent), 0.0));
     match on_row {
         true => offer(ctx, &mut room, file),
         false => counts(ctx, &mut room, file),

@@ -11,7 +11,7 @@ use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, ruled, square};
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::{Button, icon};
+use groove_ui_kit::widgets::{Button, lead};
 
 /// The row's lines: head, state, and the answers while the session asks.
 pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
@@ -25,14 +25,11 @@ pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
 /// Type icon, title and how long it has waited, then the agent's state under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
-    if ctx.hovered(&Target::Session(id.clone())) {
-        ctx.quad(rect, ctx.styles.hover());
-    }
+    groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
     if asked(app, id).is_some() {
         ctx.quad(rect, ctx.styles.tint(Role::Attention));
     }
-    ctx.hit(rect, Target::Session(id.clone()));
-    let (xs, sm, md, size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
+    let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
     body.take_top(sm);
     let head = body.take_top(ctx.tokens.line);
@@ -41,9 +38,12 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
 
     let mut room = head.pad(Edges::across(md, md));
     waited(ctx, app, &mut room, id);
-    let mark = square(room.take_left(size), size);
-    room.take_left(sm);
-    icon(ctx, mark, Mark::of_kind(&open.session.kind), Role::Faint);
+    lead(
+        ctx,
+        &mut room,
+        Mark::of_kind(&open.session.kind),
+        Role::Faint,
+    );
     Label::new(&open.session.title, ctx.styles.label(Role::Text)).draw(ctx, room);
 
     match asked(app, id) {
@@ -65,14 +65,21 @@ fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
     Some((asks.first()?.clone(), asks.len()))
 }
 
+/// `asks to commit`: what a write does, as the rail and the sheet say it.
+pub(crate) fn asks_to(op: &str) -> String {
+    format!(
+        "asks to {}",
+        groove_controllers::agent_service::tools::verb(op)
+    )
+}
+
 /// The write in peach where the state stands, and its two answers on the line under it.
 fn asking(ctx: &mut Ctx, line: Rect, ask: &Ask, waiting: usize) {
     let (md, ground, hover) = (ctx.tokens.md, ctx.styles.ground(), ctx.styles.hover());
     let room = line.pad(Edges::across(after_mark(ctx, md), md));
-    let verb = groove_controllers::agent_service::tools::verb(&ask.op);
     let label = match waiting {
-        1 => format!("asks to {verb}"),
-        n => format!("asks to {verb} · +{}", n - 1),
+        1 => asks_to(&ask.op),
+        n => format!("{} · +{}", asks_to(&ask.op), n - 1),
     };
     Label::new(&label, ctx.styles.small(Role::Attention)).draw(ctx, room);
     let mut under = Rect::new(room.x, line.bottom(), line.right() - room.x, ctx.tokens.row);
@@ -127,7 +134,6 @@ fn state_of(app: &AppState, open: &Open) -> (String, Role) {
         return ("idle".into(), Role::Ghost);
     };
     let label = match &activity.status {
-        _ if !activity.asks.is_empty() => asks(activity.asks.len()),
         AgentStatus::Working => "working".into(),
         AgentStatus::Asking => "asks you".into(),
         AgentStatus::Done { .. } => "done".into(),
@@ -142,11 +148,4 @@ fn state_of(app: &AppState, open: &Open) -> (String, Role) {
         AttentionClass::Quiet => Role::Ghost,
     };
     (label, role)
-}
-
-fn asks(count: usize) -> String {
-    match count {
-        1 => "asks to write".into(),
-        n => format!("asks {n} writes"),
-    }
 }

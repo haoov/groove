@@ -20,13 +20,8 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     };
     let section = Section::Appearance;
     let themes = ThemeName::ALL.map(|one| (one.label(), one == ui.theme, Preference::Theme(one)));
-    let theme = Row {
-        section,
-        group: "",
-        label: "theme".into(),
-        words: "latte frappe macchiato mocha colour dark light",
-        value: Value::Choice(themes.to_vec()),
-    };
+    let words = "latte frappe macchiato mocha colour dark light";
+    let theme = Row::new(section, "theme", words, Value::Choice(themes.to_vec()));
     let mut fonts = vec![
         text(section, "ui font", "family type", family(&ui.font_family)),
         text(

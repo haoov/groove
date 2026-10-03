@@ -107,10 +107,9 @@ pub fn dropped(ui: &mut Ui, app: &AppState) -> Vec<Command> {
 
 /// Up next's own room, which a drag is measured against.
 fn next_column(tokens: &Tokens, layout: Layout) -> Rect {
-    let body = crate::views::board::columns(tokens, layout.board);
-    let width = (body.w / List::ALL.len() as f32).floor();
-    let top = body.y + tokens.header;
-    Rect::new(body.x + width, top, width, body.bottom() - top)
+    let mut column = crate::views::board::column_of(tokens, layout.board, List::Next);
+    column.take_top(tokens.header);
+    column
 }
 
 /// One MR of the review column, opened as a session of its own.

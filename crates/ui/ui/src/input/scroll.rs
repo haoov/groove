@@ -5,7 +5,6 @@ use groove_controllers::{AppState, Command, agent};
 use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
-use crate::views::board::List;
 use crate::views::session::Tab;
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -72,10 +71,8 @@ fn agent(
     if lines == 0 {
         return Vec::new();
     }
-    let (origin_x, origin_y) = layout.agent_origin(&tokens);
-    let cell = metrics.cell;
-    let col = ((point.0 - origin_x) / cell.width).floor().max(0.0) as usize;
-    let row = ((point.1 - origin_y) / cell.height).floor().max(0.0) as usize;
+    let origin = layout.agent_origin(&tokens);
+    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
     vec![Command::Agent(agent::Command::Scroll {
         session,
         lines,
@@ -106,13 +103,8 @@ fn shelled(
     if lines == 0 {
         return Vec::new();
     }
-    let cell = metrics.cell;
-    let col = ((point.0 - pane.x - tokens.sm) / cell.width)
-        .floor()
-        .max(0.0) as usize;
-    let row = ((point.1 - pane.y - tokens.sm) / cell.height)
-        .floor()
-        .max(0.0) as usize;
+    let origin = (pane.x + tokens.sm, pane.y + tokens.sm);
+    let (col, row) = crate::layout::cell_at(origin, metrics.cell, point);
     let scroll = groove_controllers::shell::Command::Scroll {
         session,
         id,
@@ -147,10 +139,7 @@ fn in_rail(y: f32, lines: f32, rows: f32, ui: &mut Ui, hits: &Hits) {
 }
 
 fn column(x: f32, pixels: f32, ui: &mut Ui, hits: &Hits, layout: Layout) {
-    let board = layout.board;
-    let width = board.w / List::ALL.len() as f32;
-    let at = ((x - board.x) / width.max(1.0)).floor().max(0.0) as usize;
-    if let Some(list) = List::ALL.get(at).copied() {
+    if let Some(list) = crate::views::board::list_at(layout.board, x) {
         ui.wheeled(Scroller::Column(list as u8), pixels, hits);
     }
 }

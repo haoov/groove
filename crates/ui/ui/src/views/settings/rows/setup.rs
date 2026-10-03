@@ -39,13 +39,7 @@ pub(super) fn setup(app: &AppState) -> Vec<Row> {
 
 fn path(label: &'static str, words: &'static str, text: String) -> Row {
     let value = Value::Text { text, mono: true };
-    Row {
-        section: Section::Setup,
-        group: "",
-        label: label.into(),
-        words,
-        value,
-    }
+    Row::new(Section::Setup, label, words, value)
 }
 
 /// The check as a whole: running, every program ready, or how many are not.
@@ -58,13 +52,12 @@ fn checked(app: &AppState) -> Row {
         (false, n) => (format!("{n} not ready"), Role::Warn),
     };
     let act = (!app.config.checking).then_some(("check again", Target::SettingsCheck));
-    Row {
-        section: Section::Setup,
-        group: "",
-        label: "check".into(),
-        words: "environment tools programs",
-        value: Value::State { shown, role, act },
-    }
+    Row::new(
+        Section::Setup,
+        "check",
+        "environment tools programs",
+        Value::State { shown, role, act },
+    )
 }
 
 /// One program: its version and sign-in, or what is lost without it.
@@ -83,13 +76,12 @@ fn tool(one: &Tool, signing_in: bool) -> Row {
         ("claude", true) => Some(("cancel", Target::SettingsLoginEnd)),
         _ => None,
     };
-    Row {
-        section: Section::Setup,
-        group: "",
-        label: one.name.into(),
-        words: one.purpose,
-        value: Value::State { shown, role, act },
-    }
+    Row::new(
+        Section::Setup,
+        one.name,
+        one.purpose,
+        Value::State { shown, role, act },
+    )
 }
 
 /// A path under home as `~/…`.

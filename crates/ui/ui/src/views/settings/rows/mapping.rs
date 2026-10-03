@@ -147,18 +147,13 @@ fn slotted(held: &Held, slot: Slot, label: &'static str) -> Row {
         Slot::Priority(_) => "priority value",
         Slot::Unit => "estimate unit hours days",
     };
-    Row {
-        section: Section::Providers,
-        group: "",
-        label: label.into(),
-        words,
-        value: Value::Picker {
-            shown,
-            role,
-            target: Target::SettingsPick(held.id(), slot),
-            act: None,
-        },
-    }
+    let value = Value::Picker {
+        shown,
+        role,
+        target: Target::SettingsPick(held.id(), slot),
+        act: None,
+    };
+    Row::new(Section::Providers, label, words, value)
 }
 
 /// A name takes a property of its type; a status or priority, a value of the property mapped.

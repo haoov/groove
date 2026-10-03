@@ -10,17 +10,12 @@ use crate::hit::Target;
 use crate::{Focus, Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, counts};
 
 /// The counts and what commits them on one line, the message under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    hairline(
-        ctx,
-        Rect::new(rect.x, rect.y - ctx.tokens.hairline, rect.w, 0.0),
-        ctx.styles.line(),
-    );
+    groove_ui_kit::shape::rule_above(ctx, rect, ctx.styles.line());
     let mut message = rect;
     let top = message.take_top(ctx.tokens.row);
     if ui.losing() == Some(&Losing::Everything) {

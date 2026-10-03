@@ -41,7 +41,9 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
         return;
     }
     let offers = complete::offers(app, ui.board.filter.text());
-    let shown = &offers[..offers.len().min(complete::ROWS)];
+    let shown = &offers[..offers
+        .len()
+        .min(groove_ui_kit::base::tokens::SUGGESTED_ROWS)];
     if shown.is_empty() {
         return;
     }

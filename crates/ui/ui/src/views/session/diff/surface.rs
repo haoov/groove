@@ -37,7 +37,7 @@ fn beside(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         body.h,
     );
     let rule = ctx.styles.line();
-    ctx.quad(Rect::new(left.right(), body.y, thickness, body.h), rule);
+    groove_ui_kit::shape::side_rule(ctx, body, left.right(), rule);
     let view = Face::Stream(DiffView::Split);
     surface(ctx, left, app, ui, view, Side::Old, false);
     surface(ctx, right, app, ui, view, Side::New, true);
@@ -69,7 +69,6 @@ fn surface(
         gutters: &gutters,
         words: &words,
         noted: &inline.noted(&slots),
-        hovered: hovered(ctx),
         first: code_rows.start,
         notes: side != Side::Old,
         said: said.as_ref(),
@@ -147,8 +146,6 @@ struct Held<'a> {
     words: &'a [Words],
     /// Which rows of the window a note stands on.
     noted: &'a [bool],
-    /// The note button the pointer stands on, and whose note it is.
-    hovered: Option<(groove_types::NoteOrigin, crate::hit::NoteButton)>,
     /// The row of the view the first of `rows` is.
     first: usize,
     /// Whether this side draws the notes; the old side of a split keeps their rows blank.
@@ -183,13 +180,7 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
                 },
             ),
             Slot::Acts { at } => match app.delivery.shown.get(*at) {
-                Some(note) => {
-                    let acting = acting_of(app, note);
-                    Line::acting(Acting {
-                        hovered: on_it(held.hovered.as_ref(), &acting.origin),
-                        ..acting
-                    })
-                }
+                Some(note) => Line::acting(acting_of(app, note)),
                 None => Line::new(""),
             },
             Slot::Typed { row } => Line::note(
@@ -206,24 +197,6 @@ fn lines_of<'a>(ctx: &mut Ctx, app: &AppState, held: Held<'a>) -> Vec<Line<'a>> 
         .collect()
 }
 
-/// The note button under the pointer, and whose note it belongs to.
-fn hovered(ctx: &Ctx) -> Option<(groove_types::NoteOrigin, crate::hit::NoteButton)> {
-    match ctx.hover() {
-        Some(crate::hit::Target::Note(id, button)) => Some((id.clone(), *button)),
-        _ => None,
-    }
-}
-
-/// The button of this note the pointer stands on.
-fn on_it(
-    hovered: Option<&(groove_types::NoteOrigin, crate::hit::NoteButton)>,
-    origin: &groove_types::NoteOrigin,
-) -> Option<crate::hit::NoteButton> {
-    hovered
-        .filter(|(whose, _)| whose == origin)
-        .map(|(_, button)| *button)
-}
-
 /// What a note's own row of buttons acts on.
 fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
     Acting {
@@ -234,15 +207,11 @@ fn acting_of(app: &AppState, note: &groove_types::Note) -> Acting {
             .session
             .selected_worktree()
             .is_some_and(|worktree| app.delivery.has_mr(&worktree.id)),
-        hovered: None,
     }
 }
 
-/// One row as the code widget takes it: a band, a head, a gap, or a line of text.
+/// One row as the code widget takes it: a head, a gap, or a line of text.
 fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> {
-    if row.band {
-        return Line::band(&row.text);
-    }
     if row.head {
         return Line::head(&row.text).folded(row.folded).read(row.read);
     }

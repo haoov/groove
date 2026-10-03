@@ -18,6 +18,16 @@ pub fn folder<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: R
 /// The caret of what folds: down while open, right while shut, from the left of `room`.
 pub fn fold<A: App>(ctx: &mut Ctx<'_, A>, room: &mut Rect, open: bool, role: Role) -> Rect {
     let size = ctx.tokens.small;
+    caret(ctx, room, (open, size), role)
+}
+
+/// A fold caret of `size`.
+pub fn caret<A: App>(
+    ctx: &mut Ctx<'_, A>,
+    room: &mut Rect,
+    (open, size): (bool, f32),
+    role: Role,
+) -> Rect {
     let box_ = square(room.take_left(size), size);
     room.take_left(ctx.tokens.xs);
     let turn = if open { 0 } else { Mark::RIGHTWARDS };

@@ -117,8 +117,7 @@ pub fn row<A: App>(
     link: &dyn Fn(&str) -> A::Target,
 ) {
     let step = ctx.tokens.lg;
-    let quote = if one.quoted { ctx.tokens.md } else { 0.0 };
-    let mut x = rect.x + quote + step * one.depth as f32;
+    let mut x = rect.x + super::draw::indent(ctx, one.quoted, one.depth);
     if one.code {
         ctx.quad(
             Rect::new(x, rect.y, rect.right() - x, rect.h),
@@ -127,8 +126,7 @@ pub fn row<A: App>(
         x += ctx.tokens.sm;
     }
     if one.quoted {
-        let edge = Rect::new(rect.x, rect.y, ctx.tokens.hairline * 2.0, rect.h);
-        ctx.quad(edge, ctx.styles.color(Role::Ghost));
+        super::draw::quote_edge(ctx, rect);
     }
     if let Some(bullet) = one.mark {
         marked(ctx, rect, x - step, bullet);

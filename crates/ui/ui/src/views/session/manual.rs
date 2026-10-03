@@ -20,11 +20,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
         return;
     }
     ctx.quad(rect, ctx.styles.band());
-    let rule = Rect {
-        h: ctx.tokens.hairline,
-        ..rect
-    };
-    ctx.quad(rule, ctx.styles.line());
+    groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line());
     let shells = app.shell.shells(session);
     let mut body = rect;
     bar(ctx, body.take_top(ctx.tokens.bar), ui, shells);

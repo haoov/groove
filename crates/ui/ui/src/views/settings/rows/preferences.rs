@@ -29,17 +29,12 @@ where
         + std::fmt::Display,
 {
     let less = (at >= least + step).then(|| set(at - step));
-    Row {
-        section: Section::Preferences,
-        group: "",
-        label: label.into(),
-        words,
-        value: Value::Count {
-            shown: format!("{at} {unit}"),
-            less,
-            more: set(at + step),
-        },
-    }
+    let value = Value::Count {
+        shown: format!("{at} {unit}"),
+        less,
+        more: set(at + step),
+    };
+    Row::new(Section::Preferences, label, words, value)
 }
 
 fn thresholds(held: &Preferences) -> Vec<Row> {

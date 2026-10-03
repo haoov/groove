@@ -57,8 +57,7 @@ fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
 
 /// The rule that separates this column from the one before it.
 fn edge(ctx: &mut Ctx, area: Rect) {
-    let (rule, thickness) = (ctx.styles.line(), ctx.tokens.hairline);
-    ctx.quad(Rect::new(area.x, area.y, thickness, area.h), rule);
+    groove_ui_kit::shape::side_rule(ctx, area, area.x, ctx.styles.line());
 }
 
 /// The lines a column has room for, scrolled and clipped to it.

@@ -21,8 +21,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     let line = ctx.app.layout.agent_bar;
     ctx.quad(line, ctx.styles.band());
     let (thick, rule) = (ctx.tokens.hairline, ctx.styles.line());
-    ctx.quad(Rect::new(line.x, line.y, line.w, thick), rule);
-    ctx.quad(Rect::new(line.right() - thick, line.y, thick, line.h), rule);
+    groove_ui_kit::shape::top_rule(ctx, line, rule);
+    groove_ui_kit::shape::side_rule(ctx, line, line.right() - thick, rule);
     offered(ctx, line, app, open);
 }
 

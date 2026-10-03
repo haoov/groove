@@ -8,7 +8,7 @@ use super::*;
 use crate::hit::Target;
 use crate::views::settings::Section;
 use crate::views::settings::rows::Slot;
-use crate::{layout_commands, view};
+use crate::{frame_commands, view};
 
 fn property(name: &str, kind: Kind, options: &[&str]) -> Property {
     Property {
@@ -54,12 +54,12 @@ fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
 fn a_source_shown_unread_is_read_once() {
     let (mut app, ui) = mapped();
     app.config.schemas.clear();
-    let asked = layout_commands(&app, &ui, window());
+    let asked = frame_commands(&app, &ui, window());
     let read = Command::Config(config::Command::ReadSchema(ProviderId::Notion));
     assert!(asked.contains(&read), "{asked:?}");
     app.config.reading.push(ProviderId::Notion);
     assert!(
-        !layout_commands(&app, &ui, window()).contains(&read),
+        !frame_commands(&app, &ui, window()).contains(&read),
         "not while it is read"
     );
 }

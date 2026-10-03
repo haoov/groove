@@ -9,9 +9,6 @@ use crate::palette::Palette;
 use crate::views::session::Tab;
 use crate::{Focus, Overlay, Surface, Ui};
 
-/// What a new terminal starts at, until the next frame fits it to its pane.
-const GRID: (u16, u16) = (80, 24);
-
 pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     let selected = app.session.selected.clone();
     match action {
@@ -27,8 +24,8 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
             let close = selected.map(|session| session::Command::Close { session });
             return close.map(Command::Session).into_iter().collect();
         }
-        Action::NextSession => return in_rail(Key::Down, app),
-        Action::PreviousSession => return in_rail(Key::Up, app),
+        Action::NextSession => return in_rail(Key::Down, ui, app),
+        Action::PreviousSession => return in_rail(Key::Up, ui, app),
         Action::FocusLeft | Action::FocusRight => {
             ui.focus = ui.focus.beside(action == Action::FocusRight);
         }
@@ -81,7 +78,7 @@ fn new_terminal(ui: &mut Ui, selected: Option<groove_types::SessionId>) -> Vec<C
     };
     ui.session.manual = true;
     ui.focus = Focus::Terminal;
-    let (cols, rows) = GRID;
+    let (cols, rows) = groove_controllers::session::FIRST_SIZE;
     vec![Command::Shell(shell::Command::Open {
         session,
         cols,

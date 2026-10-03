@@ -45,9 +45,20 @@ fn ground<A: App>(ctx: &mut Ctx<'_, A>, row: Rect, line: &Line) {
         Ground::Plain => {}
     }
     if line.quoted {
-        let edge = Rect::new(row.x, row.y, hairline * 2.0, row.h);
-        ctx.quad(edge, ctx.styles.color(Role::Ghost));
+        quote_edge(ctx, row);
     }
+}
+
+/// How far text stands in at this depth, past a quote's edge when it is quoted.
+pub(super) fn indent<A: App>(ctx: &Ctx<'_, A>, quoted: bool, depth: usize) -> f32 {
+    let quote = if quoted { ctx.tokens.md } else { 0.0 };
+    quote + ctx.tokens.lg * depth as f32
+}
+
+/// The rule down the left of a quoted row.
+pub(super) fn quote_edge<A: App>(ctx: &mut Ctx<'_, A>, row: Rect) {
+    let edge = Rect::new(row.x, row.y, ctx.tokens.hairline * 2.0, row.h);
+    ctx.quad(edge, ctx.styles.color(Role::Ghost));
 }
 
 pub(super) fn marked<A: App>(ctx: &mut Ctx<'_, A>, row: Rect, x: f32, bullet: Bullet) {

@@ -2,6 +2,7 @@
 
 mod agent;
 mod appearance;
+mod drafting;
 mod keymap;
 mod mapping;
 mod preferences;
@@ -126,6 +127,22 @@ pub struct Row {
 }
 
 impl Row {
+    /// One row in `section` under no heading of its own; `grouped` gives it one.
+    pub fn new(
+        section: Section,
+        label: impl Into<std::borrow::Cow<'static, str>>,
+        words: &'static str,
+        value: Value,
+    ) -> Self {
+        Self {
+            section,
+            group: "",
+            label: label.into(),
+            words,
+            value,
+        }
+    }
+
     /// Whether every word of the query is in its section, group, label or words.
     pub fn matches(&self, query: &str) -> bool {
         let (section, group) = (self.section.label(), self.group);
@@ -159,11 +176,5 @@ pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
 
 fn text(section: Section, label: &'static str, words: &'static str, text: String) -> Row {
     let value = Value::Text { text, mono: false };
-    Row {
-        section,
-        group: "",
-        label: label.into(),
-        words,
-        value,
-    }
+    Row::new(section, label, words, value)
 }

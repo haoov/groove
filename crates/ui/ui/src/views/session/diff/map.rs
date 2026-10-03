@@ -65,11 +65,7 @@ fn whole(ctx: &mut Ctx, rect: Rect, per: f32, app: &AppState, inline: &Inline) {
     };
     let mut runs: Vec<(usize, usize, LineMark)> = Vec::new();
     for (line, mark) in &open.hunked.marks {
-        let at = *line as usize;
-        match runs.last_mut() {
-            Some(last) if last.0 + last.1 == at && last.2 == *mark => last.1 += 1,
-            _ => runs.push((at, 1, *mark)),
-        }
+        joined(&mut runs, (*line as usize, 1, *mark));
     }
     for (at, run, mark) in runs {
         marked(ctx, rect, per, inline.shifted(at), run, mark);
@@ -119,12 +115,17 @@ fn runs(file: &Aligned) -> Vec<(usize, usize, LineMark)> {
             RowKind::Removed => LineMark::Removed,
             _ => continue,
         };
-        match runs.last_mut() {
-            Some(last) if last.0 + last.1 == at && last.2 == mark => last.1 += rows,
-            _ => runs.push((at, rows, mark)),
-        }
+        joined(&mut runs, (at, rows, mark));
     }
     runs
+}
+
+/// A run onto the last one when it carries on from it with the same mark, else after it.
+fn joined(runs: &mut Vec<(usize, usize, LineMark)>, (at, len, mark): (usize, usize, LineMark)) {
+    match runs.last_mut() {
+        Some(last) if last.0 + last.1 == at && last.2 == mark => last.1 += len,
+        _ => runs.push((at, len, mark)),
+    }
 }
 
 /// What the surface shows, outlined over the column.

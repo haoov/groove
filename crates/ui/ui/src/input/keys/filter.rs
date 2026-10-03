@@ -16,7 +16,9 @@ pub(super) fn on_board(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -
         return Vec::new();
     }
     let offers = complete::offers(app, ui.board.filter.text());
-    let shown = offers.len().min(complete::ROWS);
+    let shown = offers
+        .len()
+        .min(groove_ui_kit::base::tokens::SUGGESTED_ROWS);
     match key {
         Key::Escape => shut(ui),
         Key::Down => ui.board.offer = step(ui.board.offer, 1, shown),

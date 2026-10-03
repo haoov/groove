@@ -134,9 +134,14 @@ impl Fonts {
         buf.layout_runs().map(|run| run.line_w).fold(0.0, f32::max)
     }
 
+    /// One character's width of the mono font at `size`, as the text is drawn.
+    pub fn advance(&mut self, size: f32) -> f32 {
+        self.measure("M", Font::Mono, Weight::Regular, size)
+    }
+
     /// The cell of the mono font at `size`: its advance and 1.35 em, both rounded.
     pub fn cell_size(&mut self, size: f32) -> CellSize {
-        let advance = self.measure("M", Font::Mono, Weight::Regular, size);
+        let advance = self.advance(size);
         CellSize {
             width: advance.round().max(1.0),
             height: (size * 1.35).round().max(1.0),

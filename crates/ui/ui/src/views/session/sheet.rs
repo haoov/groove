@@ -22,8 +22,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     ctx.hit(area, Target::Sheet);
     let line = ctx.tokens.line;
     let mut body = area.pad(Edges::all(ctx.tokens.md));
-    let verb = groove_controllers::agent_service::tools::verb(&ask.op);
-    let asks = format!("asks to {verb}");
+    let asks = crate::views::rail::asks_to(&ask.op);
     Label::new(&asks, ctx.styles.strong(Role::Attention)).draw(ctx, body.take_top(line));
     let place = place(app, &ask);
     Label::new(&place, ctx.styles.small(Role::Muted)).draw(ctx, body.take_top(line));

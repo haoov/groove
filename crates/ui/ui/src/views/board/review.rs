@@ -10,9 +10,9 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, square};
+use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::ago;
-use groove_ui_kit::widgets::icon;
+use groove_ui_kit::widgets::lead;
 
 /// Every MR the filter lets through, newest first.
 pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
@@ -37,11 +37,9 @@ pub(super) fn item(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
     hoverable(ctx, line, Target::Review(mr.project.clone(), mr.iid));
     let mut rest = line;
     let first = rest.take_top(super::row::item(&ctx.tokens));
-    let size = ctx.tokens.icon;
+    let _size = ctx.tokens.icon;
     let mut room = first.pad(Edges::across(ctx.tokens.md, 0.0));
-    let mark = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    icon(ctx, mark, Mark::Review, role(mr));
+    lead(ctx, &mut room, Mark::Review, role(mr));
     let start = room.x;
     aside(ctx, &mut room, &ago(mr.updated_at.age_at(ctx.now)));
     named(ctx, room, &mr.title);

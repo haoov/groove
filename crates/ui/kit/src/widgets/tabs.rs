@@ -103,11 +103,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         } else {
             self.quiet
         };
-        let style = match self.text {
-            Text::Small => ctx.styles.small(role),
-            Text::Label => ctx.styles.label(role),
-            Text::Body => ctx.styles.body(role),
-        };
+        let style = self.text.style(&ctx.styles, role);
         ctx.styles.emphasised(style, false, self.italic)
     }
 

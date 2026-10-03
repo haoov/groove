@@ -11,13 +11,10 @@ use super::{Line, head_mark};
 use crate::ctx::Ctx;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{ruled, square};
+use groove_ui_kit::shape::ruled;
 use groove_ui_kit::text::{Label, row};
 
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, code: &Line<'_>, gutter: Block, across: f32) {
-    if code.band {
-        return band(ctx, line, code.text);
-    }
     if code.head {
         return head(ctx, line, code);
     }
@@ -140,7 +137,7 @@ fn holding(ctx: &mut Ctx, rect: Rect, text: &str, held: (usize, usize, bool)) {
     let start = upto(ctx, text, from, &style);
     let mut end = upto(ctx, text, to, &style);
     if through {
-        end += ctx.measure("M", &style);
+        end += ctx.advance;
     }
     let color = ctx.styles.held();
     ctx.quad(
@@ -194,13 +191,6 @@ fn banner(ctx: &mut Ctx, line: Rect, text: &str) {
     );
 }
 
-/// A row naming a directory: its own ground, its path faint at the margin.
-fn band(ctx: &mut Ctx, line: Rect, text: &str) {
-    let (ground, style) = (ctx.styles.band(), ctx.styles.small(Role::Faint));
-    ctx.quad(line, ground);
-    row(ctx, line, ctx.tokens.md, text, style);
-}
-
 /// A row naming a file: its own ground, a caret for its rows, its name.
 fn head(ctx: &mut Ctx, line: Rect, code: &Line<'_>) {
     let role = match code.read {
@@ -211,13 +201,7 @@ fn head(ctx: &mut Ctx, line: Rect, code: &Line<'_>) {
     ctx.quad(line, ground);
     let (xs, size) = (ctx.tokens.xs, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(xs, 0.0));
-    let caret = square(room.take_left(size), size);
-    room.take_left(xs);
-    let turn = match code.folded {
-        true => Mark::RIGHTWARDS,
-        false => 0,
-    };
-    ctx.icon(caret, Mark::Down, turn, ctx.styles.color(Role::Faint));
+    groove_ui_kit::widgets::caret(ctx, &mut room, (!code.folded, size), Role::Faint);
     row(ctx, room, 0.0, code.text, style);
     box_(ctx, head_mark(ctx, line), code.read);
 }

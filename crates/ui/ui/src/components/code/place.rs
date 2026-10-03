@@ -8,7 +8,6 @@ use super::Gutters;
 use super::gutter::Block;
 use crate::ctx::Ctx;
 use crate::hit::Chars;
-use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 
 /// The row at the top of a surface scrolled this far.
@@ -23,10 +22,9 @@ pub fn chars_of(
     rect: Rect,
     (scroll, across): (f32, f32),
 ) -> Chars {
-    let style = ctx.styles.code(Role::Text);
     Chars {
         left: Block::of(ctx, gutters).content(ctx, rect) - across,
-        advance: ctx.measure("M", &style),
+        advance: ctx.advance,
         scroll,
     }
 }
@@ -51,8 +49,7 @@ pub fn across_extent<'a>(
     rect: Rect,
     texts: impl Iterator<Item = &'a str>,
 ) -> f32 {
-    let style = ctx.styles.code(Role::Text);
-    let advance = ctx.measure("M", &style);
+    let advance = ctx.advance;
     let widest = texts.map(|text| text.chars().count()).max().unwrap_or(0);
     let room = rect.right() - Block::of(ctx, gutters).content(ctx, rect) - ctx.tokens.md;
     (widest as f32 * advance - room).max(0.0)

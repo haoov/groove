@@ -281,3 +281,10 @@ pub fn grid_in(rect: Rect, tokens: &Tokens, cell: CellSize) -> (u16, u16) {
     let rows = ((rect.h - pad) / cell.height).floor().max(1.0);
     (cols as u16, rows as u16)
 }
+
+/// The cell of a grid that starts at `origin` the point stands on.
+pub fn cell_at(origin: (f32, f32), cell: CellSize, point: (f32, f32)) -> (usize, usize) {
+    let col = ((point.0 - origin.0) / cell.width).floor().max(0.0) as usize;
+    let row = ((point.1 - origin.1) / cell.height).floor().max(0.0) as usize;
+    (col, row)
+}

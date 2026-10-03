@@ -76,7 +76,7 @@ fn where_of(note: &Note) -> String {
     let Some(anchor) = note.anchor.as_ref() else {
         return "on the mr".to_string();
     };
-    let name = anchor.path.rsplit('/').next().unwrap_or(&anchor.path);
+    let name = crate::views::name_of(&anchor.path);
     format!("{name} {}", anchor.start_line + 1)
 }
 

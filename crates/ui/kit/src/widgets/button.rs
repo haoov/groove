@@ -39,6 +39,17 @@ pub enum Text {
     Body,
 }
 
+impl Text {
+    /// The style this size draws in, in `role`.
+    pub fn style(self, styles: &crate::base::style::Styles, role: Role) -> TextStyle {
+        match self {
+            Text::Small => styles.small(role),
+            Text::Label => styles.label(role),
+            Text::Body => styles.body(role),
+        }
+    }
+}
+
 /// A word or a mark on a bordered ground that a click acts on, in `lit` under the pointer.
 pub struct Button<'a, T> {
     pub label: &'a str,
@@ -131,6 +142,12 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         self
     }
 
+    /// How wide it stands, its padding and its caret included.
+    pub fn width<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>) -> f32 {
+        let style = self.style(ctx);
+        self.content(ctx, &style) + ctx.tokens.sm * 2.0
+    }
+
     /// Stands at `x` in `line`; returns its box.
     pub fn at<A: App<Target = T>>(self, ctx: &mut Ctx<'_, A>, line: Rect, x: f32) -> Rect {
         self.draw(ctx, line, x)
@@ -167,11 +184,7 @@ impl<'a, T: Clone + PartialEq> Button<'a, T> {
         } else {
             self.role
         };
-        match self.text {
-            Text::Small => ctx.styles.small(role),
-            Text::Label => ctx.styles.label(role),
-            Text::Body => ctx.styles.body(role),
-        }
+        self.text.style(&ctx.styles, role)
     }
 
     fn content<A: App<Target = T>>(&self, ctx: &mut Ctx<'_, A>, style: &TextStyle) -> f32 {

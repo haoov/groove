@@ -4,6 +4,13 @@ use groove_gfx::{Align, Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
 
+/// A box of `size` with its top-left at `at`, moved back inside `within` where it would leave it.
+pub fn kept_in(at: (f32, f32), (width, height): (f32, f32), within: Rect) -> Rect {
+    let x = at.0.min(within.right() - width).max(within.x);
+    let y = at.1.min(within.bottom() - height).max(within.y);
+    Rect::new(x, y, width, height)
+}
+
 /// A square box of `size`, centred vertically in `row`, at `x`.
 pub fn box_in(row: Rect, x: f32, size: f32) -> Rect {
     Rect::new(x, row.y + (row.h - size) / 2.0, size, size)
@@ -22,6 +29,28 @@ pub fn leading<A: App>(ctx: &Ctx<'_, A>, row: Rect, x: f32) -> Rect {
 /// Where a row's text starts when a mark leads it at `indent`.
 pub fn after_mark<A: App>(ctx: &Ctx<'_, A>, indent: f32) -> f32 {
     indent + ctx.tokens.icon + ctx.tokens.sm
+}
+
+/// A hairline along the top edge of `rect`, inside it.
+pub fn top_rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    ctx.quad(
+        Rect::new(rect.x, rect.y, rect.w, ctx.tokens.hairline),
+        color,
+    );
+}
+
+/// A hairline just above `rect`, outside it.
+pub fn rule_above<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
+    let thickness = ctx.tokens.hairline;
+    ctx.quad(
+        Rect::new(rect.x, rect.y - thickness, rect.w, thickness),
+        color,
+    );
+}
+
+/// A hairline down `rect`'s height, its left side at `x`.
+pub fn side_rule<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, x: f32, color: Color) {
+    ctx.quad(Rect::new(x, rect.y, ctx.tokens.hairline, rect.h), color);
 }
 
 /// A hairline above `rect` and one below it.

@@ -113,10 +113,8 @@ fn reads_mouse(app: &AppState, session: &SessionId) -> bool {
 /// The cell of the agent's own grid the point stands on.
 fn cell(point: (f32, f32), ui: &Ui, metrics: Metrics) -> (usize, usize) {
     let tokens = metrics.tokens();
-    let (x, y) = Layout::of(metrics, ui).agent_origin(&tokens);
-    let col = ((point.0 - x) / metrics.cell.width).floor().max(0.0) as usize;
-    let row = ((point.1 - y) / metrics.cell.height).floor().max(0.0) as usize;
-    (col, row)
+    let origin = Layout::of(metrics, ui).agent_origin(&tokens);
+    crate::layout::cell_at(origin, metrics.cell, point)
 }
 
 /// What the agent can be sent, under the word that opened it.

@@ -17,9 +17,7 @@ pub fn panel_at<A: App>(
         Corner::BottomLeft => (at.0, at.1 - height),
         Corner::BottomRight => (at.0 - width, at.1 - height),
     };
-    let x = x.min(window.right() - width).max(window.x);
-    let y = y.min(window.bottom() - height).max(window.y);
-    let rect = Rect::new(x, y, width, height);
+    let rect = crate::shape::kept_in((x, y), (width, height), window);
     ctx.layer();
     ctx.quad(rect, ctx.styles.band());
     ctx.border(rect, border);

@@ -9,9 +9,9 @@ use crate::hit::{Picks, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hairline, square};
+use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::{Label, elide, row};
-use groove_ui_kit::widgets::{Button, Text, icon, picker};
+use groove_ui_kit::widgets::{Button, Text, lead, picker};
 
 /// The workspace's two first lines: what the session is, then what it points at.
 pub fn draw(ctx: &mut Ctx, app: &AppState) {
@@ -75,9 +75,12 @@ fn finishable(app: &AppState, open: &Open) -> bool {
 fn titled(ctx: &mut Ctx, line: Rect, open: &Open, page: Option<&str>) {
     let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = line.pad(Edges::across(md, md));
-    let mark = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    icon(ctx, mark, Mark::of_kind(&open.session.kind), Role::Faint);
+    lead(
+        ctx,
+        &mut room,
+        Mark::of_kind(&open.session.kind),
+        Role::Faint,
+    );
     let style = ctx.styles.title(Role::Text);
     let wide = match page {
         Some(_) => size + ctx.tokens.sm * 2.0 + ctx.tokens.sm,
@@ -156,11 +159,11 @@ fn refresh(ctx: &mut Ctx, line: Rect, app: &AppState) -> f32 {
         .x
 }
 
-/// What the two buttons add around their labels, and the gaps after each.
+/// What the two pickers add around their labels, and the gaps after each.
 fn around(ctx: &mut Ctx) -> f32 {
-    let style = ctx.styles.body(Role::Text);
-    let box_ = ctx.tokens.sm * 2.0 + ctx.tokens.xs + style.size;
-    (box_ + ctx.tokens.sm) * 2.0
+    let (band, hover) = (ctx.styles.band(), ctx.styles.hover());
+    let bare = picker("", Target::Picker(Picks::Repo), Role::Text, band, hover).width(ctx);
+    (bare + ctx.tokens.sm) * 2.0
 }
 
 /// The repo and the branch the pickers name, each as it stands or as what it lacks.

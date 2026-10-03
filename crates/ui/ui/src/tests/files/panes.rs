@@ -109,7 +109,7 @@ fn picking_the_notes_list_reads_the_notes() {
         .expect("the strip names the notes");
     click(strip, &mut ui, &app, &hits);
     assert_eq!(ui.session.pane, Pane::Notes);
-    let asked = crate::render::layout_commands(&app, &ui, window());
+    let asked = crate::render::frame_commands(&app, &ui, window());
     assert!(
         asked.iter().any(|one| matches!(
             one,
@@ -125,7 +125,7 @@ fn the_notes_are_read_once_a_session() {
     let mut ui = sidebar_ui();
     ui.session.pane = Pane::Notes;
     let asks = |app: &AppState, ui: &Ui| {
-        crate::render::layout_commands(app, ui, window())
+        crate::render::frame_commands(app, ui, window())
             .iter()
             .filter(|one| {
                 matches!(
@@ -294,7 +294,7 @@ fn a_session_s_notes_are_read_whichever_list_is_up() {
     let app = with_files(&["src/lib.rs"]);
     let ui = sidebar_ui();
     assert_ne!(ui.session.pane, Pane::Notes);
-    let asked = crate::render::layout_commands(&app, &ui, window());
+    let asked = crate::render::frame_commands(&app, &ui, window());
     assert!(
         asked.iter().any(|one| matches!(
             one,

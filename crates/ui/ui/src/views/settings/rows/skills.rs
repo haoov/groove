@@ -35,11 +35,5 @@ fn row(one: &Skill, settings: &SettingsUi) -> Row {
         deletes: one.editable,
         asking: one.editable && settings.deleting.as_deref() == Some(one.id.as_str()),
     };
-    Row {
-        section: Section::Agent,
-        group: "",
-        label: one.id.clone().into(),
-        words: "skill skills plugin",
-        value,
-    }
+    Row::new(Section::Agent, one.id.clone(), "skill skills plugin", value)
 }

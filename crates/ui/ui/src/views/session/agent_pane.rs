@@ -17,10 +17,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, focused: bool) {
     let (ground, line, hairline) = (ctx.styles.deep(), ctx.styles.line(), ctx.tokens.hairline);
     ctx.quad(pane, ground);
     ctx.hit(pane, Target::Agent);
-    ctx.quad(
-        Rect::new(pane.right() - hairline, pane.y, hairline, pane.h),
-        line,
-    );
+    groove_ui_kit::shape::side_rule(ctx, pane, pane.right() - hairline, line);
 
     let Some(agent) = app.agent.agent(&open.session.id) else {
         return note(ctx, "starting the agent…");

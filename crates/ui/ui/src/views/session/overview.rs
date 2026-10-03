@@ -29,7 +29,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     ctx.clipped(area, |ctx| {
         let placed = properties(ctx, app, open, &mut column);
         section(ctx, &mut column, "Repos and worktrees", placed);
-        repos(ctx, app, open, area, &mut column);
+        repos(ctx, app, open, &mut column);
         body(ctx, app, open, area, &mut column);
     });
     let height = column.y - top + ctx.tokens.md;
@@ -86,11 +86,6 @@ fn table(ctx: &mut Ctx, column: &mut Rect, held: &[(&str, &str)]) -> Rect {
     taken
 }
 
-/// Whether a scrolled line is inside the tab.
-fn seen(area: Rect, line: Rect) -> bool {
-    line.bottom() > area.y && line.y < area.bottom()
-}
-
 /// A section's name, under a rule when one stands above it.
 fn section(ctx: &mut Ctx, column: &mut Rect, title: &str, under: bool) {
     let pad = ctx.tokens.md;
@@ -109,7 +104,7 @@ fn section(ctx: &mut Ctx, column: &mut Rect, title: &str, under: bool) {
 }
 
 /// One block per repo: the repo, then its worktrees.
-fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Rect) {
+fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, column: &mut Rect) {
     let pad = ctx.tokens.md;
     if open.repos.is_empty() {
         let line = column.take_top(ctx.tokens.row).pad(Edges::across(pad, pad));
@@ -129,9 +124,7 @@ fn repos(ctx: &mut Ctx, app: &AppState, open: &Open, area: Rect, column: &mut Re
         list(ctx, column.take_top(ctx.tokens.row), &[head], None);
         for worktree in open.worktrees.iter().filter(|w| w.repo == repo.id) {
             let line = column.take_top(ctx.tokens.row);
-            if seen(area, line) {
-                ctx.hit(line, Target::Worktree(worktree.id.clone()));
-            }
+            ctx.hit(line, Target::Worktree(worktree.id.clone()));
             let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
             worktree_row::draw(ctx, line, worktree, Some(&delivery));
         }

@@ -105,21 +105,14 @@ fn in_message(key: Key, mods: Modifiers) -> Vec<Command> {
 
 /// Up and down open the file above or below in the list.
 fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if key == Key::Enter {
+        ui.focus = Focus::Workspace;
+        return Vec::new();
+    }
     let files = crate::views::session::changed(app);
-    let at = files
-        .iter()
-        .position(|file| Some(&file.path) == app.workspace.active().map(|o| &o.path));
-    let next = match (key, at) {
-        (Key::Up, Some(at)) => at.saturating_sub(1),
-        (Key::Down, Some(at)) => (at + 1).min(files.len().saturating_sub(1)),
-        (Key::Up | Key::Down, None) => 0,
-        (Key::Enter, _) => {
-            ui.focus = Focus::Workspace;
-            return Vec::new();
-        }
-        _ => return Vec::new(),
-    };
-    let Some(file) = files.get(next) else {
+    let active = app.workspace.active().map(|open| &open.path);
+    let at = files.iter().position(|file| Some(&file.path) == active);
+    let Some(file) = stepped(key, at, files.len()).and_then(|next| files.get(next)) else {
         return Vec::new();
     };
     vec![Command::Workspace(workspace::Command::OpenFile {
@@ -128,23 +121,27 @@ fn in_list(key: Key, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     })]
 }
 
-/// Up and down move along the opened sessions.
-pub(super) fn in_rail(key: Key, app: &AppState) -> Vec<Command> {
-    let at = app
-        .session
-        .open
+/// Up and down move along the sessions the rail shows.
+pub(super) fn in_rail(key: Key, ui: &Ui, app: &AppState) -> Vec<Command> {
+    let shown = crate::views::rail::shown(app, ui);
+    let selected = app.session.selected.as_ref();
+    let at = shown
         .iter()
-        .position(|open| Some(&open.session.id) == app.session.selected.as_ref());
-    let next = match (key, at) {
-        (Key::Up, Some(at)) => at.saturating_sub(1),
-        (Key::Down, Some(at)) => (at + 1).min(app.session.open.len().saturating_sub(1)),
-        (Key::Up | Key::Down, None) => 0,
-        _ => return Vec::new(),
-    };
-    let Some(open) = app.session.open.get(next) else {
+        .position(|open| Some(&open.session.id) == selected);
+    let Some(open) = stepped(key, at, shown.len()).and_then(|next| shown.get(next)) else {
         return Vec::new();
     };
     vec![Command::Session(session::Command::Select {
         session: open.session.id.clone(),
     })]
+}
+
+/// The row up or down from `at` in a list of `len`, the first one when none is held.
+fn stepped(key: Key, at: Option<usize>, len: usize) -> Option<usize> {
+    match (key, at) {
+        (Key::Up, Some(at)) => Some(at.saturating_sub(1)),
+        (Key::Down, Some(at)) => Some((at + 1).min(len.saturating_sub(1))),
+        (Key::Up | Key::Down, None) => Some(0),
+        _ => None,
+    }
 }

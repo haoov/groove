@@ -35,7 +35,9 @@ impl Name {
         }
     }
 
-    fn of(text: &str) -> Option<Self> {
+    /// The field a token names, whatever its case.
+    pub(super) fn of(text: &str) -> Option<Self> {
+        let text = text.to_lowercase();
         Self::ALL.into_iter().find(|name| name.as_str() == text)
     }
 }
@@ -110,7 +112,7 @@ fn of_task(name: Name, value: &str, task: &Task) -> bool {
 
 fn term(text: &str) -> Term {
     match text.split_once(':') {
-        Some((name, value)) => match Name::of(&name.to_lowercase()) {
+        Some((name, value)) => match Name::of(name) {
             Some(name) => Term::Field(name, value.to_string()),
             None => Term::Word(text.to_string()),
         },

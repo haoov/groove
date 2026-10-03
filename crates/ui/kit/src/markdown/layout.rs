@@ -71,9 +71,8 @@ fn gap<A: App>(ctx: &Ctx<'_, A>, before: Option<Kind>, now: Kind) -> f32 {
 
 /// How far a block's text stands in, and where its mark goes.
 fn indents<A: App>(ctx: &Ctx<'_, A>, block: &Block) -> (f32, Option<(f32, Bullet)>) {
-    let quote = if block.quoted { ctx.tokens.md } else { 0.0 };
     let step = ctx.tokens.lg;
-    let text = quote + step * block.depth as f32;
+    let text = super::draw::indent(ctx, block.quoted, block.depth);
     match block.kind {
         Kind::Item(bullet) => (text, Some((text - step, bullet))),
         _ => (text, None),

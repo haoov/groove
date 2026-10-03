@@ -5,7 +5,7 @@ use groove_types::ProviderId;
 use groove_ui_kit::base::style::Role;
 
 use super::super::SettingsUi;
-use super::super::draft::{Drafted, asks};
+use super::super::draft::Drafted;
 use super::{Row, Section, Value};
 use crate::hit::Target;
 
@@ -31,27 +31,7 @@ pub(super) fn switch(
         Role::Working,
         cancel,
     )];
-    let fields = asks(drafted).iter().zip(&draft.fields).enumerate();
-    out.extend(fields.map(|(at, (ask, field))| {
-        let focused = draft.at == Some(at);
-        let shown = match (focused, ask.secret, field.is_empty()) {
-            (true, true, _) => field.masked(),
-            (true, false, _) => field.shown(),
-            (false, _, true) => ask.hint.to_string(),
-            (false, true, false) => "•".repeat(field.text().chars().count()),
-            (false, false, false) => field.text().to_string(),
-        };
-        let target = Target::SettingsDraftField(at);
-        let value = Value::Input {
-            shown,
-            focused,
-            target,
-        };
-        Row {
-            value,
-            ..row(ask.label, ask.hint, String::new(), Role::Text, None)
-        }
-    }));
+    out.extend(super::drafting::fields(draft, Section::Providers));
     out.push(sent(app));
     out
 }
@@ -73,17 +53,8 @@ fn turned_on(settings: &SettingsUi, source: ProviderId) -> Row {
 
 /// What sends the fields, and what the last send came back with.
 fn sent(app: &AppState) -> Row {
-    let (shown, role) = match (&app.config.connecting, &app.config.refused) {
-        (Some(_), _) => ("connecting…".to_string(), Role::Working),
-        (None, Some(why)) => (why.clone(), Role::Bad),
-        (None, None) => (String::new(), Role::Muted),
-    };
-    let act = app
-        .config
-        .connecting
-        .is_none()
-        .then_some(("connect", Target::SettingsConnect));
-    row("", "connect", shown, role, act)
+    let busy = app.config.connecting.map(|_| "connecting…");
+    super::drafting::sending(Section::Providers, busy, app.config.refused.as_ref())
 }
 
 fn row(
@@ -93,11 +64,10 @@ fn row(
     role: Role,
     act: Option<(&'static str, Target)>,
 ) -> Row {
-    Row {
-        section: Section::Providers,
-        group: "",
-        label: label.into(),
+    Row::new(
+        Section::Providers,
+        label,
         words,
-        value: Value::State { shown, role, act },
-    }
+        Value::State { shown, role, act },
+    )
 }

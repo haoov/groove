@@ -5,7 +5,7 @@ use groove_types::SharedConfig;
 use groove_ui_kit::base::style::Role;
 
 use super::super::SettingsUi;
-use super::super::draft::{Drafted, asks};
+use super::super::draft::Drafted;
 use super::{Row, Section, Value, grouped};
 use crate::hit::Target;
 
@@ -68,38 +68,15 @@ fn unnamed(app: &AppState, settings: &SettingsUi) -> Vec<Row> {
     };
     let cancel = Some(("cancel", Target::SettingsDraftCancel));
     let mut out = vec![state("repo", "setting up".into(), Role::Working, cancel)];
-    let fields = asks(Drafted::Shared).iter().zip(&draft.fields).enumerate();
-    out.extend(fields.map(|(at, (ask, field))| {
-        let focused = draft.at == Some(at);
-        let shown = match (focused, field.is_empty()) {
-            (true, _) => field.shown(),
-            (false, true) => ask.hint.to_string(),
-            (false, false) => field.text().to_string(),
-        };
-        let target = Target::SettingsDraftField(at);
-        let value = Value::Input {
-            shown,
-            focused,
-            target,
-        };
-        Row {
-            value,
-            ..state(ask.label, String::new(), Role::Text, None)
-        }
-    }));
+    out.extend(super::drafting::fields(draft, Section::Agent));
     out.push(sent(app));
     out
 }
 
 /// What copies the repo, and what the last copy came back with.
 fn sent(app: &AppState) -> Row {
-    let (shown, role) = match (app.config.joining, &app.config.unshared) {
-        (true, _) => ("copying…".to_string(), Role::Working),
-        (false, Some(why)) => (why.clone(), Role::Bad),
-        (false, None) => (String::new(), Role::Muted),
-    };
-    let act = (!app.config.joining).then_some(("connect", Target::SettingsConnect));
-    state("", shown, role, act)
+    let busy = app.config.joining.then_some("copying…");
+    super::drafting::sending(Section::Agent, busy, app.config.unshared.as_ref())
 }
 
 fn text(label: &'static str, text: &str) -> Row {
@@ -119,11 +96,10 @@ fn state(
     role: Role,
     act: Option<(&'static str, Target)>,
 ) -> Row {
-    Row {
-        section: Section::Agent,
-        group: "",
-        label: label.into(),
-        words: "shared team repo skills plugin",
-        value: Value::State { shown, role, act },
-    }
+    Row::new(
+        Section::Agent,
+        label,
+        "shared team repo skills plugin",
+        Value::State { shown, role, act },
+    )
 }

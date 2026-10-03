@@ -68,10 +68,13 @@ impl Scroller {
             Scroller::Feed => 4,
             Scroller::Settings => 5,
             Scroller::Across => 6,
-            Scroller::Column(which) => 7 + which as usize,
+            Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
+
+/// The scrollers ahead of the board's columns.
+const OWN: usize = 7;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]
@@ -81,7 +84,7 @@ pub struct Hits {
     shown: std::ops::Range<usize>,
     wrap: usize,
     /// How far each column can scroll, one per `Scroller`.
-    extents: [f32; 10],
+    extents: [f32; OWN + crate::views::board::List::ALL.len()],
     chars: Chars,
 }
 
@@ -147,10 +150,6 @@ impl Hits {
             .rev()
             .find(|(rect, _)| rect.contains(x, y))
             .map(|(_, target)| target)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.regions.is_empty()
     }
 
     /// Where this target was drawn.

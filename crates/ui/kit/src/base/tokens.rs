@@ -2,6 +2,12 @@
 
 /// Unitless and non-pixel values, which no scale touches.
 pub const PALETTE_ROWS: usize = 8;
+/// How many suggestions the board's filter shows at once.
+pub const SUGGESTED_ROWS: usize = 6;
+/// The characters a note row holds before the frame has measured, the fewest, a reply's step in.
+pub const NOTE_COLS: usize = 80;
+pub const NOTE_COLS_FEWEST: usize = 20;
+pub const REPLY_STEP: usize = 2;
 pub const SPINNER_MS: u64 = 120;
 pub const SCRIM_ALPHA: u8 = 120;
 /// A diff row's ground, under its text.
@@ -116,19 +122,19 @@ pub struct Tokens {
 }
 
 /// The type scale and the bands that hold it, against the size they follow.
-const SMALL: f32 = 11.5 / 13.0;
-const TITLE: f32 = 16.0 / 13.0;
-const HEADING: f32 = 12.0 / 13.0;
-const H1: f32 = 20.0 / 13.0;
-const H2: f32 = 17.0 / 13.0;
-const H3: f32 = 14.5 / 13.0;
-const ICON: f32 = 16.0 / 13.0;
-const ROW: f32 = 26.0 / 13.0;
-const HEADER: f32 = 36.0 / 13.0;
-const LINE: f32 = 18.0 / 12.5;
-const FEED_ROW: f32 = 34.0 / 13.0;
-const BAR: f32 = 36.0 / 13.0;
-const FEED_AGE: f32 = 30.0 / 13.0;
+const SMALL: f32 = LOGICAL.small / LOGICAL.text;
+const TITLE: f32 = LOGICAL.title / LOGICAL.text;
+const HEADING: f32 = LOGICAL.heading / LOGICAL.text;
+const H1: f32 = LOGICAL.h1 / LOGICAL.text;
+const H2: f32 = LOGICAL.h2 / LOGICAL.text;
+const H3: f32 = LOGICAL.h3 / LOGICAL.text;
+const ICON: f32 = LOGICAL.icon / LOGICAL.text;
+const ROW: f32 = LOGICAL.row / LOGICAL.text;
+const HEADER: f32 = LOGICAL.header / LOGICAL.text;
+const LINE: f32 = LOGICAL.line / LOGICAL.code;
+const FEED_ROW: f32 = LOGICAL.feed_row / LOGICAL.text;
+const BAR: f32 = LOGICAL.bar / LOGICAL.text;
+const FEED_AGE: f32 = LOGICAL.feed_age / LOGICAL.text;
 
 /// The design's numbers, at scale 1.
 const LOGICAL: Tokens = Tokens {

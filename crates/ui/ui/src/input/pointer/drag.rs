@@ -52,7 +52,7 @@ pub(super) fn sidebar(ui: &Ui) -> bool {
     ui.session.sidebar()
 }
 
-/// The window's width in logical pixels.
+/// The window's size in logical pixels.
 pub(super) fn window_of(metrics: Metrics) -> (f32, f32) {
     let rect = metrics.size.rect();
     (logical(rect.w, metrics), logical(rect.h, metrics))

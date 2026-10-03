@@ -151,7 +151,7 @@ fn picking_the_files_tab_fills_the_tree_it_draws() {
     );
     assert_eq!(ui.session.tab, groove_ui::Tab::Files);
 
-    let asked = groove_ui::layout_commands(&state, &ui, window());
+    let asked = groove_ui::frame_commands(&state, &ui, window());
     assert!(
         asked.iter().any(|one| one.id() == "workspace.list_paths"),
         "the frame asks for the walk the tree needs: {:?}",
@@ -206,7 +206,7 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
     ui.session.tab = groove_ui::Tab::Files;
 
     assert!(
-        !groove_ui::layout_commands(&state, &ui, window())
+        !groove_ui::frame_commands(&state, &ui, window())
             .iter()
             .any(|one| one.id() == "workspace.list_paths"),
         "with no worktree there is nothing to walk, so nothing is asked"

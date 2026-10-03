@@ -14,10 +14,6 @@ pub(crate) struct Group<'a> {
     pub files: Vec<&'a FileDiff>,
 }
 
-fn name_of(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
-}
-
 pub(crate) fn listing<'a>(files: &[&'a FileDiff]) -> Listing<'a> {
     let root = common(files);
     let mut groups: Vec<Group<'a>> = Vec::new();
@@ -68,7 +64,7 @@ fn under(root: &str, path: &str) -> String {
 
 /// The name a file reads as, and its path; `mod.rs` and its like read as their directory.
 pub(crate) fn reads_as(path: &str) -> (String, String) {
-    let name = name_of(path);
+    let name = crate::views::name_of(path);
     let parts = segments(path);
     let plain = [
         "mod.rs", "lib.rs", "main.rs", "index.ts", "index.js", "mod.ts",

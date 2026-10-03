@@ -49,6 +49,8 @@ pub struct Ctx<'a, A: App> {
     pub cell: CellSize,
     /// The terminal font's size, scaled.
     pub terminal: f32,
+    /// One character's width of the code font.
+    pub advance: f32,
     pub tick: u64,
     pub now: Timestamp,
     pub app: A,
@@ -74,6 +76,7 @@ impl<'a, A: App> Ctx<'a, A> {
             window: metrics.size.rect(),
             cell: metrics.cell,
             terminal: metrics.terminal * metrics.scale,
+            advance: metrics.advance,
             tick: metrics.tick,
             now: metrics.now,
             app,

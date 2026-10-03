@@ -1,6 +1,8 @@
 mod feed;
 mod item;
 
+pub(crate) use item::asks_to;
+
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
@@ -11,9 +13,9 @@ use crate::offsets::listed;
 use crate::{Surface, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled, square};
+use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{fold, icon};
+use groove_ui_kit::widgets::{fold, lead};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -65,16 +67,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The board. It carries the attention count when it is not zero.
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    if ctx.hovered(&Target::Board) {
-        ctx.quad(rect, ctx.styles.hover());
-    }
-    ctx.hit(rect, Target::Board);
-    let (md, size) = (ctx.tokens.md, ctx.tokens.icon);
+    hoverable(ctx, rect, Target::Board);
+    let (md, _size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = rect.pad(Edges::across(md, md));
     asking(ctx, &mut room, app.task.attention.len());
-    let mark = square(room.take_left(size), size);
-    room.take_left(ctx.tokens.sm);
-    icon(ctx, mark, Mark::Board, Role::Faint);
+    lead(ctx, &mut room, Mark::Board, Role::Faint);
     Label::new("Board", ctx.styles.label(Role::Text)).draw(ctx, room);
     hairline(ctx, rect, ctx.styles.line());
     if ui.showing(app) == Surface::Board {
@@ -90,10 +87,24 @@ fn asking(ctx: &mut Ctx, room: &mut Rect, count: usize) {
     }
 }
 
+/// The open sessions, then the routines' own, each in the order opened.
+fn split(app: &AppState) -> (Vec<&Open>, Vec<&Open>) {
+    let routine = |open: &&Open| open.session.kind.routine().is_none();
+    app.session.open.iter().partition(routine)
+}
+
+/// The sessions the rail shows, in its order: the routines' only while their heading is open.
+pub(crate) fn shown<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Open> {
+    let (mut sessions, routines) = split(app);
+    if ui.rail.routines {
+        sessions.extend(routines);
+    }
+    sessions
+}
+
 /// One item per open session, the routines' under their own heading, scrolled and clipped to `area`.
 fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
-    let routine = |open: &&Open| open.session.kind.routine().is_some();
-    let (routines, sessions): (Vec<_>, Vec<_>) = app.session.open.iter().partition(routine);
+    let (sessions, routines) = split(app);
     let mut entries: Vec<Entry> = sessions.into_iter().map(Entry::Session).collect();
     if !routines.is_empty() {
         entries.push(Entry::Routines(routines.len()));
@@ -136,12 +147,7 @@ fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
 }
 
 fn footer(ctx: &mut Ctx, rect: Rect) {
-    let rule = ctx.styles.line();
-    hairline(
-        ctx,
-        Rect::new(rect.x, rect.y - rect.h, rect.w, rect.h),
-        rule,
-    );
+    groove_ui_kit::shape::rule_above(ctx, rect, ctx.styles.line());
     hoverable(ctx, rect, Target::SettingsOpen);
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;

@@ -11,10 +11,10 @@ use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow};
 use winit::window::{Window, WindowId};
 
-use super::{App, MIN_HEIGHT, MIN_WIDTH, size_of};
+use super::{App, MIN_HEIGHT, MIN_WIDTH, START_HEIGHT, START_WIDTH, size_of};
 use crate::Message;
 use crate::keys::input_of;
-use groove_controllers::Window as WindowEvent_;
+use groove_controllers::Window as WindowFocus;
 use groove_ui::input::Delta;
 
 impl ApplicationHandler<Message> for App {
@@ -22,7 +22,7 @@ impl ApplicationHandler<Message> for App {
         event_loop.set_control_flow(ControlFlow::Wait);
         let attributes = Window::default_attributes()
             .with_title("Groove")
-            .with_inner_size(winit::dpi::LogicalSize::new(1440.0, 900.0))
+            .with_inner_size(winit::dpi::LogicalSize::new(START_WIDTH, START_HEIGHT))
             .with_min_inner_size(winit::dpi::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT));
         let Ok(window) = event_loop.create_window(attributes) else {
             event_loop.exit();
@@ -89,9 +89,7 @@ impl ApplicationHandler<Message> for App {
                 event_loop.exit();
             }
             WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => self.redraw(),
-            WindowEvent::Focused(focused) => {
-                self.apply(Event::Window(WindowEvent_::Focus(focused)))
-            }
+            WindowEvent::Focused(focused) => self.apply(Event::Window(WindowFocus::Focus(focused))),
             WindowEvent::RedrawRequested => self.draw(),
             WindowEvent::ModifiersChanged(mods) => self.modifiers = mods.state(),
             WindowEvent::KeyboardInput {
@@ -195,6 +193,5 @@ fn delta_of(delta: MouseScrollDelta, shift: bool) -> Delta {
 /// How often the agents are refitted while a split is dragged.
 pub(super) const FIT_MS: u64 = 100;
 
-/// One frame of a turning mark, and how often an idle window redraws its clocks.
-pub(super) const FRAME_MS: u64 = 120;
+/// How often an idle window redraws its clocks.
 pub(super) const CLOCK_S: u64 = 15;

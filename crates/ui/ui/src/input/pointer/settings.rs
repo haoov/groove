@@ -34,7 +34,10 @@ pub(super) fn acted(
         Target::SettingsOpen => return Some(ui.open_settings()),
         Target::SettingsBack => return Some(ui.close_settings()),
         Target::SettingsCheck => config::Command::CheckEnvironment,
-        Target::SettingsLogin => config::Command::Login { cols: 80, rows: 24 },
+        Target::SettingsLogin => {
+            let (cols, rows) = groove_controllers::session::FIRST_SIZE;
+            config::Command::Login { cols, rows }
+        }
         Target::SettingsLoginEnd => config::Command::EndLogin,
         _ => {
             let picked = sourced(target, ui).or_else(|| skilled(target, ui));

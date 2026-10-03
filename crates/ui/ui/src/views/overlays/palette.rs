@@ -13,18 +13,18 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, input, list, modal, panel_at};
 
 /// Whether the panel offers a line to type in: the palette always, a picker once needed.
-fn asks(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
+fn has_input(palette: &Palette, prompt: &Option<crate::palette::Prompt>, rows: usize) -> bool {
     let free = prompt.as_ref().is_some_and(|prompt| prompt.free);
     palette.anchor.is_none() || free || rows > PALETTE_ROWS || !palette.query.is_empty()
 }
 
 /// How wide an anchored panel stands: its widest drawn row, at least a menu's width.
-fn wide(ctx: &mut Ctx, rows: &[(String, String)], asked: bool) -> f32 {
+fn width(ctx: &mut Ctx, rows: &[(String, String)], prompted: bool) -> f32 {
     let style = ctx.styles.label(Role::Text);
     let pad = ctx.tokens.md;
     let widest = rows
         .iter()
-        .map(|(group, label)| match asked {
+        .map(|(group, label)| match prompted {
             true => pad + ctx.measure(group, &style),
             false => ctx.tokens.aside_near + ctx.measure(label, &style),
         })
@@ -37,23 +37,23 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, palette: &Palette) {
     let prompt = palette.prompt(app);
     let rows = listed(app, palette, &prompt);
     let shown = rows.len().clamp(1, PALETTE_ROWS);
-    let asks = asks(palette, &prompt, rows.len());
-    let rows_high = ctx.tokens.row * (shown + usize::from(asks)) as f32;
-    let height = match asks {
+    let typed = has_input(palette, &prompt, rows.len());
+    let rows_high = ctx.tokens.row * (shown + usize::from(typed)) as f32;
+    let height = match typed {
         true => rows_high + ctx.tokens.sm,
         false => rows_high,
     };
     let edge = ctx.styles.border();
     let rect = match palette.anchor {
         Some(anchor) => {
-            let width = wide(ctx, &rows, prompt.is_some());
+            let width = width(ctx, &rows, prompt.is_some());
             panel_at(ctx, anchor.point(), anchor.corner, (width, height), edge)
         }
         None => modal(ctx, ctx.tokens.modal, height, ctx.tokens.modal_top, edge),
     };
     ctx.hit(rect, Target::Palette);
-    let under = match asks {
-        true => asked(ctx, rect, palette, &prompt),
+    let under = match typed {
+        true => input_line(ctx, rect, palette, &prompt),
         false => rect,
     };
     let body = inset(ctx, under, shown);
@@ -95,7 +95,7 @@ fn listed(
 }
 
 /// The line to type in, at the panel's top. Returns what is left under it.
-fn asked(
+fn input_line(
     ctx: &mut Ctx,
     rect: Rect,
     palette: &Palette,

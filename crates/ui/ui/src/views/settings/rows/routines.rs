@@ -85,11 +85,5 @@ fn said(routine: &Routine) -> String {
 }
 
 fn row(label: std::borrow::Cow<'static, str>, value: Value) -> Row {
-    Row {
-        section: Section::Agent,
-        group: "",
-        label,
-        words: "routine routines trigger run",
-        value,
-    }
+    Row::new(Section::Agent, label, "routine routines trigger run", value)
 }

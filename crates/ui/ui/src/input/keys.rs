@@ -97,7 +97,7 @@ fn in_pane(
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
         Focus::Workspace => in_file(key, mods, app, keymap),
         Focus::Sidebar => in_sidebar(key, mods, ui, app, keymap),
-        Focus::Rail => in_rail(key, app),
+        Focus::Rail => in_rail(key, ui, app),
     }
 }
 

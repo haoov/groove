@@ -88,7 +88,7 @@ fn walk<'a>(
         out.push(Row {
             depth,
             path: path.clone(),
-            name: name_of(path).to_string(),
+            name: crate::views::name_of(path).to_string(),
             dir: true,
             file: None,
         });
@@ -100,15 +100,11 @@ fn walk<'a>(
         out.push(Row {
             depth,
             path: path.clone(),
-            name: name_of(path).to_string(),
+            name: crate::views::name_of(path).to_string(),
             dir: false,
             file: changed.get(path.as_str()).copied(),
         });
     }
-}
-
-fn name_of(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
 }
 
 /// The tree drawn, scrolled and clipped to the list's own room.
@@ -174,7 +170,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     };
     ctx.quad(line, ctx.styles.raised());
     let style = ctx.styles.code(Role::Text);
-    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
+    let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let held = Rect::new(line.x, line.y, room + at, line.h);
     let text = naming.field.shown();
@@ -189,7 +185,7 @@ fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
     let open = ui.session.opened.contains(&held.path);
     folder(ctx, &mut room, open, Role::Faint);
     let style = ctx.styles.body(Role::Muted);
-    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
+    let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &held.name, &style, room);
     row(ctx, line, at, &text, style);
@@ -198,15 +194,12 @@ fn directory(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, ui: &Ui) {
 /// A file the diff says nothing about: its name, and nothing else.
 fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&String>) {
     let target = Target::File(held.path.clone());
-    if ctx.hovered(&target) {
-        ctx.quad(line, ctx.styles.hover());
-    }
+    groove_ui_kit::shape::hoverable(ctx, line, target);
     if open == Some(&held.path) {
         groove_ui_kit::shape::ruled(ctx, line, ctx.styles.chosen());
     }
-    ctx.hit(line, target);
     let style = ctx.styles.body(Role::Text);
-    let at = indent + ctx.tokens.icon + ctx.tokens.xs;
+    let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let text = elide(ctx, &held.name, &style, room);
     row(ctx, line, at, &text, style);

@@ -7,9 +7,10 @@ mod row;
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
+pub use self::gutter::Block;
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
 
-use self::gutter::{Block, rule};
+use self::gutter::rule;
 use self::row::draw;
 use crate::ctx::Ctx;
 
@@ -34,8 +35,6 @@ pub struct Acting {
     pub thread: bool,
     /// It can be posted.
     pub post: bool,
-    /// The one of them the pointer stands on.
-    pub hovered: Option<crate::hit::NoteButton>,
 }
 
 /// One row of code: what its gutters say, its text, and the colour over it.
@@ -50,8 +49,6 @@ pub struct Line<'a> {
     pub banner: bool,
     /// A row that names a file, at the head of its own rows.
     pub head: bool,
-    /// A row that names the directory the files under it share.
-    pub band: bool,
     /// A head row that hides its file's rows.
     pub folded: bool,
     /// A head row whose file has been read.
@@ -78,9 +75,9 @@ pub struct Line<'a> {
 }
 
 impl<'a> Line<'a> {
-    /// Whether the row carries gutters; a row that names a file or directory has none.
+    /// Whether the row carries gutters; a row that names a file has none.
     pub fn numbered(&self) -> bool {
-        !self.band && !self.head && !self.banner && self.said.is_none() && self.acting.is_none()
+        !self.head && !self.banner && self.said.is_none() && self.acting.is_none()
     }
 
     pub fn new(text: &'a str) -> Self {
@@ -92,7 +89,6 @@ impl<'a> Line<'a> {
             mark: None,
             banner: false,
             head: false,
-            band: false,
             folded: false,
             read: false,
             caret: None,
@@ -154,14 +150,6 @@ impl<'a> Line<'a> {
     pub fn read(mut self, read: bool) -> Self {
         self.read = read;
         self
-    }
-
-    /// The row a directory starts on.
-    pub fn band(text: &'a str) -> Self {
-        Self {
-            band: true,
-            ..Self::new(text)
-        }
     }
 
     pub fn gutters(mut self, gutters: &'a [&'a str]) -> Self {
@@ -256,6 +244,5 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
 /// Where a head row carries the mark that says its file is read.
 pub fn head_mark(ctx: &Ctx, line: Rect) -> Rect {
     let size = ctx.tokens.icon;
-    let x = line.right() - ctx.tokens.md - size;
-    Rect::new(x, line.y + (line.h - size) / 2.0, size, size)
+    groove_ui_kit::shape::box_in(line, line.right() - ctx.tokens.md - size, size)
 }

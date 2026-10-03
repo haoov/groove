@@ -9,8 +9,7 @@ use groove_ui_kit::text::{ago, row};
 
 /// How long a fact has stood.
 fn old(since: Timestamp, now: Timestamp) -> String {
-    let seconds = (now.seconds() - since.seconds()).max(0);
-    ago(std::time::Duration::from_secs(seconds as u64))
+    ago(since.age_at(now))
 }
 
 /// The reasons an item carries, as the line under its title.

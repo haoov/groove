@@ -75,22 +75,15 @@ fn field(label: &'static str, words: &'static str, text: &str) -> Row {
         text: text.to_string(),
         mono: true,
     };
-    Row {
-        section: Section::Providers,
-        group: "",
-        label: label.into(),
-        words,
-        value,
-    }
+    Row::new(Section::Providers, label, words, value)
 }
 
 fn state(label: &'static str, words: &'static str, shown: String, role: Role) -> Row {
     let act = None;
-    Row {
-        section: Section::Providers,
-        group: "",
-        label: label.into(),
+    Row::new(
+        Section::Providers,
+        label,
         words,
-        value: Value::State { shown, role, act },
-    }
+        Value::State { shown, role, act },
+    )
 }

@@ -22,7 +22,7 @@ pub fn draw(ctx: &mut Ctx, strip: Rect, app: &AppState, ui: &Ui) {
         .map(|one| one.all())
         .unwrap_or_default();
     if let Some(path) = losing(ui, open) {
-        let question = format!("close {} and lose its edits?", name(path));
+        let question = format!("close {} and lose its edits?", crate::views::name_of(path));
         return crate::views::session::files::asking(ctx, strip, &question);
     }
     if open.is_empty() {
@@ -52,7 +52,11 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, 
         true => Mark::Modified,
         false => Mark::Close,
     };
-    let tab = Tab::new(name(&open.path), Target::OpenTab(open.path.clone()), active);
+    let tab = Tab::new(
+        crate::views::name_of(&open.path),
+        Target::OpenTab(open.path.clone()),
+        active,
+    );
     let ground = ctx.styles.ground();
     tab.text(Text::Small)
         .italic(preview)
@@ -72,8 +76,4 @@ fn losing<'a>(ui: &Ui, open: &'a [Opened]) -> Option<&'a str> {
     open.iter()
         .map(|one| one.path.as_str())
         .find(|one| one == path)
-}
-
-fn name(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
 }

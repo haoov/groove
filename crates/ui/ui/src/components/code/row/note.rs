@@ -8,8 +8,9 @@ use crate::ctx::Ctx;
 use crate::hit::{NoteButton, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::box_in;
 use groove_ui_kit::text::{elide, row};
-use groove_ui_kit::widgets::slot_at;
+use groove_ui_kit::widgets::Button;
 
 /// One row of a note: its ground, its mark, its author, its words.
 pub(super) fn note(ctx: &mut Ctx, line: Rect, text: &str, said: Noted<'_>, gutter: Block) {
@@ -53,8 +54,7 @@ fn by(ctx: &mut Ctx, line: Rect, said: Noted<'_>) -> f32 {
 fn gutter_mark(ctx: &mut Ctx, line: Rect, gutter: Block, color: Color) {
     let size = ctx.tokens.small;
     let at = gutter.numbers_end(ctx, line) - size;
-    let box_ = Rect::new(at, line.y + (line.h - size) / 2.0, size, size);
-    ctx.icon(box_, Mark::Note, 0, color);
+    ctx.icon(box_in(line, at, size), Mark::Note, 0, color);
 }
 
 /// What a note offers, as buttons from the column its words start on.
@@ -85,19 +85,7 @@ fn offered(acting: &Acting) -> &'static [NoteButton] {
 fn acted(ctx: &mut Ctx, line: Rect, at: f32, button: NoteButton, acting: &Acting) -> f32 {
     let label = button.label(acting.resolved);
     let target = Target::Note(acting.origin.clone(), button);
-    let on_it = acting.hovered == Some(button);
-    let role = match on_it {
-        true => Role::Text,
-        false => Role::Muted,
-    };
-    let style = ctx.styles.small(role);
-    let width = ctx.measure(label, &style);
-    let ground = match on_it {
-        true => ctx.styles.action(),
-        false => ctx.styles.raised(),
-    };
-    let box_ = slot_at(ctx, line, at, width, Some(ground));
-    row(ctx, box_, ctx.tokens.sm, label, style);
-    ctx.hit(box_, target);
-    box_.right()
+    let (raised, action) = (ctx.styles.raised(), ctx.styles.action());
+    let pressed = Button::new(label, target, Role::Muted, raised).hover(action);
+    pressed.at(ctx, line, at).right()
 }

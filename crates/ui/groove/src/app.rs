@@ -2,7 +2,7 @@
 
 mod events;
 
-use self::events::{CLOCK_S, FIT_MS, FRAME_MS};
+use self::events::{CLOCK_S, FIT_MS};
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -86,13 +86,13 @@ impl App {
         }
     }
 
-    /// Fits every agent to the pane, then draws.
+    /// Readies what the frame needs, then draws.
     fn draw(&mut self) {
         let Some(metrics) = self.metrics() else {
             return;
         };
         self.ui.settle(&self.state);
-        self.fit_agents(metrics);
+        self.prepare(metrics);
         let Some(renderer) = &mut self.renderer else {
             return;
         };
@@ -136,7 +136,7 @@ impl App {
                 .iter()
                 .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving);
         if moving {
-            return Some(Duration::from_millis(FRAME_MS));
+            return Some(Duration::from_millis(groove_ui::SPINNER_MS));
         }
         let tick = self.started.elapsed().as_millis() as u64;
         if let Some(left) = groove_ui::input::resting(&self.ui, tick) {
@@ -147,14 +147,14 @@ impl App {
         waiting.then(|| Duration::from_secs(CLOCK_S))
     }
 
-    /// Every agent's grid to its pane, throttled while a split is dragged.
-    fn fit_agents(&mut self, metrics: Metrics) {
+    /// What the frame needs before it draws, throttled while a split is dragged.
+    fn prepare(&mut self, metrics: Metrics) {
         let waiting = self.fitted.elapsed() < Duration::from_millis(FIT_MS);
         if self.ui.dragging() && waiting {
             return;
         }
         self.fitted = Instant::now();
-        for command in groove_ui::layout_commands(&self.state, &self.ui, metrics) {
+        for command in groove_ui::frame_commands(&self.state, &self.ui, metrics) {
             dispatch(command, &mut self.state, &self.services, &self.spawner);
         }
     }
@@ -219,7 +219,7 @@ impl App {
             code,
             terminal,
             cell: fonts.cell_size(terminal * scale),
-            advance: fonts.cell_size(code * scale).width,
+            advance: fonts.advance(code * scale),
             tick: self.started.elapsed().as_millis() as u64,
             now: Timestamp::now(),
         })
@@ -269,6 +269,9 @@ impl App {
 /// The narrowest the window may be.
 pub(super) const MIN_WIDTH: f64 = 960.0;
 pub(super) const MIN_HEIGHT: f64 = 600.0;
+/// The size a new window opens at.
+pub(super) const START_WIDTH: f64 = 1440.0;
+pub(super) const START_HEIGHT: f64 = 900.0;
 
 pub(super) fn size_of(window: &Window) -> Size {
     let size = window.inner_size();

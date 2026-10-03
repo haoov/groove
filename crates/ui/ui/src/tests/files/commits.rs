@@ -79,7 +79,7 @@ fn picking_the_commits_list_reads_them() {
         .expect("the strip names them");
     click(strip, &mut ui, &app, &hits);
     assert_eq!(ui.session.pane, Pane::Commits);
-    let asked = crate::render::layout_commands(&app, &ui, window());
+    let asked = crate::render::frame_commands(&app, &ui, window());
     assert!(
         asked.iter().any(|one| matches!(
             one,

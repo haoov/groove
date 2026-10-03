@@ -27,13 +27,16 @@ pub fn menu<A: App>(
     target: impl Fn(usize) -> A::Target,
 ) {
     let (width, tall) = size(ctx, labels);
-    let x = at.0.min(within.right() - width).max(within.x);
-    let y = at.1.min(within.bottom() - tall).max(within.y);
-    let box_ = Rect::new(x, y, width, tall);
+    let box_ = crate::shape::kept_in(at, (width, tall), within);
     ctx.quad(box_, ctx.styles.band());
     ctx.border(box_, border);
     for (index, label) in labels.iter().enumerate() {
-        let line = Rect::new(x, y + ctx.tokens.row * index as f32, width, ctx.tokens.row);
+        let line = Rect::new(
+            box_.x,
+            box_.y + ctx.tokens.row * index as f32,
+            width,
+            ctx.tokens.row,
+        );
         if ctx.hovered(&target(index)) {
             ctx.quad(line, ctx.styles.hover());
         }

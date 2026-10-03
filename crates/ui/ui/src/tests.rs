@@ -156,7 +156,7 @@ fn metrics(w: u32, h: u32, scale: f32) -> Metrics {
             width: 8.0 * scale,
             height: 17.0 * scale,
         },
-        advance: 8.0 * scale,
+        advance: groove_gfx::Fonts::embedded().advance(design.code * scale),
         tick: 0,
         now: Timestamp::new(0),
     }

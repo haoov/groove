@@ -8,19 +8,26 @@ use groove_ui_kit::base::style::Role;
 
 /// The gutter block, measured once for the surface.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct Block {
+pub struct Block {
     cells: usize,
     pub(super) width: f32,
 }
 
 impl Block {
-    pub(super) fn of(ctx: &mut Ctx, gutters: Gutters) -> Self {
+    pub fn of(ctx: &mut Ctx, gutters: Gutters) -> Self {
         let numbers = ctx.styles.code(Role::Ghost);
         let widest = "0".repeat(gutters.digits);
         Self {
             cells: gutters.cells,
             width: ctx.measure(&widest, &numbers),
         }
+    }
+
+    /// The rect number cell `at` of a row in `line` stands in.
+    pub fn cell(&self, ctx: &Ctx, line: Rect, at: usize) -> Rect {
+        let small = ctx.tokens.sm;
+        let x = line.x + small + at as f32 * (self.width + small);
+        Rect::new(x, line.y, self.width, line.h)
     }
 
     /// Where the last number cell ends, which every number is right-aligned to.

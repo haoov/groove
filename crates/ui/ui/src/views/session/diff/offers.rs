@@ -84,9 +84,5 @@ fn ways(ctx: &mut Ctx, line: Rect, gutters: Gutters, view: Face, side: Side) -> 
 
 /// The rect one gutter cell of this row stands in.
 fn cell(ctx: &mut Ctx, line: Rect, gutters: Gutters, at: usize) -> Rect {
-    let small = ctx.tokens.sm;
-    let style = ctx.styles.code(Role::Ghost);
-    let width = ctx.measure(&"0".repeat(gutters.digits), &style);
-    let x = line.x + small + at as f32 * (width + small);
-    Rect::new(x, line.y, width, line.h)
+    crate::components::Block::of(ctx, gutters).cell(ctx, line, at)
 }
