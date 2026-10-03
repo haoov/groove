@@ -10,7 +10,7 @@ still to build; for the rest the `Command` enum is the truth.
 check through `exec::run`. The user writes `~/.config/groove/config.json`; the app writes
 the window's boundaries to `~/.local/share/groove/panes.json`. **Service `config`** holds
 the parsed config and the last check. The state database is
-`~/.local/share/groove/app.db`, so the legacy app's files stay untouched until parity.
+`~/.local/share/groove/app.db`, apart from the 0.x Tauri app's files.
 
 | Still to build | Does |
 |---|---|

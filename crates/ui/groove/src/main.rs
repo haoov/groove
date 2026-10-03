@@ -80,7 +80,7 @@ async fn services(
     })
 }
 
-/// `$HOME` and the XDG dirs under `groove`; the legacy app keeps `com.haoov.groove`.
+/// `$HOME` and the XDG dirs under `groove`; the 0.x Tauri app keeps `com.haoov.groove`.
 fn env() -> Env {
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
