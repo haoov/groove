@@ -11,7 +11,7 @@ pub enum Origin {
 #[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Approval {
     pub id: ApprovalId,
-    pub session: Option<SessionId>,
+    pub session: SessionId,
     pub op: String,
     pub payload: serde_json::Value,
     pub origin: Origin,

@@ -1,4 +1,4 @@
-//! The agent capability. One agent per open session: its terminal and its activity.
+//! The agent capability: each session's agent, the skills, the shared repo, the routines and their runs.
 
 pub(crate) mod launch;
 mod listed;
@@ -148,9 +148,8 @@ impl State {
     /// The write one id names, taken off the queue and off the row.
     pub fn resolved(&mut self, id: &ApprovalId) -> Option<(Approval, Reply)> {
         let taken = self.asks.resolve(id)?;
-        if let Some(session) = &taken.0.session {
-            self.told(session);
-        }
+        let session = taken.0.session.clone();
+        self.told(&session);
         Some(taken)
     }
 

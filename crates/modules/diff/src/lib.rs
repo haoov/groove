@@ -13,7 +13,8 @@ mod words;
 #[cfg(test)]
 mod tests;
 
-pub use alignment::{align, hunks};
+#[cfg(test)]
+pub(crate) use alignment::{align, hunks};
 pub use changes::{Aligned, At, Changes, aligned, changes};
 pub use commit::{at_commit, commits, opened_at};
 pub use groove_text::{Buffer, Document, column_of, display_of};

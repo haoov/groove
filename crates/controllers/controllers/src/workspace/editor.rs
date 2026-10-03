@@ -47,7 +47,7 @@ pub(super) fn derive(state: &mut AppState, spawner: &dyn Spawner, path: String) 
     }));
 }
 
-/// Writes the active buffer out. The watcher's read of our own write finds it clean.
+/// Writes the active buffer out.
 pub(super) fn save_file(state: &mut AppState, spawner: &dyn Spawner) {
     let Some(open) = state.workspace.active() else {
         return;

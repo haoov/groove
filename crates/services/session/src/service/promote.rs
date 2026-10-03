@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use groove_git::Git;
 use groove_sessions::Moved;
 use groove_types::{Error, Session, SessionId, Task, Timestamp, Worktree};
-use groove_worktree::naming::default_branch;
+use groove_worktree::naming::session_branch;
 
 use super::Service;
 use crate::task_session;
@@ -57,7 +57,7 @@ impl Service {
     ) -> Vec<Step> {
         let layout = self.pool.layout();
         let old = layout.session_dir(explorer.as_str());
-        let wanted = default_branch(session, Some(task.tag()));
+        let wanted = session_branch(session, Some(task.tag()));
         let mut taken: Vec<(String, String)> = Vec::new();
         worktrees
             .iter()

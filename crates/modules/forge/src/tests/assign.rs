@@ -21,7 +21,7 @@ async fn a_gitlab_mr_opened_is_assigned_to_its_author() {
     }});
     let (server, gitlab) = lab::gitlab(reply).await;
     let opened = gitlab
-        .open_new(&lab::repo(), proposed())
+        .create_mr(&lab::repo(), proposed())
         .await
         .expect("it is opened");
     gitlab
@@ -51,7 +51,7 @@ async fn a_github_pr_opened_is_assigned_to_the_viewer() {
     }});
     let (server, github) = hub::github(reply).await;
     let opened = github
-        .open_new(&hub::repo(), proposed())
+        .create_mr(&hub::repo(), proposed())
         .await
         .expect("it is opened");
     github.assign(&opened).await.expect("it is assigned");

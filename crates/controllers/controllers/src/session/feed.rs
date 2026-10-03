@@ -15,8 +15,11 @@ pub(crate) fn read(state: &AppState, services: &Services, spawner: &dyn Spawner)
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let read = service.feed(&sessions).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            state.session.feed = read;
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match read {
+                Ok(feed) => state.session.feed = feed,
+                Err(e) => state.failed(e),
+            },
+        ) as Continuation
     }));
 }

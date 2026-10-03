@@ -89,7 +89,7 @@ pub(super) fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
 async fn the_mr_of_a_branch_comes_back_with_its_fields() {
     let (_server, gitlab) = gitlab(by_branch(vec![mr("opened")])).await;
     let read = gitlab
-        .open_mr(&repo(), "fix/pipeline")
+        .find_mr(&repo(), "fix/pipeline")
         .await
         .expect("the query answers")
         .expect("one open mr");
@@ -106,7 +106,7 @@ async fn a_branch_with_no_open_mr_answers_nothing() {
     let (_server, gitlab) = gitlab(by_branch(vec![])).await;
     assert!(
         gitlab
-            .open_mr(&repo(), "fix/pipeline")
+            .find_mr(&repo(), "fix/pipeline")
             .await
             .unwrap()
             .is_none()
@@ -116,7 +116,7 @@ async fn a_branch_with_no_open_mr_answers_nothing() {
 #[tokio::test]
 async fn the_pipeline_on_its_head_is_the_ci_of_the_row() {
     let (_server, gitlab) = gitlab(by_branch(vec![mr("opened")])).await;
-    let read = gitlab.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = gitlab.find_mr(&repo(), "b").await.unwrap().unwrap();
     let ci = read.ci.expect("a pipeline");
     assert_eq!(ci.state, CiState::Failed);
     assert!(
@@ -138,14 +138,14 @@ async fn an_mr_with_no_pipeline_reports_no_ci() {
     let mut bare = mr("opened");
     bare["headPipeline"] = serde_json::Value::Null;
     let (_server, gitlab) = gitlab(by_branch(vec![bare])).await;
-    let read = gitlab.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = gitlab.find_mr(&repo(), "b").await.unwrap().unwrap();
     assert!(read.ci.is_none());
 }
 
 #[tokio::test]
 async fn a_reviewers_own_state_says_what_they_have_said() {
     let (_server, gitlab) = gitlab(by_branch(vec![mr("opened")])).await;
-    let read = gitlab.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = gitlab.find_mr(&repo(), "b").await.unwrap().unwrap();
     let said: Vec<(&str, ReviewState)> = read
         .details
         .reviewers
@@ -168,7 +168,7 @@ async fn a_reviewers_own_state_says_what_they_have_said() {
 #[tokio::test]
 async fn a_discussion_reads_as_a_thread_at_its_line() {
     let (_server, gitlab) = gitlab(by_branch(vec![mr("opened")])).await;
-    let read = gitlab.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = gitlab.find_mr(&repo(), "b").await.unwrap().unwrap();
     assert_eq!(read.threads.len(), 1);
     let note = &read.threads[0].notes[0];
     assert_eq!(note.author, "reviewer");
@@ -190,7 +190,7 @@ async fn what_a_mutation_refuses_is_the_writes_failure() {
     }});
     let (_server, gitlab) = gitlab(reply).await;
     let refused = gitlab
-        .open_new(
+        .create_mr(
             &repo(),
             crate::Proposed {
                 head: "fix/pipeline",
@@ -212,7 +212,7 @@ async fn an_mr_opened_answers_with_the_mr_itself() {
     }});
     let (server, gitlab) = gitlab(reply).await;
     let opened = gitlab
-        .open_new(
+        .create_mr(
             &repo(),
             crate::Proposed {
                 head: "fix/pipeline",
@@ -252,7 +252,7 @@ async fn closing_answers_with_the_mr_closed() {
         "mergeRequestUpdate": { "errors": [], "mergeRequest": mr("closed") }
     }});
     let (_server, gitlab) = gitlab(reply).await;
-    let shut = gitlab.shut_mr(&repo(), "7").await.expect("it is closed");
+    let shut = gitlab.close_mr(&repo(), "7").await.expect("it is closed");
     assert_eq!(shut.details.state, MrState::Closed);
 }
 

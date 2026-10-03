@@ -7,7 +7,7 @@ use crate::{Error, Posted, Proposed, Result, Snapshot, Verdict};
 
 impl Github {
     /// One merge request opened on the repo's default branch, or on the base given.
-    pub async fn open_new(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
+    pub async fn create_mr(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
         let (node, default) = self.repository(repo).await?;
         let base = mr.base.unwrap_or(&default);
         if base.is_empty() {
@@ -52,10 +52,10 @@ impl Github {
     }
 
     /// The MR closed, with nothing merged.
-    pub async fn shut_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
+    pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         let node = self.node_of(repo, number).await?;
         let at = serde_json::json!({ "mr": node });
-        let reply = self.api.ask(&query::shut(), at).await?;
+        let reply = self.api.ask(&query::close(), at).await?;
         let (_, me) = self.me().await?;
         self.written(&reply, "closePullRequest", &me)
     }

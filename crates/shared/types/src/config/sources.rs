@@ -90,7 +90,7 @@ impl NotionConfig {
     }
 }
 
-/// Everything of `NotionConfig` except the token.
+/// What `NotionConfig` shows: everything but the token, the assignee and the sprint status.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct NotionView {
     pub database_id: String,
@@ -145,7 +145,6 @@ impl GithubConfig {
     }
 }
 
-/// The provider's own name for each property Groove reads; an empty name is a gap.
 impl fmt::Debug for GithubConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GithubConfig")
@@ -178,6 +177,7 @@ impl From<GithubConfig> for GithubView {
     }
 }
 
+/// The provider's own name for each property Groove reads; an empty name is a gap.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PropertyNames {
     pub status: String,

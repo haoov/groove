@@ -17,10 +17,7 @@ pub(super) fn status(pr: &serde_json::Value) -> Option<CiStatus> {
     let rollup = &pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"];
     let checks: Vec<Check> = nodes(&rollup["contexts"]).iter().map(check).collect();
     let state = checks.iter().map(|one| one.state).reduce(CiState::worst)?;
-    let shown = checks
-        .iter()
-        .find(|one| one.state == state)
-        .or_else(|| checks.first())?;
+    let shown = checks.iter().find(|one| one.state == state)?;
     Some(CiStatus {
         state,
         url: match shown.url.is_empty() {

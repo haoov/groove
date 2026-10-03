@@ -55,7 +55,7 @@ impl Service {
         match Pool::resolve(wanted, &entries) {
             Ok(entry) => Ok(self.pool.register(entry).await?),
             Err(groove_worktree::Error::UnknownRepo(_)) if slug.is_ok() => {
-                Ok(self.pool.clone(name).await?)
+                Ok(self.pool.clone_repo(name).await?)
             }
             Err(e) => Err(e.into()),
         }

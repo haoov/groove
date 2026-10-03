@@ -7,7 +7,7 @@ use crate::{Error, Posted, Proposed, Result, Snapshot, Verdict};
 
 impl Gitlab {
     /// One MR opened from the worktree's branch into the base it names.
-    pub async fn open_new(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
+    pub async fn create_mr(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
         let base = match mr.base {
             Some(base) => base.to_string(),
             None => self.root_ref(repo).await?,
@@ -64,9 +64,9 @@ impl Gitlab {
     }
 
     /// The MR closed, with nothing merged.
-    pub async fn shut_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
+    pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         let at = serde_json::json!({ "path": path(repo), "iid": number });
-        let reply = self.api.ask(&query::shut(), at).await?;
+        let reply = self.api.ask(&query::close(), at).await?;
         self.written(&reply, "mergeRequestUpdate").await
     }
 

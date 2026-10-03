@@ -176,7 +176,7 @@ fn stored(services: &Services, spawner: &dyn Spawner) {
     }));
 }
 
-/// Reads the plan, then every source in a job; the continuations fill the slice.
+/// Reads the plan and every source, each in a job; the continuations fill the slice.
 pub fn load(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     stored(services, spawner);
     if state.task.reading {

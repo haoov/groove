@@ -17,12 +17,17 @@ pub fn refresh_status(state: &mut AppState, services: &Services, spawner: &dyn S
     let service = services.session.clone();
     spawner.spawn(Box::pin(async move {
         let status = service.status(&worktree).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let Ok(status) = status else { return };
-            if let Some(open) = state.session.get_mut(&session) {
-                open.told(&worktree.id, status);
-            }
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match status {
+                Ok(status) => {
+                    if let Some(open) = state.session.get_mut(&session) {
+                        open.told(&worktree.id, status);
+                    }
+                }
+                Err(e) if worktree.dir().is_dir() => state.failed(e),
+                Err(_) => {}
+            },
+        ) as Continuation
     }));
 }
 

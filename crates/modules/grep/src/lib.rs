@@ -9,8 +9,8 @@ use ignore::{WalkBuilder, WalkState};
 #[cfg(test)]
 mod tests;
 
-/// How many matches gather before they are reported.
-const BATCH: usize = 64;
+/// The most matches one file reports; past them the file is read no further.
+const PER_FILE_CAP: usize = 64;
 
 /// One line a search matched.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,7 +163,7 @@ fn matches(dir: &Path, entry: &ignore::DirEntry, needle: &str, under: &str) -> O
             text: text.to_string(),
             at,
         }));
-        if found.len() >= BATCH {
+        if found.len() >= PER_FILE_CAP {
             break;
         }
     }

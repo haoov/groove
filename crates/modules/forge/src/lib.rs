@@ -13,7 +13,7 @@ pub use gitlab::Gitlab;
 pub use groove_token::Token;
 use groove_types::{CiStatus, Forge, MrDetails, MrThread, Repo, ReviewMr, ReviewVerdict};
 
-/// Every forge Groove speaks to; a new one is a new arm the compiler asks for.
+/// Every forge Groove speaks to.
 pub enum Remote {
     Github(Github),
     Gitlab(Gitlab),
@@ -71,10 +71,10 @@ impl Remote {
     }
 
     /// The open MR this branch is the source of, when the forge has one.
-    pub async fn open_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
+    pub async fn find_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
         match self {
-            Remote::Github(github) => github.open_mr(repo, branch).await,
-            Remote::Gitlab(gitlab) => gitlab.open_mr(repo, branch).await,
+            Remote::Github(github) => github.find_mr(repo, branch).await,
+            Remote::Gitlab(gitlab) => gitlab.find_mr(repo, branch).await,
         }
     }
 
@@ -87,10 +87,10 @@ impl Remote {
     }
 
     /// A new MR, from the worktree's branch into the base it names.
-    pub async fn open_mr_for(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
+    pub async fn create_mr(&self, repo: &Repo, mr: Proposed<'_>) -> Result<Snapshot> {
         match self {
-            Remote::Github(github) => github.open_new(repo, mr).await,
-            Remote::Gitlab(gitlab) => gitlab.open_new(repo, mr).await,
+            Remote::Github(github) => github.create_mr(repo, mr).await,
+            Remote::Gitlab(gitlab) => gitlab.create_mr(repo, mr).await,
         }
     }
 
@@ -119,8 +119,8 @@ impl Remote {
     /// The MR closed, with nothing merged.
     pub async fn close_mr(&self, repo: &Repo, number: &str) -> Result<Snapshot> {
         match self {
-            Remote::Github(github) => github.shut_mr(repo, number).await,
-            Remote::Gitlab(gitlab) => gitlab.shut_mr(repo, number).await,
+            Remote::Github(github) => github.close_mr(repo, number).await,
+            Remote::Gitlab(gitlab) => gitlab.close_mr(repo, number).await,
         }
     }
 

@@ -94,7 +94,7 @@ pub fn edit() -> String {
 }
 
 /// The MR closed, with nothing merged.
-pub fn shut() -> String {
+pub fn close() -> String {
     format!(
         r"mutation($path: ID!, $iid: String!) {{
   mergeRequestUpdate(input: {{ projectPath: $path, iid: $iid, state: CLOSED }})

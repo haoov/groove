@@ -48,7 +48,7 @@ async fn only_an_explorer_goes_through_create_explorer() {
     };
     assert!(matches!(
         store.create_explorer(&task).await,
-        Err(Error::NotExplorer(_))
+        Err(Error::WrongKind { .. })
     ));
 }
 
@@ -179,7 +179,7 @@ async fn only_an_explorer_is_promoted_and_a_refusal_leaves_nothing_behind() {
     let refused = store
         .promote(&SessionId::new("nope"), &session, &task(), &[])
         .await;
-    assert!(matches!(refused, Err(Error::NotExplorer(_))));
+    assert!(matches!(refused, Err(Error::WrongKind { .. })));
     assert!(
         store.get(&session.id).await.unwrap().is_none(),
         "no row was left"

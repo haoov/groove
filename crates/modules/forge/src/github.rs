@@ -33,7 +33,7 @@ impl Github {
     }
 
     /// The open MR this branch is the source of, when the host has one.
-    pub async fn open_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
+    pub async fn find_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
         let at = serde_json::json!({
             "owner": owner(repo),
             "repo": repo.project,

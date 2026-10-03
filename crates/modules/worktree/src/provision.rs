@@ -3,7 +3,7 @@
 use groove_git::{Error as GitError, Git};
 use groove_types::{Repo, Session, Timestamp, Worktree, WorktreeSpec, names_session};
 
-use crate::naming::{default_branch, validate_branch_name};
+use crate::naming::{session_branch, validate_branch_name};
 use crate::{Error, Pool, Result};
 
 /// The worktree, and what happened on the way that the user should hear.
@@ -27,7 +27,7 @@ impl Pool {
         let branch = spec
             .branch
             .clone()
-            .unwrap_or_else(|| default_branch(session, tag));
+            .unwrap_or_else(|| session_branch(session, tag));
         validate_branch_name(&branch)?;
         let clone = Git::at(&repo.local_path);
         let mut notes = Vec::new();

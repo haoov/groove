@@ -40,7 +40,7 @@ fn turn(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     let cap = state.config.preferences().routine_cap as usize;
     for one in &state.agent.runs_due(cap, now) {
         run::send(state, spawner, one);
-        trail::ran(state, services, spawner, one);
+        trail::started(state, services, spawner, one);
     }
 }
 
@@ -122,5 +122,5 @@ pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
     let run = Run::new(&routine.id, session, None, "");
     let started = state.agent.runs.start_now(run, Timestamp::now());
     run::send(state, spawner, &started);
-    trail::ran(state, services, spawner, &started);
+    trail::started(state, services, spawner, &started);
 }

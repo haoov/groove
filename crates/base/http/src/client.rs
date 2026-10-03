@@ -62,14 +62,6 @@ impl Request {
         self
     }
 
-    pub fn method(&self) -> &Method {
-        &self.method
-    }
-
-    pub fn url(&self) -> &str {
-        &self.url
-    }
-
     /// Sends and returns the response whatever its status.
     pub async fn send(self) -> Result<Response> {
         let mut builder = self.client.inner.request(self.method.clone(), &self.url);

@@ -33,13 +33,13 @@ impl Write {
         }
     }
 
-    fn approved(approval: Approval, reply: Reply) -> Option<Self> {
-        Some(Self {
-            session: approval.session?,
+    fn approved(approval: Approval, reply: Reply) -> Self {
+        Self {
+            session: approval.session,
             tool: approval.op,
             arguments: approval.payload,
             reply,
-        })
+        }
     }
 
     pub(crate) fn text(&self, name: &str) -> Option<&str> {
@@ -87,10 +87,7 @@ pub fn allow(state: &mut AppState, services: &Services, spawner: &dyn Spawner, i
     let Some((approval, reply)) = state.agent.resolved(id) else {
         return;
     };
-    let Some(write) = Write::approved(approval, reply) else {
-        return;
-    };
-    run(state, services, spawner, write);
+    run(state, services, spawner, Write::approved(approval, reply));
 }
 
 /// The write the user refused, which its agent hears about.

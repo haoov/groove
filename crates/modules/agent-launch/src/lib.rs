@@ -106,7 +106,7 @@ pub fn claude_bin(home: &Path) -> String {
         .to_string()
 }
 
-/// No MCP idle timeout and a 24h cap: a gated write may wait on a human for hours.
+/// No MCP idle timeout, and a 24h cap on a tool call.
 fn env() -> Vec<(String, String)> {
     vec![
         ("CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT".into(), "0".into()),

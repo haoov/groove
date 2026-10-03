@@ -10,7 +10,7 @@ async fn a_github_thread_over_lines_reads_from_its_first_to_its_last() {
     let mut pr = github::pr();
     pr["reviewThreads"]["nodes"][0]["startLine"] = 10.into();
     let (_server, client) = github::github(github::by_branch(vec![pr])).await;
-    let read = client.open_mr(&github::repo(), "b").await.unwrap().unwrap();
+    let read = client.find_mr(&github::repo(), "b").await.unwrap().unwrap();
     let at = read.threads[0].notes[0]
         .position
         .clone()
@@ -31,7 +31,7 @@ async fn a_gitlab_discussion_over_lines_reads_its_range_from_rest() {
         .respond_with(ResponseTemplate::new(200).set_body_json(discussions))
         .mount(&server)
         .await;
-    let read = client.open_mr(&gitlab::repo(), "b").await.unwrap().unwrap();
+    let read = client.find_mr(&gitlab::repo(), "b").await.unwrap().unwrap();
     let at = read.threads[0].notes[0]
         .position
         .clone()
@@ -42,7 +42,7 @@ async fn a_gitlab_discussion_over_lines_reads_its_range_from_rest() {
 #[tokio::test]
 async fn a_gitlab_read_stands_when_its_discussions_do_not_answer() {
     let (_server, client) = gitlab::gitlab(gitlab::by_branch(vec![gitlab::mr("opened")])).await;
-    let read = client.open_mr(&gitlab::repo(), "b").await.unwrap().unwrap();
+    let read = client.find_mr(&gitlab::repo(), "b").await.unwrap().unwrap();
     let at = read.threads[0].notes[0]
         .position
         .clone()

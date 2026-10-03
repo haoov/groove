@@ -18,7 +18,7 @@ pub struct Touched {
 
 pub struct Buffer {
     doc: Document,
-    /// One per caret. Several carets edit at once; today there is one.
+    /// One per caret.
     carets: Vec<Selection>,
     history: History,
     dirty: bool,

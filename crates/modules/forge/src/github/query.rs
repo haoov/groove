@@ -96,7 +96,7 @@ pub fn edit() -> String {
 }
 
 /// The merge request closed, with nothing merged.
-pub fn shut() -> String {
+pub fn close() -> String {
     format!(
         r"mutation($mr: ID!) {{
   closePullRequest(input: {{ pullRequestId: $mr }}) {{ pullRequest {{ {FIELDS} }} }}

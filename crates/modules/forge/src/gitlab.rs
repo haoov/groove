@@ -34,7 +34,7 @@ impl Gitlab {
     }
 
     /// The open MR this branch is the source of, when the host has one.
-    pub async fn open_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
+    pub async fn find_mr(&self, repo: &Repo, branch: &str) -> Result<Option<Snapshot>> {
         let at = serde_json::json!({ "path": path(repo), "branch": branch });
         let reply = self.api.ask(&query::by_branch(), at).await?;
         let nodes = read::nodes(&reply["data"]["project"]["mergeRequests"]);
@@ -88,7 +88,6 @@ impl Gitlab {
     }
 }
 
-/// A path as one segment of a url: only the slash needs saying.
 /// One merge request's REST address.
 fn mr_url(host: &str, repo: &Repo, number: &str) -> String {
     let project = urlencoding(&path(repo));
@@ -96,6 +95,7 @@ fn mr_url(host: &str, repo: &Repo, number: &str) -> String {
     format!("{root}/api/v4/projects/{project}/merge_requests/{number}")
 }
 
+/// A path as one segment of a url: only the slash needs saying.
 fn urlencoding(path: &str) -> String {
     path.replace('/', "%2F")
 }

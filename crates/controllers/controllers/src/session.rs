@@ -43,8 +43,8 @@ fn reviewed(
     }
 }
 
-/// The grid an agent starts on; the pane resizes it on its first frame.
-pub(crate) const FIRST_SIZE: (u16, u16) = (80, 24);
+/// The grid a terminal starts on; its pane resizes it on its first frame.
+pub const FIRST_SIZE: (u16, u16) = (80, 24);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Command {
@@ -56,7 +56,7 @@ pub enum Command {
     OpenReview { project: String, iid: u64 },
     /// `session.rename_explorer`
     RenameExplorer { session: SessionId, title: String },
-    /// `session.delete`: end the agent, remove the worktrees and their branches, delete the row.
+    /// `session.delete`: the agent ended, the worktrees and branches removed with any work in them.
     Delete { session: SessionId },
     /// `session.delete_local`: the session and its worktrees gone from this machine.
     DeleteLocal { session: SessionId },

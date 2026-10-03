@@ -84,10 +84,6 @@ impl ThemeName {
             ThemeName::Mocha => "mocha",
         }
     }
-
-    pub fn is_dark(self) -> bool {
-        self != ThemeName::Latte
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]

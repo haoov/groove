@@ -56,7 +56,7 @@ impl Pool {
     }
 
     /// Clones `url` into its place in the pool and records it.
-    pub async fn clone(&self, url: &str) -> Result<Repo> {
+    pub async fn clone_repo(&self, url: &str) -> Result<Repo> {
         let remote = RemoteUrl::parse(url)?;
         let dest = self
             .layout

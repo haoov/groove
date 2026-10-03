@@ -6,15 +6,18 @@ pub enum Error {
     Sqlx(#[from] sqlx::Error),
     #[error("no {what} {id}")]
     NotFound { what: &'static str, id: String },
-    #[error("{0} is not an explorer")]
-    NotExplorer(SessionId),
+    #[error("{id} is not a {expected} session")]
+    WrongKind {
+        expected: &'static str,
+        id: SessionId,
+    },
 }
 
 impl From<Error> for groove_types::Error {
     fn from(e: Error) -> Self {
         let kind = match e {
             Error::NotFound { .. } => ErrorKind::NotFound,
-            Error::NotExplorer(_) => ErrorKind::Invalid,
+            Error::WrongKind { .. } => ErrorKind::Invalid,
             _ => ErrorKind::Db,
         };
         groove_types::Error::new(kind, e.to_string())

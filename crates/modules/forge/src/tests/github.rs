@@ -95,7 +95,7 @@ pub(super) fn by_branch(nodes: Vec<serde_json::Value>) -> serde_json::Value {
 async fn the_mr_of_a_branch_comes_back_with_its_fields() {
     let (_server, github) = github(by_branch(vec![pr()])).await;
     let read = github
-        .open_mr(&repo(), "fix/checks")
+        .find_mr(&repo(), "fix/checks")
         .await
         .expect("the query answers")
         .expect("one open mr");
@@ -112,7 +112,7 @@ async fn the_mr_of_a_branch_comes_back_with_its_fields() {
 async fn a_branch_with_no_open_mr_answers_nothing() {
     let (_server, github) = github(by_branch(vec![])).await;
     let read = github
-        .open_mr(&repo(), "fix/checks")
+        .find_mr(&repo(), "fix/checks")
         .await
         .expect("the query answers");
     assert!(read.is_none());
@@ -121,7 +121,7 @@ async fn a_branch_with_no_open_mr_answers_nothing() {
 #[tokio::test]
 async fn one_failed_check_makes_the_whole_run_failed() {
     let (_server, github) = github(by_branch(vec![pr()])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     let ci = read.ci.expect("the checks are reported");
     assert_eq!(ci.state, CiState::Failed);
     assert_eq!(
@@ -139,14 +139,14 @@ async fn an_mr_with_no_check_reports_no_ci() {
     let mut bare = pr();
     bare["commits"]["nodes"][0]["commit"]["statusCheckRollup"] = serde_json::Value::Null;
     let (_server, github) = github(by_branch(vec![bare])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     assert!(read.ci.is_none());
 }
 
 #[tokio::test]
 async fn the_verdicts_given_and_the_one_still_awaited_are_all_reviewers() {
     let (_server, github) = github(by_branch(vec![pr()])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     let states: Vec<(&str, ReviewState)> = read
         .details
         .reviewers
@@ -171,7 +171,7 @@ async fn the_verdicts_given_and_the_one_still_awaited_are_all_reviewers() {
 #[tokio::test]
 async fn the_viewer_is_told_apart_from_the_reviewer_who_approved() {
     let (_server, github) = github(by_branch(vec![pr()])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     let approval = read.details.approval.expect("an approval");
     assert!(approval.approved);
     assert_eq!(approval.approved_by, vec!["reviewer".to_string()]);
@@ -184,7 +184,7 @@ async fn the_viewer_is_told_apart_from_the_reviewer_who_approved() {
 #[tokio::test]
 async fn a_thread_keeps_its_line_and_a_comment_keeps_none() {
     let (_server, github) = github(by_branch(vec![pr()])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     assert_eq!(read.threads.len(), 2);
     let anchored = &read.threads[0];
     assert_eq!(anchored.id, "THREAD_1");
@@ -205,7 +205,7 @@ async fn a_note_on_the_old_side_is_anchored_nowhere() {
     let mut left = pr();
     left["reviewThreads"]["nodes"][0]["diffSide"] = serde_json::json!("LEFT");
     let (_server, github) = github(by_branch(vec![left])).await;
-    let read = github.open_mr(&repo(), "b").await.unwrap().unwrap();
+    let read = github.find_mr(&repo(), "b").await.unwrap().unwrap();
     assert!(read.threads[0].notes[0].position.is_none());
 }
 
@@ -242,7 +242,7 @@ async fn what_the_host_says_is_wrong_with_the_query_becomes_the_error() {
     let reply = serde_json::json!({ "errors": [{ "message": "Bad credentials" }] });
     let (_server, github) = github(reply).await;
     let refused = github
-        .open_mr(&repo(), "b")
+        .find_mr(&repo(), "b")
         .await
         .expect_err("the query is refused");
     assert!(refused.to_string().contains("Bad credentials"), "{refused}");

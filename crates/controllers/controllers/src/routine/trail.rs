@@ -6,7 +6,7 @@ use groove_types::{Action, TimelineKind};
 use crate::{AppState, Services, Spawner, Told};
 
 /// `fix-mr · CI failed on main`, on the session it runs on.
-pub(super) fn ran(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
+pub(super) fn started(state: &AppState, services: &Services, spawner: &dyn Spawner, run: &Run) {
     let by = match (run.about.is_empty(), run.trigger) {
         (false, _) => run.about.clone(),
         (true, by) => groove_agent_service::routines::started_by(by).to_string(),

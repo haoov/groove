@@ -21,11 +21,15 @@ pub(crate) fn start(pty: Pty) -> Result<Sender<Op>> {
     Ok(tx)
 }
 
+/// Until the first write or resize that fails: the channel then closes, and every send after it errs.
 fn run(mut pty: Pty, ops: Receiver<Op>) {
     while let Ok(op) = ops.recv() {
-        let _ = match op {
+        let done = match op {
             Op::Write(bytes) => pty.write(&bytes),
             Op::Resize { cols, rows } => pty.resize(rows, cols),
         };
+        if done.is_err() {
+            return;
+        }
     }
 }

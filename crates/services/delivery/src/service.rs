@@ -100,7 +100,7 @@ impl Service {
         let held = self.mrs.get(&worktree.id).await?;
         let read = match held.as_ref().filter(|mr| mr.state == MrState::Open) {
             Some(mr) => Some(remote.read_mr(repo, &mr.remote_id).await?),
-            None => remote.open_mr(repo, &worktree.branch).await?,
+            None => remote.find_mr(repo, &worktree.branch).await?,
         };
         let read = match (read, held) {
             (Some(read), _) => read,
@@ -127,7 +127,7 @@ impl Service {
             title: &text.title,
             body: &text.body,
         };
-        let read = remote.open_mr_for(repo, proposed).await?;
+        let read = remote.create_mr(repo, proposed).await?;
         let assigned = remote.assign(repo, &read).await;
         let mut delivered = self.kept(&remote, worktree, read).await?;
         delivered.unassigned = assigned.err().map(Error::from);

@@ -1,7 +1,7 @@
 use groove_types::{ExternalId, Session, SessionId, SessionKind, Timestamp};
 
 use crate::layout::worktree_leaf;
-use crate::naming::{default_branch, validate_branch_name};
+use crate::naming::{session_branch, validate_branch_name};
 
 fn session(kind: SessionKind, id: &str, title: &str) -> Session {
     Session {
@@ -25,26 +25,26 @@ fn task(id: &str, title: &str) -> Session {
 #[test]
 fn task_branches_follow_type_slug_id() {
     assert_eq!(
-        default_branch(&task("TASKS2-42", "Fix the diff parser crash"), None),
+        session_branch(&task("TASKS2-42", "Fix the diff parser crash"), None),
         "fix/fix-the-diff-parser-crash-tasks2-42"
     );
     assert_eq!(
-        default_branch(&task("TASKS2-43", "Add MR templates"), None),
+        session_branch(&task("TASKS2-43", "Add MR templates"), None),
         "feat/add-mr-templates-tasks2-43"
     );
     assert_eq!(
-        default_branch(&task("TASKS2-44", "!!!"), None),
+        session_branch(&task("TASKS2-44", "!!!"), None),
         "feat/tasks2-44"
     );
     assert_eq!(
-        default_branch(
+        session_branch(
             &task("gh-groove-42", "Fix the diff parser crash"),
             Some("42")
         ),
         "fix/fix-the-diff-parser-crash-42"
     );
     assert_eq!(
-        default_branch(&task("T-1", "Bump deps"), None),
+        session_branch(&task("T-1", "Bump deps"), None),
         "chore/bump-deps-t-1"
     );
 }
@@ -53,13 +53,13 @@ fn task_branches_follow_type_slug_id() {
 fn explorer_branches_are_named_after_the_explorer_whatever_its_title() {
     for title in ["Try sqlite vacuum", "Explorer", "!!!"] {
         let s = session(SessionKind::Explorer, "explorer-ab12cd34", title);
-        assert_eq!(default_branch(&s, None), "explorer/ab12cd34", "{title}");
+        assert_eq!(session_branch(&s, None), "explorer/ab12cd34", "{title}");
     }
 }
 
 #[test]
 fn slugs_are_bounded_and_never_cut_words() {
-    let branch = default_branch(
+    let branch = session_branch(
         &task(
             "TASKS2-1",
             "Implement the extraordinarily long specification document end to end",

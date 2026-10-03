@@ -1,16 +1,11 @@
 //! What a branch is against its remote and its base: ahead, behind, the fork point.
 
-use crate::parse::RemoteUrl;
 use crate::{Error, Git, Result};
 
 /// Where a branch forks from when nothing is pinned, in order.
 const BASE_CANDIDATES: [&str; 3] = ["origin/HEAD", "origin/main", "origin/master"];
 
 impl Git {
-    pub async fn version(&self) -> Result<String> {
-        self.line(&["--version"]).await
-    }
-
     /// Where git keeps this worktree's own HEAD and index.
     pub async fn git_dir(&self) -> Result<std::path::PathBuf> {
         let out = self.line(&["rev-parse", "--absolute-git-dir"]).await?;
@@ -24,11 +19,6 @@ impl Git {
     /// Whether the remote is configured, whatever its URL looks like.
     pub async fn has_remote(&self, remote: &str) -> Result<bool> {
         self.succeeds(&["remote", "get-url", remote]).await
-    }
-
-    pub async fn remote_url(&self, remote: &str) -> Result<RemoteUrl> {
-        let url = self.line(&["remote", "get-url", remote]).await?;
-        RemoteUrl::parse(&url)
     }
 
     pub async fn current_branch(&self) -> Result<String> {
@@ -49,7 +39,7 @@ impl Git {
     }
 
     /// `origin/<branch>`, when it exists and the branch tracks nothing else.
-    pub async fn remote_of(&self, branch: &str) -> Result<Option<String>> {
+    pub(crate) async fn remote_of(&self, branch: &str) -> Result<Option<String>> {
         let named = format!("origin/{branch}");
         if !self.ref_exists(&named).await? {
             return Ok(None);

@@ -34,7 +34,7 @@ impl Store {
         moved: &[Moved],
     ) -> Result<()> {
         let SessionKind::Task { external_id } = &session.kind else {
-            return Err(Error::NotExplorer(session.id.clone()));
+            return Err(wrong("task", &session.id));
         };
         self.remember(task).await?;
         let mut tx = self.db.pool().begin().await?;
@@ -84,6 +84,14 @@ async fn is_explorer(conn: &mut sqlx::SqliteConnection, id: &SessionId) -> Resul
     .await?;
     match kind.as_deref() {
         Some("explorer") => Ok(()),
-        _ => Err(Error::NotExplorer(id.clone())),
+        _ => Err(wrong("explorer", id)),
+    }
+}
+
+/// The refusal of a session that is not of the kind a write needs.
+pub(crate) fn wrong(expected: &'static str, id: &SessionId) -> Error {
+    Error::WrongKind {
+        expected,
+        id: id.clone(),
     }
 }

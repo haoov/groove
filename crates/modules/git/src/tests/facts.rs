@@ -17,25 +17,8 @@ async fn a_clone_knows_itself() {
     assert_eq!(git.current_branch().await.unwrap(), "main");
     assert!(git.ref_exists("origin/release/1.0").await.unwrap());
     assert!(!git.ref_exists("origin/nope").await.unwrap());
-    assert!(git.version().await.unwrap().starts_with("git version"));
     let base = git.merge_base("origin/main", "HEAD").await.unwrap();
     assert_eq!(base, sh(&fx.work, &["rev-parse", "origin/main"]));
-}
-
-#[tokio::test]
-async fn the_remote_url_is_a_pool_slug() {
-    let fx = Fixture::new();
-    sh(
-        &fx.work,
-        &[
-            "remote",
-            "set-url",
-            "origin",
-            "git@gitlab.example.com:wiremind/devops/groove.git",
-        ],
-    );
-    let url = fx.git().remote_url("origin").await.unwrap();
-    assert_eq!(url.slug(), "gitlab.example.com/wiremind/devops/groove");
 }
 
 #[tokio::test]

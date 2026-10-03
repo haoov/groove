@@ -1,5 +1,4 @@
 //! A watcher on one worktree, in batches, over the directories git keeps.
-//! A batch names what was seen: a file written into a new directory can beat its watch.
 
 mod batch;
 mod tree;

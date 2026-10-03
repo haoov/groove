@@ -37,14 +37,9 @@ fn a_file_loads_with_defaults_for_everything_it_leaves_out() {
     );
     assert_eq!(notion.priority_map.level("P1"), Some(crate::Priority::High));
     assert_eq!(notion.priority_map.level("P9"), None);
-    for (name, dark) in [
-        ("latte", false),
-        ("frappe", true),
-        ("macchiato", true),
-        ("mocha", true),
-    ] {
-        let theme: ThemeName = serde_json::from_str(&format!("\"{name}\"")).unwrap();
-        assert_eq!(theme.is_dark(), dark, "{name}");
+    for name in ["latte", "frappe", "macchiato", "mocha"] {
+        let read = serde_json::from_str::<ThemeName>(&format!("\"{name}\""));
+        assert!(read.is_ok(), "{name} reads as a theme");
     }
 }
 

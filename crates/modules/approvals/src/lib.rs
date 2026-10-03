@@ -24,7 +24,7 @@ impl<T> Queue<T> {
     pub fn queue(&mut self, new: New, held: T) -> Approval {
         let approval = Approval {
             id: ApprovalId::new(uuid::Uuid::new_v4().simple().to_string()),
-            session: Some(new.session),
+            session: new.session,
             op: new.op,
             payload: new.payload,
             origin: new.origin,
@@ -45,7 +45,7 @@ impl<T> Queue<T> {
     pub fn forget(&mut self, session: &SessionId) -> Vec<(Approval, T)> {
         let (theirs, rest) = std::mem::take(&mut self.waiting)
             .into_iter()
-            .partition(|(one, _)| one.session.as_ref() == Some(session));
+            .partition(|(one, _)| &one.session == session);
         self.waiting = rest;
         theirs
     }
@@ -54,7 +54,7 @@ impl<T> Queue<T> {
     pub fn asks(&self, session: &SessionId, ask: impl Fn(&Approval) -> Ask) -> Vec<Ask> {
         self.waiting
             .iter()
-            .filter(|(one, _)| one.session.as_ref() == Some(session))
+            .filter(|(one, _)| &one.session == session)
             .map(|(one, _)| ask(one))
             .collect()
     }

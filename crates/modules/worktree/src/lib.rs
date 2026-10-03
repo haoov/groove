@@ -21,7 +21,7 @@ pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
 
 /// The module's handle: the database and the root, cheap to clone into a job.
-#[derive(std::clone::Clone)]
+#[derive(Clone)]
 pub struct Pool {
     db: Db,
     layout: Layout,

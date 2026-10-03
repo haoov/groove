@@ -51,7 +51,7 @@ impl Store {
     /// Inserts an explorer. A task or review session is created by its own path.
     pub async fn create_explorer(&self, session: &Session) -> Result<()> {
         if !matches!(session.kind, SessionKind::Explorer) {
-            return Err(Error::NotExplorer(session.id.clone()));
+            return Err(promote::wrong("explorer", &session.id));
         }
         sqlx::query(
             "INSERT INTO sessions (id, kind, title, created_at) VALUES (?, 'explorer', ?, ?)",
@@ -67,7 +67,7 @@ impl Store {
     /// Inserts the session a standalone routine runs in, and names the routine beside it.
     pub async fn create_routine(&self, session: &Session) -> Result<()> {
         let SessionKind::Routine { routine } = &session.kind else {
-            return Err(Error::NotExplorer(session.id.clone()));
+            return Err(promote::wrong("routine", &session.id));
         };
         let mut tx = self.db.pool().begin().await?;
         sqlx::query(
@@ -90,7 +90,7 @@ impl Store {
     /// The session of a task, with the task it works on beside it.
     pub async fn create_task(&self, session: &Session, task: &Task) -> Result<()> {
         let SessionKind::Task { external_id } = &session.kind else {
-            return Err(Error::NotExplorer(session.id.clone()));
+            return Err(promote::wrong("task", &session.id));
         };
         self.remember(task).await?;
         sqlx::query(
@@ -109,7 +109,7 @@ impl Store {
     /// The session that reviews someone else's MR.
     pub async fn create_review(&self, session: &Session) -> Result<()> {
         let SessionKind::Review { project, iid } = &session.kind else {
-            return Err(Error::NotExplorer(session.id.clone()));
+            return Err(promote::wrong("review", &session.id));
         };
         sqlx::query(
             "INSERT INTO sessions (id, kind, title, review_project, review_iid, created_at)

@@ -18,7 +18,7 @@ pub struct Tools {
 }
 
 impl Loopback {
-    /// `--mcp-config` and `--settings`, both through files: they carry the token.
+    /// `--mcp-config` and `--settings`, both through files.
     pub(crate) fn args(&self, files: &LaunchDir) -> Result<Vec<String>> {
         let curl = files.write("hooks.curl", &self.curl_config())?;
         let mut args = Vec::new();
@@ -31,12 +31,12 @@ impl Loopback {
         Ok(args)
     }
 
-    /// The bearer header as a curl config file, never on a command line.
+    /// The bearer header as a curl config file.
     fn curl_config(&self) -> String {
         format!("header = \"authorization: Bearer {}\"\n", self.token)
     }
 
-    /// Every hook posts its payload; `-m 2 … || true` keeps a dead server from stalling the agent.
+    /// Every hook posts its payload, giving up after two seconds without failing.
     fn hook_settings(&self, curl_config: &str) -> String {
         let command = format!(
             "curl -s -m 2 -K '{curl_config}' -X POST -H 'content-type: application/json' --data-binary @- '{}' >/dev/null 2>&1 || true",

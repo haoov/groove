@@ -35,7 +35,7 @@ impl Layout {
     }
 }
 
-/// `<project>/<branch>`. Never flatten the slashes: `fix/parser` and `fix-parser` collide.
+/// `<project>/<branch>`, the branch's slashes kept as directories.
 pub fn worktree_leaf(project: &str, branch: &str) -> PathBuf {
     Path::new(project).join(branch)
 }

@@ -18,10 +18,6 @@ impl<T: TokenSource> Graphql<T> {
         })
     }
 
-    pub fn url(&self) -> &str {
-        &self.url
-    }
-
     /// The plain calls beside it, on the same pool and the same token.
     pub fn beside(&self) -> Rest<'_, T> {
         Rest::new(&self.client, &self.token)

@@ -61,7 +61,7 @@ async fn clone_puts_the_repo_in_its_place_and_refuses_a_second_time() {
     let dest = fx.root.path().join("main/github.com/owner/proj");
     let repo = fx
         .pool
-        .clone(&format!("file://{}", fx.origin.display()))
+        .clone_repo(&format!("file://{}", fx.origin.display()))
         .await;
     assert!(
         matches!(repo, Err(Error::Git(_))),
@@ -84,7 +84,7 @@ async fn clone_puts_the_repo_in_its_place_and_refuses_a_second_time() {
     );
     let err = fx
         .pool
-        .clone("git@github.com:owner/proj.git")
+        .clone_repo("git@github.com:owner/proj.git")
         .await
         .unwrap_err();
     assert!(matches!(err, Error::Exists { .. }), "{err}");

@@ -21,13 +21,13 @@ impl Service {
     }
 
     /// The feed of these sessions: their newest lines together, newest first.
-    pub async fn feed(&self, sessions: &[SessionId]) -> Vec<TimelineEvent> {
+    pub async fn feed(&self, sessions: &[SessionId]) -> Result<Vec<TimelineEvent>, Error> {
         let mut read = Vec::new();
         for session in sessions {
-            read.extend(self.lines(session, FEED_MAX).await.unwrap_or_default());
+            read.extend(self.lines(session, FEED_MAX).await?);
         }
         read.sort_by_key(|one| std::cmp::Reverse(one.at));
         read.truncate(FEED_MAX);
-        read
+        Ok(read)
     }
 }
