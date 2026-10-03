@@ -34,7 +34,7 @@ pub fn said(tool: &str, arguments: &Value) -> String {
         "save_user_skill" => joined(&said("name"), &said("body")),
         "add_task_repo" => joined(&said("repo"), &said("branch")),
         "add_task_worktree" => said("branch"),
-        "log_task_hours" => format!("{} h", arguments["hours"]),
+        "log_task_hours" => joined("the hours the clock measured", &said("task")),
         "adopt_task" => said("task"),
         "git_push" => joined(&said("branch"), &listed(&arguments["commits"])),
         _ => shown(arguments),

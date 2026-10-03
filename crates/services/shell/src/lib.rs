@@ -86,7 +86,8 @@ impl State {
     }
 
     fn shell_mut(&mut self, session: &SessionId, id: u64) -> Option<&mut Shell> {
-        let tabs = self.shells_mut(session).tabs.iter_mut();
+        let held = self.sessions.iter_mut().find(|(one, _)| one == session)?;
+        let tabs = held.1.tabs.iter_mut();
         tabs.flat_map(|tab| &mut tab.panes).find(|one| one.id == id)
     }
 

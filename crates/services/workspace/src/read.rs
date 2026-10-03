@@ -30,7 +30,7 @@ pub async fn base_rev(dir: &Path, base: Option<&str>) -> String {
 pub const HEAD: &str = "HEAD";
 
 /// Every changed file aligned, with no document held.
-pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Changes {
+pub async fn changes(dir: &Path, files: &[FileDiff], rev: &str) -> Result<Changes> {
     groove_diff::changes(dir, files, rev).await
 }
 

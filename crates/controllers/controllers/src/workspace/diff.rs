@@ -99,10 +99,9 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
     spawner.spawn(Box::pin(async move {
         let (dir, mode) = (&asked.dir, asked.mode);
         let rev = against(dir, mode, asked.base.as_deref()).await;
-        let files = files_in(dir, mode, &rev).await;
-        let read = match &files {
-            Ok(files) => changes(dir, files, &rev).await,
-            Err(_) => Default::default(),
+        let read = match files_in(dir, mode, &rev).await {
+            Ok(files) => changes(dir, &files, &rev).await.map(|read| (files, read)),
+            Err(e) => Err(e),
         };
         let gone = !dir.exists();
         Box::new(
@@ -114,8 +113,8 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
                 }
                 let again = ours && std::mem::take(&mut state.workspace.again);
                 if asked.holds(state) && state.workspace.reads == nth {
-                    match files {
-                        Ok(files) => loaded(state, spawner, asked.worktree, (files, read)),
+                    match read {
+                        Ok(read) => loaded(state, spawner, asked.worktree, read),
                         Err(_) if gone => {}
                         Err(e) => state.failed(e),
                     }

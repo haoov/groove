@@ -82,13 +82,14 @@ pub async fn summary_against(dir: &Path, rev: &str) -> Result<Vec<FileDiff>> {
     let git = Git::at(dir);
     let counts = git.numstat(rev).await?;
     let paths: Vec<String> = counts.iter().map(|one| one.path.clone()).collect();
-    let before = git.blobs(rev, &paths).await.unwrap_or_default();
-    let staged = staged_now(&git).await;
+    let before = git.blobs(rev, &paths).await?;
+    let now = git.status().await?;
+    let staged = staged_of(&now);
     let mut files: Vec<FileDiff> = counts
         .iter()
         .map(|one| against(one, dir, &before, &staged))
         .collect();
-    files.extend(untracked(&git, dir).await);
+    files.extend(untracked(&now, dir));
     files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(files)
 }
@@ -117,18 +118,15 @@ fn against(
 }
 
 /// What the index holds, for the files it holds anything of.
-async fn staged_now(git: &Git) -> std::collections::HashMap<String, bool> {
-    git.status()
-        .await
-        .unwrap_or_default()
+fn staged_of(changes: &[Change]) -> std::collections::HashMap<String, bool> {
+    changes
         .iter()
         .map(|change| (unquote_path(&change.path), change.is_staged()))
         .collect()
 }
 
 /// The files git does not track, which no rev can be compared against.
-async fn untracked(git: &Git, dir: &Path) -> Vec<FileDiff> {
-    let changes = git.status().await.unwrap_or_default();
+fn untracked(changes: &[Change], dir: &Path) -> Vec<FileDiff> {
     changes
         .iter()
         .filter(|change| change.is_untracked())

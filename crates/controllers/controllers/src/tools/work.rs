@@ -10,12 +10,12 @@ use crate::workspace::diff::{against, files_in};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// Every worktree of the task, and what changed in each, as the surface reads it.
+/// Every worktree of the task, and what its branch changed since its base.
 pub(super) fn diff(state: &AppState, spawner: &dyn Spawner, call: Call) {
     let Some(worktrees) = super::worktrees(state, &call) else {
         return call.reply.failed(super::NO_SESSION);
     };
-    let (mode, reply) = (state.workspace.mode, call.reply);
+    let (mode, reply) = (groove_types::DiffMode::Base, call.reply);
     spawner.spawn(Box::pin(async move {
         let mut out = Vec::new();
         for one in worktrees {

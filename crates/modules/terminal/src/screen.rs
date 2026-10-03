@@ -59,10 +59,15 @@ pub(crate) fn snapshot<L: EventListener>(term: &Term<L>, palette: &AnsiPalette) 
     }
     let shown =
         content.mode.contains(TermMode::SHOW_CURSOR) && content.cursor.shape != CursorShape::Hidden;
-    let cursor = shown.then(|| {
-        let p = content.cursor.point;
-        (p.column.0, (p.line.0 + scrolled).max(0) as usize)
-    });
+    let cursor = shown
+        .then(|| {
+            let p = content.cursor.point;
+            usize::try_from(p.line.0 + scrolled)
+                .ok()
+                .map(|row| (p.column.0, row))
+        })
+        .flatten()
+        .filter(|(_, row)| *row < rows);
     Screen {
         cols,
         rows,

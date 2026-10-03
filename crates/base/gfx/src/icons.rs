@@ -108,7 +108,8 @@ impl Icon {
 
 /// Every icon, parsed once and kept for the life of the renderer.
 pub(crate) struct Icons {
-    trees: Vec<Tree>,
+    /// One slot an icon, in `Icon::ALL`'s order; empty where its SVG did not parse.
+    trees: Vec<Option<Tree>>,
 }
 
 impl Icons {
@@ -116,14 +117,14 @@ impl Icons {
         let options = Options::default();
         let trees = Icon::ALL
             .iter()
-            .filter_map(|icon| Tree::from_data(icon.svg(), &options).ok())
+            .map(|icon| Tree::from_data(icon.svg(), &options).ok())
             .collect();
         Self { trees }
     }
 
     /// The icon's coverage at this size, one byte a pixel, for the atlas.
     pub fn rasterize(&self, glyph: u16, width: u16, height: u16) -> Option<Vec<u8>> {
-        let tree = self.trees.get((glyph / turns()) as usize)?;
+        let tree = self.trees.get((glyph / turns()) as usize)?.as_ref()?;
         let (w, h) = (f32::from(width), f32::from(height));
         let mut pixmap = Pixmap::new(u32::from(width), u32::from(height))?;
         let size = tree.size();

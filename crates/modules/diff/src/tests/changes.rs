@@ -7,7 +7,7 @@ fn all(dir: &std::path::Path) -> Changes {
     let runtime = tokio::runtime::Runtime::new().expect("a runtime");
     runtime.block_on(async {
         let files = summary(dir).await.expect("a summary");
-        changes(dir, &files, "HEAD").await
+        changes(dir, &files, "HEAD").await.expect("the changes")
     })
 }
 

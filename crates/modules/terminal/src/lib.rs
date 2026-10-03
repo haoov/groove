@@ -160,7 +160,7 @@ impl Terminal {
             };
             let sgr = mode.contains(TermMode::SGR_MOUSE);
             let one = report(button, cell, true, sgr);
-            return self.write(&one.repeat(lines.unsigned_abs() as usize).into_bytes());
+            return self.write(&one.repeat(lines.unsigned_abs() as usize));
         }
         if !mode.contains(TermMode::ALT_SCREEN) {
             term.scroll_display(Scroll::Delta(lines));
@@ -175,7 +175,7 @@ impl Terminal {
             return Ok(());
         }
         let sgr = mode.contains(TermMode::SGR_MOUSE);
-        self.write(report(LEFT, cell, pressed, sgr).as_bytes())
+        self.write(&report(LEFT, cell, pressed, sgr))
     }
 
     /// The pointer moved with the button down, for a program that asked for motion.
@@ -185,7 +185,7 @@ impl Terminal {
             return Ok(());
         }
         let sgr = mode.contains(TermMode::SGR_MOUSE);
-        self.write(report(LEFT + DRAGGING, cell, true, sgr).as_bytes())
+        self.write(&report(LEFT + DRAGGING, cell, true, sgr))
     }
 
     /// Text typed at the child, wrapped when it asked for bracketed paste.
@@ -261,14 +261,14 @@ const WHEEL_UP: u8 = 64;
 const WHEEL_DOWN: u8 = 65;
 
 /// One mouse report at a cell, as the program asked to be told.
-fn report(button: u8, cell: (usize, usize), pressed: bool, sgr: bool) -> String {
+fn report(button: u8, cell: (usize, usize), pressed: bool, sgr: bool) -> Vec<u8> {
     let (col, row) = (cell.0 + 1, cell.1 + 1);
     if sgr {
         let end = match pressed {
             true => 'M',
             false => 'm',
         };
-        return format!("\x1b[<{button};{col};{row}{end}");
+        return format!("\x1b[<{button};{col};{row}{end}").into_bytes();
     }
     let button = match pressed {
         true => button,
@@ -277,15 +277,10 @@ fn report(button: u8, cell: (usize, usize), pressed: bool, sgr: bool) -> String 
     x10(button, col, row)
 }
 
-/// The older encoding, whose one byte a coordinate cannot take past 223.
-fn x10(button: u8, col: usize, row: usize) -> String {
-    let byte = |one: usize| char::from(32u8.saturating_add(one.min(223) as u8));
-    format!(
-        "\x1b[M{}{}{}",
-        char::from(32 + button),
-        byte(col),
-        byte(row)
-    )
+/// The older encoding: one raw byte a coordinate, which cannot go past 223.
+fn x10(button: u8, col: usize, row: usize) -> Vec<u8> {
+    let byte = |one: usize| 32u8.saturating_add(one.min(223) as u8);
+    vec![0x1b, b'[', b'M', 32 + button, byte(col), byte(row)]
 }
 
 /// A poisoned lock still holds a usable grid.

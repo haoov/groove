@@ -1,1 +1,2 @@
+mod mouse;
 mod screen;

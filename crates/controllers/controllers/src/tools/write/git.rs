@@ -16,19 +16,14 @@ pub(super) fn push_asked(state: &mut AppState, spawner: &dyn Spawner, mut write:
     spawner.spawn(Box::pin(async move {
         let dir = std::path::Path::new(&worktree.path);
         let base = worktree.base_ref.as_deref();
-        let commits = groove_workspace_service::unpushed(dir, &worktree.branch, base)
-            .await
-            .unwrap_or_default();
-        let lines: Vec<String> = commits
-            .iter()
-            .map(|one| {
-                format!(
-                    "{} {}",
-                    one.short_sha,
-                    one.message.lines().next().unwrap_or_default()
-                )
-            })
-            .collect();
+        let lines: Vec<String> =
+            match groove_workspace_service::unpushed(dir, &worktree.branch, base).await {
+                Ok(commits) => commits.iter().map(subject).collect(),
+                Err(e) => vec![format!(
+                    "the commits it sends cannot be read: {}",
+                    e.message
+                )],
+            };
         write.arguments["worktree_id"] = worktree.id.as_str().into();
         write.arguments["branch"] = worktree.branch.clone().into();
         write.arguments["commits"] = lines.into();
@@ -39,6 +34,12 @@ pub(super) fn push_asked(state: &mut AppState, spawner: &dyn Spawner, mut write:
             }
         }) as crate::Continuation
     }));
+}
+
+/// `abc1234 the first line of its message`.
+fn subject(one: &groove_types::CommitEntry) -> String {
+    let first = one.message.lines().next().unwrap_or_default();
+    format!("{} {first}", one.short_sha)
 }
 
 /// The index of one worktree committed.

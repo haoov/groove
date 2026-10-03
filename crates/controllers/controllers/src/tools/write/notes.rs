@@ -45,11 +45,12 @@ pub(super) fn create(
 
 /// The lines the note stands on, as the file numbers them.
 fn lines(write: &Write) -> Option<(u32, u32)> {
-    let start = write.number("line")?.max(1) as u32 - 1;
-    let end = write
-        .number("end_line")
-        .map(|one| one.max(1) as u32 - 1)
-        .unwrap_or(start);
+    let line = |one: i64| u32::try_from(one.max(1) - 1).ok();
+    let start = line(write.number("line")?)?;
+    let end = match write.number("end_line") {
+        Some(one) => line(one)?,
+        None => start,
+    };
     Some((start.min(end), start.max(end)))
 }
 

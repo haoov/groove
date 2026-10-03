@@ -102,18 +102,25 @@ fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// The path under `dir` that `path` names.
+/// The path under `dir` that `path` names; the worktree itself, or outside it, is refused.
 fn inside(dir: &Path, path: &str) -> Result<PathBuf> {
     let relative = Path::new(path);
     let escapes = relative
         .components()
         .any(|part| matches!(part, Component::ParentDir | Component::RootDir));
-    match escapes {
-        true => Err(Error::new(
+    let names = relative
+        .components()
+        .any(|part| matches!(part, Component::Normal(_)));
+    match (escapes, names) {
+        (true, _) => Err(Error::new(
             ErrorKind::Invalid,
             format!("{path} leaves the worktree"),
         )),
-        false => Ok(dir.join(relative)),
+        (false, false) => Err(Error::new(
+            ErrorKind::Invalid,
+            format!("`{path}` names no file in the worktree"),
+        )),
+        (false, true) => Ok(dir.join(relative)),
     }
 }
 

@@ -34,6 +34,17 @@ fn a_path_leaving_the_worktree_is_refused() {
 }
 
 #[test]
+fn the_worktree_itself_is_no_path_to_delete_or_copy() {
+    let dir = worktree();
+    for path in ["", ".", "./"] {
+        let refused = crate::delete(dir.path(), path).expect_err("refused");
+        assert_eq!(refused.kind, ErrorKind::Invalid, "{path:?}");
+        assert!(crate::copy(dir.path(), path, "x").is_err(), "{path:?}");
+    }
+    assert!(dir.path().is_dir(), "the worktree stands");
+}
+
+#[test]
 fn a_write_to_a_directory_that_is_not_there_is_an_error_not_a_panic() {
     let dir = worktree();
     let failed = save(dir.path(), "nope/lib.rs", "x").expect_err("an error");
