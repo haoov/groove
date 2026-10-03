@@ -21,6 +21,8 @@ pub struct SessionUi {
     pub manual: bool,
     /// The session is a routine's: its agent pane alone, the window wide.
     pub alone: bool,
+    /// A commit is shown in place of the working tree.
+    pub reading: bool,
     /// How far the stream is scrolled, in pixels.
     pub diff: f32,
     /// How far the active file is scrolled, in pixels.
@@ -289,8 +291,8 @@ impl SessionUi {
         self.tab.has_sidebar() && !self.folded && !self.alone
     }
 
-    /// Whether the commit box stands under the sidebar: whenever the sidebar does.
+    /// Whether the commit box stands under the sidebar: with it, unless a commit is shown.
     pub fn commits(&self) -> bool {
-        self.sidebar()
+        self.sidebar() && !self.reading
     }
 }

@@ -85,14 +85,14 @@ pub(super) fn takes(ui: &mut Ui, id: ExternalId) -> Vec<Command> {
 
 /// The dragged row follows the pointer while it stands over the column.
 pub(super) fn carried(x: f32, y: f32, ui: &mut Ui, app: &AppState, metrics: Metrics) {
-    let ctx = Tokens::new(metrics.scale);
+    let tokens = metrics.tokens();
     let layout = Layout::of(metrics, ui);
-    let body = next_column(&ctx, layout);
+    let body = next_column(&tokens, layout);
     if !body.contains(x, y) {
         ui.board.drop = None;
         return;
     }
-    ui.board.drop = Some(plan::dropped(&ctx, app, ui, body, y));
+    ui.board.drop = Some(plan::dropped(&tokens, app, ui, body, y));
 }
 
 /// The drag let go: the plan takes the row where it landed.

@@ -43,6 +43,9 @@ pub(super) fn key_input(
         return app::run(action, ui, app);
     }
     if let Some(palette) = ui.palette_mut() {
+        if matches!(key, Key::Char(_)) && (mods.ctrl || mods.alt) {
+            return Vec::new();
+        }
         let outcome = palette.key(key, app);
         return ui.closed_palette(outcome);
     }

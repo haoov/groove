@@ -86,3 +86,23 @@ fn a_chord_pressed_in_settings_moves_to_the_action_and_off_the_one_that_held_it(
     );
     assert!(ui.settings.binding.is_none());
 }
+
+#[test]
+fn no_two_actions_of_one_ring_share_a_default_chord() {
+    let table = crate::keymap::TABLE;
+    for (at, one) in table.iter().enumerate() {
+        for other in &table[at + 1..] {
+            let shared = one
+                .defaults
+                .iter()
+                .find(|chord| other.defaults.contains(chord));
+            let same_ring = one.ring == other.ring;
+            assert!(
+                !(same_ring && shared.is_some()),
+                "{} and {} share {shared:?}",
+                one.id,
+                other.id
+            );
+        }
+    }
+}

@@ -120,7 +120,7 @@ fn click(
     if ui.menu().is_some() {
         return chosen(target, ui);
     }
-    ui.focus = focused(&target, ui.focus);
+    focused(&target, ui);
     acted(target, (x, y), ui, app, hits, metrics)
 }
 

@@ -87,3 +87,25 @@ fn the_rail_walks_its_sessions() {
     assert_eq!(down.len(), 1);
     assert_eq!(down[0].id(), "session.select");
 }
+
+#[test]
+fn a_click_on_the_agent_takes_the_keys_from_the_search_bars() {
+    let app = full_app();
+    let (mut ui, hits) = on_diff(&app);
+    ui.focus = Focus::Workspace;
+    let ctrl = crate::input::Modifiers {
+        ctrl: true,
+        ..Default::default()
+    };
+    press(Key::Char('f'), ctrl, &mut ui, &app);
+    assert!(ui.session.find.as_ref().is_some_and(|find| find.typing));
+    let agent = hits.rect_of(&Target::Agent).expect("the agent pane");
+    click(agent, &mut ui, &app, &hits);
+    assert!(ui.session.find.as_ref().is_some_and(|find| !find.typing));
+    let escape = press(Key::Escape, Default::default(), &mut ui, &app);
+    assert!(
+        ui.session.find.is_some(),
+        "Escape is the agent's, not the bar's"
+    );
+    assert!(!escape.is_empty(), "the agent hears it");
+}

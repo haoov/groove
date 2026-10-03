@@ -29,6 +29,9 @@ pub(super) fn finding(
         return Some(Vec::new());
     }
     let find = ui.session.find.as_mut()?;
+    if ui.focus != Focus::Workspace && !find.typing {
+        return None;
+    }
     match key {
         Key::Escape => {
             ui.session.find = None;

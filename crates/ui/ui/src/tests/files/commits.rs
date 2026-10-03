@@ -146,7 +146,8 @@ fn no_commit_box_and_no_mode_stand_while_a_commit_is_shown() {
     let one = commit("abc1234", "feat: one", false);
     let mut app = with_files(&["src/lib.rs"]);
     app.workspace.commit = Some(one);
-    let ui = sidebar_ui();
+    let mut ui = sidebar_ui();
+    ui.settle(&app);
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     for gone in [
         Target::Message,

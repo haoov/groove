@@ -41,7 +41,7 @@ fn edges(tokens: &groove_ui_kit::base::tokens::Tokens, app: &AppState, ui: &Ui) 
     edges
 }
 
-/// The tasks no session works, in the user's order, those that need the user first.
+/// The tasks no session works, in the user's order, those that need the user first on each side.
 fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
     let query = ui.board.query();
     let left: Vec<&Task> = app
@@ -50,11 +50,9 @@ fn upcoming<'a>(app: &'a AppState, ui: &Ui) -> Vec<Planned<'a>> {
         .into_iter()
         .filter(|task| query.lets_task(task))
         .collect();
-    let planned = app.task.planned(&left);
-    let (asking, rest): (Vec<Planned<'_>>, Vec<Planned<'_>>) = planned
-        .into_iter()
-        .partition(|one| app.task.asks(&one.task.external_id));
-    asking.into_iter().chain(rest).collect()
+    let mut planned = app.task.planned(&left);
+    planned.sort_by_key(|one| (one.later, !app.task.asks(&one.task.external_id)));
+    planned
 }
 
 fn is_divider(line: &Line<'_>) -> bool {

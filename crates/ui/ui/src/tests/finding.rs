@@ -79,14 +79,17 @@ fn the_chords_step_the_matches_and_wrap() {
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("one", &mut ui, &app);
     let at = |ui: &Ui| ui.session.find.as_ref().expect("the bar").at;
-
     press(Key::Char('n'), ctrl(), &mut ui, &app);
     assert_eq!(at(&ui), 1);
     press(Key::Char('n'), ctrl(), &mut ui, &app);
     assert_eq!(at(&ui), 2);
     press(Key::Char('n'), ctrl(), &mut ui, &app);
     assert_eq!(at(&ui), 0, "the last match wraps to the first");
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    let back = Modifiers {
+        shift: true,
+        ..ctrl()
+    };
+    press(Key::Char('n'), back, &mut ui, &app);
     assert_eq!(at(&ui), 2, "and back the other way");
 }
 

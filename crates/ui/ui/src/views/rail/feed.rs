@@ -32,8 +32,8 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
         Rect::new(line.x, line.y - ctx.tokens.hairline, line.w, 0.0),
         ctx.styles.line(),
     );
-    grab(ctx, line);
     hoverable(ctx, line, Target::Feed);
+    grab(ctx, line);
     let md = ctx.tokens.md;
     let mut room = line.pad(Edges::across(md, md));
     narrowed(ctx, &mut room, app, ui);

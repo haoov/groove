@@ -170,10 +170,11 @@ impl Ui {
         }
     }
 
-    /// What the layout reads from the state: whether a routine's session is selected.
+    /// What the layout reads from the state: a routine's session selected, a commit shown.
     pub fn settle(&mut self, app: &AppState) {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
+        self.session.reading = app.workspace.commit.is_some();
     }
 
     pub fn dragging(&self) -> bool {

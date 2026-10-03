@@ -202,7 +202,7 @@ pub const TABLE: [Spec; 31] = [
         A::FindPrevious,
         ("find.previous", "previous match", "Code"),
         Code,
-        &["ctrl+p"],
+        &["ctrl+shift+n"],
     ),
     spec(
         A::OpenPath,
