@@ -3,11 +3,13 @@ name: ci
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**.md"]
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -72,20 +74,3 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-
-  package:
-    name: release build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.98.1
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: release
-      - run: cargo install cargo-deb --locked
-      - run: cargo deb --locked -p groove
-      - uses: actions/upload-artifact@v4
-        with:
-          name: groove-deb
-          path: target/debian/*.deb
-          retention-days: 7
