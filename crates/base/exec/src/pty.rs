@@ -98,6 +98,9 @@ fn command(spec: &PtySpec) -> CommandBuilder {
     command.cwd(&spec.cwd);
     command.env("TERM", "xterm-256color");
     command.env("COLORTERM", "truecolor");
+    if let Some(path) = crate::login::adopted() {
+        command.env("PATH", path);
+    }
     for key in ["TMUX", "TMUX_PANE", "STY"] {
         command.env_remove(key);
     }
