@@ -13,3 +13,29 @@ pub fn score(hay: &str, query: &str) -> Option<usize> {
         .map(|word| hay.find(&word.to_lowercase()))
         .sum()
 }
+
+/// Every place `query` stands in `text`, ignoring case, as character ranges of `text` itself.
+pub fn occurrences(text: &str, query: &str) -> Vec<std::ops::Range<usize>> {
+    let folded = |s: &str| -> Vec<char> { s.chars().map(fold).collect() };
+    let (hay, needle) = (folded(text), folded(query));
+    let mut out = Vec::new();
+    if needle.is_empty() || needle.len() > hay.len() {
+        return out;
+    }
+    let mut at = 0;
+    while at + needle.len() <= hay.len() {
+        match hay[at..at + needle.len()] == needle[..] {
+            true => {
+                out.push(at..at + needle.len());
+                at += needle.len();
+            }
+            false => at += 1,
+        }
+    }
+    out
+}
+
+/// One character as a case-blind search compares it.
+fn fold(c: char) -> char {
+    c.to_lowercase().next().unwrap_or(c)
+}

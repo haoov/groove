@@ -57,7 +57,7 @@ pub use mr::{
     ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::names_session;
-pub use narrowing::{narrows, score};
+pub use narrowing::{narrows, occurrences, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};

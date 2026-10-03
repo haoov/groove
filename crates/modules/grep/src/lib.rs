@@ -174,7 +174,6 @@ fn matches(dir: &Path, entry: &ignore::DirEntry, needle: &str, under: &str) -> O
 
 /// Where the needle sits in the line, ignoring case, in characters.
 fn within(text: &str, needle: &str) -> Option<(usize, usize)> {
-    let at = text.to_lowercase().find(needle)?;
-    let start = text[..at].chars().count();
-    Some((start, start + needle.chars().count()))
+    let first = groove_types::occurrences(text, needle).into_iter().next()?;
+    Some((first.start, first.end))
 }

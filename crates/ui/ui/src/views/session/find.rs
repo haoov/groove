@@ -127,7 +127,7 @@ fn in_change(app: &AppState, query: &str) -> Vec<Hit> {
                 .and_then(|one| one.new)
                 .map(|line| line as usize);
             let path = file.path.clone();
-            matches(&text, query)
+            groove_types::occurrences(&text, query)
                 .into_iter()
                 .map(move |range| Hit {
                     path: path.clone(),
@@ -138,17 +138,4 @@ fn in_change(app: &AppState, query: &str) -> Vec<Hit> {
                 .collect::<Vec<Hit>>()
         })
         .collect()
-}
-
-/// Where `query` sits in `text`, ignoring case, in characters.
-fn matches(text: &str, query: &str) -> Vec<Range<usize>> {
-    let (hay, needle) = (text.to_lowercase(), query.to_lowercase());
-    let mut found = Vec::new();
-    let mut from = 0;
-    while let Some(at) = hay[from..].find(&needle) {
-        let start = hay[..from + at].chars().count();
-        found.push(start..start + needle.chars().count());
-        from += at + needle.len();
-    }
-    found
 }
