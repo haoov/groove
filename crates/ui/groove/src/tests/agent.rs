@@ -43,6 +43,7 @@ fn printing(state: &mut AppState, said: &str) {
                 seen_at: None,
             },
             started_at: groove_types::Timestamp::now(),
+            launch: 0,
         },
     ));
 }

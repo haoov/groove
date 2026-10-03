@@ -26,7 +26,7 @@ pub(crate) fn asking(
     let paths = paths(state);
     let cwd = state.config.worktree_root(&state.env.home);
     let palette = palette(state.config.theme());
-    let sink = spawner.sink();
+    let (sink, launched) = (spawner.sink(), state.agent.launch());
     spawner.spawn(Box::pin(async move {
         let result = launch(
             &session,
@@ -36,7 +36,7 @@ pub(crate) fn asking(
             palette,
             Hooks {
                 on_damage: on_damage(&sink, &session),
-                on_exit: on_exit(&sink, &session),
+                on_exit: on_exit(&sink, &session, launched),
             },
             prompt.as_deref(),
         );
@@ -47,7 +47,7 @@ pub(crate) fn asking(
                 .is_some_and(|open| open.state.auto_approve);
             state
                 .agent
-                .started(session.id.clone(), result, Timestamp::now());
+                .started((session.id.clone(), launched), result, Timestamp::now());
             state.agent.auto_approve(&session.id, on);
         }) as Continuation
     }));
@@ -91,6 +91,7 @@ fn on_damage(
 fn on_exit(
     sink: &std::sync::Arc<dyn crate::Deliver>,
     session: &Session,
+    launch: u64,
 ) -> Box<dyn FnOnce(u32) + Send> {
     let sink = sink.clone();
     let id = session.id.clone();
@@ -99,6 +100,7 @@ fn on_exit(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
                 let event = AgentEvent::Exited {
                     session: id,
+                    launch,
                     code,
                     at: Timestamp::now(),
                 };

@@ -33,6 +33,8 @@ pub struct Agent {
     pub activity: SessionActivity,
     /// When this agent was launched, which says whether a skill is newer than it.
     pub started_at: Timestamp,
+    /// Which launch of its session it is, as `State::launch` numbered it.
+    pub launch: u64,
 }
 
 /// The `agent` slice of `AppState`.
@@ -50,6 +52,8 @@ pub struct State {
     /// The skills and routines have been read once.
     pub listed: bool,
     pub runs: runs::Runs,
+    /// The launches numbered so far.
+    launches: u64,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.
@@ -97,8 +101,19 @@ impl State {
         self.agent(session).map(|a| &a.activity)
     }
 
+    /// The number the next launch goes by, which its exit carries.
+    pub fn launch(&mut self) -> u64 {
+        self.launches += 1;
+        self.launches
+    }
+
     /// The launch's result: a running terminal, or an error on the row.
-    pub fn started(&mut self, session: SessionId, result: Result<Terminal, Error>, now: Timestamp) {
+    pub fn started(
+        &mut self,
+        (session, launch): (SessionId, u64),
+        result: Result<Terminal, Error>,
+        now: Timestamp,
+    ) {
         let (terminal, status) = match result {
             Ok(terminal) => (Some(terminal), AgentStatus::Idle),
             Err(e) => (None, AgentStatus::Error { message: e.message }),
@@ -107,6 +122,7 @@ impl State {
             terminal,
             activity: activity(status, now),
             started_at: now,
+            launch,
         };
         self.agents.retain(|(id, _)| id != &session);
         self.agents.push((session, agent));
@@ -192,8 +208,10 @@ pub(crate) fn activity(status: AgentStatus, now: Timestamp) -> SessionActivity {
 pub enum Event {
     /// The terminal's grid changed; the pane redraws.
     Damaged { session: SessionId },
+    /// The process of one launch ended; a launch since then is not its to mark.
     Exited {
         session: SessionId,
+        launch: u64,
         code: u32,
         at: Timestamp,
     },
@@ -208,8 +226,16 @@ pub enum Event {
 pub fn apply(state: &mut State, event: Event) {
     match event {
         Event::Damaged { .. } => {}
-        Event::Exited { session, code, at } => {
-            if let Some(activity) = state.activity_mut(&session) {
+        Event::Exited {
+            session,
+            launch,
+            code,
+            at,
+        } => {
+            let current = state
+                .agent(&session)
+                .is_some_and(|one| one.launch == launch);
+            if let Some(activity) = state.activity_mut(&session).filter(|_| current) {
                 activity.status = AgentStatus::Exited { code: code as i32 };
                 activity.changed_at = at;
             }

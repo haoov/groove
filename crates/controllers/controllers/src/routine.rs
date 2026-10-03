@@ -53,10 +53,18 @@ fn ran_itself(state: &AppState, fired: &Fired) -> bool {
             .is_some_and(|one| state.agent.runs.busy(one))
 }
 
-/// The day's first look, once the rail and the routines are back, fires the daily trigger.
+/// The day's first look, once the rail, the routines and the tasks are back, fires the daily trigger.
 fn dawn(state: &mut AppState) -> Vec<groove_types::Action> {
-    let back = state.session.restored && state.agent.listed;
-    if state.agent.runs.dawned || !back {
+    let sourced = !groove_task_service::source_ids(state.config.config.as_ref()).is_empty();
+    let read = state
+        .agent
+        .runs
+        .seen
+        .as_ref()
+        .is_some_and(|one| one.tasks_read);
+    let back = state.session.restored && state.agent.listed && (read || !sourced);
+    let paused = state.config.preferences().routines_paused;
+    if state.agent.runs.dawned || !back || paused {
         return Vec::new();
     }
     state.agent.runs.dawned = true;

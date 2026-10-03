@@ -25,6 +25,7 @@ pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
             terminal: None,
             activity,
             started_at: Timestamp::new(0),
+            launch: 0,
         },
     ));
     app

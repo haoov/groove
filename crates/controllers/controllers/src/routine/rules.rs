@@ -8,12 +8,7 @@ use crate::AppState;
 /// Every switched-on routine that answers to the event, queued on its session; the actions to do.
 pub(super) fn queue(state: &mut AppState, fired: &Fired) -> Vec<Action> {
     let held = state.config.routines();
-    let paused = state
-        .config
-        .config
-        .as_ref()
-        .is_some_and(|one| one.preferences.routines_paused);
-    if paused {
+    if state.config.preferences().routines_paused {
         return Vec::new();
     }
     let answering: Vec<Routine> = state

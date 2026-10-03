@@ -8,6 +8,7 @@ fn state() -> State {
         terminal: None,
         activity: crate::activity(AgentStatus::Idle, Timestamp::new(100)),
         started_at: Timestamp::new(100),
+        launch: 0,
     };
     state.agents.push((SessionId::new("s"), agent));
     state

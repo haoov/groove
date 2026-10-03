@@ -22,11 +22,7 @@ pub(super) enum Ending {
 
 /// The runs waiting their turn started, as many as the cap leaves room for; those it started.
 pub(super) fn pump(state: &mut AppState, spawner: &dyn Spawner) -> Vec<Run> {
-    let cap = state
-        .config
-        .config
-        .as_ref()
-        .map_or(5, |one| one.preferences.routine_cap) as usize;
+    let cap = state.config.preferences().routine_cap as usize;
     let (mut kept, mut started) = (std::collections::VecDeque::new(), Vec::new());
     while let Some(run) = state.agent.runs.waiting.pop_front() {
         let room = state.agent.runs.running.len() < cap;
