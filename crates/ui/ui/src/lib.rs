@@ -98,6 +98,8 @@ pub struct Ui {
     /// What the pointer is over, for the row under it to say so, and where it stands.
     pub hover: Option<Target>,
     pub at: (f32, f32),
+    /// What the input method composes at the caret that has the keyboard.
+    pub preedit: Option<String>,
     /// The colours and the tree the last frames built, kept while they still hold.
     pub painted: views::session::diff::painted::Painted,
     pub walked: views::session::files::walked::Walked,

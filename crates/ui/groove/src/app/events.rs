@@ -42,6 +42,7 @@ impl ApplicationHandler<Message> for App {
             event_loop.exit();
             return;
         };
+        window.set_ime_allowed(true);
         let window = Arc::new(window);
         match Renderer::windowed(window.clone(), size_of(&window), Fonts::new()) {
             Ok(renderer) => self.renderer = Some(renderer),
@@ -109,6 +110,8 @@ impl ApplicationHandler<Message> for App {
             WindowEvent::KeyboardInput {
                 is_synthetic: true, ..
             } => {}
+            WindowEvent::KeyboardInput { .. } if self.ui.preedit.is_some() => {}
+            WindowEvent::Ime(ime) => self.ime(ime),
             WindowEvent::KeyboardInput { event, .. } => {
                 if let Some(input) = self
                     .pasting(&event)

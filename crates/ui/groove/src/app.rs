@@ -1,6 +1,7 @@
 //! The window's state and what it does with it: draw, fit, point, dispatch.
 
 mod events;
+mod ime;
 
 use self::events::{CLOCK_S, FIT_MS};
 
@@ -27,6 +28,7 @@ pub struct App {
     modifiers: ModifiersState,
     /// What the last frame drew, and where the pointer is.
     hits: Hits,
+    ime_at: Option<groove_gfx::Rect>,
     cursor: (f32, f32),
     pointer: Cursor,
     /// When the agents were last fitted to their pane.
@@ -55,6 +57,7 @@ impl App {
         };
         Self {
             window: None,
+            ime_at: None,
             renderer: None,
             state,
             ui,
@@ -99,6 +102,7 @@ impl App {
         let (frame, hits) = groove_ui::view(&self.state, &self.ui, metrics, renderer.fonts());
         let _ = renderer.render(&frame);
         self.hits = hits;
+        self.place_ime();
         self.showing();
         self.wrapping();
         self.point();

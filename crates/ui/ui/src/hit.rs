@@ -86,11 +86,21 @@ pub struct Hits {
     /// How far each column can scroll, one per `Scroller`.
     extents: [f32; OWN + crate::views::board::List::ALL.len()],
     chars: Chars,
+    caret: Option<Rect>,
 }
 
 impl Hits {
     pub fn push(&mut self, rect: Rect, target: Target) {
         self.regions.push((rect, target));
+    }
+
+    /// Where the caret that has the keyboard stood, for the input method's window.
+    pub fn caret(&self) -> Option<Rect> {
+        self.caret
+    }
+
+    pub fn careted(&mut self, rect: Rect) {
+        self.caret = Some(rect);
     }
 
     /// How far a column could scroll when it was drawn.

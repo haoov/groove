@@ -13,13 +13,7 @@ pub fn input<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, prefix: &str, text: &str)
     row(ctx, rect, pad, &typed, style);
 
     let width = ctx.measure(&typed, &style);
-    let (thickness, height) = (ctx.tokens.hairline * 2.0, style.size);
-    let caret = Rect::new(
-        rect.x + pad + width,
-        rect.y + (rect.h - height) / 2.0,
-        thickness,
-        height,
-    );
+    let caret = ctx.typing_at(rect, rect.x + pad + width, style);
     let color = ctx.styles.color(Role::Accent);
     ctx.quad(caret, color);
 

@@ -17,6 +17,10 @@ impl App for Drawn<'_> {
     fn hit(&mut self, rect: Rect, target: Target) {
         self.hits.push(rect, target);
     }
+
+    fn caret(&mut self, rect: Rect) {
+        self.hits.careted(rect);
+    }
 }
 
 pub type Ctx<'a> = groove_ui_kit::base::ctx::Ctx<'a, Drawn<'a>>;

@@ -39,6 +39,9 @@ pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
         WinitKey::Named(NamedKey::PageUp) => Key::PageUp,
         WinitKey::Named(NamedKey::PageDown) => Key::PageDown,
         WinitKey::Named(NamedKey::Space) => Key::Char(' '),
+        WinitKey::Character(text) if text.chars().count() > 1 && logical == &event.logical_key => {
+            return Some(Input::Commit(text.to_string()));
+        }
         WinitKey::Character(text) => Key::Char(text.chars().next()?),
         _ => return None,
     };

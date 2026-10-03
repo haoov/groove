@@ -174,7 +174,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);
     let held = Rect::new(line.x, line.y, room + at, line.h);
-    let text = naming.field.shown();
+    let text = naming.field.composed(ctx.preedit());
     row(ctx, held, at, &text, style);
 }
 

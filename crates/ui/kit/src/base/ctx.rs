@@ -38,6 +38,11 @@ pub trait App {
     type Target: Clone + PartialEq;
 
     fn hit(&mut self, rect: Rect, target: Self::Target);
+
+    /// Where the caret that has the keyboard stands, for the input method's window.
+    fn caret(&mut self, rect: Rect) {
+        let _ = rect;
+    }
 }
 
 pub struct Ctx<'a, A: App> {
@@ -58,6 +63,7 @@ pub struct Ctx<'a, A: App> {
     fonts: &'a mut Fonts,
     hover: Option<A::Target>,
     clip: Option<Rect>,
+    preedit: Option<String>,
 }
 
 impl<'a, A: App> Ctx<'a, A> {
@@ -84,7 +90,34 @@ impl<'a, A: App> Ctx<'a, A> {
             fonts,
             hover,
             clip: None,
+            preedit: None,
         }
+    }
+
+    /// What the input method holds, not yet typed, drawn at the caret that has the keyboard.
+    pub fn compose(&mut self, preedit: Option<String>) {
+        self.preedit = preedit.filter(|text| !text.is_empty());
+    }
+
+    pub fn preedit(&self) -> Option<&str> {
+        self.preedit.as_deref()
+    }
+
+    /// Draws the preedit underlined from `x` and the caret after it; returns where the caret stands.
+    pub fn typing_at(&mut self, line: Rect, x: f32, style: TextStyle) -> Rect {
+        let mut at = x;
+        if let Some(text) = self.preedit.clone() {
+            let wide = self.measure(&text, &style);
+            crate::text::row(self, Rect::new(at, line.y, wide, line.h), 0.0, &text, style);
+            let under = line.y + (line.h + style.size) / 2.0;
+            let rule = Rect::new(at, under, wide, self.tokens.hairline);
+            self.quad(rule, style.color);
+            at += wide;
+        }
+        let (thickness, height) = (self.tokens.hairline * 2.0, style.size);
+        let caret = Rect::new(at, line.y + (line.h - height) / 2.0, thickness, height);
+        self.app.caret(caret);
+        caret
     }
 
     pub fn hover(&self) -> Option<&A::Target> {

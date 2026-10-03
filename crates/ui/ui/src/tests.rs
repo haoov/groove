@@ -12,6 +12,7 @@ mod files;
 mod finding;
 mod focus;
 mod frame;
+mod ime;
 mod keymap;
 mod manual;
 mod mapping;
