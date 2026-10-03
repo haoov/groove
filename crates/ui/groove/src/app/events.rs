@@ -9,13 +9,26 @@ use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow};
-use winit::window::{Window, WindowId};
+use winit::window::{Window, WindowAttributes, WindowId};
 
 use super::{App, MIN_HEIGHT, MIN_WIDTH, START_HEIGHT, START_WIDTH, size_of};
 use crate::Message;
 use crate::keys::input_of;
 use groove_controllers::Window as WindowFocus;
 use groove_ui::input::Delta;
+
+/// The name the desktop matches the window to its launcher by, `groove` on X11 and Wayland.
+#[cfg(target_os = "linux")]
+fn named(attributes: WindowAttributes) -> WindowAttributes {
+    use winit::platform::{wayland::WindowAttributesExtWayland, x11::WindowAttributesExtX11};
+    let attributes = WindowAttributesExtWayland::with_name(attributes, "groove", "groove");
+    WindowAttributesExtX11::with_name(attributes, "groove", "groove")
+}
+
+#[cfg(not(target_os = "linux"))]
+fn named(attributes: WindowAttributes) -> WindowAttributes {
+    attributes
+}
 
 impl ApplicationHandler<Message> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -24,6 +37,7 @@ impl ApplicationHandler<Message> for App {
             .with_title("Groove")
             .with_inner_size(winit::dpi::LogicalSize::new(START_WIDTH, START_HEIGHT))
             .with_min_inner_size(winit::dpi::LogicalSize::new(MIN_WIDTH, MIN_HEIGHT));
+        let attributes = named(attributes);
         let Ok(window) = event_loop.create_window(attributes) else {
             event_loop.exit();
             return;
