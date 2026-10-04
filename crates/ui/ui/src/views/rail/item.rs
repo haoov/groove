@@ -6,8 +6,8 @@ use groove_types::{AgentStatus, Ask, AttentionClass, SessionId};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::{Surface, Ui};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
-use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, ruled, square};
 use groove_ui_kit::text::{Label, ago};
@@ -27,7 +27,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
     if asked(app, id).is_some() {
-        ctx.quad(rect, ctx.styles.tint(Role::Attention));
+        groove_ui_kit::shape::ground(ctx, rect, Ground::Tint(Role::Attention));
     }
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
@@ -123,7 +123,7 @@ fn state(ctx: &mut Ctx, app: &AppState, rect: Rect, open: &Open) {
     if role == Role::Working {
         let box_ = square(room.take_left(style.size), style.size);
         room.take_left(ctx.tokens.xs);
-        ctx.icon(box_, Mark::Busy, turn(ctx.tick), style.color);
+        groove_ui_kit::widgets::busy(ctx, box_, role);
     }
     Label::new(&label, style).draw(ctx, room);
 }

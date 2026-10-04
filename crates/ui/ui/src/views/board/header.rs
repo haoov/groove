@@ -7,6 +7,7 @@ use super::complete;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{Panel, hairline};
 use groove_ui_kit::text::Label;
@@ -17,7 +18,7 @@ const NEW: &str = "+ explorer";
 
 /// The header line. Returns where the filter was drawn.
 pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> Rect {
-    ctx.quad(line, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Work);
     hairline(ctx, line, ctx.styles.line());
     let mut room = line.until(new_task(ctx, line));
     if app.task.reading {

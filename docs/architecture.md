@@ -180,12 +180,20 @@ directly.
 - **Never read the frame back.** The window presents.
 - Rounded rects and borders: one SDF fragment shader. Clipping: a scissor per batch.
 - **Chrome is owned and minimal**: about eight primitives on `gfx`, plus focus, hit
-  testing and scroll. No general toolkit, no layout engine. `ui-kit` holds the context,
-  tokens, styles, shapes, text and widgets on plain data, on `gfx` and `types` only. `ui`
-  adds the hits and layout, components that know Groove's state, then the views.
+  testing and scroll. No general toolkit, no [layout engine](design.md#limits).
+  `ui-kit` holds the context, tokens, styles, shapes, text and widgets on plain data, on
+  `gfx` and `types` only. `ui` adds the hits and layout, components that know Groove's
+  state, then the views.
 - **Numbers only in the kit's tokens.** Enforced by `every_size_comes_from_the_tokens`.
 - **Styles only in the kit's style file.** Enforced by `every_style_comes_from_one_file`.
-- **A view draws through the context.** Enforced by `a_view_draws_through_the_context`.
+- **A view draws only through the kit.** The context's drawing primitives are private
+  to `ui-kit`, so the compiler refuses a view that paints by hand. A view takes only
+  geometry from `gfx`: enforced by `a_view_draws_through_the_context`.
+- **A new widget serves more than one view.** A part only one view draws stays in that
+  view, made of kit widgets.
+- **Dead keys compose in winit.** Groove never enables an input method. Under ctrl or
+  alt, a dead key reads as the key it sits on, so a chord on it still fires. Enforced by
+  `a_dead_key_under_a_chord_reads_as_the_key_it_sits_on`.
 
 ## Tests
 

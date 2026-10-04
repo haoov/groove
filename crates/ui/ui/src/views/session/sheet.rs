@@ -7,6 +7,7 @@ use groove_types::{ApprovalId, Ask};
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Button;
@@ -18,7 +19,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     };
     ctx.layer();
     let area = area(ctx);
-    ctx.quad(area, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, area, Ground::Work);
     ctx.hit(area, Target::Sheet);
     let line = ctx.tokens.line;
     let mut body = area.pad(Edges::all(ctx.tokens.md));

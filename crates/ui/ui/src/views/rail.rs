@@ -11,11 +11,13 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::{Surface, Ui};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled};
 use groove_ui_kit::text::{Label, row};
-use groove_ui_kit::widgets::{fold, lead};
+use groove_ui_kit::widgets::lead;
+use groove_ui_kit::widgets::{Side, pane};
 
 /// What the rail remembers between frames.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -42,10 +44,9 @@ enum Entry<'a> {
 /// The opened sessions, in the order opened. The Board row above, the footer below.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.rail;
-    ctx.quad(rect, ctx.styles.band());
+    pane(ctx, rect, Ground::Band, Side::Right);
     let mut column = rect;
-    let edge = column.take_right(ctx.tokens.hairline);
-    ctx.quad(edge, ctx.styles.line());
+    column.take_right(ctx.tokens.hairline);
 
     let board = column.take_top(ctx.tokens.header);
     let foot = column.take_bottom(ctx.tokens.bar);
@@ -138,12 +139,11 @@ fn items(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
 
 /// The heading that folds the routines' sessions, with how many there are.
 fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
-    hoverable(ctx, rect, Target::Routines);
-    let md = ctx.tokens.md;
-    let mut room = rect.pad(Edges::across(md, md));
-    fold(ctx, &mut room, open, Role::Faint);
-    let said = format!("ROUTINES · {count}");
-    Label::new(&said, ctx.styles.heading(Role::Faint)).draw(ctx, room);
+    groove_ui_kit::widgets::Heading::new("routines")
+        .count(count)
+        .fold(open)
+        .target(Target::Routines)
+        .draw(ctx, rect);
 }
 
 fn footer(ctx: &mut Ctx, rect: Rect) {
@@ -152,6 +152,6 @@ fn footer(ctx: &mut Ctx, rect: Rect) {
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;
     let mark = leading(ctx, rect, rect.x + md);
-    ctx.icon(mark, Mark::Settings, 0, style.color);
+    groove_ui_kit::widgets::icon(ctx, mark, Mark::Settings, Role::Faint);
     row(ctx, rect, after_mark(ctx, md), "settings", style);
 }

@@ -1,70 +1,125 @@
-//! Review: the merge requests the forges ask this user to look at.
+//! Review: the merge requests the forges ask this user to look at, as a table.
+
+mod order;
+
+pub use order::{By, Order};
 
 use groove_controllers::AppState;
-use groove_gfx::{Edges, Rect};
-use groove_types::ReviewMr;
+use groove_gfx::Rect;
+use groove_types::{ReviewMr, Timestamp};
 
-use super::row::{Line, aside, named};
+use super::List;
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::text::ago;
-use groove_ui_kit::widgets::lead;
+use groove_ui_kit::base::tokens::Tokens;
+use groove_ui_kit::text::{ago, row};
+use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
-/// Every MR the filter lets through, newest first.
-pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
+/// Every MR the filter lets through, in the order the table is sorted by.
+pub fn sorted<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a ReviewMr> {
     let query = ui.board.query();
-    let asked: Vec<&ReviewMr> = app
+    let mut asked: Vec<&ReviewMr> = app
         .delivery
         .reviews
         .iter()
         .filter(|mr| query.lets_review(mr))
         .collect();
+    ui.board.reviews.sort(&mut asked);
+    asked
+}
+
+pub fn chosen(ui: &Ui, asked: &[&ReviewMr]) -> Option<usize> {
+    let (project, iid) = ui.board.chosen.as_ref()?;
+    asked
+        .iter()
+        .position(|mr| &mr.project == project && mr.iid == *iid)
+}
+
+pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
     if asked.is_empty() {
-        return vec![Line::Nothing(match query.is_empty() {
+        let text = match ui.board.query().is_empty() {
             true => "nothing is waiting on you",
             false => "nothing the filter lets through",
-        })];
+        };
+        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+        return row(
+            ctx,
+            line,
+            ctx.tokens.md,
+            text,
+            ctx.styles.small(Role::Faint),
+        );
     }
-    asked.into_iter().map(Line::Review).collect()
+    let columns = columns();
+    let tokens = ctx.tokens;
+    let first = super::row::item(&tokens);
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first,
+            under: height(&tokens) - first,
+            ruled: true,
+        },
+        count: asked.len(),
+        offset: ui.board.review,
+        selected: chosen(ui, asked),
+        sorted: Some(ui.board.reviews.sorted()),
+    };
+    let now = ctx.now;
+    let extent = table.draw(ctx, body, |at| shown(asked[at], now));
+    ctx.app
+        .hits
+        .scrolls(Scroller::Column(List::Review as u8), extent);
 }
 
-/// One MR: its title and when it last moved, then its project, number, author and review.
-pub(super) fn item(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
-    hoverable(ctx, line, Target::Review(mr.project.clone(), mr.iid));
-    let mut rest = line;
-    let first = rest.take_top(super::row::item(&ctx.tokens));
-    let _size = ctx.tokens.icon;
-    let mut room = first.pad(Edges::across(ctx.tokens.md, 0.0));
-    lead(ctx, &mut room, Mark::Review, role(mr));
-    let start = room.x;
-    aside(ctx, &mut room, &ago(mr.updated_at.age_at(ctx.now)));
-    named(ctx, room, &mr.title);
-    let second = rest.take_top(ctx.tokens.line);
-    under(ctx, second.pad(Edges::across(start - second.x, 0.0)), mr);
+pub fn height(tokens: &Tokens) -> f32 {
+    super::row::item(tokens) + tokens.line + tokens.xs
 }
 
-/// The project, the number and the author, then where its reviewers stand.
-fn under(ctx: &mut Ctx, line: Rect, mr: &ReviewMr) {
+fn columns() -> [Column<'static, Target>; 2] {
+    let sort = |by: By| Some(Target::SortReview(by));
+    [
+        Column {
+            label: "title",
+            width: Width::Fill,
+            end: false,
+            sort: sort(By::Title),
+        },
+        Column {
+            label: "updated",
+            width: Width::Fit("00mo"),
+            end: true,
+            sort: sort(By::Updated),
+        },
+    ]
+}
+
+/// The card: its state, title and age; under them its project, number, author and review.
+fn shown(mr: &ReviewMr, now: Timestamp) -> Shown<'_, Target> {
     let named = format!("{}{}{}", mr.project, mr.forge.sigil(), mr.iid);
-    let text = match mr.author.is_empty() {
+    let named = match mr.author.is_empty() {
         true => named,
         false => format!("{named} · {}", mr.author),
     };
-    let style = ctx.styles.small(Role::Faint);
-    let room = line.w - ctx.tokens.md;
-    let text = groove_ui_kit::text::elide(ctx, &text, &style, room);
-    let end = line.x + ctx.measure(&text, &style);
-    groove_ui_kit::text::row(ctx, line, 0.0, &text, style);
+    let mut under = vec![Cell::small(named, Role::Faint)];
     if let Some(review) = mr.review {
-        crate::components::review_word(ctx, line, end + ctx.tokens.sm, review);
+        let (word, role) = crate::components::review_said(review);
+        under.push(Cell::small(word, role).badge());
+    }
+    Shown {
+        cells: vec![
+            Cell::label(mr.title.as_str(), Role::Text).mark(Mark::Review, 0, state(mr)),
+            Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
+        ],
+        under,
+        target: Some(Target::Review(mr.project.clone(), mr.iid)),
     }
 }
 
-fn role(mr: &ReviewMr) -> Role {
+fn state(mr: &ReviewMr) -> Role {
     match (mr.draft, mr.approved) {
         (true, _) => Role::Ghost,
         (false, true) => Role::Ok,

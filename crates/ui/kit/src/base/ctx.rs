@@ -110,32 +110,32 @@ impl<'a, A: App> Ctx<'a, A> {
         }
     }
 
-    pub fn quad(&mut self, rect: Rect, color: Color) {
+    pub(crate) fn quad(&mut self, rect: Rect, color: Color) {
         self.frame.quad(rect, color);
     }
 
-    pub fn border(&mut self, rect: Rect, color: Color) {
+    pub(crate) fn border(&mut self, rect: Rect, color: Color) {
         self.frame.border(rect, color);
     }
 
-    pub fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
+    pub(crate) fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
         self.frame.rounded(rect, color, radius);
     }
 
-    pub fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
+    pub(crate) fn ring(&mut self, rect: Rect, color: Color, radius: f32, stroke: f32) {
         self.frame.ring(rect, color, radius, stroke);
     }
 
-    pub fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
+    pub(crate) fn text(&mut self, text: &str, x: f32, y: f32, height: f32, style: TextStyle) {
         self.frame.text(text, x, y, height, style);
     }
 
     /// A mark in `rect`, turned by eighths of a turn.
-    pub fn icon(&mut self, rect: Rect, mark: Mark, turn: u8, color: Color) {
+    pub(crate) fn icon(&mut self, rect: Rect, mark: Mark, turn: u8, color: Color) {
         self.frame.icon_turned(rect, mark.shape(), turn, color);
     }
 
-    pub fn grid(&mut self, grid: CellGrid) {
+    pub(crate) fn grid(&mut self, grid: CellGrid) {
         self.frame.grid(grid);
     }
 

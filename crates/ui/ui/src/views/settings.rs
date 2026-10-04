@@ -13,10 +13,12 @@ pub use rows::Section;
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::widgets::{Button, Field, Row, Search};
+use groove_ui_kit::widgets::{Side, pane};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -41,15 +43,9 @@ pub struct SettingsUi {
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let mut window = ctx.window;
-    ctx.quad(window, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, window, Ground::Work);
     let list = window.take_left(ctx.tokens.sidebar);
-    ctx.quad(list, ctx.styles.band());
-    let edge = Rect {
-        x: list.right() - ctx.tokens.hairline,
-        w: ctx.tokens.hairline,
-        ..list
-    };
-    ctx.quad(edge, ctx.styles.line());
+    pane(ctx, list, Ground::Band, Side::Right);
     sections(ctx, list, &ui.settings);
     form::draw(ctx, window, app, &ui.settings);
 }

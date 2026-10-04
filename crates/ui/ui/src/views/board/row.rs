@@ -1,7 +1,6 @@
 //! One line of a column: what it holds, how tall it stands, and how it is drawn.
 
 use groove_controllers::AppState;
-use groove_controllers::session_service::Living;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Priority, Task};
 
@@ -13,14 +12,10 @@ use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, lead};
 
-/// One line of a column: an item, the plan's divider, or what stands in for none.
+/// One line of Up next: a task, or the plan's divider.
 pub(super) enum Line<'a> {
-    Session(&'a Living),
     Task(&'a Task),
-    /// One MR the forge asks this user to review.
-    Review(&'a groove_types::ReviewMr),
     Divider,
-    Nothing(&'static str),
 }
 
 /// How tall a line stands: one row, and one more when it carries a second line.
@@ -41,7 +36,6 @@ pub(super) fn heights(
 /// Whether this line carries a second line under its title.
 fn under(app: &AppState, line: &Line<'_>) -> bool {
     match line {
-        Line::Review(_) => true,
         Line::Task(task) if task.priority.is_some() || task.project.is_some() => true,
         _ => !reasons(app, line).is_empty(),
     }

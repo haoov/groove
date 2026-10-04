@@ -12,6 +12,7 @@ use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use crate::views::session::Asked;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{elide, row};
@@ -168,7 +169,7 @@ pub(super) fn naming(ctx: &mut Ctx, line: Rect, indent: f32, ui: &Ui) {
     let Some(naming) = ui.session.naming.as_ref() else {
         return;
     };
-    ctx.quad(line, ctx.styles.raised());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
     let style = ctx.styles.code(Role::Text);
     let at = super::text_at(ctx, indent);
     let room = (line.w - at - ctx.tokens.md).max(0.0);

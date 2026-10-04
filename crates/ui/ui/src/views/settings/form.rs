@@ -14,6 +14,7 @@ use super::rows::{Row, Section, Value, rows};
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
@@ -96,7 +97,7 @@ fn group(ctx: &mut Ctx, mut rect: Rect, name: &str) {
 
 /// The sign-in's terminal, which has the keys while it runs.
 fn signing_in(ctx: &mut Ctx, pane: Rect, terminal: &Terminal) {
-    ctx.quad(pane, ctx.styles.deep());
+    groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
     ctx.hit(pane, Target::Login);
     let origin = (pane.x + ctx.tokens.sm, pane.y + ctx.tokens.sm);
     screen(ctx, pane, origin, (&terminal.screen(), true));
@@ -223,10 +224,10 @@ fn input(ctx: &mut Ctx, room: Rect, (shown, focused): (&str, bool), target: &Tar
     let sm = ctx.tokens.sm;
     let field = room.pad(Edges::across(0.0, sm));
     let (ground, role) = match focused {
-        true => (ctx.styles.raised(), Role::Text),
-        false => (ctx.styles.band(), Role::Muted),
+        true => (Ground::Raised, Role::Text),
+        false => (Ground::Band, Role::Muted),
     };
-    ctx.quad(field, ground);
+    groove_ui_kit::shape::ground(ctx, field, ground);
     ctx.hit(field, target.clone());
     let text = field.pad(Edges::across(sm, sm));
     Label::new(shown, ctx.styles.code(role)).draw(ctx, text);

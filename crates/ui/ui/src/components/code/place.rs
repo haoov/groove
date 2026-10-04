@@ -4,11 +4,10 @@ use std::ops::Range;
 
 use groove_gfx::Rect;
 
-use super::Gutters;
-use super::gutter::Block;
 use crate::ctx::Ctx;
 use crate::hit::Chars;
 use groove_ui_kit::base::tokens::Tokens;
+use groove_ui_kit::widgets::code::{Block, Gutters};
 
 /// The row at the top of a surface scrolled this far.
 pub fn first(line: f32, scroll: f32) -> usize {

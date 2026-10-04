@@ -7,6 +7,7 @@ use groove_gfx::Rect;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_gfx::Edges;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::box_in;
@@ -19,7 +20,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         return;
     };
     let line = ctx.app.layout.agent_bar;
-    ctx.quad(line, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, line, Ground::Band);
     let (thick, rule) = (ctx.tokens.hairline, ctx.styles.line());
     groove_ui_kit::shape::top_rule(ctx, line, rule);
     groove_ui_kit::shape::side_rule(ctx, line, line.right() - thick, rule);
@@ -70,7 +71,7 @@ fn reload_role(stale: bool) -> Role {
 fn said(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let size = ctx.tokens.small;
     let box_ = box_in(line, line.x + ctx.tokens.md, size);
-    ctx.icon(box_, Mark::Busy, 0, ctx.styles.color(Role::Faint));
+    groove_ui_kit::widgets::icon(ctx, box_, Mark::Busy, Role::Faint);
     let style = ctx.styles.small(Role::Faint);
     let at = ctx.tokens.md + size + ctx.tokens.xs;
     let count = counted(app.agent.skills_for(&open.session.kind).len());

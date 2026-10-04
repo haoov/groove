@@ -7,7 +7,7 @@ pub mod filter;
 mod header;
 mod live;
 pub mod plan;
-mod review;
+pub mod review;
 mod row;
 mod state;
 
@@ -18,6 +18,7 @@ use groove_gfx::Rect;
 
 use crate::Ui;
 use crate::ctx::Ctx;
+use groove_ui_kit::base::ground::Ground;
 
 /// Which list a column holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +43,7 @@ impl List {
 /// The board: one header line, the three columns under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = ctx.app.layout.board;
-    ctx.quad(area, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, area, Ground::Work);
     let field = header::draw(ctx, area.until_y(area.y + ctx.tokens.header), app, ui);
     for list in List::ALL {
         column::draw(ctx, column_of(&ctx.tokens, area, list), app, ui, list);

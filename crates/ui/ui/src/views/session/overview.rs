@@ -96,11 +96,11 @@ fn section(ctx: &mut Ctx, column: &mut Rect, title: &str, under: bool) {
             column.w - pad * 2.0,
             ctx.tokens.hairline,
         );
-        ctx.quad(rule, ctx.styles.line());
+        groove_ui_kit::shape::top_rule(ctx, rule, ctx.styles.line());
         column.take_top(ctx.tokens.sm);
     }
-    let line = column.take_top(ctx.tokens.row).pad(Edges::across(pad, pad));
-    Label::new(&title.to_uppercase(), ctx.styles.heading(Role::Faint)).draw(ctx, line);
+    let line = column.take_top(ctx.tokens.row);
+    groove_ui_kit::widgets::Heading::new(title).draw(ctx, line);
 }
 
 /// One block per repo: the repo, then its worktrees.

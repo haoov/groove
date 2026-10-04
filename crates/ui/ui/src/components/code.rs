@@ -1,18 +1,17 @@
 //! The code surface: a row's parts, and the gutters every row shares.
 
-mod gutter;
 mod place;
 mod row;
 
 use groove_gfx::{Color, Rect};
 use groove_types::Highlight;
 
-pub use self::gutter::Block;
 pub use self::place::{across_extent, chars_of, code_at, first, height, visible};
+pub use groove_ui_kit::widgets::code::{Block, Gutters, head_mark};
 
-use self::gutter::rule;
 use self::row::draw;
 use crate::ctx::Ctx;
+use groove_ui_kit::widgets::code::rule;
 
 /// What a note row carries: who said it, whether it opens the note, and its state.
 #[derive(Debug, Clone, Copy)]
@@ -214,13 +213,6 @@ pub struct Rows<'a> {
     pub across: f32,
 }
 
-/// The gutter a surface asks for: how many number columns, and their longest number.
-#[derive(Debug, Clone, Copy)]
-pub struct Gutters {
-    pub cells: usize,
-    pub digits: usize,
-}
-
 /// Rows of code from the top of `rect`, scrolled by `scroll`, clipped to it.
 pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect> {
     let height = ctx.tokens.line;
@@ -239,10 +231,4 @@ pub fn code(ctx: &mut Ctx, rect: Rect, rows: Rows<'_>, scroll: f32) -> Vec<Rect>
         }
     });
     drawn
-}
-
-/// Where a head row carries the mark that says its file is read.
-pub fn head_mark(ctx: &Ctx, line: Rect) -> Rect {
-    let size = ctx.tokens.icon;
-    groove_ui_kit::shape::box_in(line, line.right() - ctx.tokens.md - size, size)
 }

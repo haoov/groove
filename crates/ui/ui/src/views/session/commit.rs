@@ -10,6 +10,7 @@ use crate::hit::Target;
 use crate::{Focus, Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, counts};
 
@@ -49,8 +50,8 @@ fn count(files: &[FileDiff], staged: bool) -> u32 {
 fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     let held = ui.session.composing && !ui.session.typing();
     let composing = held && ui.focus == Focus::Sidebar;
-    ctx.quad(rect, ctx.styles.ground());
-    ctx.border(rect, ctx.styles.border());
+    let panel = Panel::default().ground(ctx.styles.ground());
+    panel.border(ctx.styles.border()).draw(ctx, rect);
     let box_ = rect.pad(Edges::all(ctx.tokens.xs));
     let buffer = &app.workspace.message;
     let caret = buffer.caret();

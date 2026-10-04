@@ -6,6 +6,7 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::{Bar, Term};
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::widgets::Search;
@@ -21,7 +22,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
         h: ctx.tokens.row * shown.len() as f32,
         ..rect
     };
-    ctx.quad(whole, ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, whole, Ground::Work);
     hairline(ctx, whole, ctx.styles.line());
     let mut rows = whole;
     for (at, term) in shown.iter().copied().enumerate() {

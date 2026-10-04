@@ -8,12 +8,19 @@ use crate::Ui;
 use crate::views::board::complete;
 
 /// What a key does while the board is up: the filter takes it, or `/` opens it.
-pub(super) fn on_board(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+pub(super) fn on_board(
+    key: Key,
+    mods: Modifiers,
+    ui: &mut Ui,
+    app: &AppState,
+    seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
+) -> Vec<Command> {
     if !ui.board.typing {
         if matches!(key, Key::Char('/')) {
             ui.board.focus();
+            return Vec::new();
         }
-        return Vec::new();
+        return super::board::chosen(key, ui, app, seen);
     }
     let offers = complete::offers(app, ui.board.filter.text());
     let shown = offers

@@ -3,6 +3,7 @@
 use groove_gfx::{Align, Color, Rect};
 
 use crate::base::ctx::{App, Ctx};
+use crate::base::ground::Ground;
 
 /// A box of `size` with its top-left at `at`, moved back inside `within` where it would leave it.
 pub fn kept_in(at: (f32, f32), (width, height): (f32, f32), within: Rect) -> Rect {
@@ -106,4 +107,9 @@ impl Panel {
             ctx.border(rect, border);
         }
     }
+}
+
+pub fn ground<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, ground: Ground) {
+    let color = ground.color(&ctx.styles);
+    ctx.quad(rect, color);
 }

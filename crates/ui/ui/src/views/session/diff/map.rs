@@ -10,13 +10,15 @@ use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use crate::views::session::Face;
+use groove_ui_kit::base::ground::Ground;
+use groove_ui_kit::shape::Panel;
 
 pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &Ui) {
     let total = total(app, ui);
     if total == 0 {
         return;
     }
-    ctx.quad(rect, ctx.styles.band());
+    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
     let per = rect.h / total as f32;
     let inline = Inline::of(app, ui, ui.session.face());
     match ui.session.face() {
@@ -55,7 +57,7 @@ fn read(ctx: &mut Ctx, rect: Rect, per: f32, at: (usize, usize)) {
     let (start, shown) = at;
     let top = rect.y + start as f32 * per;
     let high = (shown as f32 * per).max(ctx.tokens.hairline);
-    ctx.quad(Rect::new(rect.x, top, rect.w, high), ctx.styles.hover());
+    groove_ui_kit::shape::ground(ctx, Rect::new(rect.x, top, rect.w, high), Ground::Hover);
 }
 
 /// The open file alone: what the change did to each of its lines.
@@ -85,7 +87,7 @@ fn band(
     let (top, high) = at;
     let y = rect.y + top as f32 * per;
     let height = (high as f32 * per).max(ctx.tokens.hairline);
-    ctx.quad(Rect::new(rect.x, y, rect.w, height), ctx.styles.ground());
+    groove_ui_kit::shape::ground(ctx, Rect::new(rect.x, y, rect.w, height), Ground::Work);
     if high == 0 {
         return;
     }
@@ -96,14 +98,11 @@ fn band(
 
 /// One run of lines the change touched, inset from the column's edges.
 fn marked(ctx: &mut Ctx, rect: Rect, per: f32, at: usize, run: usize, mark: LineMark) {
-    let color = ctx.styles.mark(mark);
     let inset = ctx.tokens.xs;
     let y = rect.y + at as f32 * per;
     let high = (run as f32 * per).max(ctx.tokens.hairline);
-    ctx.quad(
-        Rect::new(rect.x + inset, y, rect.w - inset * 2.0, high),
-        color,
-    );
+    let run = Rect::new(rect.x + inset, y, rect.w - inset * 2.0, high);
+    groove_ui_kit::shape::ground(ctx, run, Ground::Mark(mark));
 }
 
 /// Every run of rows the change touched: where it starts, how long, and what it did.
@@ -134,5 +133,5 @@ fn lens(ctx: &mut Ctx, rect: Rect, per: f32, body: Rect, ui: &Ui) {
     let high = (body.h / line * per).min(rect.h).max(ctx.tokens.xs);
     let top = rect.y + ui.session.scroll() / line * per;
     let held = Rect::new(rect.x, top.min(rect.bottom() - high), rect.w, high);
-    ctx.border(held, ctx.styles.lens());
+    Panel::default().border(ctx.styles.lens()).draw(ctx, held);
 }

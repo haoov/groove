@@ -9,6 +9,7 @@ use groove_types::Task;
 use super::row::Line;
 use crate::Ui;
 use crate::ctx::Ctx;
+use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
 
@@ -71,7 +72,7 @@ pub(super) fn divider(ctx: &mut Ctx, line: Rect) {
         (line.right() - pad - from).max(0.0),
         ctx.tokens.hairline,
     );
-    ctx.quad(rule, ctx.styles.line());
+    groove_ui_kit::shape::top_rule(ctx, rule, ctx.styles.line());
 }
 
 /// The rule where a dragged row would land, over the rows it moves between.
@@ -86,10 +87,8 @@ pub(super) fn dragging(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     };
     let thick = ctx.tokens.hairline * 2.0;
     let y = body.y - scroll + edge - thick / 2.0;
-    ctx.quad(
-        Rect::new(body.x, y, body.w, thick),
-        ctx.styles.color(Role::Working),
-    );
+    let bar = Rect::new(body.x, y, body.w, thick);
+    groove_ui_kit::shape::ground(ctx, bar, Ground::Solid(Role::Working));
 }
 
 /// Which insertion point a drag lands on, counted in lines from the column's top.
