@@ -20,10 +20,25 @@ pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
         return None;
     }
     let bare = event.key_without_modifiers();
-    let logical = match mods.control_key() || mods.alt_key() {
+    let chord = mods.control_key() || mods.alt_key();
+    let logical = match chord {
         true => &bare,
         false => &event.logical_key,
     };
+    if let WinitKey::Character(text) = logical
+        && text.chars().count() > 1
+        && logical == &event.logical_key
+    {
+        return Some(Input::Commit(text.to_string()));
+    }
+    Some(Input::Key {
+        key: key_of(logical, chord)?,
+        mods: mods_of(mods),
+    })
+}
+
+/// The key as the ui reads it; under a chord, a dead key reads as the key it sits on.
+pub fn key_of(logical: &WinitKey, chord: bool) -> Option<Key> {
     let key = match logical {
         WinitKey::Named(NamedKey::Escape) => Key::Escape,
         WinitKey::Named(NamedKey::Enter) => Key::Enter,
@@ -39,14 +54,18 @@ pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
         WinitKey::Named(NamedKey::PageUp) => Key::PageUp,
         WinitKey::Named(NamedKey::PageDown) => Key::PageDown,
         WinitKey::Named(NamedKey::Space) => Key::Char(' '),
-        WinitKey::Character(text) if text.chars().count() > 1 && logical == &event.logical_key => {
-            return Some(Input::Commit(text.to_string()));
-        }
         WinitKey::Character(text) => Key::Char(text.chars().next()?),
+        WinitKey::Dead(Some(c)) if chord => Key::Char(spacing(*c)),
         _ => return None,
     };
-    Some(Input::Key {
-        key,
-        mods: mods_of(mods),
-    })
+    Some(key)
+}
+
+/// The ASCII key a dead accent stands on, where the accent is not ASCII itself.
+fn spacing(accent: char) -> char {
+    match accent {
+        '´' => '\'',
+        '¨' => '"',
+        other => other,
+    }
 }
