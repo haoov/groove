@@ -37,7 +37,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, session: &SessionId) {
     };
     let shown = shells.shown();
     let panes = ctx.app.layout.shell_panes(&ctx.tokens, shown.len());
-    let typing = ui.focus == crate::Focus::Terminal;
+    let typing = ui.focus == crate::Focus::Terminal && ui.pane_has_keys();
     for (shell, pane) in shown.iter().zip(panes) {
         let focused = typing && shells.focused() == Some(shell.id);
         grid(ctx, pane, shell, (focused, shown.len() > 1));

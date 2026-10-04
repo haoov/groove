@@ -183,6 +183,15 @@ impl Ui {
         matches!(self.held, Some(Held::Edge(_)))
     }
 
+    /// No overlay, bar or field takes the keys before the pane that has the focus.
+    pub fn pane_has_keys(&self) -> bool {
+        self.overlay.is_none()
+            && !self.settings.open
+            && !self.board.typing
+            && self.session.naming.is_none()
+            && !self.session.typing()
+    }
+
     pub fn palette(&self) -> Option<&palette::Palette> {
         match &self.overlay {
             Some(Overlay::Palette(one)) => Some(one),

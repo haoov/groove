@@ -111,3 +111,85 @@ fn no_caret_is_reported_while_nothing_takes_typing() {
     let (_, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     assert_eq!(hits.caret(), None);
 }
+
+/// A session whose agent runs in a terminal that prints nothing, its cursor at the top left.
+fn agent_running() -> AppState {
+    use groove_controllers::agent_service::{Hooks, PtySpec, Terminal};
+    let mut app = crate::tests::bar::asking(Vec::new());
+    let spec = PtySpec {
+        program: "sh".into(),
+        args: vec!["-c".into(), "sleep 30".into()],
+        cwd: "/".into(),
+        env: Vec::new(),
+        rows: 24,
+        cols: 80,
+    };
+    let hooks = Hooks {
+        on_damage: Box::new(|| {}),
+        on_exit: Box::new(|_| {}),
+    };
+    let terminal =
+        Terminal::spawn(spec, groove_types::AnsiPalette::MOCHA, hooks).expect("a terminal");
+    app.agent.agents[0].1.terminal = Some(terminal);
+    app
+}
+
+fn at_agent() -> Ui {
+    Ui {
+        surface: Surface::Session,
+        focus: Focus::Agent,
+        preedit: Some("ni".into()),
+        ..Ui::default()
+    }
+}
+
+/// The text of each terminal grid's first row.
+fn first_rows(frame: &groove_gfx::Frame) -> Vec<String> {
+    frame
+        .layers()
+        .iter()
+        .flat_map(|layer| layer.grids.iter())
+        .map(|grid| (0..grid.cols).map(|col| grid.cell(col, 0).ch).collect())
+        .collect()
+}
+
+#[test]
+fn the_preedit_stands_at_the_cursor_of_the_terminal_that_has_the_keyboard() {
+    let app = agent_running();
+    let ui = at_agent();
+    let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let rows = first_rows(&frame);
+    assert!(rows.iter().any(|row| row.starts_with("ni")), "{rows:?}");
+    assert!(hits.caret().is_some(), "the caret is reported");
+}
+
+#[test]
+fn the_palette_over_a_terminal_takes_the_preedit_alone() {
+    let app = agent_running();
+    let ui = Ui {
+        overlay: Some(Overlay::Palette(crate::palette::Palette::default())),
+        ..at_agent()
+    };
+    let (frame, _) = view(&app, &ui, window(), &mut Fonts::embedded());
+    let rows = first_rows(&frame);
+    assert!(!rows.is_empty(), "the terminal is drawn under the palette");
+    assert!(!rows.iter().any(|row| row.starts_with("ni")), "{rows:?}");
+}
+
+#[test]
+fn a_commit_reaches_the_agent_as_its_bytes() {
+    let app = agent_running();
+    let mut ui = Ui {
+        preedit: None,
+        ..at_agent()
+    };
+    let asked = sent(Input::Commit("é".into()), &mut ui, &app);
+    let sent_bytes: Vec<u8> = asked
+        .into_iter()
+        .flat_map(|command| match command {
+            Command::Agent(groove_controllers::agent::Command::Send { bytes, .. }) => bytes,
+            _ => Vec::new(),
+        })
+        .collect();
+    assert_eq!(sent_bytes, "é".as_bytes());
+}
