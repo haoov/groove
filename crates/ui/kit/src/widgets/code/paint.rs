@@ -63,7 +63,7 @@ fn over<A: App>(ctx: &mut Ctx<'_, A>, (rect, room): (Rect, Rect), code: &Code<'_
     }
     text(ctx, rect, code);
     if let Some(column) = code.caret {
-        caret(ctx, rect, code.text, column, code.focused);
+        caret(ctx, rect, code.text, column);
     }
     if let Some((said, sha)) = code.blame.as_ref() {
         blamed(ctx, (rect, room), code.text, (*said, sha.clone()));
@@ -168,17 +168,9 @@ fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextSty
 }
 
 /// The caret: a bar at the column, placed through the text before it.
-/// With the keyboard, the preedit stands at the column on the work's ground, the caret after it.
-fn caret<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, column: usize, focused: bool) {
+fn caret<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, column: usize) {
     let style = ctx.styles.code(Role::Text);
-    let mut at = rect.x + upto(ctx, text, column, &style);
-    if focused {
-        if let Some(preedit) = ctx.preedit().map(str::to_string) {
-            let wide = ctx.measure(&preedit, &style);
-            crate::shape::ground(ctx, Rect::new(at, rect.y, wide, rect.h), Ground::Work);
-        }
-        at = ctx.typing_at(rect, at, style).x;
-    }
+    let at = rect.x + upto(ctx, text, column, &style);
     let (width, color) = (ctx.tokens.hairline * 2.0, ctx.styles.caret());
     ctx.quad(Rect::new(at, rect.y, width, rect.h), color);
 }

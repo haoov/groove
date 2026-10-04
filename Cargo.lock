@@ -1625,7 +1625,6 @@ dependencies = [
  "groove-gfx",
  "groove-types",
  "pulldown-cmark",
- "unicode-width",
 ]
 
 [[package]]

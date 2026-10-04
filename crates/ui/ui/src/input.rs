@@ -62,10 +62,6 @@ pub enum Input {
     Release,
     /// What the clipboard holds, for whatever has the keyboard.
     Paste(String),
-    /// What the input method composes and has not typed yet; nothing once it lets go.
-    Preedit(Option<String>),
-    /// What the input method typed, a character a key.
-    Commit(String),
     /// The right button went down here.
     Menu {
         x: f32,
@@ -218,17 +214,6 @@ pub fn handle(
         Input::Middle { x, y } => pointer::middle(x, y, ui, app, hits),
         Input::Move { x, y } => pointer::moved(x, y, ui, app, hits, metrics),
         Input::Paste(text) => pasted(&text, ui, app),
-        Input::Preedit(text) => {
-            ui.preedit = text.filter(|text| !text.is_empty());
-            Vec::new()
-        }
-        Input::Commit(text) => {
-            ui.preedit = None;
-            let mods = Modifiers::default();
-            text.chars()
-                .flat_map(|c| keys::key_input(Key::Char(c), mods, ui, app, (hits, metrics)))
-                .collect()
-        }
         Input::Release => {
             let mut out = pointer::dropped(ui, app);
             match ui.held.take() {

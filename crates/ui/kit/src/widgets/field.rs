@@ -85,25 +85,8 @@ impl Field {
 
     /// The text with a bar drawn where the caret is.
     pub fn shown(&self) -> String {
-        self.composed(None)
-    }
-
-    /// The same, with what the input method holds in front of the bar.
-    pub fn composed(&self, preedit: Option<&str>) -> String {
-        format!(
-            "{}{}\u{2502}{}",
-            self.before(),
-            preedit.unwrap_or(""),
-            self.after()
-        )
-    }
-
-    pub fn before(&self) -> &str {
-        &self.text[..self.byte(self.at)]
-    }
-
-    pub fn after(&self) -> &str {
-        &self.text[self.byte(self.at)..]
+        let at = self.byte(self.at);
+        format!("{}\u{2502}{}", &self.text[..at], &self.text[at..])
     }
 
     /// The same, a bullet for each character.

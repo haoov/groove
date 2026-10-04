@@ -32,22 +32,14 @@ use groove_ui_kit::widgets::{Button, tabs};
 /// The session: the header, then the agent pane and the workspace.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if ui.session.alone && app.session.selected().is_some() {
-        agent_pane::draw(
-            ctx,
-            app,
-            ui.focus == crate::Focus::Agent && ui.pane_has_keys(),
-        );
+        agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
         return bar::draw(ctx, app);
     }
     header::draw(ctx, app);
     if app.session.selected().is_none() {
         return empty(ctx, app);
     }
-    agent_pane::draw(
-        ctx,
-        app,
-        ui.focus == crate::Focus::Agent && ui.pane_has_keys(),
-    );
+    agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
     bar::draw(ctx, app);
     workspace(ctx, app, ui);
     if let Some(session) = app.session.selected.as_ref() {

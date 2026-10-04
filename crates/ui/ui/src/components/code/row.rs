@@ -43,7 +43,6 @@ fn painted<'a>(line: &Line<'a>) -> Code<'a, Target> {
         word: line.word,
         standing: line.standing,
         noted: line.noted,
-        focused: line.caret.is_some(),
         blame,
     }
 }

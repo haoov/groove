@@ -48,7 +48,7 @@ fn count(files: &[FileDiff], staged: bool) -> u32 {
 
 /// The message, on the same surface a file is edited on.
 fn typed(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
-    let held = ui.session.composing && ui.pane_has_keys();
+    let held = ui.session.composing && !ui.session.typing();
     let composing = held && ui.focus == Focus::Sidebar;
     let panel = Panel::default().ground(ctx.styles.ground());
     panel.border(ctx.styles.border()).draw(ctx, rect);

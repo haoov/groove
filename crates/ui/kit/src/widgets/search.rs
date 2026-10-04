@@ -81,12 +81,10 @@ impl<'a, T: Clone + PartialEq> Search<'a, T> {
             let style = ctx.styles.code(Role::Ghost);
             Label::new(prefix, style).left(ctx, &mut room, ctx.tokens.sm);
         }
-        if self.typing {
-            return typed(ctx, room, self.field, self.code);
-        }
-        let (text, role) = match self.field.is_empty() {
-            true => (self.hint.to_string(), self.quiet),
-            false => (self.field.text().to_string(), self.rest),
+        let (text, role) = match (self.typing, self.field.is_empty()) {
+            (true, _) => (self.field.shown(), Role::Text),
+            (false, true) => (self.hint.to_string(), self.quiet),
+            (false, false) => (self.field.text().to_string(), self.rest),
         };
         let style = match self.code {
             true => ctx.styles.code(role),
@@ -96,23 +94,4 @@ impl<'a, T: Clone + PartialEq> Search<'a, T> {
         room.take_left(ctx.measure(&text, &style));
         room
     }
-}
-
-/// The field as it is typed: the text before the caret, the preedit, the caret, the rest.
-fn typed<A: App>(ctx: &mut Ctx<'_, A>, mut room: Rect, field: &Field, code: bool) -> Rect {
-    let style = match code {
-        true => ctx.styles.code(Role::Text),
-        false => ctx.styles.body(Role::Text),
-    };
-    let before = field.before();
-    row(ctx, room, 0.0, before, style);
-    let at = room.x + ctx.measure(before, &style);
-    let caret = ctx.typing_at(room, at, style);
-    let bar = "\u{2502}";
-    row(ctx, room, caret.x - room.x, bar, style);
-    let after = caret.x + ctx.measure(bar, &style);
-    row(ctx, room, after - room.x, field.after(), style);
-    let end = after + ctx.measure(field.after(), &style);
-    room.take_left(end - room.x);
-    room
 }

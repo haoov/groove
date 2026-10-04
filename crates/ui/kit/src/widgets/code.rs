@@ -32,8 +32,6 @@ pub struct Code<'a, T> {
     pub word: Option<Color>,
     pub standing: Option<(usize, usize)>,
     pub noted: bool,
-    /// The caret has the keyboard: the input method composes at it.
-    pub focused: bool,
     pub blame: Option<(&'a str, Option<T>)>,
 }
 

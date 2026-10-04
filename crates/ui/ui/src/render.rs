@@ -24,7 +24,6 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
         };
         let theme = app.config.theme();
         let mut ctx = Ctx::new(theme, metrics, drawn, &mut frame, fonts, ui.hover.clone());
-        ctx.compose(ui.preedit.clone());
         if ui.settings.open {
             settings::draw(&mut ctx, app, ui);
         } else {

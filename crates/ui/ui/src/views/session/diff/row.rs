@@ -160,7 +160,7 @@ pub(crate) fn is_read(app: &AppState, path: &str) -> bool {
 
 /// Where the caret is, while the workspace holds the keyboard.
 pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
-    let here = ui.focus == Focus::Workspace && ui.pane_has_keys();
+    let here = ui.focus == Focus::Workspace && !ui.session.typing();
     here.then(|| file.new.caret())
 }
 

@@ -9,7 +9,7 @@ use crate::tests::{app, click, window};
 use crate::{Surface, Ui};
 
 /// The fixture's session, with the writes it waits on.
-pub(crate) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
+pub(super) fn asking(asks: Vec<Ask>) -> groove_controllers::AppState {
     let mut app = app();
     let activity = SessionActivity {
         status: AgentStatus::Idle,

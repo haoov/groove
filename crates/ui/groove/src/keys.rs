@@ -2,7 +2,7 @@
 
 use groove_ui::input::{Input, Key, Modifiers};
 use winit::event::{ElementState, KeyEvent};
-use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey};
+use winit::keyboard::{Key as WinitKey, ModifiersState, NamedKey, NativeKey};
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 
 /// The modifiers as the ui reads them.
@@ -25,12 +25,6 @@ pub fn input_of(event: &KeyEvent, mods: ModifiersState) -> Option<Input> {
         true => &bare,
         false => &event.logical_key,
     };
-    if let WinitKey::Character(text) = logical
-        && text.chars().count() > 1
-        && logical == &event.logical_key
-    {
-        return Some(Input::Commit(text.to_string()));
-    }
     Some(Input::Key {
         key: key_of(logical, chord)?,
         mods: mods_of(mods),
@@ -55,17 +49,20 @@ pub fn key_of(logical: &WinitKey, chord: bool) -> Option<Key> {
         WinitKey::Named(NamedKey::PageDown) => Key::PageDown,
         WinitKey::Named(NamedKey::Space) => Key::Char(' '),
         WinitKey::Character(text) => Key::Char(text.chars().next()?),
-        WinitKey::Dead(Some(c)) if chord => Key::Char(spacing(*c)),
+        WinitKey::Unidentified(NativeKey::Xkb(sym)) if chord => Key::Char(dead(*sym)?),
         _ => return None,
     };
     Some(key)
 }
 
-/// The ASCII key a dead accent stands on, where the accent is not ASCII itself.
-fn spacing(accent: char) -> char {
-    match accent {
-        '´' => '\'',
-        '¨' => '"',
-        other => other,
+/// The ASCII key an X dead keysym stands on.
+fn dead(sym: u32) -> Option<char> {
+    match sym {
+        0xFE50 => Some('`'),
+        0xFE51 => Some('\''),
+        0xFE52 => Some('^'),
+        0xFE53 => Some('~'),
+        0xFE57 => Some('"'),
+        _ => None,
     }
 }

@@ -98,8 +98,6 @@ pub struct Ui {
     /// What the pointer is over, for the row under it to say so, and where it stands.
     pub hover: Option<Target>,
     pub at: (f32, f32),
-    /// What the input method composes at the caret that has the keyboard.
-    pub preedit: Option<String>,
     /// The colours and the tree the last frames built, kept while they still hold.
     pub painted: views::session::diff::painted::Painted,
     pub walked: views::session::files::walked::Walked,
@@ -181,15 +179,6 @@ impl Ui {
 
     pub fn dragging(&self) -> bool {
         matches!(self.held, Some(Held::Edge(_)))
-    }
-
-    /// No overlay, bar or field takes the keys before the pane that has the focus.
-    pub fn pane_has_keys(&self) -> bool {
-        self.overlay.is_none()
-            && !self.settings.open
-            && !self.board.typing
-            && self.session.naming.is_none()
-            && !self.session.typing()
     }
 
     pub fn palette(&self) -> Option<&palette::Palette> {

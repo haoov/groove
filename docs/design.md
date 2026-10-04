@@ -28,6 +28,7 @@ reach the rail.
 - **No accessibility layer.** Groove draws its own pixels and gives screen readers
   nothing. AccessKit (`accesskit_winit`) is the way in when it is needed. Every view
   draws through the kit, so the kit is the one place that would emit the nodes.
+- **No input method.** Dead keys and Compose work; IBus and fcitx5 do not reach Groove.
 - **No layout engine.** Content shaped like a document opens in the browser or stays
   plain text. Groove never lays out flowing pages.
 

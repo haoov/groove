@@ -2,7 +2,6 @@ use groove_gfx::{Cell, CellGrid, CellSize, Color, Rect, WIDE_SPACER};
 use groove_types::{Rgb, Screen, Selected};
 
 use crate::base::ctx::{App, Ctx};
-use crate::base::style::Role;
 
 /// A terminal screen at `origin`, clipped to `rect`; its cursor solid only while `focused`.
 pub fn screen<A: App>(
@@ -14,13 +13,7 @@ pub fn screen<A: App>(
     let cell = ctx.cell;
     let ground = ctx.styles.deep();
     let mut grid = cells_of(screen, origin.0, origin.1, ctx.terminal);
-    let mut cursor = cursor_of(screen);
-    let mut composed = None;
-    if focused && let (Some(at), Some(text)) = (cursor, ctx.preedit()) {
-        let (end, columns) = compose(&mut grid, at, text, ctx.styles.color(Role::Text), ground);
-        composed = Some((at, columns));
-        cursor = Some(end);
-    }
+    let cursor = cursor_of(screen);
     if focused && let Some(at) = cursor {
         solid(&mut grid, at, ground);
     }
@@ -30,17 +23,6 @@ pub fn screen<A: App>(
             ctx.quad(selected(one, origin, cell), held);
         }
         ctx.grid(grid);
-        if let Some(((col, row), columns)) = composed {
-            let x = origin.0 + col as f32 * cell.width;
-            let y = origin.1 + (row + 1) as f32 * cell.height - ctx.tokens.hairline;
-            let rule = Rect::new(x, y, columns as f32 * cell.width, ctx.tokens.hairline);
-            ctx.quad(rule, ctx.styles.color(Role::Text));
-        }
-        if focused && let Some((col, row)) = cursor {
-            let x = origin.0 + col as f32 * cell.width;
-            let y = origin.1 + row as f32 * cell.height;
-            ctx.app.caret(Rect::new(x, y, cell.width, cell.height));
-        }
         if !focused && let Some((col, row)) = cursor {
             let x = origin.0 + col as f32 * cell.width;
             let y = origin.1 + row as f32 * cell.height;
@@ -108,42 +90,4 @@ fn solid(grid: &mut CellGrid, (col, row): (usize, usize), ground: Color) {
 
 fn color(rgb: Rgb) -> Color {
     Color::rgb(rgb.r, rgb.g, rgb.b)
-}
-
-/// The preedit over the cells from the cursor, on the line's end; returns where the cursor
-/// stands after it and how many columns it took.
-fn compose(
-    grid: &mut CellGrid,
-    (mut col, row): (usize, usize),
-    text: &str,
-    fg: Color,
-    ground: Color,
-) -> ((usize, usize), usize) {
-    let start = col;
-    let cols = grid.cols;
-    for ch in text.chars() {
-        let wide = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0);
-        if col + wide > cols {
-            break;
-        }
-        if wide == 0 {
-            continue;
-        }
-        let one = Cell {
-            ch,
-            fg,
-            bg: ground,
-            bold: false,
-        };
-        grid.set(col, row, one);
-        if wide == 2 {
-            let spacer = Cell {
-                ch: WIDE_SPACER,
-                ..one
-            };
-            grid.set(col + 1, row, spacer);
-        }
-        col += wide;
-    }
-    ((col.min(cols - 1), row), col - start)
 }

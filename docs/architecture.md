@@ -191,9 +191,9 @@ directly.
   geometry from `gfx`: enforced by `a_view_draws_through_the_context`.
 - **A new widget serves more than one view.** A part only one view draws stays in that
   view, made of kit widgets.
-- **Typing goes through the input method.** What it composes shows underlined at the
-  caret that has the keyboard, and its window opens there. What it commits types as
-  keys do. Enforced by `a_commit_types_into_the_open_buffer_as_a_key_does`.
+- **Dead keys compose in winit.** Groove never enables an input method. Under ctrl or
+  alt, a dead key reads as the key it sits on, so a chord on it still fires. Enforced by
+  `a_dead_key_under_a_chord_reads_as_the_key_it_sits_on`.
 
 ## Tests
 
