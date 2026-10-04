@@ -61,6 +61,7 @@ pub struct Table<'a, T> {
     /// How far the rows are scrolled, in pixels.
     pub offset: f32,
     pub selected: Option<usize>,
+    /// The header row, which sorts; `None` draws the rows alone.
     pub sorted: Option<Sorted>,
 }
 
@@ -73,9 +74,11 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         mut shown: impl FnMut(usize) -> Shown<'r, T>,
     ) -> f32 {
         let mut body = rect;
-        let header = body.take_top(ctx.tokens.row);
         let spans = self.spans(ctx, rect);
-        self.header(ctx, header, &spans);
+        if self.sorted.is_some() {
+            let header = body.take_top(ctx.tokens.row);
+            self.header(ctx, header, &spans);
+        }
         let height = self.rows.first + self.rows.under;
         let extent = (self.count as f32 * height - body.h).max(0.0);
         let offset = self.offset.min(extent);

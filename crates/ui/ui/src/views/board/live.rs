@@ -2,49 +2,83 @@
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Living;
-use groove_gfx::{Edges, Rect};
+use groove_gfx::Rect;
 
-use super::row::{Line, aside, named};
+use super::List;
 use crate::Ui;
 use crate::ctx::Ctx;
-use crate::hit::Target;
+use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::widgets::lead;
+use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
 /// Every session the filter lets through.
-pub(super) fn lines<'a>(app: &'a AppState, ui: &Ui) -> Vec<Line<'a>> {
+pub(super) fn living<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a Living> {
     let query = ui.board.query();
-    let living: Vec<&Living> = app
-        .session
+    app.session
         .living
         .iter()
         .filter(|living| living.session.kind.routine().is_none())
         .filter(|living| query.lets_session(living, app.task.worked(&living.session)))
-        .collect();
-    if living.is_empty() {
-        return vec![Line::Nothing(match query.is_empty() {
-            true => "nothing here. + explorer starts one",
-            false => "nothing the filter lets through",
-        })];
-    }
-    living.into_iter().map(Line::Session).collect()
+        .collect()
 }
 
-/// One session: its kind, its title, what it holds.
-pub(super) fn session(ctx: &mut Ctx, line: Rect, app: &AppState, living: &Living) {
-    let id = &living.session.id;
-    hoverable(ctx, line, Target::Session(id.clone()));
-    let (_sm, _size) = (ctx.tokens.sm, ctx.tokens.icon);
-    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
-    let role = match app.session.get(id).is_some() {
+/// What the column says when it holds nothing.
+pub(super) fn empty(ui: &Ui) -> &'static str {
+    match ui.board.query().is_empty() {
+        true => "nothing here. + explorer starts one",
+        false => "nothing the filter lets through",
+    }
+}
+
+pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &[&Living]) {
+    let columns = [
+        Column {
+            label: "title",
+            width: Width::Fill,
+            end: false,
+            sort: None,
+        },
+        Column {
+            label: "holds",
+            width: Width::Fit("0 repos · 00 worktrees"),
+            end: true,
+            sort: None,
+        },
+    ];
+    let table = Table {
+        columns: &columns,
+        rows: Rows {
+            first: super::row::item(&ctx.tokens),
+            under: 0.0,
+            ruled: true,
+        },
+        count: living.len(),
+        offset: ui.board.live,
+        selected: None,
+        sorted: None,
+    };
+    let extent = table.draw(ctx, body, |at| session(app, living[at]));
+    ctx.app
+        .hits
+        .scrolls(Scroller::Column(List::Live as u8), extent);
+}
+
+/// One session: its kind, blue while it is open, its title, what it holds.
+fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
+    let role = match app.session.get(&living.session.id).is_some() {
         true => Role::Working,
         false => Role::Ghost,
     };
-    lead(ctx, &mut room, Mark::of_kind(&living.session.kind), role);
-    aside(ctx, &mut room, &held(living));
-    named(ctx, room, &living.session.title);
+    let mark = Mark::of_kind(&living.session.kind);
+    Shown {
+        cells: vec![
+            Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role),
+            Cell::small(held(living), Role::Faint),
+        ],
+        under: Vec::new(),
+        target: Some(Target::Session(living.session.id.clone())),
+    }
 }
 
 /// What a session holds, as the row's right-hand text.
