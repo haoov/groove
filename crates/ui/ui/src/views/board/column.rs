@@ -48,17 +48,9 @@ fn counted(lines: &[Line<'_>]) -> usize {
 fn heading(ctx: &mut Ctx, line: Rect, list: List, count: usize) {
     groove_ui_kit::shape::ground(ctx, line, Ground::Band);
     hairline(ctx, line, ctx.styles.line());
-    let label = match count {
-        0 => list.name().to_string(),
-        n => format!("{} · {n}", list.name()),
-    };
-    row(
-        ctx,
-        line,
-        ctx.tokens.md,
-        &label,
-        ctx.styles.heading(Role::Faint),
-    );
+    groove_ui_kit::widgets::Heading::new(list.name())
+        .count(count)
+        .draw(ctx, line);
 }
 
 /// The rule that separates this column from the one before it.

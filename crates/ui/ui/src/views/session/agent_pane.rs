@@ -7,6 +7,7 @@ use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::row;
+use groove_ui_kit::widgets::Side;
 use groove_ui_kit::widgets::screen;
 
 /// The agent's terminal, or why there is none.
@@ -15,10 +16,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, focused: bool) {
         return;
     };
     let pane = ctx.app.layout.agent;
-    let (line, hairline) = (ctx.styles.line(), ctx.tokens.hairline);
-    groove_ui_kit::shape::ground(ctx, pane, Ground::Deep);
+    groove_ui_kit::widgets::pane(ctx, pane, Ground::Deep, Side::Right);
     ctx.hit(pane, Target::Agent);
-    groove_ui_kit::shape::side_rule(ctx, pane, pane.right() - hairline, line);
 
     let Some(agent) = app.agent.agent(&open.session.id) else {
         return note(ctx, "starting the agent…");

@@ -11,7 +11,6 @@ use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hoverable;
 use groove_ui_kit::text::{Label, ago};
-use groove_ui_kit::widgets::fold;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
@@ -26,13 +25,17 @@ pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
 /// The word that folds the feed, and the one that narrows it to the session in hand.
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
     groove_ui_kit::shape::rule_above(ctx, line, ctx.styles.line());
-    hoverable(ctx, line, Target::Feed);
-    grab(ctx, line);
     let md = ctx.tokens.md;
     let mut room = line.pad(Edges::across(md, md));
-    narrowed(ctx, &mut room, app, ui);
-    fold(ctx, &mut room, !ui.rail.folded, Role::Faint);
-    Label::new("FEED", ctx.styles.heading(Role::Faint)).draw(ctx, room);
+    let scope = narrowed(ctx, &mut room, app, ui);
+    groove_ui_kit::widgets::Heading::new("feed")
+        .fold(!ui.rail.folded)
+        .target(Target::Feed)
+        .within(ctx, line, room);
+    if let Some(scope) = scope {
+        ctx.hit(scope, Target::FeedScope);
+    }
+    grab(ctx, line);
 }
 
 /// The band the pointer takes the feed's own edge by.
@@ -42,17 +45,16 @@ fn grab(ctx: &mut Ctx, line: Rect) {
     ctx.hit(over, Target::Split(crate::layout::Edge::Feed));
 }
 
-/// Which sessions it shows, at the header's own end.
-fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) {
+/// Which sessions it shows, at the header's own end; returns the box a click narrows by.
+fn narrowed(ctx: &mut Ctx, room: &mut Rect, app: &AppState, ui: &Ui) -> Option<Rect> {
     if app.session.open.len() < 2 {
-        return;
+        return None;
     }
     let (role, text) = match ui.rail.mine {
         true => (Role::Muted, "this session"),
         false => (Role::Ghost, "every session"),
     };
-    let box_ = Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0);
-    ctx.hit(box_, Target::FeedScope);
+    Some(Label::new(text, ctx.styles.small(role)).right(ctx, room, 0.0))
 }
 
 /// The lines, scrolled and clipped to the room they have.

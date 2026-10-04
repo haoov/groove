@@ -8,18 +8,17 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::shape::hairline;
-use groove_ui_kit::text::{Label, row};
+use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Tab, Text};
 
 /// How much the search across the worktree has turned up.
 pub(super) fn found(ctx: &mut Ctx, rect: Rect, count: usize) {
-    let style = ctx.styles.heading(Role::Faint);
     let label = match count {
-        0 => "NOTHING FOUND".to_string(),
-        n if n >= FOUND_MAX => format!("FOUND {n}+"),
-        n => format!("FOUND · {n}"),
+        0 => "nothing found".to_string(),
+        n if n >= FOUND_MAX => format!("found {n}+"),
+        n => format!("found · {n}"),
     };
-    row(ctx, rect, ctx.tokens.md, &label, style);
+    groove_ui_kit::widgets::Heading::new(&label).draw(ctx, rect);
     hairline(ctx, rect, ctx.styles.line());
 }
 

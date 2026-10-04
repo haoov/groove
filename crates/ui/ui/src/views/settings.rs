@@ -18,6 +18,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::widgets::{Button, Field, Row, Search};
+use groove_ui_kit::widgets::{Side, pane};
 
 /// What Settings remembers while it stands open.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -44,9 +45,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let mut window = ctx.window;
     groove_ui_kit::shape::ground(ctx, window, Ground::Work);
     let list = window.take_left(ctx.tokens.sidebar);
-    groove_ui_kit::shape::ground(ctx, list, Ground::Band);
-    let edge = list.right() - ctx.tokens.hairline;
-    groove_ui_kit::shape::side_rule(ctx, list, edge, ctx.styles.line());
+    pane(ctx, list, Ground::Band, Side::Right);
     sections(ctx, list, &ui.settings);
     form::draw(ctx, window, app, &ui.settings);
 }

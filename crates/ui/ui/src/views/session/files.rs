@@ -24,15 +24,15 @@ use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, tabs};
+use groove_ui_kit::widgets::tabs;
+use groove_ui_kit::widgets::{Side, pane};
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.sidebar;
     if rect.is_empty() {
         return;
     }
-    groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
-    groove_ui_kit::shape::side_rule(ctx, rect, rect.x, ctx.styles.line());
+    pane(ctx, rect, Ground::Band, Side::Left);
     let under = ctx.app.layout.commit;
     if ui.session.commits() && !under.is_empty() {
         commit::draw(ctx, app, ui, under);
@@ -206,23 +206,10 @@ pub(crate) fn narrowed<'a>(app: &'a AppState, ui: &Ui) -> Vec<&'a FileDiff> {
     left
 }
 
-/// One word at the right of `room`, with a ground of its own under the pointer.
-pub(crate) fn acted(ctx: &mut Ctx, room: &mut Rect, label: &str, target: Target) {
-    let (ground, action) = (ctx.styles.ground(), ctx.styles.action());
-    let word = Button::new(label, target, Role::Muted, ground)
-        .flat()
-        .hover(action);
-    word.right(ctx, room, ctx.tokens.sm);
-}
-
-/// A question in the row's own place, with its two answers at its end.
+/// A question in the row's own place: discard, or keep.
 pub(crate) fn asking(ctx: &mut Ctx, line: Rect, question: &str) {
-    groove_ui_kit::shape::ground(ctx, line, Ground::Raised);
-    let mut room = line;
-    acted(ctx, &mut room, "keep", Target::Keep);
-    acted(ctx, &mut room, "discard", Target::Discard);
-    let asked = room.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    Label::new(question, ctx.styles.small(Role::Bad)).draw(ctx, asked);
+    let answers = [("discard", Target::Discard), ("keep", Target::Keep)];
+    groove_ui_kit::widgets::question(ctx, line, question, answers);
 }
 
 /// The files of the worktree the session points at, never another's.

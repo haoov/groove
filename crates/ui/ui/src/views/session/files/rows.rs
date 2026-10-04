@@ -3,7 +3,7 @@
 use groove_gfx::{Edges, Rect};
 use groove_types::{FileDiff, FileStatus};
 
-use super::{Listing, acted, asking, reads_as};
+use super::{Listing, asking, reads_as};
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
@@ -174,7 +174,7 @@ fn offer(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
         true => ("unstage", Target::Unstage(file.path.clone())),
         false => ("stage", Target::Stage(file.path.clone())),
     };
-    acted(ctx, room, label, target)
+    groove_ui_kit::widgets::offer(ctx, room, label, target)
 }
 
 fn counts(ctx: &mut Ctx, room: &mut Rect, file: &FileDiff) {
