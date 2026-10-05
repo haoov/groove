@@ -36,48 +36,6 @@ fn big(lines: usize) -> AppState {
     app
 }
 
-/// The same Go file twice: indented with tabs, which the rows run out to their
-/// stops, and with those tabs already spaces.
-fn tabbed(lines: usize, tabs: bool) -> AppState {
-    let mut app = big(lines);
-    let indent = match tabs {
-        true => "\t\t",
-        false => "        ",
-    };
-    let before: String = (0..lines)
-        .map(|at| format!("func name{at}() int {{\n{indent}return {at}\n}}\n"))
-        .collect();
-    let after = before.replace("return 20", "return 21");
-    crate::tests::shows(&mut app, "main.go", &before, &after);
-    app
-}
-
-#[test]
-#[ignore]
-fn time_what_tabs_cost() {
-    let mut fonts = Fonts::embedded();
-    for lines in [200, 2000] {
-        for tabs in [false, true] {
-            let app = tabbed(lines, tabs);
-            let mut ui = Ui::default();
-            ui.session.tab = Tab::Diff;
-            ui.session.tab = crate::views::session::Tab::Files;
-            let _ = view(&app, &ui, window(), &mut fonts);
-            let runs = 50;
-            let started = Instant::now();
-            for _ in 0..runs {
-                let _ = view(&app, &ui, window(), &mut fonts);
-            }
-            let each = started.elapsed() / runs;
-            let kind = match tabs {
-                true => "tabs  ",
-                false => "spaces",
-            };
-            println!("{:>6} lines of {kind}: {each:?} a frame", lines * 3);
-        }
-    }
-}
-
 #[test]
 #[ignore]
 fn time_the_frame() {
@@ -101,6 +59,75 @@ fn time_the_frame() {
             }
             let each = started.elapsed() / runs;
             println!("{lines:>6} lines {view_kind:?}: {each:?} for {texts} runs");
+        }
+    }
+}
+
+/// `big(lines)` with a long note, answered once, on every tenth line.
+fn noted(lines: usize) -> AppState {
+    use groove_types::{Anchor, Note, NoteOrigin, Said, Timestamp};
+    let said = |author: &str, body: &str| Said {
+        author: author.into(),
+        body: body.into(),
+        at: Timestamp::new(0),
+    };
+    let body = "issue (blocking): this leaks the handle every time the file is opened \
+                again, and nothing ever closes it.\n\n- close it on drop\n- or keep one \
+                handle for the whole session and hand out `&File` to the callers";
+    let mut app = big(lines);
+    app.delivery.shown = (0..lines as u32)
+        .step_by(10)
+        .map(|line| Note {
+            origin: NoteOrigin::Thread(format!("t{line}")),
+            anchor: Some(Anchor::line("src/lib.rs", line + 1)),
+            resolved: false,
+            said: vec![
+                said("reviewer", body),
+                said("haoov", "fixed, it closes on drop now"),
+            ],
+        })
+        .collect();
+    app
+}
+
+/// One frame at `width`: the notes wrap to it in that frame.
+fn resize(app: &AppState, ui: &Ui, width: u32, fonts: &mut Fonts) -> usize {
+    let window = crate::tests::metrics(width, crate::tests::WINDOW.1, 1.0);
+    view(app, ui, window, fonts).1.wrap()
+}
+
+#[test]
+#[ignore]
+fn time_a_frame_with_notes() {
+    let mut fonts = Fonts::embedded();
+    let (wide, narrow) = (crate::tests::WINDOW.0 * 3 / 2, crate::tests::WINDOW.0);
+    for lines in [200, 2000] {
+        let app = noted(lines);
+        for face in [
+            crate::views::session::Face::File,
+            crate::views::session::Face::Stream(DiffView::Inline),
+        ] {
+            let mut ui = Ui::default();
+            crate::tests::set_face(&mut ui, face);
+            let cols = resize(&app, &ui, narrow, &mut fonts);
+            let rows = crate::views::session::diff::rows_of;
+            assert!(
+                rows(&app, &ui, cols) > rows(&big(lines), &ui, cols),
+                "{face:?} draws the notes"
+            );
+            let runs = 20;
+            let started = Instant::now();
+            for _ in 0..runs {
+                let _ = view(&app, &ui, window(), &mut fonts);
+            }
+            let still = started.elapsed() / runs;
+            let started = Instant::now();
+            for at in 0..runs {
+                let width = if at % 2 == 0 { wide } else { narrow };
+                resize(&app, &ui, width, &mut fonts);
+            }
+            let resized = started.elapsed() / runs;
+            println!("{lines:>5} lines {face:?}: {still:>10?} still, {resized:>10?} a resize");
         }
     }
 }

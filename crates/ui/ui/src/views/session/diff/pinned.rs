@@ -28,8 +28,14 @@ enum Kind {
     Scope,
 }
 
-pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: Gutters) {
-    let pins = held(ctx, body, app, ui);
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    body: Rect,
+    app: &AppState,
+    ui: &Ui,
+    (inline, gutters): (&Inline, Gutters),
+) {
+    let pins = held(ctx, body, app, ui, inline);
     if pins.is_empty() {
         return;
     }
@@ -72,14 +78,13 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, gutters: 
 }
 
 /// The scopes around the first row the pinned band leaves showing.
-fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui) -> Vec<Pin> {
-    let inline = super::notes::Inline::of(app, ui, ui.session.face());
+fn held(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<Pin> {
     if ui.session.face() == Face::File {
-        return scoped(ctx, body, app, ui, &inline);
+        return scoped(ctx, body, app, ui, inline);
     }
     let mut pins = Vec::new();
     for _ in 0..=PINNED_DEEP {
-        let next = pins_under(ctx, body, app, ui, &inline, pins.len());
+        let next = pins_under(ctx, body, app, ui, inline, pins.len());
         if next.len() <= pins.len() {
             return next;
         }

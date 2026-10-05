@@ -154,6 +154,17 @@ impl<'a, A: App> Ctx<'a, A> {
         self.clip = outer;
     }
 
+    /// The rows this text took at `width`, as an earlier frame kept them.
+    pub(crate) fn kept_rows(&self, text: &str, style: &TextStyle, width: f32) -> Option<usize> {
+        self.fonts
+            .kept_rows(text, style.font, style.weight, style.size, width)
+    }
+
+    pub(crate) fn keep_rows(&mut self, text: &str, style: &TextStyle, width: f32, rows: usize) {
+        self.fonts
+            .keep_rows(text, style.font, style.weight, style.size, width, rows);
+    }
+
     /// The width this text takes in this style.
     pub fn measure(&mut self, text: &str, style: &TextStyle) -> f32 {
         self.fonts

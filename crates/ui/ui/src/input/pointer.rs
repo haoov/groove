@@ -142,7 +142,7 @@ fn acted(
         Some(Target::Picker(which)) => selector(ui, app, hits, which),
         Some(Target::Worktree(worktree)) => select_worktree(app, worktree),
         Some(Target::File(path)) => opened(ui, app, path, metrics),
-        Some(Target::View(view)) => viewing(ui, app, view, metrics),
+        Some(Target::View(view)) => viewing(ui, app, view, (hits, metrics)),
         Some(Target::Mode(mode)) => vec![Command::Workspace(workspace::Command::SetMode { mode })],
         Some(Target::Code) => selecting(point, ui, app, hits, metrics),
         Some(Target::Read(path)) => one(workspace::Command::MarkRead { path }),
@@ -220,8 +220,8 @@ fn opened(ui: &mut Ui, app: &AppState, path: String, metrics: Metrics) -> Vec<Co
     in_files(ui, app, path)
 }
 
-fn viewing(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) -> Vec<Command> {
-    switch(ui, app, view, metrics);
+fn viewing(ui: &mut Ui, app: &AppState, view: DiffView, at: (&Hits, Metrics)) -> Vec<Command> {
+    switch(ui, app, view, at);
     Vec::new()
 }
 

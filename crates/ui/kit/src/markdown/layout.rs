@@ -6,6 +6,7 @@ use super::parse::{Block, Bullet, Kind, Span};
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
 use crate::base::tokens::LEADING;
+use crate::text::words;
 
 /// A run of one style on a line, `x` from the prose's left edge.
 #[derive(Debug, Clone, PartialEq)]
@@ -164,24 +165,6 @@ fn put(line: &mut Line, (x, w): (f32, f32), word: &str, style: TextStyle, span: 
         code: span.code,
         link: span.link.clone(),
     });
-}
-
-/// The text cut after each space, a line break its own word.
-pub(super) fn words(text: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let mut from = 0;
-    for (at, one) in text.char_indices() {
-        if one == '\n' {
-            out.extend((from < at).then(|| &text[from..at]));
-            out.push("\n");
-            from = at + 1;
-        } else if one == ' ' {
-            out.push(&text[from..=at]);
-            from = at + 1;
-        }
-    }
-    out.extend((from < text.len()).then(|| &text[from..]));
-    out
 }
 
 fn code<A: App>(ctx: &mut Ctx<'_, A>, block: &Block, top: f32) -> Vec<Line> {

@@ -165,8 +165,14 @@ pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
 }
 
 /// The file and new-side line a row shows; a note's row shows none.
-pub(crate) fn line_at(app: &AppState, ui: &Ui, view: Face, row: usize) -> Option<(String, usize)> {
-    let super::notes::Slot::Code(row) = super::notes::Inline::of(app, ui, view).slot(row) else {
+pub(crate) fn line_at(
+    app: &AppState,
+    ui: &Ui,
+    (view, cols): (Face, usize),
+    row: usize,
+) -> Option<(String, usize)> {
+    let super::notes::Slot::Code(row) = super::notes::Inline::of(app, ui, view, cols).slot(row)
+    else {
         return None;
     };
     match view {

@@ -76,24 +76,44 @@ pub fn wrapped<A: App>(
     style: &TextStyle,
     width: f32,
 ) -> Vec<String> {
-    let mut lines = Vec::new();
-    for paragraph in text.split('\n') {
-        let mut line = String::new();
-        for word in paragraph.split_whitespace() {
-            let candidate = match line.is_empty() {
-                true => word.to_string(),
-                false => format!("{line} {word}"),
-            };
-            if ctx.measure(&candidate, style) > width && !line.is_empty() {
-                lines.push(std::mem::take(&mut line));
-                line = word.to_string();
-                continue;
-            }
-            line = candidate;
+    let mut lines = vec![String::new()];
+    let mut x = 0.0;
+    for word in words(text) {
+        let full = x > 0.0 && x + ctx.measure(word.trim_end(), style) > width;
+        if word == "\n" || full {
+            lines.push(String::new());
+            x = 0.0;
         }
-        lines.push(line);
+        if word == "\n" || (x == 0.0 && word.trim().is_empty()) {
+            continue;
+        }
+        x += ctx.measure(word, style);
+        if let Some(line) = lines.last_mut() {
+            line.push_str(word);
+        }
+    }
+    for line in &mut lines {
+        line.truncate(line.trim_end().len());
     }
     lines
+}
+
+/// The text cut after each space, a line break its own word.
+pub(crate) fn words(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut from = 0;
+    for (at, one) in text.char_indices() {
+        if one == '\n' {
+            out.extend((from < at).then(|| &text[from..at]));
+            out.push("\n");
+            from = at + 1;
+        } else if one == ' ' {
+            out.push(&text[from..=at]);
+            from = at + 1;
+        }
+    }
+    out.extend((from < text.len()).then(|| &text[from..]));
+    out
 }
 
 /// How long ago, in as few characters as it takes: `now`, `2m`, `6h`, `5d`, `3w`, `4mo`, `2y`.

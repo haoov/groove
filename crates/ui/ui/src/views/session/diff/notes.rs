@@ -19,6 +19,8 @@ struct Block {
     at: Option<usize>,
     /// The note's own row of buttons, under what it says.
     acts: bool,
+    /// What each row of the note says, wrapped once for the frame.
+    said: Vec<(String, groove_ui_kit::markdown::Row)>,
 }
 
 /// A row of the surface: a view row, a note row, a note's buttons, or the note being typed.
@@ -37,8 +39,8 @@ pub(crate) struct Inline {
 }
 
 impl Inline {
-    /// The notes of this view, each on the row its file shows it on.
-    pub(crate) fn of(app: &AppState, ui: &Ui, view: Face) -> Self {
+    /// The notes of this view, each on the row its file shows it on, wrapped to `cols`.
+    pub(crate) fn of(app: &AppState, ui: &Ui, view: Face, cols: usize) -> Self {
         if app.workspace.commit.is_some() {
             return Self::default();
         }
@@ -49,7 +51,7 @@ impl Inline {
             .iter()
             .enumerate()
             .filter(|(_, note)| !written(note, over))
-            .filter_map(|(at, note)| block(app, view, note, at, cols_of(ui)))
+            .filter_map(|(at, note)| block(app, view, note, at, cols_of(cols)))
             .collect();
         if let Some(noting) = ui.session.noting.as_ref()
             && let Some(after) = anchored(app, view, &noting.anchor)
@@ -60,10 +62,20 @@ impl Inline {
                 rows: noting.field.text().split('\n').count(),
                 at: None,
                 acts: false,
+                said: Vec::new(),
             });
         }
         blocks.sort_by_key(|block| (block.after, block.at));
         Self { blocks }
+    }
+
+    /// What one row of a note says: who said it, and the words on that row.
+    pub(crate) fn said(&self, at: usize, row: usize) -> (String, groove_ui_kit::markdown::Row) {
+        self.blocks
+            .iter()
+            .find(|block| block.at == Some(at))
+            .and_then(|block| block.said.get(row).cloned())
+            .unwrap_or_default()
     }
 
     /// How many rows the surface stands with the notes in it.
@@ -161,12 +173,14 @@ fn written(note: &Note, over: Option<&groove_types::AnnotationId>) -> bool {
 fn block(app: &AppState, view: Face, note: &Note, at: usize, cols: usize) -> Option<Block> {
     let anchor = note.anchor.as_ref()?;
     let after = anchored(app, view, anchor)?;
+    let said = wrapped(note, cols);
     Some(Block {
         after,
         from: anchored(app, view, &starts(anchor)).unwrap_or(after),
-        rows: wrapped(note, cols).len().max(1) + 1,
+        rows: said.len().max(1) + 1,
         at: Some(at),
         acts: true,
+        said,
     })
 }
 
@@ -185,11 +199,6 @@ fn anchored(app: &AppState, view: Face, anchor: &Anchor) -> Option<usize> {
         }
         _ => app.workspace.changes.row_of(&anchor.path, anchor.end_line),
     }
-}
-
-/// What one row of a note says: who said it, and the words on that row.
-pub(crate) fn said(note: &Note, row: usize, cols: usize) -> (String, groove_ui_kit::markdown::Row) {
-    wrapped(note, cols).into_iter().nth(row).unwrap_or_default()
 }
 
 /// The lines an anchor covers, as a file numbers them.

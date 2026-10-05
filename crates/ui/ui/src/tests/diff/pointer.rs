@@ -227,7 +227,12 @@ fn changing_the_view_keeps_the_same_line_in_view() {
     let (_, hits) = view_of(&app, &ui);
     let top = |ui: &Ui| {
         let row = crate::components::first(height, ui.session.diff);
-        crate::views::session::diff::line_at(&app, ui, ui.session.face(), row)
+        crate::views::session::diff::line_at(
+            &app,
+            ui,
+            (ui.session.face(), drawn_cols(&app, ui)),
+            row,
+        )
     };
     let before = top(&ui);
     let split = hits.rect_of(&Target::View(DiffView::Split)).expect("split");

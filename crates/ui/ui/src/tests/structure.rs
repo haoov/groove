@@ -146,6 +146,20 @@ fn a_view_draws_through_the_context() {
     );
 }
 
+#[test]
+fn only_the_kit_depends_on_taffy() {
+    let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for manifest in ["Cargo.toml", "../groove/Cargo.toml"] {
+        let text = fs::read_to_string(crate_dir.join(manifest)).expect("a manifest");
+        assert!(
+            !text
+                .lines()
+                .any(|line| line.trim_start().starts_with("taffy")),
+            "{manifest} lays out through the kit, not Taffy"
+        );
+    }
+}
+
 /// Every ground and band a row can take, in each flavour.
 fn grounds(theme: groove_types::ThemeName) -> Vec<(&'static str, groove_gfx::Color)> {
     let styles = groove_ui_kit::base::style::Styles::new(

@@ -17,10 +17,15 @@ use groove_ui_kit::base::ctx::Metrics;
 use groove_ui_kit::base::tokens::ABOVE_MATCH;
 
 /// Changes the view, keeping the line at the top of the old one in view.
-pub(super) fn switch(ui: &mut Ui, app: &AppState, view: DiffView, metrics: Metrics) {
+pub(super) fn switch(
+    ui: &mut Ui,
+    app: &AppState,
+    view: DiffView,
+    (hits, metrics): (&Hits, Metrics),
+) {
     let line = metrics.tokens().line;
-    let (from, to) = (Face::Stream(ui.session.view), Face::Stream(view));
-    ui.session.diff = diff::scrolled(app, ui, from, to, ui.session.diff, line);
+    let faces = (Face::Stream(ui.session.view), Face::Stream(view));
+    ui.session.diff = diff::scrolled(app, ui, faces, (ui.session.diff, line), hits.wrap());
     ui.session.view = view;
 }
 
@@ -101,7 +106,7 @@ pub(super) fn lensed(y: f32, ui: &mut Ui, app: &AppState, hits: &Hits, metrics: 
     let Some(rect) = hits.rect_of(&Target::Map) else {
         return;
     };
-    let total = diff::rows_of(app, ui);
+    let total = diff::rows_of(app, ui, hits.wrap());
     if total == 0 {
         return;
     }
@@ -180,7 +185,7 @@ pub(super) fn at(
     point: (f32, f32),
 ) -> Option<(String, Caret)> {
     let (row, display) = row_at(hits, metrics, point)?;
-    let (path, line) = diff::line_at(app, ui, ui.session.face(), row)?;
+    let (path, line) = diff::line_at(app, ui, (ui.session.face(), hits.wrap()), row)?;
     let (text, width) = diff::text_at(app, &path, line)?;
     Some((path, Caret::new(line, column_of(&text, display, width))))
 }

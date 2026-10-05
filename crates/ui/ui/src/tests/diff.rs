@@ -58,6 +58,11 @@ fn on_diff() -> Ui {
     ui
 }
 
+/// How many characters a note row held in the frame `ui` draws.
+fn drawn_cols(app: &AppState, ui: &Ui) -> usize {
+    view(app, ui, window(), &mut Fonts::embedded()).1.wrap()
+}
+
 /// Every text the open file's rows drew.
 fn row_texts(app: &AppState, ui: &Ui) -> Vec<String> {
     let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());

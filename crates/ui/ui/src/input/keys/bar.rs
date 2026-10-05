@@ -88,7 +88,7 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
         .workspace
         .active()
         .is_some_and(|open| open.path == hit.path);
-    let row = Inline::of(app, ui, find.view).shifted(hit.row);
+    let row = Inline::of(app, ui, find.view, hits.wrap()).shifted(hit.row);
     let same = holds || find.view != Face::File;
     *ui.session.scroll_mut() = centred(row, metrics.tokens().line, hits, same);
     let Some(at) = hit.line.map(|line| Caret::new(line, hit.range.start)) else {

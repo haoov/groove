@@ -29,8 +29,10 @@ reach the rail.
   nothing. AccessKit (`accesskit_winit`) is the way in when it is needed. Every view
   draws through the kit, so the kit is the one place that would emit the nodes.
 - **No input method.** Dead keys and Compose work; IBus and fcitx5 do not reach Groove.
-- **No layout engine.** Content shaped like a document opens in the browser or stays
-  plain text. Groove never lays out flowing pages.
+- **No home-grown layout engine.** Boxes lay out with Taffy, through the kit. Lists and
+  cell grids (terminals, code rows, list rows) keep fixed math inside the box Taffy
+  gives them. Content shaped like a document opens in the browser or stays plain text.
+  Groove never lays out flowing pages.
 
 ## Board — large scope
 

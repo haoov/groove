@@ -100,19 +100,9 @@ impl App {
         let _ = renderer.render(&frame);
         self.hits = hits;
         self.showing();
-        self.wrapping();
         self.point();
         if let Some(blame) = groove_ui::input::rest(&mut self.ui, &self.state, metrics.tick) {
             dispatch(blame, &mut self.state, &self.services, &self.spawner);
-        }
-    }
-
-    /// The width a note row holds, for the next frame to wrap notes to.
-    fn wrapping(&mut self) {
-        let cols = self.hits.wrap();
-        if cols != 0 && cols != self.ui.session.note_cols {
-            self.ui.session.note_cols = cols;
-            self.redraw();
         }
     }
 
