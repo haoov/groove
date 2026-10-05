@@ -71,13 +71,17 @@ fn a_step_up_asks_for_the_preference_one_step_more() {
 }
 
 #[test]
-fn opening_settings_checks_the_environment_again() {
+fn opening_settings_checks_the_environment_and_the_kubeconfig_again() {
     let app = full_app();
     let mut ui = Ui::default();
     let (_, hits) = drawn(&app, &ui);
     let footer = hits.rect_of(&Target::SettingsOpen).expect("the footer row");
     let asked = click(footer, &mut ui, &app, &hits);
-    assert_eq!(asked, [Command::Config(config::Command::CheckEnvironment)]);
+    let scan = Command::Cluster(groove_controllers::cluster::Command::ScanContexts);
+    assert_eq!(
+        asked,
+        [Command::Config(config::Command::CheckEnvironment), scan]
+    );
 }
 
 #[test]

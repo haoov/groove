@@ -15,6 +15,7 @@ pub enum Event {
     Agent(groove_agent_service::Event),
     Shell(groove_shell_service::Event),
     Config(groove_config_service::Event),
+    Cluster(groove_cluster_service::Event),
     Window(Window),
 }
 
@@ -30,6 +31,7 @@ pub fn apply(event: Event, state: &mut AppState) {
         }
         Event::Shell(e) => groove_shell_service::apply(&mut state.shell, e),
         Event::Config(e) => groove_config_service::apply(&mut state.config, e),
+        Event::Cluster(e) => groove_cluster_service::apply(&mut state.cluster, e),
         Event::Window(Window::Focus(focused)) => {
             state.focused = focused;
             if focused {

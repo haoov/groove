@@ -1,0 +1,21 @@
+[package]
+name = "groove-kube"
+description = "One Kubernetes client per kubeconfig context: the contexts, a connection, its errors sorted"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+kube.workspace = true
+k8s-openapi.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+wiremock.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
