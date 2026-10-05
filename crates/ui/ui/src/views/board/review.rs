@@ -15,6 +15,7 @@ use crate::hit::{Scroller, Target};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::Tokens;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::{ago, row};
 use groove_ui_kit::widgets::{Cell, Column, Rows, Shown, Table, Width};
 
@@ -44,7 +45,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, ui: &Ui, asked: &[&ReviewMr]) {
             true => "nothing is waiting on you",
             false => "nothing the filter lets through",
         };
-        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+        let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
         return row(
             ctx,
             line,

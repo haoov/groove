@@ -10,6 +10,7 @@ use crate::hit::Target;
 use crate::views::session::{Tab, files};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::{hairline, square};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{self, Text, changes};
@@ -30,8 +31,10 @@ pub(super) fn draw(ctx: &mut Ctx, band: Rect, app: &AppState, ui: &Ui, path: &st
         .is_some_and(|open| open.new.dirty());
     if dirty {
         let size = ctx.styles.small(Role::Warn).size;
-        room.take_right(ctx.tokens.sm);
-        let dot = square(room.take_right(size), size);
+        let wide = |width: f32| Spec::default().width(width);
+        let [rest, dot, _] = row_in(room, [Spec::fill(), wide(size), wide(ctx.tokens.sm)]);
+        room = rest;
+        let dot = square(dot, size);
         groove_ui_kit::widgets::icon(ctx, dot, Mark::Modified, Role::Warn);
     }
     let md = ctx.tokens.md;

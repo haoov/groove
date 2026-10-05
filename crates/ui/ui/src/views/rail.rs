@@ -14,6 +14,7 @@ use crate::{Surface, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::{after_mark, hairline, hoverable, leading, ruled};
 use groove_ui_kit::text::{Label, row};
 use groove_ui_kit::widgets::lead;
@@ -45,23 +46,20 @@ enum Entry<'a> {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let rect = ctx.app.layout.rail;
     pane(ctx, rect, Ground::Band, Side::Right);
-    let mut column = rect;
-    column.take_right(ctx.tokens.hairline);
-
-    let board = column.take_top(ctx.tokens.header);
-    let foot = column.take_bottom(ctx.tokens.bar);
+    let tall = |height: f32| Spec::default().height(height);
+    let [column, _] = row_in(
+        rect,
+        [Spec::fill(), Spec::default().width(ctx.tokens.hairline)],
+    );
+    let parts = [
+        tall(ctx.tokens.header),
+        Spec::fill(),
+        tall(ctx.app.layout.feed.h),
+        tall(ctx.tokens.bar),
+    ];
+    let [board, rows, feed, foot] = column_in(column, parts);
     board_row(ctx, app, ui, board);
-    let band = ctx.app.layout.feed;
-    let rows = Rect {
-        h: (band.y - column.y).max(0.0),
-        ..column
-    };
     items(ctx, app, ui, rows);
-    let feed = Rect {
-        y: band.y,
-        h: band.h,
-        ..column
-    };
     feed::draw(ctx, feed, app, ui);
     footer(ctx, foot);
 }

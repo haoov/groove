@@ -15,6 +15,7 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::text::row;
 
 use groove_gfx::Edges;
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let notes: Vec<(usize, &Note)> = app
@@ -26,7 +27,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         .collect();
     if notes.is_empty() {
         let style = ctx.styles.small(Role::Faint);
-        let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+        let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
         return row(ctx, line, ctx.tokens.md, "no notes on this session", style);
     }
     let height = ctx.tokens.row;
@@ -55,8 +56,10 @@ fn one(ctx: &mut Ctx, line: Rect, note: &Note, at: usize) {
     };
     let (sm, size) = (ctx.tokens.sm, ctx.tokens.small);
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let box_ = square(room.take_left(size), size);
-    room.take_left(sm);
+    let wide = |width: f32| Spec::default().width(width);
+    let [box_, _, rest] = row_in(room, [wide(size), wide(sm), Spec::fill()]);
+    room = rest;
+    let box_ = square(box_, size);
     groove_ui_kit::widgets::icon(ctx, box_, mark(note), role);
     let place = where_of(note);
     Label::new(&place, ctx.styles.small(role)).left(ctx, &mut room, sm);

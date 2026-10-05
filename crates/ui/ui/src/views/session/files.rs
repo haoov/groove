@@ -23,6 +23,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::tabs;
 use groove_ui_kit::widgets::{Side, pane};
@@ -37,16 +38,19 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     if ui.session.commits() && !under.is_empty() {
         commit::draw(ctx, app, ui, under);
     }
-    let mut column = rect.until_y(under.y);
+    let tall = |height: f32| Spec::default().height(height);
+    let [list, _] = column_in(rect, [Spec::fill(), tall(under.h)]);
     let bar = bar::draw(ctx, rect, ui);
-    column.take_top(bar.h);
+    let [_, mut column] = column_in(list, [tall(bar.h), Spec::fill()]);
     if let Some(one) = app.workspace.commit.as_ref() {
-        heading::showing(ctx, column.take_top(ctx.tokens.header), one);
+        let [head, rest] = column_in(column, [tall(ctx.tokens.header), Spec::fill()]);
+        heading::showing(ctx, head, one);
+        column = rest;
     }
     if ui.session.tab == Tab::Files {
         return changed_files(ctx, column, app, ui);
     }
-    let strip = column.take_top(ctx.tokens.row + ctx.tokens.sm);
+    let [strip, column] = column_in(column, [tall(ctx.tokens.row + ctx.tokens.sm), Spec::fill()]);
     panes(ctx, strip, app, ui);
     match ui.session.pane {
         Pane::Files => changed_files(ctx, column, app, ui),
@@ -98,7 +102,9 @@ fn changed_files(ctx: &mut Ctx, mut column: Rect, app: &AppState, ui: &Ui) {
     let grep = ui.session.bar.greps();
     let moded = ui.session.tab == Tab::Diff && app.workspace.commit.is_none();
     if grep || moded {
-        let head = column.take_top(ctx.tokens.header);
+        let band = Spec::default().height(ctx.tokens.header);
+        let [head, rest] = column_in(column, [band, Spec::fill()]);
+        column = rest;
         match grep {
             true => heading::found(ctx, head, app.workspace.found.len()),
             false => heading::modes(ctx, head, app.workspace.mode),

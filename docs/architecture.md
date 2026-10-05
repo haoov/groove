@@ -187,6 +187,9 @@ directly.
 - **Layout goes through the kit.** Only `ui-kit` depends on Taffy. A view describes boxes
   and text leaves and never names Taffy: enforced by `only_the_kit_depends_on_taffy`. The
   boxes are built again every frame. Caches keep that cheap, never a retained tree.
+- **A view lays out through the kit.** A view cuts no rect by hand. List rows, cell grids
+  and grab bands keep fixed math inside the box they get, each file named in the test:
+  enforced by `a_view_lays_out_through_the_kit`.
 - **Numbers only in the kit's tokens.** Enforced by `every_size_comes_from_the_tokens`.
 - **Styles only in the kit's style file.** Enforced by `every_style_comes_from_one_file`.
 - **A view draws only through the kit.** The context's drawing primitives are private

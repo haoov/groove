@@ -224,3 +224,21 @@ fn time_building_and_placing_a_tree_of_boxes() {
         started.elapsed() / runs
     );
 }
+
+#[test]
+fn a_rect_laid_out_in_a_column_gives_each_band_its_height_and_the_rest_to_the_fill() {
+    let rect = Rect::new(10.0, 20.0, 300.0, 200.0);
+    let [head, body, foot] = super::column_in(
+        rect,
+        [
+            Spec::default().height(30.0),
+            Spec::fill(),
+            Spec::default().height(40.0),
+        ],
+    );
+    assert_eq!(head, Rect::new(10.0, 20.0, 300.0, 30.0));
+    assert_eq!(body, Rect::new(10.0, 50.0, 300.0, 130.0));
+    assert_eq!(foot, Rect::new(10.0, 180.0, 300.0, 40.0));
+    let [left, rest] = super::row_in(rect, [Spec::default().width(50.0), Spec::fill()]);
+    assert_eq!((left.w, rest.x, rest.w), (50.0, 60.0, 250.0));
+}

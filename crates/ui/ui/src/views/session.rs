@@ -26,6 +26,7 @@ use crate::hit::Target;
 use crate::keymap::{Action, Keymap};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, tabs};
 
@@ -50,8 +51,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The workspace: the tab strip, then the tab.
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
-    let mut body = ctx.app.layout.workspace;
-    let strip = body.take_top(ctx.tokens.row + ctx.tokens.sm);
+    let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
+    let [strip, body] = column_in(ctx.app.layout.workspace, [band, Spec::fill()]);
     let shown: Vec<(&str, Target)> = Tab::ALL
         .iter()
         .map(|tab| (tab.label(), Target::Tab(*tab)))
@@ -67,12 +68,13 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
     match ui.session.tab {
         Tab::Overview => {
-            body.take_top(ctx.tokens.sm);
+            let gap = Spec::default().height(ctx.tokens.sm);
+            let [_, body] = column_in(body, [gap, Spec::fill()]);
             overview::draw(ctx, app, ui, body)
         }
         Tab::Diff => diff::draw(ctx, app, ui, body),
         Tab::Files => {
-            let strip = body.take_top(ctx.tokens.row + ctx.tokens.sm);
+            let [strip, body] = column_in(body, [band, Spec::fill()]);
             open_files::draw(ctx, strip, app, ui);
             diff::draw(ctx, app, ui, body)
         }
@@ -95,9 +97,14 @@ fn fold(ctx: &mut Ctx, strip: Rect, ui: &Ui) {
 
 /// Nothing open: how to start.
 fn empty(ctx: &mut Ctx, app: &AppState) {
-    let (md, mut body) = (ctx.tokens.md, ctx.app.layout.workspace);
-    body.take_top(ctx.tokens.sm);
-    let line = body.take_top(ctx.tokens.row).pad(Edges::across(md, md));
+    let (md, tokens) = (ctx.tokens.md, ctx.tokens);
+    let bands = [
+        Spec::default().height(tokens.sm),
+        Spec::default().height(tokens.row),
+        Spec::fill(),
+    ];
+    let [_, line, _] = column_in(ctx.app.layout.workspace, bands);
+    let line = line.pad(Edges::across(md, md));
     let keymap = Keymap::of(app.config.config.as_ref());
     let said = match keymap.label(Action::NewExplorer) {
         Some(chord) => format!("No session open. {chord} starts an explorer."),

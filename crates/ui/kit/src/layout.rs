@@ -30,6 +30,11 @@ pub struct Spec {
 }
 
 impl Spec {
+    /// A box that takes all the room its siblings leave.
+    pub fn fill() -> Self {
+        Self::default().grow(1.0)
+    }
+
     /// Space between the children.
     pub fn gap(self, gap: f32) -> Self {
         Self { gap, ..self }
@@ -113,7 +118,7 @@ impl Default for Boxes {
 
 impl Boxes {
     pub fn new() -> Self {
-        let mut tree = TaffyTree::with_capacity(32);
+        let mut tree = TaffyTree::new();
         tree.disable_rounding();
         Self {
             tree,
@@ -223,6 +228,37 @@ impl Boxes {
         let id = self.tree.new_with_children(yielding(style), &ids);
         Node(id.unwrap_or_else(|_| dead()))
     }
+}
+
+/// `rect` laid out top to bottom, one box for each spec.
+pub fn column_in<const N: usize>(rect: Rect, specs: [Spec; N]) -> [Rect; N] {
+    split(rect, specs, Boxes::column)
+}
+
+/// `rect` laid out top to bottom, one box for each of as many specs as the view has.
+pub fn column_of(rect: Rect, specs: &[Spec]) -> Vec<Rect> {
+    let mut boxes = Boxes::new();
+    let nodes: Vec<Node> = specs.iter().map(|spec| boxes.leaf(*spec)).collect();
+    let root = boxes.column(Spec::default(), &nodes);
+    boxes.place(root, rect);
+    nodes.iter().map(|node| boxes.rect(*node)).collect()
+}
+
+/// `rect` laid out left to right, one box for each spec.
+pub fn row_in<const N: usize>(rect: Rect, specs: [Spec; N]) -> [Rect; N] {
+    split(rect, specs, Boxes::row)
+}
+
+fn split<const N: usize>(
+    rect: Rect,
+    specs: [Spec; N],
+    parent: fn(&mut Boxes, Spec, &[Node]) -> Node,
+) -> [Rect; N] {
+    let mut boxes = Boxes::new();
+    let nodes = specs.map(|spec| boxes.leaf(spec));
+    let root = parent(&mut boxes, Spec::default(), &nodes);
+    boxes.place(root, rect);
+    nodes.map(|node| boxes.rect(node))
 }
 
 /// The box may shrink to nothing, not only to its content's narrowest.

@@ -23,6 +23,7 @@ use crate::components::first;
 use crate::ctx::Ctx;
 use crate::views::session::Face;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::text::Label;
 
 pub use blame::Spot;
@@ -36,10 +37,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     if app.workspace.changes.is_empty() && ui.session.face() != Face::File {
         return hint(ctx, app, area);
     }
-    let mut body = area;
-    let head = body.take_top(ctx.tokens.row);
+    let [head, body] = column_in(area, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     header::draw(ctx, head, app, ui, &standing(ctx, app, ui));
-    let column = body.take_right(ctx.tokens.map);
+    let [body, column] = row_in(body, [Spec::fill(), Spec::default().width(ctx.tokens.map)]);
     let cols = surface::note_cols(ctx, body, app, ui);
     ctx.app.hits.wraps(cols);
     let inline = Inline::of(app, ui, ui.session.face(), cols);
@@ -81,8 +81,8 @@ fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
 }
 
 fn said(ctx: &mut Ctx, area: Rect, text: &str) {
-    let mut room = area.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
-    let line = room.take_top(ctx.tokens.row);
+    let room = area.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let [line, _] = column_in(room, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     Label::new(text, ctx.styles.body(Role::Faint)).draw(ctx, line);
 }
 

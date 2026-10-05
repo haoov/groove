@@ -11,13 +11,16 @@ use crate::hit::Scroller;
 use crate::offsets::listed;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::row;
 
 pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui, list: List) {
-    let head = Rect::new(area.x, area.y, area.w, ctx.tokens.header);
+    let [head, body] = column_in(
+        area,
+        [Spec::default().height(ctx.tokens.header), Spec::fill()],
+    );
     edge(ctx, area);
-    let body = Rect::new(area.x, head.bottom(), area.w, area.h - head.h);
     match list {
         List::Review => {
             let asked = super::review::sorted(app, ui);
@@ -96,7 +99,7 @@ fn one(ctx: &mut Ctx, rect: Rect, app: &AppState, line: &Line<'_>) {
 
 /// The one line a column says when it holds nothing.
 fn nothing(ctx: &mut Ctx, body: Rect, text: &str) {
-    let line = Rect::new(body.x, body.y, body.w, ctx.tokens.row);
+    let [line, _] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     row(
         ctx,
         line,

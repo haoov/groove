@@ -10,6 +10,7 @@ use crate::{Losing, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Tab, Text};
@@ -65,7 +66,11 @@ fn tab(ctx: &mut Ctx, room: &mut Rect, open: &Opened, (active, preview): (bool, 
         .ground(ground)
         .close(mark, close)
         .left(ctx, room, 0.0);
-    let rule = room.take_left(ctx.tokens.hairline);
+    let [rule, rest] = row_in(
+        *room,
+        [Spec::default().width(ctx.tokens.hairline), Spec::fill()],
+    );
+    *room = rest;
     groove_ui_kit::shape::side_rule(ctx, rule, rule.x, ctx.styles.line());
 }
 

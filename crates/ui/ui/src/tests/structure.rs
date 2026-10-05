@@ -146,6 +146,58 @@ fn a_view_draws_through_the_context() {
     );
 }
 
+/// The view files that keep fixed math: list rows and cell grids inside the box they get,
+/// and the grab bands that straddle a boundary.
+const KEPT_BY_HAND: [&str; 18] = [
+    "views/splitter.rs",
+    "views/board/plan.rs",
+    "components/delivery.rs",
+    "views/rail/item.rs",
+    "views/rail/feed/line.rs",
+    "views/board/row.rs",
+    "views/session/files/rows.rs",
+    "views/session/files/explorer.rs",
+    "views/session/files/results.rs",
+    "views/session/files/commits.rs",
+    "views/session/diff/offers.rs",
+    "views/session/diff/surface.rs",
+    "views/session/diff/map.rs",
+    "views/session/diff/pinned.rs",
+    "views/session/agent_pane.rs",
+    "views/session/manual.rs",
+    "components/code.rs",
+    "components/code/row/note.rs",
+];
+
+/// What cuts a rect by hand.
+const CUTS: [&str; 5] = [
+    "take_left(",
+    "take_right(",
+    "take_top(",
+    "take_bottom(",
+    "Rect::new(",
+];
+
+#[test]
+fn a_view_lays_out_through_the_kit() {
+    let mut offenders = Vec::new();
+    for (path, text) in sources() {
+        let view = path.starts_with("views/") || path.starts_with("components/");
+        if !view || KEPT_BY_HAND.contains(&path.as_str()) {
+            continue;
+        }
+        for (at, line) in code_lines(&text) {
+            if CUTS.iter().any(|cut| line.contains(cut)) {
+                offenders.push(format!("{path}:{}: {}", at + 1, line.trim()));
+            }
+        }
+    }
+    assert!(
+        offenders.is_empty(),
+        "lay these out with `Boxes`: {offenders:#?}"
+    );
+}
+
 #[test]
 fn only_the_kit_depends_on_taffy() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));

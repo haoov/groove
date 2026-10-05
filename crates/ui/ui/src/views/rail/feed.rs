@@ -1,21 +1,22 @@
 //! What the opened sessions have done, under their rows: newest first, quiet.
 
 use groove_controllers::{AppState, Told};
-use groove_gfx::{Align, Edges, Rect};
-use groove_types::{Error, SessionId, TimelineEvent, Timestamp};
+use groove_gfx::{Edges, Rect};
+use groove_types::{Error, TimelineEvent, Timestamp};
+
+mod line;
 
 use crate::Ui;
 use crate::ctx::Ctx;
 use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::hoverable;
-use groove_ui_kit::text::{Label, ago};
+use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::text::Label;
 
 /// The header that folds it, then the lines themselves.
 pub fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, ui: &Ui) {
-    let mut body = area;
-    let head = body.take_top(ctx.tokens.row);
+    let [head, body] = column_in(area, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     heading(ctx, head, app, ui);
     if !ui.rail.folded {
         lines(ctx, body, app, ui);
@@ -35,14 +36,6 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) {
     if let Some(scope) = scope {
         ctx.hit(scope, Target::FeedScope);
     }
-    grab(ctx, line);
-}
-
-/// The band the pointer takes the feed's own edge by.
-fn grab(ctx: &mut Ctx, line: Rect) {
-    let thick = ctx.tokens.grab;
-    let over = Rect::new(line.x, line.y - thick / 2.0, line.w, thick);
-    ctx.hit(over, Target::Split(crate::layout::Edge::Feed));
 }
 
 /// Which sessions it shows, at the header's own end; returns the box a click narrows by.
@@ -62,9 +55,11 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
     let shown = shown(app, ui);
     if shown.is_empty() {
         let style = ctx.styles.small(Role::Ghost);
-        let line = body
-            .pad(Edges::across(ctx.tokens.md, ctx.tokens.md))
-            .take_top(ctx.tokens.line);
+        let room = body.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+        let [line, _] = column_in(
+            room,
+            [Spec::default().height(ctx.tokens.line), Spec::fill()],
+        );
         Label::new("nothing yet", style).draw(ctx, line);
         return;
     }
@@ -76,7 +71,7 @@ fn lines(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) {
         at,
         &shown,
         |_| height,
-        |ctx, line, one| one_line(ctx, line, one),
+        |ctx, line, one| line::draw(ctx, line, one),
     );
 }
 
@@ -114,95 +109,4 @@ fn happened<'a>(app: &'a AppState, ui: &Ui) -> Vec<(Timestamp, Line<'a>)> {
     out.extend(app.errors.iter().map(|one| (one.at, Line::Bad(one))));
     out.extend(app.notes.iter().map(|one| (one.at, Line::Said(one))));
     out
-}
-
-/// What a line says: when it was, what was done, and what it was done to.
-struct Said<'a> {
-    at: Timestamp,
-    act: &'a str,
-    subject: &'a str,
-    role: Role,
-}
-
-fn one_line(ctx: &mut Ctx, line: Rect, one: &Line<'_>) {
-    match one {
-        Line::Job(label) => running(ctx, line, label),
-        Line::Bad(bad) => over(
-            ctx,
-            line,
-            Said {
-                at: bad.at,
-                act: "error",
-                subject: &bad.message,
-                role: Role::Bad,
-            },
-        ),
-        Line::Said(said) => over(
-            ctx,
-            line,
-            Said {
-                at: said.at,
-                act: "note",
-                subject: &said.what,
-                role: Role::Accent,
-            },
-        ),
-        Line::Event(event) => {
-            reachable(ctx, line, &event.session);
-            over(
-                ctx,
-                line,
-                Said {
-                    at: event.at,
-                    act: event.kind.label(),
-                    subject: &event.subject,
-                    role: Role::Accent,
-                },
-            );
-        }
-    }
-}
-
-/// The line takes the pointer to the session it belongs to.
-fn reachable(ctx: &mut Ctx, line: Rect, session: &SessionId) {
-    let target = Target::FeedLine(session.clone());
-    hoverable(ctx, line, target);
-}
-
-/// A job the user waits on, with the mark that keeps turning.
-fn running(ctx: &mut Ctx, line: Rect, label: &str) {
-    let (mut top, _) = halves(ctx, line);
-    let size = ctx.tokens.small;
-    let age = top.take_left(column(ctx));
-    top.take_left(ctx.tokens.sm);
-    let box_ = age.align((size, size), Align::End, Align::Center);
-    groove_ui_kit::widgets::busy(ctx, box_, Role::Working);
-    Label::new(label, ctx.styles.strong(Role::Working)).draw(ctx, top);
-}
-
-/// The age against its own column, then the act over the subject.
-fn over(ctx: &mut Ctx, line: Rect, said: Said<'_>) {
-    let (mut top, mut under) = halves(ctx, line);
-    let mut age = top.take_left(column(ctx));
-    let gap = column(ctx) + ctx.tokens.sm;
-    top.take_left(ctx.tokens.sm);
-    under.take_left(gap);
-    let when = ago(said.at.age_at(ctx.now));
-    Label::new(&when, ctx.styles.small(Role::Ghost)).right(ctx, &mut age, 0.0);
-    Label::new(said.act, ctx.styles.strong(said.role)).draw(ctx, top);
-    if !said.subject.is_empty() {
-        Label::new(said.subject, ctx.styles.small(Role::Muted)).draw(ctx, under);
-    }
-}
-
-/// The line's two halves, each short of the right margin.
-fn halves(ctx: &Ctx, line: Rect) -> (Rect, Rect) {
-    let mut top = line.pad(Edges::across(0.0, ctx.tokens.md));
-    let under = top.take_bottom(line.h / 2.0);
-    (top, under)
-}
-
-/// Where the age's column ends, which every text stands after.
-fn column(ctx: &Ctx) -> f32 {
-    ctx.tokens.md + ctx.tokens.feed_age
 }
