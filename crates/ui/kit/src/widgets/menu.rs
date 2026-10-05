@@ -28,8 +28,8 @@ pub fn menu<A: App>(
 ) {
     let (width, tall) = size(ctx, labels);
     let box_ = crate::shape::kept_in(at, (width, tall), within);
-    ctx.quad(box_, ctx.styles.band());
-    ctx.border(box_, border);
+    let (band, round) = (ctx.styles.band(), ctx.tokens.round);
+    ctx.rounded(box_, band, round);
     for (index, label) in labels.iter().enumerate() {
         let line = Rect::new(
             box_.x,
@@ -38,10 +38,11 @@ pub fn menu<A: App>(
             ctx.tokens.row,
         );
         if ctx.hovered(&target(index)) {
-            ctx.quad(line, ctx.styles.hover());
+            ctx.rounded(line, ctx.styles.hover(), round);
         }
         let style = ctx.styles.body(Role::Text);
         row(ctx, line, ctx.tokens.md, label, style);
         ctx.hit(line, target(index));
     }
+    ctx.ring(box_, border, round, 1.0);
 }

@@ -19,8 +19,8 @@ pub fn panel_at<A: App>(
     };
     let rect = crate::shape::kept_in((x, y), (width, height), window);
     ctx.layer();
-    ctx.quad(rect, ctx.styles.band());
-    ctx.border(rect, border);
+    let band = ctx.styles.band();
+    ctx.rounded_box(rect, band, border, ctx.tokens.round);
     rect
 }
 
@@ -38,8 +38,7 @@ pub fn modal<A: App>(
     ctx.quad(window, scrim);
     let w = width.min(window.w - ctx.tokens.xl);
     let rect = Rect::new((window.w - w) / 2.0, top, w, height);
-    ctx.quad(rect, panel);
-    ctx.border(rect, border);
+    ctx.rounded_box(rect, panel, border, ctx.tokens.round);
     rect
 }
 

@@ -166,7 +166,7 @@ fn the_pointer_takes_the_light_from_the_row_the_keyboard_stands_on() {
 }
 
 #[test]
-fn the_header_s_button_is_drawn_with_a_border_around_it() {
+fn the_header_s_button_is_drawn_with_a_rounded_border_around_it() {
     let app = full_app();
     let ui = Ui {
         surface: Surface::Board,
@@ -174,19 +174,19 @@ fn the_header_s_button_is_drawn_with_a_border_around_it() {
     };
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let box_ = hits.rect_of(&Target::AddTask).expect("the button");
-    let styles = groove_ui_kit::base::style::Styles::new(
-        app.config.theme(),
-        groove_ui_kit::base::tokens::Tokens::new(1.0),
-    );
-    let thin = groove_ui_kit::base::tokens::Tokens::new(1.0).hairline;
-    let edges = frame.layers()[0]
+    let tokens = groove_ui_kit::base::tokens::Tokens::new(1.0);
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), tokens);
+    let rings: Vec<_> = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.line())
-        .filter(|quad| quad.rect.w == thin || quad.rect.h == thin)
-        .filter(|quad| quad.rect.x >= box_.x && quad.rect.right() <= box_.right())
-        .count();
-    assert_eq!(edges, 4, "one edge a side");
+        .filter(|quad| quad.color == styles.line() && quad.rect == box_)
+        .map(|quad| quad.shape)
+        .collect();
+    let ring = groove_gfx::Shape {
+        radius: tokens.round,
+        stroke: 1.0,
+    };
+    assert_eq!(rings, vec![ring], "one ring, its corners rounded");
 }
 
 #[test]

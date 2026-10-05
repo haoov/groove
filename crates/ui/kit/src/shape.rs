@@ -86,6 +86,7 @@ pub fn hoverable<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, target: A::Target) ->
 pub struct Panel {
     pub ground: Option<Color>,
     pub border: Option<Color>,
+    pub radius: f32,
 }
 
 impl Panel {
@@ -99,7 +100,21 @@ impl Panel {
         self
     }
 
+    pub fn radius(mut self, radius: f32) -> Self {
+        self.radius = radius;
+        self
+    }
+
     pub fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect) {
+        if self.radius > 0.0 {
+            if let Some(ground) = self.ground {
+                ctx.rounded(rect, ground, self.radius);
+            }
+            if let Some(border) = self.border {
+                ctx.ring(rect, border, self.radius, 1.0);
+            }
+            return;
+        }
         if let Some(ground) = self.ground {
             ctx.quad(rect, ground);
         }

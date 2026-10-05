@@ -26,7 +26,11 @@ pub fn slot_at<A: App>(
     );
     if let Some(ground) = ground {
         let line = ctx.styles.line();
-        Panel::default().ground(ground).border(line).draw(ctx, box_);
+        Panel::default()
+            .ground(ground)
+            .border(line)
+            .radius(ctx.tokens.round)
+            .draw(ctx, box_);
     }
     box_
 }
