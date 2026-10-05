@@ -112,13 +112,9 @@ impl Hits {
         self.shown.clone()
     }
 
-    /// How many characters a note row holds, the narrowest surface's count.
+    /// How many characters a note row holds, as this frame measured it.
     pub fn wraps(&mut self, cols: usize) {
-        self.wrap = if self.wrap == 0 {
-            cols
-        } else {
-            self.wrap.min(cols)
-        };
+        self.wrap = cols;
     }
 
     pub fn wrap(&self) -> usize {

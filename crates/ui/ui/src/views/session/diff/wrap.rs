@@ -3,13 +3,11 @@
 use groove_types::Note;
 use groove_ui_kit::markdown::{Row, compact};
 
-use crate::Ui;
-
 use groove_ui_kit::base::tokens::{NOTE_COLS, NOTE_COLS_FEWEST, REPLY_STEP};
 
-/// How many characters a note row holds, as the last frame measured it.
-pub(crate) fn cols_of(ui: &Ui) -> usize {
-    match ui.session.note_cols {
+/// How many characters a note row holds, from what a frame measured; none before the first.
+pub(crate) fn cols_of(measured: usize) -> usize {
+    match measured {
         0 => NOTE_COLS,
         cols => cols.max(NOTE_COLS_FEWEST),
     }

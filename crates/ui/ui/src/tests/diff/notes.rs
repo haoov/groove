@@ -53,8 +53,8 @@ fn a_note_takes_a_row_of_the_surface() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&bare, &ui) + 2,
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 2,
         "the note and the row of buttons under it"
     );
 }
@@ -68,8 +68,8 @@ fn a_thread_takes_a_row_for_every_note_of_it_and_one_above_each_reply() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&bare, &ui) + 4,
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
+        crate::views::session::diff::rows_of(&bare, &ui, drawn_cols(&bare, &ui)) + 4,
         "a row for each note of it, a blank above the reply, and the buttons under them"
     );
     let drawn = in_editor(&app);
@@ -104,8 +104,8 @@ fn a_note_beyond_the_file_draws_nothing() {
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&opened(), &ui)
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
+        crate::views::session::diff::rows_of(&opened(), &ui, drawn_cols(&opened(), &ui))
     );
 }
 
@@ -128,7 +128,10 @@ fn a_click_on_a_note_moves_no_caret() {
         crate::views::session::diff::line_at(
             &app,
             &on_diff(),
-            crate::views::session::Face::File,
+            (
+                crate::views::session::Face::File,
+                drawn_cols(&app, &on_diff())
+            ),
             1
         ),
         None,
@@ -138,7 +141,10 @@ fn a_click_on_a_note_moves_no_caret() {
         crate::views::session::diff::line_at(
             &app,
             &on_diff(),
-            crate::views::session::Face::File,
+            (
+                crate::views::session::Face::File,
+                drawn_cols(&app, &on_diff())
+            ),
             2
         ),
         None,
@@ -148,7 +154,10 @@ fn a_click_on_a_note_moves_no_caret() {
         crate::views::session::diff::line_at(
             &app,
             &on_diff(),
-            crate::views::session::Face::File,
+            (
+                crate::views::session::Face::File,
+                drawn_cols(&app, &on_diff())
+            ),
             3
         ),
         Some(("src/lib.rs".to_string(), 1)),
@@ -392,8 +401,8 @@ fn a_commit_shows_none_of_the_sessions_notes() {
         is_base: false,
     });
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
-        crate::views::session::diff::rows_of(&opened(), &ui),
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
+        crate::views::session::diff::rows_of(&opened(), &ui, drawn_cols(&opened(), &ui)),
         "a note stands on the working tree's lines, not a commit's"
     );
     let drawn = in_editor(&app);
@@ -410,7 +419,6 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
     let app = noted(vec![note(1, "reviewer", body)]);
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    ui.session.note_cols = 24;
     let drawn = row_texts(&app, &ui);
     for word in body.split_whitespace() {
         assert!(
@@ -429,6 +437,34 @@ fn a_long_note_wraps_onto_rows_of_its_own_and_loses_no_word() {
         .filter(|one| body.contains(one.trim()) && !one.trim().is_empty())
         .count();
     assert!(rows >= 4, "it takes the rows it needs: {drawn:?}");
+}
+
+#[test]
+fn a_note_wraps_to_the_width_of_the_frame_that_draws_it() {
+    let body = "issue: this leaks the handle every time the file is opened again \
+                and nothing ever closes it, so a long session runs out of handles";
+    let app = noted(vec![note(1, "reviewer", body)]);
+    let mut ui = on_diff();
+    ui.session.tab = crate::views::session::Tab::Files;
+    let drawn_at = |width: u32| {
+        let metrics = crate::tests::metrics(width, WINDOW.1, 1.0);
+        let (frame, hits) = view(&app, &ui, metrics, &mut Fonts::embedded());
+        let code = hits.rect_of(&Target::Code).expect("the rows are drawn");
+        let rows = frame.layers()[0]
+            .texts
+            .iter()
+            .filter(|run| code.contains(run.x, run.y))
+            .filter(|run| !run.text.trim().is_empty() && body.contains(run.text.trim()))
+            .count();
+        (hits.wrap(), rows)
+    };
+    let (narrow_cols, narrow) = drawn_at(WINDOW.0);
+    let (wide_cols, wide) = drawn_at(WINDOW.0 * 3 / 2);
+    assert!(wide_cols > narrow_cols, "{wide_cols} against {narrow_cols}");
+    assert!(
+        wide < narrow,
+        "the first frame at a width wraps to it: {wide} rows against {narrow}"
+    );
 }
 
 #[test]

@@ -67,6 +67,8 @@ pub struct CellSize {
 
 /// Above this many measured strings a face gives up its widths.
 const WIDTH_CACHE_CAP: usize = 4096;
+/// Above this many widths a face gives up the rows it kept.
+const ROWS_WIDTHS_CAP: usize = 64;
 
 /// One way of drawing text: the face and the size it is shaped at.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,6 +95,8 @@ pub struct Fonts {
     /// What a face already measured, by the text it measured.
     widths: HashMap<Face, HashMap<Box<str>, f32>>,
     mono: Family,
+    /// How many rows a text took, by its face, then the width it was wrapped to.
+    rows: HashMap<Face, HashMap<u32, HashMap<Box<str>, usize>>>,
 }
 
 impl Fonts {
@@ -121,6 +125,7 @@ impl Fonts {
             swash: SwashCache::new(),
             widths: HashMap::new(),
             mono: Family::Plex,
+            rows: HashMap::new(),
         }
     }
 
@@ -131,6 +136,7 @@ impl Fonts {
         }
         self.mono = mono;
         self.widths.clear();
+        self.rows.clear();
         true
     }
 
@@ -163,6 +169,44 @@ impl Fonts {
         }
         widths.insert(text.into(), width);
         width
+    }
+
+    /// The rows `text` took at `width`, if `keep_rows` was told.
+    pub fn kept_rows(
+        &self,
+        text: &str,
+        font: Font,
+        weight: Weight,
+        size: f32,
+        width: f32,
+    ) -> Option<usize> {
+        let face = Face::new(font, weight, size);
+        self.rows
+            .get(&face)?
+            .get(&width.to_bits())?
+            .get(text)
+            .copied()
+    }
+
+    /// Keeps how many rows `text` took at `width`. The wrapping is the caller's.
+    pub fn keep_rows(
+        &mut self,
+        text: &str,
+        font: Font,
+        weight: Weight,
+        size: f32,
+        width: f32,
+        rows: usize,
+    ) {
+        let widths = self.rows.entry(Face::new(font, weight, size)).or_default();
+        if widths.len() >= ROWS_WIDTHS_CAP && !widths.contains_key(&width.to_bits()) {
+            widths.clear();
+        }
+        let texts = widths.entry(width.to_bits()).or_default();
+        if texts.len() >= WIDTH_CACHE_CAP {
+            texts.clear();
+        }
+        texts.insert(text.into(), rows);
     }
 
     fn shaped(&mut self, text: &str, font: Font, weight: Weight, size: f32) -> f32 {

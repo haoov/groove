@@ -2,7 +2,7 @@
 
 use groove_controllers::AppState;
 
-use super::notes::{Slot, lines, said};
+use super::notes::{Inline, Slot, lines};
 use crate::Ui;
 use groove_controllers::delivery_service::BY_USER;
 
@@ -15,11 +15,11 @@ pub(super) struct Words {
 }
 
 /// Who said what on a note row; a row of code says nothing.
-pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot) -> Words {
+pub(super) fn words_of(app: &AppState, ui: &Ui, slot: Slot, inline: &Inline) -> Words {
     match slot {
         Slot::Note { at, row } => match app.delivery.shown.get(at) {
             Some(note) => {
-                let (author, prose) = said(note, row, super::wrap::cols_of(ui));
+                let (author, prose) = inline.said(at, row);
                 let shown = match row {
                     0 => note.anchor.as_ref().map(lines).unwrap_or_default(),
                     _ => String::new(),

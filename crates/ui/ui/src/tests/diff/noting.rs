@@ -128,10 +128,10 @@ fn a_note_being_typed_takes_a_row_of_its_own() {
     let app = opened();
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    let rows = crate::views::session::diff::rows_of(&app, &ui);
+    let rows = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 0)));
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         rows + 1,
         "the note being typed takes its room"
     );
@@ -359,10 +359,10 @@ fn a_note_written_again_is_typed_in_its_own_place() {
     app.delivery.shown = vec![own()];
     let mut ui = on_diff();
     ui.session.tab = crate::views::session::Tab::Files;
-    let with_note = crate::views::session::diff::rows_of(&app, &ui);
+    let with_note = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     on_button(&app, &mut ui, crate::hit::NoteButton::Edit);
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         with_note - 1,
         "the typed row stands in place of the note and its buttons"
     );
@@ -410,11 +410,15 @@ fn a_noted_line_takes_no_other_note_in_the_diff_views() {
 
 /// The surface row the note's own line stands on.
 fn noted_row(app: &AppState, ui: &Ui) -> usize {
-    let total = crate::views::session::diff::rows_of(app, ui);
+    let total = crate::views::session::diff::rows_of(app, ui, drawn_cols(app, ui));
     (0..total)
         .find(|row| {
-            crate::views::session::diff::line_at(app, ui, ui.session.face(), *row)
-                == Some(("src/lib.rs".to_string(), 1))
+            crate::views::session::diff::line_at(
+                app,
+                ui,
+                (ui.session.face(), drawn_cols(app, ui)),
+                *row,
+            ) == Some(("src/lib.rs".to_string(), 1))
         })
         .expect("the note's line")
 }
@@ -426,7 +430,7 @@ fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
     ui.session.tab = crate::views::session::Tab::Files;
     ui.session.noting = Some(Noting::new(Anchor::line("src/lib.rs", 1)));
     typed("issue: this leaks", &mut ui, &app);
-    let before = crate::views::session::diff::rows_of(&app, &ui);
+    let before = crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui));
     let shift = Modifiers {
         shift: true,
         ..Modifiers::default()
@@ -438,7 +442,7 @@ fn shift_enter_breaks_the_line_and_the_note_keeps_it() {
     handle(input, &mut ui, &app, &crate::hit::Hits::default(), window());
     typed("drop it", &mut ui, &app);
     assert_eq!(
-        crate::views::session::diff::rows_of(&app, &ui),
+        crate::views::session::diff::rows_of(&app, &ui, drawn_cols(&app, &ui)),
         before + 1,
         "a row per line"
     );

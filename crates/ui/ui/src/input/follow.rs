@@ -22,7 +22,7 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
         return;
     };
     let tokens = metrics.tokens();
-    let row = Inline::of(app, ui, Face::File).shifted(caret.line) as f32 * tokens.line;
+    let row = Inline::of(app, ui, Face::File, hits.wrap()).shifted(caret.line) as f32 * tokens.line;
     *ui.session.scroll_mut() = into_view(ui.session.scroll(), row, tokens.line, rect.h);
     if let Some(file) = app.workspace.active() {
         let to = across_at(ui, app, (&file.path, caret), (hits, metrics));

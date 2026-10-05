@@ -9,19 +9,24 @@ use crate::views::session::Face;
 pub(crate) fn scrolled(
     app: &AppState,
     ui: &crate::Ui,
-    from: Face,
-    to: Face,
-    scroll: f32,
-    line: f32,
+    (from, to): (Face, Face),
+    (scroll, line): (f32, f32),
+    cols: usize,
 ) -> f32 {
     let at = (scroll / line).floor().max(0.0) as usize;
-    moved(app, ui, from, to, at) as f32 * line
+    moved(app, ui, (from, to), at, cols) as f32 * line
 }
 
 /// The row that holds the same line once the view changes.
-pub(crate) fn moved(app: &AppState, ui: &crate::Ui, from: Face, to: Face, row: usize) -> usize {
-    let there = super::notes::Inline::of(app, ui, to);
-    let row = super::notes::Inline::of(app, ui, from).base(row);
+pub(crate) fn moved(
+    app: &AppState,
+    ui: &crate::Ui,
+    (from, to): (Face, Face),
+    row: usize,
+    cols: usize,
+) -> usize {
+    let there = super::notes::Inline::of(app, ui, to, cols);
+    let row = super::notes::Inline::of(app, ui, from, cols).base(row);
     let Some(file) = app.workspace.active() else {
         return there.shifted(row);
     };

@@ -3,10 +3,11 @@
 use groove_gfx::Rect;
 
 use super::draw::marked;
-use super::layout::{style_of, words};
+use super::layout::style_of;
 use super::parse::{Block, Bullet, Kind, Span, blocks};
 use crate::base::ctx::{App, Ctx};
 use crate::base::style::Role;
+use crate::text::words;
 
 /// One row: its spans, the mark it opens with, how deep it stands.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

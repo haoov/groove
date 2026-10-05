@@ -13,26 +13,31 @@ use crate::views::session::Face;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::shape::Panel;
 
-pub(super) fn draw(ctx: &mut Ctx, rect: Rect, body: Rect, app: &AppState, ui: &Ui) {
-    let total = total(app, ui);
+pub(super) fn draw(
+    ctx: &mut Ctx,
+    (rect, body): (Rect, Rect),
+    app: &AppState,
+    ui: &Ui,
+    inline: &Inline,
+) {
+    let total = inline.total(super::row::count(app, ui.session.face()));
     if total == 0 {
         return;
     }
     groove_ui_kit::shape::ground(ctx, rect, Ground::Band);
     let per = rect.h / total as f32;
-    let inline = Inline::of(app, ui, ui.session.face());
     match ui.session.face() {
-        Face::File => whole(ctx, rect, per, app, &inline),
-        _ => change(ctx, rect, per, app, &inline),
+        Face::File => whole(ctx, rect, per, app, inline),
+        _ => change(ctx, rect, per, app, inline),
     }
     lens(ctx, rect, per, body, ui);
     ctx.hit(rect, Target::Map);
 }
 
-/// What the column stands for: the rows of the view, and the notes in them.
-pub(crate) fn total(app: &AppState, ui: &Ui) -> usize {
+/// What the column stands for: the rows of the view, and the notes in them wrapped to `cols`.
+pub(crate) fn total(app: &AppState, ui: &Ui, cols: usize) -> usize {
     let view = ui.session.face();
-    Inline::of(app, ui, view).total(super::row::count(app, view))
+    Inline::of(app, ui, view, cols).total(super::row::count(app, view))
 }
 
 /// Every changed file, one band under another.

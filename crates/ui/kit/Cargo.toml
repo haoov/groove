@@ -1,6 +1,6 @@
 [package]
 name = "groove-ui-kit"
-description = "What every surface draws with: the context, shapes, text and widgets on plain data"
+description = "What every surface draws with: the context, shapes, text, layout and widgets on plain data"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,6 +10,7 @@ publish.workspace = true
 groove-gfx = { path = "../../base/gfx" }
 groove-types = { path = "../../shared/types" }
 pulldown-cmark.workspace = true
+taffy.workspace = true
 
 [lints]
 workspace = true

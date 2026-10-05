@@ -11,8 +11,6 @@ use groove_ui_kit::widgets::Field;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
     pub tab: Tab,
-    /// How many characters a note row holds, as the last frame measured it.
-    pub note_cols: usize,
     /// How far the sidebar's list is scrolled, in pixels.
     pub files: f32,
     /// The user folded the sidebar away.

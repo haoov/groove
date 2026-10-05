@@ -40,13 +40,17 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     let head = body.take_top(ctx.tokens.row);
     header::draw(ctx, head, app, ui, &standing(ctx, app, ui));
     let column = body.take_right(ctx.tokens.map);
-    map::draw(ctx, column, body, app, ui);
+    let cols = surface::note_cols(ctx, body, app, ui);
+    ctx.app.hits.wraps(cols);
+    let inline = Inline::of(app, ui, ui.session.face(), cols);
+    map::draw(ctx, (column, body), app, ui, &inline);
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
         Some(false) => said(ctx, body, "Open a file in the sidebar."),
         None => {
-            surface::rows(ctx, body, app, ui);
-            pinned::draw(ctx, body, app, ui, surface::numbers(app, ui.session.face()));
+            surface::rows(ctx, body, app, ui, &inline);
+            let numbers = surface::numbers(app, ui.session.face());
+            pinned::draw(ctx, body, app, ui, (&inline, numbers));
             finder::draw(ctx, body, ui);
         }
     }
