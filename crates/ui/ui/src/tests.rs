@@ -1,4 +1,5 @@
 mod agent;
+mod appearance;
 mod asks;
 mod bar;
 mod board;

@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 use groove_controllers::{
     AppState, Command, Env, Event, Services, TokioSpawner, agent, apply, dispatch, workspace,
 };
-use groove_gfx::{Renderer, Size};
-use groove_types::{AttentionClass, Config, Panes, Timestamp};
+use groove_gfx::{Family, Renderer, Size};
+use groove_types::{AttentionClass, Config, FontFamily, Panes, Timestamp};
 use groove_ui::input::Input;
 use groove_ui::{Cursor, Hits, Metrics, Split, Ui};
 use winit::keyboard::ModifiersState;
@@ -211,6 +211,7 @@ impl App {
             config.code_size(),
             config.terminal_size(),
         );
+        renderer.set_mono(family(config.mono_family()));
         let fonts = renderer.fonts();
         Some(Metrics {
             size: size_of(window),
@@ -285,5 +286,13 @@ fn icon_of(cursor: Cursor) -> CursorIcon {
         Cursor::ColResize => CursorIcon::ColResize,
         Cursor::RowResize => CursorIcon::RowResize,
         Cursor::Text => CursorIcon::Text,
+    }
+}
+
+fn family(family: FontFamily) -> Family {
+    match family {
+        FontFamily::Plex => Family::Plex,
+        FontFamily::JetBrainsMono => Family::JetBrainsMono,
+        FontFamily::Lilex => Family::Lilex,
     }
 }

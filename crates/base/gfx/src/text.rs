@@ -135,6 +135,12 @@ impl TextPass {
         }
     }
 
+    pub fn forget(&mut self) {
+        self.glyphs.clear();
+        self.lines.clear();
+        self.index.clear();
+    }
+
     /// What it has shaped so far and kept.
     pub fn cached(&self) -> Cached {
         Cached {
@@ -167,7 +173,7 @@ impl TextPass {
         }
         let mut buffer = Buffer::new(&mut fonts.system, Metrics::new(style.size, run.height));
         buffer.set_size(None, Some(run.height));
-        let attrs = Fonts::attrs(style.font, style.weight);
+        let attrs = fonts.attrs(style.font, style.weight);
         buffer.set_text(&one_paragraph(&run.text), &attrs, Shaping::Advanced, None);
         buffer.shape_until_scroll(&mut fonts.system, false);
         self.shaped += 1;

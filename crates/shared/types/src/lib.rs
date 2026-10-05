@@ -40,9 +40,9 @@ pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use chord::{Chord, Stroke};
 pub use config::{
-    Config, ConfigView, EstimateUnit, FilterConfig, GitConfig, GithubConfig, GithubView,
-    NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED, RoutinesConfig,
-    SharedConfig, StatusMap, ThemeName, UiConfig,
+    Config, ConfigView, EstimateUnit, FilterConfig, FontFamily, GitConfig, GithubConfig,
+    GithubView, NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED,
+    RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use diff::{

@@ -86,6 +86,47 @@ impl ThemeName {
     }
 }
 
+/// A vendored mono family; the file holds `stored`, empty for IBM Plex Mono.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FontFamily {
+    #[default]
+    Plex,
+    JetBrainsMono,
+    Lilex,
+}
+
+impl FontFamily {
+    pub const ALL: [FontFamily; 3] = [
+        FontFamily::Plex,
+        FontFamily::JetBrainsMono,
+        FontFamily::Lilex,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            FontFamily::Plex => "ibm plex",
+            FontFamily::JetBrainsMono => "jetbrains mono",
+            FontFamily::Lilex => "lilex",
+        }
+    }
+
+    pub fn stored(self) -> &'static str {
+        match self {
+            FontFamily::Plex => "",
+            FontFamily::JetBrainsMono => "JetBrains Mono",
+            FontFamily::Lilex => "Lilex",
+        }
+    }
+
+    /// A name no vendored family stores reads as IBM Plex Mono.
+    pub fn named(name: &str) -> Self {
+        Self::ALL
+            .into_iter()
+            .find(|one| one.stored() == name)
+            .unwrap_or_default()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct UiConfig {
     /// The interface's type size; code has its own.
@@ -101,8 +142,9 @@ pub struct UiConfig {
     /// Empty means the bundled font.
     #[serde(default)]
     pub font_family: String,
-    #[serde(default)]
-    pub agent_font_family: String,
+    /// Code, the agent and the terminals.
+    #[serde(default, alias = "agent_font_family")]
+    pub mono_font_family: String,
 }
 
 impl Default for UiConfig {
@@ -113,7 +155,7 @@ impl Default for UiConfig {
             terminal_font_size: None,
             theme: ThemeName::default(),
             font_family: String::new(),
-            agent_font_family: String::new(),
+            mono_font_family: String::new(),
         }
     }
 }

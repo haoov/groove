@@ -43,7 +43,11 @@ their switches; the routines, as [../shared.md](../shared.md) describes them.
 ## Appearance
 
 **The theme repaints everything at once**, the running agent and shell terminals
-included. An empty font family means the bundled one, IBM Plex.
+included.
+
+**The UI font is IBM Plex Sans.** The mono font is IBM Plex Mono, JetBrains Mono or Lilex,
+all vendored, and draws code, the diff, the agent and the shells. Mono draws no
+ligatures. An empty or unknown family is IBM Plex Mono. A change redraws at once.
 
 **Three sizes**, stepped by one point: the interface, the editor (code and diff), and the
 terminals (agent and shells). An unset terminal size is the editor's.

@@ -21,7 +21,7 @@ mod tests;
 pub use cell::{Cell, CellGrid, WIDE_SPACER};
 pub use color::Color;
 pub use error::{Error, Result};
-pub use fonts::{CellSize, Fonts};
+pub use fonts::{CellSize, Family, Fonts};
 pub use frame::{Font, Frame, Quad, Shape, TextRun, TextStyle, Weight};
 pub use geom::{Align, Edges, Rect, Size};
 pub use icons::Icon;

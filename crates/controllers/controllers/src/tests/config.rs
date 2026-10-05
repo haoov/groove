@@ -1,7 +1,7 @@
 //! Preferences: a change reaches its readers and the file at once, and new sessions start from it.
 
 use groove_config_service::Preference;
-use groove_types::{ProviderId, Secret, ThemeName};
+use groove_types::{FontFamily, ProviderId, Secret, ThemeName};
 
 use crate::config::Command;
 use crate::session::Command as SessionCommand;
@@ -82,6 +82,17 @@ fn a_theme_picked_is_the_one_drawn_and_the_one_written() {
         written.expect("the file is there").ui.theme,
         ThemeName::Mocha
     );
+}
+
+#[test]
+fn a_mono_family_picked_is_read_and_written() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let set = Command::SetPreference(Preference::MonoFamily(FontFamily::Lilex));
+    dispatch(Cmd::Config(set), &mut state, &services, &spawner);
+    assert_eq!(state.config.mono_family(), FontFamily::Lilex);
+    let written = groove_config_service::load(&home.path().join("config")).unwrap();
+    let ui = written.expect("the file is there").ui;
+    assert_eq!(ui.mono_font_family, "Lilex");
 }
 
 #[test]

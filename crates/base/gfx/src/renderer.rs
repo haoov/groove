@@ -3,7 +3,7 @@
 use crate::gpu::Gpu;
 use crate::quads::QuadPass;
 use crate::text::{Cached, TextPass};
-use crate::{Error, Fonts, Frame, Result, Size, grid};
+use crate::{Error, Family, Fonts, Frame, Result, Size, grid};
 
 pub(crate) const OFFSCREEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -82,6 +82,13 @@ impl Renderer {
 
     pub fn fonts(&mut self) -> &mut Fonts {
         &mut self.fonts
+    }
+
+    /// The next frame shapes all its text again in this mono family, if it changed.
+    pub fn set_mono(&mut self, mono: Family) {
+        if self.fonts.set_mono(mono) {
+            self.text.forget();
+        }
     }
 
     pub fn resize(&mut self, size: Size) {

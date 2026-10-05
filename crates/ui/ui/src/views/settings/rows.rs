@@ -173,8 +173,3 @@ pub fn rows(app: &AppState, settings: &super::SettingsUi) -> Vec<Row> {
     out.extend(keymap::keymap(app, settings));
     out
 }
-
-fn text(section: Section, label: &'static str, words: &'static str, text: String) -> Row {
-    let value = Value::Text { text, mono: false };
-    Row::new(section, label, words, value)
-}

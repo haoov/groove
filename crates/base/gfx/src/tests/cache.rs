@@ -1,7 +1,7 @@
 //! What the text pass keeps between frames, so a still window shapes nothing twice.
 
 use crate::{
-    Cell, CellGrid, Color, Font, Fonts, Frame, Palette, Renderer, Size, TextStyle, Weight,
+    Cell, CellGrid, Color, Family, Font, Fonts, Frame, Palette, Renderer, Size, TextStyle, Weight,
 };
 
 const WINDOW: Size = Size {
@@ -75,4 +75,17 @@ fn text_the_frame_has_not_drawn_before_is_shaped_once() {
     assert_eq!(after.lines, first.lines + 1, "one line more");
     assert_eq!(after.shaped, first.shaped + 1, "shaped once, and only it");
     assert_eq!(after.glyphs, first.glyphs, "the grid is unchanged");
+}
+
+#[test]
+fn a_mono_family_changed_shapes_the_frame_again_in_it() {
+    let mut renderer = renderer();
+    renderer.render(&frame()).expect("the first frame");
+    let first = renderer.cached();
+    renderer.set_mono(Family::Lilex);
+    renderer
+        .render(&frame())
+        .expect("the frame in the new family");
+    let after = renderer.cached();
+    assert_eq!(after.shaped, first.shaped * 2, "everything shaped again");
 }
