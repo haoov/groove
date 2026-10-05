@@ -21,7 +21,8 @@ fn the_core_plugin_is_written_from_the_ones_compiled_in() {
     let ids = named(&skills);
     assert!(ids.contains(&"groove:save-task"), "{ids:?}");
     assert!(ids.contains(&"groove:co-review"), "{ids:?}");
-    assert_eq!(ids.len(), 9, "every core skill, and no user one yet");
+    assert!(ids.contains(&"groove:promote-fact"), "{ids:?}");
+    assert_eq!(ids.len(), 10,"every core skill, and no user one yet");
 
     let one = skills
         .iter()
