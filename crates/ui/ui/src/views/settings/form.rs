@@ -16,13 +16,16 @@ use crate::hit::{Scroller, Target};
 use crate::offsets::listed;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, picker, screen};
 
-pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &SettingsUi) {
-    super::back(ctx, area.take_top(ctx.tokens.header));
-    let mut body = area.pad(Edges::all(ctx.tokens.md));
+pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &SettingsUi) {
+    let band = Spec::default().height(ctx.tokens.header);
+    let [bar, area] = column_in(area, [band, Spec::fill()]);
+    super::back(ctx, bar);
+    let [head, mut body] = column_in(area.pad(Edges::all(ctx.tokens.md)), [band, Spec::fill()]);
     let query = settings.search.text();
     let searching = !query.is_empty();
     let shown: Vec<Row> = rows(app, settings)
@@ -36,7 +39,6 @@ pub(super) fn draw(ctx: &mut Ctx, mut area: Rect, app: &AppState, settings: &Set
         true => format!("{} found", shown.len()),
         false => settings.section.label().to_string(),
     };
-    let head = body.take_top(ctx.tokens.header);
     Label::new(&heading, ctx.styles.title(Role::Text)).draw(ctx, head);
     let login = app.agent.login.as_ref();
     if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
@@ -90,8 +92,8 @@ fn lines(shown: &[Row], searching: bool) -> Vec<Line<'_>> {
 }
 
 /// A group's heading, at the foot of its gap.
-fn group(ctx: &mut Ctx, mut rect: Rect, name: &str) {
-    let line = rect.take_bottom(ctx.tokens.row);
+fn group(ctx: &mut Ctx, rect: Rect, name: &str) {
+    let [_, line] = column_in(rect, [Spec::fill(), Spec::default().height(ctx.tokens.row)]);
     Label::new(name, ctx.styles.label(Role::Faint)).draw(ctx, line);
 }
 
@@ -108,8 +110,10 @@ fn setting(ctx: &mut Ctx, line: Rect, one: &Row, (searching, ruled): (bool, bool
     if ruled {
         hairline(ctx, line, ctx.styles.line());
     }
-    let mut room = line;
-    let label = room.take_left(ctx.tokens.aside_mid);
+    let [label, room] = row_in(
+        line,
+        [Spec::default().width(ctx.tokens.aside_mid), Spec::fill()],
+    );
     let mut label_room = label;
     Label::new(&one.label, ctx.styles.body(Role::Muted)).left(ctx, &mut label_room, ctx.tokens.sm);
     if searching {

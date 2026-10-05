@@ -10,6 +10,7 @@ use crate::hit::Target;
 use crate::{Focus, Losing, Ui};
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, counts};
@@ -17,8 +18,7 @@ use groove_ui_kit::widgets::{Button, counts};
 /// The counts and what commits them on one line, the message under it.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     groove_ui_kit::shape::rule_above(ctx, rect, ctx.styles.line());
-    let mut message = rect;
-    let top = message.take_top(ctx.tokens.row);
+    let [top, message] = column_in(rect, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
     if ui.losing() == Some(&Losing::Everything) {
         super::files::asking(ctx, top, "discard every change?");
     } else {

@@ -10,6 +10,7 @@ use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::motion::turn;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::{Label, elide, row};
 use groove_ui_kit::widgets::{Button, Text, lead, picker};
@@ -20,9 +21,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
     groove_ui_kit::shape::ground(ctx, rect, Ground::Work);
     hairline(ctx, rect, ctx.styles.line());
 
-    let mut body = rect;
-    let top = body.take_top(ctx.tokens.header);
-    let under = body.take_top(ctx.tokens.row);
+    let tall = |height: f32| Spec::default().height(height);
+    let [top, under, _] = column_in(
+        rect,
+        [tall(ctx.tokens.header), tall(ctx.tokens.row), Spec::fill()],
+    );
     let Some(open) = app.session.selected() else {
         let room = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);

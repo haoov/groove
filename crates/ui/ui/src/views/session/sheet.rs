@@ -9,6 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in, column_of};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::Button;
 
@@ -21,25 +22,27 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let area = area(ctx);
     groove_ui_kit::shape::ground(ctx, area, Ground::Work);
     ctx.hit(area, Target::Sheet);
-    let line = ctx.tokens.line;
-    let mut body = area.pad(Edges::all(ctx.tokens.md));
+    let tall = |height: f32| Spec::default().height(height);
+    let (line, tokens) = (ctx.tokens.line, ctx.tokens);
+    let parts = [
+        tall(line),
+        tall(line),
+        tall(tokens.sm),
+        Spec::fill(),
+        tall(tokens.row),
+    ];
+    let [first, second, _, body, foot] = column_in(area.pad(Edges::all(tokens.md)), parts);
     let asks = crate::views::rail::asks_to(&ask.op);
-    Label::new(&asks, ctx.styles.strong(Role::Attention)).draw(ctx, body.take_top(line));
+    Label::new(&asks, ctx.styles.strong(Role::Attention)).draw(ctx, first);
     let place = place(app, &ask);
-    Label::new(&place, ctx.styles.small(Role::Muted)).draw(ctx, body.take_top(line));
-    body.take_top(ctx.tokens.sm);
-    let foot = body.take_bottom(ctx.tokens.row);
+    Label::new(&place, ctx.styles.small(Role::Muted)).draw(ctx, second);
     said(ctx, body, &ask.text);
     answers(ctx, foot, &ask.id);
 }
 
 /// The workspace and the sidebar together, from the header down.
 fn area(ctx: &Ctx) -> Rect {
-    let layout = &ctx.app.layout;
-    let right = layout.workspace.right().max(layout.sidebar.right());
-    let bottom = layout.workspace.bottom().max(layout.sidebar.bottom());
-    let (x, y) = (layout.header.x, layout.header.y);
-    Rect::new(x, y, right - x, bottom - y)
+    ctx.app.layout.work
 }
 
 /// The write this id names, in whichever session waits on it.
@@ -68,13 +71,12 @@ fn place(app: &AppState, ask: &Ask) -> String {
 }
 
 /// The text of the write, a line a row, cut where the sheet ends.
-fn said(ctx: &mut Ctx, mut rect: Rect, text: &str) {
+fn said(ctx: &mut Ctx, rect: Rect, text: &str) {
     let (style, line) = (ctx.styles.code(Role::Text), ctx.tokens.line);
-    for one in text.lines() {
-        if rect.h < line {
-            break;
-        }
-        Label::new(one, style).draw(ctx, rect.take_top(line));
+    let room = (rect.h / line).floor().max(0.0) as usize;
+    let rows = column_of(rect, &vec![Spec::default().height(line); room]);
+    for (one, row) in text.lines().zip(rows) {
+        Label::new(one, style).draw(ctx, row);
     }
 }
 

@@ -9,6 +9,7 @@ use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, row_in};
 use groove_ui_kit::shape::{Panel, hairline};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Button, Row, Search, Text, list};
@@ -22,7 +23,8 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, ui: &Ui) -> Rect {
     hairline(ctx, line, ctx.styles.line());
     let mut room = line.until(new_task(ctx, line));
     if app.task.reading {
-        room.take_right(ctx.tokens.md);
+        let [rest, _] = row_in(room, [Spec::fill(), Spec::default().width(ctx.tokens.md)]);
+        room = rest;
         let style = ctx.styles.small(Role::Faint);
         Label::new("reading…", style).right(ctx, &mut room, 0.0);
     }
@@ -48,12 +50,9 @@ pub(super) fn offers(ctx: &mut Ctx, field: Rect, app: &AppState, ui: &Ui) {
     if shown.is_empty() {
         return;
     }
-    let whole = Rect::new(
-        field.x + ctx.tokens.md,
-        field.bottom(),
-        ctx.tokens.modal / 2.0,
-        ctx.tokens.row * shown.len() as f32,
-    );
+    let at = (field.x + ctx.tokens.md, field.bottom());
+    let size = (ctx.tokens.modal / 2.0, ctx.tokens.row * shown.len() as f32);
+    let whole = groove_ui_kit::shape::kept_in(at, size, ctx.window);
     ctx.layer();
     let (raised, deep) = (ctx.styles.raised(), ctx.styles.deep());
     Panel::default()

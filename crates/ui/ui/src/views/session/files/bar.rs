@@ -8,6 +8,7 @@ use crate::hit::Target;
 use crate::views::session::{Bar, Term};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::widgets::Search;
 
@@ -24,9 +25,11 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, ui: &Ui) -> Rect {
     };
     groove_ui_kit::shape::ground(ctx, whole, Ground::Work);
     hairline(ctx, whole, ctx.styles.line());
-    let mut rows = whole;
-    for (at, term) in shown.iter().copied().enumerate() {
-        let line = rows.take_top(ctx.tokens.row);
+    let lines = column_in(
+        whole,
+        [Spec::default().height(ctx.tokens.row); Term::ALL.len()],
+    );
+    for (at, (term, line)) in shown.iter().copied().zip(lines).enumerate() {
         narrowing(ctx, line, bar, term, at == 0);
     }
     whole

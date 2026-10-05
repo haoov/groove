@@ -1,19 +1,23 @@
 //! What the overview shows of the task a session works: its properties, then its body.
 
-use groove_gfx::Rect;
+use groove_gfx::{Edges, Rect};
 use groove_types::{Task, TimeSummary};
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
 use groove_ui_kit::base::style::Role;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::markdown::prose;
 use groove_ui_kit::widgets::Button;
 
 const UNSET: &str = "—";
 
+/// How many properties the table shows, a row each.
+pub(super) const PROPERTIES: usize = 6;
+
 /// The six properties a line each, the hours with the clock's.
-pub(super) fn properties(ctx: &mut Ctx, column: &mut Rect, task: &Task, time: Option<TimeSummary>) {
-    let held = [
+pub(super) fn properties(ctx: &mut Ctx, rect: Rect, task: &Task, time: Option<TimeSummary>) {
+    let held: [(&str, String); PROPERTIES] = [
         ("Status", text(said(&task.status))),
         ("Priority", text(task.priority.map(|one| one.label()))),
         ("Start", text(task.dates.start)),
@@ -26,8 +30,9 @@ pub(super) fn properties(ctx: &mut Ctx, column: &mut Rect, task: &Task, time: Op
         .map(|(name, one)| (*name, one.as_str()))
         .collect();
     let logged = held.last().map_or("", |(_, one)| *one);
-    let mut taken = super::table(ctx, column, &held);
-    logging(ctx, taken.take_bottom(ctx.tokens.row), (task, logged), time);
+    super::table(ctx, rect, &held);
+    let [_, last] = column_in(rect, [Spec::fill(), Spec::default().height(ctx.tokens.row)]);
+    logging(ctx, last, (task, logged), time);
 }
 
 /// What hands the source the hours the clock measured, right after the hours logged.
@@ -45,13 +50,12 @@ fn logging(ctx: &mut Ctx, line: Rect, (task, logged): (&Task, &str), time: Optio
     log.at(ctx, line, x);
 }
 
-/// The body as Markdown, to the area's width.
-pub(super) fn body(ctx: &mut Ctx, area: Rect, column: &mut Rect, text: &str) {
+/// The body as Markdown, to the area's width, from the top of `rect`. Returns its height.
+pub(super) fn body(ctx: &mut Ctx, area: Rect, rect: Rect, text: &str) -> f32 {
     let pad = ctx.tokens.md;
-    let at = Rect::new(column.x + pad, column.y, column.w - pad * 2.0, 0.0);
+    let at = rect.pad(Edges::across(pad, pad));
     let link = |url: &str| Target::Link(url.to_string());
-    let tall = prose(ctx, (at, area), text, Role::Muted, link);
-    column.take_top(tall);
+    prose(ctx, (at, area), text, Role::Muted, link)
 }
 
 fn hours(value: f32) -> String {

@@ -9,6 +9,7 @@ use crate::keymap::Keymap;
 use crate::palette::Palette;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
+use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Row, input, list, modal, panel_at};
 
@@ -101,9 +102,11 @@ fn input_line(
     palette: &Palette,
     prompt: &Option<crate::palette::Prompt>,
 ) -> Rect {
-    let mut rest = rect;
-    rest.take_top(ctx.tokens.xs);
-    let line = rest.take_top(ctx.tokens.row);
+    let tall = |height: f32| Spec::default().height(height);
+    let [_, line, rest] = column_in(
+        rect,
+        [tall(ctx.tokens.xs), tall(ctx.tokens.row), Spec::fill()],
+    );
     let prefix = match prompt {
         Some(prompt) => format!("{}: ", prompt.label),
         None => "> ".to_string(),

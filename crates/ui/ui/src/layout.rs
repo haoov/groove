@@ -32,6 +32,8 @@ pub struct Layout {
     pub manual: Rect,
     /// Everything the board takes: the window but the rail.
     pub board: Rect,
+    /// The workspace and the sidebar together, from the top down.
+    pub work: Rect,
 }
 
 impl Layout {
@@ -58,7 +60,8 @@ impl Layout {
         let commit = boxes.leaf(tall(scale(split.commit).min(window.h)));
         let aside = Spec::default().width(scale(split.aside(sidebar)));
         let sidebar = boxes.column(aside, &[list, commit]);
-        let board = boxes.row(fill, &[agent, work, sidebar]);
+        let right = boxes.row(fill, &[work, sidebar]);
+        let board = boxes.row(fill, &[agent, right]);
         let root = boxes.row(Spec::default(), &[rail, board]);
         boxes.place(root, window);
         let work = boxes.rect(work);
@@ -73,6 +76,7 @@ impl Layout {
             workspace: boxes.rect(workspace),
             sidebar: boxes.rect(sidebar),
             board: boxes.rect(board),
+            work: boxes.rect(right),
             manual: Rect::new(work.x, window.h, work.w, 0.0),
         }
     }
@@ -103,7 +107,7 @@ impl Layout {
         self.agent_bar = Rect::new(rail, self.agent_bar.y, self.agent.w, self.agent_bar.h);
         let none = Rect::new(window.w, window.h, 0.0, 0.0);
         (self.header, self.workspace, self.sidebar) = (none, none, none);
-        (self.commit, self.manual) = (none, none);
+        (self.commit, self.manual, self.work) = (none, none, none);
         self
     }
 

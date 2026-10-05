@@ -19,6 +19,7 @@ use groove_gfx::Rect;
 use crate::Ui;
 use crate::ctx::Ctx;
 use groove_ui_kit::base::ground::Ground;
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 
 /// Which list a column holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,9 +55,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 /// The room one list's column takes under the header.
 pub fn column_of(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect, list: List) -> Rect {
     let body = columns(tokens, area);
-    let width = (body.w / List::ALL.len() as f32).floor();
-    let at = List::ALL.iter().position(|one| *one == list).unwrap_or(0) as f32;
-    Rect::new(body.x + width * at, body.y, width, body.h)
+    let wide = Spec::default().width((body.w / List::ALL.len() as f32).floor());
+    let at = List::ALL.iter().position(|one| *one == list).unwrap_or(0);
+    row_in(body, [wide; List::ALL.len()])[at]
 }
 
 /// The list whose column stands at `x`.
@@ -68,7 +69,6 @@ pub fn list_at(area: Rect, x: f32) -> Option<List> {
 
 /// The room the three columns share under the header.
 pub fn columns(tokens: &groove_ui_kit::base::tokens::Tokens, area: Rect) -> Rect {
-    let mut rest = area;
-    rest.take_top(tokens.header);
+    let [_, rest] = column_in(area, [Spec::default().height(tokens.header), Spec::fill()]);
     rest
 }

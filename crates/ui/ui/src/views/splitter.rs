@@ -20,8 +20,15 @@ pub fn draw(ctx: &mut Ctx, surface: Surface) {
 /// The boundaries a surface has: the board has only the rail's.
 fn shown(surface: Surface) -> &'static [Edge] {
     match surface {
-        Surface::Session => &Edge::ALL,
-        Surface::Board => &[Edge::Rail],
+        Surface::Session => &[
+            Edge::Rail,
+            Edge::Agent,
+            Edge::Sidebar,
+            Edge::Commit,
+            Edge::Manual,
+            Edge::Feed,
+        ],
+        Surface::Board => &[Edge::Rail, Edge::Feed],
     }
 }
 
@@ -45,6 +52,10 @@ fn band(ctx: &Ctx, edge: Edge) -> Option<Rect> {
             let open = manual.h > ctx.tokens.bar;
             open.then(|| Rect::new(manual.x, manual.y - grab / 2.0, manual.w, grab))
         }
-        Edge::Feed => None,
+        Edge::Feed => {
+            let feed = ctx.app.layout.feed;
+            let rail = feed.w - ctx.tokens.hairline;
+            Some(Rect::new(feed.x, feed.y - grab / 2.0, rail, grab))
+        }
     }
 }
