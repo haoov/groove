@@ -262,7 +262,7 @@ fn a_paste_is_bracketed_only_for_a_program_that_asked() {
 
     let (asked, rx) = run("printf '\\033[?2004hready'; read -r one", 40, 4);
     shown(&asked, "ready");
-    asked.paste("hello\n").unwrap();
+    asked.paste("hello").unwrap();
     shown(&asked, "[200~hello");
     let screen = asked.screen();
     let said: String = (0..screen.rows).map(|at| screen.line(at)).collect();
