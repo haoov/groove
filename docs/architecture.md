@@ -215,4 +215,4 @@ layers and the ceilings, and in `crates/ui/ui/src/tests/structure.rs` for `ui` a
 code.
 
 Golden images run on software Vulkan (`mesa-vulkan-drivers`, lavapipe) in CI. The fonts
-are vendored: IBM Plex Sans and IBM Plex Mono, OFL.
+are vendored: IBM Plex Sans, IBM Plex Mono, JetBrains Mono NL Nerd Font Mono and Lilex, OFL.

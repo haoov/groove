@@ -1,15 +1,15 @@
 //! Settings: opened from the rail and the palette, over the whole window, its rows searched and set.
 
-use groove_controllers::config_service::{Font, Preference};
+use groove_controllers::config_service::Preference;
 use groove_controllers::{AppState, Command, config};
 use groove_gfx::Fonts;
-use groove_types::{Found, ProviderId, Secret, ThemeName, Tool};
+use groove_types::{Found, ProviderId, Secret, Tool};
 
 use super::*;
 use crate::hit::Target;
 use crate::view;
 
-fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
+pub(super) fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     let (frame, hits) = view(app, ui, window(), &mut Fonts::embedded());
     let texts = frame.layers()[0]
         .texts
@@ -19,7 +19,7 @@ fn drawn(app: &AppState, ui: &Ui) -> (Vec<String>, Hits) {
     (texts, hits)
 }
 
-fn opened() -> (AppState, Ui) {
+pub(super) fn opened() -> (AppState, Ui) {
     let app = full_app();
     let mut ui = Ui::default();
     ui.settings.open = true;
@@ -68,41 +68,6 @@ fn a_step_up_asks_for_the_preference_one_step_more() {
     let asked = click(plus, &mut ui, &app, &hits);
     let set = config::Command::SetPreference(Preference::PollIntervalSecs(at + 10));
     assert_eq!(asked, [Command::Config(set)]);
-}
-
-#[test]
-fn appearance_offers_every_theme_and_a_click_picks_one() {
-    let (app, mut ui) = opened();
-    ui.settings.section = crate::views::settings::Section::Appearance;
-    let (texts, hits) = drawn(&app, &ui);
-    for one in ThemeName::ALL {
-        assert!(texts.iter().any(|t| t == one.label()), "{one:?}: {texts:?}");
-    }
-    let mocha = Target::SetPreference(Preference::Theme(ThemeName::Mocha));
-    let at = hits.rect_of(&mocha).expect("mocha's word");
-    let asked = click(at, &mut ui, &app, &hits);
-    let set = config::Command::SetPreference(Preference::Theme(ThemeName::Mocha));
-    assert_eq!(asked, [Command::Config(set)]);
-}
-
-#[test]
-fn each_font_has_its_own_size_and_a_step_up_asks_for_one_point_more() {
-    let (app, mut ui) = opened();
-    ui.settings.section = crate::views::settings::Section::Appearance;
-    let (texts, hits) = drawn(&app, &ui);
-    for row in ["ui size", "editor size", "terminal size"] {
-        assert!(texts.iter().any(|t| t == row), "{row}: {texts:?}");
-    }
-    let at = app.config.terminal_size();
-    let more = Preference::FontSize(Font::Terminal, at + 1.0);
-    let plus = hits
-        .rect_of(&Target::SetPreference(more))
-        .expect("the terminal's +");
-    let asked = click(plus, &mut ui, &app, &hits);
-    assert_eq!(
-        asked,
-        [Command::Config(config::Command::SetPreference(more))]
-    );
 }
 
 #[test]

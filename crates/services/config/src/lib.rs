@@ -1,5 +1,6 @@
 //! The config capability: the parsed config file, the preferences and the last environment check.
 
+mod families;
 mod sources;
 #[cfg(test)]
 mod tests;
@@ -9,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 pub use sources::Source;
 
-use groove_types::{Config, Error, Preferences, ThemeName, Tool, UiConfig};
+use groove_types::{Config, Error, FontFamily, Preferences, ThemeName, Tool, UiConfig};
 
 /// What a font size may be, whatever the file says.
 pub const MIN_FONT: f32 = 8.0;
@@ -24,6 +25,8 @@ pub enum Preference {
     Theme(ThemeName),
     /// In points; the file keeps it inside what a font can read as.
     FontSize(Font, f32),
+    UiFamily(FontFamily),
+    MonoFamily(FontFamily),
     AutoApproveDefault(bool),
     ReviewWaitingDays(u32),
     DueSoonDays(u32),
@@ -207,6 +210,8 @@ impl State {
                     Font::Terminal => ui.terminal_font_size = Some(size),
                 }
             }
+            Preference::UiFamily(family) => ui.font_family = family.stored().into(),
+            Preference::MonoFamily(family) => ui.mono_font_family = family.stored().into(),
             Preference::AutoApproveDefault(on) => held.auto_approve_default = on,
             Preference::ReviewWaitingDays(days) => held.thresholds.review_waiting_days = days,
             Preference::DueSoonDays(days) => held.thresholds.due_soon_days = days,

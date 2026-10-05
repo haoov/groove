@@ -1,4 +1,4 @@
-use crate::{Config, ConfigView, ThemeName};
+use crate::{Config, ConfigView, FontFamily, ThemeName};
 
 const FILE: &str = r#"{
   "notion": {
@@ -53,4 +53,26 @@ fn the_token_never_reaches_debug_or_the_view() {
     assert!(!view.contains("secret_abc"));
     let disk = serde_json::to_string(&config).unwrap();
     assert!(disk.contains("secret_abc"));
+}
+
+#[test]
+fn a_family_reads_back_from_what_it_stores_and_any_other_name_reads_as_plex() {
+    for one in FontFamily::MONO {
+        assert_eq!(FontFamily::named(one.stored(), &FontFamily::MONO), one);
+    }
+    assert_eq!(
+        FontFamily::named("Fira Code", &FontFamily::MONO),
+        FontFamily::Plex
+    );
+    assert_eq!(
+        FontFamily::named("Lilex", &FontFamily::UI),
+        FontFamily::Plex
+    );
+}
+
+#[test]
+fn a_file_naming_the_agent_font_reads_it_as_the_mono_font() {
+    let file = r#"{ "font_family": "", "agent_font_family": "Lilex" }"#;
+    let ui: crate::UiConfig = serde_json::from_str(file).unwrap();
+    assert_eq!(ui.mono_font_family, "Lilex");
 }

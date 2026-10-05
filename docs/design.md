@@ -270,7 +270,7 @@ hairlines between groups, paths and ids in mono.
 | Setup | environment check — git, gh, glab, claude, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
-| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font · agent font · three sizes: interface, editor, terminal |
+| Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: IBM Plex Sans, JetBrains Mono · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |
 | Keymap | every action with its chords; a chord is rebound by pressing it |
 

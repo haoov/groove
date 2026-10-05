@@ -23,12 +23,8 @@ pub(super) fn shape_glyph(
     let weight = if bold { Weight::Bold } else { Weight::Regular };
     let mut text = [0u8; 4];
     let text = ch.encode_utf8(&mut text);
-    buffer.set_text(
-        text,
-        &Fonts::attrs(Font::Mono, weight),
-        Shaping::Advanced,
-        None,
-    );
+    let attrs = fonts.attrs(Font::Mono, weight);
+    buffer.set_text(text, &attrs, Shaping::Advanced, None);
     buffer.shape_until_scroll(&mut fonts.system, false);
     buffer
 }

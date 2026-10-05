@@ -3,8 +3,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use glyphon::cosmic_text::{FeatureTag, FontFeatures};
 use glyphon::fontdb::{Database, Source};
-use glyphon::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Style, SwashCache};
+use glyphon::{Attrs, Buffer, FontSystem, Metrics, Shaping, Style, SwashCache};
 
 use crate::{Font, Weight};
 
@@ -21,8 +22,10 @@ pub(crate) fn one_paragraph(text: &str) -> std::borrow::Cow<'_, str> {
 
 const SANS: &str = "IBM Plex Sans";
 const MONO: &str = "IBM Plex Mono";
+const JETBRAINS: &str = "JetBrainsMonoNL Nerd Font Mono";
+const LILEX: &str = "Lilex";
 
-const FACES: [&[u8]; 7] = [
+const FACES: [&[u8]; 14] = [
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Medium.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-SemiBold.ttf"),
@@ -30,7 +33,33 @@ const FACES: [&[u8]; 7] = [
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Italic.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf"),
+    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Medium.ttf"),
+    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-SemiBold.ttf"),
+    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Italic.ttf"),
+    include_bytes!("../../../../assets/fonts/Lilex-Regular.ttf"),
+    include_bytes!("../../../../assets/fonts/Lilex-Bold.ttf"),
 ];
+
+/// A vendored family; `Plex` is IBM Plex Sans for the interface, IBM Plex Mono for mono.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Family {
+    #[default]
+    Plex,
+    JetBrainsMono,
+    Lilex,
+}
+
+impl Family {
+    fn name(self, plex: &'static str) -> &'static str {
+        match self {
+            Family::Plex => plex,
+            Family::JetBrainsMono => JETBRAINS,
+            Family::Lilex => LILEX,
+        }
+    }
+}
 
 /// The monospace cell in whole pixels.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -66,6 +95,8 @@ pub struct Fonts {
     pub(crate) swash: SwashCache,
     /// What a face already measured, by the text it measured.
     widths: HashMap<Face, HashMap<Box<str>, f32>>,
+    ui: Family,
+    mono: Family,
 }
 
 impl Fonts {
@@ -93,19 +124,32 @@ impl Fonts {
             system: FontSystem::new_with_locale_and_db("en-US".into(), db),
             swash: SwashCache::new(),
             widths: HashMap::new(),
+            ui: Family::Plex,
+            mono: Family::Plex,
         }
     }
 
-    pub(crate) fn attrs(font: Font, weight: Weight) -> Attrs<'static> {
+    /// The interface's family and mono's; `true` when either changed.
+    pub fn set_families(&mut self, ui: Family, mono: Family) -> bool {
+        if (ui, mono) == (self.ui, self.mono) {
+            return false;
+        }
+        (self.ui, self.mono) = (ui, mono);
+        self.widths.clear();
+        true
+    }
+
+    pub(crate) fn attrs(&self, font: Font, weight: Weight) -> Attrs<'static> {
         let (family, style) = match font {
-            Font::Sans => (SANS, Style::Normal),
-            Font::Italic => (SANS, Style::Italic),
-            Font::Mono => (MONO, Style::Normal),
+            Font::Sans => (self.ui.name(SANS), Style::Normal),
+            Font::Italic => (self.ui.name(SANS), Style::Italic),
+            Font::Mono => (self.mono.name(MONO), Style::Normal),
         };
         Attrs::new()
-            .family(Family::Name(family))
+            .family(glyphon::Family::Name(family))
             .style(style)
             .weight(weight.into())
+            .font_features(no_ligatures())
     }
 
     /// The advance of `text` on one line, shaped once and kept.
@@ -129,7 +173,8 @@ impl Fonts {
     fn shaped(&mut self, text: &str, font: Font, weight: Weight, size: f32) -> f32 {
         let mut buf = Buffer::new(&mut self.system, Metrics::new(size, size));
         let text = one_paragraph(text);
-        buf.set_text(&text, &Fonts::attrs(font, weight), Shaping::Advanced, None);
+        let attrs = self.attrs(font, weight);
+        buf.set_text(&text, &attrs, Shaping::Advanced, None);
         buf.shape_until_scroll(&mut self.system, false);
         buf.layout_runs().map(|run| run.line_w).fold(0.0, f32::max)
     }
@@ -147,6 +192,15 @@ impl Fonts {
             height: (size * 1.35).round().max(1.0),
         }
     }
+}
+
+fn no_ligatures() -> FontFeatures {
+    let mut features = FontFeatures::new();
+    features
+        .disable(FeatureTag::STANDARD_LIGATURES)
+        .disable(FeatureTag::CONTEXTUAL_LIGATURES)
+        .disable(FeatureTag::CONTEXTUAL_ALTERNATES);
+    features
 }
 
 impl Default for Fonts {
