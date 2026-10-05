@@ -145,7 +145,7 @@ fn heading(ctx: &mut Ctx, rect: Rect, count: usize, open: bool) {
 }
 
 fn footer(ctx: &mut Ctx, rect: Rect) {
-    groove_ui_kit::shape::rule_above(ctx, rect, ctx.styles.line());
+    groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line());
     hoverable(ctx, rect, Target::SettingsOpen);
     let style = ctx.styles.small(Role::Faint);
     let md = ctx.tokens.md;

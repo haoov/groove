@@ -112,7 +112,7 @@ fn shown(mr: &ReviewMr, now: Timestamp) -> Shown<'_, Target> {
     }
     Shown {
         cells: vec![
-            Cell::label(mr.title.as_str(), Role::Text).mark(Mark::Review, 0, state(mr)),
+            Cell::label(mr.title.as_str(), Role::Text).mark(Mark::of_forge(mr.forge), 0, state(mr)),
             Cell::small(ago(mr.updated_at.age_at(now)), Role::Faint),
         ],
         under,

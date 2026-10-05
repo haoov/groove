@@ -26,8 +26,8 @@ pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
     groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
-    if asked(app, id).is_some() {
-        groove_ui_kit::shape::ground(ctx, rect, Ground::Tint(Role::Attention));
+    if let Some(role) = tinted(app, id) {
+        groove_ui_kit::shape::ground(ctx, rect, Ground::Tint(role));
     }
     let (xs, sm, md, _size) = (ctx.tokens.xs, ctx.tokens.sm, ctx.tokens.md, ctx.tokens.icon);
     let mut body = rect;
@@ -63,6 +63,18 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
 fn asked(app: &AppState, id: &SessionId) -> Option<(Ask, usize)> {
     let asks = &app.agent.activity(id)?.asks;
     Some((asks.first()?.clone(), asks.len()))
+}
+
+fn tinted(app: &AppState, id: &SessionId) -> Option<Role> {
+    let activity = app.agent.activity(id)?;
+    if !activity.asks.is_empty() {
+        return Some(Role::Attention);
+    }
+    match activity.status {
+        AgentStatus::Asking => Some(Role::Attention),
+        AgentStatus::Done { seen: false } => Some(Role::Ok),
+        _ => None,
+    }
 }
 
 /// `asks to commit`: what a write does, as the rail and the sheet say it.
