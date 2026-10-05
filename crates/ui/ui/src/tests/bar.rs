@@ -351,10 +351,11 @@ fn a_conversion_files_in_each_source_that_is_set_up() {
 }
 
 #[test]
-fn filing_a_task_stays_off_the_menu_and_converting_names_each_source() {
+fn filing_a_task_and_sharing_a_fact_stay_off_the_menu_and_converting_names_each_source() {
     let app = sourced(
         offering(vec![
             skill("create-task", "create task", &[]),
+            skill("promote-fact", "share a fact", &[]),
             skill("convert-explorer", "convert to task", &[]),
         ]),
         true,
@@ -379,7 +380,9 @@ fn filing_a_task_stays_off_the_menu_and_converting_names_each_source() {
         "two sources, one skill on the menu: {rows:?}"
     );
     assert!(
-        !drawn.iter().any(|one| one.starts_with("create task")),
+        !drawn
+            .iter()
+            .any(|one| one.starts_with("create task") || one.starts_with("share a fact")),
         "{drawn:?}"
     );
     assert_eq!(

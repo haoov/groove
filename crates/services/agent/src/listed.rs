@@ -67,7 +67,7 @@ pub struct SkillOffer {
 }
 
 impl State {
-    /// A session's skills menu: no `create-task`, `convert-explorer` once a source when several.
+    /// A session's skills menu: no `create-task` or `promote-fact`, `convert-explorer` once a source when several.
     pub fn offers(
         &self,
         kind: &groove_types::SessionKind,
@@ -85,7 +85,7 @@ fn offered(skill: &groove_types::Skill, sources: &[groove_types::ProviderId]) ->
         label,
     };
     match skill.name.as_str() {
-        "create-task" => Vec::new(),
+        "create-task" | "promote-fact" => Vec::new(),
         "convert-explorer" if sources.len() > 1 => sources
             .iter()
             .map(|one| {

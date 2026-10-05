@@ -76,8 +76,8 @@ adds the repo to a session and lands the skill as an MR, like any other change.
 **A fact worth sharing is promoted, not copied whole.** The agent's own memory stays the
 user's: what it knows of the user and how they work is never shared. A fact about the work — a
 system, a repo, a tool, a trap — can be promoted to `knowledge/`, through the same task and MR
-as a skill. Groove ships no skill for it; a shared repo can carry one of its own, which
-checks the fact against its source first.
+as a skill. `groove:promote-fact` checks the fact against its source first, then opens that
+MR. The user asks for it in the chat; the skills menu does not offer it.
 
 **Every fact says where it comes from and when.** A fact carries the date it was written and
 the commit, file or ticket it was read from, so a reader can check it before acting on it. A
