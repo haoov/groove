@@ -57,17 +57,10 @@ fn the_token_never_reaches_debug_or_the_view() {
 
 #[test]
 fn a_family_reads_back_from_what_it_stores_and_any_other_name_reads_as_plex() {
-    for one in FontFamily::MONO {
-        assert_eq!(FontFamily::named(one.stored(), &FontFamily::MONO), one);
+    for one in FontFamily::ALL {
+        assert_eq!(FontFamily::named(one.stored()), one);
     }
-    assert_eq!(
-        FontFamily::named("Fira Code", &FontFamily::MONO),
-        FontFamily::Plex
-    );
-    assert_eq!(
-        FontFamily::named("Lilex", &FontFamily::UI),
-        FontFamily::Plex
-    );
+    assert_eq!(FontFamily::named("Fira Code"), FontFamily::Plex);
 }
 
 #[test]

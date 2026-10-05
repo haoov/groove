@@ -78,20 +78,14 @@ fn text_the_frame_has_not_drawn_before_is_shaped_once() {
 }
 
 #[test]
-fn a_family_changed_shapes_the_frame_again_in_it() {
+fn a_mono_family_changed_shapes_the_frame_again_in_it() {
     let mut renderer = renderer();
     renderer.render(&frame()).expect("the first frame");
     let first = renderer.cached();
-    let width = |r: &mut Renderer| r.fonts().measure("iiii", Font::Sans, Weight::Regular, 13.0);
-    let plex = width(&mut renderer);
-    renderer.set_families(Family::JetBrainsMono, Family::Lilex);
+    renderer.set_mono(Family::Lilex);
     renderer
         .render(&frame())
         .expect("the frame in the new family");
     let after = renderer.cached();
     assert_eq!(after.shaped, first.shaped * 2, "everything shaped again");
-    assert!(
-        width(&mut renderer) > plex,
-        "the interface is measured in the mono family"
-    );
 }

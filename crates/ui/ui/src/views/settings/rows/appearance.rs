@@ -1,4 +1,4 @@
-//! The Appearance section's rows: the theme to pick, the families, a size per font.
+//! The Appearance section's rows: the theme to pick, the mono family, a size per font.
 
 use groove_controllers::AppState;
 use groove_controllers::config_service::{Font, MIN_FONT, Preference};
@@ -18,30 +18,19 @@ pub(super) fn appearance(app: &AppState) -> Vec<Row> {
     let themes = ThemeName::ALL.map(|one| (one.label(), one == ui.theme, Preference::Theme(one)));
     let words = "latte frappe macchiato mocha colour dark light";
     let theme = Row::new(section, "theme", words, Value::Choice(themes.to_vec()));
-    let families = |among: &[FontFamily], held, set: fn(FontFamily) -> Preference| {
-        let one = |family: &FontFamily| (family.label(), *family == held, set(*family));
-        Value::Choice(among.iter().map(one).collect())
+    let held = app.config.mono_family();
+    let mono = |one: FontFamily| (one.label(), one == held, Preference::MonoFamily(one));
+    let plex = Value::Text {
+        text: "ibm plex sans".into(),
+        mono: false,
     };
     let mut fonts = vec![
-        Row::new(
-            section,
-            "ui font",
-            "family type plex jetbrains",
-            families(
-                &FontFamily::UI,
-                app.config.ui_family(),
-                Preference::UiFamily,
-            ),
-        ),
+        Row::new(section, "ui font", "family type plex", plex),
         Row::new(
             section,
             "mono font",
             "family code diff agent terminal shell plex jetbrains lilex",
-            families(
-                &FontFamily::MONO,
-                app.config.mono_family(),
-                Preference::MonoFamily,
-            ),
+            Value::Choice(FontFamily::ALL.map(mono).to_vec()),
         ),
     ];
     fonts.extend(sizes(app));

@@ -24,21 +24,19 @@ fn appearance_offers_every_theme_and_a_click_picks_one() {
 }
 
 #[test]
-fn appearance_offers_every_family_and_a_click_picks_one() {
+fn appearance_offers_every_mono_family_and_a_click_picks_one() {
     let (app, mut ui) = opened();
     ui.settings.section = crate::views::settings::Section::Appearance;
     let (texts, hits) = drawn(&app, &ui);
-    for one in FontFamily::MONO {
-        let shown = texts.iter().filter(|t| *t == one.label()).count();
-        let rows = 1 + usize::from(FontFamily::UI.contains(&one));
-        assert_eq!(shown, rows, "{one:?} on the ui and mono rows: {texts:?}");
+    for one in FontFamily::ALL {
+        assert!(texts.iter().any(|t| t == one.label()), "{one:?}: {texts:?}");
     }
-    let jetbrains = Preference::UiFamily(FontFamily::JetBrainsMono);
+    let lilex = Preference::MonoFamily(FontFamily::Lilex);
     let at = hits
-        .rect_of(&Target::SetPreference(jetbrains))
-        .expect("jetbrains mono's word on the ui font");
+        .rect_of(&Target::SetPreference(lilex))
+        .expect("lilex's word on the mono font");
     let asked = click(at, &mut ui, &app, &hits);
-    let set = config::Command::SetPreference(jetbrains);
+    let set = config::Command::SetPreference(lilex);
     assert_eq!(asked, [Command::Config(set)]);
 }
 

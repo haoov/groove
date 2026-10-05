@@ -25,7 +25,7 @@ const MONO: &str = "IBM Plex Mono";
 const JETBRAINS: &str = "JetBrainsMonoNL Nerd Font Mono";
 const LILEX: &str = "Lilex";
 
-const FACES: [&[u8]; 14] = [
+const FACES: [&[u8]; 11] = [
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-Medium.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexSans-SemiBold.ttf"),
@@ -34,15 +34,12 @@ const FACES: [&[u8]; 14] = [
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/IBMPlexMono-Bold.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Regular.ttf"),
-    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Medium.ttf"),
-    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-SemiBold.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Bold.ttf"),
-    include_bytes!("../../../../assets/fonts/JetBrainsMonoNLNerdFontMono-Italic.ttf"),
     include_bytes!("../../../../assets/fonts/Lilex-Regular.ttf"),
     include_bytes!("../../../../assets/fonts/Lilex-Bold.ttf"),
 ];
 
-/// A vendored family; `Plex` is IBM Plex Sans for the interface, IBM Plex Mono for mono.
+/// A vendored mono family.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Family {
     #[default]
@@ -52,9 +49,9 @@ pub enum Family {
 }
 
 impl Family {
-    fn name(self, plex: &'static str) -> &'static str {
+    fn name(self) -> &'static str {
         match self {
-            Family::Plex => plex,
+            Family::Plex => MONO,
             Family::JetBrainsMono => JETBRAINS,
             Family::Lilex => LILEX,
         }
@@ -95,7 +92,6 @@ pub struct Fonts {
     pub(crate) swash: SwashCache,
     /// What a face already measured, by the text it measured.
     widths: HashMap<Face, HashMap<Box<str>, f32>>,
-    ui: Family,
     mono: Family,
 }
 
@@ -124,26 +120,25 @@ impl Fonts {
             system: FontSystem::new_with_locale_and_db("en-US".into(), db),
             swash: SwashCache::new(),
             widths: HashMap::new(),
-            ui: Family::Plex,
             mono: Family::Plex,
         }
     }
 
-    /// The interface's family and mono's; `true` when either changed.
-    pub fn set_families(&mut self, ui: Family, mono: Family) -> bool {
-        if (ui, mono) == (self.ui, self.mono) {
+    /// `true` when the family changed.
+    pub fn set_mono(&mut self, mono: Family) -> bool {
+        if mono == self.mono {
             return false;
         }
-        (self.ui, self.mono) = (ui, mono);
+        self.mono = mono;
         self.widths.clear();
         true
     }
 
     pub(crate) fn attrs(&self, font: Font, weight: Weight) -> Attrs<'static> {
         let (family, style) = match font {
-            Font::Sans => (self.ui.name(SANS), Style::Normal),
-            Font::Italic => (self.ui.name(SANS), Style::Italic),
-            Font::Mono => (self.mono.name(MONO), Style::Normal),
+            Font::Sans => (SANS, Style::Normal),
+            Font::Italic => (SANS, Style::Italic),
+            Font::Mono => (self.mono.name(), Style::Normal),
         };
         Attrs::new()
             .family(glyphon::Family::Name(family))

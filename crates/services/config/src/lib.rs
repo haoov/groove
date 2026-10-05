@@ -25,7 +25,6 @@ pub enum Preference {
     Theme(ThemeName),
     /// In points; the file keeps it inside what a font can read as.
     FontSize(Font, f32),
-    UiFamily(FontFamily),
     MonoFamily(FontFamily),
     AutoApproveDefault(bool),
     ReviewWaitingDays(u32),
@@ -210,7 +209,6 @@ impl State {
                     Font::Terminal => ui.terminal_font_size = Some(size),
                 }
             }
-            Preference::UiFamily(family) => ui.font_family = family.stored().into(),
             Preference::MonoFamily(family) => ui.mono_font_family = family.stored().into(),
             Preference::AutoApproveDefault(on) => held.auto_approve_default = on,
             Preference::ReviewWaitingDays(days) => held.thresholds.review_waiting_days = days,

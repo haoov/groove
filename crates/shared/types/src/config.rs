@@ -86,7 +86,7 @@ impl ThemeName {
     }
 }
 
-/// A vendored font family; the file holds `stored`, empty for IBM Plex.
+/// A vendored mono family; the file holds `stored`, empty for IBM Plex Mono.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum FontFamily {
     #[default]
@@ -96,8 +96,7 @@ pub enum FontFamily {
 }
 
 impl FontFamily {
-    pub const UI: [FontFamily; 2] = [FontFamily::Plex, FontFamily::JetBrainsMono];
-    pub const MONO: [FontFamily; 3] = [
+    pub const ALL: [FontFamily; 3] = [
         FontFamily::Plex,
         FontFamily::JetBrainsMono,
         FontFamily::Lilex,
@@ -119,11 +118,10 @@ impl FontFamily {
         }
     }
 
-    /// A name none of `among` stores reads as IBM Plex.
-    pub fn named(name: &str, among: &[FontFamily]) -> Self {
-        among
-            .iter()
-            .copied()
+    /// A name no vendored family stores reads as IBM Plex Mono.
+    pub fn named(name: &str) -> Self {
+        Self::ALL
+            .into_iter()
             .find(|one| one.stored() == name)
             .unwrap_or_default()
     }
@@ -141,7 +139,7 @@ pub struct UiConfig {
     pub terminal_font_size: Option<f32>,
     #[serde(default)]
     pub theme: ThemeName,
-    /// A `FontFamily` as stored; empty means IBM Plex.
+    /// Empty means the bundled font.
     #[serde(default)]
     pub font_family: String,
     /// Code, the agent and the terminals.

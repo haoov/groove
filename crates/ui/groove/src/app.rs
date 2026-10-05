@@ -211,7 +211,7 @@ impl App {
             config.code_size(),
             config.terminal_size(),
         );
-        renderer.set_families(family(config.ui_family()), family(config.mono_family()));
+        renderer.set_mono(family(config.mono_family()));
         let fonts = renderer.fonts();
         Some(Metrics {
             size: size_of(window),

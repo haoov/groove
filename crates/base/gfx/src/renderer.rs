@@ -84,9 +84,9 @@ impl Renderer {
         &mut self.fonts
     }
 
-    /// The next frame shapes all its text again in these families, if they changed.
-    pub fn set_families(&mut self, ui: Family, mono: Family) {
-        if self.fonts.set_families(ui, mono) {
+    /// The next frame shapes all its text again in this mono family, if it changed.
+    pub fn set_mono(&mut self, mono: Family) {
+        if self.fonts.set_mono(mono) {
             self.text.forget();
         }
     }
