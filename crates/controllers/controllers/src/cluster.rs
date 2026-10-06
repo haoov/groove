@@ -1,6 +1,9 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
+mod objects;
+
 use groove_cluster_service::Event as ClusterEvent;
+use groove_types::WatchKey;
 
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
@@ -10,6 +13,12 @@ pub enum Command {
     ScanContexts,
     /// `cluster.check_context`: whether one context signs in now.
     CheckContext { context: String },
+    /// `cluster.discover`: the kinds a context serves, from the cache unless `again`.
+    Discover { context: String, again: bool },
+    /// `cluster.watch`: `reader` reads `key`; its watcher starts with its first reader.
+    Watch { reader: String, key: WatchKey },
+    /// `cluster.release`: `reader` reads nothing; a watcher left unread stops a while later.
+    Release { reader: String },
 }
 
 impl Command {
@@ -17,6 +26,9 @@ impl Command {
         match self {
             Command::ScanContexts => "cluster.scan_contexts",
             Command::CheckContext { .. } => "cluster.check_context",
+            Command::Discover { .. } => "cluster.discover",
+            Command::Watch { .. } => "cluster.watch",
+            Command::Release { .. } => "cluster.release",
         }
     }
 }
@@ -25,6 +37,9 @@ pub fn dispatch(command: Command, state: &mut AppState, _: &Services, spawner: &
     match command {
         Command::ScanContexts => scan(state, spawner),
         Command::CheckContext { context } => check(state, spawner, context),
+        Command::Discover { context, again } => objects::discover(state, spawner, context, again),
+        Command::Watch { reader, key } => objects::watch(state, spawner, &reader, key),
+        Command::Release { reader } => objects::release(state, spawner, &reader),
     }
 }
 

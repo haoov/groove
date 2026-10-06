@@ -40,7 +40,9 @@ pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use chord::{Chord, Stroke};
-pub use cluster::{Attached, KubeAuth, KubeContext, Login};
+pub use cluster::{
+    Attached, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn, WatchKey,
+};
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,
     GitConfig, GithubConfig, GithubView, Hue, NotionConfig, NotionView, Preferences, PriorityMap,

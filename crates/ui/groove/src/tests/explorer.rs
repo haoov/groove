@@ -59,6 +59,7 @@ pub(super) fn working(home: &std::path::Path, spawner: &SyncSpawner) -> (AppStat
         tools: None,
         shell: "/bin/sh".into(),
         kubeconfig: Vec::new(),
+        cache_dir: Default::default(),
     });
     let config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/code" } }"#).unwrap();
@@ -196,6 +197,7 @@ fn a_session_with_no_worktree_says_there_is_none_to_read() {
         tools: None,
         shell: "/bin/sh".into(),
         kubeconfig: Vec::new(),
+        cache_dir: Default::default(),
     });
     dispatch(
         groove_controllers::Command::Session(session::Command::OpenExplorer { title: None }),

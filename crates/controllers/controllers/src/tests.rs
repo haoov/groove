@@ -8,6 +8,7 @@ mod docs;
 mod fixture;
 mod layers;
 mod loop_;
+mod objects;
 mod perf;
 mod reviews;
 mod routines;

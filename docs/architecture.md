@@ -160,7 +160,9 @@ world. One thread applies all three.
   change.
 
 **Firehoses never enter the loop.** The terminal's reader thread parses bytes into the
-grid and sets a dirty flag; one damage event a frame at most.
+grid and sets a dirty flag; one damage event a frame at most. A cluster watcher is
+detached work on the pool: it gathers its changes and sends one batch a frame at most,
+and lives while something reads it.
 
 **Keystrokes never touch a device on the main thread.** The terminal module's writer
 thread owns the pty's input side; send and resize queue on its channel and return.

@@ -32,6 +32,7 @@ pub fn state(home: &Path) -> AppState {
         tools: None,
         shell: "/bin/sh".into(),
         kubeconfig: vec![home.join(".kube/config")],
+        cache_dir: home.join("cache"),
     });
     let config: groove_types::Config =
         serde_json::from_str(r#"{ "git": { "worktree_root": "~/code" } }"#).unwrap();

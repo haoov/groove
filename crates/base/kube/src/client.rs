@@ -8,8 +8,8 @@ use crate::{Error, Result};
 /// A connection to the cluster of one context.
 #[derive(Clone)]
 pub struct Client {
-    inner: kube::Client,
-    context: String,
+    pub(crate) inner: kube::Client,
+    pub(crate) context: String,
 }
 
 impl std::fmt::Debug for Client {

@@ -18,6 +18,8 @@ pub struct Env {
     pub shell: String,
     /// The kubeconfig files kubectl reads.
     pub kubeconfig: Vec<PathBuf>,
+    /// `~/.cache/groove`
+    pub cache_dir: PathBuf,
 }
 
 impl Env {

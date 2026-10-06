@@ -15,6 +15,9 @@ pub type Continuation = Box<dyn FnOnce(&mut AppState, &Services, &dyn Spawner) +
 /// The async part of a controller function, ending in its continuation.
 pub type Job = Pin<Box<dyn Future<Output = Continuation> + Send>>;
 
+/// Work that lives on, a watcher, and reports through the sink as it goes.
+pub type Detached = Pin<Box<dyn Future<Output = ()> + Send>>;
+
 /// Hands a continuation to the main thread. The binary implements it over winit's proxy.
 pub trait Deliver: Send + Sync {
     fn deliver(&self, continuation: Continuation);
@@ -22,6 +25,8 @@ pub trait Deliver: Send + Sync {
 
 pub trait Spawner {
     fn spawn(&self, job: Job);
+
+    fn detach(&self, work: Detached);
 
     /// The sink a thread reports back through.
     fn sink(&self) -> Arc<dyn Deliver>;
@@ -43,6 +48,10 @@ impl Spawner for TokioSpawner {
     fn spawn(&self, job: Job) {
         let sink = self.sink.clone();
         self.runtime.spawn(async move { sink.deliver(job.await) });
+    }
+
+    fn detach(&self, work: Detached) {
+        self.runtime.spawn(work);
     }
 
     fn sink(&self) -> Arc<dyn Deliver> {
@@ -93,6 +102,13 @@ impl SyncSpawner {
         }
     }
 
+    /// Lets detached work run for `long`, then applies what it delivered.
+    pub fn settle(&self, long: std::time::Duration, state: &mut AppState, services: &Services) {
+        self.runtime
+            .block_on(async move { tokio::time::sleep(long).await });
+        self.drain(state, services);
+    }
+
     /// Runs a future to completion on the spawner's own runtime.
     pub fn block_on<F: Future>(&self, future: F) -> F::Output {
         self.runtime.block_on(future)
@@ -103,6 +119,10 @@ impl Spawner for SyncSpawner {
     fn spawn(&self, job: Job) {
         let continuation = self.runtime.block_on(job);
         self.pending.deliver(continuation);
+    }
+
+    fn detach(&self, work: Detached) {
+        self.runtime.spawn(work);
     }
 
     fn sink(&self) -> Arc<dyn Deliver> {

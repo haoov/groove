@@ -1,6 +1,6 @@
 [package]
 name = "groove-cluster-service"
-description = "The cluster part of the app: the kubeconfig contexts found, and whether each one signs in"
+description = "The cluster part of the app: the contexts found, their sign-in, and the watched objects"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 groove-contexts = { path = "../../modules/contexts" }
+groove-objects = { path = "../../modules/objects" }
 groove-types = { path = "../../shared/types" }
 
 [lints]
