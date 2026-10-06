@@ -1,7 +1,9 @@
 //! Rows of cells under a header of columns. Only the rows on screen are built.
 
+mod act;
 mod cell;
 
+pub use act::Act;
 pub use cell::Cell;
 
 use groove_gfx::Rect;
@@ -37,12 +39,22 @@ pub struct Sorted {
     pub descending: bool,
 }
 
+impl Sorted {
+    /// A header whose rows keep their own order.
+    pub const NONE: Sorted = Sorted {
+        column: usize::MAX,
+        descending: false,
+    };
+}
+
 /// One row on screen: a cell a column, its second line, and what a click on it means.
 pub struct Shown<'a, T> {
     pub cells: Vec<Cell<'a>>,
     /// Laid one after the other from where the first cell's text starts.
     pub under: Vec<Cell<'a>>,
     pub target: Option<T>,
+    /// A button or a toggle in place of a cell's text, by column.
+    pub acts: Vec<Option<Act<'a, T>>>,
 }
 
 /// How tall a row stands, and whether a rule closes it.
@@ -168,8 +180,13 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         let mut rest = line;
         let first = rest.take_top(self.rows.first);
         let mut start = first.x + ctx.tokens.md;
+        let mut acts = shown.acts.into_iter();
         for (at, (cell, (x, w))) in shown.cells.into_iter().zip(spans).enumerate() {
             let rect = Rect::new(*x, first.y, *w, first.h);
+            if let Some(act) = acts.next().flatten() {
+                act.draw(ctx, rect);
+                continue;
+            }
             let (text, _) = cell.draw(ctx, rect, self.columns[at].end);
             if at == 0 {
                 start = text;

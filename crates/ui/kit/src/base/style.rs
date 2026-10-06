@@ -28,6 +28,8 @@ pub enum Role {
     Accent,
     /// On an accent ground.
     Inverse,
+    /// The colour a cluster context was given.
+    Hue(groove_types::Hue),
 }
 
 /// The styles of one frame: the flavour's colours at the window's scale.
@@ -40,7 +42,7 @@ pub struct Styles {
 impl Styles {
     pub fn new(theme: ThemeName, tokens: Tokens) -> Self {
         Self {
-            palette: flavour(theme),
+            palette: crate::base::palette::flavour(theme),
             tokens,
         }
     }
@@ -60,6 +62,7 @@ impl Styles {
             Role::Merged => p.mauve,
             Role::Accent => p.rosewater,
             Role::Inverse => p.crust,
+            Role::Hue(hue) => crate::base::palette::hue(p, hue),
         }
     }
 
@@ -286,15 +289,5 @@ impl Styles {
             size,
             color: self.color(role),
         }
-    }
-}
-
-/// The flavour the config names.
-fn flavour(theme: ThemeName) -> Palette {
-    match theme {
-        ThemeName::Latte => Palette::LATTE,
-        ThemeName::Frappe => Palette::FRAPPE,
-        ThemeName::Macchiato => Palette::MACCHIATO,
-        ThemeName::Mocha => Palette::MOCHA,
     }
 }

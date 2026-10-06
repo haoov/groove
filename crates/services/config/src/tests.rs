@@ -1,4 +1,4 @@
-use groove_types::{Config, GitConfig, UiConfig};
+use groove_types::{ClusterChange, Config, GitConfig, Hue, UiConfig};
 
 use crate::{Font, Preference, Source, State};
 
@@ -19,6 +19,7 @@ fn with(font_size: f32, code_font_size: f32) -> State {
         shared: None,
         skills_off: Vec::new(),
         routines: Default::default(),
+        clusters: Vec::new(),
     };
     State {
         config: Some(config),
@@ -101,4 +102,31 @@ fn the_poll_never_runs_faster_than_its_floor() {
 fn nothing_is_set_before_the_first_run_wrote_a_config() {
     let mut state = State::default();
     assert!(state.set(Preference::StaleAfterSecs(30)).is_none());
+}
+
+#[test]
+fn a_context_is_added_once_changed_on_its_own_and_removed() {
+    let mut state = with(13.0, 12.5);
+    state.add_cluster("hub");
+    state.add_cluster("staging");
+    state.add_cluster("hub");
+    assert_eq!(state.clusters().len(), 2);
+    assert_eq!(
+        state.cluster("staging").map(|one| one.hue),
+        Some(Hue::Mauve)
+    );
+    let written = state.change_cluster("hub", ClusterChange::ReadOnly(true));
+    assert!(written.is_some_and(|config| config.clusters[0].read_only));
+    assert!(
+        state
+            .change_cluster("prod", ClusterChange::ArgoHub(true))
+            .is_none()
+    );
+    state.remove_cluster("hub");
+    let left: Vec<_> = state
+        .clusters()
+        .iter()
+        .map(|one| one.context.as_str())
+        .collect();
+    assert_eq!(left, ["staging"]);
 }

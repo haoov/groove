@@ -1,4 +1,7 @@
+mod clusters;
 mod sources;
+
+pub use clusters::{ClusterChange, ClusterConfig, Hue};
 
 pub use sources::{
     EstimateUnit, FilterConfig, GithubConfig, GithubView, NotionConfig, NotionView, PriorityMap,
@@ -31,6 +34,8 @@ pub struct Config {
     pub skills_off: Vec<String>,
     #[serde(default, skip_serializing_if = "RoutinesConfig::is_empty")]
     pub routines: RoutinesConfig,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub clusters: Vec<ClusterConfig>,
 }
 
 /// The routines switched on, and the triggers the user turned off on each.

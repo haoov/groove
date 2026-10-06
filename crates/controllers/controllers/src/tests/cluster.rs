@@ -88,3 +88,42 @@ fn a_check_lands_on_its_context() {
     assert_eq!(state.cluster.login("kind"), Some(&signed_in));
     assert!(!state.cluster.checking("kind"));
 }
+
+#[test]
+fn a_found_context_is_added_written_changed_and_removed_and_an_unknown_one_refused() {
+    use crate::config::Command as Config;
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let run = |state: &mut crate::AppState, command| {
+        dispatch(command, state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    run(&mut state, Cmd::Cluster(Command::ScanContexts));
+    let add = |context: &str| {
+        Cmd::Config(Config::AddCluster {
+            context: context.into(),
+        })
+    };
+    run(&mut state, add("prod"));
+    assert_eq!(state.errors.len(), 1, "prod is in no kubeconfig");
+    run(&mut state, add("kind"));
+    assert!(
+        state.cluster.login("kind").is_some(),
+        "an added context is checked"
+    );
+    let change = groove_types::ClusterChange::ReadOnly(true);
+    let set = Config::SetCluster {
+        context: "kind".into(),
+        change,
+    };
+    run(&mut state, Cmd::Config(set));
+    let file = std::fs::read_to_string(state.env.config_file()).expect("the file written");
+    assert!(file.contains("\"read_only\": true"), "{file}");
+    run(
+        &mut state,
+        Cmd::Config(Config::RemoveCluster {
+            context: "kind".into(),
+        }),
+    );
+    assert!(state.config.clusters().is_empty());
+}

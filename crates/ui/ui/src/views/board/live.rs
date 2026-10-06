@@ -69,6 +69,7 @@ fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
         cells: vec![Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role)],
         under: vec![Cell::small(held(living), Role::Faint)],
         target: Some(Target::Session(living.session.id.clone())),
+        acts: Vec::new(),
     }
 }
 

@@ -4,6 +4,7 @@ mod asks;
 mod bar;
 mod board;
 mod budget;
+mod clusters;
 mod commit;
 mod diff;
 mod editing;

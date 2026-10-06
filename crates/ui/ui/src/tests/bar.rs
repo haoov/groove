@@ -268,40 +268,32 @@ pub(super) fn sourced(
     github: bool,
     notion: bool,
 ) -> groove_controllers::AppState {
-    app.config.config = Some(groove_types::Config {
-        notion: notion.then(|| groove_types::NotionConfig {
-            token: "t".into(),
-            database_id: "d".into(),
-            user_id: "u".into(),
-            assignee: Some("Assignee".into()),
-            sprint: Some("Sprint".into()),
-            sprint_status: None,
-            properties: Default::default(),
-            status_map: Default::default(),
-            priority_map: Default::default(),
-            filters: groove_types::FilterConfig {
-                exclude_statuses: Vec::new(),
-            },
-            task_template_page_id: None,
-            default_project_id: None,
-        }),
-        github: github.then(|| groove_types::GithubConfig {
-            host: "github.com".into(),
-            token: None,
-            properties: Default::default(),
-            status_map: Default::default(),
-            priority_map: Default::default(),
-        }),
-        git: groove_types::GitConfig {
-            worktree_root: "code/worktrees".into(),
+    let git = r#"{ "git": { "worktree_root": "code/worktrees" } }"#;
+    let mut config: groove_types::Config = serde_json::from_str(git).unwrap();
+    config.notion = notion.then(|| groove_types::NotionConfig {
+        token: "t".into(),
+        database_id: "d".into(),
+        user_id: "u".into(),
+        assignee: Some("Assignee".into()),
+        sprint: Some("Sprint".into()),
+        sprint_status: None,
+        properties: Default::default(),
+        status_map: Default::default(),
+        priority_map: Default::default(),
+        filters: groove_types::FilterConfig {
+            exclude_statuses: Vec::new(),
         },
-        ui: Default::default(),
-        preferences: Default::default(),
-        keymap: Default::default(),
-        shared: None,
-        skills_off: Vec::new(),
-        routines: Default::default(),
+        task_template_page_id: None,
+        default_project_id: None,
     });
+    config.github = github.then(|| groove_types::GithubConfig {
+        host: "github.com".into(),
+        token: None,
+        properties: Default::default(),
+        status_map: Default::default(),
+        priority_map: Default::default(),
+    });
+    app.config.config = Some(config);
     app
 }
 
