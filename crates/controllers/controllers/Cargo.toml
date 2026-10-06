@@ -15,6 +15,7 @@ groove-delivery-service = { path = "../../services/delivery" }
 groove-agent-service = { path = "../../services/agent" }
 groove-shell-service = { path = "../../services/shell" }
 groove-config-service = { path = "../../services/config" }
+groove-cluster-service = { path = "../../services/cluster" }
 serde_json.workspace = true
 tokio.workspace = true
 

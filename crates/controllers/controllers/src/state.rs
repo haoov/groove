@@ -16,6 +16,8 @@ pub struct Env {
     pub tools: Option<Server>,
     /// The login shell a terminal of the manual section runs.
     pub shell: String,
+    /// The kubeconfig files kubectl reads.
+    pub kubeconfig: Vec<PathBuf>,
 }
 
 impl Env {
@@ -50,6 +52,7 @@ pub struct AppState {
     pub agent: groove_agent_service::State,
     pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
+    pub cluster: groove_cluster_service::State,
 }
 
 /// One job in flight, as the feed names it.

@@ -5,6 +5,7 @@ mod annotation;
 mod approval;
 mod attention;
 mod chord;
+mod cluster;
 mod config;
 mod delivery;
 mod diff;
@@ -39,6 +40,7 @@ pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use chord::{Chord, Stroke};
+pub use cluster::{KubeAuth, KubeContext, Login};
 pub use config::{
     Config, ConfigView, EstimateUnit, FilterConfig, FontFamily, GitConfig, GithubConfig,
     GithubView, NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED,

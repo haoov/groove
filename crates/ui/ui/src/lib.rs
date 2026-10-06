@@ -228,13 +228,14 @@ impl Ui {
         commands
     }
 
-    /// Settings over the whole window, the environment checked again.
+    /// Settings over the whole window, the environment and the kubeconfig read again.
     pub(crate) fn open_settings(&mut self) -> Vec<Command> {
         self.settings.open = true;
         self.overlay = None;
-        vec![Command::Config(
-            groove_controllers::config::Command::CheckEnvironment,
-        )]
+        vec![
+            Command::Config(groove_controllers::config::Command::CheckEnvironment),
+            Command::Cluster(groove_controllers::cluster::Command::ScanContexts),
+        ]
     }
 
     /// Back to the window; a sign-in still running ends with it.

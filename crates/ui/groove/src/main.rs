@@ -109,10 +109,14 @@ fn env() -> Env {
     Env {
         config_dir: config.join("groove"),
         data_dir: data.join("groove"),
-        home,
         hooks: None,
         tools: None,
         shell: std::env::var("SHELL").unwrap_or_default(),
+        kubeconfig: groove_controllers::cluster_service::paths(
+            std::env::var_os("KUBECONFIG").as_deref(),
+            &home,
+        ),
+        home,
     }
 }
 
