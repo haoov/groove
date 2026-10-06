@@ -31,6 +31,7 @@ pub fn entries(app: &AppState) -> Vec<Entry> {
     };
     out.extend(repos(open));
     out.extend(worktrees(open));
+    out.extend(clusters(app, open));
     out.extend(explorer(open));
     out.extend(sessions(app, open));
     out
@@ -42,6 +43,26 @@ fn repos(open: &Open) -> Vec<Entry> {
     if !open.repos.is_empty() {
         out.push(Entry::flow("Session", "Add worktree", Action::AddWorktree));
         out.push(Entry::flow("Session", "Remove repo", Action::RemoveRepo));
+    }
+    out
+}
+
+/// Attach while Groove knows a context; detach while the session holds one.
+fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
+    let mut out = Vec::new();
+    if !app.config.clusters().is_empty() {
+        out.push(Entry::flow(
+            "Session",
+            "Attach cluster",
+            Action::AttachCluster,
+        ));
+    }
+    if !open.clusters.is_empty() {
+        out.push(Entry::flow(
+            "Session",
+            "Detach cluster",
+            Action::DetachCluster,
+        ));
     }
     out
 }

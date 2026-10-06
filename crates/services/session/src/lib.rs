@@ -125,6 +125,7 @@ impl State {
         open.repos = contents.repos;
         open.worktrees = contents.worktrees;
         open.status = contents.status;
+        open.clusters = contents.clusters;
         for (worktree, path) in contents.read {
             open.mark(&worktree, &path, true);
         }
@@ -183,6 +184,7 @@ impl State {
             worktrees: Vec::new(),
             status: BTreeMap::new(),
             read: BTreeMap::new(),
+            clusters: Vec::new(),
         });
     }
 

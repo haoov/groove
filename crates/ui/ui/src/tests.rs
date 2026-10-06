@@ -1,6 +1,7 @@
 mod agent;
 mod appearance;
 mod asks;
+mod attaching;
 mod bar;
 mod board;
 mod budget;
@@ -178,6 +179,7 @@ fn open(id: &str, title: &str) -> Open {
         worktrees: vec![],
         status: Default::default(),
         read: Default::default(),
+        clusters: vec![],
     }
 }
 
