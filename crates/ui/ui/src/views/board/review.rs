@@ -117,6 +117,7 @@ fn shown(mr: &ReviewMr, now: Timestamp) -> Shown<'_, Target> {
         ],
         under,
         target: Some(Target::Review(mr.project.clone(), mr.iid)),
+        acts: Vec::new(),
     }
 }
 

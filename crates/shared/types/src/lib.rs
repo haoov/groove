@@ -42,9 +42,9 @@ pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use chord::{Chord, Stroke};
 pub use cluster::{KubeAuth, KubeContext, Login};
 pub use config::{
-    Config, ConfigView, EstimateUnit, FilterConfig, FontFamily, GitConfig, GithubConfig,
-    GithubView, NotionConfig, NotionView, Preferences, PriorityMap, PropertyNames, REDACTED,
-    RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
+    ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,
+    GitConfig, GithubConfig, GithubView, Hue, NotionConfig, NotionView, Preferences, PriorityMap,
+    PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
 pub use diff::{
