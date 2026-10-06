@@ -41,3 +41,42 @@ pub struct Attached {
     pub context: String,
     pub namespace: Option<String>,
 }
+
+/// One kind a cluster serves at its preferred version.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct KubeKind {
+    /// Empty for the core group.
+    pub group: String,
+    pub version: String,
+    pub kind: String,
+    pub plural: String,
+    pub namespaced: bool,
+    /// It can be listed and watched.
+    pub watchable: bool,
+}
+
+/// What one watcher reads: a kind of a context, in one namespace or across the cluster.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WatchKey {
+    pub context: String,
+    pub kind: KubeKind,
+    pub namespace: Option<String>,
+}
+
+/// A column of the server's Table.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TableColumn {
+    pub name: String,
+    /// 0 for what `kubectl get` shows, above for `-o wide`.
+    pub priority: i32,
+}
+
+/// One object as a row of the Table: its metadata and its cells.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectRow {
+    pub uid: String,
+    pub name: String,
+    pub namespace: Option<String>,
+    pub version: String,
+    pub cells: Vec<String>,
+}

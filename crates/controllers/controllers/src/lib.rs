@@ -25,7 +25,7 @@ mod tests;
 pub use command::{Command, dispatch};
 pub use event::{Event, Window, apply};
 pub use services::Services;
-pub use spawn::{Continuation, Deliver, Spawner, SyncSpawner, TokioSpawner};
+pub use spawn::{Continuation, Deliver, Detached, Spawner, SyncSpawner, TokioSpawner};
 pub use state::{AppState, Env, Pending, Told};
 
 pub use groove_agent_service as agent_service;

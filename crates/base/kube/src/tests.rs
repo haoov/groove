@@ -1,5 +1,6 @@
 mod client;
 mod kubeconfig;
+mod table;
 
 use std::path::{Path, PathBuf};
 

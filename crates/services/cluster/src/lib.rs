@@ -1,13 +1,16 @@
-//! The cluster part of the app: the kubeconfig contexts found, and whether each one signs in.
+//! The cluster part of the app: the contexts found, their sign-in, and the watched objects.
 
+mod store;
 #[cfg(test)]
 mod tests;
 
 use std::path::PathBuf;
 
-use groove_types::{KubeContext, Login, Result};
+use groove_types::{KubeContext, KubeKind, Login, Result, WatchKey};
 
 pub use groove_contexts::paths;
+pub use groove_objects::{Batch, Delta, Stop};
+pub use store::{Store, Watched};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -17,6 +20,7 @@ pub struct State {
     pub scanning: bool,
     logins: Vec<(String, Login)>,
     checking: Vec<String>,
+    pub store: Store,
 }
 
 impl State {
@@ -54,6 +58,14 @@ pub enum Event {
         context: String,
         login: Login,
     },
+    Kinds {
+        context: String,
+        kinds: Vec<KubeKind>,
+    },
+    Watched {
+        key: WatchKey,
+        batch: Batch,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -68,12 +80,34 @@ pub fn apply(state: &mut State, event: Event) {
             state.logins.retain(|(name, _)| *name != context);
             state.logins.push((context, login));
         }
+        Event::Kinds { context, kinds } => state.store.set_kinds(&context, kinds),
+        Event::Watched { key, batch } => state.store.apply(&key, batch),
     }
 }
 
 /// Every context the files name.
 pub async fn scan(paths: Vec<PathBuf>) -> Result<Vec<KubeContext>> {
     groove_contexts::found(&paths).await
+}
+
+/// The kinds of `context`, from the cache under `cache` while it is fresh unless `again`.
+pub async fn kinds(
+    paths: Vec<PathBuf>,
+    context: String,
+    cache: PathBuf,
+    again: bool,
+) -> Result<Vec<KubeKind>> {
+    groove_objects::kinds(&paths, &context, &cache, again).await
+}
+
+/// The watcher of `key`, until `stop`; each batch goes through `send`.
+pub fn watcher(
+    paths: Vec<PathBuf>,
+    key: WatchKey,
+    stop: &Stop,
+    send: impl Fn(Batch) + Send + Sync + 'static,
+) -> impl std::future::Future<Output = ()> + Send + 'static {
+    groove_objects::watch(paths, key, stop, send)
 }
 
 /// Whether `context` signs in now.

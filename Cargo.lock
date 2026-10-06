@@ -1365,6 +1365,7 @@ name = "groove-cluster-service"
 version = "1.0.0-alpha.3"
 dependencies = [
  "groove-contexts",
+ "groove-objects",
  "groove-types",
 ]
 
@@ -1554,8 +1555,11 @@ dependencies = [
 name = "groove-kube"
 version = "1.0.0-alpha.3"
 dependencies = [
+ "futures-util",
+ "http",
  "k8s-openapi",
  "kube",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
@@ -1608,6 +1612,19 @@ dependencies = [
  "sqlx",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "groove-objects"
+version = "1.0.0-alpha.3"
+dependencies = [
+ "futures-util",
+ "groove-kube",
+ "groove-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "wiremock",
 ]
 
 [[package]]
