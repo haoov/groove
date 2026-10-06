@@ -2,6 +2,7 @@
 
 pub mod agent;
 pub mod asker;
+pub mod cluster;
 pub mod config;
 pub mod delivery;
 pub mod routine;
@@ -28,6 +29,7 @@ pub use spawn::{Continuation, Deliver, Spawner, SyncSpawner, TokioSpawner};
 pub use state::{AppState, Env, Pending, Told};
 
 pub use groove_agent_service as agent_service;
+pub use groove_cluster_service as cluster_service;
 pub use groove_config_service as config_service;
 pub use groove_delivery_service as delivery_service;
 pub use groove_session_service as session_service;
