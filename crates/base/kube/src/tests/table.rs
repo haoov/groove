@@ -54,6 +54,8 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
         .and(path("/api/v1/namespaces/paxone/pods"))
         .and(query_param("labelSelector", "app=api"))
         .and(query_param("includeObject", "Metadata"))
+        .and(query_param("resourceVersion", "0"))
+        .and(query_param("resourceVersionMatch", "NotOlderThan"))
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_json(table(vec![row("u1", "api-0", "Running")], true)),
@@ -129,10 +131,8 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
         .collect();
     assert!(matches!(&changes[0], Change::Columns(columns) if columns.len() == 4));
     assert!(matches!(&changes[1], Change::Put(row) if row.name == "api-1"));
-    assert_eq!(
-        changes[2..],
-        [Change::Gone("u1".into()), Change::Mark("50".into())]
-    );
+    assert!(matches!(&changes[2], Change::Gone(row) if row.uid == "u1"));
+    assert_eq!(changes[3..], [Change::Mark("50".into())]);
     let expired = client.watch(query, "1").await.expect("a watch");
     let first = futures_util::StreamExt::collect::<Vec<_>>(expired).await;
     assert!(

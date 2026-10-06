@@ -100,7 +100,7 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
         .position(|one| matches!(one, Delta::Put(row) if row.name == "api-1"));
     let gone = changes
         .iter()
-        .position(|one| *one == Delta::Gone("u1".into()));
+        .position(|one| matches!(one, Delta::Gone(row) if row.uid == "u1"));
     assert!(
         put.zip(gone).is_some_and(|(put, gone)| put < gone),
         "{changes:?}"
@@ -135,6 +135,37 @@ async fn an_expired_version_lists_again_from_the_start() {
     assert!(resets >= 2, "{sent:?}");
     assert!(
         !sent.iter().any(|one| matches!(one, Batch::Failed(_))),
+        "{sent:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_first_list_shows_its_first_page_at_once_and_adds_the_next_as_they_come() {
+    let server = MockServer::start().await;
+    let mut first = table(&[("u1", "api-0")], "42");
+    first["metadata"]["continue"] = serde_json::json!("page-2");
+    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+        .and(query_param("resourceVersion", "0"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(first))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+        .and(query_param("continue", "page-2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(table(&[("u2", "api-1")], "42")))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+        .and(query_param("watch", "1"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(""))
+        .mount(&server)
+        .await;
+    let sent = batches(&server).await;
+    assert!(
+        matches!(&sent[0], Batch::Reset { rows, .. } if rows.len() == 1),
+        "{sent:?}"
+    );
+    assert!(
+        matches!(&sent[1], Batch::Changes(more) if more.len() == 1),
         "{sent:?}"
     );
 }

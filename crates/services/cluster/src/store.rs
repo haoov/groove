@@ -1,6 +1,6 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use groove_objects::{Batch, Delta, Stop};
 use groove_types::{KubeKind, ObjectRow, TableColumn, WatchKey};
@@ -81,24 +81,37 @@ impl Store {
             }
             Batch::Changes(deltas) => {
                 one.failed = None;
-                deltas.into_iter().for_each(|delta| changed(one, delta));
+                changed(one, deltas);
             }
             Batch::Failed(why) => one.failed = Some(why),
         }
     }
 }
 
-fn changed(one: &mut Watched, delta: Delta) {
-    match delta {
-        Delta::Columns(columns) => one.columns = columns,
-        Delta::Put(row) => match one.rows.iter().position(|held| held.uid == row.uid) {
-            Some(at) => one.rows[at] = row,
-            None => {
-                let at = one.rows.partition_point(|held| place(held) < place(&row));
-                one.rows.insert(at, row);
+/// A batch in one pass: rows changed in place, the gone ones swept once, the new merged in.
+fn changed(one: &mut Watched, deltas: Vec<Delta>) {
+    let (mut fresh, mut gone) = (Vec::new(), HashSet::new());
+    for delta in deltas {
+        match delta {
+            Delta::Columns(columns) => one.columns = columns,
+            Delta::Put(row) => match one
+                .rows
+                .binary_search_by(|held| place(held).cmp(&place(&row)))
+            {
+                Ok(at) => one.rows[at] = row,
+                Err(_) => fresh.push(row),
+            },
+            Delta::Gone(row) => {
+                gone.insert(row.uid);
             }
-        },
-        Delta::Gone(uid) => one.rows.retain(|held| held.uid != uid),
+        }
+    }
+    if !fresh.is_empty() {
+        one.rows.extend(fresh);
+        one.rows.sort_by(|a, b| place(a).cmp(&place(b)));
+    }
+    if !gone.is_empty() {
+        one.rows.retain(|held| !gone.contains(&held.uid));
     }
 }
 

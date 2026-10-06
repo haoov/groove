@@ -59,12 +59,16 @@ impl Query<'_> {
 }
 
 impl Client {
-    /// One page of the list, from its start or from `next`.
+    /// One page of the list: the first from the API server's cache, not etcd; then from `next`.
     pub async fn page(&self, query: Query<'_>, next: Option<&str>) -> Result<Page> {
         let limit = PAGE.to_string();
         let mut extra = vec![("limit", limit.as_str())];
-        if let Some(next) = next {
-            extra.push(("continue", next));
+        match next {
+            Some(next) => extra.push(("continue", next)),
+            None => extra.extend([
+                ("resourceVersion", "0"),
+                ("resourceVersionMatch", "NotOlderThan"),
+            ]),
         }
         let request = http::Request::get(query.uri(&extra))
             .header(ACCEPT, AS_TABLE)

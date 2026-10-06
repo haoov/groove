@@ -15,8 +15,8 @@ pub enum Change {
     /// The columns, which the first event of a watch carries.
     Columns(Vec<Column>),
     Put(Row),
-    /// A row gone, by its uid.
-    Gone(String),
+    /// A row gone, as it last stood.
+    Gone(Row),
     /// The resourceVersion the watch stands at, with no row changed.
     Mark(String),
 }
@@ -68,7 +68,7 @@ fn changes(context: &str, event: WatchEvent<raw::Table>) -> Result<Vec<Change>> 
     }
     for row in table.rows.into_iter().map(Row::from) {
         out.push(match gone {
-            true => Change::Gone(row.uid),
+            true => Change::Gone(row),
             false => Change::Put(row),
         });
     }

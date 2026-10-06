@@ -123,7 +123,7 @@ fn rows_stand_by_name_and_each_change_lands_in_its_place() {
     let changes = vec![
         Delta::Put(row("c", "front", "Pending")),
         Delta::Put(row("b", "worker", "CrashLoopBackOff")),
-        Delta::Gone("a".into()),
+        Delta::Gone(row("a", "api", "Running")),
     ];
     store.apply(&key, Batch::Changes(changes));
     let held = store.watched(&key).expect("watched");
@@ -144,9 +144,75 @@ fn rows_stand_by_name_and_each_change_lands_in_its_place() {
     );
     store.release("list");
     store.drop_unread(&key);
-    store.apply(&key, Batch::Changes(vec![Delta::Gone("c".into())]));
+    store.apply(
+        &key,
+        Batch::Changes(vec![Delta::Gone(row("c", "front", "Pending"))]),
+    );
     assert!(
         store.watched(&key).is_none(),
         "a batch of a dropped watcher is ignored"
     );
+}
+
+#[test]
+fn a_row_made_again_under_its_name_outlives_the_late_gone_of_the_one_before() {
+    use crate::{Batch, Delta};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows: vec![row("old", "api", "Running")],
+        },
+    );
+    let changes = vec![
+        Delta::Put(row("new", "api", "Pending")),
+        Delta::Gone(row("old", "api", "Running")),
+    ];
+    store.apply(&key, Batch::Changes(changes));
+    let held = store.watched(&key).expect("watched");
+    let uids: Vec<&str> = held.rows.iter().map(|one| one.uid.as_str()).collect();
+    assert_eq!(uids, ["new"]);
+}
+
+/// Run with `cargo test --release -p groove-cluster-service time -- --ignored --nocapture`.
+#[test]
+#[ignore]
+#[allow(clippy::print_stdout)]
+fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
+    use crate::{Batch, Delta};
+    use std::time::Instant;
+    let named = |at: usize| row(&format!("u{at}"), &format!("pod-{at:05}"), "Running");
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let rows: Vec<_> = (0..10_000).rev().map(named).collect();
+    let started = Instant::now();
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows,
+        },
+    );
+    println!("reset of 10k rows: {:?}", started.elapsed());
+    for run in 0..5 {
+        let fresh = 10_000 + run * 200;
+        let mut changes: Vec<Delta> = (0..250)
+            .map(|at| {
+                Delta::Put(row(
+                    &format!("u{}", at * 37),
+                    &format!("pod-{:05}", at * 37),
+                    "Pending",
+                ))
+            })
+            .collect();
+        changes.extend((fresh..fresh + 125).map(|at| Delta::Put(named(at))));
+        changes.extend((0..125).map(|at| Delta::Gone(named(run * 1000 + at * 3 + 1))));
+        let started = Instant::now();
+        store.apply(&key, Batch::Changes(changes));
+        println!("batch of 500 changes: {:?}", started.elapsed());
+    }
 }

@@ -30,8 +30,8 @@ pub enum Batch {
 pub enum Delta {
     Columns(Vec<TableColumn>),
     Put(ObjectRow),
-    /// A row gone, by its uid.
-    Gone(String),
+    /// A row gone, as it last stood.
+    Gone(ObjectRow),
 }
 
 /// What ends a watcher: stopped or dropped, the watcher ends at its next step.
@@ -63,11 +63,11 @@ pub fn watch(
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
     let mut stopped = stop.0.subscribe();
     async move {
-        let mut wait = FIRST_WAIT;
+        let (mut wait, mut shown) = (FIRST_WAIT, false);
         loop {
             let ended = tokio::select! {
                 _ = stopped.wait_for(|on| *on) => return,
-                ended = cycle(&paths, &key, &send) => ended,
+                ended = cycle(&paths, &key, &send, &mut shown) => ended,
             };
             if let Err(why) = ended {
                 send(Batch::Failed(why));
@@ -82,7 +82,12 @@ pub fn watch(
 }
 
 /// One list and the watches that follow it; `Ok` when the version expired and the list starts again.
-async fn cycle(paths: &[PathBuf], key: &WatchKey, send: &impl Fn(Batch)) -> Result<(), String> {
+async fn cycle(
+    paths: &[PathBuf],
+    key: &WatchKey,
+    send: &impl Fn(Batch),
+    shown: &mut bool,
+) -> Result<(), String> {
     let client = Client::connect(paths, &key.context).await.map_err(said)?;
     let kind = crate::kube_kind(&key.kind);
     let query = Query {
@@ -90,7 +95,8 @@ async fn cycle(paths: &[PathBuf], key: &WatchKey, send: &impl Fn(Batch)) -> Resu
         namespace: key.namespace.as_deref(),
         selector: None,
     };
-    let mut version = listed(&client, query, send).await?;
+    let mut version = listed(&client, query, send, *shown).await?;
+    *shown = true;
     loop {
         let opened = tokio::time::Instant::now();
         let stream = client.watch(query, &version).await.map_err(said)?;
@@ -102,21 +108,44 @@ async fn cycle(paths: &[PathBuf], key: &WatchKey, send: &impl Fn(Batch)) -> Resu
     }
 }
 
-/// Every page, sent as one reset; returns the version the watch resumes from.
+/// The first page shown at once, the rest as they come; a relist swaps in whole. Returns the version.
 async fn listed(
     client: &Client,
     query: Query<'_>,
     send: &impl Fn(Batch),
+    shown: bool,
 ) -> Result<String, String> {
     let mut page = client.page(query, None).await.map_err(said)?;
-    let columns = page.columns.drain(..).map(crate::column_of).collect();
+    let mut columns = Some(page.columns.drain(..).map(crate::column_of).collect());
     let mut rows: Vec<ObjectRow> = page.rows.drain(..).map(crate::row_of).collect();
+    if !shown {
+        let (columns, rows) = (
+            columns.take().unwrap_or_default(),
+            sorted(std::mem::take(&mut rows)),
+        );
+        send(Batch::Reset { columns, rows });
+    }
     while let Some(next) = page.next.take() {
         page = client.page(query, Some(&next)).await.map_err(said)?;
-        rows.extend(page.rows.drain(..).map(crate::row_of));
+        let more = page.rows.drain(..).map(crate::row_of);
+        match shown {
+            true => rows.extend(more),
+            false => send(Batch::Changes(more.map(Delta::Put).collect())),
+        }
     }
-    send(Batch::Reset { columns, rows });
+    if let Some(columns) = columns {
+        send(Batch::Reset {
+            columns,
+            rows: sorted(rows),
+        });
+    }
     Ok(page.version)
+}
+
+/// By namespace then name, the order the store keeps, so the main thread sorts nothing.
+fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
+    rows.sort_by(|a, b| (&a.namespace, &a.name).cmp(&(&b.namespace, &b.name)));
+    rows
 }
 
 /// The changes of one watch, gathered into batches, until the server ends it.
@@ -171,7 +200,7 @@ fn delta(change: Change, version: &mut String) -> Option<Delta> {
             version.clone_from(&row.version);
             Some(Delta::Put(crate::row_of(row)))
         }
-        Change::Gone(uid) => Some(Delta::Gone(uid)),
+        Change::Gone(row) => Some(Delta::Gone(crate::row_of(row))),
     }
 }
 
