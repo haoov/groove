@@ -1,3 +1,4 @@
+mod clusters;
 mod task;
 
 use groove_controllers::AppState;
@@ -25,6 +26,9 @@ enum Part<'a> {
     NoRepos,
     Repo(&'a Repo),
     Worktree(&'a Worktree),
+    /// A context the session holds, in the hue Settings gave it, then one of its namespaces.
+    Cluster(&'a str, Option<groove_types::Hue>),
+    Namespace(Option<&'a str>),
     Gap,
     /// The body as Markdown; it stands as tall as it draws.
     Body(&'a str),
@@ -83,6 +87,10 @@ fn parts<'a>(app: &'a AppState, open: &'a Open) -> Vec<Part<'a>> {
         parts.extend(held.map(Part::Worktree));
         parts.push(Part::Gap);
     }
+    if !open.clusters.is_empty() {
+        parts.extend([Part::Rule, Part::Heading("Clusters")]);
+        parts.extend(clusters::parts(app, open));
+    }
     let (title, text) = match &open.session.kind {
         SessionKind::Review { .. } => ("Description", described(app, open)),
         _ => ("Body", worked.and_then(|one| app.task.body(&one.short_id))),
@@ -100,6 +108,7 @@ fn height(ctx: &Ctx, part: &Part) -> f32 {
         Part::Properties(..) => row * task::PROPERTIES as f32,
         Part::Body(_) => 0.0,
         Part::Heading(_) | Part::NoRepos | Part::Repo(_) | Part::Worktree(_) => row,
+        Part::Cluster(..) | Part::Namespace(_) => row,
     }
 }
 
@@ -131,6 +140,8 @@ fn draw_part(
             let delivery = app.delivery.row(&worktree.id, open.status_of(&worktree.id));
             worktree_row::draw(ctx, rect, worktree, Some(&delivery));
         }
+        Part::Cluster(context, hue) => clusters::context(ctx, rect, context, *hue),
+        Part::Namespace(namespace) => clusters::namespace(ctx, rect, *namespace),
         Part::Gap => {}
         Part::Body(text) => return task::body(ctx, area, rect, text),
     }

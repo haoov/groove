@@ -24,6 +24,7 @@ pub struct Contents {
     pub status: std::collections::BTreeMap<WorktreeId, WorktreeStatus>,
     /// The files marked read, by the worktree they belong to.
     pub read: Vec<(WorktreeId, String)>,
+    pub clusters: Vec<groove_types::Attached>,
 }
 
 /// A worktree just made, with what the user should hear about it.
@@ -177,6 +178,23 @@ impl Service {
         Ok(self.store.set_read(id, worktree, path, read).await?)
     }
 
+    pub async fn attach_cluster(
+        &self,
+        id: &SessionId,
+        attached: &groove_types::Attached,
+        now: Timestamp,
+    ) -> Result<(), Error> {
+        Ok(self.store.attach_cluster(id, attached, now).await?)
+    }
+
+    pub async fn detach_cluster(
+        &self,
+        id: &SessionId,
+        attached: &groove_types::Attached,
+    ) -> Result<(), Error> {
+        Ok(self.store.detach_cluster(id, attached).await?)
+    }
+
     pub async fn contents(&self, id: &SessionId) -> Result<Contents, Error> {
         let mut repos = Vec::new();
         for repo_id in self.store.repos_of(id).await? {
@@ -190,6 +208,7 @@ impl Service {
         }
         Ok(Contents {
             read: self.store.reads_of(id).await?,
+            clusters: self.store.clusters_of(id).await?,
             repos,
             worktrees,
             status,

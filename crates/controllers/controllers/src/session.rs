@@ -1,5 +1,6 @@
 //! The `session` controller: one function per user action on the `session` service.
 
+mod clusters;
 mod delete;
 pub(crate) mod feed;
 mod open;
@@ -7,7 +8,7 @@ mod rail;
 mod repos;
 mod review;
 
-use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
+use groove_types::{Attached, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use crate::asker::Asker;
 
@@ -103,6 +104,16 @@ pub enum Command {
     ListRepos,
     /// `session.list_branches`: refresh origin's heads of a repo for the pickers.
     ListBranches { repo: RepoId },
+    /// `session.attach_cluster`: a context Groove knows, on a namespace or the whole cluster.
+    AttachCluster {
+        session: SessionId,
+        attached: Attached,
+    },
+    /// `session.detach_cluster`: one context and namespace the session no longer holds.
+    DetachCluster {
+        session: SessionId,
+        attached: Attached,
+    },
 }
 
 impl Command {
@@ -126,6 +137,8 @@ impl Command {
             Command::CloseWorktree { .. } => "session.close_worktree",
             Command::ListRepos => "session.list_repos",
             Command::ListBranches { .. } => "session.list_branches",
+            Command::AttachCluster { .. } => "session.attach_cluster",
+            Command::DetachCluster { .. } => "session.detach_cluster",
         }
     }
 }
@@ -177,5 +190,6 @@ pub fn dispatch(
         } => close_worktree(state, services, spawner, &session, &worktree, force),
         Command::ListRepos => list_repos(services, spawner),
         Command::ListBranches { repo } => list_branches(services, spawner, &repo),
+        cluster => clusters::dispatch(cluster, state, services, spawner),
     }
 }
