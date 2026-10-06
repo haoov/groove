@@ -108,7 +108,8 @@ Each row:
     idle
 ```
 
-Nothing else: no CI, no MR state, no worktree count. No row has a background of its own.
+Nothing else: no CI, no MR state, no worktree count. A row takes a tinted ground only while
+its agent asks, in peach, or is done and not yet seen, in green.
 
 An ask's text is peach and offers *Approve* and *Review*. With auto-approve on for the
 session, nothing asks. A working status is blue and its glyph moves.

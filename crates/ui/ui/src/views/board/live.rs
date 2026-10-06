@@ -32,25 +32,19 @@ pub(super) fn empty(ui: &Ui) -> &'static str {
 }
 
 pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &[&Living]) {
-    let columns = [
-        Column {
-            label: "title",
-            width: Width::Fill,
-            end: false,
-            sort: None,
-        },
-        Column {
-            label: "holds",
-            width: Width::Fit("0 repos · 00 worktrees"),
-            end: true,
-            sort: None,
-        },
-    ];
+    let columns = [Column {
+        label: "title",
+        width: Width::Fill,
+        end: false,
+        sort: None,
+    }];
+    let tokens = ctx.tokens;
+    let first = super::row::item(&tokens);
     let table = Table {
         columns: &columns,
         rows: Rows {
-            first: super::row::item(&ctx.tokens),
-            under: 0.0,
+            first,
+            under: super::review::height(&tokens) - first,
             ruled: true,
         },
         count: living.len(),
@@ -64,7 +58,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
         .scrolls(Scroller::Column(List::Live as u8), extent);
 }
 
-/// One session: its kind, blue while it is open, its title, what it holds.
+/// One session: its kind, blue while it is open, and its title; what it holds under them.
 fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
     let role = match app.session.get(&living.session.id).is_some() {
         true => Role::Working,
@@ -72,16 +66,13 @@ fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
     };
     let mark = Mark::of_kind(&living.session.kind);
     Shown {
-        cells: vec![
-            Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role),
-            Cell::small(held(living), Role::Faint),
-        ],
-        under: Vec::new(),
+        cells: vec![Cell::label(living.session.title.as_str(), Role::Text).mark(mark, 0, role)],
+        under: vec![Cell::small(held(living), Role::Faint)],
         target: Some(Target::Session(living.session.id.clone())),
     }
 }
 
-/// What a session holds, as the row's right-hand text.
+/// What a session holds, as the row's second line.
 fn held(living: &Living) -> String {
     let repos = match living.repos {
         1 => "1 repo".to_string(),

@@ -93,6 +93,8 @@ pub struct Tokens {
     pub hairline: f32,
     /// How far a small rounded box's corners give way.
     pub corner: f32,
+    /// How far a button's, a menu's and a picker's corners give way.
+    pub round: f32,
     pub edge: f32,
     /// How wide a splitter is to grab.
     pub grab: f32,
@@ -155,6 +157,7 @@ const LOGICAL: Tokens = Tokens {
     bar: 36.0,
     hairline: 1.0,
     corner: 4.0,
+    round: 1.0,
     edge: 0.5,
     grab: 8.0,
     map: 14.0,
@@ -204,6 +207,7 @@ impl Tokens {
             feed_age: of_text(FEED_AGE),
             hairline: s(LOGICAL.hairline),
             corner: s(LOGICAL.corner),
+            round: s(LOGICAL.round),
             edge: s(LOGICAL.edge),
             grab: s(LOGICAL.grab),
             map: s(LOGICAL.map),

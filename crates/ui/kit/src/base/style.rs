@@ -58,7 +58,7 @@ impl Styles {
             Role::Warn => p.yellow,
             Role::Bad => p.red,
             Role::Merged => p.mauve,
-            Role::Accent => p.lavender,
+            Role::Accent => p.rosewater,
             Role::Inverse => p.crust,
         }
     }
@@ -156,7 +156,7 @@ impl Styles {
     pub fn held(&self) -> Color {
         self.palette
             .base
-            .mix(self.palette.lavender, crate::base::tokens::HELD)
+            .mix(self.palette.rosewater, crate::base::tokens::HELD)
     }
 
     /// A role's colour dimmed to a ground, as a badge stands on.
@@ -167,7 +167,7 @@ impl Styles {
 
     /// The rules above and below a list's selected row.
     pub fn chosen(&self) -> Color {
-        self.palette.lavender
+        self.palette.rosewater
     }
 
     /// The rules above and below the caret's row, as a chosen list row has.
@@ -255,7 +255,7 @@ impl Styles {
     pub fn found(&self) -> Color {
         self.palette
             .base
-            .mix(self.palette.lavender, crate::base::tokens::FOUND)
+            .mix(self.palette.rosewater, crate::base::tokens::FOUND)
     }
 
     /// Under the match the search stands on.

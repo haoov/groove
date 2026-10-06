@@ -118,6 +118,11 @@ impl<'a, A: App> Ctx<'a, A> {
         self.frame.border(rect, color);
     }
 
+    pub(crate) fn rounded_box(&mut self, rect: Rect, ground: Color, border: Color, radius: f32) {
+        self.frame.rounded(rect, ground, radius);
+        self.frame.ring(rect, border, radius, 1.0);
+    }
+
     pub(crate) fn rounded(&mut self, rect: Rect, color: Color, radius: f32) {
         self.frame.rounded(rect, color, radius);
     }

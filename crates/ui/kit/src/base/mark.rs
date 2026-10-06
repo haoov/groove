@@ -1,7 +1,7 @@
 //! What a mark means. The shape it becomes is the renderer's.
 
 use groove_gfx::Icon;
-use groove_types::{ProviderId, SessionKind};
+use groove_types::{Forge, ProviderId, SessionKind};
 
 /// An icon by meaning. A view never names a shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -33,6 +33,7 @@ pub enum Mark {
     Close,
     /// Where a task comes from.
     Github,
+    Gitlab,
     Notion,
     /// What opens a thing where it lives, outside Groove.
     Outward,
@@ -69,6 +70,14 @@ impl Mark {
         }
     }
 
+    /// The mark of the forge an MR lives on.
+    pub fn of_forge(forge: Forge) -> Self {
+        match forge {
+            Forge::Github => Mark::Github,
+            Forge::Gitlab => Mark::Gitlab,
+        }
+    }
+
     pub fn shape(self) -> Icon {
         match self {
             Mark::Task => Icon::Flag,
@@ -89,6 +98,7 @@ impl Mark {
             Mark::Note => Icon::Chat,
             Mark::Close => Icon::Cross,
             Mark::Github => Icon::Github,
+            Mark::Gitlab => Icon::Gitlab,
             Mark::Notion => Icon::Notion,
             Mark::Outward => Icon::Outward,
             Mark::Unticked => Icon::Box,
