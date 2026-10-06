@@ -24,6 +24,7 @@ fn state(home: &std::path::Path) -> AppState {
         worktrees: vec![],
         status: Default::default(),
         read: Default::default(),
+        clusters: vec![],
     });
     state
 }

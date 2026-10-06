@@ -34,3 +34,10 @@ pub enum Login {
     /// Anything else: the context is gone, or the server answered an error.
     Failed(String),
 }
+
+/// A context a session holds, on one namespace or, with none, the whole cluster.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Attached {
+    pub context: String,
+    pub namespace: Option<String>,
+}

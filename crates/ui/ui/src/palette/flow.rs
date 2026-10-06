@@ -1,5 +1,7 @@
 //! An action that asks for its arguments, one prompt at a time.
 
+mod clusters;
+
 use groove_controllers::{AppState, Command, session, session_service::Open};
 use groove_types::{RepoId, SessionId, WorktreeId, WorktreeSpec};
 
@@ -13,6 +15,8 @@ pub enum Action {
     CloseWorktree,
     RenameExplorer,
     ForceDelete,
+    AttachCluster,
+    DetachCluster,
 }
 
 impl Action {
@@ -26,6 +30,8 @@ impl Action {
             Action::CloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
+            Action::AttachCluster => "session.attach_cluster",
+            Action::DetachCluster => "session.detach_cluster",
         }
     }
 }
@@ -107,6 +113,11 @@ impl Flow {
                 Some(Prompt::choose("worktree", worktree_choices(open)))
             }
             (Action::RenameExplorer, 0) => Some(Prompt::text("title", false)),
+            (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
+            (Action::AttachCluster, 1) => {
+                Some(Prompt::text("namespace, empty for the whole cluster", true))
+            }
+            (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
             _ => None,
         }
     }
@@ -188,6 +199,7 @@ impl Flow {
             Action::ForceDelete => session::Command::ForceDelete {
                 session: SessionId::new(answer(0)),
             },
+            Action::AttachCluster | Action::DetachCluster => clusters::command(self)?,
         };
         Some(Command::Session(command))
     }

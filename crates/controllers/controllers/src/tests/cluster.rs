@@ -127,3 +127,67 @@ fn a_found_context_is_added_written_changed_and_removed_and_an_unknown_one_refus
     );
     assert!(state.config.clusters().is_empty());
 }
+
+#[test]
+fn a_session_attaches_a_known_context_on_a_namespace_or_whole_and_keeps_it_on_disk() {
+    use crate::session::Command as Session;
+    use groove_types::Attached;
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let run = |state: &mut crate::AppState, command| {
+        dispatch(command, state, &services, &spawner);
+        spawner.drain(state, &services);
+    };
+    run(
+        &mut state,
+        Cmd::Session(Session::OpenExplorer { title: None }),
+    );
+    let session = state.session.selected.clone().expect("the explorer");
+    let on = |context: &str, namespace: Option<&str>| Attached {
+        context: context.into(),
+        namespace: namespace.map(str::to_string),
+    };
+    let attach = |attached| {
+        Cmd::Session(Session::AttachCluster {
+            session: session.clone(),
+            attached,
+        })
+    };
+    run(&mut state, attach(on("kind", Some("paxone"))));
+    assert_eq!(state.errors.len(), 1, "kind is not added to Groove yet");
+    run(&mut state, Cmd::Cluster(Command::ScanContexts));
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    run(&mut state, Cmd::Config(add));
+    run(&mut state, attach(on("kind", Some("paxone"))));
+    run(&mut state, attach(on("kind", Some("cnpg"))));
+    let held =
+        |state: &crate::AppState| state.session.get(&session).expect("open").clusters.clone();
+    assert_eq!(
+        held(&state),
+        [on("kind", Some("paxone")), on("kind", Some("cnpg"))]
+    );
+    run(&mut state, attach(on("kind", Some(" "))));
+    assert_eq!(
+        held(&state),
+        [on("kind", None)],
+        "the whole cluster replaces its namespaces"
+    );
+    run(&mut state, attach(on("kind", Some("paxone"))));
+    assert_eq!(
+        state.errors.len(),
+        2,
+        "a namespace of a cluster held whole is refused"
+    );
+    let stored = spawner
+        .block_on(services.session.contents(&session))
+        .expect("contents");
+    assert_eq!(stored.clusters, [on("kind", None)]);
+    let detach = Session::DetachCluster {
+        session: session.clone(),
+        attached: on("kind", None),
+    };
+    run(&mut state, Cmd::Session(detach));
+    assert!(held(&state).is_empty());
+}

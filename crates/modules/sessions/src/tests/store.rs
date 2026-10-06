@@ -211,3 +211,31 @@ async fn a_routine_session_reads_back_as_its_routine_and_goes_with_its_row() {
         .await
         .expect("its routine row went with it");
 }
+
+#[tokio::test]
+async fn a_session_holds_each_cluster_and_namespace_once_and_lets_them_go_with_it() {
+    use groove_types::Attached;
+    let store = Store::in_memory().await.unwrap();
+    let session = explorer("explorer-1", 10);
+    store.create_explorer(&session).await.unwrap();
+    let whole = Attached {
+        context: "hub".into(),
+        namespace: None,
+    };
+    let paxone = Attached {
+        context: "staging".into(),
+        namespace: Some("paxone".into()),
+    };
+    for (one, at) in [(&whole, 1), (&paxone, 2), (&whole, 3)] {
+        store
+            .attach_cluster(&session.id, one, Timestamp::new(at))
+            .await
+            .unwrap();
+    }
+    let held = store.clusters_of(&session.id).await.unwrap();
+    assert_eq!(held, [whole.clone(), paxone.clone()]);
+    store.detach_cluster(&session.id, &whole).await.unwrap();
+    assert_eq!(store.clusters_of(&session.id).await.unwrap(), [paxone]);
+    store.remove(&session.id).await.unwrap();
+    assert!(store.clusters_of(&session.id).await.unwrap().is_empty());
+}

@@ -1,5 +1,6 @@
 //! Sessions on disk: the `sessions` row, its `session_state` leaf, its repos.
 
+mod clusters;
 mod error;
 mod promote;
 mod rows;

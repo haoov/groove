@@ -15,6 +15,7 @@ pub struct Open {
     pub status: BTreeMap<WorktreeId, WorktreeStatus>,
     /// The files read, per worktree, as the session remembers them.
     pub read: BTreeMap<WorktreeId, BTreeSet<String>>,
+    pub clusters: Vec<groove_types::Attached>,
 }
 
 impl Open {
@@ -23,6 +24,42 @@ impl Open {
         self.read
             .get(worktree)
             .is_some_and(|files| files.contains(path))
+    }
+
+    /// The whole cluster replaces its namespaces; a namespace of one held whole is refused.
+    pub fn attach(
+        &mut self,
+        attached: groove_types::Attached,
+    ) -> Result<Vec<groove_types::Attached>, groove_types::Error> {
+        let context = attached.context.as_str();
+        let of_context = |one: &groove_types::Attached| one.context == context;
+        if attached.namespace.is_some()
+            && self
+                .clusters
+                .iter()
+                .any(|one| of_context(one) && one.namespace.is_none())
+        {
+            let why = format!("the session holds the whole of `{context}` already");
+            return Err(groove_types::Error::invalid(why));
+        }
+        let mut replaced = Vec::new();
+        if attached.namespace.is_none() {
+            replaced = self
+                .clusters
+                .iter()
+                .filter(|one| of_context(one) && one.namespace.is_some())
+                .cloned()
+                .collect();
+            self.clusters.retain(|one| !replaced.contains(one));
+        }
+        if !self.clusters.contains(&attached) {
+            self.clusters.push(attached);
+        }
+        Ok(replaced)
+    }
+
+    pub fn detach(&mut self, attached: &groove_types::Attached) {
+        self.clusters.retain(|one| one != attached);
     }
 
     /// One file marked read, or the mark taken off it.
