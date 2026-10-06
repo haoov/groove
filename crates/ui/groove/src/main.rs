@@ -103,12 +103,16 @@ fn env() -> Env {
     let data = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".local/share"));
+    let cache = std::env::var_os("XDG_CACHE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".cache"));
     let config = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".config"));
     Env {
         config_dir: config.join("groove"),
         data_dir: data.join("groove"),
+        cache_dir: cache.join("groove"),
         hooks: None,
         tools: None,
         shell: std::env::var("SHELL").unwrap_or_default(),
