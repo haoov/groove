@@ -72,6 +72,12 @@ pub enum Target {
     SettingsUnbind(crate::keymap::Action),
     /// What opens the menu of one slot of a source's mapping.
     SettingsPick(groove_types::ProviderId, crate::views::settings::rows::Slot),
+    /// A kubeconfig context added or removed, or one of its switches set.
+    ClusterAdd(String),
+    ClusterRemove(String),
+    ClusterSet(String, groove_types::ClusterChange),
+    /// A context's line, which only lights under the pointer.
+    ClusterRow(String),
     /// A control of a Settings row: the preference a click on it sets.
     SetPreference(groove_controllers::config_service::Preference),
     /// What folds the manual section away, or opens it.

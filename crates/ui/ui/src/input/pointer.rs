@@ -2,6 +2,7 @@
 
 mod agent;
 mod board;
+mod clusters;
 mod drag;
 mod focus;
 mod header;

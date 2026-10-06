@@ -42,6 +42,7 @@ pub(super) fn acted(
         _ => {
             let picked = sourced(target, ui).or_else(|| skilled(target, ui));
             let picked = picked.or_else(|| routined(target));
+            let picked = picked.or_else(|| super::clusters::acted(target));
             return picked.or_else(|| chosen(target, ui));
         }
     };

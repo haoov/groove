@@ -263,15 +263,17 @@ write. No diff and no file list. A push goes to the worktree's own branch and no
 
 Config's surface. Takes the whole window, the rail included; Esc or *back* returns to where
 the user was. Reached from the rail's footer and the palette. A section list on the left —
-Setup, Providers, Agent, Appearance, Preferences, Keymap — with a search bar at its top:
+Setup, Providers, Clusters, Agent, Appearance, Preferences, Keymap — with a search bar at its top:
 typing filters every section to the matching rows, each shown with its section. The
 selected section's form on the right: labels left, controls right, one row per setting,
-hairlines between groups, paths and ids in mono.
+hairlines between groups, paths and ids in mono. Clusters alone is a table, since each
+context holds several settings.
 
 | Section | Rows |
 |---|---|
 | Setup | environment check — git, gh, glab, claude, curl — each with its version and a mark · claude login · the config file, the state database and the worktree root as paths |
 | Providers | task source, Notion or GitHub, with its fields · forge tokens, gh and glab, present or missing |
+| Clusters | a table, not rows: each added context with its hue and name, its read-only and Argo hub toggles, its login and remove; only the toggles and buttons act · then the kubeconfig's other contexts, each with add |
 | Agent | auto-approve default · the shared repo, by URL and branch · the skills — core, the user's own, shared — each with its toggle · the routines — pause all, how many run at once, each routine and its triggers |
 | Appearance | theme — Latte, Frappé, Macchiato, Mocha · UI font: IBM Plex Sans · mono font: IBM Plex Mono, JetBrains Mono, Lilex · three sizes: interface, editor, terminal |
 | Preferences | attention thresholds — review waiting, due soon and approved unmerged in days, a failed run in minutes · the forge poll's interval and its stale threshold |

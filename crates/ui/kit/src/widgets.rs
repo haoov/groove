@@ -36,7 +36,7 @@ pub use pane::{Side, pane};
 pub use question::{offer, question};
 pub use scrolled::scrolled;
 pub use search::Search;
-pub use table::{Cell, Column, Rows, Shown, Sorted, Table, Width};
+pub use table::{Act, Cell, Column, Rows, Shown, Sorted, Table, Width};
 pub use tabs::{Tab, tabs};
 pub use terminal::grid_of;
 pub use terminal::screen;

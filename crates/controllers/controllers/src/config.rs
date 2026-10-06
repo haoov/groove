@@ -1,5 +1,6 @@
 //! The `config` controller: one function per user action on the `config` service.
 
+mod clusters;
 mod environment;
 mod mapping;
 mod routines;
@@ -9,7 +10,7 @@ mod sources;
 use std::collections::BTreeMap;
 
 use groove_config_service::Preference;
-use groove_types::{Mapping, ProviderId, Secret};
+use groove_types::{ClusterChange, Mapping, ProviderId, Secret};
 
 use crate::{AppState, Services, Spawner};
 
@@ -76,6 +77,19 @@ pub enum Command {
         trigger: groove_types::Trigger,
         on: bool,
     },
+    /// `config.add_cluster`: a kubeconfig context Groove knows from now on, checked at once.
+    AddCluster {
+        context: String,
+    },
+    /// `config.remove_cluster`: a context Groove no longer knows.
+    RemoveCluster {
+        context: String,
+    },
+    /// `config.set_cluster`: one setting of an added context.
+    SetCluster {
+        context: String,
+        change: ClusterChange,
+    },
 }
 
 impl Command {
@@ -97,6 +111,9 @@ impl Command {
             Command::JoinShared { .. } | Command::LeaveShared => "config.set_shared",
             Command::SwitchRoutine { .. } => "config.switch_routine",
             Command::SwitchTrigger { .. } => "config.switch_trigger",
+            Command::AddCluster { .. } => "config.add_cluster",
+            Command::RemoveCluster { .. } => "config.remove_cluster",
+            Command::SetCluster { .. } => "config.set_cluster",
         }
     }
 }
@@ -129,6 +146,9 @@ pub fn dispatch(
         Command::LeaveShared => shared::leave(state, spawner),
         Command::SwitchRoutine { id, on } => routines::switch(state, services, spawner, (&id, on)),
         Command::SwitchTrigger { id, trigger, on } => routines::trigger(state, &id, trigger, on),
+        Command::AddCluster { context } => clusters::add(state, spawner, &context),
+        Command::RemoveCluster { context } => clusters::remove(state, &context),
+        Command::SetCluster { context, change } => clusters::change(state, &context, change),
     }
 }
 

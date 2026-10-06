@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use groove_gfx::{Edges, Rect};
+use groove_gfx::{Align, Edges, Rect};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
@@ -53,7 +53,13 @@ impl<'a> Cell<'a> {
     /// Draws in `rect`, at its start or against its end; returns where its text starts and ends.
     pub(super) fn draw<A: App>(self, ctx: &mut Ctx<'_, A>, rect: Rect, end: bool) -> (f32, f32) {
         if self.text.is_empty() {
-            return (rect.x, rect.x);
+            let Some((mark, turn, role)) = self.mark else {
+                return (rect.x, rect.x);
+            };
+            let size = ctx.tokens.small;
+            let box_ = rect.align((size, size), Align::Center, Align::Center);
+            crate::widgets::turned(ctx, box_, mark, turn, role);
+            return (box_.x, box_.right());
         }
         if self.badge {
             let box_ = Badge::new(&self.text, self.role).at(ctx, rect, rect.x);

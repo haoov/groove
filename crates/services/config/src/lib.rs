@@ -1,5 +1,6 @@
 //! The config capability: the parsed config file, the preferences and the last environment check.
 
+mod clusters;
 mod families;
 mod sources;
 #[cfg(test)]

@@ -44,6 +44,8 @@ pub enum Mark {
     Folder,
     FolderOpen,
     Routine,
+    /// The hue a cluster context wears.
+    Context,
 }
 
 impl Mark {
@@ -90,7 +92,7 @@ impl Mark {
             Mark::Ahead => Icon::ArrowUp,
             Mark::Behind => Icon::ArrowDown,
             Mark::Staged => Icon::Plus,
-            Mark::Modified => Icon::Dot,
+            Mark::Modified | Mark::Context => Icon::Dot,
             Mark::Read => Icon::Check,
             Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,

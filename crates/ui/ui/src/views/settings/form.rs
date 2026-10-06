@@ -7,6 +7,7 @@ use groove_controllers::agent_service::Terminal;
 use groove_controllers::config_service::Preference;
 
 mod agent;
+mod clusters;
 
 use self::agent::{routine, skill};
 use super::SettingsUi;
@@ -40,6 +41,9 @@ pub(super) fn draw(ctx: &mut Ctx, area: Rect, app: &AppState, settings: &Setting
         false => settings.section.label().to_string(),
     };
     Label::new(&heading, ctx.styles.title(Role::Text)).draw(ctx, head);
+    if !searching && settings.section == Section::Clusters {
+        return clusters::draw(ctx, body, app);
+    }
     let login = app.agent.login.as_ref();
     if let Some(terminal) = login.filter(|_| !searching && settings.section == Section::Setup) {
         let pane = super::login_pane(ctx.window, &ctx.tokens);

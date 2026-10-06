@@ -35,6 +35,20 @@ take one of the source's values; under the priority, high, medium and low.
 **The last source stays on.** Turning a source off asks once more, removes its block and
 reads the tasks again.
 
+## Clusters
+
+**A cluster is added to Groove before a session can use it.** Groove keeps the kubeconfig
+context's name; the credentials stay in the kubeconfig, exec plugins included. A context
+Groove does not know cannot be attached.
+
+**Each context has a configuration of its own**: a hue, read-only, and whether it is the
+Argo CD hub. A new context takes the first hue no other context holds.
+Namespaces belong to the session that attaches the context, not to the context.
+
+**The kubeconfig is read again each time Settings opens**, and every added context is
+checked. A refused sign-in is said, never fixed from Groove: the user signs in from a
+terminal.
+
 ## Agent
 
 The auto-approve default, which a new session takes; the shared repo; the skills with

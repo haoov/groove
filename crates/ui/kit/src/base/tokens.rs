@@ -157,7 +157,7 @@ const LOGICAL: Tokens = Tokens {
     bar: 36.0,
     hairline: 1.0,
     corner: 4.0,
-    round: 1.0,
+    round: 2.0,
     edge: 0.5,
     grab: 8.0,
     map: 14.0,

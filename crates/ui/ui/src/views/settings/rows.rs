@@ -26,6 +26,7 @@ use crate::hit::Target;
 pub enum Section {
     Setup,
     Providers,
+    Clusters,
     Agent,
     Appearance,
     #[default]
@@ -34,9 +35,10 @@ pub enum Section {
 }
 
 impl Section {
-    pub const ALL: [Section; 6] = [
+    pub const ALL: [Section; 7] = [
         Section::Setup,
         Section::Providers,
+        Section::Clusters,
         Section::Agent,
         Section::Appearance,
         Section::Preferences,
@@ -47,6 +49,7 @@ impl Section {
         match self {
             Section::Setup => "Setup",
             Section::Providers => "Providers",
+            Section::Clusters => "Clusters",
             Section::Agent => "Agent",
             Section::Appearance => "Appearance",
             Section::Preferences => "Preferences",
