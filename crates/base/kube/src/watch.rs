@@ -61,12 +61,15 @@ impl Client {
     }
 }
 
-/// One line of a watch, its object left to read by its type.
+/// One line of a watch, read in one pass; a bookmark's object stays loose, its shape varies.
 #[derive(Deserialize)]
-struct Event {
-    #[serde(rename = "type")]
-    kind: String,
-    object: serde_json::Value,
+#[serde(tag = "type", content = "object", rename_all = "UPPERCASE")]
+enum Event {
+    Added(raw::Table),
+    Modified(raw::Table),
+    Deleted(raw::Table),
+    Bookmark(serde_json::Value),
+    Error(kube::core::Status),
 }
 
 fn changes(context: &str, line: &str) -> Result<Vec<Change>> {
@@ -75,19 +78,12 @@ fn changes(context: &str, line: &str) -> Result<Vec<Change>> {
         detail,
     };
     let event: Event = serde_json::from_str(line).map_err(|e| unreadable(e.to_string()))?;
-    let gone = match event.kind.as_str() {
-        "ADDED" | "MODIFIED" => false,
-        "DELETED" => true,
-        "BOOKMARK" => return Ok(marked(&event.object).into_iter().collect()),
-        "ERROR" => {
-            let status: kube::core::Status =
-                serde_json::from_value(event.object).map_err(|e| unreadable(e.to_string()))?;
-            return Err(Error::of(context, kube::Error::Api(status.boxed())));
-        }
-        other => return Err(unreadable(format!("an event of type {other}"))),
+    let (table, gone) = match event {
+        Event::Added(table) | Event::Modified(table) => (table, false),
+        Event::Deleted(table) => (table, true),
+        Event::Bookmark(object) => return Ok(marked(&object).into_iter().collect()),
+        Event::Error(status) => return Err(Error::of(context, kube::Error::Api(status.boxed()))),
     };
-    let table: raw::Table =
-        serde_json::from_value(event.object).map_err(|e| unreadable(e.to_string()))?;
     let mut out = Vec::new();
     if !table.columns.is_empty() {
         out.push(Change::Columns(

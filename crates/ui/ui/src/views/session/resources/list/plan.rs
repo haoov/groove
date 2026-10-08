@@ -106,6 +106,10 @@ impl Reads {
     }
 }
 
-fn distinct<'a>(items: impl Iterator<Item = &'a str>) -> usize {
-    items.collect::<std::collections::BTreeSet<_>>().len()
+/// How many differ, counted no further than two.
+fn distinct<'a>(mut items: impl Iterator<Item = &'a str>) -> usize {
+    let Some(first) = items.next() else {
+        return 0;
+    };
+    1 + usize::from(items.any(|one| one != first))
 }

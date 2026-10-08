@@ -33,6 +33,8 @@ pub struct ResourcesUi {
     pub sort: Option<(String, bool)>,
     /// The widths dragged, by kind, then by column.
     pub widths: std::collections::BTreeMap<String, std::collections::BTreeMap<String, f32>>,
+    /// The list's order as the last frame built it.
+    pub kept: super::list::Kept,
     pub scroll: f32,
 }
 

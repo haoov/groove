@@ -6,7 +6,7 @@ use crate::{Client, Error, Kind, Result};
 
 /// The Table, with each row's own metadata and nothing else of the object.
 pub(crate) const AS_TABLE: &str = "application/json;as=Table;v=v1;g=meta.k8s.io,application/json";
-const PAGE: usize = 500;
+const PAGE: usize = 5_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Column {

@@ -50,7 +50,7 @@ async fn server() -> MockServer {
         "rows": [{ "cells": ["api-0"], "object": { "metadata": {
             "uid": "u1", "name": "api-0", "namespace": "paxone", "resourceVersion": "42" } } }] });
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
-        .and(query_param("limit", "500"))
+        .and(query_param("limit", "5000"))
         .respond_with(plain(table))
         .mount(&server)
         .await;

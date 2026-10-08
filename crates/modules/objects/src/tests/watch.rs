@@ -74,7 +74,7 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
     let server = MockServer::start().await;
     let list = table(&[("u1", "api-0")], "42");
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
-        .and(query_param("limit", "500"))
+        .and(query_param("limit", "5000"))
         .respond_with(ResponseTemplate::new(200).set_body_json(list))
         .mount(&server)
         .await;
@@ -119,7 +119,7 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
 async fn an_expired_version_lists_again_from_the_start() {
     let server = MockServer::start().await;
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
-        .and(query_param("limit", "500"))
+        .and(query_param("limit", "5000"))
         .respond_with(ResponseTemplate::new(200).set_body_json(table(&[("u1", "api-0")], "42")))
         .mount(&server)
         .await;
@@ -170,4 +170,46 @@ async fn a_first_list_shows_its_first_page_at_once_and_adds_the_next_as_they_com
         matches!(&sent[1], Batch::Changes(more) if more.len() == 1),
         "{sent:?}"
     );
+}
+
+#[tokio::test(start_paused = true)]
+async fn changes_go_out_16ms_after_the_first_and_never_twice_within_250ms() {
+    use groove_kube::{Change, Row};
+    use tokio::time::{Instant, sleep};
+    let put = |name: &str| {
+        Change::Put(Row {
+            uid: name.into(),
+            name: name.into(),
+            namespace: None,
+            version: "1".into(),
+            created: None,
+            cells: vec![name.into()],
+        })
+    };
+    let steps = vec![
+        (0, vec![put("a"), put("b")]),
+        (100, vec![put("c")]),
+        (600, vec![put("d")]),
+        (1_300, Vec::new()),
+    ];
+    let stream = futures_util::stream::unfold(steps.into_iter(), |mut steps| async move {
+        let (wait, changes) = steps.next()?;
+        sleep(Duration::from_millis(wait)).await;
+        Some((Ok(changes), steps))
+    });
+    let started = Instant::now();
+    let sent = Arc::new(Mutex::new(Vec::new()));
+    let into = sent.clone();
+    let send = move |batch: Batch| {
+        if let Batch::Changes(deltas) = batch {
+            let at = started.elapsed().as_millis();
+            into.lock().expect("the batches").push((at, deltas.len()));
+        }
+    };
+    let (mut version, mut columns) = (String::new(), Vec::new());
+    crate::watch::watched(stream, (&mut version, &mut columns), &send)
+        .await
+        .expect("the watch");
+    let sent = sent.lock().expect("the batches").clone();
+    assert_eq!(sent, [(16, 2), (266, 1), (716, 1)]);
 }

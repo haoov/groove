@@ -183,14 +183,28 @@ fn a_row_made_again_under_its_name_outlives_the_late_gone_of_the_one_before() {
 #[test]
 #[ignore]
 #[allow(clippy::print_stdout)]
-fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
+fn time_a_reset_of_30k_rows_then_batches_of_500_changes_and_an_age_tick() {
     use crate::{Batch, Delta};
+    use groove_types::{Aging, Timestamp};
     use std::time::Instant;
-    let named = |at: usize| row(&format!("u{at}"), &format!("pod-{at:05}"), "Running");
+    let named = |at: usize| groove_types::ObjectRow {
+        aging: vec![Aging {
+            cell: 1,
+            since: Timestamp::new(1_000 + at as i64 % 600),
+            said: 0,
+            lead: None,
+            turn: Timestamp::default(),
+        }],
+        ..row(
+            &format!("u{at}"),
+            &format!("api-{at:05}-7d9f8c6b5-x2k4p"),
+            "Running",
+        )
+    };
     let mut store = crate::Store::default();
     let key = pods("paxone");
     store.lease(&key, "list");
-    let rows: Vec<_> = (0..10_000).rev().map(named).collect();
+    let rows: Vec<_> = (0..30_000).rev().map(named).collect();
     let started = Instant::now();
     store.apply(
         &key,
@@ -199,23 +213,20 @@ fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
             rows,
         },
     );
-    println!("reset of 10k rows: {:?}", started.elapsed());
+    println!("reset of 30k rows: {:?}", started.elapsed());
     for run in 0..5 {
-        let fresh = 10_000 + run * 200;
-        let mut changes: Vec<Delta> = (0..250)
-            .map(|at| {
-                Delta::Put(row(
-                    &format!("u{}", at * 37),
-                    &format!("pod-{:05}", at * 37),
-                    "Pending",
-                ))
-            })
-            .collect();
-        changes.extend((fresh..fresh + 125).map(|at| Delta::Put(named(at))));
-        changes.extend((0..125).map(|at| Delta::Gone(named(run * 1000 + at * 3 + 1))));
+        let fresh = 30_000 + run * 200;
+        let mut changes: Vec<Delta> = (0..200).map(|at| Delta::Put(named(at * 37))).collect();
+        changes.extend((fresh..fresh + 150).map(|at| Delta::Put(named(at))));
+        changes.extend((0..150).map(|at| Delta::Gone(named(run * 1000 + at * 3 + 1))));
         let started = Instant::now();
         store.apply(&key, Batch::Changes(changes));
         println!("batch of 500 changes: {:?}", started.elapsed());
+    }
+    for now in [1_700, 1_701] {
+        let started = Instant::now();
+        store.age(Timestamp::new(now));
+        println!("age tick at {now}: {:?}", started.elapsed());
     }
 }
 

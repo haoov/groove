@@ -16,6 +16,11 @@ pub fn score(hay: &str, query: &str) -> Option<usize> {
 
 /// Every character of `query` in `hay`, in order, case aside: `pyth-ca` keeps `pythie-cayzn`.
 pub fn fuzzy(hay: &str, query: &str) -> bool {
+    if hay.is_ascii() && query.is_ascii() {
+        let mut hay = hay.bytes().map(|one| one.to_ascii_lowercase());
+        let mut query = query.bytes().map(|one| one.to_ascii_lowercase());
+        return query.all(|wanted| hay.any(|one| one == wanted));
+    }
     let mut hay = hay.chars().map(fold);
     query
         .chars()

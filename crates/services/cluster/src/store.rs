@@ -1,6 +1,6 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use groove_objects::{Batch, Delta, Stop};
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
@@ -14,6 +14,8 @@ pub struct Watched {
     pub synced: bool,
     /// Why the watcher stands still, until its next batch lands.
     pub failed: Option<String>,
+    /// Moves on with every change to the rows.
+    pub revision: u64,
     readers: BTreeSet<String>,
     stop: Stop,
 }
@@ -111,21 +113,21 @@ impl Store {
     /// Every time cell that turned by `now` written again.
     pub fn age(&mut self, now: Timestamp) {
         let mut due: Option<Timestamp> = None;
-        let rows = self
-            .watched
-            .values_mut()
-            .flat_map(|one| one.rows.iter_mut());
-        for row in rows {
-            for aging in &mut row.aging {
-                if aging.turn <= now {
-                    let (text, turn) = aging.at(now);
-                    if let Some(cell) = row.cells.get_mut(aging.cell) {
-                        *cell = text;
+        for one in self.watched.values_mut() {
+            let mut wrote = false;
+            for row in &mut one.rows {
+                for aging in &mut row.aging {
+                    if aging.turn <= now {
+                        let (text, turn) = aging.at(now);
+                        if let Some(cell) = row.cells.get_mut(aging.cell) {
+                            *cell = text;
+                        }
+                        (aging.turn, wrote) = (turn, true);
                     }
-                    aging.turn = turn;
+                    due = Some(due.map_or(aging.turn, |at| at.min(aging.turn)));
                 }
-                due = Some(due.map_or(aging.turn, |at| at.min(aging.turn)));
             }
+            one.revision += u64::from(wrote);
         }
         self.due = due;
     }
@@ -145,6 +147,7 @@ impl Store {
         if aging {
             self.due = Some(Timestamp::default());
         }
+        one.revision += 1;
         match batch {
             Batch::Reset { columns, mut rows } => {
                 rows.sort_by(|a, b| place(a).cmp(&place(b)));
@@ -159,7 +162,7 @@ impl Store {
 
 /// A batch in one pass: rows changed in place, the gone ones swept once, the new merged in.
 fn changed(one: &mut Watched, deltas: Vec<Delta>) {
-    let (mut fresh, mut gone) = (Vec::new(), HashSet::new());
+    let (mut fresh, mut gone) = (Vec::new(), Vec::new());
     for delta in deltas {
         match delta {
             Delta::Columns(columns) => one.columns = columns,
@@ -170,18 +173,31 @@ fn changed(one: &mut Watched, deltas: Vec<Delta>) {
                 Ok(at) => one.rows[at] = row,
                 Err(_) => fresh.push(row),
             },
-            Delta::Gone(row) => {
-                gone.insert(row.uid);
-            }
+            Delta::Gone(row) => gone.push(row),
         }
     }
     if !fresh.is_empty() {
         one.rows.extend(fresh);
         one.rows.sort_by(|a, b| place(a).cmp(&place(b)));
     }
-    if !gone.is_empty() {
-        one.rows.retain(|held| !gone.contains(&held.uid));
+    if gone.is_empty() {
+        return;
     }
+    let mut at: Vec<usize> = gone
+        .iter()
+        .filter_map(|row| {
+            let found = one
+                .rows
+                .binary_search_by(|held| place(held).cmp(&place(row)));
+            found.ok().filter(|at| one.rows[*at].uid == row.uid)
+        })
+        .collect();
+    at.sort_unstable();
+    let mut index = 0;
+    one.rows.retain(|_| {
+        index += 1;
+        at.binary_search(&(index - 1)).is_err()
+    });
 }
 
 fn place(row: &ObjectRow) -> (&str, &str) {

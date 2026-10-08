@@ -7,10 +7,12 @@ use futures_util::{Stream, StreamExt};
 use groove_kube::{Change, Client, Query};
 use groove_types::{ObjectRow, TableColumn, Timestamp, WatchKey};
 use tokio::sync::watch as signal;
+use tokio::time::Instant;
 
-/// How long changes gather before they go as one batch, and the most a batch holds.
+/// How long changes gather into a batch, the least time between batches, the most one holds.
 const GATHER: Duration = Duration::from_millis(16);
-const MOST: usize = 500;
+const PACE: Duration = Duration::from_millis(250);
+const MOST: usize = 10_000;
 const FIRST_WAIT: Duration = Duration::from_secs(1);
 const LONGEST_WAIT: Duration = Duration::from_secs(30);
 
@@ -100,7 +102,7 @@ async fn cycle(
     let (mut version, mut columns) = listed(&client, query, send, *shown).await?;
     *shown = true;
     loop {
-        let opened = tokio::time::Instant::now();
+        let opened = Instant::now();
         let stream = match client.watch(query, &version).await {
             Ok(stream) => stream,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
@@ -158,31 +160,40 @@ fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
 }
 
 /// The changes of one watch, gathered into batches, until the server ends it.
-async fn watched(
+pub(crate) async fn watched(
     stream: impl Stream<Item = groove_kube::Result<Vec<Change>>>,
     (version, columns): (&mut String, &mut Vec<TableColumn>),
     send: &impl Fn(Batch),
 ) -> groove_kube::Result<()> {
     let mut stream = std::pin::pin!(stream);
     let mut held = Vec::new();
+    let mut sent = Instant::now()
+        .checked_sub(PACE)
+        .unwrap_or_else(Instant::now);
+    let mut due = Instant::now();
     loop {
         let next = match held.is_empty() {
             true => stream.next().await,
-            false => match tokio::time::timeout(GATHER, stream.next()).await {
+            false => match tokio::time::timeout_at(due, stream.next()).await {
                 Ok(next) => next,
                 Err(_) => {
-                    send(Batch::Changes(std::mem::take(&mut held)));
+                    flush(&mut held, send);
+                    sent = Instant::now();
                     continue;
                 }
             },
         };
         let Some(changes) = next else { break };
         let changes = changes.inspect_err(|_| flush(&mut held, send))?;
+        if held.is_empty() {
+            due = (Instant::now() + GATHER).max(sent + PACE);
+        }
         for change in changes {
             held.extend(delta(change, version, columns));
         }
         if held.len() >= MOST {
             flush(&mut held, send);
+            sent = Instant::now();
         }
     }
     flush(&mut held, send);

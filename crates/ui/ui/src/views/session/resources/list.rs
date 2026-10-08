@@ -12,6 +12,8 @@ use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Cell, Column, Rows, Search, Shown, Sorted, Tab, Table, Text, Width};
 
 mod order;
+
+pub use order::Kept;
 mod plan;
 
 use self::plan::{Plan, Reads, colour, plan};
@@ -33,8 +35,9 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
         body = rest;
     }
     let keys = scope::keys(app, open, held);
-    let (_, names) = scope::search(held);
-    let rows = rows(app, &keys, &names);
+    let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
+    let order = held.kept.of(app, picked, || ordered(app, &keys, held));
+    let rows = resolved(app, &keys, &order);
     let kind = scope::kind(app, open, held);
     title(ctx, strip, kind.as_ref(), rows.len());
     if let Some((said, role)) = standing(app, open, held, &keys) {
@@ -130,25 +133,42 @@ fn standing(
     }
 }
 
-/// Every row of every key, in key order; the ones whose name holds every name word.
-fn rows<'a>(
-    app: &'a AppState,
-    keys: &'a [WatchKey],
-    names: &[&str],
-) -> Vec<(&'a WatchKey, &'a ObjectRow)> {
-    let mut out = Vec::new();
-    for key in keys {
+/// Every row of every key whose name holds every name word, in the order picked.
+fn ordered(app: &AppState, keys: &[WatchKey], held: &ResourcesUi) -> Vec<(usize, usize)> {
+    let (_, names) = scope::search(held);
+    let mut found = Vec::new();
+    for (place, key) in keys.iter().enumerate() {
         let Some(watched) = app.cluster.store.watched(key) else {
             continue;
         };
-        let named = |row: &&ObjectRow| {
+        let named = |(_, row): &(usize, &ObjectRow)| {
             names
                 .iter()
                 .all(|word| groove_types::fuzzy(&row.name, word))
         };
-        out.extend(watched.rows.iter().filter(named).map(|row| (key, row)));
+        let rows = watched.rows.iter().enumerate().filter(named);
+        found.extend(rows.map(|(at, _)| (place, at)));
     }
-    out
+    let rows = resolved(app, keys, &found);
+    let plan = plan(app, keys, &rows);
+    order::sorted(found, &rows, &plan, held.sort.as_ref())
+}
+
+/// The rows an order names, as they stand.
+fn resolved<'a>(
+    app: &'a AppState,
+    keys: &'a [WatchKey],
+    order: &[(usize, usize)],
+) -> Vec<(&'a WatchKey, &'a ObjectRow)> {
+    let watched: Vec<_> = keys
+        .iter()
+        .map(|key| app.cluster.store.watched(key))
+        .collect();
+    let at = |(place, at): &(usize, usize)| {
+        let row = watched.get(*place).copied().flatten()?.rows.get(*at)?;
+        Some((&keys[*place], row))
+    };
+    order.iter().filter_map(at).collect()
 }
 
 /// The rows in the order picked, under their columns: each as wide as dragged, else fitted.
@@ -156,11 +176,11 @@ fn listed(
     ctx: &mut Ctx,
     body: Rect,
     app: &AppState,
-    (keys, mut rows): (&[WatchKey], Vec<(&WatchKey, &ObjectRow)>),
+    (keys, rows): (&[WatchKey], Vec<(&WatchKey, &ObjectRow)>),
     (held, kind): (&ResourcesUi, &str),
 ) {
     let plan = plan(app, keys, &rows);
-    let sorted = order::sorted(&mut rows, &plan, held.sort.as_ref());
+    let sorted = order::mark(&plan, held.sort.as_ref());
     let named = usize::from(plan.clusters) + usize::from(plan.namespaces);
     let dragged = held.widths.get(kind);
     let columns: Vec<Column<'_, Target>> = plan

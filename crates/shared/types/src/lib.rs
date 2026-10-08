@@ -43,7 +43,7 @@ pub use aging::{Aging, agings, human_age};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
-pub use cells::compare_cells;
+pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};
 pub use cluster::{
     Attached, Builtin, KindHeading, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn,

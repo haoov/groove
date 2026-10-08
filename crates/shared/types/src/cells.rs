@@ -4,14 +4,14 @@ use std::cmp::Ordering;
 
 /// Two numbers or two ages by value, else as text.
 pub fn compare_cells(a: &str, b: &str) -> Ordering {
-    match (value(a), value(b)) {
+    match (cell_value(a), cell_value(b)) {
         (Some(a), Some(b)) => a.partial_cmp(&b).unwrap_or(Ordering::Equal),
         _ => a.cmp(b),
     }
 }
 
 /// A leading number, `3 (5m ago)` reads 3; or an age as `kubectl` writes it, `2d4h`, in seconds.
-fn value(text: &str) -> Option<f64> {
+pub fn cell_value(text: &str) -> Option<f64> {
     let text = text.trim();
     let lead: String = text
         .chars()

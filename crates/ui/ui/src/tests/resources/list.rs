@@ -14,7 +14,7 @@ use crate::tests::{click, window};
 #[test]
 #[ignore]
 #[allow(clippy::print_stdout)]
-fn time_a_frame_of_the_list_over_10k_rows() {
+fn time_a_frame_of_the_list_over_30k_rows() {
     let (mut app, mut ui) = listing();
     let open = app
         .session
@@ -24,39 +24,58 @@ fn time_a_frame_of_the_list_over_10k_rows() {
         .iter()
         .map(|one| on("staging", Some(one)))
         .collect();
+    let names = ["Name", "Ready", "Status", "Restarts", "Age"];
     for namespace in ["a", "b", "c"] {
         let key = key("staging", Some(namespace));
         app.cluster.store.lease(&key, "resources");
-        let rows = (0..3_400)
-            .map(|at| row(&format!("pod-{at:05}"), namespace, "Running"))
+        let rows = (0..10_000)
+            .map(|at| ObjectRow {
+                cells: vec![
+                    format!("api-{at:05}-7d9f8c6b5-x2k4p"),
+                    "1/1".into(),
+                    "Running".into(),
+                    "0".into(),
+                    format!("{}m", at % 600),
+                ],
+                ..row(&format!("api-{at:05}-7d9f8c6b5-x2k4p"), namespace, "")
+            })
             .collect();
-        let columns = vec![
-            TableColumn {
-                name: "Name".into(),
+        let columns = names
+            .iter()
+            .map(|name| TableColumn {
+                name: (*name).into(),
                 priority: 0,
                 date: false,
-            },
-            TableColumn {
-                name: "Status".into(),
-                priority: 0,
-                date: false,
-            },
-        ];
+            })
+            .collect();
         app.cluster
             .store
             .apply(&key, Batch::Reset { columns, rows });
     }
     let mut fonts = groove_gfx::Fonts::embedded();
-    for search in ["", "pod-01"] {
+    let sorts = [None, Some(("NAME", false)), Some(("AGE", true))];
+    for (search, sort) in [
+        ("", sorts[0]),
+        ("api-01", sorts[0]),
+        ("", sorts[1]),
+        ("", sorts[2]),
+    ] {
         ui.session.resources.search.set(search);
+        ui.session.resources.sort = sort.map(|(label, down)| (label.to_string(), down));
         let _ = crate::view(&app, &ui, window(), &mut fonts);
         let started = std::time::Instant::now();
-        for _ in 0..20 {
+        for _ in 0..10 {
+            let _ = crate::view(&app, &ui, window(), &mut fonts);
+        }
+        let kept = started.elapsed() / 10;
+        let started = std::time::Instant::now();
+        for _ in 0..10 {
+            ui.session.resources.kept = Default::default();
             let _ = crate::view(&app, &ui, window(), &mut fonts);
         }
         println!(
-            "10.2k rows, search {search:?}: {:?} a frame",
-            started.elapsed() / 20
+            "30k rows, search {search:?}, sort {sort:?}: {kept:?} a frame, {:?} rebuilt",
+            started.elapsed() / 10
         );
     }
 }
@@ -241,5 +260,32 @@ fn an_age_due_asks_a_tick_while_the_list_shows_and_the_list_reads_it_after() {
         crate::ages_due(&app, &ui),
         None,
         "no wake while the list is hidden"
+    );
+}
+
+#[test]
+fn the_kept_order_gives_way_to_a_row_that_lands_and_to_a_sort_picked() {
+    let (mut app, mut ui) = listing();
+    ui.session.resources.sort = Some(("NAME".into(), false));
+    let first = |app: &AppState, ui: &Ui| {
+        let (texts, _) = drawn(app, ui);
+        let names = ["aaa-new", "api-0", "worker-0", "cnpg-1"];
+        texts.into_iter().find(|one| names.contains(&one.as_str()))
+    };
+    assert_ne!(first(&app, &ui).as_deref(), Some("aaa-new"));
+    let put = groove_controllers::cluster_service::Delta::Put(row("aaa-new", "paxone", "Running"));
+    app.cluster
+        .store
+        .apply(&key("staging", Some("paxone")), Batch::Changes(vec![put]));
+    assert_eq!(
+        first(&app, &ui).as_deref(),
+        Some("aaa-new"),
+        "the new row, in its place"
+    );
+    ui.session.resources.sort = Some(("NAME".into(), true));
+    assert_ne!(
+        first(&app, &ui).as_deref(),
+        Some("aaa-new"),
+        "the order turned"
     );
 }
