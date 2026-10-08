@@ -4,8 +4,8 @@ use groove_controllers::{AppState, Command};
 
 use super::super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
-use crate::palette::{Flow, Palette};
 use crate::views::session::Tab;
+use crate::views::session::resources::Scoping;
 use crate::{Focus, Overlay, Ui};
 
 /// The list's find bar, the kind search, or the namespace picker; `None` for any other chord.
@@ -15,14 +15,10 @@ pub(super) fn chord(
     app: &AppState,
     keymap: &Keymap,
 ) -> Option<Vec<Command>> {
-    let open = app
-        .session
-        .selected()
-        .filter(|open| !open.clusters.is_empty());
-    let (open, true) = (open?, ui.focus == Focus::Workspace) else {
+    let (open, true) = (app.session.selected()?, ui.focus == Focus::Workspace) else {
         return None;
     };
-    let up = ui.session.tab == Tab::Resources;
+    let up = ui.session.tab == Tab::Resources && !open.clusters.is_empty();
     let held = &mut ui.session.resources;
     match () {
         _ if up && keymap.is(Action::Find, key, mods) => {
@@ -32,14 +28,9 @@ pub(super) fn chord(
             (held.filtering, held.typing) = (true, false);
         }
         _ if keymap.is(Action::SelectNamespace, key, mods) => {
-            let flow = Flow::new(
-                crate::palette::Action::SelectNamespace,
-                open.session.id.clone(),
-            );
-            ui.overlay = Some(Overlay::Palette(Palette {
-                flow: Some(flow),
-                ..Palette::default()
-            }));
+            let (scoping, commands) = Scoping::asked(open).opened(open, held);
+            ui.overlay = Some(Overlay::Scope(scoping));
+            return Some(commands);
         }
         _ => return None,
     }

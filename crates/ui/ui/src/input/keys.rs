@@ -9,6 +9,7 @@ mod naming;
 mod noting;
 mod panes;
 mod resources;
+mod scope;
 
 use groove_controllers::{AppState, Command};
 
@@ -26,6 +27,7 @@ use filter::on_board;
 use naming::in_name;
 use noting::in_note;
 use panes::{in_file, in_rail, in_sidebar};
+pub(in crate::input) use scope::pick;
 
 pub(super) fn key_input(
     key: Key,
@@ -44,6 +46,9 @@ pub(super) fn key_input(
     }
     if let Some(action) = keymap.app(key, mods) {
         return app::run(action, ui, app);
+    }
+    if let Some(commands) = scope::in_scope(key, mods, ui, app) {
+        return commands;
     }
     if let Some(palette) = ui.palette_mut() {
         if matches!(key, Key::Char(_)) && (mods.ctrl || mods.alt) {

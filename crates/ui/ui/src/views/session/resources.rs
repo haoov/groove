@@ -2,8 +2,10 @@
 
 mod list;
 mod scope;
+mod scoping;
 mod sidebar;
 
 pub use list::draw;
-pub use scope::{Dragged, Pick, ResourcesUi, contexts, focus, held, kind, offered, wants};
+pub use scope::{Dragged, Pick, ResourcesUi, contexts, held, kind, offered, wants};
+pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, shown};

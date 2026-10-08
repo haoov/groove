@@ -18,6 +18,8 @@ pub enum Run {
     Flow(Action),
     /// The Settings surface, which is the window's own and asks no command.
     Settings,
+    /// The namespace picker's panel, under its picker.
+    Scope,
 }
 
 /// One row of the palette. A command row's id is the command's own.
@@ -34,6 +36,7 @@ impl Entry {
             Run::Command(c) => c.id(),
             Run::Flow(a) => a.id(),
             Run::Settings => "settings.open",
+            Run::Scope => "resources.select_namespace",
         }
     }
 
@@ -60,8 +63,8 @@ pub struct Outcome {
     pub commands: Vec<Command>,
     pub close: bool,
     pub settings: bool,
-    /// The Resources scope picked: one context and namespace by its label, or `*` for all.
-    pub scope: Option<String>,
+    /// The namespace picker's panel opens.
+    pub scoping: bool,
 }
 
 /// The palette's own state while it is open.
@@ -179,6 +182,11 @@ impl Palette {
                 close: true,
                 ..Outcome::default()
             },
+            Run::Scope => Outcome {
+                close: true,
+                scoping: true,
+                ..Outcome::default()
+            },
             Run::Settings => Outcome {
                 close: true,
                 settings: true,
@@ -238,12 +246,11 @@ impl Palette {
                 ..Outcome::default()
             };
         }
-        let (command, scope) = (flow.command(), flow.scope());
+        let command = flow.command();
         self.flow = None;
         Outcome {
             commands: command.into_iter().collect(),
             close: true,
-            scope,
             ..Outcome::default()
         }
     }

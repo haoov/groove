@@ -113,6 +113,8 @@ pub enum Overlay {
     Losing(Losing),
     /// The write the review sheet shows.
     Examining(groove_types::ApprovalId),
+    /// A scope picker's panel: what the session holds, then what it could attach.
+    Scope(views::session::resources::Scoping),
 }
 
 /// What the pointer's button holds while it is down.
@@ -197,6 +199,13 @@ impl Ui {
         }
     }
 
+    pub fn scoping_mut(&mut self) -> Option<&mut views::session::resources::Scoping> {
+        match &mut self.overlay {
+            Some(Overlay::Scope(one)) => Some(one),
+            _ => None,
+        }
+    }
+
     pub fn menu(&self) -> Option<&Menu> {
         match &self.overlay {
             Some(Overlay::Menu(one)) => Some(one),
@@ -227,11 +236,13 @@ impl Ui {
         if outcome.close {
             self.overlay = None;
         }
-        if let (Some(scope), Some(open)) = (outcome.scope.as_deref(), app.session.selected()) {
-            views::session::resources::focus(&mut self.session.resources, open, scope);
-            self.session.tab = views::session::Tab::Resources;
-        }
         let mut commands = outcome.commands;
+        if let (true, Some(open)) = (outcome.scoping, app.session.selected()) {
+            let scoping = views::session::resources::Scoping::asked(open);
+            let (scoping, listing) = scoping.opened(open, &self.session.resources);
+            self.overlay = Some(Overlay::Scope(scoping));
+            commands.extend(listing);
+        }
         if outcome.settings {
             commands.extend(self.open_settings());
         }

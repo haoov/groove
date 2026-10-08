@@ -36,10 +36,13 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             splitter::draw(&mut ctx, ui.showing(app));
         }
         if let Some(menu) = ui.menu() {
-            overlays::actions::draw(&mut ctx, menu, ui);
+            overlays::actions::draw(&mut ctx, menu);
         }
         if let Some(palette) = ui.palette() {
             overlays::palette::draw(&mut ctx, app, palette);
+        }
+        if let Some(crate::Overlay::Scope(scoping)) = &ui.overlay {
+            overlays::scope::draw(&mut ctx, app, ui, scoping);
         }
     }
     (frame, hits)

@@ -152,37 +152,6 @@ fn opening_the_namespace_step_again_lists_the_namespaces_again() {
 }
 
 #[test]
-fn ctrl_shift_n_picks_one_namespace_of_the_session_and_star_brings_them_all_back() {
-    let app = attaching();
-    let mut ui = Ui {
-        focus: crate::Focus::Workspace,
-        ..Ui::default()
-    };
-    crate::tests::press(Key::Char('n'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    let typed_in = |ui: &mut Ui, text: &str| {
-        for c in text.chars() {
-            crate::tests::press(Key::Char(c), Default::default(), ui, &app);
-        }
-        crate::tests::press(Key::Enter, Default::default(), ui, &app);
-    };
-    typed_in(&mut ui, "paxone");
-    assert!(ui.overlay.is_none(), "picked, the palette closes");
-    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
-    assert_eq!(
-        ui.session
-            .resources
-            .hidden
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>(),
-        [on("hub", None)]
-    );
-    crate::tests::press(Key::Char('n'), crate::tests::CTRL_SHIFT, &mut ui, &app);
-    typed_in(&mut ui, "all");
-    assert!(ui.session.resources.hidden.is_empty());
-}
-
-#[test]
 fn alt_shift_4_opens_the_resources_tab_while_the_session_holds_a_cluster() {
     let alt_shift = crate::input::Modifiers {
         alt: true,

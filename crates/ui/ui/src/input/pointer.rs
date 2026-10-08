@@ -116,8 +116,8 @@ fn click(
         ui.overlay = None;
         return Vec::new();
     }
-    if ui.menu().is_some() {
-        return chosen(target, ui);
+    if ui.menu().is_some() || matches!(ui.overlay, Some(Overlay::Scope(_))) {
+        return chosen(target, ui, app);
     }
     focused(&target, ui);
     acted(target, (x, y), ui, app, hits, metrics)
@@ -295,5 +295,5 @@ fn elsewhere(
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, ui, app, metrics))
         .or_else(|| settings::acted(target, ui, app, hits))
-        .or_else(|| resources::acted(target, ui, app, hits))
+        .or_else(|| resources::acted(target, ui, app))
 }

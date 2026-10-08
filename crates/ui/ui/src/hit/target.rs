@@ -176,6 +176,10 @@ pub enum Target {
     Actions,
     /// A row of the menu the right button opens.
     MenuRow(usize),
+    /// A scope panel: its body, a line of it, and a held line's ×.
+    ScopePanel,
+    ScopeLine(usize),
+    ScopeDetach(usize),
     /// The commit message, and what the box does now.
     Message,
     Do,

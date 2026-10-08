@@ -138,7 +138,10 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
 }
 
 /// A click while a menu is open: a row of it, or anywhere to close it.
-pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
+pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if matches!(ui.overlay, Some(Overlay::Scope(_))) {
+        return super::resources::scoped(target, ui, app);
+    }
     let menu = match ui.close(|one| matches!(one, Overlay::Menu(_))) {
         Some(Overlay::Menu(one)) => Some(one),
         _ => None,
@@ -146,13 +149,6 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
-    if let Of::Scope(picks) = &menu.of {
-        if let Some((pick, _)) = picks.get(at) {
-            pick.toggle(&mut ui.session.resources);
-        }
-        ui.overlay = Some(Overlay::Menu(menu));
-        return Vec::new();
-    }
     let picked = crate::views::overlays::actions::picked(&menu.of, at);
     ui.overlay = picked.asking.map(Overlay::Losing);
     ui.session.naming = picked.naming;

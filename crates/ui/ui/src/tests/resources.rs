@@ -7,7 +7,7 @@ use groove_types::{Attached, KubeKind, ObjectRow, SessionId, TableColumn, WatchK
 
 use super::settings::drawn;
 use super::*;
-use crate::hit::{Picks, Target};
+use crate::hit::Target;
 use crate::views::session::Tab;
 
 mod list;
@@ -195,31 +195,6 @@ fn the_tab_asks_a_watcher_a_namespace_and_the_kinds_it_lacks_and_lets_go_once_le
         reader: "resources".into(),
     };
     assert_eq!(asked, [Command::Cluster(release)]);
-}
-
-#[test]
-fn a_scope_picker_s_menu_stays_open_as_rows_are_switched_and_the_list_follows() {
-    let (app, mut ui) = listing();
-    let (_, hits) = drawn(&app, &ui);
-    let picker = hits
-        .rect_of(&Target::Picker(Picks::Namespaces))
-        .expect("the namespaces picker");
-    click(picker, &mut ui, &app, &hits);
-    let (_, hits) = drawn(&app, &ui);
-    let first = hits.rect_of(&Target::MenuRow(0)).expect("a row for paxone");
-    click(first, &mut ui, &app, &hits);
-    assert!(ui.menu().is_some(), "the menu stays open");
-    let (texts, _) = drawn(&app, &ui);
-    assert!(texts.iter().any(|one| one == "Pods · 1"), "{texts:?}");
-    let asked = crate::render::frame_commands(&app, &ui, window());
-    let watched: Vec<_> = asked
-        .iter()
-        .filter_map(|one| match one {
-            Command::Cluster(cluster::Command::Watch { key, .. }) => key.namespace.as_deref(),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(watched, ["cnpg"]);
 }
 
 #[test]

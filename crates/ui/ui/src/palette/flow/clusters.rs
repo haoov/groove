@@ -77,13 +77,3 @@ fn of(value: &str) -> Attached {
         namespace: (!namespace.is_empty()).then(|| namespace.to_string()),
     }
 }
-
-/// Every namespace the session holds, by its label, behind all of them as `*`.
-pub(super) fn scopes(open: &Open) -> Vec<(String, String)> {
-    let all = std::iter::once(("all namespaces".to_string(), "*".to_string()));
-    let pairs = open.clusters.iter().map(|one| {
-        let label = crate::views::session::resources::Pick::Pair(one.clone()).label();
-        (label.clone(), label)
-    });
-    all.chain(pairs).collect()
-}

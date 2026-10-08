@@ -1,29 +1,20 @@
-//! What a click on the Resources tab does: a scope picker opens its menu, a kind is listed.
+//! What a click on the Resources tab does: a scope picker opens its panel, a kind is listed.
 
 use groove_controllers::{AppState, Command};
 
 use crate::hit::{Hits, Picks, Target};
-use crate::views::session::resources::Dragged;
-use crate::views::session::resources::{self, Pick};
-use crate::{Corner, Held, Menu, Of, Overlay, Ui};
+use crate::views::session::resources::{self, Dragged, How, Scoping};
+use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
-pub(super) fn acted(
-    target: &Target,
-    ui: &mut Ui,
-    app: &AppState,
-    hits: &Hits,
-) -> Option<Vec<Command>> {
+pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
     let held = &mut ui.session.resources;
     match target {
         Target::Picker(which @ (Picks::Contexts | Picks::Namespaces)) => {
-            let under = hits.rect_of(target)?;
-            let picks = picks(app, ui, *which)?;
-            ui.overlay = Some(Overlay::Menu(Menu {
-                at: (under.x, under.bottom()),
-                corner: Corner::TopLeft,
-                of: Of::Scope(picks),
-            }));
+            let open = app.session.selected()?;
+            let (scoping, commands) = Scoping::new(*which).opened(open, held);
+            ui.overlay = Some(Overlay::Scope(scoping));
+            return Some(commands);
         }
         Target::ResourceKind(kind) => {
             held.kind = Some(kind.clone());
@@ -48,24 +39,18 @@ pub(super) fn acted(
     Some(Vec::new())
 }
 
-/// What a picker offers, each with its label: the contexts, or the pairs of the ones picked.
-fn picks(app: &AppState, ui: &Ui, which: Picks) -> Option<Vec<(Pick, String)>> {
-    let open = app.session.selected()?;
-    let picks: Vec<Pick> = match which {
-        Picks::Contexts => resources::contexts(open)
-            .into_iter()
-            .map(|one| Pick::Context(one.into()))
-            .collect(),
-        _ => resources::offered(open, &ui.session.resources)
-            .cloned()
-            .map(Pick::Pair)
-            .collect(),
+/// A click while a scope panel is open: a line chosen, its × detaching; outside, the panel shuts.
+pub(super) fn scoped(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let how = match target {
+        Some(Target::ScopeLine(at)) => (at, How::Toggle),
+        Some(Target::ScopeDetach(at)) => (at, How::Detach),
+        Some(Target::ScopePanel) => return Vec::new(),
+        _ => {
+            ui.overlay = None;
+            return Vec::new();
+        }
     };
-    let labelled = |pick: Pick| {
-        let label = pick.label();
-        (pick, label)
-    };
-    Some(picks.into_iter().map(labelled).collect())
+    super::super::keys::pick(how, ui, app)
 }
 
 /// A press on a column's edge holds it, at the width its header was drawn.

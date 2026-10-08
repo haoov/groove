@@ -29,6 +29,7 @@ mod regions;
 mod resources;
 mod routine_session;
 mod routines;
+mod scoping;
 mod settings;
 mod staging;
 mod structure;

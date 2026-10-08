@@ -38,9 +38,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
         .and_then(|one| one.url.as_deref());
     titled(ctx, top.until(until), open, page);
     pickers(ctx, under, app, open);
-    if ui.session.tab == crate::views::session::Tab::Resources {
-        scope::draw(ctx, third, app, open, &ui.session.resources);
-    }
+    scope::draw(ctx, third, app, open, &ui.session.resources);
 }
 
 /// The session's own actions. Returns where they start, which the title stops at.

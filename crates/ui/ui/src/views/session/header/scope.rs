@@ -1,4 +1,4 @@
-//! The Resources tab's own line: the contexts picked, then the namespaces, each a picker.
+//! The scope line: the contexts picked, then the namespaces, each a picker; a context alone before any.
 
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
@@ -18,7 +18,11 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         .copied()
         .filter(|one| !held.hidden_contexts.contains(*one))
         .collect();
-    let contexts = named(&shown, contexts.len(), "all contexts");
+    let none = contexts.is_empty();
+    let contexts = match none {
+        true => "no cluster".to_string(),
+        false => named(&shown, contexts.len(), "all contexts"),
+    };
     let offered: Vec<_> = resources::offered(open, held).collect();
     let pairs: Vec<String> = resources::held(open, held).map(pair).collect();
     let pairs: Vec<&str> = pairs.iter().map(String::as_str).collect();
@@ -39,6 +43,9 @@ pub(super) fn draw(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open, held:
         hover,
     );
     let box_ = first.at(ctx, line, x);
+    if none {
+        return;
+    }
     let second = picker(
         &namespaces,
         Target::Picker(Picks::Namespaces),
