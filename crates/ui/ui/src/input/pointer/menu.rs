@@ -146,6 +146,13 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
+    if let Of::Scope(picks) = &menu.of {
+        if let Some((pick, _)) = picks.get(at) {
+            pick.toggle(&mut ui.session.resources);
+        }
+        ui.overlay = Some(Overlay::Menu(menu));
+        return Vec::new();
+    }
     let picked = crate::views::overlays::actions::picked(&menu.of, at);
     ui.overlay = picked.asking.map(Overlay::Losing);
     ui.session.naming = picked.naming;
@@ -185,5 +192,5 @@ pub(super) fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command
     };
     palette.selected = at;
     let outcome = palette.key(Key::Enter, app);
-    ui.closed_palette(outcome)
+    ui.closed_palette(outcome, app)
 }

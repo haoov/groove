@@ -71,6 +71,7 @@ fn pods(namespace: &str) -> groove_types::WatchKey {
             watchable: true,
         },
         namespace: Some(namespace.into()),
+        selector: None,
     }
 }
 
@@ -81,6 +82,7 @@ fn row(uid: &str, name: &str, status: &str) -> groove_types::ObjectRow {
         namespace: Some("paxone".into()),
         version: "1".into(),
         cells: vec![name.into(), status.into()],
+        aging: Vec::new(),
     }
 }
 
@@ -215,4 +217,78 @@ fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
         store.apply(&key, Batch::Changes(changes));
         println!("batch of 500 changes: {:?}", started.elapsed());
     }
+}
+
+#[test]
+fn a_failure_outlasts_a_relist_and_ends_once_a_watch_is_open() {
+    use crate::Batch;
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    store.apply(&key, Batch::Failed("watch refused".into()));
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows: vec![row("a", "api", "Running")],
+        },
+    );
+    assert_eq!(
+        store.watched(&key).and_then(|one| one.failed.as_deref()),
+        Some("watch refused")
+    );
+    store.apply(&key, Batch::Watching);
+    assert_eq!(
+        store.watched(&key).and_then(|one| one.failed.as_deref()),
+        None
+    );
+}
+
+#[test]
+fn a_row_with_an_age_is_due_at_once_and_each_tick_writes_it_and_waits_for_its_next_turn() {
+    use crate::{Batch, Delta};
+    use groove_types::{Aging, Timestamp};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let aged = |name: &str| groove_types::ObjectRow {
+        aging: vec![Aging {
+            cell: 1,
+            since: Timestamp::new(1_000),
+            said: 0,
+            lead: None,
+            turn: Timestamp::default(),
+        }],
+        ..row(name, name, "40s")
+    };
+    let rows = vec![aged("api")];
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows,
+        },
+    );
+    assert_eq!(store.due(), Some(Timestamp::default()));
+    store.age(Timestamp::new(1_179));
+    assert_eq!(
+        store.watched(&key).expect("watched").rows[0].cells[1],
+        "2m59s"
+    );
+    assert_eq!(store.due(), Some(Timestamp::new(1_180)));
+    store.apply(&key, Batch::Changes(vec![Delta::Put(aged("worker"))]));
+    assert_eq!(
+        store.due(),
+        Some(Timestamp::default()),
+        "a new row is written at once"
+    );
+    store.age(Timestamp::new(1_180));
+    let cells: Vec<&str> = store
+        .watched(&key)
+        .expect("watched")
+        .rows
+        .iter()
+        .map(|one| one.cells[1].as_str())
+        .collect();
+    assert_eq!(cells, ["3m", "3m"]);
 }

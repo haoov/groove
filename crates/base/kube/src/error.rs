@@ -15,6 +15,8 @@ pub enum Error {
     Expired { context: String },
     #[error("{context} did not answer: {detail}")]
     Unreachable { context: String, detail: String },
+    #[error("{context} sent a watch event Groove cannot read: {detail}")]
+    Unreadable { context: String, detail: String },
     #[error("{context} answered {status}: {message}")]
     Api {
         context: String,

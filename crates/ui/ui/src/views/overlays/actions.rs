@@ -69,7 +69,7 @@ fn acts(of: &Of) -> &'static [Act] {
         Of::Worktree { mr: true, .. } => &WORKTREE_MR,
         Of::Worktree { mr: false, .. } => &WORKTREE,
         Of::Session(_) => &SESSION,
-        Of::Skills { .. } | Of::Mapping(_) => &[],
+        Of::Skills { .. } | Of::Mapping(_) | Of::Scope(_) => &[],
     }
 }
 
@@ -78,14 +78,22 @@ pub fn rows(of: &Of) -> Vec<&str> {
         Of::Skills { offered, .. } => offered.iter().map(|one| one.label.as_str()).collect(),
         Of::Mapping(choices) if choices.options.is_empty() => vec![choices.empty],
         Of::Mapping(choices) => choices.options.iter().map(String::as_str).collect(),
+        Of::Scope(picks) => picks.iter().map(|(_, label)| label.as_str()).collect(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }
 }
 
-pub fn draw(ctx: &mut Ctx, open: &Menu) {
+pub fn draw(ctx: &mut Ctx, open: &Menu, ui: &crate::Ui) {
     let within = ctx.window;
     let rows = rows(&open.of);
-    let (wide, tall) = menu_size(ctx, &rows);
+    let checked: Vec<bool> = match &open.of {
+        Of::Scope(picks) => picks
+            .iter()
+            .map(|(pick, _)| pick.shown(&ui.session.resources))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let (wide, tall) = menu_size(ctx, &rows, !checked.is_empty());
     let at = match open.corner {
         Corner::TopLeft => open.at,
         Corner::BottomLeft => (open.at.0, open.at.1 - tall),
@@ -93,7 +101,7 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
     };
     ctx.layer();
     let edge = ctx.styles.border();
-    menu(ctx, at, within, &rows, edge, Target::MenuRow);
+    menu(ctx, at, within, (&rows, &checked), edge, Target::MenuRow);
 }
 
 /// A menu whose rows come with it: a skill sent, or a mapping slot given a value.

@@ -6,6 +6,7 @@ use groove_gfx::{Fonts, Frame};
 use crate::ctx::{Ctx, Drawn};
 use crate::hit::Hits;
 use crate::layout::Layout;
+use crate::views::session::{Tab, resources};
 use crate::views::{board, overlays, rail, session, settings, splitter};
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -35,7 +36,7 @@ pub fn view(app: &AppState, ui: &Ui, metrics: Metrics, fonts: &mut Fonts) -> (Fr
             splitter::draw(&mut ctx, ui.showing(app));
         }
         if let Some(menu) = ui.menu() {
-            overlays::actions::draw(&mut ctx, menu);
+            overlays::actions::draw(&mut ctx, menu, ui);
         }
         if let Some(palette) = ui.palette() {
             overlays::palette::draw(&mut ctx, app, palette);
@@ -53,7 +54,19 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out.extend(shells_fitted(app, ui, metrics));
     out.extend(login_fitted(app, ui, metrics));
     out.extend(schemas(app, ui));
+    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    out.extend(resources::wants(app, up, &ui.session.resources));
+    if ages_due(app, ui).is_some_and(|due| due <= metrics.now) {
+        let age = groove_controllers::cluster::Command::Age { now: metrics.now };
+        out.push(Command::Cluster(age));
+    }
     out
+}
+
+/// When a time cell of the Resources list next reads differently, while the list shows.
+pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
+    let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    up.then(|| app.cluster.store.due()).flatten()
 }
 
 /// Each source's properties, read once while Providers shows its mapping.

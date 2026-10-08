@@ -37,6 +37,7 @@ fn pods() -> WatchKey {
             watchable: true,
         },
         namespace: Some("paxone".into()),
+        selector: None,
     }
 }
 
@@ -92,8 +93,9 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
         panic!("the list comes first: {sent:?}");
     };
     assert_eq!((columns.len(), rows[0].name.as_str()), (1, "api-0"));
-    let Batch::Changes(changes) = &sent[1] else {
-        panic!("then the watch: {sent:?}");
+    assert_eq!(sent[1], Batch::Watching, "then the watch opens");
+    let Batch::Changes(changes) = &sent[2] else {
+        panic!("then its changes: {sent:?}");
     };
     let put = changes
         .iter()

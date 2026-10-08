@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use groove_objects::{Batch, Delta, Stop};
-use groove_types::{KubeKind, ObjectRow, TableColumn, WatchKey};
+use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
 
 /// One watcher's rows, by namespace then name, and how it stands.
 #[derive(Debug, Default)]
@@ -23,6 +23,10 @@ pub struct Watched {
 pub struct Store {
     watched: BTreeMap<WatchKey, Watched>,
     kinds: BTreeMap<String, Vec<KubeKind>>,
+    discovering: BTreeSet<String>,
+    namespaces: BTreeMap<String, Vec<String>>,
+    /// When a time cell next reads differently.
+    due: Option<Timestamp>,
 }
 
 impl Store {
@@ -35,7 +39,38 @@ impl Store {
     }
 
     pub fn set_kinds(&mut self, context: &str, kinds: Vec<KubeKind>) {
+        self.discovering.remove(context);
         self.kinds.insert(context.to_string(), kinds);
+    }
+
+    /// The namespaces of `context`, as last listed.
+    pub fn namespaces(&self, context: &str) -> Option<&[String]> {
+        self.namespaces.get(context).map(Vec::as_slice)
+    }
+
+    pub fn set_namespaces(&mut self, context: &str, names: Vec<String>) {
+        self.namespaces.insert(context.to_string(), names);
+    }
+
+    /// Marks a discovery of `context` begun. False while one already runs.
+    pub fn begin_discovery(&mut self, context: &str) -> bool {
+        self.discovering.insert(context.to_string())
+    }
+
+    pub fn end_discovery(&mut self, context: &str) {
+        self.discovering.remove(context);
+    }
+
+    pub fn discovering(&self, context: &str) -> bool {
+        self.discovering.contains(context)
+    }
+
+    /// Every key `reader` reads.
+    pub fn read_by<'a>(&'a self, reader: &'a str) -> impl Iterator<Item = &'a WatchKey> {
+        self.watched
+            .iter()
+            .filter(move |(_, one)| one.readers.contains(reader))
+            .map(|(key, _)| key)
     }
 
     /// `reader` reads `key`; the stop of a watcher to start, when none ran for it.
@@ -69,20 +104,54 @@ impl Store {
         }
     }
 
+    pub fn due(&self) -> Option<Timestamp> {
+        self.due
+    }
+
+    /// Every time cell that turned by `now` written again.
+    pub fn age(&mut self, now: Timestamp) {
+        let mut due: Option<Timestamp> = None;
+        let rows = self
+            .watched
+            .values_mut()
+            .flat_map(|one| one.rows.iter_mut());
+        for row in rows {
+            for aging in &mut row.aging {
+                if aging.turn <= now {
+                    let (text, turn) = aging.at(now);
+                    if let Some(cell) = row.cells.get_mut(aging.cell) {
+                        *cell = text;
+                    }
+                    aging.turn = turn;
+                }
+                due = Some(due.map_or(aging.turn, |at| at.min(aging.turn)));
+            }
+        }
+        self.due = due;
+    }
+
     /// A batch of a watcher still held; one dropped meanwhile is ignored.
     pub fn apply(&mut self, key: &WatchKey, batch: Batch) {
         let Some(one) = self.watched.get_mut(key) else {
             return;
         };
+        let aging = match &batch {
+            Batch::Reset { rows, .. } => rows.iter().any(|row| !row.aging.is_empty()),
+            Batch::Changes(deltas) => deltas
+                .iter()
+                .any(|delta| matches!(delta, Delta::Put(row) if !row.aging.is_empty())),
+            _ => false,
+        };
+        if aging {
+            self.due = Some(Timestamp::default());
+        }
         match batch {
             Batch::Reset { columns, mut rows } => {
                 rows.sort_by(|a, b| place(a).cmp(&place(b)));
-                (one.columns, one.rows, one.synced, one.failed) = (columns, rows, true, None);
+                (one.columns, one.rows, one.synced) = (columns, rows, true);
             }
-            Batch::Changes(deltas) => {
-                one.failed = None;
-                changed(one, deltas);
-            }
+            Batch::Changes(deltas) => changed(one, deltas),
+            Batch::Watching => one.failed = None,
             Batch::Failed(why) => one.failed = Some(why),
         }
     }

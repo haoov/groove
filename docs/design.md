@@ -148,15 +148,19 @@ sidebar folds from the far end of the tab strip or with `alt+shift+b`.
 The first holds the type icon and the title, with the task actions at its right: finish,
 and a menu with delete and open in provider. The second holds the repo and worktree
 pickers as buttons — the session's selector, which every tab and the manual section
-follow — with the selected worktree's MR and CI and a refresh button at its right. A
+follow — with the selected worktree's MR and CI and a refresh button at its right. A git
+mark leads the pickers' line. On the Resources tab a third line, led by a cluster mark,
+holds its scope: the contexts picked, a lone one in its hue, then the namespaces, each
+a picker whose menu switches its rows on and off and stays open; `*` is a whole cluster. A
 title or a label too long for its line is cut with an ellipsis; the header never wraps.
 
-**Tabs.** `overview · diff · files`.
+**Tabs.** `overview · diff · files · resources`, the last while the session holds a cluster.
 
 | Tab | Shows | Sidebar |
 |---|---|---|
 | overview | the task's six properties, read-only; then the repos, each with its worktrees as rows — the branch, then git's counts and the MR's number, verdict, checks and notes at the row's right end, zero counts and an absent MR omitted; then the selected worktree's merge request, one property a line; then the clusters it holds, each context in its hue with its namespaces under it; then the body as text | folded |
 | diff | the whole change as one stream, inline or split, notes inline, editable on its new side | the search bar — path and text, both live — then a strip that picks the list: files — the files that changed, a click scrolls the stream to one, with stage, unstage and discard by right click, and the commit box under them; commits — the branch's own log, a commit opens its change read-only; notes — the session's annotations and threads, a note scrolls to its line |
+| resources | the list tab, titled by its kind and its count, over the rows of every context and namespace in scope: the server's Table columns `kubectl get` shows, behind a cluster column and a namespace column where those tell rows apart; a status and a ready count in the colour of how the object stands. A time cell, the age or a last schedule, counts up live; the age from the object's creation. A header sorts by its column, numbers and ages by value, and a second click turns the order round; its edge drags the column's width, kept for the kind. `ctrl+f` opens a find bar over the rows: fuzzy name words — `pyth-ca-st` keeps `pythie-cayzn-staging` — and `label=value` words the server filters on. `ctrl+shift+n` picks one namespace of the session, or all of them, from the palette | a search that narrows the kinds — `ctrl+shift+p`; a word in a kind, a heading or an API group, `rbac/role` a heading and a kind — then the kinds the contexts serve, indented under headings that fold: workloads, network, config, storage, RBAC and other for Kubernetes' own, one a CRD group by its name, then cluster for the built-in kinds not namespaced. In the search, ↑ and ↓ step through the headings and the kinds; Enter folds a heading or lists a kind. No counts, no health marks |
 | files | the open files, one tab each with a dot while it owes the disk; the active one on the code surface, marked where the change touched it | the search bar, then the whole worktree as a tree with the path operations by right click; a click opens a file in the preview tab, in italic, which the next click replaces; a double click or the first edit keeps it. A found line opens at the line. A tab's right click offers close, close others and close all, which leave an unsaved file open; a middle click closes it |
 
 **One code surface.** The Files tab's editor and the Diff tab's two views are one surface,
@@ -184,8 +188,8 @@ writes — a tab in Go, two spaces in YAML and Markdown, four elsewhere.
 
 **Search.** Two live rows in the sidebar: a path and a text search of the worktree. In the
 surface, `ctrl+f` opens a bar over the file's own header, with the count at its end; enter
-hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+shift+n` step, esc ends
-it. `ctrl+p` opens a file by its path.
+hands the keyboard back and keeps the session, `ctrl+n` and `ctrl+p` step, esc ends
+it. `ctrl+shift+p` opens a file by its path.
 
 **Finding your way in a big change.** Four answers, and none of them is a bigger tree:
 
@@ -221,7 +225,9 @@ nothing else.
 
 **Three grounds a row can take, and they never share a value.** Under the pointer is the
 quietest, a selected row is stronger, and what a click acts on is stronger again. Where the
-caret or the open file is, two rules stand instead of a ground: a place is not a state.
+caret is, two rules stand instead of a ground: a place is not a state. The row a list stands
+on — the open file, the shown commit, the session, the kind listed — has the two rules over
+the held ground, the accent dimmed into it.
 
 **A choice about one thing opens on that thing.** A picker draws the same rows the palette
 does, filtered and keyed the same way, anchored under what was clicked, as wide as its

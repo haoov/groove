@@ -13,6 +13,8 @@ pub struct Column {
     pub name: String,
     /// 0 for the columns `kubectl get` shows; above for `-o wide`.
     pub priority: i32,
+    /// The server writes the cell as an age.
+    pub date: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,6 +23,7 @@ pub struct Row {
     pub name: String,
     pub namespace: Option<String>,
     pub version: String,
+    pub created: Option<String>,
     pub cells: Vec<String>,
 }
 
@@ -99,13 +102,18 @@ fn encoded(value: &str) -> String {
 
 /// The Table as the server writes it; every field Groove does not read is skipped.
 pub(crate) mod raw {
-    use serde::Deserialize;
+    use serde::{Deserialize, Deserializer};
+
+    /// A list the server may write as `null`, read as empty.
+    fn nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Vec<T>, D::Error> {
+        Ok(Option::<Vec<T>>::deserialize(d)?.unwrap_or_default())
+    }
 
     #[derive(Debug, Clone, Default, Deserialize)]
     pub struct Table {
-        #[serde(default, rename = "columnDefinitions")]
+        #[serde(default, rename = "columnDefinitions", deserialize_with = "nullable")]
         pub columns: Vec<Column>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "nullable")]
         pub rows: Vec<Row>,
         #[serde(default)]
         pub metadata: Meta,
@@ -116,11 +124,13 @@ pub(crate) mod raw {
         pub name: String,
         #[serde(default)]
         pub priority: i32,
+        #[serde(default, rename = "type")]
+        pub kind: String,
     }
 
     #[derive(Debug, Clone, Deserialize)]
     pub struct Row {
-        #[serde(default)]
+        #[serde(default, deserialize_with = "nullable")]
         pub cells: Vec<serde_json::Value>,
         #[serde(default)]
         pub object: Object,
@@ -139,6 +149,7 @@ pub(crate) mod raw {
         pub name: Option<String>,
         pub namespace: Option<String>,
         pub resource_version: Option<String>,
+        pub creation_timestamp: Option<String>,
         #[serde(rename = "continue")]
         pub next: Option<String>,
     }
@@ -160,6 +171,7 @@ impl From<raw::Column> for Column {
         Column {
             name: raw.name,
             priority: raw.priority,
+            date: raw.kind == "date",
         }
     }
 }
@@ -172,6 +184,7 @@ impl From<raw::Row> for Row {
             name: meta.name.unwrap_or_default(),
             namespace: meta.namespace,
             version: meta.resource_version.unwrap_or_default(),
+            created: meta.creation_timestamp,
             cells: raw.cells.iter().map(cell).collect(),
         }
     }

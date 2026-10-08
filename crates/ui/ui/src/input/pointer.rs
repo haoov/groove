@@ -8,6 +8,7 @@ mod focus;
 mod header;
 mod menu;
 mod rail;
+mod resources;
 mod settings;
 mod shell;
 mod sidebar;
@@ -21,8 +22,7 @@ use groove_types::{DiffView, Edit, Motion};
 
 pub(super) use self::board::dropped;
 pub(super) use self::board::reads as board_reads;
-use self::board::review;
-use self::board::{carried, opened_session, takes};
+use self::board::{carried, opened_session, review, takes};
 use self::drag::{counted, drag_to, grab};
 use self::focus::focused;
 use self::header::{finishing, task_menu};
@@ -50,17 +50,14 @@ pub(super) fn press(
     ui.clicked = Some(counted(ui.clicked, x, y, metrics));
     ui.agent.bypassed = mods.shift;
     match hits.at(x, y) {
-        Some(Target::Split(edge)) => {
-            grab(ui, edge, x, y, metrics);
-            Vec::new()
-        }
+        Some(Target::Split(edge)) => grab(ui, edge, x, y, metrics),
         Some(Target::Place(id)) => takes(ui, id),
+        Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
 
-pub(crate) use agent::copied as agent_copied;
-pub(crate) use agent::released as agent_released;
+pub(crate) use agent::{copied as agent_copied, released as agent_released};
 
 /// The pointer moved: a boundary follows it, or the open file holds more.
 pub(super) fn moved(
@@ -79,6 +76,7 @@ pub(super) fn moved(
             return agent::dragged(ui, app, (x, y), metrics);
         }
         Some(Held::Text) => return extended(x, y, ui, app, hits, metrics),
+        Some(Held::Column(_)) => resources::dragged(ui, x, metrics),
         None => {}
     }
     Vec::new()
@@ -297,4 +295,5 @@ fn elsewhere(
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, ui, app, metrics))
         .or_else(|| settings::acted(target, ui, app, hits))
+        .or_else(|| resources::acted(target, ui, app, hits))
 }

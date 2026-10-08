@@ -67,6 +67,7 @@ fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {
         width,
         end: false,
         sort: None,
+        edge: None,
     }
 }
 

@@ -197,7 +197,7 @@ fn plain(ctx: &mut Ctx, line: Rect, held: &Row<'_>, indent: f32, open: Option<&S
     let target = Target::File(held.path.clone());
     groove_ui_kit::shape::hoverable(ctx, line, target);
     if open == Some(&held.path) {
-        groove_ui_kit::shape::ruled(ctx, line, ctx.styles.chosen());
+        groove_ui_kit::shape::chosen(ctx, line);
     }
     let style = ctx.styles.body(Role::Text);
     let at = super::text_at(ctx, indent);

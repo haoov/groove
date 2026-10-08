@@ -10,6 +10,7 @@ pub mod header;
 mod manual;
 mod open_files;
 pub mod overview;
+pub mod resources;
 mod sheet;
 mod state;
 mod tab;
@@ -36,7 +37,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
         agent_pane::draw(ctx, app, ui.focus == crate::Focus::Agent);
         return bar::draw(ctx, app);
     }
-    header::draw(ctx, app);
+    header::draw(ctx, app, ui);
     if app.session.selected().is_none() {
         return empty(ctx, app);
     }
@@ -53,11 +54,19 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, body] = column_in(ctx.app.layout.workspace, [band, Spec::fill()]);
-    let shown: Vec<(&str, Target)> = Tab::ALL
+    let held = app
+        .session
+        .selected()
+        .is_some_and(|open| !open.clusters.is_empty());
+    let up: Vec<Tab> = Tab::ALL
+        .into_iter()
+        .filter(|tab| *tab != Tab::Resources || held)
+        .collect();
+    let shown: Vec<(&str, Target)> = up
         .iter()
         .map(|tab| (tab.label(), Target::Tab(*tab)))
         .collect();
-    let at = Tab::ALL
+    let at = up
         .iter()
         .position(|tab| *tab == ui.session.tab)
         .unwrap_or(0);
@@ -78,9 +87,12 @@ fn workspace(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
             open_files::draw(ctx, strip, app, ui);
             diff::draw(ctx, app, ui, body)
         }
+        Tab::Resources => resources::draw(ctx, app, ui, body),
     }
-    if ui.session.sidebar() {
-        files::draw(ctx, app, ui);
+    match ui.session.tab {
+        Tab::Resources => resources::sidebar(ctx, app, ui),
+        _ if ui.session.sidebar() => files::draw(ctx, app, ui),
+        _ => {}
     }
 }
 

@@ -89,6 +89,11 @@ impl Layout {
             held.feed = Rect::new(0.0, held.feed.bottom() - row, held.feed.w, row);
         }
         held = held.committing(ui.session.commits());
+        if ui.session.tab == crate::views::session::Tab::Resources {
+            held.header.h += tokens.row;
+            held.workspace.y += tokens.row;
+            held.workspace.h -= tokens.row;
+        }
         let tall = match ui.session.manual {
             true => (ui.split.manual * tokens.scale).floor(),
             false => tokens.bar,

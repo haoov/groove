@@ -25,6 +25,10 @@ pub fn height(ctx: &Ctx, app: &AppState, id: &SessionId) -> f32 {
 /// Type icon, title and how long it has waited, then the agent's state under them.
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
     let id = &open.session.id;
+    let up = ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id);
+    if up {
+        groove_ui_kit::shape::ground(ctx, rect, Ground::Held);
+    }
     groove_ui_kit::shape::hoverable(ctx, rect, Target::Session(id.clone()));
     if let Some(role) = tinted(app, id) {
         groove_ui_kit::shape::ground(ctx, rect, Ground::Tint(role));
@@ -54,7 +58,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect, open: &Open) {
         run(ctx, app, under, id, routine);
     }
     hairline(ctx, rect, ctx.styles.line());
-    if ui.surface == Surface::Session && app.session.selected.as_ref() == Some(id) {
+    if up {
         ruled(ctx, rect, ctx.styles.chosen());
     }
 }

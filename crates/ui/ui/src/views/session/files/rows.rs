@@ -11,7 +11,7 @@ use crate::{Losing, Ui};
 use groove_ui_kit::base::ground::Ground;
 use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::shape::{hoverable, ruled, square};
+use groove_ui_kit::shape::{hoverable, square};
 use groove_ui_kit::text::{Label, elide, row};
 use groove_ui_kit::widgets::{changes, folder};
 
@@ -117,7 +117,7 @@ pub(super) fn entry(
         groove_ui_kit::shape::ground(ctx, line, Ground::Hover);
     }
     if reading.open {
-        ruled(ctx, line, ctx.styles.chosen());
+        groove_ui_kit::shape::chosen(ctx, line);
     }
     let letter = file.status.letter().to_string();
     let at = line.pad(Edges::across(indent, 0.0));

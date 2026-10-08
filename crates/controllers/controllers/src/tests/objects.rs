@@ -37,6 +37,7 @@ fn pods() -> WatchKey {
             watchable: true,
         },
         namespace: Some("paxone".into()),
+        selector: None,
     }
 }
 
@@ -68,6 +69,14 @@ async fn server() -> MockServer {
         .await;
     Mock::given(path("/api/v1"))
         .respond_with(plain(resources))
+        .mount(&server)
+        .await;
+    let names = serde_json::json!({ "kind": "Table", "metadata": { "resourceVersion": "9" },
+        "columnDefinitions": [{ "name": "Name", "priority": 0 }],
+        "rows": [{ "cells": ["paxone"], "object": { "metadata": { "uid": "n1", "name": "paxone" } } },
+                 { "cells": ["argocd"], "object": { "metadata": { "uid": "n2", "name": "argocd" } } }] });
+    Mock::given(path("/api/v1/namespaces"))
+        .respond_with(plain(names))
         .mount(&server)
         .await;
     let groups = serde_json::json!({ "kind": "APIGroupList", "groups": [] });
@@ -142,4 +151,29 @@ fn a_context_s_kinds_are_discovered_and_cached() {
     let kinds = state.cluster.store.kinds("kind").expect("discovered");
     assert_eq!(kinds[0].plural, "pods");
     assert!(state.env.cache_dir.join("kube/kind.json").exists());
+}
+
+#[test]
+fn a_context_s_namespaces_are_listed_by_name() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let server = spawner.block_on(server());
+    kubeconfig(home.path(), &server.uri());
+    dispatch(
+        Cmd::Cluster(Command::ScanContexts),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    dispatch(Cmd::Config(add), &mut state, &services, &spawner);
+    let list = Command::ListNamespaces {
+        context: "kind".into(),
+    };
+    dispatch(Cmd::Cluster(list), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let names = state.cluster.store.namespaces("kind").expect("listed");
+    assert_eq!(names, ["argocd", "paxone"]);
 }

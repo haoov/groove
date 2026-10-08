@@ -44,7 +44,11 @@ fn asked(app: &AppState, flow: &str, answers: &[&str]) -> Command {
     for answer in answers {
         typed(&mut palette, answer, app);
         let done = palette.key(Key::Enter, app);
-        if let Some(command) = done.commands.into_iter().next() {
+        let session = done
+            .commands
+            .into_iter()
+            .find(|one| matches!(one, Command::Session(_)));
+        if let Some(command) = session {
             return command;
         }
     }
@@ -101,4 +105,97 @@ fn the_overview_names_each_context_once_with_its_namespaces_under_it() {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
     }
     assert_eq!(texts.iter().filter(|one| *one == "staging").count(), 1);
+}
+
+#[test]
+fn picking_a_context_lists_its_namespaces_behind_the_whole_cluster() {
+    let mut app = attaching();
+    let mut palette = Palette::default();
+    typed(&mut palette, "attach cluster", &app);
+    palette.key(Key::Enter, &app);
+    typed(&mut palette, "hub", &app);
+    palette.key(Key::Enter, &app);
+    let flow = palette.flow.clone().expect("the flow");
+    let list = groove_controllers::cluster::Command::ListNamespaces {
+        context: "hub".into(),
+    };
+    assert_eq!(flow.refresh(&app), Some(Command::Cluster(list)));
+    app.cluster
+        .store
+        .set_namespaces("hub", vec!["argocd".into(), "kube-system".into()]);
+    let prompt = palette.prompt(&app).expect("the namespace prompt");
+    let values: Vec<&str> = prompt
+        .options
+        .iter()
+        .map(|(_, value)| value.as_str())
+        .collect();
+    assert_eq!(values, ["", "argocd", "kube-system"]);
+}
+
+#[test]
+fn opening_the_namespace_step_again_lists_the_namespaces_again() {
+    let mut app = attaching();
+    app.cluster
+        .store
+        .set_namespaces("hub", vec!["argocd".into()]);
+    let mut palette = Palette::default();
+    typed(&mut palette, "attach cluster", &app);
+    palette.key(Key::Enter, &app);
+    typed(&mut palette, "hub", &app);
+    let outcome = palette.key(Key::Enter, &app);
+    let list = groove_controllers::cluster::Command::ListNamespaces {
+        context: "hub".into(),
+    };
+    assert_eq!(outcome.commands, [Command::Cluster(list)]);
+    let prompt = palette.prompt(&app).expect("the namespace prompt");
+    assert_eq!(prompt.options.len(), 2, "the last list shows meanwhile");
+}
+
+#[test]
+fn ctrl_shift_n_picks_one_namespace_of_the_session_and_star_brings_them_all_back() {
+    let app = attaching();
+    let mut ui = Ui {
+        focus: crate::Focus::Workspace,
+        ..Ui::default()
+    };
+    crate::tests::press(Key::Char('n'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    let typed_in = |ui: &mut Ui, text: &str| {
+        for c in text.chars() {
+            crate::tests::press(Key::Char(c), Default::default(), ui, &app);
+        }
+        crate::tests::press(Key::Enter, Default::default(), ui, &app);
+    };
+    typed_in(&mut ui, "paxone");
+    assert!(ui.overlay.is_none(), "picked, the palette closes");
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
+    assert_eq!(
+        ui.session
+            .resources
+            .hidden
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        [on("hub", None)]
+    );
+    crate::tests::press(Key::Char('n'), crate::tests::CTRL_SHIFT, &mut ui, &app);
+    typed_in(&mut ui, "all");
+    assert!(ui.session.resources.hidden.is_empty());
+}
+
+#[test]
+fn alt_shift_4_opens_the_resources_tab_while_the_session_holds_a_cluster() {
+    let alt_shift = crate::input::Modifiers {
+        alt: true,
+        shift: true,
+        ..Default::default()
+    };
+    let mut ui = Ui::default();
+    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &full_app());
+    assert_eq!(
+        ui.session.tab,
+        crate::views::session::Tab::Overview,
+        "no cluster, no tab"
+    );
+    crate::tests::press(Key::Char('4'), alt_shift, &mut ui, &attaching());
+    assert_eq!(ui.session.tab, crate::views::session::Tab::Resources);
 }

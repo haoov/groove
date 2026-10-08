@@ -63,6 +63,8 @@ fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
             "Detach cluster",
             Action::DetachCluster,
         ));
+        let select = Action::SelectNamespace;
+        out.push(Entry::flow("Session", "Select namespace", select));
     }
     out
 }

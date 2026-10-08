@@ -25,7 +25,7 @@ pub use groove_ui_kit::widgets::Corner;
 pub use hit::{Cursor, Hits, Target};
 pub use layout::{Edge, Split};
 pub use menu::{Menu, Of, Offer};
-pub use render::{frame_commands, view};
+pub use render::{ages_due, frame_commands, view};
 pub use views::board::BoardUi;
 pub use views::rail::RailUi;
 pub use views::session::{Asked, Naming, SessionUi, Tab};
@@ -130,6 +130,8 @@ pub enum Held {
     AgentText,
     /// The agent's screen, its program sent the reports.
     AgentClick,
+    /// A column of the Resources list being made wider or narrower.
+    Column(views::session::resources::Dragged),
 }
 
 /// What the pointer is doing to the agent's screen.
@@ -217,9 +219,17 @@ impl Ui {
     }
 
     /// What a palette key did, applied: the palette down, Settings up; its commands returned.
-    pub(crate) fn closed_palette(&mut self, outcome: palette::Outcome) -> Vec<Command> {
+    pub(crate) fn closed_palette(
+        &mut self,
+        outcome: palette::Outcome,
+        app: &AppState,
+    ) -> Vec<Command> {
         if outcome.close {
             self.overlay = None;
+        }
+        if let (Some(scope), Some(open)) = (outcome.scope.as_deref(), app.session.selected()) {
+            views::session::resources::focus(&mut self.session.resources, open, scope);
+            self.session.tab = views::session::Tab::Resources;
         }
         let mut commands = outcome.commands;
         if outcome.settings {

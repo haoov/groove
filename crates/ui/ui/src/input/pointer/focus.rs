@@ -11,6 +11,7 @@ pub(super) fn focused(target: &Option<Target>, ui: &mut Ui) {
         if let Some(find) = ui.session.find.as_mut() {
             find.typing = false;
         }
+        (ui.session.resources.typing, ui.session.resources.filtering) = (false, false);
     }
 }
 
@@ -21,6 +22,16 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
         Some(Target::Agent) => Focus::Agent,
         Some(Target::Shell(_)) => Focus::Terminal,
         Some(Target::Code) | Some(Target::View(_)) | Some(Target::Mode(_)) => Focus::Workspace,
+        Some(
+            Target::Tab(_)
+            | Target::ResourceList
+            | Target::ResourceRow(_)
+            | Target::ResourceSearch
+            | Target::ResourceFilter
+            | Target::ResourceKind(_)
+            | Target::ResourceGroup(_)
+            | Target::ResourceSort(_),
+        ) => Focus::Workspace,
         Some(
             Target::File(_)
             | Target::Stage(_)

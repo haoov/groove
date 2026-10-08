@@ -1,5 +1,7 @@
 //! The boundaries a press takes hold of, and how far the pointer has carried one.
 
+use groove_controllers::Command;
+
 use crate::layout::Edge;
 use crate::{Click, Drag, Held, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -22,12 +24,13 @@ pub(super) fn counted(last: Option<Click>, x: f32, y: f32, metrics: Metrics) -> 
 }
 
 /// Takes hold of `edge`, keeping how far from it the pointer landed.
-pub(super) fn grab(ui: &mut Ui, edge: Edge, x: f32, y: f32, metrics: Metrics) {
+pub(super) fn grab(ui: &mut Ui, edge: Edge, x: f32, y: f32, metrics: Metrics) -> Vec<Command> {
     let at = ui.split.edge_at(edge, window_of(metrics), sidebar(ui));
     ui.held = Some(Held::Edge(Drag {
         edge,
         offset: along(edge, x, y, metrics) - at,
     }));
+    Vec::new()
 }
 
 /// The pointer's place along the axis the boundary moves in, in logical pixels.

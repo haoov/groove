@@ -60,6 +60,8 @@ pub struct Outcome {
     pub commands: Vec<Command>,
     pub close: bool,
     pub settings: bool,
+    /// The Resources scope picked: one context and namespace by its label, or `*` for all.
+    pub scope: Option<String>,
 }
 
 /// The palette's own state while it is open.
@@ -236,11 +238,12 @@ impl Palette {
                 ..Outcome::default()
             };
         }
-        let command = flow.command();
+        let (command, scope) = (flow.command(), flow.scope());
         self.flow = None;
         Outcome {
             commands: command.into_iter().collect(),
             close: true,
+            scope,
             ..Outcome::default()
         }
     }

@@ -39,6 +39,8 @@ pub enum Of {
         session: groove_types::SessionId,
         offered: Vec<Offer>,
     },
+    /// What a Resources picker offers, each row on or off, with its label.
+    Scope(Vec<(views::session::resources::Pick, String)>),
 }
 
 /// One skill a menu row stands for, with what it is sent.

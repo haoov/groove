@@ -26,6 +26,7 @@ mod pasting;
 mod perf;
 mod rail;
 mod regions;
+mod resources;
 mod routine_session;
 mod routines;
 mod settings;

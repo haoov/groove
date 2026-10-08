@@ -134,7 +134,9 @@ impl App {
         }
         let waiting =
             !self.state.agent.agents.is_empty() || groove_controllers::delivery::polls(&self.state);
-        waiting.then(|| Duration::from_secs(CLOCK_S))
+        let clock = waiting.then(|| Duration::from_secs(CLOCK_S));
+        let aging = groove_ui::ages_due(&self.state, &self.ui).map(events::until);
+        clock.into_iter().chain(aging).min()
     }
 
     /// What the frame needs before it draws, throttled while a split is dragged.

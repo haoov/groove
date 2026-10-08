@@ -22,6 +22,9 @@ pub(super) fn finding(
     keymap: &Keymap,
     seen: (&Hits, Metrics),
 ) -> Option<Vec<Command>> {
+    if let Some(commands) = super::resources::chord((key, mods), ui, app, keymap) {
+        return Some(commands);
+    }
     let view = ui.session.face();
     if keymap.is(Action::Find, key, mods) && ui.focus == Focus::Workspace {
         let find = ui.session.find.get_or_insert_with(|| Finding::open(view));

@@ -17,6 +17,7 @@ pub enum Action {
     ForceDelete,
     AttachCluster,
     DetachCluster,
+    SelectNamespace,
 }
 
 impl Action {
@@ -32,6 +33,7 @@ impl Action {
             Action::ForceDelete => "session.force_delete",
             Action::AttachCluster => "session.attach_cluster",
             Action::DetachCluster => "session.detach_cluster",
+            Action::SelectNamespace => "resources.select_namespace",
         }
     }
 }
@@ -114,10 +116,11 @@ impl Flow {
             }
             (Action::RenameExplorer, 0) => Some(Prompt::text("title", false)),
             (Action::AttachCluster, 0) => Some(Prompt::choose("context", clusters::known(app))),
-            (Action::AttachCluster, 1) => {
-                Some(Prompt::text("namespace, empty for the whole cluster", true))
-            }
+            (Action::AttachCluster, 1) => Some(clusters::namespaces(app, &self.answers[0])),
             (Action::DetachCluster, 0) => Some(Prompt::choose("cluster", clusters::held(open))),
+            (Action::SelectNamespace, 0) => {
+                Some(Prompt::choose("namespace", clusters::scopes(open)))
+            }
             _ => None,
         }
     }
@@ -144,6 +147,7 @@ impl Flow {
                 (!known).then_some(Command::Session(session::Command::ListBranches { repo }))
             }
             (Action::ForceDelete, 0) => Some(Command::Session(session::Command::List)),
+            (Action::AttachCluster, 1) => Some(clusters::refresh(&self.answers[0])),
             (Action::AddWorktree, 2) => {
                 let repo = RepoId::new(&self.answers[0]);
                 let known = app.session.branches.iter().any(|(r, _)| r == &repo);
@@ -151,6 +155,13 @@ impl Flow {
             }
             _ => None,
         }
+    }
+
+    /// The Resources scope a finished *Select namespace* picked.
+    pub fn scope(&self) -> Option<String> {
+        (self.action == Action::SelectNamespace)
+            .then(|| self.answers.first().cloned())
+            .flatten()
     }
 
     /// The command, once every answer is in.
@@ -200,6 +211,7 @@ impl Flow {
                 session: SessionId::new(answer(0)),
             },
             Action::AttachCluster | Action::DetachCluster => clusters::command(self)?,
+            Action::SelectNamespace => return None,
         };
         Some(Command::Session(command))
     }
