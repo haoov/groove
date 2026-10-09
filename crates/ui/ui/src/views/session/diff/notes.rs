@@ -41,7 +41,9 @@ pub(crate) struct Inline {
 impl Inline {
     /// The notes of this view, each on the row its file shows it on, wrapped to `cols`.
     pub(crate) fn of(app: &AppState, ui: &Ui, view: Face, cols: usize) -> Self {
-        if app.workspace.commit.is_some() {
+        let unfiled =
+            view == Face::File && super::row::edited(app, ui).is_some_and(|one| one.file.is_none());
+        if app.workspace.commit.is_some() || unfiled {
             return Self::default();
         }
         let over = ui.session.noting.as_ref().and_then(|one| one.over_id());

@@ -56,7 +56,7 @@ pub enum Scroller {
     /// The rail's own log.
     Feed,
     Settings,
-    /// The Resources tab's list.
+    /// The Resources tab's list, or the object described.
     Resources,
     /// One of the board's columns.
     Column(u8),

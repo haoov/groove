@@ -88,6 +88,16 @@ pub enum Target {
     /// A column of the list, by its label: its header sorts by it, its edge drags its width.
     ResourceSort(String),
     ResourceEdge(String),
+    /// An object's tab in the strip, the mark that closes it, and its view: described or YAML.
+    ResourceTab(usize),
+    ResourceClose(usize),
+    ResourceView(bool),
+    /// One container of the pod shown, its annotations unfolded, and another object to open.
+    ResourceContainer(String),
+    ResourceSection(crate::views::session::resources::Section),
+    ResourceOpen(Box<crate::views::session::resources::Link>),
+    /// A value of an object's tab, which a click copies; a ctrl+click opens its object.
+    ResourceCopy(String, Option<Box<crate::views::session::resources::Link>>),
     /// A context's line, which only lights under the pointer.
     ClusterRow(String),
     /// A control of a Settings row: the preference a click on it sets.

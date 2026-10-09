@@ -46,8 +46,10 @@ pub(super) fn scroll(
     }
     match ui.session.tab {
         Tab::Overview => ui.wheeled(Scroller::Overview, pixels(tokens.row), hits),
-        Tab::Resources => ui.wheeled(Scroller::Resources, pixels(tokens.row), hits),
-        Tab::Diff | Tab::Files => {
+        Tab::Resources if ui.session.face() != crate::views::session::Face::File => {
+            ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
+        }
+        Tab::Resources | Tab::Diff | Tab::Files => {
             ui.wheeled(Scroller::Code, pixels(tokens.line), hits);
             ui.wheeled(Scroller::Across, delta.across(tokens.line), hits);
         }

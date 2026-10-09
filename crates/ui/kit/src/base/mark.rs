@@ -49,6 +49,9 @@ pub enum Mark {
     /// Before the repo and worktree pickers, and before the cluster ones.
     Git,
     Cluster,
+    /// What copies a value, and what it turns to once copied.
+    Copy,
+    Copied,
 }
 
 impl Mark {
@@ -98,7 +101,8 @@ impl Mark {
             Mark::Modified | Mark::Context => Icon::Dot,
             Mark::Git => Icon::Branch,
             Mark::Cluster => Icon::Kubernetes,
-            Mark::Read => Icon::Check,
+            Mark::Read | Mark::Copied => Icon::Check,
+            Mark::Copy => Icon::Copy,
             Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,
             Mark::Sidebar => Icon::Sidebar,

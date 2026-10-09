@@ -9,7 +9,7 @@ use crate::table::{AS_TABLE, Query, raw};
 use crate::{Client, Column, Error, Result, Row};
 
 /// How long the server keeps one watch open before it ends it.
-const TIMEOUT: &str = "290";
+pub(crate) const TIMEOUT: &str = "290";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Change {
@@ -40,6 +40,16 @@ impl Client {
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
         let context = self.context.clone();
+        let lines = self.lines(request).await?;
+        Ok(lines.map(move |line| line.and_then(|line| changes(&context, &line))))
+    }
+
+    /// A watch's lines as they come, the blank ones skipped; the stream ends with the response.
+    pub(crate) async fn lines(
+        &self,
+        request: http::Request<Vec<u8>>,
+    ) -> Result<impl Stream<Item = Result<String>> + use<>> {
+        let context = self.context.clone();
         let lines = self
             .inner
             .request_stream(request)
@@ -49,7 +59,7 @@ impl Client {
         Ok(lines.filter_map(move |line| {
             let read = match line {
                 Ok(line) if line.trim().is_empty() => None,
-                Ok(line) => Some(changes(&context, &line)),
+                Ok(line) => Some(Ok(line)),
                 Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => None,
                 Err(e) => Some(Err(Error::Unreachable {
                     context: context.clone(),

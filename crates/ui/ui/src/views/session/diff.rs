@@ -47,13 +47,24 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
         Some(false) => said(ctx, body, "Open a file in the sidebar."),
-        None => {
-            surface::rows(ctx, body, app, ui, &inline);
-            let numbers = surface::numbers(app, ui, ui.session.face());
-            pinned::draw(ctx, body, app, ui, (&inline, numbers));
-            finder::draw(ctx, body, ui);
-        }
+        None => rows(ctx, body, app, ui, &inline),
     }
+}
+
+/// The surface's rows with their numbers, the scopes held above them, and the find bar.
+fn rows(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) {
+    surface::rows(ctx, body, app, ui, inline);
+    let numbers = surface::numbers(app, ui, ui.session.face());
+    pinned::draw(ctx, body, app, ui, (inline, numbers));
+    finder::draw(ctx, body, ui);
+}
+
+/// The buffer the editor shows, whole, in `body`: what an object's YAML tab draws.
+pub(crate) fn editor(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
+    let cols = surface::note_cols(ctx, body, app, ui);
+    ctx.app.hits.wraps(cols);
+    let inline = Inline::of(app, ui, ui.session.face(), cols);
+    rows(ctx, body, app, ui, &inline);
 }
 
 /// What the file view has to say instead of rows: nothing open, or too long to show.

@@ -8,7 +8,7 @@ use groove_types::{Error, WatchKey};
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
 /// How long a watcher left unread keeps running.
-const IDLE: Duration = Duration::from_secs(30);
+pub(super) const IDLE: Duration = Duration::from_secs(30);
 
 pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: String, again: bool) {
     if !known(state, &context) || !state.cluster.store.begin_discovery(&context) {
@@ -85,7 +85,7 @@ pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str)
     }
 }
 
-fn known(state: &mut AppState, context: &str) -> bool {
+pub(super) fn known(state: &mut AppState, context: &str) -> bool {
     if state.config.cluster(context).is_some() {
         return true;
     }
