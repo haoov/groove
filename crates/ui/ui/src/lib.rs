@@ -180,6 +180,13 @@ impl Ui {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
         self.session.reading = app.workspace.commit.is_some();
+        let held = app
+            .session
+            .selected()
+            .is_some_and(|open| !open.clusters.is_empty());
+        if self.session.tab == views::session::Tab::Resources && !held {
+            self.session.tab = views::session::Tab::Overview;
+        }
     }
 
     pub fn dragging(&self) -> bool {
