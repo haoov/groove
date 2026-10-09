@@ -20,7 +20,7 @@ pub(super) fn draw(
     ui: &Ui,
     inline: &Inline,
 ) {
-    let total = inline.total(super::row::count(app, ui.session.face()));
+    let total = inline.total(super::row::count(app, ui, ui.session.face()));
     if total == 0 {
         return;
     }
@@ -37,7 +37,7 @@ pub(super) fn draw(
 /// What the column stands for: the rows of the view, and the notes in them wrapped to `cols`.
 pub(crate) fn total(app: &AppState, ui: &Ui, cols: usize) -> usize {
     let view = ui.session.face();
-    Inline::of(app, ui, view, cols).total(super::row::count(app, view))
+    Inline::of(app, ui, view, cols).total(super::row::count(app, ui, view))
 }
 
 /// Every changed file, one band under another.

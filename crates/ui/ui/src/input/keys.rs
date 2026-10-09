@@ -164,7 +164,7 @@ fn in_pane(
     match ui.focus {
         Focus::Agent => to_agent(key, mods, app).into_iter().collect(),
         Focus::Terminal => to_shell(key, mods, app).into_iter().collect(),
-        Focus::Workspace => in_file(key, mods, app, keymap),
+        Focus::Workspace => in_file(key, mods, (ui, app), keymap),
         Focus::Sidebar => in_sidebar(key, mods, ui, app, keymap),
         Focus::Rail => in_rail(key, ui, app),
     }

@@ -102,7 +102,7 @@ fn pins_under(
     inline: &super::notes::Inline,
     under: usize,
 ) -> Vec<Pin> {
-    let rows = inline.total(super::row::count(app, ui.session.face()));
+    let rows = inline.total(super::row::count(app, ui, ui.session.face()));
     let at = (first(ctx.tokens.line, ui.session.scroll()) + under).min(rows.saturating_sub(1));
     let top = inline.base(at);
     let Some(path) = standing(app, top) else {
@@ -126,7 +126,7 @@ fn said(text: &str, kind: Kind) -> Pin {
 
 /// The open file's scopes whose opening lines have gone above the slot each would stand in.
 fn scoped(ctx: &Ctx, body: Rect, app: &AppState, ui: &Ui, inline: &Inline) -> Vec<Pin> {
-    let Some(doc) = app.workspace.active().map(|open| open.new.document()) else {
+    let Some(doc) = super::row::edited(app, ui).map(|one| one.buffer.document()) else {
         return Vec::new();
     };
     let (line, scroll) = (ctx.tokens.line, ui.session.scroll());
