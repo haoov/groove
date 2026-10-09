@@ -36,7 +36,8 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceView(_)
             | Target::ResourceContainer(_)
             | Target::ResourceSection(_)
-            | Target::ResourceOpen(_),
+            | Target::ResourceOpen(_)
+            | Target::ResourceCopy(..),
         ) => Focus::Workspace,
         Some(
             Target::File(_)

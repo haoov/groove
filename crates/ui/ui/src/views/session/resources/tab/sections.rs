@@ -10,6 +10,7 @@ use groove_ui_kit::text::{Label, ago};
 
 use super::super::list::plan::colour;
 use super::super::opened::{Link, Opened, Section, helm_release, lineage, served};
+use super::copy;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -22,6 +23,18 @@ pub(super) struct Fact {
     value: String,
     role: Role,
     open: Option<Link>,
+}
+
+impl Fact {
+    /// What a click copies: a name or an address, never a count or an age.
+    fn copied(&self) -> Option<&str> {
+        let head = self.value.split(" · ").next();
+        match self.key {
+            "node" | "pod ip" | "qos" => Some(&self.value),
+            "helm" | "priority" => head,
+            _ => None,
+        }
+    }
 }
 
 /// The fold mark, the section's name and what it holds; a click folds it.
@@ -166,7 +179,7 @@ fn placed(
 }
 
 /// The facts in rows of `ACROSS`, each its key then its value.
-pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact]) {
+pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact], last: Option<&str>) {
     let rows = facts.len().div_ceil(ACROSS);
     let lines = column_of(rect, &vec![Spec::default().height(ctx.tokens.row); rows]);
     for (line, chunk) in lines.iter().zip(facts.chunks(ACROSS)) {
@@ -177,23 +190,36 @@ pub(super) fn grid(ctx: &mut Ctx, rect: Rect, facts: &[Fact]) {
                 [Spec::default().width(ctx.tokens.aside_near), Spec::fill()],
             );
             Label::new(fact.key, ctx.styles.small(Role::Ghost)).draw(ctx, key);
-            let drawn = Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
-            if let Some(link) = &fact.open {
-                ctx.hit(drawn, Target::ResourceOpen(Box::new(link.clone())));
+            match fact.copied() {
+                Some(part) => {
+                    copy::Copied::new(&fact.value, fact.role, last)
+                        .open(fact.open.clone())
+                        .copies(part)
+                        .draw(ctx, value);
+                }
+                None => {
+                    Label::new(&fact.value, ctx.styles.small(fact.role)).draw(ctx, value);
+                }
             }
         }
     }
 }
 
 /// A key in the key column, `keys` wide, then its value.
-pub(super) fn pair(ctx: &mut Ctx, rect: Rect, (key, value): &(String, String), keys: f32) {
+pub(super) fn pair(
+    ctx: &mut Ctx,
+    rect: Rect,
+    (key, value): &(String, String),
+    (keys, last): (f32, Option<&str>),
+) {
     let [k, v] = row_in(rect, [Spec::default().width(keys), Spec::fill()]);
-    Label::new(key, ctx.styles.small(Role::Ghost)).draw(ctx, k);
-    Label::new(value, ctx.styles.small(Role::Text)).draw(ctx, v);
+    let copied = |text, role| copy::Copied::new(text, role, last);
+    copied(key, Role::Ghost).draw(ctx, k);
+    copied(value, Role::Text).draw(ctx, v);
 }
 
 /// One event: a warning's mark, its reason, how often, how long ago, and what it says.
-pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow) {
+pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow, last: Option<&str>) {
     let narrow = Spec::default().width(ctx.tokens.lg * 2.0);
     let wide = Spec::default().width(ctx.tokens.aside_mid);
     let mark = Spec::default().width(ctx.tokens.icon);
@@ -210,5 +236,5 @@ pub(super) fn event(ctx: &mut Ctx, rect: Rect, row: &EventRow) {
         .map(|at| ago(at.age_at(ctx.now)))
         .unwrap_or_default();
     Label::new(&when, ctx.styles.small(Role::Ghost)).draw(ctx, age);
-    Label::new(&row.message, ctx.styles.small(role)).draw(ctx, message);
+    copy::Copied::new(&row.message, role, last).draw(ctx, message);
 }

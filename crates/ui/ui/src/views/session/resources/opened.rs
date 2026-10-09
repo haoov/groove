@@ -53,6 +53,8 @@ pub struct Opened {
     pub scroll: f32,
     /// How far the YAML is scrolled sideways.
     pub across: f32,
+    /// The value last copied from the tab.
+    pub copied: Option<String>,
 }
 
 impl Opened {
@@ -64,6 +66,7 @@ impl Opened {
             shut: [Section::Annotations].into(),
             scroll: 0.0,
             across: 0.0,
+            copied: None,
         }
     }
 }

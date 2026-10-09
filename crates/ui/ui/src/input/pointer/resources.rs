@@ -32,6 +32,13 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
                 _ => Some((label.clone(), false)),
             };
         }
+        Target::ResourceCopy(text, _) => {
+            if let Some(tab) = held.tab_mut() {
+                tab.copied = Some(text.clone());
+            }
+            let copy = groove_controllers::cluster::Command::CopyValue { text: text.clone() };
+            return Some(vec![Command::Cluster(copy)]);
+        }
         Target::ResourceList => held.showing = None,
         Target::ResourceRow(uid) => {
             let open = app.session.selected()?;
@@ -42,6 +49,12 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
         _ => return None,
     }
     Some(Vec::new())
+}
+
+/// A ctrl+click on a link: its object's tab, not a copy.
+pub(super) fn followed(ui: &mut Ui, link: resources::Link) -> Vec<Command> {
+    ui.session.resources.open(link);
+    Vec::new()
 }
 
 /// A click on an object's tab, in the strip or inside it. False for any other target.

@@ -8,8 +8,8 @@ use groove_ui_kit::layout::{Spec, column_of, row_in};
 use groove_ui_kit::text::Label;
 
 use super::super::opened::{Link, Opened, lineage, selecting, served};
+use super::copy;
 use crate::ctx::Ctx;
-use crate::hit::Target;
 
 /// One line of a column: a tag, a name, what follows it, the tab it opens; set in by `depth`.
 pub(super) struct Entry {
@@ -98,14 +98,14 @@ fn owned(app: &AppState, tab: &Opened, object: &Described) -> Vec<Entry> {
     out
 }
 
-pub(super) fn draw(ctx: &mut Ctx, rect: Rect, columns: &Columns) {
+pub(super) fn draw(ctx: &mut Ctx, rect: Rect, columns: &Columns, last: Option<&str>) {
     let [owned, uses, used] = row_in(rect, [Spec::fill(), Spec::fill(), Spec::fill()]);
-    column(ctx, owned, "owned by", &columns.owned);
-    column(ctx, uses, "uses", &columns.uses);
-    column(ctx, used, "used by", &columns.used);
+    column(ctx, owned, ("owned by", last), &columns.owned);
+    column(ctx, uses, ("uses", last), &columns.uses);
+    column(ctx, used, ("used by", last), &columns.used);
 }
 
-fn column(ctx: &mut Ctx, rect: Rect, title: &str, entries: &[Entry]) {
+fn column(ctx: &mut Ctx, rect: Rect, (title, last): (&str, Option<&str>), entries: &[Entry]) {
     if entries.is_empty() {
         return;
     }
@@ -118,11 +118,11 @@ fn column(ctx: &mut Ctx, rect: Rect, title: &str, entries: &[Entry]) {
         .map(|one| ctx.measure(&one.tag, &style))
         .fold(0.0, f32::max);
     for (line, one) in lines[1..].iter().zip(entries) {
-        entry(ctx, *line, one, widest + ctx.tokens.sm);
+        entry(ctx, *line, one, (widest + ctx.tokens.sm, last));
     }
 }
 
-fn entry(ctx: &mut Ctx, rect: Rect, one: &Entry, tags: f32) {
+fn entry(ctx: &mut Ctx, rect: Rect, one: &Entry, (tags, last): (f32, Option<&str>)) {
     let indent = ctx.tokens.md * one.depth as f32;
     let [_, tag, rest] = row_in(
         rect,
@@ -139,12 +139,19 @@ fn entry(ctx: &mut Ctx, rect: Rect, one: &Entry, tags: f32) {
     } else {
         Role::Text
     };
-    let drawn = Label::new(&one.name, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.sm);
+    let style = ctx.styles.small(role);
+    match one.open.is_some() {
+        true => {
+            copy::Copied::new(&one.name, role, last)
+                .open(one.open.clone())
+                .left(ctx, &mut room, ctx.tokens.sm);
+        }
+        false => {
+            Label::new(&one.name, style).left(ctx, &mut room, ctx.tokens.sm);
+        }
+    }
     if let Some((text, role)) = &one.aside {
         Label::new(text, ctx.styles.small(*role)).draw(ctx, room);
-    }
-    if let Some(link) = &one.open {
-        ctx.hit(drawn, Target::ResourceOpen(Box::new(link.clone())));
     }
 }
 

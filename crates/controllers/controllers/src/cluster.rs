@@ -33,6 +33,8 @@ pub enum Command {
     Caret { key: Box<FollowKey>, edit: Edit },
     /// `cluster.copy`: what the caret holds in an object's YAML, to the clipboard.
     Copy { key: Box<FollowKey> },
+    /// `cluster.copy_value`: a value an object's tab shows, to the clipboard.
+    CopyValue { text: String },
     /// `cluster.age`: the time cells of every row written again for `now`.
     Age { now: Timestamp },
 }
@@ -50,6 +52,7 @@ impl Command {
             Command::Follow { .. } => "cluster.follow",
             Command::Caret { .. } => "cluster.caret",
             Command::Copy { .. } => "cluster.copy",
+            Command::CopyValue { .. } => "cluster.copy_value",
             Command::Usage { .. } => "cluster.usage",
             Command::HelmRevision { .. } => "cluster.helm_revision",
         }
@@ -85,6 +88,7 @@ pub fn dispatch(
                 .map(|one| one.selected());
             crate::workspace::copied(services, spawner, held.unwrap_or_default());
         }
+        Command::CopyValue { text } => crate::workspace::copied(services, spawner, text),
         Command::Usage { pod } => follows::usage(state, spawner, pod),
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),

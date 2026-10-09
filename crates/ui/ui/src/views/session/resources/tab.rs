@@ -1,6 +1,7 @@
 //! One object's tab: what it reads, and the view it shows, described or as YAML.
 
 mod card;
+mod copy;
 mod describe;
 mod relations;
 mod sections;
@@ -52,21 +53,17 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
         .config
         .cluster(&link.context)
         .map(|one| Role::Hue(one.hue));
-    let code = |role| ctx.styles.small(role);
-    let (context, faint, muted, text) = (
-        code(hue.unwrap_or(Role::Muted)),
-        code(Role::Ghost),
-        code(Role::Muted),
-        code(Role::Text),
-    );
-    Label::new(&link.context, context).left(ctx, &mut room, gap);
+    let faint = ctx.styles.small(Role::Ghost);
+    let last = tab.copied.as_deref();
+    let copied = |text, role| copy::Copied::new(text, role, last);
+    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut room, gap);
     if let Some(namespace) = &link.namespace {
         Label::new("›", faint).left(ctx, &mut room, gap);
-        Label::new(namespace, muted).left(ctx, &mut room, gap);
+        copied(namespace, Role::Muted).left(ctx, &mut room, gap);
     }
     Label::new("›", faint).left(ctx, &mut room, gap);
     Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut room, gap);
-    Label::new(&link.name, text).left(ctx, &mut room, gap);
+    copied(&link.name, Role::Text).left(ctx, &mut room, gap);
     if let Some((said, role)) = object.and_then(stands) {
         Badge::new(&said, role).at(ctx, room, room.x);
     }

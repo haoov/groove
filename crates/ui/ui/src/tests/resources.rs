@@ -10,6 +10,7 @@ use super::*;
 use crate::hit::Target;
 use crate::views::session::Tab;
 
+mod copy;
 mod list;
 mod tab;
 mod yaml;

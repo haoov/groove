@@ -9,6 +9,7 @@ use groove_ui_kit::text::{Label, ago};
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
 use super::super::opened::Opened;
+use super::copy;
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -50,12 +51,13 @@ pub(super) fn draw(
         return;
     };
     selector(ctx, strip, pod, shown);
-    headed(ctx, head, shown);
+    let last = tab.copied.as_deref();
+    headed(ctx, head, shown, last);
     let gauge_wide = Spec::default().width(ctx.tokens.aside_far);
     let [left, right, gauges] = row_in(body, [Spec::fill(), Spec::fill(), gauge_wide]);
     let (state, wiring) = facts(shown, ctx);
-    facts_column(ctx, left, &state);
-    facts_column(ctx, right, &wiring);
+    facts_column(ctx, left, &state, (false, last));
+    facts_column(ctx, right, &wiring, (true, last));
     groove_ui_kit::shape::side_rule(ctx, gauges, gauges.x, ctx.styles.line());
     let gauges = gauges.pad(Edges::across(ctx.tokens.md, 0.0));
     let used = usage.and_then(|one| one.containers.iter().find(|(name, ..)| *name == shown.name));
@@ -79,7 +81,7 @@ pub(super) fn draw(
 }
 
 /// The container's state, then its image.
-fn headed(ctx: &mut Ctx, head: Rect, shown: &Container) {
+fn headed(ctx: &mut Ctx, head: Rect, shown: &Container, last: Option<&str>) {
     let (said, role) = state(shown);
     let badge = Badge::new(&said, role).at(ctx, head, head.x);
     let image = Rect {
@@ -87,7 +89,7 @@ fn headed(ctx: &mut Ctx, head: Rect, shown: &Container) {
         w: head.right() - badge.right() - ctx.tokens.md,
         ..head
     };
-    Label::new(&shown.image, ctx.styles.small(Role::Muted)).draw(ctx, image);
+    copy::Copied::new(&shown.image, Role::Muted, last).draw(ctx, image);
 }
 
 /// A tab for each container, the init ones named so.
@@ -106,7 +108,8 @@ fn selector(ctx: &mut Ctx, strip: Rect, pod: &PodPart, shown: &Container) {
     }
 }
 
-fn facts_column(ctx: &mut Ctx, left: Rect, facts: &[Fact]) {
+/// The facts a line each; where `copies`, a click copies each value.
+fn facts_column(ctx: &mut Ctx, left: Rect, facts: &[Fact], (copies, last): (bool, Option<&str>)) {
     let row = Spec::default().height(ctx.tokens.row);
     let rows = column_of(left, &vec![row; facts.len()]);
     for (line, (key, value, role)) in rows.iter().zip(facts) {
@@ -115,7 +118,11 @@ fn facts_column(ctx: &mut Ctx, left: Rect, facts: &[Fact]) {
             [Spec::default().width(ctx.tokens.aside_near), Spec::fill()],
         );
         Label::new(key, ctx.styles.small(Role::Ghost)).draw(ctx, k);
-        Label::new(value, ctx.styles.small(*role)).draw(ctx, v);
+        let style = ctx.styles.small(*role);
+        match copies {
+            true => copy::Copied::new(value, *role, last).draw(ctx, v),
+            false => Label::new(value, style).draw(ctx, v),
+        };
     }
 }
 

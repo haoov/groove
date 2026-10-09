@@ -42,6 +42,7 @@ pub(super) fn draw(
     let keys = key_width(ctx, object);
     let heights: Vec<f32> = blocks.iter().map(|one| height(ctx, tab, one)).collect();
     let indexed: Vec<(usize, &Block)> = blocks.iter().enumerate().collect();
+    let last = tab.copied.as_deref();
     let extent = scrolled(
         ctx,
         room,
@@ -53,11 +54,11 @@ pub(super) fn draw(
                 sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
             }
             Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
-            Block::Summary(facts) => sections::grid(ctx, rect, facts),
-            Block::Relations(columns) => relations::draw(ctx, rect, columns),
+            Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
+            Block::Relations(columns) => relations::draw(ctx, rect, columns, last),
             Block::Card(pod) => card::draw(ctx, rect, (tab, pod), usage.as_ref()),
-            Block::Pair(pair) => sections::pair(ctx, rect, pair, keys),
-            Block::Event(row) => sections::event(ctx, rect, row),
+            Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
+            Block::Event(row) => sections::event(ctx, rect, row, last),
             Block::Gap => {}
             Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
         },

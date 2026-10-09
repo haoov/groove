@@ -53,6 +53,7 @@ pub(super) fn press(
         Some(Target::Split(edge)) => grab(ui, edge, x, y, metrics),
         Some(Target::Place(id)) => takes(ui, id),
         Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
+        Some(Target::ResourceCopy(_, Some(link))) if mods.ctrl => resources::followed(ui, *link),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
