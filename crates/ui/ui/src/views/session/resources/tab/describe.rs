@@ -25,6 +25,8 @@ enum Block<'a> {
     Pair(&'a (String, String)),
     Event(&'a groove_types::EventRow),
     Gap,
+    /// The hairline over a section that follows another.
+    Rule,
 }
 
 pub(super) fn draw(
@@ -57,6 +59,7 @@ pub(super) fn draw(
             Block::Pair(pair) => sections::pair(ctx, rect, pair, keys),
             Block::Event(row) => sections::event(ctx, rect, row),
             Block::Gap => {}
+            Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
         },
     );
     ctx.app.hits.scrolls(Scroller::Resources, extent);
@@ -69,6 +72,7 @@ fn height(ctx: &Ctx, tab: &Opened, block: &Block) -> f32 {
         Block::Relations(columns) => row * columns.rows() as f32,
         Block::Card(pod) => card::height(ctx, pod, tab),
         Block::Gap => ctx.tokens.md,
+        Block::Rule => ctx.tokens.sm,
         _ => row,
     }
 }
@@ -83,11 +87,13 @@ fn blocks<'a>(
     let parts = parts(app, (tab, object), events, now);
     let mut out = Vec::new();
     for (section, count, held) in parts {
+        if !out.is_empty() {
+            out.extend([Block::Gap, Block::Rule]);
+        }
         out.push(Block::Heading(section, count));
         if !tab.shut.contains(&section) {
             out.extend(held);
         }
-        out.push(Block::Gap);
     }
     out
 }
