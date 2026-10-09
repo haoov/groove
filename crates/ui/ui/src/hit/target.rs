@@ -76,6 +76,8 @@ pub enum Target {
     ClusterAdd(String),
     ClusterRemove(String),
     ClusterSet(String, groove_types::ClusterChange),
+    /// A context's dot, which opens the hues it can take.
+    ClusterHue(String),
     /// The Resources tab's list tab, a kind in its sidebar, its search, and one row of its list.
     ResourceList,
     ResourceKind(groove_types::KubeKind),

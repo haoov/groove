@@ -3,6 +3,7 @@
 use groove_controllers::delivery::Say;
 use groove_controllers::{Command, delivery, workspace};
 use groove_types::ReviewVerdict;
+use groove_ui_kit::base::style::Role;
 
 use crate::ctx::Ctx;
 use crate::hit::Target;
@@ -69,7 +70,7 @@ fn acts(of: &Of) -> &'static [Act] {
         Of::Worktree { mr: true, .. } => &WORKTREE_MR,
         Of::Worktree { mr: false, .. } => &WORKTREE,
         Of::Session(_) => &SESSION,
-        Of::Skills { .. } | Of::Mapping(_) => &[],
+        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) => &[],
     }
 }
 
@@ -78,6 +79,10 @@ pub fn rows(of: &Of) -> Vec<&str> {
         Of::Skills { offered, .. } => offered.iter().map(|one| one.label.as_str()).collect(),
         Of::Mapping(choices) if choices.options.is_empty() => vec![choices.empty],
         Of::Mapping(choices) => choices.options.iter().map(String::as_str).collect(),
+        Of::Hues(_) => groove_types::Hue::ALL
+            .iter()
+            .map(|one| one.name())
+            .collect(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }
 }
@@ -93,13 +98,31 @@ pub fn draw(ctx: &mut Ctx, open: &Menu) {
     };
     ctx.layer();
     let edge = ctx.styles.border();
-    menu(ctx, at, within, &rows, edge, Target::MenuRow);
+    let roles: Vec<Role> = match &open.of {
+        Of::Hues(_) => groove_types::Hue::ALL
+            .iter()
+            .map(|one| Role::Hue(*one))
+            .collect(),
+        _ => Vec::new(),
+    };
+    menu(ctx, at, within, (&rows, &roles), edge, Target::MenuRow);
 }
 
 /// A menu whose rows come with it: a skill sent, or a mapping slot given a value.
 fn offered(of: &Of, at: usize) -> Option<Picked> {
     match of {
         Of::Skills { session, offered } => Some(sent(session, offered.get(at))),
+        Of::Hues(context) => {
+            let hue = groove_types::Hue::ALL.get(at)?;
+            let set = groove_controllers::config::Command::SetCluster {
+                context: context.clone(),
+                change: groove_types::ClusterChange::Hue(*hue),
+            };
+            Some(Picked {
+                commands: vec![Command::Config(set)],
+                ..Picked::default()
+            })
+        }
         Of::Mapping(choices) => {
             let map = |change| groove_controllers::config::Command::Map {
                 source: choices.source,
