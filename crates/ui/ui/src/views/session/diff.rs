@@ -30,7 +30,7 @@ pub use blame::Spot;
 pub(crate) use blame::{rested, spot};
 pub(crate) use map::total as rows_of;
 pub(crate) use notes::Inline;
-pub(crate) use row::{line_at, text_at};
+pub(crate) use row::{edited, line_at, text_at};
 pub(crate) use scroll::scrolled;
 
 pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
@@ -49,7 +49,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         Some(false) => said(ctx, body, "Open a file in the sidebar."),
         None => {
             surface::rows(ctx, body, app, ui, &inline);
-            let numbers = surface::numbers(app, ui.session.face());
+            let numbers = surface::numbers(app, ui, ui.session.face());
             pinned::draw(ctx, body, app, ui, (&inline, numbers));
             finder::draw(ctx, body, ui);
         }

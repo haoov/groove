@@ -4,6 +4,7 @@ use groove_controllers::{AppState, Command};
 
 mod components;
 mod ctx;
+mod editor;
 mod hit;
 pub mod input;
 pub mod keymap;

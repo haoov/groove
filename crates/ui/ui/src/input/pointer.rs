@@ -98,7 +98,7 @@ fn extended(
         return Vec::new();
     }
     let edit = Edit::Extend(Motion::To(caret));
-    vec![Command::Workspace(workspace::Command::Edit(edit))]
+    vec![crate::editor::Editing::File.edit(edit)]
 }
 
 /// What was drawn under the point, acted on. Anywhere else closes the palette.

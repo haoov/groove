@@ -24,8 +24,8 @@ pub fn follow(ui: &mut Ui, app: &AppState, hits: &Hits, metrics: Metrics) {
     let tokens = metrics.tokens();
     let row = Inline::of(app, ui, Face::File, hits.wrap()).shifted(caret.line) as f32 * tokens.line;
     *ui.session.scroll_mut() = into_view(ui.session.scroll(), row, tokens.line, rect.h);
-    if let Some(file) = app.workspace.active() {
-        let to = across_at(ui, app, (&file.path, caret), (hits, metrics));
+    if let Some(editor) = crate::views::session::diff::edited(app, ui) {
+        let to = across_at(ui, app, (editor.path, caret), (hits, metrics));
         *ui.session.across_mut() = to;
     }
 }
@@ -38,7 +38,7 @@ pub(crate) fn across_at(
     (hits, metrics): (&Hits, Metrics),
 ) -> f32 {
     let across = ui.session.across();
-    match text_at(app, path, at.line) {
+    match text_at((app, ui), path, at.line) {
         Some((text, width)) => {
             across_to(across, display_of(&text, at.column, width), hits, metrics)
         }
@@ -65,8 +65,8 @@ fn across_to(across: f32, column: usize, hits: &Hits, metrics: Metrics) -> f32 {
 /// The caret of the file view, while it holds the keyboard.
 fn caret_of(ui: &Ui, app: &AppState) -> Option<Caret> {
     let here = ui.focus == Focus::Workspace && !ui.session.typing();
-    let file = app.workspace.active().filter(|_| here)?;
-    (ui.session.face() == Face::File).then(|| file.new.caret())
+    let editor = crate::views::session::diff::edited(app, ui).filter(|_| here)?;
+    (ui.session.face() == Face::File).then(|| editor.buffer.caret())
 }
 
 /// The least offset change that shows `[at, at + size)` in a window of `room`.

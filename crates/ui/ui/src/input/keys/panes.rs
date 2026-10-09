@@ -4,16 +4,22 @@ use groove_controllers::{AppState, Command, session, workspace};
 use groove_types::{Edit, Motion};
 
 use super::super::{Key, Modifiers};
+use crate::editor::Editing;
 use crate::keymap::{Action, Keymap};
 use crate::{Focus, Ui};
 
 /// The open buffer takes the keystroke: a motion, a change, or a save.
-pub(super) fn in_file(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap) -> Vec<Command> {
-    if app.workspace.active().is_none() {
+pub(super) fn in_file(
+    key: Key,
+    mods: Modifiers,
+    (ui, app): (&Ui, &AppState),
+    keymap: &Keymap,
+) -> Vec<Command> {
+    let Some(editing) = Editing::keyed(app, ui) else {
         return Vec::new();
-    }
+    };
     if mods.ctrl || mods.alt {
-        return bound(keymap, key, mods).into_iter().collect();
+        return bound(&editing, keymap, key, mods).into_iter().collect();
     }
     let edit = match key {
         Key::Char(c) if !mods.alt => Edit::Insert(c.to_string()),
@@ -21,13 +27,13 @@ pub(super) fn in_file(key: Key, mods: Modifiers, app: &AppState, keymap: &Keymap
         Key::Tab => Edit::Indent,
         Key::Backspace => Edit::Backspace,
         Key::Delete => Edit::Delete,
-        _ => return moved(key, mods).into_iter().collect(),
+        _ => return moved(&editing, key, mods).into_iter().collect(),
     };
-    vec![Command::Workspace(workspace::Command::Edit(edit))]
+    vec![editing.edit(edit)]
 }
 
 /// A motion, extending what the caret holds while shift is down.
-fn moved(key: Key, mods: Modifiers) -> Option<Command> {
+fn moved(editing: &Editing, key: Key, mods: Modifiers) -> Option<Command> {
     let motion = match key {
         Key::Left => Motion::Left,
         Key::Right => Motion::Right,
@@ -41,23 +47,22 @@ fn moved(key: Key, mods: Modifiers) -> Option<Command> {
         true => Edit::Extend(motion),
         false => Edit::Move(motion),
     };
-    Some(Command::Workspace(workspace::Command::Edit(edit)))
+    Some(editing.edit(edit))
 }
 
 /// What a bound chord asks of the buffer.
-fn bound(keymap: &Keymap, key: Key, mods: Modifiers) -> Option<Command> {
+fn bound(editing: &Editing, keymap: &Keymap, key: Key, mods: Modifiers) -> Option<Command> {
     let is = |action| keymap.is(action, key, mods);
-    let command = match () {
-        _ if is(Action::Save) => workspace::Command::SaveFile,
-        _ if is(Action::Undo) => workspace::Command::Edit(Edit::Undo),
-        _ if is(Action::Redo) => workspace::Command::Edit(Edit::Redo),
-        _ if is(Action::SelectAll) => workspace::Command::Edit(Edit::SelectAll),
-        _ if is(Action::Copy) => workspace::Command::Copy,
-        _ if is(Action::Cut) => workspace::Command::Cut,
-        _ if is(Action::Paste) => workspace::Command::Paste,
-        _ => return None,
-    };
-    Some(Command::Workspace(command))
+    match () {
+        _ if is(Action::Save) => editing.save(),
+        _ if is(Action::Undo) => Some(editing.edit(Edit::Undo)),
+        _ if is(Action::Redo) => Some(editing.edit(Edit::Redo)),
+        _ if is(Action::SelectAll) => Some(editing.edit(Edit::SelectAll)),
+        _ if is(Action::Copy) => Some(editing.copy(false)),
+        _ if is(Action::Cut) => Some(editing.copy(true)),
+        _ if is(Action::Paste) => Some(editing.paste()),
+        _ => None,
+    }
 }
 
 /// The list, or the commit message once the box has been clicked.

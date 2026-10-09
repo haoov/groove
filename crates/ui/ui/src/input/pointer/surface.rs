@@ -54,7 +54,7 @@ pub(super) fn landed(
     edits.extend(taken(ui.clicked));
     edits
         .into_iter()
-        .map(|edit| Command::Workspace(workspace::Command::Edit(edit)))
+        .map(|edit| crate::editor::Editing::File.edit(edit))
         .collect()
 }
 
@@ -186,7 +186,7 @@ pub(super) fn at(
 ) -> Option<(String, Caret)> {
     let (row, display) = row_at(hits, metrics, point)?;
     let (path, line) = diff::line_at(app, ui, (ui.session.face(), hits.wrap()), row)?;
-    let (text, width) = diff::text_at(app, &path, line)?;
+    let (text, width) = diff::text_at((app, ui), &path, line)?;
     Some((path, Caret::new(line, column_of(&text, display, width))))
 }
 

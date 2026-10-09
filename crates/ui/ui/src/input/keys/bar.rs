@@ -44,7 +44,7 @@ pub(super) fn finding(
         key if keymap.is(Action::FindPrevious, key, mods) => find.step(false),
         Key::Enter if find.typing => find.typing = false,
         key if find.typing => match typing(key, mods, &mut find.query) {
-            true => searched(find, app, view),
+            true => searched(ui, app, view),
             false => return Some(Vec::new()),
         },
         _ => return None,
@@ -73,10 +73,16 @@ fn took(field: &mut Field, act: impl FnOnce(&mut Field)) -> bool {
 }
 
 /// The matches read again for what the bar now holds.
-fn searched(find: &mut Finding, app: &AppState, view: crate::views::session::Face) {
-    find.hits = crate::views::session::find::found(app, view, find.query.text());
-    find.view = view;
-    find.at = 0;
+fn searched(ui: &mut Ui, app: &AppState, view: crate::views::session::Face) {
+    let query = ui
+        .session
+        .find
+        .as_ref()
+        .map(|find| find.query.text().to_string());
+    let hits = crate::views::session::find::found(app, ui, view, &query.unwrap_or_default());
+    if let Some(find) = ui.session.find.as_mut() {
+        (find.hits, find.view, find.at) = (hits, view, 0);
+    }
 }
 
 /// The surface scrolled to centre the match it stands on, which it holds as a selection.
@@ -111,7 +117,7 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
     }
     [Edit::Move(Motion::To(at)), Edit::Extend(Motion::To(end))]
         .into_iter()
-        .map(|edit| Command::Workspace(workspace::Command::Edit(edit)))
+        .map(|edit| crate::editor::Editing::File.edit(edit))
         .collect()
 }
 

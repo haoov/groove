@@ -134,8 +134,8 @@ fn one(
         spans,
         gutters: gutters(row, view, side),
         kind: kind(row, view, side),
-        caret: here.and_then(|open| on_row(caret(ui, open), row, open, file.indent)),
-        held: here.and_then(|open| row.new.and_then(|line| held(open, ui, line as usize))),
+        caret: here.and_then(|open| on_row(caret(ui, &open.new), row, open, file.indent)),
+        held: here.and_then(|open| row.new.and_then(|line| held(&open.new, ui, line as usize))),
         ..Drawn::default()
     }
 }
@@ -178,7 +178,7 @@ fn spans_of(
 fn on_row(caret: Option<Caret>, row: &Row, file: &Opened, width: usize) -> Option<usize> {
     let caret = caret?;
     let shows = row.new == Some(caret.line as u32) && row.kind != RowKind::Removed;
-    let text = text_of(file, caret.line);
+    let text = text_of(&file.new, caret.line);
     shows.then(|| display_of(&text, caret.column, width))
 }
 
