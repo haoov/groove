@@ -30,7 +30,13 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceFilter
             | Target::ResourceKind(_)
             | Target::ResourceGroup(_)
-            | Target::ResourceSort(_),
+            | Target::ResourceSort(_)
+            | Target::ResourceTab(_)
+            | Target::ResourceClose(_)
+            | Target::ResourceView(_)
+            | Target::ResourceContainer(_)
+            | Target::ResourceSection(_)
+            | Target::ResourceOpen(_),
         ) => Focus::Workspace,
         Some(
             Target::File(_)

@@ -94,11 +94,11 @@ fn extended(
     let Some((path, caret)) = at(ui, app, hits, metrics, (x, y)) else {
         return Vec::new();
     };
-    if !holds(app, &path) {
-        return Vec::new();
+    let editing = crate::editor::Editing::keyed(app, ui);
+    match (holds(app, ui, &path), editing) {
+        (true, Some(editing)) => vec![editing.edit(Edit::Extend(Motion::To(caret)))],
+        _ => Vec::new(),
     }
-    let edit = Edit::Extend(Motion::To(caret));
-    vec![crate::editor::Editing::File.edit(edit)]
 }
 
 /// What was drawn under the point, acted on. Anywhere else closes the palette.

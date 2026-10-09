@@ -3,7 +3,7 @@
 use groove_controllers::{AppState, Command};
 
 use crate::hit::{Hits, Picks, Target};
-use crate::views::session::resources::{self, Dragged, How, Scoping};
+use crate::views::session::resources::{self, Dragged, How, ResourcesUi, Scoping};
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -17,8 +17,7 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
             return Some(commands);
         }
         Target::ResourceKind(kind) => {
-            held.kind = Some(kind.clone());
-            held.scroll = 0.0;
+            (held.kind, held.scroll, held.showing) = (Some(kind.clone()), 0.0, None);
         }
         Target::ResourceSearch => (held.typing, held.filtering) = (true, false),
         Target::ResourceFilter => (held.filtering, held.typing) = (true, false),
@@ -33,10 +32,41 @@ pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<
                 _ => Some((label.clone(), false)),
             };
         }
-        Target::ResourceList | Target::ResourceRow(_) => {}
+        Target::ResourceList => held.showing = None,
+        Target::ResourceRow(uid) => {
+            let open = app.session.selected()?;
+            let link = resources::row_link(app, open, &ui.session.resources, uid)?;
+            ui.session.resources.open(link);
+        }
+        _ if tabbed(target, held) => {}
         _ => return None,
     }
     Some(Vec::new())
+}
+
+/// A click on an object's tab, in the strip or inside it. False for any other target.
+fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
+    match target {
+        Target::ResourceOpen(link) => held.open((**link).clone()),
+        Target::ResourceTab(at) => held.showing = Some(*at),
+        Target::ResourceClose(at) => held.close(*at),
+        _ => {
+            let Some(tab) = held.tab_mut() else {
+                return false;
+            };
+            match target {
+                Target::ResourceView(yaml) => (tab.yaml, tab.scroll) = (*yaml, 0.0),
+                Target::ResourceContainer(name) => tab.container = Some(name.clone()),
+                Target::ResourceSection(section) => {
+                    if !tab.shut.remove(section) {
+                        tab.shut.insert(*section);
+                    }
+                }
+                _ => return false,
+            }
+        }
+    }
+    true
 }
 
 /// A click while a scope panel is open: a line chosen, its × detaching; outside, the panel shuts.

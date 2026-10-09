@@ -1,5 +1,11 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
+mod follows;
+mod yamls;
+
+pub use follows::{Follow, Follows, Named};
+pub use yamls::Yamls;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use groove_objects::{Batch, Delta, Stop};
@@ -29,6 +35,7 @@ pub struct Store {
     namespaces: BTreeMap<String, Vec<String>>,
     /// When a time cell next reads differently.
     due: Option<Timestamp>,
+    pub follows: Follows,
 }
 
 impl Store {

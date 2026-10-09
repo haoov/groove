@@ -11,6 +11,8 @@ use crate::hit::Target;
 use crate::views::session::Tab;
 
 mod list;
+mod tab;
+mod yaml;
 
 pub(super) fn kind(group: &str, name: &str, plural: &str, namespaced: bool) -> KubeKind {
     KubeKind {

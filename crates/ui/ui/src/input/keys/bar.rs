@@ -93,10 +93,8 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
     let Some(hit) = find.here().cloned() else {
         return Vec::new();
     };
-    let holds = app
-        .workspace
-        .active()
-        .is_some_and(|open| open.path == hit.path);
+    let holds =
+        crate::views::session::diff::edited(app, ui).is_some_and(|one| one.path == hit.path);
     let row = Inline::of(app, ui, find.view, hits.wrap()).shifted(hit.row);
     let same = holds || find.view != Face::File;
     *ui.session.scroll_mut() = centred(row, metrics.tokens().line, hits, same);
@@ -115,9 +113,10 @@ fn reached(ui: &mut Ui, app: &AppState, (hits, metrics): (&Hits, Metrics)) -> Ve
         };
         return vec![Command::Workspace(open)];
     }
+    let editing = crate::editor::Editing::keyed(app, ui).unwrap_or(crate::editor::Editing::File);
     [Edit::Move(Motion::To(at)), Edit::Extend(Motion::To(end))]
         .into_iter()
-        .map(|edit| crate::editor::Editing::File.edit(edit))
+        .map(|edit| editing.edit(edit))
         .collect()
 }
 

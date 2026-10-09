@@ -192,3 +192,66 @@ fn a_session_attaches_a_known_context_on_a_namespace_or_whole_each_replacing_the
     run(&mut state, Cmd::Session(detach));
     assert!(held(&state).is_empty());
 }
+
+#[test]
+fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
+    use groove_cluster_service::Followed;
+    use groove_types::{Caret, Described, Edit, FollowKey, KubeKind, Motion};
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    let pods = KubeKind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Pod".into(),
+        plural: "pods".into(),
+        namespaced: true,
+        watchable: true,
+    };
+    let key = FollowKey::named("kind", &pods, Some("paxone"), "api-0");
+    let object = Described {
+        uid: "u1".into(),
+        name: "api-0".into(),
+        namespace: Some("paxone".into()),
+        labels: Vec::new(),
+        annotations: Vec::new(),
+        created: None,
+        owners: Vec::new(),
+        replicas: None,
+        selector: Vec::new(),
+        pod: None,
+        event: None,
+        yaml: "metadata:\n  name: api-0\n".into(),
+    };
+    state.cluster.store.follows.lease(&key, "tab");
+    state
+        .cluster
+        .store
+        .follows
+        .apply(&key, Followed::Reset(vec![object]));
+    let caret = |edit| {
+        Cmd::Cluster(Command::Caret {
+            key: Box::new(key.clone()),
+            edit,
+        })
+    };
+    dispatch(
+        caret(Edit::Move(Motion::Down)),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    dispatch(
+        caret(Edit::Insert("x".into())),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    let buffer = state
+        .cluster
+        .store
+        .follows
+        .yamls
+        .get(&key)
+        .expect("the yaml");
+    assert_eq!(buffer.caret(), Caret::new(1, 0));
+    assert!(!buffer.text().contains('x'));
+}

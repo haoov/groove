@@ -6,11 +6,11 @@ mod tests;
 
 use std::path::PathBuf;
 
-use groove_types::{KubeContext, KubeKind, Login, Result, WatchKey};
+use groove_types::{FollowKey, KubeContext, KubeKind, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_objects::{Batch, Delta, Stop};
-pub use store::{Store, Watched};
+pub use groove_objects::{Batch, Change, Delta, Followed, Stop};
+pub use store::{Follow, Follows, Named, Store, Watched, Yamls};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -66,6 +66,10 @@ pub enum Event {
         key: Box<WatchKey>,
         batch: Batch,
     },
+    Followed {
+        key: Box<FollowKey>,
+        batch: Followed,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -82,6 +86,7 @@ pub fn apply(state: &mut State, event: Event) {
         }
         Event::Kinds { context, kinds } => state.store.set_kinds(&context, kinds),
         Event::Watched { key, batch } => state.store.apply(&key, batch),
+        Event::Followed { key, batch } => state.store.follows.apply(&key, batch),
     }
 }
 
@@ -113,6 +118,26 @@ pub fn watcher(
     send: impl Fn(Batch) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
     groove_objects::watch(paths, key, stop, send)
+}
+
+/// The whole-object watcher of `key`, until `stop`; each batch goes through `send`.
+pub fn follower(
+    paths: Vec<PathBuf>,
+    key: FollowKey,
+    stop: &Stop,
+    send: impl Fn(Followed) + Send + Sync + 'static,
+) -> impl std::future::Future<Output = ()> + Send + 'static {
+    groove_objects::follow(paths, key, stop, send)
+}
+
+/// What each container of a pod uses now; none where the cluster runs no metrics-server.
+pub async fn usage(paths: Vec<PathBuf>, pod: Named) -> Result<Option<Usage>> {
+    groove_objects::usage(&paths, &pod.0, &pod.1, &pod.2).await
+}
+
+/// The latest revision of a Helm release.
+pub async fn helm_revision(paths: Vec<PathBuf>, release: Named) -> Result<Option<u32>> {
+    groove_objects::helm_revision(&paths, &release.0, &release.1, &release.2).await
 }
 
 /// Whether `context` signs in now.
