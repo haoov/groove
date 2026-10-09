@@ -3,7 +3,7 @@
 mod objects;
 
 use groove_cluster_service::Event as ClusterEvent;
-use groove_types::WatchKey;
+use groove_types::{Timestamp, WatchKey};
 
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
@@ -19,6 +19,10 @@ pub enum Command {
     Watch { reader: String, key: WatchKey },
     /// `cluster.release`: `reader` reads nothing; a watcher left unread stops a while later.
     Release { reader: String },
+    /// `cluster.list_namespaces`: the namespaces of a context, for the attach picker.
+    ListNamespaces { context: String },
+    /// `cluster.age`: the time cells of every row written again for `now`.
+    Age { now: Timestamp },
 }
 
 impl Command {
@@ -29,6 +33,8 @@ impl Command {
             Command::Discover { .. } => "cluster.discover",
             Command::Watch { .. } => "cluster.watch",
             Command::Release { .. } => "cluster.release",
+            Command::ListNamespaces { .. } => "cluster.list_namespaces",
+            Command::Age { .. } => "cluster.age",
         }
     }
 }
@@ -40,6 +46,8 @@ pub fn dispatch(command: Command, state: &mut AppState, _: &Services, spawner: &
         Command::Discover { context, again } => objects::discover(state, spawner, context, again),
         Command::Watch { reader, key } => objects::watch(state, spawner, &reader, key),
         Command::Release { reader } => objects::release(state, spawner, &reader),
+        Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
+        Command::Age { now } => state.cluster.store.age(now),
     }
 }
 

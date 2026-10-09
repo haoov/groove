@@ -1,9 +1,11 @@
 //! Data and pure rules. No IO, no async, nothing with a side effect.
 
 mod activity;
+mod aging;
 mod annotation;
 mod approval;
 mod attention;
+mod cells;
 mod chord;
 mod cluster;
 mod config;
@@ -13,6 +15,7 @@ mod editing;
 mod environment;
 mod error;
 pub mod front_matter;
+mod health;
 mod ids;
 pub mod json;
 mod mapping;
@@ -36,12 +39,15 @@ mod timeline;
 mod tests;
 
 pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, ToolCall};
+pub use aging::{Aging, agings, human_age};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
+pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};
 pub use cluster::{
-    Attached, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn, WatchKey,
+    Attached, Builtin, KindHeading, KubeAuth, KubeContext, KubeKind, Login, ObjectRow, TableColumn,
+    WatchKey,
 };
 pub use config::{
     ClusterChange, ClusterConfig, Config, ConfigView, EstimateUnit, FilterConfig, FontFamily,
@@ -56,6 +62,7 @@ pub use diff::{
 pub use editing::{Caret, Edit, Indent, Motion, Selection};
 pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
+pub use health::{Health, ready_health, status_health};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
 pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
@@ -63,7 +70,7 @@ pub use mr::{
     ReviewState, ReviewVerdict, Reviewer,
 };
 pub use naming::{explorer_branch, is_explorer_branch, names_session};
-pub use narrowing::{narrows, occurrences, score};
+pub use narrowing::{fuzzy, narrows, occurrences, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};

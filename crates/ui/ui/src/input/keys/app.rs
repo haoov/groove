@@ -33,6 +33,7 @@ pub(super) fn run(action: Action, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         Action::Overview => ui.session.tab = Tab::Overview,
         Action::Diff => ui.session.tab = Tab::Diff,
         Action::Files => ui.session.tab = Tab::Files,
+        Action::Resources if holds_clusters(app) => ui.session.tab = Tab::Resources,
         Action::Terminals => terminals(ui),
         Action::NewTerminal => return new_terminal(ui, selected),
         Action::Reload => return vec![Command::Workspace(workspace::Command::Load)],
@@ -94,4 +95,10 @@ pub(super) fn copied(app: &AppState) -> Vec<Command> {
         .clone()
         .map(|session| agent::Command::Copy { session });
     copy.map(Command::Agent).into_iter().collect()
+}
+
+fn holds_clusters(app: &AppState) -> bool {
+    app.session
+        .selected()
+        .is_some_and(|open| !open.clusters.is_empty())
 }

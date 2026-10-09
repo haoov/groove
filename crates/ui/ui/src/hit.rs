@@ -13,6 +13,9 @@ use groove_gfx::Rect;
 pub enum Picks {
     Repo,
     Branch,
+    /// The Resources tab's contexts, and its namespaces.
+    Contexts,
+    Namespaces,
 }
 
 /// What the pointer looks like over a region.
@@ -53,6 +56,8 @@ pub enum Scroller {
     /// The rail's own log.
     Feed,
     Settings,
+    /// The Resources tab's list.
+    Resources,
     /// One of the board's columns.
     Column(u8),
 }
@@ -68,13 +73,14 @@ impl Scroller {
             Scroller::Feed => 4,
             Scroller::Settings => 5,
             Scroller::Across => 6,
+            Scroller::Resources => 7,
             Scroller::Column(which) => OWN + which as usize,
         }
     }
 }
 
 /// The scrollers ahead of the board's columns.
-const OWN: usize = 7;
+const OWN: usize = 8;
 
 /// Where everything was drawn this frame.
 #[derive(Debug, Default)]

@@ -6,10 +6,10 @@ mod watch;
 #[cfg(test)]
 mod tests;
 
-pub use discovery::kinds;
+pub use discovery::{kinds, namespaces};
 pub use watch::{Batch, Delta, Stop, watch};
 
-use groove_types::{KubeKind, ObjectRow, TableColumn};
+use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp};
 
 fn kind_of(kind: groove_kube::Kind) -> KubeKind {
     KubeKind {
@@ -37,11 +37,15 @@ fn column_of(column: groove_kube::Column) -> TableColumn {
     TableColumn {
         name: column.name,
         priority: column.priority,
+        date: column.date,
     }
 }
 
-fn row_of(row: groove_kube::Row) -> ObjectRow {
+/// The row as it arrived at `received`, its time cells read against `columns`.
+fn row_of(row: groove_kube::Row, columns: &[TableColumn], received: Timestamp) -> ObjectRow {
+    let created = row.created.and_then(|at| Timestamp::parse(&at).ok());
     ObjectRow {
+        aging: groove_types::agings(columns, &row.cells, created, received),
         uid: row.uid,
         name: row.name,
         namespace: row.namespace,

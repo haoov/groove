@@ -129,7 +129,7 @@ fn a_found_context_is_added_written_changed_and_removed_and_an_unknown_one_refus
 }
 
 #[test]
-fn a_session_attaches_a_known_context_on_a_namespace_or_whole_and_keeps_it_on_disk() {
+fn a_session_attaches_a_known_context_on_a_namespace_or_whole_each_replacing_the_other() {
     use crate::session::Command as Session;
     use groove_types::Attached;
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
@@ -176,17 +176,18 @@ fn a_session_attaches_a_known_context_on_a_namespace_or_whole_and_keeps_it_on_di
     );
     run(&mut state, attach(on("kind", Some("paxone"))));
     assert_eq!(
-        state.errors.len(),
-        2,
-        "a namespace of a cluster held whole is refused"
+        held(&state),
+        [on("kind", Some("paxone"))],
+        "a namespace replaces the whole cluster"
     );
+    assert_eq!(state.errors.len(), 1);
     let stored = spawner
         .block_on(services.session.contents(&session))
         .expect("contents");
-    assert_eq!(stored.clusters, [on("kind", None)]);
+    assert_eq!(stored.clusters, [on("kind", Some("paxone"))]);
     let detach = Session::DetachCluster {
         session: session.clone(),
-        attached: on("kind", None),
+        attached: on("kind", Some("paxone")),
     };
     run(&mut state, Cmd::Session(detach));
     assert!(held(&state).is_empty());

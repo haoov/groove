@@ -45,10 +45,7 @@ pub fn attach(
     let Some(open) = state.session.get_mut(session) else {
         return state.failed(Error::not_found(format!("no open session {session}")));
     };
-    let replaced = match open.attach(attached.clone()) {
-        Ok(replaced) => replaced,
-        Err(e) => return state.failed(e),
-    };
+    let replaced = open.attach(attached.clone());
     let (service, id, now) = (services.session.clone(), session.clone(), Timestamp::now());
     record(spawner, async move {
         for one in &replaced {

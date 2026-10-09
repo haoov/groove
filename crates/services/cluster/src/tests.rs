@@ -71,6 +71,7 @@ fn pods(namespace: &str) -> groove_types::WatchKey {
             watchable: true,
         },
         namespace: Some(namespace.into()),
+        selector: None,
     }
 }
 
@@ -81,6 +82,7 @@ fn row(uid: &str, name: &str, status: &str) -> groove_types::ObjectRow {
         namespace: Some("paxone".into()),
         version: "1".into(),
         cells: vec![name.into(), status.into()],
+        aging: Vec::new(),
     }
 }
 
@@ -181,14 +183,28 @@ fn a_row_made_again_under_its_name_outlives_the_late_gone_of_the_one_before() {
 #[test]
 #[ignore]
 #[allow(clippy::print_stdout)]
-fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
+fn time_a_reset_of_30k_rows_then_batches_of_500_changes_and_an_age_tick() {
     use crate::{Batch, Delta};
+    use groove_types::{Aging, Timestamp};
     use std::time::Instant;
-    let named = |at: usize| row(&format!("u{at}"), &format!("pod-{at:05}"), "Running");
+    let named = |at: usize| groove_types::ObjectRow {
+        aging: vec![Aging {
+            cell: 1,
+            since: Timestamp::new(1_000 + at as i64 % 600),
+            said: 0,
+            lead: None,
+            turn: Timestamp::default(),
+        }],
+        ..row(
+            &format!("u{at}"),
+            &format!("api-{at:05}-7d9f8c6b5-x2k4p"),
+            "Running",
+        )
+    };
     let mut store = crate::Store::default();
     let key = pods("paxone");
     store.lease(&key, "list");
-    let rows: Vec<_> = (0..10_000).rev().map(named).collect();
+    let rows: Vec<_> = (0..30_000).rev().map(named).collect();
     let started = Instant::now();
     store.apply(
         &key,
@@ -197,22 +213,122 @@ fn time_a_reset_of_10k_rows_then_batches_of_500_changes() {
             rows,
         },
     );
-    println!("reset of 10k rows: {:?}", started.elapsed());
+    println!("reset of 30k rows: {:?}", started.elapsed());
     for run in 0..5 {
-        let fresh = 10_000 + run * 200;
-        let mut changes: Vec<Delta> = (0..250)
-            .map(|at| {
-                Delta::Put(row(
-                    &format!("u{}", at * 37),
-                    &format!("pod-{:05}", at * 37),
-                    "Pending",
-                ))
-            })
-            .collect();
-        changes.extend((fresh..fresh + 125).map(|at| Delta::Put(named(at))));
-        changes.extend((0..125).map(|at| Delta::Gone(named(run * 1000 + at * 3 + 1))));
+        let fresh = 30_000 + run * 200;
+        let mut changes: Vec<Delta> = (0..200).map(|at| Delta::Put(named(at * 37))).collect();
+        changes.extend((fresh..fresh + 150).map(|at| Delta::Put(named(at))));
+        changes.extend((0..150).map(|at| Delta::Gone(named(run * 1000 + at * 3 + 1))));
         let started = Instant::now();
         store.apply(&key, Batch::Changes(changes));
         println!("batch of 500 changes: {:?}", started.elapsed());
     }
+    for now in [1_700, 1_701] {
+        let started = Instant::now();
+        store.age(Timestamp::new(now));
+        println!("age tick at {now}: {:?}", started.elapsed());
+    }
+}
+
+#[test]
+fn a_failure_outlasts_a_relist_and_ends_once_a_watch_is_open() {
+    use crate::Batch;
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    store.apply(&key, Batch::Failed("watch refused".into()));
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows: vec![row("a", "api", "Running")],
+        },
+    );
+    assert_eq!(
+        store.watched(&key).and_then(|one| one.failed.as_deref()),
+        Some("watch refused")
+    );
+    store.apply(&key, Batch::Watching);
+    assert_eq!(
+        store.watched(&key).and_then(|one| one.failed.as_deref()),
+        None
+    );
+}
+
+#[test]
+fn a_row_with_an_age_is_due_at_once_and_each_tick_writes_it_and_waits_for_its_next_turn() {
+    use crate::{Batch, Delta};
+    use groove_types::{Aging, Timestamp};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let aged = |name: &str| groove_types::ObjectRow {
+        aging: vec![Aging {
+            cell: 1,
+            since: Timestamp::new(1_000),
+            said: 0,
+            lead: None,
+            turn: Timestamp::default(),
+        }],
+        ..row(name, name, "40s")
+    };
+    let rows = vec![aged("api")];
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows,
+        },
+    );
+    assert_eq!(store.due(), Some(Timestamp::default()));
+    store.age(Timestamp::new(1_179));
+    assert_eq!(
+        store.watched(&key).expect("watched").rows[0].cells[1],
+        "2m59s"
+    );
+    assert_eq!(store.due(), Some(Timestamp::new(1_180)));
+    store.apply(&key, Batch::Changes(vec![Delta::Put(aged("worker"))]));
+    assert_eq!(
+        store.due(),
+        Some(Timestamp::default()),
+        "a new row is written at once"
+    );
+    store.age(Timestamp::new(1_180));
+    let cells: Vec<&str> = store
+        .watched(&key)
+        .expect("watched")
+        .rows
+        .iter()
+        .map(|one| one.cells[1].as_str())
+        .collect();
+    assert_eq!(cells, ["3m", "3m"]);
+}
+
+#[test]
+fn a_row_born_and_changed_in_one_batch_stands_once_as_it_last_read() {
+    use crate::{Batch, Delta};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let rows = vec![row("a", "api", "Running")];
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows,
+        },
+    );
+    let changes = vec![
+        Delta::Put(row("j", "job-1", "Pending")),
+        Delta::Put(row("j", "job-1", "Running")),
+        Delta::Put(row("j", "job-1", "Completed")),
+    ];
+    store.apply(&key, Batch::Changes(changes));
+    let held = store.watched(&key).expect("watched");
+    let shown: Vec<(&str, &str)> = held
+        .rows
+        .iter()
+        .map(|one| (one.name.as_str(), one.cells[1].as_str()))
+        .collect();
+    assert_eq!(shown, [("api", "Running"), ("job-1", "Completed")]);
 }

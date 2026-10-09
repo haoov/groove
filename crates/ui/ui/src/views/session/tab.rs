@@ -11,6 +11,8 @@ pub enum Tab {
     Diff,
     /// The open files, one tab each, edited here.
     Files,
+    /// The objects of the clusters the session holds.
+    Resources,
 }
 
 impl Default for Face {
@@ -21,13 +23,14 @@ impl Default for Face {
 
 impl Tab {
     /// Every tab, in the order the strip shows them.
-    pub const ALL: [Tab; 3] = [Tab::Overview, Tab::Diff, Tab::Files];
+    pub const ALL: [Tab; 4] = [Tab::Overview, Tab::Diff, Tab::Files, Tab::Resources];
 
     pub fn label(self) -> &'static str {
         match self {
             Tab::Overview => "overview",
             Tab::Diff => "diff",
             Tab::Files => "files",
+            Tab::Resources => "resources",
         }
     }
 
@@ -35,7 +38,7 @@ impl Tab {
     pub fn has_sidebar(self) -> bool {
         match self {
             Tab::Overview => false,
-            Tab::Diff | Tab::Files => true,
+            Tab::Diff | Tab::Files | Tab::Resources => true,
         }
     }
 }

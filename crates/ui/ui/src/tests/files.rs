@@ -49,13 +49,6 @@ fn on_diff() -> Ui {
     ui
 }
 
-fn ctrl() -> crate::input::Modifiers {
-    crate::input::Modifiers {
-        ctrl: true,
-        ..crate::input::Modifiers::default()
-    }
-}
-
 #[test]
 fn a_file_is_grouped_by_its_directory_from_the_worktree_root() {
     let files = [

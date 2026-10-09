@@ -25,7 +25,7 @@ pub use groove_ui_kit::widgets::Corner;
 pub use hit::{Cursor, Hits, Target};
 pub use layout::{Edge, Split};
 pub use menu::{Menu, Of, Offer};
-pub use render::{frame_commands, view};
+pub use render::{ages_due, frame_commands, view};
 pub use views::board::BoardUi;
 pub use views::rail::RailUi;
 pub use views::session::{Asked, Naming, SessionUi, Tab};
@@ -113,6 +113,8 @@ pub enum Overlay {
     Losing(Losing),
     /// The write the review sheet shows.
     Examining(groove_types::ApprovalId),
+    /// A scope picker's panel: what the session holds, then what it could attach.
+    Scope(views::session::resources::Scoping),
 }
 
 /// What the pointer's button holds while it is down.
@@ -130,6 +132,8 @@ pub enum Held {
     AgentText,
     /// The agent's screen, its program sent the reports.
     AgentClick,
+    /// A column of the Resources list being made wider or narrower.
+    Column(views::session::resources::Dragged),
 }
 
 /// What the pointer is doing to the agent's screen.
@@ -195,6 +199,13 @@ impl Ui {
         }
     }
 
+    pub fn scoping_mut(&mut self) -> Option<&mut views::session::resources::Scoping> {
+        match &mut self.overlay {
+            Some(Overlay::Scope(one)) => Some(one),
+            _ => None,
+        }
+    }
+
     pub fn menu(&self) -> Option<&Menu> {
         match &self.overlay {
             Some(Overlay::Menu(one)) => Some(one),
@@ -217,11 +228,21 @@ impl Ui {
     }
 
     /// What a palette key did, applied: the palette down, Settings up; its commands returned.
-    pub(crate) fn closed_palette(&mut self, outcome: palette::Outcome) -> Vec<Command> {
+    pub(crate) fn closed_palette(
+        &mut self,
+        outcome: palette::Outcome,
+        app: &AppState,
+    ) -> Vec<Command> {
         if outcome.close {
             self.overlay = None;
         }
         let mut commands = outcome.commands;
+        if let (true, Some(open)) = (outcome.scoping, app.session.selected()) {
+            let scoping = views::session::resources::Scoping::asked(open);
+            let (scoping, listing) = scoping.opened(open, &self.session.resources);
+            self.overlay = Some(Overlay::Scope(scoping));
+            commands.extend(listing);
+        }
         if outcome.settings {
             commands.extend(self.open_settings());
         }

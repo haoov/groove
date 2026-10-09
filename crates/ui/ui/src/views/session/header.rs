@@ -1,3 +1,5 @@
+mod scope;
+
 use groove_controllers::AppState;
 use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
@@ -15,17 +17,15 @@ use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::{Label, elide, row};
 use groove_ui_kit::widgets::{Button, Text, lead, picker};
 
-/// The workspace's two first lines: what the session is, then what it points at.
-pub fn draw(ctx: &mut Ctx, app: &AppState) {
+/// The workspace's first lines: what the session is, what it points at, what Resources reads.
+pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui) {
     let rect = ctx.app.layout.header;
     groove_ui_kit::shape::ground(ctx, rect, Ground::Work);
     hairline(ctx, rect, ctx.styles.line());
 
     let tall = |height: f32| Spec::default().height(height);
-    let [top, under, _] = column_in(
-        rect,
-        [tall(ctx.tokens.header), tall(ctx.tokens.row), Spec::fill()],
-    );
+    let row = tall(ctx.tokens.row);
+    let [top, under, third, _] = column_in(rect, [tall(ctx.tokens.header), row, row, Spec::fill()]);
     let Some(open) = app.session.selected() else {
         let room = top.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
         Label::new("Groove", ctx.styles.title(Role::Text)).draw(ctx, room);
@@ -38,6 +38,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState) {
         .and_then(|one| one.url.as_deref());
     titled(ctx, top.until(until), open, page);
     pickers(ctx, under, app, open);
+    scope::draw(ctx, third, app, open, &ui.session.resources);
 }
 
 /// The session's own actions. Returns where they start, which the title stops at.
@@ -106,7 +107,8 @@ fn pickers(ctx: &mut Ctx, line: Rect, app: &AppState, open: &Open) {
     let held = worktree.and_then(|w| open.repos.iter().find(|r| r.id == w.repo));
     let (repo, branch) = named(open);
     let style = ctx.styles.body(Role::Text);
-    let x = line.x + ctx.tokens.md;
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
+    let x = lead(ctx, &mut room, Mark::Git, Role::Faint).right() + ctx.tokens.sm;
     let delivery = worktree.map(|w| app.delivery.row(&w.id, open.status_of(&w.id)));
     let until = match delivery {
         Some(_) => refresh(ctx, line, app),

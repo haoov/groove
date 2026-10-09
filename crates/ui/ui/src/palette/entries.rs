@@ -63,6 +63,11 @@ fn clusters(app: &AppState, open: &Open) -> Vec<Entry> {
             "Detach cluster",
             Action::DetachCluster,
         ));
+        out.push(Entry {
+            group: "Session",
+            label: "Select namespace".into(),
+            run: super::Run::Scope,
+        });
     }
     out
 }

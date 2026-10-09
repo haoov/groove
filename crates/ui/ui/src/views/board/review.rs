@@ -88,12 +88,14 @@ fn columns() -> [Column<'static, Target>; 2] {
             width: Width::Fill,
             end: false,
             sort: sort(By::Title),
+            edge: None,
         },
         Column {
             label: "updated",
             width: Width::Fit("00mo"),
             end: true,
             sort: sort(By::Updated),
+            edge: None,
         },
     ]
 }

@@ -1,8 +1,9 @@
 //! A kind's Table watched from a resourceVersion: each event as the change it makes to the rows.
 
+use futures_util::io::AsyncBufReadExt;
 use futures_util::{Stream, StreamExt};
 use http::header::ACCEPT;
-use kube::core::WatchEvent;
+use serde::Deserialize;
 
 use crate::table::{AS_TABLE, Query, raw};
 use crate::{Client, Column, Error, Result, Row};
@@ -39,26 +40,49 @@ impl Client {
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
         let context = self.context.clone();
-        let events = self
+        let lines = self
             .inner
-            .request_events::<raw::Table>(request)
+            .request_stream(request)
             .await
-            .map_err(|e| Error::of(&context, e))?;
-        Ok(events.map(move |event| match event {
-            Ok(event) => changes(&context, event),
-            Err(e) => Err(Error::of(&context, e)),
+            .map_err(|e| Error::of(&context, e))?
+            .lines();
+        Ok(lines.filter_map(move |line| {
+            let read = match line {
+                Ok(line) if line.trim().is_empty() => None,
+                Ok(line) => Some(changes(&context, &line)),
+                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => None,
+                Err(e) => Some(Err(Error::Unreachable {
+                    context: context.clone(),
+                    detail: e.to_string(),
+                })),
+            };
+            std::future::ready(read)
         }))
     }
 }
 
-fn changes(context: &str, event: WatchEvent<raw::Table>) -> Result<Vec<Change>> {
+/// One line of a watch, read in one pass; a bookmark's object stays loose, its shape varies.
+#[derive(Deserialize)]
+#[serde(tag = "type", content = "object", rename_all = "UPPERCASE")]
+enum Event {
+    Added(raw::Table),
+    Modified(raw::Table),
+    Deleted(raw::Table),
+    Bookmark(serde_json::Value),
+    Error(kube::core::Status),
+}
+
+fn changes(context: &str, line: &str) -> Result<Vec<Change>> {
+    let unreadable = |detail: String| Error::Unreadable {
+        context: context.to_string(),
+        detail,
+    };
+    let event: Event = serde_json::from_str(line).map_err(|e| unreadable(e.to_string()))?;
     let (table, gone) = match event {
-        WatchEvent::Added(table) | WatchEvent::Modified(table) => (table, false),
-        WatchEvent::Deleted(table) => (table, true),
-        WatchEvent::Bookmark(mark) => {
-            return Ok(vec![Change::Mark(mark.metadata.resource_version)]);
-        }
-        WatchEvent::Error(status) => return Err(Error::of(context, kube::Error::Api(status))),
+        Event::Added(table) | Event::Modified(table) => (table, false),
+        Event::Deleted(table) => (table, true),
+        Event::Bookmark(object) => return Ok(marked(&object).into_iter().collect()),
+        Event::Error(status) => return Err(Error::of(context, kube::Error::Api(status.boxed()))),
     };
     let mut out = Vec::new();
     if !table.columns.is_empty() {
@@ -73,4 +97,15 @@ fn changes(context: &str, event: WatchEvent<raw::Table>) -> Result<Vec<Change>> 
         });
     }
     Ok(out)
+}
+
+/// A bookmark's version: on the Table itself, or on its one row when the server converted it.
+fn marked(object: &serde_json::Value) -> Option<Change> {
+    let on_table = object.pointer("/metadata/resourceVersion");
+    let on_row = object.pointer("/rows/0/object/metadata/resourceVersion");
+    let version = on_table
+        .or(on_row)?
+        .as_str()
+        .filter(|one| !one.is_empty())?;
+    Some(Change::Mark(version.to_string()))
 }

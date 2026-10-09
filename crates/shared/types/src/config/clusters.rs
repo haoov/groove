@@ -33,6 +33,7 @@ impl ClusterConfig {
         match change {
             ClusterChange::ReadOnly(on) => self.read_only = on,
             ClusterChange::ArgoHub(on) => self.argo_hub = on,
+            ClusterChange::Hue(hue) => self.hue = hue,
         }
     }
 }
@@ -42,6 +43,7 @@ impl ClusterConfig {
 pub enum ClusterChange {
     ReadOnly(bool),
     ArgoHub(bool),
+    Hue(Hue),
 }
 
 /// The colour a context is drawn in, wherever it appears.
@@ -55,6 +57,19 @@ pub enum Hue {
     Teal,
     Flamingo,
     Sky,
+}
+
+impl Hue {
+    pub fn name(self) -> &'static str {
+        match self {
+            Hue::Sapphire => "sapphire",
+            Hue::Mauve => "mauve",
+            Hue::Pink => "pink",
+            Hue::Teal => "teal",
+            Hue::Flamingo => "flamingo",
+            Hue::Sky => "sky",
+        }
+    }
 }
 
 impl Hue {
