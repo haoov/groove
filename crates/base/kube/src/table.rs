@@ -87,7 +87,7 @@ impl Client {
 }
 
 /// Every byte outside the unreserved set, percent-encoded.
-fn encoded(value: &str) -> String {
+pub(crate) fn encoded(value: &str) -> String {
     let mut out = String::new();
     for byte in value.bytes() {
         match byte {

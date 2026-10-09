@@ -10,6 +10,7 @@ mod chord;
 mod cluster;
 mod config;
 mod delivery;
+mod described;
 mod diff;
 mod editing;
 mod environment;
@@ -24,6 +25,7 @@ mod naming;
 mod narrowing;
 mod note;
 mod panes;
+mod quantity;
 mod repo;
 mod review;
 mod routine;
@@ -55,6 +57,9 @@ pub use config::{
     PropertyNames, REDACTED, RoutinesConfig, SharedConfig, StatusMap, ThemeName, UiConfig,
 };
 pub use delivery::{MrDelivery, Standing, Step, WorktreeDelivery};
+pub use described::{
+    Condition, Container, Described, Ended, EventRow, FollowKey, Owner, PodPart, State, Usage,
+};
 pub use diff::{
     BlameLine, CommitEntry, DiffMode, DiffView, FileDiff, FileStatus, Hunk, LineMark, RepoDiff,
     Row, RowKind, TEXT_MAX_BYTES, subject_of,
@@ -73,6 +78,7 @@ pub use naming::{explorer_branch, is_explorer_branch, names_session};
 pub use narrowing::{fuzzy, narrows, occurrences, score};
 pub use note::{Anchor, Note, NoteOrigin, Said};
 pub use panes::Panes;
+pub use quantity::{Gauge, Pressure, bytes, cores, gauge, quantity};
 pub use repo::{PoolEntry, Repo, Worktree, WorktreeSpec, WorktreeStatus};
 pub use review::{ReviewMr, review_for, review_of};
 pub use routine::{Action, Routine, RoutineKind, Trigger};

@@ -36,13 +36,14 @@ pub enum Icon {
     Repeat,
     Branch,
     Kubernetes,
+    Copy,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 29] = [
+    pub(crate) const ALL: [Icon; 30] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -72,6 +73,7 @@ impl Icon {
         Icon::Repeat,
         Icon::Branch,
         Icon::Kubernetes,
+        Icon::Copy,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -105,6 +107,7 @@ impl Icon {
             Icon::Repeat => include_bytes!("../../../../assets/icons/repeat.svg"),
             Icon::Branch => include_bytes!("../../../../assets/icons/git-branch.svg"),
             Icon::Kubernetes => include_bytes!("../../../../assets/icons/kubernetes.svg"),
+            Icon::Copy => include_bytes!("../../../../assets/icons/copy.svg"),
         }
     }
 

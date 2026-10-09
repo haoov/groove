@@ -1,9 +1,11 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
+mod follows;
 mod objects;
 
 use groove_cluster_service::Event as ClusterEvent;
-use groove_types::{Timestamp, WatchKey};
+use groove_cluster_service::Named;
+use groove_types::{Edit, FollowKey, Timestamp, WatchKey};
 
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
@@ -21,6 +23,18 @@ pub enum Command {
     Release { reader: String },
     /// `cluster.list_namespaces`: the namespaces of a context, for the attach picker.
     ListNamespaces { context: String },
+    /// `cluster.follow`: `reader` reads the whole objects `key` names.
+    Follow { reader: String, key: Box<FollowKey> },
+    /// `cluster.usage`: a pod's usage, read once from metrics-server.
+    Usage { pod: Named },
+    /// `cluster.helm_revision`: a Helm release's latest revision, read once.
+    HelmRevision { release: Named },
+    /// `cluster.caret`: the caret or what it holds moved in an object's YAML; nothing writes.
+    Caret { key: Box<FollowKey>, edit: Edit },
+    /// `cluster.copy`: what the caret holds in an object's YAML, to the clipboard.
+    Copy { key: Box<FollowKey> },
+    /// `cluster.copy_value`: a value an object's tab shows, to the clipboard.
+    CopyValue { text: String },
     /// `cluster.age`: the time cells of every row written again for `now`.
     Age { now: Timestamp },
 }
@@ -35,17 +49,48 @@ impl Command {
             Command::Release { .. } => "cluster.release",
             Command::ListNamespaces { .. } => "cluster.list_namespaces",
             Command::Age { .. } => "cluster.age",
+            Command::Follow { .. } => "cluster.follow",
+            Command::Caret { .. } => "cluster.caret",
+            Command::Copy { .. } => "cluster.copy",
+            Command::CopyValue { .. } => "cluster.copy_value",
+            Command::Usage { .. } => "cluster.usage",
+            Command::HelmRevision { .. } => "cluster.helm_revision",
         }
     }
 }
 
-pub fn dispatch(command: Command, state: &mut AppState, _: &Services, spawner: &dyn Spawner) {
+pub fn dispatch(
+    command: Command,
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+) {
     match command {
         Command::ScanContexts => scan(state, spawner),
         Command::CheckContext { context } => check(state, spawner, context),
         Command::Discover { context, again } => objects::discover(state, spawner, context, again),
         Command::Watch { reader, key } => objects::watch(state, spawner, &reader, key),
-        Command::Release { reader } => objects::release(state, spawner, &reader),
+        Command::Release { reader } => {
+            objects::release(state, spawner, &reader);
+            follows::release(state, spawner, &reader);
+        }
+        Command::Follow { reader, key } => follows::follow(state, spawner, &reader, *key),
+        Command::Caret { key, edit } => {
+            state.cluster.store.follows.yamls.edit(&key, &edit);
+        }
+        Command::Copy { key } => {
+            let held = state
+                .cluster
+                .store
+                .follows
+                .yamls
+                .get(&key)
+                .map(|one| one.selected());
+            crate::workspace::copied(services, spawner, held.unwrap_or_default());
+        }
+        Command::CopyValue { text } => crate::workspace::copied(services, spawner, text),
+        Command::Usage { pod } => follows::usage(state, spawner, pod),
+        Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),
         Command::Age { now } => state.cluster.store.age(now),
     }

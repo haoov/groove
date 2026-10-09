@@ -4,6 +4,7 @@ pub mod agent_pane;
 pub mod bar;
 pub mod commit;
 pub mod diff;
+mod face;
 pub(crate) mod files;
 pub mod find;
 pub mod header;

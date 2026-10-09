@@ -93,7 +93,7 @@ pub(super) fn cut(state: &mut AppState, services: &Services, spawner: &dyn Spawn
     copied(services, spawner, held);
 }
 
-fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
+pub(crate) fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
     if held.is_empty() {
         return;
     }

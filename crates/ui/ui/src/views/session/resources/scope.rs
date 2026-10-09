@@ -35,6 +35,9 @@ pub struct ResourcesUi {
     pub widths: std::collections::BTreeMap<String, std::collections::BTreeMap<String, f32>>,
     /// The list's order as the last frame built it.
     pub kept: super::list::Kept,
+    /// The objects open in tabs beside the list, and the one shown; none is the list.
+    pub opened: Vec<super::opened::Opened>,
+    pub showing: Option<usize>,
     pub scroll: f32,
 }
 

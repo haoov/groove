@@ -241,43 +241,6 @@ impl Bar {
 }
 
 impl SessionUi {
-    pub fn face(&self) -> Face {
-        match self.tab {
-            Tab::Files => Face::File,
-            _ => Face::Stream(self.view),
-        }
-    }
-
-    /// How far the surface the tab shows is scrolled.
-    pub fn scroll(&self) -> f32 {
-        match self.face() {
-            Face::File => self.file,
-            Face::Stream(_) => self.diff,
-        }
-    }
-
-    pub fn scroll_mut(&mut self) -> &mut f32 {
-        match self.face() {
-            Face::File => &mut self.file,
-            Face::Stream(_) => &mut self.diff,
-        }
-    }
-
-    /// How far the surface the tab shows is scrolled sideways.
-    pub fn across(&self) -> f32 {
-        match self.face() {
-            Face::File => self.file_across,
-            Face::Stream(_) => self.diff_across,
-        }
-    }
-
-    pub fn across_mut(&mut self) -> &mut f32 {
-        match self.face() {
-            Face::File => &mut self.file_across,
-            Face::Stream(_) => &mut self.diff_across,
-        }
-    }
-
     /// Whether a bar has the keyboard.
     pub fn typing(&self) -> bool {
         self.bar.typing.is_some()

@@ -148,7 +148,11 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
         return typed_at_shell(text, app);
     }
     let editing = crate::editor::Editing::keyed(app, ui);
-    vec![editing.unwrap_or(crate::editor::Editing::File).paste()]
+    editing
+        .unwrap_or(crate::editor::Editing::File)
+        .paste()
+        .into_iter()
+        .collect()
 }
 
 /// The clipboard in the search while typing, else at a running sign-in.

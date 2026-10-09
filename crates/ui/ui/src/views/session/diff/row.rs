@@ -92,7 +92,7 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     let doc = buffer.document();
     let colours = ui
         .painted
-        .of(doc, editor.path, false, stamp, window.clone());
+        .of(doc, &editor.path, false, stamp, window.clone());
     let width = doc.indent().width();
     let hunked = editor.file.map(|file| &file.hunked);
     window

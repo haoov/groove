@@ -43,6 +43,10 @@ pub enum Delta {
 pub struct Stop(signal::Sender<bool>);
 
 impl Stop {
+    pub(crate) fn subscribe(&self) -> signal::Receiver<bool> {
+        self.0.subscribe()
+    }
+
     pub fn new() -> Self {
         Self(signal::channel(false).0)
     }

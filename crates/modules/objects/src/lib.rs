@@ -1,12 +1,19 @@
 //! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched.
 
+mod describe;
 mod discovery;
+mod follow;
+mod reads;
 mod watch;
+mod yaml;
 
 #[cfg(test)]
 mod tests;
 
+pub use describe::describe;
 pub use discovery::{kinds, namespaces};
+pub use follow::{Change, Followed, follow};
+pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
 
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp};

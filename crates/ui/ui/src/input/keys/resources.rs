@@ -21,7 +21,7 @@ pub(super) fn chord(
     let up = ui.session.tab == Tab::Resources && !open.clusters.is_empty();
     let held = &mut ui.session.resources;
     match () {
-        _ if up && keymap.is(Action::Find, key, mods) => {
+        _ if up && held.showing.is_none() && keymap.is(Action::Find, key, mods) => {
             (held.finding, held.typing, held.filtering) = (true, true, false);
         }
         _ if up && keymap.is(Action::OpenPath, key, mods) => {

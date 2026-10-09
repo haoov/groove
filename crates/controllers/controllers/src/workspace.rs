@@ -9,6 +9,7 @@ mod paths;
 mod search;
 
 use crate::asker::Asker;
+pub(crate) use editor::copied;
 use groove_types::{DiffMode, Edit, Selection};
 
 use self::diff::{mark_read, reread, show};

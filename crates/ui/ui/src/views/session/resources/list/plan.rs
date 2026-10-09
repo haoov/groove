@@ -86,7 +86,7 @@ pub(super) enum Reads {
     Ready,
 }
 
-pub(super) fn colour(health: groove_types::Health) -> Role {
+pub(crate) fn colour(health: groove_types::Health) -> Role {
     match health {
         groove_types::Health::Good => Role::Ok,
         groove_types::Health::Waiting => Role::Warn,

@@ -59,17 +59,31 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out.extend(schemas(app, ui));
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
     out.extend(resources::wants(app, up, &ui.session.resources));
-    if ages_due(app, ui).is_some_and(|due| due <= metrics.now) {
+    out.extend(resources::tab_wants(
+        app,
+        up,
+        &ui.session.resources,
+        metrics.now,
+    ));
+    if app
+        .cluster
+        .store
+        .due()
+        .is_some_and(|due| due <= metrics.now)
+        && up
+    {
         let age = groove_controllers::cluster::Command::Age { now: metrics.now };
         out.push(Command::Cluster(age));
     }
     out
 }
 
-/// When a time cell of the Resources list next reads differently, while the list shows.
+/// When the Resources panel next changes on its own: a time cell turns, a pod's usage is due.
 pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
-    up.then(|| app.cluster.store.due()).flatten()
+    let held = &ui.session.resources;
+    let due = [app.cluster.store.due(), resources::tab_due(app, held)];
+    up.then(|| due.into_iter().flatten().min()).flatten()
 }
 
 /// Each source's properties, read once while Providers shows its mapping.

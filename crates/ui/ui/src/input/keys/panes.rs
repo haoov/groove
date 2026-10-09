@@ -60,7 +60,7 @@ fn bound(editing: &Editing, keymap: &Keymap, key: Key, mods: Modifiers) -> Optio
         _ if is(Action::SelectAll) => Some(editing.edit(Edit::SelectAll)),
         _ if is(Action::Copy) => Some(editing.copy(false)),
         _ if is(Action::Cut) => Some(editing.copy(true)),
-        _ if is(Action::Paste) => Some(editing.paste()),
+        _ if is(Action::Paste) => editing.paste(),
         _ => None,
     }
 }

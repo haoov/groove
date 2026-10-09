@@ -9,6 +9,7 @@ use groove_controllers::{AppState, Command, workspace};
 use groove_types::{Caret, DiffView, Edit, Motion, Selection};
 
 use crate::components::{code_at, first};
+use crate::editor::Editing;
 use crate::hit::{Chars, Hits, Scroller, Target};
 use crate::input::follow::reaching;
 use crate::views::session::{Face, Tab, diff};
@@ -40,10 +41,11 @@ pub(super) fn landed(
     let Some((path, caret)) = at(ui, app, hits, metrics, point) else {
         return Vec::new();
     };
-    if app.workspace.readonly() {
+    let editing = Editing::keyed(app, ui).unwrap_or(Editing::File);
+    if !editing.lands(app) {
         return Vec::new();
     }
-    if !holds(app, &path) {
+    if !holds(app, ui, &path) {
         let open = workspace::Command::OpenFile {
             path,
             at: Some(Selection::at(caret)),
@@ -52,10 +54,7 @@ pub(super) fn landed(
     }
     let mut edits = vec![Edit::Move(Motion::To(caret))];
     edits.extend(taken(ui.clicked));
-    edits
-        .into_iter()
-        .map(|edit| crate::editor::Editing::File.edit(edit))
-        .collect()
+    edits.into_iter().map(|edit| editing.edit(edit)).collect()
 }
 
 /// What a click of its own takes: one lands the caret, two a word, three the line.
@@ -149,8 +148,8 @@ pub(super) fn blamed(ui: &mut Ui, sha: String) -> Vec<Command> {
 }
 
 /// Whether the buffer being edited is this file.
-pub(super) fn holds(app: &AppState, path: &str) -> bool {
-    app.workspace.active().is_some_and(|open| open.path == path)
+pub(super) fn holds(app: &AppState, ui: &Ui, path: &str) -> bool {
+    diff::edited(app, ui).is_some_and(|one| one.path == path)
 }
 
 /// A file's rows hidden or shown again, with what stands above them held still.

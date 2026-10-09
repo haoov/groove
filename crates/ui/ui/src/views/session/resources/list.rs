@@ -5,6 +5,7 @@ use groove_controllers::session_service::Open;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Health, KubeKind, ObjectRow, WatchKey};
 use groove_ui_kit::base::ground::Ground;
+use groove_ui_kit::base::mark::Mark;
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
@@ -14,7 +15,7 @@ use groove_ui_kit::widgets::{Cell, Column, Rows, Search, Shown, Sorted, Tab, Tab
 mod order;
 
 pub use order::Kept;
-mod plan;
+pub(super) mod plan;
 
 use self::plan::{Plan, Reads, colour, plan};
 use super::scope::{self, ResourcesUi};
@@ -29,17 +30,20 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, body: Rect) {
     let held = &ui.session.resources;
     let band = Spec::default().height(ctx.tokens.row + ctx.tokens.sm);
     let [strip, mut body] = column_in(body, [band, Spec::fill()]);
-    if held.finding || !held.search.is_empty() {
-        let [bar, rest] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-        found(ctx, bar, held);
-        body = rest;
-    }
     let keys = scope::keys(app, open, held);
     let picked = (keys.as_slice(), held.search.text(), held.sort.as_ref());
     let order = held.kept.of(app, picked, || ordered(app, &keys, held));
     let rows = resolved(app, &keys, &order);
     let kind = scope::kind(app, open, held);
-    title(ctx, strip, kind.as_ref(), rows.len());
+    title(ctx, strip, (kind.as_ref(), rows.len()), held);
+    if let Some(tab) = held.tab() {
+        return super::tab::draw(ctx, body, app, (ui, tab));
+    }
+    if held.finding || !held.search.is_empty() {
+        let [bar, rest] = column_in(body, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
+        found(ctx, bar, held);
+        body = rest;
+    }
     if let Some((said, role)) = standing(app, open, held, &keys) {
         let line = body.pad(Edges::all(ctx.tokens.md));
         let [line, _] = column_in(line, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
@@ -73,21 +77,37 @@ fn found(ctx: &mut Ctx, line: Rect, held: &ResourcesUi) {
         .draw(ctx, line);
 }
 
-/// The list's own tab: the kind and how many rows it holds.
-fn title(ctx: &mut Ctx, strip: Rect, kind: Option<&KubeKind>, count: usize) {
+/// The list's own tab, its kind and how many rows it holds, then a tab for each object open.
+fn title(
+    ctx: &mut Ctx,
+    strip: Rect,
+    (kind, count): (Option<&KubeKind>, usize),
+    held: &ResourcesUi,
+) {
     groove_ui_kit::shape::ground(ctx, strip, Ground::Band);
     hairline(ctx, strip, ctx.styles.line());
-    let Some(kind) = kind else {
-        return;
-    };
-    let named = format!("{} · {count}", plural(kind));
     let mut room = strip;
     let ground = ctx.styles.ground();
-    Tab::new(&named, Target::ResourceList, true)
+    if let Some(kind) = kind {
+        let named = format!("{} · {count}", plural(kind));
+        Tab::new(&named, Target::ResourceList, held.showing.is_none())
+            .text(Text::Small)
+            .quiet(Role::Muted)
+            .ground(ground)
+            .left(ctx, &mut room, 0.0);
+    }
+    for (at, one) in held.opened.iter().enumerate() {
+        Tab::new(
+            &one.link.name,
+            Target::ResourceTab(at),
+            held.showing == Some(at),
+        )
         .text(Text::Small)
         .quiet(Role::Muted)
         .ground(ground)
+        .close(Mark::Close, Target::ResourceClose(at))
         .left(ctx, &mut room, 0.0);
+    }
 }
 
 /// `Pods`, from the kind's plural.

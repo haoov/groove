@@ -17,7 +17,7 @@ impl Ui {
             Scroller::Across => self.session.across(),
             Scroller::Overview => self.session.overview,
             Scroller::Settings => self.settings.scroll,
-            Scroller::Resources => self.session.resources.scroll,
+            Scroller::Resources => self.session.resources.scroll(),
             Scroller::Column(at) => self.board.scroll(List::ALL[at as usize]),
         }
     }
@@ -31,7 +31,7 @@ impl Ui {
             Scroller::Across => *self.session.across_mut() = to,
             Scroller::Overview => self.session.overview = to,
             Scroller::Settings => self.settings.scroll = to,
-            Scroller::Resources => self.session.resources.scroll = to,
+            Scroller::Resources => *self.session.resources.scroll_mut() = to,
             Scroller::Column(at) => self.board.scrolled(List::ALL[at as usize], to),
         }
     }
