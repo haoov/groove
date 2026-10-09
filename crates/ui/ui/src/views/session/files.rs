@@ -233,6 +233,6 @@ pub(super) fn noted(app: &AppState, path: &str) -> bool {
 }
 
 /// Where a list row's text starts past the mark that leads it at `indent`.
-fn text_at(ctx: &Ctx, indent: f32) -> f32 {
+pub(crate) fn text_at(ctx: &Ctx, indent: f32) -> f32 {
     indent + ctx.tokens.icon + ctx.tokens.xs
 }

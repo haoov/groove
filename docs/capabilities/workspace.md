@@ -46,6 +46,24 @@ write while one stands, and `workspace.leave_commit` puts the working tree back.
 **Blame** is read once a read of the file. A caret resting on a line for a quarter
 second shows `Author, 5d ago · sha` at its end.
 
+## Resources
+
+**The list reads the server's Table**: the columns `kubectl get` shows, for every kind,
+CRDs included. A list never waits on the cluster: its watchers run on the pool and send a
+batch a frame at most.
+
+**A watcher runs while the tab reads it.** The tab holds one reader over a watcher a
+context and namespace in scope, one a context for a kind not namespaced. A change of
+scope, kind or label lets go of them all and reads the new ones; a watcher left unread
+stops thirty seconds later.
+
+**A name word narrows in Groove, fuzzily — its characters in order; a `label=value` word
+goes to the server**, as a watcher of its own. Both are typed in the list's find bar; the sidebar's search narrows the kinds.
+
+**A status and a ready count wear the colour of how the object stands**: good, waiting,
+failing, or done. A row whose status is done keeps its ready count faint. A word Groove does
+not know stays plain.
+
 ## Annotations
 
 **A note is the session's own**: a line range on a file's new side, its words, its

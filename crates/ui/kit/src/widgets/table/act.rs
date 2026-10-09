@@ -9,6 +9,8 @@ use crate::widgets::{Button, Toggle};
 pub enum Act<'a, T> {
     Button(&'a str, T),
     Toggle(bool, T),
+    /// A mark in its own colour.
+    Mark(crate::base::mark::Mark, Role, T),
 }
 
 impl<T: Clone + PartialEq> Act<'_, T> {
@@ -22,6 +24,12 @@ impl<T: Clone + PartialEq> Act<'_, T> {
             }
             Act::Toggle(on, target) => {
                 Toggle::new(on, target).left(ctx, &mut room, 0.0);
+            }
+            Act::Mark(mark, role, target) => {
+                let hover = ctx.styles.hover();
+                Button::icon(mark, 0, target, role)
+                    .hover(hover)
+                    .left(ctx, &mut room, 0.0);
             }
         }
     }

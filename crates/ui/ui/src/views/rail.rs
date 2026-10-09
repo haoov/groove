@@ -66,6 +66,10 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
 
 /// The board. It carries the attention count when it is not zero.
 fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
+    let up = ui.showing(app) == Surface::Board;
+    if up {
+        groove_ui_kit::shape::ground(ctx, rect, Ground::Held);
+    }
     hoverable(ctx, rect, Target::Board);
     let (md, _size) = (ctx.tokens.md, ctx.tokens.icon);
     let mut room = rect.pad(Edges::across(md, md));
@@ -73,7 +77,7 @@ fn board_row(ctx: &mut Ctx, app: &AppState, ui: &Ui, rect: Rect) {
     lead(ctx, &mut room, Mark::Board, Role::Faint);
     Label::new("Board", ctx.styles.label(Role::Text)).draw(ctx, room);
     hairline(ctx, rect, ctx.styles.line());
-    if ui.showing(app) == Surface::Board {
+    if up {
         ruled(ctx, rect, ctx.styles.chosen());
     }
 }

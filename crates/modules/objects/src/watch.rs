@@ -5,12 +5,14 @@ use std::time::Duration;
 
 use futures_util::{Stream, StreamExt};
 use groove_kube::{Change, Client, Query};
-use groove_types::{ObjectRow, TableColumn, WatchKey};
+use groove_types::{ObjectRow, TableColumn, Timestamp, WatchKey};
 use tokio::sync::watch as signal;
+use tokio::time::Instant;
 
-/// How long changes gather before they go as one batch, and the most a batch holds.
+/// How long changes gather into a batch, the least time between batches, the most one holds.
 const GATHER: Duration = Duration::from_millis(16);
-const MOST: usize = 500;
+const PACE: Duration = Duration::from_millis(250);
+const MOST: usize = 10_000;
 const FIRST_WAIT: Duration = Duration::from_secs(1);
 const LONGEST_WAIT: Duration = Duration::from_secs(30);
 
@@ -22,6 +24,8 @@ pub enum Batch {
         rows: Vec<ObjectRow>,
     },
     Changes(Vec<Delta>),
+    /// A watch is open: changes arrive as they happen.
+    Watching,
     /// Why the watcher stands still; it tries again.
     Failed(String),
 }
@@ -93,14 +97,19 @@ async fn cycle(
     let query = Query {
         kind: &kind,
         namespace: key.namespace.as_deref(),
-        selector: None,
+        selector: key.selector.as_deref(),
     };
-    let mut version = listed(&client, query, send, *shown).await?;
+    let (mut version, mut columns) = listed(&client, query, send, *shown).await?;
     *shown = true;
     loop {
-        let opened = tokio::time::Instant::now();
-        let stream = client.watch(query, &version).await.map_err(said)?;
-        match watched(stream, &mut version, send).await {
+        let opened = Instant::now();
+        let stream = match client.watch(query, &version).await {
+            Ok(stream) => stream,
+            Err(groove_kube::Error::Expired { .. }) => return Ok(()),
+            Err(e) => return Err(said(e)),
+        };
+        send(Batch::Watching);
+        match watched(stream, (&mut version, &mut columns), send).await {
             Ok(()) => tokio::time::sleep_until(opened + FIRST_WAIT).await,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
             Err(e) => return Err(said(e)),
@@ -108,16 +117,18 @@ async fn cycle(
     }
 }
 
-/// The first page shown at once, the rest as they come; a relist swaps in whole. Returns the version.
+/// The first page shown at once, the rest as they come; a relist swaps in whole.
 async fn listed(
     client: &Client,
     query: Query<'_>,
     send: &impl Fn(Batch),
     shown: bool,
-) -> Result<String, String> {
+) -> Result<(String, Vec<TableColumn>), String> {
     let mut page = client.page(query, None).await.map_err(said)?;
-    let mut columns = Some(page.columns.drain(..).map(crate::column_of).collect());
-    let mut rows: Vec<ObjectRow> = page.rows.drain(..).map(crate::row_of).collect();
+    let table: Vec<TableColumn> = page.columns.drain(..).map(crate::column_of).collect();
+    let row_of = |row| crate::row_of(row, &table, Timestamp::now());
+    let mut columns = Some(table.clone());
+    let mut rows: Vec<ObjectRow> = page.rows.drain(..).map(row_of).collect();
     if !shown {
         let (columns, rows) = (
             columns.take().unwrap_or_default(),
@@ -127,7 +138,7 @@ async fn listed(
     }
     while let Some(next) = page.next.take() {
         page = client.page(query, Some(&next)).await.map_err(said)?;
-        let more = page.rows.drain(..).map(crate::row_of);
+        let more = page.rows.drain(..).map(row_of);
         match shown {
             true => rows.extend(more),
             false => send(Batch::Changes(more.map(Delta::Put).collect())),
@@ -139,7 +150,7 @@ async fn listed(
             rows: sorted(rows),
         });
     }
-    Ok(page.version)
+    Ok((page.version, table))
 }
 
 /// By namespace then name, the order the store keeps, so the main thread sorts nothing.
@@ -149,31 +160,40 @@ fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
 }
 
 /// The changes of one watch, gathered into batches, until the server ends it.
-async fn watched(
+pub(crate) async fn watched(
     stream: impl Stream<Item = groove_kube::Result<Vec<Change>>>,
-    version: &mut String,
+    (version, columns): (&mut String, &mut Vec<TableColumn>),
     send: &impl Fn(Batch),
 ) -> groove_kube::Result<()> {
     let mut stream = std::pin::pin!(stream);
     let mut held = Vec::new();
+    let mut sent = Instant::now()
+        .checked_sub(PACE)
+        .unwrap_or_else(Instant::now);
+    let mut due = Instant::now();
     loop {
         let next = match held.is_empty() {
             true => stream.next().await,
-            false => match tokio::time::timeout(GATHER, stream.next()).await {
+            false => match tokio::time::timeout_at(due, stream.next()).await {
                 Ok(next) => next,
                 Err(_) => {
-                    send(Batch::Changes(std::mem::take(&mut held)));
+                    flush(&mut held, send);
+                    sent = Instant::now();
                     continue;
                 }
             },
         };
         let Some(changes) = next else { break };
         let changes = changes.inspect_err(|_| flush(&mut held, send))?;
+        if held.is_empty() {
+            due = (Instant::now() + GATHER).max(sent + PACE);
+        }
         for change in changes {
-            held.extend(delta(change, version));
+            held.extend(delta(change, version, columns));
         }
         if held.len() >= MOST {
             flush(&mut held, send);
+            sent = Instant::now();
         }
     }
     flush(&mut held, send);
@@ -186,21 +206,22 @@ fn flush(held: &mut Vec<Delta>, send: &impl Fn(Batch)) {
     }
 }
 
-/// The change as a delta, the version moved on to where it stands.
-fn delta(change: Change, version: &mut String) -> Option<Delta> {
+/// The change as a delta, the version and the columns moved on to where they stand.
+fn delta(change: Change, version: &mut String, columns: &mut Vec<TableColumn>) -> Option<Delta> {
     match change {
         Change::Mark(at) => {
             *version = at;
             None
         }
-        Change::Columns(columns) => Some(Delta::Columns(
-            columns.into_iter().map(crate::column_of).collect(),
-        )),
+        Change::Columns(fresh) => {
+            *columns = fresh.into_iter().map(crate::column_of).collect();
+            Some(Delta::Columns(columns.clone()))
+        }
         Change::Put(row) => {
             version.clone_from(&row.version);
-            Some(Delta::Put(crate::row_of(row)))
+            Some(Delta::Put(crate::row_of(row, columns, Timestamp::now())))
         }
-        Change::Gone(row) => Some(Delta::Gone(crate::row_of(row))),
+        Change::Gone(row) => Some(Delta::Gone(crate::row_of(row, columns, Timestamp::now()))),
     }
 }
 

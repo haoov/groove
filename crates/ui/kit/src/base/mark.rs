@@ -46,6 +46,9 @@ pub enum Mark {
     Routine,
     /// The hue a cluster context wears.
     Context,
+    /// Before the repo and worktree pickers, and before the cluster ones.
+    Git,
+    Cluster,
 }
 
 impl Mark {
@@ -93,6 +96,8 @@ impl Mark {
             Mark::Behind => Icon::ArrowDown,
             Mark::Staged => Icon::Plus,
             Mark::Modified | Mark::Context => Icon::Dot,
+            Mark::Git => Icon::Branch,
+            Mark::Cluster => Icon::Kubernetes,
             Mark::Read => Icon::Check,
             Mark::Search => Icon::Glass,
             Mark::Down => Icon::CaretDown,

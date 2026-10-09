@@ -35,7 +35,11 @@ fn the_header_names_the_session_and_what_it_points_at() {
         .filter(|i| i.icon == groove_gfx::Icon::CaretDown)
         .filter(|i| head.contains(i.rect.x, i.rect.y))
         .count();
-    assert_eq!(carets, 2, "one per picker");
+    assert_eq!(carets, 3, "the repo, worktree and context pickers");
+    assert!(
+        texts.iter().any(|t| t == "no cluster"),
+        "the context picker"
+    );
 }
 
 #[test]

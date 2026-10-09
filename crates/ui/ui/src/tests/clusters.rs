@@ -86,3 +86,36 @@ fn each_line_lights_under_the_pointer_and_only_its_toggles_and_buttons_act() {
     );
     assert!(click(name, &mut ui, &app, &hits).is_empty());
 }
+
+#[test]
+fn a_context_s_dot_opens_the_hues_and_one_picked_becomes_its_colour() {
+    let (app, mut ui) = clusters();
+    let (_, hits) = drawn(&app, &ui);
+    let dot = hits
+        .rect_of(&Target::ClusterHue("hub".into()))
+        .expect("hub's dot");
+    click(dot, &mut ui, &app, &hits);
+    let (frame, hits) = crate::view(&app, &ui, window(), &mut groove_gfx::Fonts::embedded());
+    let texts: Vec<String> = frame
+        .layers()
+        .iter()
+        .flat_map(|layer| layer.texts.iter().map(|one| one.text.clone()))
+        .collect();
+    for hue in groove_types::Hue::ALL {
+        assert!(
+            texts.iter().any(|one| one == hue.name()),
+            "{}: {texts:?}",
+            hue.name()
+        );
+    }
+    let pink = hits.rect_of(&Target::MenuRow(2)).expect("the third hue");
+    let picked = click(pink, &mut ui, &app, &hits);
+    let set = config::Command::SetCluster {
+        context: "hub".into(),
+        change: ClusterChange::Hue(groove_types::Hue::Pink),
+    };
+    assert_eq!(picked, [Command::Config(set)]);
+    let mut held = groove_types::ClusterConfig::new("hub", &[]);
+    held.change(ClusterChange::Hue(groove_types::Hue::Pink));
+    assert_eq!(held.hue, groove_types::Hue::Pink);
+}

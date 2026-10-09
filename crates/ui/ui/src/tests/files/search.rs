@@ -7,7 +7,7 @@ fn a_chord_opens_the_search_bar_and_what_is_typed_narrows_the_list() {
     let app = with_files(&["src/one/alpha.rs", "src/two/beta.rs", "README.md"]);
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert!(
         ui.session.bar.typing.is_some(),
         "the keyboard is in the bar"
@@ -42,7 +42,7 @@ fn escape_leaves_the_list_as_it_was() {
     let app = with_files(&["src/one/alpha.rs", "src/two/beta.rs"]);
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     press(
         Key::Char('z'),
         crate::input::Modifiers::default(),
@@ -74,7 +74,7 @@ fn the_chord_shows_the_bar_it_opens_from_a_tab_that_has_no_sidebar() {
     let mut ui = Ui::default();
     ui.session.tab = Tab::Overview;
     ui.focus = crate::Focus::Workspace;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert!(
         ui.session.sidebar(),
         "the bar the chord opened is on screen"
@@ -100,7 +100,7 @@ fn the_chord_unfolds_a_sidebar_that_was_folded_away() {
     let mut ui = on_diff();
     ui.session.folded = true;
     ui.focus = crate::Focus::Workspace;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert!(!ui.session.folded, "the sidebar is back");
     assert!(ui.session.bar.typing.is_some());
 }
@@ -113,7 +113,7 @@ fn the_board_holds_no_file_list_so_the_chord_takes_nothing() {
         focus: crate::Focus::Workspace,
         ..Ui::default()
     };
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert!(
         ui.session.bar.typing.is_none(),
         "nothing invisible took the keyboard"
@@ -145,7 +145,7 @@ fn a_path_finds_a_file_that_never_changed() {
     );
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     for c in "beta".chars() {
         press(
             Key::Char(c),
@@ -165,7 +165,7 @@ fn a_changed_file_stands_before_an_unchanged_one_and_only_once() {
     with_paths(&mut app, &["src/one/alpha.rs", "src/one/alpha_test.rs"]);
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     for c in "alpha".chars() {
         press(
             Key::Char(c),
@@ -190,7 +190,7 @@ fn the_first_character_of_a_path_asks_for_the_worktrees_files() {
     let app = with_files(&["src/one/alpha.rs"]);
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     let asked = press(
         Key::Char('a'),
         crate::input::Modifiers::default(),
@@ -207,7 +207,7 @@ fn a_file_with_no_change_offers_nothing_to_stage() {
     with_paths(&mut app, &["src/two/beta.rs"]);
     let mut ui = on_diff();
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     for c in "beta".chars() {
         press(
             Key::Char(c),
@@ -264,7 +264,7 @@ fn opening_a_file_the_change_does_not_hold_shows_it_as_a_file() {
     let mut ui = on_diff();
     ui.session.view = groove_types::DiffView::Inline;
     ui.focus = crate::Focus::Sidebar;
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     for c in "beta".chars() {
         press(
             Key::Char(c),

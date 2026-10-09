@@ -53,7 +53,7 @@ impl Layout {
         let agent_bar = boxes.leaf(tall(tokens.bar));
         let agent = Spec::default().width(scale(split.agent));
         let agent = boxes.column(agent, &[screen, agent_bar]);
-        let header = boxes.leaf(tall(tokens.header + tokens.row + tokens.sm));
+        let header = boxes.leaf(tall(tokens.header + tokens.row * 2.0 + tokens.sm));
         let workspace = boxes.leaf(fill);
         let work = boxes.column(fill, &[header, workspace]);
         let list = boxes.leaf(fill);

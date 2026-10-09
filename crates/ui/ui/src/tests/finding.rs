@@ -85,11 +85,7 @@ fn the_chords_step_the_matches_and_wrap() {
     assert_eq!(at(&ui), 2);
     press(Key::Char('n'), ctrl(), &mut ui, &app);
     assert_eq!(at(&ui), 0, "the last match wraps to the first");
-    let back = Modifiers {
-        shift: true,
-        ..ctrl()
-    };
-    press(Key::Char('n'), back, &mut ui, &app);
+    press(Key::Char('p'), ctrl(), &mut ui, &app);
     assert_eq!(at(&ui), 2, "and back the other way");
 }
 
@@ -237,16 +233,16 @@ fn split_marks_a_match_on_the_side_that_shows_it_and_not_the_other() {
     ui.session.view = DiffView::Split;
     press(Key::Char('f'), ctrl(), &mut ui, &app);
     typed("= 11", &mut ui, &app);
-    let find = ui.session.find.as_ref().expect("the bar");
-    assert_eq!(find.count(), "1 / 1", "only the line that came holds it");
-
+    assert_eq!(ui.session.find.as_ref().expect("the bar").count(), "1 / 1");
     let (frame, hits) = view(&app, &ui, window(), &mut Fonts::embedded());
     let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
     let rows = hits.rect_of(&crate::hit::Target::Code).expect("the rows");
+    let rail = crate::layout::Layout::of(window(), &ui).rail.right();
+    let mark = |quad: &&groove_gfx::Quad| [styles.held(), styles.found()].contains(&quad.color);
     let marks: Vec<f32> = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.color == styles.held() || quad.color == styles.found())
+        .filter(|quad| quad.rect.x >= rail && mark(quad))
         .map(|quad| quad.rect.x)
         .collect();
     assert!(!marks.is_empty(), "the new side is marked");
@@ -353,7 +349,7 @@ fn the_chord_opens_the_bar_on_the_worktree_and_typing_searches_it() {
 fn the_two_terms_narrow_together_whichever_is_typed_first() {
     let app = app();
     let mut ui = on_code();
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     typed("ui", &mut ui, &app);
     assert_eq!(ui.session.bar.path.text(), "ui");
 
@@ -373,7 +369,7 @@ fn the_two_terms_narrow_together_whichever_is_typed_first() {
         "the text is looked for only under the path"
     );
 
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     assert_eq!(
         ui.session.bar.text.text(),
         "Aligned",
@@ -462,10 +458,10 @@ fn the_bar_stands_only_once_a_search_asks_for_it() {
 fn a_click_on_a_term_keeps_what_it_holds() {
     let app = app();
     let mut ui = crate::tests::sidebar_ui();
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     typed("src", &mut ui, &app);
     press(Key::Escape, Modifiers::default(), &mut ui, &app);
-    press(Key::Char('p'), ctrl(), &mut ui, &app);
+    press(Key::Char('p'), crate::tests::CTRL_SHIFT, &mut ui, &app);
     typed("ui", &mut ui, &app);
     press(Key::Enter, Modifiers::default(), &mut ui, &app);
 

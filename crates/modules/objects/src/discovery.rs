@@ -1,4 +1,4 @@
-//! A context's kinds: read from the disk while the cache is fresh, else asked of the cluster and kept.
+//! A context's kinds, read from the disk while the cache is fresh, else asked and kept; its namespaces.
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -65,4 +65,30 @@ async fn keep(file: &Path, kinds: &[Kind]) {
 
 pub(crate) fn failed(error: groove_kube::Error) -> Error {
     Error::invalid(error.to_string())
+}
+
+/// The names of every namespace of `context`, every page of them.
+pub async fn namespaces(paths: &[PathBuf], context: &str) -> Result<Vec<String>> {
+    let client = Client::connect(paths, context).await.map_err(failed)?;
+    let kind = Kind {
+        group: String::new(),
+        version: "v1".into(),
+        kind: "Namespace".into(),
+        plural: "namespaces".into(),
+        namespaced: false,
+        watchable: true,
+    };
+    let query = groove_kube::Query {
+        kind: &kind,
+        namespace: None,
+        selector: None,
+    };
+    let mut page = client.page(query, None).await.map_err(failed)?;
+    let mut names: Vec<String> = page.rows.drain(..).map(|row| row.name).collect();
+    while let Some(next) = page.next.take() {
+        page = client.page(query, Some(&next)).await.map_err(failed)?;
+        names.extend(page.rows.drain(..).map(|row| row.name));
+    }
+    names.sort();
+    Ok(names)
 }

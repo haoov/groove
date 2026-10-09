@@ -11,7 +11,7 @@ use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 const IDLE: Duration = Duration::from_secs(30);
 
 pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: String, again: bool) {
-    if !known(state, &context) {
+    if !known(state, &context) || !state.cluster.store.begin_discovery(&context) {
         return;
     }
     let paths = state.env.kubeconfig.clone();
@@ -24,6 +24,25 @@ pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: Str
                     Event::Cluster(ClusterEvent::Kinds { context, kinds }),
                     state,
                 ),
+                Err(e) => {
+                    state.cluster.store.end_discovery(&context);
+                    state.failed(e);
+                }
+            },
+        ) as Continuation
+    }));
+}
+
+pub(super) fn namespaces(state: &mut AppState, spawner: &dyn Spawner, context: String) {
+    if !known(state, &context) {
+        return;
+    }
+    let paths = state.env.kubeconfig.clone();
+    spawner.spawn(Box::pin(async move {
+        let names = groove_cluster_service::namespaces(paths, context.clone()).await;
+        Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match names {
+                Ok(names) => state.cluster.store.set_namespaces(&context, names),
                 Err(e) => state.failed(e),
             },
         ) as Continuation
@@ -40,7 +59,7 @@ pub(super) fn watch(state: &mut AppState, spawner: &dyn Spawner, reader: &str, k
     };
     let (sink, held) = (spawner.sink(), key.clone());
     let send = move |batch| {
-        let key = held.clone();
+        let key = Box::new(held.clone());
         sink.deliver(Box::new(
             move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
                 apply(Event::Cluster(ClusterEvent::Watched { key, batch }), state)

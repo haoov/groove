@@ -17,6 +17,8 @@ pub enum Action {
     Overview,
     Diff,
     Files,
+    Resources,
+    SelectNamespace,
     Terminals,
     NewTerminal,
     Reload,
@@ -67,7 +69,7 @@ const fn spec(
 use Action as A;
 use Ring::{App, Code, Terminal};
 
-pub const TABLE: [Spec; 31] = [
+pub const TABLE: [Spec; 33] = [
     spec(
         A::Palette,
         ("palette.open", "palette", "General"),
@@ -147,6 +149,12 @@ pub const TABLE: [Spec; 31] = [
         &["alt+shift+3"],
     ),
     spec(
+        A::Resources,
+        ("tab.resources", "resources tab", "Panes"),
+        App,
+        &["alt+shift+4"],
+    ),
+    spec(
         A::Terminals,
         ("terminals.toggle", "terminals", "Panes"),
         App,
@@ -188,9 +196,15 @@ pub const TABLE: [Spec; 31] = [
     ),
     spec(
         A::Find,
-        ("find.open", "find in the file", "Code"),
+        ("find.open", "find in the file or the list", "Code"),
         Code,
         &["ctrl+f"],
+    ),
+    spec(
+        A::SelectNamespace,
+        ("resources.select_namespace", "select a namespace", "Code"),
+        Code,
+        &["ctrl+shift+n"],
     ),
     spec(
         A::FindNext,
@@ -202,13 +216,17 @@ pub const TABLE: [Spec; 31] = [
         A::FindPrevious,
         ("find.previous", "previous match", "Code"),
         Code,
-        &["ctrl+shift+n"],
+        &["ctrl+p"],
     ),
     spec(
         A::OpenPath,
-        ("files.open_path", "open a file by path", "Code"),
+        (
+            "files.open_path",
+            "open a file by path, or search the kinds",
+            "Code",
+        ),
         Code,
-        &["ctrl+p"],
+        &["ctrl+shift+p"],
     ),
     spec(
         A::SearchFiles,

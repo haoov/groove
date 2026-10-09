@@ -63,7 +63,7 @@ pub enum Event {
         kinds: Vec<KubeKind>,
     },
     Watched {
-        key: WatchKey,
+        key: Box<WatchKey>,
         batch: Batch,
     },
 }
@@ -98,6 +98,11 @@ pub async fn kinds(
     again: bool,
 ) -> Result<Vec<KubeKind>> {
     groove_objects::kinds(&paths, &context, &cache, again).await
+}
+
+/// The names of every namespace of `context`.
+pub async fn namespaces(paths: Vec<PathBuf>, context: String) -> Result<Vec<String>> {
+    groove_objects::namespaces(&paths, &context).await
 }
 
 /// The watcher of `key`, until `stop`; each batch goes through `send`.

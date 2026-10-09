@@ -76,6 +76,18 @@ pub enum Target {
     ClusterAdd(String),
     ClusterRemove(String),
     ClusterSet(String, groove_types::ClusterChange),
+    /// A context's dot, which opens the hues it can take.
+    ClusterHue(String),
+    /// The Resources tab's list tab, a kind in its sidebar, its search, and one row of its list.
+    ResourceList,
+    ResourceKind(groove_types::KubeKind),
+    ResourceSearch,
+    ResourceFilter,
+    ResourceGroup(groove_types::KindHeading),
+    ResourceRow(String),
+    /// A column of the list, by its label: its header sorts by it, its edge drags its width.
+    ResourceSort(String),
+    ResourceEdge(String),
     /// A context's line, which only lights under the pointer.
     ClusterRow(String),
     /// A control of a Settings row: the preference a click on it sets.
@@ -166,6 +178,10 @@ pub enum Target {
     Actions,
     /// A row of the menu the right button opens.
     MenuRow(usize),
+    /// A scope panel: its body, a line of it, and a held line's ×.
+    ScopePanel,
+    ScopeLine(usize),
+    ScopeDetach(usize),
     /// The commit message, and what the box does now.
     Message,
     Do,
@@ -209,6 +225,7 @@ impl Target {
             }
             Target::Agent | Target::Shell(_) | Target::Pinned | Target::Palette => Cursor::Default,
             Target::Map | Target::Place(_) => Cursor::RowResize,
+            Target::ResourceEdge(_) => Cursor::ColResize,
             Target::Split(edge) => match edge.upright() {
                 true => Cursor::ColResize,
                 false => Cursor::RowResize,

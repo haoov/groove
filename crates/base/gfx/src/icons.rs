@@ -34,13 +34,15 @@ pub enum Icon {
     Folder,
     FolderOpen,
     Repeat,
+    Branch,
+    Kubernetes,
 }
 
 impl Icon {
     /// Rotations an icon can be drawn at: eighths of a turn.
     pub const TURNS: u8 = 8;
 
-    pub(crate) const ALL: [Icon; 27] = [
+    pub(crate) const ALL: [Icon; 29] = [
         Icon::Flag,
         Icon::Compass,
         Icon::Eye,
@@ -68,6 +70,8 @@ impl Icon {
         Icon::Folder,
         Icon::FolderOpen,
         Icon::Repeat,
+        Icon::Branch,
+        Icon::Kubernetes,
     ];
 
     fn svg(self) -> &'static [u8] {
@@ -99,6 +103,8 @@ impl Icon {
             Icon::Folder => include_bytes!("../../../../assets/icons/folder.svg"),
             Icon::FolderOpen => include_bytes!("../../../../assets/icons/folder-open.svg"),
             Icon::Repeat => include_bytes!("../../../../assets/icons/repeat.svg"),
+            Icon::Branch => include_bytes!("../../../../assets/icons/git-branch.svg"),
+            Icon::Kubernetes => include_bytes!("../../../../assets/icons/kubernetes.svg"),
         }
     }
 

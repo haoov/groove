@@ -17,12 +17,12 @@ pub fn size<A: App>(ctx: &mut Ctx<'_, A>, labels: &[&str]) -> (f32, f32) {
     (width, ctx.tokens.row * labels.len() as f32)
 }
 
-/// The rows with their top-left at `at`, kept inside `within`, a hit each.
+/// The rows with their top-left at `at`, kept inside `within`, a hit each, each in its role or the text's.
 pub fn menu<A: App>(
     ctx: &mut Ctx<'_, A>,
     at: (f32, f32),
     within: Rect,
-    labels: &[&str],
+    (labels, roles): (&[&str], &[Role]),
     border: Color,
     target: impl Fn(usize) -> A::Target,
 ) {
@@ -40,7 +40,9 @@ pub fn menu<A: App>(
         if ctx.hovered(&target(index)) {
             ctx.rounded(line, ctx.styles.hover(), round);
         }
-        let style = ctx.styles.body(Role::Text);
+        let style = ctx
+            .styles
+            .body(roles.get(index).copied().unwrap_or(Role::Text));
         row(ctx, line, ctx.tokens.md, label, style);
         ctx.hit(line, target(index));
     }

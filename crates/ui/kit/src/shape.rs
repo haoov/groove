@@ -62,6 +62,12 @@ pub fn ruled<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     ctx.quad(Rect::new(rect.x, under, rect.w, thickness), color);
 }
 
+/// What a list marks as the one it stands on: the held ground between the chosen rules.
+pub fn chosen<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect) {
+    ground(ctx, rect, Ground::Held);
+    ruled(ctx, rect, ctx.styles.chosen());
+}
+
 /// A hairline along the bottom of `rect`.
 pub fn hairline<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, color: Color) {
     let thickness = ctx.tokens.hairline;

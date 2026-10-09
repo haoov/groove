@@ -67,6 +67,7 @@ fn column<'a>(label: &'a str, width: Width<'a>) -> Column<'a, Target> {
         width,
         end: false,
         sort: None,
+        edge: None,
     }
 }
 
@@ -120,7 +121,7 @@ fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
     let blank = || Cell::small("", Role::Text);
     Shown {
         cells: vec![
-            blank().mark(Mark::Context, 0, hue),
+            blank(),
             Cell::label(one.context.as_str(), hue),
             blank(),
             blank(),
@@ -130,7 +131,11 @@ fn context<'a>(app: &AppState, one: &'a ClusterConfig) -> Shown<'a, Target> {
         under: Vec::new(),
         target: Some(Target::ClusterRow(name.clone())),
         acts: vec![
-            None,
+            Some(Act::Mark(
+                Mark::Context,
+                hue,
+                Target::ClusterHue(name.clone()),
+            )),
             None,
             switch(one.read_only, ClusterChange::ReadOnly(!one.read_only)),
             switch(one.argo_hub, ClusterChange::ArgoHub(!one.argo_hub)),

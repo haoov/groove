@@ -20,6 +20,7 @@ fn row(uid: &str, name: &str, status: &str) -> serde_json::Value {
         "cells": [name, "1/1", status, 0],
         "object": { "metadata": {
             "uid": uid, "name": name, "namespace": "paxone", "resourceVersion": "7",
+            "creationTimestamp": "2026-10-07T10:00:00Z",
             "managedFields": [{ "manager": "kubelet" }]
         } }
     })
@@ -29,9 +30,9 @@ fn table(rows: Vec<serde_json::Value>, columns: bool) -> serde_json::Value {
     let columns = match columns {
         true => serde_json::json!([
             { "name": "Name", "priority": 0 }, { "name": "Ready", "priority": 0 },
-            { "name": "Status", "priority": 0 }, { "name": "IP", "priority": 1 }
+            { "name": "Status", "priority": 0 }, { "name": "IP", "priority": 1, "type": "date" }
         ]),
-        false => serde_json::json!([]),
+        false => serde_json::Value::Null,
     };
     serde_json::json!({
         "kind": "Table", "apiVersion": "meta.k8s.io/v1",
@@ -80,7 +81,8 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
         page.columns[3],
         Column {
             name: "IP".into(),
-            priority: 1
+            priority: 1,
+            date: true,
         }
     );
     assert_eq!(page.version, "42");
@@ -90,6 +92,7 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
         name: "api-0".into(),
         namespace: Some("paxone".into()),
         version: "7".into(),
+        created: Some("2026-10-07T10:00:00Z".into()),
         cells: vec!["api-0".into(), "1/1".into(), "Running".into(), "0".into()],
     };
     assert_eq!(page.rows, [one]);
@@ -102,6 +105,8 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
         serde_json::json!({ "type": "ADDED", "object": table(vec![row("u2", "api-1", "Pending")], true) }),
         serde_json::json!({ "type": "DELETED", "object": table(vec![row("u1", "api-0", "Running")], false) }),
         serde_json::json!({ "type": "BOOKMARK", "object": { "kind": "Table", "apiVersion": "meta.k8s.io/v1", "metadata": { "resourceVersion": "50" } } }),
+        serde_json::json!({ "type": "BOOKMARK", "object": { "kind": "Table", "apiVersion": "meta.k8s.io/v1", "metadata": {},
+            "rows": [{ "cells": ["", "0/0", "", 0], "object": { "kind": "PartialObjectMetadata", "metadata": { "resourceVersion": "51" } } }] } }),
     ];
     let body: String = lines.iter().map(|one| format!("{one}\n")).collect();
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
@@ -132,12 +137,14 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
     assert!(matches!(&changes[0], Change::Columns(columns) if columns.len() == 4));
     assert!(matches!(&changes[1], Change::Put(row) if row.name == "api-1"));
     assert!(matches!(&changes[2], Change::Gone(row) if row.uid == "u1"));
-    assert_eq!(changes[3..], [Change::Mark("50".into())]);
-    let expired = client.watch(query, "1").await.expect("a watch");
-    let first = futures_util::StreamExt::collect::<Vec<_>>(expired).await;
+    assert_eq!(
+        changes[3..],
+        [Change::Mark("50".into()), Change::Mark("51".into())]
+    );
+    let expired = client.watch(query, "1").await.err();
     assert!(
-        matches!(first.as_slice(), [Err(Error::Expired { .. })]),
-        "{first:?}"
+        matches!(expired, Some(Error::Expired { .. })),
+        "{expired:?}"
     );
 }
 
@@ -195,4 +202,30 @@ async fn discovery_falls_back_to_one_group_at_a_time_and_says_what_lists_and_wat
         .map(|one| (one.plural.as_str(), one.watchable))
         .collect();
     assert_eq!(watchable, [("pods", true), ("bindings", false)]);
+}
+
+#[tokio::test]
+async fn a_watch_line_it_cannot_read_says_why_instead_of_a_status_0() {
+    let server = MockServer::start().await;
+    let body = format!(
+        "{}\n",
+        serde_json::json!({ "type": "ADDED", "object": { "rows": "none" } })
+    );
+    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(body))
+        .mount(&server)
+        .await;
+    let (_dir, client) = client(&server).await;
+    let kind = pods();
+    let query = Query {
+        kind: &kind,
+        namespace: Some("paxone"),
+        selector: None,
+    };
+    let stream = client.watch(query, "42").await.expect("a watch");
+    let read = futures_util::StreamExt::collect::<Vec<_>>(stream).await;
+    assert!(
+        matches!(read.as_slice(), [Err(Error::Unreadable { detail, .. })] if detail.contains("invalid type")),
+        "{read:?}"
+    );
 }

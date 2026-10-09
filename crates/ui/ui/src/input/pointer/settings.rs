@@ -24,6 +24,15 @@ pub(super) fn acted(
             }));
             return Some(Vec::new());
         }
+        Target::ClusterHue(context) => {
+            let under = hits.rect_of(target)?;
+            ui.overlay = Some(Overlay::Menu(Menu {
+                at: (under.x, under.bottom()),
+                corner: Corner::TopLeft,
+                of: Of::Hues(context.clone()),
+            }));
+            return Some(Vec::new());
+        }
         Target::SettingsBind(action) => {
             ui.settings.binding = Some(*action);
             return Some(Vec::new());

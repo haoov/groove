@@ -29,9 +29,11 @@ already has.
 ## Clusters management
 
 **A session holds cluster and namespace pairs, as it holds repos.** It attaches only a
-context Groove knows, from Settings › Clusters. A pair names one namespace; no namespace
-is the whole cluster, which replaces that context's namespaces; a namespace of a cluster
-held whole is refused. The pairs stay with the session across restarts and go with it.
+context Groove knows, from Settings › Clusters, from the scope pickers or the palette. The
+namespace panel lists that context's namespaces, and a name typed is taken too. A pair
+names one namespace; no namespace is the whole cluster, which replaces that context's
+namespaces; a namespace replaces a cluster held whole. The pairs stay with the session
+across restarts and go with it.
 
 ## Overview
 

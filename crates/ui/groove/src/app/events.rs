@@ -1,7 +1,7 @@
 //! The event loop's own half of `App`: what winit hands it, and what it hands back.
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use groove_controllers::{Command, Event, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
@@ -209,3 +209,10 @@ pub(super) const FIT_MS: u64 = 100;
 
 /// How often an idle window redraws its clocks.
 pub(super) const CLOCK_S: u64 = 15;
+
+/// How long until the second `due` begins.
+pub(super) fn until(due: groove_types::Timestamp) -> Duration {
+    let at = std::time::UNIX_EPOCH + Duration::from_secs(due.seconds().max(0) as u64);
+    at.duration_since(std::time::SystemTime::now())
+        .unwrap_or_default()
+}

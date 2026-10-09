@@ -54,6 +54,7 @@ pub struct SessionUi {
     pub naming: Option<Naming>,
     /// A note being typed, on the lines it will stand on.
     pub noting: Option<Noting>,
+    pub resources: crate::views::session::resources::ResourcesUi,
 }
 
 /// A note being typed in the surface: the lines it is about, and its words.
@@ -291,6 +292,6 @@ impl SessionUi {
 
     /// Whether the commit box stands under the sidebar: with it, unless a commit is shown.
     pub fn commits(&self) -> bool {
-        self.sidebar() && !self.reading
+        self.sidebar() && !self.reading && self.tab != Tab::Resources
     }
 }

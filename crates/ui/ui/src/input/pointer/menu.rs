@@ -138,7 +138,10 @@ pub(super) fn lose(ui: &mut Ui) -> Vec<Command> {
 }
 
 /// A click while a menu is open: a row of it, or anywhere to close it.
-pub(super) fn chosen(target: Option<Target>, ui: &mut Ui) -> Vec<Command> {
+pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    if matches!(ui.overlay, Some(Overlay::Scope(_))) {
+        return super::resources::scoped(target, ui, app);
+    }
     let menu = match ui.close(|one| matches!(one, Overlay::Menu(_))) {
         Some(Overlay::Menu(one)) => Some(one),
         _ => None,
@@ -185,5 +188,5 @@ pub(super) fn palette_row(at: usize, ui: &mut Ui, app: &AppState) -> Vec<Command
     };
     palette.selected = at;
     let outcome = palette.key(Key::Enter, app);
-    ui.closed_palette(outcome)
+    ui.closed_palette(outcome, app)
 }

@@ -1,4 +1,4 @@
-use groove_gfx::{Color, Rect, TextStyle};
+use groove_gfx::{Align, Color, Rect, TextStyle};
 
 use crate::base::ctx::{App, Ctx};
 use crate::base::mark::Mark;
@@ -14,8 +14,11 @@ pub struct Row<'a, T> {
     /// A text against the right edge, a shortcut beside its action.
     pub end: Option<(&'a str, TextStyle)>,
     pub background: Option<Color>,
-    /// A mark before the text, in the text's own colour, and its rotation.
+    /// A mark before the text and its rotation, in `tint` or the text's own colour.
     pub mark: Option<(Mark, u8)>,
+    pub tint: Option<Color>,
+    /// The mark drawn this size, centred where a full one stands.
+    pub mark_size: Option<f32>,
     /// What a click on the row means.
     pub target: Option<T>,
 }
@@ -30,6 +33,8 @@ impl<'a, T> Row<'a, T> {
             end: None,
             background: None,
             mark: None,
+            tint: None,
+            mark_size: None,
             target: None,
         }
     }
@@ -42,6 +47,16 @@ impl<'a, T> Row<'a, T> {
 
     pub fn mark(mut self, mark: Mark) -> Self {
         self.mark = Some((mark, 0));
+        self
+    }
+
+    pub fn tint(mut self, color: Color) -> Self {
+        self.tint = Some(color);
+        self
+    }
+
+    pub fn mark_size(mut self, size: f32) -> Self {
+        self.mark_size = Some(size);
         self
     }
 
@@ -76,8 +91,12 @@ pub fn list<A: App>(
         }
         let mut indent = item.indent;
         if let Some((mark, turn)) = item.mark {
-            let box_ = leading(ctx, line, line.x + indent);
-            ctx.icon(box_, mark, turn, item.style.color);
+            let full = leading(ctx, line, line.x + indent);
+            let box_ = match item.mark_size {
+                Some(size) => full.align((size, size), Align::Center, Align::Center),
+                None => full,
+            };
+            ctx.icon(box_, mark, turn, item.tint.unwrap_or(item.style.color));
             indent = after_mark(ctx, indent);
         }
         let right = ended(ctx, line, item.end);

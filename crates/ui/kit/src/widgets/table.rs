@@ -9,10 +9,9 @@ pub use cell::Cell;
 use groove_gfx::Rect;
 
 use crate::base::ctx::{App, Ctx};
-use crate::base::ground::Ground;
 use crate::base::mark::Mark;
 use crate::base::style::Role;
-use crate::shape::{hairline, hoverable, ruled};
+use crate::shape::{hairline, hoverable};
 
 /// How wide a column is.
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +20,8 @@ pub enum Width<'a> {
     Fill,
     /// As wide as this sample or the label, whichever is wider.
     Fit(&'a str),
+    /// This many pixels, as the user dragged it.
+    Fixed(f32),
 }
 
 pub struct Column<'a, T> {
@@ -30,6 +31,8 @@ pub struct Column<'a, T> {
     pub end: bool,
     /// What a click on the label asks for.
     pub sort: Option<T>,
+    /// What a press on the boundary after it holds, to drag its width.
+    pub edge: Option<T>,
 }
 
 /// Which column orders the rows, and which way.
@@ -115,21 +118,26 @@ impl<T: Clone + PartialEq> Table<'_, T> {
             .iter()
             .map(|column| match column.width {
                 Width::Fill => None,
+                Width::Fixed(wide) => Some(wide),
                 Width::Fit(sample) => {
                     let wide = ctx.measure(sample, &body);
                     Some(wide.max(ctx.measure(column.label, &label)) + ctx.tokens.icon)
                 }
             })
             .collect();
-        let gaps = md * (self.columns.len() + 1) as f32;
-        let taken: f32 = fitted.iter().flatten().sum();
+        let room = (rect.w - md * (self.columns.len() + 1) as f32).max(0.0);
+        let least = ctx.tokens.aside_near;
+        let wanted: f32 = fitted.iter().map(|one| one.unwrap_or(least)).sum();
         let fills = fitted.iter().filter(|one| one.is_none()).count().max(1);
-        let share = ((rect.w - gaps - taken) / fills as f32).max(0.0);
+        let (squeeze, share) = match wanted > room {
+            true => (room / wanted.max(1.0), 0.0),
+            false => (1.0, (room - wanted) / fills as f32),
+        };
         let mut x = rect.x + md;
         fitted
             .into_iter()
             .map(|wide| {
-                let w = wide.unwrap_or(share);
+                let w = wide.unwrap_or(least + share) * squeeze;
                 let span = (x, w);
                 x += w + md;
                 span
@@ -159,6 +167,10 @@ impl<T: Clone + PartialEq> Table<'_, T> {
                 cell = cell.mark(Mark::Down, turn, role);
             }
             cell.draw(ctx, rect, column.end);
+            if let Some(target) = column.edge.clone() {
+                let gap = Rect::new(x + w, line.y, ctx.tokens.md, line.h);
+                ctx.hit(gap, target);
+            }
         }
     }
 
@@ -171,8 +183,7 @@ impl<T: Clone + PartialEq> Table<'_, T> {
         selected: bool,
     ) {
         if selected {
-            crate::shape::ground(ctx, line, Ground::Raised);
-            ruled(ctx, line, ctx.styles.chosen());
+            crate::shape::chosen(ctx, line);
         }
         if let Some(target) = shown.target {
             hoverable(ctx, line, target);

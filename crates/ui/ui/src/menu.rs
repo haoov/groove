@@ -39,6 +39,8 @@ pub enum Of {
         session: groove_types::SessionId,
         offered: Vec<Offer>,
     },
+    /// The hues a context can take, from its dot in Settings.
+    Hues(String),
 }
 
 /// One skill a menu row stands for, with what it is sent.

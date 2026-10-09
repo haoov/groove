@@ -37,6 +37,7 @@ pub(super) fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui, living: &
         width: Width::Fill,
         end: false,
         sort: None,
+        edge: None,
     }];
     let tokens = ctx.tokens;
     let first = super::row::item(&tokens);

@@ -241,6 +241,7 @@ pub fn cursor(ui: &Ui, hits: &Hits, x: f32, y: f32) -> Cursor {
     match &ui.held {
         Some(Held::Edge(drag)) if drag.edge.upright() => Cursor::ColResize,
         Some(Held::Edge(_)) => Cursor::RowResize,
+        Some(Held::Column(_)) => Cursor::ColResize,
         _ => hits.cursor_at(x, y),
     }
 }
