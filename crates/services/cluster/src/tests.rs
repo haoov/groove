@@ -303,3 +303,32 @@ fn a_row_with_an_age_is_due_at_once_and_each_tick_writes_it_and_waits_for_its_ne
         .collect();
     assert_eq!(cells, ["3m", "3m"]);
 }
+
+#[test]
+fn a_row_born_and_changed_in_one_batch_stands_once_as_it_last_read() {
+    use crate::{Batch, Delta};
+    let mut store = crate::Store::default();
+    let key = pods("paxone");
+    store.lease(&key, "list");
+    let rows = vec![row("a", "api", "Running")];
+    store.apply(
+        &key,
+        Batch::Reset {
+            columns: Vec::new(),
+            rows,
+        },
+    );
+    let changes = vec![
+        Delta::Put(row("j", "job-1", "Pending")),
+        Delta::Put(row("j", "job-1", "Running")),
+        Delta::Put(row("j", "job-1", "Completed")),
+    ];
+    store.apply(&key, Batch::Changes(changes));
+    let held = store.watched(&key).expect("watched");
+    let shown: Vec<(&str, &str)> = held
+        .rows
+        .iter()
+        .map(|one| (one.name.as_str(), one.cells[1].as_str()))
+        .collect();
+    assert_eq!(shown, [("api", "Running"), ("job-1", "Completed")]);
+}

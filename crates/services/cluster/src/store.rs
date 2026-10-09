@@ -1,6 +1,6 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use groove_objects::{Batch, Delta, Stop};
 use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
@@ -162,7 +162,8 @@ impl Store {
 
 /// A batch in one pass: rows changed in place, the gone ones swept once, the new merged in.
 fn changed(one: &mut Watched, deltas: Vec<Delta>) {
-    let (mut fresh, mut gone) = (Vec::new(), Vec::new());
+    let (mut fresh, mut gone) = (Vec::<ObjectRow>::new(), Vec::new());
+    let mut born: HashMap<String, usize> = HashMap::new();
     for delta in deltas {
         match delta {
             Delta::Columns(columns) => one.columns = columns,
@@ -171,7 +172,13 @@ fn changed(one: &mut Watched, deltas: Vec<Delta>) {
                 .binary_search_by(|held| place(held).cmp(&place(&row)))
             {
                 Ok(at) => one.rows[at] = row,
-                Err(_) => fresh.push(row),
+                Err(_) => match born.get(&row.uid) {
+                    Some(at) => fresh[*at] = row,
+                    None => {
+                        born.insert(row.uid.clone(), fresh.len());
+                        fresh.push(row);
+                    }
+                },
             },
             Delta::Gone(row) => gone.push(row),
         }
