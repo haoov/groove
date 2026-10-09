@@ -147,7 +147,8 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if ui.focus == Focus::Terminal && ui.showing(app) == Surface::Session {
         return typed_at_shell(text, app);
     }
-    vec![Command::Workspace(workspace::Command::Paste)]
+    let editing = crate::editor::Editing::keyed(app, ui);
+    vec![editing.unwrap_or(crate::editor::Editing::File).paste()]
 }
 
 /// The clipboard in the search while typing, else at a running sign-in.

@@ -84,27 +84,28 @@ impl Finding {
 }
 
 /// Every match of `query` in what the view shows, in reading order.
-pub fn found(app: &AppState, view: Face, query: &str) -> Vec<Hit> {
+pub fn found(app: &AppState, ui: &crate::Ui, view: Face, query: &str) -> Vec<Hit> {
     if query.is_empty() {
         return Vec::new();
     }
     match view {
-        Face::File => in_file(app, query),
+        Face::File => in_file(app, ui, query),
         _ => in_change(app, query),
     }
 }
 
-/// The open file, whose rows are its own lines.
-fn in_file(app: &AppState, query: &str) -> Vec<Hit> {
-    let Some(open) = app.workspace.active() else {
+/// The buffer the editor shows, whose rows are its own lines.
+fn in_file(app: &AppState, ui: &crate::Ui, query: &str) -> Vec<Hit> {
+    let Some(editor) = crate::views::session::diff::edited(app, ui) else {
         return Vec::new();
     };
-    open.new
+    editor
+        .buffer
         .document()
         .search(query)
         .into_iter()
         .map(|found| Hit {
-            path: open.path.clone(),
+            path: editor.path.to_string(),
             row: found.line,
             line: Some(found.line),
             range: found.range,

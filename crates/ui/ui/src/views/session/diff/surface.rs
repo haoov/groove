@@ -59,7 +59,7 @@ fn surface(
     (side, clickable): (Side, bool),
 ) {
     let view = ui.session.face();
-    let total = inline.total(count(app, view));
+    let total = inline.total(count(app, ui, view));
     let scroll = scroll_of(ctx, ui, rect, total);
     let window = visible(ctx, rect, total, scroll);
     let slots: Vec<Slot> = window.clone().map(|row| inline.slot(row)).collect();
@@ -82,7 +82,7 @@ fn surface(
         said: said.as_ref(),
     };
     let lines = lines_of(ctx, app, held);
-    let numbers = numbers(app, view);
+    let numbers = numbers(app, ui, view);
     let across = across_of(ctx, ui, numbers, rect, &rows);
     if clickable {
         asks(ctx, rect, code_rows.clone(), numbers, (scroll, across));
@@ -145,7 +145,7 @@ pub(super) fn note_cols(ctx: &mut Ctx, body: Rect, app: &AppState, ui: &Ui) -> u
     let sample = "the quick brown fox jumps over the lazy dog";
     let words = ctx.styles.body(Role::Text);
     let each = ctx.measure(sample, &words) / sample.len() as f32 * NOTE_SLACK;
-    let text = chars_of(ctx, numbers(app, view), rect, (0.0, 0.0)).left;
+    let text = chars_of(ctx, numbers(app, ui, view), rect, (0.0, 0.0)).left;
     let mut boxes = Boxes::new();
     let note = boxes.leaf(Spec::default().grow(1.0));
     let by = boxes.leaf(Spec::default().width(each * NOTE_BY));
@@ -255,10 +255,10 @@ fn lined<'a>(ctx: &mut Ctx, row: &'a Drawn, gutters: &'a [&'a str]) -> Line<'a> 
 }
 
 /// How wide the line numbers stand: one column a side in split and file, two in inline.
-pub(super) fn numbers(app: &AppState, view: Face) -> Gutters {
+pub(super) fn numbers(app: &AppState, ui: &Ui, view: Face) -> Gutters {
     let digits = match view {
-        Face::File => match app.workspace.active() {
-            Some(file) => file.new.lines().to_string().len(),
+        Face::File => match super::row::edited(app, ui) {
+            Some(editor) => editor.buffer.lines().to_string().len(),
             None => 1,
         },
         _ => app.workspace.changes.digits(),

@@ -5,10 +5,11 @@ mod stream;
 use std::ops::Range;
 
 use groove_controllers::AppState;
-use groove_controllers::workspace_service::{At, Opened, display_of, shown};
+use groove_controllers::workspace_service::{At, Buffer, Opened, display_of, shown};
 use groove_types::{Caret, Highlight, LineMark, RowKind};
 
 use self::stream::streamed;
+use crate::editor::{Editing, Editor};
 use crate::views::session::Face;
 use crate::{Focus, Ui};
 
@@ -63,30 +64,40 @@ pub(super) fn drawn(
 }
 
 /// How many rows the view stands, all of it.
-pub(super) fn count(app: &AppState, view: Face) -> usize {
+pub(super) fn count(app: &AppState, ui: &Ui, view: Face) -> usize {
     match view {
-        Face::File => open(app).map_or(0, |file| file.new.lines().max(1)),
+        Face::File => edited(app, ui).map_or(0, |one| one.buffer.lines().max(1)),
         _ => app.workspace.changes.rows(),
     }
 }
 
+/// The worktree's open file, which the stream shows live where the change touches it.
 pub(super) fn open(app: &AppState) -> Option<&Opened> {
     app.workspace.active()
 }
 
-/// The lines of the open file as it is now, marked where the change touched them.
+/// The buffer the editor reads: the one the keyboard edits.
+pub(crate) fn edited<'a>(app: &'a AppState, ui: &Ui) -> Option<Editor<'a>> {
+    Editing::keyed(app, ui)?.editor(app)
+}
+
+/// The lines of the buffer as it is now, marked where the file's change touched them.
 fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
-    let Some(file) = open(app) else {
+    let Some(editor) = edited(app, ui) else {
         return Vec::new();
     };
-    let caret = caret(ui, file);
-    let stamp = (app.workspace.stamp, file.new.painted());
-    let doc = file.new.document();
-    let colours = ui.painted.of(doc, &file.path, false, stamp, window.clone());
-    let width = file.new.document().indent().width();
+    let buffer = editor.buffer;
+    let caret = caret(ui, buffer);
+    let stamp = (editor.stamp, buffer.painted());
+    let doc = buffer.document();
+    let colours = ui
+        .painted
+        .of(doc, editor.path, false, stamp, window.clone());
+    let width = doc.indent().width();
+    let hunked = editor.file.map(|file| &file.hunked);
     window
         .map(|at| {
-            let text = text_of(file, at);
+            let text = text_of(buffer, at);
             let (drawn, spans) = shown(&text, colours.of(at), width);
             Drawn {
                 text: drawn,
@@ -96,9 +107,13 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
                 caret: caret
                     .filter(|on| on.line == at)
                     .map(|on| display_of(&text, on.column, width)),
-                held: held(file, ui, at),
-                mark: file.hunked.marks.get(&(at as u32)).copied(),
-                words: columns_in(file.hunked.words.new.get(&(at as u32)), &text, width),
+                held: held(buffer, ui, at),
+                mark: hunked.and_then(|one| one.marks.get(&(at as u32)).copied()),
+                words: columns_in(
+                    hunked.and_then(|one| one.words.new.get(&(at as u32))),
+                    &text,
+                    width,
+                ),
                 found: matched(ui, at, &text, width),
                 standing: standing(ui, at, &text, width),
                 ..Drawn::default()
@@ -159,9 +174,9 @@ pub(crate) fn is_read(app: &AppState, path: &str) -> bool {
 }
 
 /// Where the caret is, while the workspace holds the keyboard.
-pub(super) fn caret(ui: &Ui, file: &Opened) -> Option<Caret> {
+pub(super) fn caret(ui: &Ui, buffer: &Buffer) -> Option<Caret> {
     let here = ui.focus == Focus::Workspace && !ui.session.typing();
-    here.then(|| file.new.caret())
+    here.then(|| buffer.caret())
 }
 
 /// The file and new-side line a row shows; a note's row shows none.
@@ -177,8 +192,8 @@ pub(crate) fn line_at(
     };
     match view {
         Face::File => {
-            let file = open(app)?;
-            (row < file.new.lines().max(1)).then(|| (file.path.clone(), row))
+            let editor = edited(app, ui)?;
+            (row < editor.buffer.lines().max(1)).then(|| (editor.path.to_string(), row))
         }
         _ => match app.workspace.changes.at(row)? {
             At::Head(_) => None,
@@ -191,10 +206,14 @@ pub(crate) fn line_at(
 }
 
 /// A line of any changed file, and how wide a tab reads in it.
-pub(crate) fn text_at(app: &AppState, path: &str, line: usize) -> Option<(String, usize)> {
-    if let Some(file) = open(app).filter(|file| file.path == path) {
-        let width = file.new.document().indent().width();
-        return Some((text_of(file, line), width));
+pub(crate) fn text_at(
+    (app, ui): (&AppState, &Ui),
+    path: &str,
+    line: usize,
+) -> Option<(String, usize)> {
+    if let Some(editor) = edited(app, ui).filter(|one| one.path == path) {
+        let width = editor.buffer.document().indent().width();
+        return Some((text_of(editor.buffer, line), width));
     }
     let file = app.workspace.changes.get(path)?;
     let at = file.hunked.layout.position(line as u32)?;
@@ -202,18 +221,17 @@ pub(crate) fn text_at(app: &AppState, path: &str, line: usize) -> Option<(String
 }
 
 /// What a caret holds on `line`, in the columns the row draws.
-pub(super) fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize, bool)> {
+pub(super) fn held(buffer: &Buffer, ui: &Ui, line: usize) -> Option<(usize, usize, bool)> {
     if ui.focus != Focus::Workspace {
         return None;
     }
-    let text = text_of(file, line);
+    let text = text_of(buffer, line);
     let chars = text.chars().count();
-    let (from, to, through) = file
-        .new
+    let (from, to, through) = buffer
         .selections()
         .iter()
         .find_map(|one| one.on(line, chars))?;
-    let width = file.new.document().indent().width();
+    let width = buffer.document().indent().width();
     Some((
         display_of(&text, from, width),
         display_of(&text, to, width),
@@ -222,6 +240,6 @@ pub(super) fn held(file: &Opened, ui: &Ui, line: usize) -> Option<(usize, usize,
 }
 
 /// The line as it is, for counting columns over what is drawn.
-pub(super) fn text_of(file: &Opened, line: usize) -> String {
-    file.new.line(line).unwrap_or_default().to_string()
+pub(super) fn text_of(buffer: &Buffer, line: usize) -> String {
+    buffer.line(line).unwrap_or_default().to_string()
 }
