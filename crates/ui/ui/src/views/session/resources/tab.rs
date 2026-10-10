@@ -1,5 +1,6 @@
 //! One object's tab: what it reads, and the view it shows, described or as YAML.
 
+mod argo;
 mod card;
 mod copy;
 mod describe;
@@ -71,23 +72,35 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
     Label::new("›", faint).left(ctx, &mut room, gap);
     Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut room, gap);
     copied(&link.name, Role::Text).left(ctx, &mut room, gap);
-    if let Some((said, role)) = object.and_then(stands) {
-        Badge::new(&said, role).at(ctx, room, room.x);
+    let mut at = room.x;
+    for (said, role) in object.map(stands).unwrap_or_default() {
+        at = Badge::new(&said, role).at(ctx, room, at).right() + ctx.tokens.sm;
     }
 }
 
-/// What the object says of itself: a pod's status, a workload's ready replicas.
-fn stands(object: &Described) -> Option<(String, Role)> {
+/// What the object says of itself: a pod's status, a workload's ready replicas, an Application's sync and health.
+fn stands(object: &Described) -> Vec<(String, Role)> {
+    let worded = |word: &str| {
+        let health = groove_types::status_health(word).unwrap_or(Health::Waiting);
+        (word.to_string(), colour(health))
+    };
     if let Some(pod) = &object.pod {
-        let health = groove_types::status_health(&pod.status).unwrap_or(Health::Waiting);
-        return Some((pod.status.clone(), colour(health)));
+        return vec![worded(&pod.status)];
     }
-    let (ready, desired) = object.replicas?;
+    if let Some(app) = &object.app {
+        let said = [&app.sync, &app.health]
+            .into_iter()
+            .filter(|one| !one.is_empty());
+        return said.map(|one| worded(one)).collect();
+    }
+    let Some((ready, desired)) = object.replicas else {
+        return Vec::new();
+    };
     let role = match ready >= desired {
         true => Role::Ok,
         false => Role::Warn,
     };
-    Some((format!("{ready}/{desired} ready"), role))
+    vec![(format!("{ready}/{desired} ready"), role)]
 }
 
 /// Why the tab holds nothing yet: the object being read, or gone, or the read refused.

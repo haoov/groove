@@ -4,6 +4,7 @@ mod activity;
 mod aging;
 mod annotation;
 mod approval;
+mod argo;
 mod attention;
 mod cells;
 mod chord;
@@ -45,6 +46,7 @@ pub use activity::{AgentStatus, Ask, AttentionClass, HookKind, SessionActivity, 
 pub use aging::{Aging, agings, human_age};
 pub use annotation::{Annotation, AnnotationStatus};
 pub use approval::{Approval, Decision, Origin};
+pub use argo::{AppCondition, AppPart, AppSource, Destination, Operation, SyncedResource};
 pub use attention::{Attention, MrFacts, Thresholds, attention, starts_today};
 pub use cells::{cell_value, compare_cells};
 pub use chord::{Chord, Stroke};

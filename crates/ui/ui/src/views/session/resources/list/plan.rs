@@ -99,7 +99,7 @@ impl Reads {
     /// What a column says, by its name.
     fn of(label: &str) -> Self {
         match label {
-            "status" | "phase" => Reads::Status,
+            "status" | "phase" | "sync status" | "health status" => Reads::Status,
             "ready" => Reads::Ready,
             _ => Reads::Plain,
         }

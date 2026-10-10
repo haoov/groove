@@ -184,6 +184,7 @@ async fn changes_go_out_16ms_after_the_first_and_never_twice_within_250ms() {
             version: "1".into(),
             created: None,
             cells: vec![name.into()],
+            object: None,
         })
     };
     let steps = vec![
@@ -207,7 +208,7 @@ async fn changes_go_out_16ms_after_the_first_and_never_twice_within_250ms() {
         }
     };
     let (mut version, mut columns) = (String::new(), Vec::new());
-    crate::watch::watched(stream, (&mut version, &mut columns), &send)
+    crate::watch::watched(stream, (&pods().kind, &mut version, &mut columns), &send)
         .await
         .expect("the watch");
     let sent = sent.lock().expect("the batches").clone();

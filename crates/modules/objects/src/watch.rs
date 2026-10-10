@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use futures_util::{Stream, StreamExt};
 use groove_kube::{Change, Client, Query};
-use groove_types::{ObjectRow, TableColumn, Timestamp, WatchKey};
+use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
 use tokio::sync::watch as signal;
 use tokio::time::Instant;
 
@@ -102,8 +102,9 @@ async fn cycle(
         kind: &kind,
         namespace: key.namespace.as_deref(),
         selector: key.selector.as_deref(),
+        whole: crate::argo::applications(&key.kind),
     };
-    let (mut version, mut columns) = listed(&client, query, send, *shown).await?;
+    let (mut version, mut columns) = listed(&client, (query, &key.kind), send, *shown).await?;
     *shown = true;
     loop {
         let opened = Instant::now();
@@ -113,7 +114,7 @@ async fn cycle(
             Err(e) => return Err(said(e)),
         };
         send(Batch::Watching);
-        match watched(stream, (&mut version, &mut columns), send).await {
+        match watched(stream, (&key.kind, &mut version, &mut columns), send).await {
             Ok(()) => tokio::time::sleep_until(opened + FIRST_WAIT).await,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
             Err(e) => return Err(said(e)),
@@ -124,14 +125,14 @@ async fn cycle(
 /// The first page shown at once, the rest as they come; a relist swaps in whole.
 async fn listed(
     client: &Client,
-    query: Query<'_>,
+    (query, kind): (Query<'_>, &KubeKind),
     send: &impl Fn(Batch),
     shown: bool,
 ) -> Result<(String, Vec<TableColumn>), String> {
     let mut page = client.page(query, None).await.map_err(said)?;
     let table: Vec<TableColumn> = page.columns.drain(..).map(crate::column_of).collect();
-    let row_of = |row| crate::row_of(row, &table, Timestamp::now());
-    let mut columns = Some(table.clone());
+    let row_of = |row| crate::argo::row(kind, row, &table, Timestamp::now());
+    let mut columns = Some(crate::argo::columns(kind, &table));
     let mut rows: Vec<ObjectRow> = page.rows.drain(..).map(row_of).collect();
     if !shown {
         let (columns, rows) = (
@@ -166,7 +167,7 @@ fn sorted(mut rows: Vec<ObjectRow>) -> Vec<ObjectRow> {
 /// The changes of one watch, gathered into batches, until the server ends it.
 pub(crate) async fn watched(
     stream: impl Stream<Item = groove_kube::Result<Vec<Change>>>,
-    (version, columns): (&mut String, &mut Vec<TableColumn>),
+    (kind, version, columns): (&KubeKind, &mut String, &mut Vec<TableColumn>),
     send: &impl Fn(Batch),
 ) -> groove_kube::Result<()> {
     let mut stream = std::pin::pin!(stream);
@@ -193,7 +194,7 @@ pub(crate) async fn watched(
             due = (Instant::now() + GATHER).max(sent + PACE);
         }
         for change in changes {
-            held.extend(delta(change, version, columns));
+            held.extend(delta(change, kind, (version, columns)));
         }
         if held.len() >= MOST {
             flush(&mut held, send);
@@ -211,7 +212,11 @@ fn flush(held: &mut Vec<Delta>, send: &impl Fn(Batch)) {
 }
 
 /// The change as a delta, the version and the columns moved on to where they stand.
-fn delta(change: Change, version: &mut String, columns: &mut Vec<TableColumn>) -> Option<Delta> {
+fn delta(
+    change: Change,
+    kind: &KubeKind,
+    (version, columns): (&mut String, &mut Vec<TableColumn>),
+) -> Option<Delta> {
     match change {
         Change::Mark(at) => {
             *version = at;
@@ -219,13 +224,23 @@ fn delta(change: Change, version: &mut String, columns: &mut Vec<TableColumn>) -
         }
         Change::Columns(fresh) => {
             *columns = fresh.into_iter().map(crate::column_of).collect();
-            Some(Delta::Columns(columns.clone()))
+            Some(Delta::Columns(crate::argo::columns(kind, columns)))
         }
         Change::Put(row) => {
             version.clone_from(&row.version);
-            Some(Delta::Put(crate::row_of(row, columns, Timestamp::now())))
+            Some(Delta::Put(crate::argo::row(
+                kind,
+                row,
+                columns,
+                Timestamp::now(),
+            )))
         }
-        Change::Gone(row) => Some(Delta::Gone(crate::row_of(row, columns, Timestamp::now()))),
+        Change::Gone(row) => Some(Delta::Gone(crate::argo::row(
+            kind,
+            row,
+            columns,
+            Timestamp::now(),
+        ))),
     }
 }
 
