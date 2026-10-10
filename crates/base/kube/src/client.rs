@@ -1,11 +1,16 @@
 use std::path::PathBuf;
 
+use http::HeaderValue;
+use http::header::USER_AGENT;
 use kube::config::{Config, KubeConfigOptions};
 
 use crate::kubeconfig::merged;
 use crate::{Error, Result};
 
 /// A connection to the cluster of one context.
+/// What the API server's metrics and audit log name Groove's requests by.
+pub const AGENT: &str = concat!("groove/", env!("CARGO_PKG_VERSION"));
+
 #[derive(Clone)]
 pub struct Client {
     pub(crate) inner: kube::Client,
@@ -31,9 +36,12 @@ impl Client {
             context: Some(context.to_string()),
             ..KubeConfigOptions::default()
         };
-        let config = Config::from_custom_kubeconfig(kubeconfig, &options)
+        let mut config = Config::from_custom_kubeconfig(kubeconfig, &options)
             .await
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
+        config
+            .headers
+            .push((USER_AGENT, HeaderValue::from_static(AGENT)));
         let inner = kube::Client::try_from(config).map_err(|e| Error::of(context, e))?;
         Ok(Self {
             inner,
