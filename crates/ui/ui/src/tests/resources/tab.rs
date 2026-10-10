@@ -357,7 +357,9 @@ fn the_wheel_scrolls_the_one_described_column() {
     let metrics = crate::tests::metrics(1920, 1080, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
     let middle = hits
-        .rect_of(&Target::ResourceView(false))
+        .rect_of(&Target::ResourceView(
+            crate::views::session::resources::View::Describe,
+        ))
         .map(|one| (one.x - 400.0, one.bottom() + 200.0))
         .expect("the panel");
     wheel(&app, &mut ui, middle, (0.0, -2400.0));

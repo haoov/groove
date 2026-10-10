@@ -3,10 +3,10 @@
 use std::collections::BTreeSet;
 
 use groove_controllers::{AppState, Command, cluster};
-use groove_types::{FollowKey, Timestamp};
+use groove_types::{FollowKey, LogKey, Timestamp};
 
-use super::super::ResourcesUi;
 use super::super::opened::{Opened, events_key, helm_release, lineage, services_key};
+use super::super::{ResourcesUi, View, log_key};
 
 /// The one reader an object's tab holds its watchers under.
 pub const READER: &str = "resource";
@@ -18,15 +18,20 @@ pub const USAGE_EVERY: i64 = 15;
 pub fn wants(app: &AppState, up: bool, held: &ResourcesUi, now: Timestamp) -> Vec<Command> {
     let tab = held.tab().filter(|_| up);
     let mut out = Vec::new();
-    let keys = match tab {
+    let (keys, log) = match tab {
         Some(tab) => {
             out.extend(asks(app, tab, now));
-            keys(app, tab)
+            (keys(app, tab), logged(app, tab))
         }
-        None => Vec::new(),
+        None => (Vec::new(), None),
     };
-    out.extend(leases(app, keys));
+    out.extend(leases(app, keys, log));
     out
+}
+
+/// The log stream the tab reads while its logs show.
+fn logged(app: &AppState, tab: &Opened) -> Option<LogKey> {
+    (tab.view == View::Logs).then(|| log_key(app, tab))?
 }
 
 fn keys(app: &AppState, tab: &Opened) -> Vec<FollowKey> {
@@ -61,7 +66,8 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
         Some((_, at)) => now.seconds() - at.seconds() >= USAGE_EVERY,
         None => true,
     };
-    if object.pod.is_some() && !tab.yaml && stale && !follows.asking(&pod) {
+    let described = tab.view == View::Describe;
+    if object.pod.is_some() && described && stale && !follows.asking(&pod) {
         out.push(Command::Cluster(cluster::Command::Usage { pod }));
     }
     let owners = lineage(app, link, object);
@@ -75,9 +81,11 @@ fn asks(app: &AppState, tab: &Opened, now: Timestamp) -> Vec<Command> {
 }
 
 /// Nothing while the keys held are the keys wanted; else let go of them all and read the new.
-fn leases(app: &AppState, wanted: Vec<FollowKey>) -> Vec<Command> {
+fn leases(app: &AppState, wanted: Vec<FollowKey>, log: Option<LogKey>) -> Vec<Command> {
     let held: BTreeSet<&FollowKey> = app.cluster.store.follows.read_by(READER).collect();
-    if held == wanted.iter().collect() {
+    let logs: Vec<&LogKey> = app.cluster.store.logs.read_by(READER).collect();
+    let same = logs == log.iter().collect::<Vec<_>>();
+    if held == wanted.iter().collect() && same {
         return Vec::new();
     }
     let release = cluster::Command::Release {
@@ -89,14 +97,21 @@ fn leases(app: &AppState, wanted: Vec<FollowKey>) -> Vec<Command> {
             key: Box::new(key),
         })
     };
+    let stream = log.map(|key| {
+        Command::Cluster(cluster::Command::FollowLogs {
+            reader: READER.into(),
+            key: Box::new(key),
+        })
+    });
     std::iter::once(Command::Cluster(release))
         .chain(wanted.into_iter().map(follow))
+        .chain(stream)
         .collect()
 }
 
 /// When the tab shown next wants a pod's usage read.
 pub fn due(app: &AppState, held: &ResourcesUi) -> Option<Timestamp> {
-    let tab = held.tab().filter(|tab| !tab.yaml)?;
+    let tab = held.tab().filter(|tab| tab.view == View::Describe)?;
     tab.link.read(app)?.pod.as_ref()?;
     let link = &tab.link;
     let pod = (

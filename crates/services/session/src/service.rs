@@ -113,8 +113,13 @@ impl Service {
     }
 
     /// The session gone: its worktrees, its row. Unforced, work not yet landed stops it.
-    pub async fn remove(&self, id: &SessionId, force: bool) -> Result<(), Error> {
-        self.pool.cleanup_session(id, force).await?;
+    pub async fn remove(
+        &self,
+        id: &SessionId,
+        force: bool,
+        landed: &std::collections::BTreeSet<WorktreeId>,
+    ) -> Result<(), Error> {
+        self.pool.cleanup_session(id, force, landed).await?;
         Ok(self.store.remove(id).await?)
     }
 

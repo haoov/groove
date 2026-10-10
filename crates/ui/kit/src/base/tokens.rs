@@ -124,7 +124,7 @@ pub struct Tokens {
 }
 
 /// The type scale and the bands that hold it, against the size they follow.
-const SMALL: f32 = LOGICAL.small / LOGICAL.text;
+pub const SMALL: f32 = LOGICAL.small / LOGICAL.text;
 const TITLE: f32 = LOGICAL.title / LOGICAL.text;
 const HEADING: f32 = LOGICAL.heading / LOGICAL.text;
 const H1: f32 = LOGICAL.h1 / LOGICAL.text;

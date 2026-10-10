@@ -3,6 +3,7 @@
 mod describe;
 mod discovery;
 mod follow;
+mod logs;
 mod reads;
 mod watch;
 mod yaml;
@@ -13,6 +14,7 @@ mod tests;
 pub use describe::describe;
 pub use discovery::{kinds, namespaces};
 pub use follow::{Change, Followed, follow};
+pub use logs::{Logged, logs};
 pub use reads::{helm_revision, usage};
 pub use watch::{Batch, Delta, Stop, watch};
 

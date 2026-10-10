@@ -13,6 +13,8 @@ pub enum Action {
     RemoveRepo,
     SelectWorktree,
     CloseWorktree,
+    /// Closes a worktree whatever it holds that origin lacks.
+    ForceCloseWorktree,
     RenameExplorer,
     ForceDelete,
     AttachCluster,
@@ -27,7 +29,7 @@ impl Action {
             Action::AddWorktree => "session.add_worktree",
             Action::RemoveRepo => "session.remove_repo",
             Action::SelectWorktree => "session.select_worktree",
-            Action::CloseWorktree => "session.close_worktree",
+            Action::CloseWorktree | Action::ForceCloseWorktree => "session.close_worktree",
             Action::RenameExplorer => "session.rename_explorer",
             Action::ForceDelete => "session.force_delete",
             Action::AttachCluster => "session.attach_cluster",
@@ -109,7 +111,7 @@ impl Flow {
             (Action::AddWorktree, 1) => Some(Prompt::text("branch", false)),
             (Action::AddWorktree, 2) => Some(base_prompt(app, &RepoId::new(&self.answers[0]))),
             (Action::RemoveRepo, 0) => Some(Prompt::choose("repo", repo_choices(open))),
-            (Action::SelectWorktree | Action::CloseWorktree, 0) => {
+            (Action::SelectWorktree | Action::CloseWorktree | Action::ForceCloseWorktree, 0) => {
                 Some(Prompt::choose("worktree", worktree_choices(open)))
             }
             (Action::RenameExplorer, 0) => Some(Prompt::text("title", false)),
@@ -186,10 +188,10 @@ impl Flow {
                 session,
                 worktree: WorktreeId::new(answer(0)),
             },
-            Action::CloseWorktree => session::Command::CloseWorktree {
+            Action::CloseWorktree | Action::ForceCloseWorktree => session::Command::CloseWorktree {
                 session,
                 worktree: WorktreeId::new(answer(0)),
-                force: false,
+                force: self.action == Action::ForceCloseWorktree,
             },
             Action::RenameExplorer => session::Command::RenameExplorer {
                 session,

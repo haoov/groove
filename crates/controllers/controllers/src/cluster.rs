@@ -1,11 +1,12 @@
 //! The `cluster` controller: one function per user action on the `cluster` service.
 
 mod follows;
+mod logs;
 mod objects;
 
 use groove_cluster_service::Event as ClusterEvent;
 use groove_cluster_service::Named;
-use groove_types::{Edit, FollowKey, Timestamp, WatchKey};
+use groove_types::{Edit, FollowKey, LogKey, Timestamp, WatchKey};
 
 use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 
@@ -35,6 +36,12 @@ pub enum Command {
     Copy { key: Box<FollowKey> },
     /// `cluster.copy_value`: a value an object's tab shows, to the clipboard.
     CopyValue { text: String },
+    /// `cluster.follow_logs`: `reader` reads the log stream `key`.
+    FollowLogs { reader: String, key: Box<LogKey> },
+    /// `cluster.log_caret`: the caret or what it holds moved in a log; nothing writes.
+    LogCaret { key: Box<LogKey>, edit: Edit },
+    /// `cluster.log_copy`: what the caret holds in a log, to the clipboard.
+    LogCopy { key: Box<LogKey> },
     /// `cluster.age`: the time cells of every row written again for `now`.
     Age { now: Timestamp },
 }
@@ -55,6 +62,9 @@ impl Command {
             Command::CopyValue { .. } => "cluster.copy_value",
             Command::Usage { .. } => "cluster.usage",
             Command::HelmRevision { .. } => "cluster.helm_revision",
+            Command::FollowLogs { .. } => "cluster.follow_logs",
+            Command::LogCaret { .. } => "cluster.log_caret",
+            Command::LogCopy { .. } => "cluster.log_copy",
         }
     }
 }
@@ -73,6 +83,7 @@ pub fn dispatch(
         Command::Release { reader } => {
             objects::release(state, spawner, &reader);
             follows::release(state, spawner, &reader);
+            logs::release(state, spawner, &reader);
         }
         Command::Follow { reader, key } => follows::follow(state, spawner, &reader, *key),
         Command::Caret { key, edit } => {
@@ -89,6 +100,11 @@ pub fn dispatch(
             crate::workspace::copied(services, spawner, held.unwrap_or_default());
         }
         Command::CopyValue { text } => crate::workspace::copied(services, spawner, text),
+        Command::FollowLogs { reader, key } => logs::follow(state, spawner, &reader, *key),
+        Command::LogCaret { key, edit } => {
+            state.cluster.store.logs.edit(&key, &edit);
+        }
+        Command::LogCopy { key } => logs::copy(state, services, spawner, &key),
         Command::Usage { pod } => follows::usage(state, spawner, pod),
         Command::HelmRevision { release } => follows::helm(state, spawner, release),
         Command::ListNamespaces { context } => objects::namespaces(state, spawner, context),

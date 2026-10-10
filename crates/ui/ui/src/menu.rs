@@ -41,6 +41,8 @@ pub enum Of {
     },
     /// The hues a context can take, from its dot in Settings.
     Hues(String),
+    /// Where a pod's logs start, from the logs view's range picker.
+    LogRanges,
 }
 
 /// One skill a menu row stands for, with what it is sent.

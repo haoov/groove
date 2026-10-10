@@ -16,7 +16,9 @@ fn the_yaml_view_reads_as_a_file_and_closing_the_tab_brings_the_list_back() {
     lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
     let (_, hits) = drawn(&app, &ui);
     let yaml = hits
-        .rect_of(&Target::ResourceView(true))
+        .rect_of(&Target::ResourceView(
+            crate::views::session::resources::View::Yaml,
+        ))
         .expect("the yaml view");
     click(yaml, &mut ui, &app, &hits);
     let (texts, hits) = drawn(&app, &ui);
@@ -72,8 +74,10 @@ fn in_the_yaml_a_click_lands_the_caret_keys_move_it_and_ctrl_f_finds_and_holds_a
     lands(&mut app, &key, vec![crashing()]);
     let (_, hits) = drawn(&app, &ui);
     click(
-        hits.rect_of(&Target::ResourceView(true))
-            .expect("the yaml view"),
+        hits.rect_of(&Target::ResourceView(
+            crate::views::session::resources::View::Yaml,
+        ))
+        .expect("the yaml view"),
         &mut ui,
         &app,
         &hits,
@@ -153,7 +157,7 @@ fn a_long_yaml_line_scrolls_sideways_by_the_wheel_and_follows_the_caret() {
         }],
     );
     if let Some(tab) = ui.session.resources.tab_mut() {
-        tab.yaml = true;
+        tab.view = crate::views::session::resources::View::Yaml;
     }
     ui.focus = crate::Focus::Workspace;
     let metrics = crate::tests::metrics(1920, 1080, 1.0);
@@ -218,7 +222,11 @@ fn a_search_matching_often_in_a_long_line_draws_at_once() {
     .into();
     lands(&mut app, &key, vec![pod]);
     let (_, hits) = drawn(&app, &ui);
-    let yaml = hits.rect_of(&Target::ResourceView(true)).expect("yaml");
+    let yaml = hits
+        .rect_of(&Target::ResourceView(
+            crate::views::session::resources::View::Yaml,
+        ))
+        .expect("yaml");
     click(yaml, &mut ui, &app, &hits);
     let press = |ui: &mut Ui, key, mods| crate::tests::press(key, mods, ui, &app);
     press(&mut ui, crate::input::Key::Char('f'), ctrl());

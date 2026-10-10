@@ -3,31 +3,49 @@
 use std::path::Path;
 
 use groove_git::Git;
+use std::collections::BTreeSet;
+
 use groove_types::{SessionId, Worktree, WorktreeId};
 
 use crate::{Error, Pool, Result};
 
+/// What a close refuses to lose.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Keep {
+    /// Uncommitted changes, and commits origin lacks.
+    Everything,
+    /// Uncommitted changes only: the branch's MR merged its commits elsewhere.
+    Changes,
+    Nothing,
+}
+
 impl Pool {
-    /// Removes the directory, the local branch and the row; unforced, lost work refuses it.
-    pub async fn close(&self, id: &WorktreeId, force: bool) -> Result<Worktree> {
+    /// Removes the directory, the local branch and the row; what `keep` names refuses it.
+    pub async fn close(&self, id: &WorktreeId, keep: Keep) -> Result<Worktree> {
         let worktree = self.worktree(id).await?;
-        if !force {
-            self.refuse_loss(&worktree).await?;
-        }
+        self.refuse_loss(&worktree, keep).await?;
         let stop_at = self.layout.session_dir(worktree.session.as_str());
         self.tear_down(&worktree, &stop_at).await?;
         self.remove_worktree(id).await?;
         Ok(worktree)
     }
 
-    /// Every worktree of the session, then its directory; unforced, lost work refuses it.
-    pub async fn cleanup_session(&self, session: &SessionId, force: bool) -> Result<()> {
+    /// Every worktree, then the directory; unforced, lost work refuses it, bar `landed` commits.
+    pub async fn cleanup_session(
+        &self,
+        session: &SessionId,
+        force: bool,
+        landed: &BTreeSet<WorktreeId>,
+    ) -> Result<()> {
         let dir = self.layout.session_dir(session.as_str());
         let worktrees = self.worktrees_of(session).await?;
-        if !force {
-            for worktree in &worktrees {
-                self.refuse_loss(worktree).await?;
-            }
+        for worktree in &worktrees {
+            let keep = match (force, landed.contains(&worktree.id)) {
+                (true, _) => Keep::Nothing,
+                (false, true) => Keep::Changes,
+                (false, false) => Keep::Everything,
+            };
+            self.refuse_loss(worktree, keep).await?;
         }
         for worktree in worktrees {
             self.tear_down(&worktree, &dir).await?;
@@ -36,8 +54,11 @@ impl Pool {
         remove_tree(&dir)
     }
 
-    /// Refuses a worktree holding work origin lacks, or one git cannot answer for.
-    async fn refuse_loss(&self, worktree: &Worktree) -> Result<()> {
+    /// Refuses a worktree holding what `keep` names, or one git cannot answer for.
+    async fn refuse_loss(&self, worktree: &Worktree, keep: Keep) -> Result<()> {
+        if keep == Keep::Nothing {
+            return Ok(());
+        }
         let unknown = || Error::Unknown {
             branch: worktree.branch.clone(),
         };
@@ -46,6 +67,9 @@ impl Pool {
                 let git = Git::at(&worktree.path);
                 if !git.status().await.map_err(|_| unknown())?.is_empty() {
                     return Err(Error::Dirty);
+                }
+                if keep == Keep::Changes {
+                    return Ok(());
                 }
                 git
             }

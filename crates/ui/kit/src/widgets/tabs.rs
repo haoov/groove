@@ -122,6 +122,7 @@ impl<'a, T: Clone + PartialEq> Tab<'a, T> {
         match (self.selected, self.ground) {
             (true, Some(ground)) => ctx.quad(box_, ground),
             (true, None) => {
+                crate::shape::ground(ctx, box_, crate::base::ground::Ground::Held);
                 let thick = ctx.tokens.hairline * 2.0;
                 let under = Rect::new(box_.x, box_.bottom() - thick, box_.w, thick);
                 ctx.quad(under, ctx.styles.chosen());

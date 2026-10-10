@@ -1,5 +1,6 @@
 //! What one row says: its text, its colours, its numbers and its mark.
 
+mod levels;
 mod stream;
 
 use std::ops::Range;
@@ -98,7 +99,11 @@ fn whole(app: &AppState, ui: &Ui, window: Range<usize>) -> Vec<Drawn> {
     window
         .map(|at| {
             let text = text_of(buffer, at);
-            let (drawn, spans) = shown(&text, colours.of(at), width);
+            let painted = match editor.levels {
+                Some(shape) => levels::spans(&text, shape),
+                None => colours.of(at).to_vec(),
+            };
+            let (drawn, spans) = shown(&text, &painted, width);
             Drawn {
                 text: drawn,
                 spans,

@@ -6,11 +6,11 @@ mod tests;
 
 use std::path::PathBuf;
 
-use groove_types::{FollowKey, KubeContext, KubeKind, Login, Result, Usage, WatchKey};
+use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_objects::{Batch, Change, Delta, Followed, Stop};
-pub use store::{Follow, Follows, Named, Store, Watched, Yamls};
+pub use groove_objects::{Batch, Change, Delta, Followed, Logged, Stop};
+pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Watched, Yamls};
 
 /// The `cluster` slice of `AppState`.
 #[derive(Debug, Default)]
@@ -70,6 +70,10 @@ pub enum Event {
         key: Box<FollowKey>,
         batch: Followed,
     },
+    Logged {
+        key: Box<LogKey>,
+        batch: Logged,
+    },
 }
 
 pub fn apply(state: &mut State, event: Event) {
@@ -87,6 +91,7 @@ pub fn apply(state: &mut State, event: Event) {
         Event::Kinds { context, kinds } => state.store.set_kinds(&context, kinds),
         Event::Watched { key, batch } => state.store.apply(&key, batch),
         Event::Followed { key, batch } => state.store.follows.apply(&key, batch),
+        Event::Logged { key, batch } => state.store.logs.apply(&key, batch),
     }
 }
 
@@ -128,6 +133,16 @@ pub fn follower(
     send: impl Fn(Followed) + Send + Sync + 'static,
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
     groove_objects::follow(paths, key, stop, send)
+}
+
+/// The log stream of `key`, until `stop`; each batch goes through `send`.
+pub fn logger(
+    paths: Vec<PathBuf>,
+    key: LogKey,
+    stop: &Stop,
+    send: impl Fn(Logged) + Send + Sync + 'static,
+) -> impl std::future::Future<Output = ()> + Send + 'static {
+    groove_objects::logs(paths, key, stop, send)
 }
 
 /// What each container of a pod uses now; none where the cluster runs no metrics-server.

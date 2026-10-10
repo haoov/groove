@@ -4,7 +4,7 @@ use groove_types::{
     Error, PoolEntry, Repo, RepoId, Session, SessionId, Timestamp, Worktree, WorktreeId,
     WorktreeSpec, WorktreeStatus,
 };
-use groove_worktree::Pool;
+use groove_worktree::{Keep, Pool};
 
 use super::{Added, Service};
 
@@ -74,8 +74,8 @@ impl Service {
     }
 
     /// Closes the worktree; the repo is detached when it was the last one.
-    pub async fn close_worktree(&self, id: &WorktreeId, force: bool) -> Result<Worktree, Error> {
-        let closed = self.pool.close(id, force).await?;
+    pub async fn close_worktree(&self, id: &WorktreeId, keep: Keep) -> Result<Worktree, Error> {
+        let closed = self.pool.close(id, keep).await?;
         let left = self.pool.worktrees_of(&closed.session).await?;
         if !left.iter().any(|w| w.repo == closed.repo) {
             self.store
@@ -94,7 +94,11 @@ impl Service {
     ) -> Result<(), Error> {
         for worktree in self.pool.worktrees_of(session).await? {
             if &worktree.repo == repo {
-                self.pool.close(&worktree.id, force).await?;
+                let keep = match force {
+                    true => Keep::Nothing,
+                    false => Keep::Everything,
+                };
+                self.pool.close(&worktree.id, keep).await?;
             }
         }
         Ok(self.store.detach_repo(session, repo).await?)

@@ -12,6 +12,7 @@ use crate::views::session::Tab;
 
 mod copy;
 mod list;
+mod logs;
 mod sessions;
 mod tab;
 mod yaml;

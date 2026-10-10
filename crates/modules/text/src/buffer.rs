@@ -7,6 +7,7 @@ use crate::{Colours, Document, Settled};
 
 mod edits;
 mod motion;
+mod stream;
 
 /// Lines `line..line + gone` of the text became `line..line + came`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

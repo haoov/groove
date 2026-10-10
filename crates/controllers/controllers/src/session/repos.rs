@@ -1,6 +1,6 @@
 //! The session's repos and worktrees: adding them, selecting one, closing them.
 
-use groove_session_service::Added;
+use groove_session_service::{Added, Keep};
 use groove_types::{Error, RepoId, SessionId, WorktreeId, WorktreeSpec};
 
 use super::rail::persist_selection;
@@ -90,12 +90,23 @@ pub fn close_worktree(
     worktree: &WorktreeId,
     force: bool,
 ) {
+    let keep = match (force, merged(state, worktree)) {
+        (true, _) => Keep::Nothing,
+        (false, true) => Keep::Changes,
+        (false, false) => Keep::Everything,
+    };
     let pending = state.begin("closing worktree");
     let (service, worktree) = (services.session.clone(), worktree.clone());
-    let work = async move { service.close_worktree(&worktree, force).await };
+    let work = async move { service.close_worktree(&worktree, keep).await };
     taken(spawner, pending, id, work, |open, closed| {
         open.remove_worktree(&closed.id)
     });
+}
+
+/// Whether the worktree's MR merged.
+pub(crate) fn merged(state: &AppState, worktree: &WorktreeId) -> bool {
+    let held = state.delivery.held(worktree);
+    held.and_then(|one| one.state()) == Some(groove_types::MrState::Merged)
 }
 
 /// What the disk let go of, off the session's row; the selection and the workspace follow.

@@ -19,6 +19,7 @@ pub mod front_matter;
 mod health;
 mod ids;
 pub mod json;
+mod logs;
 mod mapping;
 mod mr;
 mod naming;
@@ -69,6 +70,7 @@ pub use environment::{Found, Tool};
 pub use error::{Error, ErrorKind, Result};
 pub use health::{Health, ready_health, status_health};
 pub use ids::{AnnotationId, ApprovalId, ExternalId, MrId, RepoId, SessionId, WorktreeId};
+pub use logs::{Level, LogKey, LogLine, LogRange, LogSource, LogTime, level, log_time};
 pub use mapping::{Kind, Mapped, Mapping, Property};
 pub use mr::{
     CiState, CiStatus, Forge, Mr, MrApproval, MrDetails, MrNote, MrState, MrThread, NotePosition,

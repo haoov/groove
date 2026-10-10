@@ -6,6 +6,7 @@ use super::Delta;
 use crate::hit::{Hits, Scroller, Target};
 use crate::layout::Layout;
 use crate::views::session::Tab;
+use crate::views::session::resources::View;
 use crate::{Surface, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
@@ -50,11 +51,41 @@ pub(super) fn scroll(
             ui.wheeled(Scroller::Resources, pixels(tokens.row), hits)
         }
         Tab::Resources | Tab::Diff | Tab::Files => {
-            ui.wheeled(Scroller::Code, pixels(tokens.line), hits);
-            ui.wheeled(Scroller::Across, delta.across(tokens.line), hits);
+            coded(ui, hits, (pixels(tokens.line), delta.across(tokens.line)))
         }
     }
     Vec::new()
+}
+
+/// The wheel over the code surface, both ways; logs pause above their end and follow at it.
+fn coded(ui: &mut Ui, hits: &Hits, (down, across): (f32, f32)) {
+    let bottom = hits.extent(Scroller::Code);
+    let logs = followed(ui);
+    if logs == Some(true) {
+        *ui.session.scroll_mut() = bottom;
+    }
+    ui.wheeled(Scroller::Code, down, hits);
+    ui.wheeled(Scroller::Across, across, hits);
+    if logs.is_some() && ui.session.scroll() >= bottom {
+        follow(ui);
+    }
+}
+
+/// Whether the logs shown follow their last line; none where no logs show.
+fn followed(ui: &Ui) -> Option<bool> {
+    let tab = ui
+        .session
+        .resources
+        .tab()
+        .filter(|_| ui.session.tab == Tab::Resources)?;
+    (tab.view == View::Logs).then_some(tab.logs.following)
+}
+
+/// The logs shown follow their last line again.
+fn follow(ui: &mut Ui) {
+    if let Some(tab) = ui.session.resources.tab_mut() {
+        tab.logs.following = true;
+    }
 }
 
 /// The wheel over the agent's screen. What is not yet worth a line is carried on.

@@ -79,6 +79,16 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
     out
 }
 
+/// The size code is drawn at: the small text's while a pod's logs show, else the config's.
+pub fn code_size(app: &AppState, ui: &Ui, (text, code): (f32, f32)) -> f32 {
+    let resources = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
+    let tab = ui.session.resources.tab().filter(|_| resources);
+    match tab.is_some_and(|one| one.view == resources::View::Logs) {
+        true => text * groove_ui_kit::base::tokens::SMALL,
+        false => code,
+    }
+}
+
 /// When the Resources panel next changes on its own: a time cell turns, a pod's usage is due.
 pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;

@@ -15,6 +15,9 @@ pub enum Capture {
     Title,
     Literal,
     Link,
+    /// A log line that names an error, and one that warns.
+    Error,
+    Warning,
 }
 
 /// One run of a line, in bytes from the line's start.

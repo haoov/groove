@@ -3,6 +3,7 @@
 mod card;
 mod copy;
 mod describe;
+mod logs;
 mod relations;
 mod sections;
 mod wants;
@@ -18,6 +19,7 @@ use groove_ui_kit::widgets::{Badge, Tab, Text};
 
 pub use wants::{due, wants};
 
+use super::View;
 use super::list::plan::colour;
 use super::opened::Opened;
 use crate::ctx::Ctx;
@@ -31,9 +33,10 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
     let Some(object) = object else {
         return standing(ctx, rest, app, tab);
     };
-    match tab.yaml {
-        true => crate::views::session::diff::editor(ctx, app, ui, rest),
-        false => describe::draw(ctx, rest, app, (tab, object)),
+    match tab.view {
+        View::Yaml => crate::views::session::diff::editor(ctx, app, ui, rest),
+        View::Logs => logs::draw(ctx, rest, app, (ui, tab)),
+        View::Describe => describe::draw(ctx, rest, app, (tab, object)),
     }
 }
 
@@ -43,8 +46,12 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
     let link = &tab.link;
     let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
     let gap = ctx.tokens.sm;
-    for (yaml, label) in [(true, "yaml"), (false, "describe")] {
-        Tab::new(label, Target::ResourceView(yaml), tab.yaml == yaml)
+    let views: &[View] = match object.is_some_and(|one| one.pod.is_some()) {
+        true => &[View::Logs, View::Yaml, View::Describe],
+        false => &[View::Yaml, View::Describe],
+    };
+    for view in views {
+        Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view)
             .text(Text::Small)
             .tight()
             .right(ctx, &mut room, 0.0);

@@ -1,5 +1,5 @@
 use crate::tests::fixture::{Fixture, sh};
-use crate::{Error, WorktreeSpec};
+use crate::{Error, Keep, WorktreeSpec};
 
 #[tokio::test]
 async fn close_refuses_lost_work_then_removes_dir_row_branch_and_empty_parents() {
@@ -14,15 +14,22 @@ async fn close_refuses_lost_work_then_removes_dir_row_branch_and_empty_parents()
     let path = std::path::PathBuf::from(&wt.path);
     std::fs::write(path.join("a.txt"), "dirty\n").unwrap();
     assert!(matches!(
-        fx.pool.close(&wt.id, false).await,
+        fx.pool.close(&wt.id, Keep::Everything).await,
         Err(Error::Dirty)
     ));
 
     sh(&path, &["commit", "-am", "unpushed"]);
-    let err = fx.pool.close(&wt.id, false).await.unwrap_err();
+    let err = fx.pool.close(&wt.id, Keep::Everything).await.unwrap_err();
     assert!(matches!(err, Error::Unpushed { ahead: 1, .. }), "{err}");
+    std::fs::write(path.join("a.txt"), "dirty again\n").unwrap();
+    let landed = fx.pool.close(&wt.id, Keep::Changes).await;
+    assert!(
+        matches!(landed, Err(Error::Dirty)),
+        "a merged branch still keeps its changes"
+    );
+    sh(&path, &["checkout", "--", "a.txt"]);
 
-    let closed = fx.pool.close(&wt.id, true).await.unwrap();
+    let closed = fx.pool.close(&wt.id, Keep::Nothing).await.unwrap();
     assert_eq!(closed.id, wt.id);
     assert!(!path.exists());
     let session_dir = fx.root.path().join("worktrees/explorer-ab12cd34");
@@ -85,7 +92,10 @@ async fn cleanup_removes_every_worktree_and_the_session_dir() {
         .await
         .unwrap();
     assert_eq!(fx.pool.worktrees_of(&fx.session.id).await.unwrap().len(), 2);
-    fx.pool.cleanup_session(&fx.session.id, true).await.unwrap();
+    fx.pool
+        .cleanup_session(&fx.session.id, true, &Default::default())
+        .await
+        .unwrap();
     assert!(!fx.root.path().join("worktrees/explorer-ab12cd34").exists());
     assert_eq!(
         sh(&fx.clone, &["branch", "--list", "explorer/*"]),
@@ -113,7 +123,7 @@ async fn close_refuses_a_worktree_git_cannot_answer_for() {
         .worktree;
     let path = std::path::PathBuf::from(&wt.path);
     std::fs::remove_file(path.join(".git")).unwrap();
-    let err = fx.pool.close(&wt.id, false).await.unwrap_err();
+    let err = fx.pool.close(&wt.id, Keep::Everything).await.unwrap_err();
     assert!(matches!(err, Error::Unknown { .. }), "{err}");
     assert!(path.exists(), "nothing is taken away");
 }

@@ -80,6 +80,11 @@ fn worktrees(open: &Open) -> Vec<Entry> {
             "Close worktree",
             Action::CloseWorktree,
         ));
+        out.push(Entry::flow(
+            "Session",
+            "Force close worktree",
+            Action::ForceCloseWorktree,
+        ));
     }
     if open.worktrees.len() > 1 {
         out.push(Entry::flow(

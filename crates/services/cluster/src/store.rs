@@ -1,9 +1,11 @@
 //! The rows of every watcher something reads, who reads each, and the kinds of each context.
 
 mod follows;
+mod logs;
 mod yamls;
 
 pub use follows::{Follow, Follows, Named};
+pub use logs::{CAP, Log, Logs, Streaming};
 pub use yamls::Yamls;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -36,6 +38,7 @@ pub struct Store {
     /// When a time cell next reads differently.
     due: Option<Timestamp>,
     pub follows: Follows,
+    pub logs: Logs,
 }
 
 impl Store {
