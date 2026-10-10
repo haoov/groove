@@ -69,6 +69,26 @@ fn a_click_on_a_tab_shows_it() {
 }
 
 #[test]
+fn the_selected_tab_stands_on_the_held_ground_as_a_list_s_selected_row() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    let hits = regions(&app, &ui);
+    let diff = hits.rect_of(&Target::Tab(Tab::Diff)).expect("the diff tab");
+    click(diff, &mut ui, &app, &hits);
+    let (frame, hits) = view(&app, &ui, metrics(1280, 800, 1.0), &mut Fonts::embedded());
+    let styles = groove_ui_kit::base::style::Styles::new(app.config.theme(), Tokens::new(1.0));
+    let held = |target: Target| {
+        let at = hits.rect_of(&target).expect("a tab");
+        let quads = frame.layers().iter().flat_map(|one| one.quads.iter());
+        quads
+            .into_iter()
+            .any(|quad| quad.rect == at && quad.color == styles.held())
+    };
+    assert!(held(Target::Tab(Tab::Diff)), "the selected tab");
+    assert!(!held(Target::Tab(Tab::Overview)), "not the others");
+}
+
+#[test]
 fn a_click_on_a_palette_row_runs_it() {
     let app = full_app();
     let mut ui = Ui::default();
