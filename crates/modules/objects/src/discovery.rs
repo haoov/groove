@@ -82,6 +82,7 @@ pub async fn namespaces(paths: &[PathBuf], context: &str) -> Result<Vec<String>>
         kind: &kind,
         namespace: None,
         selector: None,
+        whole: false,
     };
     let mut page = client.page(query, None).await.map_err(failed)?;
     let mut names: Vec<String> = page.rows.drain(..).map(|row| row.name).collect();

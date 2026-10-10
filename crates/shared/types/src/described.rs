@@ -40,6 +40,7 @@ pub struct Described {
     /// The labels a Service picks its pods by.
     pub selector: Vec<(String, String)>,
     pub pod: Option<Box<PodPart>>,
+    pub app: Option<Box<crate::AppPart>>,
     pub event: Option<EventRow>,
     /// The object as YAML; empty where only a part of it is read.
     pub yaml: Arc<str>,

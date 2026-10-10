@@ -33,8 +33,10 @@ impl Link {
 /// A part of the described view, which folds under its heading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Section {
+    Operation,
     Conditions,
     Summary,
+    Sources,
     Relations,
     Containers,
     Labels,
@@ -49,7 +51,7 @@ pub struct Opened {
     pub view: super::View,
     pub logs: super::LogsUi,
     pub container: Option<String>,
-    /// The sections folded shut; the annotations until opened.
+    /// The sections folded shut; the annotations and the events until opened.
     pub shut: std::collections::BTreeSet<Section>,
     pub scroll: f32,
     /// How far the YAML is scrolled sideways.
@@ -65,7 +67,7 @@ impl Opened {
             view: super::View::Describe,
             logs: super::LogsUi::default(),
             container: None,
-            shut: [Section::Annotations].into(),
+            shut: [Section::Annotations, Section::Events].into(),
             scroll: 0.0,
             across: 0.0,
             copied: None,

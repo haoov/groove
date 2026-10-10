@@ -1,5 +1,6 @@
 //! A cluster's kinds, cached on disk, and its objects as Table rows: listed, then watched.
 
+mod argo;
 mod describe;
 mod discovery;
 mod follow;

@@ -26,6 +26,7 @@ fn base(uid: &str, name: &str) -> Described {
         replicas: None,
         selector: Vec::new(),
         pod: None,
+        app: None,
         event: None,
         yaml: "".into(),
     }
@@ -127,6 +128,15 @@ fn wide(app: &AppState, ui: &Ui) -> Vec<String> {
     texts.map(|one| one.text.clone()).collect()
 }
 
+/// The events unfolded by a click on their heading, as they stand folded at first.
+pub(super) fn unfold_events(app: &AppState, ui: &mut Ui) {
+    let section = Target::ResourceSection(crate::views::session::resources::Section::Events);
+    let metrics = crate::tests::metrics(1920, 1080, 1.0);
+    let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
+    let heading = hits.rect_of(&section).expect("the events' heading");
+    click(heading, ui, app, &hits);
+}
+
 pub(super) fn lands(app: &mut AppState, key: &FollowKey, objects: Vec<Described>) {
     app.cluster.store.follows.lease(key, "resource");
     app.cluster
@@ -177,7 +187,7 @@ const DESCRIBED: [&str; 21] = [
 
 #[test]
 fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them() {
-    let (mut app, ui) = opened();
+    let (mut app, mut ui) = opened();
     lands(&mut app, &link("api-0", pods()).key(), vec![crashing()]);
     let asked = crate::frame_commands(&app, &ui, window());
     let follows: Vec<FollowKey> = asked
@@ -252,6 +262,7 @@ fn a_pod_read_asks_its_events_owners_services_usage_and_release_and_draws_them()
         }),
         Timestamp::new(0),
     );
+    unfold_events(&app, &mut ui);
     let texts = wide(&app, &ui);
     for shown in DESCRIBED {
         assert!(texts.iter().any(|one| one == shown), "{shown}: {texts:?}");
@@ -347,6 +358,10 @@ fn the_wheel_scrolls_the_one_described_column() {
         ..base(&format!("e{at}"), &format!("e{at}"))
     };
     lands(&mut app, &events, (0..40).map(event).collect());
+    let shown = ui.session.resources.tab_mut().expect("the tab");
+    shown
+        .shut
+        .remove(&crate::views::session::resources::Section::Events);
     let at = |ui: &Ui, text: &str| {
         runs(&app, ui)
             .iter()

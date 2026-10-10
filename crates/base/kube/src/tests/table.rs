@@ -69,6 +69,7 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
         kind: &kind,
         namespace: Some("paxone"),
         selector: Some("app=api"),
+        whole: false,
     };
     let page = client.page(query, None).await.expect("a page");
     let asked = server.received_requests().await.expect("recorded");
@@ -94,6 +95,7 @@ async fn a_page_asks_for_the_table_in_its_namespace_and_reads_cells_and_metadata
         version: "7".into(),
         created: Some("2026-10-07T10:00:00Z".into()),
         cells: vec!["api-0".into(), "1/1".into(), "Running".into(), "0".into()],
+        object: None,
     };
     assert_eq!(page.rows, [one]);
 }
@@ -127,6 +129,7 @@ async fn a_watch_reads_each_event_as_the_change_it_makes_and_a_410_as_expired() 
         kind: &kind,
         namespace: Some("paxone"),
         selector: None,
+        whole: false,
     };
     let stream = client.watch(query, "42").await.expect("a watch");
     let changes: Vec<Change> = futures_util::StreamExt::collect::<Vec<_>>(stream)
@@ -221,6 +224,7 @@ async fn a_watch_line_it_cannot_read_says_why_instead_of_a_status_0() {
         kind: &kind,
         namespace: Some("paxone"),
         selector: None,
+        whole: false,
     };
     let stream = client.watch(query, "42").await.expect("a watch");
     let read = futures_util::StreamExt::collect::<Vec<_>>(stream).await;

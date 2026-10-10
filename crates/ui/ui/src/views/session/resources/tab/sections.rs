@@ -26,12 +26,23 @@ pub(super) struct Fact {
 }
 
 impl Fact {
+    pub(super) fn new(key: &'static str, value: String, role: Role) -> Self {
+        Self {
+            key,
+            value,
+            role,
+            open: None,
+        }
+    }
+
     /// What a click copies: a name or an address, never a count or an age.
     fn copied(&self) -> Option<&str> {
         let head = self.value.split(" · ").next();
         match self.key {
-            "node" | "pod ip" | "qos" => Some(&self.value),
-            "helm" | "priority" => head,
+            "node" | "pod ip" | "qos" | "repo" | "path" | "target" | "values" | "synced" => {
+                Some(&self.value)
+            }
+            "helm" | "priority" | "destination" => head,
             _ => None,
         }
     }
