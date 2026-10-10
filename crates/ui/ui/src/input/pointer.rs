@@ -296,5 +296,5 @@ fn elsewhere(
         .or_else(|| agent::acted(target, point, ui, app, hits, metrics))
         .or_else(|| shell::acted(target, ui, app, metrics))
         .or_else(|| settings::acted(target, ui, app, hits))
-        .or_else(|| resources::acted(target, ui, app))
+        .or_else(|| resources::acted(target, ui, app, hits))
 }

@@ -149,6 +149,10 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     let (Some(Target::MenuRow(at)), Some(menu)) = (target, menu) else {
         return Vec::new();
     };
+    if menu.of == Of::LogRanges {
+        super::resources::ranged(ui, at);
+        return Vec::new();
+    }
     let picked = crate::views::overlays::actions::picked(&menu.of, at);
     ui.overlay = picked.asking.map(Overlay::Losing);
     ui.session.naming = picked.naming;

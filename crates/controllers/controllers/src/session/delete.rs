@@ -22,10 +22,15 @@ pub fn delete(
         .get(id)
         .map(|o| o.session.title.clone())
         .unwrap_or_default();
+    let worktrees = state.session.get(id).map(|one| one.worktrees.iter());
+    let landed = worktrees.into_iter().flatten().map(|one| one.id.clone());
+    let landed = landed
+        .filter(|one| super::repos::merged(state, one))
+        .collect();
     let pending = state.begin(format!("deleting {title}"));
     let (service, at) = (services.session.clone(), id.clone());
     spawner.spawn(Box::pin(async move {
-        let removed = service.remove(&at, force).await;
+        let removed = service.remove(&at, force, &landed).await;
         Box::new(
             move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(pending);

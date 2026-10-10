@@ -372,3 +372,21 @@ fn breaking_a_line_carries_its_indent_to_what_follows() {
         "a tab is an indent like any other"
     );
 }
+
+#[test]
+fn a_streamed_text_grows_at_its_end_and_sheds_its_first_lines_carrying_the_caret_up() {
+    let mut buffer = Buffer::new(Document::new("api-0.log", "one\ntwo\n"));
+    buffer.append("three\nfour\n");
+    assert_eq!(buffer.text(), "one\ntwo\nthree\nfour\n");
+    buffer.follow(Caret::new(3, 2));
+    let before = buffer.painted();
+    buffer.shed(2);
+    assert_eq!(buffer.text(), "three\nfour\n");
+    assert_eq!(buffer.caret(), Caret::new(1, 2));
+    assert_ne!(buffer.painted(), before, "the colours are read again");
+    buffer.shed(10);
+    assert_eq!(
+        (buffer.text().as_str(), buffer.caret()),
+        ("", Caret::new(0, 0))
+    );
+}

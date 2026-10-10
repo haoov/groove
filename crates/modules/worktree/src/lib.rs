@@ -19,6 +19,7 @@ use groove_db::Db;
 use groove_types::SessionId;
 pub use groove_types::{PoolEntry, WorktreeSpec};
 pub use layout::Layout;
+pub use teardown::Keep;
 
 /// The module's handle: the database and the root, cheap to clone into a job.
 #[derive(Clone)]

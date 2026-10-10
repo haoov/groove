@@ -4,10 +4,10 @@ use crate::session::Command;
 use crate::tests::fixture::{self, pooled_clone, services, sh, state, until};
 use crate::{AppState, Command as Cmd, Services, SyncSpawner, dispatch};
 
-const REPO: &str = "gitlab.example.com/g/mayo";
+pub(super) const REPO: &str = "gitlab.example.com/g/mayo";
 
 /// An explorer open with the fixture's clone in the pool; returns its id.
-fn explorer(
+pub(super) fn explorer(
     state: &mut AppState,
     services: &Services,
     spawner: &SyncSpawner,
@@ -174,7 +174,7 @@ fn a_second_worktree_a_selection_and_a_close_survive_a_restart() {
 }
 
 /// The repo added, then a second worktree on its own branch off `release/1.0`.
-fn second_worktree(
+pub(super) fn second_worktree(
     state: &mut AppState,
     services: &Services,
     spawner: &SyncSpawner,
@@ -280,7 +280,7 @@ fn restarted(
     fresh
 }
 
-fn close(
+pub(super) fn close(
     state: &mut AppState,
     services: &Services,
     spawner: &SyncSpawner,

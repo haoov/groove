@@ -11,7 +11,6 @@ use crate::views::session::{Asked, Naming, Noting};
 use crate::{Corner, Losing, Menu, Of};
 
 mod act;
-
 pub use act::Act;
 use groove_ui_kit::widgets::{menu, menu_size};
 
@@ -70,7 +69,7 @@ fn acts(of: &Of) -> &'static [Act] {
         Of::Worktree { mr: true, .. } => &WORKTREE_MR,
         Of::Worktree { mr: false, .. } => &WORKTREE,
         Of::Session(_) => &SESSION,
-        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) => &[],
+        Of::Skills { .. } | Of::Mapping(_) | Of::Hues(_) | Of::LogRanges => &[],
     }
 }
 
@@ -83,6 +82,7 @@ pub fn rows(of: &Of) -> Vec<&str> {
             .iter()
             .map(|one| one.name())
             .collect(),
+        Of::LogRanges => crate::views::session::resources::RANGES.to_vec(),
         _ => acts(of).iter().map(|one| one.label()).collect(),
     }
 }

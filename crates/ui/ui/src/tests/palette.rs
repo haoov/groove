@@ -247,3 +247,25 @@ fn force_delete_picks_any_session_on_disk_and_deletes_it_changes_and_all() {
         )]
     );
 }
+
+#[test]
+fn force_close_picks_a_worktree_and_closes_it_whatever_origin_lacks() {
+    let app = full_app();
+    let mut palette = Palette::default();
+    typed(&mut palette, "force close", &app);
+    palette.key(Key::Enter, &app);
+    let prompt = palette.prompt(&app).expect("a worktree to pick");
+    assert_eq!(prompt.label, "worktree");
+    let picked = prompt.options[0].1.clone();
+    let done = palette.key(Key::Enter, &app);
+    assert_eq!(
+        done.commands,
+        [groove_controllers::Command::Session(
+            groove_controllers::session::Command::CloseWorktree {
+                session: groove_types::SessionId::new("a"),
+                worktree: groove_types::WorktreeId::new(picked),
+                force: true,
+            }
+        )]
+    );
+}

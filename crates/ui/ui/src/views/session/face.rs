@@ -7,7 +7,9 @@ impl SessionUi {
     pub fn face(&self) -> Face {
         match self.tab {
             Tab::Files => Face::File,
-            Tab::Resources if self.resources.tab().is_some_and(|one| one.yaml) => Face::File,
+            Tab::Resources if self.resources.tab().is_some_and(|one| one.view.edits()) => {
+                Face::File
+            }
             _ => Face::Stream(self.view),
         }
     }

@@ -242,7 +242,7 @@ fn split_marks_a_match_on_the_side_that_shows_it_and_not_the_other() {
     let marks: Vec<f32> = frame.layers()[0]
         .quads
         .iter()
-        .filter(|quad| quad.rect.x >= rail && mark(quad))
+        .filter(|quad| quad.rect.x >= rail && quad.rect.y >= rows.y && mark(quad))
         .map(|quad| quad.rect.x)
         .collect();
     assert!(!marks.is_empty(), "the new side is marked");

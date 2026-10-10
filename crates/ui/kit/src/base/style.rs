@@ -152,6 +152,8 @@ impl Styles {
             Capture::Title => p.lavender,
             Capture::Literal => p.green,
             Capture::Link => p.sapphire,
+            Capture::Error => p.red,
+            Capture::Warning => p.yellow,
         }
     }
 

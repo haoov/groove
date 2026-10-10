@@ -37,7 +37,11 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceContainer(_)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)
-            | Target::ResourceCopy(..),
+            | Target::ResourceCopy(..)
+            | Target::LogSource(_)
+            | Target::LogPrevious(_)
+            | Target::LogRange
+            | Target::LogFollow,
         ) => Focus::Workspace,
         Some(
             Target::File(_)

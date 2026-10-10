@@ -1,3 +1,5 @@
+mod logs;
+
 use groove_types::{KubeAuth, KubeContext, Login};
 
 use crate::{Event, State, apply};

@@ -4,10 +4,21 @@ use groove_controllers::{AppState, Command};
 
 use crate::hit::{Hits, Picks, Target};
 use crate::views::session::resources::{self, Dragged, How, ResourcesUi, Scoping};
+use crate::{Corner, Menu, Of};
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
 
-pub(super) fn acted(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
+pub(super) fn acted(
+    target: &Target,
+    ui: &mut Ui,
+    app: &AppState,
+    hits: &Hits,
+) -> Option<Vec<Command>> {
+    logs(target, ui, hits).or_else(|| listed(target, ui, app))
+}
+
+/// A click on the scope pickers, the sidebar, the list, or an object's tab.
+fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> {
     let held = &mut ui.session.resources;
     match target {
         Target::Picker(which @ (Picks::Contexts | Picks::Namespaces)) => {
@@ -57,6 +68,30 @@ pub(super) fn followed(ui: &mut Ui, link: resources::Link) -> Vec<Command> {
     Vec::new()
 }
 
+/// A click on the logs view's range picker.
+fn logs(target: &Target, ui: &mut Ui, hits: &Hits) -> Option<Vec<Command>> {
+    match target {
+        Target::LogRange => {
+            let under = hits.rect_of(target)?;
+            ui.overlay = Some(Overlay::Menu(Menu {
+                at: (under.x, under.bottom()),
+                corner: Corner::TopLeft,
+                of: Of::LogRanges,
+            }));
+            Some(Vec::new())
+        }
+        _ => None,
+    }
+}
+
+/// A range picked for the logs shown; they open again from there.
+pub(super) fn ranged(ui: &mut Ui, at: usize) {
+    let picked = groove_types::LogRange::OFFERED.get(at);
+    if let (Some(tab), Some(range)) = (ui.session.resources.tab_mut(), picked) {
+        (tab.logs.range, tab.logs.following) = (*range, true);
+    }
+}
+
 /// A click on an object's tab, in the strip or inside it. False for any other target.
 fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
     match target {
@@ -68,7 +103,10 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 return false;
             };
             match target {
-                Target::ResourceView(yaml) => (tab.yaml, tab.scroll) = (*yaml, 0.0),
+                Target::ResourceView(view) => (tab.view, tab.scroll) = (*view, 0.0),
+                Target::LogSource(source) => tab.logs.source = Some(source.clone()),
+                Target::LogPrevious(previous) => tab.logs.previous = *previous,
+                Target::LogFollow => tab.logs.following = true,
                 Target::ResourceContainer(name) => tab.container = Some(name.clone()),
                 Target::ResourceSection(section) => {
                     if !tab.shut.remove(section) {

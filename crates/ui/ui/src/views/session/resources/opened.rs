@@ -46,7 +46,8 @@ pub enum Section {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Opened {
     pub link: Link,
-    pub yaml: bool,
+    pub view: super::View,
+    pub logs: super::LogsUi,
     pub container: Option<String>,
     /// The sections folded shut; the annotations until opened.
     pub shut: std::collections::BTreeSet<Section>,
@@ -61,7 +62,8 @@ impl Opened {
     pub fn new(link: Link) -> Self {
         Self {
             link,
-            yaml: false,
+            view: super::View::Describe,
+            logs: super::LogsUi::default(),
             container: None,
             shut: [Section::Annotations].into(),
             scroll: 0.0,
@@ -105,17 +107,26 @@ impl super::ResourcesUi {
         self.opened.get_mut(self.showing?)
     }
 
-    /// How far down the panel shown is scrolled: the object's tab, or the list.
+    /// How far down the panel shown is scrolled: the object's tab, or the list. A scroll of logs stops following.
     pub fn scroll_mut(&mut self) -> &mut f32 {
         let at = self.showing.filter(|at| *at < self.opened.len());
         match at {
-            Some(at) => &mut self.opened[at].scroll,
+            Some(at) => {
+                let tab = &mut self.opened[at];
+                tab.logs.following &= tab.view != super::View::Logs;
+                &mut tab.scroll
+            }
             None => &mut self.scroll,
         }
     }
 
+    /// How far down the panel shown is scrolled; past the end while its logs follow.
     pub fn scroll(&self) -> f32 {
-        self.tab().map_or(self.scroll, |one| one.scroll)
+        match self.tab() {
+            Some(one) if one.view == super::View::Logs && one.logs.following => f32::MAX,
+            Some(one) => one.scroll,
+            None => self.scroll,
+        }
     }
 
     /// How far the YAML shown is scrolled sideways; the list never is.
