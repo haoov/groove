@@ -77,6 +77,12 @@ pub fn watch(
                 _ = stopped.wait_for(|on| *on) => return,
                 ended = cycle(&paths, &key, &send, &mut shown) => ended,
             };
+            if ended.is_ok() {
+                tokio::select! {
+                    _ = stopped.wait_for(|on| *on) => return,
+                    _ = tokio::time::sleep(FIRST_WAIT) => {}
+                }
+            }
             if let Err(why) = ended {
                 send(Batch::Failed(why));
                 tokio::select! {

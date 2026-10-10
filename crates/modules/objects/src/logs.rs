@@ -39,16 +39,23 @@ pub fn logs(
         let mut last: BTreeMap<String, Seen> = BTreeMap::new();
         let mut wait = FIRST_WAIT;
         loop {
+            let before = last.clone();
             let ended = tokio::select! {
                 _ = stopped.wait_for(|on| *on) => return,
                 ended = cycle(&paths, &key, &mut last, &send) => ended,
             };
             let pause = match ended {
                 Ok(()) if key.previous => return send(Logged::Ended),
-                Ok(()) => {
+                Ok(()) if last != before => {
                     send(Logged::Ended);
                     wait = FIRST_WAIT;
                     FIRST_WAIT
+                }
+                Ok(()) => {
+                    send(Logged::Ended);
+                    let pause = wait;
+                    wait = (wait * 2).min(LONGEST_WAIT);
+                    pause
                 }
                 Err(why) => {
                     send(Logged::Failed(why));
@@ -162,7 +169,10 @@ async fn gathered(
 
 /// The pod's containers, its init ones first.
 async fn containers(client: &Client, key: &LogKey) -> Result<Vec<String>, String> {
-    let path = format!("/api/v1/namespaces/{}/pods/{}", key.namespace, key.pod);
+    let path = format!(
+        "/api/v1/namespaces/{}/pods/{}?resourceVersion=0",
+        key.namespace, key.pod
+    );
     let pod = client.get_object(&path).await.map_err(said)?;
     let names = |at: &str| {
         let listed = pod.pointer(at).and_then(serde_json::Value::as_array);

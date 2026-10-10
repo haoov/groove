@@ -55,6 +55,10 @@ fn table(rows: &[(&str, &str)], version: &str) -> serde_json::Value {
 
 /// Runs the watcher for a moment and returns every batch it sent.
 async fn batches(server: &MockServer) -> Vec<Batch> {
+    batches_for(server, Duration::from_millis(300)).await
+}
+
+async fn batches_for(server: &MockServer, long: Duration) -> Vec<Batch> {
     let dir = tempfile::tempdir().expect("a temp dir");
     let paths = vec![kubeconfig(dir.path(), &server.uri())];
     let sent = Arc::new(Mutex::new(Vec::new()));
@@ -63,7 +67,7 @@ async fn batches(server: &MockServer) -> Vec<Batch> {
     let running = tokio::spawn(watch(paths, pods(), &stop, move |batch| {
         held.lock().expect("the batches").push(batch);
     }));
-    tokio::time::sleep(Duration::from_millis(300)).await;
+    tokio::time::sleep(long).await;
     stop.stop();
     running.await.expect("the watcher ended");
     sent.lock().expect("the batches").clone()
@@ -116,7 +120,7 @@ async fn the_list_comes_first_whole_then_the_watch_s_changes_from_its_version() 
 }
 
 #[tokio::test]
-async fn an_expired_version_lists_again_from_the_start() {
+async fn an_expired_version_lists_again_from_the_start_after_a_pause() {
     let server = MockServer::start().await;
     Mock::given(path("/api/v1/namespaces/paxone/pods"))
         .and(query_param("limit", "5000"))
@@ -129,12 +133,14 @@ async fn an_expired_version_lists_again_from_the_start() {
         .respond_with(ResponseTemplate::new(410).set_body_json(gone))
         .mount(&server)
         .await;
-    let sent = batches(&server).await;
-    let resets = sent
-        .iter()
-        .filter(|one| matches!(one, Batch::Reset { .. }))
-        .count();
-    assert!(resets >= 2, "{sent:?}");
+    let resets = |sent: &[Batch]| {
+        let reset = |one: &&Batch| matches!(one, Batch::Reset { .. });
+        sent.iter().filter(reset).count()
+    };
+    let soon = batches(&server).await;
+    assert_eq!(resets(&soon), 1, "no list again at once: {soon:?}");
+    let sent = batches_for(&server, Duration::from_millis(1_500)).await;
+    assert!(resets(&sent) >= 2, "{sent:?}");
     assert!(
         !sent.iter().any(|one| matches!(one, Batch::Failed(_))),
         "{sent:?}"
