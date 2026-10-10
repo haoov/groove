@@ -50,6 +50,7 @@ pub struct Opened {
     pub link: Link,
     pub view: super::View,
     pub logs: super::LogsUi,
+    pub argo: super::ArgoUi,
     pub container: Option<String>,
     /// The sections folded shut; the annotations and the events until opened.
     pub shut: std::collections::BTreeSet<Section>,
@@ -66,6 +67,7 @@ impl Opened {
             link,
             view: super::View::Describe,
             logs: super::LogsUi::default(),
+            argo: super::ArgoUi::default(),
             container: None,
             shut: [Section::Annotations, Section::Events].into(),
             scroll: 0.0,

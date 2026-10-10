@@ -34,6 +34,8 @@ fn pane(target: &Option<Target>, focus: Focus) -> Focus {
             | Target::ResourceTab(_)
             | Target::ResourceClose(_)
             | Target::ResourceView(_)
+            | Target::ArgoFilter(_)
+            | Target::ArgoFold(_)
             | Target::ResourceContainer(_)
             | Target::ResourceSection(_)
             | Target::ResourceOpen(_)

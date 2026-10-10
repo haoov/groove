@@ -71,6 +71,7 @@ fn session<'a>(app: &AppState, living: &'a Living) -> Shown<'a, Target> {
         under: vec![Cell::small(held(living), Role::Faint)],
         target: Some(Target::Session(living.session.id.clone())),
         acts: Vec::new(),
+        band: false,
     }
 }
 

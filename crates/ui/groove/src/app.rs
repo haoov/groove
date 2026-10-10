@@ -124,7 +124,8 @@ impl App {
                 .agent
                 .agents
                 .iter()
-                .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving);
+                .any(|(_, agent)| agent.activity.class() == AttentionClass::Moving)
+            || groove_ui::spins(&self.state, &self.ui);
         if moving {
             return Some(Duration::from_millis(groove_ui::SPINNER_MS));
         }

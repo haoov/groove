@@ -4,9 +4,13 @@ mod argo;
 mod card;
 mod copy;
 mod describe;
+mod grouped;
 mod logs;
+mod managed;
 mod relations;
 mod sections;
+mod stages;
+mod syncing;
 mod wants;
 
 use groove_controllers::AppState;
@@ -18,6 +22,7 @@ use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
 
+pub use grouped::WIDTHS as ARGO_WIDTHS;
 pub use wants::{due, wants};
 
 use super::View;
@@ -38,6 +43,13 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         View::Yaml => crate::views::session::diff::editor(ctx, app, ui, rest),
         View::Logs => logs::draw(ctx, rest, app, (ui, tab)),
         View::Describe => describe::draw(ctx, rest, app, (tab, object)),
+        View::Resources => match object.app.as_deref() {
+            Some(part) => {
+                let dragged = ui.session.resources.widths.get(ARGO_WIDTHS);
+                managed::draw(ctx, rest, (tab, part), dragged)
+            }
+            None => describe::draw(ctx, rest, app, (tab, object)),
+        },
     }
 }
 
@@ -45,11 +57,12 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
 fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Option<&Described>) {
     hairline(ctx, line, ctx.styles.line());
     let link = &tab.link;
-    let mut room = line.pad(Edges::across(ctx.tokens.md, ctx.tokens.md));
+    let mut room = line.pad(Edges::across(ctx.tokens.md, 0.0));
     let gap = ctx.tokens.sm;
-    let views: &[View] = match object.is_some_and(|one| one.pod.is_some()) {
-        true => &[View::Logs, View::Yaml, View::Describe],
-        false => &[View::Yaml, View::Describe],
+    let views: &[View] = match object {
+        Some(one) if one.pod.is_some() => &[View::Logs, View::Yaml, View::Describe],
+        Some(one) if one.app.is_some() => &[View::Yaml, View::Resources, View::Describe],
+        _ => &[View::Yaml, View::Describe],
     };
     for view in views {
         Tab::new(view.label(), Target::ResourceView(*view), tab.view == *view)

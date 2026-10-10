@@ -3,7 +3,7 @@
 use groove_gfx::Rect;
 use groove_types::{AppCondition, AppPart, AppSource, Operation, SyncedResource, Timestamp};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_of, row_in};
+use groove_ui_kit::layout::{Spec, column_in, column_of, row_in};
 use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::{Label, ago};
 
@@ -63,11 +63,14 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
     let (said, role) = match operation.phase.as_str() {
         "Failed" => ("✗ Sync failed", Role::Bad),
         "Error" => ("✗ Sync error", Role::Bad),
-        "Running" => ("⟳ Syncing", Role::Working),
-        "Terminating" => ("⟳ Stopping", Role::Working),
+        "Running" => ("Syncing", Role::Working),
+        "Terminating" => ("Stopping", Role::Working),
         _ => ("✓ Synced", Role::Ok),
     };
     let mut room = rect;
+    if operation.running() {
+        room = turning(ctx, room, role);
+    }
     Label::new(said, ctx.styles.small(role)).left(ctx, &mut room, ctx.tokens.sm);
     let mut about = Vec::new();
     if let Some(revision) = &operation.revision {
@@ -88,6 +91,17 @@ pub(super) fn operation(ctx: &mut Ctx, rect: Rect, operation: &Operation, now: T
         about.push(format!("retry {}", operation.retries));
     }
     Label::new(&about.join(" · "), ctx.styles.small(Role::Faint)).draw(ctx, room);
+}
+
+/// The busy mark turning at the left of `room`; returns the room after it.
+pub(super) fn turning(ctx: &mut Ctx, room: Rect, role: Role) -> Rect {
+    let size = Spec::default().width(ctx.tokens.small);
+    let gap = Spec::default().width(ctx.tokens.xs);
+    let [mark, _, rest] = row_in(room, [size, gap, Spec::fill()]);
+    let tall = Spec::default().height(ctx.tokens.small);
+    let [_, mark, _] = column_in(mark, [Spec::fill(), tall, Spec::fill()]);
+    groove_ui_kit::widgets::busy(ctx, mark, role);
+    rest
 }
 
 pub(super) fn said(ctx: &mut Ctx, rect: Rect, message: &str) {

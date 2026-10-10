@@ -15,6 +15,7 @@ pub struct AppPart {
     pub automated: Option<(bool, bool)>,
     pub operation: Option<Operation>,
     pub conditions: Vec<AppCondition>,
+    pub resources: Vec<AppResource>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +53,8 @@ pub struct Operation {
     /// Who asked: a user's name, or `auto-sync`.
     pub by: String,
     pub failed: Vec<SyncedResource>,
+    /// Every result so far, hooks included.
+    pub applied: Vec<SyncedResource>,
 }
 
 impl Operation {
@@ -67,12 +70,64 @@ impl Operation {
 /// One resource of a sync's result.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncedResource {
+    pub group: String,
     pub kind: String,
     pub name: String,
     pub namespace: Option<String>,
     pub status: String,
     pub message: String,
     pub hook: bool,
+    /// `PreSync`, `Sync`, `PostSync` or `SyncFail`.
+    pub phase: String,
+    /// A hook's own phase: `Running`, `Succeeded`, `Failed`.
+    pub hook_phase: String,
+}
+
+impl SyncedResource {
+    pub fn broke(&self) -> bool {
+        self.status == "SyncFailed" || matches!(self.hook_phase.as_str(), "Failed" | "Error")
+    }
+}
+
+/// One resource the Application manages, as its status lists it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppResource {
+    pub group: String,
+    pub kind: String,
+    pub namespace: Option<String>,
+    pub name: String,
+    /// `Synced` or `OutOfSync`.
+    pub sync: String,
+    /// `Healthy`, `Progressing`, `Degraded`, `Missing`; empty for a kind with no health.
+    pub health: String,
+    pub message: String,
+    pub wave: i64,
+    /// Gone from the sources, kept until a sync prunes it.
+    pub prune: bool,
+    /// Run by a sync's phase; its sync status counts for nothing.
+    pub hook: bool,
+}
+
+impl AppResource {
+    pub fn out_of_sync(&self) -> bool {
+        !self.hook && self.sync != "Synced"
+    }
+
+    pub fn unhealthy(&self) -> bool {
+        !self.health.is_empty() && self.health != "Healthy"
+    }
+
+    pub fn attention(&self) -> bool {
+        self.out_of_sync() || self.unhealthy()
+    }
+
+    pub fn is(&self, result: &SyncedResource) -> bool {
+        let namespace = result.namespace.as_deref().unwrap_or_default();
+        self.kind == result.kind
+            && self.name == result.name
+            && self.group == result.group
+            && self.namespace.as_deref().unwrap_or_default() == namespace
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

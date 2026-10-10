@@ -92,6 +92,9 @@ pub enum Target {
     ResourceTab(usize),
     ResourceClose(usize),
     ResourceView(crate::views::session::resources::View),
+    /// An Application's resources view: a filter picked, a group folded.
+    ArgoFilter(crate::views::session::resources::Filter),
+    ArgoFold(String),
     /// The logs view's controls: the containers read, the run, the range picker, following.
     LogSource(groove_types::LogSource),
     LogPrevious(bool),

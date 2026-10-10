@@ -38,7 +38,11 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
             }
         }
         Target::ResourceSort(label) => {
-            held.sort = match held.sort.take() {
+            let sort = match held.tab_mut() {
+                Some(tab) => &mut tab.argo.sort,
+                None => &mut held.sort,
+            };
+            *sort = match sort.take() {
                 Some((at, descending)) if at == *label => Some((at, !descending)),
                 _ => Some((label.clone(), false)),
             };
@@ -107,6 +111,11 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 Target::LogSource(source) => tab.logs.source = Some(source.clone()),
                 Target::LogPrevious(previous) => tab.logs.previous = *previous,
                 Target::LogFollow => tab.logs.following = true,
+                Target::ArgoFilter(filter) => {
+                    tab.argo.pick(*filter);
+                    tab.scroll = 0.0;
+                }
+                Target::ArgoFold(group) => tab.argo.toggle(group),
                 Target::ResourceContainer(name) => tab.container = Some(name.clone()),
                 Target::ResourceSection(section) => {
                     if !tab.shut.remove(section) {
@@ -142,12 +151,16 @@ pub(super) fn held(
     (label, x): (String, f32),
 ) -> Vec<Command> {
     let open = app.session.selected();
-    let kind = open.and_then(|open| resources::kind(app, open, &ui.session.resources));
+    let held = &ui.session.resources;
+    let kind = match held.tab() {
+        Some(_) => Some(resources::ARGO_WIDTHS.to_string()),
+        None => open.and_then(|open| resources::kind(app, open, held).map(|one| one.plural)),
+    };
     let header = hits.rect_of(&Target::ResourceSort(label.clone()));
     if let (Some(kind), Some(header)) = (kind, header) {
         let width = header.w;
         ui.held = Some(Held::Column(Dragged {
-            kind: kind.plural,
+            kind,
             label,
             from: x,
             width,

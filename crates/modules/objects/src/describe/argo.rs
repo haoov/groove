@@ -1,6 +1,8 @@
 //! An Argo CD Application's own part: its sources, destination, sync policy, last sync and conditions.
 
-use groove_types::{AppCondition, AppPart, AppSource, Destination, Operation, SyncedResource};
+use groove_types::{
+    AppCondition, AppPart, AppResource, AppSource, Destination, Operation, SyncedResource,
+};
 use serde_json::Value;
 
 use super::{text, time};
@@ -31,6 +33,7 @@ pub(super) fn part(app: &Value) -> AppPart {
         automated,
         operation: operation(&status["operationState"]),
         conditions: conditions(&status["conditions"]),
+        resources: managed(&status["resources"]),
     }
 }
 
@@ -72,11 +75,8 @@ fn operation(state: &Value) -> Option<Operation> {
         .as_array()
         .map(Vec::as_slice)
         .unwrap_or_default();
-    let failed = listed
-        .iter()
-        .filter(|one| broke(one))
-        .map(resource)
-        .collect();
+    let applied: Vec<SyncedResource> = listed.iter().map(resource).collect();
+    let failed = applied.iter().filter(|one| one.broke()).cloned().collect();
     Some(Operation {
         phase,
         message: text(state, "/message"),
@@ -89,25 +89,40 @@ fn operation(state: &Value) -> Option<Operation> {
         retries: state["retryCount"].as_u64().unwrap_or_default() as u32,
         by,
         failed,
+        applied,
     })
-}
-
-/// A result that did not apply, or a hook that did not succeed.
-fn broke(one: &Value) -> bool {
-    let status = one["status"].as_str().unwrap_or_default();
-    let hook = one["hookPhase"].as_str().unwrap_or_default();
-    matches!(status, "SyncFailed") || matches!(hook, "Failed" | "Error")
 }
 
 fn resource(one: &Value) -> SyncedResource {
     SyncedResource {
+        group: text(one, "/group"),
         kind: text(one, "/kind"),
         name: text(one, "/name"),
         namespace: optional(one, "/namespace").filter(|one| !one.is_empty()),
         status: text(one, "/status"),
         message: text(one, "/message"),
         hook: !text(one, "/hookType").is_empty(),
+        phase: text(one, "/syncPhase"),
+        hook_phase: text(one, "/hookPhase"),
     }
+}
+
+fn managed(all: &Value) -> Vec<AppResource> {
+    let all = all.as_array().map(Vec::as_slice).unwrap_or_default();
+    all.iter()
+        .map(|one| AppResource {
+            group: text(one, "/group"),
+            kind: text(one, "/kind"),
+            namespace: optional(one, "/namespace").filter(|one| !one.is_empty()),
+            name: text(one, "/name"),
+            sync: text(one, "/status"),
+            health: text(one, "/health/status"),
+            message: text(one, "/health/message"),
+            wave: one["syncWave"].as_i64().unwrap_or_default(),
+            prune: one["requiresPruning"].as_bool().unwrap_or_default(),
+            hook: one["hook"].as_bool().unwrap_or_default(),
+        })
+        .collect()
 }
 
 fn conditions(all: &Value) -> Vec<AppCondition> {

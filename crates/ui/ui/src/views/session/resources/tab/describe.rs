@@ -43,45 +43,52 @@ pub(super) fn draw(
 ) {
     let events = events(app, tab, object);
     let blocks = blocks(app, (tab, object), &events, ctx.now);
-    let room = body.pad(Edges::all(ctx.tokens.md));
+    let md = ctx.tokens.md;
     let usage = usage(app, tab);
-    let keys = key_width(ctx, object, room.w);
+    let keys = key_width(ctx, object, body.w - md * 2.0);
     let heights: Vec<f32> = blocks.iter().map(|one| height(ctx, tab, one)).collect();
     let indexed: Vec<(usize, &Block)> = blocks.iter().enumerate().collect();
     let last = tab.copied.as_deref();
-    let tint = object.app.as_deref().and_then(argo::tint);
+    let tint = tinted(object, &blocks);
     let extent = scrolled(
         ctx,
-        room,
+        body,
         tab.scroll,
         &indexed,
         |(at, _)| heights[*at],
-        |ctx, rect, (_, block)| match block {
-            Block::Heading(section, count) => {
-                if let (Section::Operation, Some(role)) = (section, tint) {
-                    argo::ground(ctx, rect, role);
-                }
-                sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
+        |ctx, rect, (at, block)| {
+            let rect = rect.pad(Edges::across(md, md));
+            if let Some((role, _)) = tint.filter(|(_, until)| at < until) {
+                argo::ground(ctx, rect, role);
             }
-            Block::Operation(_) | Block::Said(_) | Block::Broke(_) => {
-                if let Some(role) = tint {
-                    argo::ground(ctx, rect, role);
+            match block {
+                Block::Heading(section, count) => {
+                    sections::heading(ctx, rect, (*section, tab.shut.contains(section)), count)
                 }
-                operated(ctx, rect, block);
+                Block::Operation(_) | Block::Said(_) | Block::Broke(_) => {
+                    operated(ctx, rect, block)
+                }
+                Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
+                Block::Source(one) => argo::source(ctx, rect, one, last),
+                Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
+                Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
+                Block::Relations(columns) => relations::draw(ctx, rect, columns, last),
+                Block::Card(pod) => card::draw(ctx, rect, (tab, pod), usage.as_ref()),
+                Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
+                Block::Event(row) => sections::event(ctx, rect, row, last),
+                Block::Gap => {}
+                Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
             }
-            Block::AppCondition(one) => argo::condition(ctx, rect, one, ctx.now),
-            Block::Source(one) => argo::source(ctx, rect, one, last),
-            Block::Conditions(pod) => sections::conditions(ctx, rect, pod),
-            Block::Summary(facts) => sections::grid(ctx, rect, facts, last),
-            Block::Relations(columns) => relations::draw(ctx, rect, columns, last),
-            Block::Card(pod) => card::draw(ctx, rect, (tab, pod), usage.as_ref()),
-            Block::Pair(pair) => sections::pair(ctx, rect, pair, (keys, last)),
-            Block::Event(row) => sections::event(ctx, rect, row, last),
-            Block::Gap => {}
-            Block::Rule => groove_ui_kit::shape::top_rule(ctx, rect, ctx.styles.line()),
         },
     );
     ctx.app.hits.scrolls(Scroller::Resources, extent);
+}
+
+/// The operation's colour, and the blocks it stands under: from the top to the rule after it.
+fn tinted(object: &Described, blocks: &[Block]) -> Option<(Role, usize)> {
+    let role = object.app.as_deref().and_then(argo::tint)?;
+    let until = blocks.iter().position(|one| matches!(one, Block::Rule));
+    Some((role, until.unwrap_or(blocks.len())))
 }
 
 /// A row of the operation.
@@ -115,9 +122,9 @@ fn blocks<'a>(
     now: groove_types::Timestamp,
 ) -> Vec<Block<'a>> {
     let parts = parts(app, (tab, object), events, now);
-    let mut out = Vec::new();
+    let mut out = vec![Block::Gap];
     for (section, count, held) in parts {
-        if !out.is_empty() {
+        if out.len() > 1 {
             out.extend([Block::Gap, Block::Rule]);
         }
         out.push(Block::Heading(section, count));
@@ -125,6 +132,7 @@ fn blocks<'a>(
             out.extend(held);
         }
     }
+    out.push(Block::Gap);
     out
 }
 

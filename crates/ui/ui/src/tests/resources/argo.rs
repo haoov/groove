@@ -14,7 +14,7 @@ use crate::hit::Target;
 use crate::tests::{click, window};
 use crate::views::session::resources::Link;
 
-fn applications() -> KubeKind {
+pub(super) fn applications() -> KubeKind {
     KubeKind {
         group: "argoproj.io".into(),
         version: "v1alpha1".into(),
@@ -23,7 +23,7 @@ fn applications() -> KubeKind {
 }
 
 /// The session's list on Applications, one of them failing.
-fn listed() -> (AppState, Ui) {
+pub(super) fn listed() -> (AppState, Ui) {
     let (mut app, mut ui) = listing();
     let mut kinds = app.cluster.store.kinds("staging").expect("kinds").to_vec();
     kinds.push(applications());
@@ -78,7 +78,7 @@ fn listed() -> (AppState, Ui) {
     (app, ui)
 }
 
-fn failing() -> Described {
+pub(super) fn failing() -> Described {
     let operation = Operation {
         phase: "Failed".into(),
         message: "one or more objects failed to apply".into(),
@@ -88,13 +88,17 @@ fn failing() -> Described {
         retries: 2,
         by: "auto-sync".into(),
         failed: vec![SyncedResource {
+            group: "batch".into(),
             kind: "Job".into(),
             name: "pythie-migrate".into(),
             namespace: Some("paxone".into()),
             status: "Synced".into(),
             message: "Job has reached the specified backoff limit".into(),
             hook: true,
+            phase: "PreSync".into(),
+            hook_phase: "Failed".into(),
         }],
+        applied: Vec::new(),
     };
     let part = AppPart {
         project: "data-science".into(),
@@ -118,6 +122,7 @@ fn failing() -> Described {
         automated: Some((true, true)),
         operation: Some(operation),
         conditions: Vec::new(),
+        resources: Vec::new(),
     };
     Described {
         uid: "paxone/pythie-acc".into(),

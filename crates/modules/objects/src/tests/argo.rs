@@ -112,6 +112,14 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
         "status": {
             "sync": { "status": "OutOfSync", "revision": "e9f8a7b" },
             "health": { "status": "Degraded" },
+            "resources": [
+                { "group": "apps", "kind": "Deployment", "namespace": "pythie-cayzn-acc", "name": "pythie-api",
+                  "status": "OutOfSync", "syncWave": 1, "health": { "status": "Progressing", "message": "1 of 3 updated" } },
+                { "kind": "ConfigMap", "namespace": "pythie-cayzn-acc", "name": "pythie-old", "status": "OutOfSync",
+                  "requiresPruning": true },
+                { "group": "batch", "kind": "Job", "namespace": "pythie-cayzn-acc", "name": "pythie-migrate",
+                  "status": "OutOfSync", "hook": true }
+            ],
             "conditions": [{ "type": "SyncError", "message": "one or more synchronization tasks completed unsuccessfully",
                              "lastTransitionTime": "2026-10-10T09:00:00Z" }],
             "operationState": {
@@ -120,7 +128,7 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
                 "operation": { "initiatedBy": { "automated": true } },
                 "syncResult": { "revision": "a1b2c3d", "resources": [
                     { "kind": "Job", "name": "pythie-migrate", "namespace": "pythie-cayzn-acc", "status": "Synced",
-                      "hookType": "PreSync", "hookPhase": "Failed", "message": "Job has reached the specified backoff limit" },
+                      "hookType": "PreSync", "hookPhase": "Failed", "syncPhase": "PreSync", "message": "Job has reached the specified backoff limit" },
                     { "kind": "ConfigMap", "name": "pythie-config", "namespace": "pythie-cayzn-acc", "status": "Synced", "message": "configured" }
                 ] }
             }
@@ -159,6 +167,24 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
         "the failed hook, not the configured map"
     );
     assert!(operation.failed[0].hook);
+    assert_eq!(
+        operation.applied.len(),
+        2,
+        "every result, the failed hook among them"
+    );
+    assert_eq!(operation.applied[0].phase, "PreSync");
+    let api = &part.resources[0];
+    assert_eq!(
+        (api.wave, api.health.as_str(), api.message.as_str()),
+        (1, "Progressing", "1 of 3 updated")
+    );
+    assert!(api.attention() && api.unhealthy());
+    let old = &part.resources[1];
+    assert!(old.prune && old.out_of_sync() && !old.unhealthy());
+    assert!(
+        part.resources[2].hook && !part.resources[2].out_of_sync(),
+        "a hook's status counts for nothing"
+    );
     assert_eq!(part.conditions[0].kind, "SyncError");
     let other = serde_json::json!({ "apiVersion": "app.k8s.io/v1beta1", "kind": "Application" });
     assert!(
