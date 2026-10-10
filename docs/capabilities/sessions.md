@@ -22,6 +22,10 @@ source branch and measured against a target branch. Both pickers list `origin`'s
 It leaves the rail and stays in the board's Live column; picking it there puts it back
 on the rail with its agent. Only `session.delete` takes it away.
 
+**Taking a worktree away never loses work by itself.** Uncommitted changes refuse it, and so
+do commits origin lacks, unless the worktree's MR merged: the forge holds them then, squashed
+or not. *Force close worktree* takes it away whatever it holds.
+
 **A review session tracks the MR's own branch** rather than cutting one. Its id comes
 from the project and the MR number, so opening the same MR again finds the session it
 already has.
