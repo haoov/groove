@@ -171,14 +171,17 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
     out
 }
 
-/// What the tab needs each frame, `up` while it shows: its contexts' kinds, a watcher a key.
+/// What the tab needs each frame, `up` while it shows: its contexts' kinds; a watcher a key while the list shows.
 pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
     let open = app.session.selected().filter(|_| up);
     let mut out = Vec::new();
     let wanted = match open {
         Some(open) => {
             out.extend(discoveries(app, open));
-            keys(app, open, ui)
+            match ui.tab() {
+                Some(_) => Vec::new(),
+                None => keys(app, open, ui),
+            }
         }
         None => Vec::new(),
     };

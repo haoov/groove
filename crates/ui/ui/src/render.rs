@@ -65,12 +65,13 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
         &ui.session.resources,
         metrics.now,
     ));
+    let listed = up && ui.session.resources.tab().is_none();
     if app
         .cluster
         .store
         .due()
         .is_some_and(|due| due <= metrics.now)
-        && up
+        && listed
     {
         let age = groove_controllers::cluster::Command::Age { now: metrics.now };
         out.push(Command::Cluster(age));
@@ -82,7 +83,8 @@ pub fn frame_commands(app: &AppState, ui: &Ui, metrics: Metrics) -> Vec<Command>
 pub fn ages_due(app: &AppState, ui: &Ui) -> Option<groove_types::Timestamp> {
     let up = ui.showing(app) == Surface::Session && ui.session.tab == Tab::Resources;
     let held = &ui.session.resources;
-    let due = [app.cluster.store.due(), resources::tab_due(app, held)];
+    let listed = held.tab().is_none().then(|| app.cluster.store.due());
+    let due = [listed.flatten(), resources::tab_due(app, held)];
     up.then(|| due.into_iter().flatten().min()).flatten()
 }
 

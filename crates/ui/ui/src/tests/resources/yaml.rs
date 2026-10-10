@@ -203,3 +203,32 @@ fn a_long_yaml_line_scrolls_sideways_by_the_wheel_and_follows_the_caret() {
         "and back at its start"
     );
 }
+
+#[test]
+fn a_search_matching_often_in_a_long_line_draws_at_once() {
+    let (mut app, mut ui) = opened();
+    let key = link("api-0", pods()).key();
+    let applied: String = (0..400)
+        .map(|at| format!("{{\"annotations\":{{\"note-{at}\":\"value\"}}}},"))
+        .collect();
+    let mut pod = crashing();
+    pod.yaml = format!(
+        "metadata:\n  annotations:\n    kubectl.kubernetes.io/last-applied-configuration: '{applied}'\n  name: api-0\n"
+    )
+    .into();
+    lands(&mut app, &key, vec![pod]);
+    let (_, hits) = drawn(&app, &ui);
+    let yaml = hits.rect_of(&Target::ResourceView(true)).expect("yaml");
+    click(yaml, &mut ui, &app, &hits);
+    let press = |ui: &mut Ui, key, mods| crate::tests::press(key, mods, ui, &app);
+    press(&mut ui, crate::input::Key::Char('f'), ctrl());
+    for c in "annota".chars() {
+        press(&mut ui, crate::input::Key::Char(c), Default::default());
+    }
+    let found = ui.session.find.as_ref().map_or(0, |find| find.hits.len());
+    assert!(found > 300, "{found} matches");
+    let started = std::time::Instant::now();
+    drawn(&app, &ui);
+    let took = started.elapsed();
+    assert!(took.as_secs() < 5, "a frame took {took:?}");
+}
