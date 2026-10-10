@@ -1,5 +1,6 @@
 mod client;
 mod kubeconfig;
+mod logs;
 mod objects;
 mod table;
 

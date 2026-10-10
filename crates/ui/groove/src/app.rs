@@ -198,11 +198,8 @@ impl App {
         };
         let scale = window.scale_factor() as f32;
         let config = &self.state.config;
-        let (text, code, terminal) = (
-            config.text_size(),
-            config.code_size(),
-            config.terminal_size(),
-        );
+        let (text, terminal) = (config.text_size(), config.terminal_size());
+        let code = groove_ui::code_size(&self.state, &self.ui, (text, config.code_size()));
         renderer.set_mono(family(config.mono_family()));
         let fonts = renderer.fonts();
         Some(Metrics {
