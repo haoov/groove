@@ -415,3 +415,35 @@ fn a_section_s_heading_folds_it_and_the_annotations_start_folded() {
         "the summary folded"
     );
 }
+
+#[test]
+fn behind_an_object_s_tab_the_list_lets_its_watchers_go_and_its_ages_rest() {
+    use groove_controllers::cluster_service::{Batch, Delta};
+    use groove_types::{Aging, ObjectRow};
+    let (mut app, ui) = opened();
+    let young = ObjectRow {
+        aging: vec![Aging {
+            cell: 1,
+            since: Timestamp::new(1_000),
+            said: 0,
+            lead: None,
+            turn: Timestamp::default(),
+        }],
+        ..super::row("young", "paxone", "Running")
+    };
+    let listed = super::key("staging", Some("paxone"));
+    let put = Batch::Changes(vec![Delta::Put(young)]);
+    app.cluster.store.apply(&listed, put);
+    let now = Timestamp::new(1_179);
+    let at = crate::Metrics { now, ..window() };
+    let asked = crate::frame_commands(&app, &ui, at);
+    let release = Cluster::Release {
+        reader: "resources".into(),
+    };
+    assert!(asked.contains(&Command::Cluster(release)), "{asked:?}");
+    let watches = |one: &Command| matches!(one, Command::Cluster(Cluster::Watch { .. }));
+    assert!(!asked.iter().any(watches), "{asked:?}");
+    let tick = Command::Cluster(Cluster::Age { now });
+    assert!(!asked.contains(&tick), "no tick for rows nobody sees");
+    assert_eq!(crate::ages_due(&app, &ui), None, "and no wake for them");
+}

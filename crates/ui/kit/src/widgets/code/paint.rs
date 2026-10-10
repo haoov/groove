@@ -161,10 +161,13 @@ fn shade<A: App>(ctx: &mut Ctx<'_, A>, rect: Rect, text: &str, at: (usize, usize
     );
 }
 
-/// How wide the first `column` characters are.
+/// How wide the first `column` characters are; ASCII by the code font's advance, unshaped.
 fn upto<A: App>(ctx: &mut Ctx<'_, A>, text: &str, column: usize, style: &TextStyle) -> f32 {
     let before: String = text.chars().take(column).collect();
-    ctx.measure(&before, style)
+    match before.is_ascii() {
+        true => before.len() as f32 * ctx.advance,
+        false => ctx.measure(&before, style),
+    }
 }
 
 /// The caret: a bar at the column, placed through the text before it.
