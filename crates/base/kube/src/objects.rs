@@ -10,6 +10,11 @@ use crate::watch::TIMEOUT;
 use crate::{Client, Error, Kind, Result};
 
 const PAGE: &str = "500";
+/// A first page read from the API server's cache, not etcd.
+const CACHED: [(&str, &str); 2] = [
+    ("resourceVersion", "0"),
+    ("resourceVersionMatch", "NotOlderThan"),
+];
 pub(crate) const AS_METADATA: &str =
     "application/json;as=PartialObjectMetadataList;v=v1;g=meta.k8s.io";
 
@@ -93,8 +98,9 @@ impl Client {
         let (mut objects, mut next) = (Vec::new(), None::<String>);
         loop {
             let mut extra = vec![("limit", PAGE)];
-            if let Some(token) = next.as_deref() {
-                extra.push(("continue", token));
+            match next.as_deref() {
+                Some(token) => extra.push(("continue", token)),
+                None => extra.extend(CACHED),
             }
             let list: List = self.json(&narrowed.uri(&extra), "application/json").await?;
             objects.extend(list.items.unwrap_or_default().into_iter().map(bare));
@@ -129,7 +135,7 @@ impl Client {
 
     /// The metadata of every object `narrowed` names: labels and annotations, never the body.
     pub async fn list_metadata(&self, narrowed: Narrowed<'_>) -> Result<Vec<Value>> {
-        let list: List = self.json(&narrowed.uri(&[]), AS_METADATA).await?;
+        let list: List = self.json(&narrowed.uri(&CACHED), AS_METADATA).await?;
         Ok(list.items.unwrap_or_default())
     }
 
