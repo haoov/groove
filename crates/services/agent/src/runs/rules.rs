@@ -88,3 +88,29 @@ pub fn target(
     };
     place.map(|one| one.id.clone())
 }
+
+/// What a routine's button does: an action, or a run in the session that holds it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pressed {
+    Act(Action),
+    Run(SessionId),
+}
+
+impl Runs {
+    /// What pressing `routine`'s button does, whatever the rules; or why it does nothing.
+    pub fn pressed(&self, routine: &Routine, sessions: &Sessions) -> Result<Pressed, String> {
+        if let Some(action) = routine.action {
+            return Ok(Pressed::Act(action));
+        }
+        let why = match (routine.kind, target(routine, None, sessions)) {
+            (RoutineKind::Standalone, Some(at)) if self.holds(&routine.id, &at) => {
+                "it runs there already"
+            }
+            (RoutineKind::Standalone, Some(at)) => return Ok(Pressed::Run(at)),
+            (RoutineKind::Standalone, None) => "switch it on first: its session holds its agent",
+            (RoutineKind::Bound, _) => "it is bound: its events run it",
+            (RoutineKind::Action, _) => "it does nothing Groove knows",
+        };
+        Err(format!("`{}` cannot run: {why}", routine.id))
+    }
+}

@@ -5,8 +5,8 @@ mod run;
 mod seen;
 mod trail;
 
-use groove_agent_service::runs::{Fired, Run, target};
-use groove_types::{Action, Error, RoutineKind, Timestamp, Trigger};
+use groove_agent_service::runs::{Fired, Pressed, Run};
+use groove_types::{Action, Error, Timestamp, Trigger};
 
 use crate::{AppState, Services, Spawner};
 
@@ -105,19 +105,10 @@ pub fn button(state: &mut AppState, services: &Services, spawner: &dyn Spawner, 
         let why = format!("`{id}` is no routine Groove can run");
         return state.failed(Error::invalid(why));
     };
-    let session = target(&routine, None, &seen::sessions(state));
-    let why = match (routine.kind, routine.action, &session) {
-        (_, Some(one), _) => return action::act(state, services, spawner, one),
-        (RoutineKind::Standalone, _, Some(session)) if state.agent.runs.holds(id, session) => {
-            "it runs there already"
-        }
-        (RoutineKind::Standalone, _, Some(_)) => "",
-        (RoutineKind::Standalone, _, None) => "switch it on first: its session holds its agent",
-        (RoutineKind::Bound, ..) => "it is bound: its events run it",
-        (RoutineKind::Action, ..) => "it does nothing Groove knows",
-    };
-    let Some(session) = session.filter(|_| why.is_empty()) else {
-        return state.failed(Error::invalid(format!("`{id}` cannot run: {why}")));
+    let session = match state.agent.runs.pressed(&routine, &seen::sessions(state)) {
+        Ok(Pressed::Act(one)) => return action::act(state, services, spawner, one),
+        Ok(Pressed::Run(session)) => session,
+        Err(why) => return state.failed(Error::invalid(why)),
     };
     let run = Run::new(&routine.id, session, None, "");
     let started = state.agent.runs.start_now(run, Timestamp::now());
