@@ -17,7 +17,7 @@ use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{Described, Health};
 use groove_ui_kit::base::style::Role;
-use groove_ui_kit::layout::{Spec, column_in};
+use groove_ui_kit::layout::{Spec, column_in, row_in};
 use groove_ui_kit::shape::hairline;
 use groove_ui_kit::text::Label;
 use groove_ui_kit::widgets::{Badge, Tab, Text};
@@ -70,6 +70,19 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
             .tight()
             .right(ctx, &mut room, 0.0);
     }
+    let stood = object.map(stands).unwrap_or_default();
+    let mut wide = 0.0;
+    let mut badges = Vec::new();
+    for (said, role) in &stood {
+        let badge = Badge::new(said, *role);
+        let next = wide + badge.width(ctx) + gap;
+        if next > room.w {
+            break;
+        }
+        wide = next;
+        badges.push(badge);
+    }
+    let [mut crumbs, kept] = row_in(room, [Spec::fill(), Spec::default().width(wide)]);
     let hue = app
         .config
         .cluster(&link.context)
@@ -77,17 +90,17 @@ fn heading(ctx: &mut Ctx, line: Rect, app: &AppState, tab: &Opened, object: Opti
     let faint = ctx.styles.small(Role::Ghost);
     let last = tab.copied.as_deref();
     let copied = |text, role| copy::Copied::new(text, role, last);
-    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut room, gap);
+    copied(&link.context, hue.unwrap_or(Role::Muted)).left(ctx, &mut crumbs, gap);
     if let Some(namespace) = &link.namespace {
-        Label::new("›", faint).left(ctx, &mut room, gap);
-        copied(namespace, Role::Muted).left(ctx, &mut room, gap);
+        Label::new("›", faint).left(ctx, &mut crumbs, gap);
+        copied(namespace, Role::Muted).left(ctx, &mut crumbs, gap);
     }
-    Label::new("›", faint).left(ctx, &mut room, gap);
-    Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut room, gap);
-    copied(&link.name, Role::Text).left(ctx, &mut room, gap);
-    let mut at = room.x;
-    for (said, role) in object.map(stands).unwrap_or_default() {
-        at = Badge::new(&said, role).at(ctx, room, at).right() + ctx.tokens.sm;
+    Label::new("›", faint).left(ctx, &mut crumbs, gap);
+    Label::new(&link.kind.kind, ctx.styles.small(Role::Faint)).left(ctx, &mut crumbs, gap);
+    copied(&link.name, Role::Text).left(ctx, &mut crumbs, gap);
+    let mut at = crumbs.x.min(kept.x);
+    for badge in badges {
+        at = badge.at(ctx, room, at).right() + gap;
     }
 }
 
