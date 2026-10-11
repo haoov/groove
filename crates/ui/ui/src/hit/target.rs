@@ -107,7 +107,7 @@ pub enum Target {
     ResourceSection(crate::views::session::resources::Section),
     ResourceOpen(Box<crate::views::session::resources::Link>),
     /// A value of an object's tab, which a click copies; a ctrl+click opens its object.
-    ResourceCopy(String, Option<Box<crate::views::session::resources::Link>>),
+    ResourceCopy(String, Option<Box<crate::views::session::resources::Opens>>),
     /// A context's line, which only lights under the pointer.
     ClusterRow(String),
     /// A control of a Settings row: the preference a click on it sets.

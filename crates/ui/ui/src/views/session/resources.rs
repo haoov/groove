@@ -12,7 +12,7 @@ mod tab;
 pub use argo::{ArgoUi, Filter};
 pub use list::draw;
 pub use logs::{LogsUi, RANGES, View, first as first_container, log_key};
-pub use opened::{Link, Section, row_link};
+pub use opened::{Link, Opens, Section, row_link};
 pub use scope::{Dragged, Pick, ResourcesUi, contexts, held, kind, offered, wants};
 pub use scoping::{How, ScopeLine, Scoping, choose, lines as scope_lines};
 pub use sidebar::{Line, draw as sidebar, shown};

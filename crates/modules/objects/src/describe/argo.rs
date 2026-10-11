@@ -45,8 +45,8 @@ fn sources(spec: &Value, status: &Value) -> Vec<AppSource> {
     let all = several.unwrap_or_else(|| vec![&spec["source"]]);
     let all = all.into_iter().filter(|one| one.is_object());
     let synced = |at: usize| match status.pointer("/sync/revisions") {
-        Some(list) => list[at].as_str().map(crate::argo::short),
-        None => optional(status, "/sync/revision").map(|one| crate::argo::short(&one)),
+        Some(list) => list[at].as_str().map(String::from),
+        None => optional(status, "/sync/revision"),
     };
     all.enumerate()
         .map(|(at, one)| AppSource {

@@ -30,6 +30,21 @@ impl Link {
     }
 }
 
+/// What a ctrl+click on a value opens: an object's tab, a repo in the session, or one of its commits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Opens {
+    Object(Link),
+    Repo {
+        repo: String,
+        target: String,
+    },
+    Revision {
+        repo: String,
+        target: String,
+        sha: String,
+    },
+}
+
 /// A part of the described view, which folds under its heading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Section {

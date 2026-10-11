@@ -4,6 +4,7 @@ mod argo;
 mod containers;
 mod copy;
 mod describe;
+mod destined;
 mod grouped;
 mod logs;
 mod managed;
@@ -46,7 +47,7 @@ pub fn draw(ctx: &mut Ctx, body: Rect, app: &AppState, (ui, tab): (&crate::Ui, &
         View::Resources => match object.app.as_deref() {
             Some(part) => {
                 let dragged = ui.session.resources.widths.get(ARGO_WIDTHS);
-                managed::draw(ctx, rest, (tab, part), dragged)
+                managed::draw(ctx, rest, (app, tab, part), dragged)
             }
             None => describe::draw(ctx, rest, app, (tab, object)),
         },

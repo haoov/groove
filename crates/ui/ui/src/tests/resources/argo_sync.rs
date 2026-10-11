@@ -11,7 +11,7 @@ use crate::hit::Target;
 use crate::tests::click;
 use crate::views::session::resources::{Filter, Link, View};
 
-fn managed(kind: &str, name: &str, sync: &str, wave: i64) -> AppResource {
+pub(super) fn managed(kind: &str, name: &str, sync: &str, wave: i64) -> AppResource {
     AppResource {
         group: String::new(),
         kind: kind.into(),
@@ -39,7 +39,7 @@ fn result(kind: &str, name: &str, hook: bool, hook_phase: &str) -> SyncedResourc
 }
 
 /// The Application's tab open on its resources view.
-fn opened(object: Described) -> (AppState, Ui) {
+pub(super) fn opened(object: Described) -> (AppState, Ui) {
     let (mut app, mut ui) = listed();
     let link = Link {
         context: "staging".into(),
@@ -55,7 +55,7 @@ fn opened(object: Described) -> (AppState, Ui) {
     (app, ui)
 }
 
-fn hit(app: &AppState, ui: &mut Ui, target: Target) -> Vec<Command> {
+pub(super) fn hit(app: &AppState, ui: &mut Ui, target: Target) -> Vec<Command> {
     let metrics = crate::tests::metrics(1920, 1080, 1.0);
     let (_, hits) = crate::view(app, ui, metrics, &mut groove_gfx::Fonts::embedded());
     let at = hits.rect_of(&target);

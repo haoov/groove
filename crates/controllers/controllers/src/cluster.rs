@@ -14,6 +14,8 @@ use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 pub enum Command {
     /// `cluster.scan_contexts`: the kubeconfig files read again for the contexts they name.
     ScanContexts,
+    /// `cluster.read_contexts`: the kubeconfig files read for the contexts they name, no login checked.
+    ReadContexts,
     /// `cluster.check_context`: whether one context signs in now.
     CheckContext { context: String },
     /// `cluster.discover`: the kinds a context serves, from the cache unless `again`.
@@ -50,6 +52,7 @@ impl Command {
     pub fn id(&self) -> &'static str {
         match self {
             Command::ScanContexts => "cluster.scan_contexts",
+            Command::ReadContexts => "cluster.read_contexts",
             Command::CheckContext { .. } => "cluster.check_context",
             Command::Discover { .. } => "cluster.discover",
             Command::Watch { .. } => "cluster.watch",
@@ -76,7 +79,8 @@ pub fn dispatch(
     spawner: &dyn Spawner,
 ) {
     match command {
-        Command::ScanContexts => scan(state, spawner),
+        Command::ScanContexts => scan(state, spawner, true),
+        Command::ReadContexts => scan(state, spawner, false),
         Command::CheckContext { context } => check(state, spawner, context),
         Command::Discover { context, again } => objects::discover(state, spawner, context, again),
         Command::Watch { reader, key } => objects::watch(state, spawner, &reader, key),
@@ -113,7 +117,8 @@ pub fn dispatch(
 }
 
 /// One scan at a time; a second ask while it runs is the same answer.
-fn scan(state: &mut AppState, spawner: &dyn Spawner) {
+/// The contexts read; with `check`, every context added to Groove checked again.
+fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
     if !state.cluster.begin_scan() {
         return;
     }
@@ -124,7 +129,9 @@ fn scan(state: &mut AppState, spawner: &dyn Spawner) {
             move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match found {
                 Ok(contexts) => {
                     apply(Event::Cluster(ClusterEvent::Found(contexts)), state);
-                    check_added(state, spawner);
+                    if check {
+                        check_added(state, spawner);
+                    }
                 }
                 Err(e) => {
                     apply(Event::Cluster(ClusterEvent::Unread), state);

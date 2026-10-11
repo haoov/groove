@@ -24,6 +24,30 @@ impl Service {
         self.provision(session, repo, spec, tag).await
     }
 
+    /// A repo attached cut from `revision` when origin has a branch of that name, else from its default.
+    pub async fn add_repo_at(
+        &self,
+        session: &Session,
+        name: &str,
+        revision: Option<&str>,
+    ) -> Result<Added, Error> {
+        let repo = self.find_or_clone(name).await?;
+        let git = groove_git::Git::at(&repo.local_path);
+        let heads = match revision {
+            Some(_) => git.remote_heads().await.unwrap_or_default(),
+            None => Vec::new(),
+        };
+        let target = revision.filter(|one| heads.iter().any(|head| head == one));
+        let spec = WorktreeSpec {
+            target: target.map(String::from),
+            ..WorktreeSpec::default()
+        };
+        self.store
+            .attach_repo(&session.id, &repo.id, Timestamp::now())
+            .await?;
+        self.provision(session, repo, &spec, None).await
+    }
+
     async fn provision(
         &self,
         session: &Session,

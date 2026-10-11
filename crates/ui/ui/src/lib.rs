@@ -180,6 +180,7 @@ impl Ui {
         let selected = app.session.selected().map(|open| &open.session.kind);
         self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
         self.session.reading = app.workspace.commit.is_some();
+        self.session.arrive(app);
         let held = app
             .session
             .selected()

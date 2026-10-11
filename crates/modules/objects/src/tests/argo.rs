@@ -188,3 +188,18 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
         "another group's kind"
     );
 }
+
+#[test]
+fn a_source_keeps_its_whole_synced_commit_for_the_link_to_show() {
+    let sha = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678";
+    let app = serde_json::json!({
+        "apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
+        "metadata": { "name": "pythie-cayzn-acc", "namespace": "argocd", "uid": "u1" },
+        "spec": { "source": { "repoURL": "https://gitlab.wiremind.io/pythie-cayzn-deploy.git", "targetRevision": "main" } },
+        "status": { "sync": { "status": "Synced", "revision": sha } }
+    });
+    let part = crate::describe("Application", &app, false)
+        .app
+        .expect("an application's part");
+    assert_eq!(part.sources[0].synced.as_deref(), Some(sha));
+}

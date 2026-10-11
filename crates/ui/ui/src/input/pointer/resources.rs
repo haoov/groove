@@ -1,9 +1,10 @@
 //! What a click on the Resources tab does: a scope picker opens its panel, a kind is listed.
 
-use groove_controllers::{AppState, Command};
+use groove_controllers::{AppState, Command, workspace};
 
 use crate::hit::{Hits, Picks, Target};
-use crate::views::session::resources::{self, Dragged, How, ResourcesUi, Scoping};
+use crate::views::session::Tab;
+use crate::views::session::resources::{self, Dragged, How, Opens, ResourcesUi, Scoping};
 use crate::{Corner, Menu, Of};
 use crate::{Held, Overlay, Ui};
 use groove_ui_kit::base::ctx::Metrics;
@@ -66,10 +67,27 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
     Some(Vec::new())
 }
 
-/// A ctrl+click on a link: its object's tab, not a copy.
-pub(super) fn followed(ui: &mut Ui, link: resources::Link) -> Vec<Command> {
-    ui.session.resources.open(link);
-    Vec::new()
+/// A ctrl+click on a link, not a copy: its object's tab, its repo in the session, or its commit's diff.
+pub(super) fn followed(ui: &mut Ui, opens: Opens) -> Vec<Command> {
+    let shown = |repo, target, sha| {
+        let target = Some(target);
+        let show = workspace::Command::ShowRepo { repo, target, sha };
+        vec![Command::Workspace(show)]
+    };
+    match opens {
+        Opens::Object(link) => {
+            ui.session.resources.open(link);
+            Vec::new()
+        }
+        Opens::Repo { repo, target } => {
+            ui.session.going = Some((Tab::Files, None));
+            shown(repo, target, None)
+        }
+        Opens::Revision { repo, target, sha } => {
+            ui.session.going = Some((Tab::Diff, Some(sha.clone())));
+            shown(repo, target, Some(sha))
+        }
+    }
 }
 
 /// A click on the logs view's range picker.

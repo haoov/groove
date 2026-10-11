@@ -11,6 +11,8 @@ use groove_ui_kit::widgets::Field;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct SessionUi {
     pub tab: Tab,
+    /// The tab to show once the repo asked for is selected and read, and its commit shown when one.
+    pub going: Option<(Tab, Option<String>)>,
     /// How far the sidebar's list is scrolled, in pixels.
     pub files: f32,
     /// The user folded the sidebar away.
@@ -256,5 +258,23 @@ impl SessionUi {
     /// Whether the commit box stands under the sidebar: with it, unless a commit is shown.
     pub fn commits(&self) -> bool {
         self.sidebar() && !self.reading && self.tab != Tab::Resources
+    }
+}
+
+impl SessionUi {
+    /// The tab gone to once what it waits for stands.
+    pub fn arrive(&mut self, app: &groove_controllers::AppState) {
+        let Some((tab, sha)) = &self.going else {
+            return;
+        };
+        let shown = app.workspace.commit.as_ref().map(|one| &one.sha);
+        let ready = match sha {
+            Some(sha) => shown == Some(sha),
+            None => app.workspace.revision.is_none(),
+        };
+        if ready {
+            self.tab = *tab;
+            self.going = None;
+        }
     }
 }

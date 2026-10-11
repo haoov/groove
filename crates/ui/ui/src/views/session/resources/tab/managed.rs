@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use groove_controllers::AppState;
 use groove_gfx::{Edges, Rect};
 use groove_types::{AppPart, AppResource, SyncedResource};
 use groove_ui_kit::base::style::Role;
@@ -13,7 +14,7 @@ use groove_ui_kit::widgets::{Cell, Shown, Tab, Text};
 use super::super::Filter;
 use super::super::opened::Opened;
 use super::grouped::{self, Columned};
-use super::{stages, syncing};
+use super::{destined, stages, syncing};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
@@ -39,7 +40,7 @@ enum Line<'a> {
 pub(super) fn draw(
     ctx: &mut Ctx,
     body: Rect,
-    (tab, part): (&Opened, &AppPart),
+    (app, tab, part): (&AppState, &Opened, &AppPart),
     dragged: Option<&BTreeMap<String, f32>>,
 ) {
     let tall = Spec::default().height(ctx.tokens.row + ctx.tokens.sm * 2.0);
@@ -55,9 +56,21 @@ pub(super) fn draw(
     }
     let lines = lines((tab, part), &groups, filter);
     let count = lines.len();
-    grouped::draw(ctx, rest, (tab, dragged), (&COLUMNS, count), |at| {
-        shown(part, &lines[at])
-    });
+    let context = destined::context(app, &tab.link.context, &part.destination);
+    let link = |one: &AppResource| destined::link(app, context.as_deref(), one);
+    grouped::draw(
+        ctx,
+        rest,
+        (tab, dragged),
+        (&COLUMNS, count),
+        |at| match &lines[at] {
+            Line::Row(one) => Shown {
+                target: link(one).map(|link| Target::ResourceOpen(Box::new(link))),
+                ..resource(part, one)
+            },
+            line => shown(part, line),
+        },
+    );
     if count == 0 {
         let row = Spec::default().height(ctx.tokens.row);
         let [_, line, _] = column_in(rest, [row, row, Spec::fill()]);

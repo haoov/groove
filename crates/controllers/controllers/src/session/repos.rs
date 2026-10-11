@@ -27,6 +27,28 @@ pub fn add_repo(
     });
 }
 
+/// A repo attached from a source that follows `revision`, cut from it when it is a branch.
+pub fn add_repo_at(
+    state: &mut AppState,
+    services: &Services,
+    spawner: &dyn Spawner,
+    id: &SessionId,
+    (name, revision): (&str, Option<&str>),
+) {
+    let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
+        return;
+    };
+    let verb = groove_session_service::Service::adding(name);
+    let pending = state.begin(format!("{verb} {name}"));
+    let (service, name) = (services.session.clone(), name.to_string());
+    let revision = revision.map(String::from);
+    added(spawner, pending, Asker::Ui, async move {
+        service
+            .add_repo_at(&session, &name, revision.as_deref())
+            .await
+    });
+}
+
 pub fn add_worktree(
     state: &mut AppState,
     services: &Services,
@@ -183,7 +205,10 @@ pub(crate) fn added(
                 state.end(pending);
                 let added = match result {
                     Ok(added) => added,
-                    Err(e) => return asker.failed(state, e),
+                    Err(e) => {
+                        state.workspace.revision = None;
+                        return asker.failed(state, e);
+                    }
                 };
                 let id = added.worktree.session.clone();
                 let said = format!(
@@ -206,6 +231,7 @@ pub(crate) fn added(
                 }
                 persist_selection(state, services, spawner, &id);
                 crate::workspace::follow(state, spawner);
+                crate::workspace::revision_due(state, services, spawner);
                 super::rail::list(services, spawner);
                 asker.done(|| said);
             },

@@ -105,7 +105,7 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
         };
         let gone = !dir.exists();
         Box::new(
-            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| {
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| {
                 state.end(job);
                 let ours = state.workspace.loading.as_ref() == Some(&key);
                 if ours {
@@ -114,7 +114,10 @@ pub fn load(state: &mut AppState, spawner: &dyn Spawner) {
                 let again = ours && std::mem::take(&mut state.workspace.again);
                 if asked.holds(state) && state.workspace.reads == nth {
                     match read {
-                        Ok(read) => loaded(state, spawner, asked.worktree, read),
+                        Ok(read) => {
+                            loaded(state, spawner, asked.worktree, read);
+                            super::revision_due(state, services, spawner);
+                        }
                         Err(_) if gone => {}
                         Err(e) => state.failed(e),
                     }

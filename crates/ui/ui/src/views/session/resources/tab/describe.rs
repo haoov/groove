@@ -13,6 +13,7 @@ use groove_ui_kit::widgets::scrolled;
 use super::super::opened::{Opened, Section, events_key};
 use super::argo;
 use super::containers;
+use super::destined;
 use super::relations::{self, Line};
 use super::sections::{self, Fact};
 use crate::ctx::Ctx;
@@ -176,7 +177,10 @@ fn parts<'a>(
         ));
     }
     let facts = match app {
-        Some(one) => argo::facts(one),
+        Some(one) => {
+            let context = destined::context(state, &tab.link.context, &one.destination);
+            argo::facts(one, context, state.cluster.found.is_some())
+        }
         None => sections::facts(state, tab, object, now),
     };
     parts.push((Section::Summary, String::new(), vec![Block::Summary(facts)]));

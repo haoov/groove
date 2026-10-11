@@ -53,7 +53,7 @@ pub(super) fn press(
         Some(Target::Split(edge)) => grab(ui, edge, x, y, metrics),
         Some(Target::Place(id)) => takes(ui, id),
         Some(Target::ResourceEdge(label)) => resources::held(ui, app, hits, (label, x)),
-        Some(Target::ResourceCopy(_, Some(link))) if mods.ctrl => resources::followed(ui, *link),
+        Some(Target::ResourceCopy(_, Some(opens))) if mods.ctrl => resources::followed(ui, *opens),
         _ => click(x, y, ui, app, hits, metrics),
     }
 }
@@ -202,7 +202,7 @@ fn one_task(command: task::Command) -> Vec<Command> {
     vec![Command::Task(command)]
 }
 fn tabbed(ui: &mut Ui, tab: Tab) -> Vec<Command> {
-    ui.session.tab = tab;
+    (ui.session.tab, ui.session.going) = (tab, None);
     Vec::new()
 }
 

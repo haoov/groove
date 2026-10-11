@@ -7,7 +7,7 @@ use groove_ui_kit::layout::{Spec, column_in, column_of, row_in};
 use groove_ui_kit::shape::Panel;
 use groove_ui_kit::text::{Label, ago};
 
-use super::super::opened::Section;
+use super::super::opened::{Opens, Section};
 use super::describe::Block;
 use super::sections::Fact;
 use crate::ctx::Ctx;
@@ -139,8 +139,8 @@ pub(super) fn condition(ctx: &mut Ctx, rect: Rect, one: &AppCondition, now: Time
     Label::new(&one.message, ctx.styles.small(Role::Text)).draw(ctx, room);
 }
 
-/// Where it syncs to, and how.
-pub(super) fn facts(app: &AppPart) -> Vec<Fact> {
+/// Where it syncs to and on which context, once the kubeconfig is `read`, and how.
+pub(super) fn facts(app: &AppPart, context: Option<String>, read: bool) -> Vec<Fact> {
     let to = &app.destination;
     let cluster = to.name.clone().or(to.server.clone()).unwrap_or_default();
     let namespace = to.namespace.clone().unwrap_or_default();
@@ -148,15 +148,26 @@ pub(super) fn facts(app: &AppPart) -> Vec<Fact> {
         Some((prune, heal)) => (automated(prune, heal), Role::Ok),
         None => ("manual".to_string(), Role::Muted),
     };
-    vec![
+    let context = match context {
+        Some(name) => Some(Fact::new("context", name, Role::Text)),
+        None if read => Some(Fact::new(
+            "context",
+            "none added in Groove".into(),
+            Role::Warn,
+        )),
+        None => None,
+    };
+    let mut out = vec![
         Fact::new("project", app.project.clone(), Role::Text),
         Fact::new(
             "destination",
             format!("{cluster} · {namespace}"),
             Role::Text,
         ),
-        Fact::new("auto-sync", said, role),
-    ]
+    ];
+    out.extend(context);
+    out.push(Fact::new("auto-sync", said, role));
+    out
 }
 
 /// What it syncs from: a row a source, each with the revision it synced to.
@@ -189,12 +200,18 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
     Label::new(&one.target, ctx.styles.small(Role::Muted)).left(ctx, &mut room, gap);
     if let Some(revision) = &one.synced {
         Label::new("synced", ctx.styles.small(Role::Ghost)).left(ctx, &mut room, ctx.tokens.sm);
-        super::copy::Copied::new(revision, Role::Text, last).left(ctx, &mut room, gap);
+        synced(ctx, &mut room, (one, revision), last);
     }
     let [_, under] = row_in(lines[1], [tag, Spec::fill()]);
     let mut room = under;
     let bare = bare(&one.repo);
-    super::copy::Copied::new(&bare, Role::Faint, last).left(ctx, &mut room, gap);
+    let opens = (!is_chart).then(|| Opens::Repo {
+        repo: one.repo.clone(),
+        target: one.target.clone(),
+    });
+    let role = if is_chart { Role::Faint } else { Role::Accent };
+    let address = super::copy::Copied::new(&bare, role, last).opens(opens);
+    address.left(ctx, &mut room, gap);
     if let Some(name) = &one.reference {
         let said = format!("· referenced as ${name}");
         Label::new(&said, ctx.styles.small(Role::Ghost)).draw(ctx, room);
@@ -204,6 +221,23 @@ pub(super) fn source(ctx: &mut Ctx, rect: Rect, one: &AppSource, last: Option<&s
         let said = format!("values  {}", one.values.join(", "));
         Label::new(&said, ctx.styles.small(Role::Faint)).draw(ctx, values);
     }
+}
+
+/// The revision a source synced to, short; a git commit links to its diff.
+fn synced(ctx: &mut Ctx, room: &mut Rect, (one, revision): (&AppSource, &str), last: Option<&str>) {
+    let opens = (one.chart.is_none() && commit(revision)).then(|| Opens::Revision {
+        repo: one.repo.clone(),
+        target: one.target.clone(),
+        sha: revision.to_string(),
+    });
+    let role = if opens.is_some() {
+        Role::Accent
+    } else {
+        Role::Text
+    };
+    let shown = short(revision);
+    let synced = super::copy::Copied::new(&shown, role, last).copies(revision);
+    synced.opens(opens).left(ctx, room, ctx.tokens.md);
 }
 
 /// What a source is called: its chart, or its repository's name and the path in it.
@@ -238,9 +272,12 @@ fn bare(repo: &str) -> String {
 
 /// A commit's first seven characters; a tag as it is.
 fn short(revision: &str) -> String {
-    let commit = revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit());
-    match commit {
+    match commit(revision) {
         true => revision[..7].to_string(),
         false => revision.to_string(),
     }
+}
+
+fn commit(revision: &str) -> bool {
+    revision.len() == 40 && revision.chars().all(|one| one.is_ascii_hexdigit())
 }
