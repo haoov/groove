@@ -20,8 +20,6 @@ use winit::event_loop::{EventLoop, EventLoopProxy};
 pub enum Message {
     Continue(Continuation),
     Event(Event),
-    /// What the clipboard held when a paste was asked.
-    Paste(String),
 }
 
 /// winit's proxy as the continuation sink.
@@ -55,8 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = config_state.config;
     let panes =
         groove_config::panes::load(&groove_config::panes::path(&env.data_dir)).unwrap_or_default();
-    let proxy = event_loop.create_proxy();
-    let mut app = app::App::new((spawner, proxy), services, env, (config, panes), explore);
+    let mut app = app::App::new(spawner, services, env, (config, panes), explore);
     event_loop.run_app(&mut app)?;
     let result = app.into_result();
     runtime.shutdown_timeout(std::time::Duration::from_secs(2));

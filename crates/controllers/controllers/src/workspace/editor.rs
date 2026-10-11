@@ -108,6 +108,17 @@ pub(crate) fn copied(services: &Services, spawner: &dyn Spawner, held: String) {
     }));
 }
 
+/// The clipboard read in a job, held for the surface to take.
+pub(super) fn read_clipboard(services: &Services, spawner: &dyn Spawner) {
+    let clipboard = services.clipboard.clone();
+    spawner.spawn(Box::pin(async move {
+        let text = clipboard.read();
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            state.pasted = text.filter(|one| !one.is_empty());
+        }) as Continuation
+    }));
+}
+
 /// The clipboard read in a job, then put in where the carets are.
 pub(super) fn paste(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
     if state.workspace.active().is_none() {

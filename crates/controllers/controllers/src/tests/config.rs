@@ -125,3 +125,18 @@ fn the_window_s_boundaries_are_kept_for_the_next_run() {
     let kept = std::fs::read_to_string(state.env.data_dir.join("panes.json")).unwrap();
     assert!(kept.contains("480"), "{kept}");
 }
+
+#[test]
+fn the_clipboard_is_read_off_the_loop_and_held_for_the_surface() {
+    let (_home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    services.clipboard.write("pasted words").unwrap();
+    let read = crate::workspace::Command::ReadClipboard;
+    crate::dispatch(
+        crate::Command::Workspace(read),
+        &mut state,
+        &services,
+        &spawner,
+    );
+    spawner.drain(&mut state, &services);
+    assert_eq!(state.pasted.as_deref(), Some("pasted words"));
+}

@@ -58,6 +58,8 @@ pub enum Command {
     Cut,
     /// `workspace.paste`: the clipboard, over what the carets hold.
     Paste,
+    /// `workspace.read_clipboard`: the clipboard read off the main thread, for the surface to paste.
+    ReadClipboard,
     /// `workspace.stage`: one path into the index.
     Stage { path: String },
     /// `workspace.unstage`: one path back out of it.
@@ -112,6 +114,7 @@ impl Command {
             Command::Copy => "workspace.copy",
             Command::Cut => "workspace.cut",
             Command::Paste => "workspace.paste",
+            Command::ReadClipboard => "workspace.read_clipboard",
             Command::Stage { .. } => "workspace.stage",
             Command::Unstage { .. } => "workspace.unstage",
             Command::Discard { .. } => "workspace.discard",
@@ -175,6 +178,7 @@ pub fn dispatch(
         Command::Copy => copy(state, services, spawner),
         Command::Cut => cut(state, services, spawner),
         Command::Paste => paste(state, services, spawner),
+        Command::ReadClipboard => editor::read_clipboard(services, spawner),
         Command::Stage { path } => index(state, spawner, Act::Stage, path),
         Command::Unstage { path } => index(state, spawner, Act::Unstage, path),
         Command::Discard { path } => index(state, spawner, Act::Discard, path),

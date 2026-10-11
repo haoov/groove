@@ -55,6 +55,8 @@ pub struct AppState {
     pub shell: groove_shell_service::State,
     pub config: groove_config_service::State,
     pub cluster: groove_cluster_service::State,
+    /// What the clipboard held when the surface asked, for it to take as a paste.
+    pub pasted: Option<String>,
 }
 
 /// One job in flight, as the feed names it.

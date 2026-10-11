@@ -23,7 +23,6 @@ pub struct App {
     state: AppState,
     ui: Ui,
     spawner: TokioSpawner,
-    proxy: winit::event_loop::EventLoopProxy<crate::Message>,
     services: Services,
     modifiers: ModifiersState,
     /// What the last frame drew, and where the pointer is.
@@ -41,10 +40,7 @@ pub struct App {
 
 impl App {
     pub fn new(
-        (spawner, proxy): (
-            TokioSpawner,
-            winit::event_loop::EventLoopProxy<crate::Message>,
-        ),
+        spawner: TokioSpawner,
         services: Services,
         env: Env,
         (config, panes): (Option<Config>, Option<Panes>),
@@ -62,7 +58,6 @@ impl App {
             state,
             ui,
             spawner,
-            proxy,
             services,
             modifiers: ModifiersState::empty(),
             hits: Hits::default(),

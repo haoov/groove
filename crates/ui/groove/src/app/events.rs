@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use groove_controllers::{Command, Event, Spawner, dispatch, session, task};
+use groove_controllers::{Command, Event, dispatch, session, task};
 use groove_gfx::{Fonts, Renderer};
 use groove_ui::input::Input;
 use winit::application::ApplicationHandler;
@@ -89,11 +89,13 @@ impl ApplicationHandler<Message> for App {
         match message {
             Message::Continue(continuation) => {
                 continuation(&mut self.state, &self.services, &self.spawner);
+                if let Some(text) = self.state.pasted.take() {
+                    self.input(Input::Paste(text));
+                }
                 self.watch();
                 self.redraw();
             }
             Message::Event(event) => self.apply(event),
-            Message::Paste(text) => self.input(Input::Paste(text)),
         }
     }
 
@@ -154,14 +156,9 @@ impl App {
     }
 
     /// The clipboard read off the main thread; what it holds comes back as a paste.
-    fn paste(&self) {
-        let (clipboard, proxy) = (self.services.clipboard.clone(), self.proxy.clone());
-        self.spawner.detach(Box::pin(async move {
-            let read = tokio::task::spawn_blocking(move || clipboard.read()).await;
-            if let Ok(Some(text)) = read {
-                let _ = proxy.send_event(crate::Message::Paste(text));
-            }
-        }));
+    fn paste(&mut self) {
+        let read = Command::Workspace(groove_controllers::workspace::Command::ReadClipboard);
+        dispatch(read, &mut self.state, &self.services, &self.spawner);
     }
 
     /// The pointer moved: what is under it, and the drag or the selection it carries.
