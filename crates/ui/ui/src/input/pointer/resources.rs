@@ -34,9 +34,7 @@ fn listed(target: &Target, ui: &mut Ui, app: &AppState) -> Option<Vec<Command>> 
         Target::ResourceSearch => (held.typing, held.filtering) = (true, false),
         Target::ResourceFilter => (held.filtering, held.typing) = (true, false),
         Target::ResourceGroup(group) => {
-            if !held.folded.remove(group) {
-                held.folded.insert(group.clone());
-            }
+            groove_types::toggle(&mut held.folded, group.clone());
         }
         Target::ResourceSort(label) => {
             let sort = match held.tab_mut() {
@@ -135,9 +133,7 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                 }
                 Target::ResourceFold(key, shut) => tab.fold(key, *shut),
                 Target::ResourceSection(section) => {
-                    if !tab.shut.remove(section) {
-                        tab.shut.insert(*section);
-                    }
+                    groove_types::toggle(&mut tab.shut, *section);
                 }
                 _ => return false,
             }

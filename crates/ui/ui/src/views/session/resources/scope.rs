@@ -79,8 +79,10 @@ impl Pick {
 
     pub fn toggle(&self, ui: &mut ResourcesUi) {
         match self {
-            Pick::Context(context) => flip(&mut ui.hidden_contexts, context.clone()),
-            Pick::Pair(pair) => flip(&mut ui.hidden, pair.clone()),
+            Pick::Context(context) => {
+                groove_types::toggle(&mut ui.hidden_contexts, context.clone())
+            }
+            Pick::Pair(pair) => groove_types::toggle(&mut ui.hidden, pair.clone()),
         }
         ui.scroll = 0.0;
     }
@@ -240,10 +242,4 @@ fn leases(app: &AppState, wanted: Vec<WatchKey>) -> Vec<Command> {
     std::iter::once(Command::Cluster(release))
         .chain(wanted.into_iter().map(watch))
         .collect()
-}
-
-fn flip<T: Ord>(set: &mut BTreeSet<T>, one: T) {
-    if !set.remove(&one) {
-        set.insert(one);
-    }
 }

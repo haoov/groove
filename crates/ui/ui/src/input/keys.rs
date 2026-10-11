@@ -129,9 +129,7 @@ fn in_kinds(key: Key, mods: Modifiers, ui: &mut Ui, app: &AppState) -> Vec<Comma
         Key::Up => held.cursor = held.cursor.map(|at| at.saturating_sub(1)),
         Key::Enter => match held.cursor.and_then(|at| shown.get(at)) {
             Some(Line::Heading(heading, _)) => {
-                if !held.folded.remove(heading) {
-                    held.folded.insert(heading.clone());
-                }
+                groove_types::toggle(&mut held.folded, heading.clone());
             }
             Some(Line::Kind(kind)) => {
                 (held.kind, held.scroll) = (Some(kind.clone()), 0.0);

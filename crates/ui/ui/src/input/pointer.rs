@@ -239,9 +239,7 @@ fn selecting(
 
 /// One file's found lines hidden under their own row, or shown again.
 fn shut(ui: &mut Ui, path: String) -> Vec<Command> {
-    if !ui.session.shut.remove(&path) {
-        ui.session.shut.insert(path);
-    }
+    groove_types::toggle(&mut ui.session.shut, path);
     Vec::new()
 }
 

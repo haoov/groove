@@ -38,6 +38,7 @@ mod task;
 mod terminal;
 mod time;
 mod timeline;
+mod toggle;
 
 #[cfg(test)]
 mod tests;
@@ -95,3 +96,4 @@ pub use task::{Priority, ProviderId, StatusIntent, Task, TaskDates, TaskKey, Tim
 pub use terminal::{AnsiPalette, Rgb, Screen, ScreenCell, Selected};
 pub use time::{Day, Timestamp};
 pub use timeline::{TimelineEvent, TimelineKind};
+pub use toggle::toggle;

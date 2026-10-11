@@ -67,9 +67,7 @@ impl Changes {
     /// Hides a file's rows under its own head, or shows them again.
     pub fn fold(&mut self, path: &str) {
         let mut shut = std::mem::take(&mut self.shut);
-        if !shut.remove(path) {
-            shut.insert(path.to_string());
-        }
+        groove_types::toggle(&mut shut, path.to_string());
         *self = Self::indexed(std::mem::take(&mut self.files), shut);
     }
 
