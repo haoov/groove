@@ -12,6 +12,11 @@ impl Field {
         &self.text
     }
 
+    /// The text before the caret.
+    pub fn before(&self) -> &str {
+        &self.text[..self.byte(self.at)]
+    }
+
     pub fn is_empty(&self) -> bool {
         self.text.is_empty()
     }

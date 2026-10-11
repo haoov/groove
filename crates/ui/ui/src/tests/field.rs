@@ -56,3 +56,12 @@ fn a_caret_never_lands_inside_a_character() {
     field.backspace();
     assert_eq!(field.text(), "h-éll");
 }
+
+#[test]
+fn the_text_before_the_caret_moves_with_it() {
+    let mut field = typed("staging");
+    assert_eq!(field.before(), "staging");
+    field.left();
+    field.left();
+    assert_eq!(field.before(), "stagi");
+}

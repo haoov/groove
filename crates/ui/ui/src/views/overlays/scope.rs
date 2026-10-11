@@ -7,7 +7,7 @@ use groove_ui_kit::base::style::Role;
 use groove_ui_kit::base::tokens::PALETTE_ROWS;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::text::Label;
-use groove_ui_kit::widgets::{Button, Corner, Row, Text, input, list, panel_at};
+use groove_ui_kit::widgets::{Button, Corner, Row, Text, input_at, list, panel_at};
 
 use crate::ctx::Ctx;
 use crate::hit::{Picks, Target};
@@ -44,7 +44,8 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &crate::Ui, scoping: &Scoping) {
         Picks::Contexts => "context: ",
         _ => "namespace: ",
     };
-    input(ctx, line, prefix, scoping.query.text());
+    let query = &scoping.query;
+    input_at(ctx, line, prefix, (query.text(), query.before()));
     let hairline = ctx.tokens.hairline;
     let body = Rect {
         h: ctx.tokens.row * shown as f32,

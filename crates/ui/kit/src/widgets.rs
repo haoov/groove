@@ -28,7 +28,7 @@ pub use field::Field;
 pub use fold::{caret, fold, folder};
 pub use heading::Heading;
 pub use icon::{busy, icon, lead, turned};
-pub use input::input;
+pub use input::{input, input_at};
 pub use list::{Row, list};
 pub use menu::{menu, size as menu_size};
 pub use modal::{Corner, modal, panel_at};
