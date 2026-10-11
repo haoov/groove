@@ -237,10 +237,9 @@ impl App {
 
     /// Where the drag left the boundaries, for the next run.
     fn keep_panes(&mut self) {
-        let path = groove_config::panes::path(&self.state.env.data_dir);
-        if let Err(e) = groove_config::panes::save(&path, &self.ui.split.panes()) {
-            self.state.failed(e.into());
-        }
+        let keep = groove_controllers::config::Command::KeepPanes(self.ui.split.panes());
+        let command = Command::Config(keep);
+        dispatch(command, &mut self.state, &self.services, &self.spawner);
     }
 
     fn apply(&mut self, event: Event) {

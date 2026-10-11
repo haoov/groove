@@ -88,6 +88,14 @@ pub fn keep(config_dir: &Path, changed: Option<&Config>) -> Result<(), Error> {
     save(config_dir, changed.ok_or_else(none)?)
 }
 
+/// Where the window's boundaries stand, for the next run.
+pub fn keep_panes(data_dir: &Path, panes: &groove_types::Panes) -> Result<(), Error> {
+    Ok(groove_config::panes::save(
+        &groove_config::panes::path(data_dir),
+        panes,
+    )?)
+}
+
 pub fn save(config_dir: &Path, config: &Config) -> Result<(), Error> {
     Ok(groove_config::save(
         &groove_config::path(config_dir),

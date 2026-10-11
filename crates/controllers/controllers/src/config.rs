@@ -90,6 +90,8 @@ pub enum Command {
         context: String,
         change: ClusterChange,
     },
+    /// `config.keep_panes`: where the window's boundaries stand, written for the next run.
+    KeepPanes(groove_types::Panes),
 }
 
 impl Command {
@@ -114,6 +116,7 @@ impl Command {
             Command::AddCluster { .. } => "config.add_cluster",
             Command::RemoveCluster { .. } => "config.remove_cluster",
             Command::SetCluster { .. } => "config.set_cluster",
+            Command::KeepPanes(_) => "config.keep_panes",
         }
     }
 }
@@ -149,7 +152,21 @@ pub fn dispatch(
         Command::AddCluster { context } => clusters::add(state, spawner, &context),
         Command::RemoveCluster { context } => clusters::remove(state, &context),
         Command::SetCluster { context, change } => clusters::change(state, &context, change),
+        Command::KeepPanes(panes) => keep_panes(state, spawner, panes),
     }
+}
+
+/// The boundaries written off the main thread; a failure is said.
+fn keep_panes(state: &mut AppState, spawner: &dyn Spawner, panes: groove_types::Panes) {
+    let data_dir = state.env.data_dir.clone();
+    spawner.spawn(Box::pin(async move {
+        let kept = groove_config_service::keep_panes(&data_dir, &panes);
+        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+            if let Err(e) = kept {
+                state.failed(e);
+            }
+        }) as crate::Continuation
+    }));
 }
 
 /// The config as changed, written to its file; whether it was.
