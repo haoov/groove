@@ -139,6 +139,9 @@ impl ApplicationHandler<Message> for App {
 impl App {
     /// A chord the keymap binds to a paste, with what the clipboard holds in it.
     fn pasting(&self, event: &winit::event::KeyEvent) -> Option<Input> {
+        if self.ui.settings.binding.is_some() {
+            return None;
+        }
         let bound = match input_of(event, self.modifiers) {
             Some(Input::Key { key, mods }) => {
                 groove_ui::keymap::pastes(self.state.config.config.as_ref(), key, mods)

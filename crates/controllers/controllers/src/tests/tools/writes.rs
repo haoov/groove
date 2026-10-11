@@ -433,3 +433,31 @@ fn a_push_waits_with_its_branch_and_the_commits_it_sends() {
     assert_eq!(sent.len(), 1, "only the commit origin lacks: {}", ask.text);
     assert!(sent[0].ends_with(" feat: two lines"), "{}", ask.text);
 }
+
+#[test]
+fn a_write_naming_no_worktree_waits_on_the_one_selected_when_it_asked() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    fixture::pooled_clone(home.path());
+    let (id, worktree, dir) = changed(&mut state, &services, &spawner);
+    stage(&dir);
+
+    let answer = waited(
+        &mut state,
+        &services,
+        &spawner,
+        &id,
+        "git_commit",
+        json!({ "message": "fix: one" }),
+    );
+    assert!(answer.is_none());
+    let asks = waiting(&state, &id);
+    let pinned = asks[0]
+        .worktree
+        .as_ref()
+        .map(|one| one.as_str().to_string());
+    assert_eq!(
+        pinned,
+        Some(worktree),
+        "its worktree, named before the user decides"
+    );
+}

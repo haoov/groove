@@ -141,3 +141,30 @@ fn the_agent_takes_what_is_pasted_when_it_has_the_keyboard() {
         "the program types it, not the buffer"
     );
 }
+
+#[test]
+fn on_the_board_a_paste_reaches_no_hidden_session_field() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.resources.typing = true;
+    ui.surface = Surface::Board;
+    ui.settle(&app);
+    let asked = paste("app=web", &mut ui, &app);
+    assert!(asked.is_empty(), "no file takes it");
+    assert_eq!(
+        ui.session.resources.search.text(),
+        "",
+        "nor the hidden search"
+    );
+    assert!(!ui.session.resources.typing, "which let go of the keys");
+}
+
+#[test]
+fn the_resources_search_takes_what_is_pasted_into_it() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.session.resources.typing = true;
+    let asked = paste("app=web", &mut ui, &app);
+    assert!(asked.is_empty());
+    assert_eq!(ui.session.resources.search.text(), "app=web");
+}

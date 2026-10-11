@@ -6,7 +6,7 @@ use super::super::{Key, Modifiers};
 use crate::keymap::{Action, Keymap};
 use crate::views::session::Tab;
 use crate::views::session::resources::Scoping;
-use crate::{Focus, Overlay, Ui};
+use crate::{Focus, Overlay, Surface, Ui};
 
 /// The list's find bar, the kind search, or the namespace picker; `None` for any other chord.
 pub(super) fn chord(
@@ -15,7 +15,8 @@ pub(super) fn chord(
     app: &AppState,
     keymap: &Keymap,
 ) -> Option<Vec<Command>> {
-    let (open, true) = (app.session.selected()?, ui.focus == Focus::Workspace) else {
+    let shown = ui.focus == Focus::Workspace && ui.showing(app) == Surface::Session;
+    let (open, true) = (app.session.selected()?, shown) else {
         return None;
     };
     let up = ui.session.tab == Tab::Resources && !open.clusters.is_empty();

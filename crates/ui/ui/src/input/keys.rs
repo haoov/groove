@@ -60,6 +60,20 @@ pub(super) fn key_input(
     if ui.settings.open {
         return in_settings(key, mods, ui, app);
     }
+    if ui.showing(app) != Surface::Session {
+        return in_pane((key, mods), ui, app, &keymap, seen);
+    }
+    in_session((key, mods), ui, app, &keymap, seen)
+}
+
+/// On the session: its name, note, bar, search or find field when one has the keys, else the pane.
+fn in_session(
+    (key, mods): (Key, Modifiers),
+    ui: &mut Ui,
+    app: &AppState,
+    keymap: &Keymap,
+    seen: (&crate::hit::Hits, groove_ui_kit::base::ctx::Metrics),
+) -> Vec<Command> {
     if ui.session.naming.is_some() {
         return in_name(key, mods, ui);
     }
@@ -67,15 +81,15 @@ pub(super) fn key_input(
         return in_note(key, mods, ui);
     }
     if ui.session.bar.typing.is_some() {
-        return in_bar(key, mods, ui, app, &keymap);
+        return in_bar(key, mods, ui, app, keymap);
     }
     if ui.session.resources.typing || ui.session.resources.filtering {
         return in_resources(key, mods, ui, app);
     }
-    if let Some(commands) = finding((key, mods), ui, app, &keymap, seen) {
+    if let Some(commands) = finding((key, mods), ui, app, keymap, seen) {
         return commands;
     }
-    in_pane((key, mods), ui, app, &keymap, seen)
+    in_pane((key, mods), ui, app, keymap, seen)
 }
 
 /// A Resources search has the keys: Enter gives them back; Esc too, and shuts an empty find bar.

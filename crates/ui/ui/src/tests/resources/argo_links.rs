@@ -85,6 +85,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     part.sources[0].synced = Some(SHA.into());
     let (mut app, mut ui) = opened(object);
     hit(&app, &mut ui, Target::ResourceView(View::Describe));
+    ui.settle(&app);
 
     let repo = Opens::Repo {
         repo: REPO.into(),
