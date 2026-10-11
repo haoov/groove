@@ -10,6 +10,10 @@ use crate::{AppState, Continuation, Event, Services, Spawner, apply};
 /// How long a watcher left unread keeps running.
 pub(super) const IDLE: Duration = Duration::from_secs(30);
 
+/// The wait after a first failed discovery, doubled with each failure after it up to `LONGEST`.
+const RETRY: Duration = Duration::from_secs(1);
+const LONGEST: Duration = Duration::from_secs(60);
+
 pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: String, again: bool) {
     if !known(state, &context) || !state.cluster.store.begin_discovery(&context) {
         return;
@@ -19,17 +23,34 @@ pub(super) fn discover(state: &mut AppState, spawner: &dyn Spawner, context: Str
     spawner.spawn(Box::pin(async move {
         let kinds = groove_cluster_service::kinds(paths, context.clone(), cache, again).await;
         Box::new(
-            move |state: &mut AppState, _: &Services, _: &dyn Spawner| match kinds {
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match kinds {
                 Ok(kinds) => apply(
                     Event::Cluster(ClusterEvent::Kinds { context, kinds }),
                     state,
                 ),
-                Err(e) => {
-                    state.cluster.store.end_discovery(&context);
-                    state.failed(e);
-                }
+                Err(e) => refused(state, spawner, context, e),
             },
         ) as Continuation
+    }));
+}
+
+/// A failed discovery: said the first time, tried again after a wait that doubles.
+fn refused(state: &mut AppState, spawner: &dyn Spawner, context: String, error: Error) {
+    let failures = state.cluster.store.refuse_discovery(&context);
+    if failures == 1 {
+        state.failed(error);
+    }
+    let wait = RETRY
+        .saturating_mul(1 << failures.saturating_sub(1).min(16))
+        .min(LONGEST);
+    let sink = spawner.sink();
+    spawner.detach(Box::pin(async move {
+        tokio::time::sleep(wait).await;
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                state.cluster.store.retry_discovery(&context, failures)
+            },
+        ));
     }));
 }
 

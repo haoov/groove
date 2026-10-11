@@ -220,3 +220,18 @@ async fn changes_go_out_16ms_after_the_first_and_never_twice_within_250ms() {
     let sent = sent.lock().expect("the batches").clone();
     assert_eq!(sent, [(16, 2), (266, 1), (716, 1)]);
 }
+
+#[tokio::test]
+async fn a_forbidden_list_is_not_asked_again_every_few_seconds() {
+    let server = MockServer::start().await;
+    let status = serde_json::json!({ "kind": "Status", "apiVersion": "v1", "status": "Failure",
+        "message": "pods is forbidden", "reason": "Forbidden", "code": 403 });
+    Mock::given(path("/api/v1/namespaces/paxone/pods"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(status))
+        .mount(&server)
+        .await;
+    let sent = batches_for(&server, Duration::from_millis(2500)).await;
+    assert!(matches!(sent.as_slice(), [Batch::Failed(_)]), "{sent:?}");
+    let asked = server.received_requests().await.expect("the requests");
+    assert_eq!(asked.len(), 1, "one list, then parked");
+}

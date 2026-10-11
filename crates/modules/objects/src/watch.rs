@@ -9,12 +9,12 @@ use groove_types::{KubeKind, ObjectRow, TableColumn, Timestamp, WatchKey};
 use tokio::sync::watch as signal;
 use tokio::time::Instant;
 
+use crate::retry::{Backoff, FIRST_WAIT};
+
 /// How long changes gather into a batch, the least time between batches, the most one holds.
 const GATHER: Duration = Duration::from_millis(16);
 const PACE: Duration = Duration::from_millis(250);
 const MOST: usize = 10_000;
-const FIRST_WAIT: Duration = Duration::from_secs(1);
-const LONGEST_WAIT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Batch {
@@ -71,25 +71,22 @@ pub fn watch(
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
     let mut stopped = stop.0.subscribe();
     async move {
-        let (mut wait, mut shown) = (FIRST_WAIT, false);
+        let (mut backoff, mut shown) = (Backoff::new(), false);
         loop {
             let ended = tokio::select! {
                 _ = stopped.wait_for(|on| *on) => return,
-                ended = cycle(&paths, &key, &send, &mut shown) => ended,
+                ended = cycle(&paths, &key, &send, (&mut shown, &mut backoff)) => ended,
             };
-            if ended.is_ok() {
-                tokio::select! {
-                    _ = stopped.wait_for(|on| *on) => return,
-                    _ = tokio::time::sleep(FIRST_WAIT) => {}
+            let wait = match ended {
+                Ok(()) => FIRST_WAIT,
+                Err(e) => {
+                    send(Batch::Failed(e.to_string()));
+                    backoff.after(&e)
                 }
-            }
-            if let Err(why) = ended {
-                send(Batch::Failed(why));
-                tokio::select! {
-                    _ = stopped.wait_for(|on| *on) => return,
-                    _ = tokio::time::sleep(wait) => {}
-                }
-                wait = (wait * 2).min(LONGEST_WAIT);
+            };
+            tokio::select! {
+                _ = stopped.wait_for(|on| *on) => return,
+                _ = tokio::time::sleep(wait) => {}
             }
         }
     }
@@ -100,9 +97,9 @@ async fn cycle(
     paths: &[PathBuf],
     key: &WatchKey,
     send: &impl Fn(Batch),
-    shown: &mut bool,
-) -> Result<(), String> {
-    let client = Client::connect(paths, &key.context).await.map_err(said)?;
+    (shown, backoff): (&mut bool, &mut Backoff),
+) -> groove_kube::Result<()> {
+    let client = Client::shared(paths, &key.context).await?;
     let kind = crate::kube_kind(&key.kind);
     let query = Query {
         kind: &kind,
@@ -117,13 +114,14 @@ async fn cycle(
         let stream = match client.watch(query, &version).await {
             Ok(stream) => stream,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
-            Err(e) => return Err(said(e)),
+            Err(e) => return Err(e),
         };
         send(Batch::Watching);
+        backoff.reset();
         match watched(stream, (&key.kind, &mut version, &mut columns), send).await {
             Ok(()) => tokio::time::sleep_until(opened + FIRST_WAIT).await,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
-            Err(e) => return Err(said(e)),
+            Err(e) => return Err(e),
         }
     }
 }
@@ -134,8 +132,8 @@ async fn listed(
     (query, kind): (Query<'_>, &KubeKind),
     send: &impl Fn(Batch),
     shown: bool,
-) -> Result<(String, Vec<TableColumn>), String> {
-    let mut page = client.page(query, None).await.map_err(said)?;
+) -> groove_kube::Result<(String, Vec<TableColumn>)> {
+    let mut page = client.page(query, None).await?;
     let table: Vec<TableColumn> = page.columns.drain(..).map(crate::column_of).collect();
     let row_of = |row| crate::argo::row(kind, row, &table, Timestamp::now());
     let mut columns = Some(crate::argo::columns(kind, &table));
@@ -148,7 +146,7 @@ async fn listed(
         send(Batch::Reset { columns, rows });
     }
     while let Some(next) = page.next.take() {
-        page = client.page(query, Some(&next)).await.map_err(said)?;
+        page = client.page(query, Some(&next)).await?;
         let more = page.rows.drain(..).map(row_of);
         match shown {
             true => rows.extend(more),
@@ -248,8 +246,4 @@ fn delta(
             Timestamp::now(),
         ))),
     }
-}
-
-fn said(error: groove_kube::Error) -> String {
-    error.to_string()
 }

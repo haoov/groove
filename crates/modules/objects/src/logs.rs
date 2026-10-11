@@ -10,12 +10,11 @@ use groove_types::{LogKey, LogLine, LogRange, LogSource, LogTime};
 use tokio::time::Instant;
 
 use crate::Stop;
+use crate::retry::{Backoff, FIRST_WAIT};
 
 /// How long a batch gathers lines once the first arrives, and how many it holds at most.
 const PACE: Duration = Duration::from_millis(100);
 const MOST: usize = 5000;
-const FIRST_WAIT: Duration = Duration::from_secs(1);
-const LONGEST_WAIT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Logged {
@@ -37,31 +36,29 @@ pub fn logs(
     let mut stopped = stop.subscribe();
     async move {
         let mut last: BTreeMap<String, Seen> = BTreeMap::new();
-        let mut wait = FIRST_WAIT;
+        let mut backoff = Backoff::new();
         loop {
             let before = last.clone();
             let ended = tokio::select! {
                 _ = stopped.wait_for(|on| *on) => return,
                 ended = cycle(&paths, &key, &mut last, &send) => ended,
             };
+            if last != before {
+                backoff.reset();
+            }
             let pause = match ended {
                 Ok(()) if key.previous => return send(Logged::Ended),
                 Ok(()) if last != before => {
                     send(Logged::Ended);
-                    wait = FIRST_WAIT;
                     FIRST_WAIT
                 }
                 Ok(()) => {
                     send(Logged::Ended);
-                    let pause = wait;
-                    wait = (wait * 2).min(LONGEST_WAIT);
-                    pause
+                    backoff.grow()
                 }
-                Err(why) => {
-                    send(Logged::Failed(why));
-                    let pause = wait;
-                    wait = (wait * 2).min(LONGEST_WAIT);
-                    pause
+                Err(e) => {
+                    send(Logged::Failed(e.to_string()));
+                    backoff.after(&e)
                 }
             };
             tokio::select! {
@@ -78,8 +75,8 @@ async fn cycle(
     key: &LogKey,
     last: &mut BTreeMap<String, Seen>,
     send: &impl Fn(Logged),
-) -> Result<(), String> {
-    let client = Client::connect(paths, &key.context).await.map_err(said)?;
+) -> groove_kube::Result<()> {
+    let client = Client::shared(paths, &key.context).await?;
     let containers = match &key.source {
         LogSource::Container(name) => vec![name.clone()],
         LogSource::All => containers(&client, key).await?,
@@ -96,7 +93,7 @@ async fn cycle(
             follow: !key.previous,
             start: &start,
         };
-        let lines = client.logs(query).await.map_err(said)?;
+        let lines = client.logs(query).await?;
         let name = container.clone();
         streams.push(lines.map(move |line| (name.clone(), line)).boxed());
     }
@@ -128,7 +125,7 @@ async fn gathered(
     stream: impl Stream<Item = (String, groove_kube::Result<String>)>,
     (tagged, last): (bool, &mut BTreeMap<String, Seen>),
     send: &impl Fn(Logged),
-) -> Result<(), String> {
+) -> groove_kube::Result<()> {
     let mut stream = std::pin::pin!(stream);
     let mut held: Vec<LogLine> = Vec::new();
     let mut due: Option<Instant> = None;
@@ -145,7 +142,7 @@ async fn gathered(
             },
         };
         let Some((container, line)) = next else { break };
-        let line = LogLine::read(&line.map_err(said)?, tagged.then(|| container.clone()));
+        let line = LogLine::read(&line?, tagged.then(|| container.clone()));
         if let Some(at) = line.at {
             if last.get(&container).is_some_and(|(seen, _)| at <= *seen) {
                 continue;
@@ -168,12 +165,12 @@ async fn gathered(
 }
 
 /// The pod's containers, its init ones first.
-async fn containers(client: &Client, key: &LogKey) -> Result<Vec<String>, String> {
+async fn containers(client: &Client, key: &LogKey) -> groove_kube::Result<Vec<String>> {
     let path = format!(
         "/api/v1/namespaces/{}/pods/{}?resourceVersion=0",
         key.namespace, key.pod
     );
-    let pod = client.get_object(&path).await.map_err(said)?;
+    let pod = client.get_object(&path).await?;
     let names = |at: &str| {
         let listed = pod.pointer(at).and_then(serde_json::Value::as_array);
         let named = listed.into_iter().flatten();
@@ -182,8 +179,4 @@ async fn containers(client: &Client, key: &LogKey) -> Result<Vec<String>, String
             .collect::<Vec<_>>()
     };
     Ok([names("/spec/initContainers"), names("/spec/containers")].concat())
-}
-
-fn said(error: groove_kube::Error) -> String {
-    error.to_string()
 }

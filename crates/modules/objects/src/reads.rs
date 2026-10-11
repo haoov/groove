@@ -15,7 +15,7 @@ pub async fn usage(
     namespace: &str,
     pod: &str,
 ) -> Result<Option<Usage>> {
-    let client = Client::connect(paths, context).await.map_err(failed)?;
+    let client = Client::shared(paths, context).await.map_err(failed)?;
     let path = format!("/apis/metrics.k8s.io/v1beta1/namespaces/{namespace}/pods/{pod}");
     let read = match client.get_object(&path).await {
         Ok(read) => read,
@@ -47,7 +47,7 @@ pub async fn helm_revision(
     namespace: &str,
     release: &str,
 ) -> Result<Option<u32>> {
-    let client = Client::connect(paths, context).await.map_err(failed)?;
+    let client = Client::shared(paths, context).await.map_err(failed)?;
     let secrets = Kind {
         group: String::new(),
         version: "v1".into(),

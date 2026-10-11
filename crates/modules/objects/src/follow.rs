@@ -9,10 +9,9 @@ use groove_types::{Described, FollowKey};
 use tokio::time::Instant;
 
 use crate::Stop;
+use crate::retry::{Backoff, FIRST_WAIT};
 
 const GATHER: Duration = Duration::from_millis(16);
-const FIRST_WAIT: Duration = Duration::from_secs(1);
-const LONGEST_WAIT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Followed {
@@ -39,33 +38,35 @@ pub fn follow(
 ) -> impl std::future::Future<Output = ()> + Send + 'static {
     let mut stopped = stop.subscribe();
     async move {
-        let mut wait = FIRST_WAIT;
+        let mut backoff = Backoff::new();
         loop {
             let ended = tokio::select! {
                 _ = stopped.wait_for(|on| *on) => return,
-                ended = cycle(&paths, &key, &send) => ended,
+                ended = cycle(&paths, &key, &send, &mut backoff) => ended,
             };
-            if ended.is_ok() {
-                tokio::select! {
-                    _ = stopped.wait_for(|on| *on) => return,
-                    _ = tokio::time::sleep(FIRST_WAIT) => {}
+            let wait = match ended {
+                Ok(()) => FIRST_WAIT,
+                Err(e) => {
+                    send(Followed::Failed(e.to_string()));
+                    backoff.after(&e)
                 }
-            }
-            if let Err(why) = ended {
-                send(Followed::Failed(why));
-                tokio::select! {
-                    _ = stopped.wait_for(|on| *on) => return,
-                    _ = tokio::time::sleep(wait) => {}
-                }
-                wait = (wait * 2).min(LONGEST_WAIT);
+            };
+            tokio::select! {
+                _ = stopped.wait_for(|on| *on) => return,
+                _ = tokio::time::sleep(wait) => {}
             }
         }
     }
 }
 
 /// One list and the watches after it; `Ok` when the version expired and the list starts again.
-async fn cycle(paths: &[PathBuf], key: &FollowKey, send: &impl Fn(Followed)) -> Result<(), String> {
-    let client = Client::connect(paths, &key.context).await.map_err(said)?;
+async fn cycle(
+    paths: &[PathBuf],
+    key: &FollowKey,
+    send: &impl Fn(Followed),
+    backoff: &mut Backoff,
+) -> groove_kube::Result<()> {
+    let client = Client::shared(paths, &key.context).await?;
     let kind = crate::kube_kind(&key.kind);
     let narrowed = Narrowed {
         kind: &kind,
@@ -73,7 +74,7 @@ async fn cycle(paths: &[PathBuf], key: &FollowKey, send: &impl Fn(Followed)) -> 
         fields: key.fields.as_deref(),
         labels: None,
     };
-    let listed = client.list_objects(narrowed).await.map_err(said)?;
+    let listed = client.list_objects(narrowed).await?;
     let whole = key
         .fields
         .as_deref()
@@ -86,13 +87,14 @@ async fn cycle(paths: &[PathBuf], key: &FollowKey, send: &impl Fn(Followed)) -> 
         let stream = match client.watch_objects(narrowed, &version).await {
             Ok(stream) => stream,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
-            Err(e) => return Err(said(e)),
+            Err(e) => return Err(e),
         };
         send(Followed::Watching);
+        backoff.reset();
         match watched(stream, &mut version, &read, send).await {
             Ok(()) => tokio::time::sleep_until(opened + FIRST_WAIT).await,
             Err(groove_kube::Error::Expired { .. }) => return Ok(()),
-            Err(e) => return Err(said(e)),
+            Err(e) => return Err(e),
         }
     }
 }
@@ -134,8 +136,4 @@ async fn watched(
         send(Followed::Changes(held));
     }
     Ok(())
-}
-
-fn said(error: groove_kube::Error) -> String {
-    error.to_string()
 }
