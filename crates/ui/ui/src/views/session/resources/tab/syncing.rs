@@ -132,7 +132,7 @@ fn heading<'a>(stage: &'a Stage<'a>, shut: bool, turn: u8) -> Shown<'a, Target> 
         Cell::small(stage.steps.len().to_string(), Role::Ghost),
         Cell::small(said.join(" · "), role),
     ];
-    grouped::heading(&stage.title, cells)
+    grouped::heading((&stage.title, shut), cells)
 }
 
 fn step<'a>(one: &Step<'a>, turn: u8) -> Shown<'a, Target> {

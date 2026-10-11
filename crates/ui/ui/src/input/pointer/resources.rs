@@ -133,7 +133,7 @@ fn tabbed(target: &Target, held: &mut ResourcesUi) -> bool {
                     (tab.argo.filter, tab.scroll) = (Some(*filter), 0.0);
                     tab.toggled.clear();
                 }
-                Target::ResourceFold(key) => tab.fold(key),
+                Target::ResourceFold(key, shut) => tab.fold(key, *shut),
                 Target::ResourceSection(section) => {
                     if !tab.shut.remove(section) {
                         tab.shut.insert(*section);

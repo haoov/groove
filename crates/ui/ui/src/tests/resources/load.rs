@@ -45,3 +45,16 @@ fn kinds_older_than_the_cache_are_discovered_again() {
     assert!(asked.contains(&again), "{asked:?}");
     assert!(clustered(&app, &ui).is_empty(), "fresh kinds are kept");
 }
+
+#[test]
+fn a_group_opened_stays_open_when_its_default_turns() {
+    let (_, mut ui) = super::argo_sync::opened(super::argo::failing());
+    let tab = &mut ui.session.resources.opened[0];
+    assert!(tab.folded("Deployment", true), "it starts folded");
+    tab.fold("Deployment", true);
+    assert!(!tab.folded("Deployment", true), "opened");
+    assert!(
+        !tab.folded("Deployment", false),
+        "and open once it would start open"
+    );
+}

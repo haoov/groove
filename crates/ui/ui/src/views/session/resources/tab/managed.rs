@@ -159,7 +159,7 @@ fn heading<'a>(part: &AppPart, group: &Group<'a>, shut: bool) -> Shown<'a, Targe
         Cell::small(group.rows.len().to_string(), Role::Ghost),
         Cell::small(said, role),
     ];
-    grouped::heading(group.kind, cells)
+    grouped::heading((group.kind, shut), cells)
 }
 
 /// How many are out of sync, wait to be pruned, and failed in the last sync.

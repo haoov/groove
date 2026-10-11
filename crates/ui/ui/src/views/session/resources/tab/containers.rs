@@ -85,7 +85,7 @@ pub(super) fn row(
         memory,
     ];
     let shown = Shown {
-        target: Some(Target::ResourceFold(key(one))),
+        target: Some(Target::ResourceFold(key(one), folded(tab, one))),
         ..grouped::row(cells)
     };
     let columns = columns(ctx);

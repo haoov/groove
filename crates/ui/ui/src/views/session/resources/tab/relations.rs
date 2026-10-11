@@ -130,7 +130,7 @@ pub(super) fn draw(ctx: &mut Ctx, rect: Rect, (line, header): (&Line, bool), las
                 ctx,
                 rect,
                 (&columns, header),
-                grouped::heading(&key(title), cells),
+                grouped::heading((&key(title), *shut), cells),
             );
             return;
         }

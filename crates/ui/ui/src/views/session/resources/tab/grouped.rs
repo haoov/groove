@@ -64,11 +64,11 @@ pub(super) fn draw<'a>(
 }
 
 /// A group's heading, which folds it on a click.
-pub(super) fn heading<'a>(key: &str, cells: Vec<Cell<'a>>) -> Shown<'a, Target> {
+pub(super) fn heading<'a>((key, shut): (&str, bool), cells: Vec<Cell<'a>>) -> Shown<'a, Target> {
     Shown {
         cells,
         under: Vec::new(),
-        target: Some(Target::ResourceFold(key.to_string())),
+        target: Some(Target::ResourceFold(key.to_string(), shut)),
         acts: Vec::new(),
         band: true,
     }

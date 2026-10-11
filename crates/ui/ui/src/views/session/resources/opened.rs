@@ -67,7 +67,7 @@ pub struct Opened {
     pub logs: super::LogsUi,
     pub argo: super::ArgoUi,
     /// The groups and rows folded against how they start.
-    pub toggled: std::collections::BTreeSet<String>,
+    pub toggled: std::collections::BTreeMap<String, bool>,
     /// The sections folded shut; the annotations, the relations and the events until opened.
     pub shut: std::collections::BTreeSet<Section>,
     pub scroll: f32,
@@ -84,7 +84,7 @@ impl Opened {
             view: super::View::Describe,
             logs: super::LogsUi::default(),
             argo: super::ArgoUi::default(),
-            toggled: std::collections::BTreeSet::new(),
+            toggled: std::collections::BTreeMap::new(),
             shut: [Section::Annotations, Section::Relations, Section::Events].into(),
             scroll: 0.0,
             across: 0.0,
@@ -92,15 +92,14 @@ impl Opened {
         }
     }
 
-    pub fn fold(&mut self, key: &str) {
-        if !self.toggled.remove(key) {
-            self.toggled.insert(key.to_string());
-        }
+    /// `key` turned the other way from how it was drawn, `shut` or open.
+    pub fn fold(&mut self, key: &str, shut: bool) {
+        self.toggled.insert(key.to_string(), !shut);
     }
 
-    /// Whether `key` stands folded, given whether it starts so.
+    /// Whether `key` stands folded: as the user left it, else as it starts.
     pub fn folded(&self, key: &str, folds: bool) -> bool {
-        folds != self.toggled.contains(key)
+        self.toggled.get(key).copied().unwrap_or(folds)
     }
 }
 

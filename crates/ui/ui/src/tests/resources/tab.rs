@@ -314,7 +314,7 @@ fn a_container_not_ready_stands_unfolded_and_its_usage_tells_request_and_limit_u
     ui.hover = None;
     let metrics = crate::tests::metrics(1920, 1440, 1.0);
     let (_, hits) = crate::view(&app, &ui, metrics, &mut groove_gfx::Fonts::embedded());
-    let row = hits.rect_of(&Target::ResourceFold("container/worker".into()));
+    let row = hits.rect_of(&Target::ResourceFold("container/worker".into(), false));
     click(row.expect("the worker's row"), &mut ui, &app, &hits);
     assert!(
         !shown(&app, &ui).iter().any(|text| text == "http 8080/TCP"),

@@ -107,7 +107,11 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
         !shown.iter().any(|text| text == "pythie-config"),
         "a kind with nothing to see stands folded"
     );
-    hit(&app, &mut ui, Target::ResourceFold("ConfigMap".into()));
+    hit(
+        &app,
+        &mut ui,
+        Target::ResourceFold("ConfigMap".into(), true),
+    );
     let shown = texts(&app, &ui);
     assert!(
         shown.iter().any(|text| text == "pythie-config"),
@@ -200,8 +204,12 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
         "{shown:?}"
     );
     hit(&app, &mut ui, Target::ArgoFilter(Filter::Syncing));
-    hit(&app, &mut ui, Target::ResourceFold("PreSync hooks".into()));
-    hit(&app, &mut ui, Target::ResourceFold("wave 0".into()));
+    hit(
+        &app,
+        &mut ui,
+        Target::ResourceFold("PreSync hooks".into(), true),
+    );
+    hit(&app, &mut ui, Target::ResourceFold("wave 0".into(), true));
     let shown = texts(&app, &ui);
     assert!(
         shown.iter().any(|text| text == "pythie-migrate"),
