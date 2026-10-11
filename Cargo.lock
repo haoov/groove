@@ -1657,6 +1657,7 @@ version = "1.0.0-alpha.3"
 dependencies = [
  "groove-types",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

@@ -23,10 +23,12 @@ pub fn watch(state: &mut AppState, services: &Services, spawner: &dyn Spawner) {
         .unwrap_or_default();
     state.agent.runs.seen = Some(now);
     let fired = fired.into_iter().filter(|one| !ran_itself(state, one));
-    let mut fired: Vec<Fired> = fired.collect();
-    fired.extend(dawn(state));
+    let fired: Vec<Fired> = fired.collect();
     for one in fire(state, &fired) {
         action::act(state, services, spawner, one);
+    }
+    if dawning(state) {
+        dawn(state, spawner);
     }
     turn(state, services, spawner);
 }
@@ -68,8 +70,8 @@ fn ran_itself(state: &AppState, fired: &Fired) -> bool {
             .is_some_and(|one| state.agent.runs.busy(one))
 }
 
-/// The daily trigger, on the day's first look once the rail, the routines and the tasks are back.
-fn dawn(state: &mut AppState) -> Option<Fired> {
+/// Whether the day's first look has come: once the rail, the routines and the tasks are back.
+fn dawning(state: &mut AppState) -> bool {
     let sourced = !groove_task_service::source_ids(state.config.config.as_ref()).is_empty();
     let read = state
         .agent
@@ -80,23 +82,36 @@ fn dawn(state: &mut AppState) -> Option<Fired> {
     let back = state.session.restored && state.agent.listed && (read || !sourced);
     let paused = state.config.preferences().routines_paused;
     if state.agent.runs.dawned || !back || paused {
-        return None;
+        return false;
     }
     state.agent.runs.dawned = true;
+    true
+}
+
+/// The daily trigger, fired once the day is read as a new one off the loop.
+fn dawn(state: &mut AppState, spawner: &dyn Spawner) {
     let dir = state.env.data_dir.join("routines");
     let today = Timestamp::now().day().to_string();
-    match groove_agent_service::routines::new_day(&dir, &today) {
-        Ok(true) => Some(Fired {
-            trigger: Trigger::Daily,
-            session: None,
-            about: String::new(),
-        }),
-        Ok(false) => None,
-        Err(e) => {
-            state.failed(e);
-            None
-        }
-    }
+    spawner.spawn(Box::pin(async move {
+        let new = groove_agent_service::routines::new_day(&dir, &today).await;
+        Box::new(
+            move |state: &mut AppState, services: &Services, spawner: &dyn Spawner| match new {
+                Ok(true) => {
+                    let daily = Fired {
+                        trigger: Trigger::Daily,
+                        session: None,
+                        about: String::new(),
+                    };
+                    for one in fire(state, &[daily]) {
+                        action::act(state, services, spawner, one);
+                    }
+                    turn(state, services, spawner);
+                }
+                Ok(false) => {}
+                Err(e) => state.failed(e),
+            },
+        ) as crate::Continuation
+    }));
 }
 
 /// A standalone routine's button runs it now in its session, an action's does it; whatever the rules.

@@ -8,9 +8,11 @@ publish.workspace = true
 
 [dependencies]
 groove-types = { path = "../../shared/types" }
+tokio = { workspace = true, features = ["fs"] }
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio = { workspace = true, features = ["fs", "macros", "rt"] }
 
 [lints]
 workspace = true
