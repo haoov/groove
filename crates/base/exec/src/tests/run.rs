@@ -77,3 +77,15 @@ async fn an_input_larger_than_the_pipes_is_read_back_whole() {
         .await;
     assert_eq!(out.expect("cat ran to its end").len(), big.len());
 }
+
+#[tokio::test]
+async fn a_child_that_exits_without_reading_still_says_why() {
+    let big = "unread\n".repeat(200_000);
+    let out = Run::new("sh")
+        .args(["-c", "echo refused >&2; exit 3"])
+        .input(big)
+        .text()
+        .await;
+    let said = out.expect_err("it exits 3").to_string();
+    assert!(said.ends_with("failed: refused"), "{said}");
+}
