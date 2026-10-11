@@ -5,6 +5,10 @@ use groove_types::{SessionId, SessionKind, StatusIntent, TaskKey};
 use crate::asker::Asker;
 use crate::{AppState, Continuation, Services, Spawner, session};
 
+/// What the agent hears before its own session ends: the teardown's outcome comes after it.
+const TEARDOWN: &str = "its session is taken away now, unless it holds work not yet pushed, \
+which Groove then shows and keeps";
+
 /// The task done at its source, then its session taken away; lost work stops the teardown.
 pub(crate) fn finish(
     state: &mut AppState,
@@ -25,8 +29,8 @@ pub(crate) fn finish(
     };
     let sources = state.task.sources(state.config.config.as_ref());
     if sources.is_empty() {
-        torn_down(state, services, spawner, id);
-        return asker.done(|| "no source holds it; its session goes".into());
+        asker.done(|| format!("no source holds it; {TEARDOWN}"));
+        return torn_down(state, services, spawner, id);
     }
     let job = state.begin(format!("finishing {}", open.session.title));
     let id = id.clone();
@@ -37,7 +41,7 @@ pub(crate) fn finish(
                 state.end(job);
                 match wrote {
                     Ok(_) => {
-                        asker.done(|| "the task is done at its source; its session goes".into());
+                        asker.done(|| format!("the task is done at its source; {TEARDOWN}"));
                         torn_down(state, services, spawner, &id);
                     }
                     Err(e) => asker.failed(state, e),
