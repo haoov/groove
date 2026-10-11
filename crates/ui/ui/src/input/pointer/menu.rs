@@ -155,8 +155,12 @@ pub(super) fn chosen(target: Option<Target>, ui: &mut Ui, app: &AppState) -> Vec
     }
     let picked = crate::views::overlays::actions::picked(&menu.of, at);
     ui.overlay = picked.asking.map(Overlay::Losing);
-    ui.session.naming = picked.naming;
-    ui.session.noting = picked.noting;
+    if picked.naming.is_some() {
+        ui.session.naming = picked.naming;
+    }
+    if picked.noting.is_some() {
+        ui.session.noting = picked.noting;
+    }
     picked.commands
 }
 

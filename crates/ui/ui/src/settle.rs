@@ -21,6 +21,9 @@ impl Ui {
         if self.session.tab == Tab::Resources && !held {
             self.session.tab = Tab::Overview;
         }
+        if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
+            (self.focus, self.session.composing) = (crate::Focus::Workspace, false);
+        }
     }
 
     /// The fields of the surface no longer shown let go of the keys.

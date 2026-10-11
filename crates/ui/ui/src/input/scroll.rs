@@ -27,6 +27,9 @@ pub(super) fn scroll(
         ui.wheeled(Scroller::Settings, pixels(tokens.row), hits);
         return Vec::new();
     }
+    if ui.overlay.is_some() {
+        return Vec::new();
+    }
     if x <= layout.rail.right() {
         in_rail(y, pixels(tokens.line), pixels(tokens.row), ui, hits);
         return Vec::new();

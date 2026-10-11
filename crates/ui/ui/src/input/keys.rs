@@ -40,7 +40,8 @@ pub(super) fn key_input(
     if let Some(action) = ui.settings.binding {
         return bound(action, key, mods, ui, app);
     }
-    if (ui.examining().is_some() || ui.menu().is_some()) && key == Key::Escape {
+    let asking = ui.examining().is_some() || ui.menu().is_some() || ui.losing().is_some();
+    if asking && key == Key::Escape {
         ui.overlay = None;
         return Vec::new();
     }
