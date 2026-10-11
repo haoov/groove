@@ -129,6 +129,8 @@ impl State {
         self.moved();
         if !self.holds(&worktree) {
             self.clear_paths();
+            self.stop();
+            self.found.clear();
         }
         self.worktree = Some(worktree);
         self.files = files;
