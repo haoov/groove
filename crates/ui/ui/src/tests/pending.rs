@@ -88,3 +88,11 @@ fn a_tab_waiting_on_a_commit_that_failed_to_read_stops_waiting_and_stays() {
     assert_eq!(ui.session.going, None);
     assert_ne!(ui.session.tab, Tab::Diff, "nothing to show there");
 }
+
+#[test]
+fn a_draft_with_no_field_steps_nowhere() {
+    let mut draft = crate::views::settings::Draft::shared();
+    draft.fields.clear();
+    draft.next();
+    assert_eq!(draft.at, None);
+}
