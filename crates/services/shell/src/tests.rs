@@ -80,7 +80,7 @@ fn closing_a_tab_hands_over_every_terminal_in_it() {
     state.reserve(&session(), true);
     let tab = state.shells(&session()).unwrap().tabs[0].id;
     assert_eq!(state.close_tab(&session(), tab).len(), 2);
-    assert!(state.shells(&session()).unwrap().tabs.is_empty());
+    assert!(state.shells(&session()).is_none());
 }
 
 #[test]
@@ -105,4 +105,18 @@ fn a_terminal_that_exited_keeps_its_place_with_its_code() {
     apply(&mut state, exited);
     let shell = state.shells(&session()).unwrap().get(id).unwrap();
     assert_eq!(shell.exited, Some(3));
+}
+
+#[test]
+fn a_session_holds_no_entry_once_its_last_tab_goes_or_before_its_first() {
+    let mut state = State::default();
+    let gone = SessionId::new("gone");
+    state.focus(&gone, 1);
+    state.select_tab(&gone, 2);
+    assert!(state.close(&gone, 1).is_none());
+    assert!(state.close_tab(&gone, 2).is_empty());
+    assert!(state.shells(&gone).is_none(), "a late ask makes no entry");
+    let one = state.reserve(&session(), false);
+    assert!(state.close(&session(), one).is_some());
+    assert!(state.shells(&session()).is_none(), "the last tab took it");
 }

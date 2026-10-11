@@ -85,6 +85,16 @@ impl State {
         &mut self.sessions[at.unwrap_or_default()].1
     }
 
+    fn held_mut(&mut self, session: &SessionId) -> Option<&mut Shells> {
+        let held = self.sessions.iter_mut().find(|(id, _)| id == session);
+        held.map(|(_, one)| one)
+    }
+
+    /// A session whose last tab closed holds no entry.
+    fn emptied(&mut self) {
+        self.sessions.retain(|(_, one)| !one.tabs.is_empty());
+    }
+
     fn shell_mut(&mut self, session: &SessionId, id: u64) -> Option<&mut Shell> {
         let held = self.sessions.iter_mut().find(|(one, _)| one == session)?;
         let tabs = held.1.tabs.iter_mut();
@@ -150,7 +160,9 @@ impl State {
     }
 
     pub fn select_tab(&mut self, session: &SessionId, tab: u64) {
-        let shells = self.shells_mut(session);
+        let Some(shells) = self.held_mut(session) else {
+            return;
+        };
         if shells.tabs.iter().any(|one| one.id == tab) {
             shells.selected = Some(tab);
         }
@@ -158,7 +170,9 @@ impl State {
 
     /// The keys to one terminal, and its tab to the front.
     pub fn focus(&mut self, session: &SessionId, id: u64) {
-        let shells = self.shells_mut(session);
+        let Some(shells) = self.held_mut(session) else {
+            return;
+        };
         let held = shells
             .tabs
             .iter_mut()
@@ -171,7 +185,13 @@ impl State {
 
     /// Takes one terminal out; a tab left empty goes with it. The caller ends it.
     pub fn close(&mut self, session: &SessionId, id: u64) -> Option<Shell> {
-        let shells = self.shells_mut(session);
+        let gone = self.closed(session, id);
+        self.emptied();
+        gone
+    }
+
+    fn closed(&mut self, session: &SessionId, id: u64) -> Option<Shell> {
+        let shells = self.held_mut(session)?;
         let at = shells
             .tabs
             .iter()
@@ -195,7 +215,9 @@ impl State {
 
     /// One tab taken out with every terminal in it, for the caller to end.
     pub fn close_tab(&mut self, session: &SessionId, tab: u64) -> Vec<Shell> {
-        let shells = self.shells_mut(session);
+        let Some(shells) = self.held_mut(session) else {
+            return Vec::new();
+        };
         let Some(at) = shells.tabs.iter().position(|one| one.id == tab) else {
             return Vec::new();
         };
@@ -204,6 +226,7 @@ impl State {
             let near = shells.tabs.get(at).or_else(|| shells.tabs.last());
             shells.selected = near.map(|one| one.id);
         }
+        self.emptied();
         gone
     }
 
