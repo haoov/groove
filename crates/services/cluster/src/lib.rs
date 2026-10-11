@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use groove_types::{FollowKey, KubeContext, KubeKind, LogKey, Login, Result, Usage, WatchKey};
 
 pub use groove_contexts::paths;
-pub use groove_objects::{Batch, Change, Delta, Followed, Logged, Stop};
+pub use groove_objects::{Batch, Change, Delta, FRESH, Followed, Logged, Stop};
 pub use store::{CAP, Follow, Follows, Log, Logs, Named, Store, Streaming, Watched, Yamls};
 
 /// The `cluster` slice of `AppState`.

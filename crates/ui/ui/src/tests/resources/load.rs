@@ -31,3 +31,17 @@ fn a_context_removed_from_groove_is_neither_discovered_nor_watched() {
     app.cluster.store.set_kinds("gone", vec![pods()]);
     assert!(clustered(&app, &ui).is_empty(), "no watcher on gone");
 }
+
+#[test]
+fn kinds_older_than_the_cache_are_discovered_again() {
+    let (app, ui) = listing();
+    let mut later = window();
+    later.now = groove_types::Timestamp::new(groove_types::Timestamp::now().seconds() + 11 * 60);
+    let asked = crate::render::frame_commands(&app, &ui, later);
+    let again = Command::Cluster(cluster::Command::Discover {
+        context: "staging".into(),
+        again: true,
+    });
+    assert!(asked.contains(&again), "{asked:?}");
+    assert!(clustered(&app, &ui).is_empty(), "fresh kinds are kept");
+}

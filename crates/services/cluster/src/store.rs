@@ -34,7 +34,7 @@ pub struct Watched {
 #[derive(Debug, Default)]
 pub struct Store {
     watched: BTreeMap<WatchKey, Watched>,
-    kinds: BTreeMap<String, Vec<KubeKind>>,
+    kinds: BTreeMap<String, (Vec<KubeKind>, Timestamp)>,
     discovering: BTreeSet<String>,
     /// The discoveries that failed in a row, by context, while one waits to try again.
     refused: BTreeMap<String, u32>,
@@ -51,13 +51,19 @@ impl Store {
     }
 
     pub fn kinds(&self, context: &str) -> Option<&[KubeKind]> {
-        self.kinds.get(context).map(Vec::as_slice)
+        self.kinds.get(context).map(|(kinds, _)| kinds.as_slice())
+    }
+
+    /// When the kinds of `context` were last discovered.
+    pub fn discovered(&self, context: &str) -> Option<Timestamp> {
+        self.kinds.get(context).map(|(_, at)| *at)
     }
 
     pub fn set_kinds(&mut self, context: &str, kinds: Vec<KubeKind>) {
         self.discovering.remove(context);
         self.refused.remove(context);
-        self.kinds.insert(context.to_string(), kinds);
+        let at = Timestamp::now();
+        self.kinds.insert(context.to_string(), (kinds, at));
     }
 
     /// The namespaces of `context`, as last listed.

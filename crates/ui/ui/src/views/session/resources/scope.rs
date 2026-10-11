@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use groove_controllers::session_service::Open;
 use groove_controllers::{AppState, Command, cluster};
-use groove_types::{Attached, KubeKind, WatchKey};
+use groove_types::{Attached, KubeKind, Timestamp, WatchKey};
 use groove_ui_kit::widgets::Field;
 
 /// The one reader the tab holds its watchers under.
@@ -180,12 +180,12 @@ pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
 }
 
 /// What the tab needs each frame, `up` while it shows: its contexts' kinds; a watcher a key while the list shows.
-pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
+pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi, now: Timestamp) -> Vec<Command> {
     let open = app.session.selected().filter(|_| up);
     let mut out = Vec::new();
     let wanted = match open {
         Some(open) => {
-            out.extend(discoveries(app, open));
+            out.extend(discoveries(app, open, now));
             match ui.tab() {
                 Some(_) => Vec::new(),
                 None => keys(app, open, ui),
@@ -197,22 +197,27 @@ pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
     out
 }
 
-/// A discovery for each context in scope, still added to Groove, whose kinds are neither known nor asked for.
-fn discoveries(app: &AppState, open: &Open) -> Vec<Command> {
+/// A discovery for each context in scope, still added to Groove, whose kinds are unknown or older than `FRESH`.
+fn discoveries(app: &AppState, open: &Open, now: Timestamp) -> Vec<Command> {
     let store = &app.cluster.store;
-    let unknown = |one: &&str| {
+    let fresh = groove_controllers::cluster_service::FRESH.as_secs() as i64;
+    let asked = |one: &str| {
         let added = app.config.cluster(one).is_some();
-        added && store.kinds(one).is_none() && !store.discovering(one)
+        if !added || store.discovering(one) {
+            return None;
+        }
+        let again = match store.discovered(one) {
+            None => false,
+            Some(at) if now.seconds() - at.seconds() >= fresh => true,
+            Some(_) => return None,
+        };
+        let context = one.to_string();
+        Some(Command::Cluster(cluster::Command::Discover {
+            context,
+            again,
+        }))
     };
-    let discover = |one: &str| cluster::Command::Discover {
-        context: one.to_string(),
-        again: false,
-    };
-    contexts(open)
-        .into_iter()
-        .filter(unknown)
-        .map(|one| Command::Cluster(discover(one)))
-        .collect()
+    contexts(open).into_iter().filter_map(asked).collect()
 }
 
 /// Nothing while the keys held are the keys wanted; else let go of them all and read the new.
