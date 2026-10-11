@@ -51,7 +51,7 @@ pub(crate) fn commit(
     asker: Asker,
 ) {
     if message.trim().is_empty() {
-        return asker.refused("a commit needs a message");
+        return asker.refused(state, "a commit needs a message");
     }
     let session = worktree.session.clone();
     let dir = PathBuf::from(&worktree.path);

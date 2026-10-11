@@ -29,11 +29,9 @@ impl Asker {
         }
     }
 
-    /// The write cannot be made at all; only the agent hears it.
-    pub(crate) fn refused(self, why: impl Into<String>) {
-        if let Asker::Agent(reply) = self {
-            reply.failed(why.into());
-        }
+    /// The write cannot be made at all; whoever asked hears why.
+    pub(crate) fn refused(self, state: &mut AppState, why: impl Into<String>) {
+        self.failed(state, Error::invalid(why.into()));
     }
 
     /// Whether the words came from a box the surface should now clear.

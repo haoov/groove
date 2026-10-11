@@ -42,10 +42,10 @@ pub(crate) fn write(
     asker: Asker,
 ) {
     let Some(whose) = Whose::of(state, worktree) else {
-        return asker.refused(crate::tools::NO_WORKTREE);
+        return asker.refused(state, crate::tools::NO_WORKTREE);
     };
     if let Err(why) = state.delivery.allows(worktree, act) {
-        return asker.refused(why);
+        return asker.refused(state, why);
     }
     state.delivery.poll.sent(worktree);
     let job = state.begin(label(act));

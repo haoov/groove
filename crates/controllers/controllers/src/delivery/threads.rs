@@ -111,7 +111,7 @@ pub(crate) fn thread(
     asker: Asker,
 ) {
     let Some(call) = call_of(state, &whose, act.clone()) else {
-        return asker.refused("this session left no note by that id");
+        return asker.refused(state, "this session left no note by that id");
     };
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));
     let told = act;
@@ -173,7 +173,7 @@ pub(crate) fn say_as(
     asker: Asker,
 ) {
     if say == Say::Comment && body.is_empty() {
-        return asker.refused("a comment needs a body");
+        return asker.refused(state, "a comment needs a body");
     }
     let notes = state.delivery.unposted(&whose.session, &whose.repo.id);
     let commenting = say == Say::Review(ReviewVerdict::Comment);

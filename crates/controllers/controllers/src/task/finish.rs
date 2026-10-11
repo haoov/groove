@@ -14,10 +14,10 @@ pub(crate) fn finish(
     asker: Asker,
 ) {
     let Some(open) = state.session.get(id) else {
-        return asker.refused(crate::tools::NO_SESSION);
+        return asker.refused(state, crate::tools::NO_SESSION);
     };
     let SessionKind::Task { external_id } = &open.session.kind else {
-        return asker.refused(super::NOT_A_TASK);
+        return asker.refused(state, super::NOT_A_TASK);
     };
     let key = match TaskKey::parse(external_id) {
         Ok(key) => key,

@@ -17,7 +17,7 @@ pub fn add_repo(
     asker: Asker,
 ) {
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
-        return asker.refused(crate::tools::NO_SESSION);
+        return asker.refused(state, crate::tools::NO_SESSION);
     };
     let verb = groove_session_service::Service::adding(name);
     let pending = state.begin(format!("{verb} {name}"));
@@ -59,7 +59,7 @@ pub fn add_worktree(
     asker: Asker,
 ) {
     let Some(session) = state.session.get(id).map(|o| o.session.clone()) else {
-        return asker.refused(crate::tools::NO_SESSION);
+        return asker.refused(state, crate::tools::NO_SESSION);
     };
     let branch = spec.branch.clone().unwrap_or_default();
     let pending = state.begin(format!("adding worktree {branch}"));

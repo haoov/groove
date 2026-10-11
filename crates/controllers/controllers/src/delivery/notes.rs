@@ -111,7 +111,7 @@ pub(crate) fn write(
     if let NoteAct::Create { anchor, .. } = &act {
         let lines = (anchor.start_line, anchor.end_line);
         if state.delivery.covered(&whose.session, &anchor.path, lines) {
-            return asker.refused(ALREADY_NOTED);
+            return asker.refused(state, ALREADY_NOTED);
         }
     }
     let (service, job) = (services.delivery.clone(), state.begin(act.label()));

@@ -29,7 +29,7 @@ pub fn adopt(
         .get(session)
         .is_some_and(|open| matches!(open.session.kind, SessionKind::Explorer));
     if !explorer {
-        return asker.refused(NOT_EXPLORER);
+        return asker.refused(state, NOT_EXPLORER);
     }
     let sources = state.task.sources(state.config.config.as_ref());
     let job = state.begin(format!("reading {}", key.external_id()));
@@ -57,7 +57,10 @@ fn told(
     asker: Asker,
 ) {
     if let Some(other) = super::working(state, &read.task).filter(|one| *one != explorer) {
-        return asker.refused(format!("{other} already works {}", read.task.short_id));
+        return asker.refused(
+            state,
+            format!("{other} already works {}", read.task.short_id),
+        );
     }
     let (short, title) = (read.task.short_id.clone(), read.task.title.clone());
     asker.done(|| {

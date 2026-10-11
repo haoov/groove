@@ -109,14 +109,19 @@ fn a_commit_takes_the_index_and_empties_the_message() {
 }
 
 #[test]
-fn a_commit_with_no_message_is_not_made() {
+fn a_commit_with_no_message_is_not_made_and_says_why() {
     let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
     pooled_clone(home.path());
     worktree(&mut state, &services, &spawner);
     state.workspace.message.edit(&Edit::Insert("   ".into()));
     act(&mut state, &services, &spawner, workspace::Command::Commit);
     spawner.drain(&mut state, &services);
-    assert!(state.errors.is_empty(), "nothing was tried");
+    let said: Vec<&str> = state
+        .errors
+        .iter()
+        .map(|one| one.message.as_str())
+        .collect();
+    assert_eq!(said, ["a commit needs a message"]);
     assert_eq!(state.workspace.message.text(), "   ", "and nothing spent");
 }
 
