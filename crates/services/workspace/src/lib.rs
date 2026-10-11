@@ -77,13 +77,25 @@ pub struct State {
     pub logged: Option<WorktreeId>,
     /// The commit the surface shows instead of the working tree.
     pub commit: Option<CommitEntry>,
-    /// A repo's slug to select a worktree of, and a commit of it to show once read.
-    pub revision: Option<(String, Option<String>)>,
+    /// A repo's slug to select a worktree of in a session, and a commit of it to show once read.
+    pub revision: Option<Revision>,
+    /// Moves on with each commit asked to show; only the last one asked lands.
+    pub opening: u64,
     pub watching: Option<WorktreeId>,
     /// The buffers a read of the colours and the rows is out for.
     pub deriving: std::collections::BTreeSet<(WorktreeId, String)>,
     pub blames: Blames,
     watch: Option<Watch>,
+}
+
+/// A revision a link asked for: a worktree of `slug` in `session`, then `sha` shown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Revision {
+    pub session: groove_types::SessionId,
+    pub slug: String,
+    pub sha: Option<String>,
+    /// Its commit's read is out; the revision ends when it lands.
+    pub reading: bool,
 }
 
 impl State {

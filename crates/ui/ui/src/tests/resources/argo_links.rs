@@ -127,7 +127,12 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     };
     assert_eq!(sent, [show(None)]);
     let (diff, files, resources) = (Tab::Diff, Tab::Files, Tab::Resources);
-    app.workspace.revision = Some(("gitlab.wiremind.io/pythie-cayzn-deploy".into(), None));
+    app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
+        session: app.session.selected.clone().expect("a session"),
+        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        sha: None,
+        reading: false,
+    });
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
@@ -145,6 +150,12 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
     };
     let sent = followed(&app, &mut ui, SHA, revision);
     assert_eq!(sent, [show(Some(SHA))]);
+    app.workspace.revision = Some(groove_controllers::workspace_service::Revision {
+        session: app.session.selected.clone().expect("a session"),
+        slug: "gitlab.wiremind.io/pythie-cayzn-deploy".into(),
+        sha: Some(SHA.into()),
+        reading: true,
+    });
     ui.settle(&app);
     assert_eq!(
         ui.session.tab, resources,
@@ -158,6 +169,7 @@ fn a_ctrl_click_on_a_git_source_shows_its_repo_and_on_its_revision_that_commit()
         at: groove_types::Timestamp::new(0),
         is_base: true,
     });
+    app.workspace.revision = None;
     ui.settle(&app);
     assert_eq!(ui.session.tab, diff, "then its diff");
 }

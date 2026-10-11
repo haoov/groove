@@ -77,3 +77,14 @@ fn find_matches_follow_an_edit_of_the_file() {
         "the match moved down with its line"
     );
 }
+
+#[test]
+fn a_tab_waiting_on_a_commit_that_failed_to_read_stops_waiting_and_stays() {
+    let app = full_app();
+    let mut ui = Ui::default();
+    ui.settle(&app);
+    ui.session.going = Some((Tab::Diff, Some("0123456".into())));
+    ui.settle(&app);
+    assert_eq!(ui.session.going, None);
+    assert_ne!(ui.session.tab, Tab::Diff, "nothing to show there");
+}

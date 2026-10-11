@@ -80,3 +80,51 @@ fn a_repo_the_session_lacks_is_added_from_the_pool_and_selected() {
         "cut from the branch the source follows"
     );
 }
+
+#[test]
+fn a_commit_that_cannot_be_read_ends_the_revision_and_says_why() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    pooled_clone(home.path());
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    worktree(&mut state, &services, &spawner);
+    let show = workspace::Command::ShowRepo {
+        repo: URL.into(),
+        target: Some("main".into()),
+        sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
+    };
+    send(&mut state, &services, &spawner, show);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert!(!state.errors.is_empty(), "the read failed");
+    assert_eq!(state.workspace.revision, None, "and the revision ended");
+}
+
+#[test]
+fn a_revision_asked_in_one_session_is_dropped_once_another_is_selected() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    pooled_clone(home.path());
+    let services = services(&spawner, home.path());
+    let mut state = state(home.path());
+    let before = worktree(&mut state, &services, &spawner);
+    state.workspace.revision = Some(groove_workspace_service::Revision {
+        session: groove_types::SessionId::new("elsewhere"),
+        slug: "gitlab.example.com/g/mayo".into(),
+        sha: Some("0123456789abcdef0123456789abcdef01234567".into()),
+        reading: false,
+    });
+    send(&mut state, &services, &spawner, workspace::Command::Load);
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    assert_eq!(state.workspace.revision, None);
+    assert!(
+        state.errors.is_empty(),
+        "nothing read here: {:?}",
+        state.errors
+    );
+    let selected = state
+        .session
+        .selected_worktree()
+        .map(|one| one.path.clone());
+    assert_eq!(selected.as_deref(), Some(before.as_str()));
+}

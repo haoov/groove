@@ -213,3 +213,30 @@ fn a_shown_commit_leaves_the_open_files_as_the_disk_holds_them() {
         "the stream is the commit's"
     );
 }
+
+#[test]
+fn of_two_commits_clicked_in_a_row_the_second_is_shown() {
+    let home = tempfile::tempdir().unwrap();
+    let spawner = SyncSpawner::new().unwrap();
+    let (mut state, services, dir) = logged(home.path(), &spawner);
+    std::fs::write(dir.join("b.txt"), "b\n").unwrap();
+    sh(&dir, &["add", "."]);
+    sh(&dir, &["commit", "-m", "second"]);
+    send(
+        &mut state,
+        &services,
+        &spawner,
+        workspace::Command::GetCommits,
+    );
+    let (second, first) = (
+        state.workspace.log[0].sha.clone(),
+        state.workspace.log[1].sha.clone(),
+    );
+    for sha in [first, second.clone()] {
+        let open = Cmd::Workspace(workspace::Command::OpenCommit { sha });
+        dispatch(open, &mut state, &services, &spawner);
+    }
+    until(&spawner, &services, &mut state, |s| s.pending.is_empty());
+    let shown = state.workspace.commit.as_ref().map(|one| one.sha.clone());
+    assert_eq!(shown, Some(second));
+}

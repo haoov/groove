@@ -22,7 +22,7 @@ pub fn add_repo(
     let verb = groove_session_service::Service::adding(name);
     let pending = state.begin(format!("{verb} {name}"));
     let (service, name) = (services.session.clone(), name.to_string());
-    added(spawner, pending, asker, async move {
+    added(spawner, (pending, false), asker, async move {
         service.add_repo(&session, &name, &spec, None).await
     });
 }
@@ -42,7 +42,7 @@ pub fn add_repo_at(
     let pending = state.begin(format!("{verb} {name}"));
     let (service, name) = (services.session.clone(), name.to_string());
     let revision = revision.map(String::from);
-    added(spawner, pending, Asker::Ui, async move {
+    added(spawner, (pending, true), Asker::Ui, async move {
         service
             .add_repo_at(&session, &name, revision.as_deref())
             .await
@@ -64,7 +64,7 @@ pub fn add_worktree(
     let branch = spec.branch.clone().unwrap_or_default();
     let pending = state.begin(format!("adding worktree {branch}"));
     let (service, repo) = (services.session.clone(), repo.clone());
-    added(spawner, pending, asker, async move {
+    added(spawner, (pending, false), asker, async move {
         service.add_worktree(&session, &repo, &spec, None).await
     });
 }
@@ -194,7 +194,7 @@ pub fn list_branches(services: &Services, spawner: &dyn Spawner, repo: &RepoId) 
 /// A provisioning result into the session's row, and the board read again.
 pub(crate) fn added(
     spawner: &dyn Spawner,
-    pending: u64,
+    (pending, for_revision): (u64, bool),
     asker: Asker,
     work: impl Future<Output = Result<Added, Error>> + Send + 'static,
 ) {
@@ -206,7 +206,9 @@ pub(crate) fn added(
                 let added = match result {
                     Ok(added) => added,
                     Err(e) => {
-                        state.workspace.revision = None;
+                        if for_revision {
+                            state.workspace.revision = None;
+                        }
                         return asker.failed(state, e);
                     }
                 };

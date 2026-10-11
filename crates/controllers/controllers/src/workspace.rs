@@ -223,6 +223,19 @@ impl Asked {
     pub(crate) fn holds(&self, state: &AppState) -> bool {
         Self::now(state).as_ref() == Some(self)
     }
+
+    /// The same, whatever commit the surface shows meanwhile.
+    pub(crate) fn holds_place(&self, state: &AppState) -> bool {
+        Self::now(state).is_some_and(|now| {
+            Self {
+                commit: None,
+                ..now
+            } == Self {
+                commit: None,
+                ..self.clone()
+            }
+        })
+    }
 }
 
 pub fn stale(state: &AppState) -> bool {

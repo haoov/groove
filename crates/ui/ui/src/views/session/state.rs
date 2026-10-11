@@ -267,19 +267,18 @@ impl SessionUi {
 }
 
 impl SessionUi {
-    /// The tab gone to once what it waits for stands.
+    /// The tab gone to once what it waits for stands; nothing moves when it failed.
     pub fn arrive(&mut self, app: &groove_controllers::AppState) {
         let Some((tab, sha)) = &self.going else {
             return;
         };
-        let shown = app.workspace.commit.as_ref().map(|one| &one.sha);
-        let ready = match sha {
-            Some(sha) => shown == Some(sha),
-            None => app.workspace.revision.is_none(),
-        };
-        if ready {
-            self.tab = *tab;
-            self.going = None;
+        if app.workspace.revision.is_some() {
+            return;
         }
+        let shown = app.workspace.commit.as_ref().map(|one| &one.sha);
+        if sha.is_none() || shown == sha.as_ref() {
+            self.tab = *tab;
+        }
+        self.going = None;
     }
 }
