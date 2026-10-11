@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use groove_types::{AppPart, AppResource, Operation, SyncedResource};
+use groove_types::{AppPart, Operation, SyncedResource};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum State {
@@ -80,12 +80,12 @@ fn waves<'a>(part: &'a AppPart, operation: &'a Operation) -> BTreeMap<i64, Vec<S
             .find(|done| !done.hook && one.is(done));
         let state = match result {
             Some(done) if done.broke() => State::Failed,
-            Some(done) if operation.running() && waits(one, done) => State::Applying,
+            Some(done) if operation.running() && done.hook_phase == "Running" => State::Applying,
             Some(_) => State::Done,
             None if operation.running() => State::Waiting,
             None => State::Skipped,
         };
-        let message = result.map_or(one.message.as_str(), |done| done.message.as_str());
+        let message = result.map_or("", |done| done.message.as_str());
         let step = Step {
             kind: &one.kind,
             name: &one.name,
@@ -125,11 +125,6 @@ fn hooked<'a>(operation: &Operation, one: &'a SyncedResource) -> Step<'a> {
         message: &one.message,
         in_wave: false,
     }
-}
-
-/// Applied, and not done yet: its own phase runs, or its health still progresses.
-fn waits(one: &AppResource, done: &SyncedResource) -> bool {
-    done.hook_phase == "Running" || one.health == "Progressing"
 }
 
 /// How many steps the running sync has still to apply; none once it ends.

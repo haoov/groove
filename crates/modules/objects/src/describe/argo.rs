@@ -116,8 +116,6 @@ fn managed(all: &Value) -> Vec<AppResource> {
             namespace: optional(one, "/namespace").filter(|one| !one.is_empty()),
             name: text(one, "/name"),
             sync: text(one, "/status"),
-            health: text(one, "/health/status"),
-            message: text(one, "/health/message"),
             wave: one["syncWave"].as_i64().unwrap_or_default(),
             prune: one["requiresPruning"].as_bool().unwrap_or_default(),
             hook: one["hook"].as_bool().unwrap_or_default(),

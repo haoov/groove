@@ -174,13 +174,9 @@ fn a_failed_application_reads_its_sources_policy_operation_and_what_broke() {
     );
     assert_eq!(operation.applied[0].phase, "PreSync");
     let api = &part.resources[0];
-    assert_eq!(
-        (api.wave, api.health.as_str(), api.message.as_str()),
-        (1, "Progressing", "1 of 3 updated")
-    );
-    assert!(api.attention() && api.unhealthy());
+    assert_eq!((api.wave, api.out_of_sync()), (1, true));
     let old = &part.resources[1];
-    assert!(old.prune && old.out_of_sync() && !old.unhealthy());
+    assert!(old.prune && old.out_of_sync());
     assert!(
         part.resources[2].hook && !part.resources[2].out_of_sync(),
         "a hook's status counts for nothing"

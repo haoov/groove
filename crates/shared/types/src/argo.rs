@@ -98,9 +98,6 @@ pub struct AppResource {
     pub name: String,
     /// `Synced` or `OutOfSync`.
     pub sync: String,
-    /// `Healthy`, `Progressing`, `Degraded`, `Missing`; empty for a kind with no health.
-    pub health: String,
-    pub message: String,
     pub wave: i64,
     /// Gone from the sources, kept until a sync prunes it.
     pub prune: bool,
@@ -108,17 +105,22 @@ pub struct AppResource {
     pub hook: bool,
 }
 
+impl AppPart {
+    /// The last sync's result for `one`, hooks aside.
+    pub fn result(&self, one: &AppResource) -> Option<&SyncedResource> {
+        let applied = &self.operation.as_ref()?.applied;
+        applied.iter().find(|done| !done.hook && one.is(done))
+    }
+
+    /// Out of sync, waiting to be pruned, or failed in the last sync.
+    pub fn attention(&self, one: &AppResource) -> bool {
+        one.out_of_sync() || one.prune || self.result(one).is_some_and(SyncedResource::broke)
+    }
+}
+
 impl AppResource {
     pub fn out_of_sync(&self) -> bool {
         !self.hook && self.sync != "Synced"
-    }
-
-    pub fn unhealthy(&self) -> bool {
-        !self.health.is_empty() && self.health != "Healthy"
-    }
-
-    pub fn attention(&self) -> bool {
-        self.out_of_sync() || self.unhealthy()
     }
 
     pub fn is(&self, result: &SyncedResource) -> bool {

@@ -11,15 +11,13 @@ use crate::hit::Target;
 use crate::tests::click;
 use crate::views::session::resources::{Filter, Link, View};
 
-fn managed(kind: &str, name: &str, sync: &str, health: &str, wave: i64) -> AppResource {
+fn managed(kind: &str, name: &str, sync: &str, wave: i64) -> AppResource {
     AppResource {
         group: String::new(),
         kind: kind.into(),
         namespace: Some("pythie-acc".into()),
         name: name.into(),
         sync: sync.into(),
-        health: health.into(),
-        message: String::new(),
         wave,
         prune: false,
         hook: false,
@@ -73,12 +71,17 @@ fn texts(app: &AppState, ui: &Ui) -> Vec<String> {
 fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
-    part.operation.as_mut().expect("its sync").phase = "Succeeded".into();
+    let operation = part.operation.as_mut().expect("its sync");
+    operation.phase = "Failed".into();
+    let mut broke = result("Job", "pythie-migrate", false, "Failed");
+    broke.status = "SyncFailed".into();
+    broke.message = "field is immutable".into();
+    operation.applied = vec![broke];
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", "Progressing", 1),
-        managed("Job", "pythie-migrate", "Synced", "Degraded", -1),
-        managed("ConfigMap", "pythie-config", "Synced", "", 0),
-        managed("Service", "pythie", "Synced", "Healthy", 0),
+        managed("Deployment", "pythie-api", "OutOfSync", 1),
+        managed("Job", "pythie-migrate", "Synced", -1),
+        managed("ConfigMap", "pythie-config", "Synced", 0),
+        managed("Service", "pythie", "Synced", 0),
     ];
     let (app, mut ui) = opened(object);
     let shown = texts(&app, &ui);
@@ -86,11 +89,12 @@ fn resources_open_on_what_needs_attention_and_all_folds_the_healthy_kinds() {
         "resources",
         "needs attention · 2",
         "out of sync · 1",
-        "unhealthy · 2",
         "syncing · 0",
         "Deployment",
         "pythie-api",
-        "1 out of sync · 1 progressing",
+        "1 out of sync",
+        "1 failed",
+        "field is immutable",
         "pythie-migrate",
     ] {
         assert!(shown.iter().any(|text| text == one), "{one}: {shown:?}");
@@ -123,8 +127,8 @@ fn a_running_sync_opens_on_its_stages_and_counts_what_it_has_applied() {
         result("Deployment", "pythie-api", false, "Running"),
     ];
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", "", 0),
-        managed("ConfigMap", "pythie-config", "OutOfSync", "", 1),
+        managed("Deployment", "pythie-api", "OutOfSync", 0),
+        managed("ConfigMap", "pythie-config", "OutOfSync", 1),
     ];
     let (app, ui) = opened(object);
     let shown = texts(&app, &ui);
@@ -153,8 +157,8 @@ fn a_header_sorts_each_kind_s_rows_and_leaves_the_list_s_order_be() {
     let mut object = failing();
     let part = object.app.as_mut().expect("its part");
     part.resources = vec![
-        managed("Deployment", "pythie-api", "OutOfSync", "Healthy", 0),
-        managed("Deployment", "pythie-worker", "OutOfSync", "Healthy", 0),
+        managed("Deployment", "pythie-api", "OutOfSync", 0),
+        managed("Deployment", "pythie-worker", "OutOfSync", 0),
     ];
     let (app, mut ui) = opened(object);
     let at = |app: &AppState, ui: &Ui, name: &str| {
@@ -186,12 +190,9 @@ fn a_hook_job_left_after_its_sync_is_neither_out_of_sync_nor_skipped() {
         result("Job", "pythie-migrate", true, "Succeeded"),
         result("Deployment", "pythie-api", false, ""),
     ];
-    let mut job = managed("Job", "pythie-migrate", "OutOfSync", "Healthy", 0);
+    let mut job = managed("Job", "pythie-migrate", "OutOfSync", 0);
     job.hook = true;
-    part.resources = vec![
-        managed("Deployment", "pythie-api", "Synced", "Healthy", 0),
-        job,
-    ];
+    part.resources = vec![managed("Deployment", "pythie-api", "Synced", 0), job];
     let (app, mut ui) = opened(object);
     let shown = texts(&app, &ui);
     assert!(
@@ -223,11 +224,11 @@ fn a_sync_hook_runs_in_the_wave_the_application_lists_it_at() {
     let mut seed = result("Job", "pythie-seed", true, "Running");
     seed.phase = "Sync".into();
     operation.applied = vec![result("Deployment", "pythie-api", false, "Succeeded"), seed];
-    let mut listed = managed("Job", "pythie-seed", "Synced", "", 1);
+    let mut listed = managed("Job", "pythie-seed", "Synced", 1);
     listed.hook = true;
     part.resources = vec![
-        managed("Deployment", "pythie-api", "Synced", "", 0),
-        managed("ConfigMap", "pythie-config", "OutOfSync", "", 1),
+        managed("Deployment", "pythie-api", "Synced", 0),
+        managed("ConfigMap", "pythie-config", "OutOfSync", 1),
         listed,
     ];
     let (app, ui) = opened(object);

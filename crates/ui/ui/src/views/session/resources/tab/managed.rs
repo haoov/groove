@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use groove_gfx::{Edges, Rect};
-use groove_types::{AppPart, AppResource};
+use groove_types::{AppPart, AppResource, SyncedResource};
 use groove_ui_kit::base::style::Role;
 use groove_ui_kit::layout::{Spec, column_in};
 use groove_ui_kit::shape::hairline;
@@ -17,9 +17,8 @@ use super::{stages, syncing};
 use crate::ctx::Ctx;
 use crate::hit::Target;
 
-const COLUMNS: [Columned; 6] = [
+const COLUMNS: [Columned; 5] = [
     ("SYNC", "✓"),
-    ("HEALTH", "♥"),
     ("NAME", "pythie-cayzn-config-manager"),
     ("NAMESPACE", "pythie-cayzn-staging"),
     ("WAVE", "-10"),
@@ -52,12 +51,12 @@ pub(super) fn draw(
     }
     let mut groups = groups(part, filter);
     for group in &mut groups {
-        grouped::order(&mut group.rows, tab, key);
+        grouped::order(&mut group.rows, tab, |one, column| key(part, one, column));
     }
-    let lines = lines(tab, &groups, filter);
+    let lines = lines((tab, part), &groups, filter);
     let count = lines.len();
     grouped::draw(ctx, rest, (tab, dragged), (&COLUMNS, count), |at| {
-        shown(&lines[at])
+        shown(part, &lines[at])
     });
     if count == 0 {
         let row = Spec::default().height(ctx.tokens.row);
@@ -78,11 +77,11 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
             _ => part
                 .resources
                 .iter()
-                .filter(|one| filter.holds(one))
+                .filter(|one| filter.holds(part, one))
                 .count(),
         };
         let role = match filter {
-            Filter::Attention | Filter::Unhealthy => Role::Bad,
+            Filter::Attention => Role::Bad,
             Filter::OutOfSync => Role::Warn,
             Filter::Syncing => Role::Working,
             Filter::All => Role::Muted,
@@ -97,25 +96,30 @@ fn filters(ctx: &mut Ctx, strip: Rect, part: &AppPart, on: Filter) {
 
 fn groups(part: &AppPart, filter: Filter) -> Vec<Group<'_>> {
     let mut by: BTreeMap<&str, Vec<&AppResource>> = BTreeMap::new();
-    for one in part.resources.iter().filter(|one| filter.holds(one)) {
+    for one in part.resources.iter().filter(|one| filter.holds(part, one)) {
         by.entry(&one.kind).or_default().push(one);
     }
+    let first = |one: &&AppResource| (!part.attention(one), one.name.clone());
     let mut out: Vec<Group> = by
         .into_iter()
         .map(|(kind, mut rows)| {
-            rows.sort_by(|a, b| (!a.attention(), &a.name).cmp(&(!b.attention(), &b.name)));
+            rows.sort_by_key(first);
             Group { kind, rows }
         })
         .collect();
-    out.sort_by_key(|group| !group.rows.iter().any(|one| one.attention()));
+    out.sort_by_key(|group| !group.rows.iter().any(|one| part.attention(one)));
     out
 }
 
 /// Each group's heading, then its rows unless folded; under all, a group with nothing to see starts folded.
-fn lines<'a>(tab: &Opened, groups: &'a [Group<'a>], filter: Filter) -> Vec<Line<'a>> {
+fn lines<'a>(
+    (tab, part): (&Opened, &AppPart),
+    groups: &'a [Group<'a>],
+    filter: Filter,
+) -> Vec<Line<'a>> {
     let mut out = Vec::new();
     for group in groups {
-        let quiet = !group.rows.iter().any(|one| one.attention());
+        let quiet = !group.rows.iter().any(|one| part.attention(one));
         let shut = tab.argo.shut(group.kind, filter == Filter::All && quiet);
         out.push(Line::Heading(group, shut));
         if !shut {
@@ -125,17 +129,17 @@ fn lines<'a>(tab: &Opened, groups: &'a [Group<'a>], filter: Filter) -> Vec<Line<
     out
 }
 
-fn shown<'a>(line: &Line<'a>) -> Shown<'a, Target> {
+fn shown<'a>(part: &'a AppPart, line: &Line<'a>) -> Shown<'a, Target> {
     match line {
-        Line::Heading(group, shut) => heading(group, *shut),
-        Line::Row(one) => resource(one),
+        Line::Heading(group, shut) => heading(part, group, *shut),
+        Line::Row(one) => resource(part, one),
     }
 }
 
-/// `▾ Deployments 4 1 out of sync · 1 progressing`.
-fn heading<'a>(group: &Group<'a>, shut: bool) -> Shown<'a, Target> {
+/// `▾ Deployments 4 1 out of sync · 1 failed`.
+fn heading<'a>(part: &AppPart, group: &Group<'a>, shut: bool) -> Shown<'a, Target> {
     let mark = if shut { "▸" } else { "▾" };
-    let (said, role) = note(&group.rows);
+    let (said, role) = note(part, &group.rows);
     let cells = vec![
         Cell::small(mark, Role::Ghost),
         Cell::small(group.kind, Role::Text),
@@ -145,40 +149,44 @@ fn heading<'a>(group: &Group<'a>, shut: bool) -> Shown<'a, Target> {
     grouped::heading(group.kind, cells)
 }
 
-/// How many are out of sync, then how many stand in each health but healthy.
-fn note(rows: &[&AppResource]) -> (String, Role) {
-    let drifted = rows.iter().filter(|one| one.out_of_sync()).count();
-    let mut said = Vec::new();
-    if drifted > 0 {
-        said.push(format!("{drifted} out of sync"));
-    }
-    for health in ["Degraded", "Missing", "Progressing", "Suspended", "Unknown"] {
-        let count = rows.iter().filter(|one| one.health == health).count();
-        if count > 0 {
-            said.push(format!("{count} {}", health.to_lowercase()));
-        }
-    }
-    let has = |health: &str| rows.iter().any(|one| one.health == health);
+/// How many are out of sync, wait to be pruned, and failed in the last sync.
+fn note(part: &AppPart, rows: &[&AppResource]) -> (String, Role) {
+    let count = |test: &dyn Fn(&AppResource) -> bool| rows.iter().filter(|one| test(one)).count();
+    let failed = count(&|one| part.result(one).is_some_and(SyncedResource::broke));
+    let counted = [
+        (count(&AppResource::out_of_sync), "out of sync"),
+        (count(&|one| one.prune), "to prune"),
+        (failed, "failed"),
+    ];
+    let said: Vec<String> = counted
+        .iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, word)| format!("{count} {word}"))
+        .collect();
     let role = match () {
-        _ if has("Degraded") || has("Missing") => Role::Bad,
-        _ if drifted > 0 => Role::Warn,
-        _ if has("Progressing") => Role::Working,
+        _ if failed > 0 => Role::Bad,
+        _ if !said.is_empty() => Role::Warn,
         _ => Role::Ghost,
     };
     (said.join(" · "), role)
 }
 
-fn resource(one: &AppResource) -> Shown<'_, Target> {
+/// What the resource says: waiting to be pruned, else its last sync's message.
+fn status<'a>(part: &'a AppPart, one: &AppResource) -> (&'a str, Role) {
+    let result = part.result(one);
+    match result {
+        _ if one.prune => ("to prune", Role::Warn),
+        Some(done) if done.broke() => (done.message.as_str(), Role::Bad),
+        Some(done) => (done.message.as_str(), Role::Muted),
+        None => ("", Role::Muted),
+    }
+}
+
+fn resource<'a>(part: &'a AppPart, one: &'a AppResource) -> Shown<'a, Target> {
     let (sync, synced_role) = synced(one);
-    let (health, health_role) = healthy(&one.health);
-    let (message, role) = match (one.prune, one.health.as_str()) {
-        (true, _) => ("to prune", Role::Warn),
-        (_, "Degraded" | "Missing") => (one.message.as_str(), Role::Bad),
-        _ => (one.message.as_str(), Role::Muted),
-    };
+    let (message, role) = status(part, one);
     grouped::row(vec![
         Cell::small(sync, synced_role),
-        Cell::small(health, health_role),
         Cell::small(one.name.as_str(), Role::Text),
         Cell::small(one.namespace.as_deref().unwrap_or_default(), Role::Faint),
         Cell::small(one.wave.to_string(), Role::Ghost),
@@ -187,13 +195,12 @@ fn resource(one: &AppResource) -> Shown<'_, Target> {
 }
 
 /// What a column sorts a resource by; a wave by its number.
-fn key(one: &&AppResource, column: &str) -> String {
+fn key(part: &AppPart, one: &AppResource, column: &str) -> String {
     match column {
         "SYNC" => one.sync.clone(),
-        "HEALTH" => one.health.clone(),
         "NAMESPACE" => one.namespace.clone().unwrap_or_default(),
         "WAVE" => format!("{:020}", i128::from(one.wave) - i128::from(i64::MIN)),
-        "STATUS" => one.message.clone(),
+        "STATUS" => status(part, one).0.to_string(),
         _ => one.name.clone(),
     }
 }
@@ -205,18 +212,6 @@ fn synced(one: &AppResource) -> (&'static str, Role) {
     match one.sync.as_str() {
         "Synced" => ("✓", Role::Ok),
         "OutOfSync" => ("◐", Role::Warn),
-        _ => ("?", Role::Ghost),
-    }
-}
-
-pub(super) fn healthy(health: &str) -> (&'static str, Role) {
-    match health {
-        "Healthy" => ("♥", Role::Ok),
-        "Progressing" => ("◌", Role::Working),
-        "Degraded" => ("✗", Role::Bad),
-        "Missing" => ("◇", Role::Bad),
-        "Suspended" => ("‖", Role::Muted),
-        "" => ("", Role::Ghost),
         _ => ("?", Role::Ghost),
     }
 }

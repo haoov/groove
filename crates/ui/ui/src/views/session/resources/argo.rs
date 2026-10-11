@@ -9,16 +9,14 @@ use groove_types::{AppPart, AppResource};
 pub enum Filter {
     Attention,
     OutOfSync,
-    Unhealthy,
     Syncing,
     All,
 }
 
 impl Filter {
-    pub const OFFERED: [Filter; 5] = [
+    pub const OFFERED: [Filter; 4] = [
         Filter::Attention,
         Filter::OutOfSync,
-        Filter::Unhealthy,
         Filter::Syncing,
         Filter::All,
     ];
@@ -27,18 +25,16 @@ impl Filter {
         match self {
             Filter::Attention => "needs attention",
             Filter::OutOfSync => "out of sync",
-            Filter::Unhealthy => "unhealthy",
             Filter::Syncing => "syncing",
             Filter::All => "all",
         }
     }
 
     /// Whether `one` stands in the list; the syncing view lists the sync's steps instead.
-    pub fn holds(self, one: &AppResource) -> bool {
+    pub fn holds(self, part: &AppPart, one: &AppResource) -> bool {
         match self {
-            Filter::Attention => one.attention(),
+            Filter::Attention => part.attention(one),
             Filter::OutOfSync => one.out_of_sync(),
-            Filter::Unhealthy => one.unhealthy(),
             Filter::Syncing => false,
             Filter::All => true,
         }
@@ -58,7 +54,7 @@ pub struct ArgoUi {
 impl ArgoUi {
     pub fn filter(&self, app: &AppPart) -> Filter {
         let running = app.operation.as_ref().is_some_and(|one| one.running());
-        let attention = app.resources.iter().any(AppResource::attention);
+        let attention = app.resources.iter().any(|one| app.attention(one));
         match self.filter {
             Some(filter) => filter,
             None if running => Filter::Syncing,
