@@ -120,6 +120,9 @@ pub fn dispatch(
 /// The contexts read; with `check`, every context added to Groove checked again.
 fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
     if !state.cluster.begin_scan() {
+        if check {
+            check_added(state, spawner);
+        }
         return;
     }
     let paths = state.env.kubeconfig.clone();
@@ -136,9 +139,21 @@ fn scan(state: &mut AppState, spawner: &dyn Spawner, check: bool) {
                 Err(e) => {
                     apply(Event::Cluster(ClusterEvent::Unread), state);
                     state.failed(e);
+                    unscanned(spawner);
                 }
             },
         ) as Continuation
+    }));
+}
+
+/// A scan that failed may be asked again once `IDLE` has passed.
+fn unscanned(spawner: &dyn Spawner) {
+    let sink = spawner.sink();
+    spawner.detach(Box::pin(async move {
+        tokio::time::sleep(objects::IDLE).await;
+        sink.deliver(Box::new(
+            |state: &mut AppState, _: &Services, _: &dyn Spawner| state.cluster.scanned = false,
+        ));
     }));
 }
 

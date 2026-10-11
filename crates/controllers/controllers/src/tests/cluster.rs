@@ -256,3 +256,22 @@ fn a_caret_move_reaches_the_object_s_yaml_and_an_insert_never_does() {
     assert_eq!(buffer.caret(), Caret::new(1, 0));
     assert!(!buffer.text().contains('x'));
 }
+
+#[test]
+fn a_settings_scan_asked_while_a_read_runs_still_checks_every_added_context() {
+    let (home, spawner, services, mut state) = crate::tests::fixture::fresh();
+    kubeconfig(home.path(), "http://127.0.0.1:9");
+    let scan = || Cmd::Cluster(Command::ScanContexts);
+    dispatch(scan(), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let add = crate::config::Command::AddCluster {
+        context: "kind".into(),
+    };
+    dispatch(Cmd::Config(add), &mut state, &services, &spawner);
+    spawner.drain(&mut state, &services);
+    let read = Cmd::Cluster(Command::ReadContexts);
+    dispatch(read, &mut state, &services, &spawner);
+    assert!(state.cluster.scanning);
+    dispatch(scan(), &mut state, &services, &spawner);
+    assert!(state.cluster.checking("kind"));
+}

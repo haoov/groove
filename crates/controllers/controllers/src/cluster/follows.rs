@@ -68,12 +68,24 @@ pub(super) fn helm(state: &mut AppState, spawner: &dyn Spawner, release: Named) 
     let paths = state.env.kubeconfig.clone();
     spawner.spawn(Box::pin(async move {
         let read = groove_cluster_service::helm_revision(paths, release.clone()).await;
-        Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-            let follows = &mut state.cluster.store.follows;
-            match read {
-                Ok(revision) => follows.set_helm(release, revision),
-                Err(_) => follows.set_helm(release, None),
-            }
-        }) as Continuation
+        Box::new(
+            move |state: &mut AppState, _: &Services, spawner: &dyn Spawner| match read {
+                Ok(revision) => state.cluster.store.follows.set_helm(release, revision),
+                Err(_) => asked_again(spawner, release),
+            },
+        ) as Continuation
+    }));
+}
+
+/// A failed read stays begun for `IDLE`, then may be asked again.
+fn asked_again(spawner: &dyn Spawner, release: Named) {
+    let sink = spawner.sink();
+    spawner.detach(Box::pin(async move {
+        tokio::time::sleep(IDLE).await;
+        sink.deliver(Box::new(
+            move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
+                state.cluster.store.follows.end(&release)
+            },
+        ));
     }));
 }
