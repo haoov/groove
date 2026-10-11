@@ -24,6 +24,25 @@ impl Ui {
         if !self.session.sidebar() && self.focus == crate::Focus::Sidebar {
             (self.focus, self.session.composing) = (crate::Focus::Workspace, false);
         }
+        self.refound(app);
+    }
+
+    /// The find bar's matches read again once what they were read from changed.
+    fn refound(&mut self, app: &AppState) {
+        use crate::views::session::find::{found, read_of};
+        let Some(find) = self.session.find.as_ref() else {
+            return;
+        };
+        let now = read_of(app, self);
+        if find.read == now || find.query.is_empty() {
+            return;
+        }
+        let (view, query) = (find.view, find.query.text().to_string());
+        let hits = found(app, self, view, &query);
+        if let Some(find) = self.session.find.as_mut() {
+            find.at = find.at.min(hits.len().saturating_sub(1));
+            (find.hits, find.read) = (hits, now);
+        }
     }
 
     /// The fields of the surface no longer shown let go of the keys.

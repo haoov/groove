@@ -46,3 +46,34 @@ fn a_folded_sidebar_lets_go_of_the_keys() {
     assert_eq!(ui.focus, crate::Focus::Workspace);
     assert!(!ui.session.composing, "the hidden commit box takes no keys");
 }
+
+#[test]
+fn find_matches_follow_an_edit_of_the_file() {
+    use crate::input::{Key, Modifiers};
+    let mut app = full_app();
+    crate::tests::shows(&mut app, "src/a.rs", "let one = 1;\n", "let one = 1;\n");
+    let mut ui = Ui::default();
+    (ui.session.tab, ui.focus) = (Tab::Files, crate::Focus::Workspace);
+    let ctrl = Modifiers {
+        ctrl: true,
+        ..Modifiers::default()
+    };
+    crate::tests::press(Key::Char('f'), ctrl, &mut ui, &app);
+    for c in "one".chars() {
+        crate::tests::press(Key::Char(c), Modifiers::default(), &mut ui, &app);
+    }
+    let rows = |ui: &Ui| {
+        ui.session
+            .find
+            .as_ref()
+            .map(|one| one.hits.iter().map(|hit| hit.row).collect::<Vec<_>>())
+    };
+    assert_eq!(rows(&ui), Some(vec![0]));
+    app.workspace.edit(&groove_types::Edit::Newline);
+    ui.settle(&app);
+    assert_eq!(
+        rows(&ui),
+        Some(vec![1]),
+        "the match moved down with its line"
+    );
+}

@@ -39,6 +39,8 @@ pub struct ResourcesUi {
     pub opened: Vec<super::opened::Opened>,
     pub showing: Option<usize>,
     pub scroll: f32,
+    /// How far the kinds sidebar is scrolled.
+    pub kinds: f32,
 }
 
 /// A column's edge held: its kind, its label, where the press was, and its width then.

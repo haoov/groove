@@ -58,3 +58,23 @@ fn a_group_opened_stays_open_when_its_default_turns() {
         "and open once it would start open"
     );
 }
+
+#[test]
+fn the_kinds_scroll_on_their_own_and_leave_the_file_tree_where_it_was() {
+    let (mut app, mut ui) = listing();
+    let many = (0..120).map(|at| {
+        kind(
+            "example.io",
+            &format!("Kind{at}"),
+            &format!("kinds{at}"),
+            true,
+        )
+    });
+    app.cluster.store.set_kinds("staging", many.collect());
+    let metrics = crate::tests::metrics(1920, 1440, 1.0);
+    let sidebar = crate::layout::Layout::of(metrics, &ui).sidebar;
+    let at = (sidebar.x + sidebar.w / 2.0, sidebar.y + sidebar.h / 2.0);
+    super::tab::wheel(&app, &mut ui, at, (0.0, -200.0));
+    assert!(ui.session.resources.kinds > 0.0, "the kinds moved");
+    assert_eq!(ui.session.files, 0.0, "the file tree did not");
+}

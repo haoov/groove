@@ -38,11 +38,11 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui, area: Rect) {
         return hint(ctx, app, area);
     }
     let [head, body] = column_in(area, [Spec::default().height(ctx.tokens.row), Spec::fill()]);
-    header::draw(ctx, head, app, ui, &standing(ctx, app, ui));
     let [body, column] = row_in(body, [Spec::fill(), Spec::default().width(ctx.tokens.map)]);
     let cols = surface::note_cols(ctx, body, app, ui);
     ctx.app.hits.wraps(cols);
     let inline = Inline::of(app, ui, ui.session.face(), cols);
+    header::draw(ctx, head, app, ui, &standing(ctx, app, ui, &inline));
     map::draw(ctx, (column, body), app, ui, &inline);
     match whole_file(app, ui) {
         Some(true) => said(ctx, body, "Too long to show."),
@@ -79,12 +79,12 @@ fn whole_file(app: &AppState, ui: &Ui) -> Option<bool> {
 }
 
 /// The file the header names: the active one in Files, the one under the top row in the diff.
-fn standing(ctx: &Ctx, app: &AppState, ui: &Ui) -> String {
+fn standing(ctx: &Ctx, app: &AppState, ui: &Ui, inline: &Inline) -> String {
     if ui.session.face() == Face::File {
         let open = app.workspace.active();
         return open.map(|one| one.path.clone()).unwrap_or_default();
     }
-    let top = first(ctx.tokens.line, ui.session.diff);
+    let top = inline.base(first(ctx.tokens.line, ui.session.diff));
     match app.workspace.changes.at(top) {
         Some(At::Head(file) | At::Row(file, _)) => file.path.clone(),
         None => String::new(),

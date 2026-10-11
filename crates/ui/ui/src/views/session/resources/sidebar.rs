@@ -45,7 +45,7 @@ pub fn draw(ctx: &mut Ctx, app: &AppState, ui: &Ui) {
     crate::offsets::listed(
         ctx,
         body,
-        (Scroller::Files, ui.session.files),
+        (Scroller::Kinds, ui.session.resources.kinds),
         &lines,
         |_| row,
         |ctx, line, one| match one {

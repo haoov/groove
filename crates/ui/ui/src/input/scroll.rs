@@ -45,7 +45,11 @@ pub(super) fn scroll(
         return Vec::new();
     }
     if !layout.sidebar.is_empty() && x >= layout.sidebar.x {
-        ui.wheeled(Scroller::Files, pixels(tokens.row), hits);
+        let which = match ui.session.tab {
+            Tab::Resources => Scroller::Kinds,
+            _ => Scroller::Files,
+        };
+        ui.wheeled(which, pixels(tokens.row), hits);
         return Vec::new();
     }
     match ui.session.tab {

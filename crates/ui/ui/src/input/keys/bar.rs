@@ -80,8 +80,9 @@ fn searched(ui: &mut Ui, app: &AppState, view: crate::views::session::Face) {
         .as_ref()
         .map(|find| find.query.text().to_string());
     let hits = crate::views::session::find::found(app, ui, view, &query.unwrap_or_default());
+    let read = crate::views::session::find::read_of(app, ui);
     if let Some(find) = ui.session.find.as_mut() {
-        (find.hits, find.view, find.at) = (hits, view, 0);
+        (find.hits, find.view, find.at, find.read) = (hits, view, 0, read);
     }
 }
 
