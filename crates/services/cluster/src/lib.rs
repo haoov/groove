@@ -87,6 +87,9 @@ pub fn apply(state: &mut State, event: Event) {
         }
         Event::Unread => state.scanning = false,
         Event::Checked { context, login } => {
+            if matches!(login, Login::SignedIn { .. }) {
+                state.store.signed_in(&context);
+            }
             state.checking.retain(|name| *name != context);
             state.logins.retain(|(name, _)| *name != context);
             state.logins.push((context, login));

@@ -20,7 +20,7 @@ pub async fn kinds(
     if !again && let Some(kinds) = cached(&file).await {
         return Ok(kinds.into_iter().map(crate::kind_of).collect());
     }
-    let client = Client::connect(paths, context).await.map_err(failed)?;
+    let client = Client::shared(paths, context).await.map_err(failed)?;
     let kinds = client.kinds().await.map_err(failed)?;
     keep(&file, &kinds).await;
     Ok(kinds.into_iter().map(crate::kind_of).collect())
@@ -69,7 +69,7 @@ pub(crate) fn failed(error: groove_kube::Error) -> Error {
 
 /// The names of every namespace of `context`, every page of them.
 pub async fn namespaces(paths: &[PathBuf], context: &str) -> Result<Vec<String>> {
-    let client = Client::connect(paths, context).await.map_err(failed)?;
+    let client = Client::shared(paths, context).await.map_err(failed)?;
     let kind = Kind {
         group: String::new(),
         version: "v1".into(),

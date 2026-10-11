@@ -66,6 +66,6 @@ impl Client {
         let request = http::Request::get(query.uri())
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
-        self.lines(request).await
+        self.lines(request, None).await
     }
 }

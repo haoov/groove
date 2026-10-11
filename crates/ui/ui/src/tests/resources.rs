@@ -15,6 +15,7 @@ mod argo_links;
 mod argo_sync;
 mod copy;
 mod list;
+mod load;
 mod logs;
 mod sessions;
 mod tab;

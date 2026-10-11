@@ -86,10 +86,11 @@ impl Client {
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
         let raw: raw::Table = self
-            .inner
-            .request(request)
-            .await
-            .map_err(|e| Error::of(&self.context, e))?;
+            .answered(async {
+                let asked = self.inner.request(request).await;
+                asked.map_err(|e| Error::of(&self.context, e))
+            })
+            .await?;
         Ok(raw.into())
     }
 }

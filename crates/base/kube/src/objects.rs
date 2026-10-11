@@ -129,7 +129,7 @@ impl Client {
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
         let context = self.context.clone();
-        let lines = self.lines(request).await?;
+        let lines = self.lines(request, Some(crate::watch::QUIET)).await?;
         Ok(lines.map(move |line| line.and_then(|line| seen(&context, &line))))
     }
 
@@ -149,10 +149,11 @@ impl Client {
             .header(ACCEPT, accept)
             .body(Vec::new())
             .map_err(|e| Error::Kubeconfig(e.to_string()))?;
-        self.inner
-            .request(request)
-            .await
-            .map_err(|e| Error::of(&self.context, e))
+        self.answered(async {
+            let asked = self.inner.request(request).await;
+            asked.map_err(|e| Error::of(&self.context, e))
+        })
+        .await
     }
 }
 

@@ -34,7 +34,7 @@ pub async fn check(paths: &[PathBuf], context: &str) -> Login {
 }
 
 async fn version(paths: &[PathBuf], context: &str) -> groove_kube::Result<String> {
-    Client::connect(paths, context).await?.version().await
+    Client::shared(paths, context).await?.version().await
 }
 
 fn login(answer: groove_kube::Result<String>) -> Login {

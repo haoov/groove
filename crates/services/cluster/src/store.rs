@@ -34,6 +34,8 @@ pub struct Store {
     watched: BTreeMap<WatchKey, Watched>,
     kinds: BTreeMap<String, Vec<KubeKind>>,
     discovering: BTreeSet<String>,
+    /// The discoveries that failed in a row, by context, while one waits to try again.
+    refused: BTreeMap<String, u32>,
     namespaces: BTreeMap<String, Vec<String>>,
     /// When a time cell next reads differently.
     due: Option<Timestamp>,
@@ -52,6 +54,7 @@ impl Store {
 
     pub fn set_kinds(&mut self, context: &str, kinds: Vec<KubeKind>) {
         self.discovering.remove(context);
+        self.refused.remove(context);
         self.kinds.insert(context.to_string(), kinds);
     }
 
@@ -69,12 +72,29 @@ impl Store {
         self.discovering.insert(context.to_string())
     }
 
-    pub fn end_discovery(&mut self, context: &str) {
-        self.discovering.remove(context);
-    }
-
     pub fn discovering(&self, context: &str) -> bool {
         self.discovering.contains(context)
+    }
+
+    /// A discovery of `context` failed and stays begun; the failures in a row.
+    pub fn refuse_discovery(&mut self, context: &str) -> u32 {
+        let failures = self.refused.entry(context.to_string()).or_default();
+        *failures += 1;
+        *failures
+    }
+
+    /// `context` may be discovered again, unless another failure or a sign-in came since `failures`.
+    pub fn retry_discovery(&mut self, context: &str, failures: u32) {
+        if self.refused.get(context) == Some(&failures) {
+            self.discovering.remove(context);
+        }
+    }
+
+    /// `context` signed in: a discovery waiting on a failure may run now.
+    pub fn signed_in(&mut self, context: &str) {
+        if self.refused.remove(context).is_some() {
+            self.discovering.remove(context);
+        }
     }
 
     /// Every key `reader` reads.

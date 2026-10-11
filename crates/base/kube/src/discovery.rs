@@ -19,6 +19,10 @@ pub struct Kind {
 
 impl Client {
     pub async fn kinds(&self) -> Result<Vec<Kind>> {
+        self.answered(self.discovered()).await
+    }
+
+    async fn discovered(&self) -> Result<Vec<Kind>> {
         let fresh = || Discovery::new(self.inner.clone());
         let aggregated = fresh().run_aggregated().await.ok();
         let found = match aggregated.filter(|found| found.groups().next().is_some()) {

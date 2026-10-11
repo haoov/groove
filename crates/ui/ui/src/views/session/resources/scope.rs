@@ -144,13 +144,21 @@ pub fn search(ui: &ResourcesUi) -> (Option<String>, Vec<&str>) {
 }
 
 /// One key a pair, or one a context for a kind that is not namespaced; each context's own kind.
+/// While the search is typed, the selector stays the one the watchers hold.
 pub fn keys(app: &AppState, open: &Open, ui: &ResourcesUi) -> Vec<WatchKey> {
     let Some(picked) = kind(app, open, ui) else {
         return Vec::new();
     };
-    let (selector, _) = search(ui);
+    let selector = match ui.typing {
+        true => app
+            .cluster
+            .store
+            .read_by(READER)
+            .find_map(|one| one.selector.clone()),
+        false => search(ui).0,
+    };
     let mut out: Vec<WatchKey> = Vec::new();
-    for pair in held(open, ui) {
+    for pair in held(open, ui).filter(|one| app.config.cluster(&one.context).is_some()) {
         let Some(kinds) = app.cluster.store.kinds(&pair.context) else {
             continue;
         };
@@ -189,10 +197,13 @@ pub fn wants(app: &AppState, up: bool, ui: &ResourcesUi) -> Vec<Command> {
     out
 }
 
-/// A discovery for each context in scope whose kinds are neither known nor asked for.
+/// A discovery for each context in scope, still added to Groove, whose kinds are neither known nor asked for.
 fn discoveries(app: &AppState, open: &Open) -> Vec<Command> {
     let store = &app.cluster.store;
-    let unknown = |one: &&str| store.kinds(one).is_none() && !store.discovering(one);
+    let unknown = |one: &&str| {
+        let added = app.config.cluster(one).is_some();
+        added && store.kinds(one).is_none() && !store.discovering(one)
+    };
     let discover = |one: &str| cluster::Command::Discover {
         context: one.to_string(),
         again: false,
