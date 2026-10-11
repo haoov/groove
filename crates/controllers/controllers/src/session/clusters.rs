@@ -31,12 +31,8 @@ pub fn attach(
     session: &SessionId,
     attached: Attached,
 ) {
-    if state.config.cluster(&attached.context).is_none() {
-        let why = format!(
-            "Groove does not know the context `{}`: add it in Settings › Clusters first",
-            attached.context
-        );
-        return state.failed(Error::invalid(why));
+    if let Err(e) = state.config.known_cluster(&attached.context) {
+        return state.failed(e);
     }
     let attached = Attached {
         namespace: attached.namespace.filter(|one| !one.trim().is_empty()),

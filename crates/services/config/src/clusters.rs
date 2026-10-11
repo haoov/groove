@@ -1,6 +1,6 @@
 //! The kubeconfig contexts added to Groove, and their own configuration.
 
-use groove_types::{ClusterChange, ClusterConfig, Config};
+use groove_types::{ClusterChange, ClusterConfig, Config, Error};
 
 use crate::State;
 
@@ -14,6 +14,15 @@ impl State {
 
     pub fn cluster(&self, context: &str) -> Option<&ClusterConfig> {
         self.clusters().iter().find(|one| one.context == context)
+    }
+
+    /// The context added to Groove, or why it cannot be used.
+    pub fn known_cluster(&self, context: &str) -> Result<&ClusterConfig, Error> {
+        self.cluster(context).ok_or_else(|| {
+            Error::invalid(format!(
+                "Groove does not know the context `{context}`: add it in Settings › Clusters first"
+            ))
+        })
     }
 
     /// A context added once; adding it again changes nothing.

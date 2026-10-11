@@ -107,12 +107,11 @@ pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str)
 }
 
 pub(super) fn known(state: &mut AppState, context: &str) -> bool {
-    if state.config.cluster(context).is_some() {
-        return true;
+    match state.config.known_cluster(context) {
+        Ok(_) => true,
+        Err(e) => {
+            state.failed(e);
+            false
+        }
     }
-    let why = format!(
-        "Groove does not know the context `{context}`: add it in Settings › Clusters first"
-    );
-    state.failed(Error::invalid(why));
-    false
 }
