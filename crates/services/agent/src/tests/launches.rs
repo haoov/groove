@@ -13,7 +13,11 @@ fn of_two_launches_only_the_last_takes_the_row() {
     let (mut state, session) = (State::default(), SessionId::new("s"));
     let first = state.launch(&session);
     let second = state.launch(&session);
-    assert!(state.started((session.clone(), first), failed(), Timestamp::now()).is_none());
+    assert!(
+        state
+            .started((session.clone(), first), failed(), Timestamp::now())
+            .is_none()
+    );
     assert!(state.agent(&session).is_none(), "the first one is no one's");
     state.started((session.clone(), second), failed(), Timestamp::now());
     assert_eq!(state.agent(&session).map(|one| one.launch), Some(second));

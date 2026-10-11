@@ -4,5 +4,6 @@ mod clusters;
 mod config;
 mod logs;
 mod mapping;
+mod referenced;
 mod rules;
 mod values;

@@ -1,6 +1,8 @@
-use groove_types::TaskKey;
+use crate::TaskKey;
 
-use super::referenced;
+fn referenced(text: &str) -> crate::Result<TaskKey> {
+    TaskKey::referenced(text)
+}
 
 const ID: &str = "1f2e3d4c5b6a7980aabbccddeeff0011";
 

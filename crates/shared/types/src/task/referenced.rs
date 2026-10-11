@@ -1,22 +1,21 @@
 //! A task as a human or an agent names it: the page's URL, the issue's, or its id.
 
-use groove_types::{Error, ExternalId, Result, TaskKey};
+use crate::{Error, ExternalId, Result, TaskKey};
 
-#[cfg(test)]
-mod tests;
-
-/// The key a reference names: a GitHub issue URL or `host/owner/repo#n`, or a Notion URL or page id.
-pub fn referenced(text: &str) -> Result<TaskKey> {
-    let text = text.trim();
-    if let Some(key) = issue(text) {
-        return Ok(key);
-    }
-    if text.contains('#') {
-        return TaskKey::parse(&ExternalId::new(text));
-    }
-    match page_id(text) {
-        Some(page_id) => Ok(TaskKey::Notion { page_id }),
-        None => Err(Error::invalid(format!("names no task: {text}"))),
+impl TaskKey {
+    /// The key a reference names: a GitHub issue URL or `host/owner/repo#n`, or a Notion URL or page id.
+    pub fn referenced(text: &str) -> Result<TaskKey> {
+        let text = text.trim();
+        if let Some(key) = issue(text) {
+            return Ok(key);
+        }
+        if text.contains('#') {
+            return TaskKey::parse(&ExternalId::new(text));
+        }
+        match page_id(text) {
+            Some(page_id) => Ok(TaskKey::Notion { page_id }),
+            None => Err(Error::invalid(format!("names no task: {text}"))),
+        }
     }
 }
 

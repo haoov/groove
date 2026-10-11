@@ -1,3 +1,5 @@
+mod referenced;
+
 use crate::{Day, Error, ExternalId, Result, Timestamp};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]

@@ -5,7 +5,6 @@ use std::sync::{Arc, PoisonError};
 mod attention;
 mod filing;
 mod order;
-mod referenced;
 mod service;
 mod timer;
 
@@ -23,7 +22,6 @@ use groove_types::{
 pub use attention::folded;
 pub use filing::{Filing, filing};
 pub use order::{Planned, moved, ordered};
-pub use referenced::referenced;
 pub use service::Service;
 pub use timer::{IDLE, Timer, working};
 
