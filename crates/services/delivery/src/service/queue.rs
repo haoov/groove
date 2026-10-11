@@ -22,7 +22,7 @@ impl Service {
 }
 
 async fn queue_of(host: &str) -> groove_types::Result<Vec<ReviewMr>> {
-    Ok(Remote::of_host(host)?.review_queue().await?)
+    Ok(Remote::shared(host)?.review_queue().await?)
 }
 
 /// The hosts of the pool's clones, each once.
