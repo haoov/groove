@@ -57,6 +57,8 @@ pub struct State {
     pub runs: runs::Runs,
     /// The launches numbered so far.
     launches: u64,
+    /// The launch each session waits on.
+    pending: Vec<(SessionId, u64)>,
     /// The writes waiting on the user, each holding the answer it owes its agent.
     asks: Queue<Reply>,
     /// The sign-in Setup runs, while it runs.
@@ -104,19 +106,29 @@ impl State {
         self.agent(session).map(|a| &a.activity)
     }
 
-    /// The number the next launch goes by, which its exit carries.
-    pub fn launch(&mut self) -> u64 {
+    /// The number the next launch of `session` goes by, which its exit carries; the one it waits on.
+    pub fn launch(&mut self, session: &SessionId) -> u64 {
         self.launches += 1;
+        self.pending.retain(|(id, _)| id != session);
+        self.pending.push((session.clone(), self.launches));
         self.launches
     }
 
-    /// The launch's result: a running terminal, or an error on the row.
+    /// The launch's result, on the row; a terminal no row takes, or one it displaces, comes back to end.
     pub fn started(
         &mut self,
         (session, launch): (SessionId, u64),
         result: Result<Terminal, Error>,
         now: Timestamp,
-    ) {
+    ) -> Option<Terminal> {
+        let awaited = self
+            .pending
+            .iter()
+            .any(|one| *one == (session.clone(), launch));
+        if !awaited {
+            return result.ok();
+        }
+        self.pending.retain(|(id, _)| id != &session);
         let (terminal, status) = match result {
             Ok(terminal) => (Some(terminal), AgentStatus::Idle),
             Err(e) => (None, AgentStatus::Error { message: e.message }),
@@ -127,12 +139,14 @@ impl State {
             started_at: now,
             launch,
         };
-        self.agents.retain(|(id, _)| id != &session);
+        let displaced = self.end(&session).and_then(|one| one.terminal);
         self.agents.push((session, agent));
+        displaced
     }
 
-    /// Removes the agent; the caller ends its terminal.
+    /// Removes the agent and any launch it waits on; the caller ends its terminal.
     pub fn end(&mut self, session: &SessionId) -> Option<Agent> {
+        self.pending.retain(|(id, _)| id != session);
         let at = self.agents.iter().position(|(id, _)| id == session)?;
         Some(self.agents.remove(at).1)
     }

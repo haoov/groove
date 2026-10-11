@@ -175,7 +175,7 @@ fn every_tool_groove_lists_is_one_it_answers_and_a_write_with_nothing_to_act_on_
         created_at: groove_types::Timestamp::now(),
     };
     state.session.open(session, groove_types::Timestamp::now());
-    let launch = state.agent.launch();
+    let launch = state.agent.launch(&nothing);
     let none = Err(groove_types::Error::invalid("no terminal in this test"));
     state.agent.started(
         (nothing.clone(), launch),

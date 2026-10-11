@@ -26,7 +26,7 @@ pub(crate) fn asking(
     let paths = paths(state);
     let cwd = state.config.worktree_root(&state.env.home);
     let palette = palette(state.config.theme());
-    let (sink, launched) = (spawner.sink(), state.agent.launch());
+    let (sink, launched) = (spawner.sink(), state.agent.launch(&id));
     spawner.spawn(Box::pin(async move {
         let result = launch(
             &session,
@@ -42,7 +42,13 @@ pub(crate) fn asking(
         );
         Box::new(move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
             let now = Timestamp::now();
-            state.agent.started((session.id, launched), result, now);
+            let orphan = match state.session.get(&session.id) {
+                Some(_) => state.agent.started((session.id, launched), result, now),
+                None => result.ok(),
+            };
+            if let Some(orphan) = orphan {
+                let _ = orphan.terminate();
+            }
         }) as Continuation
     }));
 }
