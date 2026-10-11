@@ -282,3 +282,20 @@ fn a_narrow_pane_keeps_the_application_s_badges_clear_of_its_views() {
         );
     }
 }
+
+#[test]
+fn a_source_s_credentials_are_never_drawn() {
+    let mut object = super::argo::failing();
+    let part = object.app.as_mut().expect("its part");
+    part.sources[0].repo = "https://ci:s3cr3t@gitlab.wiremind.io/pythie-cayzn-deploy.git".into();
+    let (app, mut ui) = opened(object);
+    ui.session.resources.opened[0].view = crate::views::session::resources::View::Describe;
+    let shown = texts(&app, &ui);
+    assert!(!shown.iter().any(|one| one.contains("s3cr3t")), "{shown:?}");
+    assert!(
+        shown
+            .iter()
+            .any(|one| one == "gitlab.wiremind.io/pythie-cayzn-deploy"),
+        "{shown:?}"
+    );
+}

@@ -264,9 +264,14 @@ fn automated(prune: bool, heal: bool) -> String {
     said
 }
 
-/// A repository's address without its scheme and `.git`.
+/// A repository's address without its scheme, its credentials and `.git`.
 fn bare(repo: &str) -> String {
     let path = repo.split_once("://").map_or(repo, |(_, rest)| rest);
+    let host = path.find('/').unwrap_or(path.len());
+    let path = match path[..host].rfind('@') {
+        Some(at) => &path[at + 1..],
+        None => path,
+    };
     path.trim_end_matches(".git").to_string()
 }
 
