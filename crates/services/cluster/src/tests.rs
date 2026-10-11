@@ -98,15 +98,20 @@ fn a_watcher_starts_for_its_first_reader_and_is_unread_once_its_last_lets_go() {
     );
     assert!(store.lease(&key, "tab").is_none());
     assert!(store.release("list").is_empty(), "the tab reads it still");
-    assert_eq!(store.release("tab"), std::slice::from_ref(&key));
+    assert_eq!(store.release("tab"), [(key.clone(), 1)]);
     store.lease(&key, "list");
-    store.drop_unread(&key);
+    store.drop_unread(&key, 1);
     assert!(
         store.watched(&key).is_some(),
         "read again before it was dropped"
     );
-    store.release("list");
-    store.drop_unread(&key);
+    assert_eq!(store.release("list"), [(key.clone(), 2)]);
+    store.drop_unread(&key, 1);
+    assert!(
+        store.watched(&key).is_some(),
+        "the first release's wait drops nothing the second began"
+    );
+    store.drop_unread(&key, 2);
     assert!(store.watched(&key).is_none());
 }
 
@@ -146,8 +151,8 @@ fn rows_stand_by_name_and_each_change_lands_in_its_place() {
         store.watched(&key).and_then(|one| one.failed.as_deref()),
         Some("unreachable")
     );
-    store.release("list");
-    store.drop_unread(&key);
+    let released = store.release("list");
+    store.drop_unread(&key, released[0].1);
     store.apply(
         &key,
         Batch::Changes(vec![Delta::Gone(row("c", "front", "Pending"))]),
@@ -401,8 +406,8 @@ fn a_followed_object_lands_changes_and_goes_with_its_last_reader() {
     assert_eq!(held.objects.len(), 1);
     assert_eq!(held.objects[0].name, "api-0-renamed");
     assert_eq!(store.follows.read_by("tab").count(), 1);
-    assert_eq!(store.follows.release("tab"), std::slice::from_ref(&key));
-    store.follows.drop_unread(&key);
+    assert_eq!(store.follows.release("tab"), [(key.clone(), 1)]);
+    store.follows.drop_unread(&key, 1);
     assert!(store.follows.get(&key).is_none());
 }
 
@@ -453,6 +458,6 @@ fn an_object_followed_by_name_reads_as_a_read_only_text_that_keeps_its_caret() {
         "the caret stays"
     );
     store.follows.release("tab");
-    store.follows.drop_unread(&key);
+    store.follows.drop_unread(&key, 1);
     assert!(store.follows.yamls.get(&key).is_none());
 }

@@ -13,6 +13,8 @@ pub struct Follow {
     pub synced: bool,
     pub failed: Option<String>,
     readers: BTreeSet<String>,
+    /// Moves on each time the last reader lets go.
+    released: u64,
     stop: Stop,
 }
 
@@ -51,22 +53,23 @@ impl Follows {
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
-    pub fn release(&mut self, reader: &str) -> Vec<FollowKey> {
+    pub fn release(&mut self, reader: &str) -> Vec<(FollowKey, u64)> {
         let mut unread = Vec::new();
         for (key, one) in &mut self.followed {
             if one.readers.remove(reader) && one.readers.is_empty() {
-                unread.push(key.clone());
+                one.released += 1;
+                unread.push((key.clone(), one.released));
             }
         }
         unread
     }
 
     /// The watcher stopped and its objects dropped, if nothing reads it still.
-    pub fn drop_unread(&mut self, key: &FollowKey) {
+    pub fn drop_unread(&mut self, key: &FollowKey, released: u64) {
         if self
             .followed
             .get(key)
-            .is_some_and(|one| one.readers.is_empty())
+            .is_some_and(|one| one.readers.is_empty() && one.released == released)
             && let Some(one) = self.followed.remove(key)
         {
             one.stop.stop();

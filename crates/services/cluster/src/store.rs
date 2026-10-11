@@ -25,6 +25,8 @@ pub struct Watched {
     /// Moves on with every change to the rows.
     pub revision: u64,
     readers: BTreeSet<String>,
+    /// Moves on each time the last reader lets go.
+    released: u64,
     stop: Stop,
 }
 
@@ -114,22 +116,23 @@ impl Store {
     }
 
     /// `reader` reads nothing any more; the keys it leaves without a reader.
-    pub fn release(&mut self, reader: &str) -> Vec<WatchKey> {
+    pub fn release(&mut self, reader: &str) -> Vec<(WatchKey, u64)> {
         let mut unread = Vec::new();
         for (key, one) in &mut self.watched {
             if one.readers.remove(reader) && one.readers.is_empty() {
-                unread.push(key.clone());
+                one.released += 1;
+                unread.push((key.clone(), one.released));
             }
         }
         unread
     }
 
     /// The watcher stopped and its rows dropped, if nothing reads it still.
-    pub fn drop_unread(&mut self, key: &WatchKey) {
+    pub fn drop_unread(&mut self, key: &WatchKey, released: u64) {
         if self
             .watched
             .get(key)
-            .is_some_and(|one| one.readers.is_empty())
+            .is_some_and(|one| one.readers.is_empty() && one.released == released)
             && let Some(one) = self.watched.remove(key)
         {
             one.stop.stop();

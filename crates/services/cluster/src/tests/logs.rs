@@ -54,7 +54,7 @@ fn past_its_cap_a_stream_sheds_its_oldest_lines_and_counts_them_still() {
         held.buffer().lines(),
         "the text sheds the same lines"
     );
-    assert!(logs.release("resource").contains(&key));
-    logs.drop_unread(&key);
+    assert!(logs.release("resource").contains(&(key.clone(), 1)));
+    logs.drop_unread(&key, 1);
     assert!(logs.get(&key).is_none());
 }

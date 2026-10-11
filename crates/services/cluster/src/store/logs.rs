@@ -28,6 +28,8 @@ pub struct Log {
     pub state: Streaming,
     buffer: Buffer,
     readers: BTreeSet<String>,
+    /// Moves on each time the last reader lets go.
+    released: u64,
     stop: Stop,
 }
 
@@ -106,22 +108,23 @@ impl Logs {
     }
 
     /// `reader` reads no stream any more; the keys it leaves without a reader.
-    pub fn release(&mut self, reader: &str) -> Vec<LogKey> {
+    pub fn release(&mut self, reader: &str) -> Vec<(LogKey, u64)> {
         let mut unread = Vec::new();
         for (key, one) in &mut self.streams {
             if one.readers.remove(reader) && one.readers.is_empty() {
-                unread.push(key.clone());
+                one.released += 1;
+                unread.push((key.clone(), one.released));
             }
         }
         unread
     }
 
     /// The stream closed and its lines dropped, if nothing reads it still.
-    pub fn drop_unread(&mut self, key: &LogKey) {
+    pub fn drop_unread(&mut self, key: &LogKey, released: u64) {
         if self
             .streams
             .get(key)
-            .is_some_and(|one| one.readers.is_empty())
+            .is_some_and(|one| one.readers.is_empty() && one.released == released)
             && let Some(one) = self.streams.remove(key)
         {
             one.stop.stop();

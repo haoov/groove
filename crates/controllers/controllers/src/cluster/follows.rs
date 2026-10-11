@@ -29,13 +29,13 @@ pub(super) fn follow(state: &mut AppState, spawner: &dyn Spawner, reader: &str, 
 
 /// Each object `reader` leaves unread is dropped after `IDLE`, unless read again by then.
 pub(super) fn release(state: &mut AppState, spawner: &dyn Spawner, reader: &str) {
-    for key in state.cluster.store.follows.release(reader) {
+    for (key, released) in state.cluster.store.follows.release(reader) {
         let sink = spawner.sink();
         spawner.detach(Box::pin(async move {
             tokio::time::sleep(IDLE).await;
             sink.deliver(Box::new(
                 move |state: &mut AppState, _: &Services, _: &dyn Spawner| {
-                    state.cluster.store.follows.drop_unread(&key)
+                    state.cluster.store.follows.drop_unread(&key, released)
                 },
             ));
         }));
