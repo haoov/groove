@@ -56,7 +56,7 @@ fn a_revision_selects_its_worktree_then_reads_its_commit_once_read() {
         "nothing to show"
     );
     assert_eq!(
-        pending.step(&here, Some(&api), &[api.clone()], false),
+        pending.step(&here, Some(&api), std::slice::from_ref(&api), false),
         Step::Wait,
         "not added yet"
     );

@@ -5,29 +5,15 @@ use groove_types::{Error, Result, SharedConfig};
 
 use crate::{AppState, Continuation, Services, Spawner};
 
-/// The branch followed when none is named.
-const BRANCH: &str = "main";
-
 /// The repo copied, and written to the config once its copy reads as a marketplace.
 pub(super) fn join(state: &mut AppState, spawner: &dyn Spawner, (url, branch): (String, String)) {
-    let url = url.trim().to_string();
-    if url.is_empty() {
-        return refused(state, Error::invalid("a shared repo needs its URL"));
-    }
+    let wanted = match state.config.wanted_shared(&url, &branch) {
+        Ok(wanted) => wanted,
+        Err(e) => return refused(state, e),
+    };
     if state.config.joining {
         return;
     }
-    let branch = match branch.trim() {
-        "" => BRANCH.to_string(),
-        named => named.to_string(),
-    };
-    let same = state.config.shared().filter(|held| held.url == url);
-    let enabled = same.map(|held| held.enabled.clone()).unwrap_or_default();
-    let wanted = SharedConfig {
-        url,
-        branch,
-        enabled,
-    };
     state.config.joining = true;
     state.config.unshared = None;
     let data = state.env.data_dir.clone();

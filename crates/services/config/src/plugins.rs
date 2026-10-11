@@ -12,6 +12,29 @@ impl State {
         Some(config)
     }
 
+    /// The shared repo asked for, on `main` unless named, keeping its skills while the URL stays.
+    pub fn wanted_shared(
+        &self,
+        url: &str,
+        branch: &str,
+    ) -> Result<groove_types::SharedConfig, Error> {
+        let url = url.trim().to_string();
+        if url.is_empty() {
+            return Err(Error::invalid("a shared repo needs its URL"));
+        }
+        let branch = match branch.trim() {
+            "" => "main".to_string(),
+            named => named.to_string(),
+        };
+        let same = self.shared().filter(|held| held.url == url);
+        let enabled = same.map(|held| held.enabled.clone()).unwrap_or_default();
+        Ok(groove_types::SharedConfig {
+            url,
+            branch,
+            enabled,
+        })
+    }
+
     pub fn shared(&self) -> Option<&groove_types::SharedConfig> {
         self.config.as_ref()?.shared.as_ref()
     }
