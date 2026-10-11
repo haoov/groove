@@ -13,9 +13,12 @@ pub(super) fn in_scope(
     ui: &mut Ui,
     app: &AppState,
 ) -> Option<Vec<Command>> {
-    let open = app.session.selected()?;
     let Some(Overlay::Scope(scoping)) = &mut ui.overlay else {
         return None;
+    };
+    let Some(open) = app.session.selected().filter(|_| key != Key::Escape) else {
+        ui.overlay = None;
+        return Some(Vec::new());
     };
     let lines = scope_lines(app, open, &ui.session.resources, scoping);
     let picks: Vec<usize> = (0..lines.len())

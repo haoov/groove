@@ -13,6 +13,7 @@ mod menu;
 mod offsets;
 pub mod palette;
 mod render;
+mod settle;
 mod views;
 
 #[cfg(test)]
@@ -83,6 +84,8 @@ pub struct Drag {
 pub struct Ui {
     /// Which surface the window is showing.
     pub surface: Surface,
+    /// The surface shown when last settled.
+    pub shown: Surface,
     pub focus: Focus,
     /// What stands over the surface and takes the next key or click.
     pub overlay: Option<Overlay>,
@@ -175,21 +178,6 @@ impl Ui {
         }
     }
 
-    /// What the layout reads from the state: a routine's session selected, a commit shown.
-    pub fn settle(&mut self, app: &AppState) {
-        let selected = app.session.selected().map(|open| &open.session.kind);
-        self.session.alone = selected.is_some_and(|kind| kind.routine().is_some());
-        self.session.reading = app.workspace.commit.is_some();
-        self.session.arrive(app);
-        let held = app
-            .session
-            .selected()
-            .is_some_and(|open| !open.clusters.is_empty());
-        if self.session.tab == views::session::Tab::Resources && !held {
-            self.session.tab = views::session::Tab::Overview;
-        }
-    }
-
     pub fn dragging(&self) -> bool {
         matches!(self.held, Some(Held::Edge(_)))
     }
@@ -247,6 +235,7 @@ impl Ui {
         }
         let mut commands = outcome.commands;
         if let (true, Some(open)) = (outcome.scoping, app.session.selected()) {
+            self.surface = Surface::Session;
             let scoping = views::session::resources::Scoping::asked(open);
             let (scoping, listing) = scoping.opened(open, &self.session.resources);
             self.overlay = Some(Overlay::Scope(scoping));
@@ -270,8 +259,9 @@ impl Ui {
 
     /// Back to the window; a sign-in still running ends with it.
     pub(crate) fn close_settings(&mut self) -> Vec<Command> {
-        self.settings.open = false;
-        self.settings.typing = false;
+        let settings = &mut self.settings;
+        (settings.open, settings.typing, settings.binding) = (false, false, None);
+        (settings.leaving, settings.unsharing, settings.deleting) = (None, false, None);
         vec![Command::Config(
             groove_controllers::config::Command::EndLogin,
         )]

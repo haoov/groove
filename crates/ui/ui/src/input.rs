@@ -120,39 +120,56 @@ fn pasted(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
     if ui.settings.open {
         return pasted_in_settings(text, ui, app);
     }
-    if let Some(noting) = ui.session.noting.as_mut() {
-        noting.field.paste_lines(text);
-        return Vec::new();
+    match ui.showing(app) {
+        Surface::Board => {
+            if ui.board.typing {
+                ui.board.filter.paste(text);
+                ui.board.offer = 0;
+            }
+            Vec::new()
+        }
+        Surface::Session => pasted_in_session(text, ui, app),
     }
-    if let Some(term) = ui.session.bar.typing {
-        ui.session.bar.of(term).paste(text);
-        return Vec::new();
-    }
-    if let Some(find) = ui.session.find.as_mut().filter(|find| find.typing) {
-        find.query.paste(text);
-        return Vec::new();
-    }
-    if ui.board.typing {
-        ui.board.filter.paste(text);
-        ui.board.offer = 0;
+}
+
+/// The clipboard into the session's field that has the keys, else the pane that has them.
+fn pasted_in_session(text: &str, ui: &mut Ui, app: &AppState) -> Vec<Command> {
+    let session = &mut ui.session;
+    let field = match () {
+        _ if session.naming.is_some() => session.naming.as_mut().map(|one| &mut one.field),
+        _ if session.noting.is_some() => {
+            if let Some(noting) = session.noting.as_mut() {
+                noting.field.paste_lines(text);
+            }
+            return Vec::new();
+        }
+        _ if session.bar.typing.is_some() => session.bar.typing.map(|term| session.bar.of(term)),
+        _ if session.resources.filtering => Some(&mut session.resources.filter),
+        _ if session.resources.typing => Some(&mut session.resources.search),
+        _ => session
+            .find
+            .as_mut()
+            .filter(|find| find.typing)
+            .map(|find| &mut find.query),
+    };
+    if let Some(field) = field {
+        field.paste(text);
         return Vec::new();
     }
     if ui.session.composing {
         let edit = groove_types::Edit::Insert(text.to_string());
         return vec![Command::Workspace(workspace::Command::Message(edit))];
     }
-    if ui.focus == Focus::Agent && ui.showing(app) == Surface::Session {
-        return typed_at_agent(text, app);
+    match ui.focus {
+        Focus::Agent => typed_at_agent(text, app),
+        Focus::Terminal => typed_at_shell(text, app),
+        _ => {
+            let file = ui.session.tab != crate::views::session::Tab::Resources;
+            let editing = crate::editor::Editing::keyed(app, ui);
+            let editing = editing.or(file.then_some(crate::editor::Editing::File));
+            editing.and_then(|one| one.paste()).into_iter().collect()
+        }
     }
-    if ui.focus == Focus::Terminal && ui.showing(app) == Surface::Session {
-        return typed_at_shell(text, app);
-    }
-    let editing = crate::editor::Editing::keyed(app, ui);
-    editing
-        .unwrap_or(crate::editor::Editing::File)
-        .paste()
-        .into_iter()
-        .collect()
 }
 
 /// The clipboard in the search while typing, else at a running sign-in.

@@ -23,6 +23,7 @@ mod overview;
 mod painted;
 mod palette;
 mod pasting;
+mod pending;
 mod perf;
 mod rail;
 mod regions;

@@ -51,6 +51,11 @@ pub fn named(name: &str) -> Option<Tool> {
     all().into_iter().find(|tool| tool.name == name)
 }
 
+/// Whether the tool acts on a worktree it may name.
+pub fn takes_worktree(name: &str) -> bool {
+    named(name).is_some_and(|tool| tool.schema["properties"].get("worktree_id").is_some())
+}
+
 /// A tool that only reads takes no object at all.
 pub(crate) fn nothing() -> serde_json::Value {
     serde_json::json!({ "type": "object", "properties": {} })

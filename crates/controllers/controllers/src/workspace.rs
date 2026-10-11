@@ -156,7 +156,7 @@ pub fn dispatch(
     services: &Services,
     spawner: &dyn Spawner,
 ) {
-    if state.workspace.readonly() && command.writes() {
+    if command.writes() && (state.workspace.readonly() || stale(state)) {
         return;
     }
     match command {
